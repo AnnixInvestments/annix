@@ -97,6 +97,8 @@ function Api5lGradeDetails({ spec, pslLevel }: Api5lGradeDetailsProps) {
     pslLevel === "PSL1" ? spec.phosphorusMaxPct.psl1 : spec.phosphorusMaxPct.psl2;
   const sulfurLimit = pslLevel === "PSL1" ? spec.sulfurMaxPct.psl1 : spec.sulfurMaxPct.psl2;
 
+  const rawCeqMax = spec.ceqMax;
+
   return (
     <div className="bg-gray-50 rounded-md p-3 border border-gray-200">
       <div className="flex items-center gap-2 mb-2">
@@ -109,7 +111,6 @@ function Api5lGradeDetails({ spec, pslLevel }: Api5lGradeDetailsProps) {
           </span>
         )}
       </div>
-
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
         <div>
           <span className="text-gray-500">SMYS</span>
@@ -125,10 +126,9 @@ function Api5lGradeDetails({ spec, pslLevel }: Api5lGradeDetailsProps) {
         </div>
         <div>
           <span className="text-gray-500">CEq Max</span>
-          <p className="font-medium text-gray-800">{spec.ceqMax ?? "N/A"}</p>
+          <p className="font-medium text-gray-800">{rawCeqMax || "N/A"}</p>
         </div>
       </div>
-
       <div className="mt-3 pt-3 border-t border-gray-200">
         <span className="text-xs text-gray-500 block mb-1">Chemistry Limits (max %)</span>
         <div className="flex flex-wrap gap-3 text-xs">
@@ -138,7 +138,6 @@ function Api5lGradeDetails({ spec, pslLevel }: Api5lGradeDetailsProps) {
           <span className="text-gray-700">S: {sulfurLimit}</span>
         </div>
       </div>
-
       {pslLevel === "PSL2" && spec.cvnAvgJ !== null && (
         <div className="mt-3 pt-3 border-t border-gray-200">
           <span className="text-xs text-gray-500 block mb-1">CVN Impact Requirements</span>

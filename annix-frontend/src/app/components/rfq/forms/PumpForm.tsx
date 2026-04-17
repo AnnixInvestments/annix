@@ -94,6 +94,7 @@ export default function PumpForm(props: PumpFormProps) {
     (result: SelectionResult, criteria: SelectionCriteria) => {
       const recommendedType = result.recommendedTypes[0]?.type;
       if (recommendedType) {
+        const rawFluidType = criteria.fluidType;
         onUpdateEntry(entry.id, {
           specs: {
             ...entry.specs,
@@ -105,7 +106,7 @@ export default function PumpForm(props: PumpFormProps) {
             specificGravity: 1.0,
             viscosity: criteria.viscosityCp,
             solidsContent: criteria.solidsPercent,
-            fluidType: criteria.fluidType || "water",
+            fluidType: rawFluidType || "water",
           },
         });
       }
@@ -149,10 +150,15 @@ export default function PumpForm(props: PumpFormProps) {
     [entry.id, entry.specs, onUpdateEntry],
   );
 
-  const serviceType = entry.specs?.serviceType || "new_pump";
-  const pumpCategory = entry.specs?.pumpCategory || "centrifugal";
-  const pumpType = entry.specs?.pumpType || "";
-  const quantity = entry.specs?.quantityValue || 1;
+  const rawServiceType = entry.specs?.serviceType;
+
+  const serviceType = rawServiceType || "new_pump";
+  const rawPumpCategory = entry.specs?.pumpCategory;
+  const pumpCategory = rawPumpCategory || "centrifugal";
+  const rawPumpType = entry.specs?.pumpType;
+  const pumpType = rawPumpType || "";
+  const rawQuantityValue = entry.specs?.quantityValue;
+  const quantity = rawQuantityValue || 1;
 
   const flowRate = entry.specs?.flowRate;
   const totalHead = entry.specs?.totalHead;
@@ -161,56 +167,97 @@ export default function PumpForm(props: PumpFormProps) {
   const dischargePressure = entry.specs?.dischargePressure;
   const operatingTemp = entry.specs?.operatingTemp;
 
-  const fluidType = entry.specs?.fluidType || "water";
-  const specificGravity = entry.specs?.specificGravity || 1.0;
+  const rawFluidType2 = entry.specs?.fluidType;
+
+  const fluidType = rawFluidType2 || "water";
+  const rawSpecificGravity = entry.specs?.specificGravity;
+  const specificGravity = rawSpecificGravity || 1.0;
   const viscosity = entry.specs?.viscosity;
   const solidsContent = entry.specs?.solidsContent;
   const solidsSize = entry.specs?.solidsSize;
   const ph = entry.specs?.ph;
-  const isAbrasive = entry.specs?.isAbrasive || false;
-  const isCorrosive = entry.specs?.isCorrosive || false;
+  const rawIsAbrasive = entry.specs?.isAbrasive;
+  const isAbrasive = rawIsAbrasive || false;
+  const rawIsCorrosive = entry.specs?.isCorrosive;
+  const isCorrosive = rawIsCorrosive || false;
 
-  const casingMaterial = entry.specs?.casingMaterial || "cast_iron";
-  const impellerMaterial = entry.specs?.impellerMaterial || "cast_iron";
-  const shaftMaterial = entry.specs?.shaftMaterial || "ss_410";
-  const sealType = entry.specs?.sealType || "mechanical_single";
+  const rawCasingMaterial = entry.specs?.casingMaterial;
+
+  const casingMaterial = rawCasingMaterial || "cast_iron";
+  const rawImpellerMaterial = entry.specs?.impellerMaterial;
+  const impellerMaterial = rawImpellerMaterial || "cast_iron";
+  const rawShaftMaterial = entry.specs?.shaftMaterial;
+  const shaftMaterial = rawShaftMaterial || "ss_410";
+  const rawSealType = entry.specs?.sealType;
+  const sealType = rawSealType || "mechanical_single";
   const sealPlan = entry.specs?.sealPlan;
 
   const suctionSize = entry.specs?.suctionSize;
   const dischargeSize = entry.specs?.dischargeSize;
-  const connectionType = entry.specs?.connectionType || "flanged_pn16";
+  const rawConnectionType = entry.specs?.connectionType;
+  const connectionType = rawConnectionType || "flanged_pn16";
 
-  const motorType = entry.specs?.motorType || "electric_ac";
+  const rawMotorType = entry.specs?.motorType;
+
+  const motorType = rawMotorType || "electric_ac";
   const motorPower = entry.specs?.motorPower;
-  const voltage = entry.specs?.voltage || "380_3ph";
-  const frequency = entry.specs?.frequency || "50";
-  const motorEfficiency = entry.specs?.motorEfficiency || "ie3";
-  const enclosure = entry.specs?.enclosure || "tefc";
-  const hazardousArea = entry.specs?.hazardousArea || "none";
-  const frameStandard = entry.specs?.frameStandard || "iec";
-  const frameSize = entry.specs?.frameSize || "";
+  const rawVoltage = entry.specs?.voltage;
+  const voltage = rawVoltage || "380_3ph";
+  const rawFrequency = entry.specs?.frequency;
+  const frequency = rawFrequency || "50";
+  const rawMotorEfficiency = entry.specs?.motorEfficiency;
+  const motorEfficiency = rawMotorEfficiency || "ie3";
+  const rawEnclosure = entry.specs?.enclosure;
+  const enclosure = rawEnclosure || "tefc";
+  const rawHazardousArea = entry.specs?.hazardousArea;
+  const hazardousArea = rawHazardousArea || "none";
+  const rawFrameStandard = entry.specs?.frameStandard;
+  const frameStandard = rawFrameStandard || "iec";
+  const rawFrameSize = entry.specs?.frameSize;
+  const frameSize = rawFrameSize || "";
 
-  const couplingType = entry.specs?.couplingType || "flexible_jaw";
-  const couplingGuard = entry.specs?.couplingGuard || "standard";
+  const rawCouplingType = entry.specs?.couplingType;
 
-  const baseplateType = entry.specs?.baseplateType || "fabricated_steel";
-  const drainConnection = entry.specs?.drainConnection || "plugged_drain";
-  const groutType = entry.specs?.groutType || "none";
+  const couplingType = rawCouplingType || "flexible_jaw";
+  const rawCouplingGuard = entry.specs?.couplingGuard;
+  const couplingGuard = rawCouplingGuard || "standard";
 
-  const pressureInstruments = entry.specs?.pressureInstruments || [];
-  const flowInstruments = entry.specs?.flowInstruments || [];
-  const temperatureInstruments = entry.specs?.temperatureInstruments || [];
-  const vibrationInstruments = entry.specs?.vibrationInstruments || [];
+  const rawBaseplateType = entry.specs?.baseplateType;
 
-  const certifications = entry.specs?.certifications || [];
-  const spareParts = entry.specs?.spareParts || [];
-  const existingPumpModel = entry.specs?.existingPumpModel || "";
-  const existingPumpSerial = entry.specs?.existingPumpSerial || "";
-  const rentalDurationDays = entry.specs?.rentalDurationDays || 7;
+  const baseplateType = rawBaseplateType || "fabricated_steel";
+  const rawDrainConnection = entry.specs?.drainConnection;
+  const drainConnection = rawDrainConnection || "plugged_drain";
+  const rawGroutType = entry.specs?.groutType;
+  const groutType = rawGroutType || "none";
 
-  const supplierReference = entry.specs?.supplierReference || "";
+  const rawPressureInstruments = entry.specs?.pressureInstruments;
+
+  const pressureInstruments = rawPressureInstruments || [];
+  const rawFlowInstruments = entry.specs?.flowInstruments;
+  const flowInstruments = rawFlowInstruments || [];
+  const rawTemperatureInstruments = entry.specs?.temperatureInstruments;
+  const temperatureInstruments = rawTemperatureInstruments || [];
+  const rawVibrationInstruments = entry.specs?.vibrationInstruments;
+  const vibrationInstruments = rawVibrationInstruments || [];
+
+  const rawCertifications = entry.specs?.certifications;
+
+  const certifications = rawCertifications || [];
+  const rawSpareParts = entry.specs?.spareParts;
+  const spareParts = rawSpareParts || [];
+  const rawExistingPumpModel = entry.specs?.existingPumpModel;
+  const existingPumpModel = rawExistingPumpModel || "";
+  const rawExistingPumpSerial = entry.specs?.existingPumpSerial;
+  const existingPumpSerial = rawExistingPumpSerial || "";
+  const rawRentalDurationDays = entry.specs?.rentalDurationDays;
+  const rentalDurationDays = rawRentalDurationDays || 7;
+
+  const rawSupplierReference = entry.specs?.supplierReference;
+
+  const supplierReference = rawSupplierReference || "";
   const unitCostFromSupplier = entry.specs?.unitCostFromSupplier;
-  const markupPercentage = entry.specs?.markupPercentage || 15;
+  const rawMarkupPercentage = entry.specs?.markupPercentage;
+  const markupPercentage = rawMarkupPercentage || 15;
 
   const filteredPumpTypes = useMemo(() => {
     return getPumpsByCategory(pumpCategory as PumpCategory);
@@ -417,7 +464,8 @@ export default function PumpForm(props: PumpFormProps) {
       const newParts = kit.typicalParts.map((partValue) => {
         const allParts = PUMP_SPARE_PARTS.flatMap((cat) => cat.parts);
         const part = allParts.find((p) => p.value === partValue);
-        return { value: partValue, label: part?.label || partValue, quantity: 1 };
+        const rawLabel = part?.label;
+        return { value: partValue, label: rawLabel || partValue, quantity: 1 };
       });
       updateSpec("spareParts", [...spareParts, ...newParts]);
     }
@@ -425,6 +473,14 @@ export default function PumpForm(props: PumpFormProps) {
 
   const renderServiceTypeFields = () => {
     if (serviceType === "new_pump") {
+      const rawOptions = FLUID_SPECS.find((f) => f.name === "fluidType")?.options;
+      const rawOptions2 = CONSTRUCTION_SPECS.find((s) => s.name === "sealPlan")?.options;
+      const rawOptions3 = MOTOR_SPECS.find((s) => s.name === "motorType")?.options;
+      const rawOptions4 = MOTOR_SPECS.find((s) => s.name === "voltage")?.options;
+      const rawOptions5 = MOTOR_SPECS.find((s) => s.name === "frequency")?.options;
+      const rawOptions6 = MOTOR_SPECS.find((s) => s.name === "motorEfficiency")?.options;
+      const rawOptions7 = MOTOR_SPECS.find((s) => s.name === "enclosure")?.options;
+      const rawOptions8 = MOTOR_SPECS.find((s) => s.name === "hazardousArea")?.options;
       return (
         <>
           <div className="border-t pt-4 mt-4">
@@ -495,7 +551,6 @@ export default function PumpForm(props: PumpFormProps) {
               </p>
             )}
           </div>
-
           <div className="border-t pt-4 mt-4">
             <h4 className="font-medium text-gray-900 mb-3">Performance Requirements</h4>
             <div className="grid grid-cols-3 gap-4">
@@ -572,7 +627,6 @@ export default function PumpForm(props: PumpFormProps) {
               </div>
             </div>
           </div>
-
           <div className="border-t pt-4 mt-4">
             <h4 className="font-medium text-gray-900 mb-3">Fluid Properties</h4>
             <div className="grid grid-cols-3 gap-4">
@@ -581,7 +635,7 @@ export default function PumpForm(props: PumpFormProps) {
                 <Select
                   value={fluidType}
                   onChange={(value) => updateSpec("fluidType", value)}
-                  options={FLUID_SPECS.find((f) => f.name === "fluidType")?.options || []}
+                  options={rawOptions || []}
                 />
               </div>
               <div>
@@ -663,7 +717,6 @@ export default function PumpForm(props: PumpFormProps) {
               </label>
             </div>
           </div>
-
           <div className="border-t pt-4 mt-4">
             <div className="flex items-center justify-between mb-3">
               <h4 className="font-medium text-gray-900">Construction Materials</h4>
@@ -733,15 +786,11 @@ export default function PumpForm(props: PumpFormProps) {
                 <Select
                   value={sealPlan || ""}
                   onChange={(value) => updateSpec("sealPlan", value)}
-                  options={[
-                    { value: "", label: "Select plan..." },
-                    ...(CONSTRUCTION_SPECS.find((s) => s.name === "sealPlan")?.options || []),
-                  ]}
+                  options={[{ value: "", label: "Select plan..." }, ...(rawOptions2 || [])]}
                 />
               </div>
             )}
           </div>
-
           <div className="border-t pt-4 mt-4">
             <h4 className="font-medium text-gray-900 mb-3">Connections</h4>
             <div className="grid grid-cols-3 gap-4">
@@ -775,7 +824,6 @@ export default function PumpForm(props: PumpFormProps) {
               </div>
             </div>
           </div>
-
           <div className="border-t pt-4 mt-4">
             <h4 className="font-medium text-gray-900 mb-3">Motor Specifications</h4>
             <div className="grid grid-cols-3 gap-4">
@@ -784,7 +832,7 @@ export default function PumpForm(props: PumpFormProps) {
                 <Select
                   value={motorType}
                   onChange={(value) => updateSpec("motorType", value)}
-                  options={MOTOR_SPECS.find((s) => s.name === "motorType")?.options || []}
+                  options={rawOptions3 || []}
                 />
               </div>
               {motorType !== "none" && (
@@ -810,7 +858,7 @@ export default function PumpForm(props: PumpFormProps) {
                     <Select
                       value={voltage}
                       onChange={(value) => updateSpec("voltage", value)}
-                      options={MOTOR_SPECS.find((s) => s.name === "voltage")?.options || []}
+                      options={rawOptions4 || []}
                     />
                   </div>
                   <div>
@@ -820,7 +868,7 @@ export default function PumpForm(props: PumpFormProps) {
                     <Select
                       value={frequency}
                       onChange={(value) => updateSpec("frequency", value)}
-                      options={MOTOR_SPECS.find((s) => s.name === "frequency")?.options || []}
+                      options={rawOptions5 || []}
                     />
                   </div>
                   <div>
@@ -830,7 +878,7 @@ export default function PumpForm(props: PumpFormProps) {
                     <Select
                       value={motorEfficiency}
                       onChange={(value) => updateSpec("motorEfficiency", value)}
-                      options={MOTOR_SPECS.find((s) => s.name === "motorEfficiency")?.options || []}
+                      options={rawOptions6 || []}
                     />
                   </div>
                   <div>
@@ -840,7 +888,7 @@ export default function PumpForm(props: PumpFormProps) {
                     <Select
                       value={enclosure}
                       onChange={(value) => updateSpec("enclosure", value)}
-                      options={MOTOR_SPECS.find((s) => s.name === "enclosure")?.options || []}
+                      options={rawOptions7 || []}
                     />
                   </div>
                   <div>
@@ -850,7 +898,7 @@ export default function PumpForm(props: PumpFormProps) {
                     <Select
                       value={hazardousArea}
                       onChange={(value) => updateSpec("hazardousArea", value)}
-                      options={MOTOR_SPECS.find((s) => s.name === "hazardousArea")?.options || []}
+                      options={rawOptions8 || []}
                     />
                   </div>
                   <div>
@@ -886,7 +934,6 @@ export default function PumpForm(props: PumpFormProps) {
               )}
             </div>
           </div>
-
           <div className="border-t pt-4 mt-4">
             <h4 className="font-medium text-gray-900 mb-3">Coupling & Drive</h4>
             <div className="grid grid-cols-2 gap-4">
@@ -917,7 +964,6 @@ export default function PumpForm(props: PumpFormProps) {
               </div>
             </div>
           </div>
-
           <div className="border-t pt-4 mt-4">
             <h4 className="font-medium text-gray-900 mb-3">Baseplate & Mounting</h4>
             <div className="grid grid-cols-3 gap-4">
@@ -961,7 +1007,6 @@ export default function PumpForm(props: PumpFormProps) {
               </div>
             </div>
           </div>
-
           <div className="border-t pt-4 mt-4">
             <h4 className="font-medium text-gray-900 mb-3">Instrumentation</h4>
             <div className="space-y-4">
@@ -1071,7 +1116,6 @@ export default function PumpForm(props: PumpFormProps) {
               </div>
             </div>
           </div>
-
           <div className="border-t pt-4 mt-4">
             <h4 className="font-medium text-gray-900 mb-3">Certifications</h4>
             <div className="flex flex-wrap gap-2">
@@ -1519,6 +1563,8 @@ export default function PumpForm(props: PumpFormProps) {
     );
   };
 
+  const rawSelectedNotes = entry.selectedNotes;
+
   return (
     <>
       <SplitPaneLayout
@@ -1606,7 +1652,7 @@ export default function PumpForm(props: PumpFormProps) {
 
             <div className="border-t pt-4 mt-4">
               <SmartNotesDropdown
-                selectedNotes={entry.selectedNotes || []}
+                selectedNotes={rawSelectedNotes || []}
                 onNotesChange={(notes: string[]) =>
                   onUpdateEntry(entry.id, {
                     selectedNotes: notes,
@@ -1628,7 +1674,6 @@ export default function PumpForm(props: PumpFormProps) {
         }
         calcResultsContent={renderCalculationResults()}
       />
-
       {showSelectionWizard && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex items-center justify-center min-h-screen px-4 py-8">
@@ -1661,7 +1706,6 @@ export default function PumpForm(props: PumpFormProps) {
           </div>
         </div>
       )}
-
       {showApi610Wizard && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex items-center justify-center min-h-screen px-4 py-8">
@@ -1699,7 +1743,6 @@ export default function PumpForm(props: PumpFormProps) {
           </div>
         </div>
       )}
-
       {showMaterialChecker && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex items-center justify-center min-h-screen px-4 py-8">
@@ -1739,7 +1782,8 @@ export default function PumpForm(props: PumpFormProps) {
                       "Monel 400": "monel",
                       Titanium: "titanium",
                     };
-                    const materialValue = materialMap[result.recommendedMaterial] || "ss_316";
+                    const rawRecommendedMaterial = materialMap[result.recommendedMaterial];
+                    const materialValue = rawRecommendedMaterial || "ss_316";
                     updateSpec("casingMaterial", materialValue);
                     updateSpec("impellerMaterial", materialValue);
                   }

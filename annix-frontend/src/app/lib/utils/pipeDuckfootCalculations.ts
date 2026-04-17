@@ -64,7 +64,8 @@ export function calculateDuckfootGussetThickness(params: {
   gussetBaseWidthMm: number;
   allowableStressMpa?: number;
 }): number {
-  const allowableStressPa = (params.allowableStressMpa ?? 250) * 1000000;
+  const rawAllowableStressMpa = params.allowableStressMpa;
+  const allowableStressPa = (rawAllowableStressMpa || 250) * 1000000;
   const heightM = params.gussetHeightMm / 1000;
   const baseWidthM = params.gussetBaseWidthMm / 1000;
 
@@ -118,16 +119,21 @@ export function calculateDuckfootSteelworkWeight(
   const { nominalBoreMm, designPressureBar, basePlateXMm, basePlateYMm, ribHeightMm } = params;
 
   const { count: recommendedCount, placementType } = recommendDuckfootGussetCount(nominalBoreMm);
-  const gussetCount = params.gussetCount ?? recommendedCount;
+  const rawGussetCount = params.gussetCount;
+  const gussetCount = rawGussetCount || recommendedCount;
 
   const recommendedThickness = recommendDuckfootGussetThickness({
     nominalBoreMm,
     designPressureBar,
   });
-  const gussetThicknessMm = params.gussetThicknessMm ?? recommendedThickness;
+  const rawGussetThicknessMm = params.gussetThicknessMm;
+  const gussetThicknessMm = rawGussetThicknessMm || recommendedThickness;
 
-  const plateThicknessMm = params.plateThicknessMm ?? Math.max(10, gussetThicknessMm * 0.8);
-  const ribThicknessMm = params.ribThicknessMm ?? Math.max(8, gussetThicknessMm * 0.6);
+  const rawPlateThicknessMm = params.plateThicknessMm;
+
+  const plateThicknessMm = rawPlateThicknessMm || Math.max(10, gussetThicknessMm * 0.8);
+  const rawRibThicknessMm = params.ribThicknessMm;
+  const ribThicknessMm = rawRibThicknessMm || Math.max(8, gussetThicknessMm * 0.6);
 
   const { thrustForceKn } = calculateDuckfootThrustForce({
     nominalBoreMm,

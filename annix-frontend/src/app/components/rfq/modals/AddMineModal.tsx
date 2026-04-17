@@ -6,7 +6,9 @@ import GoogleMapLocationPicker from "@/app/components/GoogleMapLocationPicker";
 import { Commodity, CreateSaMineDto, minesApi, SaMine } from "@/app/lib/api/client";
 import { log } from "@/app/lib/logger";
 
-const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
+const rawNEXT_PUBLIC_GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+
+const GOOGLE_MAPS_API_KEY = rawNEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 
 // South African provinces
 const SA_PROVINCES = [
@@ -164,6 +166,12 @@ export default function AddMineModal(props: AddMineModalProps) {
 
   if (!isOpen) return null;
 
+  const rawCommodityId = formData.commodityId;
+  const rawDistrict = formData.district;
+  const rawPhysicalAddress = formData.physicalAddress;
+  const rawLatitude = formData.latitude;
+  const rawLongitude = formData.longitude;
+
   return createPortal(
     <div className="fixed inset-0 bg-black/10 backdrop-blur-md flex items-center justify-center z-[9999] p-4">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -298,7 +306,7 @@ export default function AddMineModal(props: AddMineModalProps) {
                 Commodity <span className="text-red-500">*</span>
               </label>
               <select
-                value={formData.commodityId || ""}
+                value={rawCommodityId || ""}
                 onChange={(e) =>
                   handleInputChange("commodityId", e.target.value ? Number(e.target.value) : 0)
                 }
@@ -345,7 +353,7 @@ export default function AddMineModal(props: AddMineModalProps) {
               <label className="block text-sm font-semibold text-gray-700 mb-1">District</label>
               <input
                 type="text"
-                value={formData.district || ""}
+                value={rawDistrict || ""}
                 onChange={(e) => handleInputChange("district", e.target.value)}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 text-gray-900"
                 placeholder="e.g., John Taolo Gaetsewe"
@@ -358,7 +366,7 @@ export default function AddMineModal(props: AddMineModalProps) {
                 Physical Address
               </label>
               <textarea
-                value={formData.physicalAddress || ""}
+                value={rawPhysicalAddress || ""}
                 onChange={(e) => handleInputChange("physicalAddress", e.target.value)}
                 rows={2}
                 className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 text-gray-900 ${
@@ -417,7 +425,7 @@ export default function AddMineModal(props: AddMineModalProps) {
                 <input
                   type="number"
                   step="0.0000001"
-                  value={formData.latitude ?? ""}
+                  value={rawLatitude || ""}
                   onChange={(e) =>
                     handleInputChange(
                       "latitude",
@@ -437,7 +445,7 @@ export default function AddMineModal(props: AddMineModalProps) {
                 <input
                   type="number"
                   step="0.0000001"
-                  value={formData.longitude ?? ""}
+                  value={rawLongitude || ""}
                   onChange={(e) =>
                     handleInputChange(
                       "longitude",

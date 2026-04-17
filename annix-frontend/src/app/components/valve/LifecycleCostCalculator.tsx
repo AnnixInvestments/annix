@@ -98,7 +98,8 @@ export default function LifecycleCostCalculator() {
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   const currency = currencyByCode(currencyCode);
-  const currencySymbol = currency?.symbol || currencyCode;
+  const rawSymbol = currency?.symbol;
+  const currencySymbol = rawSymbol || currencyCode;
 
   const formatCurrency = useCallback((value: number): string => {
     return value.toLocaleString("en-ZA", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
@@ -227,6 +228,10 @@ export default function LifecycleCostCalculator() {
     };
   }, [results]);
 
+  const rawActuatorPowerKw = valveSpecs.actuatorPowerKw;
+  const rawCyclesPerDay = valveSpecs.cyclesPerDay;
+  const rawOperatingHoursPerYear = valveSpecs.operatingHoursPerYear;
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -236,7 +241,6 @@ export default function LifecycleCostCalculator() {
           Calculate the total cost of ownership for control valves over their operational lifespan
         </p>
       </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Input Section */}
         <div className="lg:col-span-1 space-y-4">
@@ -328,7 +332,7 @@ export default function LifecycleCostCalculator() {
                   <input
                     type="number"
                     step="0.1"
-                    value={valveSpecs.actuatorPowerKw || ""}
+                    value={rawActuatorPowerKw || ""}
                     onChange={(e) =>
                       updateValveSpec("actuatorPowerKw", parseFloat(e.target.value) || 0)
                     }
@@ -341,7 +345,7 @@ export default function LifecycleCostCalculator() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Cycles/Day</label>
                   <input
                     type="number"
-                    value={valveSpecs.cyclesPerDay || ""}
+                    value={rawCyclesPerDay || ""}
                     onChange={(e) =>
                       updateValveSpec("cyclesPerDay", parseInt(e.target.value, 10) || 0)
                     }
@@ -354,7 +358,7 @@ export default function LifecycleCostCalculator() {
                   </label>
                   <input
                     type="number"
-                    value={valveSpecs.operatingHoursPerYear || ""}
+                    value={rawOperatingHoursPerYear || ""}
                     onChange={(e) =>
                       updateValveSpec("operatingHoursPerYear", parseInt(e.target.value, 10) || 0)
                     }

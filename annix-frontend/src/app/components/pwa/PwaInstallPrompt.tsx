@@ -25,9 +25,9 @@ export default function PwaInstallPrompt() {
 
   useEffect(() => {
     const isIosDevice = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const rawMatches = window.matchMedia("(display-mode: standalone)").matches;
     const isInStandaloneMode =
-      window.matchMedia("(display-mode: standalone)").matches ||
-      (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
+      rawMatches || (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
 
     setIsIos(isIosDevice);
     setIsStandalone(isInStandaloneMode);

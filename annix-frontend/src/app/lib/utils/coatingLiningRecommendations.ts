@@ -899,19 +899,23 @@ const TIER_ORDER: Record<BudgetTier, number> = {
 };
 
 function supplierTier(supplierName: string): BudgetTier {
-  return SUPPLIER_INFO[supplierName]?.tier || "standard";
+  const rawTier = SUPPLIER_INFO[supplierName]?.tier;
+  return rawTier || "standard";
 }
 
 function supplierRegion(supplierName: string): SupplierRegion {
-  return SUPPLIER_INFO[supplierName]?.region || "global";
+  const rawRegion = SUPPLIER_INFO[supplierName]?.region;
+  return rawRegion || "global";
 }
 
 function supplierLeadTime(supplierName: string): number {
-  return SUPPLIER_INFO[supplierName]?.leadTimeDays || 14;
+  const rawLeadTimeDays = SUPPLIER_INFO[supplierName]?.leadTimeDays;
+  return rawLeadTimeDays || 14;
 }
 
 function hasLocalStock(supplierName: string): boolean {
-  return SUPPLIER_INFO[supplierName]?.localStock || false;
+  const rawLocalStock = SUPPLIER_INFO[supplierName]?.localStock;
+  return rawLocalStock || false;
 }
 
 export function filterByBudgetTier<T extends { supplier: string }>(
@@ -1038,7 +1042,8 @@ export function filterByRegionalAvailability<T extends { supplier: string }>(
 }
 
 export function supplierInfo(supplierName: string): SupplierInfo | null {
-  return SUPPLIER_INFO[supplierName] || null;
+  const rawSupplierName = SUPPLIER_INFO[supplierName];
+  return rawSupplierName || null;
 }
 
 export function allSuppliersByRegion(region: SupplierRegion): string[] {

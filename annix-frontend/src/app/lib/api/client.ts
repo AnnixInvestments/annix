@@ -1033,12 +1033,15 @@ class ApiClient {
   }> {
     const queryParams = new URLSearchParams();
 
-    const nps = NB_MM_TO_NPS[params.nbMm] || `${Math.round(params.nbMm / 25.4)}`;
+    const rawNbMm = NB_MM_TO_NPS[params.nbMm];
+
+    const nps = rawNbMm || `${Math.round(params.nbMm / 25.4)}`;
 
     queryParams.append("nps", nps);
     queryParams.append("pressureBar", params.pressureBar.toString());
     queryParams.append("temperatureCelsius", params.temperatureCelsius.toString());
-    queryParams.append("materialCode", params.materialCode || "ASTM_A106_Grade_B");
+    const rawMaterialCode = params.materialCode;
+    queryParams.append("materialCode", rawMaterialCode || "ASTM_A106_Grade_B");
     if (params.corrosionAllowanceMm) {
       queryParams.append("corrosionAllowanceMm", params.corrosionAllowanceMm.toString());
     }

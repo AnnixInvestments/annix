@@ -22,9 +22,12 @@ export interface UsePaginationReturn {
 }
 
 export function usePagination(options: UsePaginationOptions = {}): UsePaginationReturn {
-  const initialPage = options.initialPage ?? 1;
-  const initialPageSize = options.initialPageSize ?? 25;
-  const initialTotal = options.initialTotal ?? 0;
+  const rawInitialPage = options.initialPage;
+  const initialPage = rawInitialPage || 1;
+  const rawInitialPageSize = options.initialPageSize;
+  const initialPageSize = rawInitialPageSize || 25;
+  const rawInitialTotal = options.initialTotal;
+  const initialTotal = rawInitialTotal || 0;
 
   const [page, setPage] = useState(initialPage);
   const [pageSize, setPageSizeState] = useState(initialPageSize);

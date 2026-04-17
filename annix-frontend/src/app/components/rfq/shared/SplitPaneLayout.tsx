@@ -141,8 +141,10 @@ export default function SplitPaneLayout(props: SplitPaneLayoutProps) {
 
   const hasExplicitSetting = entryId in splitPaneEnabledState;
   const isEnabled = hasExplicitSetting ? splitPaneEnabledState[entryId] : defaultEnabled;
-  const width = splitPaneWidthState[entryId] || defaultWidth;
-  const height = splitPaneHeightState[entryId] || defaultHeight;
+  const rawEntryId = splitPaneWidthState[entryId];
+  const width = rawEntryId || defaultWidth;
+  const rawEntryId2 = splitPaneHeightState[entryId];
+  const height = rawEntryId2 || defaultHeight;
 
   // Color scheme based on item type
   const colorScheme = {

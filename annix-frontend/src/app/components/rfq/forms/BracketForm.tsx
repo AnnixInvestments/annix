@@ -135,8 +135,10 @@ function BracketEntryCard({
     [entry.dimensions],
   );
 
+  const rawDefaultCostPerKg = material?.defaultCostPerKg;
+
   const effectiveCostPerKg =
-    entry.costPerKgOverride !== null ? entry.costPerKgOverride : material?.defaultCostPerKg || 0;
+    entry.costPerKgOverride !== null ? entry.costPerKgOverride : rawDefaultCostPerKg || 0;
 
   useEffect(() => {
     const result = calculateBracket(
@@ -177,6 +179,13 @@ function BracketEntryCard({
 
   const bracketTypeInfo = BRACKET_TYPES.find((t) => t.id === entry.bracketType);
 
+  const rawName = bracketTypeInfo?.name;
+  const rawCode = material?.code;
+  const rawQuantity = entry.quantity;
+  const rawCostPerKgOverride = entry.costPerKgOverride;
+  const rawDefaultCostPerKg2 = material?.defaultCostPerKg;
+  const rawNotes = entry.notes;
+
   return (
     <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
       <div
@@ -189,7 +198,7 @@ function BracketEntryCard({
           </span>
           <div>
             <h4 className="font-semibold text-gray-900">
-              {bracketTypeInfo?.name || "Bracket"} - {material?.code || "Unknown"}
+              {rawName || "Bracket"} - {rawCode || "Unknown"}
             </h4>
             <p className="text-sm text-gray-500">
               {entry.dimensions.leg1LengthMm}×{entry.dimensions.leg2LengthMm}×
@@ -217,7 +226,6 @@ function BracketEntryCard({
           </svg>
         </div>
       </div>
-
       {isExpanded && (
         <div className="p-4 space-y-4">
           {validationErrors.length > 0 && (
@@ -359,7 +367,7 @@ function BracketEntryCard({
               <label className="block text-sm font-medium text-gray-700 mb-1">Quantity</label>
               <input
                 type="number"
-                value={entry.quantity ?? ""}
+                value={rawQuantity || ""}
                 onChange={(e) => {
                   const rawValue = e.target.value;
                   if (rawValue === "") {
@@ -397,11 +405,11 @@ function BracketEntryCard({
               {showCostOverride ? (
                 <input
                   type="number"
-                  value={entry.costPerKgOverride || ""}
+                  value={rawCostPerKgOverride || ""}
                   onChange={(e) =>
                     onUpdate({ costPerKgOverride: parseFloat(e.target.value) || null })
                   }
-                  placeholder={`Default: R${material?.defaultCostPerKg || 0}`}
+                  placeholder={`Default: R${rawDefaultCostPerKg2 || 0}`}
                   className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
                   min={0}
                   step={0.01}
@@ -419,7 +427,7 @@ function BracketEntryCard({
               </label>
               <input
                 type="text"
-                value={entry.notes || ""}
+                value={rawNotes || ""}
                 onChange={(e) => onUpdate({ notes: e.target.value })}
                 placeholder="e.g., Location, purpose..."
                 className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"

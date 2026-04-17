@@ -119,7 +119,8 @@ export default function HowToIndexClient(props: HowToIndexClientProps) {
 
   const grouped = useMemo(() => {
     return filtered.reduce<Record<string, IndexGuide[]>>((groups, g) => {
-      const list = groups[g.category] || [];
+      const rawCategory = groups[g.category];
+      const list = rawCategory || [];
       return { ...groups, [g.category]: [...list, g] };
     }, {});
   }, [filtered]);
@@ -132,13 +133,14 @@ export default function HowToIndexClient(props: HowToIndexClientProps) {
       .slice(0, 4);
   }, [recent, visibleGuides, query, activeCategory]);
 
+  const rawHeading = props.heading;
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">{props.heading || "How To Guides"}</h1>
+        <h1 className="text-2xl font-bold text-gray-900">{rawHeading || "How To Guides"}</h1>
         {props.subheading && <p className="text-sm text-gray-600 mt-1">{props.subheading}</p>}
       </div>
-
       <div className="mb-6 flex flex-col sm:flex-row gap-3">
         <div className="flex-1 relative">
           <input
@@ -164,7 +166,6 @@ export default function HowToIndexClient(props: HowToIndexClientProps) {
           </svg>
         </div>
       </div>
-
       <div className="flex flex-wrap gap-2 mb-6">
         <button
           type="button"
@@ -192,7 +193,6 @@ export default function HowToIndexClient(props: HowToIndexClientProps) {
           </button>
         ))}
       </div>
-
       {recentGuides.length > 0 && (
         <section className="mb-8">
           <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
@@ -210,13 +210,11 @@ export default function HowToIndexClient(props: HowToIndexClientProps) {
           </div>
         </section>
       )}
-
       {filtered.length === 0 && (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
           <p className="text-gray-500 text-sm">No guides match your search.</p>
         </div>
       )}
-
       <div className="space-y-8">
         {Object.entries(grouped).map(([category, guides]) => (
           <section key={category}>

@@ -35,12 +35,13 @@ export function ProductCatalogBrowser(props: ProductCatalogBrowserProps) {
 
     if (selectedType === "all" || selectedType === "paint") {
       paintProducts.forEach((p) => {
+        const rawDescription = p.description;
         products.push({
           id: p.id,
           name: p.name,
           supplier: p.supplier,
           type: "paint",
-          description: p.description || "",
+          description: rawDescription || "",
           maxTempC: p.heatResistance.continuousC,
           category: p.genericType,
         });

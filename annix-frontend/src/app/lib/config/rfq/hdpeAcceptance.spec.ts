@@ -474,7 +474,8 @@ describe("Acceptance Criteria Tests", () => {
       const grouped = items.reduce(
         (acc, item) => {
           const key = item.materialType;
-          acc[key] = acc[key] || [];
+          const rawKey = acc[key];
+          acc[key] = rawKey || [];
           acc[key].push(item);
           return acc;
         },

@@ -119,11 +119,13 @@ export default function GoogleMapLocationPicker(props: GoogleMapLocationPickerPr
     return <ManualLocationInput onLocationSelect={onLocationSelect} onClose={onClose} />;
   }
 
+  const rawMapHeight = displayConfig.mapHeight;
+  const rawMapHeight2 = displayConfig.mapHeight;
+
   const containerStyle = {
     width: "100%",
-    height: `${displayConfig.mapHeight || 400}px`,
-    minHeight:
-      displayConfig.layout === "responsive" ? `${displayConfig.mapHeight || 250}px` : undefined,
+    height: `${rawMapHeight || 400}px`,
+    minHeight: displayConfig.layout === "responsive" ? `${rawMapHeight2 || 250}px` : undefined,
   };
 
   const onMapLoad = useCallback((map: google.maps.Map) => {
@@ -157,7 +159,9 @@ export default function GoogleMapLocationPicker(props: GoogleMapLocationPickerPr
         mapRef.current?.setZoom(17);
       }
 
-      const address = place.formatted_address || "";
+      const rawFormatted_address = place.formatted_address;
+
+      const address = rawFormatted_address || "";
       let region = "";
       let country = "";
 
@@ -187,7 +191,8 @@ export default function GoogleMapLocationPicker(props: GoogleMapLocationPickerPr
 
       if (response.results && response.results.length > 0) {
         const result = response.results[0];
-        const address = result.formatted_address || "";
+        const rawFormatted_address2 = result.formatted_address;
+        const address = rawFormatted_address2 || "";
         let region = "";
         let country = "";
 
@@ -485,9 +490,11 @@ export default function GoogleMapLocationPicker(props: GoogleMapLocationPickerPr
       ? "bg-white rounded-xl shadow-2xl w-full max-w-4xl h-[90vh] md:max-h-[95vh] flex flex-col md:h-auto"
       : "bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden";
 
+  const rawAddressInfoMaxHeight = displayConfig.addressInfoMaxHeight;
+
   const addressInfoClass =
     displayConfig.layout === "responsive"
-      ? `p-4 border-t bg-gray-50 overflow-y-auto max-h-[${displayConfig.addressInfoMaxHeight || 200}px]`
+      ? `p-4 border-t bg-gray-50 overflow-y-auto max-h-[${rawAddressInfoMaxHeight || 200}px]`
       : "p-4 border-t bg-gray-50";
 
   const mapContainerClass =
@@ -495,9 +502,14 @@ export default function GoogleMapLocationPicker(props: GoogleMapLocationPickerPr
       ? "flex-1 overflow-hidden flex flex-col min-h-0 relative"
       : "relative";
 
+  const rawContainerClassName = displayConfig.containerClassName;
+  const rawAddress = addressInfo?.address;
+  const rawRegion = addressInfo.region;
+  const rawCountry = addressInfo.country;
+
   return (
     <div className="fixed inset-0 bg-black/10 backdrop-blur-md flex items-center justify-center z-50 p-4">
-      <div className={displayConfig.containerClassName || outerContainerClass}>
+      <div className={rawContainerClassName || outerContainerClass}>
         <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-blue-50 to-indigo-50 flex-shrink-0">
           <div>
             <h3 className="text-lg font-semibold text-gray-900">Select Project Location</h3>
@@ -632,7 +644,7 @@ export default function GoogleMapLocationPicker(props: GoogleMapLocationPickerPr
                       Looking up address...
                     </span>
                   ) : (
-                    addressInfo?.address || "Click to get address"
+                    rawAddress || "Click to get address"
                   )}
                 </div>
               </div>
@@ -642,11 +654,11 @@ export default function GoogleMapLocationPicker(props: GoogleMapLocationPickerPr
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div className="bg-white p-3 rounded-lg border">
                   <div className="text-xs font-medium text-gray-500 mb-1">Region</div>
-                  <div className="text-sm text-gray-900">{addressInfo.region || "—"}</div>
+                  <div className="text-sm text-gray-900">{rawRegion || "—"}</div>
                 </div>
                 <div className="bg-white p-3 rounded-lg border">
                   <div className="text-xs font-medium text-gray-500 mb-1">Country</div>
-                  <div className="text-sm text-gray-900">{addressInfo.country || "—"}</div>
+                  <div className="text-sm text-gray-900">{rawCountry || "—"}</div>
                 </div>
               </div>
             )}

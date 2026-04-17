@@ -67,8 +67,22 @@ export function PumpCurveChart(props: PumpCurveChartProps) {
     const maxFlow = Math.max(...allFlows) * 1.1;
     const maxHead = Math.max(...allHeads) * 1.1;
     const maxEfficiency = 100;
-    const maxPower = Math.max(...pumpCurve.points.map((p) => p.powerKw ?? 0)) * 1.2 || 50;
-    const maxNpsh = Math.max(...pumpCurve.points.map((p) => p.npshRequiredM ?? 0)) * 1.2 || 10;
+    const maxPower =
+      Math.max(
+        ...pumpCurve.points.map((p) => {
+          const rawPowerKw = p.powerKw;
+          const rawPowerKw2 = p.powerKw;
+          return rawPowerKw2 || 0;
+        }),
+      ) * 1.2 || 50;
+    const maxNpsh =
+      Math.max(
+        ...pumpCurve.points.map((p) => {
+          const rawNpshRequiredM = p.npshRequiredM;
+          const rawNpshRequiredM2 = p.npshRequiredM;
+          return rawNpshRequiredM2 || 0;
+        }),
+      ) * 1.2 || 10;
 
     return {
       xScale: (flow: number) => (flow / maxFlow) * chartWidth,

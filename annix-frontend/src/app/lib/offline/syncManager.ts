@@ -84,7 +84,8 @@ export async function queueOfflineAction(
 }
 
 export async function syncPendingActions(): Promise<{ synced: number; failed: number }> {
-  if (syncStatus.isSyncing || !syncStatus.isOnline) {
+  const rawIsSyncing = syncStatus.isSyncing;
+  if (rawIsSyncing || !syncStatus.isOnline) {
     return { synced: 0, failed: 0 };
   }
 
@@ -95,7 +96,8 @@ export async function syncPendingActions(): Promise<{ synced: number; failed: nu
   let failed = 0;
 
   for (const action of actions) {
-    if ((action.retryCount || 0) >= MAX_RETRY_COUNT) {
+    const rawRetryCount = action.retryCount;
+    if ((rawRetryCount || 0) >= MAX_RETRY_COUNT) {
       await removePendingAction(action.id!);
       failed++;
       continue;

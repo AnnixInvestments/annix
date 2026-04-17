@@ -116,6 +116,8 @@ const getFlangeSpecs = (
   isFromApi: boolean;
 } => {
   if (apiSpecs) {
+    const rawBoltDiameterMm = apiSpecs.boltDiameterMm;
+    const rawBoltLengthMm = apiSpecs.boltLengthMm;
     return {
       specs: {
         flangeOD: apiSpecs.flangeOdMm,
@@ -123,8 +125,8 @@ const getFlangeSpecs = (
         thickness: apiSpecs.flangeThicknessMm,
         boltHoles: apiSpecs.flangeNumHoles,
         holeID: apiSpecs.flangeBoltHoleDiameterMm,
-        boltSize: apiSpecs.boltDiameterMm || 16,
-        boltLength: apiSpecs.boltLengthMm || 70,
+        boltSize: rawBoltDiameterMm || 16,
+        boltLength: rawBoltLengthMm || 70,
       },
       isFromApi: true,
     };
@@ -376,8 +378,9 @@ const getFlangeSpecs = (
     if (size <= nb) closestSize = size;
     else break;
   }
+  const rawClosestSize = flangeData[closestSize];
   return {
-    specs: flangeData[closestSize] || {
+    specs: rawClosestSize || {
       flangeOD: nb * 1.5,
       pcd: nb * 1.3,
       thickness: 26,
@@ -1333,8 +1336,9 @@ function TeeScene(props: Tee3DPreviewProps) {
 
   // Flange specs
   const { specs: runFlangeSpecs } = getFlangeSpecs(nominalBore, props.flangeSpecs);
+  const rawTeeFlangeSpecs = props.teeFlangeSpecs;
   // For branch flange, use teeFlangeSpecs if provided (unequal tees), otherwise use main flangeSpecs
-  const branchFlangeData = props.teeFlangeSpecs || props.flangeSpecs;
+  const branchFlangeData = rawTeeFlangeSpecs || props.flangeSpecs;
   const { specs: branchFlangeSpecs } = getFlangeSpecs(
     effectiveBranchNB || nominalBore,
     branchFlangeData,
@@ -2556,20 +2560,24 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
 
   // Get dimensions using proper lookup tables
   const dims = getSabs719TeeDimensions(debouncedProps.nominalBore);
+  const rawBranchNominalBore = debouncedProps.branchNominalBore;
   // Effective branch NB - either reducing tee (branchNominalBore) or unequal tee (teeNominalBore)
-  const effectiveBranchNB = debouncedProps.branchNominalBore || debouncedProps.teeNominalBore;
+  const effectiveBranchNB = rawBranchNominalBore || debouncedProps.teeNominalBore;
   const branchDims = effectiveBranchNB ? getSabs719TeeDimensions(effectiveBranchNB) : null;
+  const rawOuterDiameter = debouncedProps.outerDiameter;
   const od = getOuterDiameter(
     debouncedProps.nominalBore,
-    debouncedProps.outerDiameter || dims?.outsideDiameterMm || 0,
+    rawOuterDiameter || dims?.outsideDiameterMm || 0,
   );
-  const wt = getWallThickness(debouncedProps.nominalBore, debouncedProps.wallThickness || 0);
+  const rawWallThickness = debouncedProps.wallThickness;
+  const wt = getWallThickness(debouncedProps.nominalBore, rawWallThickness || 0);
   const id = od - 2 * wt;
+  const rawBranchOuterDiameter = debouncedProps.branchOuterDiameter;
   // Branch dimensions for reducing/unequal tees
   const branchOD = effectiveBranchNB
     ? getOuterDiameter(
         effectiveBranchNB,
-        debouncedProps.branchOuterDiameter || branchDims?.outsideDiameterMm || 0,
+        rawBranchOuterDiameter || branchDims?.outsideDiameterMm || 0,
       )
     : od;
   const branchWT = effectiveBranchNB ? getWallThickness(effectiveBranchNB) : wt;
@@ -2582,30 +2590,32 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
     debouncedProps.nominalBore,
     debouncedProps.flangeSpecs,
   );
+  const rawTeeFlangeSpecs2 = debouncedProps.teeFlangeSpecs;
   // For branch/tee flange, use teeFlangeSpecs if provided (unequal tees), otherwise use main flangeSpecs
-  const branchFlangeData = debouncedProps.teeFlangeSpecs || debouncedProps.flangeSpecs;
+  const branchFlangeData = rawTeeFlangeSpecs2 || debouncedProps.flangeSpecs;
   const { specs: branchFlangeSpecs, isFromApi: branchIsFromApi } = getFlangeSpecs(
     effectiveBranchNB || debouncedProps.nominalBore,
     branchFlangeData,
   );
-  const flangeStandardName = debouncedProps.flangeStandardName || "SABS 1123";
+  const rawFlangeStandardName = debouncedProps.flangeStandardName;
+  const flangeStandardName = rawFlangeStandardName || "SABS 1123";
   const isNonSabsStandard =
     !flangeStandardName.toLowerCase().includes("sabs") &&
     !flangeStandardName.toLowerCase().includes("sans");
   const showRunFallbackWarning = !runIsFromApi && isNonSabsStandard;
   const showBranchFallbackWarning = !branchIsFromApi && isNonSabsStandard;
-  const closureLength = debouncedProps.closureLengthMm ?? 150;
-  const baseRunLengthMm = debouncedProps.runLength || od * 3;
+  const rawClosureLengthMm = debouncedProps.closureLengthMm;
+  const closureLength = rawClosureLengthMm || 150;
+  const rawRunLength = debouncedProps.runLength;
+  const baseRunLengthMm = rawRunLength || od * 3;
   const runLengthMm =
     baseRunLengthMm +
     (debouncedProps.hasInletFlange ? closureLength : 0) +
     (debouncedProps.hasOutletFlange ? closureLength : 0);
   const branchHeightMm = teeHeight + (debouncedProps.hasBranchFlange ? closureLength : 0);
+  const rawHasInletFlange = debouncedProps.hasInletFlange;
   const depthMm =
-    od +
-    (debouncedProps.hasInletFlange || debouncedProps.hasOutletFlange
-      ? runFlangeSpecs.thickness
-      : 0);
+    od + (rawHasInletFlange || debouncedProps.hasOutletFlange ? runFlangeSpecs.thickness : 0);
   const runExtent = (runLengthMm / SCALE_FACTOR) * PREVIEW_SCALE;
   const heightExtent = (branchHeightMm / SCALE_FACTOR) * PREVIEW_SCALE;
   const depthExtent = (depthMm / SCALE_FACTOR) * PREVIEW_SCALE;
@@ -2691,6 +2701,8 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
     );
   }
 
+  const rawHasInletFlange4 = props.hasInletFlange;
+
   return (
     <div
       data-tee-preview
@@ -2734,14 +2746,12 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
           savedTarget={props.savedCameraTarget}
         />
       </Canvas>
-
       {/* Badge - top left */}
       <div className="absolute top-2 left-2 text-[10px] bg-white/90 px-2 py-1 rounded shadow-sm">
         <span className="text-purple-700" style={{ fontWeight: 500 }}>
           SABS 719 {props.teeType === "gusset" ? "Gusset" : "Short"} Tee
         </span>
       </div>
-
       {/* Pipe & Tee Info - top right */}
       <div
         data-info-box
@@ -2780,12 +2790,14 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
         )}
         {/* Flange details - show once for equal tees, separate for reducing/unequal tees */}
         {(() => {
-          const hasAnyFlange =
-            props.hasInletFlange || props.hasOutletFlange || props.hasBranchFlange;
+          const rawHasInletFlange2 = props.hasInletFlange;
+          const hasAnyFlange = rawHasInletFlange2 || props.hasOutletFlange || props.hasBranchFlange;
           const isEqualTee = !props.branchNominalBore && !props.teeNominalBore;
           const flangeDesignation = (() => {
-            const designation = props.pressureClassDesignation || "";
-            const flangeType = props.flangeTypeCode || "";
+            const rawPressureClassDesignation = props.pressureClassDesignation;
+            const designation = rawPressureClassDesignation || "";
+            const rawFlangeTypeCode = props.flangeTypeCode;
+            const flangeType = rawFlangeTypeCode || "";
             const pressureMatch = designation.match(/^(\d+)/);
             const pressureValue = pressureMatch
               ? pressureMatch[1]
@@ -2828,9 +2840,11 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
             );
           }
 
+          const rawHasInletFlange3 = props.hasInletFlange;
+
           return (
             <>
-              {(props.hasInletFlange || props.hasOutletFlange) && (
+              {(rawHasInletFlange3 || props.hasOutletFlange) && (
                 <>
                   <div className="font-bold text-blue-800 mt-1 mb-0.5">RUN FLANGE</div>
                   {showRunFallbackWarning && (
@@ -2898,7 +2912,6 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
           );
         })()}
       </div>
-
       {/* Notes Section - bottom left */}
       {props.selectedNotes && props.selectedNotes.length > 0 && (
         <div className="absolute bottom-2 left-2 text-[10px] bg-white px-2 py-1.5 rounded shadow-md border border-slate-200 max-w-[300px] max-h-[120px] overflow-y-auto">
@@ -2912,7 +2925,6 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
           </ol>
         </div>
       )}
-
       {/* Bottom toolbar - Expand, Drag hint, and Hide button in horizontal row */}
       <div className="absolute bottom-2 right-2 flex flex-row items-center gap-2">
         <button
@@ -3103,7 +3115,6 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
           Hide Drawing
         </button>
       </div>
-
       {/* Expanded Modal - centered in viewport */}
       {isExpanded && (
         <div
@@ -3205,7 +3216,7 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
               {props.teeType === "gusset" && (
                 <div className="text-gray-700">Gusset: {gussetSection}mm</div>
               )}
-              {(props.hasInletFlange || props.hasOutletFlange) && (
+              {(rawHasInletFlange4 || props.hasOutletFlange) && (
                 <>
                   <div className="font-bold text-blue-800 mt-2 mb-1">RUN FLANGE</div>
                   {showRunFallbackWarning && (
@@ -3233,8 +3244,10 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
                     }
                   >
                     {(() => {
-                      const designation = props.pressureClassDesignation || "";
-                      const flangeType = props.flangeTypeCode || "";
+                      const rawPressureClassDesignation2 = props.pressureClassDesignation;
+                      const designation = rawPressureClassDesignation2 || "";
+                      const rawFlangeTypeCode2 = props.flangeTypeCode;
+                      const flangeType = rawFlangeTypeCode2 || "";
                       const pressureMatch = designation.match(/^(\d+)/);
                       const pressureValue = pressureMatch
                         ? pressureMatch[1]
@@ -3274,8 +3287,10 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
                     }
                   >
                     {(() => {
-                      const designation = props.pressureClassDesignation || "";
-                      const flangeType = props.flangeTypeCode || "";
+                      const rawPressureClassDesignation3 = props.pressureClassDesignation;
+                      const designation = rawPressureClassDesignation3 || "";
+                      const rawFlangeTypeCode3 = props.flangeTypeCode;
+                      const flangeType = rawFlangeTypeCode3 || "";
                       const pressureMatch = designation.match(/^(\d+)/);
                       const pressureValue = pressureMatch
                         ? pressureMatch[1]

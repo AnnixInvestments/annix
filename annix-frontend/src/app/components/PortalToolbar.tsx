@@ -59,7 +59,11 @@ const NAV_TOOLTIPS: Record<string, string> = {
   "Rubber Lining": "Manage rubber lining products and orders",
 };
 
-const getNavTooltip = (label: string): string => NAV_TOOLTIPS[label] || label;
+const getNavTooltip = (label: string): string => {
+  const rawLabel = NAV_TOOLTIPS[label];
+  const rawLabel2 = NAV_TOOLTIPS[label];
+  return rawLabel2 || label;
+};
 
 export default function PortalToolbar(props: PortalToolbarProps) {
   const {

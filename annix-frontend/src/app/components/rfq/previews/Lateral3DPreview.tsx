@@ -104,8 +104,10 @@ function StubComponent({
   isRotatingFlange?: boolean;
   hasBlankFlange?: boolean;
 }) {
-  const stubOD = STUB_NB_TO_OD[stubNB] || 60.3;
-  const stubWT = STUB_WALL_THICKNESS[stubNB] || 3.9;
+  const rawStubNB = STUB_NB_TO_OD[stubNB];
+  const stubOD = rawStubNB || 60.3;
+  const rawStubNB2 = STUB_WALL_THICKNESS[stubNB];
+  const stubWT = rawStubNB2 || 3.9;
   const stubID = stubOD - 2 * stubWT;
   const stubLength = stubLengthMm / SCALE_FACTOR;
 
@@ -113,7 +115,9 @@ function StubComponent({
   const innerRadius = stubID / SCALE_FACTOR / 2;
   const weldRadius = outerRadius * 0.08;
 
-  const stubFlangeData = FLANGE_DATA[stubNB] || FLANGE_DATA[50];
+  const rawStubNB3 = FLANGE_DATA[stubNB];
+
+  const stubFlangeData = rawStubNB3 || FLANGE_DATA[50];
   const flangeOD = stubFlangeData.flangeOD;
   const flangeOuterRadius = flangeOD / SCALE_FACTOR / 2;
   const flangePCD = stubFlangeData.pcd;
@@ -306,8 +310,11 @@ function LateralScene({
   const wt = wallThicknessFromNB(nominalBore, wallThickness || 0);
   const id = od - 2 * wt;
 
-  const branchHeight = lateralDims?.heightMm || od * 2;
-  const baseLength = lateralDims?.baseLengthMm || od * 3;
+  const rawHeightMm = lateralDims?.heightMm;
+
+  const branchHeight = rawHeightMm || od * 2;
+  const rawBaseLengthMm = lateralDims?.baseLengthMm;
+  const baseLength = rawBaseLengthMm || od * 3;
 
   const outerRadius = od / SCALE_FACTOR / 2;
   const innerRadius = Math.max(0.001, id / SCALE_FACTOR / 2);
@@ -316,7 +323,9 @@ function LateralScene({
 
   const angleRad = (angleDegrees * Math.PI) / 180;
 
-  const flangeData = FLANGE_DATA[nominalBore] || FLANGE_DATA[400];
+  const rawNominalBore = FLANGE_DATA[nominalBore];
+
+  const flangeData = rawNominalBore || FLANGE_DATA[400];
   const flangeOD = flangeData.flangeOD;
   const flangeThickness = flangeData.thickness / SCALE_FACTOR;
   const flangePCD = flangeData.pcd;
@@ -798,13 +807,14 @@ function LateralScene({
               const zOffset = outerRadius * Math.cos(positionRad);
               const stubHasFlange =
                 stub.endConfiguration === "flanged" || stub.endConfiguration === "rf";
+              const rawStubLengthMm = stub.stubLengthMm;
               return (
                 <StubComponent
                   key={`branch-stub-${idx}`}
                   position={[xOffset, yPos, zOffset]}
                   rotation={[0, -positionRad, 0]}
                   stubNB={stub.nominalBoreMm}
-                  stubLengthMm={stub.stubLengthMm || 150}
+                  stubLengthMm={rawStubLengthMm || 150}
                   hasFlange={stubHasFlange}
                   isRotatingFlange={stub.endConfiguration === "rf"}
                   hasBlankFlange={stubHasFlange && stub.hasBlankFlange}
@@ -1025,13 +1035,14 @@ function LateralScene({
               const xPos = -halfRunLength + stubDistanceScaled;
               const yPos = outerRadius * Math.sin(positionRad);
               const zPos = outerRadius * Math.cos(positionRad);
+              const rawStubLengthMm2 = stub.stubLengthMm;
               return (
                 <StubComponent
                   key={`mainA-stub-${idx}`}
                   position={[xPos, yPos, zPos]}
                   rotation={[-positionRad, 0, 0]}
                   stubNB={stub.nominalBoreMm}
-                  stubLengthMm={stub.stubLengthMm || 150}
+                  stubLengthMm={rawStubLengthMm2 || 150}
                   hasFlange={stubHasFlange}
                   isRotatingFlange={stub.endConfiguration === "rf"}
                   hasBlankFlange={stubHasFlange && stub.hasBlankFlange}
@@ -1043,13 +1054,14 @@ function LateralScene({
               const xPos = halfRunLength - stubDistanceScaled;
               const yPos = outerRadius * Math.sin(positionRad);
               const zPos = outerRadius * Math.cos(positionRad);
+              const rawStubLengthMm3 = stub.stubLengthMm;
               return (
                 <StubComponent
                   key={`mainB-stub-${idx}`}
                   position={[xPos, yPos, zPos]}
                   rotation={[-positionRad, 0, 0]}
                   stubNB={stub.nominalBoreMm}
-                  stubLengthMm={stub.stubLengthMm || 150}
+                  stubLengthMm={rawStubLengthMm3 || 150}
                   hasFlange={stubHasFlange}
                   isRotatingFlange={stub.endConfiguration === "rf"}
                   hasBlankFlange={stubHasFlange && stub.hasBlankFlange}
@@ -1246,14 +1258,20 @@ export default function Lateral3DPreview(props: Lateral3DPreviewProps) {
   const lateralDims = getLateralDimensionsForAngle(nominalBore, effectiveAngleRange);
 
   const od = outerDiameterFromNB(nominalBore, outerDiameter || lateralDims?.outsideDiameterMm || 0);
-  const wt = wallThicknessFromNB(nominalBore, props.wallThickness || 0);
+  const rawWallThickness = props.wallThickness;
+  const wt = wallThicknessFromNB(nominalBore, rawWallThickness || 0);
   const id = od - 2 * wt;
 
-  const flangeData = FLANGE_DATA[nominalBore] || FLANGE_DATA[400];
+  const rawNominalBore2 = FLANGE_DATA[nominalBore];
+
+  const flangeData = rawNominalBore2 || FLANGE_DATA[400];
   const flangeCount = [hasInletFlange, hasOutletFlange, hasBranchFlange].filter(Boolean).length;
 
-  const branchHeight = lateralDims?.heightMm || od * 2;
-  const baseLength = lateralDims?.baseLengthMm || od * 3;
+  const rawHeightMm2 = lateralDims?.heightMm;
+
+  const branchHeight = rawHeightMm2 || od * 2;
+  const rawBaseLengthMm2 = lateralDims?.baseLengthMm;
+  const baseLength = rawBaseLengthMm2 || od * 3;
 
   const runExtent = (baseLength / SCALE_FACTOR) * PREVIEW_SCALE;
   const heightExtent = (branchHeight / SCALE_FACTOR) * PREVIEW_SCALE;
@@ -1488,8 +1506,10 @@ export default function Lateral3DPreview(props: Lateral3DPreviewProps) {
             onClick={() => {
               const lateralAngle = angleDegrees;
               const odMm = od;
-              const heightMm = lateralDims?.heightMm || odMm * 2;
-              const baseMm = lateralDims?.baseLengthMm || odMm * 3;
+              const rawHeightMm3 = lateralDims?.heightMm;
+              const heightMm = rawHeightMm3 || odMm * 2;
+              const rawBaseLengthMm3 = lateralDims?.baseLengthMm;
+              const baseMm = rawBaseLengthMm3 || odMm * 3;
               const dxfContent = `0\nSECTION\n2\nENTITIES\n0\nLINE\n8\n0\n10\n0\n20\n0\n11\n${baseMm}\n21\n0\n0\nLINE\n8\n0\n10\n${baseMm / 2}\n20\n0\n11\n${baseMm / 2 + heightMm * Math.cos((lateralAngle * Math.PI) / 180)}\n21\n${heightMm * Math.sin((lateralAngle * Math.PI) / 180)}\n0\nENDSEC\n0\nEOF`;
               const blob = new Blob([dxfContent], { type: "application/dxf" });
               const url = URL.createObjectURL(blob);
@@ -1542,7 +1562,6 @@ export default function Lateral3DPreview(props: Lateral3DPreviewProps) {
           </button>
         </div>
       </div>
-
       {expanded && (
         <div
           className="fixed inset-0 z-[10000] bg-black/80 flex items-center justify-center p-4"

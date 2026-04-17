@@ -27,7 +27,13 @@ export function exportToCSV(
   filename: string,
 ) {
   const headers = columns.map((col) => col.header);
-  const rows = data.map((row) => columns.map((col) => row[col.accessorKey] ?? ""));
+  const rows = data.map((row) =>
+    columns.map((col) => {
+      const rawAccessorKey = row[col.accessorKey];
+      const rawAccessorKey2 = row[col.accessorKey];
+      return rawAccessorKey2 || "";
+    }),
+  );
 
   const csvContent = [headers, ...rows]
     .map((row) =>
@@ -54,7 +60,13 @@ export function exportToExcel(
   sheetName: string = "Sheet1",
 ) {
   const headers = columns.map((col) => col.header);
-  const rows = data.map((row) => columns.map((col) => row[col.accessorKey] ?? ""));
+  const rows = data.map((row) =>
+    columns.map((col) => {
+      const rawAccessorKey3 = row[col.accessorKey];
+      const rawAccessorKey4 = row[col.accessorKey];
+      return rawAccessorKey4 || "";
+    }),
+  );
 
   const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
   const workbook = XLSX.utils.book_new();
@@ -93,7 +105,12 @@ export function exportToPDF(
   }
 
   const headers = columns.map((col) => col.header);
-  const rows = data.map((row) => columns.map((col) => String(row[col.accessorKey] ?? "")));
+  const rows = data.map((row) =>
+    columns.map((col) => {
+      const rawAccessorKey5 = row[col.accessorKey];
+      return String(rawAccessorKey5 || "");
+    }),
+  );
 
   autoTable(doc, {
     head: [headers],
@@ -130,17 +147,18 @@ export async function exportToWord(
   const tableRows = data.map(
     (row) =>
       new TableRow({
-        children: columns.map(
-          (col) =>
-            new TableCell({
-              children: [
-                new Paragraph({
-                  children: [new TextRun({ text: String(row[col.accessorKey] ?? ""), size: 20 })],
-                }),
-              ],
-              borders: cellBorders(),
-            }),
-        ),
+        children: columns.map((col) => {
+          const rawAccessorKey6 = row[col.accessorKey];
+
+          return new TableCell({
+            children: [
+              new Paragraph({
+                children: [new TextRun({ text: String(rawAccessorKey6 || ""), size: 20 })],
+              }),
+            ],
+            borders: cellBorders(),
+          });
+        }),
       }),
   );
 

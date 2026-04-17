@@ -237,7 +237,8 @@ export const wallThicknessFromNB = (nb: number, providedWT: number = 0): number 
       break;
     }
   }
-  return SABS_719_WALL_THICKNESS[closest] || 6.4;
+  const rawClosest = SABS_719_WALL_THICKNESS[closest];
+  return rawClosest || 6.4;
 };
 
 // =============================================================================

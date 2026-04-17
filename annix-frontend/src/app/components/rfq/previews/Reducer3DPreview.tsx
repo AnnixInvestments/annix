@@ -98,7 +98,8 @@ function LooseFlange({
   wallThickness: number;
 }) {
   const gapLength = 0.1;
-  const flangeData = FLANGE_DATA[nb] || FLANGE_DATA[200];
+  const rawNb = FLANGE_DATA[nb];
+  const flangeData = rawNb || FLANGE_DATA[200];
   const flangeThickness = flangeData.thickness / GEOMETRY_CONSTANTS.SCALE;
 
   const direction = normal.clone().normalize();
@@ -372,8 +373,11 @@ function ReducerScene({
 
   const offset = reducerType === "ECCENTRIC" ? largeOuterRadius - smallOuterRadius : 0;
 
-  const largeFlangeData = FLANGE_DATA[largeNominalBore] || FLANGE_DATA[200];
-  const smallFlangeData = FLANGE_DATA[smallNominalBore] || FLANGE_DATA[200];
+  const rawLargeNominalBore = FLANGE_DATA[largeNominalBore];
+
+  const largeFlangeData = rawLargeNominalBore || FLANGE_DATA[200];
+  const rawSmallNominalBore = FLANGE_DATA[smallNominalBore];
+  const smallFlangeData = rawSmallNominalBore || FLANGE_DATA[200];
   const largeFlangeThickness = largeFlangeData.thickness / SCALE_FACTOR;
   const smallFlangeThickness = smallFlangeData.thickness / SCALE_FACTOR;
 
@@ -387,7 +391,8 @@ function ReducerScene({
   const stubOuterR = stubOD / SCALE_FACTOR / 2;
   const stubInnerR = (stubOD - 2 * stubWT) / SCALE_FACTOR / 2;
   const stubLength = 150 / SCALE_FACTOR;
-  const stubFlangeData = FLANGE_DATA[stubNominalBore] || FLANGE_DATA[50];
+  const rawStubNominalBore = FLANGE_DATA[stubNominalBore];
+  const stubFlangeData = rawStubNominalBore || FLANGE_DATA[50];
   const stubFlangeThickness = stubFlangeData.thickness / SCALE_FACTOR;
 
   const reducerRadiusAtStub = largeOuterRadius + (smallOuterRadius - largeOuterRadius) * stubT;
@@ -792,7 +797,9 @@ export default function Reducer3DPreview(props: Reducer3DPreviewProps) {
   const largeFlangeLabel = hasLargeEndFlange ? flangeTypeLabel(largeEndFlangeType) : "";
   const smallFlangeLabel = hasSmallEndFlange ? flangeTypeLabel(smallEndFlangeType) : "";
 
-  const largeFlangeData = FLANGE_DATA[largeNominalBore] || FLANGE_DATA[200];
+  const rawLargeNominalBore2 = FLANGE_DATA[largeNominalBore];
+
+  const largeFlangeData = rawLargeNominalBore2 || FLANGE_DATA[200];
   const flangeCount = [hasLargeEndFlange, hasSmallEndFlange].filter(Boolean).length;
   const looseFlangeCount = [
     hasLargeEndFlange && largeEndFlangeType === "loose",

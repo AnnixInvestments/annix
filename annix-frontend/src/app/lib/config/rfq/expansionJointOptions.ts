@@ -90,7 +90,8 @@ export interface ExpansionJointCalculation {
 
 export function elbowsForLoopType(loopType: FabricatedLoopType): number {
   const loopConfig = FABRICATED_LOOP_TYPES.find((lt) => lt.value === loopType);
-  return loopConfig?.elbows || 4;
+  const rawElbows = loopConfig?.elbows;
+  return rawElbows || 4;
 }
 
 export function flangeConfigForEndOption(endOption: ExpansionJointEndOption): {
@@ -98,8 +99,10 @@ export function flangeConfigForEndOption(endOption: ExpansionJointEndOption): {
   flanges: number;
 } {
   const config = EXPANSION_JOINT_END_OPTIONS.find((opt) => opt.value === endOption);
+  const rawFlangeWelds = config?.flangeWelds;
+  const rawFlanges = config?.flanges;
   return {
-    flangeWelds: config?.flangeWelds || 0,
-    flanges: config?.flanges || 0,
+    flangeWelds: rawFlangeWelds || 0,
+    flanges: rawFlanges || 0,
   };
 }

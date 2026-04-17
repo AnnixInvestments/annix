@@ -52,7 +52,6 @@ export function WeldDefectAcceptanceRef(props: WeldDefectAcceptanceRefProps) {
           ))}
         </div>
       </div>
-
       <div className="p-4">
         <p className="text-xs text-gray-500 mb-3">{weldingCodeLabel(activeCode)}</p>
 
@@ -67,45 +66,50 @@ export function WeldDefectAcceptanceRef(props: WeldDefectAcceptanceRefProps) {
               </tr>
             </thead>
             <tbody>
-              {criteria.map((c) => (
-                <tr
-                  key={`${c.code}-${c.defectType}`}
-                  className="border-b border-gray-100 hover:bg-gray-50"
-                >
-                  <td className="py-2 px-2">
-                    <span
-                      className={`font-medium ${
-                        c.defectType === "CRACK" ? "text-red-700" : "text-gray-800"
-                      }`}
-                    >
-                      {c.defectName}
-                    </span>
-                  </td>
-                  <td className="py-2 px-2 text-gray-600">
-                    {c.maxDimensionMm !== null && c.maxDimensionMm > 0
-                      ? `${c.maxDimensionMm}mm`
-                      : ""}
-                    {c.maxDimensionPctT !== null && c.maxDimensionPctT > 0
-                      ? `${c.maxDimensionMm !== null && c.maxDimensionMm > 0 ? " / " : ""}${c.maxDimensionPctT}%t`
-                      : ""}
-                    {c.maxDimensionMm === 0 && c.maxDimensionPctT === 0 && (
-                      <span className="text-red-600 font-medium">Not Permitted</span>
-                    )}
-                  </td>
-                  <td className="py-2 px-2 text-gray-600">{c.cumulativeLimit ?? "-"}</td>
-                  <td className="py-2 px-2">
-                    <span
-                      className={`${
-                        c.repairLimit?.includes("Mandatory")
-                          ? "text-red-600 font-medium"
-                          : "text-gray-600"
-                      }`}
-                    >
-                      {c.repairLimit ?? "-"}
-                    </span>
-                  </td>
-                </tr>
-              ))}
+              {criteria.map((c) => {
+                const rawCumulativeLimit = c.cumulativeLimit;
+                const rawRepairLimit = c.repairLimit;
+
+                return (
+                  <tr
+                    key={`${c.code}-${c.defectType}`}
+                    className="border-b border-gray-100 hover:bg-gray-50"
+                  >
+                    <td className="py-2 px-2">
+                      <span
+                        className={`font-medium ${
+                          c.defectType === "CRACK" ? "text-red-700" : "text-gray-800"
+                        }`}
+                      >
+                        {c.defectName}
+                      </span>
+                    </td>
+                    <td className="py-2 px-2 text-gray-600">
+                      {c.maxDimensionMm !== null && c.maxDimensionMm > 0
+                        ? `${c.maxDimensionMm}mm`
+                        : ""}
+                      {c.maxDimensionPctT !== null && c.maxDimensionPctT > 0
+                        ? `${c.maxDimensionMm !== null && c.maxDimensionMm > 0 ? " / " : ""}${c.maxDimensionPctT}%t`
+                        : ""}
+                      {c.maxDimensionMm === 0 && c.maxDimensionPctT === 0 && (
+                        <span className="text-red-600 font-medium">Not Permitted</span>
+                      )}
+                    </td>
+                    <td className="py-2 px-2 text-gray-600">{rawCumulativeLimit || "-"}</td>
+                    <td className="py-2 px-2">
+                      <span
+                        className={`${
+                          c.repairLimit?.includes("Mandatory")
+                            ? "text-red-600 font-medium"
+                            : "text-gray-600"
+                        }`}
+                      >
+                        {rawRepairLimit || "-"}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -153,15 +157,16 @@ function CompactDefectRef({ code }: CompactDefectRefProps) {
   const crackCriteria = criteria.find((c) => c.defectType === "CRACK");
   const undercutCriteria = criteria.find((c) => c.defectType === "UNDERCUT");
 
+  const rawCumulativeLimit2 = crackCriteria?.cumulativeLimit;
+  const rawMaxDimensionMm = undercutCriteria?.maxDimensionMm;
+
   return (
     <div className="inline-flex items-center gap-3 text-xs bg-gray-50 rounded px-3 py-2 border border-gray-200">
       <span className="font-medium text-gray-700">{code.replace(/_/g, " ")}</span>
       <span className="text-gray-400">|</span>
-      <span className="text-red-600">
-        Cracks: {crackCriteria?.cumulativeLimit || "Zero tolerance"}
-      </span>
+      <span className="text-red-600">Cracks: {rawCumulativeLimit2 || "Zero tolerance"}</span>
       <span className="text-gray-400">|</span>
-      <span className="text-gray-600">Undercut: ≤{undercutCriteria?.maxDimensionMm || 0.8}mm</span>
+      <span className="text-gray-600">Undercut: ≤{rawMaxDimensionMm || 0.8}mm</span>
     </div>
   );
 }

@@ -239,15 +239,18 @@ export function resolveFlangeData(
   apiSpecs?: FlangeSpecData | null,
 ): ResolvedFlangeData {
   if (apiSpecs) {
+    const rawBoltDiameterMm = apiSpecs.boltDiameterMm;
+    const rawBoltLengthMm = apiSpecs.boltLengthMm;
+    const rawFlangeThicknessMm = apiSpecs.flangeThicknessMm;
     return {
       specs: {
         flangeOD: apiSpecs.flangeOdMm,
         pcd: apiSpecs.flangePcdMm,
         boltHoles: apiSpecs.flangeNumHoles,
         holeID: apiSpecs.flangeBoltHoleDiameterMm,
-        boltSize: apiSpecs.boltDiameterMm || 16,
-        boltLength: apiSpecs.boltLengthMm || 70,
-        thickness: apiSpecs.flangeThicknessMm || 20,
+        boltSize: rawBoltDiameterMm || 16,
+        boltLength: rawBoltLengthMm || 70,
+        thickness: rawFlangeThicknessMm || 20,
       },
       isFromApi: true,
     };
@@ -258,8 +261,10 @@ export function resolveFlangeData(
     .filter((k) => k <= nb);
   const closestNB = availableNBs.pop() || 200;
 
+  const rawNb = FLANGE_DATA[nb];
+
   return {
-    specs: FLANGE_DATA[nb] || FLANGE_DATA[closestNB],
+    specs: rawNb || FLANGE_DATA[closestNB],
     isFromApi: false,
   };
 }

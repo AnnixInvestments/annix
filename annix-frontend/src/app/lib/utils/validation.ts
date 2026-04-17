@@ -62,7 +62,8 @@ export function canProceedToNextStep(
     }
 
     case 2: {
-      const page2Errors = validatePage2Specifications(formData.globalSpecs || {});
+      const rawGlobalSpecs = formData.globalSpecs;
+      const page2Errors = validatePage2Specifications(rawGlobalSpecs || {});
       return Object.keys(page2Errors).length === 0;
     }
 

@@ -1192,16 +1192,22 @@ export const annixRepApi = {
         todaysMeetings: meetings.length,
         followUpsDue: followUps.length,
       },
-      todaysMeetings: meetings.map((m) => ({
-        id: m.id,
-        title: m.title,
-        prospectCompany: m.prospect?.companyName || null,
-        time: new Date(m.scheduledStart).toLocaleTimeString("en-ZA", {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-        type: m.meetingType,
-      })),
+      todaysMeetings: meetings.map((m) => {
+        const rawCompanyName = m.prospect?.companyName;
+
+        return {
+          id: m.id,
+          title: m.title,
+          prospectCompany: rawCompanyName || null,
+
+          time: new Date(m.scheduledStart).toLocaleTimeString("en-ZA", {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+
+          type: m.meetingType,
+        };
+      }),
     };
   },
 

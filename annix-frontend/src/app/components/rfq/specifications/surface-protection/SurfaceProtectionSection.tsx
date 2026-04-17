@@ -68,29 +68,36 @@ export function SurfaceProtectionSection(props: SurfaceProtectionSectionProps) {
   };
 
   const derivedTempCategory = deriveTemperatureCategory(globalSpecs?.workingTemperatureC);
-  const effectiveEcpTemperature = globalSpecs?.ecpTemperature || derivedTempCategory;
+  const rawEcpTemperature = globalSpecs?.ecpTemperature;
+  const effectiveEcpTemperature = rawEcpTemperature || derivedTempCategory;
   const isEcpTemperatureAutoFilled = !globalSpecs?.ecpTemperature && !!derivedTempCategory;
 
-  const derivedIso12944 = rfqData?.iso12944Category || globalSpecs?.iso12944Category;
-  const effectiveIso12944 = globalSpecs?.ecpIso12944Category || derivedIso12944;
+  const rawIso12944Category = rfqData?.iso12944Category;
+
+  const derivedIso12944 = rawIso12944Category || globalSpecs?.iso12944Category;
+  const rawEcpIso12944Category = globalSpecs?.ecpIso12944Category;
+  const effectiveIso12944 = rawEcpIso12944Category || derivedIso12944;
   const isIso12944AutoFilled = !globalSpecs?.ecpIso12944Category && !!derivedIso12944;
 
+  const rawMarineInfluence = rfqData?.marineInfluence;
+
   const derivedMarineInfluence =
-    rfqData?.marineInfluence ||
-    globalSpecs?.detailedMarineInfluence ||
-    globalSpecs?.marineInfluence;
-  const effectiveMarineInfluence = globalSpecs?.ecpMarineInfluence || derivedMarineInfluence;
+    rawMarineInfluence || globalSpecs?.detailedMarineInfluence || globalSpecs?.marineInfluence;
+  const rawEcpMarineInfluence = globalSpecs?.ecpMarineInfluence;
+  const effectiveMarineInfluence = rawEcpMarineInfluence || derivedMarineInfluence;
   const isMarineInfluenceAutoFilled = !globalSpecs?.ecpMarineInfluence && !!derivedMarineInfluence;
 
-  const derivedIndustrialPollution =
-    rfqData?.industrialPollution || globalSpecs?.industrialPollution;
-  const effectiveIndustrialPollution =
-    globalSpecs?.ecpIndustrialPollution || derivedIndustrialPollution;
+  const rawIndustrialPollution = rfqData?.industrialPollution;
+
+  const derivedIndustrialPollution = rawIndustrialPollution || globalSpecs?.industrialPollution;
+  const rawEcpIndustrialPollution = globalSpecs?.ecpIndustrialPollution;
+  const effectiveIndustrialPollution = rawEcpIndustrialPollution || derivedIndustrialPollution;
   const isIndustrialPollutionAutoFilled =
     !globalSpecs?.ecpIndustrialPollution && !!derivedIndustrialPollution;
 
   const derivedInstallationType = globalSpecs?.mineSelected ? "AboveGround" : undefined;
-  const effectiveInstallationType = globalSpecs?.ecpInstallationType || derivedInstallationType;
+  const rawEcpInstallationType = globalSpecs?.ecpInstallationType;
+  const effectiveInstallationType = rawEcpInstallationType || derivedInstallationType;
   const isInstallationTypeAutoFilled =
     !globalSpecs?.ecpInstallationType && !!derivedInstallationType;
 
@@ -105,18 +112,26 @@ export function SurfaceProtectionSection(props: SurfaceProtectionSectionProps) {
     return undefined;
   };
   const derivedUvExposure = deriveUvExposure();
-  const effectiveUvExposure = globalSpecs?.ecpUvExposure || derivedUvExposure;
+  const rawEcpUvExposure = globalSpecs?.ecpUvExposure;
+  const effectiveUvExposure = rawEcpUvExposure || derivedUvExposure;
   const isUvExposureAutoFilled = !globalSpecs?.ecpUvExposure && !!derivedUvExposure;
 
   const derivedMechanicalRisk = globalSpecs?.mineSelected ? "High" : undefined;
-  const effectiveMechanicalRisk = globalSpecs?.ecpMechanicalRisk || derivedMechanicalRisk;
+  const rawEcpMechanicalRisk = globalSpecs?.ecpMechanicalRisk;
+  const effectiveMechanicalRisk = rawEcpMechanicalRisk || derivedMechanicalRisk;
   const isMechanicalRiskAutoFilled = !globalSpecs?.ecpMechanicalRisk && !!derivedMechanicalRisk;
 
-  const surfaceAreaM2 = globalSpecs?.calculatedSurfaceAreaM2 || 100;
+  const rawCalculatedSurfaceAreaM2 = globalSpecs?.calculatedSurfaceAreaM2;
+
+  const surfaceAreaM2 = rawCalculatedSurfaceAreaM2 || 100;
+
+  const rawSurfaceProtectionConfirmed = globalSpecs?.surfaceProtectionConfirmed;
 
   const isConfirmed =
-    globalSpecs?.surfaceProtectionConfirmed ||
+    rawSurfaceProtectionConfirmed ||
     (globalSpecs?.externalCoatingConfirmed && globalSpecs?.internalLiningConfirmed);
+
+  const rawExternalCoatingType = globalSpecs?.externalCoatingType;
 
   return (
     <div className="space-y-4">
@@ -125,7 +140,6 @@ export function SurfaceProtectionSection(props: SurfaceProtectionSectionProps) {
         <span className="text-2xl">&#128737;</span>
         <h3 className="text-xl font-bold text-gray-900">Surface Protection</h3>
       </div>
-
       {/* Confirmed Summary */}
       {isConfirmed && (
         <div className="bg-green-100 border border-green-400 rounded-md p-3">
@@ -169,7 +183,6 @@ export function SurfaceProtectionSection(props: SurfaceProtectionSectionProps) {
           </div>
         </div>
       )}
-
       {/* Tools Toolbar */}
       <div className="flex flex-wrap gap-2 p-2 bg-gray-50 rounded-lg">
         <button
@@ -264,7 +277,6 @@ export function SurfaceProtectionSection(props: SurfaceProtectionSectionProps) {
           Spec Sheet
         </button>
       </div>
-
       {/* Active Tool Panel */}
       {activeTool === "catalog" && (
         <ProductCatalogBrowser
@@ -279,7 +291,6 @@ export function SurfaceProtectionSection(props: SurfaceProtectionSectionProps) {
           }}
         />
       )}
-
       {activeTool === "builder" && (
         <SystemBuilderWizard
           globalSpecs={globalSpecs}
@@ -288,9 +299,7 @@ export function SurfaceProtectionSection(props: SurfaceProtectionSectionProps) {
           target={systemBuilderTarget}
         />
       )}
-
       {activeTool === "comparison" && <ComparisonTool />}
-
       {activeTool === "calculator" && (
         <SurfaceAreaCalculator
           onCalculationComplete={(results) => {
@@ -302,7 +311,6 @@ export function SurfaceProtectionSection(props: SurfaceProtectionSectionProps) {
           }}
         />
       )}
-
       {activeTool === "takeoff" && (
         <QuantityTakeoff
           surfaceAreaM2={surfaceAreaM2}
@@ -323,14 +331,12 @@ export function SurfaceProtectionSection(props: SurfaceProtectionSectionProps) {
           }}
         />
       )}
-
       {activeTool === "conditions" && (
         <EnvironmentalConditionsInput
           globalSpecs={globalSpecs}
           onUpdateGlobalSpecs={onUpdateGlobalSpecs}
         />
       )}
-
       {activeTool === "inspection" && (
         <div className="bg-white border border-gray-200 rounded-lg p-4">
           <h3 className="text-sm font-semibold text-gray-900 mb-4">Inspection Requirements</h3>
@@ -344,7 +350,8 @@ export function SurfaceProtectionSection(props: SurfaceProtectionSectionProps) {
                   type="checkbox"
                   checked={globalSpecs?.inspectionRequirements?.includes(req.id) || false}
                   onChange={(e) => {
-                    const current = globalSpecs?.inspectionRequirements || [];
+                    const rawInspectionRequirements = globalSpecs?.inspectionRequirements;
+                    const current = rawInspectionRequirements || [];
                     const updated = e.target.checked
                       ? [...current, req.id]
                       : current.filter((id: string) => id !== req.id);
@@ -367,7 +374,6 @@ export function SurfaceProtectionSection(props: SurfaceProtectionSectionProps) {
           </div>
         </div>
       )}
-
       {activeTool === "specsheet" && (
         <SpecificationSheetGenerator
           globalSpecs={globalSpecs}
@@ -375,7 +381,6 @@ export function SurfaceProtectionSection(props: SurfaceProtectionSectionProps) {
           customerName={rfqData?.customerName}
         />
       )}
-
       {/* Main Content - External and Internal Sections */}
       {!isConfirmed && (
         <>
@@ -408,7 +413,7 @@ export function SurfaceProtectionSection(props: SurfaceProtectionSectionProps) {
           />
 
           {/* Confirm Button */}
-          {(globalSpecs?.externalCoatingType || globalSpecs?.internalLiningType) &&
+          {(rawExternalCoatingType || globalSpecs?.internalLiningType) &&
             (!globalSpecs?.externalCoatingConfirmed || !globalSpecs?.internalLiningConfirmed) && (
               <div className="flex justify-end">
                 <button
@@ -430,7 +435,6 @@ export function SurfaceProtectionSection(props: SurfaceProtectionSectionProps) {
             )}
         </>
       )}
-
       {/* Feature Restriction Popup */}
       {featureRestrictionPopup && (
         <div

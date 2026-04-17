@@ -81,9 +81,13 @@ export function PumpProductList(props: PumpProductListProps) {
       } else if (sortField === "manufacturer") {
         return direction * a.manufacturer.localeCompare(b.manufacturer);
       } else if (sortField === "price") {
-        return direction * ((a.listPrice || 0) - (b.listPrice || 0));
+        const rawListPrice = a.listPrice;
+        const rawListPrice2 = b.listPrice;
+        return direction * ((rawListPrice || 0) - (rawListPrice2 || 0));
       } else if (sortField === "flowRate") {
-        return direction * ((a.flowRateMax || 0) - (b.flowRateMax || 0));
+        const rawFlowRateMax = a.flowRateMax;
+        const rawFlowRateMax2 = b.flowRateMax;
+        return direction * ((rawFlowRateMax || 0) - (rawFlowRateMax2 || 0));
       }
       return 0;
     });

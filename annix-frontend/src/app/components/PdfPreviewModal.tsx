@@ -89,14 +89,15 @@ export function PdfPreviewModal(props: PdfPreviewModalProps) {
     }
   };
 
+  const rawFilename = state.filename;
+  const rawFilename2 = state.filename;
+
   return createPortal(
     <div className="fixed inset-0 z-[9999]">
       <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
       <div className="fixed inset-4 sm:inset-8 flex flex-col bg-white rounded-lg shadow-2xl overflow-hidden">
         <div className="flex items-center justify-between px-4 py-2.5 bg-gray-800 text-white">
-          <span className="text-sm font-medium truncate mr-4">
-            {state.filename || "PDF Preview"}
-          </span>
+          <span className="text-sm font-medium truncate mr-4">{rawFilename || "PDF Preview"}</span>
           <div className="flex items-center gap-1.5">
             <button
               type="button"
@@ -162,7 +163,7 @@ export function PdfPreviewModal(props: PdfPreviewModalProps) {
             <iframe
               src={state.url}
               className="w-full h-full border-0"
-              title={state.filename || "PDF Preview"}
+              title={rawFilename2 || "PDF Preview"}
             />
           ) : (
             <div className="flex items-center justify-center h-full text-gray-500 text-sm">

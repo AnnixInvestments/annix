@@ -202,6 +202,10 @@ export function SystemBuilderWizard(props: SystemBuilderWizardProps) {
     </div>
   );
 
+  const rawProductName = primer.productName;
+  const rawProductName2 = intermediate.productName;
+  const rawProductName3 = topcoat.productName;
+
   return (
     <div className="fixed inset-0 bg-black/10 backdrop-blur-md flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden">
@@ -311,7 +315,7 @@ export function SystemBuilderWizard(props: SystemBuilderWizardProps) {
                   <div>
                     <div className="text-xs font-medium text-gray-500">PRIMER</div>
                     <div className="text-sm font-semibold text-gray-900">
-                      {primer.productName || "Not selected"}
+                      {rawProductName || "Not selected"}
                     </div>
                     {primer.supplier && (
                       <div className="text-xs text-gray-500">{primer.supplier}</div>
@@ -332,7 +336,7 @@ export function SystemBuilderWizard(props: SystemBuilderWizardProps) {
                   <div>
                     <div className="text-xs font-medium text-gray-500">INTERMEDIATE</div>
                     <div className="text-sm font-semibold text-gray-900">
-                      {intermediate.productName || "Not selected"}
+                      {rawProductName2 || "Not selected"}
                     </div>
                     {intermediate.supplier && (
                       <div className="text-xs text-gray-500">{intermediate.supplier}</div>
@@ -353,7 +357,7 @@ export function SystemBuilderWizard(props: SystemBuilderWizardProps) {
                   <div>
                     <div className="text-xs font-medium text-gray-500">TOPCOAT</div>
                     <div className="text-sm font-semibold text-gray-900">
-                      {topcoat.productName || "Not selected"}
+                      {rawProductName3 || "Not selected"}
                     </div>
                     {topcoat.supplier && (
                       <div className="text-xs text-gray-500">{topcoat.supplier}</div>

@@ -126,7 +126,8 @@ export async function updatePendingActionRetry(id: number): Promise<void> {
     getRequest.onsuccess = () => {
       const action = getRequest.result as PendingAction;
       if (action) {
-        action.retryCount = (action.retryCount || 0) + 1;
+        const rawRetryCount = action.retryCount;
+        action.retryCount = (rawRetryCount || 0) + 1;
         const putRequest = store.put(action);
         putRequest.onsuccess = () => resolve();
         putRequest.onerror = () => reject(putRequest.error);
@@ -183,7 +184,10 @@ export async function offlineProspect<T>(id: number): Promise<T | null> {
 
   return new Promise((resolve, reject) => {
     const request = store.get(id);
-    request.onsuccess = () => resolve(request.result ?? null);
+    request.onsuccess = () => {
+      const rawResult = request.result;
+      return resolve(rawResult || null);
+    };
     request.onerror = () => reject(request.error);
   });
 }
@@ -233,7 +237,10 @@ export async function offlineMeeting<T>(id: number): Promise<T | null> {
 
   return new Promise((resolve, reject) => {
     const request = store.get(id);
-    request.onsuccess = () => resolve(request.result ?? null);
+    request.onsuccess = () => {
+      const rawResult2 = request.result;
+      return resolve(rawResult2 || null);
+    };
     request.onerror = () => reject(request.error);
   });
 }
@@ -283,7 +290,10 @@ export async function syncMeta(key: string): Promise<SyncMeta | null> {
 
   return new Promise((resolve, reject) => {
     const request = store.get(key);
-    request.onsuccess = () => resolve(request.result ?? null);
+    request.onsuccess = () => {
+      const rawResult3 = request.result;
+      return resolve(rawResult3 || null);
+    };
     request.onerror = () => reject(request.error);
   });
 }

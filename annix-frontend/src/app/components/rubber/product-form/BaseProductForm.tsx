@@ -61,7 +61,8 @@ export function BaseProductForm(props: BaseProductFormProps) {
     const typeCode = COMPOUND_TO_TYPE_CODE[compound.code];
     if (!typeCode) return "";
     const typeCoding = codings.find((c) => c.codingType === "TYPE" && c.code === typeCode);
-    return typeCoding?.firebaseUid || "";
+    const rawFirebaseUid = typeCoding?.firebaseUid;
+    return rawFirebaseUid || "";
   };
 
   const autoGradeResult = useMemo(() => {
@@ -115,8 +116,9 @@ export function BaseProductForm(props: BaseProductFormProps) {
       const gradeCoding = codings.find(
         (c) => c.codingType === "GRADE" && c.code === matchedSpec.grade,
       );
+      const rawFirebaseUid2 = gradeCoding?.firebaseUid;
       return {
-        gradeFirebaseUid: gradeCoding?.firebaseUid || null,
+        gradeFirebaseUid: rawFirebaseUid2 || null,
         gradeName: matchedSpec.grade,
         belowMinimum: false,
       };

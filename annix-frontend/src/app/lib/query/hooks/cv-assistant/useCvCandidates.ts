@@ -9,11 +9,15 @@ import { type CvCandidateQueryParams, cvAssistantKeys } from "../../keys";
 export function useCvCandidates(params?: CvCandidateQueryParams) {
   return useQuery<Candidate[]>({
     queryKey: cvAssistantKeys.candidates.list(params),
-    queryFn: () =>
-      cvAssistantApiClient.candidates({
-        status: params?.status || undefined,
-        jobPostingId: params?.jobPostingId || undefined,
-      }),
+    queryFn: () => {
+      const rawStatus = params?.status;
+      const rawJobPostingId = params?.jobPostingId;
+
+      return cvAssistantApiClient.candidates({
+        status: rawStatus || undefined,
+        jobPostingId: rawJobPostingId || undefined,
+      });
+    },
     staleTime: 2 * 60 * 1000,
   });
 }

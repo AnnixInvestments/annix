@@ -133,19 +133,29 @@ export function MtcDataEntryForm(props: MtcDataEntryFormProps) {
     if (formData.cPct === null || formData.mnPct === null) {
       return null;
     }
+    const rawPPct = formData.pPct;
+    const rawSPct = formData.sPct;
+    const rawSiPct = formData.siPct;
+    const rawCrPct = formData.crPct;
+    const rawMoPct = formData.moPct;
+    const rawVPct = formData.vPct;
+    const rawNiPct = formData.niPct;
+    const rawCuPct = formData.cuPct;
+    const rawNbPct = formData.nbPct;
+    const rawTiPct = formData.tiPct;
     return {
       c: formData.cPct,
       mn: formData.mnPct,
-      p: formData.pPct ?? 0,
-      s: formData.sPct ?? 0,
-      si: formData.siPct ?? undefined,
-      cr: formData.crPct ?? undefined,
-      mo: formData.moPct ?? undefined,
-      v: formData.vPct ?? undefined,
-      ni: formData.niPct ?? undefined,
-      cu: formData.cuPct ?? undefined,
-      nb: formData.nbPct ?? undefined,
-      ti: formData.tiPct ?? undefined,
+      p: rawPPct || 0,
+      s: rawSPct || 0,
+      si: rawSiPct || undefined,
+      cr: rawCrPct || undefined,
+      mo: rawMoPct || undefined,
+      v: rawVPct || undefined,
+      ni: rawNiPct || undefined,
+      cu: rawCuPct || undefined,
+      nb: rawNbPct || undefined,
+      ti: rawTiPct || undefined,
     };
   }, [formData]);
 
@@ -177,6 +187,7 @@ export function MtcDataEntryForm(props: MtcDataEntryFormProps) {
       formData.impactValue3J !== null
         ? Math.min(formData.impactValue1J, formData.impactValue2J, formData.impactValue3J)
         : undefined;
+    const rawImpactTestTempC = formData.impactTestTempC;
     return validateApi5lGrade(
       formData.grade,
       formData.pslLevel,
@@ -184,7 +195,7 @@ export function MtcDataEntryForm(props: MtcDataEntryFormProps) {
         yieldStrengthMpa: formData.yieldStrengthMpa,
         tensileStrengthMpa: formData.tensileStrengthMpa,
         elongationPct: formData.elongationPct,
-        cvnTempC: formData.impactTestTempC ?? undefined,
+        cvnTempC: rawImpactTestTempC || undefined,
         cvnAvgJ: impactAverage ?? undefined,
         cvnMinJ: impactMin,
       },
@@ -272,6 +283,22 @@ export function MtcDataEntryForm(props: MtcDataEntryFormProps) {
     { value: "3.2", label: "3.2 - Third party inspection" },
   ];
 
+  const rawMtcType = formData.mtcType;
+  const rawQuantity = formData.quantity;
+  const rawYieldStrengthMpa = formData.yieldStrengthMpa;
+  const rawTensileStrengthMpa = formData.tensileStrengthMpa;
+  const rawElongationPct = formData.elongationPct;
+  const rawReductionAreaPct = formData.reductionAreaPct;
+  const rawImpactTestTempC2 = formData.impactTestTempC;
+  const rawImpactValue1J = formData.impactValue1J;
+  const rawImpactValue2J = formData.impactValue2J;
+  const rawImpactValue3J = formData.impactValue3J;
+  const rawHardnessHrc = formData.hardnessHrc;
+  const rawHardnessHv = formData.hardnessHv;
+  const rawHardnessHb = formData.hardnessHb;
+  const rawHydroTestPressureBar = formData.hydroTestPressureBar;
+  const rawHydroTestResult = formData.hydroTestResult;
+
   return (
     <form
       onSubmit={handleSubmit}
@@ -281,7 +308,6 @@ export function MtcDataEntryForm(props: MtcDataEntryFormProps) {
         <h2 className="text-lg font-semibold text-white">Material Test Certificate Entry</h2>
         <p className="text-sm text-blue-100 mt-1">Enter MTC data per EN 10204</p>
       </div>
-
       <div className="flex border-b border-gray-200 overflow-x-auto">
         {sections.map((section) => (
           <button
@@ -298,7 +324,6 @@ export function MtcDataEntryForm(props: MtcDataEntryFormProps) {
           </button>
         ))}
       </div>
-
       <div className="p-6">
         {activeSection === "header" && (
           <div className="space-y-4">
@@ -316,16 +341,20 @@ export function MtcDataEntryForm(props: MtcDataEntryFormProps) {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">MTC Type</label>
                 <select
-                  value={formData.mtcType ?? ""}
+                  value={rawMtcType || ""}
                   onChange={(e) => updateField("mtcType", e.target.value as MtcFormData["mtcType"])}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="">Select type...</option>
-                  {mtcTypes.map((type) => (
-                    <option key={type.value} value={type.value ?? ""}>
-                      {type.label}
-                    </option>
-                  ))}
+                  {mtcTypes.map((type) => {
+                    const rawValue = type.value;
+
+                    return (
+                      <option key={type.value} value={rawValue || ""}>
+                        {type.label}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
               <div>
@@ -448,7 +477,7 @@ export function MtcDataEntryForm(props: MtcDataEntryFormProps) {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Quantity</label>
                 <input
                   type="number"
-                  value={formData.quantity ?? ""}
+                  value={rawQuantity || ""}
                   onChange={(e) =>
                     updateField("quantity", e.target.value ? parseInt(e.target.value, 10) : null)
                   }
@@ -613,7 +642,7 @@ export function MtcDataEntryForm(props: MtcDataEntryFormProps) {
                 </label>
                 <input
                   type="number"
-                  value={formData.yieldStrengthMpa ?? ""}
+                  value={rawYieldStrengthMpa || ""}
                   onChange={(e) =>
                     updateField(
                       "yieldStrengthMpa",
@@ -636,7 +665,7 @@ export function MtcDataEntryForm(props: MtcDataEntryFormProps) {
                 </label>
                 <input
                   type="number"
-                  value={formData.tensileStrengthMpa ?? ""}
+                  value={rawTensileStrengthMpa || ""}
                   onChange={(e) =>
                     updateField(
                       "tensileStrengthMpa",
@@ -659,7 +688,7 @@ export function MtcDataEntryForm(props: MtcDataEntryFormProps) {
                 </label>
                 <input
                   type="number"
-                  value={formData.elongationPct ?? ""}
+                  value={rawElongationPct || ""}
                   onChange={(e) =>
                     updateField("elongationPct", e.target.value ? parseFloat(e.target.value) : null)
                   }
@@ -680,7 +709,7 @@ export function MtcDataEntryForm(props: MtcDataEntryFormProps) {
                 </label>
                 <input
                   type="number"
-                  value={formData.reductionAreaPct ?? ""}
+                  value={rawReductionAreaPct || ""}
                   onChange={(e) =>
                     updateField(
                       "reductionAreaPct",
@@ -706,7 +735,7 @@ export function MtcDataEntryForm(props: MtcDataEntryFormProps) {
                 </label>
                 <input
                   type="number"
-                  value={formData.impactTestTempC ?? ""}
+                  value={rawImpactTestTempC2 || ""}
                   onChange={(e) =>
                     updateField(
                       "impactTestTempC",
@@ -743,7 +772,7 @@ export function MtcDataEntryForm(props: MtcDataEntryFormProps) {
                   <label className="block text-xs font-medium text-gray-600 mb-1">Value 1</label>
                   <input
                     type="number"
-                    value={formData.impactValue1J ?? ""}
+                    value={rawImpactValue1J || ""}
                     onChange={(e) =>
                       updateField(
                         "impactValue1J",
@@ -759,7 +788,7 @@ export function MtcDataEntryForm(props: MtcDataEntryFormProps) {
                   <label className="block text-xs font-medium text-gray-600 mb-1">Value 2</label>
                   <input
                     type="number"
-                    value={formData.impactValue2J ?? ""}
+                    value={rawImpactValue2J || ""}
                     onChange={(e) =>
                       updateField(
                         "impactValue2J",
@@ -775,7 +804,7 @@ export function MtcDataEntryForm(props: MtcDataEntryFormProps) {
                   <label className="block text-xs font-medium text-gray-600 mb-1">Value 3</label>
                   <input
                     type="number"
-                    value={formData.impactValue3J ?? ""}
+                    value={rawImpactValue3J || ""}
                     onChange={(e) =>
                       updateField(
                         "impactValue3J",
@@ -812,7 +841,7 @@ export function MtcDataEntryForm(props: MtcDataEntryFormProps) {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Hardness HRC</label>
                 <input
                   type="number"
-                  value={formData.hardnessHrc ?? ""}
+                  value={rawHardnessHrc || ""}
                   onChange={(e) =>
                     updateField("hardnessHrc", e.target.value ? parseFloat(e.target.value) : null)
                   }
@@ -826,7 +855,7 @@ export function MtcDataEntryForm(props: MtcDataEntryFormProps) {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Hardness HV</label>
                 <input
                   type="number"
-                  value={formData.hardnessHv ?? ""}
+                  value={rawHardnessHv || ""}
                   onChange={(e) =>
                     updateField("hardnessHv", e.target.value ? parseInt(e.target.value, 10) : null)
                   }
@@ -839,7 +868,7 @@ export function MtcDataEntryForm(props: MtcDataEntryFormProps) {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Hardness HB</label>
                 <input
                   type="number"
-                  value={formData.hardnessHb ?? ""}
+                  value={rawHardnessHb || ""}
                   onChange={(e) =>
                     updateField("hardnessHb", e.target.value ? parseInt(e.target.value, 10) : null)
                   }
@@ -923,7 +952,7 @@ export function MtcDataEntryForm(props: MtcDataEntryFormProps) {
                 </label>
                 <input
                   type="number"
-                  value={formData.hydroTestPressureBar ?? ""}
+                  value={rawHydroTestPressureBar || ""}
                   onChange={(e) =>
                     updateField(
                       "hydroTestPressureBar",
@@ -940,7 +969,7 @@ export function MtcDataEntryForm(props: MtcDataEntryFormProps) {
                   Hydro Test Result
                 </label>
                 <select
-                  value={formData.hydroTestResult ?? ""}
+                  value={rawHydroTestResult || ""}
                   onChange={(e) =>
                     updateField(
                       "hydroTestResult",
@@ -1045,7 +1074,6 @@ export function MtcDataEntryForm(props: MtcDataEntryFormProps) {
             </div>
           )}
       </div>
-
       <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex items-center justify-between">
         <div>
           {formErrors.length > 0 && (
@@ -1084,7 +1112,8 @@ interface ChemistryInputProps {
 
 function ChemistryInput(props: ChemistryInputProps) {
   const { label, value, onChange } = props;
-  const step = props.step ?? 0.01;
+  const rawStep = props.step;
+  const step = rawStep || 0.01;
   return (
     <div>
       <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>

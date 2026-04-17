@@ -234,7 +234,6 @@ export default function NixRegistrationVerifier(props: NixRegistrationVerifierPr
             </p>
           </div>
         </div>
-
         <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
           <div className="flex items-start gap-2">
             <svg
@@ -258,21 +257,23 @@ export default function NixRegistrationVerifier(props: NixRegistrationVerifierPr
             </div>
           </div>
         </div>
-
         {verificationResult.extractedData.fieldsExtracted.length > 0 && (
           <div className="mb-4">
             <p className="text-sm font-medium text-gray-700 mb-2">Extracted Information:</p>
             <div className="bg-gray-50 rounded-lg p-3 space-y-1">
-              {verificationResult.fieldResults.map((field) => (
-                <div key={field.field} className="flex justify-between text-sm">
-                  <span className="text-gray-600">{FIELD_LABELS[field.field] || field.field}:</span>
-                  <span className="font-medium text-gray-900">{String(field.extracted)}</span>
-                </div>
-              ))}
+              {verificationResult.fieldResults.map((field) => {
+                const rawField = FIELD_LABELS[field.field];
+
+                return (
+                  <div key={field.field} className="flex justify-between text-sm">
+                    <span className="text-gray-600">{rawField || field.field}:</span>
+                    <span className="font-medium text-gray-900">{String(field.extracted)}</span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
-
         <button
           onClick={onClose}
           className="w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
@@ -308,7 +309,6 @@ export default function NixRegistrationVerifier(props: NixRegistrationVerifierPr
             </p>
           </div>
         </div>
-
         {matches.length > 0 && (
           <div className="mb-4">
             <p className="text-sm font-medium text-green-700 mb-2 flex items-center gap-1">
@@ -322,18 +322,19 @@ export default function NixRegistrationVerifier(props: NixRegistrationVerifierPr
               Verified Fields
             </p>
             <div className="bg-green-50 rounded-lg p-3 space-y-1">
-              {matches.map((field) => (
-                <div key={field.field} className="flex justify-between text-sm">
-                  <span className="text-green-700">
-                    {FIELD_LABELS[field.field] || field.field}:
-                  </span>
-                  <span className="font-medium text-green-800">{String(field.extracted)}</span>
-                </div>
-              ))}
+              {matches.map((field) => {
+                const rawField2 = FIELD_LABELS[field.field];
+
+                return (
+                  <div key={field.field} className="flex justify-between text-sm">
+                    <span className="text-green-700">{rawField2 || field.field}:</span>
+                    <span className="font-medium text-green-800">{String(field.extracted)}</span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
-
         {mismatches.length > 0 && (
           <div className="mb-4">
             <p className="text-sm font-medium text-orange-700 mb-2 flex items-center gap-1">
@@ -353,6 +354,9 @@ export default function NixRegistrationVerifier(props: NixRegistrationVerifierPr
                 );
                 const isSelected = selectedCorrections.has(field.field);
 
+                const rawField3 = FIELD_LABELS[field.field];
+                const rawField4 = learnedValues[field.field];
+
                 return (
                   <div
                     key={field.field}
@@ -360,7 +364,7 @@ export default function NixRegistrationVerifier(props: NixRegistrationVerifierPr
                   >
                     <div className="flex justify-between items-start mb-2">
                       <span className="text-sm font-medium text-orange-800">
-                        {FIELD_LABELS[field.field] || field.field}
+                        {rawField3 || field.field}
                       </span>
                       {field.similarity !== undefined && (
                         <span className="text-xs text-orange-600">{field.similarity}% similar</span>
@@ -374,7 +378,7 @@ export default function NixRegistrationVerifier(props: NixRegistrationVerifierPr
                       <div>
                         <span className="text-xs text-gray-500">Document shows:</span>
                         <p className="font-medium text-orange-700">
-                          {learnedValues[field.field] || String(field.extracted) || "Not found"}
+                          {rawField4 || String(field.extracted) || "Not found"}
                         </p>
                       </div>
                     </div>
@@ -397,12 +401,11 @@ export default function NixRegistrationVerifier(props: NixRegistrationVerifierPr
                       !learnedValues[field.field] &&
                       file && (
                         <button
-                          onClick={() =>
-                            handleHelpFindField(
-                              field.field,
-                              FIELD_LABELS[field.field] || field.field,
-                            )
-                          }
+                          onClick={() => {
+                            const rawField5 = FIELD_LABELS[field.field];
+
+                            return handleHelpFindField(field.field, rawField5 || field.field);
+                          }}
                           className="mt-3 w-full flex items-center justify-center gap-2 px-3 py-2 bg-blue-50 text-blue-700 rounded-md hover:bg-blue-100 transition-colors text-sm font-medium"
                         >
                           <svg
@@ -427,7 +430,6 @@ export default function NixRegistrationVerifier(props: NixRegistrationVerifierPr
             </div>
           </div>
         )}
-
         {verificationResult.warnings.length > 0 && (
           <div className="mb-4 bg-yellow-50 border border-yellow-200 rounded-lg p-3">
             <p className="text-sm font-medium text-yellow-800 mb-1">Warnings:</p>
@@ -438,7 +440,6 @@ export default function NixRegistrationVerifier(props: NixRegistrationVerifierPr
             ))}
           </div>
         )}
-
         <div className="space-y-2">
           {selectedCorrections.size > 0 && (
             <button

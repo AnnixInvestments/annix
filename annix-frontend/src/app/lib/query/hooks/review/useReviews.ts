@@ -54,8 +54,10 @@ async function fetchReviews(
   params?: ReviewQueryParams,
 ): Promise<PaginatedReviewResult> {
   const searchParams = new URLSearchParams();
-  searchParams.set("page", (params?.page || 1).toString());
-  searchParams.set("limit", (params?.limit || 20).toString());
+  const rawPage = params?.page;
+  searchParams.set("page", (rawPage || 1).toString());
+  const rawLimit = params?.limit;
+  searchParams.set("limit", (rawLimit || 20).toString());
   if (params?.entityType && params.entityType !== "all") {
     searchParams.set("entityType", params.entityType);
   }
@@ -111,7 +113,8 @@ export function useReviewAction() {
 
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        throw new Error(data.message || `Failed to ${action}`);
+        const rawMessage = data.message;
+        throw new Error(rawMessage || `Failed to ${action}`);
       }
 
       return response.json();

@@ -25,7 +25,8 @@ const MONTHS = [
 ];
 
 export function MonthYearPicker(props: MonthYearPickerProps) {
-  const focusRingClassName = props.focusRingClassName ?? "focus:ring-blue-400";
+  const rawFocusRingClassName = props.focusRingClassName;
+  const focusRingClassName = rawFocusRingClassName || "focus:ring-blue-400";
   const currentYear = now().year;
   const years = Array.from({ length: 5 }, (_, i) => currentYear - 2 + i);
   const selectClass = `px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200 focus:outline-none focus:ring-2 ${focusRingClassName}`;

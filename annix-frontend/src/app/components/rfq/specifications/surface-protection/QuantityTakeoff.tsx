@@ -54,13 +54,13 @@ export function QuantityTakeoff(props: QuantityTakeoffProps) {
 
     switch (coatingType) {
       case "paint": {
-        const primerDft =
-          systemDetails.primerDftMicrons || PAINT_THEORETICAL_COVERAGE.primer.dftMicrons;
+        const rawPrimerDftMicrons = systemDetails.primerDftMicrons;
+        const primerDft = rawPrimerDftMicrons || PAINT_THEORETICAL_COVERAGE.primer.dftMicrons;
+        const rawIntermediateDftMicrons = systemDetails.intermediateDftMicrons;
         const intermediateDft =
-          systemDetails.intermediateDftMicrons ||
-          PAINT_THEORETICAL_COVERAGE.intermediate.dftMicrons;
-        const topcoatDft =
-          systemDetails.topcoatDftMicrons || PAINT_THEORETICAL_COVERAGE.topcoat.dftMicrons;
+          rawIntermediateDftMicrons || PAINT_THEORETICAL_COVERAGE.intermediate.dftMicrons;
+        const rawTopcoatDftMicrons = systemDetails.topcoatDftMicrons;
+        const topcoatDft = rawTopcoatDftMicrons || PAINT_THEORETICAL_COVERAGE.topcoat.dftMicrons;
 
         const primerLiters =
           (surfaceAreaM2 * primerDft) /
@@ -75,35 +75,42 @@ export function QuantityTakeoff(props: QuantityTakeoffProps) {
           (PAINT_THEORETICAL_COVERAGE.topcoat.m2PerLiter *
             PAINT_THEORETICAL_COVERAGE.topcoat.dftMicrons);
 
+        const rawPrimer = customWastage.primer;
+        const rawPrimer2 = customWastage.primer;
+
         items.push({
           material: "Primer",
           unit: "liters",
           quantity: Math.round(primerLiters * 10) / 10,
           theoreticalCoverage: `${PAINT_THEORETICAL_COVERAGE.primer.m2PerLiter} m2/L @ ${PAINT_THEORETICAL_COVERAGE.primer.dftMicrons}um`,
-          wastagePercent: customWastage.primer ?? 15,
-          quantityWithWastage: Math.ceil(primerLiters * (1 + (customWastage.primer ?? 15) / 100)),
+          wastagePercent: rawPrimer || 15,
+          quantityWithWastage: Math.ceil(primerLiters * (1 + (rawPrimer2 || 15) / 100)),
           notes: `Target DFT: ${primerDft}um`,
         });
+
+        const rawIntermediate = customWastage.intermediate;
+        const rawIntermediate2 = customWastage.intermediate;
 
         items.push({
           material: "Intermediate Coat",
           unit: "liters",
           quantity: Math.round(intermediateLiters * 10) / 10,
           theoreticalCoverage: `${PAINT_THEORETICAL_COVERAGE.intermediate.m2PerLiter} m2/L @ ${PAINT_THEORETICAL_COVERAGE.intermediate.dftMicrons}um`,
-          wastagePercent: customWastage.intermediate ?? 15,
-          quantityWithWastage: Math.ceil(
-            intermediateLiters * (1 + (customWastage.intermediate ?? 15) / 100),
-          ),
+          wastagePercent: rawIntermediate || 15,
+          quantityWithWastage: Math.ceil(intermediateLiters * (1 + (rawIntermediate2 || 15) / 100)),
           notes: `Target DFT: ${intermediateDft}um`,
         });
+
+        const rawTopcoat = customWastage.topcoat;
+        const rawTopcoat2 = customWastage.topcoat;
 
         items.push({
           material: "Topcoat",
           unit: "liters",
           quantity: Math.round(topcoatLiters * 10) / 10,
           theoreticalCoverage: `${PAINT_THEORETICAL_COVERAGE.topcoat.m2PerLiter} m2/L @ ${PAINT_THEORETICAL_COVERAGE.topcoat.dftMicrons}um`,
-          wastagePercent: customWastage.topcoat ?? 15,
-          quantityWithWastage: Math.ceil(topcoatLiters * (1 + (customWastage.topcoat ?? 15) / 100)),
+          wastagePercent: rawTopcoat || 15,
+          quantityWithWastage: Math.ceil(topcoatLiters * (1 + (rawTopcoat2 || 15) / 100)),
           notes: `Target DFT: ${topcoatDft}um`,
         });
 
@@ -125,32 +132,37 @@ export function QuantityTakeoff(props: QuantityTakeoffProps) {
       }
 
       case "rubber": {
-        const thicknessMm = systemDetails.rubberThicknessMm || 6;
+        const rawRubberThicknessMm = systemDetails.rubberThicknessMm;
+        const thicknessMm = rawRubberThicknessMm || 6;
         const sheetAreaM2 = surfaceAreaM2 * (1 + RUBBER_COVERAGE.wastagePercent / 100);
         const linearMeters = sheetAreaM2 / RUBBER_COVERAGE.sheetWidthM;
+
+        const rawRubber = customWastage.rubber;
+        const rawRubber2 = customWastage.rubber;
 
         items.push({
           material: "Rubber Sheet",
           unit: "m2",
           quantity: Math.round(surfaceAreaM2 * 10) / 10,
           theoreticalCoverage: `${thicknessMm}mm thickness`,
-          wastagePercent: customWastage.rubber ?? RUBBER_COVERAGE.wastagePercent,
+          wastagePercent: rawRubber || RUBBER_COVERAGE.wastagePercent,
           quantityWithWastage: Math.ceil(
-            surfaceAreaM2 * (1 + (customWastage.rubber ?? RUBBER_COVERAGE.wastagePercent) / 100),
+            surfaceAreaM2 * (1 + (rawRubber2 || RUBBER_COVERAGE.wastagePercent) / 100),
           ),
           notes: `Sheet width: ${RUBBER_COVERAGE.sheetWidthM}m, Linear: ${Math.ceil(linearMeters)}m`,
         });
+
+        const rawAdhesive = customWastage.adhesive;
+        const rawAdhesive2 = customWastage.adhesive;
 
         items.push({
           material: "Bonding Adhesive",
           unit: "kg",
           quantity: Math.round(surfaceAreaM2 * RUBBER_COVERAGE.adhesiveKgPerM2 * 10) / 10,
           theoreticalCoverage: `${RUBBER_COVERAGE.adhesiveKgPerM2} kg/m2`,
-          wastagePercent: customWastage.adhesive ?? 10,
+          wastagePercent: rawAdhesive || 10,
           quantityWithWastage: Math.ceil(
-            surfaceAreaM2 *
-              RUBBER_COVERAGE.adhesiveKgPerM2 *
-              (1 + (customWastage.adhesive ?? 10) / 100),
+            surfaceAreaM2 * RUBBER_COVERAGE.adhesiveKgPerM2 * (1 + (rawAdhesive2 || 10) / 100),
           ),
           notes: "Two-part adhesive system",
         });
@@ -159,45 +171,57 @@ export function QuantityTakeoff(props: QuantityTakeoffProps) {
       }
 
       case "ceramic": {
-        const tileWidth = systemDetails.ceramicTileSizeMm?.width || 50;
-        const tileHeight = systemDetails.ceramicTileSizeMm?.height || 50;
+        const rawWidth = systemDetails.ceramicTileSizeMm?.width;
+        const tileWidth = rawWidth || 50;
+        const rawHeight = systemDetails.ceramicTileSizeMm?.height;
+        const tileHeight = rawHeight || 50;
         const tilesPerM2 = CERAMIC_COVERAGE.tilesPerM2(tileWidth, tileHeight);
         const totalTiles = surfaceAreaM2 * tilesPerM2;
+
+        const rawTiles = customWastage.tiles;
+        const rawTiles2 = customWastage.tiles;
+        const rawCeramicThicknessMm = systemDetails.ceramicThicknessMm;
 
         items.push({
           material: "Ceramic Tiles",
           unit: "pieces",
           quantity: Math.ceil(totalTiles),
           theoreticalCoverage: `${tilesPerM2} tiles/m2 (${tileWidth}x${tileHeight}mm)`,
-          wastagePercent: customWastage.tiles ?? CERAMIC_COVERAGE.wastagePercent,
+          wastagePercent: rawTiles || CERAMIC_COVERAGE.wastagePercent,
           quantityWithWastage: Math.ceil(
-            totalTiles * (1 + (customWastage.tiles ?? CERAMIC_COVERAGE.wastagePercent) / 100),
+            totalTiles * (1 + (rawTiles2 || CERAMIC_COVERAGE.wastagePercent) / 100),
           ),
-          notes: `Thickness: ${systemDetails.ceramicThicknessMm || 12}mm`,
+          notes: `Thickness: ${rawCeramicThicknessMm || 12}mm`,
         });
+
+        const rawCeramicAdhesive = customWastage.ceramicAdhesive;
+        const rawCeramicAdhesive2 = customWastage.ceramicAdhesive;
 
         items.push({
           material: "Ceramic Adhesive",
           unit: "kg",
           quantity: Math.round(surfaceAreaM2 * CERAMIC_COVERAGE.adhesiveKgPerM2 * 10) / 10,
           theoreticalCoverage: `${CERAMIC_COVERAGE.adhesiveKgPerM2} kg/m2`,
-          wastagePercent: customWastage.ceramicAdhesive ?? 10,
+          wastagePercent: rawCeramicAdhesive || 10,
           quantityWithWastage: Math.ceil(
             surfaceAreaM2 *
               CERAMIC_COVERAGE.adhesiveKgPerM2 *
-              (1 + (customWastage.ceramicAdhesive ?? 10) / 100),
+              (1 + (rawCeramicAdhesive2 || 10) / 100),
           ),
           notes: "Epoxy or ceramic cement",
         });
+
+        const rawGrout = customWastage.grout;
+        const rawGrout2 = customWastage.grout;
 
         items.push({
           material: "Grout",
           unit: "kg",
           quantity: Math.round(surfaceAreaM2 * CERAMIC_COVERAGE.groutKgPerM2 * 10) / 10,
           theoreticalCoverage: `${CERAMIC_COVERAGE.groutKgPerM2} kg/m2`,
-          wastagePercent: customWastage.grout ?? 10,
+          wastagePercent: rawGrout || 10,
           quantityWithWastage: Math.ceil(
-            surfaceAreaM2 * CERAMIC_COVERAGE.groutKgPerM2 * (1 + (customWastage.grout ?? 10) / 100),
+            surfaceAreaM2 * CERAMIC_COVERAGE.groutKgPerM2 * (1 + (rawGrout2 || 10) / 100),
           ),
           notes: "Epoxy or cementitious grout",
         });

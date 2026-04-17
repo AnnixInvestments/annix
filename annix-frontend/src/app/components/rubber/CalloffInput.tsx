@@ -14,7 +14,8 @@ interface CalloffInputProps {
 }
 
 export function CalloffInput(props: CalloffInputProps) {
-  const addButtonClassName = props.addButtonClassName ?? "bg-blue-600 hover:bg-blue-700";
+  const rawAddButtonClassName = props.addButtonClassName;
+  const addButtonClassName = rawAddButtonClassName || "bg-blue-600 hover:bg-blue-700";
   const [quantity, setQuantity] = useState(0);
   const [status, setStatus] = useState<CalloffStatus>(CALLOFF_STATUS.REQUESTED);
   const [notes, setNotes] = useState("");

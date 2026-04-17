@@ -38,10 +38,23 @@ export function InternalLiningSection(props: InternalLiningSectionProps) {
   const profile = buildMaterialProfile();
   const isProfileComplete = hasCompleteProfile(profile);
 
+  const rawMtpParticleSize = globalSpecs?.mtpParticleSize;
+  const rawMtpParticleShape = globalSpecs?.mtpParticleShape;
+  const rawMtpHardnessClass = globalSpecs?.mtpHardnessClass;
+  const rawMtpSilicaContent = globalSpecs?.mtpSilicaContent;
+  const rawMtpSpecificGravity = globalSpecs?.mtpSpecificGravity;
+  const rawMtpPhRange = globalSpecs?.mtpPhRange;
+  const rawMtpChlorides = globalSpecs?.mtpChlorides;
+  const rawMtpTemperatureRange = globalSpecs?.mtpTemperatureRange;
+  const rawMtpVelocity = globalSpecs?.mtpVelocity;
+  const rawMtpImpactAngle = globalSpecs?.mtpImpactAngle;
+  const rawMtpEquipmentType = globalSpecs?.mtpEquipmentType;
+  const rawMtpSolidsPercent = globalSpecs?.mtpSolidsPercent;
+  const rawInternalLiningType = globalSpecs?.internalLiningType;
+
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-3">
       <h3 className="text-xs font-semibold text-gray-800 mb-2">Internal Lining</h3>
-
       {globalSpecs?.externalCoatingType === "Galvanized" ? (
         <div className="bg-amber-50 border border-amber-200 rounded-md p-2 text-xs text-amber-800">
           <div className="flex items-center gap-2">
@@ -145,13 +158,15 @@ export function InternalLiningSection(props: InternalLiningSectionProps) {
                           Particle Size
                         </label>
                         <select
-                          value={globalSpecs?.mtpParticleSize || ""}
-                          onChange={(e) =>
-                            onUpdateGlobalSpecs({
+                          value={rawMtpParticleSize || ""}
+                          onChange={(e) => {
+                            const rawValue = e.target.value;
+
+                            return onUpdateGlobalSpecs({
                               ...globalSpecs,
-                              mtpParticleSize: e.target.value || undefined,
-                            })
-                          }
+                              mtpParticleSize: rawValue || undefined,
+                            });
+                          }}
                           className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 text-gray-900"
                         >
                           <option value="">Select...</option>
@@ -166,13 +181,15 @@ export function InternalLiningSection(props: InternalLiningSectionProps) {
                           Particle Shape
                         </label>
                         <select
-                          value={globalSpecs?.mtpParticleShape || ""}
-                          onChange={(e) =>
-                            onUpdateGlobalSpecs({
+                          value={rawMtpParticleShape || ""}
+                          onChange={(e) => {
+                            const rawValue2 = e.target.value;
+
+                            return onUpdateGlobalSpecs({
                               ...globalSpecs,
-                              mtpParticleShape: e.target.value || undefined,
-                            })
-                          }
+                              mtpParticleShape: rawValue2 || undefined,
+                            });
+                          }}
                           className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 text-gray-900"
                         >
                           <option value="">Select...</option>
@@ -186,13 +203,15 @@ export function InternalLiningSection(props: InternalLiningSectionProps) {
                           Material Hardness
                         </label>
                         <select
-                          value={globalSpecs?.mtpHardnessClass || ""}
-                          onChange={(e) =>
-                            onUpdateGlobalSpecs({
+                          value={rawMtpHardnessClass || ""}
+                          onChange={(e) => {
+                            const rawValue3 = e.target.value;
+
+                            return onUpdateGlobalSpecs({
                               ...globalSpecs,
-                              mtpHardnessClass: e.target.value || undefined,
-                            })
-                          }
+                              mtpHardnessClass: rawValue3 || undefined,
+                            });
+                          }}
                           className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 text-gray-900"
                         >
                           <option value="">Select...</option>
@@ -206,13 +225,15 @@ export function InternalLiningSection(props: InternalLiningSectionProps) {
                           Silica Content
                         </label>
                         <select
-                          value={globalSpecs?.mtpSilicaContent || ""}
-                          onChange={(e) =>
-                            onUpdateGlobalSpecs({
+                          value={rawMtpSilicaContent || ""}
+                          onChange={(e) => {
+                            const rawValue4 = e.target.value;
+
+                            return onUpdateGlobalSpecs({
                               ...globalSpecs,
-                              mtpSilicaContent: e.target.value || undefined,
-                            })
-                          }
+                              mtpSilicaContent: rawValue4 || undefined,
+                            });
+                          }}
                           className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 text-gray-900"
                         >
                           <option value="">Select...</option>
@@ -226,13 +247,15 @@ export function InternalLiningSection(props: InternalLiningSectionProps) {
                           Specific Gravity
                         </label>
                         <select
-                          value={globalSpecs?.mtpSpecificGravity || ""}
-                          onChange={(e) =>
-                            onUpdateGlobalSpecs({
+                          value={rawMtpSpecificGravity || ""}
+                          onChange={(e) => {
+                            const rawValue5 = e.target.value;
+
+                            return onUpdateGlobalSpecs({
                               ...globalSpecs,
-                              mtpSpecificGravity: e.target.value || undefined,
-                            })
-                          }
+                              mtpSpecificGravity: rawValue5 || undefined,
+                            });
+                          }}
                           className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 text-gray-900"
                         >
                           <option value="">Select...</option>
@@ -258,13 +281,15 @@ export function InternalLiningSection(props: InternalLiningSectionProps) {
                           pH Range
                         </label>
                         <select
-                          value={globalSpecs?.mtpPhRange || ""}
-                          onChange={(e) =>
-                            onUpdateGlobalSpecs({
+                          value={rawMtpPhRange || ""}
+                          onChange={(e) => {
+                            const rawValue6 = e.target.value;
+
+                            return onUpdateGlobalSpecs({
                               ...globalSpecs,
-                              mtpPhRange: e.target.value || undefined,
-                            })
-                          }
+                              mtpPhRange: rawValue6 || undefined,
+                            });
+                          }}
                           className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 text-gray-900"
                         >
                           <option value="">Select...</option>
@@ -278,13 +303,15 @@ export function InternalLiningSection(props: InternalLiningSectionProps) {
                           Chloride Level
                         </label>
                         <select
-                          value={globalSpecs?.mtpChlorides || ""}
-                          onChange={(e) =>
-                            onUpdateGlobalSpecs({
+                          value={rawMtpChlorides || ""}
+                          onChange={(e) => {
+                            const rawValue7 = e.target.value;
+
+                            return onUpdateGlobalSpecs({
                               ...globalSpecs,
-                              mtpChlorides: e.target.value || undefined,
-                            })
-                          }
+                              mtpChlorides: rawValue7 || undefined,
+                            });
+                          }}
                           className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 text-gray-900"
                         >
                           <option value="">Select...</option>
@@ -298,13 +325,15 @@ export function InternalLiningSection(props: InternalLiningSectionProps) {
                           Operating Temp
                         </label>
                         <select
-                          value={globalSpecs?.mtpTemperatureRange || ""}
-                          onChange={(e) =>
-                            onUpdateGlobalSpecs({
+                          value={rawMtpTemperatureRange || ""}
+                          onChange={(e) => {
+                            const rawValue8 = e.target.value;
+
+                            return onUpdateGlobalSpecs({
                               ...globalSpecs,
-                              mtpTemperatureRange: e.target.value || undefined,
-                            })
-                          }
+                              mtpTemperatureRange: rawValue8 || undefined,
+                            });
+                          }}
                           className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 text-gray-900"
                         >
                           <option value="">Select...</option>
@@ -330,13 +359,15 @@ export function InternalLiningSection(props: InternalLiningSectionProps) {
                           Flow Velocity
                         </label>
                         <select
-                          value={globalSpecs?.mtpVelocity || ""}
-                          onChange={(e) =>
-                            onUpdateGlobalSpecs({
+                          value={rawMtpVelocity || ""}
+                          onChange={(e) => {
+                            const rawValue9 = e.target.value;
+
+                            return onUpdateGlobalSpecs({
                               ...globalSpecs,
-                              mtpVelocity: e.target.value || undefined,
-                            })
-                          }
+                              mtpVelocity: rawValue9 || undefined,
+                            });
+                          }}
                           className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 text-gray-900"
                         >
                           <option value="">Select...</option>
@@ -350,13 +381,15 @@ export function InternalLiningSection(props: InternalLiningSectionProps) {
                           Impact Angle
                         </label>
                         <select
-                          value={globalSpecs?.mtpImpactAngle || ""}
-                          onChange={(e) =>
-                            onUpdateGlobalSpecs({
+                          value={rawMtpImpactAngle || ""}
+                          onChange={(e) => {
+                            const rawValue10 = e.target.value;
+
+                            return onUpdateGlobalSpecs({
                               ...globalSpecs,
-                              mtpImpactAngle: e.target.value || undefined,
-                            })
-                          }
+                              mtpImpactAngle: rawValue10 || undefined,
+                            });
+                          }}
                           className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 text-gray-900"
                         >
                           <option value="">Select...</option>
@@ -370,13 +403,15 @@ export function InternalLiningSection(props: InternalLiningSectionProps) {
                           Equipment Type
                         </label>
                         <select
-                          value={globalSpecs?.mtpEquipmentType || ""}
-                          onChange={(e) =>
-                            onUpdateGlobalSpecs({
+                          value={rawMtpEquipmentType || ""}
+                          onChange={(e) => {
+                            const rawValue11 = e.target.value;
+
+                            return onUpdateGlobalSpecs({
                               ...globalSpecs,
-                              mtpEquipmentType: e.target.value || undefined,
-                            })
-                          }
+                              mtpEquipmentType: rawValue11 || undefined,
+                            });
+                          }}
                           className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 text-gray-900"
                         >
                           <option value="">Select...</option>
@@ -392,13 +427,15 @@ export function InternalLiningSection(props: InternalLiningSectionProps) {
                           Solids Conc.
                         </label>
                         <select
-                          value={globalSpecs?.mtpSolidsPercent || ""}
-                          onChange={(e) =>
-                            onUpdateGlobalSpecs({
+                          value={rawMtpSolidsPercent || ""}
+                          onChange={(e) => {
+                            const rawValue12 = e.target.value;
+
+                            return onUpdateGlobalSpecs({
                               ...globalSpecs,
-                              mtpSolidsPercent: e.target.value || undefined,
-                            })
-                          }
+                              mtpSolidsPercent: rawValue12 || undefined,
+                            });
+                          }}
                           className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 text-gray-900"
                         >
                           <option value="">Select...</option>
@@ -524,13 +561,15 @@ export function InternalLiningSection(props: InternalLiningSectionProps) {
                 Internal Lining Type <span className="text-red-500">*</span>
               </label>
               <select
-                value={globalSpecs?.internalLiningType || ""}
-                onChange={(e) =>
-                  onUpdateGlobalSpecs({
+                value={rawInternalLiningType || ""}
+                onChange={(e) => {
+                  const rawValue13 = e.target.value;
+
+                  return onUpdateGlobalSpecs({
                     ...globalSpecs,
-                    internalLiningType: e.target.value || undefined,
-                  })
-                }
+                    internalLiningType: rawValue13 || undefined,
+                  });
+                }}
                 className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 text-gray-900"
               >
                 <option value="">Select lining type...</option>

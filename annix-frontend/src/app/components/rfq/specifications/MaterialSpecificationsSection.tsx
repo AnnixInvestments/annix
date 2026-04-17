@@ -164,13 +164,14 @@ export function MaterialSpecificationsSection(props: MaterialSpecificationsSecti
     );
 
     if (!suitability.isSuitable) {
+      const rawNotes = suitability.limits.notes;
       const mappedLimits = suitability.limits
         ? {
             minTempC: suitability.limits.minTemperatureCelsius,
             maxTempC: suitability.limits.maxTemperatureCelsius,
             maxPressureBar: suitability.limits.maxPressureBar,
             type: suitability.limits.materialType,
-            notes: suitability.limits.notes ?? undefined,
+            notes: rawNotes || undefined,
           }
         : undefined;
 
@@ -260,10 +261,12 @@ export function MaterialSpecificationsSection(props: MaterialSpecificationsSecti
   const handleSpecSelect = async (specId: number) => {
     let recommendedPressureClassId = globalSpecs?.flangePressureClassId;
     const newSteelSpec = masterData.steelSpecs?.find((s) => s.id === specId);
-    const specName = newSteelSpec?.steelSpecName || "";
+    const rawSteelSpecName = newSteelSpec?.steelSpecName;
+    const specName = rawSteelSpecName || "";
 
     try {
-      if (specName && (globalSpecs?.workingPressureBar || globalSpecs?.workingTemperatureC)) {
+      const rawWorkingPressureBar = globalSpecs?.workingPressureBar;
+      if (specName && (rawWorkingPressureBar || globalSpecs?.workingTemperatureC)) {
         const suitability = await materialValidationApi.checkMaterialSuitability(
           specName,
           globalSpecs?.workingTemperatureC,
@@ -405,7 +408,8 @@ export function MaterialSpecificationsSection(props: MaterialSpecificationsSecti
   const selectedStandard = masterData.flangeStandards?.find(
     (s) => s.id === globalSpecs?.flangeStandardId,
   );
-  const standardCode = selectedStandard?.code || "";
+  const rawCode = selectedStandard?.code;
+  const standardCode = rawCode || "";
   const flangeTypesForSelected = flangeTypesForStandardCode(allFlangeTypes, standardCode);
 
   const selectedSteelSpec = masterData.steelSpecs?.find(
@@ -427,14 +431,27 @@ export function MaterialSpecificationsSection(props: MaterialSpecificationsSecti
   })();
   const isSelectedSpecUnsuitable = !selectedSpecSuitability.isSuitable;
 
+  const rawSteelSpecName2 = masterData.steelSpecs?.find(
+    (s) => s.id === globalSpecs.steelSpecificationId,
+  )?.steelSpecName;
+
+  const rawWorkingPressureBar2 = globalSpecs?.workingPressureBar;
+
+  const rawCode2 = masterData.flangeStandards?.find(
+    (s) => s.id === globalSpecs.flangeStandardId,
+  )?.code;
+
+  const rawIsLower = pressureClassOverrideStatus.isLower;
+  const rawFlangePressureClassId = globalSpecs?.flangePressureClassId;
+  const rawFlangeTypeCode = globalSpecs?.flangeTypeCode;
+  const rawFlangeFace = globalSpecs?.flangeFace;
+
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-3">
       <h3 className="text-xs font-semibold text-gray-800 mb-2">Material Specifications</h3>
-
       {isArSteelSelected && (
         <ArSteelWarningBanner steelSpecName={selectedSteelSpecName} className="mb-3" />
       )}
-
       <div className="grid grid-cols-5 gap-3">
         <div ref={steelSpecDropdownRef} className="relative col-span-2">
           <label
@@ -453,8 +470,7 @@ export function MaterialSpecificationsSection(props: MaterialSpecificationsSecti
           >
             <span className={globalSpecs?.steelSpecificationId ? "text-gray-900" : "text-gray-400"}>
               {globalSpecs?.steelSpecificationId
-                ? masterData.steelSpecs?.find((s) => s.id === globalSpecs.steelSpecificationId)
-                    ?.steelSpecName || "Select steel specification..."
+                ? rawSteelSpecName2 || "Select steel specification..."
                 : "Select steel specification..."}
             </span>
             <svg
@@ -475,14 +491,18 @@ export function MaterialSpecificationsSection(props: MaterialSpecificationsSecti
             <div className="absolute z-[10000] mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto">
               {groups.map((group, groupIdx) => {
                 const specs =
-                  masterData.steelSpecs?.filter((spec) => group.filter(spec.steelSpecName || "")) ||
-                  [];
-                const suitableSpecs = specs.filter((spec) =>
-                  isSpecSuitable(spec.steelSpecName || ""),
-                );
-                const unsuitableSpecs = specs.filter(
-                  (spec) => !isSpecSuitable(spec.steelSpecName || ""),
-                );
+                  masterData.steelSpecs?.filter((spec) => {
+                    const rawSteelSpecName3 = spec.steelSpecName;
+                    return group.filter(rawSteelSpecName3 || "");
+                  }) || [];
+                const suitableSpecs = specs.filter((spec) => {
+                  const rawSteelSpecName4 = spec.steelSpecName;
+                  return isSpecSuitable(rawSteelSpecName4 || "");
+                });
+                const unsuitableSpecs = specs.filter((spec) => {
+                  const rawSteelSpecName5 = spec.steelSpecName;
+                  return !isSpecSuitable(rawSteelSpecName5 || "");
+                });
 
                 if (specs.length === 0) return null;
 
@@ -492,8 +512,9 @@ export function MaterialSpecificationsSection(props: MaterialSpecificationsSecti
                       {suitableSpecs.length > 0 ? group.label : `${group.label} (Not Suitable)`}
                     </div>
                     {suitableSpecs.map((spec) => {
+                      const rawSteelSpecName6 = spec.steelSpecName;
                       const isAllowedForUnregistered = isSteelSpecAllowedForUnregistered(
-                        spec.steelSpecName || "",
+                        rawSteelSpecName6 || "",
                       );
                       const isRestricted = isUnregisteredCustomer && !isAllowedForUnregistered;
 
@@ -539,8 +560,9 @@ export function MaterialSpecificationsSection(props: MaterialSpecificationsSecti
                       );
                     })}
                     {unsuitableSpecs.map((spec) => {
+                      const rawSteelSpecName7 = spec.steelSpecName;
                       const isAllowedForUnregistered = isSteelSpecAllowedForUnregistered(
-                        spec.steelSpecName || "",
+                        rawSteelSpecName7 || "",
                       );
                       const isRestricted = isUnregisteredCustomer && !isAllowedForUnregistered;
 
@@ -579,7 +601,7 @@ export function MaterialSpecificationsSection(props: MaterialSpecificationsSecti
             </div>
           )}
           {globalSpecs?.steelSpecificationId &&
-            (globalSpecs?.workingPressureBar || globalSpecs?.workingTemperatureC) &&
+            (rawWorkingPressureBar2 || globalSpecs?.workingTemperatureC) &&
             (() => {
               if (selectedSpecSuitability.isSuitable) {
                 return (
@@ -647,8 +669,7 @@ export function MaterialSpecificationsSection(props: MaterialSpecificationsSecti
               {globalSpecs?.flangeStandardId === "PE"
                 ? "Plain Ended (No Flanges)"
                 : globalSpecs?.flangeStandardId
-                  ? masterData.flangeStandards?.find((s) => s.id === globalSpecs.flangeStandardId)
-                      ?.code || "Select flange standard..."
+                  ? rawCode2 || "Select flange standard..."
                   : "Select flange standard..."}
             </span>
             <svg
@@ -735,7 +756,7 @@ export function MaterialSpecificationsSection(props: MaterialSpecificationsSecti
               (pressureClassOverrideStatus.isOverride ? (
                 <span
                   className={`ml-1 text-xs font-normal ${
-                    pressureClassOverrideStatus.isLower || isPressureClassUnsuitable
+                    rawIsLower || isPressureClassUnsuitable
                       ? "text-red-600"
                       : pressureClassOverrideStatus.isHigher
                         ? "text-orange-500"
@@ -755,7 +776,7 @@ export function MaterialSpecificationsSection(props: MaterialSpecificationsSecti
           ) : (
             <>
               <select
-                value={globalSpecs?.flangePressureClassId || ""}
+                value={rawFlangePressureClassId || ""}
                 onChange={(e) =>
                   onUpdateGlobalSpecs({
                     ...globalSpecs,
@@ -787,7 +808,9 @@ export function MaterialSpecificationsSection(props: MaterialSpecificationsSecti
                       const numA = extractNumeric(a.designation);
                       const numB = extractNumeric(b.designation);
                       if (numA !== numB) return numA - numB;
-                      return (a.designation || "").localeCompare(b.designation || "");
+                      const rawDesignation = a.designation;
+                      const rawDesignation2 = b.designation;
+                      return (rawDesignation || "").localeCompare(rawDesignation2 || "");
                     })
                     .map((pc) => {
                       const numericPart = pc.designation.replace(/\/\d+$/, "");
@@ -947,9 +970,10 @@ export function MaterialSpecificationsSection(props: MaterialSpecificationsSecti
           <div>
             <label className="block text-xs font-semibold text-gray-900 mb-1">Flange Type *</label>
             <select
-              value={globalSpecs?.flangeTypeCode || ""}
+              value={rawFlangeTypeCode || ""}
               onChange={(e) => {
-                const newFlangeTypeCode = e.target.value || undefined;
+                const rawValue2 = e.target.value;
+                const newFlangeTypeCode = rawValue2 || undefined;
                 let newPressureClassId = globalSpecs?.flangePressureClassId;
 
                 if (
@@ -1002,7 +1026,7 @@ export function MaterialSpecificationsSection(props: MaterialSpecificationsSecti
                 )}
             </label>
             <select
-              value={globalSpecs?.flangeFace || ""}
+              value={rawFlangeFace || ""}
               onChange={(e) =>
                 onUpdateGlobalSpecs({
                   ...globalSpecs,

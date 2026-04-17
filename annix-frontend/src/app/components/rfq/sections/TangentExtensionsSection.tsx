@@ -21,12 +21,11 @@ function TangentExtensionsSectionComponent({
     (e: React.ChangeEvent<HTMLSelectElement>) => {
       const count = parseInt(e.target.value, 10) || 0;
       const currentLengths = tangentLengths || [];
+      const rawItem0 = currentLengths[0];
+      const rawItem02 = currentLengths[0];
+      const rawItem1 = currentLengths[1];
       const newLengths =
-        count === 0
-          ? []
-          : count === 1
-            ? [currentLengths[0] || 150]
-            : [currentLengths[0] || 150, currentLengths[1] || 150];
+        count === 0 ? [] : count === 1 ? [rawItem0 || 150] : [rawItem02 || 150, rawItem1 || 150];
       onTangentCountChange(count, newLengths);
     },
     [tangentLengths, onTangentCountChange],
@@ -45,6 +44,9 @@ function TangentExtensionsSectionComponent({
     },
     [onTangentLengthChange],
   );
+
+  const rawItem03 = tangentLengths[0];
+  const rawItem12 = tangentLengths[1];
 
   return (
     <div className="bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded-lg p-3 mt-3">
@@ -83,7 +85,7 @@ function TangentExtensionsSectionComponent({
             <input
               id={`bend-tangent1-length-${entryId}`}
               type="number"
-              value={tangentLengths[0] || ""}
+              value={rawItem03 || ""}
               onChange={handleLength1Change}
               className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
               min="0"
@@ -102,7 +104,7 @@ function TangentExtensionsSectionComponent({
             <input
               id={`bend-tangent2-length-${entryId}`}
               type="number"
-              value={tangentLengths[1] || ""}
+              value={rawItem12 || ""}
               onChange={handleLength2Change}
               className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
               min="0"

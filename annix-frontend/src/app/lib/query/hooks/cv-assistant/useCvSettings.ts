@@ -53,15 +53,22 @@ export function useCvUpdateImapSettings() {
       imapPassword?: string | null;
       monitoringEnabled?: boolean;
       emailFromAddress?: string | null;
-    }) =>
-      cvAssistantApiClient.updateImapSettings({
-        imapHost: data.imapHost ?? undefined,
-        imapPort: data.imapPort ?? undefined,
-        imapUser: data.imapUser ?? undefined,
-        imapPassword: data.imapPassword ?? undefined,
+    }) => {
+      const rawImapHost = data.imapHost;
+      const rawImapPort = data.imapPort;
+      const rawImapUser = data.imapUser;
+      const rawImapPassword = data.imapPassword;
+      const rawEmailFromAddress = data.emailFromAddress;
+
+      return cvAssistantApiClient.updateImapSettings({
+        imapHost: rawImapHost || undefined,
+        imapPort: rawImapPort || undefined,
+        imapUser: rawImapUser || undefined,
+        imapPassword: rawImapPassword || undefined,
         monitoringEnabled: data.monitoringEnabled,
-        emailFromAddress: data.emailFromAddress ?? undefined,
-      }),
+        emailFromAddress: rawEmailFromAddress || undefined,
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: cvAssistantKeys.settings.all });
     },

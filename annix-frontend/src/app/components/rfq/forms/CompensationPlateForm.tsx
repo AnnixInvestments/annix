@@ -184,8 +184,10 @@ function PlateEntryCard({
     [entry.dimensions],
   );
 
+  const rawDefaultCostPerKg = material?.defaultCostPerKg;
+
   const effectiveCostPerKg =
-    entry.costPerKgOverride !== null ? entry.costPerKgOverride : material?.defaultCostPerKg || 0;
+    entry.costPerKgOverride !== null ? entry.costPerKgOverride : rawDefaultCostPerKg || 0;
 
   useEffect(() => {
     const result = calculateCompensationPlate(
@@ -234,9 +236,18 @@ function PlateEntryCard({
     }
   };
 
+  const rawName = standardSize?.name;
+
   const sizeLabel = entry.isCustomSize
     ? `Custom ${entry.dimensions.lengthMm}×${entry.dimensions.widthMm}×${entry.dimensions.thicknessMm}mm`
-    : standardSize?.name || "Unknown";
+    : rawName || "Unknown";
+
+  const rawCode = material?.code;
+  const rawStandardSizeId = entry.standardSizeId;
+  const rawQuantity = entry.quantity;
+  const rawCostPerKgOverride = entry.costPerKgOverride;
+  const rawDefaultCostPerKg2 = material?.defaultCostPerKg;
+  const rawNotes = entry.notes;
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
@@ -250,7 +261,7 @@ function PlateEntryCard({
           </span>
           <div>
             <h4 className="font-semibold text-gray-900">
-              Compensation Plate - {material?.code || "Unknown"}
+              Compensation Plate - {rawCode || "Unknown"}
             </h4>
             <p className="text-sm text-gray-500">
               {sizeLabel} | Qty: {entry.quantity}
@@ -277,7 +288,6 @@ function PlateEntryCard({
           </svg>
         </div>
       </div>
-
       {isExpanded && (
         <div className="p-4 space-y-4">
           {validationErrors.length > 0 && (
@@ -310,7 +320,7 @@ function PlateEntryCard({
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Standard Size</label>
               <select
-                value={entry.standardSizeId || "custom"}
+                value={rawStandardSizeId || "custom"}
                 onChange={(e) => {
                   if (e.target.value === "custom") {
                     onUpdate({ isCustomSize: true, standardSizeId: null });
@@ -434,7 +444,7 @@ function PlateEntryCard({
               <label className="block text-sm font-medium text-gray-700 mb-1">Quantity</label>
               <input
                 type="number"
-                value={entry.quantity ?? ""}
+                value={rawQuantity || ""}
                 onChange={(e) => {
                   const rawValue = e.target.value;
                   if (rawValue === "") {
@@ -472,11 +482,11 @@ function PlateEntryCard({
               {showCostOverride ? (
                 <input
                   type="number"
-                  value={entry.costPerKgOverride || ""}
+                  value={rawCostPerKgOverride || ""}
                   onChange={(e) =>
                     onUpdate({ costPerKgOverride: parseFloat(e.target.value) || null })
                   }
-                  placeholder={`Default: R${material?.defaultCostPerKg || 0}`}
+                  placeholder={`Default: R${rawDefaultCostPerKg2 || 0}`}
                   className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-purple-500"
                   min={0}
                   step={0.01}
@@ -494,7 +504,7 @@ function PlateEntryCard({
               </label>
               <input
                 type="text"
-                value={entry.notes || ""}
+                value={rawNotes || ""}
                 onChange={(e) => onUpdate({ notes: e.target.value })}
                 placeholder="e.g., Purpose, location..."
                 className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-purple-500"

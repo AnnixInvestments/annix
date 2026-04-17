@@ -5,8 +5,10 @@ export interface FormatCurrencyOptions {
 }
 
 export const formatCurrency = (value: number, options: FormatCurrencyOptions = {}): string => {
-  const symbol = options.symbol ?? "R";
-  const locale = options.locale ?? "en-ZA";
+  const rawSymbol = options.symbol;
+  const symbol = rawSymbol || "R";
+  const rawLocale = options.locale;
+  const locale = rawLocale || "en-ZA";
   const decimals = options.decimals;
 
   if (decimals === undefined) {

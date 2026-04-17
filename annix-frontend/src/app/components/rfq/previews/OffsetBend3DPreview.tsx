@@ -58,7 +58,8 @@ function LooseFlange({
   closureLength: number;
 }) {
   const gapLength = 0.1;
-  const flangeData = FLANGE_DATA[nb] || FLANGE_DATA[200];
+  const rawNb = FLANGE_DATA[nb];
+  const flangeData = rawNb || FLANGE_DATA[200];
   const flangeThicknessScaled = flangeData.thickness / SCALE_FACTOR;
 
   const direction = normal.clone().normalize();
@@ -112,7 +113,9 @@ function OffsetBendScene({
 
   const weldTubeRadius = outerRadius * 0.06;
 
-  const flangeData = FLANGE_DATA[nominalBore] || FLANGE_DATA[200];
+  const rawNominalBore = FLANGE_DATA[nominalBore];
+
+  const flangeData = rawNominalBore || FLANGE_DATA[200];
   const flangeThickness = flangeData.thickness / SCALE_FACTOR;
 
   const startA = new THREE.Vector3(0, 0, 0);
@@ -441,7 +444,8 @@ export default function OffsetBend3DPreview(props: OffsetBend3DPreviewProps) {
   const flangeFaceDistance = Math.round(lengthA + lengthB * Math.cos(angleRad) + lengthC);
 
   const flangeCount = [hasStartFlange, hasEndFlange].filter(Boolean).length;
-  const flangeData = FLANGE_DATA[nominalBore] || FLANGE_DATA[200];
+  const rawNominalBore2 = FLANGE_DATA[nominalBore];
+  const flangeData = rawNominalBore2 || FLANGE_DATA[200];
 
   if (isHidden) {
     return (

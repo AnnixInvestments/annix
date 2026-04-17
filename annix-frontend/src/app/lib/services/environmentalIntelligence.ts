@@ -732,9 +732,12 @@ export async function fetchEnvironmentalData(
         ? "Moderate"
         : "None";
 
+  const rawEcpMarineInfluence = data.ecpMarineInfluence;
+  const rawHumidity = metadata.humidity;
+
   data.ecpIso12944Category = classifyIso12944(
-    data.ecpMarineInfluence || "None",
-    metadata.humidity ?? null,
+    rawEcpMarineInfluence || "None",
+    rawHumidity || null,
     pollutionForIso as "None" | "Moderate" | "Heavy",
   );
 

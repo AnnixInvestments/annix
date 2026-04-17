@@ -38,15 +38,20 @@ export function resolveFlangeConfig(
   globalSpecs: FlangeConfigSpecs | null | undefined,
   masterData: FlangeConfigMasterData,
 ): ResolvedFlangeConfig {
-  const flangeStandardId = specs.flangeStandardId || globalSpecs?.flangeStandardId;
-  const flangePressureClassId = specs.flangePressureClassId || globalSpecs?.flangePressureClassId;
-  const flangeTypeCode = specs.flangeTypeCode || globalSpecs?.flangeTypeCode || "";
+  const rawFlangeStandardId = specs.flangeStandardId;
+  const flangeStandardId = rawFlangeStandardId || globalSpecs?.flangeStandardId;
+  const rawFlangePressureClassId = specs.flangePressureClassId;
+  const flangePressureClassId = rawFlangePressureClassId || globalSpecs?.flangePressureClassId;
+  const rawFlangeTypeCode = specs.flangeTypeCode;
+  const flangeTypeCode = rawFlangeTypeCode || globalSpecs?.flangeTypeCode || "";
 
   const flangeStandard = masterData.flangeStandards?.find((s) => s.id === flangeStandardId);
-  const flangeStandardCode = flangeStandard?.code || "";
+  const rawCode = flangeStandard?.code;
+  const flangeStandardCode = rawCode || "";
 
   const pressureClass = masterData.pressureClasses?.find((p) => p.id === flangePressureClassId);
-  const pressureClassDesignation = pressureClass?.designation || "";
+  const rawDesignation = pressureClass?.designation;
+  const pressureClassDesignation = rawDesignation || "";
 
   return {
     flangeStandardId,

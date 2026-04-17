@@ -22,11 +22,16 @@ const SSURGO_BASE = "https://sdmdataaccess.sc.egov.usda.gov/Tabular/post.rest";
 const OPEN_METEO_BASE = "https://api.open-meteo.com/v1";
 const OPENWEATHER_BASE = "https://api.openweathermap.org/data/2.5";
 
+const rawNEXT_PUBLIC_AGROMONITORING_API_KEY = process.env.NEXT_PUBLIC_AGROMONITORING_API_KEY;
+
 // Get API keys from environment
-const AGROMONITORING_API_KEY = process.env.NEXT_PUBLIC_AGROMONITORING_API_KEY || "";
-const OPENWEATHER_API_KEY = process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY || "";
-const ISDASOIL_USERNAME = process.env.NEXT_PUBLIC_ISDASOIL_USERNAME || "";
-const ISDASOIL_PASSWORD = process.env.NEXT_PUBLIC_ISDASOIL_PASSWORD || "";
+const AGROMONITORING_API_KEY = rawNEXT_PUBLIC_AGROMONITORING_API_KEY || "";
+const rawNEXT_PUBLIC_OPENWEATHER_API_KEY = process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY;
+const OPENWEATHER_API_KEY = rawNEXT_PUBLIC_OPENWEATHER_API_KEY || "";
+const rawNEXT_PUBLIC_ISDASOIL_USERNAME = process.env.NEXT_PUBLIC_ISDASOIL_USERNAME;
+const ISDASOIL_USERNAME = rawNEXT_PUBLIC_ISDASOIL_USERNAME || "";
+const rawNEXT_PUBLIC_ISDASOIL_PASSWORD = process.env.NEXT_PUBLIC_ISDASOIL_PASSWORD;
+const ISDASOIL_PASSWORD = rawNEXT_PUBLIC_ISDASOIL_PASSWORD || "";
 
 // Cache for iSDAsoil token (expires after 60 minutes)
 let iSDAsoilToken: { token: string; expires: number } | null = null;
@@ -1298,6 +1303,11 @@ async function fetchOpenWeatherMapFallback(
 
     const data = await response.json();
 
+    const raw1h = data.rain["1h"];
+    const raw1h2 = data.snow["1h"];
+    const raw1h3 = data.rain?.["1h"];
+    const raw1h4 = data.snow?.["1h"];
+
     // Transform standard API response to match One Call structure
     // Standard API includes: main, wind, clouds, rain, snow, etc.
     return {
@@ -1312,8 +1322,8 @@ async function fetchOpenWeatherMapFallback(
         wind_speed: data.wind?.speed,
         wind_deg: data.wind?.deg,
         clouds: data.clouds?.all,
-        rain: data.rain ? { "1h": data.rain["1h"] || data.rain["3h"] / 3 } : undefined,
-        snow: data.snow ? { "1h": data.snow["1h"] || data.snow["3h"] / 3 } : undefined,
+        rain: data.rain ? { "1h": raw1h || data.rain["3h"] / 3 } : undefined,
+        snow: data.snow ? { "1h": raw1h2 || data.snow["3h"] / 3 } : undefined,
       },
       daily: [
         {
@@ -1336,8 +1346,8 @@ async function fetchOpenWeatherMapFallback(
           wind_speed: data.wind?.speed,
           wind_deg: data.wind?.deg,
           clouds: data.clouds?.all,
-          rain: data.rain?.["1h"] || (data.rain?.["3h"] ? data.rain["3h"] / 3 : undefined),
-          snow: data.snow?.["1h"] || (data.snow?.["3h"] ? data.snow["3h"] / 3 : undefined),
+          rain: raw1h3 || (data.rain?.["3h"] ? data.rain["3h"] / 3 : undefined),
+          snow: raw1h4 || (data.snow?.["3h"] ? data.snow["3h"] / 3 : undefined),
         },
       ],
     };
@@ -1362,12 +1372,18 @@ export function extractWeatherData(data: OpenWeatherOneCallResponse | null): Wea
     // Calculate humidity min/max from hourly data if available
     let humidityMin = today.humidity;
     let humidityMax = today.humidity;
-    let avgWindSpeed = today.wind_speed ?? 0;
-    let avgWindDeg = today.wind_deg ?? 0;
-    let avgUvi = today.uvi ?? 0;
-    let avgClouds = today.clouds ?? 0;
-    let totalRain = today.rain ?? 0;
-    let totalSnow = today.snow ?? 0;
+    const rawWind_speed = today.wind_speed;
+    let avgWindSpeed = rawWind_speed || 0;
+    const rawWind_deg = today.wind_deg;
+    let avgWindDeg = rawWind_deg || 0;
+    const rawUvi = today.uvi;
+    let avgUvi = rawUvi || 0;
+    const rawClouds = today.clouds;
+    let avgClouds = rawClouds || 0;
+    const rawRain = today.rain;
+    let totalRain = rawRain || 0;
+    const rawSnow = today.snow;
+    let totalSnow = rawSnow || 0;
 
     if (data.hourly && data.hourly.length > 0) {
       // Get first 24 hours of data
@@ -1377,10 +1393,26 @@ export function extractWeatherData(data: OpenWeatherOneCallResponse | null): Wea
       humidityMax = Math.max(...humidityValues);
 
       // Calculate averages from hourly data
-      const windSpeeds = todayHourly.map((h) => h.wind_speed ?? 0);
-      const windDegs = todayHourly.map((h) => h.wind_deg ?? 0);
-      const uvis = todayHourly.map((h) => h.uvi ?? 0);
-      const clouds = todayHourly.map((h) => h.clouds ?? 0);
+      const windSpeeds = todayHourly.map((h) => {
+        const rawWind_speed2 = h.wind_speed;
+        const rawWind_speed3 = h.wind_speed;
+        return rawWind_speed3 || 0;
+      });
+      const windDegs = todayHourly.map((h) => {
+        const rawWind_deg2 = h.wind_deg;
+        const rawWind_deg3 = h.wind_deg;
+        return rawWind_deg3 || 0;
+      });
+      const uvis = todayHourly.map((h) => {
+        const rawUvi2 = h.uvi;
+        const rawUvi3 = h.uvi;
+        return rawUvi3 || 0;
+      });
+      const clouds = todayHourly.map((h) => {
+        const rawClouds2 = h.clouds;
+        const rawClouds3 = h.clouds;
+        return rawClouds3 || 0;
+      });
 
       avgWindSpeed = windSpeeds.reduce((a, b) => a + b, 0) / windSpeeds.length;
       avgWindDeg = windDegs.reduce((a, b) => a + b, 0) / windDegs.length;
@@ -1388,8 +1420,14 @@ export function extractWeatherData(data: OpenWeatherOneCallResponse | null): Wea
       avgClouds = clouds.reduce((a, b) => a + b, 0) / clouds.length;
 
       // Sum up rainfall from hourly
-      totalRain = todayHourly.reduce((sum, h) => sum + (h.rain?.["1h"] || 0), 0);
-      totalSnow = todayHourly.reduce((sum, h) => sum + (h.snow?.["1h"] || 0), 0);
+      totalRain = todayHourly.reduce((sum, h) => {
+        const raw1h5 = h.rain?.["1h"];
+        return sum + (raw1h5 || 0);
+      }, 0);
+      totalSnow = todayHourly.reduce((sum, h) => {
+        const raw1h6 = h.snow?.["1h"];
+        return sum + (raw1h6 || 0);
+      }, 0);
     }
 
     const tempMin = Math.round(today.temp.min * 10) / 10;
@@ -1429,12 +1467,18 @@ export function extractWeatherData(data: OpenWeatherOneCallResponse | null): Wea
   if (data.current) {
     const temp = data.current.temp;
     const humidity = data.current.humidity;
-    const windSpeed = data.current.wind_speed ?? 0;
-    const windDeg = data.current.wind_deg ?? 0;
-    const uvi = data.current.uvi ?? 0;
-    const clouds = data.current.clouds ?? 0;
-    const rain = data.current.rain?.["1h"] || 0;
-    const snow = data.current.snow?.["1h"] || 0;
+    const rawWind_speed4 = data.current.wind_speed;
+    const windSpeed = rawWind_speed4 || 0;
+    const rawWind_deg4 = data.current.wind_deg;
+    const windDeg = rawWind_deg4 || 0;
+    const rawUvi4 = data.current.uvi;
+    const uvi = rawUvi4 || 0;
+    const rawClouds4 = data.current.clouds;
+    const clouds = rawClouds4 || 0;
+    const raw1h7 = data.current.rain?.["1h"];
+    const rain = raw1h7 || 0;
+    const raw1h8 = data.current.snow?.["1h"];
+    const snow = raw1h8 || 0;
 
     return {
       temperature: {

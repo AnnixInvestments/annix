@@ -61,7 +61,8 @@ export function calculateFlangeWeldVolume(params: {
   config?: WeldVolumeConfig;
 }): { volumeMm3: number; volumeCm3: number; legSizeMm: number; weldLengthMm: number } {
   const { outsideDiameterMm, wallThicknessMm, numberOfFlangeWelds, config } = params;
-  const legSizeMm = config?.filletLegSizeMm || calculateFilletWeldLegSize(wallThicknessMm);
+  const rawFilletLegSizeMm = config?.filletLegSizeMm;
+  const legSizeMm = rawFilletLegSizeMm || calculateFilletWeldLegSize(wallThicknessMm);
   const circumferenceMm = Math.PI * outsideDiameterMm;
   const crossSectionMm2 = filletWeldCrossSectionMm2(legSizeMm);
   const weldLengthMm = circumferenceMm * 2 * numberOfFlangeWelds;
@@ -78,9 +79,12 @@ export function calculateButtWeldVolume(params: {
   config?: WeldVolumeConfig;
 }): { volumeMm3: number; volumeCm3: number; weldLengthMm: number } {
   const { outsideDiameterMm, wallThicknessMm, numberOfButtWelds, config } = params;
-  const rootGapMm = config?.rootGapMm || DEFAULT_WELD_CONFIG.rootGapMm;
-  const grooveAngleDeg = config?.grooveAngleDeg || DEFAULT_WELD_CONFIG.grooveAngleDeg;
-  const reinforcementMm = config?.reinforcementMm || DEFAULT_WELD_CONFIG.reinforcementMm;
+  const rawRootGapMm = config?.rootGapMm;
+  const rootGapMm = rawRootGapMm || DEFAULT_WELD_CONFIG.rootGapMm;
+  const rawGrooveAngleDeg = config?.grooveAngleDeg;
+  const grooveAngleDeg = rawGrooveAngleDeg || DEFAULT_WELD_CONFIG.grooveAngleDeg;
+  const rawReinforcementMm = config?.reinforcementMm;
+  const reinforcementMm = rawReinforcementMm || DEFAULT_WELD_CONFIG.reinforcementMm;
 
   const circumferenceMm = Math.PI * outsideDiameterMm;
   const crossSectionMm2 = buttWeldCrossSectionMm2(
@@ -116,7 +120,9 @@ export function calculateSaddleWeldVolume(params: {
       ? STEINMETZ_FACTOR * branchOdMm // Equal diameters - use Steinmetz
       : Math.PI * branchOdMm * Math.sqrt(1 + diameterRatio * diameterRatio); // Unequal - approximation
 
-  const legSizeMm = config?.filletLegSizeMm || calculateFilletWeldLegSize(wallThicknessMm);
+  const rawFilletLegSizeMm2 = config?.filletLegSizeMm;
+
+  const legSizeMm = rawFilletLegSizeMm2 || calculateFilletWeldLegSize(wallThicknessMm);
   const crossSectionMm2 = filletWeldCrossSectionMm2(legSizeMm);
   const volumeMm3 = crossSectionMm2 * weldLengthMm;
   const volumeCm3 = volumeMm3 / 1000;

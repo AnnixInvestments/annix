@@ -134,7 +134,8 @@ export const extractPressureClassRating = (
   }
 
   if (code.includes("ASME") || code.includes("B16")) {
-    const ratingBar = ASME_CLASS_TO_AMBIENT_BAR[classValue] || 0;
+    const rawClassValue = ASME_CLASS_TO_AMBIENT_BAR[classValue];
+    const ratingBar = rawClassValue || 0;
     return { ratingBar, ratingType: "Class" };
   }
 

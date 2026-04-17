@@ -18,8 +18,10 @@ export interface UseSortStateReturn<TField extends string> {
 export function useSortState<TField extends string = string>(
   options: UseSortStateOptions<TField> = {},
 ): UseSortStateReturn<TField> {
-  const initialField = options.initialField ?? null;
-  const initialDirection = options.initialDirection ?? "desc";
+  const rawInitialField = options.initialField;
+  const initialField = rawInitialField || null;
+  const rawInitialDirection = options.initialDirection;
+  const initialDirection = rawInitialDirection || "desc";
 
   const [field, setField] = useState<TField | null>(initialField);
   const [direction, setDirection] = useState<SortDirection>(initialDirection);

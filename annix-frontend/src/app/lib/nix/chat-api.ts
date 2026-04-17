@@ -204,7 +204,8 @@ export const nixChatApi = {
 
     if (!response.ok) {
       const body = await response.json().catch(() => null);
-      const message = body?.error || `Failed to send message: ${response.statusText}`;
+      const rawError = body?.error;
+      const message = rawError || `Failed to send message: ${response.statusText}`;
       throw new Error(message);
     }
 
@@ -392,7 +393,8 @@ export const nixChatApi = {
 
     if (!response.ok) {
       const body = await response.json().catch(() => null);
-      const errorMessage = body?.error || `Failed to parse items: ${response.statusText}`;
+      const rawError2 = body?.error;
+      const errorMessage = rawError2 || `Failed to parse items: ${response.statusText}`;
       throw new Error(errorMessage);
     }
 
@@ -424,7 +426,8 @@ export const nixChatApi = {
 
     if (!response.ok) {
       const body = await response.json().catch(() => null);
-      const errorMessage = body?.error || `Failed to create items: ${response.statusText}`;
+      const rawError3 = body?.error;
+      const errorMessage = rawError3 || `Failed to create items: ${response.statusText}`;
       throw new Error(errorMessage);
     }
 

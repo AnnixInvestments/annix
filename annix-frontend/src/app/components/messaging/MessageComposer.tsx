@@ -48,7 +48,8 @@ export function MessageComposer(props: MessageComposerProps) {
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
+    const rawFiles = e.target.files;
+    const files = Array.from(rawFiles || []);
     setAttachments((prev) => [...prev, ...files]);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";

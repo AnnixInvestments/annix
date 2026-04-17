@@ -114,8 +114,10 @@ const applyRules = (specs: Record<string, unknown>, rules: FieldRule[]): ItemIss
   }, []);
 
 export const diagnoseItem = (item: PipeItem, _globalSpecs?: GlobalSpecs): ItemDiagnosticResult => {
-  const specs = (item.specs ?? {}) as Record<string, unknown>;
-  const rules = RULES_BY_ITEM_TYPE[item.itemType] ?? [];
+  const rawSpecs = item.specs;
+  const specs = (rawSpecs || {}) as Record<string, unknown>;
+  const rawItemType = RULES_BY_ITEM_TYPE[item.itemType];
+  const rules = rawItemType || [];
   const issues = applyRules(specs, rules);
 
   if (

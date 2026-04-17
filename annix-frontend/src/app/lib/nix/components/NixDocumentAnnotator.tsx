@@ -244,13 +244,16 @@ export default function NixDocumentAnnotator(props: NixDocumentAnnotatorProps) {
 
   const currentPageData = pages[currentPage - 1];
 
+  const rawLabel = currentField?.label;
+  const rawLabel2 = currentField?.label;
+  const rawLabel3 = currentField?.label;
+
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center px-4">
       <div
         className="absolute inset-0 bg-black/10 backdrop-blur-md"
         onClick={(e) => e.stopPropagation()}
       />
-
       <div
         ref={containerRef}
         className="relative bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[95vh] overflow-hidden flex flex-col animate-in fade-in zoom-in duration-300"
@@ -285,10 +288,10 @@ export default function NixDocumentAnnotator(props: NixDocumentAnnotatorProps) {
           </div>
           <div className="flex-1">
             <h2 className="text-lg font-bold text-gray-900">
-              Help Me Find: {currentField?.label || "Information"}
+              Help Me Find: {rawLabel || "Information"}
             </h2>
             <p className="text-sm text-gray-600">
-              Draw a box around the {currentField?.label || "field"} in your{" "}
+              Draw a box around the {rawLabel2 || "field"} in your{" "}
               {DOCUMENT_TYPE_LABELS[documentType]}
             </p>
             <div className="flex items-center gap-2 mt-1">
@@ -503,7 +506,7 @@ export default function NixDocumentAnnotator(props: NixDocumentAnnotatorProps) {
             {!selection && !extractedText && (
               <p className="flex-1 text-center text-gray-500 text-sm">
                 Click and drag on the document to select the area containing the{" "}
-                {currentField?.label || "information"}
+                {rawLabel3 || "information"}
               </p>
             )}
 

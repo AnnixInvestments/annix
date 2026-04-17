@@ -265,8 +265,11 @@ export const fieldsByStep = (step: number): FieldDefinition[] =>
 export const requiredFieldsByStep = (step: number): FieldDefinition[] =>
   fieldsByStep(step).filter((field) => field.required);
 
-export const fieldById = (fieldId: string): FieldDefinition | null =>
-  RFQ_FIELD_REGISTRY[fieldId] ?? null;
+export const fieldById = (fieldId: string): FieldDefinition | null => {
+  const rawFieldId = RFQ_FIELD_REGISTRY[fieldId];
+  const rawFieldId2 = RFQ_FIELD_REGISTRY[fieldId];
+  return rawFieldId2 || null;
+};
 
 export const nextRequiredField = (
   currentFieldId: string | null,
@@ -277,7 +280,8 @@ export const nextRequiredField = (
   const incomplete = stepFields.filter((f) => !completedFields.includes(f.fieldId));
 
   if (!currentFieldId) {
-    return incomplete[0] ?? null;
+    const rawItem0 = incomplete[0];
+    return rawItem0 || null;
   }
 
   const currentIndex = stepFields.findIndex((f) => f.fieldId === currentFieldId);
@@ -286,7 +290,9 @@ export const nextRequiredField = (
     return fIndex > currentIndex;
   });
 
-  return remaining[0] ?? incomplete[0] ?? null;
+  const rawItem02 = remaining[0];
+
+  return (rawItem02 || incomplete[0]) ?? null;
 };
 
 export const nextField = (
@@ -298,7 +304,8 @@ export const nextField = (
   const incomplete = stepFields.filter((f) => !completedFields.includes(f.fieldId));
 
   if (!currentFieldId) {
-    return incomplete[0] ?? null;
+    const rawItem03 = incomplete[0];
+    return rawItem03 || null;
   }
 
   const currentIndex = stepFields.findIndex((f) => f.fieldId === currentFieldId);
@@ -307,7 +314,9 @@ export const nextField = (
     return fIndex > currentIndex;
   });
 
-  return remaining[0] ?? null;
+  const rawItem04 = remaining[0];
+
+  return rawItem04 || null;
 };
 
 export const progressForStep = (step: number, completedFields: string[]): number => {

@@ -48,6 +48,12 @@ export function PvcSpecificationsSection(props: PvcSpecificationsSectionProps) {
   const isComplete =
     globalSpecs.pvcType && globalSpecs.pvcPressureClass && globalSpecs.pvcJoiningMethod;
 
+  const rawPvcType = globalSpecs.pvcType;
+  const rawPvcPressureClass = globalSpecs.pvcPressureClass;
+  const rawPvcJoiningMethod = globalSpecs.pvcJoiningMethod;
+  const rawDensityKgM3 = selectedMaterial?.densityKgM3;
+  const rawMaxTemperatureC = selectedMaterial?.maxTemperatureC;
+
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-4">
       <div className="flex items-center justify-between mb-3">
@@ -63,14 +69,13 @@ export function PvcSpecificationsSection(props: PvcSpecificationsSectionProps) {
           </span>
         )}
       </div>
-
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
           <label className="block text-xs font-semibold text-gray-900 mb-1">
             PVC Type <span className="text-red-600">*</span>
           </label>
           <select
-            value={globalSpecs.pvcType ?? ""}
+            value={rawPvcType || ""}
             onChange={handleTypeChange}
             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
           >
@@ -91,7 +96,7 @@ export function PvcSpecificationsSection(props: PvcSpecificationsSectionProps) {
             Pressure Class <span className="text-red-600">*</span>
           </label>
           <select
-            value={globalSpecs.pvcPressureClass ?? ""}
+            value={rawPvcPressureClass || ""}
             onChange={handlePressureClassChange}
             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
           >
@@ -117,7 +122,7 @@ export function PvcSpecificationsSection(props: PvcSpecificationsSectionProps) {
             Joining Method <span className="text-red-600">*</span>
           </label>
           <select
-            value={globalSpecs.pvcJoiningMethod ?? ""}
+            value={rawPvcJoiningMethod || ""}
             onChange={handleJoiningMethodChange}
             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
           >
@@ -138,17 +143,16 @@ export function PvcSpecificationsSection(props: PvcSpecificationsSectionProps) {
           )}
         </div>
       </div>
-
       <div className="mt-4 p-3 bg-gray-50 rounded-md">
         <h4 className="text-xs font-semibold text-gray-700 mb-2">PVC Material Properties</h4>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
           <div>
             <span className="text-gray-500">Density:</span>
-            <span className="ml-1 text-gray-900">{selectedMaterial?.densityKgM3 || "-"} kg/m³</span>
+            <span className="ml-1 text-gray-900">{rawDensityKgM3 || "-"} kg/m³</span>
           </div>
           <div>
             <span className="text-gray-500">Max Temp:</span>
-            <span className="ml-1 text-gray-900">{selectedMaterial?.maxTemperatureC || "-"}°C</span>
+            <span className="ml-1 text-gray-900">{rawMaxTemperatureC || "-"}°C</span>
           </div>
           <div>
             <span className="text-gray-500">Pressure Rating:</span>

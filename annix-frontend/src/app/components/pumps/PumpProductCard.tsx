@@ -70,8 +70,13 @@ function categoryLabel(category: string): string {
 
 export function PumpProductCard(props: PumpProductCardProps) {
   const { product, onSelect, selected = false, showActions = true, linkTo } = props;
-  const categoryColor = CATEGORY_COLORS[product.category] || CATEGORY_COLORS.centrifugal;
-  const statusColor = STATUS_COLORS[product.status] || STATUS_COLORS.active;
+  const rawCategory = CATEGORY_COLORS[product.category];
+  const categoryColor = rawCategory || CATEGORY_COLORS.centrifugal;
+  const rawStatus = STATUS_COLORS[product.status];
+  const statusColor = rawStatus || STATUS_COLORS.active;
+
+  const rawStockQuantity = product.stockQuantity;
+  const rawStockQuantity2 = product.stockQuantity;
 
   const cardContent = (
     <div
@@ -139,11 +144,9 @@ export function PumpProductCard(props: PumpProductCardProps) {
           <div>
             <span className="text-gray-500">Stock:</span>
             <span
-              className={`ml-1 font-medium ${(product.stockQuantity ?? 0) > 0 ? "text-green-600" : "text-red-600"}`}
+              className={`ml-1 font-medium ${(rawStockQuantity || 0) > 0 ? "text-green-600" : "text-red-600"}`}
             >
-              {(product.stockQuantity ?? 0) > 0
-                ? `${product.stockQuantity} available`
-                : "Out of stock"}
+              {(rawStockQuantity2 || 0) > 0 ? `${product.stockQuantity} available` : "Out of stock"}
             </span>
           </div>
         </div>

@@ -66,7 +66,8 @@ const estimateWallThickness = (nbMm: number): number => {
     500: 9.53,
     600: 9.53,
   };
-  return stdWalls[nbMm] || 6.0;
+  const rawNbMm = stdWalls[nbMm];
+  return rawNbMm || 6.0;
 };
 
 export function usePipeSteelWorkCalculations(
@@ -194,7 +195,8 @@ export function usePipeSteelWorkCalculations(
         nominalDiameterMm,
       );
       if (Array.isArray(dimensions)) {
-        setBracketDimensions(dimensions[0] || null);
+        const rawItem0 = dimensions[0];
+        setBracketDimensions(rawItem0 || null);
       } else {
         setBracketDimensions(dimensions);
       }
@@ -224,8 +226,10 @@ export function usePipeSteelWorkCalculations(
         });
         setCalculationResults(result);
       } else if (workType === "reinforcement_pad" && branchDiameterMm) {
-        const headerOd = NB_TO_OD_MAP[nominalDiameterMm] || nominalDiameterMm * 1.05;
-        const branchOd = NB_TO_OD_MAP[branchDiameterMm] || branchDiameterMm * 1.05;
+        const rawNominalDiameterMm = NB_TO_OD_MAP[nominalDiameterMm];
+        const headerOd = rawNominalDiameterMm || nominalDiameterMm * 1.05;
+        const rawBranchDiameterMm = NB_TO_OD_MAP[branchDiameterMm];
+        const branchOd = rawBranchDiameterMm || branchDiameterMm * 1.05;
 
         const padResult = await pipeSteelWorkApi.reinforcementPad({
           headerOdMm: headerOd,

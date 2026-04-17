@@ -373,15 +373,19 @@ const Scene = (props: Props) => {
         const sWt = calculateVisualWallThickness(sOd, wtMm * 0.8);
         const distFromFlange = s.locationFromFlange! / SCALE;
 
+        const rawOrientation = s.orientation;
+        const rawAngleDegrees = s.angleDegrees;
+        const rawTangent = s.tangent;
+
         return {
           distFromFlange,
           outerR: sOd / SCALE / 2,
           innerR: (sOd - 2 * sWt) / SCALE / 2,
           length: s.length! / SCALE,
           nb: s.nominalBoreMm!,
-          orientation: s.orientation || "outside",
-          angleDegrees: s.angleDegrees ?? 0,
-          tangent: s.tangent ?? 1,
+          orientation: rawOrientation || "outside",
+          angleDegrees: rawAngleDegrees || 0,
+          tangent: rawTangent || 1,
         };
       });
   }, [stubs, wtMm]);
@@ -2219,7 +2223,6 @@ const Scene = (props: Props) => {
 
         <axesHelper args={[1]} />
       </group>
-
       {/* Duckfoot Base Plate and Gusset Ribs - OUTSIDE rotation group to stay horizontal */}
       {isDuckfoot &&
         (() => {
@@ -2243,7 +2246,8 @@ const Scene = (props: Props) => {
             850: { x: 1020, y: 883, t1: 14, t2: 18, inletH: 1016 },
             900: { x: 1070, y: 933, t1: 14, t2: 18, inletH: 1067 },
           };
-          const defaults = duckfootDefaults[nominalBore] || {
+          const rawNominalBore = duckfootDefaults[nominalBore];
+          const defaults = rawNominalBore || {
             x: 500,
             y: 400,
             t1: 10,
@@ -2301,7 +2305,6 @@ const Scene = (props: Props) => {
                 <boxGeometry args={[basePlateXDim, plateThickness, basePlateYDim]} />
                 <meshStandardMaterial {...basePlateColor} />
               </mesh>
-
               {/* Base plate dimension labels - all 4 sides labeled */}
               <Text
                 position={[0, 0.02, basePlateYDim / 2 + 0.1]}
@@ -2347,13 +2350,11 @@ const Scene = (props: Props) => {
               >
                 Z
               </Text>
-
               {/* Rib running X direction */}
               <mesh position={[0, ribHeightH / 2, 0]}>
                 <boxGeometry args={[basePlateXDim, ribHeightH, ribThickness]} />
                 <meshStandardMaterial {...ribColor} />
               </mesh>
-
               {/* Gusset plate 2 (blue) - extends from base plate to top, spans from W to Y (along Z axis) */}
               {/* Has semicircular cutout at top to cradle the pipe */}
               {(() => {
@@ -2411,7 +2412,6 @@ const Scene = (props: Props) => {
                   </mesh>
                 );
               })()}
-
               {/* Yellow gusset plate - curved top edge following bend extrados */}
               {/* Points A, B at bottom (base plate). Points C, D at top (touching extrados) */}
               {(() => {
@@ -2648,7 +2648,6 @@ const Scene = (props: Props) => {
                   </group>
                 );
               })()}
-
               {/* Additional gussets for count > 2 */}
               {(() => {
                 const gussetCount = duckfootGussetCount || 2;
@@ -2738,7 +2737,6 @@ const Scene = (props: Props) => {
                   </group>
                 );
               })()}
-
               {/* Weld lines visualization */}
               {(() => {
                 const weldLineColor = "#000000";
@@ -2905,10 +2903,15 @@ export default function CSGBend3DPreview(props: Props) {
     );
   }
 
-  const odMm = props.outerDiameter || nbToOd(props.nominalBore);
-  const bendR = (props.bendRadiusMm || props.nominalBore * 1.5) / SCALE;
-  const t1 = (props.tangent1 || 0) / SCALE;
-  const t2 = (props.tangent2 || 0) / SCALE;
+  const rawOuterDiameter = props.outerDiameter;
+
+  const odMm = rawOuterDiameter || nbToOd(props.nominalBore);
+  const rawBendRadiusMm = props.bendRadiusMm;
+  const bendR = (rawBendRadiusMm || props.nominalBore * 1.5) / SCALE;
+  const rawTangent1 = props.tangent1;
+  const t1 = (rawTangent1 || 0) / SCALE;
+  const rawTangent2 = props.tangent2;
+  const t2 = (rawTangent2 || 0) / SCALE;
   const angleRad = (props.bendAngle * Math.PI) / 180;
   const isDuckfootBend = props.bendItemType === "DUCKFOOT_BEND";
   const isSweepTee = props.bendItemType === "SWEEP_TEE";
@@ -2973,6 +2976,17 @@ export default function CSGBend3DPreview(props: Props) {
   const cameraPosition = autoCameraPosition;
   const cameraTarget = autoCameraTarget;
 
+  const rawTangent12 = props.tangent1;
+  const rawTangent22 = props.tangent2;
+  const rawTangent13 = props.tangent1;
+  const rawTangent23 = props.tangent2;
+  const rawTangent14 = props.tangent1;
+  const rawTangent16 = props.tangent1;
+  const rawTangent25 = props.tangent2;
+  const rawTangent17 = props.tangent1;
+  const rawTangent26 = props.tangent2;
+  const rawTangent18 = props.tangent1;
+
   return (
     <div
       data-bend-preview
@@ -3010,15 +3024,14 @@ export default function CSGBend3DPreview(props: Props) {
           savedTarget={cameraTarget}
         />
       </Canvas>
-
       <div className="absolute top-2 left-2 text-[10px] bg-white/90 px-2 py-1 rounded">
         <span className="text-purple-700 font-medium">Hollow Pipe Preview</span>
       </div>
-
       {props.numberOfSegments &&
         props.numberOfSegments > 1 &&
         (() => {
-          const bendRadius = props.bendRadiusMm || props.nominalBore * 1.5;
+          const rawBendRadiusMm2 = props.bendRadiusMm;
+          const bendRadius = rawBendRadiusMm2 || props.nominalBore * 1.5;
           const degreesPerSeg = props.bendAngle / props.numberOfSegments;
           const arcLengthPerSeg = (bendRadius * Math.PI * degreesPerSeg) / 180;
           const totalArcLength = (bendRadius * Math.PI * props.bendAngle) / 180;
@@ -3037,7 +3050,6 @@ export default function CSGBend3DPreview(props: Props) {
             </div>
           );
         })()}
-
       <div
         data-info-box
         className="absolute top-2 right-2 text-[10px] bg-white px-2 py-1.5 rounded shadow-md border border-gray-200 leading-snug"
@@ -3051,21 +3063,23 @@ export default function CSGBend3DPreview(props: Props) {
         </div>
         {props.bendItemType !== "SWEEP_TEE" &&
           props.bendItemType !== "DUCKFOOT_BEND" &&
-          ((props.tangent1 || 0) > 0 || (props.tangent2 || 0) > 0) && (
+          ((rawTangent12 || 0) > 0 || (rawTangent22 || 0) > 0) && (
             <div className="text-gray-700">
-              {(props.tangent1 || 0) > 0 && (props.tangent2 || 0) > 0
+              {(rawTangent13 || 0) > 0 && (rawTangent23 || 0) > 0
                 ? `T1: ${props.tangent1}mm | T2: ${props.tangent2}mm`
-                : (props.tangent1 || 0) > 0
+                : (rawTangent14 || 0) > 0
                   ? `T1: ${props.tangent1}mm`
                   : `T2: ${props.tangent2}mm`}
             </div>
           )}
         {(() => {
-          const config = (props.flangeConfig || "PE").toUpperCase();
+          const rawFlangeConfig = props.flangeConfig;
+          const config = (rawFlangeConfig || "PE").toUpperCase();
           const hasLooseInlet = config === "FOE_LF" || config === "2XLF";
           const hasLooseOutlet = config === "2XLF";
           if (!hasLooseInlet && !hasLooseOutlet) return null;
-          const closureValue = props.closureLengthMm || 150;
+          const rawClosureLengthMm = props.closureLengthMm;
+          const closureValue = rawClosureLengthMm || 150;
           return (
             <div className="text-gray-700">
               {hasLooseInlet && hasLooseOutlet
@@ -3090,7 +3104,8 @@ export default function CSGBend3DPreview(props: Props) {
             </div>
           )}
         {(() => {
-          const config = (props.flangeConfig || "PE").toUpperCase();
+          const rawFlangeConfig2 = props.flangeConfig;
+          const config = (rawFlangeConfig2 || "PE").toUpperCase();
           const isSweepTee = props.bendItemType === "SWEEP_TEE";
           const validBendFlangeConfigs = ["FBE", "FOE", "FOE_LF", "FOE_RF", "2X_RF", "2XLF"];
           const validFittingFlangeConfigs = [
@@ -3108,7 +3123,8 @@ export default function CSGBend3DPreview(props: Props) {
             props.nominalBore,
             props.flangeSpecs,
           );
-          const standardName = props.flangeStandardName || "SABS 1123";
+          const rawFlangeStandardName = props.flangeStandardName;
+          const standardName = rawFlangeStandardName || "SABS 1123";
           const isNonSabsStandard =
             !standardName.toLowerCase().includes("sabs") &&
             !standardName.toLowerCase().includes("sans");
@@ -3142,8 +3158,10 @@ export default function CSGBend3DPreview(props: Props) {
                     }
                   >
                     {(() => {
-                      const designation = props.pressureClassDesignation || "";
-                      const flangeType = props.flangeTypeCode || "";
+                      const rawPressureClassDesignation = props.pressureClassDesignation;
+                      const designation = rawPressureClassDesignation || "";
+                      const rawFlangeTypeCode = props.flangeTypeCode;
+                      const flangeType = rawFlangeTypeCode || "";
                       const pressureMatch = designation.match(/^(\d+)/);
                       const pressureValue = pressureMatch
                         ? pressureMatch[1]
@@ -3160,7 +3178,6 @@ export default function CSGBend3DPreview(props: Props) {
           <div className="text-purple-700 font-medium mt-0.5">{props.stubs.length} stub(s)</div>
         )}
       </div>
-
       {/* Notes Section - bottom left */}
       {props.selectedNotes && props.selectedNotes.length > 0 && (
         <div className="absolute bottom-2 left-2 text-[10px] bg-white px-2 py-1.5 rounded shadow-md border border-slate-200 max-w-[300px] max-h-[120px] overflow-y-auto">
@@ -3174,7 +3191,6 @@ export default function CSGBend3DPreview(props: Props) {
           </ol>
         </div>
       )}
-
       <div className="absolute bottom-2 right-2 flex items-center gap-2">
         {showDebug && (
           <div className="text-[10px] text-slate-600 bg-white/90 px-2 py-1 rounded shadow-sm font-mono">
@@ -3299,10 +3315,14 @@ export default function CSGBend3DPreview(props: Props) {
         <button
           onClick={() => {
             const bendAngle = props.bendAngle;
-            const bendRadius = props.bendRadiusMm || props.nominalBore * 1.5;
-            const odMm = props.outerDiameter || props.nominalBore * 1.1 + 6;
-            const t1 = props.tangent1 || 0;
-            const t2 = props.tangent2 || 0;
+            const rawBendRadiusMm3 = props.bendRadiusMm;
+            const bendRadius = rawBendRadiusMm3 || props.nominalBore * 1.5;
+            const rawOuterDiameter2 = props.outerDiameter;
+            const odMm = rawOuterDiameter2 || props.nominalBore * 1.1 + 6;
+            const rawTangent15 = props.tangent1;
+            const t1 = rawTangent15 || 0;
+            const rawTangent24 = props.tangent2;
+            const t2 = rawTangent24 || 0;
             const angleRad = (bendAngle * Math.PI) / 180;
 
             let dxf = "0\nSECTION\n2\nHEADER\n0\nENDSEC\n";
@@ -3384,7 +3404,6 @@ export default function CSGBend3DPreview(props: Props) {
           Hide
         </button>
       </div>
-
       {expanded && (
         <div
           className="fixed inset-0 z-[10000] bg-black/80 flex items-center justify-center p-4"
@@ -3441,21 +3460,23 @@ export default function CSGBend3DPreview(props: Props) {
               </div>
               {props.bendItemType !== "SWEEP_TEE" &&
                 props.bendItemType !== "DUCKFOOT_BEND" &&
-                ((props.tangent1 || 0) > 0 || (props.tangent2 || 0) > 0) && (
+                ((rawTangent16 || 0) > 0 || (rawTangent25 || 0) > 0) && (
                   <div className="text-gray-700">
-                    {(props.tangent1 || 0) > 0 && (props.tangent2 || 0) > 0
+                    {(rawTangent17 || 0) > 0 && (rawTangent26 || 0) > 0
                       ? `T1: ${props.tangent1}mm | T2: ${props.tangent2}mm`
-                      : (props.tangent1 || 0) > 0
+                      : (rawTangent18 || 0) > 0
                         ? `T1: ${props.tangent1}mm`
                         : `T2: ${props.tangent2}mm`}
                   </div>
                 )}
               {(() => {
-                const config = (props.flangeConfig || "PE").toUpperCase();
+                const rawFlangeConfig3 = props.flangeConfig;
+                const config = (rawFlangeConfig3 || "PE").toUpperCase();
                 const hasLooseInlet = config === "FOE_LF" || config === "2XLF";
                 const hasLooseOutlet = config === "2XLF";
                 if (!hasLooseInlet && !hasLooseOutlet) return null;
-                const closureValue = props.closureLengthMm || 150;
+                const rawClosureLengthMm2 = props.closureLengthMm;
+                const closureValue = rawClosureLengthMm2 || 150;
                 return (
                   <div className="text-gray-700">
                     {hasLooseInlet && hasLooseOutlet
@@ -3480,7 +3501,8 @@ export default function CSGBend3DPreview(props: Props) {
                   </div>
                 )}
               {(() => {
-                const config = (props.flangeConfig || "PE").toUpperCase();
+                const rawFlangeConfig4 = props.flangeConfig;
+                const config = (rawFlangeConfig4 || "PE").toUpperCase();
                 const isSweepTee = props.bendItemType === "SWEEP_TEE";
                 const validBendFlangeConfigs = ["FBE", "FOE", "FOE_LF", "FOE_RF", "2X_RF", "2XLF"];
                 const validFittingFlangeConfigs = [
@@ -3500,7 +3522,8 @@ export default function CSGBend3DPreview(props: Props) {
                   props.nominalBore,
                   props.flangeSpecs,
                 );
-                const standardName = props.flangeStandardName || "SABS 1123";
+                const rawFlangeStandardName2 = props.flangeStandardName;
+                const standardName = rawFlangeStandardName2 || "SABS 1123";
                 const isNonSabsStandard =
                   !standardName.toLowerCase().includes("sabs") &&
                   !standardName.toLowerCase().includes("sans");
@@ -3534,8 +3557,10 @@ export default function CSGBend3DPreview(props: Props) {
                           }
                         >
                           {(() => {
-                            const designation = props.pressureClassDesignation || "";
-                            const flangeType = props.flangeTypeCode || "";
+                            const rawPressureClassDesignation2 = props.pressureClassDesignation;
+                            const designation = rawPressureClassDesignation2 || "";
+                            const rawFlangeTypeCode2 = props.flangeTypeCode;
+                            const flangeType = rawFlangeTypeCode2 || "";
                             const pressureMatch = designation.match(/^(\d+)/);
                             const pressureValue = pressureMatch
                               ? pressureMatch[1]
@@ -3554,7 +3579,8 @@ export default function CSGBend3DPreview(props: Props) {
             {props.numberOfSegments &&
               props.numberOfSegments > 1 &&
               (() => {
-                const bendRadius = props.bendRadiusMm || props.nominalBore * 1.5;
+                const rawBendRadiusMm4 = props.bendRadiusMm;
+                const bendRadius = rawBendRadiusMm4 || props.nominalBore * 1.5;
                 const degreesPerSeg = props.bendAngle / props.numberOfSegments;
                 const arcLengthPerSeg = (bendRadius * Math.PI * degreesPerSeg) / 180;
                 const totalArcLength = (bendRadius * Math.PI * props.bendAngle) / 180;

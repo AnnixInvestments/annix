@@ -87,11 +87,13 @@ export function calculateSpQuantitySummary(
   let totalCeramicTiles = 0;
 
   if (globalSpecs.externalCoatingConfirmed && globalSpecs.externalCoatingType) {
-    const primerDft = globalSpecs.externalPrimerMicrons || PAINT_COVERAGE.primer.defaultDftMicrons;
+    const rawExternalPrimerMicrons = globalSpecs.externalPrimerMicrons;
+    const primerDft = rawExternalPrimerMicrons || PAINT_COVERAGE.primer.defaultDftMicrons;
+    const rawExternalIntermediateMicrons = globalSpecs.externalIntermediateMicrons;
     const intermediateDft =
-      globalSpecs.externalIntermediateMicrons || PAINT_COVERAGE.intermediate.defaultDftMicrons;
-    const topcoatDft =
-      globalSpecs.externalTopcoatMicrons || PAINT_COVERAGE.topcoat.defaultDftMicrons;
+      rawExternalIntermediateMicrons || PAINT_COVERAGE.intermediate.defaultDftMicrons;
+    const rawExternalTopcoatMicrons = globalSpecs.externalTopcoatMicrons;
+    const topcoatDft = rawExternalTopcoatMicrons || PAINT_COVERAGE.topcoat.defaultDftMicrons;
 
     const primerLiters =
       (totalExternalAreaM2 * primerDft) /
@@ -114,8 +116,9 @@ export function calculateSpQuantitySummary(
   if (globalSpecs.internalLiningConfirmed && globalSpecs.internalLiningType) {
     if (globalSpecs.internalRubberType) {
       totalRubberM2 = totalInternalAreaM2 * (1 + RUBBER_COVERAGE.wastagePercent / 100);
+      const rawInternalRubberThickness = globalSpecs.internalRubberThickness;
       systemDescriptions.push(
-        `Internal: ${globalSpecs.internalRubberType} rubber lining (${globalSpecs.internalRubberThickness || "6mm"}, ${totalInternalAreaM2.toFixed(2)}m2)`,
+        `Internal: ${globalSpecs.internalRubberType} rubber lining (${rawInternalRubberThickness || "6mm"}, ${totalInternalAreaM2.toFixed(2)}m2)`,
       );
     } else if (globalSpecs.internalCeramicType) {
       totalCeramicTiles = Math.ceil(
@@ -146,36 +149,57 @@ export function calculateSpQuantitySummary(
 }
 
 export function extractSpSpecificationSummary(globalSpecs: GlobalSpecs): SpSpecificationSummary {
-  const primerMicrons = globalSpecs.externalPrimerMicrons || 0;
-  const intermediateMicrons = globalSpecs.externalIntermediateMicrons || 0;
-  const topcoatMicrons = globalSpecs.externalTopcoatMicrons || 0;
+  const rawExternalPrimerMicrons2 = globalSpecs.externalPrimerMicrons;
+  const primerMicrons = rawExternalPrimerMicrons2 || 0;
+  const rawExternalIntermediateMicrons2 = globalSpecs.externalIntermediateMicrons;
+  const intermediateMicrons = rawExternalIntermediateMicrons2 || 0;
+  const rawExternalTopcoatMicrons2 = globalSpecs.externalTopcoatMicrons;
+  const topcoatMicrons = rawExternalTopcoatMicrons2 || 0;
+
+  const rawExternalCoatingConfirmed = globalSpecs.externalCoatingConfirmed;
+  const rawExternalCoatingType = globalSpecs.externalCoatingType;
+  const rawExternalBlastingGrade = globalSpecs.externalBlastingGrade;
+  const rawExternalPrimerType = globalSpecs.externalPrimerType;
+  const rawExternalIntermediateType = globalSpecs.externalIntermediateType;
+  const rawExternalTopcoatType = globalSpecs.externalTopcoatType;
+  const rawExternalTopcoatColour = globalSpecs.externalTopcoatColour;
+  const rawInternalLiningConfirmed = globalSpecs.internalLiningConfirmed;
+  const rawInternalLiningType = globalSpecs.internalLiningType;
+  const rawInternalRubberType = globalSpecs.internalRubberType;
+  const rawInternalRubberThickness2 = globalSpecs.internalRubberThickness;
+  const rawInternalRubberHardness = globalSpecs.internalRubberHardness;
+  const rawInternalCeramicType = globalSpecs.internalCeramicType;
+  const rawInternalPrimerType = globalSpecs.internalPrimerType;
+  const rawInternalPrimerMicrons = globalSpecs.internalPrimerMicrons;
+  const rawEcpIso12944Category = globalSpecs.ecpIso12944Category;
+  const rawExternalBlastingGrade2 = globalSpecs.externalBlastingGrade;
 
   return {
     externalCoating: {
-      required: globalSpecs.externalCoatingConfirmed || false,
-      coatingType: globalSpecs.externalCoatingType || null,
-      blastingGrade: globalSpecs.externalBlastingGrade || null,
-      primerType: globalSpecs.externalPrimerType || null,
+      required: rawExternalCoatingConfirmed || false,
+      coatingType: rawExternalCoatingType || null,
+      blastingGrade: rawExternalBlastingGrade || null,
+      primerType: rawExternalPrimerType || null,
       primerMicrons,
-      intermediateType: globalSpecs.externalIntermediateType || null,
+      intermediateType: rawExternalIntermediateType || null,
       intermediateMicrons,
-      topcoatType: globalSpecs.externalTopcoatType || null,
+      topcoatType: rawExternalTopcoatType || null,
       topcoatMicrons,
       totalDftMicrons: primerMicrons + intermediateMicrons + topcoatMicrons,
-      topcoatColour: globalSpecs.externalTopcoatColour || null,
+      topcoatColour: rawExternalTopcoatColour || null,
     },
     internalLining: {
-      required: globalSpecs.internalLiningConfirmed || false,
-      liningType: globalSpecs.internalLiningType || null,
-      rubberType: globalSpecs.internalRubberType || null,
-      rubberThickness: globalSpecs.internalRubberThickness || null,
-      rubberHardness: globalSpecs.internalRubberHardness || null,
-      ceramicType: globalSpecs.internalCeramicType || null,
-      primerType: globalSpecs.internalPrimerType || null,
-      primerMicrons: globalSpecs.internalPrimerMicrons || 0,
+      required: rawInternalLiningConfirmed || false,
+      liningType: rawInternalLiningType || null,
+      rubberType: rawInternalRubberType || null,
+      rubberThickness: rawInternalRubberThickness2 || null,
+      rubberHardness: rawInternalRubberHardness || null,
+      ceramicType: rawInternalCeramicType || null,
+      primerType: rawInternalPrimerType || null,
+      primerMicrons: rawInternalPrimerMicrons || 0,
     },
-    iso12944Category: globalSpecs.ecpIso12944Category || globalSpecs.iso12944Category || null,
-    surfacePrepStandard: globalSpecs.externalBlastingGrade || "Sa 2.5",
+    iso12944Category: rawEcpIso12944Category || globalSpecs.iso12944Category || null,
+    surfacePrepStandard: rawExternalBlastingGrade2 || "Sa 2.5",
   };
 }
 
@@ -187,6 +211,17 @@ export function generateCoatingScheduleHtml(
 ): string {
   const spec = extractSpSpecificationSummary(globalSpecs);
   const date = new Date().toLocaleDateString();
+
+  const rawCoatingType = spec.externalCoating.coatingType;
+  const rawIso12944Category = spec.iso12944Category;
+  const rawPrimerType = spec.externalCoating.primerType;
+  const rawPrimerMicrons = spec.externalCoating.primerMicrons;
+  const rawIntermediateType = spec.externalCoating.intermediateType;
+  const rawIntermediateMicrons = spec.externalCoating.intermediateMicrons;
+  const rawTopcoatType = spec.externalCoating.topcoatType;
+  const rawTopcoatMicrons = spec.externalCoating.topcoatMicrons;
+  const rawLiningType = spec.internalLining.liningType;
+  const rawRubberThickness = spec.internalLining.rubberThickness;
 
   return `
 <!DOCTYPE html>
@@ -227,11 +262,11 @@ export function generateCoatingScheduleHtml(
     <table>
       <tr>
         <th>Coating System</th>
-        <td colspan="3">${spec.externalCoating.coatingType || "Per manufacturer"}</td>
+        <td colspan="3">${rawCoatingType || "Per manufacturer"}</td>
       </tr>
       <tr>
         <th>ISO 12944 Category</th>
-        <td>${spec.iso12944Category || "N/A"}</td>
+        <td>${rawIso12944Category || "N/A"}</td>
         <th>Surface Preparation</th>
         <td>${spec.surfacePrepStandard} per ISO 8501-1</td>
       </tr>
@@ -249,18 +284,18 @@ export function generateCoatingScheduleHtml(
       <tbody>
         <tr>
           <td>Primer</td>
-          <td>${spec.externalCoating.primerType || "Per TDS"}</td>
-          <td>${spec.externalCoating.primerMicrons || 75}</td>
+          <td>${rawPrimerType || "Per TDS"}</td>
+          <td>${rawPrimerMicrons || 75}</td>
         </tr>
         <tr>
           <td>Intermediate</td>
-          <td>${spec.externalCoating.intermediateType || "Per TDS"}</td>
-          <td>${spec.externalCoating.intermediateMicrons || 150}</td>
+          <td>${rawIntermediateType || "Per TDS"}</td>
+          <td>${rawIntermediateMicrons || 150}</td>
         </tr>
         <tr>
           <td>Topcoat</td>
-          <td>${spec.externalCoating.topcoatType || "Per TDS"}</td>
-          <td>${spec.externalCoating.topcoatMicrons || 50}</td>
+          <td>${rawTopcoatType || "Per TDS"}</td>
+          <td>${rawTopcoatMicrons || 50}</td>
         </tr>
         <tr class="total-row">
           <td colspan="2">Total DFT</td>
@@ -282,9 +317,9 @@ export function generateCoatingScheduleHtml(
     <table>
       <tr>
         <th>Lining Type</th>
-        <td colspan="3">${spec.internalLining.liningType || "Per specification"}</td>
+        <td colspan="3">${rawLiningType || "Per specification"}</td>
       </tr>
-      ${spec.internalLining.rubberType ? `<tr><th>Rubber Type</th><td>${spec.internalLining.rubberType}</td><th>Thickness</th><td>${spec.internalLining.rubberThickness || "6mm"}</td></tr>` : ""}
+      ${spec.internalLining.rubberType ? `<tr><th>Rubber Type</th><td>${spec.internalLining.rubberType}</td><th>Thickness</th><td>${rawRubberThickness || "6mm"}</td></tr>` : ""}
       ${spec.internalLining.ceramicType ? `<tr><th>Ceramic Type</th><td colspan="3">${spec.internalLining.ceramicType}</td></tr>` : ""}
     </table>
   </div>
@@ -337,6 +372,8 @@ export function generateInspectionChecklistHtml(
 ): string {
   const spec = extractSpSpecificationSummary(globalSpecs);
   const date = new Date().toLocaleDateString();
+
+  const rawTotalDftMicrons = spec.externalCoating.totalDftMicrons;
 
   return `
 <!DOCTYPE html>
@@ -534,7 +571,7 @@ export function generateInspectionChecklistHtml(
     <tbody>
       <tr>
         <td>Total DFT</td>
-        <td>${spec.externalCoating.totalDftMicrons || "As specified"} microns</td>
+        <td>${rawTotalDftMicrons || "As specified"} microns</td>
         <td class="check-col"><span class="checkbox"></span></td>
         <td class="check-col"><span class="checkbox"></span></td>
         <td class="init-col"></td>
@@ -597,6 +634,14 @@ export function generateApplicationProcedureHtml(
 ): string {
   const spec = extractSpSpecificationSummary(globalSpecs);
   const date = new Date().toLocaleDateString();
+
+  const rawPrimerType2 = spec.externalCoating.primerType;
+  const rawPrimerMicrons2 = spec.externalCoating.primerMicrons;
+  const rawIntermediateType2 = spec.externalCoating.intermediateType;
+  const rawIntermediateMicrons2 = spec.externalCoating.intermediateMicrons;
+  const rawTopcoatType2 = spec.externalCoating.topcoatType;
+  const rawTopcoatMicrons2 = spec.externalCoating.topcoatMicrons;
+  const rawRubberThickness2 = spec.internalLining.rubberThickness;
 
   return `
 <!DOCTYPE html>
@@ -675,26 +720,26 @@ export function generateApplicationProcedureHtml(
 
   <div class="procedure-step">
     <h4>3.1 Primer Application</h4>
-    <p>Product: ${spec.externalCoating.primerType || "Per TDS specification"}</p>
+    <p>Product: ${rawPrimerType2 || "Per TDS specification"}</p>
     <p>Apply first coat within 4 hours of blast cleaning</p>
     <p>Ensure complete coverage including edges and welds</p>
-    <p>Target DFT: ${spec.externalCoating.primerMicrons || 75} microns</p>
+    <p>Target DFT: ${rawPrimerMicrons2 || 75} microns</p>
   </div>
 
   <div class="procedure-step">
     <h4>3.2 Intermediate Coat</h4>
-    <p>Product: ${spec.externalCoating.intermediateType || "Per TDS specification"}</p>
+    <p>Product: ${rawIntermediateType2 || "Per TDS specification"}</p>
     <p>Apply within overcoating window per TDS</p>
     <p>Allow flash-off before additional coats</p>
-    <p>Target DFT: ${spec.externalCoating.intermediateMicrons || 150} microns</p>
+    <p>Target DFT: ${rawIntermediateMicrons2 || 150} microns</p>
   </div>
 
   <div class="procedure-step">
     <h4>3.3 Topcoat Application</h4>
-    <p>Product: ${spec.externalCoating.topcoatType || "Per TDS specification"}</p>
+    <p>Product: ${rawTopcoatType2 || "Per TDS specification"}</p>
     <p>Final aesthetic and protective coat</p>
     <p>Uniform colour and gloss</p>
-    <p>Target DFT: ${spec.externalCoating.topcoatMicrons || 50} microns</p>
+    <p>Target DFT: ${rawTopcoatMicrons2 || 50} microns</p>
     <p>Total System DFT: ${spec.externalCoating.totalDftMicrons} microns</p>
   </div>
   `
@@ -716,7 +761,7 @@ export function generateApplicationProcedureHtml(
   <div class="procedure-step">
     <h4>4.2 Rubber Application</h4>
     <p>Rubber Grade: ${spec.internalLining.rubberType}</p>
-    <p>Thickness: ${spec.internalLining.rubberThickness || "6mm"}</p>
+    <p>Thickness: ${rawRubberThickness2 || "6mm"}</p>
     <p>Apply rubber sheets ensuring no air entrapment</p>
     <p>Roll out all bubbles and ensure full adhesion</p>
   </div>
@@ -794,6 +839,11 @@ export function generateItpHtml(
   const spec = extractSpSpecificationSummary(globalSpecs);
   const date = new Date().toLocaleDateString();
 
+  const rawCoatingType2 = spec.externalCoating.coatingType;
+  const rawPrimerMicrons3 = spec.externalCoating.primerMicrons;
+  const rawIntermediateMicrons3 = spec.externalCoating.intermediateMicrons;
+  const rawTopcoatMicrons3 = spec.externalCoating.topcoatMicrons;
+
   return `
 <!DOCTYPE html>
 <html>
@@ -826,7 +876,7 @@ export function generateItpHtml(
 
   <table class="header-table">
     <tr><td class="label">Project:</td><td>${projectName}</td><td class="label">Date:</td><td>${date}</td></tr>
-    <tr><td class="label">Customer:</td><td>${customerName}</td><td class="label">System:</td><td>${spec.externalCoating.coatingType || "Per Specification"}</td></tr>
+    <tr><td class="label">Customer:</td><td>${customerName}</td><td class="label">System:</td><td>${rawCoatingType2 || "Per Specification"}</td></tr>
   </table>
 
   <table>
@@ -911,7 +961,7 @@ export function generateItpHtml(
       <tr>
         <td>3.1 Primer DFT</td>
         <td>ISO 2808</td>
-        <td>${spec.externalCoating.primerMicrons || 75}um</td>
+        <td>${rawPrimerMicrons3 || 75}um</td>
         <td>DFT Gauge</td>
         <td>Min 5 per m2</td>
         <td>H</td>
@@ -922,7 +972,7 @@ export function generateItpHtml(
       <tr>
         <td>3.2 Intermediate DFT</td>
         <td>ISO 2808</td>
-        <td>${spec.externalCoating.intermediateMicrons || 150}um</td>
+        <td>${rawIntermediateMicrons3 || 150}um</td>
         <td>DFT Gauge</td>
         <td>Min 5 per m2</td>
         <td>H</td>
@@ -933,7 +983,7 @@ export function generateItpHtml(
       <tr>
         <td>3.3 Topcoat DFT</td>
         <td>ISO 2808</td>
-        <td>${spec.externalCoating.topcoatMicrons || 50}um</td>
+        <td>${rawTopcoatMicrons3 || 50}um</td>
         <td>DFT Gauge</td>
         <td>Min 5 per m2</td>
         <td>H</td>

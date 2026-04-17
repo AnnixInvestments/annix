@@ -241,7 +241,8 @@ export function ItemTypeButtons(props: ItemTypeButtonsProps) {
   const baseClasses = option
     ? `${option.bgColor} ${option.hoverColor} ${option.borderColor}`
     : "bg-blue-100 hover:bg-blue-200 border-blue-300";
-  const textClass = option?.textColor || "text-blue-700";
+  const rawTextColor = option?.textColor;
+  const textClass = rawTextColor || "text-blue-700";
 
   return (
     <div className="flex gap-2">

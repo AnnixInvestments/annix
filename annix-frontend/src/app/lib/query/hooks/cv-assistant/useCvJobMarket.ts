@@ -29,14 +29,17 @@ export function useCvJobMarketSources() {
 export function useCvExternalJobs(params?: CvExternalJobQueryParams) {
   return useQuery<{ jobs: ExternalJob[]; total: number }>({
     queryKey: cvAssistantKeys.jobMarket.jobs(params),
-    queryFn: () =>
-      cvAssistantApiClient.externalJobs({
+    queryFn: () => {
+      const rawSearch = params?.search;
+
+      return cvAssistantApiClient.externalJobs({
         country: params?.country,
         category: params?.category,
-        search: params?.search || undefined,
+        search: rawSearch || undefined,
         page: params?.page,
         limit: params?.limit,
-      }),
+      });
+    },
     staleTime: 2 * 60 * 1000,
   });
 }

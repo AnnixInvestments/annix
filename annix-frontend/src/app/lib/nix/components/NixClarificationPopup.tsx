@@ -34,7 +34,8 @@ const SIMILAR_FIELD_GROUPS: Record<string, string[]> = {
 const extractFieldType = (clarification: NixClarificationDto): string | null => {
   const questionLower = clarification.question.toLowerCase();
   const ctx = clarification.context;
-  const missingFields = ctx.missingFields ?? [];
+  const rawMissingFields = ctx.missingFields;
+  const missingFields = rawMissingFields || [];
 
   if (
     questionLower.includes("material") ||
@@ -234,10 +235,11 @@ export default function NixClarificationPopup(props: NixClarificationPopupProps)
   const ZOOM_MAX = 3;
   const ZOOM_STEP = 0.25;
 
+  const rawExtractedMaterial = ctx.extractedMaterial;
+
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/10 backdrop-blur-md" onClick={onClose} />
-
       <div
         className={`relative bg-white rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300 flex ${
           hasDocument ? "w-full max-w-7xl h-[90vh]" : "max-w-2xl w-full max-h-[90vh]"
@@ -425,7 +427,7 @@ export default function NixClarificationPopup(props: NixClarificationPopupProps)
               {clarification.question}
             </p>
 
-            {!isSpecHeader && (ctx.extractedMaterial || ctx.extractedDiameter) && (
+            {!isSpecHeader && (rawExtractedMaterial || ctx.extractedDiameter) && (
               <div className="mb-3 p-2 bg-orange-50 rounded-lg border border-orange-200">
                 <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
                   {ctx.extractedMaterial && (

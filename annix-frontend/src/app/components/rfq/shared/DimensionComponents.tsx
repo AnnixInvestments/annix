@@ -283,7 +283,8 @@ export const ChainDimension = ({
       const start = points[i].position;
       const end = points[i + 1].position;
       const length = start.distanceTo(end);
-      const label = points[i + 1].label ?? `${Math.round(length * 1000)}mm`;
+      const rawLabel = points[i + 1].label;
+      const label = rawLabel || `${Math.round(length * 1000)}mm`;
 
       result.push({
         start,
@@ -612,7 +613,8 @@ export const BaselineDimension = ({
         const startOffset = baseline.clone().add(offsetVec);
         const endOffset = point.position.clone().add(offsetVec);
         const length = baseline.distanceTo(point.position);
-        const label = point.label ?? `${Math.round(length * 1000)}mm`;
+        const rawLabel2 = point.label;
+        const label = rawLabel2 || `${Math.round(length * 1000)}mm`;
 
         const direction = new THREE.Vector3().subVectors(endOffset, startOffset).normalize();
         const midPoint = new THREE.Vector3().lerpVectors(startOffset, endOffset, 0.5);

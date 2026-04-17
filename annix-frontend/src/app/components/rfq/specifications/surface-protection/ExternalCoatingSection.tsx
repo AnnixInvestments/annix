@@ -157,10 +157,18 @@ export function ExternalCoatingSection(props: ExternalCoatingSectionProps) {
     },
   });
 
+  const rawEcpSoilType = globalSpecs?.ecpSoilType;
+  const rawEcpSoilResistivity = globalSpecs?.ecpSoilResistivity;
+  const rawEcpSoilMoisture = globalSpecs?.ecpSoilMoisture;
+  const rawEcpServiceLife = globalSpecs?.ecpServiceLife;
+  const rawExternalSubstrateType = globalSpecs?.externalSubstrateType;
+  const rawExternalApplicationMethod = globalSpecs?.externalApplicationMethod;
+  const rawExternalApplicationLocation = globalSpecs?.externalApplicationLocation;
+  const rawExternalCoatingType = globalSpecs?.externalCoatingType;
+
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-3">
       <h3 className="text-xs font-semibold text-gray-800 mb-2">External Coating</h3>
-
       {!globalSpecs?.externalCoatingConfirmed && (
         <div className="mb-2">
           <button
@@ -252,12 +260,14 @@ export function ExternalCoatingSection(props: ExternalCoatingSectionProps) {
                     </label>
                     <select
                       value={effectiveInstallationType || ""}
-                      onChange={(e) =>
-                        onUpdateGlobalSpecs({
+                      onChange={(e) => {
+                        const rawValue = e.target.value;
+
+                        return onUpdateGlobalSpecs({
                           ...globalSpecs,
-                          ecpInstallationType: e.target.value || undefined,
-                        })
-                      }
+                          ecpInstallationType: rawValue || undefined,
+                        });
+                      }}
                       className={`w-full px-2 py-1.5 text-xs rounded focus:ring-1 focus:ring-orange-500 ${autoFilledClass(
                         isInstallationTypeAutoFilled,
                       )}`}
@@ -278,12 +288,14 @@ export function ExternalCoatingSection(props: ExternalCoatingSectionProps) {
                     </label>
                     <select
                       value={effectiveUvExposure || ""}
-                      onChange={(e) =>
-                        onUpdateGlobalSpecs({
+                      onChange={(e) => {
+                        const rawValue2 = e.target.value;
+
+                        return onUpdateGlobalSpecs({
                           ...globalSpecs,
-                          ecpUvExposure: e.target.value || undefined,
-                        })
-                      }
+                          ecpUvExposure: rawValue2 || undefined,
+                        });
+                      }}
                       className={`w-full px-2 py-1.5 text-xs rounded focus:ring-1 focus:ring-orange-500 ${autoFilledClass(
                         isUvExposureAutoFilled,
                       )}`}
@@ -303,12 +315,14 @@ export function ExternalCoatingSection(props: ExternalCoatingSectionProps) {
                     </label>
                     <select
                       value={effectiveMechanicalRisk || ""}
-                      onChange={(e) =>
-                        onUpdateGlobalSpecs({
+                      onChange={(e) => {
+                        const rawValue3 = e.target.value;
+
+                        return onUpdateGlobalSpecs({
                           ...globalSpecs,
-                          ecpMechanicalRisk: e.target.value || undefined,
-                        })
-                      }
+                          ecpMechanicalRisk: rawValue3 || undefined,
+                        });
+                      }}
                       className={`w-full px-2 py-1.5 text-xs rounded focus:ring-1 focus:ring-orange-500 ${autoFilledClass(
                         isMechanicalRiskAutoFilled,
                       )}`}
@@ -345,10 +359,12 @@ export function ExternalCoatingSection(props: ExternalCoatingSectionProps) {
                     </label>
                     <select
                       value={effectiveIso12944 || ""}
-                      onChange={(e) =>
-                        onUpdateGlobalSpecs({
+                      onChange={(e) => {
+                        const rawValue4 = e.target.value;
+
+                        return onUpdateGlobalSpecs({
                           ...globalSpecs,
-                          ecpIso12944Category: (e.target.value || undefined) as
+                          ecpIso12944Category: (rawValue4 || undefined) as
                             | "C1"
                             | "C2"
                             | "C3"
@@ -356,8 +372,8 @@ export function ExternalCoatingSection(props: ExternalCoatingSectionProps) {
                             | "C5"
                             | "CX"
                             | undefined,
-                        })
-                      }
+                        });
+                      }}
                       className={`w-full px-2 py-1.5 text-xs rounded focus:ring-1 focus:ring-orange-500 ${autoFilledClass(
                         isIso12944AutoFilled,
                       )}`}
@@ -380,16 +396,18 @@ export function ExternalCoatingSection(props: ExternalCoatingSectionProps) {
                     </label>
                     <select
                       value={effectiveMarineInfluence || ""}
-                      onChange={(e) =>
-                        onUpdateGlobalSpecs({
+                      onChange={(e) => {
+                        const rawValue5 = e.target.value;
+
+                        return onUpdateGlobalSpecs({
                           ...globalSpecs,
-                          ecpMarineInfluence: (e.target.value || undefined) as
+                          ecpMarineInfluence: (rawValue5 || undefined) as
                             | "None"
                             | "Coastal"
                             | "Offshore"
                             | undefined,
-                        })
-                      }
+                        });
+                      }}
                       className={`w-full px-2 py-1.5 text-xs rounded focus:ring-1 focus:ring-orange-500 ${autoFilledClass(
                         isMarineInfluenceAutoFilled,
                       )}`}
@@ -409,18 +427,20 @@ export function ExternalCoatingSection(props: ExternalCoatingSectionProps) {
                     </label>
                     <select
                       value={effectiveIndustrialPollution || ""}
-                      onChange={(e) =>
-                        onUpdateGlobalSpecs({
+                      onChange={(e) => {
+                        const rawValue6 = e.target.value;
+
+                        return onUpdateGlobalSpecs({
                           ...globalSpecs,
-                          ecpIndustrialPollution: (e.target.value || undefined) as
+                          ecpIndustrialPollution: (rawValue6 || undefined) as
                             | "None"
                             | "Low"
                             | "Moderate"
                             | "High"
                             | "Very High"
                             | undefined,
-                        })
-                      }
+                        });
+                      }}
                       className={`w-full px-2 py-1.5 text-xs rounded focus:ring-1 focus:ring-orange-500 ${autoFilledClass(
                         isIndustrialPollutionAutoFilled,
                       )}`}
@@ -449,13 +469,15 @@ export function ExternalCoatingSection(props: ExternalCoatingSectionProps) {
                         Soil Type
                       </label>
                       <select
-                        value={globalSpecs?.ecpSoilType || ""}
-                        onChange={(e) =>
-                          onUpdateGlobalSpecs({
+                        value={rawEcpSoilType || ""}
+                        onChange={(e) => {
+                          const rawValue7 = e.target.value;
+
+                          return onUpdateGlobalSpecs({
                             ...globalSpecs,
-                            ecpSoilType: e.target.value || undefined,
-                          })
-                        }
+                            ecpSoilType: rawValue7 || undefined,
+                          });
+                        }}
                         className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-orange-500 text-gray-900"
                       >
                         <option value="">Select...</option>
@@ -470,13 +492,15 @@ export function ExternalCoatingSection(props: ExternalCoatingSectionProps) {
                         Resistivity
                       </label>
                       <select
-                        value={globalSpecs?.ecpSoilResistivity || ""}
-                        onChange={(e) =>
-                          onUpdateGlobalSpecs({
+                        value={rawEcpSoilResistivity || ""}
+                        onChange={(e) => {
+                          const rawValue8 = e.target.value;
+
+                          return onUpdateGlobalSpecs({
                             ...globalSpecs,
-                            ecpSoilResistivity: e.target.value || undefined,
-                          })
-                        }
+                            ecpSoilResistivity: rawValue8 || undefined,
+                          });
+                        }}
                         className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-orange-500 text-gray-900"
                       >
                         <option value="">Select...</option>
@@ -491,13 +515,15 @@ export function ExternalCoatingSection(props: ExternalCoatingSectionProps) {
                         Moisture
                       </label>
                       <select
-                        value={globalSpecs?.ecpSoilMoisture || ""}
-                        onChange={(e) =>
-                          onUpdateGlobalSpecs({
+                        value={rawEcpSoilMoisture || ""}
+                        onChange={(e) => {
+                          const rawValue9 = e.target.value;
+
+                          return onUpdateGlobalSpecs({
                             ...globalSpecs,
-                            ecpSoilMoisture: e.target.value || undefined,
-                          })
-                        }
+                            ecpSoilMoisture: rawValue9 || undefined,
+                          });
+                        }}
                         className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-orange-500 text-gray-900"
                       >
                         <option value="">Select...</option>
@@ -529,12 +555,14 @@ export function ExternalCoatingSection(props: ExternalCoatingSectionProps) {
                     </label>
                     <select
                       value={effectiveEcpTemperature || ""}
-                      onChange={(e) =>
-                        onUpdateGlobalSpecs({
+                      onChange={(e) => {
+                        const rawValue10 = e.target.value;
+
+                        return onUpdateGlobalSpecs({
                           ...globalSpecs,
-                          ecpTemperature: e.target.value || undefined,
-                        })
-                      }
+                          ecpTemperature: rawValue10 || undefined,
+                        });
+                      }}
                       className={`w-full px-2 py-1.5 text-xs rounded focus:ring-1 focus:ring-orange-500 ${
                         isEcpTemperatureAutoFilled
                           ? "border-2 border-emerald-500 bg-emerald-50 text-emerald-900 font-semibold"
@@ -553,13 +581,15 @@ export function ExternalCoatingSection(props: ExternalCoatingSectionProps) {
                       Service Life *
                     </label>
                     <select
-                      value={globalSpecs?.ecpServiceLife || ""}
-                      onChange={(e) =>
-                        onUpdateGlobalSpecs({
+                      value={rawEcpServiceLife || ""}
+                      onChange={(e) => {
+                        const rawValue11 = e.target.value;
+
+                        return onUpdateGlobalSpecs({
                           ...globalSpecs,
-                          ecpServiceLife: e.target.value || undefined,
-                        })
-                      }
+                          ecpServiceLife: rawValue11 || undefined,
+                        });
+                      }}
                       className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-orange-500 text-gray-900"
                     >
                       <option value="">Select...</option>
@@ -616,13 +646,15 @@ export function ExternalCoatingSection(props: ExternalCoatingSectionProps) {
                       Substrate Type
                     </label>
                     <select
-                      value={globalSpecs?.externalSubstrateType || ""}
-                      onChange={(e) =>
-                        onUpdateGlobalSpecs({
+                      value={rawExternalSubstrateType || ""}
+                      onChange={(e) => {
+                        const rawValue12 = e.target.value;
+
+                        return onUpdateGlobalSpecs({
                           ...globalSpecs,
-                          externalSubstrateType: e.target.value || undefined,
-                        })
-                      }
+                          externalSubstrateType: rawValue12 || undefined,
+                        });
+                      }}
                       className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-purple-500 text-gray-900"
                     >
                       <option value="">Select...</option>
@@ -638,13 +670,15 @@ export function ExternalCoatingSection(props: ExternalCoatingSectionProps) {
                       Application Method
                     </label>
                     <select
-                      value={globalSpecs?.externalApplicationMethod || ""}
-                      onChange={(e) =>
-                        onUpdateGlobalSpecs({
+                      value={rawExternalApplicationMethod || ""}
+                      onChange={(e) => {
+                        const rawValue13 = e.target.value;
+
+                        return onUpdateGlobalSpecs({
                           ...globalSpecs,
-                          externalApplicationMethod: e.target.value || undefined,
-                        })
-                      }
+                          externalApplicationMethod: rawValue13 || undefined,
+                        });
+                      }}
                       className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-purple-500 text-gray-900"
                     >
                       <option value="">Select...</option>
@@ -660,13 +694,15 @@ export function ExternalCoatingSection(props: ExternalCoatingSectionProps) {
                       Shop/Field
                     </label>
                     <select
-                      value={globalSpecs?.externalApplicationLocation || ""}
-                      onChange={(e) =>
-                        onUpdateGlobalSpecs({
+                      value={rawExternalApplicationLocation || ""}
+                      onChange={(e) => {
+                        const rawValue14 = e.target.value;
+
+                        return onUpdateGlobalSpecs({
                           ...globalSpecs,
-                          externalApplicationLocation: e.target.value || undefined,
-                        })
-                      }
+                          externalApplicationLocation: rawValue14 || undefined,
+                        });
+                      }}
                       className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-purple-500 text-gray-900"
                     >
                       <option value="">Select...</option>
@@ -755,7 +791,6 @@ export function ExternalCoatingSection(props: ExternalCoatingSectionProps) {
           )}
         </div>
       )}
-
       {/* Manual Coating Type Selection */}
       {!globalSpecs?.externalCoatingConfirmed && !globalSpecs?.showExternalCoatingProfile && (
         <div className="space-y-2">
@@ -763,13 +798,15 @@ export function ExternalCoatingSection(props: ExternalCoatingSectionProps) {
             External Coating Type <span className="text-red-500">*</span>
           </label>
           <select
-            value={globalSpecs?.externalCoatingType || ""}
-            onChange={(e) =>
-              onUpdateGlobalSpecs({
+            value={rawExternalCoatingType || ""}
+            onChange={(e) => {
+              const rawValue15 = e.target.value;
+
+              return onUpdateGlobalSpecs({
                 ...globalSpecs,
-                externalCoatingType: e.target.value || undefined,
-              })
-            }
+                externalCoatingType: rawValue15 || undefined,
+              });
+            }}
             className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 text-gray-900"
           >
             <option value="">Select coating type...</option>
@@ -782,7 +819,6 @@ export function ExternalCoatingSection(props: ExternalCoatingSectionProps) {
           </select>
         </div>
       )}
-
       {/* Confirmed State */}
       {globalSpecs?.externalCoatingConfirmed && (
         <div className="bg-green-100 border border-green-400 rounded-md p-2">

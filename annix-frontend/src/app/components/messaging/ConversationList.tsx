@@ -22,7 +22,8 @@ function conversationTypeLabel(type: ConversationType): string {
     [ConversationType.GROUP]: "Group",
     [ConversationType.SUPPORT]: "Support",
   };
-  return labels[type] || type;
+  const rawType = labels[type];
+  return rawType || type;
 }
 
 function relatedEntityLabel(type: RelatedEntityType, id: number | null): string | null {

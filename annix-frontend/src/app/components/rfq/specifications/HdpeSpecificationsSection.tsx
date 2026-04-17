@@ -93,11 +93,15 @@ const COLOR_OPTIONS: ColorOption[] = [
 
 export function HdpeSpecificationsSection(props: HdpeSpecificationsSectionProps) {
   const { globalSpecs, onUpdateGlobalSpecs, flangeStandards = [] } = props;
-  const selectedGrade = globalSpecs.hdpeGrade ?? "PE100";
+  const rawHdpeGrade = globalSpecs.hdpeGrade;
+  const selectedGrade = rawHdpeGrade || "PE100";
   const selectedSdr = globalSpecs.hdpeSdr;
-  const operatingTemp = globalSpecs.hdpeOperatingTempC ?? 20;
-  const selectedColorCode = globalSpecs.hdpeColorCode ?? "black";
-  const selectedWeldingStandard = globalSpecs.hdpeWeldingStandard ?? "ISO_21307";
+  const rawHdpeOperatingTempC = globalSpecs.hdpeOperatingTempC;
+  const operatingTemp = rawHdpeOperatingTempC || 20;
+  const rawHdpeColorCode = globalSpecs.hdpeColorCode;
+  const selectedColorCode = rawHdpeColorCode || "black";
+  const rawHdpeWeldingStandard = globalSpecs.hdpeWeldingStandard;
+  const selectedWeldingStandard = rawHdpeWeldingStandard || "ISO_21307";
 
   const [availablePressureClasses, setAvailablePressureClasses] = useState<FlangePressureClass[]>(
     [],
@@ -111,7 +115,8 @@ export function HdpeSpecificationsSection(props: HdpeSpecificationsSectionProps)
 
   const selectedStandardCode = useMemo(() => {
     const standard = flangeStandards.find((s) => s.id === selectedSteelFlangeStandardId);
-    return standard?.code || "";
+    const rawCode = standard?.code;
+    return rawCode || "";
   }, [flangeStandards, selectedSteelFlangeStandardId]);
 
   const availableFlangeTypes = useMemo(() => {
@@ -156,13 +161,16 @@ export function HdpeSpecificationsSection(props: HdpeSpecificationsSectionProps)
   const innerDiameter = wallThickness ? sampleOd - 2 * wallThickness : null;
 
   const selectedMaterial = HDPE_MATERIALS.find((m) => m.id === selectedGrade);
-  const density = selectedMaterial?.densityKgM3 || 950;
+  const rawDensityKgM3 = selectedMaterial?.densityKgM3;
+  const density = rawDensityKgM3 || 950;
   const weightPerMeter =
     wallThickness && innerDiameter
       ? ((Math.PI * (sampleOd ** 2 - innerDiameter ** 2)) / 4) * (density / 1e6)
       : null;
 
-  const maxTempForGrade = selectedMaterial?.maxTemperatureC || 60;
+  const rawMaxTemperatureC = selectedMaterial?.maxTemperatureC;
+
+  const maxTempForGrade = rawMaxTemperatureC || 60;
   const temperatureOptions = HDPE_TEMPERATURE_DERATING.filter(
     (point) => point.temperatureC <= maxTempForGrade,
   );
@@ -222,11 +230,12 @@ export function HdpeSpecificationsSection(props: HdpeSpecificationsSectionProps)
   const handleFlangeTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const flangeType = e.target.value as HdpeFlangeType;
     const needsDrilling = flangeType !== "none";
+    const rawHdpeFlangeDrillingStandard = globalSpecs.hdpeFlangeDrillingStandard;
     onUpdateGlobalSpecs({
       ...globalSpecs,
       hdpeFlangeType: flangeType || undefined,
       hdpeFlangeDrillingStandard: needsDrilling
-        ? (globalSpecs.hdpeFlangeDrillingStandard ?? "SANS1123")
+        ? rawHdpeFlangeDrillingStandard || "SANS1123"
         : undefined,
     });
   };
@@ -258,7 +267,8 @@ export function HdpeSpecificationsSection(props: HdpeSpecificationsSectionProps)
   };
 
   const handleSteelFlangeTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const typeCode = e.target.value || undefined;
+    const rawValue = e.target.value;
+    const typeCode = rawValue || undefined;
     onUpdateGlobalSpecs({
       ...globalSpecs,
       hdpeSteelFlangeTypeCode: typeCode,
@@ -273,6 +283,24 @@ export function HdpeSpecificationsSection(props: HdpeSpecificationsSectionProps)
   const isComplete = globalSpecs.hdpeGrade && globalSpecs.hdpeSdr && globalSpecs.hdpeJoiningMethod;
 
   const selectedWeldingStandardData = WELDING_STANDARDS[selectedWeldingStandard];
+
+  const rawHdpeGrade2 = globalSpecs.hdpeGrade;
+  const rawHdpeSdr = globalSpecs.hdpeSdr;
+  const rawHdpeJoiningMethod = globalSpecs.hdpeJoiningMethod;
+  const rawHdpeFlangeType = globalSpecs.hdpeFlangeType;
+  const rawHdpeFlangeDrillingStandard2 = globalSpecs.hdpeFlangeDrillingStandard;
+
+  const rawDescription = availableFlangeTypes.find(
+    (ft) => ft.code === selectedSteelFlangeTypeCode,
+  )?.description;
+
+  const rawDensityKgM32 = HDPE_MATERIALS.find((m) => m.id === globalSpecs.hdpeGrade)?.densityKgM3;
+  const rawMaxTemperatureC2 = HDPE_MATERIALS.find(
+    (m) => m.id === globalSpecs.hdpeGrade,
+  )?.maxTemperatureC;
+  const rawMinDesignStress = HDPE_MATERIALS.find(
+    (m) => m.id === globalSpecs.hdpeGrade,
+  )?.minDesignStress;
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-4">
@@ -289,7 +317,6 @@ export function HdpeSpecificationsSection(props: HdpeSpecificationsSectionProps)
           </span>
         )}
       </div>
-
       {/* Primary Specifications */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
@@ -297,7 +324,7 @@ export function HdpeSpecificationsSection(props: HdpeSpecificationsSectionProps)
             PE Grade <span className="text-red-600">*</span>
           </label>
           <select
-            value={globalSpecs.hdpeGrade ?? ""}
+            value={rawHdpeGrade2 || ""}
             onChange={handleGradeChange}
             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
           >
@@ -320,7 +347,7 @@ export function HdpeSpecificationsSection(props: HdpeSpecificationsSectionProps)
             SDR (Standard Dimension Ratio) <span className="text-red-600">*</span>
           </label>
           <select
-            value={globalSpecs.hdpeSdr ?? ""}
+            value={rawHdpeSdr || ""}
             onChange={handleSdrChange}
             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
           >
@@ -343,7 +370,7 @@ export function HdpeSpecificationsSection(props: HdpeSpecificationsSectionProps)
             Joining Method <span className="text-red-600">*</span>
           </label>
           <select
-            value={globalSpecs.hdpeJoiningMethod ?? ""}
+            value={rawHdpeJoiningMethod || ""}
             onChange={handleJoiningMethodChange}
             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
           >
@@ -364,7 +391,6 @@ export function HdpeSpecificationsSection(props: HdpeSpecificationsSectionProps)
           )}
         </div>
       </div>
-
       {/* Flange Options */}
       <div className="border-t border-gray-200 pt-4">
         <h4 className="text-xs font-semibold text-gray-700 mb-3">Flange Connection Options</h4>
@@ -372,7 +398,7 @@ export function HdpeSpecificationsSection(props: HdpeSpecificationsSectionProps)
           <div>
             <label className="block text-xs font-semibold text-gray-900 mb-1">Flange Type</label>
             <select
-              value={globalSpecs.hdpeFlangeType ?? "none"}
+              value={rawHdpeFlangeType || "none"}
               onChange={handleFlangeTypeChange}
               className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
             >
@@ -398,7 +424,7 @@ export function HdpeSpecificationsSection(props: HdpeSpecificationsSectionProps)
                 Flange Drilling Standard
               </label>
               <select
-                value={globalSpecs.hdpeFlangeDrillingStandard ?? "SANS1123"}
+                value={rawHdpeFlangeDrillingStandard2 || "SANS1123"}
                 onChange={handleFlangeDrillingStandardChange}
                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
               >
@@ -487,7 +513,6 @@ export function HdpeSpecificationsSection(props: HdpeSpecificationsSectionProps)
           </div>
         )}
       </div>
-
       {/* Operating Temperature with Derating */}
       <div className="border-t border-gray-200 pt-4">
         <h4 className="text-xs font-semibold text-gray-700 mb-3">
@@ -575,7 +600,6 @@ export function HdpeSpecificationsSection(props: HdpeSpecificationsSectionProps)
           </table>
         </div>
       </div>
-
       {/* Steel Backing Flange Specifications - shown when flange type requires steel backing */}
       {requiresSteelBackingFlange && (
         <div className="border-t border-gray-200 pt-4">
@@ -664,17 +688,13 @@ export function HdpeSpecificationsSection(props: HdpeSpecificationsSectionProps)
                   ))}
                 </select>
                 {selectedSteelFlangeTypeCode && (
-                  <p className="mt-1 text-xs text-gray-500">
-                    {availableFlangeTypes.find((ft) => ft.code === selectedSteelFlangeTypeCode)
-                      ?.description || ""}
-                  </p>
+                  <p className="mt-1 text-xs text-gray-500">{rawDescription || ""}</p>
                 )}
               </div>
             </div>
           </div>
         </div>
       )}
-
       {/* Color Code Selection */}
       <div className="border-t border-gray-200 pt-4">
         <h4 className="text-xs font-semibold text-gray-700 mb-3">Pipe Color Code</h4>
@@ -708,29 +728,21 @@ export function HdpeSpecificationsSection(props: HdpeSpecificationsSectionProps)
           </p>
         )}
       </div>
-
       {/* Material Properties & Calculations */}
       <div className="border-t border-gray-200 pt-4">
         <h4 className="text-xs font-semibold text-gray-700 mb-2">Material Properties</h4>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
           <div>
             <span className="text-gray-500">Density:</span>
-            <span className="ml-1 text-gray-900">
-              {HDPE_MATERIALS.find((m) => m.id === globalSpecs.hdpeGrade)?.densityKgM3 || "-"} kg/m³
-            </span>
+            <span className="ml-1 text-gray-900">{rawDensityKgM32 || "-"} kg/m³</span>
           </div>
           <div>
             <span className="text-gray-500">Max Temp:</span>
-            <span className="ml-1 text-gray-900">
-              {HDPE_MATERIALS.find((m) => m.id === globalSpecs.hdpeGrade)?.maxTemperatureC || "-"}°C
-            </span>
+            <span className="ml-1 text-gray-900">{rawMaxTemperatureC2 || "-"}°C</span>
           </div>
           <div>
             <span className="text-gray-500">Min Design Stress:</span>
-            <span className="ml-1 text-gray-900">
-              {HDPE_MATERIALS.find((m) => m.id === globalSpecs.hdpeGrade)?.minDesignStress || "-"}{" "}
-              MPa
-            </span>
+            <span className="ml-1 text-gray-900">{rawMinDesignStress || "-"} MPa</span>
           </div>
           <div>
             <span className="text-gray-500">Pressure Rating:</span>
@@ -744,7 +756,6 @@ export function HdpeSpecificationsSection(props: HdpeSpecificationsSectionProps)
           </div>
         </div>
       </div>
-
       {/* Calculations Display (for reference DN110 pipe) */}
       {selectedSdr && (
         <div className="border-t border-gray-200 pt-4">

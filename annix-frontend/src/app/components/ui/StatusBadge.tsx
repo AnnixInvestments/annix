@@ -41,7 +41,8 @@ const VARIANT_CLASSES: Record<StatusVariant, string> = {
 
 function StatusBadgeComponent(props: StatusBadgeProps) {
   const { status, variant } = props;
-  const className = props.className ?? "";
+  const rawClassName = props.className;
+  const className = rawClassName || "";
   const badgeClass = useMemo(() => {
     const statusLower = status.toLowerCase();
     const resolvedVariant = variant ?? STATUS_COLORS[statusLower] ?? "neutral";

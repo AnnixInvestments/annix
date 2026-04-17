@@ -147,7 +147,8 @@ export function SmartNotesDropdown(props: SmartNotesDropdownProps) {
 
   function noteCategory(noteText: string): string {
     const note = allNotes.find((n) => n.text === noteText);
-    return note?.category || "custom";
+    const rawCategory = note?.category;
+    return rawCategory || "custom";
   }
 
   const groupedNotes = allNotes.reduce(
@@ -217,49 +218,52 @@ export function SmartNotesDropdown(props: SmartNotesDropdownProps) {
               </p>
             </div>
 
-            {Object.entries(groupedNotes).map(([category, notes]) => (
-              <div key={category} className="border-b border-gray-100 last:border-b-0">
-                <div className="px-3 py-1.5 bg-gray-50 text-xs font-semibold text-gray-600">
-                  {CATEGORY_LABELS[category] || category}
-                </div>
-                {notes.map((note) => {
-                  const isSelected = selectedNotes.includes(note.text);
-                  return (
-                    <button
-                      key={note.id}
-                      type="button"
-                      onClick={() => toggleNote(note.text)}
-                      className={`w-full px-3 py-2 text-left text-xs hover:bg-gray-50 transition-colors flex items-start gap-2 ${
-                        isSelected ? "bg-green-50" : ""
-                      }`}
-                    >
-                      <span
-                        className={`mt-0.5 w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center ${
-                          isSelected
-                            ? "bg-green-500 border-green-500 text-white"
-                            : "border-gray-300"
+            {Object.entries(groupedNotes).map(([category, notes]) => {
+              const rawCategory2 = CATEGORY_LABELS[category];
+
+              return (
+                <div key={category} className="border-b border-gray-100 last:border-b-0">
+                  <div className="px-3 py-1.5 bg-gray-50 text-xs font-semibold text-gray-600">
+                    {rawCategory2 || category}
+                  </div>
+                  {notes.map((note) => {
+                    const isSelected = selectedNotes.includes(note.text);
+                    return (
+                      <button
+                        key={note.id}
+                        type="button"
+                        onClick={() => toggleNote(note.text)}
+                        className={`w-full px-3 py-2 text-left text-xs hover:bg-gray-50 transition-colors flex items-start gap-2 ${
+                          isSelected ? "bg-green-50" : ""
                         }`}
                       >
-                        {isSelected && (
-                          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                            <path
-                              fillRule="evenodd"
-                              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                              clipRule="evenodd"
-                            />
-                          </svg>
-                        )}
-                      </span>
-                      <span className="text-gray-700">{note.text}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            ))}
+                        <span
+                          className={`mt-0.5 w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center ${
+                            isSelected
+                              ? "bg-green-500 border-green-500 text-white"
+                              : "border-gray-300"
+                          }`}
+                        >
+                          {isSelected && (
+                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                              <path
+                                fillRule="evenodd"
+                                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
+                          )}
+                        </span>
+                        <span className="text-gray-700">{note.text}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
-
       {selectedNotes.length > 0 && (
         <div className="space-y-1">
           <p className="text-xs font-medium text-gray-600">

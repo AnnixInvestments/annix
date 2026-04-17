@@ -44,7 +44,8 @@ export function DocumentExpiryPopup(props: DocumentExpiryPopupProps) {
   const { expiringSoon, expired } = expiryResult;
 
   const renderDocument = (doc: ExpiringDocument, isExpired: boolean) => {
-    const label = documentTypeLabels[doc.documentType] || doc.documentType;
+    const rawDocumentType = documentTypeLabels[doc.documentType];
+    const label = rawDocumentType || doc.documentType;
     const expiryDate = formatDateZA(doc.expiryDate);
 
     return (

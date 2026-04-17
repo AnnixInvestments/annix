@@ -147,7 +147,8 @@ export function getSabs719TeeDimensions(nominalBoreMm: number): Sabs719TeeDimens
  */
 export function getSabs719OutsideDiameter(nominalBoreMm: number): number {
   const dims = getSabs719TeeDimensions(nominalBoreMm);
-  return dims?.outsideDiameterMm || nominalBoreMm * 1.1;
+  const rawOutsideDiameterMm = dims?.outsideDiameterMm;
+  return rawOutsideDiameterMm || nominalBoreMm * 1.1;
 }
 
 /**
@@ -189,7 +190,8 @@ export function getTeeHeight(nominalBoreMm: number, teeType: Sabs719TeeType): nu
  */
 export function getGussetSection(nominalBoreMm: number): number {
   const dims = getSabs719TeeDimensions(nominalBoreMm);
-  return dims?.gussetSectionMm || 0;
+  const rawGussetSectionMm = dims?.gussetSectionMm;
+  return rawGussetSectionMm || 0;
 }
 
 /**

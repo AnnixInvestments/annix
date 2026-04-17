@@ -291,7 +291,6 @@ export function PumpLifecycleCostCalculator(props: PumpLifecycleCostCalculatorPr
           </button>
         )}
       </div>
-
       <div className="lg:col-span-2 space-y-6">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -323,22 +322,26 @@ export function PumpLifecycleCostCalculator(props: PumpLifecycleCostCalculatorPr
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Cost Breakdown</h3>
           <div className="space-y-4">
-            {result.breakdown.map((item) => (
-              <div key={item.category}>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-sm font-medium text-gray-700">{item.category}</span>
-                  <span className="text-sm text-gray-600">
-                    {formatCurrency(item.cost)} ({item.percent.toFixed(1)}%)
-                  </span>
+            {result.breakdown.map((item) => {
+              const rawCategory = BREAKDOWN_COLORS[item.category];
+
+              return (
+                <div key={item.category}>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm font-medium text-gray-700">{item.category}</span>
+                    <span className="text-sm text-gray-600">
+                      {formatCurrency(item.cost)} ({item.percent.toFixed(1)}%)
+                    </span>
+                  </div>
+                  <div className="w-full h-4 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full ${rawCategory || "bg-gray-500"}`}
+                      style={{ width: `${item.percent}%` }}
+                    />
+                  </div>
                 </div>
-                <div className="w-full h-4 bg-gray-100 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full ${BREAKDOWN_COLORS[item.category] || "bg-gray-500"}`}
-                    style={{ width: `${item.percent}%` }}
-                  />
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           <div className="mt-6 pt-4 border-t border-gray-200">

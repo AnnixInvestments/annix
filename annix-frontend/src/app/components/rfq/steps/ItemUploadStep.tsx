@@ -169,6 +169,11 @@ const ItemWrapper = memo(function ItemWrapper({
     onCopyEntry(entry);
   }, [entry, onCopyEntry]);
 
+  const rawClientItemNumber = entry.clientItemNumber;
+  const rawClientItemNumber2 = entry.clientItemNumber;
+  const rawUseSequentialNumbering = entry.useSequentialNumbering;
+  const rawClientItemNumber3 = entry.clientItemNumber;
+
   return (
     <div className="border-2 border-gray-200 rounded-lg p-5 bg-white shadow-sm">
       <div className="flex justify-between items-center mb-3">
@@ -177,11 +182,11 @@ const ItemWrapper = memo(function ItemWrapper({
             <span className="text-base font-semibold text-gray-800">Item</span>
             <input
               type="text"
-              value={entry.clientItemNumber || `#${index + 1}`}
+              value={rawClientItemNumber || `#${index + 1}`}
               onChange={handleClientItemNumberChange}
               className="min-w-32 px-2 py-0.5 text-base font-semibold text-gray-800 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
               style={{
-                width: `${Math.max(10, (entry.clientItemNumber || `#${index + 1}`).length + 2)}ch`,
+                width: `${Math.max(10, (rawClientItemNumber2 || `#${index + 1}`).length + 2)}ch`,
               }}
               placeholder={`#${index + 1}`}
             />
@@ -225,16 +230,15 @@ const ItemWrapper = memo(function ItemWrapper({
             <label className="flex items-center gap-1 text-xs text-gray-600 cursor-pointer ml-2">
               <input
                 type="checkbox"
-                checked={entry.useSequentialNumbering || false}
+                checked={rawUseSequentialNumbering || false}
                 onChange={handleSequentialNumberingChange}
                 className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
               />
-              <span>Sequential (e.g., {entry.clientItemNumber || `#${index + 1}`}-01, -02)</span>
+              <span>Sequential (e.g., {rawClientItemNumber3 || `#${index + 1}`}-01, -02)</span>
             </label>
           )}
         </div>
       </div>
-
       {entry.itemType === "bend" ? (
         <BendForm
           entry={entry}
@@ -434,8 +438,10 @@ export default function ItemUploadStep(props: {
   const onDuplicateEntry = useRfqWizardStore((s) => s.duplicateItem);
   const entries = rfqData.items.length > 0 ? rfqData.items : rfqData.straightPipeEntries;
   const globalSpecs = rfqData.globalSpecs;
-  const requiredProducts = rfqData.requiredProducts || [];
-  const hideDrawings = rfqData.useNix ?? false;
+  const rawRequiredProducts = rfqData.requiredProducts;
+  const requiredProducts = rawRequiredProducts || [];
+  const rawUseNix = rfqData.useNix;
+  const hideDrawings = rawUseNix || false;
   itemUploadStepRenderCount++;
   log.info(`🔄 ItemUploadStep RENDER #${itemUploadStepRenderCount} - entries: ${entries?.length}`);
 
@@ -542,15 +548,16 @@ export default function ItemUploadStep(props: {
         entries.forEach((entry: any) => {
           if (autoFocusedEntriesRef.current.has(entry.id)) return;
 
-          const hasSteelSpec =
-            entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+          const rawSteelSpecificationId = entry.specs?.steelSpecificationId;
+
+          const hasSteelSpec = rawSteelSpecificationId || globalSpecs?.steelSpecificationId;
 
           if (entry.itemType === "fitting") {
             autoFocusedEntriesRef.current.add(entry.id);
-            const isSABS719 =
-              (entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId) === 8;
-            const effectiveStandard =
-              entry.specs?.fittingStandard || (isSABS719 ? "SABS719" : "SABS62");
+            const rawSteelSpecificationId2 = entry.specs?.steelSpecificationId;
+            const isSABS719 = (rawSteelSpecificationId2 || globalSpecs?.steelSpecificationId) === 8;
+            const rawFittingStandard = entry.specs?.fittingStandard;
+            const effectiveStandard = rawFittingStandard || (isSABS719 ? "SABS719" : "SABS62");
             if (!entry.specs?.fittingType) {
               focusAndOpenSelect(`fitting-type-${entry.id}`);
             } else if (!entry.specs?.nominalDiameterMm) {
@@ -560,8 +567,8 @@ export default function ItemUploadStep(props: {
             }
           } else if (entry.itemType === "bend" && hasSteelSpec) {
             autoFocusedEntriesRef.current.add(entry.id);
-            const isSABS719 =
-              (entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId) === 8;
+            const rawSteelSpecificationId3 = entry.specs?.steelSpecificationId;
+            const isSABS719 = (rawSteelSpecificationId3 || globalSpecs?.steelSpecificationId) === 8;
             if (isSABS719 && !entry.specs?.bendRadiusType) {
               focusAndOpenSelect(`bend-radius-type-${entry.id}`);
             } else if (!isSABS719 && !entry.specs?.bendType) {
@@ -686,16 +693,19 @@ export default function ItemUploadStep(props: {
     return null;
   };
 
+  const rawLength = masterData.nominalBores?.length;
+
   // Use nominal bores from master data, fallback to hardcoded values
   // Remove duplicates using Set and sort
   // Handle both snake_case (from API) and camelCase (from fallback data) property names
   const allNominalBores = (
-    (masterData.nominalBores?.length || 0) > 0
+    (rawLength || 0) > 0
       ? Array.from(
           new Set(
-            masterData.nominalBores!.map(
-              (nb: any) => (nb.nominal_diameter_mm ?? nb.nominalDiameterMm) as number,
-            ),
+            masterData.nominalBores!.map((nb: any) => {
+              const rawNominal_diameter_mm = nb.nominal_diameter_mm;
+              return (rawNominal_diameter_mm || nb.nominalDiameterMm) as number;
+            }),
           ),
         ).sort((a, b) => (a as number) - (b as number))
       : [
@@ -718,7 +728,8 @@ export default function ItemUploadStep(props: {
 
     // Get the steel spec name for lookup
     const steelSpec = masterData.steelSpecs?.find((s: any) => s.id === steelSpecId);
-    const steelSpecName = steelSpec?.steelSpecName || "";
+    const rawSteelSpecName = steelSpec?.steelSpecName;
+    const steelSpecName = rawSteelSpecName || "";
 
     log.debug(`[ItemUploadStep] Steel spec selected: ${steelSpecId} - "${steelSpecName}"`);
 
@@ -746,21 +757,27 @@ export default function ItemUploadStep(props: {
     const showBnw = requiredProducts.includes("fasteners_gaskets");
 
     return entries.reduce((total: number, entry: any) => {
-      const qty = entry.calculation?.calculatedPipeCount || entry.specs?.quantityValue || 0;
+      const rawCalculatedPipeCount = entry.calculation?.calculatedPipeCount;
+      const qty = rawCalculatedPipeCount || entry.specs?.quantityValue || 0;
 
       // Calculate item weight based on type
       let entryTotal = 0;
       if (entry.itemType === "bend") {
+        const rawBendWeight = entry.calculation?.bendWeight;
         // For bends, use component weights (per-unit) * qty
-        const bendWeightPerUnit = entry.calculation?.bendWeight || 0;
-        const tangentWeightPerUnit = entry.calculation?.tangentWeight || 0;
-        const flangeWeightPerUnit = entry.calculation?.flangeWeight || 0;
+        const bendWeightPerUnit = rawBendWeight || 0;
+        const rawTangentWeight = entry.calculation?.tangentWeight;
+        const tangentWeightPerUnit = rawTangentWeight || 0;
+        const rawFlangeWeight = entry.calculation?.flangeWeight;
+        const flangeWeightPerUnit = rawFlangeWeight || 0;
         entryTotal = (bendWeightPerUnit + tangentWeightPerUnit + flangeWeightPerUnit) * qty;
       } else if (entry.itemType === "fitting") {
-        entryTotal = entry.calculation?.totalWeight || 0;
+        const rawTotalWeight = entry.calculation?.totalWeight;
+        entryTotal = rawTotalWeight || 0;
       } else {
+        const rawTotalSystemWeight = entry.calculation?.totalSystemWeight;
         // Straight pipes - totalSystemWeight is already total
-        entryTotal = entry.calculation?.totalSystemWeight || 0;
+        entryTotal = rawTotalSystemWeight || 0;
       }
 
       // Add BNW and gasket weights if applicable
@@ -770,20 +787,23 @@ export default function ItemUploadStep(props: {
       let stubGasketWeight = 0;
 
       if (showBnw) {
-        const pressureClassId =
-          entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
+        const rawFlangePressureClassId = entry.specs?.flangePressureClassId;
+        const pressureClassId = rawFlangePressureClassId || globalSpecs?.flangePressureClassId;
         const pressureClass = pressureClassId
           ? masterData.pressureClasses?.find((p: any) => p.id === pressureClassId)?.designation
           : "PN16";
-        const nbMm = entry.specs?.nominalBoreMm || 100;
+        const rawNominalBoreMm = entry.specs?.nominalBoreMm;
+        const nbMm = rawNominalBoreMm || 100;
 
         // Determine if item has flanges based on type
         let hasFlanges = false;
         if (entry.itemType === "bend") {
-          const bendEndConfig = entry.specs?.bendEndConfiguration || "PE";
+          const rawBendEndConfiguration = entry.specs?.bendEndConfiguration;
+          const bendEndConfig = rawBendEndConfiguration || "PE";
           hasFlanges = bendEndConfig !== "PE";
         } else if (entry.itemType === "straight_pipe" || !entry.itemType) {
-          const pipeEndConfig = entry.specs?.pipeEndConfiguration || "PE";
+          const rawPipeEndConfiguration = entry.specs?.pipeEndConfiguration;
+          const pipeEndConfig = rawPipeEndConfiguration || "PE";
           hasFlanges = pipeEndConfig !== "PE";
         }
 
@@ -829,16 +849,21 @@ export default function ItemUploadStep(props: {
     (entry: any) => {
       // Handle bend items
       if (entry.itemType === "bend") {
-        const nb = entry.specs?.nominalBoreMm || "XX";
+        const rawNominalBoreMm2 = entry.specs?.nominalBoreMm;
+        const nb = rawNominalBoreMm2 || "XX";
+        const rawScheduleNumber = entry.specs?.scheduleNumber;
         // Clean schedule to avoid "SchSch" - remove any existing "Sch" prefix
-        let schedule = entry.specs?.scheduleNumber || "XX";
+        let schedule = rawScheduleNumber || "XX";
         if (schedule.toString().toLowerCase().startsWith("sch")) {
           schedule = schedule.substring(3);
         }
-        const bendTypeRaw = entry.specs?.bendRadiusType || entry.specs?.bendType || "X.XD";
-        const bendAngle = entry.specs?.bendDegrees || "XX";
+        const rawBendRadiusType = entry.specs?.bendRadiusType;
+        const bendTypeRaw = rawBendRadiusType || entry.specs?.bendType || "X.XD";
+        const rawBendDegrees = entry.specs?.bendDegrees;
+        const bendAngle = rawBendDegrees || "XX";
         const centerToFace = entry.specs?.centerToFaceMm;
-        const bendEndConfig = entry.specs?.bendEndConfiguration || "PE";
+        const rawBendEndConfiguration2 = entry.specs?.bendEndConfiguration;
+        const bendEndConfig = rawBendEndConfiguration2 || "PE";
 
         // Format bend type for description - add "Radius" where needed
         const bendType =
@@ -856,23 +881,30 @@ export default function ItemUploadStep(props: {
                       ? "5D (Extra Long Radius)"
                       : bendTypeRaw;
 
+        const rawSteelSpecificationId4 = entry.specs?.steelSpecificationId;
+
         // Get steel spec name and ID for format determination
-        const steelSpecId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+        const steelSpecId = rawSteelSpecificationId4 || globalSpecs?.steelSpecificationId;
         const steelSpec = steelSpecId
           ? masterData.steelSpecs.find((s: any) => s.id === steelSpecId)?.steelSpecName
           : undefined;
 
         // Check if SABS 719 (ERW steel - id 8) - uses W/T format instead of Schedule
         const isSABS719Bend = steelSpecId === 8;
+        const rawWallThicknessMm = entry.specs?.wallThicknessMm;
+        const rawWallThicknessMm2 = entry.calculation?.wallThicknessMm;
         // For SABS 719, prioritize user-selected W/T; for others, use calculation (schedule-derived) first
         const wallThicknessBend = isSABS719Bend
-          ? entry.specs?.wallThicknessMm || entry.calculation?.wallThicknessMm
-          : entry.calculation?.wallThicknessMm || entry.specs?.wallThicknessMm;
+          ? rawWallThicknessMm || entry.calculation?.wallThicknessMm
+          : rawWallThicknessMm2 || entry.specs?.wallThicknessMm;
+
+        const rawFlangeStandardId = entry.specs?.flangeStandardId;
 
         // Get flange specs
-        const flangeStandardId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
+        const flangeStandardId = rawFlangeStandardId || globalSpecs?.flangeStandardId;
+        const rawFlangePressureClassId2 = entry.specs?.flangePressureClassId;
         const flangePressureClassId =
-          entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
+          rawFlangePressureClassId2 || globalSpecs?.flangePressureClassId;
         const flangeStandard = flangeStandardId
           ? masterData.flangeStandards?.find((s: any) => s.id === flangeStandardId)?.code
           : "";
@@ -905,19 +937,26 @@ export default function ItemUploadStep(props: {
           }
         }
 
+        const rawNumberOfSegments = entry.specs?.numberOfSegments;
+
         // Add segment count for SABS 719 segmented bends
-        const numSegments = entry.specs?.numberOfSegments || 0;
+        const numSegments = rawNumberOfSegments || 0;
         if (numSegments > 1) {
           description += ` ${bendAngle}° ${bendType} ${numSegments} Seg Bend`;
         } else {
           description += ` ${bendAngle}° ${bendType} Bend`;
         }
 
+        const rawTangentLengths = entry.specs?.tangentLengths;
+
         // Add C/F - if tangents are present, show C/F + tangent for each end
-        const tangentLengths = entry.specs?.tangentLengths || [];
-        const tangent1 = tangentLengths[0] || 0;
-        const tangent2 = tangentLengths[1] || 0;
-        const numTangents = entry.specs?.numberOfTangents || 0;
+        const tangentLengths = rawTangentLengths || [];
+        const rawItem0 = tangentLengths[0];
+        const tangent1 = rawItem0 || 0;
+        const rawItem1 = tangentLengths[1];
+        const tangent2 = rawItem1 || 0;
+        const rawNumberOfTangents = entry.specs?.numberOfTangents;
+        const numTangents = rawNumberOfTangents || 0;
 
         if (centerToFace) {
           const cf = Number(centerToFace);
@@ -939,19 +978,22 @@ export default function ItemUploadStep(props: {
           }
         }
 
+        const rawNumberOfStubs = entry.specs?.numberOfStubs;
+
         // Add stub info if present (before flange config so config label can account for stubs)
-        const numStubs = entry.specs?.numberOfStubs || 0;
-        const stubs = entry.specs?.stubs || [];
+        const numStubs = rawNumberOfStubs || 0;
+        const rawStubs = entry.specs?.stubs;
+        const stubs = rawStubs || [];
         const stub1NB = stubs[0]?.nominalBoreMm;
         const stub1Length = stubs[0]?.length;
         const stub2NB = stubs[1]?.nominalBoreMm;
         const stub2Length = stubs[1]?.length;
+        const rawHasFlangeOverride = stubs[0]?.hasFlangeOverride;
         const stub1HasFlange =
-          stubs[0]?.hasFlangeOverride ||
-          (stubs[0]?.flangeStandardId && stubs[0]?.flangePressureClassId);
+          rawHasFlangeOverride || (stubs[0]?.flangeStandardId && stubs[0]?.flangePressureClassId);
+        const rawHasFlangeOverride2 = stubs[1]?.hasFlangeOverride;
         const stub2HasFlange =
-          stubs[1]?.hasFlangeOverride ||
-          (stubs[1]?.flangeStandardId && stubs[1]?.flangePressureClassId);
+          rawHasFlangeOverride2 || (stubs[1]?.flangeStandardId && stubs[1]?.flangePressureClassId);
 
         if (numStubs > 0) {
           if (numStubs === 1 && stub1NB && stub1Length) {
@@ -985,8 +1027,10 @@ export default function ItemUploadStep(props: {
 
           // If stubs have flanges, add the stub flange type to the config label
           if (numStubs > 0 && (stub1HasFlange || stub2HasFlange)) {
-            const stub1FlangeType = stubs[0]?.flangeType || "S/O";
-            const stub2FlangeType = stubs[1]?.flangeType || "S/O";
+            const rawFlangeType = stubs[0]?.flangeType;
+            const stub1FlangeType = rawFlangeType || "S/O";
+            const rawFlangeType2 = stubs[1]?.flangeType;
+            const stub2FlangeType = rawFlangeType2 || "S/O";
 
             // Build stub flange suffix
             const stubFlangeLabels: string[] = [];
@@ -1031,18 +1075,24 @@ export default function ItemUploadStep(props: {
 
       // Handle fitting items
       if (entry.itemType === "fitting") {
-        const fittingNb = entry.specs?.nominalDiameterMm || entry.specs?.nominalBoreMm || "XX";
-        const fittingTypeRaw = entry.specs?.fittingType || "Fitting";
-        const fittingStandard = entry.specs?.fittingStandard || "";
-        const fittingSchedule = entry.specs?.scheduleNumber || "";
+        const rawNominalDiameterMm = entry.specs?.nominalDiameterMm;
+        const fittingNb = rawNominalDiameterMm || entry.specs?.nominalBoreMm || "XX";
+        const rawFittingType = entry.specs?.fittingType;
+        const fittingTypeRaw = rawFittingType || "Fitting";
+        const rawFittingStandard2 = entry.specs?.fittingStandard;
+        const fittingStandard = rawFittingStandard2 || "";
+        const rawScheduleNumber2 = entry.specs?.scheduleNumber;
+        const fittingSchedule = rawScheduleNumber2 || "";
         const fittingWallThickness = entry.specs?.wallThicknessMm;
-        const fittingEndConfig = entry.specs?.pipeEndConfiguration || "PE";
+        const rawPipeEndConfiguration2 = entry.specs?.pipeEndConfiguration;
+        const fittingEndConfig = rawPipeEndConfiguration2 || "PE";
         const pipeLengthA = entry.specs?.pipeLengthAMm;
         const pipeLengthB = entry.specs?.pipeLengthBMm;
 
+        const rawSteelSpecificationId5 = entry.specs?.steelSpecificationId;
+
         // Get steel spec name if available
-        const fittingSteelSpecId =
-          entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+        const fittingSteelSpecId = rawSteelSpecificationId5 || globalSpecs?.steelSpecificationId;
         const fittingSteelSpec = fittingSteelSpecId
           ? masterData.steelSpecs.find((s: any) => s.id === fittingSteelSpecId)?.steelSpecName
           : undefined;
@@ -1127,10 +1177,13 @@ export default function ItemUploadStep(props: {
                       : fittingEndConfig;
           fittingDesc += ` ${configLabel}`;
 
+          const rawFlangeStandardId2 = entry.specs?.flangeStandardId;
+
           // Add flange standard and pressure class if not PE
-          const flangeStandardId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
+          const flangeStandardId = rawFlangeStandardId2 || globalSpecs?.flangeStandardId;
+          const rawFlangePressureClassId3 = entry.specs?.flangePressureClassId;
           const flangePressureClassId =
-            entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
+            rawFlangePressureClassId3 || globalSpecs?.flangePressureClassId;
           const flangeStandard = flangeStandardId
             ? masterData.flangeStandards?.find((s: any) => s.id === flangeStandardId)?.code
             : "";
@@ -1149,11 +1202,16 @@ export default function ItemUploadStep(props: {
 
       // Handle valve items
       if (entry.itemType === "valve") {
-        const valveType = entry.specs?.valveType || "Valve";
-        const valveSize = entry.specs?.size || entry.specs?.nominalBoreMm || "";
-        const pressureClass = entry.specs?.pressureClass || "";
-        const bodyMaterial = entry.specs?.bodyMaterial || "";
-        const actuatorType = entry.specs?.actuatorType || "";
+        const rawValveType = entry.specs?.valveType;
+        const valveType = rawValveType || "Valve";
+        const rawSize = entry.specs?.size;
+        const valveSize = rawSize || entry.specs?.nominalBoreMm || "";
+        const rawPressureClass = entry.specs?.pressureClass;
+        const pressureClass = rawPressureClass || "";
+        const rawBodyMaterial = entry.specs?.bodyMaterial;
+        const bodyMaterial = rawBodyMaterial || "";
+        const rawActuatorType = entry.specs?.actuatorType;
+        const actuatorType = rawActuatorType || "";
 
         let valveDesc = valveSize ? `${valveSize}NB ` : "";
         valveDesc += valveType
@@ -1177,11 +1235,16 @@ export default function ItemUploadStep(props: {
 
       // Handle instrument items
       if (entry.itemType === "instrument") {
-        const instrumentType = entry.specs?.instrumentType || "Instrument";
-        const instrumentCategory = entry.specs?.category || "";
-        const size = entry.specs?.size || entry.specs?.nominalBoreMm || "";
-        const outputSignal = entry.specs?.outputSignal || "";
-        const processConnection = entry.specs?.processConnection || "";
+        const rawInstrumentType = entry.specs?.instrumentType;
+        const instrumentType = rawInstrumentType || "Instrument";
+        const rawCategory = entry.specs?.category;
+        const instrumentCategory = rawCategory || "";
+        const rawSize2 = entry.specs?.size;
+        const size = rawSize2 || entry.specs?.nominalBoreMm || "";
+        const rawOutputSignal = entry.specs?.outputSignal;
+        const outputSignal = rawOutputSignal || "";
+        const rawProcessConnection = entry.specs?.processConnection;
+        const processConnection = rawProcessConnection || "";
 
         let instrumentDesc = "";
         if (instrumentCategory) {
@@ -1208,11 +1271,16 @@ export default function ItemUploadStep(props: {
 
       // Handle pump items
       if (entry.itemType === "pump") {
-        const pumpType = entry.specs?.pumpType || "Pump";
-        const flowRate = entry.specs?.flowRate || "";
-        const head = entry.specs?.totalHead || "";
-        const motorPower = entry.specs?.motorPower || "";
-        const casingMaterial = entry.specs?.casingMaterial || "";
+        const rawPumpType = entry.specs?.pumpType;
+        const pumpType = rawPumpType || "Pump";
+        const rawFlowRate = entry.specs?.flowRate;
+        const flowRate = rawFlowRate || "";
+        const rawTotalHead = entry.specs?.totalHead;
+        const head = rawTotalHead || "";
+        const rawMotorPower = entry.specs?.motorPower;
+        const motorPower = rawMotorPower || "";
+        const rawCasingMaterial = entry.specs?.casingMaterial;
+        const casingMaterial = rawCasingMaterial || "";
 
         let pumpDesc = pumpType
           .replace(/_/g, " ")
@@ -1237,12 +1305,16 @@ export default function ItemUploadStep(props: {
       }
 
       if (entry.itemType === "tank_chute") {
-        const assemblyType = entry.specs?.assemblyType || "Assembly";
+        const rawAssemblyType = entry.specs?.assemblyType;
+        const assemblyType = rawAssemblyType || "Assembly";
         const typeLabel = assemblyType.charAt(0).toUpperCase() + assemblyType.slice(1);
-        const grade = entry.specs?.materialGrade || "";
-        const drawing = entry.specs?.drawingReference || "";
+        const rawMaterialGrade = entry.specs?.materialGrade;
+        const grade = rawMaterialGrade || "";
+        const rawDrawingReference = entry.specs?.drawingReference;
+        const drawing = rawDrawingReference || "";
         const weight = entry.specs?.totalSteelWeightKg;
-        const qty = entry.specs?.quantityValue || 1;
+        const rawQuantityValue = entry.specs?.quantityValue;
+        const qty = rawQuantityValue || 1;
 
         const parts = [typeLabel];
         if (drawing) parts.push(drawing);
@@ -1253,25 +1325,34 @@ export default function ItemUploadStep(props: {
       }
 
       if (entry.itemType === "fastener") {
-        const cat = entry.specs?.fastenerCategory || "fastener";
-        const type = entry.specs?.specificType || "";
-        const size = entry.specs?.size || "";
-        const grade = entry.specs?.grade || "";
-        const qty = entry.specs?.quantityValue || 1;
+        const rawFastenerCategory = entry.specs?.fastenerCategory;
+        const cat = rawFastenerCategory || "fastener";
+        const rawSpecificType = entry.specs?.specificType;
+        const type = rawSpecificType || "";
+        const rawSize3 = entry.specs?.size;
+        const size = rawSize3 || "";
+        const rawGrade = entry.specs?.grade;
+        const grade = rawGrade || "";
+        const rawQuantityValue2 = entry.specs?.quantityValue;
+        const qty = rawQuantityValue2 || 1;
         const parts = [cat.replace(/_/g, " "), type.replace(/_/g, " "), size];
         if (grade) parts.push(grade);
         if (qty > 1) parts.push(`x${qty}`);
         return parts.filter(Boolean).join(" - ");
       }
 
+      const rawNominalBoreMm3 = entry.specs.nominalBoreMm;
+
       // Handle straight pipe items
-      const nb = entry.specs.nominalBoreMm || "XX";
+      const nb = rawNominalBoreMm3 || "XX";
+      const rawScheduleNumber3 = entry.specs.scheduleNumber;
       let schedule =
-        entry.specs.scheduleNumber ||
+        rawScheduleNumber3 ||
         (entry.specs.wallThicknessMm ? `${entry.specs.wallThicknessMm}WT` : "XX");
       const wallThickness = entry.specs.wallThicknessMm;
       const pipeLength = entry.specs.individualPipeLength;
-      const pipeEndConfig = entry.specs.pipeEndConfiguration || "PE";
+      const rawPipeEndConfiguration3 = entry.specs.pipeEndConfiguration;
+      const pipeEndConfig = rawPipeEndConfiguration3 || "PE";
 
       if (schedule.startsWith("Sch")) {
         schedule = schedule.substring(3);
@@ -1295,10 +1376,12 @@ export default function ItemUploadStep(props: {
         }
       };
 
+      const rawFlangeStandardId3 = entry.specs?.flangeStandardId;
+
       // Get flange standard and pressure class
-      const flangeStandardId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
-      const flangePressureClassId =
-        entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
+      const flangeStandardId = rawFlangeStandardId3 || globalSpecs?.flangeStandardId;
+      const rawFlangePressureClassId4 = entry.specs?.flangePressureClassId;
+      const flangePressureClassId = rawFlangePressureClassId4 || globalSpecs?.flangePressureClassId;
       const flangeStandard = flangeStandardId
         ? masterData.flangeStandards?.find((s: any) => s.id === flangeStandardId)?.code
         : "";
@@ -1306,9 +1389,10 @@ export default function ItemUploadStep(props: {
         ? masterData.pressureClasses?.find((p: any) => p.id === flangePressureClassId)?.designation
         : "";
 
+      const rawSteelSpecificationId6 = entry.specs?.steelSpecificationId;
+
       // Get steel spec name for pipes (moved up to include in description early)
-      const pipesteelSpecId =
-        entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+      const pipesteelSpecId = rawSteelSpecificationId6 || globalSpecs?.steelSpecificationId;
       const pipeSteelSpec = pipesteelSpecId
         ? masterData.steelSpecs.find((s: any) => s.id === pipesteelSpecId)?.steelSpecName
         : undefined;
@@ -1402,8 +1486,9 @@ export default function ItemUploadStep(props: {
         // Mark as fetching before the async call to prevent duplicate fetches
         fetchedSchedulesRef.current.add(entry.id);
 
-        const steelSpecId =
-          entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId || 2;
+        const rawSteelSpecificationId7 = entry.specs?.steelSpecificationId;
+
+        const steelSpecId = rawSteelSpecificationId7 || globalSpecs?.steelSpecificationId || 2;
         await fetchAvailableSchedules(entry.id, steelSpecId, nominalBore);
       }
     };
@@ -2304,37 +2389,49 @@ export default function ItemUploadStep(props: {
                 </thead>
                 <tbody>
                   {entries.map((entry: any, index: number) => {
-                    const itemNumber = entry.clientItemNumber || `#${index + 1}`;
-                    const qty =
-                      entry.calculation?.calculatedPipeCount || entry.specs?.quantityValue || 0;
+                    const rawClientItemNumber4 = entry.clientItemNumber;
+                    const itemNumber = rawClientItemNumber4 || `#${index + 1}`;
+                    const rawCalculatedPipeCount2 = entry.calculation?.calculatedPipeCount;
+                    const qty = rawCalculatedPipeCount2 || entry.specs?.quantityValue || 0;
 
                     // Calculate weights differently for bends vs straight pipes
                     let totalWeight = 0;
                     let weightPerItem = 0;
 
                     if (entry.itemType === "bend") {
+                      const rawBendWeight2 = entry.calculation?.bendWeight;
                       // For bends, use component weights (bendWeight + tangentWeight are per-unit)
-                      const bendWeightPerUnit = entry.calculation?.bendWeight || 0;
-                      const tangentWeightPerUnit = entry.calculation?.tangentWeight || 0;
+                      const bendWeightPerUnit = rawBendWeight2 || 0;
+                      const rawTangentWeight2 = entry.calculation?.tangentWeight;
+                      const tangentWeightPerUnit = rawTangentWeight2 || 0;
+                      const rawFlangeWeight2 = entry.calculation?.flangeWeight;
                       // Flange weight from calculation (already per-unit in API response)
-                      const flangeWeightPerUnit = entry.calculation?.flangeWeight || 0;
+                      const flangeWeightPerUnit = rawFlangeWeight2 || 0;
                       weightPerItem =
                         bendWeightPerUnit + tangentWeightPerUnit + flangeWeightPerUnit;
                       totalWeight = weightPerItem * qty;
                     } else if (entry.itemType === "fitting") {
+                      const rawCalculation = entry.calculation;
                       // For fittings, totalWeight may not be set - fall back to sum of components
-                      const fittingCalc = entry.calculation || {};
+                      const fittingCalc = rawCalculation || {};
+                      const rawTotalWeight2 = fittingCalc.totalWeight;
+                      const rawFittingWeight = fittingCalc.fittingWeight;
+                      const rawPipeWeight = fittingCalc.pipeWeight;
+                      const rawFlangeWeight3 = fittingCalc.flangeWeight;
+                      const rawBoltWeight = fittingCalc.boltWeight;
+                      const rawNutWeight = fittingCalc.nutWeight;
                       totalWeight =
-                        fittingCalc.totalWeight ||
-                        (fittingCalc.fittingWeight || 0) +
-                          (fittingCalc.pipeWeight || 0) +
-                          (fittingCalc.flangeWeight || 0) +
-                          (fittingCalc.boltWeight || 0) +
-                          (fittingCalc.nutWeight || 0);
+                        rawTotalWeight2 ||
+                        (rawFittingWeight || 0) +
+                          (rawPipeWeight || 0) +
+                          (rawFlangeWeight3 || 0) +
+                          (rawBoltWeight || 0) +
+                          (rawNutWeight || 0);
                       weightPerItem = qty > 0 ? totalWeight / qty : 0;
                     } else {
+                      const rawTotalSystemWeight2 = entry.calculation?.totalSystemWeight;
                       // For straight pipes, totalSystemWeight is already total
-                      totalWeight = entry.calculation?.totalSystemWeight || 0;
+                      totalWeight = rawTotalSystemWeight2 || 0;
                       weightPerItem = qty > 0 ? totalWeight / qty : 0;
                     }
 
@@ -2347,12 +2444,14 @@ export default function ItemUploadStep(props: {
                     let boltSetsPerItem = 0;
 
                     if (entry.itemType === "straight_pipe" || !entry.itemType) {
-                      const pipeEndConfig = entry.specs?.pipeEndConfiguration || "PE";
+                      const rawPipeEndConfiguration4 = entry.specs?.pipeEndConfiguration;
+                      const pipeEndConfig = rawPipeEndConfiguration4 || "PE";
                       flangesPerPipe = getFlangesPerPipe(pipeEndConfig);
                       boltSetsPerItem = getBoltSetCountPerPipe(pipeEndConfig);
                     } else if (entry.itemType === "bend") {
+                      const rawBendEndConfiguration3 = entry.specs?.bendEndConfiguration;
                       // Calculate main bend flanges based on bendEndConfiguration
-                      const bendEndConfig = entry.specs?.bendEndConfiguration || "PE";
+                      const bendEndConfig = rawBendEndConfiguration3 || "PE";
                       if (
                         bendEndConfig === "FBE" ||
                         bendEndConfig === "FOE_RF" ||
@@ -2365,11 +2464,13 @@ export default function ItemUploadStep(props: {
                       }
                       // Bolt sets: 2 same-sized flanged ends = 1 bolt set
                       boltSetsPerItem = getBoltSetCountPerBend(bendEndConfig);
+                      const rawNumberOfStubs2 = entry.specs?.numberOfStubs;
                       // Add stub flanges (each stub has 1 flange AND 1 bolt set)
-                      stubFlangesPerItem = entry.specs?.numberOfStubs || 0;
+                      stubFlangesPerItem = rawNumberOfStubs2 || 0;
                     } else if (entry.itemType === "fitting") {
+                      const rawPipeEndConfiguration5 = entry.specs?.pipeEndConfiguration;
                       // Calculate fitting flanges based on pipeEndConfiguration
-                      const fittingEndConfig = entry.specs?.pipeEndConfiguration || "PE";
+                      const fittingEndConfig = rawPipeEndConfiguration5 || "PE";
                       if (fittingEndConfig === "F2E") flangesPerPipe = 2;
                       else if (fittingEndConfig === "F2E_LF") flangesPerPipe = 2;
                       else if (fittingEndConfig === "F2E_RF") flangesPerPipe = 2;
@@ -2383,17 +2484,20 @@ export default function ItemUploadStep(props: {
                     const totalStubFlanges = stubFlangesPerItem * qty;
                     const totalBoltSets = boltSetsPerItem * qty;
 
+                    const rawFlangePressureClassId5 = entry.specs?.flangePressureClassId;
+
                     // Get pressure class for BNW lookup
                     const pressureClassId =
-                      entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
+                      rawFlangePressureClassId5 || globalSpecs?.flangePressureClassId;
                     const pressureClass = pressureClassId
                       ? masterData.pressureClasses?.find((p: any) => p.id === pressureClassId)
                           ?.designation
                       : "PN16";
 
+                    const rawFlangeStandardId4 = entry.specs?.flangeStandardId;
+
                     // Get flange standard for dynamic spec display (e.g., "SANS 1123 1000/3")
-                    const flangeStandardId =
-                      entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
+                    const flangeStandardId = rawFlangeStandardId4 || globalSpecs?.flangeStandardId;
                     const flangeStandardCode = flangeStandardId
                       ? masterData.flangeStandards?.find((s: any) => s.id === flangeStandardId)
                           ?.code
@@ -2403,7 +2507,9 @@ export default function ItemUploadStep(props: {
                         ? `${flangeStandardCode} ${pressureClass}`
                         : pressureClass || "PN16";
 
-                    const nbMm = entry.specs?.nominalBoreMm || 100;
+                    const rawNominalBoreMm4 = entry.specs?.nominalBoreMm;
+
+                    const nbMm = rawNominalBoreMm4 || 100;
 
                     // Get BNW set info
                     const bnwInfo = bnwSetInfo(allBnwSets, nbMm, pressureClass || "PN16");
@@ -2413,8 +2519,8 @@ export default function ItemUploadStep(props: {
                     const getWeldThickness = () => {
                       // For fittings (tees/laterals), use wall thickness from specs
                       if (entry.itemType === "fitting") {
-                        const fittingWt =
-                          entry.specs?.wallThicknessMm || entry.calculation?.wallThicknessMm;
+                        const rawWallThicknessMm3 = entry.specs?.wallThicknessMm;
+                        const fittingWt = rawWallThicknessMm3 || entry.calculation?.wallThicknessMm;
                         if (fittingWt) {
                           return { thickness: fittingWt, label: "Fitting WT" };
                         }
@@ -2422,18 +2528,22 @@ export default function ItemUploadStep(props: {
                       }
 
                       const dn = entry.specs?.nominalBoreMm;
-                      const schedule = entry.specs?.scheduleNumber || "";
-                      const pipeWallThickness =
-                        entry.calculation?.wallThicknessMm || entry.specs?.wallThicknessMm;
+                      const rawScheduleNumber4 = entry.specs?.scheduleNumber;
+                      const schedule = rawScheduleNumber4 || "";
+                      const rawWallThicknessMm4 = entry.calculation?.wallThicknessMm;
+                      const pipeWallThickness = rawWallThicknessMm4 || entry.specs?.wallThicknessMm;
                       if (!dn && !pipeWallThickness) return null;
+
+                      const rawSteelSpecificationId8 = entry.specs?.steelSpecificationId;
 
                       // Check for SABS 719 - use pattern matching on spec name
                       const steelSpecId =
-                        entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+                        rawSteelSpecificationId8 || globalSpecs?.steelSpecificationId;
                       const steelSpec = masterData?.steelSpecs?.find(
                         (s: any) => s.id === steelSpecId,
                       );
-                      const steelSpecName = steelSpec?.steelSpecName || "";
+                      const rawSteelSpecName2 = steelSpec?.steelSpecName;
+                      const steelSpecName = rawSteelSpecName2 || "";
                       const isSABS719 =
                         steelSpecName.includes("SABS 719") || steelSpecName.includes("SANS 719");
 
@@ -2543,24 +2653,28 @@ export default function ItemUploadStep(props: {
                     const getPerUnitSurfaceAreas = () => {
                       // Handle bends - calculate surface area for arc + tangents + stubs
                       if (entry.itemType === "bend") {
-                        const odMm =
-                          entry.calculation?.outsideDiameterMm || entry.specs?.outsideDiameterMm;
-                        const wtMm =
-                          entry.calculation?.wallThicknessMm || entry.specs?.wallThicknessMm;
+                        const rawOutsideDiameterMm = entry.calculation?.outsideDiameterMm;
+                        const odMm = rawOutsideDiameterMm || entry.specs?.outsideDiameterMm;
+                        const rawWallThicknessMm5 = entry.calculation?.wallThicknessMm;
+                        const wtMm = rawWallThicknessMm5 || entry.specs?.wallThicknessMm;
                         if (!odMm || !wtMm) return { external: null, internal: null };
 
                         const idMm = odMm - 2 * wtMm;
                         const odM = odMm / 1000;
                         const idM = idMm / 1000;
 
+                        const rawBendRadiusMm = entry.specs?.bendRadiusMm;
+                        const rawNominalBoreMm5 = entry.specs?.nominalBoreMm;
+
                         // Get bend radius and angle
                         const bendRadiusMm =
-                          entry.specs?.bendRadiusMm ||
+                          rawBendRadiusMm ||
                           entry.calculation?.bendRadiusMm ||
                           (entry.specs?.centerToFaceMm
                             ? entry.specs.centerToFaceMm
-                            : (entry.specs?.nominalBoreMm || 100) * 1.5);
-                        const bendAngleDeg = entry.specs?.bendDegrees || 90;
+                            : (rawNominalBoreMm5 || 100) * 1.5);
+                        const rawBendDegrees2 = entry.specs?.bendDegrees;
+                        const bendAngleDeg = rawBendDegrees2 || 90;
                         const bendAngleRad = (bendAngleDeg * Math.PI) / 180;
 
                         // Arc length in meters
@@ -2570,10 +2684,14 @@ export default function ItemUploadStep(props: {
                         let externalArea = odM * Math.PI * arcLengthM;
                         let internalArea = idM * Math.PI * arcLengthM;
 
+                        const rawTangentLengths2 = entry.specs?.tangentLengths;
+
                         // Add tangent surface areas
-                        const tangentLengths = entry.specs?.tangentLengths || [];
-                        const tangent1Mm = tangentLengths[0] || 0;
-                        const tangent2Mm = tangentLengths[1] || 0;
+                        const tangentLengths = rawTangentLengths2 || [];
+                        const rawItem02 = tangentLengths[0];
+                        const tangent1Mm = rawItem02 || 0;
+                        const rawItem12 = tangentLengths[1];
+                        const tangent2Mm = rawItem12 || 0;
 
                         if (tangent1Mm > 0) {
                           const t1LengthM = tangent1Mm / 1000;
@@ -2590,9 +2708,11 @@ export default function ItemUploadStep(props: {
                         if (entry.specs?.stubs?.length > 0) {
                           entry.specs.stubs.forEach((stub: any) => {
                             if (stub?.nominalBoreMm && stub?.length) {
+                              const rawOutsideDiameterMm2 = stub.outsideDiameterMm;
                               // Get stub OD from nominal bore (approximate)
-                              const stubOdMm = stub.outsideDiameterMm || stub.nominalBoreMm * 1.1;
-                              const stubWtMm = stub.wallThicknessMm || stubOdMm * 0.08;
+                              const stubOdMm = rawOutsideDiameterMm2 || stub.nominalBoreMm * 1.1;
+                              const rawWallThicknessMm6 = stub.wallThicknessMm;
+                              const stubWtMm = rawWallThicknessMm6 || stubOdMm * 0.08;
                               const stubIdMm = stubOdMm - 2 * stubWtMm;
                               const stubLengthM = stub.length / 1000;
 
@@ -2608,17 +2728,24 @@ export default function ItemUploadStep(props: {
                       // Handle fittings (tees/laterals)
                       if (entry.itemType === "fitting") {
                         const nb = entry.specs?.nominalDiameterMm;
-                        const branchNb = entry.specs?.branchNominalDiameterMm || nb; // Equal tee if no branch NB
-                        const wt = entry.specs?.wallThicknessMm || 10;
-                        const lengthA = entry.specs?.pipeLengthAMm || 0;
-                        const lengthB = entry.specs?.pipeLengthBMm || 0;
+                        const rawBranchNominalDiameterMm = entry.specs?.branchNominalDiameterMm;
+                        const branchNb = rawBranchNominalDiameterMm || nb; // Equal tee if no branch NB
+                        const rawWallThicknessMm7 = entry.specs?.wallThicknessMm;
+                        const wt = rawWallThicknessMm7 || 10;
+                        const rawPipeLengthAMm = entry.specs?.pipeLengthAMm;
+                        const lengthA = rawPipeLengthAMm || 0;
+                        const rawPipeLengthBMm = entry.specs?.pipeLengthBMm;
+                        const lengthB = rawPipeLengthBMm || 0;
 
                         if (!nb || (!lengthA && !lengthB))
                           return { external: null, internal: null };
 
+                        const rawNb = nbToOdMap[nb];
+
                         // Get OD from NB using lookup
-                        const mainOd = nbToOdMap[nb] || nb * 1.05;
-                        const branchOd = nbToOdMap[branchNb] || branchNb * 1.05;
+                        const mainOd = rawNb || nb * 1.05;
+                        const rawBranchNb = nbToOdMap[branchNb];
+                        const branchOd = rawBranchNb || branchNb * 1.05;
                         const mainId = mainOd - 2 * wt;
                         const branchId = branchOd - 2 * wt;
 
@@ -2652,12 +2779,17 @@ export default function ItemUploadStep(props: {
                       if (!entry.calculation?.outsideDiameterMm || !entry.specs?.wallThicknessMm)
                         return { external: null, internal: null };
 
+                      const rawFlangePressureClassId6 = entry.specs?.flangePressureClassId;
+
                       // Get pressure class - use entry override if available, otherwise global
-                      const pcId =
-                        entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
+                      const pcId = rawFlangePressureClassId6 || globalSpecs?.flangePressureClassId;
                       const pcDesignation = pcId
                         ? masterData.pressureClasses?.find((p: any) => p.id === pcId)?.designation
                         : undefined;
+
+                      const rawIndividualPipeLength = entry.specs.individualPipeLength;
+                      const rawPipeEndConfiguration6 = entry.specs.pipeEndConfiguration;
+                      const rawPipeEndConfiguration7 = entry.specs.pipeEndConfiguration;
 
                       const surfaceArea = calculateTotalSurfaceArea({
                         outsideDiameterMm: entry.calculation.outsideDiameterMm,
@@ -2665,11 +2797,11 @@ export default function ItemUploadStep(props: {
                           entry.calculation.outsideDiameterMm,
                           entry.specs.wallThicknessMm,
                         ),
-                        individualPipeLengthM: entry.specs.individualPipeLength || 0,
+                        individualPipeLengthM: rawIndividualPipeLength || 0,
                         numberOfPipes: 1, // Per unit
-                        hasFlangeEnd1: (entry.specs.pipeEndConfiguration || "PE") !== "PE",
+                        hasFlangeEnd1: (rawPipeEndConfiguration6 || "PE") !== "PE",
                         hasFlangeEnd2: ["FBE", "FOE_RF", "2X_RF"].includes(
-                          entry.specs.pipeEndConfiguration || "PE",
+                          rawPipeEndConfiguration7 || "PE",
                         ),
                         dn: entry.specs.nominalBoreMm,
                         pressureClass: pcDesignation,
@@ -2684,6 +2816,8 @@ export default function ItemUploadStep(props: {
                     const weldThickness = getWeldThickness();
                     const surfaceAreas = getPerUnitSurfaceAreas();
 
+                    const rawDescription = entry.description;
+
                     return (
                       <React.Fragment key={entry.id}>
                         <tr className="border-b border-blue-100 hover:bg-blue-100/50">
@@ -2692,7 +2826,7 @@ export default function ItemUploadStep(props: {
                             className="py-2 px-2 text-gray-800 max-w-xs truncate"
                             title={entry.description}
                           >
-                            {entry.description || "No description"}
+                            {rawDescription || "No description"}
                           </td>
                           <td className="py-2 px-2 text-center text-gray-700 text-xs">
                             {weldThickness ? (
@@ -2760,12 +2894,14 @@ export default function ItemUploadStep(props: {
                           globalSpecs?.gasketType &&
                           entry.itemType !== "fitting" &&
                           (() => {
+                            const rawNominalBoreMm6 = entry.specs?.nominalBoreMm;
                             const gasketWeight = gasketWeightLookup(
                               allGaskets,
                               globalSpecs.gasketType,
-                              entry.specs?.nominalBoreMm || 100,
+                              rawNominalBoreMm6 || 100,
                             );
                             const gasketTotalWeight = gasketWeight * totalBoltSets;
+                            const rawNominalBoreMm7 = entry.specs?.nominalBoreMm;
                             return (
                               <tr className="border-b border-green-100 bg-green-50/50 hover:bg-green-100/50">
                                 <td className="py-2 px-2 font-medium text-green-800">
@@ -2773,7 +2909,7 @@ export default function ItemUploadStep(props: {
                                 </td>
                                 <td className="py-2 px-2 text-green-700 text-xs">
                                   {globalSpecs.gasketType} Gasket (1 each) -{" "}
-                                  {entry.specs?.nominalBoreMm || 100}NB {flangeSpec}
+                                  {rawNominalBoreMm7 || 100}NB {flangeSpec}
                                 </td>
                                 <td className="py-2 px-2 text-center text-green-600">-</td>
                                 {requiredProducts.includes("surface_protection") && (
@@ -2799,14 +2935,18 @@ export default function ItemUploadStep(props: {
                           totalFlanges > 0 &&
                           entry.itemType === "fitting" &&
                           (() => {
+                            const rawNominalDiameterMm2 = entry.specs?.nominalDiameterMm;
                             const mainNb =
-                              entry.specs?.nominalDiameterMm || entry.specs?.nominalBoreMm || 100;
+                              rawNominalDiameterMm2 || entry.specs?.nominalBoreMm || 100;
+                            const rawBranchNominalDiameterMm2 =
+                              entry.specs?.branchNominalDiameterMm;
                             const branchNb =
-                              entry.specs?.branchNominalDiameterMm ||
+                              rawBranchNominalDiameterMm2 ||
                               entry.specs?.branchNominalBoreMm ||
                               mainNb;
                             const isEqualTee = mainNb === branchNb;
-                            const fittingEndConfig = entry.specs?.pipeEndConfiguration || "PE";
+                            const rawPipeEndConfiguration8 = entry.specs?.pipeEndConfiguration;
+                            const fittingEndConfig = rawPipeEndConfiguration8 || "PE";
 
                             // Use bolt set function: 3 same-sized ends = 2 bolt sets, 2 same-sized ends = 1 bolt set
                             const fittingBoltSets = getBoltSetCountPerFitting(
@@ -3059,14 +3199,15 @@ export default function ItemUploadStep(props: {
                         {/* Blank Flange Line Items - for any item type with addBlankFlange enabled */}
                         {entry.specs?.addBlankFlange &&
                           (() => {
+                            const rawNominalDiameterMm3 = entry.specs?.nominalDiameterMm;
+                            const rawNominalBoreMm8 = entry.specs?.nominalBoreMm;
                             // Get nominal bore based on item type
                             const blankNb =
                               entry.itemType === "fitting"
-                                ? entry.specs?.nominalDiameterMm ||
-                                  entry.specs?.nominalBoreMm ||
-                                  100
-                                : entry.specs?.nominalBoreMm || 100;
-                            const blankFlangeCount = entry.specs?.blankFlangeCount || 1;
+                                ? rawNominalDiameterMm3 || entry.specs?.nominalBoreMm || 100
+                                : rawNominalBoreMm8 || 100;
+                            const rawBlankFlangeCount = entry.specs?.blankFlangeCount;
+                            const blankFlangeCount = rawBlankFlangeCount || 1;
                             const blankFlangeWeightKg = blankFlangeWeight(
                               allWeights,
                               blankNb,
@@ -3130,10 +3271,8 @@ export default function ItemUploadStep(props: {
                         let totalQty = 0;
 
                         entries.forEach((entry: any) => {
-                          const qty =
-                            entry.calculation?.calculatedPipeCount ||
-                            entry.specs?.quantityValue ||
-                            0;
+                          const rawCalculatedPipeCount3 = entry.calculation?.calculatedPipeCount;
+                          const qty = rawCalculatedPipeCount3 || entry.specs?.quantityValue || 0;
                           // Add base item quantity
                           totalQty += qty;
 
@@ -3141,13 +3280,16 @@ export default function ItemUploadStep(props: {
                           let hasFlanges = false;
                           let flangeCount = 0;
                           if (entry.itemType === "straight_pipe" || !entry.itemType) {
-                            const pipeEndConfig = entry.specs?.pipeEndConfiguration || "PE";
+                            const rawPipeEndConfiguration9 = entry.specs?.pipeEndConfiguration;
+                            const pipeEndConfig = rawPipeEndConfiguration9 || "PE";
                             hasFlanges = pipeEndConfig !== "PE";
                           } else if (entry.itemType === "bend") {
-                            const bendEndConfig = entry.specs?.bendEndConfiguration || "PE";
+                            const rawBendEndConfiguration4 = entry.specs?.bendEndConfiguration;
+                            const bendEndConfig = rawBendEndConfiguration4 || "PE";
                             hasFlanges = bendEndConfig !== "PE";
                           } else if (entry.itemType === "fitting") {
-                            const fittingEndConfig = entry.specs?.pipeEndConfiguration || "PE";
+                            const rawPipeEndConfiguration10 = entry.specs?.pipeEndConfiguration;
+                            const fittingEndConfig = rawPipeEndConfiguration10 || "PE";
                             // Count flanges based on configuration
                             if (fittingEndConfig === "F2E") flangeCount = 2;
                             else if (fittingEndConfig === "F2E_LF") flangeCount = 2;
@@ -3162,15 +3304,21 @@ export default function ItemUploadStep(props: {
                           if (showBnw && hasFlanges) {
                             let boltSetCount = 0;
                             if (entry.itemType === "straight_pipe" || !entry.itemType) {
-                              const pipeEndConfig = entry.specs?.pipeEndConfiguration || "PE";
+                              const rawPipeEndConfiguration11 = entry.specs?.pipeEndConfiguration;
+                              const pipeEndConfig = rawPipeEndConfiguration11 || "PE";
                               boltSetCount = getBoltSetCountPerPipe(pipeEndConfig);
                             } else if (entry.itemType === "bend") {
-                              const bendEndConfig = entry.specs?.bendEndConfiguration || "PE";
+                              const rawBendEndConfiguration5 = entry.specs?.bendEndConfiguration;
+                              const bendEndConfig = rawBendEndConfiguration5 || "PE";
                               boltSetCount = getBoltSetCountPerBend(bendEndConfig);
                             } else if (entry.itemType === "fitting") {
-                              const fittingEndConfig = entry.specs?.pipeEndConfiguration || "PE";
-                              const mainNb = entry.specs?.nominalDiameterMm || 100;
-                              const branchNb = entry.specs?.branchNominalDiameterMm || mainNb;
+                              const rawPipeEndConfiguration12 = entry.specs?.pipeEndConfiguration;
+                              const fittingEndConfig = rawPipeEndConfiguration12 || "PE";
+                              const rawNominalDiameterMm4 = entry.specs?.nominalDiameterMm;
+                              const mainNb = rawNominalDiameterMm4 || 100;
+                              const rawBranchNominalDiameterMm3 =
+                                entry.specs?.branchNominalDiameterMm;
+                              const branchNb = rawBranchNominalDiameterMm3 || mainNb;
                               const fittingBoltSets = getBoltSetCountPerFitting(
                                 fittingEndConfig,
                                 mainNb === branchNb,
@@ -3185,15 +3333,21 @@ export default function ItemUploadStep(props: {
                           if (showBnw && hasFlanges && globalSpecs?.gasketType) {
                             let boltSetCount = 0;
                             if (entry.itemType === "straight_pipe" || !entry.itemType) {
-                              const pipeEndConfig = entry.specs?.pipeEndConfiguration || "PE";
+                              const rawPipeEndConfiguration13 = entry.specs?.pipeEndConfiguration;
+                              const pipeEndConfig = rawPipeEndConfiguration13 || "PE";
                               boltSetCount = getBoltSetCountPerPipe(pipeEndConfig);
                             } else if (entry.itemType === "bend") {
-                              const bendEndConfig = entry.specs?.bendEndConfiguration || "PE";
+                              const rawBendEndConfiguration6 = entry.specs?.bendEndConfiguration;
+                              const bendEndConfig = rawBendEndConfiguration6 || "PE";
                               boltSetCount = getBoltSetCountPerBend(bendEndConfig);
                             } else if (entry.itemType === "fitting") {
-                              const fittingEndConfig = entry.specs?.pipeEndConfiguration || "PE";
-                              const mainNb = entry.specs?.nominalDiameterMm || 100;
-                              const branchNb = entry.specs?.branchNominalDiameterMm || mainNb;
+                              const rawPipeEndConfiguration14 = entry.specs?.pipeEndConfiguration;
+                              const fittingEndConfig = rawPipeEndConfiguration14 || "PE";
+                              const rawNominalDiameterMm5 = entry.specs?.nominalDiameterMm;
+                              const mainNb = rawNominalDiameterMm5 || 100;
+                              const rawBranchNominalDiameterMm4 =
+                                entry.specs?.branchNominalDiameterMm;
+                              const branchNb = rawBranchNominalDiameterMm4 || mainNb;
                               const fittingBoltSets = getBoltSetCountPerFitting(
                                 fittingEndConfig,
                                 mainNb === branchNb,
@@ -3221,7 +3375,8 @@ export default function ItemUploadStep(props: {
 
                           // Add blank flanges
                           if (entry.specs?.addBlankFlange) {
-                            totalQty += (entry.specs.blankFlangeCount || 1) * qty;
+                            const rawBlankFlangeCount2 = entry.specs.blankFlangeCount;
+                            totalQty += (rawBlankFlangeCount2 || 1) * qty;
                           }
                         });
 
@@ -3239,7 +3394,6 @@ export default function ItemUploadStep(props: {
           </div>
         </>
       )}
-
       {/* Restriction Popup for unregistered customers */}
       {restrictionPopup && (
         <div

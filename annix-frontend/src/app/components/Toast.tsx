@@ -28,9 +28,10 @@ export function useToast() {
 
 function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
   useEffect(() => {
+    const rawDuration = toast.duration;
     const timer = setTimeout(() => {
       onClose();
-    }, toast.duration || 5000);
+    }, rawDuration || 5000);
 
     return () => clearTimeout(timer);
   }, [toast.duration, onClose]);

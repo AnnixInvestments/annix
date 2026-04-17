@@ -75,6 +75,9 @@ export function RegistrationBottomToolbar(props: {
   const previousStep = currentIndex > 0 ? steps[currentIndex - 1] : null;
   const nextStep = currentIndex < steps.length - 1 ? steps[currentIndex + 1] : null;
 
+  const rawLabel = previousStep?.label;
+  const rawLabel2 = nextStep?.label;
+
   return (
     <nav
       className="fixed bottom-0 left-0 right-0 z-50 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]"
@@ -98,7 +101,7 @@ export function RegistrationBottomToolbar(props: {
                 d="M15 19l-7-7 7-7"
               />
             </svg>
-            <span className="hidden sm:inline">{previousStep?.label || "Back"}</span>
+            <span className="hidden sm:inline">{rawLabel || "Back"}</span>
             <span className="sm:hidden">Back</span>
           </button>
 
@@ -159,7 +162,7 @@ export function RegistrationBottomToolbar(props: {
             }`}
             style={{ color: "#FFA500" }}
           >
-            <span className="hidden sm:inline">{nextStep?.label || "Next"}</span>
+            <span className="hidden sm:inline">{rawLabel2 || "Next"}</span>
             <span className="sm:hidden">Next</span>
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />

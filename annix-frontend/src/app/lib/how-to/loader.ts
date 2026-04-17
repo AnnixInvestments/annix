@@ -29,18 +29,23 @@ export const createHowToLoader = <TRole extends string>(
   const buildFrontmatter = (
     data: Record<string, unknown>,
     slug: string,
-  ): HowToGuideFrontmatter<TRole> => ({
-    title: asString(data.title, slug),
-    slug: asString(data.slug, slug),
-    category: asString(data.category, config.defaultCategory || "General"),
-    roles: validateRoles(data.roles),
-    order: asNumber(data.order, 999),
-    tags: asStringArray(data.tags),
-    lastUpdated: asString(data.lastUpdated, ""),
-    summary: asString(data.summary, ""),
-    readingMinutes: asNumber(data.readingMinutes, config.defaultReadingMinutes || 3),
-    relatedPaths: asStringArray(data.relatedPaths),
-  });
+  ): HowToGuideFrontmatter<TRole> => {
+    const rawDefaultCategory = config.defaultCategory;
+    const rawDefaultReadingMinutes = config.defaultReadingMinutes;
+
+    return {
+      title: asString(data.title, slug),
+      slug: asString(data.slug, slug),
+      category: asString(data.category, rawDefaultCategory || "General"),
+      roles: validateRoles(data.roles),
+      order: asNumber(data.order, 999),
+      tags: asStringArray(data.tags),
+      lastUpdated: asString(data.lastUpdated, ""),
+      summary: asString(data.summary, ""),
+      readingMinutes: asNumber(data.readingMinutes, rawDefaultReadingMinutes || 3),
+      relatedPaths: asStringArray(data.relatedPaths),
+    };
+  };
 
   let cache: HowToGuide<TRole>[] | null = null;
 

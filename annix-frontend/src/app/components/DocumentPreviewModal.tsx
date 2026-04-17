@@ -59,6 +59,10 @@ export function DocumentPreviewModal(props: DocumentPreviewModalProps) {
 
   if (!state.isOpen) return null;
 
+  const rawFilename = state.filename;
+  const rawFilename2 = state.filename;
+  const rawFilename3 = state.filename;
+
   return createPortal(
     <div className="fixed inset-0 z-[9999] overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen px-4">
@@ -67,7 +71,7 @@ export function DocumentPreviewModal(props: DocumentPreviewModalProps) {
         <div className="relative bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col">
           <div className="flex items-center justify-between p-4 border-b">
             <h2 className="text-lg font-semibold text-gray-900 truncate flex-1 mr-4">
-              {state.filename || "Document Preview"}
+              {rawFilename || "Document Preview"}
             </h2>
             <div className="flex items-center space-x-2">
               {state.url && state.mimeType?.startsWith("image/") && (
@@ -122,7 +126,7 @@ export function DocumentPreviewModal(props: DocumentPreviewModalProps) {
             ) : state.url && state.mimeType?.startsWith("image/") ? (
               <img
                 src={state.url}
-                alt={state.filename || "Document"}
+                alt={rawFilename2 || "Document"}
                 className="max-w-full max-h-[70vh] object-contain select-none"
                 style={imageViewerTransform(viewer.state)}
                 onMouseDown={viewer.handleMouseDown}
@@ -132,7 +136,7 @@ export function DocumentPreviewModal(props: DocumentPreviewModalProps) {
               <iframe
                 src={state.url}
                 className="w-full h-[70vh]"
-                title={state.filename || "PDF Document"}
+                title={rawFilename3 || "PDF Document"}
               />
             ) : (
               <div className="text-center text-gray-600">

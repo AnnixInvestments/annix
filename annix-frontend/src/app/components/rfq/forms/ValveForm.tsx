@@ -98,37 +98,69 @@ export default function ValveForm(props: ValveFormProps) {
   const [categoryFilter, setCategoryFilter] = useState<ValveCategory | "all">("all");
   const [calculationResults, setCalculationResults] = useState<any>(null);
 
-  const valveType = entry.specs?.valveType || "";
-  const size = entry.specs?.size || "";
-  const pressureClass = entry.specs?.pressureClass || "";
-  const connectionType = entry.specs?.connectionType || "";
-  const bodyMaterial = entry.specs?.bodyMaterial || "";
-  const trimMaterial = entry.specs?.trimMaterial || "";
-  const seatMaterial = entry.specs?.seatMaterial || "";
-  const portType = entry.specs?.portType || "full_port";
-  const actuatorType = entry.specs?.actuatorType || "manual_lever";
-  const airSupply = entry.specs?.airSupply || null;
-  const voltage = entry.specs?.voltage || "";
-  const failPosition = entry.specs?.failPosition || "";
-  const positioner = entry.specs?.positioner || "none";
-  const limitSwitches = entry.specs?.limitSwitches || false;
-  const solenoidValve = entry.specs?.solenoidValve || false;
-  const media = entry.specs?.media || "";
-  const operatingPressure = entry.specs?.operatingPressure || null;
-  const operatingTemp = entry.specs?.operatingTemp || null;
-  const hazardousArea = entry.specs?.hazardousArea || "none";
-  const cv = entry.specs?.cv || null;
-  const flowRate = entry.specs?.flowRate || null;
-  const quantity = entry.specs?.quantityValue || 1;
-  const seatLeakageClass = entry.specs?.seatLeakageClass || "";
-  const fireSafeStandard = entry.specs?.fireSafeStandard || "";
-  const cryogenicService = entry.specs?.cryogenicService || "standard";
-  const fugitiveEmissions = entry.specs?.fugitiveEmissions || "none";
-  const extendedBonnet = entry.specs?.extendedBonnet || "standard";
-  const certifications = entry.specs?.certifications || [];
-  const supplierReference = entry.specs?.supplierReference || "";
-  const unitCostFromSupplier = entry.specs?.unitCostFromSupplier || null;
-  const markupPercentage = entry.specs?.markupPercentage || 15;
+  const rawValveType = entry.specs?.valveType;
+
+  const valveType = rawValveType || "";
+  const rawSize = entry.specs?.size;
+  const size = rawSize || "";
+  const rawPressureClass = entry.specs?.pressureClass;
+  const pressureClass = rawPressureClass || "";
+  const rawConnectionType = entry.specs?.connectionType;
+  const connectionType = rawConnectionType || "";
+  const rawBodyMaterial = entry.specs?.bodyMaterial;
+  const bodyMaterial = rawBodyMaterial || "";
+  const rawTrimMaterial = entry.specs?.trimMaterial;
+  const trimMaterial = rawTrimMaterial || "";
+  const rawSeatMaterial = entry.specs?.seatMaterial;
+  const seatMaterial = rawSeatMaterial || "";
+  const rawPortType = entry.specs?.portType;
+  const portType = rawPortType || "full_port";
+  const rawActuatorType = entry.specs?.actuatorType;
+  const actuatorType = rawActuatorType || "manual_lever";
+  const rawAirSupply = entry.specs?.airSupply;
+  const airSupply = rawAirSupply || null;
+  const rawVoltage = entry.specs?.voltage;
+  const voltage = rawVoltage || "";
+  const rawFailPosition = entry.specs?.failPosition;
+  const failPosition = rawFailPosition || "";
+  const rawPositioner = entry.specs?.positioner;
+  const positioner = rawPositioner || "none";
+  const rawLimitSwitches = entry.specs?.limitSwitches;
+  const limitSwitches = rawLimitSwitches || false;
+  const rawSolenoidValve = entry.specs?.solenoidValve;
+  const solenoidValve = rawSolenoidValve || false;
+  const rawMedia = entry.specs?.media;
+  const media = rawMedia || "";
+  const rawOperatingPressure = entry.specs?.operatingPressure;
+  const operatingPressure = rawOperatingPressure || null;
+  const rawOperatingTemp = entry.specs?.operatingTemp;
+  const operatingTemp = rawOperatingTemp || null;
+  const rawHazardousArea = entry.specs?.hazardousArea;
+  const hazardousArea = rawHazardousArea || "none";
+  const rawCv = entry.specs?.cv;
+  const cv = rawCv || null;
+  const rawFlowRate = entry.specs?.flowRate;
+  const flowRate = rawFlowRate || null;
+  const rawQuantityValue = entry.specs?.quantityValue;
+  const quantity = rawQuantityValue || 1;
+  const rawSeatLeakageClass = entry.specs?.seatLeakageClass;
+  const seatLeakageClass = rawSeatLeakageClass || "";
+  const rawFireSafeStandard = entry.specs?.fireSafeStandard;
+  const fireSafeStandard = rawFireSafeStandard || "";
+  const rawCryogenicService = entry.specs?.cryogenicService;
+  const cryogenicService = rawCryogenicService || "standard";
+  const rawFugitiveEmissions = entry.specs?.fugitiveEmissions;
+  const fugitiveEmissions = rawFugitiveEmissions || "none";
+  const rawExtendedBonnet = entry.specs?.extendedBonnet;
+  const extendedBonnet = rawExtendedBonnet || "standard";
+  const rawCertifications = entry.specs?.certifications;
+  const certifications = rawCertifications || [];
+  const rawSupplierReference = entry.specs?.supplierReference;
+  const supplierReference = rawSupplierReference || "";
+  const rawUnitCostFromSupplier = entry.specs?.unitCostFromSupplier;
+  const unitCostFromSupplier = rawUnitCostFromSupplier || null;
+  const rawMarkupPercentage = entry.specs?.markupPercentage;
+  const markupPercentage = rawMarkupPercentage || 15;
 
   const selectedValve = useMemo(() => getValveByValue(valveType), [valveType]);
 
@@ -164,10 +196,12 @@ export default function ValveForm(props: ValveFormProps) {
     const sizeDN = parseInt(size, 10);
     const torqueData = findValveTorque(valveType, sizeDN, pressureClass);
 
+    const rawLabel = selectedValve?.label;
+
     const results: any = {
       sizeDN,
       pressureClass,
-      valveType: selectedValve?.label || valveType,
+      valveType: rawLabel || valveType,
     };
 
     if (torqueData) {
@@ -195,6 +229,13 @@ export default function ValveForm(props: ValveFormProps) {
     });
   };
 
+  const rawDescription = entry.description;
+  const rawApiStandard = selectedValve.apiStandard;
+
+  const rawLabel2 = PRESSURE_CLASS_OPTIONS.find(
+    (p) => p.value === calculationResults.pressureClass,
+  )?.label;
+
   return (
     <>
       <SplitPaneLayout
@@ -208,7 +249,7 @@ export default function ValveForm(props: ValveFormProps) {
                 Item Description *
               </label>
               <textarea
-                value={entry.description || generateItemDescription(entry)}
+                value={rawDescription || generateItemDescription(entry)}
                 onChange={(e) => onUpdateEntry(entry.id, { description: e.target.value })}
                 className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-teal-500 text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
                 rows={2}
@@ -257,8 +298,7 @@ export default function ValveForm(props: ValveFormProps) {
                 <div className="mt-2 text-xs text-teal-700 dark:text-teal-300">
                   <span className="font-semibold">Motion:</span>{" "}
                   {selectedValve.motion.replace("_", " ")} |{" "}
-                  <span className="font-semibold">Standard:</span>{" "}
-                  {selectedValve.apiStandard || "N/A"} |{" "}
+                  <span className="font-semibold">Standard:</span> {rawApiStandard || "N/A"} |{" "}
                   <span className="font-semibold">Applications:</span>{" "}
                   {selectedValve.typicalApplications.join(", ")}
                 </div>
@@ -812,9 +852,7 @@ export default function ValveForm(props: ValveFormProps) {
                     </div>
                     <div className="text-teal-800 dark:text-teal-200">Pressure:</div>
                     <div className="font-semibold text-teal-900 dark:text-teal-100">
-                      {PRESSURE_CLASS_OPTIONS.find(
-                        (p) => p.value === calculationResults.pressureClass,
-                      )?.label || calculationResults.pressureClass}
+                      {rawLabel2 || calculationResults.pressureClass}
                     </div>
                   </div>
                 </div>
@@ -887,7 +925,6 @@ export default function ValveForm(props: ValveFormProps) {
           </div>
         }
       />
-
       <div className="flex justify-end mt-3">
         <button
           type="button"

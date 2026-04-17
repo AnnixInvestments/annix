@@ -331,7 +331,8 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
     (set, get) => {
       const convertNixItemsToRfqItems = (nixItems: NixExtractedItem[]) => {
         const { rfqData, updateRfqField } = get();
-        const customerName = rfqData.customerName || "NIX";
+        const rawCustomerName = rfqData.customerName;
+        const customerName = rawCustomerName || "NIX";
 
         const flangeMap: Record<string, "FBE" | "FOE" | "PE"> = {
           one_end: "FOE",
@@ -345,7 +346,8 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
           if (!item.diameter && item.itemType !== "tank_chute") return [];
 
           const itemIndex = idx + 1;
-          const unitLower = (item.unit || "").toLowerCase().trim();
+          const rawUnit = item.unit;
+          const unitLower = (rawUnit || "").toLowerCase().trim();
           const isMetersUnit =
             unitLower === "m" ||
             unitLower === "meters" ||
@@ -364,12 +366,21 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
           );
 
           if (item.itemType === "pipe" || item.itemType === "flange") {
-            const diameterMm = item.diameter ?? 0;
+            const rawDiameter = item.diameter;
+            const diameterMm = rawDiameter || 0;
+            const rawItemNumber = item.itemNumber;
+            const rawSchedule = item.schedule;
+            const rawWallThickness = item.wallThickness;
+            const rawFlangeConfig = item.flangeConfig;
+            const rawVal = flangeMap[rawFlangeConfig || "none"];
+            const rawLength = item.length;
+            const rawQuantity = item.quantity;
+            const rawWorkingPressureBar = rfqData.globalSpecs?.workingPressureBar;
+            const rawWorkingTemperatureC = rfqData.globalSpecs?.workingTemperatureC;
             const pipeEntry: StraightPipeEntry = {
               id: generateUniqueId(),
               itemType: "straight_pipe" as const,
-              clientItemNumber:
-                item.itemNumber || generateClientItemNumber(customerName, itemIndex),
+              clientItemNumber: rawItemNumber || generateClientItemNumber(customerName, itemIndex),
               description: item.description,
               specs: {
                 nominalBoreMm: diameterMm,
@@ -378,41 +389,48 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
                   : item.wallThickness
                     ? "wall_thickness"
                     : "schedule",
-                scheduleNumber: item.schedule || undefined,
-                wallThicknessMm: item.wallThickness || undefined,
-                pipeEndConfiguration: flangeMap[item.flangeConfig || "none"] || "PE",
-                individualPipeLength: isMetersUnit ? 6000 : item.length || 6000,
+                scheduleNumber: rawSchedule || undefined,
+                wallThicknessMm: rawWallThickness || undefined,
+                pipeEndConfiguration: rawVal || "PE",
+                individualPipeLength: isMetersUnit ? 6000 : rawLength || 6000,
                 lengthUnit: "meters" as const,
                 quantityType: isMetersUnit
                   ? ("total_length" as const)
                   : ("number_of_pipes" as const),
-                quantityValue: item.quantity || 1,
-                workingPressureBar: rfqData.globalSpecs?.workingPressureBar || 16,
-                workingTemperatureC: rfqData.globalSpecs?.workingTemperatureC || 20,
+                quantityValue: rawQuantity || 1,
+                workingPressureBar: rawWorkingPressureBar || 16,
+                workingTemperatureC: rawWorkingTemperatureC || 20,
                 steelSpecificationId: rfqData.globalSpecs?.steelSpecificationId,
               },
               notes: nixNote,
             };
             return [pipeEntry];
           } else if (item.itemType === "bend") {
+            const rawItemNumber2 = item.itemNumber;
+            const rawDiameter2 = item.diameter;
+            const rawSchedule2 = item.schedule;
+            const rawWallThickness2 = item.wallThickness;
+            const rawAngle = item.angle;
+            const rawQuantity2 = item.quantity;
+            const rawWorkingPressureBar2 = rfqData.globalSpecs?.workingPressureBar;
+            const rawWorkingTemperatureC2 = rfqData.globalSpecs?.workingTemperatureC;
             const bendEntry: BendEntry = {
               id: generateUniqueId(),
               itemType: "bend" as const,
-              clientItemNumber:
-                item.itemNumber || generateClientItemNumber(customerName, itemIndex),
+              clientItemNumber: rawItemNumber2 || generateClientItemNumber(customerName, itemIndex),
               description: item.description,
               specs: {
-                nominalBoreMm: item.diameter ?? 0,
-                scheduleNumber: item.schedule || undefined,
-                wallThicknessMm: item.wallThickness || undefined,
+                nominalBoreMm: rawDiameter2 || 0,
+                scheduleNumber: rawSchedule2 || undefined,
+                wallThicknessMm: rawWallThickness2 || undefined,
                 bendType: "1.5D",
-                bendDegrees: item.angle || 90,
+                bendDegrees: rawAngle || 90,
                 numberOfTangents: 0,
                 numberOfStubs: 0,
-                quantityValue: item.quantity || 1,
+                quantityValue: rawQuantity2 || 1,
                 quantityType: "number_of_items" as const,
-                workingPressureBar: rfqData.globalSpecs?.workingPressureBar || 16,
-                workingTemperatureC: rfqData.globalSpecs?.workingTemperatureC || 20,
+                workingPressureBar: rawWorkingPressureBar2 || 16,
+                workingTemperatureC: rawWorkingTemperatureC2 || 20,
                 steelSpecificationId: rfqData.globalSpecs?.steelSpecificationId,
               },
               notes: nixNote,
@@ -430,62 +448,93 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
                   ? "CONCENTRIC_REDUCER"
                   : "EXPANSION_LOOP";
 
+            const rawItemNumber3 = item.itemNumber;
+            const rawDiameter3 = item.diameter;
+            const rawSchedule3 = item.schedule;
+            const rawQuantity3 = item.quantity;
+            const rawWorkingPressureBar3 = rfqData.globalSpecs?.workingPressureBar;
+            const rawWorkingTemperatureC3 = rfqData.globalSpecs?.workingTemperatureC;
+
             const fittingEntry: FittingEntry = {
               id: generateUniqueId(),
               itemType: "fitting" as const,
-              clientItemNumber:
-                item.itemNumber || generateClientItemNumber(customerName, itemIndex),
+              clientItemNumber: rawItemNumber3 || generateClientItemNumber(customerName, itemIndex),
               description: item.description,
               specs: {
                 fittingStandard: "SABS719",
                 fittingType: fittingType,
-                nominalDiameterMm: item.diameter ?? 0,
-                scheduleNumber: item.schedule || undefined,
-                quantityValue: item.quantity || 1,
+                nominalDiameterMm: rawDiameter3 || 0,
+                scheduleNumber: rawSchedule3 || undefined,
+                quantityValue: rawQuantity3 || 1,
                 quantityType: "number_of_items" as const,
-                workingPressureBar: rfqData.globalSpecs?.workingPressureBar || 16,
-                workingTemperatureC: rfqData.globalSpecs?.workingTemperatureC || 20,
+                workingPressureBar: rawWorkingPressureBar3 || 16,
+                workingTemperatureC: rawWorkingTemperatureC3 || 20,
                 steelSpecificationId: rfqData.globalSpecs?.steelSpecificationId,
               },
               notes: nixNote,
             };
             return [fittingEntry];
           } else if (item.itemType === "tank_chute") {
+            const rawItemNumber4 = item.itemNumber;
+            const rawAssemblyType = item.assemblyType;
+            const rawDrawingReference = item.drawingReference;
+            const rawMaterialGrade = item.materialGrade;
+            const rawOverallLengthMm = item.overallLengthMm;
+            const rawOverallWidthMm = item.overallWidthMm;
+            const rawOverallHeightMm = item.overallHeightMm;
+            const rawTotalSteelWeightKg = item.totalSteelWeightKg;
+            const rawQuantity4 = item.quantity;
+            const rawLiningType = item.liningType;
+            const rawLiningThicknessMm = item.liningThicknessMm;
+            const rawLiningAreaM2 = item.liningAreaM2;
+            const rawCoatingSystem = item.coatingSystem;
+            const rawCoatingAreaM2 = item.coatingAreaM2;
+            const rawSurfacePrepStandard = item.surfacePrepStandard;
             const tankChuteEntry: TankChuteEntry = {
               id: generateUniqueId(),
               itemType: "tank_chute" as const,
-              clientItemNumber:
-                item.itemNumber || generateClientItemNumber(customerName, itemIndex),
+              clientItemNumber: rawItemNumber4 || generateClientItemNumber(customerName, itemIndex),
               description: item.description,
               specs: {
-                assemblyType: item.assemblyType || "custom",
-                drawingReference: item.drawingReference || undefined,
-                materialGrade: item.materialGrade || item.material || undefined,
-                overallLengthMm: item.overallLengthMm || undefined,
-                overallWidthMm: item.overallWidthMm || undefined,
-                overallHeightMm: item.overallHeightMm || undefined,
-                totalSteelWeightKg: item.totalSteelWeightKg || undefined,
+                assemblyType: rawAssemblyType || "custom",
+                drawingReference: rawDrawingReference || undefined,
+                materialGrade: rawMaterialGrade || item.material || undefined,
+                overallLengthMm: rawOverallLengthMm || undefined,
+                overallWidthMm: rawOverallWidthMm || undefined,
+                overallHeightMm: rawOverallHeightMm || undefined,
+                totalSteelWeightKg: rawTotalSteelWeightKg || undefined,
                 weightSource: item.totalSteelWeightKg ? "manual" : undefined,
-                quantityValue: item.quantity || 1,
+                quantityValue: rawQuantity4 || 1,
                 liningRequired: !!item.liningType,
-                liningType: item.liningType || undefined,
-                liningThicknessMm: item.liningThicknessMm || undefined,
-                liningAreaM2: item.liningAreaM2 || undefined,
+                liningType: rawLiningType || undefined,
+                liningThicknessMm: rawLiningThicknessMm || undefined,
+                liningAreaM2: rawLiningAreaM2 || undefined,
                 coatingRequired: !!item.coatingSystem || !!item.coatingAreaM2,
-                coatingSystem: item.coatingSystem || undefined,
-                coatingAreaM2: item.coatingAreaM2 || undefined,
-                surfacePrepStandard: item.surfacePrepStandard || undefined,
+                coatingSystem: rawCoatingSystem || undefined,
+                coatingAreaM2: rawCoatingAreaM2 || undefined,
+                surfacePrepStandard: rawSurfacePrepStandard || undefined,
                 plateBom: item.plateBom
-                  ? item.plateBom.map((row) => ({
-                      mark: row.mark || "",
-                      description: row.description || "",
-                      thicknessMm: row.thicknessMm || 0,
-                      lengthMm: row.lengthMm || 0,
-                      widthMm: row.widthMm || 0,
-                      quantity: row.quantity || 1,
-                      weightKg: row.weightKg || 0,
-                      areaM2: row.areaM2 || 0,
-                    }))
+                  ? item.plateBom.map((row) => {
+                      const rawMark = row.mark;
+                      const rawDescription = row.description;
+                      const rawThicknessMm = row.thicknessMm;
+                      const rawLengthMm = row.lengthMm;
+                      const rawWidthMm = row.widthMm;
+                      const rawQuantity5 = row.quantity;
+                      const rawWeightKg = row.weightKg;
+                      const rawAreaM2 = row.areaM2;
+
+                      return {
+                        mark: rawMark || "",
+                        description: rawDescription || "",
+                        thicknessMm: rawThicknessMm || 0,
+                        lengthMm: rawLengthMm || 0,
+                        widthMm: rawWidthMm || 0,
+                        quantity: rawQuantity5 || 1,
+                        weightKg: rawWeightKg || 0,
+                        areaM2: rawAreaM2 || 0,
+                      };
+                    })
                   : undefined,
               },
               notes: nixNote,
@@ -497,7 +546,8 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
 
         if (allItems.length > 0) {
           log.debug(`Converting ${allItems.length} Nix items to RFQ items`);
-          updateRfqField("items", [...(rfqData.items || []), ...allItems] as any);
+          const rawItems = rfqData.items;
+          updateRfqField("items", [...(rawItems || []), ...allItems] as any);
         }
       };
 
@@ -673,7 +723,8 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
 
         addFittingEntry: (description, insertAtStart, materialType) => {
           const { rfqData } = get();
-          const steelSpecId = rfqData.globalSpecs?.steelSpecificationId || 2;
+          const rawSteelSpecificationId = rfqData.globalSpecs?.steelSpecificationId;
+          const steelSpecId = rawSteelSpecificationId || 2;
           const fittingStandard = steelSpecId === 8 ? "SABS719" : "SABS62";
 
           const newEntry: FittingEntry = {
@@ -714,6 +765,8 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
 
         addPipeSteelWorkEntry: (description, insertAtStart) => {
           const { rfqData } = get();
+          const rawWorkingPressureBar4 = rfqData.globalSpecs?.workingPressureBar;
+          const rawWorkingTemperatureC4 = rfqData.globalSpecs?.workingTemperatureC;
           const newEntry: PipeSteelWorkEntry = {
             id: generateUniqueId(),
             itemType: "pipe_steel_work",
@@ -723,8 +776,8 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
               nominalDiameterMm: undefined,
               bracketType: "clevis_hanger",
               quantity: 1,
-              workingPressureBar: rfqData.globalSpecs?.workingPressureBar || 10,
-              workingTemperatureC: rfqData.globalSpecs?.workingTemperatureC || 20,
+              workingPressureBar: rawWorkingPressureBar4 || 10,
+              workingTemperatureC: rawWorkingTemperatureC4 || 20,
             },
             notes: "",
           };
@@ -747,6 +800,8 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
 
         addExpansionJointEntry: (description, insertAtStart) => {
           const { rfqData } = get();
+          const rawWorkingPressureBar5 = rfqData.globalSpecs?.workingPressureBar;
+          const rawWorkingTemperatureC5 = rfqData.globalSpecs?.workingTemperatureC;
           const newEntry: ExpansionJointEntry = {
             id: generateUniqueId(),
             itemType: "expansion_joint",
@@ -756,8 +811,8 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
               nominalDiameterMm: undefined,
               quantityValue: 1,
               markupPercentage: 15,
-              workingPressureBar: rfqData.globalSpecs?.workingPressureBar || 10,
-              workingTemperatureC: rfqData.globalSpecs?.workingTemperatureC || 20,
+              workingPressureBar: rawWorkingPressureBar5 || 10,
+              workingTemperatureC: rawWorkingTemperatureC5 || 20,
             },
             notes: "",
           };
@@ -1000,8 +1055,13 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
         duplicateItem: (entryToDuplicate, insertAfterIndex) => {
           const newId = generateUniqueId();
           const { rfqData } = get();
-          const baseItemNumber = entryToDuplicate.clientItemNumber || "";
-          const existingNumbers = rfqData.items.map((e) => e.clientItemNumber || "");
+          const rawClientItemNumber = entryToDuplicate.clientItemNumber;
+          const baseItemNumber = rawClientItemNumber || "";
+          const existingNumbers = rfqData.items.map((e) => {
+            const rawClientItemNumber2 = e.clientItemNumber;
+            const rawClientItemNumber3 = e.clientItemNumber;
+            return rawClientItemNumber3 || "";
+          });
 
           const newItemNumber = (() => {
             if (!baseItemNumber) return "";
@@ -1070,16 +1130,16 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
         },
 
         totalWeight: () =>
-          get().rfqData.straightPipeEntries.reduce(
-            (total, entry) => total + (entry.calculation?.totalPipeWeight || 0),
-            0,
-          ),
+          get().rfqData.straightPipeEntries.reduce((total, entry) => {
+            const rawTotalPipeWeight = entry.calculation?.totalPipeWeight;
+            return total + (rawTotalPipeWeight || 0);
+          }, 0),
 
         totalValue: () =>
-          get().rfqData.straightPipeEntries.reduce(
-            (total, entry) => total + (entry.calculation?.calculatedTotalLength || 0),
-            0,
-          ),
+          get().rfqData.straightPipeEntries.reduce((total, entry) => {
+            const rawCalculatedTotalLength = entry.calculation?.calculatedTotalLength;
+            return total + (rawCalculatedTotalLength || 0);
+          }, 0),
 
         nextStep: () =>
           set((state) => ({ currentStep: Math.min(state.currentStep + 1, 4) }), false, "nextStep"),
@@ -1133,18 +1193,33 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
           ),
 
         restoreFromDraft: (draft) => {
-          const formData = draft.formData || {};
+          const rawFormData = draft.formData;
+          const formData = rawFormData || {};
+
+          const rawProjectName = formData.projectName;
+          const rawDescription2 = formData.description;
+          const rawCustomerName2 = formData.customerName;
+          const rawCustomerEmail = formData.customerEmail;
+          const rawCustomerPhone = formData.customerPhone;
+          const rawRequiredDate = formData.requiredDate;
+          const rawRequiredProducts = draft.requiredProducts;
+          const rawNotes = formData.notes;
+          const rawUseNix = formData.useNix;
+          const rawNixPopupShown = formData.nixPopupShown;
+          const rawGlobalSpecs = draft.globalSpecs;
+          const rawStraightPipeEntries = draft.straightPipeEntries;
+          const rawStraightPipeEntries2 = draft.straightPipeEntries;
 
           const restored: RfqFormData = {
-            projectName: String(formData.projectName ?? ""),
+            projectName: String(rawProjectName || ""),
             projectType: formData.projectType as string | undefined,
-            description: String(formData.description ?? ""),
-            customerName: String(formData.customerName ?? ""),
-            customerEmail: String(formData.customerEmail ?? ""),
-            customerPhone: String(formData.customerPhone ?? ""),
-            requiredDate: String(formData.requiredDate ?? addDaysFromNowISODate(30)),
-            requiredProducts: draft.requiredProducts ?? [],
-            notes: String(formData.notes ?? ""),
+            description: String(rawDescription2 || ""),
+            customerName: String(rawCustomerName2 || ""),
+            customerEmail: String(rawCustomerEmail || ""),
+            customerPhone: String(rawCustomerPhone || ""),
+            requiredDate: String(rawRequiredDate || addDaysFromNowISODate(30)),
+            requiredProducts: rawRequiredProducts || [],
+            notes: String(rawNotes || ""),
             latitude: formData.latitude !== undefined ? Number(formData.latitude) : undefined,
             longitude: formData.longitude !== undefined ? Number(formData.longitude) : undefined,
             siteAddress: formData.siteAddress as string | undefined,
@@ -1153,11 +1228,11 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
             mineId: formData.mineId as number | undefined,
             mineName: formData.mineName as string | undefined,
             skipDocuments: formData.skipDocuments as boolean | undefined,
-            useNix: Boolean(formData.useNix ?? false),
-            nixPopupShown: Boolean(formData.nixPopupShown ?? false),
-            globalSpecs: draft.globalSpecs ?? {},
-            items: (draft.straightPipeEntries ?? []) as PipeItem[],
-            straightPipeEntries: (draft.straightPipeEntries ?? []).filter(
+            useNix: Boolean(rawUseNix || false),
+            nixPopupShown: Boolean(rawNixPopupShown || false),
+            globalSpecs: rawGlobalSpecs || {},
+            items: (rawStraightPipeEntries || []) as PipeItem[],
+            straightPipeEntries: (rawStraightPipeEntries2 || []).filter(
               (e) => (e as PipeItem).itemType === "straight_pipe" || !(e as PipeItem).itemType,
             ) as StraightPipeEntry[],
           };

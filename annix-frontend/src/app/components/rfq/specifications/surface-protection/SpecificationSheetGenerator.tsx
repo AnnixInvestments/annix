@@ -12,39 +12,56 @@ interface SpecificationSheetGeneratorProps {
 export function SpecificationSheetGenerator(props: SpecificationSheetGeneratorProps) {
   const { globalSpecs, projectName = "Project", customerName = "Customer" } = props;
   const generatePdfContent = () => {
+    const rawExternalCoatingType = globalSpecs.externalCoatingType;
+    const rawExternalBlastingGrade = globalSpecs.externalBlastingGrade;
+    const rawExternalPrimerType = globalSpecs.externalPrimerType;
+    const rawExternalPrimerMicrons = globalSpecs.externalPrimerMicrons;
+    const rawExternalIntermediateType = globalSpecs.externalIntermediateType;
+    const rawExternalIntermediateMicrons = globalSpecs.externalIntermediateMicrons;
+    const rawExternalTopcoatType = globalSpecs.externalTopcoatType;
+    const rawExternalTopcoatMicrons = globalSpecs.externalTopcoatMicrons;
+    const rawExternalTopcoatColour = globalSpecs.externalTopcoatColour;
+    const rawExternalPrimerMicrons2 = globalSpecs.externalPrimerMicrons;
+    const rawExternalIntermediateMicrons2 = globalSpecs.externalIntermediateMicrons;
+    const rawExternalTopcoatMicrons2 = globalSpecs.externalTopcoatMicrons;
     const externalSpec = {
-      coatingType: globalSpecs.externalCoatingType || "Not specified",
-      blastingGrade: globalSpecs.externalBlastingGrade || "Sa 2.5",
+      coatingType: rawExternalCoatingType || "Not specified",
+      blastingGrade: rawExternalBlastingGrade || "Sa 2.5",
       primer: {
-        type: globalSpecs.externalPrimerType || "Not specified",
-        dft: globalSpecs.externalPrimerMicrons || 0,
+        type: rawExternalPrimerType || "Not specified",
+        dft: rawExternalPrimerMicrons || 0,
       },
       intermediate: {
-        type: globalSpecs.externalIntermediateType || "Not specified",
-        dft: globalSpecs.externalIntermediateMicrons || 0,
+        type: rawExternalIntermediateType || "Not specified",
+        dft: rawExternalIntermediateMicrons || 0,
       },
       topcoat: {
-        type: globalSpecs.externalTopcoatType || "Not specified",
-        dft: globalSpecs.externalTopcoatMicrons || 0,
-        colour: globalSpecs.externalTopcoatColour || "Not specified",
+        type: rawExternalTopcoatType || "Not specified",
+        dft: rawExternalTopcoatMicrons || 0,
+        colour: rawExternalTopcoatColour || "Not specified",
       },
       totalDft:
-        (globalSpecs.externalPrimerMicrons || 0) +
-        (globalSpecs.externalIntermediateMicrons || 0) +
-        (globalSpecs.externalTopcoatMicrons || 0),
+        (rawExternalPrimerMicrons2 || 0) +
+        (rawExternalIntermediateMicrons2 || 0) +
+        (rawExternalTopcoatMicrons2 || 0),
     };
 
+    const rawInternalLiningType = globalSpecs.internalLiningType;
+    const rawInternalPrimerMicrons = globalSpecs.internalPrimerMicrons;
+    const rawInternalIntermediateMicrons = globalSpecs.internalIntermediateMicrons;
+    const rawInternalTopcoatMicrons = globalSpecs.internalTopcoatMicrons;
+
     const internalSpec = {
-      liningType: globalSpecs.internalLiningType || "Not specified",
+      liningType: rawInternalLiningType || "Not specified",
       rubberType: globalSpecs.internalRubberType,
       rubberThickness: globalSpecs.internalRubberThickness,
       ceramicType: globalSpecs.internalCeramicType,
       primerType: globalSpecs.internalPrimerType,
       primerDft: globalSpecs.internalPrimerMicrons,
       totalDft:
-        (globalSpecs.internalPrimerMicrons || 0) +
-        (globalSpecs.internalIntermediateMicrons || 0) +
-        (globalSpecs.internalTopcoatMicrons || 0),
+        (rawInternalPrimerMicrons || 0) +
+        (rawInternalIntermediateMicrons || 0) +
+        (rawInternalTopcoatMicrons || 0),
     };
 
     return { externalSpec, internalSpec };
@@ -52,6 +69,10 @@ export function SpecificationSheetGenerator(props: SpecificationSheetGeneratorPr
 
   const handleGeneratePdf = () => {
     const { externalSpec, internalSpec } = generatePdfContent();
+
+    const rawRubberThickness = internalSpec.rubberThickness;
+    const rawPrimerType = internalSpec.primerType;
+    const rawPrimerDft = internalSpec.primerDft;
 
     const htmlContent = `
 <!DOCTYPE html>
@@ -155,7 +176,7 @@ export function SpecificationSheetGenerator(props: SpecificationSheetGeneratorPr
     </tr>
     <tr>
       <th>Rubber Thickness</th>
-      <td>${internalSpec.rubberThickness || "Per supplier recommendation"}</td>
+      <td>${rawRubberThickness || "Per supplier recommendation"}</td>
     </tr>
     `
         : ""
@@ -175,7 +196,7 @@ export function SpecificationSheetGenerator(props: SpecificationSheetGeneratorPr
         ? `
     <tr>
       <th>Primer</th>
-      <td>${internalSpec.primerType || "N/A"} - ${internalSpec.primerDft || 0}um</td>
+      <td>${rawPrimerType || "N/A"} - ${rawPrimerDft || 0}um</td>
     </tr>
     <tr class="total-row">
       <th>Total DFT</th>

@@ -93,8 +93,10 @@ export default function TankChuteForm(props: TankChuteFormProps) {
     generateItemDescription,
     requiredProducts: _requiredProducts = [],
   } = props;
-  const specs = entry.specs ?? {};
-  const plateBom = specs.plateBom ?? [];
+  const rawSpecs = entry.specs;
+  const specs = rawSpecs || {};
+  const rawPlateBom = specs.plateBom;
+  const plateBom = rawPlateBom || [];
   const isCalculatedWeight = specs.weightSource === "calculated";
 
   const bomTotals = useMemo(() => {
@@ -112,9 +114,9 @@ export default function TankChuteForm(props: TankChuteFormProps) {
     };
   }, [plateBom]);
 
-  const effectiveWeight = isCalculatedWeight
-    ? bomTotals.totalWeightKg
-    : (specs.totalSteelWeightKg ?? 0);
+  const rawTotalSteelWeightKg = specs.totalSteelWeightKg;
+
+  const effectiveWeight = isCalculatedWeight ? bomTotals.totalWeightKg : rawTotalSteelWeightKg || 0;
 
   const updateSpecs = useCallback(
     (updates: Partial<TankChuteEntry["specs"]>) => {
@@ -188,6 +190,33 @@ export default function TankChuteForm(props: TankChuteFormProps) {
   const sectionClass =
     "bg-amber-50 border border-amber-200 rounded-lg p-3 mb-3 dark:bg-amber-900/20 dark:border-amber-700";
 
+  const rawDescription = entry.description;
+  const rawAssemblyType = specs.assemblyType;
+  const rawDrawingReference = specs.drawingReference;
+  const rawMaterialGrade = specs.materialGrade;
+  const rawQuantityValue = specs.quantityValue;
+  const rawOverallLengthMm = specs.overallLengthMm;
+  const rawOverallWidthMm = specs.overallWidthMm;
+  const rawOverallHeightMm = specs.overallHeightMm;
+  const rawTotalSteelWeightKg2 = specs.totalSteelWeightKg;
+  const rawLiningRequired = specs.liningRequired;
+  const rawLiningType = specs.liningType;
+  const rawLiningThicknessMm = specs.liningThicknessMm;
+  const rawLiningAreaM2 = specs.liningAreaM2;
+  const rawLiningWastagePercent = specs.liningWastagePercent;
+  const rawRubberGrade = specs.rubberGrade;
+  const rawRubberHardnessShore = specs.rubberHardnessShore;
+  const rawCoatingRequired = specs.coatingRequired;
+  const rawCoatingSystem = specs.coatingSystem;
+  const rawCoatingAreaM2 = specs.coatingAreaM2;
+  const rawSurfacePrepStandard = specs.surfacePrepStandard;
+  const rawCoatingWastagePercent = specs.coatingWastagePercent;
+  const rawNotes = entry.notes;
+  const rawLabel = ASSEMBLY_TYPES.find((t) => t.value === specs.assemblyType)?.label;
+  const rawQuantityValue2 = specs.quantityValue;
+  const rawOverallLengthMm2 = specs.overallLengthMm;
+  const rawLabel2 = LINING_TYPES.find((t) => t.value === specs.liningType)?.label;
+
   return (
     <SplitPaneLayout
       entryId={entry.id}
@@ -198,7 +227,7 @@ export default function TankChuteForm(props: TankChuteFormProps) {
           <div>
             <label className={labelClass}>Item Description *</label>
             <textarea
-              value={entry.description || generateItemDescription(entry)}
+              value={rawDescription || generateItemDescription(entry)}
               onChange={(e) => onUpdateEntry(entry.id, { description: e.target.value })}
               className={inputClass}
               rows={2}
@@ -214,7 +243,7 @@ export default function TankChuteForm(props: TankChuteFormProps) {
               <div>
                 <label className={labelClass}>Assembly Type *</label>
                 <select
-                  value={specs.assemblyType || ""}
+                  value={rawAssemblyType || ""}
                   onChange={(e) => updateSpecs({ assemblyType: e.target.value as any })}
                   className={inputClass}
                 >
@@ -230,7 +259,7 @@ export default function TankChuteForm(props: TankChuteFormProps) {
                 <label className={labelClass}>Drawing Reference</label>
                 <input
                   type="text"
-                  value={specs.drawingReference || ""}
+                  value={rawDrawingReference || ""}
                   onChange={(e) => updateSpecs({ drawingReference: e.target.value })}
                   className={inputClass}
                   placeholder="e.g., GPW-017"
@@ -239,7 +268,7 @@ export default function TankChuteForm(props: TankChuteFormProps) {
               <div>
                 <label className={labelClass}>Material Grade</label>
                 <select
-                  value={specs.materialGrade || ""}
+                  value={rawMaterialGrade || ""}
                   onChange={(e) => updateSpecs({ materialGrade: e.target.value })}
                   className={inputClass}
                 >
@@ -255,7 +284,7 @@ export default function TankChuteForm(props: TankChuteFormProps) {
                 <label className={labelClass}>Quantity</label>
                 <input
                   type="number"
-                  value={specs.quantityValue ?? 1}
+                  value={rawQuantityValue || 1}
                   onChange={(e) => updateSpecs({ quantityValue: Number(e.target.value) })}
                   className={inputClass}
                   min={1}
@@ -268,7 +297,7 @@ export default function TankChuteForm(props: TankChuteFormProps) {
                 <label className={labelClass}>Length (mm)</label>
                 <input
                   type="number"
-                  value={specs.overallLengthMm ?? ""}
+                  value={rawOverallLengthMm || ""}
                   onChange={(e) =>
                     updateSpecs({
                       overallLengthMm: e.target.value ? Number(e.target.value) : undefined,
@@ -282,7 +311,7 @@ export default function TankChuteForm(props: TankChuteFormProps) {
                 <label className={labelClass}>Width (mm)</label>
                 <input
                   type="number"
-                  value={specs.overallWidthMm ?? ""}
+                  value={rawOverallWidthMm || ""}
                   onChange={(e) =>
                     updateSpecs({
                       overallWidthMm: e.target.value ? Number(e.target.value) : undefined,
@@ -296,7 +325,7 @@ export default function TankChuteForm(props: TankChuteFormProps) {
                 <label className={labelClass}>Height (mm)</label>
                 <input
                   type="number"
-                  value={specs.overallHeightMm ?? ""}
+                  value={rawOverallHeightMm || ""}
                   onChange={(e) =>
                     updateSpecs({
                       overallHeightMm: e.target.value ? Number(e.target.value) : undefined,
@@ -345,7 +374,7 @@ export default function TankChuteForm(props: TankChuteFormProps) {
                 <label className={labelClass}>Total Steel Weight (kg)</label>
                 <input
                   type="number"
-                  value={specs.totalSteelWeightKg ?? ""}
+                  value={rawTotalSteelWeightKg2 || ""}
                   onChange={(e) =>
                     updateSpecs({
                       totalSteelWeightKg: e.target.value ? Number(e.target.value) : undefined,
@@ -390,80 +419,91 @@ export default function TankChuteForm(props: TankChuteFormProps) {
                       </tr>
                     </thead>
                     <tbody>
-                      {plateBom.map((row: PlateBomItem, i: number) => (
-                        <tr key={i} className="hover:bg-amber-50/50 dark:hover:bg-amber-900/10">
-                          <td className="border border-amber-200 dark:border-amber-700 p-0.5">
-                            <input
-                              type="text"
-                              value={row.mark}
-                              onChange={(e) => updateBomRow(i, "mark", e.target.value)}
-                              className="w-full px-1 py-0.5 text-xs border-0 bg-transparent focus:ring-0 text-gray-900 dark:text-gray-100"
-                              placeholder="P1"
-                            />
-                          </td>
-                          <td className="border border-amber-200 dark:border-amber-700 p-0.5">
-                            <input
-                              type="text"
-                              value={row.description}
-                              onChange={(e) => updateBomRow(i, "description", e.target.value)}
-                              className="w-full px-1 py-0.5 text-xs border-0 bg-transparent focus:ring-0 text-gray-900 dark:text-gray-100"
-                              placeholder="Side plate"
-                            />
-                          </td>
-                          <td className="border border-amber-200 dark:border-amber-700 p-0.5">
-                            <input
-                              type="number"
-                              value={row.thicknessMm || ""}
-                              onChange={(e) =>
-                                updateBomRow(i, "thicknessMm", Number(e.target.value))
-                              }
-                              className="w-full px-1 py-0.5 text-xs border-0 bg-transparent focus:ring-0 text-right text-gray-900 dark:text-gray-100"
-                              step="0.1"
-                            />
-                          </td>
-                          <td className="border border-amber-200 dark:border-amber-700 p-0.5">
-                            <input
-                              type="number"
-                              value={row.lengthMm || ""}
-                              onChange={(e) => updateBomRow(i, "lengthMm", Number(e.target.value))}
-                              className="w-full px-1 py-0.5 text-xs border-0 bg-transparent focus:ring-0 text-right text-gray-900 dark:text-gray-100"
-                            />
-                          </td>
-                          <td className="border border-amber-200 dark:border-amber-700 p-0.5">
-                            <input
-                              type="number"
-                              value={row.widthMm || ""}
-                              onChange={(e) => updateBomRow(i, "widthMm", Number(e.target.value))}
-                              className="w-full px-1 py-0.5 text-xs border-0 bg-transparent focus:ring-0 text-right text-gray-900 dark:text-gray-100"
-                            />
-                          </td>
-                          <td className="border border-amber-200 dark:border-amber-700 p-0.5">
-                            <input
-                              type="number"
-                              value={row.quantity || ""}
-                              onChange={(e) => updateBomRow(i, "quantity", Number(e.target.value))}
-                              className="w-full px-1 py-0.5 text-xs border-0 bg-transparent focus:ring-0 text-right text-gray-900 dark:text-gray-100"
-                              min={1}
-                            />
-                          </td>
-                          <td className="border border-amber-200 dark:border-amber-700 px-2 py-0.5 text-right font-mono text-gray-600 dark:text-gray-400">
-                            {row.weightKg.toFixed(2)}
-                          </td>
-                          <td className="border border-amber-200 dark:border-amber-700 px-2 py-0.5 text-right font-mono text-gray-600 dark:text-gray-400">
-                            {row.areaM2.toFixed(2)}
-                          </td>
-                          <td className="border border-amber-200 dark:border-amber-700 p-0.5 text-center">
-                            <button
-                              type="button"
-                              onClick={() => removeBomRow(i)}
-                              className="text-red-500 hover:text-red-700 text-xs px-1"
-                              title="Remove row"
-                            >
-                              x
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
+                      {plateBom.map((row: PlateBomItem, i: number) => {
+                        const rawThicknessMm = row.thicknessMm;
+                        const rawLengthMm = row.lengthMm;
+                        const rawWidthMm = row.widthMm;
+                        const rawQuantity = row.quantity;
+
+                        return (
+                          <tr key={i} className="hover:bg-amber-50/50 dark:hover:bg-amber-900/10">
+                            <td className="border border-amber-200 dark:border-amber-700 p-0.5">
+                              <input
+                                type="text"
+                                value={row.mark}
+                                onChange={(e) => updateBomRow(i, "mark", e.target.value)}
+                                className="w-full px-1 py-0.5 text-xs border-0 bg-transparent focus:ring-0 text-gray-900 dark:text-gray-100"
+                                placeholder="P1"
+                              />
+                            </td>
+                            <td className="border border-amber-200 dark:border-amber-700 p-0.5">
+                              <input
+                                type="text"
+                                value={row.description}
+                                onChange={(e) => updateBomRow(i, "description", e.target.value)}
+                                className="w-full px-1 py-0.5 text-xs border-0 bg-transparent focus:ring-0 text-gray-900 dark:text-gray-100"
+                                placeholder="Side plate"
+                              />
+                            </td>
+                            <td className="border border-amber-200 dark:border-amber-700 p-0.5">
+                              <input
+                                type="number"
+                                value={rawThicknessMm || ""}
+                                onChange={(e) =>
+                                  updateBomRow(i, "thicknessMm", Number(e.target.value))
+                                }
+                                className="w-full px-1 py-0.5 text-xs border-0 bg-transparent focus:ring-0 text-right text-gray-900 dark:text-gray-100"
+                                step="0.1"
+                              />
+                            </td>
+                            <td className="border border-amber-200 dark:border-amber-700 p-0.5">
+                              <input
+                                type="number"
+                                value={rawLengthMm || ""}
+                                onChange={(e) =>
+                                  updateBomRow(i, "lengthMm", Number(e.target.value))
+                                }
+                                className="w-full px-1 py-0.5 text-xs border-0 bg-transparent focus:ring-0 text-right text-gray-900 dark:text-gray-100"
+                              />
+                            </td>
+                            <td className="border border-amber-200 dark:border-amber-700 p-0.5">
+                              <input
+                                type="number"
+                                value={rawWidthMm || ""}
+                                onChange={(e) => updateBomRow(i, "widthMm", Number(e.target.value))}
+                                className="w-full px-1 py-0.5 text-xs border-0 bg-transparent focus:ring-0 text-right text-gray-900 dark:text-gray-100"
+                              />
+                            </td>
+                            <td className="border border-amber-200 dark:border-amber-700 p-0.5">
+                              <input
+                                type="number"
+                                value={rawQuantity || ""}
+                                onChange={(e) =>
+                                  updateBomRow(i, "quantity", Number(e.target.value))
+                                }
+                                className="w-full px-1 py-0.5 text-xs border-0 bg-transparent focus:ring-0 text-right text-gray-900 dark:text-gray-100"
+                                min={1}
+                              />
+                            </td>
+                            <td className="border border-amber-200 dark:border-amber-700 px-2 py-0.5 text-right font-mono text-gray-600 dark:text-gray-400">
+                              {row.weightKg.toFixed(2)}
+                            </td>
+                            <td className="border border-amber-200 dark:border-amber-700 px-2 py-0.5 text-right font-mono text-gray-600 dark:text-gray-400">
+                              {row.areaM2.toFixed(2)}
+                            </td>
+                            <td className="border border-amber-200 dark:border-amber-700 p-0.5 text-center">
+                              <button
+                                type="button"
+                                onClick={() => removeBomRow(i)}
+                                className="text-red-500 hover:text-red-700 text-xs px-1"
+                                title="Remove row"
+                              >
+                                x
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                     {plateBom.length > 0 && (
                       <tfoot>
@@ -503,7 +543,7 @@ export default function TankChuteForm(props: TankChuteFormProps) {
             <label className="flex items-center gap-2 text-xs mb-3 cursor-pointer">
               <input
                 type="checkbox"
-                checked={specs.liningRequired || false}
+                checked={rawLiningRequired || false}
                 onChange={(e) =>
                   updateSpecs({
                     liningRequired: e.target.checked,
@@ -529,7 +569,7 @@ export default function TankChuteForm(props: TankChuteFormProps) {
                 <div>
                   <label className={labelClass}>Lining Type *</label>
                   <select
-                    value={specs.liningType || ""}
+                    value={rawLiningType || ""}
                     onChange={(e) => updateSpecs({ liningType: e.target.value as any })}
                     className={inputClass}
                   >
@@ -545,7 +585,7 @@ export default function TankChuteForm(props: TankChuteFormProps) {
                   <label className={labelClass}>Thickness (mm)</label>
                   <input
                     type="number"
-                    value={specs.liningThicknessMm ?? ""}
+                    value={rawLiningThicknessMm || ""}
                     onChange={(e) =>
                       updateSpecs({
                         liningThicknessMm: e.target.value ? Number(e.target.value) : undefined,
@@ -560,7 +600,7 @@ export default function TankChuteForm(props: TankChuteFormProps) {
                   <label className={labelClass}>Lining Area (m2)</label>
                   <input
                     type="number"
-                    value={specs.liningAreaM2 ?? ""}
+                    value={rawLiningAreaM2 || ""}
                     onChange={(e) =>
                       updateSpecs({
                         liningAreaM2: e.target.value ? Number(e.target.value) : undefined,
@@ -575,7 +615,7 @@ export default function TankChuteForm(props: TankChuteFormProps) {
                   <label className={labelClass}>Wastage (%)</label>
                   <input
                     type="number"
-                    value={specs.liningWastagePercent ?? ""}
+                    value={rawLiningWastagePercent || ""}
                     onChange={(e) =>
                       updateSpecs({
                         liningWastagePercent: e.target.value ? Number(e.target.value) : undefined,
@@ -593,7 +633,7 @@ export default function TankChuteForm(props: TankChuteFormProps) {
                       <label className={labelClass}>Rubber Grade</label>
                       <input
                         type="text"
-                        value={specs.rubberGrade || ""}
+                        value={rawRubberGrade || ""}
                         onChange={(e) => updateSpecs({ rubberGrade: e.target.value })}
                         className={inputClass}
                         placeholder="e.g., Natural Rubber"
@@ -603,7 +643,7 @@ export default function TankChuteForm(props: TankChuteFormProps) {
                       <label className={labelClass}>Hardness (Shore A)</label>
                       <input
                         type="number"
-                        value={specs.rubberHardnessShore ?? ""}
+                        value={rawRubberHardnessShore || ""}
                         onChange={(e) =>
                           updateSpecs({
                             rubberHardnessShore: e.target.value
@@ -629,7 +669,7 @@ export default function TankChuteForm(props: TankChuteFormProps) {
             <label className="flex items-center gap-2 text-xs mb-3 cursor-pointer">
               <input
                 type="checkbox"
-                checked={specs.coatingRequired || false}
+                checked={rawCoatingRequired || false}
                 onChange={(e) =>
                   updateSpecs({
                     coatingRequired: e.target.checked,
@@ -653,7 +693,7 @@ export default function TankChuteForm(props: TankChuteFormProps) {
                 <div className="col-span-2">
                   <label className={labelClass}>Coating System Description</label>
                   <textarea
-                    value={specs.coatingSystem || ""}
+                    value={rawCoatingSystem || ""}
                     onChange={(e) => updateSpecs({ coatingSystem: e.target.value })}
                     className={inputClass}
                     rows={2}
@@ -664,7 +704,7 @@ export default function TankChuteForm(props: TankChuteFormProps) {
                   <label className={labelClass}>Coating Area (m2)</label>
                   <input
                     type="number"
-                    value={specs.coatingAreaM2 ?? ""}
+                    value={rawCoatingAreaM2 || ""}
                     onChange={(e) =>
                       updateSpecs({
                         coatingAreaM2: e.target.value ? Number(e.target.value) : undefined,
@@ -678,7 +718,7 @@ export default function TankChuteForm(props: TankChuteFormProps) {
                 <div>
                   <label className={labelClass}>Surface Prep Standard</label>
                   <select
-                    value={specs.surfacePrepStandard || ""}
+                    value={rawSurfacePrepStandard || ""}
                     onChange={(e) => updateSpecs({ surfacePrepStandard: e.target.value })}
                     className={inputClass}
                   >
@@ -694,7 +734,7 @@ export default function TankChuteForm(props: TankChuteFormProps) {
                   <label className={labelClass}>Wastage (%)</label>
                   <input
                     type="number"
-                    value={specs.coatingWastagePercent ?? ""}
+                    value={rawCoatingWastagePercent || ""}
                     onChange={(e) =>
                       updateSpecs({
                         coatingWastagePercent: e.target.value ? Number(e.target.value) : undefined,
@@ -713,7 +753,7 @@ export default function TankChuteForm(props: TankChuteFormProps) {
           <div>
             <label className={labelClass}>Notes</label>
             <textarea
-              value={entry.notes || ""}
+              value={rawNotes || ""}
               onChange={(e) => onUpdateEntry(entry.id, { notes: e.target.value })}
               className={inputClass}
               rows={2}
@@ -731,7 +771,7 @@ export default function TankChuteForm(props: TankChuteFormProps) {
             <div className="grid grid-cols-2 gap-2 text-sm">
               <div className="text-amber-800 dark:text-amber-200">Type:</div>
               <div className="font-semibold text-amber-900 dark:text-amber-100">
-                {ASSEMBLY_TYPES.find((t) => t.value === specs.assemblyType)?.label || "-"}
+                {rawLabel || "-"}
               </div>
               {specs.drawingReference && (
                 <>
@@ -751,9 +791,9 @@ export default function TankChuteForm(props: TankChuteFormProps) {
               )}
               <div className="text-amber-800 dark:text-amber-200">Quantity:</div>
               <div className="font-semibold text-amber-900 dark:text-amber-100">
-                {specs.quantityValue ?? 1}
+                {rawQuantityValue2 || 1}
               </div>
-              {(specs.overallLengthMm || specs.overallWidthMm || specs.overallHeightMm) && (
+              {(rawOverallLengthMm2 || specs.overallWidthMm || specs.overallHeightMm) && (
                 <>
                   <div className="text-amber-800 dark:text-amber-200">Dimensions:</div>
                   <div className="font-semibold text-amber-900 dark:text-amber-100">
@@ -803,7 +843,7 @@ export default function TankChuteForm(props: TankChuteFormProps) {
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div className="text-green-800 dark:text-green-200">Type:</div>
                 <div className="font-semibold text-green-900 dark:text-green-100">
-                  {LINING_TYPES.find((t) => t.value === specs.liningType)?.label || "-"}
+                  {rawLabel2 || "-"}
                 </div>
                 {specs.liningThicknessMm && (
                   <>

@@ -54,7 +54,10 @@ function SpigotConfigurationSectionComponent({
   const isOverride = spigotSteelSpecificationId && spigotSteelSpecificationId !== mainPipeSpecId;
 
   const spigotSpecName = useMemo(() => {
-    return steelSpecs?.find((s: any) => s.id === effectiveSpigotSpecId)?.steelSpecName || "";
+    const rawSteelSpecName = steelSpecs?.find(
+      (s: any) => s.id === effectiveSpigotSpecId,
+    )?.steelSpecName;
+    return rawSteelSpecName || "";
   }, [steelSpecs, effectiveSpigotSpecId]);
 
   const filteredNBOptions = useMemo(() => {

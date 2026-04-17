@@ -95,7 +95,15 @@ export function flangeTypesForStandard(
 ): FlangeTypeInfo[] {
   return allTypes
     .filter((t) => t.standardReference === standardRef)
-    .map((t) => ({ code: t.code, name: t.name, description: t.description || "" }));
+    .map((t) => {
+      const rawDescription = t.description;
+
+      return {
+        code: t.code,
+        name: t.name,
+        description: rawDescription || "",
+      };
+    });
 }
 
 export function flangeTypesForStandardCode(
@@ -109,7 +117,8 @@ export function flangeTypesForStandardCode(
   const useAsmeTypes = code.startsWith("ASME") || standardsUsingAsmeTypes.includes(code);
 
   const filtered = allTypes.filter((t) => {
-    const ref = (t.standardReference || "").toUpperCase();
+    const rawStandardReference = t.standardReference;
+    const ref = (rawStandardReference || "").toUpperCase();
     if (!ref) return false;
 
     if (useAsmeTypes) {
@@ -120,12 +129,21 @@ export function flangeTypesForStandardCode(
   });
 
   return filtered.length > 0
-    ? filtered.map((t) => ({ code: t.code, name: t.name, description: t.description || "" }))
+    ? filtered.map((t) => {
+        const rawDescription2 = t.description;
+
+        return {
+          code: t.code,
+          name: t.name,
+          description: rawDescription2 || "",
+        };
+      })
     : null;
 }
 
 export function nbToOd(nbToOdMap: Record<number, number>, nb: number): number {
-  return nbToOdMap[nb] || nb * 1.1;
+  const rawNb = nbToOdMap[nb];
+  return rawNb || nb * 1.1;
 }
 
 export function outerDiameterFromNB(
@@ -146,7 +164,8 @@ export function outerDiameterFromNB(
       break;
     }
   }
-  return nbToOdMap[closest] || nb * 1.05;
+  const rawClosest = nbToOdMap[closest];
+  return rawClosest || nb * 1.05;
 }
 
 export function useNbToOdLookup() {
@@ -362,7 +381,8 @@ export function blankFlangeSurfaceArea(
   flangeOdMap: Record<number, number>,
   nbMm: number,
 ): { external: number; internal: number } {
-  const flangeOdMm = flangeOdMap[nbMm] || nbMm * 1.7;
+  const rawNbMm = flangeOdMap[nbMm];
+  const flangeOdMm = rawNbMm || nbMm * 1.7;
   const flangeThicknessMm = Math.max(20, nbMm * 0.08);
   const singleFaceAreaM2 = Math.PI * (flangeOdMm / 2000) ** 2;
   const edgeAreaM2 = Math.PI * (flangeOdMm / 1000) * (flangeThicknessMm / 1000);

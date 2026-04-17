@@ -167,8 +167,10 @@ async function nixRequest<TResponse>(
     headers["Content-Type"] = "application/json";
   }
 
+  const rawMethod = options.method;
+
   const response = await retryableFetch(`${browserBaseUrl()}${path}`, {
-    method: options.method ?? "GET",
+    method: rawMethod || "GET",
     headers,
     ...(options.body !== undefined ? { body: JSON.stringify(options.body) } : {}),
   });
@@ -176,7 +178,8 @@ async function nixRequest<TResponse>(
   if (!response.ok) {
     if (options.parseErrorBody) {
       const body = await response.json().catch(() => null);
-      const errorMessage = body?.error || `${options.errorLabel}: ${response.statusText}`;
+      const rawError = body?.error;
+      const errorMessage = rawError || `${options.errorLabel}: ${response.statusText}`;
       throw new Error(errorMessage);
     }
     throw new Error(`${options.errorLabel}: ${response.statusText}`);

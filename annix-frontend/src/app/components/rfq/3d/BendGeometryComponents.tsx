@@ -295,7 +295,8 @@ export interface FlangeProps {
 }
 
 export const Flange = ({ center, normal, pipeR, innerR, nb }: FlangeProps) => {
-  const flangeSpecs = FLANGE_DATA[nb] || FLANGE_DATA[closestFlangeNb(nb)];
+  const rawNb = FLANGE_DATA[nb];
+  const flangeSpecs = rawNb || FLANGE_DATA[closestFlangeNb(nb)];
   const flangeR = flangeSpecs.flangeOD / 2 / SCALE;
   const thick = flangeSpecs.thickness / SCALE;
   const boltR = flangeSpecs.pcd / 2 / SCALE;
@@ -405,7 +406,8 @@ export const SaddleCutStubPipe = ({
 }: SaddleCutStubPipeProps) => {
   const dir = direction.clone().normalize();
   const weldTube = outerR * WELD_TUBE_RATIO;
-  const stubFlangeSpecs = FLANGE_DATA[nb] || FLANGE_DATA[closestFlangeNb(nb)];
+  const rawNb2 = FLANGE_DATA[nb];
+  const stubFlangeSpecs = rawNb2 || FLANGE_DATA[closestFlangeNb(nb)];
   const stubFlangeThick = stubFlangeSpecs.thickness / SCALE;
   const flangeOffset = stubFlangeThick / 2;
 
@@ -597,7 +599,8 @@ export const StubPipe = ({
   const dir = direction.clone().normalize();
   const endCenter = baseCenter.clone().add(dir.clone().multiplyScalar(length));
   const weldTube = outerR * WELD_TUBE_RATIO;
-  const stubFlangeSpecs = FLANGE_DATA[nb] || FLANGE_DATA[closestFlangeNb(nb)];
+  const rawNb3 = FLANGE_DATA[nb];
+  const stubFlangeSpecs = rawNb3 || FLANGE_DATA[closestFlangeNb(nb)];
   const stubFlangeThick = stubFlangeSpecs.thickness / SCALE;
   const flangeOffset = stubFlangeThick / 2;
 
@@ -638,7 +641,8 @@ export interface BlankFlangeProps {
 }
 
 export const BlankFlange = ({ center, normal, pipeR, nb }: BlankFlangeProps) => {
-  const flangeSpecs = FLANGE_DATA[nb] || FLANGE_DATA[closestFlangeNb(nb)];
+  const rawNb4 = FLANGE_DATA[nb];
+  const flangeSpecs = rawNb4 || FLANGE_DATA[closestFlangeNb(nb)];
   const flangeR = flangeSpecs.flangeOD / 2 / SCALE;
   const thick = flangeSpecs.thickness / SCALE;
   const boltR = flangeSpecs.pcd / 2 / SCALE;
@@ -745,7 +749,8 @@ export interface RotatingFlangeProps {
 }
 
 export const RotatingFlange = ({ center, normal, pipeR, innerR, nb }: RotatingFlangeProps) => {
-  const flangeSpecs = FLANGE_DATA[nb] || FLANGE_DATA[closestFlangeNb(nb)];
+  const rawNb5 = FLANGE_DATA[nb];
+  const flangeSpecs = rawNb5 || FLANGE_DATA[closestFlangeNb(nb)];
   const flangeR = flangeSpecs.flangeOD / 2 / SCALE;
   const thick = flangeSpecs.thickness / SCALE;
   const boltR = flangeSpecs.pcd / 2 / SCALE;

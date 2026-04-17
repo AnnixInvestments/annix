@@ -770,7 +770,8 @@ export default function SpecificationsStep(props: {
   const availablePressureClasses = useRfqWizardStore((s) => s.availablePressureClasses);
   const onUpdateGlobalSpecs = useRfqWizardStore((s) => s.updateGlobalSpecs) as (specs: any) => void;
   const globalSpecs = rfqData.globalSpecs;
-  const requiredProducts = rfqData.requiredProducts || [];
+  const rawRequiredProducts = rfqData.requiredProducts;
+  const requiredProducts = rawRequiredProducts || [];
   // Authentication status for restrictions
   // Don't apply restrictions while auth is still loading to prevent flash of restricted state
   const { isAuthenticated: isCustomerAuthenticated, isLoading: isCustomerAuthLoading } =
@@ -881,9 +882,11 @@ export default function SpecificationsStep(props: {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [steelSpecDropdownOpen, flangeStandardDropdownOpen]);
 
+  const rawWorkingPressure = errors.workingPressure;
+
   const hasErrors =
     errors &&
-    (errors.workingPressure ||
+    (rawWorkingPressure ||
       errors.workingTemperature ||
       errors.steelPipesConfirmation ||
       errors.fastenersConfirmation);
@@ -976,33 +979,40 @@ export default function SpecificationsStep(props: {
 
   // Derive temperature category from working temperature if not manually set
   const derivedTempCategory = deriveTemperatureCategory(globalSpecs?.workingTemperatureC);
-  const effectiveEcpTemperature = globalSpecs?.ecpTemperature || derivedTempCategory;
+  const rawEcpTemperature = globalSpecs?.ecpTemperature;
+  const effectiveEcpTemperature = rawEcpTemperature || derivedTempCategory;
   const isEcpTemperatureAutoFilled = !globalSpecs?.ecpTemperature && !!derivedTempCategory;
+
+  const rawIso12944Category = rfqData?.iso12944Category;
 
   // Derive atmospheric fields from Page 1 Environmental Intelligence data
   // Check multiple sources: user override (ecp prefix), rfqData, and globalSpecs (from mine selection)
-  const derivedIso12944 = rfqData?.iso12944Category || globalSpecs?.iso12944Category;
-  const effectiveIso12944 = globalSpecs?.ecpIso12944Category || derivedIso12944;
+  const derivedIso12944 = rawIso12944Category || globalSpecs?.iso12944Category;
+  const rawEcpIso12944Category = globalSpecs?.ecpIso12944Category;
+  const effectiveIso12944 = rawEcpIso12944Category || derivedIso12944;
   const isIso12944AutoFilled = !globalSpecs?.ecpIso12944Category && !!derivedIso12944;
 
+  const rawMarineInfluence = rfqData?.marineInfluence;
+
   const derivedMarineInfluence =
-    rfqData?.marineInfluence ||
-    globalSpecs?.detailedMarineInfluence ||
-    globalSpecs?.marineInfluence;
-  const effectiveMarineInfluence = globalSpecs?.ecpMarineInfluence || derivedMarineInfluence;
+    rawMarineInfluence || globalSpecs?.detailedMarineInfluence || globalSpecs?.marineInfluence;
+  const rawEcpMarineInfluence = globalSpecs?.ecpMarineInfluence;
+  const effectiveMarineInfluence = rawEcpMarineInfluence || derivedMarineInfluence;
   const isMarineInfluenceAutoFilled = !globalSpecs?.ecpMarineInfluence && !!derivedMarineInfluence;
 
-  const derivedIndustrialPollution =
-    rfqData?.industrialPollution || globalSpecs?.industrialPollution;
-  const effectiveIndustrialPollution =
-    globalSpecs?.ecpIndustrialPollution || derivedIndustrialPollution;
+  const rawIndustrialPollution = rfqData?.industrialPollution;
+
+  const derivedIndustrialPollution = rawIndustrialPollution || globalSpecs?.industrialPollution;
+  const rawEcpIndustrialPollution = globalSpecs?.ecpIndustrialPollution;
+  const effectiveIndustrialPollution = rawEcpIndustrialPollution || derivedIndustrialPollution;
   const isIndustrialPollutionAutoFilled =
     !globalSpecs?.ecpIndustrialPollution && !!derivedIndustrialPollution;
 
   // Derive Installation Conditions from Page 1 data
   // Installation Type: Default to AboveGround for mining applications
   const derivedInstallationType = globalSpecs?.mineSelected ? "AboveGround" : null;
-  const effectiveInstallationType = globalSpecs?.ecpInstallationType || derivedInstallationType;
+  const rawEcpInstallationType = globalSpecs?.ecpInstallationType;
+  const effectiveInstallationType = rawEcpInstallationType || derivedInstallationType;
   const isInstallationTypeAutoFilled =
     !globalSpecs?.ecpInstallationType && !!derivedInstallationType;
 
@@ -1020,12 +1030,14 @@ export default function SpecificationsStep(props: {
     return null;
   };
   const derivedUvExposure = deriveUvExposure();
-  const effectiveUvExposure = globalSpecs?.ecpUvExposure || derivedUvExposure;
+  const rawEcpUvExposure = globalSpecs?.ecpUvExposure;
+  const effectiveUvExposure = rawEcpUvExposure || derivedUvExposure;
   const isUvExposureAutoFilled = !globalSpecs?.ecpUvExposure && !!derivedUvExposure;
 
   // Mechanical Risk: Mining environments are typically high mechanical risk
   const derivedMechanicalRisk = globalSpecs?.mineSelected ? "High" : null;
-  const effectiveMechanicalRisk = globalSpecs?.ecpMechanicalRisk || derivedMechanicalRisk;
+  const rawEcpMechanicalRisk = globalSpecs?.ecpMechanicalRisk;
+  const effectiveMechanicalRisk = rawEcpMechanicalRisk || derivedMechanicalRisk;
   const isMechanicalRiskAutoFilled = !globalSpecs?.ecpMechanicalRisk && !!derivedMechanicalRisk;
 
   // Helper for auto-filled field styling
@@ -1097,13 +1109,158 @@ export default function SpecificationsStep(props: {
       : iso12944Systems?.alternatives.find((s) => s.systemCode === selectedIso12944SystemCode)
     : iso12944Systems?.recommended;
 
+  const rawSteelSpecName = masterData.steelSpecs.find(
+    (s: any) => s.id === globalSpecs.steelSpecificationId,
+  )?.steelSpecName;
+
+  const rawCode = masterData.flangeStandards.find(
+    (s: any) => s.id === globalSpecs.flangeStandardId,
+  )?.code;
+
+  const rawWorkingPressureBar = globalSpecs?.workingPressureBar;
+  const rawWorkingTemperatureC = globalSpecs?.workingTemperatureC;
+
+  const rawSteelSpecName2 = masterData.steelSpecs?.find(
+    (s: any) => s.id === globalSpecs.steelSpecificationId,
+  )?.steelSpecName;
+
+  const rawWorkingPressureBar3 = globalSpecs?.workingPressureBar;
+
+  const rawCode2 = masterData.flangeStandards?.find(
+    (s: any) => s.id === globalSpecs.flangeStandardId,
+  )?.code;
+
+  const rawIsLower = pressureClassOverrideStatus.isLower;
+  const rawFlangePressureClassId = globalSpecs?.flangePressureClassId;
+  const rawFlangeFace = globalSpecs?.flangeFace;
+  const rawSurfaceProtectionConfirmed = globalSpecs?.surfaceProtectionConfirmed;
+  const rawExternalCoatingRecommendation = globalSpecs?.externalCoatingRecommendation;
+  const rawExternalCoatingConfirmed = globalSpecs?.externalCoatingConfirmed;
+  const rawCoating = globalSpecs.externalCoatingRecommendation?.coating;
+  const rawInternalLiningConfirmed = globalSpecs?.internalLiningConfirmed;
+  const rawInternalLiningType = globalSpecs.internalLiningType;
+  const rawEcpSoilType = globalSpecs?.ecpSoilType;
+  const rawEcpSoilResistivity = globalSpecs?.ecpSoilResistivity;
+  const rawEcpSoilMoisture = globalSpecs?.ecpSoilMoisture;
+  const rawEcpServiceLife = globalSpecs?.ecpServiceLife;
+  const rawExternalTopcoatColour = globalSpecs?.externalTopcoatColour;
+
+  const rawInstallationType =
+    globalSpecs.externalCoatingRecommendation.environmentProfile?.installationType;
+
+  const rawIso12944Category2 =
+    globalSpecs.externalCoatingRecommendation.environmentProfile?.iso12944Category;
+
+  const rawMarineInfluence2 =
+    globalSpecs.externalCoatingRecommendation.environmentProfile?.marineInfluence;
+
+  const rawUvExposure = globalSpecs.externalCoatingRecommendation.environmentProfile?.uvExposure;
+
+  const rawTemperature = globalSpecs.externalCoatingRecommendation.environmentProfile?.temperature;
+
+  const rawServiceLife = globalSpecs.externalCoatingRecommendation.environmentProfile?.serviceLife;
+
+  const rawMechanicalRisk =
+    globalSpecs.externalCoatingRecommendation.environmentProfile?.mechanicalRisk;
+
+  const rawIndustrialPollution2 =
+    globalSpecs.externalCoatingRecommendation.environmentProfile?.industrialPollution;
+
+  const rawExternalCoatingType = globalSpecs?.externalCoatingType;
+  const rawExternalRubberType = globalSpecs?.externalRubberType;
+  const rawExternalRubberThickness = globalSpecs?.externalRubberThickness;
+  const rawExternalRubberColour = globalSpecs?.externalRubberColour;
+  const rawExternalRubberHardness = globalSpecs?.externalRubberHardness;
+  const rawExternalBlastingGrade = globalSpecs?.externalBlastingGrade;
+  const rawExternalTopcoatColour2 = globalSpecs?.externalTopcoatColour;
+  const rawExternalBand1Colour = globalSpecs?.externalBand1Colour;
+  const rawExternalBand2Colour = globalSpecs?.externalBand2Colour;
+  const rawExternalPrimerMicrons = globalSpecs.externalPrimerMicrons;
+  const rawExternalIntermediateMicrons = globalSpecs.externalIntermediateMicrons;
+  const rawExternalTopcoatMicrons = globalSpecs.externalTopcoatMicrons;
+  const rawExternalBlastingGrade2 = globalSpecs?.externalBlastingGrade;
+  const rawExternalPrimerType = globalSpecs?.externalPrimerType;
+  const rawExternalPrimerMicrons2 = globalSpecs?.externalPrimerMicrons;
+  const rawExternalIntermediateType = globalSpecs?.externalIntermediateType;
+  const rawExternalIntermediateMicrons2 = globalSpecs?.externalIntermediateMicrons;
+  const rawExternalTopcoatType = globalSpecs?.externalTopcoatType;
+  const rawExternalTopcoatMicrons2 = globalSpecs?.externalTopcoatMicrons;
+  const rawExternalTopcoatColour3 = globalSpecs?.externalTopcoatColour;
+  const rawCustomColourInput = globalSpecs?.customColourInput;
+  const rawExternalBand1Colour2 = globalSpecs?.externalBand1Colour;
+  const rawCustomBand1Input = globalSpecs?.customBand1Input;
+  const rawExternalBand2Colour2 = globalSpecs?.externalBand2Colour;
+  const rawCustomBand2Input = globalSpecs?.customBand2Input;
+  const rawExternalBlastingGrade3 = globalSpecs?.externalBlastingGrade;
+  const rawExternalTopcoatColour4 = globalSpecs?.externalTopcoatColour;
+  const rawExternalBand1Colour3 = globalSpecs?.externalBand1Colour;
+  const rawExternalBand2Colour3 = globalSpecs?.externalBand2Colour;
+  const rawExternalPrimerMicrons3 = globalSpecs.externalPrimerMicrons;
+  const rawExternalIntermediateMicrons3 = globalSpecs.externalIntermediateMicrons;
+  const rawExternalTopcoatMicrons3 = globalSpecs.externalTopcoatMicrons;
+  const rawExternalBlastingGrade4 = globalSpecs?.externalBlastingGrade;
+  const rawExternalTopcoatColour5 = globalSpecs?.externalTopcoatColour;
+  const rawExternalBand1Colour4 = globalSpecs?.externalBand1Colour;
+  const rawExternalBand2Colour4 = globalSpecs?.externalBand2Colour;
+  const rawExternalPrimerMicrons4 = globalSpecs.externalPrimerMicrons;
+  const rawExternalIntermediateMicrons4 = globalSpecs.externalIntermediateMicrons;
+  const rawExternalTopcoatMicrons4 = globalSpecs.externalTopcoatMicrons;
+  const rawMtpParticleSize = globalSpecs?.mtpParticleSize;
+  const rawMtpParticleShape = globalSpecs?.mtpParticleShape;
+  const rawMtpHardnessClass = globalSpecs?.mtpHardnessClass;
+  const rawMtpSilicaContent = globalSpecs?.mtpSilicaContent;
+  const rawMtpSpecificGravity = globalSpecs?.mtpSpecificGravity;
+  const rawMtpPhRange = globalSpecs?.mtpPhRange;
+  const rawMtpChlorides = globalSpecs?.mtpChlorides;
+  const rawMtpTemperatureRange = globalSpecs?.mtpTemperatureRange;
+  const rawMtpVelocity = globalSpecs?.mtpVelocity;
+  const rawMtpImpactAngle = globalSpecs?.mtpImpactAngle;
+  const rawMtpEquipmentType = globalSpecs?.mtpEquipmentType;
+  const rawMtpSolidsPercent = globalSpecs?.mtpSolidsPercent;
+  const rawInternalLiningType2 = globalSpecs?.internalLiningType;
+  const rawInternalRubberSansType = globalSpecs?.internalRubberSansType;
+  const rawInternalRubberGrade = globalSpecs?.internalRubberGrade;
+  const rawInternalRubberHardness = globalSpecs?.internalRubberHardness;
+  const rawInternalRubberThickness = globalSpecs?.internalRubberThickness;
+  const rawInternalRubberVulcanizationMethod = globalSpecs?.internalRubberVulcanizationMethod;
+  const rawInternalRubberColour = globalSpecs?.internalRubberColour;
+  const rawInternalRubberType = globalSpecs?.internalRubberType;
+  const rawInternalCeramicType = globalSpecs?.internalCeramicType;
+  const rawInternalCeramicShape = globalSpecs?.internalCeramicShape;
+  const rawInternalCeramicThickness = globalSpecs?.internalCeramicThickness;
+  const rawInternalHdpeMaterialGrade = globalSpecs?.internalHdpeMaterialGrade;
+  const rawInternalHdpePressureRating = globalSpecs?.internalHdpePressureRating;
+  const rawInternalHdpeSdr = globalSpecs?.internalHdpeSdr;
+  const rawInternalHdpePipeType = globalSpecs?.internalHdpePipeType;
+  const rawInternalPuThickness = globalSpecs?.internalPuThickness;
+  const rawInternalPuHardness = globalSpecs?.internalPuHardness;
+  const rawInternalPrimerMicrons = globalSpecs.internalPrimerMicrons;
+  const rawInternalIntermediateMicrons = globalSpecs.internalIntermediateMicrons;
+  const rawInternalTopcoatMicrons = globalSpecs.internalTopcoatMicrons;
+  const rawInternalPrimerType = globalSpecs?.internalPrimerType;
+  const rawInternalPrimerMicrons2 = globalSpecs?.internalPrimerMicrons;
+  const rawInternalIntermediateType = globalSpecs?.internalIntermediateType;
+  const rawInternalIntermediateMicrons2 = globalSpecs?.internalIntermediateMicrons;
+  const rawInternalTopcoatType = globalSpecs?.internalTopcoatType;
+  const rawInternalTopcoatMicrons2 = globalSpecs?.internalTopcoatMicrons;
+  const rawInternalPrimerMicrons3 = globalSpecs.internalPrimerMicrons;
+  const rawInternalIntermediateMicrons3 = globalSpecs.internalIntermediateMicrons;
+  const rawInternalTopcoatMicrons3 = globalSpecs.internalTopcoatMicrons;
+  const rawExternalCoatingType2 = globalSpecs?.externalCoatingType;
+  const rawHdpeGrade = globalSpecs?.hdpeGrade;
+  const rawHdpeSdr = globalSpecs?.hdpeSdr;
+  const rawPvcType = globalSpecs?.pvcType;
+  const rawPvcPressureClass = globalSpecs?.pvcPressureClass;
+  const rawBoltGrade = globalSpecs?.boltGrade;
+  const rawGasketType = globalSpecs?.gasketType;
+  const rawDesignation3 = currentPressureClass?.designation;
+
   return (
     <div>
       <h2 className="text-md font-bold text-gray-900 mb-1">Specifications</h2>
       <p className="text-gray-600 text-xs mb-2">
         Define working conditions and material specifications.
       </p>
-
       {/* Validation Error Banner */}
       {hasErrors && (
         <div className="mb-2 bg-red-50 border-l-4 border-red-500 rounded p-2">
@@ -1133,7 +1290,6 @@ export default function SpecificationsStep(props: {
           </div>
         </div>
       )}
-
       <div className="space-y-3">
         {/* Fabricated Steel Pipes & Fittings Section */}
         {showSteelPipes && (
@@ -1163,21 +1319,13 @@ export default function SpecificationsStep(props: {
                     {globalSpecs?.steelSpecificationId && masterData?.steelSpecs && (
                       <>
                         <span className="mx-2">•</span>
-                        <span>
-                          {masterData.steelSpecs.find(
-                            (s: any) => s.id === globalSpecs.steelSpecificationId,
-                          )?.steelSpecName || "Steel Spec"}
-                        </span>
+                        <span>{rawSteelSpecName || "Steel Spec"}</span>
                       </>
                     )}
                     {globalSpecs?.flangeStandardId && masterData?.flangeStandards && (
                       <>
                         <span className="mx-2">•</span>
-                        <span>
-                          {masterData.flangeStandards.find(
-                            (s: any) => s.id === globalSpecs.flangeStandardId,
-                          )?.code || "Flange"}
-                        </span>
+                        <span>{rawCode || "Flange"}</span>
                       </>
                     )}
                   </div>
@@ -1216,7 +1364,7 @@ export default function SpecificationsStep(props: {
                         Working Pressure (bar) <span className="text-red-600">*</span>
                       </label>
                       <select
-                        value={globalSpecs?.workingPressureBar || ""}
+                        value={rawWorkingPressureBar || ""}
                         onChange={async (e) => {
                           const newPressure = e.target.value ? Number(e.target.value) : null;
                           let recommendedPressureClassId = globalSpecs?.flangePressureClassId;
@@ -1266,7 +1414,7 @@ export default function SpecificationsStep(props: {
                         Working Temperature (°C) <span className="text-red-600">*</span>
                       </label>
                       <select
-                        value={globalSpecs?.workingTemperatureC || ""}
+                        value={rawWorkingTemperatureC || ""}
                         onChange={async (e) => {
                           const newTemp = e.target.value ? Number(e.target.value) : null;
                           let recommendedPressureClassId = globalSpecs?.flangePressureClassId;
@@ -1337,9 +1485,7 @@ export default function SpecificationsStep(props: {
                           }
                         >
                           {globalSpecs?.steelSpecificationId
-                            ? masterData.steelSpecs?.find(
-                                (s: any) => s.id === globalSpecs.steelSpecificationId,
-                              )?.steelSpecName || "Select steel specification..."
+                            ? rawSteelSpecName2 || "Select steel specification..."
                             : "Select steel specification..."}
                         </span>
                         <svg
@@ -1387,13 +1533,14 @@ export default function SpecificationsStep(props: {
                               const newSteelSpec = masterData.steelSpecs?.find(
                                 (s: any) => s.id === specId,
                               );
-                              const specName = newSteelSpec?.steelSpecName || "";
+                              const rawSteelSpecName3 = newSteelSpec?.steelSpecName;
+                              const specName = rawSteelSpecName3 || "";
 
                               try {
+                                const rawWorkingPressureBar2 = globalSpecs?.workingPressureBar;
                                 if (
                                   specName &&
-                                  (globalSpecs?.workingPressureBar ||
-                                    globalSpecs?.workingTemperatureC)
+                                  (rawWorkingPressureBar2 || globalSpecs?.workingTemperatureC)
                                 ) {
                                   const suitability =
                                     await materialValidationApi.checkMaterialSuitability(
@@ -1502,15 +1649,18 @@ export default function SpecificationsStep(props: {
                             ];
 
                             return groups.map((group, groupIdx) => {
-                              const specs = masterData.steelSpecs.filter((spec: any) =>
-                                group.filter(spec.steelSpecName || ""),
-                              );
-                              const suitableSpecs = specs.filter((spec: any) =>
-                                isSpecSuitable(spec.steelSpecName || ""),
-                              );
-                              const unsuitableSpecs = specs.filter(
-                                (spec: any) => !isSpecSuitable(spec.steelSpecName || ""),
-                              );
+                              const specs = masterData.steelSpecs.filter((spec: any) => {
+                                const rawSteelSpecName4 = spec.steelSpecName;
+                                return group.filter(rawSteelSpecName4 || "");
+                              });
+                              const suitableSpecs = specs.filter((spec: any) => {
+                                const rawSteelSpecName5 = spec.steelSpecName;
+                                return isSpecSuitable(rawSteelSpecName5 || "");
+                              });
+                              const unsuitableSpecs = specs.filter((spec: any) => {
+                                const rawSteelSpecName6 = spec.steelSpecName;
+                                return !isSpecSuitable(rawSteelSpecName6 || "");
+                              });
 
                               if (specs.length === 0) return null;
 
@@ -1522,8 +1672,9 @@ export default function SpecificationsStep(props: {
                                       : `${group.label} (Not Suitable)`}
                                   </div>
                                   {suitableSpecs.map((spec: any) => {
+                                    const rawSteelSpecName7 = spec.steelSpecName;
                                     const isAllowedForUnregistered =
-                                      isSteelSpecAllowedForUnregistered(spec.steelSpecName || "");
+                                      isSteelSpecAllowedForUnregistered(rawSteelSpecName7 || "");
                                     const isRestricted =
                                       isUnregisteredCustomer && !isAllowedForUnregistered;
 
@@ -1569,8 +1720,9 @@ export default function SpecificationsStep(props: {
                                     );
                                   })}
                                   {unsuitableSpecs.map((spec: any) => {
+                                    const rawSteelSpecName8 = spec.steelSpecName;
                                     const isAllowedForUnregistered =
-                                      isSteelSpecAllowedForUnregistered(spec.steelSpecName || "");
+                                      isSteelSpecAllowedForUnregistered(rawSteelSpecName8 || "");
                                     const isRestricted =
                                       isUnregisteredCustomer && !isAllowedForUnregistered;
 
@@ -1613,7 +1765,7 @@ export default function SpecificationsStep(props: {
                       )}
                       {/* Show current suitability status */}
                       {globalSpecs?.steelSpecificationId &&
-                        (globalSpecs?.workingPressureBar || globalSpecs?.workingTemperatureC) &&
+                        (rawWorkingPressureBar3 || globalSpecs?.workingTemperatureC) &&
                         (() => {
                           const currentSpec = masterData.steelSpecs?.find(
                             (s: any) => s.id === globalSpecs.steelSpecificationId,
@@ -1682,9 +1834,7 @@ export default function SpecificationsStep(props: {
                           {globalSpecs?.flangeStandardId === "PE"
                             ? "Plain Ended (No Flanges)"
                             : globalSpecs?.flangeStandardId
-                              ? masterData.flangeStandards?.find(
-                                  (s: any) => s.id === globalSpecs.flangeStandardId,
-                                )?.code || "Select flange standard..."
+                              ? rawCode2 || "Select flange standard..."
                               : "Select flange standard..."}
                         </span>
                         <svg
@@ -1768,7 +1918,8 @@ export default function SpecificationsStep(props: {
 
                               // FALLBACK: If no class was selected but classes are available, pick the appropriate one
                               if (!newPressureClassId && availablePressureClasses?.length > 0) {
-                                const targetPressure = globalSpecs?.workingPressureBar || 10;
+                                const rawWorkingPressureBar4 = globalSpecs?.workingPressureBar;
+                                const targetPressure = rawWorkingPressureBar4 || 10;
                                 // Find the lowest class that can handle the working pressure
                                 const suitable = availablePressureClasses
                                   .map((pc: any) => {
@@ -1897,7 +2048,7 @@ export default function SpecificationsStep(props: {
                           (pressureClassOverrideStatus.isOverride ? (
                             <span
                               className={`ml-1 text-xs font-normal ${
-                                pressureClassOverrideStatus.isLower || isPressureClassUnsuitable
+                                rawIsLower || isPressureClassUnsuitable
                                   ? "text-red-600"
                                   : pressureClassOverrideStatus.isHigher
                                     ? "text-orange-500"
@@ -1917,7 +2068,7 @@ export default function SpecificationsStep(props: {
                       ) : (
                         <>
                           <select
-                            value={globalSpecs?.flangePressureClassId || ""}
+                            value={rawFlangePressureClassId || ""}
                             onChange={(e) =>
                               onUpdateGlobalSpecs({
                                 ...globalSpecs,
@@ -1953,7 +2104,11 @@ export default function SpecificationsStep(props: {
                                   const numA = extractNumeric(a.designation);
                                   const numB = extractNumeric(b.designation);
                                   if (numA !== numB) return numA - numB;
-                                  return (a.designation || "").localeCompare(b.designation || "");
+                                  const rawDesignation = a.designation;
+                                  const rawDesignation2 = b.designation;
+                                  return (rawDesignation || "").localeCompare(
+                                    rawDesignation2 || "",
+                                  );
                                 })
                                 .map((pc: any) => {
                                   const displayValue = pc.designation.replace(/\/\d+$/, "");
@@ -2118,12 +2273,15 @@ export default function SpecificationsStep(props: {
                       const selectedStandard = masterData.flangeStandards?.find(
                         (s: any) => s.id === globalSpecs?.flangeStandardId,
                       );
-                      const standardCode = selectedStandard?.code || "";
+                      const rawCode3 = selectedStandard?.code;
+                      const standardCode = rawCode3 || "";
 
                       const flangeTypesForStandard = flangeTypesForStandardCode(
                         allFlangeTypes,
                         standardCode,
                       );
+
+                      const rawFlangeTypeCode = globalSpecs?.flangeTypeCode;
 
                       return flangeTypesForStandard ? (
                         <div>
@@ -2131,9 +2289,10 @@ export default function SpecificationsStep(props: {
                             Flange Type *
                           </label>
                           <select
-                            value={globalSpecs?.flangeTypeCode || ""}
+                            value={rawFlangeTypeCode || ""}
                             onChange={(e) => {
-                              const newFlangeTypeCode = e.target.value || null;
+                              const rawValue2 = e.target.value;
+                              const newFlangeTypeCode = rawValue2 || null;
                               let newPressureClassId = globalSpecs?.flangePressureClassId;
 
                               if (
@@ -2194,7 +2353,7 @@ export default function SpecificationsStep(props: {
                             )}
                         </label>
                         <select
-                          value={globalSpecs?.flangeFace || ""}
+                          value={rawFlangeFace || ""}
                           onChange={(e) =>
                             onUpdateGlobalSpecs({
                               ...globalSpecs,
@@ -2309,10 +2468,10 @@ export default function SpecificationsStep(props: {
             </div>
 
             {/* Confirmed Surface Protection Summary - Show when ANY surface protection is confirmed */}
-            {(globalSpecs?.surfaceProtectionConfirmed ||
+            {(rawSurfaceProtectionConfirmed ||
               globalSpecs?.externalCoatingConfirmed ||
               globalSpecs?.internalLiningConfirmed) &&
-              (globalSpecs?.externalCoatingRecommendation ||
+              (rawExternalCoatingRecommendation ||
                 globalSpecs?.externalCoatingType ||
                 globalSpecs?.internalLiningType) && (
                 <div className="bg-green-100 border border-green-400 rounded-md p-3">
@@ -2326,23 +2485,20 @@ export default function SpecificationsStep(props: {
                         />
                       </svg>
                       <span className="font-semibold">Surface Protection Confirmed</span>
-                      {(globalSpecs?.externalCoatingConfirmed ||
+                      {(rawExternalCoatingConfirmed ||
                         globalSpecs?.externalCoatingType ||
                         globalSpecs?.externalCoatingRecommendation) && (
                         <>
                           <span className="mx-2">•</span>
                           <span className="font-medium">External:</span>{" "}
-                          {globalSpecs.externalCoatingRecommendation?.coating ||
-                            globalSpecs.externalCoatingType ||
-                            "N/A"}
+                          {rawCoating || globalSpecs.externalCoatingType || "N/A"}
                         </>
                       )}
-                      {(globalSpecs?.internalLiningConfirmed ||
-                        globalSpecs?.internalLiningType) && (
+                      {(rawInternalLiningConfirmed || globalSpecs?.internalLiningType) && (
                         <>
                           <span className="mx-2">•</span>
                           <span className="font-medium">Internal:</span>{" "}
-                          {globalSpecs.internalLiningType || "N/A"}
+                          {rawInternalLiningType || "N/A"}
                           {globalSpecs?.internalRubberType && (
                             <span className="ml-1">({globalSpecs.internalRubberType})</span>
                           )}
@@ -2472,12 +2628,14 @@ export default function SpecificationsStep(props: {
                             </label>
                             <select
                               value={effectiveInstallationType || ""}
-                              onChange={(e) =>
-                                onUpdateGlobalSpecs({
+                              onChange={(e) => {
+                                const rawValue3 = e.target.value;
+
+                                return onUpdateGlobalSpecs({
                                   ...globalSpecs,
-                                  ecpInstallationType: e.target.value || null,
-                                })
-                              }
+                                  ecpInstallationType: rawValue3 || null,
+                                });
+                              }}
                               className={`w-full px-2 py-1.5 text-xs rounded focus:ring-1 focus:ring-orange-500 ${autoFilledClass(isInstallationTypeAutoFilled)}`}
                             >
                               <option value="">Select...</option>
@@ -2496,12 +2654,14 @@ export default function SpecificationsStep(props: {
                             </label>
                             <select
                               value={effectiveUvExposure || ""}
-                              onChange={(e) =>
-                                onUpdateGlobalSpecs({
+                              onChange={(e) => {
+                                const rawValue4 = e.target.value;
+
+                                return onUpdateGlobalSpecs({
                                   ...globalSpecs,
-                                  ecpUvExposure: e.target.value || null,
-                                })
-                              }
+                                  ecpUvExposure: rawValue4 || null,
+                                });
+                              }}
                               className={`w-full px-2 py-1.5 text-xs rounded focus:ring-1 focus:ring-orange-500 ${autoFilledClass(isUvExposureAutoFilled)}`}
                             >
                               <option value="">Select...</option>
@@ -2519,12 +2679,14 @@ export default function SpecificationsStep(props: {
                             </label>
                             <select
                               value={effectiveMechanicalRisk || ""}
-                              onChange={(e) =>
-                                onUpdateGlobalSpecs({
+                              onChange={(e) => {
+                                const rawValue5 = e.target.value;
+
+                                return onUpdateGlobalSpecs({
                                   ...globalSpecs,
-                                  ecpMechanicalRisk: e.target.value || null,
-                                })
-                              }
+                                  ecpMechanicalRisk: rawValue5 || null,
+                                });
+                              }}
                               className={`w-full px-2 py-1.5 text-xs rounded focus:ring-1 focus:ring-orange-500 ${autoFilledClass(isMechanicalRiskAutoFilled)}`}
                             >
                               <option value="">Select...</option>
@@ -2561,12 +2723,14 @@ export default function SpecificationsStep(props: {
                             </label>
                             <select
                               value={effectiveIso12944 || ""}
-                              onChange={(e) =>
-                                onUpdateGlobalSpecs({
+                              onChange={(e) => {
+                                const rawValue6 = e.target.value;
+
+                                return onUpdateGlobalSpecs({
                                   ...globalSpecs,
-                                  ecpIso12944Category: e.target.value || null,
-                                })
-                              }
+                                  ecpIso12944Category: rawValue6 || null,
+                                });
+                              }}
                               className={`w-full px-2 py-1.5 text-xs rounded focus:ring-1 focus:ring-orange-500 ${autoFilledClass(isIso12944AutoFilled)}`}
                             >
                               <option value="">Select...</option>
@@ -2587,12 +2751,14 @@ export default function SpecificationsStep(props: {
                             </label>
                             <select
                               value={effectiveMarineInfluence || ""}
-                              onChange={(e) =>
-                                onUpdateGlobalSpecs({
+                              onChange={(e) => {
+                                const rawValue7 = e.target.value;
+
+                                return onUpdateGlobalSpecs({
                                   ...globalSpecs,
-                                  ecpMarineInfluence: e.target.value || null,
-                                })
-                              }
+                                  ecpMarineInfluence: rawValue7 || null,
+                                });
+                              }}
                               className={`w-full px-2 py-1.5 text-xs rounded focus:ring-1 focus:ring-orange-500 ${autoFilledClass(isMarineInfluenceAutoFilled)}`}
                             >
                               <option value="">Select...</option>
@@ -2610,12 +2776,14 @@ export default function SpecificationsStep(props: {
                             </label>
                             <select
                               value={effectiveIndustrialPollution || ""}
-                              onChange={(e) =>
-                                onUpdateGlobalSpecs({
+                              onChange={(e) => {
+                                const rawValue8 = e.target.value;
+
+                                return onUpdateGlobalSpecs({
                                   ...globalSpecs,
-                                  ecpIndustrialPollution: e.target.value || null,
-                                })
-                              }
+                                  ecpIndustrialPollution: rawValue8 || null,
+                                });
+                              }}
                               className={`w-full px-2 py-1.5 text-xs rounded focus:ring-1 focus:ring-orange-500 ${autoFilledClass(isIndustrialPollutionAutoFilled)}`}
                             >
                               <option value="">Select...</option>
@@ -2642,13 +2810,15 @@ export default function SpecificationsStep(props: {
                                 Soil Type
                               </label>
                               <select
-                                value={globalSpecs?.ecpSoilType || ""}
-                                onChange={(e) =>
-                                  onUpdateGlobalSpecs({
+                                value={rawEcpSoilType || ""}
+                                onChange={(e) => {
+                                  const rawValue9 = e.target.value;
+
+                                  return onUpdateGlobalSpecs({
                                     ...globalSpecs,
-                                    ecpSoilType: e.target.value || null,
-                                  })
-                                }
+                                    ecpSoilType: rawValue9 || null,
+                                  });
+                                }}
                                 className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-orange-500 text-gray-900"
                               >
                                 <option value="">Select...</option>
@@ -2663,13 +2833,15 @@ export default function SpecificationsStep(props: {
                                 Resistivity
                               </label>
                               <select
-                                value={globalSpecs?.ecpSoilResistivity || ""}
-                                onChange={(e) =>
-                                  onUpdateGlobalSpecs({
+                                value={rawEcpSoilResistivity || ""}
+                                onChange={(e) => {
+                                  const rawValue10 = e.target.value;
+
+                                  return onUpdateGlobalSpecs({
                                     ...globalSpecs,
-                                    ecpSoilResistivity: e.target.value || null,
-                                  })
-                                }
+                                    ecpSoilResistivity: rawValue10 || null,
+                                  });
+                                }}
                                 className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-orange-500 text-gray-900"
                               >
                                 <option value="">Select...</option>
@@ -2684,13 +2856,15 @@ export default function SpecificationsStep(props: {
                                 Moisture
                               </label>
                               <select
-                                value={globalSpecs?.ecpSoilMoisture || ""}
-                                onChange={(e) =>
-                                  onUpdateGlobalSpecs({
+                                value={rawEcpSoilMoisture || ""}
+                                onChange={(e) => {
+                                  const rawValue11 = e.target.value;
+
+                                  return onUpdateGlobalSpecs({
                                     ...globalSpecs,
-                                    ecpSoilMoisture: e.target.value || null,
-                                  })
-                                }
+                                    ecpSoilMoisture: rawValue11 || null,
+                                  });
+                                }}
                                 className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-orange-500 text-gray-900"
                               >
                                 <option value="">Select...</option>
@@ -2724,12 +2898,14 @@ export default function SpecificationsStep(props: {
                             </label>
                             <select
                               value={effectiveEcpTemperature || ""}
-                              onChange={(e) =>
-                                onUpdateGlobalSpecs({
+                              onChange={(e) => {
+                                const rawValue12 = e.target.value;
+
+                                return onUpdateGlobalSpecs({
                                   ...globalSpecs,
-                                  ecpTemperature: e.target.value || null,
-                                })
-                              }
+                                  ecpTemperature: rawValue12 || null,
+                                });
+                              }}
                               className={`w-full px-2 py-1.5 text-xs rounded focus:ring-1 focus:ring-orange-500 ${
                                 isEcpTemperatureAutoFilled
                                   ? "border-2 border-emerald-500 bg-emerald-50 text-emerald-900 font-semibold"
@@ -2748,13 +2924,15 @@ export default function SpecificationsStep(props: {
                               Service Life *
                             </label>
                             <select
-                              value={globalSpecs?.ecpServiceLife || ""}
-                              onChange={(e) =>
-                                onUpdateGlobalSpecs({
+                              value={rawEcpServiceLife || ""}
+                              onChange={(e) => {
+                                const rawValue13 = e.target.value;
+
+                                return onUpdateGlobalSpecs({
                                   ...globalSpecs,
-                                  ecpServiceLife: e.target.value || null,
-                                })
-                              }
+                                  ecpServiceLife: rawValue13 || null,
+                                });
+                              }}
                               className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-orange-500 text-gray-900"
                             >
                               <option value="">Select...</option>
@@ -2836,6 +3014,14 @@ export default function SpecificationsStep(props: {
                         const damage = classifyExternalDamageMechanisms(profile);
                         const recommendation = recommendExternalCoating(profile, damage);
 
+                        const rawSystemCode = iso12944Systems.recommended.systemCode;
+                        const rawRecExternalTopcoatColour = globalSpecs?.recExternalTopcoatColour;
+                        const rawRecCustomColourInput = globalSpecs?.recCustomColourInput;
+                        const rawRecExternalBand1Colour = globalSpecs?.recExternalBand1Colour;
+                        const rawRecBand1Input = globalSpecs?.recBand1Input;
+                        const rawRecExternalBand2Colour = globalSpecs?.recExternalBand2Colour;
+                        const rawRecBand2Input = globalSpecs?.recBand2Input;
+
                         return (
                           <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-md p-2 border-2 border-emerald-300">
                             <div className="flex items-center justify-between gap-1 mb-2">
@@ -2863,7 +3049,6 @@ export default function SpecificationsStep(props: {
                                 </span>
                               )}
                             </div>
-
                             {/* Compact 4-column grid for main info */}
                             <div className="grid grid-cols-4 gap-2 mb-2">
                               <div className="bg-white rounded p-1.5 border border-emerald-200">
@@ -2906,7 +3091,6 @@ export default function SpecificationsStep(props: {
                                 </div>
                               </div>
                             </div>
-
                             {/* Standards and Notes in compact 2-column layout */}
                             <div className="grid grid-cols-2 gap-2 mb-2">
                               <div className="bg-white rounded p-1.5 border border-emerald-200">
@@ -2938,7 +3122,6 @@ export default function SpecificationsStep(props: {
                                 </p>
                               </div>
                             </div>
-
                             {/* Engineering Notes - collapsible */}
                             <details className="bg-white rounded p-1.5 border border-emerald-200 mb-2">
                               <summary className="text-[10px] font-medium text-gray-500 cursor-pointer">
@@ -2950,7 +3133,6 @@ export default function SpecificationsStep(props: {
                                 ))}
                               </ul>
                             </details>
-
                             {/* ISO 12944-5 Paint System Selection */}
                             {["C1", "C2", "C3", "C4", "C5"].includes(effectiveIso12944 || "") &&
                               globalSpecs?.ecpServiceLife && (
@@ -3043,26 +3225,26 @@ export default function SpecificationsStep(props: {
                                               className="flex-1 px-2 py-1 text-[10px] border border-blue-200 rounded focus:ring-1 focus:ring-blue-500 text-gray-900 bg-white"
                                             >
                                               {iso12944Systems.recommended && (
-                                                <option
-                                                  value={
-                                                    iso12944Systems.recommended.systemCode || ""
-                                                  }
-                                                >
+                                                <option value={rawSystemCode || ""}>
                                                   {iso12944Systems.recommended.systemCode} -{" "}
                                                   {iso12944Systems.recommended.system} (
                                                   {iso12944Systems.recommended.totalDftUmRange}μm)
                                                   [Recommended]
                                                 </option>
                                               )}
-                                              {iso12944Systems.alternatives.map((sys) => (
-                                                <option
-                                                  key={sys.systemCode}
-                                                  value={sys.systemCode || ""}
-                                                >
-                                                  {sys.systemCode} - {sys.system} (
-                                                  {sys.totalDftUmRange}μm)
-                                                </option>
-                                              ))}
+                                              {iso12944Systems.alternatives.map((sys) => {
+                                                const rawSystemCode2 = sys.systemCode;
+
+                                                return (
+                                                  <option
+                                                    key={sys.systemCode}
+                                                    value={rawSystemCode2 || ""}
+                                                  >
+                                                    {sys.systemCode}- {sys.system}(
+                                                    {sys.totalDftUmRange}μm)
+                                                  </option>
+                                                );
+                                              })}
                                             </select>
                                           </div>
                                         )}
@@ -3077,7 +3259,6 @@ export default function SpecificationsStep(props: {
                                   )}
                                 </div>
                               )}
-
                             {/* Colour Selection - more compact */}
                             <div className="bg-white rounded p-1.5 border border-emerald-200 mb-2">
                               <div className="text-[10px] font-medium text-emerald-700 mb-1.5 flex items-center gap-1">
@@ -3094,7 +3275,7 @@ export default function SpecificationsStep(props: {
                                   </label>
                                   {!globalSpecs?.showRecCustomColourInput ? (
                                     <select
-                                      value={globalSpecs?.recExternalTopcoatColour || ""}
+                                      value={rawRecExternalTopcoatColour || ""}
                                       onChange={(e) => {
                                         if (e.target.value === "__ADD_CUSTOM__") {
                                           onUpdateGlobalSpecs({
@@ -3102,9 +3283,10 @@ export default function SpecificationsStep(props: {
                                             showRecCustomColourInput: true,
                                           });
                                         } else {
+                                          const rawValue14 = e.target.value;
                                           onUpdateGlobalSpecs({
                                             ...globalSpecs,
-                                            recExternalTopcoatColour: e.target.value || null,
+                                            recExternalTopcoatColour: rawValue14 || null,
                                           });
                                         }
                                       }}
@@ -3169,7 +3351,7 @@ export default function SpecificationsStep(props: {
                                     <div className="space-y-1">
                                       <input
                                         type="text"
-                                        value={globalSpecs?.recCustomColourInput || ""}
+                                        value={rawRecCustomColourInput || ""}
                                         onChange={(e) =>
                                           onUpdateGlobalSpecs({
                                             ...globalSpecs,
@@ -3241,7 +3423,7 @@ export default function SpecificationsStep(props: {
                                   </label>
                                   {!globalSpecs?.showRecBand1Input ? (
                                     <select
-                                      value={globalSpecs?.recExternalBand1Colour || ""}
+                                      value={rawRecExternalBand1Colour || ""}
                                       onChange={(e) => {
                                         if (e.target.value === "__ADD_CUSTOM__") {
                                           onUpdateGlobalSpecs({
@@ -3249,9 +3431,10 @@ export default function SpecificationsStep(props: {
                                             showRecBand1Input: true,
                                           });
                                         } else {
+                                          const rawValue15 = e.target.value;
                                           onUpdateGlobalSpecs({
                                             ...globalSpecs,
-                                            recExternalBand1Colour: e.target.value || null,
+                                            recExternalBand1Colour: rawValue15 || null,
                                             ...(e.target.value
                                               ? {}
                                               : { recExternalBand2Colour: null }),
@@ -3293,7 +3476,7 @@ export default function SpecificationsStep(props: {
                                     <div className="space-y-1">
                                       <input
                                         type="text"
-                                        value={globalSpecs?.recBand1Input || ""}
+                                        value={rawRecBand1Input || ""}
                                         onChange={(e) =>
                                           onUpdateGlobalSpecs({
                                             ...globalSpecs,
@@ -3362,7 +3545,7 @@ export default function SpecificationsStep(props: {
                                     </label>
                                     {!globalSpecs?.showRecBand2Input ? (
                                       <select
-                                        value={globalSpecs?.recExternalBand2Colour || ""}
+                                        value={rawRecExternalBand2Colour || ""}
                                         onChange={(e) => {
                                           if (e.target.value === "__ADD_CUSTOM__") {
                                             onUpdateGlobalSpecs({
@@ -3370,9 +3553,10 @@ export default function SpecificationsStep(props: {
                                               showRecBand2Input: true,
                                             });
                                           } else {
+                                            const rawValue16 = e.target.value;
                                             onUpdateGlobalSpecs({
                                               ...globalSpecs,
-                                              recExternalBand2Colour: e.target.value || null,
+                                              recExternalBand2Colour: rawValue16 || null,
                                             });
                                           }
                                         }}
@@ -3411,7 +3595,7 @@ export default function SpecificationsStep(props: {
                                       <div className="space-y-1">
                                         <input
                                           type="text"
-                                          value={globalSpecs?.recBand2Input || ""}
+                                          value={rawRecBand2Input || ""}
                                           onChange={(e) =>
                                             onUpdateGlobalSpecs({
                                               ...globalSpecs,
@@ -3475,13 +3659,15 @@ export default function SpecificationsStep(props: {
                                 )}
                               </div>
                             </div>
-
                             {/* Compact action buttons */}
                             <div className="flex gap-2 mt-2">
                               <button
                                 type="button"
-                                onClick={() =>
-                                  onUpdateGlobalSpecs({
+                                onClick={() => {
+                                  const rawExternalCoatingActionLog =
+                                    globalSpecs?.externalCoatingActionLog;
+
+                                  return onUpdateGlobalSpecs({
                                     ...globalSpecs,
                                     externalCoatingType: recommendation.coatingType,
                                     externalCoatingConfirmed: true,
@@ -3518,15 +3704,15 @@ export default function SpecificationsStep(props: {
                                       },
                                     },
                                     externalCoatingActionLog: [
-                                      ...(globalSpecs?.externalCoatingActionLog || []),
+                                      ...(rawExternalCoatingActionLog || []),
                                       {
                                         action: "ACCEPTED",
                                         timestamp: nowISO(),
                                         recommendation: recommendation.coating,
                                       },
                                     ],
-                                  })
-                                }
+                                  });
+                                }}
                                 className="flex-1 px-2 py-1.5 bg-emerald-600 text-white font-medium rounded text-xs flex items-center justify-center gap-1 hover:bg-emerald-700"
                               >
                                 <svg
@@ -3546,20 +3732,23 @@ export default function SpecificationsStep(props: {
                               </button>
                               <button
                                 type="button"
-                                onClick={() =>
-                                  onUpdateGlobalSpecs({
+                                onClick={() => {
+                                  const rawExternalCoatingActionLog2 =
+                                    globalSpecs?.externalCoatingActionLog;
+
+                                  return onUpdateGlobalSpecs({
                                     ...globalSpecs,
                                     externalCoatingRecommendationRejected: true,
                                     externalCoatingActionLog: [
-                                      ...(globalSpecs?.externalCoatingActionLog || []),
+                                      ...(rawExternalCoatingActionLog2 || []),
                                       {
                                         action: "REJECTED",
                                         timestamp: nowISO(),
                                         recommendation: recommendation.coating,
                                       },
                                     ],
-                                  })
-                                }
+                                  });
+                                }}
                                 className="px-2 py-1.5 bg-red-600 text-white font-medium rounded text-xs flex items-center justify-center gap-1 hover:bg-red-700"
                               >
                                 <svg
@@ -3578,7 +3767,6 @@ export default function SpecificationsStep(props: {
                                 Reject
                               </button>
                             </div>
-
                             {/* Compact disclaimer */}
                             <details className="mt-2 text-[10px] text-amber-700">
                               <summary className="cursor-pointer font-medium">
@@ -3657,7 +3845,7 @@ export default function SpecificationsStep(props: {
                       </div>
 
                       {/* Colour Specifications */}
-                      {(globalSpecs?.externalTopcoatColour || globalSpecs?.externalBand1Colour) && (
+                      {(rawExternalTopcoatColour || globalSpecs?.externalBand1Colour) && (
                         <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
                           <span className="font-semibold text-blue-800 text-sm">
                             Colour Specifications:
@@ -3716,59 +3904,35 @@ export default function SpecificationsStep(props: {
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2 text-xs">
                           <div>
                             <span className="text-gray-500">Installation:</span>{" "}
-                            <span className="font-medium">
-                              {globalSpecs.externalCoatingRecommendation.environmentProfile
-                                ?.installationType || "N/A"}
-                            </span>
+                            <span className="font-medium">{rawInstallationType || "N/A"}</span>
                           </div>
                           <div>
                             <span className="text-gray-500">ISO 12944:</span>{" "}
-                            <span className="font-medium">
-                              {globalSpecs.externalCoatingRecommendation.environmentProfile
-                                ?.iso12944Category || "N/A"}
-                            </span>
+                            <span className="font-medium">{rawIso12944Category2 || "N/A"}</span>
                           </div>
                           <div>
                             <span className="text-gray-500">Marine:</span>{" "}
-                            <span className="font-medium">
-                              {globalSpecs.externalCoatingRecommendation.environmentProfile
-                                ?.marineInfluence || "None"}
-                            </span>
+                            <span className="font-medium">{rawMarineInfluence2 || "None"}</span>
                           </div>
                           <div>
                             <span className="text-gray-500">UV Exposure:</span>{" "}
-                            <span className="font-medium">
-                              {globalSpecs.externalCoatingRecommendation.environmentProfile
-                                ?.uvExposure || "N/A"}
-                            </span>
+                            <span className="font-medium">{rawUvExposure || "N/A"}</span>
                           </div>
                           <div>
                             <span className="text-gray-500">Temperature:</span>{" "}
-                            <span className="font-medium">
-                              {globalSpecs.externalCoatingRecommendation.environmentProfile
-                                ?.temperature || "N/A"}
-                            </span>
+                            <span className="font-medium">{rawTemperature || "N/A"}</span>
                           </div>
                           <div>
                             <span className="text-gray-500">Service Life:</span>{" "}
-                            <span className="font-medium">
-                              {globalSpecs.externalCoatingRecommendation.environmentProfile
-                                ?.serviceLife || "N/A"}
-                            </span>
+                            <span className="font-medium">{rawServiceLife || "N/A"}</span>
                           </div>
                           <div>
                             <span className="text-gray-500">Mech. Risk:</span>{" "}
-                            <span className="font-medium">
-                              {globalSpecs.externalCoatingRecommendation.environmentProfile
-                                ?.mechanicalRisk || "N/A"}
-                            </span>
+                            <span className="font-medium">{rawMechanicalRisk || "N/A"}</span>
                           </div>
                           <div>
                             <span className="text-gray-500">Pollution:</span>{" "}
-                            <span className="font-medium">
-                              {globalSpecs.externalCoatingRecommendation.environmentProfile
-                                ?.industrialPollution || "None"}
-                            </span>
+                            <span className="font-medium">{rawIndustrialPollution2 || "None"}</span>
                           </div>
                         </div>
                       </div>
@@ -3802,17 +3966,20 @@ export default function SpecificationsStep(props: {
                     <div className="mt-4 flex justify-end">
                       <button
                         type="button"
-                        onClick={() =>
-                          onUpdateGlobalSpecs({
+                        onClick={() => {
+                          const rawExternalCoatingActionLog3 =
+                            globalSpecs?.externalCoatingActionLog;
+
+                          return onUpdateGlobalSpecs({
                             ...globalSpecs,
                             externalCoatingConfirmed: false,
                             externalCoatingRecommendation: null,
                             externalCoatingActionLog: [
-                              ...(globalSpecs?.externalCoatingActionLog || []),
+                              ...(rawExternalCoatingActionLog3 || []),
                               { action: "UNLOCKED_FOR_EDIT", timestamp: nowISO() },
                             ],
-                          })
-                        }
+                          });
+                        }}
                         className="px-4 py-2 text-sm bg-gray-500 text-white rounded-lg hover:bg-gray-600 flex items-center gap-2"
                       >
                         <svg
@@ -3867,18 +4034,21 @@ export default function SpecificationsStep(props: {
                         </p>
                         <button
                           type="button"
-                          onClick={() =>
-                            onUpdateGlobalSpecs({
+                          onClick={() => {
+                            const rawExternalCoatingActionLog4 =
+                              globalSpecs?.externalCoatingActionLog;
+
+                            return onUpdateGlobalSpecs({
                               ...globalSpecs,
                               externalCoatingRecommendationRejected: false,
                               externalCoatingType: null,
                               showExternalCoatingProfile: true,
                               externalCoatingActionLog: [
-                                ...(globalSpecs?.externalCoatingActionLog || []),
+                                ...(rawExternalCoatingActionLog4 || []),
                                 { action: "REVERTED_TO_RECOMMENDATION", timestamp: nowISO() },
                               ],
-                            })
-                          }
+                            });
+                          }}
                           className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                         >
                           Use System Recommendation Instead
@@ -3892,11 +4062,13 @@ export default function SpecificationsStep(props: {
                           External Coating Type <span className="text-red-500">*</span>
                         </label>
                         <select
-                          value={globalSpecs?.externalCoatingType || ""}
-                          onChange={(e) =>
-                            onUpdateGlobalSpecs({
+                          value={rawExternalCoatingType || ""}
+                          onChange={(e) => {
+                            const rawValue17 = e.target.value;
+
+                            return onUpdateGlobalSpecs({
                               ...globalSpecs,
-                              externalCoatingType: e.target.value || null,
+                              externalCoatingType: rawValue17 || null,
                               // Clear related fields when changing coating type
                               externalPrimerType: null,
                               externalPrimerMicrons: null,
@@ -3909,8 +4081,8 @@ export default function SpecificationsStep(props: {
                               externalRubberThickness: null,
                               externalRubberColour: null,
                               externalRubberHardness: null,
-                            })
-                          }
+                            });
+                          }}
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
                           required
                         >
@@ -3999,13 +4171,15 @@ export default function SpecificationsStep(props: {
                           Rubber Type
                         </label>
                         <select
-                          value={globalSpecs?.externalRubberType || ""}
-                          onChange={(e) =>
-                            onUpdateGlobalSpecs({
+                          value={rawExternalRubberType || ""}
+                          onChange={(e) => {
+                            const rawValue18 = e.target.value;
+
+                            return onUpdateGlobalSpecs({
                               ...globalSpecs,
-                              externalRubberType: e.target.value || null,
-                            })
-                          }
+                              externalRubberType: rawValue18 || null,
+                            });
+                          }}
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
                         >
                           <option value="">Select...</option>
@@ -4026,7 +4200,7 @@ export default function SpecificationsStep(props: {
                           Thickness (mm)
                         </label>
                         <select
-                          value={globalSpecs?.externalRubberThickness || ""}
+                          value={rawExternalRubberThickness || ""}
                           onChange={(e) =>
                             onUpdateGlobalSpecs({
                               ...globalSpecs,
@@ -4055,13 +4229,15 @@ export default function SpecificationsStep(props: {
                           Colour
                         </label>
                         <select
-                          value={globalSpecs?.externalRubberColour || ""}
-                          onChange={(e) =>
-                            onUpdateGlobalSpecs({
+                          value={rawExternalRubberColour || ""}
+                          onChange={(e) => {
+                            const rawValue19 = e.target.value;
+
+                            return onUpdateGlobalSpecs({
                               ...globalSpecs,
-                              externalRubberColour: e.target.value || null,
-                            })
-                          }
+                              externalRubberColour: rawValue19 || null,
+                            });
+                          }}
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
                         >
                           <option value="">Select...</option>
@@ -4080,7 +4256,7 @@ export default function SpecificationsStep(props: {
                           Shore Hardness
                         </label>
                         <select
-                          value={globalSpecs?.externalRubberHardness || ""}
+                          value={rawExternalRubberHardness || ""}
                           onChange={(e) =>
                             onUpdateGlobalSpecs({
                               ...globalSpecs,
@@ -4185,7 +4361,7 @@ export default function SpecificationsStep(props: {
                         <div className="flex justify-between items-center">
                           <span className="text-green-700">
                             <span className="font-medium">Surface Prep:</span>{" "}
-                            {globalSpecs?.externalBlastingGrade || (
+                            {rawExternalBlastingGrade || (
                               <span className="text-gray-400 italic">Not specified</span>
                             )}
                           </span>
@@ -4231,7 +4407,7 @@ export default function SpecificationsStep(props: {
                           <div className="flex justify-between items-center">
                             <span className="text-green-700">
                               <span className="font-medium">Colour:</span>{" "}
-                              {globalSpecs?.externalTopcoatColour || (
+                              {rawExternalTopcoatColour2 || (
                                 <span className="text-gray-400 italic">Not specified</span>
                               )}
                             </span>
@@ -4241,13 +4417,13 @@ export default function SpecificationsStep(props: {
                         <div className="flex gap-6 items-center">
                           <span className="text-green-700">
                             <span className="font-medium">Band 1:</span>{" "}
-                            {globalSpecs?.externalBand1Colour || (
+                            {rawExternalBand1Colour || (
                               <span className="text-gray-400 italic">None</span>
                             )}
                           </span>
                           <span className="text-green-700">
                             <span className="font-medium">Band 2:</span>{" "}
-                            {globalSpecs?.externalBand2Colour || (
+                            {rawExternalBand2Colour || (
                               <span className="text-gray-400 italic">None</span>
                             )}
                           </span>
@@ -4256,9 +4432,9 @@ export default function SpecificationsStep(props: {
                         <div className="flex justify-between items-center pt-1 mt-1 border-t border-green-300">
                           <span className="font-semibold text-green-800">Total DFT</span>
                           <span className="font-bold text-green-900">
-                            {(globalSpecs.externalPrimerMicrons || 0) +
-                              (globalSpecs.externalIntermediateMicrons || 0) +
-                              (globalSpecs.externalTopcoatMicrons || 0)}{" "}
+                            {(rawExternalPrimerMicrons || 0) +
+                              (rawExternalIntermediateMicrons || 0) +
+                              (rawExternalTopcoatMicrons || 0)}{" "}
                             μm
                           </span>
                         </div>
@@ -4314,13 +4490,15 @@ export default function SpecificationsStep(props: {
                           Blasting Grade
                         </label>
                         <select
-                          value={globalSpecs?.externalBlastingGrade || ""}
-                          onChange={(e) =>
-                            onUpdateGlobalSpecs({
+                          value={rawExternalBlastingGrade2 || ""}
+                          onChange={(e) => {
+                            const rawValue20 = e.target.value;
+
+                            return onUpdateGlobalSpecs({
                               ...globalSpecs,
-                              externalBlastingGrade: e.target.value || null,
-                            })
-                          }
+                              externalBlastingGrade: rawValue20 || null,
+                            });
+                          }}
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
                         >
                           <option value="">Select...</option>
@@ -4336,13 +4514,15 @@ export default function SpecificationsStep(props: {
                           Primer Type
                         </label>
                         <select
-                          value={globalSpecs?.externalPrimerType || ""}
-                          onChange={(e) =>
-                            onUpdateGlobalSpecs({
+                          value={rawExternalPrimerType || ""}
+                          onChange={(e) => {
+                            const rawValue21 = e.target.value;
+
+                            return onUpdateGlobalSpecs({
                               ...globalSpecs,
-                              externalPrimerType: e.target.value || null,
-                            })
-                          }
+                              externalPrimerType: rawValue21 || null,
+                            });
+                          }}
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
                         >
                           <option value="">Select...</option>
@@ -4364,7 +4544,7 @@ export default function SpecificationsStep(props: {
                         </label>
                         <input
                           type="number"
-                          value={globalSpecs?.externalPrimerMicrons || ""}
+                          value={rawExternalPrimerMicrons2 || ""}
                           onChange={(e) =>
                             onUpdateGlobalSpecs({
                               ...globalSpecs,
@@ -4386,13 +4566,15 @@ export default function SpecificationsStep(props: {
                           Intermediate Coat
                         </label>
                         <select
-                          value={globalSpecs?.externalIntermediateType || ""}
-                          onChange={(e) =>
-                            onUpdateGlobalSpecs({
+                          value={rawExternalIntermediateType || ""}
+                          onChange={(e) => {
+                            const rawValue22 = e.target.value;
+
+                            return onUpdateGlobalSpecs({
                               ...globalSpecs,
-                              externalIntermediateType: e.target.value || null,
-                            })
-                          }
+                              externalIntermediateType: rawValue22 || null,
+                            });
+                          }}
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
                         >
                           <option value="">None</option>
@@ -4411,7 +4593,7 @@ export default function SpecificationsStep(props: {
                           </label>
                           <input
                             type="number"
-                            value={globalSpecs?.externalIntermediateMicrons || ""}
+                            value={rawExternalIntermediateMicrons2 || ""}
                             onChange={(e) =>
                               onUpdateGlobalSpecs({
                                 ...globalSpecs,
@@ -4436,13 +4618,15 @@ export default function SpecificationsStep(props: {
                           Topcoat Type
                         </label>
                         <select
-                          value={globalSpecs?.externalTopcoatType || ""}
-                          onChange={(e) =>
-                            onUpdateGlobalSpecs({
+                          value={rawExternalTopcoatType || ""}
+                          onChange={(e) => {
+                            const rawValue23 = e.target.value;
+
+                            return onUpdateGlobalSpecs({
                               ...globalSpecs,
-                              externalTopcoatType: e.target.value || null,
-                            })
-                          }
+                              externalTopcoatType: rawValue23 || null,
+                            });
+                          }}
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
                         >
                           <option value="">None (No topcoat)</option>
@@ -4463,7 +4647,7 @@ export default function SpecificationsStep(props: {
                             </label>
                             <input
                               type="number"
-                              value={globalSpecs?.externalTopcoatMicrons || ""}
+                              value={rawExternalTopcoatMicrons2 || ""}
                               onChange={(e) =>
                                 onUpdateGlobalSpecs({
                                   ...globalSpecs,
@@ -4485,7 +4669,7 @@ export default function SpecificationsStep(props: {
                             </label>
                             {!globalSpecs?.showCustomColourInput ? (
                               <select
-                                value={globalSpecs?.externalTopcoatColour || ""}
+                                value={rawExternalTopcoatColour3 || ""}
                                 onChange={(e) => {
                                   if (e.target.value === "__ADD_CUSTOM__") {
                                     onUpdateGlobalSpecs({
@@ -4493,9 +4677,10 @@ export default function SpecificationsStep(props: {
                                       showCustomColourInput: true,
                                     });
                                   } else {
+                                    const rawValue24 = e.target.value;
                                     onUpdateGlobalSpecs({
                                       ...globalSpecs,
-                                      externalTopcoatColour: e.target.value || null,
+                                      externalTopcoatColour: rawValue24 || null,
                                     });
                                   }
                                 }}
@@ -4590,7 +4775,7 @@ export default function SpecificationsStep(props: {
                               <div className="space-y-2">
                                 <input
                                   type="text"
-                                  value={globalSpecs?.customColourInput || ""}
+                                  value={rawCustomColourInput || ""}
                                   onChange={(e) =>
                                     onUpdateGlobalSpecs({
                                       ...globalSpecs,
@@ -4665,7 +4850,7 @@ export default function SpecificationsStep(props: {
                           </label>
                           {!globalSpecs?.showCustomBand1Input ? (
                             <select
-                              value={globalSpecs?.externalBand1Colour || ""}
+                              value={rawExternalBand1Colour2 || ""}
                               onChange={(e) => {
                                 if (e.target.value === "__ADD_CUSTOM__") {
                                   onUpdateGlobalSpecs({
@@ -4673,9 +4858,10 @@ export default function SpecificationsStep(props: {
                                     showCustomBand1Input: true,
                                   });
                                 } else {
+                                  const rawValue25 = e.target.value;
                                   onUpdateGlobalSpecs({
                                     ...globalSpecs,
-                                    externalBand1Colour: e.target.value || null,
+                                    externalBand1Colour: rawValue25 || null,
                                     ...(e.target.value ? {} : { externalBand2Colour: null }),
                                   });
                                 }
@@ -4740,7 +4926,7 @@ export default function SpecificationsStep(props: {
                             <div className="space-y-1">
                               <input
                                 type="text"
-                                value={globalSpecs?.customBand1Input || ""}
+                                value={rawCustomBand1Input || ""}
                                 onChange={(e) =>
                                   onUpdateGlobalSpecs({
                                     ...globalSpecs,
@@ -4808,7 +4994,7 @@ export default function SpecificationsStep(props: {
                           </label>
                           {!globalSpecs?.showCustomBand2Input ? (
                             <select
-                              value={globalSpecs?.externalBand2Colour || ""}
+                              value={rawExternalBand2Colour2 || ""}
                               onChange={(e) => {
                                 if (e.target.value === "__ADD_CUSTOM__") {
                                   onUpdateGlobalSpecs({
@@ -4816,9 +5002,10 @@ export default function SpecificationsStep(props: {
                                     showCustomBand2Input: true,
                                   });
                                 } else {
+                                  const rawValue26 = e.target.value;
                                   onUpdateGlobalSpecs({
                                     ...globalSpecs,
-                                    externalBand2Colour: e.target.value || null,
+                                    externalBand2Colour: rawValue26 || null,
                                   });
                                 }
                               }}
@@ -4883,7 +5070,7 @@ export default function SpecificationsStep(props: {
                             <div className="space-y-1">
                               <input
                                 type="text"
-                                value={globalSpecs?.customBand2Input || ""}
+                                value={rawCustomBand2Input || ""}
                                 onChange={(e) =>
                                   onUpdateGlobalSpecs({
                                     ...globalSpecs,
@@ -4968,7 +5155,7 @@ export default function SpecificationsStep(props: {
                               <div className="flex justify-between items-center">
                                 <span className="text-amber-700">
                                   <span className="font-medium">Surface Prep:</span>{" "}
-                                  {globalSpecs?.externalBlastingGrade || (
+                                  {rawExternalBlastingGrade3 || (
                                     <span className="text-gray-400 italic">Not specified</span>
                                   )}
                                 </span>
@@ -5014,7 +5201,7 @@ export default function SpecificationsStep(props: {
                                 <div className="flex justify-between items-center">
                                   <span className="text-amber-700">
                                     <span className="font-medium">Colour:</span>{" "}
-                                    {globalSpecs?.externalTopcoatColour || (
+                                    {rawExternalTopcoatColour4 || (
                                       <span className="text-gray-400 italic">Not specified</span>
                                     )}
                                   </span>
@@ -5024,13 +5211,13 @@ export default function SpecificationsStep(props: {
                               <div className="flex gap-6 items-center">
                                 <span className="text-amber-700">
                                   <span className="font-medium">Band 1:</span>{" "}
-                                  {globalSpecs?.externalBand1Colour || (
+                                  {rawExternalBand1Colour3 || (
                                     <span className="text-gray-400 italic">None</span>
                                   )}
                                 </span>
                                 <span className="text-amber-700">
                                   <span className="font-medium">Band 2:</span>{" "}
-                                  {globalSpecs?.externalBand2Colour || (
+                                  {rawExternalBand2Colour3 || (
                                     <span className="text-gray-400 italic">None</span>
                                   )}
                                 </span>
@@ -5039,9 +5226,9 @@ export default function SpecificationsStep(props: {
                               <div className="flex justify-between items-center pt-1 mt-1 border-t border-amber-300">
                                 <span className="font-semibold text-amber-800">Total DFT</span>
                                 <span className="font-bold text-amber-900">
-                                  {(globalSpecs.externalPrimerMicrons || 0) +
-                                    (globalSpecs.externalIntermediateMicrons || 0) +
-                                    (globalSpecs.externalTopcoatMicrons || 0)}{" "}
+                                  {(rawExternalPrimerMicrons3 || 0) +
+                                    (rawExternalIntermediateMicrons3 || 0) +
+                                    (rawExternalTopcoatMicrons3 || 0)}{" "}
                                   μm
                                 </span>
                               </div>
@@ -5098,7 +5285,7 @@ export default function SpecificationsStep(props: {
                             <div className="flex justify-between items-center">
                               <span className="text-green-700">
                                 <span className="font-medium">Surface Prep:</span>{" "}
-                                {globalSpecs?.externalBlastingGrade || (
+                                {rawExternalBlastingGrade4 || (
                                   <span className="text-gray-400 italic">Not specified</span>
                                 )}
                               </span>
@@ -5144,7 +5331,7 @@ export default function SpecificationsStep(props: {
                               <div className="flex justify-between items-center">
                                 <span className="text-green-700">
                                   <span className="font-medium">Colour:</span>{" "}
-                                  {globalSpecs?.externalTopcoatColour || (
+                                  {rawExternalTopcoatColour5 || (
                                     <span className="text-gray-400 italic">Not specified</span>
                                   )}
                                 </span>
@@ -5154,13 +5341,13 @@ export default function SpecificationsStep(props: {
                             <div className="flex gap-6 items-center">
                               <span className="text-green-700">
                                 <span className="font-medium">Band 1:</span>{" "}
-                                {globalSpecs?.externalBand1Colour || (
+                                {rawExternalBand1Colour4 || (
                                   <span className="text-gray-400 italic">None</span>
                                 )}
                               </span>
                               <span className="text-green-700">
                                 <span className="font-medium">Band 2:</span>{" "}
-                                {globalSpecs?.externalBand2Colour || (
+                                {rawExternalBand2Colour4 || (
                                   <span className="text-gray-400 italic">None</span>
                                 )}
                               </span>
@@ -5169,9 +5356,9 @@ export default function SpecificationsStep(props: {
                             <div className="flex justify-between items-center pt-1 mt-1 border-t border-green-300">
                               <span className="font-semibold text-green-800">Total DFT</span>
                               <span className="font-bold text-green-900">
-                                {(globalSpecs.externalPrimerMicrons || 0) +
-                                  (globalSpecs.externalIntermediateMicrons || 0) +
-                                  (globalSpecs.externalTopcoatMicrons || 0)}{" "}
+                                {(rawExternalPrimerMicrons4 || 0) +
+                                  (rawExternalIntermediateMicrons4 || 0) +
+                                  (rawExternalTopcoatMicrons4 || 0)}{" "}
                                 μm
                               </span>
                             </div>
@@ -5338,13 +5525,15 @@ export default function SpecificationsStep(props: {
                                 Particle Size
                               </label>
                               <select
-                                value={globalSpecs?.mtpParticleSize || ""}
-                                onChange={(e) =>
-                                  onUpdateGlobalSpecs({
+                                value={rawMtpParticleSize || ""}
+                                onChange={(e) => {
+                                  const rawValue27 = e.target.value;
+
+                                  return onUpdateGlobalSpecs({
                                     ...globalSpecs,
-                                    mtpParticleSize: e.target.value || null,
-                                  })
-                                }
+                                    mtpParticleSize: rawValue27 || null,
+                                  });
+                                }}
                                 className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 text-gray-900"
                               >
                                 <option value="">Select...</option>
@@ -5359,13 +5548,15 @@ export default function SpecificationsStep(props: {
                                 Particle Shape
                               </label>
                               <select
-                                value={globalSpecs?.mtpParticleShape || ""}
-                                onChange={(e) =>
-                                  onUpdateGlobalSpecs({
+                                value={rawMtpParticleShape || ""}
+                                onChange={(e) => {
+                                  const rawValue28 = e.target.value;
+
+                                  return onUpdateGlobalSpecs({
                                     ...globalSpecs,
-                                    mtpParticleShape: e.target.value || null,
-                                  })
-                                }
+                                    mtpParticleShape: rawValue28 || null,
+                                  });
+                                }}
                                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-gray-900"
                               >
                                 <option value="">Select...</option>
@@ -5379,13 +5570,15 @@ export default function SpecificationsStep(props: {
                                 Material Hardness
                               </label>
                               <select
-                                value={globalSpecs?.mtpHardnessClass || ""}
-                                onChange={(e) =>
-                                  onUpdateGlobalSpecs({
+                                value={rawMtpHardnessClass || ""}
+                                onChange={(e) => {
+                                  const rawValue29 = e.target.value;
+
+                                  return onUpdateGlobalSpecs({
                                     ...globalSpecs,
-                                    mtpHardnessClass: e.target.value || null,
-                                  })
-                                }
+                                    mtpHardnessClass: rawValue29 || null,
+                                  });
+                                }}
                                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-gray-900"
                               >
                                 <option value="">Select...</option>
@@ -5399,13 +5592,15 @@ export default function SpecificationsStep(props: {
                                 Silica Content
                               </label>
                               <select
-                                value={globalSpecs?.mtpSilicaContent || ""}
-                                onChange={(e) =>
-                                  onUpdateGlobalSpecs({
+                                value={rawMtpSilicaContent || ""}
+                                onChange={(e) => {
+                                  const rawValue30 = e.target.value;
+
+                                  return onUpdateGlobalSpecs({
                                     ...globalSpecs,
-                                    mtpSilicaContent: e.target.value || null,
-                                  })
-                                }
+                                    mtpSilicaContent: rawValue30 || null,
+                                  });
+                                }}
                                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-gray-900"
                               >
                                 <option value="">Select...</option>
@@ -5419,13 +5614,15 @@ export default function SpecificationsStep(props: {
                                 Specific Gravity
                               </label>
                               <select
-                                value={globalSpecs?.mtpSpecificGravity || ""}
-                                onChange={(e) =>
-                                  onUpdateGlobalSpecs({
+                                value={rawMtpSpecificGravity || ""}
+                                onChange={(e) => {
+                                  const rawValue31 = e.target.value;
+
+                                  return onUpdateGlobalSpecs({
                                     ...globalSpecs,
-                                    mtpSpecificGravity: e.target.value || null,
-                                  })
-                                }
+                                    mtpSpecificGravity: rawValue31 || null,
+                                  });
+                                }}
                                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-gray-900"
                               >
                                 <option value="">Select...</option>
@@ -5451,13 +5648,15 @@ export default function SpecificationsStep(props: {
                                 pH Range
                               </label>
                               <select
-                                value={globalSpecs?.mtpPhRange || ""}
-                                onChange={(e) =>
-                                  onUpdateGlobalSpecs({
+                                value={rawMtpPhRange || ""}
+                                onChange={(e) => {
+                                  const rawValue32 = e.target.value;
+
+                                  return onUpdateGlobalSpecs({
                                     ...globalSpecs,
-                                    mtpPhRange: e.target.value || null,
-                                  })
-                                }
+                                    mtpPhRange: rawValue32 || null,
+                                  });
+                                }}
                                 className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 text-gray-900"
                               >
                                 <option value="">Select...</option>
@@ -5471,13 +5670,15 @@ export default function SpecificationsStep(props: {
                                 Chloride Level
                               </label>
                               <select
-                                value={globalSpecs?.mtpChlorides || ""}
-                                onChange={(e) =>
-                                  onUpdateGlobalSpecs({
+                                value={rawMtpChlorides || ""}
+                                onChange={(e) => {
+                                  const rawValue33 = e.target.value;
+
+                                  return onUpdateGlobalSpecs({
                                     ...globalSpecs,
-                                    mtpChlorides: e.target.value || null,
-                                  })
-                                }
+                                    mtpChlorides: rawValue33 || null,
+                                  });
+                                }}
                                 className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 text-gray-900"
                               >
                                 <option value="">Select...</option>
@@ -5491,13 +5692,15 @@ export default function SpecificationsStep(props: {
                                 Operating Temp
                               </label>
                               <select
-                                value={globalSpecs?.mtpTemperatureRange || ""}
-                                onChange={(e) =>
-                                  onUpdateGlobalSpecs({
+                                value={rawMtpTemperatureRange || ""}
+                                onChange={(e) => {
+                                  const rawValue34 = e.target.value;
+
+                                  return onUpdateGlobalSpecs({
                                     ...globalSpecs,
-                                    mtpTemperatureRange: e.target.value || null,
-                                  })
-                                }
+                                    mtpTemperatureRange: rawValue34 || null,
+                                  });
+                                }}
                                 className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 text-gray-900"
                               >
                                 <option value="">Select...</option>
@@ -5523,13 +5726,15 @@ export default function SpecificationsStep(props: {
                                 Flow Velocity
                               </label>
                               <select
-                                value={globalSpecs?.mtpVelocity || ""}
-                                onChange={(e) =>
-                                  onUpdateGlobalSpecs({
+                                value={rawMtpVelocity || ""}
+                                onChange={(e) => {
+                                  const rawValue35 = e.target.value;
+
+                                  return onUpdateGlobalSpecs({
                                     ...globalSpecs,
-                                    mtpVelocity: e.target.value || null,
-                                  })
-                                }
+                                    mtpVelocity: rawValue35 || null,
+                                  });
+                                }}
                                 className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 text-gray-900"
                               >
                                 <option value="">Select...</option>
@@ -5543,13 +5748,15 @@ export default function SpecificationsStep(props: {
                                 Impact Angle
                               </label>
                               <select
-                                value={globalSpecs?.mtpImpactAngle || ""}
-                                onChange={(e) =>
-                                  onUpdateGlobalSpecs({
+                                value={rawMtpImpactAngle || ""}
+                                onChange={(e) => {
+                                  const rawValue36 = e.target.value;
+
+                                  return onUpdateGlobalSpecs({
                                     ...globalSpecs,
-                                    mtpImpactAngle: e.target.value || null,
-                                  })
-                                }
+                                    mtpImpactAngle: rawValue36 || null,
+                                  });
+                                }}
                                 className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 text-gray-900"
                               >
                                 <option value="">Select...</option>
@@ -5563,13 +5770,15 @@ export default function SpecificationsStep(props: {
                                 Equipment Type
                               </label>
                               <select
-                                value={globalSpecs?.mtpEquipmentType || ""}
-                                onChange={(e) =>
-                                  onUpdateGlobalSpecs({
+                                value={rawMtpEquipmentType || ""}
+                                onChange={(e) => {
+                                  const rawValue37 = e.target.value;
+
+                                  return onUpdateGlobalSpecs({
                                     ...globalSpecs,
-                                    mtpEquipmentType: e.target.value || null,
-                                  })
-                                }
+                                    mtpEquipmentType: rawValue37 || null,
+                                  });
+                                }}
                                 className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 text-gray-900"
                               >
                                 <option value="">Select...</option>
@@ -5585,13 +5794,15 @@ export default function SpecificationsStep(props: {
                                 Solids Conc.
                               </label>
                               <select
-                                value={globalSpecs?.mtpSolidsPercent || ""}
-                                onChange={(e) =>
-                                  onUpdateGlobalSpecs({
+                                value={rawMtpSolidsPercent || ""}
+                                onChange={(e) => {
+                                  const rawValue38 = e.target.value;
+
+                                  return onUpdateGlobalSpecs({
                                     ...globalSpecs,
-                                    mtpSolidsPercent: e.target.value || null,
-                                  })
-                                }
+                                    mtpSolidsPercent: rawValue38 || null,
+                                  });
+                                }}
                                 className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 text-gray-900"
                               >
                                 <option value="">Select...</option>
@@ -5818,11 +6029,13 @@ export default function SpecificationsStep(props: {
                         Internal Lining Type <span className="text-red-500">*</span>
                       </label>
                       <select
-                        value={globalSpecs?.internalLiningType || ""}
-                        onChange={(e) =>
-                          onUpdateGlobalSpecs({
+                        value={rawInternalLiningType2 || ""}
+                        onChange={(e) => {
+                          const rawValue39 = e.target.value;
+
+                          return onUpdateGlobalSpecs({
                             ...globalSpecs,
-                            internalLiningType: e.target.value || null,
+                            internalLiningType: rawValue39 || null,
                             // Clear related fields when changing lining type
                             internalPrimerType: null,
                             internalPrimerMicrons: null,
@@ -5844,8 +6057,8 @@ export default function SpecificationsStep(props: {
                             internalHdpePipeType: null,
                             internalPuThickness: null,
                             internalPuHardness: null,
-                          })
-                        }
+                          });
+                        }}
                         className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
                         required
                       >
@@ -5931,7 +6144,7 @@ export default function SpecificationsStep(props: {
                           SANS Type
                         </label>
                         <select
-                          value={globalSpecs?.internalRubberSansType || ""}
+                          value={rawInternalRubberSansType || ""}
                           onChange={(e) => {
                             const sansType = e.target.value ? Number(e.target.value) : null;
                             const typeMap: Record<number, string> = {
@@ -5963,13 +6176,15 @@ export default function SpecificationsStep(props: {
                           Grade (Tensile Strength)
                         </label>
                         <select
-                          value={globalSpecs?.internalRubberGrade || ""}
-                          onChange={(e) =>
-                            onUpdateGlobalSpecs({
+                          value={rawInternalRubberGrade || ""}
+                          onChange={(e) => {
+                            const rawValue40 = e.target.value;
+
+                            return onUpdateGlobalSpecs({
                               ...globalSpecs,
-                              internalRubberGrade: e.target.value || null,
-                            })
-                          }
+                              internalRubberGrade: rawValue40 || null,
+                            });
+                          }}
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
                         >
                           <option value="">Select...</option>
@@ -5985,7 +6200,7 @@ export default function SpecificationsStep(props: {
                           Hardness Class (IRHD)
                         </label>
                         <select
-                          value={globalSpecs?.internalRubberHardness || ""}
+                          value={rawInternalRubberHardness || ""}
                           onChange={(e) =>
                             onUpdateGlobalSpecs({
                               ...globalSpecs,
@@ -6009,7 +6224,7 @@ export default function SpecificationsStep(props: {
                           Thickness (mm)
                         </label>
                         <select
-                          value={globalSpecs?.internalRubberThickness || ""}
+                          value={rawInternalRubberThickness || ""}
                           onChange={(e) =>
                             onUpdateGlobalSpecs({
                               ...globalSpecs,
@@ -6041,13 +6256,15 @@ export default function SpecificationsStep(props: {
                           Vulcanization Method
                         </label>
                         <select
-                          value={globalSpecs?.internalRubberVulcanizationMethod || ""}
-                          onChange={(e) =>
-                            onUpdateGlobalSpecs({
+                          value={rawInternalRubberVulcanizationMethod || ""}
+                          onChange={(e) => {
+                            const rawValue41 = e.target.value;
+
+                            return onUpdateGlobalSpecs({
                               ...globalSpecs,
-                              internalRubberVulcanizationMethod: e.target.value || null,
-                            })
-                          }
+                              internalRubberVulcanizationMethod: rawValue41 || null,
+                            });
+                          }}
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
                         >
                           <option value="">Select...</option>
@@ -6063,13 +6280,15 @@ export default function SpecificationsStep(props: {
                           Colour
                         </label>
                         <select
-                          value={globalSpecs?.internalRubberColour || ""}
-                          onChange={(e) =>
-                            onUpdateGlobalSpecs({
+                          value={rawInternalRubberColour || ""}
+                          onChange={(e) => {
+                            const rawValue42 = e.target.value;
+
+                            return onUpdateGlobalSpecs({
                               ...globalSpecs,
-                              internalRubberColour: e.target.value || null,
-                            })
-                          }
+                              internalRubberColour: rawValue42 || null,
+                            });
+                          }}
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
                         >
                           <option value="">Select...</option>
@@ -6091,7 +6310,9 @@ export default function SpecificationsStep(props: {
                           value=""
                           onChange={(e) => {
                             if (e.target.value) {
-                              const current = globalSpecs?.internalRubberChemicalExposure || [];
+                              const rawInternalRubberChemicalExposure =
+                                globalSpecs?.internalRubberChemicalExposure;
+                              const current = rawInternalRubberChemicalExposure || [];
                               if (!current.includes(e.target.value)) {
                                 onUpdateGlobalSpecs({
                                   ...globalSpecs,
@@ -6174,7 +6395,9 @@ export default function SpecificationsStep(props: {
                                 ) || false
                               }
                               onChange={(e) => {
-                                const current = globalSpecs?.internalRubberSpecialProperties || [];
+                                const rawInternalRubberSpecialProperties =
+                                  globalSpecs?.internalRubberSpecialProperties;
+                                const current = rawInternalRubberSpecialProperties || [];
                                 const updated = e.target.checked
                                   ? [...current, prop.value].sort((a, b) => a - b)
                                   : current.filter((p: number) => p !== prop.value);
@@ -6259,8 +6482,10 @@ export default function SpecificationsStep(props: {
                             <button
                               type="button"
                               onClick={() => {
+                                const rawInternalRubberSpecialProperties2 =
+                                  globalSpecs.internalRubberSpecialProperties;
                                 const specialPropsRoman = (
-                                  globalSpecs.internalRubberSpecialProperties || []
+                                  rawInternalRubberSpecialProperties2 || []
                                 )
                                   .map(
                                     (p: number) =>
@@ -6287,7 +6512,7 @@ export default function SpecificationsStep(props: {
               {/* Confirmed Internal Rubber Lining */}
               {globalSpecs?.internalLiningConfirmed &&
                 globalSpecs?.internalLiningType === "Rubber Lined" &&
-                (globalSpecs?.internalRubberType || globalSpecs?.internalRubberSansType) && (
+                (rawInternalRubberType || globalSpecs?.internalRubberSansType) && (
                   <div className="bg-green-100 border border-green-400 rounded-md p-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 text-xs text-green-800">
@@ -6371,13 +6596,15 @@ export default function SpecificationsStep(props: {
                           Ceramic Type
                         </label>
                         <select
-                          value={globalSpecs?.internalCeramicType || ""}
-                          onChange={(e) =>
-                            onUpdateGlobalSpecs({
+                          value={rawInternalCeramicType || ""}
+                          onChange={(e) => {
+                            const rawValue43 = e.target.value;
+
+                            return onUpdateGlobalSpecs({
                               ...globalSpecs,
-                              internalCeramicType: e.target.value || null,
-                            })
-                          }
+                              internalCeramicType: rawValue43 || null,
+                            });
+                          }}
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
                         >
                           <option value="">Select...</option>
@@ -6397,13 +6624,15 @@ export default function SpecificationsStep(props: {
                           Tile Shape
                         </label>
                         <select
-                          value={globalSpecs?.internalCeramicShape || ""}
-                          onChange={(e) =>
-                            onUpdateGlobalSpecs({
+                          value={rawInternalCeramicShape || ""}
+                          onChange={(e) => {
+                            const rawValue44 = e.target.value;
+
+                            return onUpdateGlobalSpecs({
                               ...globalSpecs,
-                              internalCeramicShape: e.target.value || null,
-                            })
-                          }
+                              internalCeramicShape: rawValue44 || null,
+                            });
+                          }}
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
                         >
                           <option value="">Select...</option>
@@ -6421,7 +6650,7 @@ export default function SpecificationsStep(props: {
                           Thickness (mm)
                         </label>
                         <select
-                          value={globalSpecs?.internalCeramicThickness || ""}
+                          value={rawInternalCeramicThickness || ""}
                           onChange={(e) =>
                             onUpdateGlobalSpecs({
                               ...globalSpecs,
@@ -6522,13 +6751,15 @@ export default function SpecificationsStep(props: {
                           Material Grade
                         </label>
                         <select
-                          value={globalSpecs?.internalHdpeMaterialGrade || ""}
-                          onChange={(e) =>
-                            onUpdateGlobalSpecs({
+                          value={rawInternalHdpeMaterialGrade || ""}
+                          onChange={(e) => {
+                            const rawValue45 = e.target.value;
+
+                            return onUpdateGlobalSpecs({
                               ...globalSpecs,
-                              internalHdpeMaterialGrade: e.target.value || null,
-                            })
-                          }
+                              internalHdpeMaterialGrade: rawValue45 || null,
+                            });
+                          }}
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
                         >
                           <option value="">Select...</option>
@@ -6544,13 +6775,15 @@ export default function SpecificationsStep(props: {
                           Pressure Rating
                         </label>
                         <select
-                          value={globalSpecs?.internalHdpePressureRating || ""}
-                          onChange={(e) =>
-                            onUpdateGlobalSpecs({
+                          value={rawInternalHdpePressureRating || ""}
+                          onChange={(e) => {
+                            const rawValue46 = e.target.value;
+
+                            return onUpdateGlobalSpecs({
                               ...globalSpecs,
-                              internalHdpePressureRating: e.target.value || null,
-                            })
-                          }
+                              internalHdpePressureRating: rawValue46 || null,
+                            });
+                          }}
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
                         >
                           <option value="">Select...</option>
@@ -6571,13 +6804,15 @@ export default function SpecificationsStep(props: {
                           SDR
                         </label>
                         <select
-                          value={globalSpecs?.internalHdpeSdr || ""}
-                          onChange={(e) =>
-                            onUpdateGlobalSpecs({
+                          value={rawInternalHdpeSdr || ""}
+                          onChange={(e) => {
+                            const rawValue47 = e.target.value;
+
+                            return onUpdateGlobalSpecs({
                               ...globalSpecs,
-                              internalHdpeSdr: e.target.value || null,
-                            })
-                          }
+                              internalHdpeSdr: rawValue47 || null,
+                            });
+                          }}
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
                         >
                           <option value="">Select...</option>
@@ -6596,13 +6831,15 @@ export default function SpecificationsStep(props: {
                           Pipe Type
                         </label>
                         <select
-                          value={globalSpecs?.internalHdpePipeType || ""}
-                          onChange={(e) =>
-                            onUpdateGlobalSpecs({
+                          value={rawInternalHdpePipeType || ""}
+                          onChange={(e) => {
+                            const rawValue48 = e.target.value;
+
+                            return onUpdateGlobalSpecs({
                               ...globalSpecs,
-                              internalHdpePipeType: e.target.value || null,
-                            })
-                          }
+                              internalHdpePipeType: rawValue48 || null,
+                            });
+                          }}
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
                         >
                           <option value="">Select...</option>
@@ -6694,7 +6931,7 @@ export default function SpecificationsStep(props: {
                           Thickness (mm)
                         </label>
                         <select
-                          value={globalSpecs?.internalPuThickness || ""}
+                          value={rawInternalPuThickness || ""}
                           onChange={(e) =>
                             onUpdateGlobalSpecs({
                               ...globalSpecs,
@@ -6727,7 +6964,7 @@ export default function SpecificationsStep(props: {
                           Shore Hardness
                         </label>
                         <select
-                          value={globalSpecs?.internalPuHardness || ""}
+                          value={rawInternalPuHardness || ""}
                           onChange={(e) =>
                             onUpdateGlobalSpecs({
                               ...globalSpecs,
@@ -6864,9 +7101,9 @@ export default function SpecificationsStep(props: {
                       <div className="flex justify-between items-center pt-1 mt-1 border-t border-green-300">
                         <span className="font-semibold text-green-800">Total DFT</span>
                         <span className="font-bold text-green-900">
-                          {(globalSpecs.internalPrimerMicrons || 0) +
-                            (globalSpecs.internalIntermediateMicrons || 0) +
-                            (globalSpecs.internalTopcoatMicrons || 0)}{" "}
+                          {(rawInternalPrimerMicrons || 0) +
+                            (rawInternalIntermediateMicrons || 0) +
+                            (rawInternalTopcoatMicrons || 0)}{" "}
                           μm
                         </span>
                       </div>
@@ -6916,13 +7153,15 @@ export default function SpecificationsStep(props: {
                           Primer Type
                         </label>
                         <select
-                          value={globalSpecs?.internalPrimerType || ""}
-                          onChange={(e) =>
-                            onUpdateGlobalSpecs({
+                          value={rawInternalPrimerType || ""}
+                          onChange={(e) => {
+                            const rawValue49 = e.target.value;
+
+                            return onUpdateGlobalSpecs({
                               ...globalSpecs,
-                              internalPrimerType: e.target.value || null,
-                            })
-                          }
+                              internalPrimerType: rawValue49 || null,
+                            });
+                          }}
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
                         >
                           <option value="">Select...</option>
@@ -6941,7 +7180,7 @@ export default function SpecificationsStep(props: {
                         </label>
                         <input
                           type="number"
-                          value={globalSpecs?.internalPrimerMicrons || ""}
+                          value={rawInternalPrimerMicrons2 || ""}
                           onChange={(e) =>
                             onUpdateGlobalSpecs({
                               ...globalSpecs,
@@ -6960,13 +7199,15 @@ export default function SpecificationsStep(props: {
                           Intermediate
                         </label>
                         <select
-                          value={globalSpecs?.internalIntermediateType || ""}
-                          onChange={(e) =>
-                            onUpdateGlobalSpecs({
+                          value={rawInternalIntermediateType || ""}
+                          onChange={(e) => {
+                            const rawValue50 = e.target.value;
+
+                            return onUpdateGlobalSpecs({
                               ...globalSpecs,
-                              internalIntermediateType: e.target.value || null,
-                            })
-                          }
+                              internalIntermediateType: rawValue50 || null,
+                            });
+                          }}
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
                         >
                           <option value="">None</option>
@@ -6986,7 +7227,7 @@ export default function SpecificationsStep(props: {
                           </label>
                           <input
                             type="number"
-                            value={globalSpecs?.internalIntermediateMicrons || ""}
+                            value={rawInternalIntermediateMicrons2 || ""}
                             onChange={(e) =>
                               onUpdateGlobalSpecs({
                                 ...globalSpecs,
@@ -7008,13 +7249,15 @@ export default function SpecificationsStep(props: {
                           Topcoat
                         </label>
                         <select
-                          value={globalSpecs?.internalTopcoatType || ""}
-                          onChange={(e) =>
-                            onUpdateGlobalSpecs({
+                          value={rawInternalTopcoatType || ""}
+                          onChange={(e) => {
+                            const rawValue51 = e.target.value;
+
+                            return onUpdateGlobalSpecs({
                               ...globalSpecs,
-                              internalTopcoatType: e.target.value || null,
-                            })
-                          }
+                              internalTopcoatType: rawValue51 || null,
+                            });
+                          }}
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
                         >
                           <option value="">None</option>
@@ -7032,7 +7275,7 @@ export default function SpecificationsStep(props: {
                           </label>
                           <input
                             type="number"
-                            value={globalSpecs?.internalTopcoatMicrons || ""}
+                            value={rawInternalTopcoatMicrons2 || ""}
                             onChange={(e) =>
                               onUpdateGlobalSpecs({
                                 ...globalSpecs,
@@ -7084,9 +7327,9 @@ export default function SpecificationsStep(props: {
                                 )}
                               <span className="font-semibold ml-1">
                                 ={" "}
-                                {(globalSpecs.internalPrimerMicrons || 0) +
-                                  (globalSpecs.internalIntermediateMicrons || 0) +
-                                  (globalSpecs.internalTopcoatMicrons || 0)}
+                                {(rawInternalPrimerMicrons3 || 0) +
+                                  (rawInternalIntermediateMicrons3 || 0) +
+                                  (rawInternalTopcoatMicrons3 || 0)}
                                 μm DFT
                               </span>
                             </div>
@@ -7163,7 +7406,7 @@ export default function SpecificationsStep(props: {
 
             {/* Confirm Surface Protection Button - Only show when not all confirmed */}
             {(!globalSpecs?.externalCoatingConfirmed || !globalSpecs?.internalLiningConfirmed) &&
-              (globalSpecs?.externalCoatingType || globalSpecs?.internalLiningType) && (
+              (rawExternalCoatingType2 || globalSpecs?.internalLiningType) && (
                 <div className="mt-4 flex justify-end">
                   <button
                     type="button"
@@ -7217,11 +7460,9 @@ export default function SpecificationsStep(props: {
                       />
                     </svg>
                     <div className="text-sm">
-                      <span className="font-semibold text-gray-900">
-                        {globalSpecs?.hdpeGrade || "PE100"}
-                      </span>
+                      <span className="font-semibold text-gray-900">{rawHdpeGrade || "PE100"}</span>
                       <span className="text-gray-600 mx-2">|</span>
-                      <span className="text-gray-700">SDR {globalSpecs?.hdpeSdr || "-"}</span>
+                      <span className="text-gray-700">SDR {rawHdpeSdr || "-"}</span>
                       <span className="text-gray-600 mx-2">|</span>
                       <span className="text-gray-700">
                         {globalSpecs?.hdpeJoiningMethod?.replace(/_/g, " ") || "-"}
@@ -7305,13 +7546,9 @@ export default function SpecificationsStep(props: {
                       />
                     </svg>
                     <div className="text-sm">
-                      <span className="font-semibold text-gray-900">
-                        {globalSpecs?.pvcType || "uPVC"}
-                      </span>
+                      <span className="font-semibold text-gray-900">{rawPvcType || "uPVC"}</span>
                       <span className="text-gray-600 mx-2">|</span>
-                      <span className="text-gray-700">
-                        Class {globalSpecs?.pvcPressureClass || "-"}
-                      </span>
+                      <span className="text-gray-700">Class {rawPvcPressureClass || "-"}</span>
                       <span className="text-gray-600 mx-2">|</span>
                       <span className="text-gray-700">
                         {globalSpecs?.pvcJoiningMethod?.replace(/_/g, " ") || "-"}
@@ -7414,13 +7651,15 @@ export default function SpecificationsStep(props: {
                       Bolt, Nut & Washer Grade
                     </label>
                     <select
-                      value={globalSpecs?.boltGrade || ""}
-                      onChange={(e) =>
-                        onUpdateGlobalSpecs({
+                      value={rawBoltGrade || ""}
+                      onChange={(e) => {
+                        const rawValue52 = e.target.value;
+
+                        return onUpdateGlobalSpecs({
                           ...globalSpecs,
-                          boltGrade: e.target.value || null,
-                        })
-                      }
+                          boltGrade: rawValue52 || null,
+                        });
+                      }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 text-sm"
                     >
                       <option value="">Select bolt grade...</option>
@@ -7533,13 +7772,15 @@ export default function SpecificationsStep(props: {
                       Gasket Type & Thickness
                     </label>
                     <select
-                      value={globalSpecs?.gasketType || ""}
-                      onChange={(e) =>
-                        onUpdateGlobalSpecs({
+                      value={rawGasketType || ""}
+                      onChange={(e) => {
+                        const rawValue53 = e.target.value;
+
+                        return onUpdateGlobalSpecs({
                           ...globalSpecs,
-                          gasketType: e.target.value || null,
-                        })
-                      }
+                          gasketType: rawValue53 || null,
+                        });
+                      }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 text-sm"
                     >
                       <option value="">Select gasket type...</option>
@@ -7655,7 +7896,7 @@ export default function SpecificationsStep(props: {
                               <p className="text-amber-800">
                                 Selected gasket differs from recommendation for{" "}
                                 {globalSpecs.workingTemperatureC}°C / Class{" "}
-                                {currentPressureClass?.designation || "N/A"}
+                                {rawDesignation3 || "N/A"}
                               </p>
                               <p className="text-amber-700 text-[10px] mt-0.5">
                                 Recommended: {gasketRecommendation.gasketName}

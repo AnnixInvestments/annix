@@ -38,7 +38,8 @@ export default function BOQStep(props: {
   const { data: allGaskets = [] } = useAllGasketWeights();
   const entries: any[] = rfqData.items.length > 0 ? rfqData.items : rfqData.straightPipeEntries;
   const globalSpecs = rfqData.globalSpecs;
-  const requiredProducts = rfqData.requiredProducts || [];
+  const rawRequiredProducts = rfqData.requiredProducts;
+  const requiredProducts = rawRequiredProducts || [];
   // Authentication status for unregistered customer restrictions
   // Don't apply restrictions while auth is still loading to prevent flash of restricted state
   const { isAuthenticated: isCustomerAuthenticated, isLoading: isCustomerAuthLoading } =
@@ -80,9 +81,10 @@ export default function BOQStep(props: {
 
   // Get flange spec string
   const getFlangeSpec = (entry: any) => {
-    const flangeStandardId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
-    const flangePressureClassId =
-      entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
+    const rawFlangeStandardId = entry.specs?.flangeStandardId;
+    const flangeStandardId = rawFlangeStandardId || globalSpecs?.flangeStandardId;
+    const rawFlangePressureClassId = entry.specs?.flangePressureClassId;
+    const flangePressureClassId = rawFlangePressureClassId || globalSpecs?.flangePressureClassId;
     const flangeStandard =
       flangeStandardId && masterData?.flangeStandards
         ? masterData.flangeStandards.find((s: any) => s.id === flangeStandardId)?.code
@@ -96,10 +98,12 @@ export default function BOQStep(props: {
 
   // Get steel spec name
   const getSteelSpecName = (entry: any) => {
-    const steelSpecId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
-    return steelSpecId && masterData?.steelSpecs
-      ? masterData.steelSpecs.find((s: any) => s.id === steelSpecId)?.steelSpecName || "Steel"
-      : "Steel";
+    const rawSteelSpecificationId = entry.specs?.steelSpecificationId;
+    const steelSpecId = rawSteelSpecificationId || globalSpecs?.steelSpecificationId;
+    const rawSteelSpecName = masterData.steelSpecs.find(
+      (s: any) => s.id === steelSpecId,
+    )?.steelSpecName;
+    return steelSpecId && masterData?.steelSpecs ? rawSteelSpecName || "Steel" : "Steel";
   };
 
   // ======================
@@ -209,40 +213,55 @@ export default function BOQStep(props: {
 
   // Process each entry
   entries.forEach((entry) => {
-    const itemNumber = entry.clientItemNumber || entry.id;
-    const qty = entry.specs?.quantityValue || entry.calculation?.calculatedPipeCount || 1;
+    const rawClientItemNumber = entry.clientItemNumber;
+    const itemNumber = rawClientItemNumber || entry.id;
+    const rawQuantityValue = entry.specs?.quantityValue;
+    const qty = rawQuantityValue || entry.calculation?.calculatedPipeCount || 1;
     const steelSpec = getSteelSpecName(entry);
     const flangeSpec = getFlangeSpec(entry);
 
     if (entry.itemType === "bend") {
+      const rawNominalBoreMm = entry.specs?.nominalBoreMm;
       // BEND
-      const nb = entry.specs?.nominalBoreMm || 100;
-      const angle = entry.specs?.bendDegrees || 90;
-      const bendType = entry.specs?.bendRadiusType || entry.specs?.bendType || "1.5D";
-      const schedule = entry.specs?.scheduleNumber || "";
+      const nb = rawNominalBoreMm || 100;
+      const rawBendDegrees = entry.specs?.bendDegrees;
+      const angle = rawBendDegrees || 90;
+      const rawBendRadiusType = entry.specs?.bendRadiusType;
+      const bendType = rawBendRadiusType || entry.specs?.bendType || "1.5D";
+      const rawScheduleNumber = entry.specs?.scheduleNumber;
+      const schedule = rawScheduleNumber || "";
 
       const key = `BEND_${nb}_${angle}_${bendType}_${steelSpec}_${schedule}`;
       const existing = consolidatedBends.get(key);
-      const bendWeight =
-        entry.calculation?.totalWeight ||
-        (entry.calculation?.bendWeight || 0) + (entry.calculation?.tangentWeight || 0);
+      const rawTotalWeight = entry.calculation?.totalWeight;
+      const rawBendWeight = entry.calculation?.bendWeight;
+      const rawTangentWeight = entry.calculation?.tangentWeight;
+      const bendWeight = rawTotalWeight || (rawBendWeight || 0) + (rawTangentWeight || 0);
+
+      const rawNumberOfSegments = entry.specs?.numberOfSegments;
 
       // Calculate bend weld lengths
-      const segments = entry.specs?.numberOfSegments || 5;
+      const segments = rawNumberOfSegments || 5;
       const mitreWelds = segments - 1;
-      const od = entry.calculation?.outsideDiameterMm || 0;
-      const wt = entry.calculation?.wallThicknessMm || 0;
+      const rawOutsideDiameterMm = entry.calculation?.outsideDiameterMm;
+      const od = rawOutsideDiameterMm || 0;
+      const rawWallThicknessMm = entry.calculation?.wallThicknessMm;
+      const wt = rawWallThicknessMm || 0;
       const mitreWeldLength = mitreWelds * qty * ((Math.PI * od) / 1000);
 
+      const rawBendType = entry.specs?.bendType;
+
       // Calculate bend surface areas from specs (like ReviewSubmitStep)
-      const bendRadiusType = entry.specs?.bendType || entry.specs?.bendRadiusType || "1.5D";
+      const bendRadiusType = rawBendType || entry.specs?.bendRadiusType || "1.5D";
       const radiusFactor = parseFloat(bendRadiusType.replace("D", "")) || 1.5;
       const bendRadiusMm = nb * radiusFactor;
       const bendAngleRad = (angle * Math.PI) / 180;
       const arcLengthM = (bendRadiusMm / 1000) * bendAngleRad;
 
+      const rawTangentLengths = entry.specs?.tangentLengths;
+
       // Add tangent lengths
-      const tangentLengths = entry.specs?.tangentLengths || [];
+      const tangentLengths = rawTangentLengths || [];
       let tangentLengthM = 0;
       if (tangentLengths[0]) tangentLengthM += tangentLengths[0] / 1000;
       if (tangentLengths[1]) tangentLengthM += tangentLengths[1] / 1000;
@@ -257,8 +276,10 @@ export default function BOQStep(props: {
       const welds: Record<string, number> = {};
       if (mitreWeldLength > 0) welds["Mitre Weld"] = mitreWeldLength;
 
+      const rawBendEndConfiguration = entry.specs?.bendEndConfiguration;
+
       // Flange welds for bends
-      const bendEndConfig = entry.specs?.bendEndConfiguration || "PE";
+      const bendEndConfig = rawBendEndConfiguration || "PE";
       const bendFlangeCount = getFlangeCountFromConfig(bendEndConfig, "bend");
       if (bendFlangeCount.main > 0) {
         const flangeWeldLength = bendFlangeCount.main * qty * ((Math.PI * od) / 1000) * 2; // x2 for inside + outside
@@ -269,19 +290,23 @@ export default function BOQStep(props: {
         existing.qty += qty;
         existing.weight += bendWeight * qty;
         existing.entries.push(itemNumber);
+        const rawMitreWeld = existing.welds?.["Mitre Weld"];
         // Accumulate welds and areas
         if (mitreWeldLength > 0)
           existing.welds = {
             ...existing.welds,
-            "Mitre Weld": (existing.welds?.["Mitre Weld"] || 0) + mitreWeldLength,
+            "Mitre Weld": (rawMitreWeld || 0) + mitreWeldLength,
           };
+        const rawFlangeWeld = existing.welds?.["Flange Weld"];
         if (welds["Flange Weld"])
           existing.welds = {
             ...existing.welds,
-            "Flange Weld": (existing.welds?.["Flange Weld"] || 0) + welds["Flange Weld"],
+            "Flange Weld": (rawFlangeWeld || 0) + welds["Flange Weld"],
           };
-        existing.intAreaM2 = (existing.intAreaM2 || 0) + intAreaM2;
-        existing.extAreaM2 = (existing.extAreaM2 || 0) + extAreaM2;
+        const rawIntAreaM2 = existing.intAreaM2;
+        existing.intAreaM2 = (rawIntAreaM2 || 0) + intAreaM2;
+        const rawExtAreaM2 = existing.extAreaM2;
+        existing.extAreaM2 = (rawExtAreaM2 || 0) + extAreaM2;
       } else {
         consolidatedBends.set(key, {
           description:
@@ -299,12 +324,14 @@ export default function BOQStep(props: {
       // Flanges for bends (using bendEndConfig declared above)
       const flangeCount = getFlangeCountFromConfig(bendEndConfig, "bend");
       const flangeTypeName = getFlangeTypeName(bendEndConfig);
-      const bendFlangeStandardId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
+      const rawFlangeStandardId2 = entry.specs?.flangeStandardId;
+      const bendFlangeStandardId = rawFlangeStandardId2 || globalSpecs?.flangeStandardId;
       const bendFlangeStandardCode =
         bendFlangeStandardId && masterData?.flangeStandards
           ? masterData.flangeStandards.find((s: any) => s.id === bendFlangeStandardId)?.code
           : "";
-      const bendFlangeTypeCode = entry.specs?.flangeTypeCode || globalSpecs?.flangeTypeCode;
+      const rawFlangeTypeCode = entry.specs?.flangeTypeCode;
+      const bendFlangeTypeCode = rawFlangeTypeCode || globalSpecs?.flangeTypeCode;
       if (flangeCount.main > 0) {
         const flangeKey = `FLANGE_${nb}_${flangeSpec}_${flangeTypeName}`;
         const existingFlange = consolidatedFlanges.get(flangeKey);
@@ -374,9 +401,11 @@ export default function BOQStep(props: {
         }
       }
 
+      const rawStubs = entry.specs?.stubs;
+
       // Handle stub flanges for bends
       // Stubs always have flanges when they have a nominalBoreMm set
-      const stubs = entry.specs?.stubs || [];
+      const stubs = rawStubs || [];
       stubs.forEach((stub: any, stubIndex: number) => {
         const stubNb = stub.nominalBoreMm;
 
@@ -458,7 +487,8 @@ export default function BOQStep(props: {
 
       // Blank flanges for bends
       if (entry.specs?.addBlankFlange && entry.specs?.blankFlangeCount > 0) {
-        const blankNb = entry.specs?.blankFlangeNominalBoreMm || nb;
+        const rawBlankFlangeNominalBoreMm = entry.specs?.blankFlangeNominalBoreMm;
+        const blankNb = rawBlankFlangeNominalBoreMm || nb;
         const blankFlangeKey = `BLANK_FLANGE_${blankNb}_${flangeSpec}`;
         const existingBlank = consolidatedBlankFlanges.get(blankFlangeKey);
         const blankQty = entry.specs.blankFlangeCount * qty;
@@ -477,8 +507,10 @@ export default function BOQStep(props: {
         if (existingBlank) {
           existingBlank.qty += blankQty;
           existingBlank.weight += blankWeight * blankQty;
-          existingBlank.extAreaM2 = (existingBlank.extAreaM2 || 0) + blankExtArea;
-          existingBlank.intAreaM2 = (existingBlank.intAreaM2 || 0) + blankIntArea;
+          const rawExtAreaM22 = existingBlank.extAreaM2;
+          existingBlank.extAreaM2 = (rawExtAreaM22 || 0) + blankExtArea;
+          const rawIntAreaM22 = existingBlank.intAreaM2;
+          existingBlank.intAreaM2 = (rawIntAreaM22 || 0) + blankIntArea;
           if (!existingBlank.entries.includes(itemNumber)) {
             existingBlank.entries.push(itemNumber);
           }
@@ -495,16 +527,20 @@ export default function BOQStep(props: {
         }
       }
     } else if (entry.itemType === "fitting") {
+      const rawNominalDiameterMm = entry.specs?.nominalDiameterMm;
       // FITTING
-      const nb = entry.specs?.nominalDiameterMm || entry.specs?.nominalBoreMm || 100;
-      const branchNb =
-        entry.specs?.branchNominalDiameterMm || entry.specs?.branchNominalBoreMm || nb;
-      const fittingType = entry.specs?.fittingType || "TEE";
-      const schedule = entry.specs?.scheduleNumber || "";
+      const nb = rawNominalDiameterMm || entry.specs?.nominalBoreMm || 100;
+      const rawBranchNominalDiameterMm = entry.specs?.branchNominalDiameterMm;
+      const branchNb = rawBranchNominalDiameterMm || entry.specs?.branchNominalBoreMm || nb;
+      const rawFittingType = entry.specs?.fittingType;
+      const fittingType = rawFittingType || "TEE";
+      const rawScheduleNumber2 = entry.specs?.scheduleNumber;
+      const schedule = rawScheduleNumber2 || "";
 
       const key = `FITTING_${fittingType}_${nb}_${branchNb}_${steelSpec}_${schedule}`;
       const existing = consolidatedFittings.get(key);
-      const fittingWeight = entry.calculation?.totalWeight || entry.calculation?.fittingWeight || 0;
+      const rawTotalWeight2 = entry.calculation?.totalWeight;
+      const fittingWeight = rawTotalWeight2 || entry.calculation?.fittingWeight || 0;
 
       // Format fitting type for display
       let displayType = fittingType
@@ -517,15 +553,22 @@ export default function BOQStep(props: {
         displayType = displayType.replace(/Tee/i, "Equal Tee");
       }
 
+      const rawOutsideDiameterMm2 = entry.calculation?.outsideDiameterMm;
+
       // Calculate fitting weld lengths and surface areas
-      const od = entry.calculation?.outsideDiameterMm || 0;
-      const wt = entry.calculation?.wallThicknessMm || 0;
-      const fittingEndConfig = entry.specs?.pipeEndConfiguration || "PE";
+      const od = rawOutsideDiameterMm2 || 0;
+      const rawWallThicknessMm2 = entry.calculation?.wallThicknessMm;
+      const wt = rawWallThicknessMm2 || 0;
+      const rawPipeEndConfiguration = entry.specs?.pipeEndConfiguration;
+      const fittingEndConfig = rawPipeEndConfiguration || "PE";
       const fittingFlangeCount = getFlangeCountFromConfig(fittingEndConfig, "fitting");
 
+      const rawBranchOutsideDiameterMm = entry.calculation?.branchOutsideDiameterMm;
+
       // Branch dimensions
-      const branchOd = entry.calculation?.branchOutsideDiameterMm || od;
-      const branchWt = entry.calculation?.branchWallThicknessMm || wt;
+      const branchOd = rawBranchOutsideDiameterMm || od;
+      const rawBranchWallThicknessMm = entry.calculation?.branchWallThicknessMm;
+      const branchWt = rawBranchWallThicknessMm || wt;
 
       // Calculate fitting welds (tee weld + flange welds)
       const teeWeldLength = qty * ((Math.PI * od) / 1000); // One tee weld per fitting
@@ -537,10 +580,14 @@ export default function BOQStep(props: {
         flangeWeldLength += fittingFlangeCount.branch * qty * ((Math.PI * branchOd) / 1000) * 2;
       }
 
+      const rawPipeLengthAMm = entry.specs?.pipeLengthAMm;
+
       // Calculate fitting surface area from specs (like ReviewSubmitStep)
-      const lengthA = entry.specs?.pipeLengthAMm || 0;
-      const lengthB = entry.specs?.pipeLengthBMm || 0;
-      const teeHeight = entry.specs?.teeHeightMm || entry.calculation?.teeHeightMm || branchNb * 2;
+      const lengthA = rawPipeLengthAMm || 0;
+      const rawPipeLengthBMm = entry.specs?.pipeLengthBMm;
+      const lengthB = rawPipeLengthBMm || 0;
+      const rawTeeHeightMm = entry.specs?.teeHeightMm;
+      const teeHeight = rawTeeHeightMm || entry.calculation?.teeHeightMm || branchNb * 2;
 
       // Run length = Section A + Section B
       const runLengthM = (lengthA + lengthB) / 1000;
@@ -592,19 +639,23 @@ export default function BOQStep(props: {
         existing.qty += qty;
         existing.weight += fittingWeight * qty;
         existing.entries.push(itemNumber);
+        const rawWeldTypeName = existing.welds?.[weldTypeName];
         // Accumulate welds and areas
         if (teeWeldLength > 0)
           existing.welds = {
             ...existing.welds,
-            [weldTypeName]: (existing.welds?.[weldTypeName] || 0) + teeWeldLength,
+            [weldTypeName]: (rawWeldTypeName || 0) + teeWeldLength,
           };
+        const rawFlangeWeld2 = existing.welds?.["Flange Weld"];
         if (flangeWeldLength > 0)
           existing.welds = {
             ...existing.welds,
-            "Flange Weld": (existing.welds?.["Flange Weld"] || 0) + flangeWeldLength,
+            "Flange Weld": (rawFlangeWeld2 || 0) + flangeWeldLength,
           };
-        existing.intAreaM2 = (existing.intAreaM2 || 0) + intAreaM2;
-        existing.extAreaM2 = (existing.extAreaM2 || 0) + extAreaM2;
+        const rawIntAreaM23 = existing.intAreaM2;
+        existing.intAreaM2 = (rawIntAreaM23 || 0) + intAreaM2;
+        const rawExtAreaM23 = existing.extAreaM2;
+        existing.extAreaM2 = (rawExtAreaM23 || 0) + extAreaM2;
       } else {
         consolidatedFittings.set(key, {
           description:
@@ -624,13 +675,14 @@ export default function BOQStep(props: {
       const fittingFlangeTypeName = getFlangeTypeName(fittingEndConfig);
       const isEqualBranch = branchNb === nb;
       const fittingBoltSets = boltSetCountPerFitting(fittingEndConfig, isEqualBranch);
-      const fittingFlangeStandardId =
-        entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
+      const rawFlangeStandardId3 = entry.specs?.flangeStandardId;
+      const fittingFlangeStandardId = rawFlangeStandardId3 || globalSpecs?.flangeStandardId;
       const fittingFlangeStandardCode =
         fittingFlangeStandardId && masterData?.flangeStandards
           ? masterData.flangeStandards.find((s: any) => s.id === fittingFlangeStandardId)?.code
           : "";
-      const fittingFlangeTypeCode = entry.specs?.flangeTypeCode || globalSpecs?.flangeTypeCode;
+      const rawFlangeTypeCode2 = entry.specs?.flangeTypeCode;
+      const fittingFlangeTypeCode = rawFlangeTypeCode2 || globalSpecs?.flangeTypeCode;
 
       // Main flanges
       if (flangeCount.main > 0) {
@@ -786,7 +838,8 @@ export default function BOQStep(props: {
 
       // Blank flanges for fittings
       if (entry.specs?.addBlankFlange && entry.specs?.blankFlangeCount > 0) {
-        const blankNb = entry.specs?.blankFlangeNominalBoreMm || nb;
+        const rawBlankFlangeNominalBoreMm2 = entry.specs?.blankFlangeNominalBoreMm;
+        const blankNb = rawBlankFlangeNominalBoreMm2 || nb;
         const blankFlangeKey = `BLANK_FLANGE_${blankNb}_${flangeSpec}`;
         const existingBlank = consolidatedBlankFlanges.get(blankFlangeKey);
         const blankQty = entry.specs.blankFlangeCount * qty;
@@ -805,8 +858,10 @@ export default function BOQStep(props: {
         if (existingBlank) {
           existingBlank.qty += blankQty;
           existingBlank.weight += blankWeight * blankQty;
-          existingBlank.extAreaM2 = (existingBlank.extAreaM2 || 0) + blankExtArea;
-          existingBlank.intAreaM2 = (existingBlank.intAreaM2 || 0) + blankIntArea;
+          const rawExtAreaM24 = existingBlank.extAreaM2;
+          existingBlank.extAreaM2 = (rawExtAreaM24 || 0) + blankExtArea;
+          const rawIntAreaM24 = existingBlank.intAreaM2;
+          existingBlank.intAreaM2 = (rawIntAreaM24 || 0) + blankIntArea;
           if (!existingBlank.entries.includes(itemNumber)) {
             existingBlank.entries.push(itemNumber);
           }
@@ -823,26 +878,39 @@ export default function BOQStep(props: {
         }
       }
     } else {
+      const rawNominalBoreMm2 = entry.specs?.nominalBoreMm;
       // STRAIGHT PIPE
-      const nb = entry.specs?.nominalBoreMm || 100;
-      const schedule = entry.specs?.scheduleNumber || "";
-      const pipeLength = entry.specs?.individualPipeLength || DEFAULT_PIPE_LENGTH_M;
-      const pipeQty = entry.calculation?.calculatedPipeCount || qty;
+      const nb = rawNominalBoreMm2 || 100;
+      const rawScheduleNumber3 = entry.specs?.scheduleNumber;
+      const schedule = rawScheduleNumber3 || "";
+      const rawIndividualPipeLength = entry.specs?.individualPipeLength;
+      const pipeLength = rawIndividualPipeLength || DEFAULT_PIPE_LENGTH_M;
+      const rawCalculatedPipeCount = entry.calculation?.calculatedPipeCount;
+      const pipeQty = rawCalculatedPipeCount || qty;
 
       const key = `PIPE_${nb}_${schedule}_${steelSpec}_${pipeLength}`;
       const existing = consolidatedPipes.get(key);
-      const pipeWeight = entry.calculation?.totalPipeWeight || 0;
+      const rawTotalPipeWeight = entry.calculation?.totalPipeWeight;
+      const pipeWeight = rawTotalPipeWeight || 0;
+
+      const rawPipeEndConfiguration2 = entry.specs?.pipeEndConfiguration;
 
       // Calculate weld lengths from entry calculation
-      const pipeEndConfig = entry.specs?.pipeEndConfiguration || "PE";
-      const flangeWeldLength = entry.calculation?.totalFlangeWeldLength || 0;
-      const pipeWeldCount = entry.calculation?.pipeWeldsPerUnit || 0;
-      const od = entry.calculation?.outsideDiameterMm || 0;
+      const pipeEndConfig = rawPipeEndConfiguration2 || "PE";
+      const rawTotalFlangeWeldLength = entry.calculation?.totalFlangeWeldLength;
+      const flangeWeldLength = rawTotalFlangeWeldLength || 0;
+      const rawPipeWeldsPerUnit = entry.calculation?.pipeWeldsPerUnit;
+      const pipeWeldCount = rawPipeWeldsPerUnit || 0;
+      const rawOutsideDiameterMm3 = entry.calculation?.outsideDiameterMm;
+      const od = rawOutsideDiameterMm3 || 0;
       const pipeWeldLength = pipeWeldCount * pipeQty * ((Math.PI * od) / 1000); // circumference per weld
 
+      const rawCalculatedTotalLength = entry.calculation?.calculatedTotalLength;
+
       // Calculate surface areas
-      const totalLength = entry.calculation?.calculatedTotalLength || pipeLength * pipeQty;
-      const wt = entry.calculation?.wallThicknessMm || 0;
+      const totalLength = rawCalculatedTotalLength || pipeLength * pipeQty;
+      const rawWallThicknessMm3 = entry.calculation?.wallThicknessMm;
+      const wt = rawWallThicknessMm3 || 0;
       const odM = od / 1000;
       const idM = (od - 2 * wt) / 1000;
       const extAreaM2 = Math.PI * odM * totalLength;
@@ -857,19 +925,23 @@ export default function BOQStep(props: {
         existing.qty += pipeQty;
         existing.weight += pipeWeight;
         existing.entries.push(itemNumber);
+        const rawPipeWeld = existing.welds?.["Pipe Weld"];
         // Accumulate welds and areas
         if (pipeWeldLength > 0)
           existing.welds = {
             ...existing.welds,
-            "Pipe Weld": (existing.welds?.["Pipe Weld"] || 0) + pipeWeldLength,
+            "Pipe Weld": (rawPipeWeld || 0) + pipeWeldLength,
           };
+        const rawFlangeWeld3 = existing.welds?.["Flange Weld"];
         if (flangeWeldLength > 0)
           existing.welds = {
             ...existing.welds,
-            "Flange Weld": (existing.welds?.["Flange Weld"] || 0) + flangeWeldLength,
+            "Flange Weld": (rawFlangeWeld3 || 0) + flangeWeldLength,
           };
-        existing.intAreaM2 = (existing.intAreaM2 || 0) + intAreaM2;
-        existing.extAreaM2 = (existing.extAreaM2 || 0) + extAreaM2;
+        const rawIntAreaM25 = existing.intAreaM2;
+        existing.intAreaM2 = (rawIntAreaM25 || 0) + intAreaM2;
+        const rawExtAreaM25 = existing.extAreaM2;
+        existing.extAreaM2 = (rawExtAreaM25 || 0) + extAreaM2;
       } else {
         consolidatedPipes.set(key, {
           description:
@@ -887,12 +959,14 @@ export default function BOQStep(props: {
       // Flanges for pipes (using pipeEndConfig declared above)
       const flangeCount = getFlangeCountFromConfig(pipeEndConfig, "pipe");
       const pipeFlangeTypeName = getFlangeTypeName(pipeEndConfig);
-      const pipeFlangeStandardId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
+      const rawFlangeStandardId4 = entry.specs?.flangeStandardId;
+      const pipeFlangeStandardId = rawFlangeStandardId4 || globalSpecs?.flangeStandardId;
       const pipeFlangeStandardCode =
         pipeFlangeStandardId && masterData?.flangeStandards
           ? masterData.flangeStandards.find((s: any) => s.id === pipeFlangeStandardId)?.code
           : "";
-      const pipeFlangeTypeCode = entry.specs?.flangeTypeCode || globalSpecs?.flangeTypeCode;
+      const rawFlangeTypeCode3 = entry.specs?.flangeTypeCode;
+      const pipeFlangeTypeCode = rawFlangeTypeCode3 || globalSpecs?.flangeTypeCode;
       if (flangeCount.main > 0) {
         const flangeKey = `FLANGE_${nb}_${flangeSpec}_${pipeFlangeTypeName}`;
         const existingFlange = consolidatedFlanges.get(flangeKey);
@@ -966,7 +1040,8 @@ export default function BOQStep(props: {
 
       // Blank flanges
       if (entry.specs?.addBlankFlange && entry.specs?.blankFlangeCount > 0) {
-        const blankNb = entry.specs?.blankFlangeNominalBoreMm || nb;
+        const rawBlankFlangeNominalBoreMm3 = entry.specs?.blankFlangeNominalBoreMm;
+        const blankNb = rawBlankFlangeNominalBoreMm3 || nb;
         const blankFlangeKey = `BLANK_FLANGE_${blankNb}_${flangeSpec}`;
         const existingBlank = consolidatedBlankFlanges.get(blankFlangeKey);
         const blankQty = entry.specs.blankFlangeCount * pipeQty;
@@ -985,8 +1060,10 @@ export default function BOQStep(props: {
         if (existingBlank) {
           existingBlank.qty += blankQty;
           existingBlank.weight += blankWeight * blankQty;
-          existingBlank.extAreaM2 = (existingBlank.extAreaM2 || 0) + blankExtArea;
-          existingBlank.intAreaM2 = (existingBlank.intAreaM2 || 0) + blankIntArea;
+          const rawExtAreaM26 = existingBlank.extAreaM2;
+          existingBlank.extAreaM2 = (rawExtAreaM26 || 0) + blankExtArea;
+          const rawIntAreaM26 = existingBlank.intAreaM2;
+          existingBlank.intAreaM2 = (rawIntAreaM26 || 0) + blankIntArea;
           existingBlank.entries.push(itemNumber);
         } else {
           consolidatedBlankFlanges.set(blankFlangeKey, {
@@ -1080,9 +1157,12 @@ export default function BOQStep(props: {
         (item) => (item.intAreaM2 && item.intAreaM2 > 0) || (item.extAreaM2 && item.extAreaM2 > 0),
       );
 
+    const rawBgColor = darkBgMap[bgColor];
+
     // Get dark mode variants
-    const darkBg = darkBgMap[bgColor] || "dark:bg-gray-800/50";
-    const darkText = darkTextMap[textColor] || "dark:text-gray-300";
+    const darkBg = rawBgColor || "dark:bg-gray-800/50";
+    const rawTextColor = darkTextMap[textColor];
+    const darkText = rawTextColor || "dark:text-gray-300";
 
     return (
       <div className="mb-6">
@@ -1374,10 +1454,13 @@ export default function BOQStep(props: {
       0,
     );
 
+    const rawProjectName = rfqData.projectName;
+    const rawCustomerName = rfqData.customerName;
+
     // Add a summary sheet
     const summaryData = [
-      { Category: "Project", Value: rfqData.projectName || "Untitled" },
-      { Category: "Customer", Value: rfqData.customerName || "-" },
+      { Category: "Project", Value: rawProjectName || "Untitled" },
+      { Category: "Customer", Value: rawCustomerName || "-" },
       { Category: "Total Items", Value: entries.length },
       { Category: "Total Estimated Weight (kg)", Value: totalWeight.toFixed(2) },
       { Category: "", Value: "" },
@@ -1393,14 +1476,20 @@ export default function BOQStep(props: {
     const summaryWs = XLSX.utils.json_to_sheet(summaryData);
     XLSX.utils.book_append_sheet(workbook, summaryWs, "Summary");
 
+    const rawProjectName2 = rfqData.projectName;
+
     // Generate filename with project name and date
-    const projectName = (rfqData.projectName || "BOQ").replace(/[^a-zA-Z0-9]/g, "_");
+    const projectName = (rawProjectName2 || "BOQ").replace(/[^a-zA-Z0-9]/g, "_");
     const dateStr = nowISO().split("T")[0];
     const filename = `${projectName}_BOQ_${dateStr}.xlsx`;
 
     // Write and download
     XLSX.writeFile(workbook, filename);
   };
+
+  const rawProjectName3 = rfqData.projectName;
+  const rawCustomerName2 = rfqData.customerName;
+  const rawGasketType = globalSpecs?.gasketType;
 
   return (
     <div className="space-y-6">
@@ -1415,25 +1504,27 @@ export default function BOQStep(props: {
           </div>
           <div className="text-right">
             <p className="text-sm text-gray-500">Project</p>
-            <p className="text-xl font-bold text-blue-600">{rfqData.projectName || "Untitled"}</p>
+            <p className="text-xl font-bold text-blue-600">{rawProjectName3 || "Untitled"}</p>
           </div>
         </div>
       </div>
-
       {/* Project Info Summary */}
       <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
         <div className="grid grid-cols-2 md:grid-cols-6 gap-4 text-sm">
           <div>
             <p className="text-gray-500 font-medium">Customer</p>
-            <p className="text-gray-900">{rfqData.customerName || "-"}</p>
+            <p className="text-gray-900">{rawCustomerName2 || "-"}</p>
           </div>
           <div>
             <p className="text-gray-500 font-medium">Steel Spec</p>
             <p className="font-medium">
               {(() => {
                 // Get effective steel spec for each item (item override or global fallback)
-                const getEffectiveSteelSpecId = (entry: any) =>
-                  entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+                const getEffectiveSteelSpecId = (entry: any) => {
+                  const rawSteelSpecificationId2 = entry.specs?.steelSpecificationId;
+                  const rawSteelSpecificationId3 = entry.specs?.steelSpecificationId;
+                  return rawSteelSpecificationId3 || globalSpecs?.steelSpecificationId;
+                };
                 const effectiveSpecs = entries
                   .map((entry: any) => getEffectiveSteelSpecId(entry))
                   .filter(Boolean);
@@ -1441,11 +1532,11 @@ export default function BOQStep(props: {
                 // If no specs from entries, try global directly
                 if (effectiveSpecs.length === 0) {
                   if (globalSpecs?.steelSpecificationId) {
-                    return (
-                      masterData?.steelSpecs?.find(
-                        (s: any) => s.id === globalSpecs.steelSpecificationId,
-                      )?.steelSpecName || "-"
-                    );
+                    const rawSteelSpecName2 = masterData?.steelSpecs?.find(
+                      (s: any) => s.id === globalSpecs.steelSpecificationId,
+                    )?.steelSpecName;
+
+                    return rawSteelSpecName2 || "-";
                   }
                   return "-";
                 }
@@ -1453,10 +1544,10 @@ export default function BOQStep(props: {
                 const firstSpec = effectiveSpecs[0];
                 const allSame = effectiveSpecs.every((id: number) => id === firstSpec);
                 if (allSame) {
-                  return (
-                    masterData?.steelSpecs?.find((s: any) => s.id === firstSpec)?.steelSpecName ||
-                    "-"
-                  );
+                  const rawSteelSpecName3 = masterData?.steelSpecs?.find(
+                    (s: any) => s.id === firstSpec,
+                  )?.steelSpecName;
+                  return rawSteelSpecName3 || "-";
                 }
                 return "SEE IN ITEM";
               })()}
@@ -1467,10 +1558,16 @@ export default function BOQStep(props: {
             <p className="text-gray-900">
               {(() => {
                 // Get effective flange standard for each item
-                const getEffectiveFlangeStdId = (entry: any) =>
-                  entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
-                const getEffectivePressureClassId = (entry: any) =>
-                  entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
+                const getEffectiveFlangeStdId = (entry: any) => {
+                  const rawFlangeStandardId5 = entry.specs?.flangeStandardId;
+                  const rawFlangeStandardId6 = entry.specs?.flangeStandardId;
+                  return rawFlangeStandardId6 || globalSpecs?.flangeStandardId;
+                };
+                const getEffectivePressureClassId = (entry: any) => {
+                  const rawFlangePressureClassId2 = entry.specs?.flangePressureClassId;
+                  const rawFlangePressureClassId3 = entry.specs?.flangePressureClassId;
+                  return rawFlangePressureClassId3 || globalSpecs?.flangePressureClassId;
+                };
                 const effectiveFlanges = entries
                   .map((entry: any) => ({
                     stdId: getEffectiveFlangeStdId(entry),
@@ -1481,14 +1578,18 @@ export default function BOQStep(props: {
                 // If no specs from entries, try global directly
                 if (effectiveFlanges.length === 0) {
                   if (globalSpecs?.flangeStandardId) {
-                    const flangeCode =
-                      masterData?.flangeStandards?.find(
-                        (s: any) => s.id === globalSpecs.flangeStandardId,
-                      )?.code || "";
+                    const rawCode = masterData?.flangeStandards?.find(
+                      (s: any) => s.id === globalSpecs.flangeStandardId,
+                    )?.code;
+
+                    const flangeCode = rawCode || "";
+
+                    const rawDesignation = masterData?.pressureClasses?.find(
+                      (p: any) => p.id === globalSpecs.flangePressureClassId,
+                    )?.designation;
+
                     const pressureClass = globalSpecs?.flangePressureClassId
-                      ? masterData?.pressureClasses?.find(
-                          (p: any) => p.id === globalSpecs.flangePressureClassId,
-                        )?.designation || ""
+                      ? rawDesignation || ""
                       : "";
                     return (flangeCode + (pressureClass ? ` ${pressureClass}` : "")).trim() || "-";
                   }
@@ -1500,12 +1601,17 @@ export default function BOQStep(props: {
                   (f: any) => f.stdId === firstFlange.stdId && f.pcId === firstFlange.pcId,
                 );
                 if (allSame) {
-                  const flangeCode =
-                    masterData?.flangeStandards?.find((s: any) => s.id === firstFlange.stdId)
-                      ?.code || "";
-                  const pressureClass =
-                    masterData?.pressureClasses?.find((p: any) => p.id === firstFlange.pcId)
-                      ?.designation || "";
+                  const rawCode2 = masterData?.flangeStandards?.find(
+                    (s: any) => s.id === firstFlange.stdId,
+                  )?.code;
+
+                  const flangeCode = rawCode2 || "";
+
+                  const rawDesignation2 = masterData?.pressureClasses?.find(
+                    (p: any) => p.id === firstFlange.pcId,
+                  )?.designation;
+
+                  const pressureClass = rawDesignation2 || "";
                   return (flangeCode + (pressureClass ? ` ${pressureClass}` : "")).trim() || "-";
                 }
                 return "SEE IN ITEM";
@@ -1518,7 +1624,7 @@ export default function BOQStep(props: {
           </div>
           <div>
             <p className="text-gray-500 font-medium">Gasket Type</p>
-            <p className="text-gray-900">{globalSpecs?.gasketType || "-"}</p>
+            <p className="text-gray-900">{rawGasketType || "-"}</p>
           </div>
           <div>
             <p className="text-gray-500 font-medium">Total Items</p>
@@ -1526,7 +1632,6 @@ export default function BOQStep(props: {
           </div>
         </div>
       </div>
-
       {/* Consolidated BOQ Tables */}
       <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
         <h3 className="text-lg font-semibold text-gray-900 mb-4 border-b border-gray-200 pb-2">
@@ -1617,7 +1722,6 @@ export default function BOQStep(props: {
           </div>
         </div>
       </div>
-
       {/* Notes */}
       <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-sm text-gray-600">
         <p>
@@ -1626,7 +1730,6 @@ export default function BOQStep(props: {
           to each consolidated entry. Weights are estimates based on standard dimensions.
         </p>
       </div>
-
       {/* Navigation & Actions */}
       <div className="flex justify-between items-center gap-4 pt-4 border-t border-gray-200">
         <div className="flex gap-4">
@@ -1778,7 +1881,6 @@ export default function BOQStep(props: {
           )}
         </div>
       </div>
-
       {/* Restriction Popup for unregistered customers */}
       {restrictionPopup && (
         <div className="fixed inset-0 z-50" onClick={() => setRestrictionPopup(null)}>

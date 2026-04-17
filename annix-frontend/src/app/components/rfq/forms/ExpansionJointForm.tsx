@@ -53,29 +53,49 @@ export default function ExpansionJointForm(props: ExpansionJointFormProps) {
   const { data: nbToOdMap = {} } = useNbToOdMap();
   const [calculationResults, setCalculationResults] = useState<any>(null);
 
-  const expansionJointType = entry.specs?.expansionJointType || "bought_in_bellows";
-  const nominalDiameterMm =
-    entry.specs?.nominalDiameterMm || globalSpecs?.nominalDiameterMm || null;
-  const scheduleNumber = entry.specs?.scheduleNumber || globalSpecs?.scheduleNumber || "Sch40";
+  const rawExpansionJointType = entry.specs?.expansionJointType;
+
+  const expansionJointType = rawExpansionJointType || "bought_in_bellows";
+  const rawNominalDiameterMm = entry.specs?.nominalDiameterMm;
+  const nominalDiameterMm = rawNominalDiameterMm || globalSpecs?.nominalDiameterMm || null;
+  const rawScheduleNumber = entry.specs?.scheduleNumber;
+  const scheduleNumber = rawScheduleNumber || globalSpecs?.scheduleNumber || "Sch40";
   const quantity = entry.specs?.quantityValue;
 
-  const bellowsJointType = entry.specs?.bellowsJointType || "axial";
-  const bellowsMaterial = entry.specs?.bellowsMaterial || "stainless_steel_304";
-  const axialMovementMm = entry.specs?.axialMovementMm || null;
-  const lateralMovementMm = entry.specs?.lateralMovementMm || null;
-  const angularMovementDeg = entry.specs?.angularMovementDeg || null;
-  const supplierReference = entry.specs?.supplierReference || "";
-  const catalogNumber = entry.specs?.catalogNumber || "";
-  const unitCostFromSupplier = entry.specs?.unitCostFromSupplier || null;
-  const markupPercentage = entry.specs?.markupPercentage || 15;
+  const rawBellowsJointType = entry.specs?.bellowsJointType;
 
-  const loopType = entry.specs?.loopType || "full_loop";
-  const loopHeightMm = entry.specs?.loopHeightMm || null;
-  const loopWidthMm = entry.specs?.loopWidthMm || null;
-  const endConfiguration = entry.specs?.endConfiguration || "FBE";
+  const bellowsJointType = rawBellowsJointType || "axial";
+  const rawBellowsMaterial = entry.specs?.bellowsMaterial;
+  const bellowsMaterial = rawBellowsMaterial || "stainless_steel_304";
+  const rawAxialMovementMm = entry.specs?.axialMovementMm;
+  const axialMovementMm = rawAxialMovementMm || null;
+  const rawLateralMovementMm = entry.specs?.lateralMovementMm;
+  const lateralMovementMm = rawLateralMovementMm || null;
+  const rawAngularMovementDeg = entry.specs?.angularMovementDeg;
+  const angularMovementDeg = rawAngularMovementDeg || null;
+  const rawSupplierReference = entry.specs?.supplierReference;
+  const supplierReference = rawSupplierReference || "";
+  const rawCatalogNumber = entry.specs?.catalogNumber;
+  const catalogNumber = rawCatalogNumber || "";
+  const rawUnitCostFromSupplier = entry.specs?.unitCostFromSupplier;
+  const unitCostFromSupplier = rawUnitCostFromSupplier || null;
+  const rawMarkupPercentage = entry.specs?.markupPercentage;
+  const markupPercentage = rawMarkupPercentage || 15;
+
+  const rawLoopType = entry.specs?.loopType;
+
+  const loopType = rawLoopType || "full_loop";
+  const rawLoopHeightMm = entry.specs?.loopHeightMm;
+  const loopHeightMm = rawLoopHeightMm || null;
+  const rawLoopWidthMm = entry.specs?.loopWidthMm;
+  const loopWidthMm = rawLoopWidthMm || null;
+  const rawEndConfiguration = entry.specs?.endConfiguration;
+  const endConfiguration = rawEndConfiguration || "FBE";
+
+  const rawNominalDiameterMm2 = nbToOdMap[nominalDiameterMm];
 
   const outsideDiameterMm = nominalDiameterMm
-    ? nbToOdMap[nominalDiameterMm] || nominalDiameterMm * 1.05
+    ? rawNominalDiameterMm2 || nominalDiameterMm * 1.05
     : null;
 
   useEffect(() => {
@@ -175,7 +195,8 @@ export default function ExpansionJointForm(props: ExpansionJointFormProps) {
       Sch80: 8.74,
       Sch160: 14.27,
     };
-    return scheduleMap[schedule] || 6.35;
+    const rawSchedule = scheduleMap[schedule];
+    return rawSchedule || 6.35;
   };
 
   const flangeWeightForNb = (nb: number): number => {
@@ -194,8 +215,11 @@ export default function ExpansionJointForm(props: ExpansionJointFormProps) {
       750: 200.0,
       900: 280.0,
     };
-    return flangeWeights[nb] || nb * 0.15;
+    const rawNb = flangeWeights[nb];
+    return rawNb || nb * 0.15;
   };
+
+  const rawDescription = entry.description;
 
   return (
     <>
@@ -210,7 +234,7 @@ export default function ExpansionJointForm(props: ExpansionJointFormProps) {
                 Item Description *
               </label>
               <textarea
-                value={entry.description || generateItemDescription(entry)}
+                value={rawDescription || generateItemDescription(entry)}
                 onChange={(e) => onUpdateEntry(entry.id, { description: e.target.value })}
                 className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
                 rows={2}
@@ -738,7 +762,6 @@ export default function ExpansionJointForm(props: ExpansionJointFormProps) {
           </div>
         }
       />
-
       <div className="flex justify-end mt-3">
         <button
           type="button"

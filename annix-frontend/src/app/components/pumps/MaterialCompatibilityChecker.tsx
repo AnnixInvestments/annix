@@ -97,11 +97,13 @@ const evaluateMaterialCompatibility = (
   const isAmmonia = fluidLower.includes("ammonia");
 
   if (material.category === "carbon-steel") {
+    const rawConcentration2 = fluid.concentration;
     if (isSeawater) {
       rating = "poor";
       notes.push("Carbon steel corrodes rapidly in seawater");
     } else if (isSulfuricAcid) {
-      if ((fluid.concentration ?? 0) > 80 && fluid.temperatureC < 40) {
+      const rawConcentration = fluid.concentration;
+      if ((rawConcentration || 0) > 80 && fluid.temperatureC < 40) {
         rating = "fair";
         notes.push("Acceptable for concentrated sulfuric acid at low temperatures");
         maxTemperatureC = 40;
@@ -112,7 +114,7 @@ const evaluateMaterialCompatibility = (
     } else if (isHydrochloricAcid) {
       rating = "not-recommended";
       notes.push("HCl causes rapid attack on carbon steel");
-    } else if (isCaustic && (fluid.concentration ?? 0) < 50) {
+    } else if (isCaustic && (rawConcentration2 || 0) < 50) {
       rating = "good";
       notes.push("Suitable for moderate caustic concentrations");
       maxTemperatureC = 80;
@@ -123,6 +125,7 @@ const evaluateMaterialCompatibility = (
   }
 
   if (material.code === "304SS") {
+    const rawConcentration3 = fluid.concentration;
     if (isSeawater || fluid.hasChlorides) {
       rating = "poor";
       notes.push("304SS is susceptible to chloride stress corrosion cracking");
@@ -132,7 +135,7 @@ const evaluateMaterialCompatibility = (
     } else if (isHydrochloricAcid) {
       rating = "not-recommended";
       notes.push("304SS rapidly attacked by HCl");
-    } else if (isNitricAcid && (fluid.concentration ?? 0) < 65) {
+    } else if (isNitricAcid && (rawConcentration3 || 0) < 65) {
       rating = "excellent";
       notes.push("Excellent for dilute nitric acid");
     }
@@ -214,10 +217,11 @@ const evaluateMaterialCompatibility = (
   }
 
   if (material.code === "M400") {
+    const rawConcentration4 = fluid.concentration;
     if (isSeawater) {
       rating = "excellent";
       notes.push("Monel has exceptional seawater resistance");
-    } else if (isHydrochloricAcid && (fluid.concentration ?? 0) < 15) {
+    } else if (isHydrochloricAcid && (rawConcentration4 || 0) < 15) {
       rating = "good";
       notes.push("Good for dilute HCl applications");
     } else if (isSulfuricAcid) {
@@ -230,6 +234,7 @@ const evaluateMaterialCompatibility = (
   }
 
   if (material.code === "Ti") {
+    const rawConcentration5 = fluid.concentration;
     if (isSeawater) {
       rating = "excellent";
       notes.push("Titanium provides the best seawater resistance");
@@ -239,7 +244,7 @@ const evaluateMaterialCompatibility = (
     } else if (isNitricAcid) {
       rating = "excellent";
       notes.push("Excellent nitric acid resistance");
-    } else if (isSulfuricAcid && (fluid.concentration ?? 0) > 80) {
+    } else if (isSulfuricAcid && (rawConcentration5 || 0) > 80) {
       rating = "poor";
       notes.push("Concentrated sulfuric acid attacks titanium");
     } else if (isCaustic) {
@@ -330,10 +335,10 @@ export function MaterialCompatibilityChecker(props: MaterialCompatibilityChecker
       warnings.push("Sour service - materials must comply with NACE MR0175/ISO 15156");
     }
 
+    const rawMaterial = ratings.find((r) => r.rating === "excellent")?.material;
+
     const recommendedMaterial =
-      ratings.find((r) => r.rating === "excellent")?.material ||
-      ratings.find((r) => r.rating === "good")?.material ||
-      ratings[0].material;
+      rawMaterial || ratings.find((r) => r.rating === "good")?.material || ratings[0].material;
 
     const compatResult: CompatibilityResult = {
       fluid,
@@ -377,6 +382,12 @@ export function MaterialCompatibilityChecker(props: MaterialCompatibilityChecker
     },
   };
 
+  const rawConcentration6 = fluid.concentration;
+  const rawPh = fluid.ph;
+  const rawHasChlorides = fluid.hasChlorides;
+  const rawHasH2S = fluid.hasH2S;
+  const rawHasCO2 = fluid.hasCO2;
+
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200">
       <div className="p-4 border-b border-gray-200">
@@ -385,7 +396,6 @@ export function MaterialCompatibilityChecker(props: MaterialCompatibilityChecker
           Evaluate pump material suitability for your application
         </p>
       </div>
-
       <div className="p-4 space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
@@ -469,7 +479,7 @@ export function MaterialCompatibilityChecker(props: MaterialCompatibilityChecker
             </label>
             <input
               type="number"
-              value={fluid.concentration ?? ""}
+              value={rawConcentration6 || ""}
               onChange={(e) =>
                 setFluid((prev) => ({
                   ...prev,
@@ -485,7 +495,7 @@ export function MaterialCompatibilityChecker(props: MaterialCompatibilityChecker
             <label className="block text-sm font-medium text-gray-700 mb-1">pH</label>
             <input
               type="number"
-              value={fluid.ph ?? ""}
+              value={rawPh || ""}
               onChange={(e) =>
                 setFluid((prev) => ({
                   ...prev,
@@ -523,7 +533,7 @@ export function MaterialCompatibilityChecker(props: MaterialCompatibilityChecker
               <label className="flex items-center gap-2">
                 <input
                   type="checkbox"
-                  checked={fluid.hasChlorides ?? false}
+                  checked={rawHasChlorides || false}
                   onChange={(e) =>
                     setFluid((prev) => ({ ...prev, hasChlorides: e.target.checked }))
                   }
@@ -534,7 +544,7 @@ export function MaterialCompatibilityChecker(props: MaterialCompatibilityChecker
               <label className="flex items-center gap-2">
                 <input
                   type="checkbox"
-                  checked={fluid.hasH2S ?? false}
+                  checked={rawHasH2S || false}
                   onChange={(e) => setFluid((prev) => ({ ...prev, hasH2S: e.target.checked }))}
                   className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                 />
@@ -543,7 +553,7 @@ export function MaterialCompatibilityChecker(props: MaterialCompatibilityChecker
               <label className="flex items-center gap-2">
                 <input
                   type="checkbox"
-                  checked={fluid.hasCO2 ?? false}
+                  checked={rawHasCO2 || false}
                   onChange={(e) => setFluid((prev) => ({ ...prev, hasCO2: e.target.checked }))}
                   className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                 />
@@ -553,7 +563,6 @@ export function MaterialCompatibilityChecker(props: MaterialCompatibilityChecker
           </div>
         )}
       </div>
-
       {result && (
         <div className="border-t border-gray-200 p-4 space-y-4">
           {result.warnings.length > 0 && (

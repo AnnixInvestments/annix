@@ -59,7 +59,8 @@ export default function SageExportModal(props: SageExportModalProps) {
     formatPreview,
     extractCount,
   } = props;
-  const accent = ACCENT_CLASSES[props.accentColor || "orange"];
+  const rawAccentColor = props.accentColor;
+  const accent = ACCENT_CLASSES[rawAccentColor || "orange"];
   const defaultDateTo = now().toISODate() || "";
   const defaultDateFrom = now().minus({ days: 30 }).toISODate() || "";
 

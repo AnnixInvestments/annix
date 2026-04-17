@@ -20,10 +20,13 @@ interface SystemCurveOverlayProps {
 
 export function SystemCurveOverlay(props: SystemCurveOverlayProps) {
   const { pumpCurve, initialSystemParams, onOperatingPointChange } = props;
+  const rawStaticHeadM = initialSystemParams?.staticHeadM;
+  const rawFrictionLossAtDesignFlowM = initialSystemParams?.frictionLossAtDesignFlowM;
+  const rawDesignFlowM3h = initialSystemParams?.designFlowM3h;
   const [systemParams, setSystemParams] = useState<SystemCurveParams>({
-    staticHeadM: initialSystemParams?.staticHeadM || 10,
-    frictionLossAtDesignFlowM: initialSystemParams?.frictionLossAtDesignFlowM || 10,
-    designFlowM3h: initialSystemParams?.designFlowM3h || pumpCurve.bestEfficiencyPoint.flowM3h,
+    staticHeadM: rawStaticHeadM || 10,
+    frictionLossAtDesignFlowM: rawFrictionLossAtDesignFlowM || 10,
+    designFlowM3h: rawDesignFlowM3h || pumpCurve.bestEfficiencyPoint.flowM3h,
   });
 
   const [showSystemCurve, setShowSystemCurve] = useState(true);

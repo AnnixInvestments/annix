@@ -72,7 +72,8 @@ const normalizeFittingTypeForApi = (type?: string | null) => {
     SHORT_REDUCING_TEE: "UNEQUAL_SHORT_TEE",
     GUSSET_REDUCING_TEE: "UNEQUAL_GUSSET_TEE",
   };
-  return map[type] || type;
+  const rawType = map[type];
+  return rawType || type;
 };
 
 /**
@@ -145,7 +146,8 @@ const calculateLocalPipeResult = (
   flangeStandard?: string,
   flangeTypeCode?: string,
 ): any => {
-  const outsideDiameterMm = odMap[nominalBoreMm] || nominalBoreMm * 1.05;
+  const rawNominalBoreMm = odMap[nominalBoreMm];
+  const outsideDiameterMm = rawNominalBoreMm || nominalBoreMm * 1.05;
 
   // Weight per meter formula: ((OD - WT) * WT) * 0.02466
   const pipeWeightPerMeter = (outsideDiameterMm - wallThicknessMm) * wallThicknessMm * 0.02466;
@@ -580,14 +582,18 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
     if (!isLoadingDraft && currentDraftId && !initialDraftDataRef.current) {
       // Wait a bit for React state to settle after restoreFromDraft
       const timer = setTimeout(() => {
+        const rawItems = rfqData.items;
+        const rawStraightPipeEntries = rfqData.straightPipeEntries;
+        const rawGlobalSpecs = rfqData.globalSpecs;
+        const rawRequiredProducts = rfqData.requiredProducts;
         initialDraftDataRef.current = JSON.stringify({
-          items: rfqData.items || [],
-          straightPipeEntries: rfqData.straightPipeEntries || [],
-          globalSpecs: rfqData.globalSpecs || {},
+          items: rawItems || [],
+          straightPipeEntries: rawStraightPipeEntries || [],
+          globalSpecs: rawGlobalSpecs || {},
           projectType: rfqData.projectType,
           description: rfqData.description,
           notes: rfqData.notes,
-          requiredProducts: rfqData.requiredProducts || [],
+          requiredProducts: rawRequiredProducts || [],
         });
         log.info("📸 Captured initial draft state for dirty checking");
       }, 500);
@@ -789,8 +795,10 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
     if (isLoadingDraft) return;
     if (!hasCheckedLocalDraft) return;
 
+    const rawCustomerEmail = rfqData.customerEmail;
+
     const hasContent =
-      rfqData.customerEmail ||
+      rawCustomerEmail ||
       rfqData.projectName ||
       rfqData.items.length > 0 ||
       Object.keys(rfqData.globalSpecs).length > 0;
@@ -1064,8 +1072,10 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
       // Primary sort by bar rating
       const ratingDiff = a.barRating - b.barRating;
       if (Math.abs(ratingDiff) > 0.01) return ratingDiff;
+      const rawDesignation = a.designation;
+      const rawDesignation2 = b.designation;
       // Secondary sort by designation for consistency
-      return (a.designation || "").localeCompare(b.designation || "");
+      return (rawDesignation || "").localeCompare(rawDesignation2 || "");
     });
 
     // Log all available classes for debugging
@@ -1092,7 +1102,8 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
   // Fallback pressure classes by flange standard - IDs must match database
   const getFallbackPressureClasses = (standardId: number) => {
     const standard = masterData.flangeStandards?.find((s: any) => s.id === standardId);
-    const code = standard?.code || "";
+    const rawCode = standard?.code;
+    const code = rawCode || "";
 
     // BS 4504 pressure classes (database IDs 1-8)
     if (code.includes("BS 4504")) {
@@ -1266,9 +1277,10 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
       const classes = await masterDataApi.getFlangePressureClassesByStandard(standardId);
       console.log("[PT-DEBUG] Fetched classes:", classes);
 
+      const rawCode2 = masterData.flangeStandards?.find((s: any) => s.id === standardId)?.code;
+
       // Log what we got from the API
-      const standardName =
-        masterData.flangeStandards?.find((s: any) => s.id === standardId)?.code || standardId;
+      const standardName = rawCode2 || standardId;
       log.debug(
         `Fetched ${classes.length} pressure classes for ${standardName}:`,
         classes.map((c: any) => `${c.designation}(id=${c.id})`).join(", "),
@@ -1280,7 +1292,8 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
       // Auto-select recommended pressure class if working pressure is available
       if (workingPressureBar && classes.length > 0) {
         const standard = masterData.flangeStandards?.find((s: any) => s.id === standardId);
-        const standardCode = standard?.code || String(standardId);
+        const rawCode3 = standard?.code;
+        const standardCode = rawCode3 || String(standardId);
         const isBs4504 = standardCode === "BS 4504" || standardCode.includes("BS 4504");
         const isSabs1123 = standardCode === "SABS 1123" || standardCode.includes("SABS 1123");
 
@@ -1405,7 +1418,8 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
       // Auto-select recommended from fallback classes with temperature derating
       if (workingPressureBar && fallbackClasses.length > 0) {
         const standard = masterData.flangeStandards?.find((s: any) => s.id === standardId);
-        const standardCode = standard?.code || String(standardId);
+        const rawCode4 = standard?.code;
+        const standardCode = rawCode4 || String(standardId);
         const recommended = getRecommendedPressureClass(
           workingPressureBar,
           fallbackClasses,
@@ -1463,7 +1477,8 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
 
         // Find the nominal outside diameter ID from nominalBoreMm
         const nominalBore = masterData.nominalBores?.find((nb: any) => {
-          const nbValue = nb.nominal_diameter_mm ?? nb.nominalDiameterMm;
+          const rawNominal_diameter_mm = nb.nominal_diameter_mm;
+          const nbValue = rawNominal_diameter_mm || nb.nominalDiameterMm;
           return nbValue === nominalBoreMm || nbValue === Number(nominalBoreMm);
         });
 
@@ -1478,7 +1493,9 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
 
         const dimensions = await masterDataApi.getPipeDimensionsAll(steelSpecId, nominalBore.id);
 
-        log.debug(`[fetchAvailableSchedules] Got ${dimensions?.length || 0} dimensions from API`);
+        const rawLength = dimensions?.length;
+
+        log.debug(`[fetchAvailableSchedules] Got ${rawLength || 0} dimensions from API`);
 
         if (dimensions && dimensions.length > 0) {
           setAvailableSchedulesMap((prev) => ({
@@ -1519,22 +1536,27 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
   // Auto-calculate when entry specifications change (with debounce)
   useEffect(() => {
     const calculateEntry = async (entry: StraightPipeEntry) => {
+      const rawWorkingPressureBar = entry.specs.workingPressureBar;
       // Get working pressure from entry specs or global specs
-      const workingPressureBar =
-        entry.specs.workingPressureBar || rfqData.globalSpecs?.workingPressureBar;
+      const workingPressureBar = rawWorkingPressureBar || rfqData.globalSpecs?.workingPressureBar;
+      const rawWorkingTemperatureC = entry.specs.workingTemperatureC;
       const workingTemperatureC =
-        entry.specs.workingTemperatureC || rfqData.globalSpecs?.workingTemperatureC;
+        rawWorkingTemperatureC || rfqData.globalSpecs?.workingTemperatureC;
+      const rawSteelSpecificationId = entry.specs.steelSpecificationId;
       const steelSpecificationId =
-        entry.specs.steelSpecificationId || rfqData.globalSpecs?.steelSpecificationId;
-      const flangeStandardId =
-        entry.specs.flangeStandardId || rfqData.globalSpecs?.flangeStandardId;
+        rawSteelSpecificationId || rfqData.globalSpecs?.steelSpecificationId;
+      const rawFlangeStandardId = entry.specs.flangeStandardId;
+      const flangeStandardId = rawFlangeStandardId || rfqData.globalSpecs?.flangeStandardId;
+      const rawFlangePressureClassId = entry.specs.flangePressureClassId;
       const flangePressureClassId =
-        entry.specs.flangePressureClassId || rfqData.globalSpecs?.flangePressureClassId;
+        rawFlangePressureClassId || rfqData.globalSpecs?.flangePressureClassId;
+
+      const rawScheduleNumber = entry.specs.scheduleNumber;
 
       // Only auto-calculate if all required fields are present
       const hasRequiredFields =
         entry.specs.nominalBoreMm &&
-        (entry.specs.scheduleNumber || entry.specs.wallThicknessMm) &&
+        (rawScheduleNumber || entry.specs.wallThicknessMm) &&
         entry.specs.individualPipeLength &&
         entry.specs.quantityValue &&
         workingPressureBar;
@@ -1571,33 +1593,37 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
         const result = await rfqApi.calculate(calculationData);
         log.debug("✅ Calculation result:", result);
 
+        const rawDesignation3 = masterData.pressureClasses?.find(
+          (pc: { id: number; designation: string }) => pc.id === flangePressureClassId,
+        )?.designation;
+
         // Recalculate flange weight based on actual pressure class used (may be overridden)
         // Default to PN16 if no pressure class is set
-        const basePressureClassDesignation =
-          masterData.pressureClasses?.find(
-            (pc: { id: number; designation: string }) => pc.id === flangePressureClassId,
-          )?.designation || "PN16";
+        const basePressureClassDesignation = rawDesignation3 || "PN16";
         const flangeStandardCode = masterData.flangeStandards?.find(
           (s: any) => s.id === flangeStandardId,
         )?.code;
-        const flangeTypeCode = entry.specs.flangeTypeCode || rfqData.globalSpecs?.flangeTypeCode;
+        const rawFlangeTypeCode = entry.specs.flangeTypeCode;
+        const flangeTypeCode = rawFlangeTypeCode || rfqData.globalSpecs?.flangeTypeCode;
         const pressureClassDesignation = getPressureClassWithFlangeType(
           basePressureClassDesignation,
           flangeTypeCode,
           flangeStandardCode,
         );
 
+        const rawPipeEndConfiguration = entry.specs.pipeEndConfiguration;
+
         // Calculate number of flanges from pipe configuration if not in result
-        const pipeEndConfig = entry.specs.pipeEndConfiguration || "PE";
+        const pipeEndConfig = rawPipeEndConfiguration || "PE";
         const physicalFlangesPerPipe = getPhysicalFlangeCount(pipeEndConfig);
+        const rawCalculatedPipeCount = result?.calculatedPipeCount;
+        const rawQuantityValue = entry.specs.quantityValue;
+        const rawIndividualPipeLength = entry.specs.individualPipeLength;
         const calculatedPipeCount =
-          result?.calculatedPipeCount ||
-          Math.ceil(
-            (entry.specs.quantityValue || 1) /
-              (entry.specs.individualPipeLength || DEFAULT_PIPE_LENGTH_M),
-          );
-        const numberOfFlanges =
-          result?.numberOfFlanges || physicalFlangesPerPipe * calculatedPipeCount;
+          rawCalculatedPipeCount ||
+          Math.ceil((rawQuantityValue || 1) / (rawIndividualPipeLength || DEFAULT_PIPE_LENGTH_M));
+        const rawNumberOfFlanges = result?.numberOfFlanges;
+        const numberOfFlanges = rawNumberOfFlanges || physicalFlangesPerPipe * calculatedPipeCount;
 
         if (result && numberOfFlanges > 0) {
           let flangeWeightPerUnit = flangeWeightLookup(
@@ -1626,7 +1652,8 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
           }
 
           const totalFlangeWeight = numberOfFlanges * flangeWeightPerUnit;
-          const totalSystemWeight = (result.totalPipeWeight || 0) + totalFlangeWeight;
+          const rawTotalPipeWeight = result.totalPipeWeight;
+          const totalSystemWeight = (rawTotalPipeWeight || 0) + totalFlangeWeight;
 
           log.debug(
             `🔧 Recalculating flange weight for ${pressureClassDesignation}: ${flangeWeightPerUnit}kg/flange × ${numberOfFlanges} = ${totalFlangeWeight}kg`,
@@ -1642,10 +1669,11 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
             flangeSpecs: flangeSpecData,
           } as any);
         } else {
+          const rawTotalPipeWeight2 = result.totalPipeWeight;
           // No flanges - totalSystemWeight is just pipe weight
           updateEntryCalculation(entry.id, {
             ...result,
-            totalSystemWeight: result.totalPipeWeight || 0,
+            totalSystemWeight: rawTotalPipeWeight2 || 0,
             numberOfFlanges: 0,
             totalFlangeWeight: 0,
             flangeWeightPerUnit: 0,
@@ -1664,23 +1692,29 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
             entry.specs.nominalBoreMm,
             "NB",
           );
-          const wallThickness = entry.specs.wallThicknessMm || 6.35; // Default wall thickness
+          const rawWallThicknessMm = entry.specs.wallThicknessMm;
+          const wallThickness = rawWallThicknessMm || 6.35; // Default wall thickness
+
+          const rawDesignation4 = masterData.pressureClasses?.find(
+            (pc: { id: number; designation: string }) => pc.id === flangePressureClassId,
+          )?.designation;
 
           // Get pressure class designation for accurate flange weights, default to PN16
           // Combine with flange type code for SABS 1123 / BS 4504 standards
-          const basePressureClassDesignation =
-            masterData.pressureClasses?.find(
-              (pc: { id: number; designation: string }) => pc.id === flangePressureClassId,
-            )?.designation || "PN16";
+          const basePressureClassDesignation = rawDesignation4 || "PN16";
           const flangeStandardCode = masterData.flangeStandards?.find(
             (s: any) => s.id === flangeStandardId,
           )?.code;
-          const flangeTypeCode = entry.specs.flangeTypeCode || rfqData.globalSpecs?.flangeTypeCode;
+          const rawFlangeTypeCode2 = entry.specs.flangeTypeCode;
+          const flangeTypeCode = rawFlangeTypeCode2 || rfqData.globalSpecs?.flangeTypeCode;
           const pressureClassDesignation = getPressureClassWithFlangeType(
             basePressureClassDesignation,
             flangeTypeCode,
             flangeStandardCode,
           );
+
+          const rawQuantityType = entry.specs.quantityType;
+          const rawPipeEndConfiguration2 = entry.specs.pipeEndConfiguration;
 
           const localResult = calculateLocalPipeResult(
             nbToOdMap,
@@ -1689,8 +1723,8 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
             wallThickness,
             entry.specs.individualPipeLength!,
             entry.specs.quantityValue!,
-            entry.specs.quantityType || "number_of_pipes",
-            entry.specs.pipeEndConfiguration || "PE",
+            rawQuantityType || "number_of_pipes",
+            rawPipeEndConfiguration2 || "PE",
             pressureClassDesignation,
             flangeStandardCode,
             flangeTypeCode,
@@ -1702,21 +1736,27 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
 
         // For any other error, also use local calculation fallback
         log.debug("⚠️ API error - Using local calculation fallback:", errorMessage);
-        const wallThickness = entry.specs.wallThicknessMm || 6.35;
+        const rawWallThicknessMm2 = entry.specs.wallThicknessMm;
+        const wallThickness = rawWallThicknessMm2 || 6.35;
 
-        const basePressureClassDesignation =
-          masterData.pressureClasses?.find(
-            (pc: { id: number; designation: string }) => pc.id === flangePressureClassId,
-          )?.designation || "PN16";
+        const rawDesignation5 = masterData.pressureClasses?.find(
+          (pc: { id: number; designation: string }) => pc.id === flangePressureClassId,
+        )?.designation;
+
+        const basePressureClassDesignation = rawDesignation5 || "PN16";
         const flangeStandardCode = masterData.flangeStandards?.find(
           (s: any) => s.id === flangeStandardId,
         )?.code;
-        const flangeTypeCode = entry.specs.flangeTypeCode || rfqData.globalSpecs?.flangeTypeCode;
+        const rawFlangeTypeCode3 = entry.specs.flangeTypeCode;
+        const flangeTypeCode = rawFlangeTypeCode3 || rfqData.globalSpecs?.flangeTypeCode;
         const pressureClassDesignation = getPressureClassWithFlangeType(
           basePressureClassDesignation,
           flangeTypeCode,
           flangeStandardCode,
         );
+
+        const rawQuantityType2 = entry.specs.quantityType;
+        const rawPipeEndConfiguration3 = entry.specs.pipeEndConfiguration;
 
         const localResult = calculateLocalPipeResult(
           nbToOdMap,
@@ -1725,8 +1765,8 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
           wallThickness,
           entry.specs.individualPipeLength!,
           entry.specs.quantityValue!,
-          entry.specs.quantityType || "number_of_pipes",
-          entry.specs.pipeEndConfiguration || "PE",
+          rawQuantityType2 || "number_of_pipes",
+          rawPipeEndConfiguration3 || "PE",
           pressureClassDesignation,
           flangeStandardCode,
           flangeTypeCode,
@@ -1992,21 +2032,22 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
     try {
       for (const entry of currentRfqData.straightPipeEntries) {
         try {
+          const rawWorkingPressureBar2 = entry.specs.workingPressureBar;
           // Merge entry specs with global specs (same as auto-calculate)
           const workingPressureBar =
-            entry.specs.workingPressureBar || currentRfqData.globalSpecs?.workingPressureBar || 10;
+            rawWorkingPressureBar2 || currentRfqData.globalSpecs?.workingPressureBar || 10;
+          const rawWorkingTemperatureC2 = entry.specs.workingTemperatureC;
           const workingTemperatureC =
-            entry.specs.workingTemperatureC ||
-            currentRfqData.globalSpecs?.workingTemperatureC ||
-            20;
+            rawWorkingTemperatureC2 || currentRfqData.globalSpecs?.workingTemperatureC || 20;
+          const rawSteelSpecificationId2 = entry.specs.steelSpecificationId;
           const steelSpecificationId =
-            entry.specs.steelSpecificationId ||
-            currentRfqData.globalSpecs?.steelSpecificationId ||
-            2;
+            rawSteelSpecificationId2 || currentRfqData.globalSpecs?.steelSpecificationId || 2;
+          const rawFlangeStandardId2 = entry.specs.flangeStandardId;
           const flangeStandardId =
-            entry.specs.flangeStandardId || currentRfqData.globalSpecs?.flangeStandardId || 1;
+            rawFlangeStandardId2 || currentRfqData.globalSpecs?.flangeStandardId || 1;
+          const rawFlangePressureClassId2 = entry.specs.flangePressureClassId;
           const flangePressureClassId =
-            entry.specs.flangePressureClassId || currentRfqData.globalSpecs?.flangePressureClassId;
+            rawFlangePressureClassId2 || currentRfqData.globalSpecs?.flangePressureClassId;
 
           const calculationData = {
             ...entry.specs,
@@ -2021,36 +2062,45 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
           const result = await rfqApi.calculate(calculationData);
           log.debug("✅ Manual calculation result:", result);
 
+          const rawFlangePressureClassId3 = entry.specs.flangePressureClassId;
+
           // Recalculate flange weight for accurate values, default to PN16
           // Combine with flange type code for SABS 1123 / BS 4504 standards
           const entryPressureClassId =
-            entry.specs.flangePressureClassId || currentRfqData.globalSpecs?.flangePressureClassId;
-          const basePressureClassDesignation =
-            masterData.pressureClasses?.find(
-              (pc: { id: number; designation: string }) => pc.id === entryPressureClassId,
-            )?.designation || "PN16";
+            rawFlangePressureClassId3 || currentRfqData.globalSpecs?.flangePressureClassId;
+
+          const rawDesignation6 = masterData.pressureClasses?.find(
+            (pc: { id: number; designation: string }) => pc.id === entryPressureClassId,
+          )?.designation;
+
+          const basePressureClassDesignation = rawDesignation6 || "PN16";
           const flangeStandardCode = masterData.flangeStandards?.find(
             (s: any) => s.id === flangeStandardId,
           )?.code;
-          const flangeTypeCode =
-            entry.specs.flangeTypeCode || currentRfqData.globalSpecs?.flangeTypeCode;
+          const rawFlangeTypeCode4 = entry.specs.flangeTypeCode;
+          const flangeTypeCode = rawFlangeTypeCode4 || currentRfqData.globalSpecs?.flangeTypeCode;
           const pressureClassDesignation = getPressureClassWithFlangeType(
             basePressureClassDesignation,
             flangeTypeCode,
             flangeStandardCode,
           );
 
+          const rawPipeEndConfiguration4 = entry.specs.pipeEndConfiguration;
+
           // Calculate number of flanges from pipe configuration if not in result
-          const pipeEndConfig = entry.specs.pipeEndConfiguration || "PE";
+          const pipeEndConfig = rawPipeEndConfiguration4 || "PE";
           const physicalFlangesPerPipe = getPhysicalFlangeCount(pipeEndConfig);
+          const rawCalculatedPipeCount2 = result?.calculatedPipeCount;
+          const rawQuantityValue2 = entry.specs.quantityValue;
+          const rawIndividualPipeLength2 = entry.specs.individualPipeLength;
           const calculatedPipeCount =
-            result?.calculatedPipeCount ||
+            rawCalculatedPipeCount2 ||
             Math.ceil(
-              (entry.specs.quantityValue || 1) /
-                (entry.specs.individualPipeLength || DEFAULT_PIPE_LENGTH_M),
+              (rawQuantityValue2 || 1) / (rawIndividualPipeLength2 || DEFAULT_PIPE_LENGTH_M),
             );
+          const rawNumberOfFlanges2 = result?.numberOfFlanges;
           const numberOfFlanges =
-            result?.numberOfFlanges || physicalFlangesPerPipe * calculatedPipeCount;
+            rawNumberOfFlanges2 || physicalFlangesPerPipe * calculatedPipeCount;
 
           if (result && numberOfFlanges > 0) {
             let flangeWeightPerUnit = flangeWeightLookup(
@@ -2081,7 +2131,8 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
             }
 
             const totalFlangeWeight = numberOfFlanges * flangeWeightPerUnit;
-            const totalSystemWeight = (result.totalPipeWeight || 0) + totalFlangeWeight;
+            const rawTotalPipeWeight3 = result.totalPipeWeight;
+            const totalSystemWeight = (rawTotalPipeWeight3 || 0) + totalFlangeWeight;
 
             log.debug(
               `🔧 Manual calc flange weight for ${pressureClassDesignation}: ${flangeWeightPerUnit}kg/flange × ${numberOfFlanges} = ${totalFlangeWeight}kg`,
@@ -2097,10 +2148,11 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
               flangeSpecs: flangeSpecData,
             } as any);
           } else {
+            const rawTotalPipeWeight4 = result.totalPipeWeight;
             // No flanges - totalSystemWeight is just pipe weight
             updateEntryCalculation(entry.id, {
               ...result,
-              totalSystemWeight: result.totalPipeWeight || 0,
+              totalSystemWeight: rawTotalPipeWeight4 || 0,
               numberOfFlanges: 0,
               totalFlangeWeight: 0,
               flangeWeightPerUnit: 0,
@@ -2108,7 +2160,8 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
           }
         } catch (error: any) {
           log.error(`Calculation error for entry ${entry.id}:`, error);
-          const errorMessage = error.message || String(error);
+          const rawMessage = error.message;
+          const errorMessage = rawMessage || String(error);
 
           // If API returns 404, use local calculation fallback
           if (
@@ -2117,29 +2170,37 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
             errorMessage.includes("not available")
           ) {
             log.debug("⚠️ API 404 - Using local calculation fallback for entry:", entry.id);
-            const wallThickness = entry.specs.wallThicknessMm || 6.35;
+            const rawWallThicknessMm3 = entry.specs.wallThicknessMm;
+            const wallThickness = rawWallThicknessMm3 || 6.35;
+
+            const rawFlangePressureClassId4 = entry.specs.flangePressureClassId;
 
             // Get pressure class designation for accurate flange weights, default to PN16
             // Combine with flange type code for SABS 1123 / BS 4504 standards
             const entryPressureClassId =
-              entry.specs.flangePressureClassId ||
-              currentRfqData.globalSpecs?.flangePressureClassId;
+              rawFlangePressureClassId4 || currentRfqData.globalSpecs?.flangePressureClassId;
+            const rawFlangeStandardId3 = entry.specs.flangeStandardId;
             const entryFlangeStandardId =
-              entry.specs.flangeStandardId || currentRfqData.globalSpecs?.flangeStandardId;
-            const basePressureClassDesignation =
-              masterData.pressureClasses?.find(
-                (pc: { id: number; designation: string }) => pc.id === entryPressureClassId,
-              )?.designation || "PN16";
+              rawFlangeStandardId3 || currentRfqData.globalSpecs?.flangeStandardId;
+
+            const rawDesignation7 = masterData.pressureClasses?.find(
+              (pc: { id: number; designation: string }) => pc.id === entryPressureClassId,
+            )?.designation;
+
+            const basePressureClassDesignation = rawDesignation7 || "PN16";
             const flangeStandardCode = masterData.flangeStandards?.find(
               (s: any) => s.id === entryFlangeStandardId,
             )?.code;
-            const flangeTypeCode =
-              entry.specs.flangeTypeCode || currentRfqData.globalSpecs?.flangeTypeCode;
+            const rawFlangeTypeCode5 = entry.specs.flangeTypeCode;
+            const flangeTypeCode = rawFlangeTypeCode5 || currentRfqData.globalSpecs?.flangeTypeCode;
             const pressureClassDesignation = getPressureClassWithFlangeType(
               basePressureClassDesignation,
               flangeTypeCode,
               flangeStandardCode,
             );
+
+            const rawQuantityType3 = entry.specs.quantityType;
+            const rawPipeEndConfiguration5 = entry.specs.pipeEndConfiguration;
 
             const localResult = calculateLocalPipeResult(
               nbToOdMap,
@@ -2148,8 +2209,8 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
               wallThickness,
               entry.specs.individualPipeLength!,
               entry.specs.quantityValue!,
-              entry.specs.quantityType || "number_of_pipes",
-              entry.specs.pipeEndConfiguration || "PE",
+              rawQuantityType3 || "number_of_pipes",
+              rawPipeEndConfiguration5 || "PE",
               pressureClassDesignation,
               flangeStandardCode,
               flangeTypeCode,
@@ -2196,7 +2257,8 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
         if (!entry || entry.itemType !== "bend") return;
 
         const bendEntry = entry;
-        const bendDegrees = bendEntry.specs?.bendDegrees || 90;
+        const rawBendDegrees = bendEntry.specs?.bendDegrees;
+        const bendDegrees = rawBendDegrees || 90;
 
         // API requires minimum 15° - for smaller angles, use local calculation
         if (bendDegrees < 15) {
@@ -2204,22 +2266,31 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
             `Bend angle ${bendDegrees}° is below API minimum (15°), using local calculation`,
           );
 
+          const rawNominalBoreMm2 = bendEntry.specs?.nominalBoreMm;
+
           // Local calculation for small angle bends
-          const nominalBoreMm = bendEntry.specs?.nominalBoreMm || 40;
-          const scheduleNumber = bendEntry.specs?.scheduleNumber || "40";
-          const quantity = bendEntry.specs?.quantityValue || 1;
-          const centerToFace = bendEntry.specs?.centerToFaceMm || 100;
+          const nominalBoreMm = rawNominalBoreMm2 || 40;
+          const rawScheduleNumber2 = bendEntry.specs?.scheduleNumber;
+          const scheduleNumber = rawScheduleNumber2 || "40";
+          const rawQuantityValue3 = bendEntry.specs?.quantityValue;
+          const quantity = rawQuantityValue3 || 1;
+          const rawCenterToFaceMm = bendEntry.specs?.centerToFaceMm;
+          const centerToFace = rawCenterToFaceMm || 100;
+
+          const rawSteelSpecificationId3 = bendEntry.specs?.steelSpecificationId;
 
           // Get wall thickness from fallback schedules - use correct schedule list based on steel spec
           const bendEffectiveSpecId =
-            bendEntry.specs?.steelSpecificationId ||
-            rfqDataRef.current.globalSpecs?.steelSpecificationId;
+            rawSteelSpecificationId3 || rfqDataRef.current.globalSpecs?.steelSpecificationId;
           const schedules = scheduleListForSpec(nominalBoreMm, bendEffectiveSpecId);
           const scheduleData = schedules.find((s: any) => s.scheduleDesignation === scheduleNumber);
-          const wallThickness = scheduleData?.wallThicknessMm || 6.35;
+          const rawWallThicknessMm4 = scheduleData?.wallThicknessMm;
+          const wallThickness = rawWallThicknessMm4 || 6.35;
+
+          const rawNominalBoreMm3 = nbToOdMap[nominalBoreMm];
 
           // Calculate OD from NB
-          const od = nbToOdMap[nominalBoreMm] || nominalBoreMm * 1.05;
+          const od = rawNominalBoreMm3 || nominalBoreMm * 1.05;
           const id = od - 2 * wallThickness;
 
           // Estimate bend arc length based on angle and C/F
@@ -2250,35 +2321,40 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
 
         // Use item-level flange specs if set, otherwise use global
         const useGlobal = bendEntry.specs?.useGlobalFlangeSpecs !== false;
+        const rawFlangeStandardId4 = bendEntry.specs?.flangeStandardId;
         const flangeStandardId = useGlobal
-          ? bendEntry.specs?.flangeStandardId || rfqDataRef.current.globalSpecs?.flangeStandardId
+          ? rawFlangeStandardId4 || rfqDataRef.current.globalSpecs?.flangeStandardId
           : bendEntry.specs?.flangeStandardId;
+        const rawFlangePressureClassId5 = bendEntry.specs?.flangePressureClassId;
         const flangePressureClassId = useGlobal
-          ? bendEntry.specs?.flangePressureClassId ||
-            rfqDataRef.current.globalSpecs?.flangePressureClassId
+          ? rawFlangePressureClassId5 || rfqDataRef.current.globalSpecs?.flangePressureClassId
           : bendEntry.specs?.flangePressureClassId;
 
+        const rawNominalBoreMm4 = bendEntry.specs?.nominalBoreMm;
+        const rawScheduleNumber3 = bendEntry.specs?.scheduleNumber;
+        const rawBendType = bendEntry.specs?.bendType;
+        const rawQuantityValue4 = bendEntry.specs?.quantityValue;
+        const rawNumberOfTangents = bendEntry.specs?.numberOfTangents;
+        const rawTangentLengths = bendEntry.specs?.tangentLengths;
+        const rawWorkingPressureBar3 = bendEntry.specs?.workingPressureBar;
+        const rawWorkingTemperatureC3 = bendEntry.specs?.workingTemperatureC;
+        const rawSteelSpecificationId4 = bendEntry.specs?.steelSpecificationId;
+
         const calculationData = {
-          nominalBoreMm: bendEntry.specs?.nominalBoreMm || 40,
-          scheduleNumber: bendEntry.specs?.scheduleNumber || "40",
+          nominalBoreMm: rawNominalBoreMm4 || 40,
+          scheduleNumber: rawScheduleNumber3 || "40",
           bendDegrees: bendDegrees,
-          bendType: bendEntry.specs?.bendType || "1.5D",
-          quantityValue: bendEntry.specs?.quantityValue || 1,
+          bendType: rawBendType || "1.5D",
+          quantityValue: rawQuantityValue4 || 1,
           quantityType: "number_of_items" as const,
-          numberOfTangents: bendEntry.specs?.numberOfTangents || 0,
-          tangentLengths: bendEntry.specs?.tangentLengths || [],
+          numberOfTangents: rawNumberOfTangents || 0,
+          tangentLengths: rawTangentLengths || [],
           workingPressureBar:
-            bendEntry.specs?.workingPressureBar ||
-            rfqDataRef.current.globalSpecs.workingPressureBar ||
-            10,
+            rawWorkingPressureBar3 || rfqDataRef.current.globalSpecs.workingPressureBar || 10,
           workingTemperatureC:
-            bendEntry.specs?.workingTemperatureC ||
-            rfqDataRef.current.globalSpecs.workingTemperatureC ||
-            20,
+            rawWorkingTemperatureC3 || rfqDataRef.current.globalSpecs.workingTemperatureC || 20,
           steelSpecificationId:
-            bendEntry.specs?.steelSpecificationId ||
-            rfqDataRef.current.globalSpecs.steelSpecificationId ||
-            2,
+            rawSteelSpecificationId4 || rfqDataRef.current.globalSpecs.steelSpecificationId || 2,
           useGlobalFlangeSpecs: useGlobal,
           flangeStandardId,
           flangePressureClassId,
@@ -2290,8 +2366,9 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
         let flangeSpecData: FlangeSpecData | null = null;
         const nominalBoreMm = bendEntry.specs?.nominalBoreMm;
         if (flangeStandardId && flangePressureClassId && nominalBoreMm) {
+          const rawFlangeTypeCode6 = bendEntry.specs?.flangeTypeCode;
           const flangeTypeCode = useGlobal
-            ? bendEntry.specs?.flangeTypeCode || rfqDataRef.current.globalSpecs?.flangeTypeCode
+            ? rawFlangeTypeCode6 || rfqDataRef.current.globalSpecs?.flangeTypeCode
             : bendEntry.specs?.flangeTypeCode;
           const flangeTypeId = flangeTypeCode
             ? masterData.flangeTypes?.find((ft: any) => ft.code === flangeTypeCode)?.id
@@ -2361,14 +2438,15 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
 
         const fittingEntry = entry;
 
+        const rawSteelSpecificationId5 = fittingEntry.specs?.steelSpecificationId;
+
         // Get effective fitting standard (use item-level override first, then global spec)
         // Item-level steelSpecificationId takes precedence over global
         const effectiveSteelSpecId =
-          fittingEntry.specs?.steelSpecificationId ||
-          rfqDataRef.current.globalSpecs?.steelSpecificationId;
+          rawSteelSpecificationId5 || rfqDataRef.current.globalSpecs?.steelSpecificationId;
         const isSABS719 = effectiveSteelSpecId === 8;
-        const effectiveFittingStandard =
-          fittingEntry.specs?.fittingStandard || (isSABS719 ? "SABS719" : "SABS62");
+        const rawFittingStandard = fittingEntry.specs?.fittingStandard;
+        const effectiveFittingStandard = rawFittingStandard || (isSABS719 ? "SABS719" : "SABS62");
 
         // Valid fitting types for each standard (must match dropdown options)
         const SABS62_FITTING_TYPES = [
@@ -2453,6 +2531,13 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
           return;
         }
 
+        const rawQuantityValue5 = fittingEntry.specs.quantityValue;
+        const rawWorkingPressureBar4 = fittingEntry.specs.workingPressureBar;
+        const rawWorkingTemperatureC4 = fittingEntry.specs.workingTemperatureC;
+        const rawSteelSpecificationId6 = fittingEntry.specs.steelSpecificationId;
+        const rawFlangeStandardId5 = fittingEntry.specs.flangeStandardId;
+        const rawFlangePressureClassId6 = fittingEntry.specs.flangePressureClassId;
+
         const calculationData = {
           fittingStandard: effectiveFittingStandard,
           fittingType: apiFittingType,
@@ -2460,36 +2545,34 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
           angleRange: fittingEntry.specs.angleRange,
           pipeLengthAMm: fittingEntry.specs.pipeLengthAMm,
           pipeLengthBMm: fittingEntry.specs.pipeLengthBMm,
-          quantityValue: fittingEntry.specs.quantityValue || 1,
+          quantityValue: rawQuantityValue5 || 1,
           scheduleNumber: fittingEntry.specs.scheduleNumber,
           workingPressureBar:
-            fittingEntry.specs.workingPressureBar ||
-            rfqDataRef.current.globalSpecs.workingPressureBar,
+            rawWorkingPressureBar4 || rfqDataRef.current.globalSpecs.workingPressureBar,
           workingTemperatureC:
-            fittingEntry.specs.workingTemperatureC ||
-            rfqDataRef.current.globalSpecs.workingTemperatureC,
+            rawWorkingTemperatureC4 || rfqDataRef.current.globalSpecs.workingTemperatureC,
           steelSpecificationId:
-            fittingEntry.specs.steelSpecificationId ||
-            rfqDataRef.current.globalSpecs.steelSpecificationId,
-          flangeStandardId:
-            fittingEntry.specs.flangeStandardId || rfqDataRef.current.globalSpecs.flangeStandardId,
+            rawSteelSpecificationId6 || rfqDataRef.current.globalSpecs.steelSpecificationId,
+          flangeStandardId: rawFlangeStandardId5 || rfqDataRef.current.globalSpecs.flangeStandardId,
           flangePressureClassId:
-            fittingEntry.specs.flangePressureClassId ||
-            rfqDataRef.current.globalSpecs.flangePressureClassId,
+            rawFlangePressureClassId6 || rfqDataRef.current.globalSpecs.flangePressureClassId,
         };
 
         log.debug("Calling API with:", calculationData);
         const result = await masterDataApi.calculateFitting(calculationData);
         log.debug("API result:", result);
 
+        const rawFlangeStandardId6 = fittingEntry.specs?.flangeStandardId;
+
         // Fetch dynamic flange specs if available
         const effectiveFlangeStandardId =
-          fittingEntry.specs?.flangeStandardId || rfqDataRef.current.globalSpecs?.flangeStandardId;
+          rawFlangeStandardId6 || rfqDataRef.current.globalSpecs?.flangeStandardId;
+        const rawFlangePressureClassId7 = fittingEntry.specs?.flangePressureClassId;
         const effectiveFlangePressureClassId =
-          fittingEntry.specs?.flangePressureClassId ||
-          rfqDataRef.current.globalSpecs?.flangePressureClassId;
+          rawFlangePressureClassId7 || rfqDataRef.current.globalSpecs?.flangePressureClassId;
+        const rawFlangeTypeCode7 = fittingEntry.specs?.flangeTypeCode;
         const effectiveFlangeTypeCode =
-          fittingEntry.specs?.flangeTypeCode || rfqDataRef.current.globalSpecs?.flangeTypeCode;
+          rawFlangeTypeCode7 || rfqDataRef.current.globalSpecs?.flangeTypeCode;
         let flangeSpecData: FlangeSpecData | null = null;
 
         if (
@@ -2567,9 +2650,10 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
     if (!isNixExtractedItem(item)) return;
 
     try {
+      const rawDescription = item.description;
       await nixApi.submitCorrection({
         extractionId: nixExtractionId || undefined,
-        itemDescription: item.description || `${item.itemType} item`,
+        itemDescription: rawDescription || `${item.itemType} item`,
         fieldName,
         originalValue,
         correctedValue: newValue,
@@ -2598,7 +2682,8 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
           "bendDegrees",
           "fittingType",
         ];
-        const currentSpecs = entry.specs || {};
+        const rawSpecs = entry.specs;
+        const currentSpecs = rawSpecs || {};
 
         fieldsToTrack.forEach((field) => {
           if (
@@ -2632,6 +2717,8 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
     log.debug("💾 rfqData.longitude:", rfqData.longitude);
     log.debug("💾 rfqData.globalSpecs:", rfqData.globalSpecs);
 
+    const rawRequiredProducts2 = rfqData.requiredProducts;
+
     const saveData = {
       draftId: currentDraftId || undefined,
       projectName: rfqData.projectName,
@@ -2657,13 +2744,19 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
         nixPopupShown: rfqData.nixPopupShown,
       },
       globalSpecs: rfqData.globalSpecs,
-      requiredProducts: rfqData.requiredProducts || ["fabricated_steel"],
+      requiredProducts: rawRequiredProducts2 || ["fabricated_steel"],
       straightPipeEntries: rfqData.items?.length > 0 ? rfqData.items : rfqData.straightPipeEntries,
-      pendingDocuments: pendingDocuments.map((doc: any) => ({
-        name: doc.name || doc.file?.name,
-        size: doc.size || doc.file?.size,
-        type: doc.type || doc.file?.type,
-      })),
+      pendingDocuments: pendingDocuments.map((doc: any) => {
+        const rawName = doc.name;
+        const rawSize = doc.size;
+        const rawType2 = doc.type;
+
+        return {
+          name: rawName || doc.file?.name,
+          size: rawSize || doc.file?.size,
+          type: rawType2 || doc.file?.type,
+        };
+      }),
     };
 
     setIsSavingDraft(true);
@@ -2808,7 +2901,8 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
     setValidationErrors({});
 
     try {
-      const allItems = rfqData.items || rfqData.straightPipeEntries || [];
+      const rawItems2 = rfqData.items;
+      const allItems = rawItems2 || rfqData.straightPipeEntries || [];
 
       if (allItems.length === 0) {
         setValidationErrors({ submit: "Please add at least one item before submitting." });
@@ -2843,18 +2937,39 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
       const { unifiedRfqApi } = await import("@/app/lib/api/client");
 
       const unifiedItems = allItems.map((entry: any) => {
-        const specs = entry.specs || {};
-        const calculation = entry.calculation || {};
+        const rawSpecs2 = entry.specs;
+        const specs = rawSpecs2 || {};
+        const rawCalculation = entry.calculation;
+        const calculation = rawCalculation || {};
 
         if (entry.itemType === "bend") {
-          const stubLengths = (specs.stubs || [])
-            .map((stub: any) => stub?.length || 0)
+          const rawStubs = specs.stubs;
+          const stubLengths = (rawStubs || [])
+            .map((stub: any) => {
+              const rawLength2 = stub?.length;
+              const rawLength3 = stub?.length;
+              return rawLength3 || 0;
+            })
             .filter((l: number) => l > 0);
+          const rawDescription2 = entry.description;
+          const rawTotalWeight = calculation.totalWeight;
+          const rawNumberOfTangents2 = specs.numberOfTangents;
+          const rawTangentLengths2 = specs.tangentLengths;
+          const rawStubs2 = specs.stubs;
+          const rawTangentLengths3 = specs.tangentLengths;
+          const rawQuantityType4 = specs.quantityType;
+          const rawQuantityValue6 = specs.quantityValue;
+          const rawWorkingPressureBar5 = specs.workingPressureBar;
+          const rawWorkingTemperatureC5 = specs.workingTemperatureC;
+          const rawSteelSpecificationId7 = specs.steelSpecificationId;
+          const rawUseGlobalFlangeSpecs = specs.useGlobalFlangeSpecs;
+          const rawFlangeStandardId7 = specs.flangeStandardId;
+          const rawFlangePressureClassId8 = specs.flangePressureClassId;
           return {
             itemType: "bend" as const,
-            description: entry.description || "Bend Item",
+            description: rawDescription2 || "Bend Item",
             notes: entry.notes,
-            totalWeightKg: calculation.totalWeight || calculation.bendWeight,
+            totalWeightKg: rawTotalWeight || calculation.bendWeight,
             bend: {
               nominalBoreMm: specs.nominalBoreMm,
               scheduleNumber: specs.scheduleNumber,
@@ -2863,38 +2978,45 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
               bendRadiusType: specs.bendRadiusType,
               bendDegrees: specs.bendDegrees,
               bendEndConfiguration: specs.bendEndConfiguration,
-              numberOfTangents: specs.numberOfTangents || 0,
-              tangentLengths: specs.tangentLengths || [],
+              numberOfTangents: rawNumberOfTangents2 || 0,
+              tangentLengths: rawTangentLengths2 || [],
               numberOfSegments: specs.numberOfSegments,
               centerToFaceMm: specs.centerToFaceMm,
               calculationData: {
                 ...(calculation || {}),
                 bendRadiusType: specs.bendRadiusType,
-                stubs: specs.stubs || [],
+                stubs: rawStubs2 || [],
                 stubLengths,
                 numberOfSegments: specs.numberOfSegments,
-                tangentLengths: specs.tangentLengths || [],
+                tangentLengths: rawTangentLengths3 || [],
               },
-              quantityType: specs.quantityType || "number_of_items",
-              quantityValue: specs.quantityValue || 1,
+              quantityType: rawQuantityType4 || "number_of_items",
+              quantityValue: rawQuantityValue6 || 1,
               workingPressureBar:
-                specs.workingPressureBar || rfqData.globalSpecs?.workingPressureBar || 10,
+                rawWorkingPressureBar5 || rfqData.globalSpecs?.workingPressureBar || 10,
               workingTemperatureC:
-                specs.workingTemperatureC || rfqData.globalSpecs?.workingTemperatureC || 20,
+                rawWorkingTemperatureC5 || rfqData.globalSpecs?.workingTemperatureC || 20,
               steelSpecificationId:
-                specs.steelSpecificationId || rfqData.globalSpecs?.steelSpecificationId || 2,
-              useGlobalFlangeSpecs: specs.useGlobalFlangeSpecs ?? true,
-              flangeStandardId: specs.flangeStandardId || rfqData.globalSpecs?.flangeStandardId,
+                rawSteelSpecificationId7 || rfqData.globalSpecs?.steelSpecificationId || 2,
+              useGlobalFlangeSpecs: rawUseGlobalFlangeSpecs || true,
+              flangeStandardId: rawFlangeStandardId7 || rfqData.globalSpecs?.flangeStandardId,
               flangePressureClassId:
-                specs.flangePressureClassId || rfqData.globalSpecs?.flangePressureClassId,
+                rawFlangePressureClassId8 || rfqData.globalSpecs?.flangePressureClassId,
             },
           };
         } else if (entry.itemType === "fitting") {
+          const rawDescription3 = entry.description;
+          const rawTotalWeight2 = calculation.totalWeight;
+          const rawAddBlankFlange = specs.addBlankFlange;
+          const rawQuantityType5 = specs.quantityType;
+          const rawQuantityValue7 = specs.quantityValue;
+          const rawWorkingPressureBar6 = specs.workingPressureBar;
+          const rawWorkingTemperatureC6 = specs.workingTemperatureC;
           return {
             itemType: "fitting" as const,
-            description: entry.description || "Fitting Item",
+            description: rawDescription3 || "Fitting Item",
             notes: entry.notes,
-            totalWeightKg: calculation.totalWeight || calculation.pipeWeight,
+            totalWeightKg: rawTotalWeight2 || calculation.pipeWeight,
             fitting: {
               nominalDiameterMm: specs.nominalDiameterMm,
               scheduleNumber: specs.scheduleNumber,
@@ -2904,26 +3026,30 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
               pipeLengthAMm: specs.pipeLengthAMm,
               pipeLengthBMm: specs.pipeLengthBMm,
               pipeEndConfiguration: specs.pipeEndConfiguration,
-              addBlankFlange: specs.addBlankFlange || false,
+              addBlankFlange: rawAddBlankFlange || false,
               blankFlangeCount: specs.blankFlangeCount,
               blankFlangePositions: specs.blankFlangePositions,
-              quantityType: specs.quantityType || "number_of_items",
-              quantityValue: specs.quantityValue || 1,
-              workingPressureBar:
-                specs.workingPressureBar || rfqData.globalSpecs?.workingPressureBar,
+              quantityType: rawQuantityType5 || "number_of_items",
+              quantityValue: rawQuantityValue7 || 1,
+              workingPressureBar: rawWorkingPressureBar6 || rfqData.globalSpecs?.workingPressureBar,
               workingTemperatureC:
-                specs.workingTemperatureC || rfqData.globalSpecs?.workingTemperatureC,
+                rawWorkingTemperatureC6 || rfqData.globalSpecs?.workingTemperatureC,
               calculationData: calculation,
             },
           };
         } else if (entry.itemType === "tank_chute") {
+          const rawDescription4 = entry.description;
+          const rawAssemblyType = specs.assemblyType;
+          const rawQuantityValue8 = specs.quantityValue;
+          const rawLiningRequired = specs.liningRequired;
+          const rawCoatingRequired = specs.coatingRequired;
           return {
             itemType: "tank_chute" as const,
-            description: entry.description || "Tank/Chute Item",
+            description: rawDescription4 || "Tank/Chute Item",
             notes: entry.notes,
             totalWeightKg: specs.totalSteelWeightKg,
             tankChute: {
-              assemblyType: specs.assemblyType || "custom",
+              assemblyType: rawAssemblyType || "custom",
               drawingReference: specs.drawingReference,
               materialGrade: specs.materialGrade,
               overallLengthMm: specs.overallLengthMm,
@@ -2931,15 +3057,15 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
               overallHeightMm: specs.overallHeightMm,
               totalSteelWeightKg: specs.totalSteelWeightKg,
               weightSource: specs.weightSource,
-              quantityValue: specs.quantityValue || 1,
-              liningRequired: specs.liningRequired || false,
+              quantityValue: rawQuantityValue8 || 1,
+              liningRequired: rawLiningRequired || false,
               liningType: specs.liningType,
               liningThicknessMm: specs.liningThicknessMm,
               liningAreaM2: specs.liningAreaM2,
               liningWastagePercent: specs.liningWastagePercent,
               rubberGrade: specs.rubberGrade,
               rubberHardnessShore: specs.rubberHardnessShore,
-              coatingRequired: specs.coatingRequired || false,
+              coatingRequired: rawCoatingRequired || false,
               coatingSystem: specs.coatingSystem,
               coatingAreaM2: specs.coatingAreaM2,
               coatingWastagePercent: specs.coatingWastagePercent,
@@ -2955,30 +3081,42 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
             },
           };
         } else if (entry.itemType === "fastener") {
+          const rawDescription5 = entry.description;
+          const rawFastenerCategory = specs.fastenerCategory;
+          const rawSpecificType = specs.specificType;
+          const rawSize2 = specs.size;
+          const rawQuantityValue9 = specs.quantityValue;
           return {
             itemType: "fastener" as const,
-            description: entry.description || "Fastener Item",
+            description: rawDescription5 || "Fastener Item",
             notes: entry.notes,
             totalWeightKg: undefined,
             fastener: {
-              fastenerCategory: specs.fastenerCategory || "bolt",
-              specificType: specs.specificType || "",
-              size: specs.size || "",
+              fastenerCategory: rawFastenerCategory || "bolt",
+              specificType: rawSpecificType || "",
+              size: rawSize2 || "",
               grade: specs.grade,
               material: specs.material,
               finish: specs.finish,
               threadType: specs.threadType,
               standard: specs.standard,
               lengthMm: specs.lengthMm,
-              quantityValue: specs.quantityValue || 1,
+              quantityValue: rawQuantityValue9 || 1,
             },
           };
         } else {
+          const rawDescription6 = entry.description;
+          const rawTotalSystemWeight = calculation.totalSystemWeight;
+          const rawWorkingPressureBar7 = specs.workingPressureBar;
+          const rawWorkingTemperatureC7 = specs.workingTemperatureC;
+          const rawSteelSpecificationId8 = specs.steelSpecificationId;
+          const rawFlangeStandardId8 = specs.flangeStandardId;
+          const rawFlangePressureClassId9 = specs.flangePressureClassId;
           return {
             itemType: "straight_pipe" as const,
-            description: entry.description || "Pipe Item",
+            description: rawDescription6 || "Pipe Item",
             notes: entry.notes,
-            totalWeightKg: calculation.totalSystemWeight || calculation.totalPipeWeight,
+            totalWeightKg: rawTotalSystemWeight || calculation.totalPipeWeight,
             straightPipe: {
               nominalBoreMm: specs.nominalBoreMm,
               scheduleType: specs.scheduleType,
@@ -2990,14 +3128,14 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
               quantityType: specs.quantityType,
               quantityValue: specs.quantityValue,
               workingPressureBar:
-                specs.workingPressureBar || rfqData.globalSpecs?.workingPressureBar || 10,
+                rawWorkingPressureBar7 || rfqData.globalSpecs?.workingPressureBar || 10,
               workingTemperatureC:
-                specs.workingTemperatureC || rfqData.globalSpecs?.workingTemperatureC,
+                rawWorkingTemperatureC7 || rfqData.globalSpecs?.workingTemperatureC,
               steelSpecificationId:
-                specs.steelSpecificationId || rfqData.globalSpecs?.steelSpecificationId,
-              flangeStandardId: specs.flangeStandardId || rfqData.globalSpecs?.flangeStandardId,
+                rawSteelSpecificationId8 || rfqData.globalSpecs?.steelSpecificationId,
+              flangeStandardId: rawFlangeStandardId8 || rfqData.globalSpecs?.flangeStandardId,
               flangePressureClassId:
-                specs.flangePressureClassId || rfqData.globalSpecs?.flangePressureClassId,
+                rawFlangePressureClassId9 || rfqData.globalSpecs?.flangePressureClassId,
             },
           };
         }
@@ -3056,8 +3194,9 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
       if (result.rfq?.id) {
         try {
           log.debug(`📦 Creating BOQ for RFQ ${result.rfq.id}...`);
+          const rawProjectName = rfqData.projectName;
           const boq = await boqApi.create({
-            title: `BOQ for ${rfqData.projectName || "Untitled Project"}`,
+            title: `BOQ for ${rawProjectName || "Untitled Project"}`,
             description: rfqData.description,
             rfqId: result.rfq.id,
           });
@@ -3083,15 +3222,19 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
 
           log.debug("📊 Consolidated data:", consolidatedData);
 
+          const rawCustomerName = rfqData.customerName;
+          const rawCustomerEmail2 = rfqData.customerEmail;
+          const rawProjectName2 = rfqData.projectName;
+
           const submitResult = await boqApi.submitForQuotation(boq.id, {
             boqData: consolidatedData,
             customerInfo: {
-              name: rfqData.customerName || "Unknown",
-              email: rfqData.customerEmail || "",
+              name: rawCustomerName || "Unknown",
+              email: rawCustomerEmail2 || "",
               phone: rfqData.customerPhone,
             },
             projectInfo: {
-              name: rfqData.projectName || "Untitled Project",
+              name: rawProjectName2 || "Untitled Project",
               description: rfqData.description,
               requiredDate: rfqData.requiredDate,
             },
@@ -3118,7 +3261,8 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
         `Success! RFQ ${result.rfq?.rfqNumber} created with ${result.itemsCreated} item(s).`,
         "success",
       );
-      onSuccess(result.rfq?.id || "success");
+      const rawId = result.rfq?.id;
+      onSuccess(rawId || "success");
     } catch (error: any) {
       log.error("Submission error:", error);
 
@@ -3149,7 +3293,8 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
     setValidationErrors({});
 
     try {
-      const allItems = rfqData.items || rfqData.straightPipeEntries || [];
+      const rawItems3 = rfqData.items;
+      const allItems = rawItems3 || rfqData.straightPipeEntries || [];
 
       if (allItems.length === 0) {
         setValidationErrors({ submit: "Please add at least one item before re-submitting." });
@@ -3173,18 +3318,39 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
       const { unifiedRfqApi } = await import("@/app/lib/api/client");
 
       const unifiedItems = allItems.map((entry: any) => {
-        const specs = entry.specs || {};
-        const calculation = entry.calculation || {};
+        const rawSpecs3 = entry.specs;
+        const specs = rawSpecs3 || {};
+        const rawCalculation2 = entry.calculation;
+        const calculation = rawCalculation2 || {};
 
         if (entry.itemType === "bend") {
-          const stubLengths = (specs.stubs || [])
-            .map((stub: any) => stub?.length || 0)
+          const rawStubs3 = specs.stubs;
+          const stubLengths = (rawStubs3 || [])
+            .map((stub: any) => {
+              const rawLength4 = stub?.length;
+              const rawLength5 = stub?.length;
+              return rawLength5 || 0;
+            })
             .filter((l: number) => l > 0);
+          const rawDescription7 = entry.description;
+          const rawTotalWeight3 = calculation.totalWeight;
+          const rawNumberOfTangents3 = specs.numberOfTangents;
+          const rawTangentLengths4 = specs.tangentLengths;
+          const rawStubs4 = specs.stubs;
+          const rawTangentLengths5 = specs.tangentLengths;
+          const rawQuantityType6 = specs.quantityType;
+          const rawQuantityValue10 = specs.quantityValue;
+          const rawWorkingPressureBar8 = specs.workingPressureBar;
+          const rawWorkingTemperatureC8 = specs.workingTemperatureC;
+          const rawSteelSpecificationId9 = specs.steelSpecificationId;
+          const rawUseGlobalFlangeSpecs2 = specs.useGlobalFlangeSpecs;
+          const rawFlangeStandardId9 = specs.flangeStandardId;
+          const rawFlangePressureClassId10 = specs.flangePressureClassId;
           return {
             itemType: "bend" as const,
-            description: entry.description || "Bend Item",
+            description: rawDescription7 || "Bend Item",
             notes: entry.notes,
-            totalWeightKg: calculation.totalWeight || calculation.bendWeight,
+            totalWeightKg: rawTotalWeight3 || calculation.bendWeight,
             bend: {
               nominalBoreMm: specs.nominalBoreMm,
               scheduleNumber: specs.scheduleNumber,
@@ -3193,38 +3359,45 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
               bendRadiusType: specs.bendRadiusType,
               bendDegrees: specs.bendDegrees,
               bendEndConfiguration: specs.bendEndConfiguration,
-              numberOfTangents: specs.numberOfTangents || 0,
-              tangentLengths: specs.tangentLengths || [],
+              numberOfTangents: rawNumberOfTangents3 || 0,
+              tangentLengths: rawTangentLengths4 || [],
               numberOfSegments: specs.numberOfSegments,
               centerToFaceMm: specs.centerToFaceMm,
               calculationData: {
                 ...(calculation || {}),
                 bendRadiusType: specs.bendRadiusType,
-                stubs: specs.stubs || [],
+                stubs: rawStubs4 || [],
                 stubLengths,
                 numberOfSegments: specs.numberOfSegments,
-                tangentLengths: specs.tangentLengths || [],
+                tangentLengths: rawTangentLengths5 || [],
               },
-              quantityType: specs.quantityType || "number_of_items",
-              quantityValue: specs.quantityValue || 1,
+              quantityType: rawQuantityType6 || "number_of_items",
+              quantityValue: rawQuantityValue10 || 1,
               workingPressureBar:
-                specs.workingPressureBar || rfqData.globalSpecs?.workingPressureBar || 10,
+                rawWorkingPressureBar8 || rfqData.globalSpecs?.workingPressureBar || 10,
               workingTemperatureC:
-                specs.workingTemperatureC || rfqData.globalSpecs?.workingTemperatureC || 20,
+                rawWorkingTemperatureC8 || rfqData.globalSpecs?.workingTemperatureC || 20,
               steelSpecificationId:
-                specs.steelSpecificationId || rfqData.globalSpecs?.steelSpecificationId || 2,
-              useGlobalFlangeSpecs: specs.useGlobalFlangeSpecs ?? true,
-              flangeStandardId: specs.flangeStandardId || rfqData.globalSpecs?.flangeStandardId,
+                rawSteelSpecificationId9 || rfqData.globalSpecs?.steelSpecificationId || 2,
+              useGlobalFlangeSpecs: rawUseGlobalFlangeSpecs2 || true,
+              flangeStandardId: rawFlangeStandardId9 || rfqData.globalSpecs?.flangeStandardId,
               flangePressureClassId:
-                specs.flangePressureClassId || rfqData.globalSpecs?.flangePressureClassId,
+                rawFlangePressureClassId10 || rfqData.globalSpecs?.flangePressureClassId,
             },
           };
         } else if (entry.itemType === "fitting") {
+          const rawDescription8 = entry.description;
+          const rawTotalWeight4 = calculation.totalWeight;
+          const rawAddBlankFlange2 = specs.addBlankFlange;
+          const rawQuantityType7 = specs.quantityType;
+          const rawQuantityValue11 = specs.quantityValue;
+          const rawWorkingPressureBar9 = specs.workingPressureBar;
+          const rawWorkingTemperatureC9 = specs.workingTemperatureC;
           return {
             itemType: "fitting" as const,
-            description: entry.description || "Fitting Item",
+            description: rawDescription8 || "Fitting Item",
             notes: entry.notes,
-            totalWeightKg: calculation.totalWeight || calculation.pipeWeight,
+            totalWeightKg: rawTotalWeight4 || calculation.pipeWeight,
             fitting: {
               nominalDiameterMm: specs.nominalDiameterMm,
               scheduleNumber: specs.scheduleNumber,
@@ -3234,26 +3407,30 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
               pipeLengthAMm: specs.pipeLengthAMm,
               pipeLengthBMm: specs.pipeLengthBMm,
               pipeEndConfiguration: specs.pipeEndConfiguration,
-              addBlankFlange: specs.addBlankFlange || false,
+              addBlankFlange: rawAddBlankFlange2 || false,
               blankFlangeCount: specs.blankFlangeCount,
               blankFlangePositions: specs.blankFlangePositions,
-              quantityType: specs.quantityType || "number_of_items",
-              quantityValue: specs.quantityValue || 1,
-              workingPressureBar:
-                specs.workingPressureBar || rfqData.globalSpecs?.workingPressureBar,
+              quantityType: rawQuantityType7 || "number_of_items",
+              quantityValue: rawQuantityValue11 || 1,
+              workingPressureBar: rawWorkingPressureBar9 || rfqData.globalSpecs?.workingPressureBar,
               workingTemperatureC:
-                specs.workingTemperatureC || rfqData.globalSpecs?.workingTemperatureC,
+                rawWorkingTemperatureC9 || rfqData.globalSpecs?.workingTemperatureC,
               calculationData: calculation,
             },
           };
         } else if (entry.itemType === "tank_chute") {
+          const rawDescription9 = entry.description;
+          const rawAssemblyType2 = specs.assemblyType;
+          const rawQuantityValue12 = specs.quantityValue;
+          const rawLiningRequired2 = specs.liningRequired;
+          const rawCoatingRequired2 = specs.coatingRequired;
           return {
             itemType: "tank_chute" as const,
-            description: entry.description || "Tank/Chute Item",
+            description: rawDescription9 || "Tank/Chute Item",
             notes: entry.notes,
             totalWeightKg: specs.totalSteelWeightKg,
             tankChute: {
-              assemblyType: specs.assemblyType || "custom",
+              assemblyType: rawAssemblyType2 || "custom",
               drawingReference: specs.drawingReference,
               materialGrade: specs.materialGrade,
               overallLengthMm: specs.overallLengthMm,
@@ -3261,15 +3438,15 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
               overallHeightMm: specs.overallHeightMm,
               totalSteelWeightKg: specs.totalSteelWeightKg,
               weightSource: specs.weightSource,
-              quantityValue: specs.quantityValue || 1,
-              liningRequired: specs.liningRequired || false,
+              quantityValue: rawQuantityValue12 || 1,
+              liningRequired: rawLiningRequired2 || false,
               liningType: specs.liningType,
               liningThicknessMm: specs.liningThicknessMm,
               liningAreaM2: specs.liningAreaM2,
               liningWastagePercent: specs.liningWastagePercent,
               rubberGrade: specs.rubberGrade,
               rubberHardnessShore: specs.rubberHardnessShore,
-              coatingRequired: specs.coatingRequired || false,
+              coatingRequired: rawCoatingRequired2 || false,
               coatingSystem: specs.coatingSystem,
               coatingAreaM2: specs.coatingAreaM2,
               coatingWastagePercent: specs.coatingWastagePercent,
@@ -3285,30 +3462,42 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
             },
           };
         } else if (entry.itemType === "fastener") {
+          const rawDescription10 = entry.description;
+          const rawFastenerCategory2 = specs.fastenerCategory;
+          const rawSpecificType2 = specs.specificType;
+          const rawSize3 = specs.size;
+          const rawQuantityValue13 = specs.quantityValue;
           return {
             itemType: "fastener" as const,
-            description: entry.description || "Fastener Item",
+            description: rawDescription10 || "Fastener Item",
             notes: entry.notes,
             totalWeightKg: undefined,
             fastener: {
-              fastenerCategory: specs.fastenerCategory || "bolt",
-              specificType: specs.specificType || "",
-              size: specs.size || "",
+              fastenerCategory: rawFastenerCategory2 || "bolt",
+              specificType: rawSpecificType2 || "",
+              size: rawSize3 || "",
               grade: specs.grade,
               material: specs.material,
               finish: specs.finish,
               threadType: specs.threadType,
               standard: specs.standard,
               lengthMm: specs.lengthMm,
-              quantityValue: specs.quantityValue || 1,
+              quantityValue: rawQuantityValue13 || 1,
             },
           };
         } else {
+          const rawDescription11 = entry.description;
+          const rawTotalSystemWeight2 = calculation.totalSystemWeight;
+          const rawWorkingPressureBar10 = specs.workingPressureBar;
+          const rawWorkingTemperatureC10 = specs.workingTemperatureC;
+          const rawSteelSpecificationId10 = specs.steelSpecificationId;
+          const rawFlangeStandardId10 = specs.flangeStandardId;
+          const rawFlangePressureClassId11 = specs.flangePressureClassId;
           return {
             itemType: "straight_pipe" as const,
-            description: entry.description || "Pipe Item",
+            description: rawDescription11 || "Pipe Item",
             notes: entry.notes,
-            totalWeightKg: calculation.totalSystemWeight || calculation.totalPipeWeight,
+            totalWeightKg: rawTotalSystemWeight2 || calculation.totalPipeWeight,
             straightPipe: {
               nominalBoreMm: specs.nominalBoreMm,
               scheduleType: specs.scheduleType,
@@ -3320,14 +3509,14 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
               quantityType: specs.quantityType,
               quantityValue: specs.quantityValue,
               workingPressureBar:
-                specs.workingPressureBar || rfqData.globalSpecs?.workingPressureBar || 10,
+                rawWorkingPressureBar10 || rfqData.globalSpecs?.workingPressureBar || 10,
               workingTemperatureC:
-                specs.workingTemperatureC || rfqData.globalSpecs?.workingTemperatureC,
+                rawWorkingTemperatureC10 || rfqData.globalSpecs?.workingTemperatureC,
               steelSpecificationId:
-                specs.steelSpecificationId || rfqData.globalSpecs?.steelSpecificationId,
-              flangeStandardId: specs.flangeStandardId || rfqData.globalSpecs?.flangeStandardId,
+                rawSteelSpecificationId10 || rfqData.globalSpecs?.steelSpecificationId,
+              flangeStandardId: rawFlangeStandardId10 || rfqData.globalSpecs?.flangeStandardId,
               flangePressureClassId:
-                specs.flangePressureClassId || rfqData.globalSpecs?.flangePressureClassId,
+                rawFlangePressureClassId11 || rfqData.globalSpecs?.flangePressureClassId,
             },
           };
         }
@@ -3376,15 +3565,19 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
 
         log.debug("📊 Consolidated data for update:", consolidatedData);
 
+        const rawCustomerName2 = rfqData.customerName;
+        const rawCustomerEmail3 = rfqData.customerEmail;
+        const rawProjectName3 = rfqData.projectName;
+
         const updateResult = await boqApi.updateSubmittedBoq(existingBoq.id, {
           boqData: consolidatedData,
           customerInfo: {
-            name: rfqData.customerName || "Unknown",
-            email: rfqData.customerEmail || "",
+            name: rawCustomerName2 || "Unknown",
+            email: rawCustomerEmail3 || "",
             phone: rfqData.customerPhone,
           },
           projectInfo: {
-            name: rfqData.projectName || "Untitled Project",
+            name: rawProjectName3 || "Untitled Project",
             description: rfqData.description,
             requiredDate: rfqData.requiredDate,
           },
@@ -3395,8 +3588,9 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
         );
       } else {
         log.debug(`📦 No existing BOQ found, creating new BOQ for RFQ ${editRfqId}...`);
+        const rawProjectName4 = rfqData.projectName;
         const boq = await boqApi.create({
-          title: `BOQ for ${rfqData.projectName || "Untitled Project"}`,
+          title: `BOQ for ${rawProjectName4 || "Untitled Project"}`,
           description: rfqData.description,
           rfqId: editRfqId,
         });
@@ -3420,15 +3614,19 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
           },
         });
 
+        const rawCustomerName3 = rfqData.customerName;
+        const rawCustomerEmail4 = rfqData.customerEmail;
+        const rawProjectName5 = rfqData.projectName;
+
         const submitResult = await boqApi.submitForQuotation(boq.id, {
           boqData: consolidatedData,
           customerInfo: {
-            name: rfqData.customerName || "Unknown",
-            email: rfqData.customerEmail || "",
+            name: rawCustomerName3 || "Unknown",
+            email: rawCustomerEmail4 || "",
             phone: rfqData.customerPhone,
           },
           projectInfo: {
-            name: rfqData.projectName || "Untitled Project",
+            name: rawProjectName5 || "Untitled Project",
             description: rfqData.description,
             requiredDate: rfqData.requiredDate,
           },
@@ -3557,11 +3755,14 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
     }
   };
 
+  const rawCurrentClarificationIndex = nixClarifications[currentClarificationIndex];
+  const rawTitle = steps.find((s) => s.number === currentStep)?.title;
+  const rawProjectName6 = rfqData?.projectName;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex flex-col">
       {/* Nix AI Assistant Popup */}
       <NixAiPopup isVisible={showNixPopup} onYes={nixAccept} onNo={nixDecline} />
-
       {/* Nix Processing Popup - shows while extracting data */}
       <NixProcessingPopup
         isVisible={isNixProcessing}
@@ -3569,11 +3770,10 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
         statusMessage={nixProcessingStatus}
         estimatedTimeRemaining={nixProcessingTimeRemaining ?? undefined}
       />
-
       {/* Nix Clarification Popup - shows when Nix needs user input */}
       {showNixClarification && (
         <NixClarificationPopup
-          clarification={nixClarifications[currentClarificationIndex] || null}
+          clarification={rawCurrentClarificationIndex || null}
           allClarifications={nixClarifications}
           totalClarifications={nixClarifications.length}
           currentIndex={currentClarificationIndex}
@@ -3586,7 +3786,6 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
           onClose={nixCloseClarification}
         />
       )}
-
       {nixChatPanelVisible && rfqData.useNix && (
         <NixChatPanel
           sessionId={nixChatSessionId}
@@ -3604,9 +3803,7 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
           }}
         />
       )}
-
       {nixGuidedModeActive && rfqData.useNix && <GuidedHighlight />}
-
       {/* LocalStorage Draft Restoration Prompt */}
       {showDraftRestorePrompt && pendingLocalDraft && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-md">
@@ -3669,7 +3866,6 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
           </div>
         </div>
       )}
-
       {/* Save Progress Dialog for Unregistered Users */}
       {showSaveProgressDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-md">
@@ -3791,7 +3987,6 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
           </div>
         </div>
       )}
-
       {/* Save Progress Confirmation Toast */}
       {showSaveConfirmation && (
         <div className="fixed top-4 right-4 z-50 animate-slide-in-right">
@@ -3827,7 +4022,6 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
           </div>
         </div>
       )}
-
       {/* Scrollable Content - grows to fill space, with padding for fixed bottom bar */}
       <div ref={scrollContainerRef} className="flex-1 overflow-y-auto pb-20">
         {/* Sticky Top Header Bar */}
@@ -3836,9 +4030,7 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
             <div className="flex items-center gap-3">
               <h1 className="text-lg font-bold text-gray-900">Create RFQ</h1>
               <span className="text-sm text-gray-500">•</span>
-              <span className="text-sm font-medium text-blue-600">
-                {steps.find((s) => s.number === currentStep)?.title || "RFQ"}
-              </span>
+              <span className="text-sm font-medium text-blue-600">{rawTitle || "RFQ"}</span>
             </div>
             <div className="flex items-center gap-3">
               {draftNumber && (
@@ -3891,7 +4083,7 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
                   Open Nix
                 </button>
               )}
-              <div className="text-sm text-gray-500">{rfqData?.projectName || "New RFQ"}</div>
+              <div className="text-sm text-gray-500">{rawProjectName6 || "New RFQ"}</div>
               <button
                 onClick={() => {
                   const isDraft = searchParams?.get("draft") || searchParams?.get("draftId");
@@ -3899,23 +4091,29 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
                   log.debug("searchParams:", searchParams);
 
                   if (isDraft && initialDraftDataRef.current) {
+                    const rawItems4 = rfqData.items;
+                    const rawStraightPipeEntries2 = rfqData.straightPipeEntries;
+                    const rawGlobalSpecs2 = rfqData.globalSpecs;
+                    const rawRequiredProducts3 = rfqData.requiredProducts;
                     // For drafts, check if data has changed since loading
                     const currentData = JSON.stringify({
-                      items: rfqData.items || [],
-                      straightPipeEntries: rfqData.straightPipeEntries || [],
-                      globalSpecs: rfqData.globalSpecs || {},
+                      items: rawItems4 || [],
+                      straightPipeEntries: rawStraightPipeEntries2 || [],
+                      globalSpecs: rawGlobalSpecs2 || {},
                       projectType: rfqData.projectType,
                       description: rfqData.description,
                       notes: rfqData.notes,
-                      requiredProducts: rfqData.requiredProducts || [],
+                      requiredProducts: rawRequiredProducts3 || [],
                     });
                     const hasChanges = currentData !== initialDraftDataRef.current;
+
+                    const rawGlobalSpecs3 = rfqData.globalSpecs;
 
                     log.info("🔍 Draft dirty check:", {
                       hasChanges,
                       itemsCount: rfqData.items?.length,
                       straightPipesCount: rfqData.straightPipeEntries?.length,
-                      globalSpecsKeys: Object.keys(rfqData.globalSpecs || {}).length,
+                      globalSpecsKeys: Object.keys(rawGlobalSpecs3 || {}).length,
                     });
 
                     if (hasChanges) {
@@ -3924,17 +4122,22 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
                       onCancel();
                     }
                   } else if (!isDraft) {
+                    const rawLength6 = rfqData.items?.length;
+                    const rawLength7 = rfqData.straightPipeEntries?.length;
+                    const rawLength8 = rfqData.description?.trim().length;
+                    const rawLength9 = rfqData.notes?.trim().length;
+                    const rawLength10 = rfqData.siteAddress?.trim().length;
                     // For a new RFQ (not a draft), check if user has made any meaningful changes
                     // Skip auto-filled fields (customer name/email from profile, auto-generated project name)
                     const hasChanges =
                       // Items/entries added
-                      (rfqData.items?.length || 0) > 0 ||
-                      (rfqData.straightPipeEntries?.length || 0) > 0 ||
+                      (rawLength6 || 0) > 0 ||
+                      (rawLength7 || 0) > 0 ||
                       // User-selected fields on step 1
                       (rfqData.projectType && rfqData.projectType !== "standard") ||
-                      (rfqData.description?.trim().length || 0) > 0 ||
-                      (rfqData.notes?.trim().length || 0) > 0 ||
-                      (rfqData.siteAddress?.trim().length || 0) > 0 ||
+                      (rawLength8 || 0) > 0 ||
+                      (rawLength9 || 0) > 0 ||
+                      (rawLength10 || 0) > 0 ||
                       (rfqData.mineId !== undefined && rfqData.mineId !== null) ||
                       rfqData.skipDocuments === true ||
                       // User progressed to step 2+ (selected products, location, specs)
@@ -3993,7 +4196,6 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
           </div>
         </div>
       </div>
-
       {/* Fixed Bottom Navigation Toolbar - always visible at bottom */}
       <div
         className="fixed bottom-0 left-0 right-0 z-[9999] px-4 py-3 shadow-2xl border-t border-gray-700"
@@ -4144,7 +4346,6 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
           </div>
         </div>
       </div>
-
       {showCloseConfirmation && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center">
           <div

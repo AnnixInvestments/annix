@@ -13,8 +13,10 @@ interface SimpleLineProps {
 
 const Line = (props: SimpleLineProps) => {
   const points = props.points;
-  const color = props.color ?? "#000000";
-  const lineWidth = props.lineWidth ?? 1;
+  const rawColor = props.color;
+  const color = rawColor || "#000000";
+  const rawLineWidth = props.lineWidth;
+  const lineWidth = rawLineWidth || 1;
   const tubeGeo = useMemo(() => {
     if (points.length < 2) return null;
     const curve = new THREE.CatmullRomCurve3(
@@ -55,15 +57,24 @@ export const DimensionLine = (props: DimensionLineProps) => {
   const start = props.start;
   const end = props.end;
   const label = props.label;
-  const offset = props.offset ?? 0.5;
-  const offsetDirection = props.offsetDirection ?? "y";
-  const color = props.color ?? "#333333";
-  const hideStartExtension = props.hideStartExtension ?? false;
-  const hideEndExtension = props.hideEndExtension ?? false;
-  const textAbove = props.textAbove ?? true;
-  const fontSize = props.fontSize ?? 0.16;
-  const arrowStyle = props.arrowStyle ?? "open";
-  const lineWeight = props.lineWeight ?? "normal";
+  const rawOffset = props.offset;
+  const offset = rawOffset || 0.5;
+  const rawOffsetDirection = props.offsetDirection;
+  const offsetDirection = rawOffsetDirection || "y";
+  const rawColor2 = props.color;
+  const color = rawColor2 || "#333333";
+  const rawHideStartExtension = props.hideStartExtension;
+  const hideStartExtension = rawHideStartExtension || false;
+  const rawHideEndExtension = props.hideEndExtension;
+  const hideEndExtension = rawHideEndExtension || false;
+  const rawTextAbove = props.textAbove;
+  const textAbove = rawTextAbove || true;
+  const rawFontSize = props.fontSize;
+  const fontSize = rawFontSize || 0.16;
+  const rawArrowStyle = props.arrowStyle;
+  const arrowStyle = rawArrowStyle || "open";
+  const rawLineWeight = props.lineWeight;
+  const lineWeight = rawLineWeight || "normal";
   const offsetVector = useMemo(() => {
     if (offsetDirection instanceof THREE.Vector3) {
       return offsetDirection.clone().normalize().multiplyScalar(offset);
@@ -303,14 +314,21 @@ export const AngularDimension = (props: AngularDimensionProps) => {
   const radius = props.radius;
   const startAngle = props.startAngle;
   const endAngle = props.endAngle;
-  const plane = props.plane ?? "xz";
-  const color = props.color ?? "#cc6600";
-  const fontSize = props.fontSize ?? 0.1;
-  const showArrows = props.showArrows ?? true;
-  const arrowStyle = props.arrowStyle ?? "open";
-  const lineWeight = props.lineWeight ?? 2;
+  const rawPlane = props.plane;
+  const plane = rawPlane || "xz";
+  const rawColor3 = props.color;
+  const color = rawColor3 || "#cc6600";
+  const rawFontSize2 = props.fontSize;
+  const fontSize = rawFontSize2 || 0.1;
+  const rawShowArrows = props.showArrows;
+  const showArrows = rawShowArrows || true;
+  const rawArrowStyle2 = props.arrowStyle;
+  const arrowStyle = rawArrowStyle2 || "open";
+  const rawLineWeight2 = props.lineWeight;
+  const lineWeight = rawLineWeight2 || 2;
   const label = props.label;
-  const textRotation = props.textRotation ?? [0, 0, 0];
+  const rawTextRotation = props.textRotation;
+  const textRotation = rawTextRotation || [0, 0, 0];
   const arcSegments = 32;
   const angleDiff = endAngle - startAngle;
   const angleDegrees = Math.round(Math.abs(angleDiff) * (180 / Math.PI));

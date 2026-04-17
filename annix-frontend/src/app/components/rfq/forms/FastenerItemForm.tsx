@@ -76,7 +76,8 @@ export function FastenerItemForm(props: FastenerItemFormProps) {
         insert: "insert",
         gasket: "washer",
       };
-      const cat = categoryMap[specs.fastenerCategory] || specs.fastenerCategory;
+      const rawFastenerCategory = categoryMap[specs.fastenerCategory];
+      const cat = rawFastenerCategory || specs.fastenerCategory;
       fetch(`${API_BASE_URL}/bolt/fasteners/sizes?category=${cat}&type=${specs.specificType}`)
         .then((res) => res.json())
         .then(setSizes)
@@ -95,7 +96,8 @@ export function FastenerItemForm(props: FastenerItemFormProps) {
         insert: "insert",
         gasket: "washer",
       };
-      const cat = categoryMap[specs.fastenerCategory] || specs.fastenerCategory;
+      const rawFastenerCategory2 = categoryMap[specs.fastenerCategory];
+      const cat = rawFastenerCategory2 || specs.fastenerCategory;
       fetch(
         `${API_BASE_URL}/bolt/fasteners/grades?category=${cat}&type=${specs.specificType}&size=${specs.size}`,
       )
@@ -124,15 +126,26 @@ export function FastenerItemForm(props: FastenerItemFormProps) {
       insert: "insert",
       gasket: "washer",
     };
-    const cat = categoryMap[specs.fastenerCategory] || specs.fastenerCategory;
+    const rawFastenerCategory3 = categoryMap[specs.fastenerCategory];
+    const cat = rawFastenerCategory3 || specs.fastenerCategory;
     const group = typeGroups.find((g) => g.category === cat);
-    return group?.types || [];
+    const rawTypes = group?.types;
+    return rawTypes || [];
   })();
 
   const showLengthField =
     specs.fastenerCategory === "bolt" ||
     specs.fastenerCategory === "set_screw" ||
     specs.fastenerCategory === "machine_screw";
+
+  const rawSpecificType = specs.specificType;
+  const rawSize = specs.size;
+  const rawGrade = specs.grade;
+  const rawFinish = specs.finish;
+  const rawThreadType = specs.threadType;
+  const rawLengthMm = specs.lengthMm;
+  const rawStandard = specs.standard;
+  const rawNotes = entry.notes;
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 space-y-4">
@@ -150,7 +163,6 @@ export function FastenerItemForm(props: FastenerItemFormProps) {
           </button>
         )}
       </div>
-
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <div>
           <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
@@ -181,14 +193,16 @@ export function FastenerItemForm(props: FastenerItemFormProps) {
             Type
           </label>
           <select
-            value={specs.specificType || ""}
-            onChange={(e) =>
-              updateSpecs({
-                specificType: e.target.value || undefined,
+            value={rawSpecificType || ""}
+            onChange={(e) => {
+              const rawValue = e.target.value;
+
+              return updateSpecs({
+                specificType: rawValue || undefined,
                 size: undefined,
                 grade: undefined,
-              })
-            }
+              });
+            }}
             className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200"
           >
             <option value="">Select type...</option>
@@ -205,8 +219,11 @@ export function FastenerItemForm(props: FastenerItemFormProps) {
             Size
           </label>
           <select
-            value={specs.size || ""}
-            onChange={(e) => updateSpecs({ size: e.target.value || undefined, grade: undefined })}
+            value={rawSize || ""}
+            onChange={(e) => {
+              const rawValue2 = e.target.value;
+              return updateSpecs({ size: rawValue2 || undefined, grade: undefined });
+            }}
             className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200"
           >
             <option value="">Select size...</option>
@@ -223,16 +240,24 @@ export function FastenerItemForm(props: FastenerItemFormProps) {
             Grade
           </label>
           <select
-            value={specs.grade || ""}
-            onChange={(e) => updateSpecs({ grade: e.target.value || undefined })}
+            value={rawGrade || ""}
+            onChange={(e) => {
+              const rawValue3 = e.target.value;
+              return updateSpecs({ grade: rawValue3 || undefined });
+            }}
             className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200"
           >
             <option value="">Select grade...</option>
-            {grades.map((g, idx) => (
-              <option key={`${g.grade}-${idx}`} value={g.grade || ""}>
-                {g.grade || "N/A"} {g.material ? `(${g.material})` : ""}
-              </option>
-            ))}
+            {grades.map((g, idx) => {
+              const rawGrade2 = g.grade;
+              const rawGrade3 = g.grade;
+
+              return (
+                <option key={`${g.grade}-${idx}`} value={rawGrade2 || ""}>
+                  {rawGrade3 || "N/A"} {g.material ? `(${g.material})` : ""}
+                </option>
+              );
+            })}
           </select>
         </div>
 
@@ -241,8 +266,11 @@ export function FastenerItemForm(props: FastenerItemFormProps) {
             Finish
           </label>
           <select
-            value={specs.finish || ""}
-            onChange={(e) => updateSpecs({ finish: e.target.value || undefined })}
+            value={rawFinish || ""}
+            onChange={(e) => {
+              const rawValue4 = e.target.value;
+              return updateSpecs({ finish: rawValue4 || undefined });
+            }}
             className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200"
           >
             <option value="">Select finish...</option>
@@ -259,12 +287,14 @@ export function FastenerItemForm(props: FastenerItemFormProps) {
             Thread
           </label>
           <select
-            value={specs.threadType || ""}
-            onChange={(e) =>
-              updateSpecs({
-                threadType: (e.target.value || undefined) as "coarse" | "fine" | undefined,
-              })
-            }
+            value={rawThreadType || ""}
+            onChange={(e) => {
+              const rawValue5 = e.target.value;
+
+              return updateSpecs({
+                threadType: (rawValue5 || undefined) as "coarse" | "fine" | undefined,
+              });
+            }}
             className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200"
           >
             <option value="">Select thread...</option>
@@ -283,7 +313,7 @@ export function FastenerItemForm(props: FastenerItemFormProps) {
             </label>
             <input
               type="number"
-              value={specs.lengthMm || ""}
+              value={rawLengthMm || ""}
               onChange={(e) =>
                 updateSpecs({
                   lengthMm: e.target.value ? Number(e.target.value) : undefined,
@@ -316,20 +346,22 @@ export function FastenerItemForm(props: FastenerItemFormProps) {
           </label>
           <input
             type="text"
-            value={specs.standard || ""}
-            onChange={(e) => updateSpecs({ standard: e.target.value || undefined })}
+            value={rawStandard || ""}
+            onChange={(e) => {
+              const rawValue6 = e.target.value;
+              return updateSpecs({ standard: rawValue6 || undefined });
+            }}
             className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200"
             placeholder="e.g. DIN 931"
           />
         </div>
       </div>
-
       <div>
         <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
           Notes
         </label>
         <textarea
-          value={entry.notes || ""}
+          value={rawNotes || ""}
           onChange={(e) =>
             props.onUpdateEntry(entry.id, { notes: e.target.value } as Partial<FastenerEntry>)
           }

@@ -162,6 +162,8 @@ export function GuidedHighlight(props: GuidedHighlightProps) {
     return null;
   }
 
+  const rawLabel = currentFieldDef?.label;
+
   const overlayContent = (
     <>
       <div className="fixed inset-0 z-40 pointer-events-none">
@@ -216,7 +218,7 @@ export function GuidedHighlight(props: GuidedHighlightProps) {
                   <span className="text-white text-xs font-bold">N</span>
                 </div>
                 <h4 className="font-semibold text-gray-900 dark:text-gray-100 text-sm">
-                  {currentFieldDef?.label || "Field Guidance"}
+                  {rawLabel || "Field Guidance"}
                 </h4>
               </div>
               <button

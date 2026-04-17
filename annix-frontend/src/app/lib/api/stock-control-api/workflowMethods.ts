@@ -290,9 +290,10 @@ proto.uploadDispatchLoadPhotos = async function (jobCardId, files) {
   const formData = new FormData();
   files.forEach((file) => formData.append("files", file));
   const h = this.headers();
+  const rawAuthorization = h.Authorization;
   const response = await fetch(
     `${API_BASE_URL}/stock-control/workflow/job-cards/${jobCardId}/dispatch/load-photos`,
-    { method: "POST", headers: { Authorization: h.Authorization || "" }, body: formData },
+    { method: "POST", headers: { Authorization: rawAuthorization || "" }, body: formData },
   );
   await throwIfNotOk(response);
   return response.json();

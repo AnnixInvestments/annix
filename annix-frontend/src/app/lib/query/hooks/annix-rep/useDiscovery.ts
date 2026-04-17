@@ -10,10 +10,12 @@ import {
 import { annixRepKeys } from "../../keys/annixRepKeys";
 
 export function useDiscoverySearch(dto: DiscoverProspectsDto | null, enabled = true) {
+  const rawLatitude = dto?.latitude;
+  const rawLongitude = dto?.longitude;
   return useQuery<DiscoverySearchResult>({
     queryKey: annixRepKeys.discovery.search(
-      dto?.latitude || 0,
-      dto?.longitude || 0,
+      rawLatitude || 0,
+      rawLongitude || 0,
       dto?.radiusKm,
       dto?.sources,
     ),

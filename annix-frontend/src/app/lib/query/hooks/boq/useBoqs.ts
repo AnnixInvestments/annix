@@ -62,8 +62,10 @@ interface UploadResult {
 
 async function fetchBoqs(params?: BoqQueryParams): Promise<PaginatedBoqResult> {
   const searchParams = new URLSearchParams();
-  searchParams.set("page", (params?.page || 1).toString());
-  searchParams.set("limit", (params?.limit || 20).toString());
+  const rawPage = params?.page;
+  searchParams.set("page", (rawPage || 1).toString());
+  const rawLimit = params?.limit;
+  searchParams.set("limit", (rawLimit || 20).toString());
   if (params?.status && params.status !== "all") {
     searchParams.set("status", params.status);
   }
@@ -113,10 +115,9 @@ async function uploadBoq(args: {
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
+    const rawMessage = errorData.message;
     throw new Error(
-      errorData.message ||
-        errorData.errors?.join(", ") ||
-        `Failed to upload BOQ (${response.status})`,
+      rawMessage || errorData.errors?.join(", ") || `Failed to upload BOQ (${response.status})`,
     );
   }
 
@@ -171,7 +172,8 @@ export function useAddBoqLineItem(boqId: number) {
 
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        throw new Error(data.message || "Failed to add line item");
+        const rawMessage2 = data.message;
+        throw new Error(rawMessage2 || "Failed to add line item");
       }
 
       return response.json();
@@ -198,7 +200,8 @@ export function useUpdateBoqLineItem(boqId: number) {
 
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        throw new Error(data.message || "Failed to update line item");
+        const rawMessage3 = data.message;
+        throw new Error(rawMessage3 || "Failed to update line item");
       }
 
       return response.json();
@@ -221,7 +224,8 @@ export function useDeleteBoqLineItem(boqId: number) {
 
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        throw new Error(data.message || "Failed to delete line item");
+        const rawMessage4 = data.message;
+        throw new Error(rawMessage4 || "Failed to delete line item");
       }
 
       return response.json();
@@ -247,7 +251,8 @@ export function useSubmitBoqForReview(boqId: number) {
 
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        throw new Error(data.message || "Failed to submit for review");
+        const rawMessage5 = data.message;
+        throw new Error(rawMessage5 || "Failed to submit for review");
       }
 
       return response.json();
@@ -280,7 +285,8 @@ export function useCreateBoq() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || "Failed to create BOQ");
+        const rawMessage6 = errorData.message;
+        throw new Error(rawMessage6 || "Failed to create BOQ");
       }
 
       return response.json();

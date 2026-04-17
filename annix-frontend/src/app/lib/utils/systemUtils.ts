@@ -66,10 +66,12 @@ export function generateClientItemNumber(customerName: string, itemIndex: number
     const consonants = firstWord
       .split("")
       .filter((char) => /[BCDFGHJKLMNPQRSTVWXYZ]/.test(char) && char !== firstWord[0]);
-    prefix = words[0][0] + words[1][0] + (consonants[0] || firstWord[1] || "X");
+    const rawItem0 = consonants[0];
+    prefix = words[0][0] + words[1][0] + (rawItem0 || firstWord[1] || "X");
   } else {
+    const rawItem02 = words[0];
     // Single word - take first 3 consonants, fallback to first 3 letters
-    const word = words[0] || customerName.toUpperCase();
+    const word = rawItem02 || customerName.toUpperCase();
     const consonants = word.split("").filter((char) => /[BCDFGHJKLMNPQRSTVWXYZ]/.test(char));
     if (consonants.length >= 3) {
       prefix = consonants.slice(0, 3).join("");
@@ -157,7 +159,9 @@ export async function calculateScheduleFromPressureAndNB(
       steelSpecId,
     );
 
-    return result.schedule || `${result.wallThickness}mm WT`;
+    const rawSchedule = result.schedule;
+
+    return rawSchedule || `${result.wallThickness}mm WT`;
   } catch (error) {
     log.error("Error calculating schedule from API:", error);
     // Fallback to simplified logic
@@ -344,7 +348,9 @@ export async function getAvailableFlangeClasses(
       ],
     };
 
-    return flangeClassMap[flangeStandardId] || [];
+    const rawFlangeStandardId = flangeClassMap[flangeStandardId];
+
+    return rawFlangeStandardId || [];
   }
 }
 
@@ -370,7 +376,9 @@ export async function getWallThicknessForSchedule(
         d.scheduleDesignation === scheduleNumber || d.scheduleNumber?.toString() === scheduleNumber,
     );
 
-    return dimension?.wallThicknessMm || null;
+    const rawWallThicknessMm = dimension?.wallThicknessMm;
+
+    return rawWallThicknessMm || null;
   } catch (error) {
     log.error("Error getting wall thickness from API:", error);
     return null;
@@ -391,9 +399,12 @@ export async function getPipeEndConfigurationDetails(
 
     const response = await masterDataApi.getPipeEndConfigurationByCode(configCode);
 
+    const rawWeldCount = response.weldCount;
+    const rawDescription = response.description;
+
     return {
-      weldCount: response.weldCount || 0,
-      description: response.description || "",
+      weldCount: rawWeldCount || 0,
+      description: rawDescription || "",
     };
   } catch (error) {
     log.error("Error getting pipe end configuration:", error);
@@ -408,6 +419,8 @@ export async function getPipeEndConfigurationDetails(
       "2X_RF": { weldCount: 2, description: "2x rotating flanges - 2 flange welds" },
     };
 
-    return configMap[configCode] || null;
+    const rawConfigCode = configMap[configCode];
+
+    return rawConfigCode || null;
   }
 }

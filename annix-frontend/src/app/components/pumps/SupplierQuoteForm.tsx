@@ -267,7 +267,6 @@ export function SupplierQuoteForm(props: SupplierQuoteFormProps) {
           </div>
         </div>
       </div>
-
       <div className="p-4 space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-50 rounded-lg p-4">
           <div>
@@ -343,6 +342,13 @@ export function SupplierQuoteForm(props: SupplierQuoteFormProps) {
               const isExpanded = expandedItems.has(lineItem.rfqItemId);
               const lineTotal = lineItem.unitPrice * lineItem.quantity;
 
+              const rawPumpType = rfqItem.pumpType;
+              const rawUnitPrice = lineItem.unitPrice;
+              const rawLeadTimeDays = lineItem.leadTimeDays;
+              const rawNotes = lineItem.notes;
+              const rawAlternativeDescription = lineItem.alternativeDescription;
+              const rawAlternativeUnitPrice = lineItem.alternativeUnitPrice;
+
               return (
                 <div
                   key={lineItem.rfqItemId}
@@ -359,7 +365,7 @@ export function SupplierQuoteForm(props: SupplierQuoteFormProps) {
                           {SERVICE_TYPE_LABELS[rfqItem.serviceType]}
                         </span>
                         <span className="font-medium text-gray-900">
-                          {rfqItem.pumpType || rfqItem.existingPumpModel || "Pump Item"}
+                          {rawPumpType || rfqItem.existingPumpModel || "Pump Item"}
                         </span>
                         <span className="text-gray-500 ml-2">x {rfqItem.quantity}</span>
                       </div>
@@ -386,7 +392,6 @@ export function SupplierQuoteForm(props: SupplierQuoteFormProps) {
                       </svg>
                     </div>
                   </div>
-
                   {isExpanded && (
                     <div className="p-4 space-y-4 border-t border-gray-200">
                       {rfqItem.description && (
@@ -407,7 +412,7 @@ export function SupplierQuoteForm(props: SupplierQuoteFormProps) {
                           </label>
                           <input
                             type="number"
-                            value={lineItem.unitPrice || ""}
+                            value={rawUnitPrice || ""}
                             onChange={(e) =>
                               updateLineItem(lineItem.rfqItemId, {
                                 unitPrice: parseFloat(e.target.value) || 0,
@@ -443,7 +448,7 @@ export function SupplierQuoteForm(props: SupplierQuoteFormProps) {
                           </label>
                           <input
                             type="number"
-                            value={lineItem.leadTimeDays || ""}
+                            value={rawLeadTimeDays || ""}
                             onChange={(e) =>
                               updateLineItem(lineItem.rfqItemId, {
                                 leadTimeDays: parseInt(e.target.value, 10) || 0,
@@ -461,7 +466,7 @@ export function SupplierQuoteForm(props: SupplierQuoteFormProps) {
                           Notes
                         </label>
                         <textarea
-                          value={lineItem.notes || ""}
+                          value={rawNotes || ""}
                           onChange={(e) =>
                             updateLineItem(lineItem.rfqItemId, { notes: e.target.value })
                           }
@@ -496,7 +501,7 @@ export function SupplierQuoteForm(props: SupplierQuoteFormProps) {
                               </label>
                               <input
                                 type="text"
-                                value={lineItem.alternativeDescription || ""}
+                                value={rawAlternativeDescription || ""}
                                 onChange={(e) =>
                                   updateLineItem(lineItem.rfqItemId, {
                                     alternativeDescription: e.target.value,
@@ -512,7 +517,7 @@ export function SupplierQuoteForm(props: SupplierQuoteFormProps) {
                               </label>
                               <input
                                 type="number"
-                                value={lineItem.alternativeUnitPrice || ""}
+                                value={rawAlternativeUnitPrice || ""}
                                 onChange={(e) =>
                                   updateLineItem(lineItem.rfqItemId, {
                                     alternativeUnitPrice: parseFloat(e.target.value) || 0,
@@ -654,7 +659,6 @@ export function SupplierQuoteForm(props: SupplierQuoteFormProps) {
           </p>
         </div>
       </div>
-
       <div className="border-t border-gray-200 p-4">
         <div className="flex justify-between items-start">
           <div>

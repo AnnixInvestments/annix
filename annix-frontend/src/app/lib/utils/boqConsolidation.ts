@@ -53,20 +53,22 @@ function flangeSpec(
   globalSpecs?: ConsolidationInput["globalSpecs"],
   masterData?: ConsolidationInput["masterData"],
 ): { spec: string; standard: string; pressureClass: string; flangeTypeCode?: string } {
-  const flangeStandardId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
-  const flangePressureClassId =
-    entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
-  const flangeStandard =
-    flangeStandardId && masterData?.flangeStandards
-      ? masterData.flangeStandards.find((s) => s.id === flangeStandardId)?.code || ""
-      : "";
+  const rawFlangeStandardId = entry.specs?.flangeStandardId;
+  const flangeStandardId = rawFlangeStandardId || globalSpecs?.flangeStandardId;
+  const rawFlangePressureClassId = entry.specs?.flangePressureClassId;
+  const flangePressureClassId = rawFlangePressureClassId || globalSpecs?.flangePressureClassId;
+  const rawCode = masterData.flangeStandards.find((s) => s.id === flangeStandardId)?.code;
+  const flangeStandard = flangeStandardId && masterData?.flangeStandards ? rawCode || "" : "";
+  const rawDesignation = masterData.pressureClasses.find(
+    (p) => p.id === flangePressureClassId,
+  )?.designation;
+  const rawPressureClassDesignation = globalSpecs?.pressureClassDesignation;
   const pressureClass =
     flangePressureClassId && masterData?.pressureClasses
-      ? masterData.pressureClasses.find((p) => p.id === flangePressureClassId)?.designation ||
-        globalSpecs?.pressureClassDesignation ||
-        "PN16"
-      : globalSpecs?.pressureClassDesignation || "PN16";
-  const flangeTypeCode = entry.specs?.flangeTypeCode || globalSpecs?.flangeTypeCode;
+      ? rawDesignation || globalSpecs?.pressureClassDesignation || "PN16"
+      : rawPressureClassDesignation || "PN16";
+  const rawFlangeTypeCode = entry.specs?.flangeTypeCode;
+  const flangeTypeCode = rawFlangeTypeCode || globalSpecs?.flangeTypeCode;
   const spec =
     flangeStandard && pressureClass ? `${flangeStandard} ${pressureClass}` : pressureClass;
   return { spec, standard: flangeStandard, pressureClass, flangeTypeCode };
@@ -178,7 +180,8 @@ export function consolidateBoqData(input: ConsolidationInput): ExtendedConsolida
 
   entries.forEach((entry, index) => {
     const itemNumber = index + 1;
-    const qty = entry.specs?.quantityValue || entry.calculation?.calculatedPipeCount || 1;
+    const rawQuantityValue = entry.specs?.quantityValue;
+    const qty = rawQuantityValue || entry.calculation?.calculatedPipeCount || 1;
     const {
       spec: flangeSpecStr,
       standard: flangeStandard,
@@ -187,8 +190,10 @@ export function consolidateBoqData(input: ConsolidationInput): ExtendedConsolida
     } = flangeSpec(entry, globalSpecs, masterData);
 
     if (entry.itemType === "bend") {
-      const nb = entry.specs?.nominalBoreMm || 100;
-      const bendEndConfig = entry.specs?.bendEndConfiguration || "PE";
+      const rawNominalBoreMm = entry.specs?.nominalBoreMm;
+      const nb = rawNominalBoreMm || 100;
+      const rawBendEndConfiguration = entry.specs?.bendEndConfiguration;
+      const bendEndConfig = rawBendEndConfiguration || "PE";
       const flangeCount = getFlangeCountFromConfig(bendEndConfig, "bend");
       const flangeTypeName = getFlangeTypeName(bendEndConfig);
 
@@ -264,7 +269,8 @@ export function consolidateBoqData(input: ConsolidationInput): ExtendedConsolida
       }
 
       if (entry.specs?.addBlankFlange && entry.specs?.blankFlangeCount > 0) {
-        const blankNb = entry.specs?.blankFlangeNominalBoreMm || nb;
+        const rawBlankFlangeNominalBoreMm = entry.specs?.blankFlangeNominalBoreMm;
+        const blankNb = rawBlankFlangeNominalBoreMm || nb;
         const blankFlangeKey = `BLANK_FLANGE_${blankNb}_${flangeSpecStr}`;
         const existingBlank = consolidatedBlankFlanges.get(blankFlangeKey);
         const blankQty = entry.specs.blankFlangeCount * qty;
@@ -288,9 +294,12 @@ export function consolidateBoqData(input: ConsolidationInput): ExtendedConsolida
         }
       }
     } else if (entry.itemType === "fitting") {
-      const nb = entry.specs?.nominalDiameterMm || entry.specs?.nominalBoreMm || 100;
-      const branchNb = entry.specs?.branchNominalDiameterMm || nb;
-      const fittingEndConfig = entry.specs?.pipeEndConfiguration || "PE";
+      const rawNominalDiameterMm = entry.specs?.nominalDiameterMm;
+      const nb = rawNominalDiameterMm || entry.specs?.nominalBoreMm || 100;
+      const rawBranchNominalDiameterMm = entry.specs?.branchNominalDiameterMm;
+      const branchNb = rawBranchNominalDiameterMm || nb;
+      const rawPipeEndConfiguration = entry.specs?.pipeEndConfiguration;
+      const fittingEndConfig = rawPipeEndConfiguration || "PE";
       const flangeCount = getFlangeCountFromConfig(fittingEndConfig, "fitting");
       const flangeTypeName = getFlangeTypeName(fittingEndConfig);
       const isEqualBranch = branchNb === nb;
@@ -433,7 +442,8 @@ export function consolidateBoqData(input: ConsolidationInput): ExtendedConsolida
       }
 
       if (entry.specs?.addBlankFlange && entry.specs?.blankFlangeCount > 0) {
-        const blankNb = entry.specs?.blankFlangeNominalBoreMm || nb;
+        const rawBlankFlangeNominalBoreMm2 = entry.specs?.blankFlangeNominalBoreMm;
+        const blankNb = rawBlankFlangeNominalBoreMm2 || nb;
         const blankFlangeKey = `BLANK_FLANGE_${blankNb}_${flangeSpecStr}`;
         const existingBlank = consolidatedBlankFlanges.get(blankFlangeKey);
         const blankQty = entry.specs.blankFlangeCount * qty;
@@ -457,11 +467,16 @@ export function consolidateBoqData(input: ConsolidationInput): ExtendedConsolida
         }
       }
     } else if (entry.itemType === "valve") {
-      const valveType = entry.specs?.valveType || "valve";
-      const size = entry.specs?.size || "DN100";
-      const pressureClass = entry.specs?.pressureClass || "Class 150";
-      const bodyMaterial = entry.specs?.bodyMaterial || "CF8M";
-      const actuatorType = entry.specs?.actuatorType || "manual";
+      const rawValveType = entry.specs?.valveType;
+      const valveType = rawValveType || "valve";
+      const rawSize = entry.specs?.size;
+      const size = rawSize || "DN100";
+      const rawPressureClass = entry.specs?.pressureClass;
+      const pressureClass = rawPressureClass || "Class 150";
+      const rawBodyMaterial = entry.specs?.bodyMaterial;
+      const bodyMaterial = rawBodyMaterial || "CF8M";
+      const rawActuatorType = entry.specs?.actuatorType;
+      const actuatorType = rawActuatorType || "manual";
 
       const valveKey = `VALVE_${valveType}_${size}_${pressureClass}_${bodyMaterial}_${actuatorType}`;
       const existingValve = consolidatedValves.get(valveKey);
@@ -481,10 +496,14 @@ export function consolidateBoqData(input: ConsolidationInput): ExtendedConsolida
         });
       }
     } else if (entry.itemType === "instrument") {
-      const instrumentType = entry.specs?.instrumentType || "instrument";
-      const instrumentCategory = entry.specs?.instrumentCategory || "flow";
-      const size = entry.specs?.size || "";
-      const processConnection = entry.specs?.processConnection || "";
+      const rawInstrumentType = entry.specs?.instrumentType;
+      const instrumentType = rawInstrumentType || "instrument";
+      const rawInstrumentCategory = entry.specs?.instrumentCategory;
+      const instrumentCategory = rawInstrumentCategory || "flow";
+      const rawSize2 = entry.specs?.size;
+      const size = rawSize2 || "";
+      const rawProcessConnection = entry.specs?.processConnection;
+      const processConnection = rawProcessConnection || "";
 
       const instrumentKey = `INSTRUMENT_${instrumentCategory}_${instrumentType}_${size}_${processConnection}`;
       const existingInstrument = consolidatedInstruments.get(instrumentKey);
@@ -504,15 +523,24 @@ export function consolidateBoqData(input: ConsolidationInput): ExtendedConsolida
         });
       }
     } else if (entry.itemType === "pump") {
-      const pumpType = entry.specs?.pumpType || "centrifugal";
-      const manufacturer = entry.specs?.manufacturer || "";
-      const model = entry.specs?.model || "";
-      const flowRate = entry.specs?.flowRateM3h || "";
-      const head = entry.specs?.headM || "";
-      const power = entry.specs?.motorPowerKw || "";
-      const material = entry.specs?.wetEndMaterial || "";
-      const sealType = entry.specs?.sealType || "";
-      const estimatedWeight = entry.specs?.estimatedWeightKg || 0;
+      const rawPumpType = entry.specs?.pumpType;
+      const pumpType = rawPumpType || "centrifugal";
+      const rawManufacturer = entry.specs?.manufacturer;
+      const manufacturer = rawManufacturer || "";
+      const rawModel = entry.specs?.model;
+      const model = rawModel || "";
+      const rawFlowRateM3h = entry.specs?.flowRateM3h;
+      const flowRate = rawFlowRateM3h || "";
+      const rawHeadM = entry.specs?.headM;
+      const head = rawHeadM || "";
+      const rawMotorPowerKw = entry.specs?.motorPowerKw;
+      const power = rawMotorPowerKw || "";
+      const rawWetEndMaterial = entry.specs?.wetEndMaterial;
+      const material = rawWetEndMaterial || "";
+      const rawSealType = entry.specs?.sealType;
+      const sealType = rawSealType || "";
+      const rawEstimatedWeightKg = entry.specs?.estimatedWeightKg;
+      const estimatedWeight = rawEstimatedWeightKg || 0;
 
       const pumpKey = `PUMP_${pumpType}_${manufacturer}_${model}_${flowRate}_${head}_${material}`;
       const existingPump = consolidatedPumps.get(pumpKey);
@@ -544,11 +572,16 @@ export function consolidateBoqData(input: ConsolidationInput): ExtendedConsolida
         });
       }
     } else if (entry.itemType === "pump_part") {
-      const partType = entry.specs?.partType || "part";
-      const partDescription = entry.specs?.partDescription || "";
-      const partNumber = entry.specs?.partNumber || "";
-      const material = entry.specs?.material || "";
-      const estimatedWeight = entry.specs?.estimatedWeightKg || 0;
+      const rawPartType = entry.specs?.partType;
+      const partType = rawPartType || "part";
+      const rawPartDescription = entry.specs?.partDescription;
+      const partDescription = rawPartDescription || "";
+      const rawPartNumber = entry.specs?.partNumber;
+      const partNumber = rawPartNumber || "";
+      const rawMaterial = entry.specs?.material;
+      const material = rawMaterial || "";
+      const rawEstimatedWeightKg2 = entry.specs?.estimatedWeightKg;
+      const estimatedWeight = rawEstimatedWeightKg2 || 0;
 
       const partKey = `PUMP_PART_${partType}_${partNumber}_${material}`;
       const existingPart = consolidatedPumpParts.get(partKey);
@@ -576,12 +609,18 @@ export function consolidateBoqData(input: ConsolidationInput): ExtendedConsolida
         });
       }
     } else if (entry.itemType === "pump_spare") {
-      const spareType = entry.specs?.spareType || "spare";
-      const spareDescription = entry.specs?.spareDescription || "";
-      const partNumber = entry.specs?.partNumber || "";
-      const oemPartNumber = entry.specs?.oemPartNumber || "";
-      const material = entry.specs?.material || "";
-      const estimatedWeight = entry.specs?.estimatedWeightKg || 0;
+      const rawSpareType = entry.specs?.spareType;
+      const spareType = rawSpareType || "spare";
+      const rawSpareDescription = entry.specs?.spareDescription;
+      const spareDescription = rawSpareDescription || "";
+      const rawPartNumber2 = entry.specs?.partNumber;
+      const partNumber = rawPartNumber2 || "";
+      const rawOemPartNumber = entry.specs?.oemPartNumber;
+      const oemPartNumber = rawOemPartNumber || "";
+      const rawMaterial2 = entry.specs?.material;
+      const material = rawMaterial2 || "";
+      const rawEstimatedWeightKg3 = entry.specs?.estimatedWeightKg;
+      const estimatedWeight = rawEstimatedWeightKg3 || 0;
 
       const spareKey = `PUMP_SPARE_${spareType}_${partNumber}_${oemPartNumber}_${material}`;
       const existingSpare = consolidatedPumpSpares.get(spareKey);
@@ -610,11 +649,14 @@ export function consolidateBoqData(input: ConsolidationInput): ExtendedConsolida
         });
       }
     } else {
-      const nb = entry.specs?.nominalBoreMm || 100;
-      const pipeEndConfig = entry.specs?.pipeEndConfiguration || "PE";
+      const rawNominalBoreMm2 = entry.specs?.nominalBoreMm;
+      const nb = rawNominalBoreMm2 || 100;
+      const rawPipeEndConfiguration2 = entry.specs?.pipeEndConfiguration;
+      const pipeEndConfig = rawPipeEndConfiguration2 || "PE";
       const flangeCount = getFlangeCountFromConfig(pipeEndConfig, "straight_pipe");
       const flangeTypeName = getFlangeTypeName(pipeEndConfig);
-      const pipeQty = entry.calculation?.calculatedPipeCount || qty;
+      const rawCalculatedPipeCount = entry.calculation?.calculatedPipeCount;
+      const pipeQty = rawCalculatedPipeCount || qty;
 
       if (flangeCount.main > 0) {
         const flangeKey = `FLANGE_${nb}_${flangeSpecStr}_${flangeTypeName}`;
@@ -685,7 +727,8 @@ export function consolidateBoqData(input: ConsolidationInput): ExtendedConsolida
       }
 
       if (entry.specs?.addBlankFlange && entry.specs?.blankFlangeCount > 0) {
-        const blankNb = entry.specs?.blankFlangeNominalBoreMm || nb;
+        const rawBlankFlangeNominalBoreMm3 = entry.specs?.blankFlangeNominalBoreMm;
+        const blankNb = rawBlankFlangeNominalBoreMm3 || nb;
         const blankFlangeKey = `BLANK_FLANGE_${blankNb}_${flangeSpecStr}`;
         const existingBlank = consolidatedBlankFlanges.get(blankFlangeKey);
         const blankQty = entry.specs.blankFlangeCount * pipeQty;
@@ -712,18 +755,22 @@ export function consolidateBoqData(input: ConsolidationInput): ExtendedConsolida
   });
 
   if (globalSpecs?.externalCoatingConfirmed && globalSpecs?.externalCoatingType) {
+    const rawExternalPrimerMicrons = globalSpecs.externalPrimerMicrons;
+    const rawExternalIntermediateMicrons = globalSpecs.externalIntermediateMicrons;
+    const rawExternalTopcoatMicrons = globalSpecs.externalTopcoatMicrons;
     const totalDft =
-      (globalSpecs.externalPrimerMicrons || 0) +
-      (globalSpecs.externalIntermediateMicrons || 0) +
-      (globalSpecs.externalTopcoatMicrons || 0);
+      (rawExternalPrimerMicrons || 0) +
+      (rawExternalIntermediateMicrons || 0) +
+      (rawExternalTopcoatMicrons || 0);
 
     const coatingKey = `EXT_COAT_${globalSpecs.externalCoatingType}_${totalDft}`;
-    const description = `External Coating: ${globalSpecs.externalCoatingType} System, ${totalDft}um DFT, ${globalSpecs.externalBlastingGrade || "Sa 2.5"} prep`;
+    const rawExternalBlastingGrade = globalSpecs.externalBlastingGrade;
+    const description = `External Coating: ${globalSpecs.externalCoatingType} System, ${totalDft}um DFT, ${rawExternalBlastingGrade || "Sa 2.5"} prep`;
 
-    const coatingArea = Array.from(consolidatedBlankFlanges.values()).reduce(
-      (sum, item) => sum + (item.extAreaM2 || 0),
-      0,
-    );
+    const coatingArea = Array.from(consolidatedBlankFlanges.values()).reduce((sum, item) => {
+      const rawExtAreaM2 = item.extAreaM2;
+      return sum + (rawExtAreaM2 || 0);
+    }, 0);
 
     consolidatedExternalCoating.set(coatingKey, {
       description,
@@ -745,14 +792,16 @@ export function consolidateBoqData(input: ConsolidationInput): ExtendedConsolida
   }
 
   if (globalSpecs?.internalLiningConfirmed && globalSpecs?.internalLiningType) {
-    const liningArea = Array.from(consolidatedBlankFlanges.values()).reduce(
-      (sum, item) => sum + (item.intAreaM2 || 0),
-      0,
-    );
+    const liningArea = Array.from(consolidatedBlankFlanges.values()).reduce((sum, item) => {
+      const rawIntAreaM2 = item.intAreaM2;
+      return sum + (rawIntAreaM2 || 0);
+    }, 0);
 
     if (globalSpecs.internalRubberType) {
-      const rubberKey = `RUBBER_${globalSpecs.internalRubberType}_${globalSpecs.internalRubberThickness || "6mm"}`;
-      const description = `Rubber Lining: ${globalSpecs.internalRubberType}, ${globalSpecs.internalRubberThickness || "6mm"} thickness`;
+      const rawInternalRubberThickness = globalSpecs.internalRubberThickness;
+      const rubberKey = `RUBBER_${globalSpecs.internalRubberType}_${rawInternalRubberThickness || "6mm"}`;
+      const rawInternalRubberThickness2 = globalSpecs.internalRubberThickness;
+      const description = `Rubber Lining: ${globalSpecs.internalRubberType}, ${rawInternalRubberThickness2 || "6mm"} thickness`;
 
       consolidatedRubberLining.set(rubberKey, {
         description,
@@ -812,31 +861,37 @@ export function consolidateBoqData(input: ConsolidationInput): ExtendedConsolida
   }
 
   const mapToDto = (items: Map<string, ConsolidatedItem>): ConsolidatedItemDto[] => {
-    return Array.from(items.values()).map((item) => ({
-      description: item.description,
-      qty: item.qty,
-      unit: item.unit,
-      weightKg: item.weight,
-      entries: item.entries,
-      welds: item.welds
-        ? {
-            pipeWeld: item.welds["Pipe Weld"],
-            flangeWeld: item.welds["Flange Weld"],
-            mitreWeld: item.welds["Mitre Weld"],
-            teeWeld: item.welds["Tee Weld"],
-            gussetTeeWeld: item.welds["Gusset Tee Weld"],
-            latWeld45Plus: item.welds["Lat Weld 45+"],
-            latWeldUnder45: item.welds["Lat Weld <45"],
-          }
-        : undefined,
-      areas:
-        item.intAreaM2 || item.extAreaM2
+    return Array.from(items.values()).map((item) => {
+      const rawIntAreaM22 = item.intAreaM2;
+
+      return {
+        description: item.description,
+        qty: item.qty,
+        unit: item.unit,
+        weightKg: item.weight,
+        entries: item.entries,
+
+        welds: item.welds
           ? {
-              intAreaM2: item.intAreaM2,
-              extAreaM2: item.extAreaM2,
+              pipeWeld: item.welds["Pipe Weld"],
+              flangeWeld: item.welds["Flange Weld"],
+              mitreWeld: item.welds["Mitre Weld"],
+              teeWeld: item.welds["Tee Weld"],
+              gussetTeeWeld: item.welds["Gusset Tee Weld"],
+              latWeld45Plus: item.welds["Lat Weld 45+"],
+              latWeldUnder45: item.welds["Lat Weld <45"],
             }
           : undefined,
-    }));
+
+        areas:
+          rawIntAreaM22 || item.extAreaM2
+            ? {
+                intAreaM2: item.intAreaM2,
+                extAreaM2: item.extAreaM2,
+              }
+            : undefined,
+      };
+    });
   };
 
   return {

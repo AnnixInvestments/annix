@@ -125,7 +125,8 @@ export function getFlangeDimensionsByDn(
 ): FlangeDimensions | undefined {
   // Normalize pressure class to find the right table
   const normalizedClass = (pressureClass || "150").toUpperCase().trim();
-  const flangeTable = FLANGE_DIMENSIONS_BY_CLASS[normalizedClass] || ANSI_B165_CLASS_150_FLANGES;
+  const rawNormalizedClass = FLANGE_DIMENSIONS_BY_CLASS[normalizedClass];
+  const flangeTable = rawNormalizedClass || ANSI_B165_CLASS_150_FLANGES;
   return flangeTable.find((f) => f.dn === dn);
 }
 

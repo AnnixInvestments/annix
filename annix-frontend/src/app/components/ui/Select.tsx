@@ -173,6 +173,8 @@ const SelectComponent = React.forwardRef<HTMLButtonElement, SelectProps>((props,
     }
   }, [highlightedIndex, shouldScrollToHighlighted, filteredGroupedOptions, filteredOptions.length]);
 
+  const rawLabel = selectedOption?.label;
+
   return (
     <Popover.Root open={isOpen} onOpenChange={handleOpenChange}>
       <Popover.Trigger asChild>
@@ -192,12 +194,11 @@ const SelectComponent = React.forwardRef<HTMLButtonElement, SelectProps>((props,
           className={`flex items-center justify-between w-full px-2 py-1.5 text-xs border border-gray-300 rounded bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed text-left ${className || ""}`}
         >
           <span className={selectedOption ? "text-gray-900" : "text-gray-400"}>
-            {loading ? "Loading..." : selectedOption?.label || placeholder}
+            {loading ? "Loading..." : rawLabel || placeholder}
           </span>
           {loading ? <LoadingSpinner /> : <ChevronDownIcon />}
         </button>
       </Popover.Trigger>
-
       <Popover.Portal>
         <Popover.Content
           className="bg-white border border-gray-200 rounded-md shadow-lg z-[10000] w-[var(--radix-popover-trigger-width)] overflow-hidden"

@@ -172,8 +172,10 @@ const customerRefreshHandler = async (): Promise<boolean> => {
     }
 
     const data = await result.json();
-    const accessToken = data.access_token || data.accessToken;
-    const newRefreshToken = data.refresh_token || data.refreshToken;
+    const rawAccess_token = data.access_token;
+    const accessToken = rawAccess_token || data.accessToken;
+    const rawRefresh_token = data.refresh_token;
+    const newRefreshToken = rawRefresh_token || data.refreshToken;
 
     if (accessToken && newRefreshToken) {
       customerTokenStore.setTokens(accessToken, newRefreshToken, customerTokenStore.rememberMe());

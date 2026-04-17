@@ -18,8 +18,10 @@ function ConversationThreadComponent(props: ConversationThreadProps) {
   const messages = props.messages;
   const currentUserId = props.currentUserId;
   const onLoadMore = props.onLoadMore;
-  const hasMore = props.hasMore ?? false;
-  const isLoadingMore = props.isLoadingMore ?? false;
+  const rawHasMore = props.hasMore;
+  const hasMore = rawHasMore || false;
+  const rawIsLoadingMore = props.isLoadingMore;
+  const isLoadingMore = rawIsLoadingMore || false;
   const onDownloadAttachment = props.onDownloadAttachment;
   const containerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);

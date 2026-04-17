@@ -73,7 +73,8 @@ export function ParsedItemsConfirmation(props: ParsedItemsConfirmationProps) {
       if (response.success) {
         onConfirm(response);
       } else {
-        setError(response.failedItems?.[0]?.reason || "Failed to create items");
+        const rawReason = response.failedItems?.[0]?.reason;
+        setError(rawReason || "Failed to create items");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create items");
@@ -92,13 +93,11 @@ export function ParsedItemsConfirmation(props: ParsedItemsConfirmationProps) {
           {confirmedCount} of {itemsToCreate.length} selected
         </span>
       </div>
-
       {parseResponse.requiresConfirmation && (
         <p className="text-sm text-amber-400">
           Some items have low confidence or missing fields. Please review before creating.
         </p>
       )}
-
       <div className="space-y-3">
         {parseResponse.parsedItems.map((item, index) => {
           if (item.action !== "create_item") return null;
@@ -107,12 +106,14 @@ export function ParsedItemsConfirmation(props: ParsedItemsConfirmationProps) {
           const issues = parseResponse.validationIssues?.filter((i) => i.itemIndex === index) || [];
           const hasErrors = issues.some((i) => i.severity === "error");
 
+          const rawConfirmed = confirmation?.confirmed;
+
           return (
             <ParsedItemCard
               key={index}
               item={item}
               index={index}
-              isConfirmed={confirmation?.confirmed || false}
+              isConfirmed={rawConfirmed || false}
               onToggle={() => toggleItem(index)}
               onUpdateSpecs={(specs) => updateSpecs(index, specs)}
               modifiedSpecs={confirmation?.modifiedSpecs}
@@ -122,9 +123,7 @@ export function ParsedItemsConfirmation(props: ParsedItemsConfirmationProps) {
           );
         })}
       </div>
-
       {error && <div className="bg-red-900/50 text-red-200 p-3 rounded text-sm">{error}</div>}
-
       <div className="flex justify-end gap-3 pt-2">
         <button
           onClick={onCancel}
@@ -302,6 +301,13 @@ function ItemSpecsEditor({ specs, itemType, onSave, onCancel }: ItemSpecsEditorP
     setEditedSpecs((prev) => ({ ...prev, [field]: value }));
   };
 
+  const rawDiameter = editedSpecs.diameter;
+  const rawSchedule = editedSpecs.schedule;
+  const rawAngle = editedSpecs.angle;
+  const rawSecondaryDiameter = editedSpecs.secondaryDiameter;
+  const rawLength = editedSpecs.length;
+  const rawQuantity = editedSpecs.quantity;
+
   return (
     <div className="space-y-2 mt-2">
       <div className="grid grid-cols-2 gap-2">
@@ -309,7 +315,7 @@ function ItemSpecsEditor({ specs, itemType, onSave, onCancel }: ItemSpecsEditorP
           <span className="text-gray-400">Diameter (NB)</span>
           <input
             type="number"
-            value={editedSpecs.diameter || ""}
+            value={rawDiameter || ""}
             onChange={(e) => handleChange("diameter", parseInt(e.target.value, 10) || 0)}
             className="w-full mt-1 px-2 py-1 bg-gray-700 border border-gray-600 rounded text-sm text-white"
           />
@@ -319,7 +325,7 @@ function ItemSpecsEditor({ specs, itemType, onSave, onCancel }: ItemSpecsEditorP
           <span className="text-gray-400">Schedule</span>
           <input
             type="text"
-            value={editedSpecs.schedule || ""}
+            value={rawSchedule || ""}
             onChange={(e) => handleChange("schedule", e.target.value)}
             placeholder="e.g., Sch 40"
             className="w-full mt-1 px-2 py-1 bg-gray-700 border border-gray-600 rounded text-sm text-white"
@@ -331,7 +337,7 @@ function ItemSpecsEditor({ specs, itemType, onSave, onCancel }: ItemSpecsEditorP
             <span className="text-gray-400">Angle (degrees)</span>
             <input
               type="number"
-              value={editedSpecs.angle || ""}
+              value={rawAngle || ""}
               onChange={(e) => handleChange("angle", parseInt(e.target.value, 10) || 0)}
               className="w-full mt-1 px-2 py-1 bg-gray-700 border border-gray-600 rounded text-sm text-white"
             />
@@ -343,7 +349,7 @@ function ItemSpecsEditor({ specs, itemType, onSave, onCancel }: ItemSpecsEditorP
             <span className="text-gray-400">Outlet (NB)</span>
             <input
               type="number"
-              value={editedSpecs.secondaryDiameter || ""}
+              value={rawSecondaryDiameter || ""}
               onChange={(e) => handleChange("secondaryDiameter", parseInt(e.target.value, 10) || 0)}
               className="w-full mt-1 px-2 py-1 bg-gray-700 border border-gray-600 rounded text-sm text-white"
             />
@@ -356,7 +362,7 @@ function ItemSpecsEditor({ specs, itemType, onSave, onCancel }: ItemSpecsEditorP
             <input
               type="number"
               step="0.1"
-              value={editedSpecs.length || ""}
+              value={rawLength || ""}
               onChange={(e) => handleChange("length", parseFloat(e.target.value) || 0)}
               className="w-full mt-1 px-2 py-1 bg-gray-700 border border-gray-600 rounded text-sm text-white"
             />
@@ -367,13 +373,12 @@ function ItemSpecsEditor({ specs, itemType, onSave, onCancel }: ItemSpecsEditorP
           <span className="text-gray-400">Quantity</span>
           <input
             type="number"
-            value={editedSpecs.quantity || 1}
+            value={rawQuantity || 1}
             onChange={(e) => handleChange("quantity", parseInt(e.target.value, 10) || 1)}
             className="w-full mt-1 px-2 py-1 bg-gray-700 border border-gray-600 rounded text-sm text-white"
           />
         </label>
       </div>
-
       <div className="flex justify-end gap-2">
         <button onClick={onCancel} className="px-2 py-1 text-xs text-gray-400 hover:text-white">
           Cancel

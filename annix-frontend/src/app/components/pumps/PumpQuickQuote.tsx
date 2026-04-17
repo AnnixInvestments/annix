@@ -126,27 +126,33 @@ export function PumpQuickQuote(props: PumpQuickQuoteProps) {
   const handleSubmit = useCallback(async () => {
     if (!validateStep()) return;
 
+    const rawPhone = customerInfo.phone;
+    const rawProjectName = projectInfo.projectName;
+    const rawRequiredDate = projectInfo.requiredDate;
+    const rawDeliveryLocation = projectInfo.deliveryLocation;
+
     const quoteRequest: QuickQuoteRequest = {
       products: activeProducts.map((product) => {
         const pq = productQuantities.find((q) => q.productId === product.id)!;
+        const rawNotes = pq.notes;
         return {
           productId: product.id,
           sku: product.sku,
           title: product.title,
           quantity: pq.quantity,
-          notes: pq.notes || undefined,
+          notes: rawNotes || undefined,
         };
       }),
       customerInfo: {
         company: customerInfo.company,
         contactName: customerInfo.contactName,
         email: customerInfo.email,
-        phone: customerInfo.phone || undefined,
+        phone: rawPhone || undefined,
       },
       projectInfo: {
-        projectName: projectInfo.projectName || undefined,
-        requiredDate: projectInfo.requiredDate || undefined,
-        deliveryLocation: projectInfo.deliveryLocation || undefined,
+        projectName: rawProjectName || undefined,
+        requiredDate: rawRequiredDate || undefined,
+        deliveryLocation: rawDeliveryLocation || undefined,
       },
       additionalNotes: additionalNotes || undefined,
     };
@@ -168,6 +174,8 @@ export function PumpQuickQuote(props: PumpQuickQuoteProps) {
   ]);
 
   const totalProducts = productQuantities.reduce((sum, pq) => sum + pq.quantity, 0);
+
+  const rawProjectName2 = projectInfo.projectName;
 
   return (
     <div className="bg-white rounded-lg shadow-lg border border-gray-200 max-w-3xl mx-auto">
@@ -234,7 +242,6 @@ export function PumpQuickQuote(props: PumpQuickQuoteProps) {
           ))}
         </div>
       </div>
-
       <div className="p-6">
         {step === "products" && (
           <div className="space-y-4">
@@ -497,9 +504,7 @@ export function PumpQuickQuote(props: PumpQuickQuoteProps) {
               </div>
             </div>
 
-            {(projectInfo.projectName ||
-              projectInfo.requiredDate ||
-              projectInfo.deliveryLocation) && (
+            {(rawProjectName2 || projectInfo.requiredDate || projectInfo.deliveryLocation) && (
               <div className="bg-gray-50 rounded-lg p-4">
                 <h3 className="font-medium text-gray-900 mb-3">Project Details</h3>
                 <div className="grid grid-cols-2 gap-2 text-sm">
@@ -534,7 +539,6 @@ export function PumpQuickQuote(props: PumpQuickQuoteProps) {
           </div>
         )}
       </div>
-
       <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
         <div>
           {step !== "products" && (

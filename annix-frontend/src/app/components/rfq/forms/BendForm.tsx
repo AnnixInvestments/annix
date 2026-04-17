@@ -120,9 +120,12 @@ function BendFormComponent(props: BendFormProps) {
     isUnregisteredCustomer: isUnregisteredCustomerProp,
     onShowRestrictionPopup,
   } = props;
-  const errors = props.errors ?? {};
-  const isLoadingNominalBores = props.isLoadingNominalBores ?? false;
-  const requiredProducts = props.requiredProducts ?? [];
+  const rawErrors = props.errors;
+  const errors = rawErrors || {};
+  const rawIsLoadingNominalBores = props.isLoadingNominalBores;
+  const isLoadingNominalBores = rawIsLoadingNominalBores || false;
+  const rawRequiredProducts = props.requiredProducts;
+  const requiredProducts = rawRequiredProducts || [];
   log.info(`🔄 BendForm RENDER - entry.id: ${entry.id}, index: ${index}`);
 
   const { data: nbToOdMap = {} } = useNbToOdMap();
@@ -142,18 +145,27 @@ function BendFormComponent(props: BendFormProps) {
 
   const [flangeSpecs, setFlangeSpecs] = useState<FlangeSpecData | null>(null);
 
-  const specs = entry.specs ?? {};
+  const rawSpecs = entry.specs;
 
-  const flangeStandardId = specs.flangeStandardId || globalSpecs?.flangeStandardId;
-  const flangePressureClassId = specs.flangePressureClassId || globalSpecs?.flangePressureClassId;
-  const flangeTypeCode = specs.flangeTypeCode || globalSpecs?.flangeTypeCode;
+  const specs = rawSpecs || {};
+
+  const rawFlangeStandardId = specs.flangeStandardId;
+
+  const flangeStandardId = rawFlangeStandardId || globalSpecs?.flangeStandardId;
+  const rawFlangePressureClassId = specs.flangePressureClassId;
+  const flangePressureClassId = rawFlangePressureClassId || globalSpecs?.flangePressureClassId;
+  const rawFlangeTypeCode = specs.flangeTypeCode;
+  const flangeTypeCode = rawFlangeTypeCode || globalSpecs?.flangeTypeCode;
   const nominalBoreMm = specs.nominalBoreMm;
-  const bendEndConfiguration = specs.bendEndConfiguration || "PE";
+  const rawBendEndConfiguration = specs.bendEndConfiguration;
+  const bendEndConfiguration = rawBendEndConfiguration || "PE";
   const hasFlanges = bendEndConfiguration !== "PE";
 
   const groupedSteelOptions = useGroupedSteelOptions(masterData);
 
-  const flangeTypesLength = masterData?.flangeTypes?.length || 0;
+  const rawLength = masterData?.flangeTypes?.length;
+
+  const flangeTypesLength = rawLength || 0;
 
   useEffect(() => {
     log.info(`🔥 BendForm useEffect[flangeSpecs] FIRED - entry.id: ${entry.id}`);
@@ -198,13 +210,15 @@ function BendFormComponent(props: BendFormProps) {
     masterData?.flangeTypes,
   ]);
 
-  const steelSpec = masterData?.steelSpecs?.find(
-    (s: SteelSpecItem) =>
-      s.id === (specs.steelSpecificationId || globalSpecs?.steelSpecificationId),
-  );
-  const steelSpecName = steelSpec?.steelSpecName || "";
+  const steelSpec = masterData?.steelSpecs?.find((s: SteelSpecItem) => {
+    const rawSteelSpecificationId = specs.steelSpecificationId;
+    return s.id === (rawSteelSpecificationId || globalSpecs?.steelSpecificationId);
+  });
+  const rawSteelSpecName = steelSpec?.steelSpecName;
+  const steelSpecName = rawSteelSpecName || "";
   const isSABS719 = steelSpecName.includes("SABS 719") || steelSpecName.includes("SANS 719");
-  const currentBendStyle = specs.bendStyle || (isSABS719 ? "segmented" : "pulled");
+  const rawBendStyle = specs.bendStyle;
+  const currentBendStyle = rawBendStyle || (isSABS719 ? "segmented" : "pulled");
   const isCurrentlySegmented = currentBendStyle === "segmented";
 
   const [lastFetchedParams, setLastFetchedParams] = useState<string | null>(null);
@@ -229,14 +243,18 @@ function BendFormComponent(props: BendFormProps) {
       const newSpec = newSpecId
         ? masterData.steelSpecs?.find((s: SteelSpecItem) => s.id === newSpecId)
         : null;
-      const newSpecName = newSpec?.steelSpecName || "";
+      const rawSteelSpecName2 = newSpec?.steelSpecName;
+      const newSpecName = rawSteelSpecName2 || "";
       const isNewSABS719 = newSpecName.includes("SABS 719") || newSpecName.includes("SANS 719");
 
-      const oldSpecId = specs.steelSpecificationId || globalSpecs?.steelSpecificationId;
+      const rawSteelSpecificationId2 = specs.steelSpecificationId;
+
+      const oldSpecId = rawSteelSpecificationId2 || globalSpecs?.steelSpecificationId;
       const oldSpec = oldSpecId
         ? masterData.steelSpecs?.find((s: SteelSpecItem) => s.id === oldSpecId)
         : null;
-      const oldSpecName = oldSpec?.steelSpecName || "";
+      const rawSteelSpecName3 = oldSpec?.steelSpecName;
+      const oldSpecName = rawSteelSpecName3 || "";
       const wasOldSABS719 = oldSpecName.includes("SABS 719") || oldSpecName.includes("SANS 719");
 
       const specTypeChanged = isNewSABS719 !== wasOldSABS719;
@@ -322,7 +340,8 @@ function BendFormComponent(props: BendFormProps) {
   const handleItemTypeChange = useCallback(
     (e: React.ChangeEvent<HTMLSelectElement>) => {
       const newItemType = e.target.value;
-      const oldItemType = specs.bendItemType || "BEND";
+      const rawBendItemType = specs.bendItemType;
+      const oldItemType = rawBendItemType || "BEND";
       const isFixed90 = newItemType === "SWEEP_TEE" || newItemType === "DUCKFOOT_BEND";
       const switchingToOrFromSweepTee =
         (newItemType === "SWEEP_TEE") !== (oldItemType === "SWEEP_TEE");
@@ -392,9 +411,11 @@ function BendFormComponent(props: BendFormProps) {
 
   const handleTangentCountChange = useCallback(
     (count: number, newLengths: number[]) => {
-      const currentNumStubs = specs.numberOfStubs || 0;
+      const rawNumberOfStubs = specs.numberOfStubs;
+      const currentNumStubs = rawNumberOfStubs || 0;
       const adjustedNumStubs = count < 2 && currentNumStubs > 1 ? 1 : currentNumStubs;
-      const currentStubs = specs.stubs || [];
+      const rawStubs = specs.stubs;
+      const currentStubs = rawStubs || [];
       const adjustedStubs =
         adjustedNumStubs < currentNumStubs ? currentStubs.slice(0, adjustedNumStubs) : currentStubs;
       const updatedEntry = {
@@ -418,7 +439,8 @@ function BendFormComponent(props: BendFormProps) {
 
   const handleTangentLengthChange = useCallback(
     (index: number, length: number) => {
-      const lengths = [...(specs.tangentLengths || [])];
+      const rawTangentLengths = specs.tangentLengths;
+      const lengths = [...(rawTangentLengths || [])];
       lengths[index] = length;
       onUpdateEntry(entry.id, {
         specs: { ...entry.specs, tangentLengths: lengths },
@@ -502,8 +524,37 @@ function BendFormComponent(props: BendFormProps) {
     onUpdateEntry,
   ]);
 
-  const stub0 = specs.stubs?.[0] || {};
-  const stub1 = specs.stubs?.[1] || {};
+  const rawItem0 = specs.stubs?.[0];
+
+  const stub0 = rawItem0 || {};
+  const rawItem1 = specs.stubs?.[1];
+  const stub1 = rawItem1 || {};
+
+  const rawDescription = entry.description;
+  const rawBendItemType2 = specs.bendItemType;
+  const rawWorkingPressureBar2 = specs.workingPressureBar;
+  const rawWorkingTemperatureC2 = specs.workingTemperatureC;
+  const rawSteelSpecs = masterData.steelSpecs;
+  const rawBendEndConfiguration4 = specs.bendEndConfiguration;
+  const rawNominalBoreMm3 = specs.nominalBoreMm;
+  const rawClosureLengthMm = specs.closureLengthMm;
+  const rawWallThicknessMm6 = specs.wallThicknessMm;
+  const rawNumberOfTangents = specs.numberOfTangents;
+  const rawTangentLengths2 = specs.tangentLengths;
+  const rawNumberOfStubs3 = specs.numberOfStubs;
+  const rawNumberOfStubs4 = specs.numberOfStubs;
+  const rawNumberOfStubs5 = specs.numberOfStubs;
+  const rawNumberOfStubs6 = specs.numberOfStubs;
+  const rawNumberOfStubs7 = specs.numberOfStubs;
+  const rawLength2 = stub0.length;
+  const rawNumberOfStubs8 = specs.numberOfStubs;
+  const rawLocationFromFlange = stub0.locationFromFlange;
+  const rawNumberOfStubs9 = specs.numberOfStubs;
+  const rawNumberOfStubs10 = specs.numberOfStubs;
+  const rawNumberOfTangents3 = specs.numberOfTangents;
+  const rawLength3 = stub1.length;
+  const rawLocationFromFlange2 = stub1.locationFromFlange;
+  const rawSelectedNotes = entry.selectedNotes;
 
   return (
     <>
@@ -547,7 +598,7 @@ function BendFormComponent(props: BendFormProps) {
               </label>
               <textarea
                 id={`bend-description-${entry.id}`}
-                value={entry.description || ""}
+                value={rawDescription || ""}
                 onChange={(e) => onUpdateEntry(entry.id, { description: e.target.value })}
                 className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-purple-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
                 rows={2}
@@ -580,7 +631,7 @@ function BendFormComponent(props: BendFormProps) {
                     <select
                       id={`bend-item-type-${entry.id}`}
                       data-nix-target="bend-item-type"
-                      value={specs.bendItemType || "BEND"}
+                      value={rawBendItemType2 || "BEND"}
                       onChange={handleItemTypeChange}
                       className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
                     >
@@ -597,7 +648,8 @@ function BendFormComponent(props: BendFormProps) {
                   <div>
                     {(() => {
                       const globalSpecId = globalSpecs?.steelSpecificationId;
-                      const effectiveSpecId = specs.steelSpecificationId || globalSpecId;
+                      const rawSteelSpecificationId3 = specs.steelSpecificationId;
+                      const effectiveSpecId = rawSteelSpecificationId3 || globalSpecId;
                       const isSteelFromGlobal = globalSpecId && effectiveSpecId === globalSpecId;
                       const isSteelOverride = globalSpecId && effectiveSpecId !== globalSpecId;
                       const selectId = `bend-steel-spec-${entry.id}`;
@@ -609,10 +661,13 @@ function BendFormComponent(props: BendFormProps) {
                         "w-full border-2 border-red-500 dark:border-red-400 rounded";
                       const defaultSelectClass = "w-full";
 
+                      const rawWorkingPressureBar = specs.workingPressureBar;
+
                       const effectivePressure =
-                        specs.workingPressureBar || globalSpecs?.workingPressureBar;
+                        rawWorkingPressureBar || globalSpecs?.workingPressureBar;
+                      const rawWorkingTemperatureC = specs.workingTemperatureC;
                       const effectiveTemp =
-                        specs.workingTemperatureC || globalSpecs?.workingTemperatureC;
+                        rawWorkingTemperatureC || globalSpecs?.workingTemperatureC;
                       const selectedSpec = masterData.steelSpecs?.find(
                         (s: SteelSpecItem) => s.id === effectiveSpecId,
                       );
@@ -669,15 +724,18 @@ function BendFormComponent(props: BendFormProps) {
             <MaterialSuitabilityWarning
               color="purple"
               steelSpecName={(() => {
-                const steelSpecId = specs.steelSpecificationId || globalSpecs?.steelSpecificationId;
-                return (
-                  masterData.steelSpecs?.find((s: SteelSpecItem) => s.id === steelSpecId)
-                    ?.steelSpecName || ""
-                );
+                const rawSteelSpecificationId4 = specs.steelSpecificationId;
+                const steelSpecId = rawSteelSpecificationId4 || globalSpecs?.steelSpecificationId;
+
+                const rawSteelSpecName4 = masterData.steelSpecs?.find(
+                  (s: SteelSpecItem) => s.id === steelSpecId,
+                )?.steelSpecName;
+
+                return rawSteelSpecName4 || "";
               })()}
-              effectivePressure={specs.workingPressureBar || globalSpecs?.workingPressureBar}
-              effectiveTemperature={specs.workingTemperatureC || globalSpecs?.workingTemperatureC}
-              allSteelSpecs={masterData.steelSpecs || []}
+              effectivePressure={rawWorkingPressureBar2 || globalSpecs?.workingPressureBar}
+              effectiveTemperature={rawWorkingTemperatureC2 || globalSpecs?.workingTemperatureC}
+              allSteelSpecs={rawSteelSpecs || []}
               onSelectSpec={(spec) =>
                 onUpdateEntry(entry.id, {
                   specs: { ...entry.specs, steelSpecificationId: spec.id },
@@ -686,15 +744,29 @@ function BendFormComponent(props: BendFormProps) {
             />
             {/* PSL Level and CVN Fields - Only for API 5L specs */}
             {(() => {
-              const steelSpecId = specs.steelSpecificationId || globalSpecs?.steelSpecificationId;
-              const steelSpecName =
-                masterData.steelSpecs?.find((s: SteelSpecItem) => s.id === steelSpecId)
-                  ?.steelSpecName || "";
+              const rawSteelSpecificationId5 = specs.steelSpecificationId;
+              const steelSpecId = rawSteelSpecificationId5 || globalSpecs?.steelSpecificationId;
+
+              const rawSteelSpecName5 = masterData.steelSpecs?.find(
+                (s: SteelSpecItem) => s.id === steelSpecId,
+              )?.steelSpecName;
+
+              const steelSpecName = rawSteelSpecName5 || "";
               const showPslFields = isApi5LSpec(steelSpecName);
               const pslLevel = specs.pslLevel;
               const showCvnFields = pslLevel === "PSL2";
 
               if (!showPslFields) return null;
+
+              const rawCvnTestTemperatureC = specs.cvnTestTemperatureC;
+              const rawCvnAverageJoules = specs.cvnAverageJoules;
+              const rawCvnMinimumJoules = specs.cvnMinimumJoules;
+              const rawHeatNumber = specs.heatNumber;
+              const rawMtcReference = specs.mtcReference;
+              const rawNaceCompliant = specs.naceCompliant;
+              const rawH2sZone = specs.h2sZone;
+              const rawMaxHardnessHrc = specs.maxHardnessHrc;
+              const rawSscTested = specs.sscTested;
 
               return (
                 <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded">
@@ -710,7 +782,8 @@ function BendFormComponent(props: BendFormProps) {
                         className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
                         value={pslLevel || ""}
                         onChange={(e) => {
-                          const newPslLevel = e.target.value || null;
+                          const rawValue2 = e.target.value;
+                          const newPslLevel = rawValue2 || null;
                           const updates: any = {
                             specs: {
                               ...entry.specs,
@@ -742,7 +815,7 @@ function BendFormComponent(props: BendFormProps) {
                             type="number"
                             step="0.1"
                             className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
-                            value={specs.cvnTestTemperatureC ?? ""}
+                            value={rawCvnTestTemperatureC || ""}
                             onChange={(e) =>
                               onUpdateEntry(entry.id, {
                                 specs: {
@@ -765,7 +838,7 @@ function BendFormComponent(props: BendFormProps) {
                             step="0.1"
                             min="0"
                             className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
-                            value={specs.cvnAverageJoules ?? ""}
+                            value={rawCvnAverageJoules || ""}
                             onChange={(e) =>
                               onUpdateEntry(entry.id, {
                                 specs: {
@@ -786,7 +859,7 @@ function BendFormComponent(props: BendFormProps) {
                             step="0.1"
                             min="0"
                             className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
-                            value={specs.cvnMinimumJoules ?? ""}
+                            value={rawCvnMinimumJoules || ""}
                             onChange={(e) =>
                               onUpdateEntry(entry.id, {
                                 specs: {
@@ -814,15 +887,17 @@ function BendFormComponent(props: BendFormProps) {
                         <input
                           type="text"
                           className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
-                          value={specs.heatNumber || ""}
-                          onChange={(e) =>
-                            onUpdateEntry(entry.id, {
+                          value={rawHeatNumber || ""}
+                          onChange={(e) => {
+                            const rawValue3 = e.target.value;
+
+                            return onUpdateEntry(entry.id, {
                               specs: {
                                 ...entry.specs,
-                                heatNumber: e.target.value || null,
+                                heatNumber: rawValue3 || null,
                               },
-                            })
-                          }
+                            });
+                          }}
                           placeholder="Enter heat number"
                         />
                       </div>
@@ -833,15 +908,17 @@ function BendFormComponent(props: BendFormProps) {
                         <input
                           type="text"
                           className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
-                          value={specs.mtcReference || ""}
-                          onChange={(e) =>
-                            onUpdateEntry(entry.id, {
+                          value={rawMtcReference || ""}
+                          onChange={(e) => {
+                            const rawValue4 = e.target.value;
+
+                            return onUpdateEntry(entry.id, {
                               specs: {
                                 ...entry.specs,
-                                mtcReference: e.target.value || null,
+                                mtcReference: rawValue4 || null,
                               },
-                            })
-                          }
+                            });
+                          }}
                           placeholder="Enter MTC reference"
                         />
                       </div>
@@ -857,15 +934,17 @@ function BendFormComponent(props: BendFormProps) {
                         <input
                           type="checkbox"
                           id={`nace-compliant-${entry.id}`}
-                          checked={specs.naceCompliant || false}
-                          onChange={(e) =>
-                            onUpdateEntry(entry.id, {
+                          checked={rawNaceCompliant || false}
+                          onChange={(e) => {
+                            const rawChecked = e.target.checked;
+
+                            return onUpdateEntry(entry.id, {
                               specs: {
                                 ...entry.specs,
-                                naceCompliant: e.target.checked || null,
+                                naceCompliant: rawChecked || null,
                               },
-                            })
-                          }
+                            });
+                          }}
                           className="w-4 h-4"
                         />
                         <label
@@ -881,7 +960,7 @@ function BendFormComponent(props: BendFormProps) {
                         </label>
                         <select
                           className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
-                          value={specs.h2sZone || ""}
+                          value={rawH2sZone || ""}
                           onChange={(e) =>
                             onUpdateEntry(entry.id, {
                               specs: {
@@ -906,7 +985,7 @@ function BendFormComponent(props: BendFormProps) {
                           step="0.1"
                           max="70"
                           className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
-                          value={specs.maxHardnessHrc ?? ""}
+                          value={rawMaxHardnessHrc || ""}
                           onChange={(e) =>
                             onUpdateEntry(entry.id, {
                               specs: {
@@ -922,15 +1001,17 @@ function BendFormComponent(props: BendFormProps) {
                         <input
                           type="checkbox"
                           id={`ssc-tested-${entry.id}`}
-                          checked={specs.sscTested || false}
-                          onChange={(e) =>
-                            onUpdateEntry(entry.id, {
+                          checked={rawSscTested || false}
+                          onChange={(e) => {
+                            const rawChecked2 = e.target.checked;
+
+                            return onUpdateEntry(entry.id, {
                               specs: {
                                 ...entry.specs,
-                                sscTested: e.target.checked || null,
+                                sscTested: rawChecked2 || null,
                               },
-                            })
-                          }
+                            });
+                          }}
                           className="w-4 h-4"
                         />
                         <label
@@ -957,12 +1038,14 @@ function BendFormComponent(props: BendFormProps) {
 
             {/* Conditional Bend Layout - SABS 719 vs SABS 62 */}
             {(() => {
+              const rawSteelSpecificationId6 = specs.steelSpecificationId;
               const effectiveSteelSpecId =
-                specs.steelSpecificationId || globalSpecs?.steelSpecificationId;
+                rawSteelSpecificationId6 || globalSpecs?.steelSpecificationId;
               const steelSpec = masterData.steelSpecs?.find(
                 (s: SteelSpecItem) => s.id === effectiveSteelSpecId,
               );
-              const steelSpecName = steelSpec?.steelSpecName || "";
+              const rawSteelSpecName6 = steelSpec?.steelSpecName;
+              const steelSpecName = rawSteelSpecName6 || "";
               const bendRules = steelStandardBendRules(steelSpecName);
               const allowedTypes = allowedBendTypes(steelSpecName);
               const isSABS719 =
@@ -972,13 +1055,16 @@ function BendFormComponent(props: BendFormProps) {
               const isSegmentedAllowed = allowedTypes.includes("segmented");
               const isPulledOnly = allowedTypes.length === 1 && allowedTypes[0] === "pulled";
 
+              const rawBendStyle2 = specs.bendStyle;
+
               // Determine effective bend style (explicit selection or default from spec)
-              const effectiveBendStyle = specs.bendStyle || (isSABS719 ? "segmented" : "pulled");
+              const effectiveBendStyle = rawBendStyle2 || (isSABS719 ? "segmented" : "pulled");
               const isSegmentedStyle = effectiveBendStyle === "segmented";
 
               // Common Steel Spec dropdown (used in both layouts)
               const steelGlobalSpecId = globalSpecs?.steelSpecificationId;
-              const steelEffectiveSpecId = specs.steelSpecificationId || steelGlobalSpecId;
+              const rawSteelSpecificationId7 = specs.steelSpecificationId;
+              const steelEffectiveSpecId = rawSteelSpecificationId7 || steelGlobalSpecId;
               const isSteelFromGlobal2 =
                 steelGlobalSpecId && steelEffectiveSpecId === steelGlobalSpecId;
               const isSteelOverride2 =
@@ -991,9 +1077,11 @@ function BendFormComponent(props: BendFormProps) {
                 "w-full border-2 border-red-500 dark:border-red-400 rounded";
               const steelDefaultSelectClass = "w-full";
 
-              const effectivePressure2 =
-                specs.workingPressureBar || globalSpecs?.workingPressureBar;
-              const effectiveTemp2 = specs.workingTemperatureC || globalSpecs?.workingTemperatureC;
+              const rawWorkingPressureBar3 = specs.workingPressureBar;
+
+              const effectivePressure2 = rawWorkingPressureBar3 || globalSpecs?.workingPressureBar;
+              const rawWorkingTemperatureC3 = specs.workingTemperatureC;
+              const effectiveTemp2 = rawWorkingTemperatureC3 || globalSpecs?.workingTemperatureC;
               const selectedSteelSpec2 = masterData.steelSpecs?.find(
                 (s: SteelSpecItem) => s.id === steelEffectiveSpecId,
               );
@@ -1043,16 +1131,20 @@ function BendFormComponent(props: BendFormProps) {
                           const newSpec = newSpecId
                             ? masterData.steelSpecs?.find((s: SteelSpecItem) => s.id === newSpecId)
                             : null;
-                          const newSpecName = newSpec?.steelSpecName || "";
+                          const rawSteelSpecName7 = newSpec?.steelSpecName;
+                          const newSpecName = rawSteelSpecName7 || "";
                           const isNewSABS719 =
                             newSpecName.includes("SABS 719") || newSpecName.includes("SANS 719");
 
+                          const rawSteelSpecificationId8 = specs.steelSpecificationId;
+
                           const oldSpecId =
-                            specs.steelSpecificationId || globalSpecs?.steelSpecificationId;
+                            rawSteelSpecificationId8 || globalSpecs?.steelSpecificationId;
                           const oldSpec = oldSpecId
                             ? masterData.steelSpecs?.find((s: SteelSpecItem) => s.id === oldSpecId)
                             : null;
-                          const oldSpecName = oldSpec?.steelSpecName || "";
+                          const rawSteelSpecName8 = oldSpec?.steelSpecName;
+                          const oldSpecName = rawSteelSpecName8 || "";
                           const wasOldSABS719 =
                             oldSpecName.includes("SABS 719") || oldSpecName.includes("SANS 719");
 
@@ -1074,11 +1166,14 @@ function BendFormComponent(props: BendFormProps) {
                                 newSpecId,
                                 newSpecName,
                               );
-                              const pressure = globalSpecs?.workingPressureBar || 0;
+                              const rawWorkingPressureBar4 = globalSpecs?.workingPressureBar;
+                              const pressure = rawWorkingPressureBar4 || 0;
 
                               if (pressure > 0 && schedules.length > 0) {
-                                const od = nbToOdMap[nominalBore] || nominalBore * 1.05;
-                                const temperature = globalSpecs?.workingTemperatureC || 20;
+                                const rawNominalBore = nbToOdMap[nominalBore];
+                                const od = rawNominalBore || nominalBore * 1.05;
+                                const rawWorkingTemperatureC4 = globalSpecs?.workingTemperatureC;
+                                const temperature = rawWorkingTemperatureC4 || 20;
                                 const minWT = calculateMinWallThickness(
                                   od,
                                   pressure,
@@ -1090,19 +1185,28 @@ function BendFormComponent(props: BendFormProps) {
                                 );
 
                                 const eligibleSchedules = schedules
-                                  .filter((s: ScheduleItem) => (s.wallThicknessMm || 0) >= minWT)
-                                  .sort(
-                                    (a: ScheduleItem, b: ScheduleItem) =>
-                                      (a.wallThicknessMm || 0) - (b.wallThicknessMm || 0),
-                                  );
+                                  .filter((s: ScheduleItem) => {
+                                    const rawWallThicknessMm = s.wallThicknessMm;
+                                    return (rawWallThicknessMm || 0) >= minWT;
+                                  })
+                                  .sort((a: ScheduleItem, b: ScheduleItem) => {
+                                    const rawWallThicknessMm2 = a.wallThicknessMm;
+                                    const rawWallThicknessMm3 = b.wallThicknessMm;
+                                    return (rawWallThicknessMm2 || 0) - (rawWallThicknessMm3 || 0);
+                                  });
 
                                 if (eligibleSchedules.length > 0) {
                                   matchedSchedule = eligibleSchedules[0].scheduleDesignation;
                                   matchedWT = eligibleSchedules[0].wallThicknessMm;
                                 } else if (schedules.length > 0) {
                                   const sorted = [...schedules].sort(
-                                    (a: ScheduleItem, b: ScheduleItem) =>
-                                      (b.wallThicknessMm || 0) - (a.wallThicknessMm || 0),
+                                    (a: ScheduleItem, b: ScheduleItem) => {
+                                      const rawWallThicknessMm4 = b.wallThicknessMm;
+                                      const rawWallThicknessMm5 = a.wallThicknessMm;
+                                      return (
+                                        (rawWallThicknessMm4 || 0) - (rawWallThicknessMm5 || 0)
+                                      );
+                                    },
                                   );
                                   matchedSchedule = sorted[0].scheduleDesignation;
                                   matchedWT = sorted[0].wallThicknessMm;
@@ -1183,7 +1287,8 @@ function BendFormComponent(props: BendFormProps) {
                       const steelSpec = masterData.steelSpecs?.find(
                         (s: SteelSpecItem) => s.id === effectiveSteelSpecId,
                       );
-                      const steelSpecName = steelSpec?.steelSpecName || "";
+                      const rawSteelSpecName9 = steelSpec?.steelSpecName;
+                      const steelSpecName = rawSteelSpecName9 || "";
                       const isSweepTeeItem = specs.bendItemType === "SWEEP_TEE";
 
                       if (isSweepTeeItem) {
@@ -1223,10 +1328,12 @@ function BendFormComponent(props: BendFormProps) {
                             const nominalBore = parseInt(value, 10);
                             if (!nominalBore) return;
 
-                            const pressure = globalSpecs?.workingPressureBar || 0;
+                            const rawWorkingPressureBar5 = globalSpecs?.workingPressureBar;
+
+                            const pressure = rawWorkingPressureBar5 || 0;
+                            const rawSteelSpecificationId9 = entry?.specs?.steelSpecificationId;
                             const nbEffectiveSpecId =
-                              entry?.specs?.steelSpecificationId ||
-                              globalSpecs?.steelSpecificationId;
+                              rawSteelSpecificationId9 || globalSpecs?.steelSpecificationId;
                             const schedules = scheduleListForSpec(
                               nominalBore,
                               nbEffectiveSpecId,
@@ -1237,8 +1344,10 @@ function BendFormComponent(props: BendFormProps) {
                             let matchedWT = 0;
 
                             if (pressure > 0 && schedules.length > 0) {
-                              const od = nbToOdMap[nominalBore] || nominalBore * 1.05;
-                              const temperature = globalSpecs?.workingTemperatureC || 20;
+                              const rawNominalBore2 = nbToOdMap[nominalBore];
+                              const od = rawNominalBore2 || nominalBore * 1.05;
+                              const rawWorkingTemperatureC5 = globalSpecs?.workingTemperatureC;
+                              const temperature = rawWorkingTemperatureC5 || 20;
                               const minWT = calculateMinWallThickness(
                                 od,
                                 pressure,
@@ -1374,10 +1483,12 @@ function BendFormComponent(props: BendFormProps) {
                   </label>
                   {(() => {
                     const selectId = `bend-schedule-${entry.id}`;
+                    const rawSteelSpecificationId10 = specs.steelSpecificationId;
                     const schedEffectiveSpecId =
-                      specs.steelSpecificationId || globalSpecs?.steelSpecificationId;
+                      rawSteelSpecificationId10 || globalSpecs?.steelSpecificationId;
+                    const rawNominalBoreMm = specs.nominalBoreMm;
                     const schedules = scheduleListForSpec(
-                      specs.nominalBoreMm || 0,
+                      rawNominalBoreMm || 0,
                       schedEffectiveSpecId,
                       steelSpecName,
                     );
@@ -1386,10 +1497,12 @@ function BendFormComponent(props: BendFormProps) {
                       label: `${s.scheduleDesignation} (${s.wallThicknessMm}mm)`,
                     }));
 
+                    const rawScheduleNumber = specs.scheduleNumber;
+
                     return (
                       <Select
                         id={selectId}
-                        value={specs.scheduleNumber || ""}
+                        value={rawScheduleNumber || ""}
                         onChange={(schedule) => {
                           if (!schedule) return;
                           const scheduleData = schedules.find(
@@ -1447,7 +1560,8 @@ function BendFormComponent(props: BendFormProps) {
                       },
                       { value: "pulled", label: "Pulled Bend" },
                     ];
-                    const currentStyle = specs.bendStyle || (isSABS719 ? "segmented" : "pulled");
+                    const rawBendStyle3 = specs.bendStyle;
+                    const currentStyle = rawBendStyle3 || (isSABS719 ? "segmented" : "pulled");
 
                     return (
                       <Select
@@ -1554,10 +1668,12 @@ function BendFormComponent(props: BendFormProps) {
                       { value: "5D", label: "5D (Extra Long)" },
                     ];
 
+                    const rawBendType = specs.bendType;
+
                     return (
                       <Select
                         id={selectId}
-                        value={specs.bendType || ""}
+                        value={rawBendType || ""}
                         onChange={(bendType) => {
                           const isSweepTee = specs.bendItemType === "SWEEP_TEE";
                           const isFixed90 = isSweepTee || specs.bendItemType === "DUCKFOOT_BEND";
@@ -1609,10 +1725,12 @@ function BendFormComponent(props: BendFormProps) {
                       label: opt.label,
                     }));
 
+                    const rawBendRadiusType = specs.bendRadiusType;
+
                     return (
                       <Select
                         id={selectId}
-                        value={specs.bendRadiusType || ""}
+                        value={rawBendRadiusType || ""}
                         onChange={(radiusType) => {
                           const isSweepTee = specs.bendItemType === "SWEEP_TEE";
                           const updatedEntry: any = {
@@ -1799,8 +1917,10 @@ function BendFormComponent(props: BendFormProps) {
                 <div>
                   {(() => {
                     const bendRadiusType = specs.bendRadiusType;
-                    const bendDeg = specs.bendDegrees || 0;
-                    const nominalBore = specs.nominalBoreMm || 0;
+                    const rawBendDegrees = specs.bendDegrees;
+                    const bendDeg = rawBendDegrees || 0;
+                    const rawNominalBoreMm2 = specs.nominalBoreMm;
+                    const nominalBore = rawNominalBoreMm2 || 0;
 
                     if (!bendRadiusType || bendDeg <= 0) {
                       return (
@@ -1881,6 +2001,8 @@ function BendFormComponent(props: BendFormProps) {
                       );
                     }
 
+                    const rawNumberOfSegments = specs.numberOfSegments;
+
                     return (
                       <>
                         <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
@@ -1896,7 +2018,7 @@ function BendFormComponent(props: BendFormProps) {
                           </span>
                         </label>
                         <select
-                          value={specs.numberOfSegments || ""}
+                          value={rawNumberOfSegments || ""}
                           onChange={(e) => {
                             const segments = e.target.value
                               ? parseInt(e.target.value, 10)
@@ -1945,6 +2067,8 @@ function BendFormComponent(props: BendFormProps) {
                 </div>
               );
 
+              const rawQuantityValue = specs.quantityValue;
+
               // Quantity Input (shared by both layouts)
               const QuantityInput = (
                 <div className="relative" data-nix-target="bend-quantity-input">
@@ -1956,7 +2080,7 @@ function BendFormComponent(props: BendFormProps) {
                   </label>
                   <input
                     type="number"
-                    value={specs.quantityValue ?? ""}
+                    value={rawQuantityValue || ""}
                     onChange={(e) => {
                       if (isUnregisteredCustomer) {
                         const rect = e.target.getBoundingClientRect();
@@ -1998,6 +2122,9 @@ function BendFormComponent(props: BendFormProps) {
                 </div>
               );
 
+              const rawSweepTeePipeALengthMm = specs.sweepTeePipeALengthMm;
+              const rawSweepTeePipeALengthMm2 = specs.sweepTeePipeALengthMm;
+
               // Unified Layout: Row 1: NB | Schedule | Bend Style | Bend Radius, Row 2: depends on style
               return (
                 <>
@@ -2010,7 +2137,6 @@ function BendFormComponent(props: BendFormProps) {
                       {isSegmentedStyle ? RadiusTypeDropdown : BendTypeDropdown}
                     </div>
                   </div>
-
                   {/* Row 2: Based on Bend Style selection */}
                   {isSegmentedStyle ? (
                     <>
@@ -2044,7 +2170,7 @@ function BendFormComponent(props: BendFormProps) {
                               </div>
                               <input
                                 type="number"
-                                value={specs.sweepTeePipeALengthMm || ""}
+                                value={rawSweepTeePipeALengthMm || ""}
                                 onChange={(e) => {
                                   const value = e.target.value
                                     ? parseFloat(e.target.value)
@@ -2127,7 +2253,7 @@ function BendFormComponent(props: BendFormProps) {
                               </div>
                               <input
                                 type="number"
-                                value={specs.sweepTeePipeALengthMm || ""}
+                                value={rawSweepTeePipeALengthMm2 || ""}
                                 onChange={(e) => {
                                   const value = e.target.value
                                     ? parseFloat(e.target.value)
@@ -2158,8 +2284,10 @@ function BendFormComponent(props: BendFormProps) {
             {/* Flange Configuration Row - 4 columns (matching Pipes form) */}
             <div className="bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-lg p-3 mt-3">
               {(() => {
-                const effectiveStandardId = specs.flangeStandardId || globalSpecs?.flangeStandardId;
-                const effectiveFlangeTypeCode = specs.flangeTypeCode || globalSpecs?.flangeTypeCode;
+                const rawFlangeStandardId2 = specs.flangeStandardId;
+                const effectiveStandardId = rawFlangeStandardId2 || globalSpecs?.flangeStandardId;
+                const rawFlangeTypeCode2 = specs.flangeTypeCode;
+                const effectiveFlangeTypeCode = rawFlangeTypeCode2 || globalSpecs?.flangeTypeCode;
                 const normalizedFlangeTypeCode = effectiveFlangeTypeCode?.replace(/^\//, "") || "";
                 const selectedStandard = masterData.flangeStandards?.find(
                   (fs: FlangeStandardItem) => fs.id === effectiveStandardId,
@@ -2193,11 +2321,13 @@ function BendFormComponent(props: BendFormProps) {
                       (pc: PressureClassItem) => pc.designation === targetDesignationForGlobal,
                     )
                   : null;
+                const rawFlangePressureClassId2 = specs.flangePressureClassId;
                 const effectivePressureClassId =
-                  specs.flangePressureClassId ||
+                  rawFlangePressureClassId2 ||
                   matchingClassForGlobal?.id ||
                   globalSpecs?.flangePressureClassId;
-                const bendEndConfig = specs.bendEndConfiguration || "PE";
+                const rawBendEndConfiguration2 = specs.bendEndConfiguration;
+                const bendEndConfig = rawBendEndConfiguration2 || "PE";
                 const configUpper = bendEndConfig.toUpperCase();
                 const hasInletFlange = ["FOE", "FBE", "FOE_LF", "FOE_RF", "2X_RF", "2xLF"].includes(
                   configUpper,
@@ -2210,7 +2340,8 @@ function BendFormComponent(props: BendFormProps) {
                   ...(hasInletFlange ? [{ key: "inlet", label: "Inlet" }] : []),
                   ...(hasOutletFlange ? [{ key: "outlet", label: "Outlet" }] : []),
                 ];
-                const currentBlankPositions = specs.blankFlangePositions || [];
+                const rawBlankFlangePositions = specs.blankFlangePositions;
+                const currentBlankPositions = rawBlankFlangePositions || [];
 
                 const isStandardFromGlobal =
                   globalSpecs?.flangeStandardId &&
@@ -2286,8 +2417,10 @@ function BendFormComponent(props: BendFormProps) {
                         globalSpecs?.flangeTypeCode &&
                         effectiveFlangeTypeCode !== globalSpecs?.flangeTypeCode;
 
+                      const rawWorkingPressureBar6 = specs.workingPressureBar;
+
                       const workingPressureBar =
-                        specs.workingPressureBar || globalSpecs?.workingPressureBar || 0;
+                        rawWorkingPressureBar6 || globalSpecs?.workingPressureBar || 0;
                       const selectedPressureClass = masterData.pressureClasses?.find(
                         (pc: PressureClassItem) => pc.id === effectivePressureClassId,
                       );
@@ -2324,6 +2457,9 @@ function BendFormComponent(props: BendFormProps) {
                         : isTypeOverride
                           ? overrideSelectClass
                           : defaultSelectClass;
+
+                      const rawVal = pressureClassesByStandard[effectiveStandardId || 0];
+                      const rawBendEndConfiguration3 = specs.bendEndConfiguration;
 
                       return (
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 items-end">
@@ -2448,15 +2584,13 @@ function BendFormComponent(props: BendFormProps) {
                                 className={classSelectClass}
                               >
                                 <option value="">Select...</option>
-                                {(
-                                  pressureClassesByStandard[effectiveStandardId || 0] ||
-                                  masterData.pressureClasses ||
-                                  []
-                                ).map((pc: PressureClassItem) => (
-                                  <option key={pc.id} value={pc.id}>
-                                    {pc.designation?.replace(/\/\d+$/, "") || pc.designation}
-                                  </option>
-                                ))}
+                                {(rawVal || masterData.pressureClasses || []).map(
+                                  (pc: PressureClassItem) => (
+                                    <option key={pc.id} value={pc.id}>
+                                      {pc.designation?.replace(/\/\d+$/, "") || pc.designation}
+                                    </option>
+                                  ),
+                                )}
                               </select>
                             )}
                           </div>
@@ -2475,14 +2609,16 @@ function BendFormComponent(props: BendFormProps) {
                             {showFlangeType ? (
                               <select
                                 value={effectiveFlangeTypeCode || ""}
-                                onChange={(e) =>
-                                  onUpdateEntry(entry.id, {
+                                onChange={(e) => {
+                                  const rawValue5 = e.target.value;
+
+                                  return onUpdateEntry(entry.id, {
                                     specs: {
                                       ...entry.specs,
-                                      flangeTypeCode: e.target.value || undefined,
+                                      flangeTypeCode: rawValue5 || undefined,
                                     },
-                                  })
-                                }
+                                  });
+                                }}
                                 className={typeSelectClass}
                               >
                                 <option value="">Select...</option>
@@ -2509,7 +2645,7 @@ function BendFormComponent(props: BendFormProps) {
                               </span>
                             </label>
                             <select
-                              value={specs.bendEndConfiguration || "PE"}
+                              value={rawBendEndConfiguration3 || "PE"}
                               onChange={(e) => {
                                 const newConfig = e.target.value;
                                 const updatedEntry: any = {
@@ -2546,12 +2682,12 @@ function BendFormComponent(props: BendFormProps) {
             </div>
 
             {/* Closure Length Field - Only shown when L/F configuration is selected */}
-            {hasLooseFlange(specs.bendEndConfiguration || "") && (
+            {hasLooseFlange(rawBendEndConfiguration4 || "") && (
               <div className="bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded-lg p-3 mt-3">
                 <ClosureLengthSelector
-                  nominalBore={specs.nominalBoreMm || 100}
-                  currentValue={specs.closureLengthMm || null}
-                  wallThickness={specs.wallThicknessMm || entry.calculation?.wallThicknessMm || 5}
+                  nominalBore={rawNominalBoreMm3 || 100}
+                  currentValue={rawClosureLengthMm || null}
+                  wallThickness={rawWallThicknessMm6 || entry.calculation?.wallThicknessMm || 5}
                   onUpdate={(closureLength) => {
                     const updatedEntry = {
                       ...entry,
@@ -2602,6 +2738,14 @@ function BendFormComponent(props: BendFormProps) {
                       : null;
                   const hasDefaults = !!defaults;
 
+                  const rawDuckfootBasePlateXMm = specs.duckfootBasePlateXMm;
+                  const rawDuckfootBasePlateYMm = specs.duckfootBasePlateYMm;
+                  const rawDuckfootInletCentreHeightMm = specs.duckfootInletCentreHeightMm;
+                  const rawDuckfootPlateThicknessT1Mm = specs.duckfootPlateThicknessT1Mm;
+                  const rawDuckfootRibThicknessT2Mm = specs.duckfootRibThicknessT2Mm;
+                  const rawDuckfootGussetPointDDegrees = specs.duckfootGussetPointDDegrees;
+                  const rawDuckfootGussetPointCDegrees = specs.duckfootGussetPointCDegrees;
+
                   return (
                     <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
                       <div>
@@ -2616,7 +2760,7 @@ function BendFormComponent(props: BendFormProps) {
                         </label>
                         <input
                           type="number"
-                          value={specs.duckfootBasePlateXMm || defaults?.x || ""}
+                          value={rawDuckfootBasePlateXMm || defaults?.x || ""}
                           onChange={(e) => {
                             const value = e.target.value ? parseFloat(e.target.value) : undefined;
                             const updatedEntry = {
@@ -2643,7 +2787,7 @@ function BendFormComponent(props: BendFormProps) {
                         </label>
                         <input
                           type="number"
-                          value={specs.duckfootBasePlateYMm || defaults?.y || ""}
+                          value={rawDuckfootBasePlateYMm || defaults?.y || ""}
                           onChange={(e) => {
                             const value = e.target.value ? parseFloat(e.target.value) : undefined;
                             const updatedEntry = {
@@ -2670,7 +2814,7 @@ function BendFormComponent(props: BendFormProps) {
                         </label>
                         <input
                           type="number"
-                          value={specs.duckfootInletCentreHeightMm || defaults?.inletH || ""}
+                          value={rawDuckfootInletCentreHeightMm || defaults?.inletH || ""}
                           onChange={(e) => {
                             const value = e.target.value ? parseFloat(e.target.value) : undefined;
                             const updatedEntry = {
@@ -2697,7 +2841,7 @@ function BendFormComponent(props: BendFormProps) {
                         </label>
                         <input
                           type="number"
-                          value={specs.duckfootPlateThicknessT1Mm || defaults?.t1 || ""}
+                          value={rawDuckfootPlateThicknessT1Mm || defaults?.t1 || ""}
                           onChange={(e) => {
                             const value = e.target.value ? parseFloat(e.target.value) : undefined;
                             const updatedEntry = {
@@ -2724,7 +2868,7 @@ function BendFormComponent(props: BendFormProps) {
                         </label>
                         <input
                           type="number"
-                          value={specs.duckfootRibThicknessT2Mm || defaults?.t2 || ""}
+                          value={rawDuckfootRibThicknessT2Mm || defaults?.t2 || ""}
                           onChange={(e) => {
                             const value = e.target.value ? parseFloat(e.target.value) : undefined;
                             const updatedEntry = {
@@ -2750,7 +2894,7 @@ function BendFormComponent(props: BendFormProps) {
                           </span>
                         </label>
                         <select
-                          value={specs.duckfootGussetPointDDegrees || 15}
+                          value={rawDuckfootGussetPointDDegrees || 15}
                           onChange={(e) => {
                             const value = parseInt(e.target.value, 10);
                             const updatedEntry = {
@@ -2782,7 +2926,7 @@ function BendFormComponent(props: BendFormProps) {
                           </span>
                         </label>
                         <select
-                          value={specs.duckfootGussetPointCDegrees || 75}
+                          value={rawDuckfootGussetPointCDegrees || 75}
                           onChange={(e) => {
                             const value = parseInt(e.target.value, 10);
                             const updatedEntry = {
@@ -2814,8 +2958,9 @@ function BendFormComponent(props: BendFormProps) {
                   </h5>
                   {(() => {
                     const nominalBore = specs.nominalBoreMm;
+                    const rawWorkingPressureBar7 = specs.workingPressureBar;
                     const workingPressure =
-                      specs.workingPressureBar || globalSpecs?.workingPressureBar;
+                      rawWorkingPressureBar7 || globalSpecs?.workingPressureBar;
                     const recommendedCount = nominalBore
                       ? recommendDuckfootGussetCount(nominalBore)
                       : 2;
@@ -2826,6 +2971,15 @@ function BendFormComponent(props: BendFormProps) {
                             designPressureBar: workingPressure,
                           })
                         : null;
+
+                    const rawDuckfootGussetCount = specs.duckfootGussetCount;
+                    const rawDuckfootGussetPlacement = specs.duckfootGussetPlacement;
+                    const rawDuckfootGussetThicknessMm = specs.duckfootGussetThicknessMm;
+                    const rawDuckfootGussetMaterialGrade = specs.duckfootGussetMaterialGrade;
+                    const rawDuckfootGussetWeldType = specs.duckfootGussetWeldType;
+                    const rawDuckfootGussetWeldElectrode = specs.duckfootGussetWeldElectrode;
+                    const rawDuckfootGussetPreheatTempC = specs.duckfootGussetPreheatTempC;
+                    const rawDuckfootGussetPwhtRequired = specs.duckfootGussetPwhtRequired;
 
                     return (
                       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
@@ -2840,7 +2994,7 @@ function BendFormComponent(props: BendFormProps) {
                             </span>
                           </label>
                           <select
-                            value={specs.duckfootGussetCount || recommendedCount}
+                            value={rawDuckfootGussetCount || recommendedCount}
                             onChange={(e) => {
                               const value = parseInt(e.target.value, 10);
                               const updatedEntry = {
@@ -2868,7 +3022,7 @@ function BendFormComponent(props: BendFormProps) {
                             </span>
                           </label>
                           <select
-                            value={specs.duckfootGussetPlacement || "HEEL_ONLY"}
+                            value={rawDuckfootGussetPlacement || "HEEL_ONLY"}
                             onChange={(e) => {
                               const updatedEntry = {
                                 ...entry,
@@ -2896,7 +3050,7 @@ function BendFormComponent(props: BendFormProps) {
                           </label>
                           <input
                             type="number"
-                            value={specs.duckfootGussetThicknessMm || recommendedThickness || ""}
+                            value={rawDuckfootGussetThicknessMm || recommendedThickness || ""}
                             onChange={(e) => {
                               const value = e.target.value ? parseFloat(e.target.value) : undefined;
                               const updatedEntry = {
@@ -2925,7 +3079,7 @@ function BendFormComponent(props: BendFormProps) {
                             </span>
                           </label>
                           <select
-                            value={specs.duckfootGussetMaterialGrade || "A36"}
+                            value={rawDuckfootGussetMaterialGrade || "A36"}
                             onChange={(e) => {
                               const updatedEntry = {
                                 ...entry,
@@ -2955,7 +3109,7 @@ function BendFormComponent(props: BendFormProps) {
                             </span>
                           </label>
                           <select
-                            value={specs.duckfootGussetWeldType || "FILLET"}
+                            value={rawDuckfootGussetWeldType || "FILLET"}
                             onChange={(e) => {
                               const updatedEntry = {
                                 ...entry,
@@ -2981,7 +3135,7 @@ function BendFormComponent(props: BendFormProps) {
                             </span>
                           </label>
                           <select
-                            value={specs.duckfootGussetWeldElectrode || "E7018"}
+                            value={rawDuckfootGussetWeldElectrode || "E7018"}
                             onChange={(e) => {
                               const updatedEntry = {
                                 ...entry,
@@ -3012,7 +3166,7 @@ function BendFormComponent(props: BendFormProps) {
                           </label>
                           <input
                             type="number"
-                            value={specs.duckfootGussetPreheatTempC || ""}
+                            value={rawDuckfootGussetPreheatTempC || ""}
                             onChange={(e) => {
                               const value = e.target.value
                                 ? parseInt(e.target.value, 10)
@@ -3043,7 +3197,7 @@ function BendFormComponent(props: BendFormProps) {
                           <div className="flex items-center h-[30px]">
                             <input
                               type="checkbox"
-                              checked={specs.duckfootGussetPwhtRequired || false}
+                              checked={rawDuckfootGussetPwhtRequired || false}
                               onChange={(e) => {
                                 const updatedEntry = {
                                   ...entry,
@@ -3080,8 +3234,8 @@ function BendFormComponent(props: BendFormProps) {
             {specs.bendItemType !== "SWEEP_TEE" && specs.bendItemType !== "DUCKFOOT_BEND" && (
               <TangentExtensionsSection
                 entryId={entry.id}
-                numberOfTangents={specs.numberOfTangents || 0}
-                tangentLengths={specs.tangentLengths || []}
+                numberOfTangents={rawNumberOfTangents || 0}
+                tangentLengths={rawTangentLengths2 || []}
                 onTangentCountChange={handleTangentCountChange}
                 onTangentLengthChange={handleTangentLengthChange}
               />
@@ -3104,7 +3258,8 @@ function BendFormComponent(props: BendFormProps) {
                     </label>
                     {(() => {
                       const selectId = `bend-num-stubs-${entry.id}`;
-                      const numTangents = specs.numberOfTangents || 0;
+                      const rawNumberOfTangents2 = specs.numberOfTangents;
+                      const numTangents = rawNumberOfTangents2 || 0;
                       const options =
                         numTangents >= 2
                           ? [
@@ -3116,7 +3271,8 @@ function BendFormComponent(props: BendFormProps) {
                               { value: "0", label: "0 - None" },
                               { value: "1", label: "1 - Single" },
                             ];
-                      const currentValue = specs.numberOfStubs || 0;
+                      const rawNumberOfStubs2 = specs.numberOfStubs;
+                      const currentValue = rawNumberOfStubs2 || 0;
                       const effectiveValue = currentValue > 1 && numTangents < 2 ? 1 : currentValue;
                       return (
                         <Select
@@ -3124,8 +3280,10 @@ function BendFormComponent(props: BendFormProps) {
                           value={String(effectiveValue)}
                           onChange={(value) => {
                             const count = parseInt(value, 10) || 0;
-                            const currentStubs = specs.stubs || [];
-                            const mainNB = specs.nominalBoreMm || 50;
+                            const rawStubs2 = specs.stubs;
+                            const currentStubs = rawStubs2 || [];
+                            const rawNominalBoreMm4 = specs.nominalBoreMm;
+                            const mainNB = rawNominalBoreMm4 || 50;
                             const defaultStubNB = mainNB <= 50 ? mainNB : 50;
                             const defaultStub = {
                               nominalBoreMm: defaultStubNB,
@@ -3133,15 +3291,15 @@ function BendFormComponent(props: BendFormProps) {
                               orientation: "outside",
                               flangeSpec: "",
                             };
+                            const rawItem02 = currentStubs[0];
+                            const rawItem03 = currentStubs[0];
+                            const rawItem12 = currentStubs[1];
                             const newStubs =
                               count === 0
                                 ? []
                                 : count === 1
-                                  ? [currentStubs[0] || defaultStub]
-                                  : [
-                                      currentStubs[0] || defaultStub,
-                                      currentStubs[1] || defaultStub,
-                                    ];
+                                  ? [rawItem02 || defaultStub]
+                                  : [rawItem03 || defaultStub, rawItem12 || defaultStub];
                             const updatedEntry = {
                               ...entry,
                               specs: { ...entry.specs, numberOfStubs: count, stubs: newStubs },
@@ -3156,7 +3314,7 @@ function BendFormComponent(props: BendFormProps) {
                     })()}
                   </div>
                   {/* Steel Spec - visible when stubs >= 1 */}
-                  {(specs.numberOfStubs || 0) >= 1 && (
+                  {(rawNumberOfStubs3 || 0) >= 1 && (
                     <div>
                       <label className="block text-xs text-gray-600 mb-0.5">
                         Steel Spec
@@ -3166,8 +3324,9 @@ function BendFormComponent(props: BendFormProps) {
                       </label>
                       {(() => {
                         const selectId = `bend-stub1-steel-spec-${entry.id}`;
+                        const rawSteelSpecificationId11 = stub0.steelSpecificationId;
                         const stub1EffectiveSpecId =
-                          stub0.steelSpecificationId ||
+                          rawSteelSpecificationId11 ||
                           specs.steelSpecificationId ||
                           globalSpecs?.steelSpecificationId;
                         return (
@@ -3176,7 +3335,8 @@ function BendFormComponent(props: BendFormProps) {
                             value={String(stub1EffectiveSpecId || "")}
                             onChange={(value) => {
                               const newSpecId = value ? Number(value) : undefined;
-                              const stubs = [...(specs.stubs || [])];
+                              const rawStubs3 = specs.stubs;
+                              const stubs = [...(rawStubs3 || [])];
                               stubs[0] = {
                                 ...stubs[0],
                                 steelSpecificationId: newSpecId,
@@ -3196,26 +3356,29 @@ function BendFormComponent(props: BendFormProps) {
                     </div>
                   )}
                   {/* NB - visible when stubs >= 1 */}
-                  {(specs.numberOfStubs || 0) >= 1 && (
+                  {(rawNumberOfStubs4 || 0) >= 1 && (
                     <div>
                       <label className="block text-xs text-gray-600 mb-0.5">NB</label>
                       {(() => {
                         const selectId = `bend-stub1-nb-${entry.id}`;
+                        const rawSteelSpecificationId12 = stub0.steelSpecificationId;
                         const stub1EffectiveSpecId =
-                          stub0.steelSpecificationId ||
+                          rawSteelSpecificationId12 ||
                           specs.steelSpecificationId ||
                           globalSpecs?.steelSpecificationId;
                         const stub1SteelSpec = masterData.steelSpecs?.find(
                           (s: SteelSpecItem) => s.id === stub1EffectiveSpecId,
                         );
-                        const stub1SteelSpecName = stub1SteelSpec?.steelSpecName || "";
+                        const rawSteelSpecName10 = stub1SteelSpec?.steelSpecName;
+                        const stub1SteelSpecName = rawSteelSpecName10 || "";
                         const stub1FallbackNBs = Object.entries(STEEL_SPEC_NB_FALLBACK).find(
                           ([pattern]) => stub1SteelSpecName.includes(pattern),
                         )?.[1];
                         const allStub1Nbs = stub1FallbackNBs || [
                           15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150, 200, 250, 300,
                         ];
-                        const mainBendNB = specs.nominalBoreMm || 0;
+                        const rawNominalBoreMm5 = specs.nominalBoreMm;
+                        const mainBendNB = rawNominalBoreMm5 || 0;
                         const stub1Nbs = allStub1Nbs.filter((nb: number) => nb <= mainBendNB);
                         const options = stub1Nbs.map((nb: number) => ({
                           value: String(nb),
@@ -3228,7 +3391,8 @@ function BendFormComponent(props: BendFormProps) {
                               stub0.nominalBoreMm ? String(entry.specs.stubs[0].nominalBoreMm) : ""
                             }
                             onChange={(value) => {
-                              const stubs = [...(specs.stubs || [])];
+                              const rawStubs4 = specs.stubs;
+                              const stubs = [...(rawStubs4 || [])];
                               stubs[0] = { ...stubs[0], nominalBoreMm: parseInt(value, 10) || 0 };
                               const updatedEntry = { ...entry, specs: { ...entry.specs, stubs } };
                               updatedEntry.description = generateItemDescription(updatedEntry);
@@ -3242,7 +3406,7 @@ function BendFormComponent(props: BendFormProps) {
                     </div>
                   )}
                   {/* W/T - visible when stubs >= 1 */}
-                  {(specs.numberOfStubs || 0) >= 1 && (
+                  {(rawNumberOfStubs5 || 0) >= 1 && (
                     <div>
                       <label className="block text-xs text-gray-600 mb-0.5">
                         W/T
@@ -3255,14 +3419,16 @@ function BendFormComponent(props: BendFormProps) {
                       {(() => {
                         const selectId = `bend-stub1-wt-${entry.id}`;
                         const stub1NB = stub0.nominalBoreMm;
+                        const rawSteelSpecificationId13 = stub0.steelSpecificationId;
                         const steelSpecId =
-                          stub0.steelSpecificationId ||
+                          rawSteelSpecificationId13 ||
                           specs.steelSpecificationId ||
                           globalSpecs?.steelSpecificationId;
                         const stub1SteelSpec = masterData.steelSpecs?.find(
                           (s: SteelSpecItem) => s.id === steelSpecId,
                         );
-                        const stub1SpecName = stub1SteelSpec?.steelSpecName || "";
+                        const rawSteelSpecName11 = stub1SteelSpec?.steelSpecName;
+                        const stub1SpecName = rawSteelSpecName11 || "";
                         const isSABS719 =
                           stub1SpecName.includes("SABS 719") || stub1SpecName.includes("SANS 719");
                         const SABS_719_WT: Record<number, number> = {
@@ -3310,12 +3476,14 @@ function BendFormComponent(props: BendFormProps) {
                             if (size <= nb) closest = size;
                             else break;
                           }
-                          return SABS_719_WT[closest] || specs.wallThicknessMm || 6.4;
+                          const rawClosest = SABS_719_WT[closest];
+                          return rawClosest || specs.wallThicknessMm || 6.4;
                         };
+                        const rawStub1NB = ASTM_STUB_WT[stub1NB];
                         const autoWt = stub1NB
                           ? isSABS719
                             ? getSabs719Wt(stub1NB)
-                            : ASTM_STUB_WT[stub1NB] || stub1NB * 0.05
+                            : rawStub1NB || stub1NB * 0.05
                           : null;
                         const currentWt = stub0.wallThicknessMm;
                         const wtOptions = isSABS719
@@ -3371,7 +3539,8 @@ function BendFormComponent(props: BendFormProps) {
                             id={selectId}
                             value={currentWt ? String(currentWt) : autoWt ? String(autoWt) : ""}
                             onChange={(value) => {
-                              const stubs = [...(specs.stubs || [])];
+                              const rawStubs5 = specs.stubs;
+                              const stubs = [...(rawStubs5 || [])];
                               const newWt = parseFloat(value) || 0;
                               const isOverride = autoWt && newWt !== autoWt;
                               stubs[0] = {
@@ -3390,7 +3559,7 @@ function BendFormComponent(props: BendFormProps) {
                     </div>
                   )}
                   {/* Position on T1 - visible when stubs >= 1 */}
-                  {(specs.numberOfStubs || 0) >= 1 && (
+                  {(rawNumberOfStubs6 || 0) >= 1 && (
                     <div>
                       <label className="block text-xs text-gray-600 mb-0.5">Position</label>
                       {(() => {
@@ -3405,12 +3574,14 @@ function BendFormComponent(props: BendFormProps) {
                           { value: "270", label: "270° (Side)" },
                           { value: "315", label: "315°" },
                         ];
+                        const rawAngleDegrees = stub0.angleDegrees;
                         return (
                           <Select
                             id={selectId}
-                            value={String(stub0.angleDegrees ?? "0")}
+                            value={String(rawAngleDegrees || "0")}
                             onChange={(value) => {
-                              const stubs = [...(specs.stubs || [])];
+                              const rawStubs6 = specs.stubs;
+                              const stubs = [...(rawStubs6 || [])];
                               stubs[0] = {
                                 ...stubs[0],
                                 angleDegrees: parseInt(value, 10) || 0,
@@ -3428,16 +3599,17 @@ function BendFormComponent(props: BendFormProps) {
                     </div>
                   )}
                   {/* Length - visible when stubs >= 1 */}
-                  {(specs.numberOfStubs || 0) >= 1 && (
+                  {(rawNumberOfStubs7 || 0) >= 1 && (
                     <div className="bg-purple-50 dark:bg-purple-900/30 p-1 rounded border border-purple-200 dark:border-purple-700">
                       <label className="block text-xs text-purple-800 dark:text-purple-300 mb-0.5">
                         Length (mm)
                       </label>
                       <input
                         type="number"
-                        value={stub0.length || ""}
+                        value={rawLength2 || ""}
                         onChange={(e) => {
-                          const stubs = [...(specs.stubs || [])];
+                          const rawStubs7 = specs.stubs;
+                          const stubs = [...(rawStubs7 || [])];
                           stubs[0] = { ...stubs[0], length: parseInt(e.target.value, 10) || 0 };
                           const updatedEntry = { ...entry, specs: { ...entry.specs, stubs } };
                           updatedEntry.description = generateItemDescription(updatedEntry);
@@ -3449,16 +3621,17 @@ function BendFormComponent(props: BendFormProps) {
                     </div>
                   )}
                   {/* Location - visible when stubs >= 1 */}
-                  {(specs.numberOfStubs || 0) >= 1 && (
+                  {(rawNumberOfStubs8 || 0) >= 1 && (
                     <div className="bg-purple-50 dark:bg-purple-900/30 p-1 rounded border border-purple-200 dark:border-purple-700">
                       <label className="block text-xs text-purple-800 dark:text-purple-300 mb-0.5">
                         Location (mm)
                       </label>
                       <input
                         type="number"
-                        value={stub0.locationFromFlange || ""}
+                        value={rawLocationFromFlange || ""}
                         onChange={(e) => {
-                          const stubs = [...(specs.stubs || [])];
+                          const rawStubs8 = specs.stubs;
+                          const stubs = [...(rawStubs8 || [])];
                           stubs[0] = {
                             ...stubs[0],
                             locationFromFlange: parseInt(e.target.value, 10) || 0,
@@ -3474,13 +3647,15 @@ function BendFormComponent(props: BendFormProps) {
                   )}
                 </div>
                 {/* Stub 1 Flange - shown below the row when stubs >= 1 */}
-                {(specs.numberOfStubs || 0) >= 1 && (
+                {(rawNumberOfStubs9 || 0) >= 1 && (
                   <div className="mt-2 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-lg px-3 py-2">
                     {(() => {
+                      const rawFlangeStandardId3 = stub0.flangeStandardId;
                       const effectiveStandardId =
-                        stub0.flangeStandardId || globalSpecs?.flangeStandardId;
+                        rawFlangeStandardId3 || globalSpecs?.flangeStandardId;
+                      const rawFlangeTypeCode3 = stub0.flangeTypeCode;
                       const effectiveFlangeTypeCode =
-                        stub0.flangeTypeCode || globalSpecs?.flangeTypeCode;
+                        rawFlangeTypeCode3 || globalSpecs?.flangeTypeCode;
                       const normalizedFlangeTypeCode =
                         effectiveFlangeTypeCode?.replace(/^\//, "") || "";
                       const selectedStandard = masterData.flangeStandards?.find(
@@ -3514,16 +3689,20 @@ function BendFormComponent(props: BendFormProps) {
                             (pc: PressureClassItem) => pc.designation === stub1TargetDesignation,
                           )
                         : null;
+                      const rawFlangePressureClassId3 = stub0.flangePressureClassId;
                       const effectivePressureClassId =
-                        stub0.flangePressureClassId ||
+                        rawFlangePressureClassId3 ||
                         stub1MatchingClass?.id ||
                         globalSpecs?.flangePressureClassId;
 
+                      const rawFlangeStandardId4 = stub0.flangeStandardId;
+
                       const stub1EffectiveStandardId =
-                        stub0.flangeStandardId || globalSpecs?.flangeStandardId;
+                        rawFlangeStandardId4 || globalSpecs?.flangeStandardId;
                       const stub1EffectiveClassId = effectivePressureClassId;
+                      const rawFlangeTypeCode4 = stub0.flangeTypeCode;
                       const stub1EffectiveTypeCode =
-                        stub0.flangeTypeCode || globalSpecs?.flangeTypeCode;
+                        rawFlangeTypeCode4 || globalSpecs?.flangeTypeCode;
                       const stub1EffectiveClass = masterData.pressureClasses?.find(
                         (p: PressureClassItem) => p.id === stub1EffectiveClassId,
                       );
@@ -3570,8 +3749,9 @@ function BendFormComponent(props: BendFormProps) {
                       const stub1PressureClassRatingRaw = stub1SelectedClass?.designation
                         ? parseInt(stub1SelectedClass.designation.replace(/[^\d]/g, ""), 10)
                         : 0;
+                      const rawWorkingPressureBar8 = specs.workingPressureBar;
                       const stub1WorkingPressureBar =
-                        specs.workingPressureBar || globalSpecs?.workingPressureBar || 0;
+                        rawWorkingPressureBar8 || globalSpecs?.workingPressureBar || 0;
                       const stub1IsPressureClassUnsuitable =
                         stub1EffectiveClassId &&
                         stub1WorkingPressureBar > 0 &&
@@ -3587,6 +3767,9 @@ function BendFormComponent(props: BendFormProps) {
                         "w-full px-2 py-1.5 border-2 rounded text-xs text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-red-500 dark:border-red-400";
                       const defaultSelectClass =
                         "w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800";
+                      const rawVal2 = pressureClassesByStandard[effectiveStandardId || 0];
+                      const rawHasBlankFlange = stub0.hasBlankFlange;
+                      const rawNominalBoreMm6 = stub0.nominalBoreMm;
                       return (
                         <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 items-end">
                           {/* Title as first column */}
@@ -3614,7 +3797,8 @@ function BendFormComponent(props: BendFormProps) {
                               value={effectiveStandardId || ""}
                               onChange={(e) => {
                                 const standardId = parseInt(e.target.value, 10) || undefined;
-                                const stubs = [...(specs.stubs || [])];
+                                const rawStubs9 = specs.stubs;
+                                const stubs = [...(rawStubs9 || [])];
                                 stubs[0] = {
                                   ...stubs[0],
                                   flangeStandardId: standardId,
@@ -3666,7 +3850,8 @@ function BendFormComponent(props: BendFormProps) {
                               <select
                                 value={effectivePressureClassId || ""}
                                 onChange={(e) => {
-                                  const stubs = [...(specs.stubs || [])];
+                                  const rawStubs10 = specs.stubs;
+                                  const stubs = [...(rawStubs10 || [])];
                                   stubs[0] = {
                                     ...stubs[0],
                                     flangePressureClassId:
@@ -3715,7 +3900,8 @@ function BendFormComponent(props: BendFormProps) {
                               <select
                                 value={effectivePressureClassId || ""}
                                 onChange={(e) => {
-                                  const stubs = [...(specs.stubs || [])];
+                                  const rawStubs11 = specs.stubs;
+                                  const stubs = [...(rawStubs11 || [])];
                                   stubs[0] = {
                                     ...stubs[0],
                                     flangePressureClassId:
@@ -3734,15 +3920,13 @@ function BendFormComponent(props: BendFormProps) {
                                 }
                               >
                                 <option value="">Select...</option>
-                                {(
-                                  pressureClassesByStandard[effectiveStandardId || 0] ||
-                                  masterData.pressureClasses ||
-                                  []
-                                ).map((pc: PressureClassItem) => (
-                                  <option key={pc.id} value={pc.id}>
-                                    {pc.designation?.replace(/\/\d+$/, "") || pc.designation}
-                                  </option>
-                                ))}
+                                {(rawVal2 || masterData.pressureClasses || []).map(
+                                  (pc: PressureClassItem) => (
+                                    <option key={pc.id} value={pc.id}>
+                                      {pc.designation?.replace(/\/\d+$/, "") || pc.designation}
+                                    </option>
+                                  ),
+                                )}
                               </select>
                             )}
                           </div>
@@ -3765,10 +3949,12 @@ function BendFormComponent(props: BendFormProps) {
                               <select
                                 value={effectiveFlangeTypeCode || ""}
                                 onChange={(e) => {
-                                  const stubs = [...(specs.stubs || [])];
+                                  const rawStubs12 = specs.stubs;
+                                  const stubs = [...(rawStubs12 || [])];
+                                  const rawValue6 = e.target.value;
                                   stubs[0] = {
                                     ...stubs[0],
-                                    flangeTypeCode: e.target.value || undefined,
+                                    flangeTypeCode: rawValue6 || undefined,
                                   };
                                   const updatedEntry = {
                                     ...entry,
@@ -3802,9 +3988,10 @@ function BendFormComponent(props: BendFormProps) {
                             <label className="flex items-center gap-1.5 pb-1.5">
                               <input
                                 type="checkbox"
-                                checked={stub0.hasBlankFlange || false}
+                                checked={rawHasBlankFlange || false}
                                 onChange={(e) => {
-                                  const stubs = [...(specs.stubs || [])];
+                                  const rawStubs13 = specs.stubs;
+                                  const stubs = [...(rawStubs13 || [])];
                                   stubs[0] = { ...stubs[0], hasBlankFlange: e.target.checked };
                                   const updatedEntry = {
                                     ...entry,
@@ -3816,7 +4003,7 @@ function BendFormComponent(props: BendFormProps) {
                                 className="w-3 h-3 text-red-600 rounded focus:ring-red-500"
                               />
                               <span className="text-xs text-red-700 font-medium">
-                                + Blank ({stub0.nominalBoreMm || "?"}NB)
+                                + Blank ({rawNominalBoreMm6 || "?"}NB)
                               </span>
                             </label>
                           </div>
@@ -3827,7 +4014,7 @@ function BendFormComponent(props: BendFormProps) {
                 )}
 
                 {/* Stub 2 Section - only show when 2 stubs AND 2 tangents selected */}
-                {(specs.numberOfStubs || 0) >= 2 && (specs.numberOfTangents || 0) >= 2 && (
+                {(rawNumberOfStubs10 || 0) >= 2 && (rawNumberOfTangents3 || 0) >= 2 && (
                   <div className="mt-2 p-2 bg-white dark:bg-gray-800 rounded border border-green-300 dark:border-green-600">
                     <p className="text-xs font-medium text-green-900 dark:text-green-300 mb-2">
                       Stub 2{" "}
@@ -3843,8 +4030,9 @@ function BendFormComponent(props: BendFormProps) {
                         </label>
                         {(() => {
                           const selectId = `bend-stub2-steel-spec-${entry.id}`;
+                          const rawSteelSpecificationId14 = stub1.steelSpecificationId;
                           const stub2EffectiveSpecId =
-                            stub1.steelSpecificationId ||
+                            rawSteelSpecificationId14 ||
                             specs.steelSpecificationId ||
                             globalSpecs?.steelSpecificationId;
 
@@ -3854,7 +4042,8 @@ function BendFormComponent(props: BendFormProps) {
                               value={String(stub2EffectiveSpecId || "")}
                               onChange={(value) => {
                                 const newSpecId = value ? Number(value) : undefined;
-                                const stubs = [...(specs.stubs || [])];
+                                const rawStubs14 = specs.stubs;
+                                const stubs = [...(rawStubs14 || [])];
                                 stubs[1] = {
                                   ...stubs[1],
                                   steelSpecificationId: newSpecId,
@@ -3879,21 +4068,24 @@ function BendFormComponent(props: BendFormProps) {
                         <label className="block text-xs text-gray-600 mb-0.5">NB</label>
                         {(() => {
                           const selectId = `bend-stub2-nb-${entry.id}`;
+                          const rawSteelSpecificationId15 = stub1.steelSpecificationId;
                           const stub2EffectiveSpecId =
-                            stub1.steelSpecificationId ||
+                            rawSteelSpecificationId15 ||
                             specs.steelSpecificationId ||
                             globalSpecs?.steelSpecificationId;
                           const stub2SteelSpec = masterData.steelSpecs?.find(
                             (s: SteelSpecItem) => s.id === stub2EffectiveSpecId,
                           );
-                          const stub2SteelSpecName = stub2SteelSpec?.steelSpecName || "";
+                          const rawSteelSpecName12 = stub2SteelSpec?.steelSpecName;
+                          const stub2SteelSpecName = rawSteelSpecName12 || "";
                           const stub2FallbackNBs = Object.entries(STEEL_SPEC_NB_FALLBACK).find(
                             ([pattern]) => stub2SteelSpecName.includes(pattern),
                           )?.[1];
                           const allStub2Nbs = stub2FallbackNBs || [
                             15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150, 200, 250, 300,
                           ];
-                          const mainBendNB = specs.nominalBoreMm || 0;
+                          const rawNominalBoreMm7 = specs.nominalBoreMm;
+                          const mainBendNB = rawNominalBoreMm7 || 0;
                           const stub2Nbs = allStub2Nbs.filter((nb: number) => nb <= mainBendNB);
                           const options = stub2Nbs.map((nb: number) => ({
                             value: String(nb),
@@ -3909,7 +4101,8 @@ function BendFormComponent(props: BendFormProps) {
                                   : ""
                               }
                               onChange={(value) => {
-                                const stubs = [...(specs.stubs || [])];
+                                const rawStubs15 = specs.stubs;
+                                const stubs = [...(rawStubs15 || [])];
                                 stubs[1] = {
                                   ...stubs[1],
                                   nominalBoreMm: parseInt(value, 10) || 0,
@@ -3939,14 +4132,16 @@ function BendFormComponent(props: BendFormProps) {
                         {(() => {
                           const selectId = `bend-stub2-wt-${entry.id}`;
                           const stub2NB = stub1.nominalBoreMm;
+                          const rawSteelSpecificationId16 = stub1.steelSpecificationId;
                           const steelSpecId =
-                            stub1.steelSpecificationId ||
+                            rawSteelSpecificationId16 ||
                             specs.steelSpecificationId ||
                             globalSpecs?.steelSpecificationId;
                           const stub2SteelSpec = masterData.steelSpecs?.find(
                             (s: SteelSpecItem) => s.id === steelSpecId,
                           );
-                          const stub2SpecName = stub2SteelSpec?.steelSpecName || "";
+                          const rawSteelSpecName13 = stub2SteelSpec?.steelSpecName;
+                          const stub2SpecName = rawSteelSpecName13 || "";
                           const isSABS719 =
                             stub2SpecName.includes("SABS 719") ||
                             stub2SpecName.includes("SANS 719");
@@ -3997,13 +4192,16 @@ function BendFormComponent(props: BendFormProps) {
                               if (size <= nb) closest = size;
                               else break;
                             }
-                            return SABS_719_WT[closest] || specs.wallThicknessMm || 6.4;
+                            const rawClosest2 = SABS_719_WT[closest];
+                            return rawClosest2 || specs.wallThicknessMm || 6.4;
                           };
+
+                          const rawStub2NB = ASTM_STUB_WT[stub2NB];
 
                           const autoWt = stub2NB
                             ? isSABS719
                               ? getSabs719Wt(stub2NB)
-                              : ASTM_STUB_WT[stub2NB] || stub2NB * 0.05
+                              : rawStub2NB || stub2NB * 0.05
                             : null;
                           const currentWt = stub1.wallThicknessMm;
 
@@ -4061,7 +4259,8 @@ function BendFormComponent(props: BendFormProps) {
                               id={selectId}
                               value={currentWt ? String(currentWt) : autoWt ? String(autoWt) : ""}
                               onChange={(value) => {
-                                const stubs = [...(specs.stubs || [])];
+                                const rawStubs16 = specs.stubs;
+                                const stubs = [...(rawStubs16 || [])];
                                 const newWt = parseFloat(value) || 0;
                                 const isOverride = autoWt && newWt !== autoWt;
                                 stubs[1] = {
@@ -4097,12 +4296,14 @@ function BendFormComponent(props: BendFormProps) {
                             { value: "270", label: "270° (Side)" },
                             { value: "315", label: "315°" },
                           ];
+                          const rawAngleDegrees2 = stub1.angleDegrees;
                           return (
                             <Select
                               id={selectId}
-                              value={String(stub1.angleDegrees ?? "0")}
+                              value={String(rawAngleDegrees2 || "0")}
                               onChange={(value) => {
-                                const stubs = [...(specs.stubs || [])];
+                                const rawStubs17 = specs.stubs;
+                                const stubs = [...(rawStubs17 || [])];
                                 stubs[1] = {
                                   ...stubs[1],
                                   angleDegrees: parseInt(value, 10) || 0,
@@ -4125,9 +4326,10 @@ function BendFormComponent(props: BendFormProps) {
                         <label className="block text-xs text-purple-800 mb-0.5">Length (mm)</label>
                         <input
                           type="number"
-                          value={stub1.length || ""}
+                          value={rawLength3 || ""}
                           onChange={(e) => {
-                            const stubs = [...(specs.stubs || [])];
+                            const rawStubs18 = specs.stubs;
+                            const stubs = [...(rawStubs18 || [])];
                             stubs[1] = {
                               ...stubs[1],
                               length: parseInt(e.target.value, 10) || 0,
@@ -4146,9 +4348,10 @@ function BendFormComponent(props: BendFormProps) {
                         </label>
                         <input
                           type="number"
-                          value={stub1.locationFromFlange || ""}
+                          value={rawLocationFromFlange2 || ""}
                           onChange={(e) => {
-                            const stubs = [...(specs.stubs || [])];
+                            const rawStubs19 = specs.stubs;
+                            const stubs = [...(rawStubs19 || [])];
                             stubs[1] = {
                               ...stubs[1],
                               locationFromFlange: parseInt(e.target.value, 10) || 0,
@@ -4165,10 +4368,12 @@ function BendFormComponent(props: BendFormProps) {
                     {/* Stub 2 Flange - matching Stub 1 layout */}
                     <div className="mt-2 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-lg px-3 py-2">
                       {(() => {
+                        const rawFlangeStandardId5 = stub1.flangeStandardId;
                         const effectiveStandardId =
-                          stub1.flangeStandardId || globalSpecs?.flangeStandardId;
+                          rawFlangeStandardId5 || globalSpecs?.flangeStandardId;
+                        const rawFlangeTypeCode5 = stub1.flangeTypeCode;
                         const effectiveFlangeTypeCode =
-                          stub1.flangeTypeCode || globalSpecs?.flangeTypeCode;
+                          rawFlangeTypeCode5 || globalSpecs?.flangeTypeCode;
                         const normalizedFlangeTypeCode =
                           effectiveFlangeTypeCode?.replace(/^\//, "") || "";
                         const selectedStandard = masterData.flangeStandards?.find(
@@ -4202,16 +4407,20 @@ function BendFormComponent(props: BendFormProps) {
                               (pc: PressureClassItem) => pc.designation === stub2TargetDesignation,
                             )
                           : null;
+                        const rawFlangePressureClassId4 = stub1.flangePressureClassId;
                         const effectivePressureClassId =
-                          stub1.flangePressureClassId ||
+                          rawFlangePressureClassId4 ||
                           stub2MatchingClass?.id ||
                           globalSpecs?.flangePressureClassId;
 
+                        const rawFlangeStandardId6 = stub1.flangeStandardId;
+
                         const stub2EffectiveStandardId =
-                          stub1.flangeStandardId || globalSpecs?.flangeStandardId;
+                          rawFlangeStandardId6 || globalSpecs?.flangeStandardId;
                         const stub2EffectiveClassId = effectivePressureClassId;
+                        const rawFlangeTypeCode6 = stub1.flangeTypeCode;
                         const stub2EffectiveTypeCode =
-                          stub1.flangeTypeCode || globalSpecs?.flangeTypeCode;
+                          rawFlangeTypeCode6 || globalSpecs?.flangeTypeCode;
                         const stub2EffectiveClass = masterData.pressureClasses?.find(
                           (p: PressureClassItem) => p.id === stub2EffectiveClassId,
                         );
@@ -4259,8 +4468,9 @@ function BendFormComponent(props: BendFormProps) {
                         const stub2PressureClassRatingRaw = stub2SelectedClass?.designation
                           ? parseInt(stub2SelectedClass.designation.replace(/[^\d]/g, ""), 10)
                           : 0;
+                        const rawWorkingPressureBar9 = specs.workingPressureBar;
                         const stub2WorkingPressureBar =
-                          specs.workingPressureBar || globalSpecs?.workingPressureBar || 0;
+                          rawWorkingPressureBar9 || globalSpecs?.workingPressureBar || 0;
                         const stub2IsPressureClassUnsuitable =
                           stub2EffectiveClassId &&
                           stub2WorkingPressureBar > 0 &&
@@ -4278,6 +4488,9 @@ function BendFormComponent(props: BendFormProps) {
                           "w-full px-2 py-1.5 border-2 rounded text-xs text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-red-500 dark:border-red-400";
                         const defaultSelectClass =
                           "w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800";
+                        const rawVal3 = pressureClassesByStandard[effectiveStandardId || 0];
+                        const rawHasBlankFlange2 = stub1.hasBlankFlange;
+                        const rawNominalBoreMm8 = stub1.nominalBoreMm;
                         return (
                           <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 items-end">
                             {/* Title as first column */}
@@ -4305,7 +4518,8 @@ function BendFormComponent(props: BendFormProps) {
                                 value={effectiveStandardId || ""}
                                 onChange={(e) => {
                                   const standardId = parseInt(e.target.value, 10) || undefined;
-                                  const stubs = [...(specs.stubs || [])];
+                                  const rawStubs20 = specs.stubs;
+                                  const stubs = [...(rawStubs20 || [])];
                                   stubs[1] = {
                                     ...stubs[1],
                                     flangeStandardId: standardId,
@@ -4357,7 +4571,8 @@ function BendFormComponent(props: BendFormProps) {
                                 <select
                                   value={effectivePressureClassId || ""}
                                   onChange={(e) => {
-                                    const stubs = [...(specs.stubs || [])];
+                                    const rawStubs21 = specs.stubs;
+                                    const stubs = [...(rawStubs21 || [])];
                                     stubs[1] = {
                                       ...stubs[1],
                                       flangePressureClassId:
@@ -4408,7 +4623,8 @@ function BendFormComponent(props: BendFormProps) {
                                 <select
                                   value={effectivePressureClassId || ""}
                                   onChange={(e) => {
-                                    const stubs = [...(specs.stubs || [])];
+                                    const rawStubs22 = specs.stubs;
+                                    const stubs = [...(rawStubs22 || [])];
                                     stubs[1] = {
                                       ...stubs[1],
                                       flangePressureClassId:
@@ -4429,15 +4645,13 @@ function BendFormComponent(props: BendFormProps) {
                                   }
                                 >
                                   <option value="">Select...</option>
-                                  {(
-                                    pressureClassesByStandard[effectiveStandardId || 0] ||
-                                    masterData.pressureClasses ||
-                                    []
-                                  ).map((pc: PressureClassItem) => (
-                                    <option key={pc.id} value={pc.id}>
-                                      {pc.designation?.replace(/\/\d+$/, "") || pc.designation}
-                                    </option>
-                                  ))}
+                                  {(rawVal3 || masterData.pressureClasses || []).map(
+                                    (pc: PressureClassItem) => (
+                                      <option key={pc.id} value={pc.id}>
+                                        {pc.designation?.replace(/\/\d+$/, "") || pc.designation}
+                                      </option>
+                                    ),
+                                  )}
                                 </select>
                               )}
                             </div>
@@ -4460,10 +4674,12 @@ function BendFormComponent(props: BendFormProps) {
                                 <select
                                   value={effectiveFlangeTypeCode || ""}
                                   onChange={(e) => {
-                                    const stubs = [...(specs.stubs || [])];
+                                    const rawStubs23 = specs.stubs;
+                                    const stubs = [...(rawStubs23 || [])];
+                                    const rawValue7 = e.target.value;
                                     stubs[1] = {
                                       ...stubs[1],
-                                      flangeTypeCode: e.target.value || undefined,
+                                      flangeTypeCode: rawValue7 || undefined,
                                     };
                                     const updatedEntry = {
                                       ...entry,
@@ -4498,9 +4714,10 @@ function BendFormComponent(props: BendFormProps) {
                               <label className="flex items-center gap-1.5 pb-1.5">
                                 <input
                                   type="checkbox"
-                                  checked={stub1.hasBlankFlange || false}
+                                  checked={rawHasBlankFlange2 || false}
                                   onChange={(e) => {
-                                    const stubs = [...(specs.stubs || [])];
+                                    const rawStubs24 = specs.stubs;
+                                    const stubs = [...(rawStubs24 || [])];
                                     stubs[1] = {
                                       ...stubs[1],
                                       hasBlankFlange: e.target.checked,
@@ -4516,7 +4733,7 @@ function BendFormComponent(props: BendFormProps) {
                                   className="w-3 h-3 text-red-600 rounded focus:ring-red-500"
                                 />
                                 <span className="text-xs text-red-700 font-medium">
-                                  + Blank ({stub1.nominalBoreMm || "?"}NB)
+                                  + Blank ({rawNominalBoreMm8 || "?"}NB)
                                 </span>
                               </label>
                             </div>
@@ -4669,46 +4886,58 @@ function BendFormComponent(props: BendFormProps) {
                     </div>
                   );
                 }
-                const flangeStandardId = specs.flangeStandardId || globalSpecs?.flangeStandardId;
+                const rawFlangeStandardId7 = specs.flangeStandardId;
+                const flangeStandardId = rawFlangeStandardId7 || globalSpecs?.flangeStandardId;
+                const rawFlangePressureClassId5 = specs.flangePressureClassId;
                 const flangePressureClassId =
-                  specs.flangePressureClassId || globalSpecs?.flangePressureClassId;
+                  rawFlangePressureClassId5 || globalSpecs?.flangePressureClassId;
                 const flangeStandard = masterData.flangeStandards?.find(
                   (s: FlangeStandardItem) => s.id === flangeStandardId,
                 );
                 const pressureClass = masterData.pressureClasses?.find(
                   (p: PressureClassItem) => p.id === flangePressureClassId,
                 );
-                const flangeTypeCode = specs.flangeTypeCode || globalSpecs?.flangeTypeCode;
+                const rawFlangeTypeCode7 = specs.flangeTypeCode;
+                const flangeTypeCode = rawFlangeTypeCode7 || globalSpecs?.flangeTypeCode;
                 const flangeStandardName =
                   flangeStandard?.code === "SABS_1123"
                     ? "SABS 1123"
                     : flangeStandard?.code === "BS_4504"
                       ? "BS 4504"
                       : flangeStandard?.code?.replace(/_/g, " ") || "";
-                const pressureClassDesignation = pressureClass?.designation || "";
-                const steelSpecName =
-                  masterData.steelSpecs?.find(
-                    (s: SteelSpecItem) =>
-                      s.id === (specs.steelSpecificationId || globalSpecs?.steelSpecificationId),
-                  )?.steelSpecName || "";
+                const rawDesignation = pressureClass?.designation;
+                const pressureClassDesignation = rawDesignation || "";
+
+                const rawSteelSpecName14 = masterData.steelSpecs?.find((s: SteelSpecItem) => {
+                  const rawSteelSpecificationId17 = specs.steelSpecificationId;
+                  return s.id === (rawSteelSpecificationId17 || globalSpecs?.steelSpecificationId);
+                })?.steelSpecName;
+
+                const steelSpecName = rawSteelSpecName14 || "";
                 const previewIsSABS719 =
                   steelSpecName.includes("SABS 719") || steelSpecName.includes("SANS 719");
+                const rawOutsideDiameterMm = entry.calculation?.outsideDiameterMm;
+                const rawWallThicknessMm7 = specs.wallThicknessMm;
+                const rawBendType2 = entry.specs.bendType;
+                const rawItem04 = specs.tangentLengths?.[0];
+                const rawItem13 = specs.tangentLengths?.[1];
+                const rawNumberOfStubs11 = specs.numberOfStubs;
+                const rawBendEndConfiguration5 = specs.bendEndConfiguration;
+                const rawClosureLengthMm2 = specs.closureLengthMm;
                 return (
                   <div data-nix-target="bend-3d-preview" className="h-full">
                     <Bend3DPreview
                       nominalBore={entry.specs.nominalBoreMm}
                       outerDiameter={
-                        entry.calculation?.outsideDiameterMm ||
+                        rawOutsideDiameterMm ||
                         nbToOdMap[entry.specs.nominalBoreMm] ||
                         entry.specs.nominalBoreMm * 1.05
                       }
-                      wallThickness={
-                        specs.wallThicknessMm || entry.calculation?.wallThicknessMm || 5
-                      }
+                      wallThickness={rawWallThicknessMm7 || entry.calculation?.wallThicknessMm || 5}
                       bendAngle={entry.specs.bendDegrees}
-                      bendType={entry.specs.bendType || "1.5D"}
-                      tangent1={specs.tangentLengths?.[0] || 0}
-                      tangent2={specs.tangentLengths?.[1] || 0}
+                      bendType={rawBendType2 || "1.5D"}
+                      tangent1={rawItem04 || 0}
+                      tangent2={rawItem13 || 0}
                       schedule={entry.specs.scheduleNumber}
                       materialName={steelSpecName}
                       numberOfSegments={specs.numberOfSegments}
@@ -4716,9 +4945,9 @@ function BendFormComponent(props: BendFormProps) {
                         specs.bendStyle === "segmented" || (!specs.bendStyle && previewIsSABS719)
                       }
                       stubs={specs.stubs}
-                      numberOfStubs={specs.numberOfStubs || 0}
-                      flangeConfig={specs.bendEndConfiguration || "PE"}
-                      closureLengthMm={specs.closureLengthMm || 0}
+                      numberOfStubs={rawNumberOfStubs11 || 0}
+                      flangeConfig={rawBendEndConfiguration5 || "PE"}
+                      closureLengthMm={rawClosureLengthMm2 || 0}
                       addBlankFlange={specs.addBlankFlange}
                       blankFlangePositions={specs.blankFlangePositions}
                       savedCameraPosition={specs.savedCameraPosition}
@@ -4774,7 +5003,7 @@ function BendFormComponent(props: BendFormProps) {
                 Additional Notes & Requirements
               </label>
               <SmartNotesDropdown
-                selectedNotes={entry.selectedNotes || []}
+                selectedNotes={rawSelectedNotes || []}
                 onNotesChange={(notes) =>
                   onUpdateEntry(entry.id, {
                     selectedNotes: notes,
@@ -4855,28 +5084,37 @@ function BendFormComponent(props: BendFormProps) {
                     isSABS719,
                   } = bendCalcs;
 
-                  const stubs = specs.stubs || [];
+                  const rawStubs25 = specs.stubs;
+
+                  const stubs = rawStubs25 || [];
                   const stub1NB = stubs[0]?.nominalBoreMm;
                   const stub2NB = stubs[1]?.nominalBoreMm;
-                  const stub1Length = stubs[0]?.lengthMm || stubs[0]?.length || 0;
-                  const stub2Length = stubs[1]?.lengthMm || stubs[1]?.length || 0;
+                  const rawLengthMm = stubs[0]?.lengthMm;
+                  const stub1Length = rawLengthMm || stubs[0]?.length || 0;
+                  const rawLengthMm2 = stubs[1]?.lengthMm;
+                  const stub2Length = rawLengthMm2 || stubs[1]?.length || 0;
                   const dn = specs.nominalBoreMm;
-                  const schedule = specs.scheduleNumber || "";
+                  const rawScheduleNumber2 = specs.scheduleNumber;
+                  const schedule = rawScheduleNumber2 || "";
                   const pipeWallThickness = entry.calculation?.wallThicknessMm;
                   const fittingClass = scheduleToFittingClass(schedule);
+                  const rawStub1NB2 = FITTING_CLASS_WALL_THICKNESS[fittingClass]?.[stub1NB];
                   const stub1RawWt =
                     isSABS719 || !fittingClass
                       ? pipeWallThickness
-                      : FITTING_CLASS_WALL_THICKNESS[fittingClass]?.[stub1NB] || pipeWallThickness;
+                      : rawStub1NB2 || pipeWallThickness;
+                  const rawStub2NB2 = FITTING_CLASS_WALL_THICKNESS[fittingClass]?.[stub2NB];
                   const stub2RawWt =
                     isSABS719 || !fittingClass
                       ? pipeWallThickness
-                      : FITTING_CLASS_WALL_THICKNESS[fittingClass]?.[stub2NB] || pipeWallThickness;
+                      : rawStub2NB2 || pipeWallThickness;
                   const stub1Wt = stub1NB && stub1RawWt ? roundToWeldIncrement(stub1RawWt) : 0;
                   const stub2Wt = stub2NB && stub2RawWt ? roundToWeldIncrement(stub2RawWt) : 0;
 
                   const { flangeStandardCode, pressureClassDesignation, flangeTypeCode } =
                     resolveFlangeConfig(specs, globalSpecs, masterData);
+
+                  const rawFlangeWeightPerUnit = entry.calculation?.flangeWeightPerUnit;
 
                   const mainFlangeWeightPerUnit = flangeWeightOr(
                     allWeights,
@@ -4884,7 +5122,7 @@ function BendFormComponent(props: BendFormProps) {
                     pressureClassDesignation,
                     flangeStandardCode,
                     flangeTypeCode,
-                    entry.calculation?.flangeWeightPerUnit || 0,
+                    rawFlangeWeightPerUnit || 0,
                   );
                   const stub1FlangeWeightPerUnit = flangeWeightOr(
                     allWeights,
@@ -4901,22 +5139,33 @@ function BendFormComponent(props: BendFormProps) {
                     flangeTypeCode,
                   );
 
-                  const numStubs = specs.numberOfStubs || 0;
-                  const bendEndConfig = specs.bendEndConfiguration || "PE";
-                  const bendQuantity = specs.quantityValue || 1;
-                  const closureLengthMm = specs.closureLengthMm || 0;
+                  const rawNumberOfStubs12 = specs.numberOfStubs;
+
+                  const numStubs = rawNumberOfStubs12 || 0;
+                  const rawBendEndConfiguration6 = specs.bendEndConfiguration;
+                  const bendEndConfig = rawBendEndConfiguration6 || "PE";
+                  const rawQuantityValue2 = specs.quantityValue;
+                  const bendQuantity = rawQuantityValue2 || 1;
+                  const rawClosureLengthMm3 = specs.closureLengthMm;
+                  const closureLengthMm = rawClosureLengthMm3 || 0;
                   const tackWeldEnds = tackWeldEndsPerBend(bendEndConfig);
 
-                  const stub1OD = stub1NB ? nbToOdMap[stub1NB] || stub1NB * 1.05 : 0;
-                  const stub2OD = stub2NB ? nbToOdMap[stub2NB] || stub2NB * 1.05 : 0;
+                  const rawStub1NB3 = nbToOdMap[stub1NB];
+
+                  const stub1OD = stub1NB ? rawStub1NB3 || stub1NB * 1.05 : 0;
+                  const rawStub2NB3 = nbToOdMap[stub2NB];
+                  const stub2OD = stub2NB ? rawStub2NB3 || stub2NB * 1.05 : 0;
                   const stub1ID = stub1OD - 2 * (pipeWallThickness || 0);
                   const stub2ID = stub2OD - 2 * (pipeWallThickness || 0);
                   const stub1Circ = Math.PI * stub1OD;
                   const stub2Circ = Math.PI * stub2OD;
-                  const pipeALengthMm = isSweepTee ? specs.sweepTeePipeALengthMm || 0 : 0;
+                  const rawSweepTeePipeALengthMm3 = specs.sweepTeePipeALengthMm;
+                  const pipeALengthMm = isSweepTee ? rawSweepTeePipeALengthMm3 || 0 : 0;
                   const teeTotalLinear =
                     (numStubs >= 1 && stub1NB ? stub1Circ : 0) +
                     (numStubs >= 2 && stub2NB ? stub2Circ : 0);
+
+                  const rawBendRadiusMm = specs.bendRadiusMm;
 
                   return (
                     <div
@@ -4937,7 +5186,7 @@ function BendFormComponent(props: BendFormProps) {
                           </p>
                         )}
                         <p className="text-xs text-purple-500 dark:text-purple-400">
-                          Radius: {Number(specs.bendRadiusMm || 0).toFixed(0)}mm
+                          Radius: {Number(rawBendRadiusMm || 0).toFixed(0)}mm
                         </p>
                         <p className="text-xs text-purple-500 dark:text-purple-400 mt-0.5">
                           {mainLengthDisplay}
@@ -5044,7 +5293,8 @@ function BendFormComponent(props: BendFormProps) {
                       </div>
                       {/* Weld with detailed breakdown */}
                       {(() => {
-                        const hasBranchConnection = (specs.sweepTeePipeALengthMm || 0) > 0;
+                        const rawSweepTeePipeALengthMm4 = specs.sweepTeePipeALengthMm;
+                        const hasBranchConnection = (rawSweepTeePipeALengthMm4 || 0) > 0;
                         const branchFlangeConfig = hasBranchConnection
                           ? getFittingFlangeConfig(bendEndConfig)
                           : null;
@@ -5080,18 +5330,23 @@ function BendFormComponent(props: BendFormProps) {
                           dn && duckfootWeldDefaults[dn]
                             ? duckfootWeldDefaults[dn]
                             : { x: 500, y: 400, h: 400 };
-                        const duckfootBasePlateXMm = specs.duckfootBasePlateXMm || 0;
-                        const duckfootBasePlateYMm = specs.duckfootBasePlateYMm || 0;
+                        const rawDuckfootBasePlateXMm2 = specs.duckfootBasePlateXMm;
+                        const duckfootBasePlateXMm = rawDuckfootBasePlateXMm2 || 0;
+                        const rawDuckfootBasePlateYMm2 = specs.duckfootBasePlateYMm;
+                        const duckfootBasePlateYMm = rawDuckfootBasePlateYMm2 || 0;
                         const hasDuckfootGeometry =
                           duckfootBasePlateXMm > 0 || duckfootBasePlateYMm > 0;
                         const effectiveDuckfootX = duckfootBasePlateXMm || duckfootDefaults.x;
                         const effectiveDuckfootY = duckfootBasePlateYMm || duckfootDefaults.y;
                         const duckfootRibHeightMm = duckfootDefaults.h;
-                        const duckfootPointDDeg = specs.duckfootGussetPointDDegrees || 15;
-                        const duckfootPointCDeg = specs.duckfootGussetPointCDegrees || 75;
+                        const rawDuckfootGussetPointDDegrees2 = specs.duckfootGussetPointDDegrees;
+                        const duckfootPointDDeg = rawDuckfootGussetPointDDegrees2 || 15;
+                        const rawDuckfootGussetPointCDegrees2 = specs.duckfootGussetPointCDegrees;
+                        const duckfootPointCDeg = rawDuckfootGussetPointCDegrees2 || 75;
 
                         const outerRadiusMm = mainOdMm / 2;
-                        const bendRadiusMm = specs.bendRadiusMm || (dn ? dn * 1.5 : 750);
+                        const rawBendRadiusMm2 = specs.bendRadiusMm;
+                        const bendRadiusMm = rawBendRadiusMm2 || (dn ? dn * 1.5 : 750);
                         const extradosRadiusMm = bendRadiusMm + outerRadiusMm;
                         const duckfootYOffsetMm = 800;
 
@@ -5258,20 +5513,26 @@ function BendFormComponent(props: BendFormProps) {
                           const mainOdM = mainOdMm / 1000;
                           const mainIdM = mainIdMm / 1000;
 
-                          const bendDegrees = specs.bendDegrees || 90;
+                          const rawBendDegrees2 = specs.bendDegrees;
+
+                          const bendDegrees = rawBendDegrees2 || 90;
                           const bendAngleRad = (bendDegrees * Math.PI) / 180;
+
+                          const rawBendType3 = specs.bendType;
 
                           const centerLineBendRadiusMm = specs.bendRadiusMm
                             ? entry.specs.bendRadiusMm
-                            : dn * (parseFloat((specs.bendType || "1.5D").replace("D", "")) || 1.5);
+                            : dn * (parseFloat((rawBendType3 || "1.5D").replace("D", "")) || 1.5);
 
                           const bendArcLengthMm = centerLineBendRadiusMm * bendAngleRad;
                           const bendArcLengthM = bendArcLengthMm / 1000;
                           const bendExtM2 = Math.PI * mainOdM * bendArcLengthM;
                           const bendIntM2 = Math.PI * mainIdM * bendArcLengthM;
 
-                          const tangentTotalMm =
-                            (specs.tangentLengths?.[0] || 0) + (specs.tangentLengths?.[1] || 0);
+                          const rawItem05 = specs.tangentLengths?.[0];
+                          const rawItem14 = specs.tangentLengths?.[1];
+
+                          const tangentTotalMm = (rawItem05 || 0) + (rawItem14 || 0);
                           const tangentTotalM = tangentTotalMm / 1000;
                           const tangentExtM2 = Math.PI * mainOdM * tangentTotalM;
                           const tangentIntM2 = Math.PI * mainIdM * tangentTotalM;
@@ -5322,12 +5583,15 @@ function BendFormComponent(props: BendFormProps) {
                                   mainFlangeBoreM * mainFlangeBoreM)
                               : 0;
 
+                          const rawStub1NB4 = nbToOdMap[stub1NB];
+
                           const stub1FlangeOdM = stub1NB
-                            ? ((nbToOdMap[stub1NB] || stub1NB) * 1.8) / 1000
+                            ? ((rawStub1NB4 || stub1NB) * 1.8) / 1000
                             : 0;
                           const stub1FlangeBoreM = stub1IdM;
+                          const rawStub1NB5 = nbToOdMap[stub1NB];
                           const stub1RaisedFaceM = stub1NB
-                            ? ((nbToOdMap[stub1NB] || stub1NB) * 1.2) / 1000
+                            ? ((rawStub1NB5 || stub1NB) * 1.2) / 1000
                             : 0;
                           const stub1FlangeExtFaceM2 =
                             stub1FlangeCount > 0
@@ -5343,12 +5607,15 @@ function BendFormComponent(props: BendFormProps) {
                                   stub1FlangeBoreM * stub1FlangeBoreM)
                               : 0;
 
+                          const rawStub2NB4 = nbToOdMap[stub2NB];
+
                           const stub2FlangeOdM = stub2NB
-                            ? ((nbToOdMap[stub2NB] || stub2NB) * 1.8) / 1000
+                            ? ((rawStub2NB4 || stub2NB) * 1.8) / 1000
                             : 0;
                           const stub2FlangeBoreM = stub2IdM;
+                          const rawStub2NB5 = nbToOdMap[stub2NB];
                           const stub2RaisedFaceM = stub2NB
-                            ? ((nbToOdMap[stub2NB] || stub2NB) * 1.2) / 1000
+                            ? ((rawStub2NB5 || stub2NB) * 1.2) / 1000
                             : 0;
                           const stub2FlangeExtFaceM2 =
                             stub2FlangeCount > 0
@@ -5435,7 +5702,6 @@ function BendFormComponent(props: BendFormProps) {
           </div>
         }
       />
-
       {/* Quantity Limit Popup for unregistered customers */}
       {quantityLimitPopup && (
         <div

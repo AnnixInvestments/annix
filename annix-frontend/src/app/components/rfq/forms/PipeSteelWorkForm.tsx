@@ -41,12 +41,18 @@ export default function PipeSteelWorkForm(props: PipeSteelWorkFormProps) {
     generateItemDescription,
     requiredProducts = [],
   } = props;
-  const specs = entry.specs ?? {};
-  const workType = specs.workType || "pipe_support";
-  const nominalDiameterMm = specs.nominalDiameterMm || globalSpecs?.nominalDiameterMm || null;
-  const bracketType = specs.bracketType || "clevis_hanger";
-  const pipelineLengthM = specs.pipelineLengthM || null;
-  const branchDiameterMm = specs.branchDiameterMm || null;
+  const rawSpecs = entry.specs;
+  const specs = rawSpecs || {};
+  const rawWorkType = specs.workType;
+  const workType = rawWorkType || "pipe_support";
+  const rawNominalDiameterMm = specs.nominalDiameterMm;
+  const nominalDiameterMm = rawNominalDiameterMm || globalSpecs?.nominalDiameterMm || null;
+  const rawBracketType = specs.bracketType;
+  const bracketType = rawBracketType || "clevis_hanger";
+  const rawPipelineLengthM = specs.pipelineLengthM;
+  const pipelineLengthM = rawPipelineLengthM || null;
+  const rawBranchDiameterMm = specs.branchDiameterMm;
+  const branchDiameterMm = rawBranchDiameterMm || null;
   const quantity = specs.quantity;
 
   const { supportSpacing, bracketTypes, bracketDimensions, calculationResults, isLoading, error } =
@@ -74,6 +80,10 @@ export default function PipeSteelWorkForm(props: PipeSteelWorkFormProps) {
 
   const selectedBracketType = bracketTypes.find((bt) => bt.typeCode === bracketType);
 
+  const rawDescription = entry.description;
+  const rawMediaType = specs.mediaType;
+  const rawWeightPerUnitKg = calculationResults.weightPerUnitKg;
+
   return (
     <>
       <SplitPaneLayout
@@ -87,7 +97,7 @@ export default function PipeSteelWorkForm(props: PipeSteelWorkFormProps) {
                 Item Description *
               </label>
               <textarea
-                value={entry.description || generateItemDescription(entry)}
+                value={rawDescription || generateItemDescription(entry)}
                 onChange={(e) => onUpdateEntry(entry.id, { description: e.target.value })}
                 className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
                 rows={2}
@@ -228,7 +238,7 @@ export default function PipeSteelWorkForm(props: PipeSteelWorkFormProps) {
                     </label>
                     <Select
                       id={`media-type-${entry.id}`}
-                      value={specs.mediaType || "water_filled"}
+                      value={rawMediaType || "water_filled"}
                       onChange={(value) => {
                         onUpdateEntry(entry.id, {
                           specs: { ...entry.specs, mediaType: value },
@@ -403,9 +413,7 @@ export default function PipeSteelWorkForm(props: PipeSteelWorkFormProps) {
                   )}
                   <div className="text-green-800 dark:text-green-200">Weight per Unit:</div>
                   <div className="font-semibold text-green-900 dark:text-green-100">
-                    {calculationResults.weightPerUnitKg ||
-                      calculationResults.reinforcementPad?.padWeightKg}{" "}
-                    kg
+                    {rawWeightPerUnitKg || calculationResults.reinforcementPad?.padWeightKg} kg
                   </div>
                   <div className="text-green-800 dark:text-green-200">Total Weight:</div>
                   <div className="font-semibold text-green-900 dark:text-green-100">
@@ -430,7 +438,6 @@ export default function PipeSteelWorkForm(props: PipeSteelWorkFormProps) {
           </div>
         }
       />
-
       <div className="flex justify-end mt-3">
         <button
           type="button"

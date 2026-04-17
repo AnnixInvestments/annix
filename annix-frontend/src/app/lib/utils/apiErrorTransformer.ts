@@ -19,14 +19,16 @@ const STATUS_MESSAGES: Record<number, string> = {
 
 export function friendlyErrorMessage(error: unknown): string {
   if (error instanceof Response) {
-    return STATUS_MESSAGES[error.status] ?? `Request failed (${error.status})`;
+    const rawStatus = STATUS_MESSAGES[error.status];
+    return rawStatus || `Request failed (${error.status})`;
   }
 
   if (error instanceof Error) {
     const statusMatch = error.message.match(/\((\d{3})/);
     if (statusMatch) {
       const status = parseInt(statusMatch[1], 10);
-      return STATUS_MESSAGES[status] ?? error.message;
+      const rawStatus2 = STATUS_MESSAGES[status];
+      return rawStatus2 || error.message;
     }
     return error.message;
   }
@@ -40,7 +42,8 @@ export function friendlyErrorMessage(error: unknown): string {
       return apiError.message;
     }
     if (apiError.statusCode) {
-      return STATUS_MESSAGES[apiError.statusCode] ?? `Request failed (${apiError.statusCode})`;
+      const rawStatusCode = STATUS_MESSAGES[apiError.statusCode];
+      return rawStatusCode || `Request failed (${apiError.statusCode})`;
     }
   }
 

@@ -79,14 +79,19 @@ export function useRfqDraftStorage(): UseRfqDraftStorageReturn {
           const existingDraft = loadDraft();
           const currentTime = nowISO();
 
+          const rawRfqData = data.rfqData;
+          const rawGlobalSpecs = data.globalSpecs;
+          const rawCurrentStep = data.currentStep;
+          const rawEntries = data.entries;
+          const rawCustomerEmail = data.rfqData?.customerEmail;
+
           const draftToSave: RfqDraftData = {
-            rfqData: data.rfqData || existingDraft?.rfqData || {},
-            globalSpecs: data.globalSpecs || existingDraft?.globalSpecs || {},
-            currentStep: data.currentStep || existingDraft?.currentStep || 0,
-            entries: data.entries || existingDraft?.entries || [],
+            rfqData: rawRfqData || existingDraft?.rfqData || {},
+            globalSpecs: rawGlobalSpecs || existingDraft?.globalSpecs || {},
+            currentStep: rawCurrentStep || existingDraft?.currentStep || 0,
+            entries: rawEntries || existingDraft?.entries || [],
             lastSaved: currentTime,
-            customerEmail:
-              data.rfqData?.customerEmail || data.customerEmail || existingDraft?.customerEmail,
+            customerEmail: rawCustomerEmail || data.customerEmail || existingDraft?.customerEmail,
           };
 
           localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draftToSave));
@@ -94,7 +99,8 @@ export function useRfqDraftStorage(): UseRfqDraftStorageReturn {
 
           setHasDraft(true);
           setLastSaved(fromISO(currentTime).toJSDate());
-          setDraftEmail(draftToSave.customerEmail || null);
+          const rawCustomerEmail2 = draftToSave.customerEmail;
+          setDraftEmail(rawCustomerEmail2 || null);
 
           log.debug("Draft saved to localStorage:", {
             customerEmail: draftToSave.customerEmail,
@@ -129,7 +135,8 @@ export function useRfqDraftStorage(): UseRfqDraftStorageReturn {
     if (draft) {
       setHasDraft(true);
       setLastSaved(draft.lastSaved ? fromISO(draft.lastSaved).toJSDate() : null);
-      setDraftEmail(draft.customerEmail || null);
+      const rawCustomerEmail3 = draft.customerEmail;
+      setDraftEmail(rawCustomerEmail3 || null);
     }
 
     return () => {

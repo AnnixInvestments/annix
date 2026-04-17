@@ -38,11 +38,14 @@ export function useConfirm() {
     setState(null);
   }, []);
 
+  const rawTitle = state?.title;
+  const rawMessage = state?.message;
+
   const ConfirmDialog = (
     <ConfirmModal
       isOpen={state !== null}
-      title={state?.title ?? ""}
-      message={state?.message ?? ""}
+      title={rawTitle || ""}
+      message={rawMessage || ""}
       confirmLabel={state?.confirmLabel}
       cancelLabel={state?.cancelLabel}
       variant={state?.variant}

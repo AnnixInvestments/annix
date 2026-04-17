@@ -98,30 +98,55 @@ export default function InstrumentForm(props: InstrumentFormProps) {
   const [activeCategory, setActiveCategory] = useState<InstrumentCategory>("flow");
   const [calculationResults, setCalculationResults] = useState<any>(null);
 
-  const instrumentType = entry.specs?.instrumentType || "";
-  const size = entry.specs?.size || "";
-  const processConnection = entry.specs?.processConnection || "";
-  const wettedMaterial = entry.specs?.wettedMaterial || "";
-  const rangeMin = entry.specs?.rangeMin || null;
-  const rangeMax = entry.specs?.rangeMax || null;
-  const rangeUnit = entry.specs?.rangeUnit || "";
-  const outputSignal = entry.specs?.outputSignal || "4_20ma";
-  const communicationProtocol = entry.specs?.communicationProtocol || "";
-  const displayType = entry.specs?.displayType || "local_lcd";
-  const powerSupply = entry.specs?.powerSupply || "loop_powered";
-  const cableEntry = entry.specs?.cableEntry || "m20";
-  const explosionProof = entry.specs?.explosionProof || "none";
-  const ipRating = entry.specs?.ipRating || "ip65";
-  const accuracyClass = entry.specs?.accuracyClass || "";
-  const calibration = entry.specs?.calibration || "standard";
-  const processMedia = entry.specs?.processMedia || "";
-  const operatingPressure = entry.specs?.operatingPressure || null;
-  const operatingTemp = entry.specs?.operatingTemp || null;
-  const quantity = entry.specs?.quantityValue || 1;
-  const supplierReference = entry.specs?.supplierReference || "";
-  const modelNumber = entry.specs?.modelNumber || "";
-  const unitCostFromSupplier = entry.specs?.unitCostFromSupplier || null;
-  const markupPercentage = entry.specs?.markupPercentage || 15;
+  const rawInstrumentType = entry.specs?.instrumentType;
+
+  const instrumentType = rawInstrumentType || "";
+  const rawSize = entry.specs?.size;
+  const size = rawSize || "";
+  const rawProcessConnection = entry.specs?.processConnection;
+  const processConnection = rawProcessConnection || "";
+  const rawWettedMaterial = entry.specs?.wettedMaterial;
+  const wettedMaterial = rawWettedMaterial || "";
+  const rawRangeMin = entry.specs?.rangeMin;
+  const rangeMin = rawRangeMin || null;
+  const rawRangeMax = entry.specs?.rangeMax;
+  const rangeMax = rawRangeMax || null;
+  const rawRangeUnit = entry.specs?.rangeUnit;
+  const rangeUnit = rawRangeUnit || "";
+  const rawOutputSignal = entry.specs?.outputSignal;
+  const outputSignal = rawOutputSignal || "4_20ma";
+  const rawCommunicationProtocol = entry.specs?.communicationProtocol;
+  const communicationProtocol = rawCommunicationProtocol || "";
+  const rawDisplayType = entry.specs?.displayType;
+  const displayType = rawDisplayType || "local_lcd";
+  const rawPowerSupply = entry.specs?.powerSupply;
+  const powerSupply = rawPowerSupply || "loop_powered";
+  const rawCableEntry = entry.specs?.cableEntry;
+  const cableEntry = rawCableEntry || "m20";
+  const rawExplosionProof = entry.specs?.explosionProof;
+  const explosionProof = rawExplosionProof || "none";
+  const rawIpRating = entry.specs?.ipRating;
+  const ipRating = rawIpRating || "ip65";
+  const rawAccuracyClass = entry.specs?.accuracyClass;
+  const accuracyClass = rawAccuracyClass || "";
+  const rawCalibration = entry.specs?.calibration;
+  const calibration = rawCalibration || "standard";
+  const rawProcessMedia = entry.specs?.processMedia;
+  const processMedia = rawProcessMedia || "";
+  const rawOperatingPressure = entry.specs?.operatingPressure;
+  const operatingPressure = rawOperatingPressure || null;
+  const rawOperatingTemp = entry.specs?.operatingTemp;
+  const operatingTemp = rawOperatingTemp || null;
+  const rawQuantityValue = entry.specs?.quantityValue;
+  const quantity = rawQuantityValue || 1;
+  const rawSupplierReference = entry.specs?.supplierReference;
+  const supplierReference = rawSupplierReference || "";
+  const rawModelNumber = entry.specs?.modelNumber;
+  const modelNumber = rawModelNumber || "";
+  const rawUnitCostFromSupplier = entry.specs?.unitCostFromSupplier;
+  const unitCostFromSupplier = rawUnitCostFromSupplier || null;
+  const rawMarkupPercentage = entry.specs?.markupPercentage;
+  const markupPercentage = rawMarkupPercentage || 15;
 
   const selectedInstrument = useMemo(() => getInstrumentByValue(instrumentType), [instrumentType]);
 
@@ -141,15 +166,21 @@ export default function InstrumentForm(props: InstrumentFormProps) {
       return;
     }
 
+    const rawLabel = selectedInstrument?.label;
+    const rawCategory = selectedInstrument?.category;
+    const rawMeasurementPrinciple = selectedInstrument?.measurementPrinciple;
+    const rawAccuracyRange = selectedInstrument?.accuracyRange;
+
     const results: any = {
-      instrumentType: selectedInstrument?.label || instrumentType,
-      category: selectedInstrument?.category || activeCategory,
-      measurementPrinciple: selectedInstrument?.measurementPrinciple || "N/A",
-      accuracy: selectedInstrument?.accuracyRange || accuracyClass || "N/A",
+      instrumentType: rawLabel || instrumentType,
+      category: rawCategory || activeCategory,
+      measurementPrinciple: rawMeasurementPrinciple || "N/A",
+      accuracy: rawAccuracyRange || accuracyClass || "N/A",
     };
 
     if (rangeMin !== null && rangeMax !== null) {
-      results.range = `${rangeMin} - ${rangeMax} ${RANGE_UNIT_OPTIONS.find((u) => u.value === rangeUnit)?.label || rangeUnit}`;
+      const rawLabel2 = RANGE_UNIT_OPTIONS.find((u) => u.value === rangeUnit)?.label;
+      results.range = `${rangeMin} - ${rangeMax} ${rawLabel2 || rangeUnit}`;
     }
 
     if (unitCostFromSupplier) {
@@ -181,8 +212,21 @@ export default function InstrumentForm(props: InstrumentFormProps) {
     });
   };
 
-  const categoryColor =
-    INSTRUMENT_CATEGORIES.find((c) => c.value === activeCategory)?.color || "blue";
+  const rawColor = INSTRUMENT_CATEGORIES.find((c) => c.value === activeCategory)?.color;
+
+  const categoryColor = rawColor || "blue";
+
+  const rawDescription = entry.description;
+  const rawAccuracyRange2 = selectedInstrument.accuracyRange;
+  const rawLabel3 = OUTPUT_SIGNAL_OPTIONS.find((o) => o.value === outputSignal)?.label;
+
+  const rawLabel4 = COMMUNICATION_PROTOCOL_OPTIONS.find(
+    (p) => p.value === communicationProtocol,
+  )?.label;
+
+  const rawLabel5 = DISPLAY_OPTIONS.find((d) => d.value === displayType)?.label;
+  const rawLabel6 = POWER_SUPPLY_OPTIONS.find((p) => p.value === powerSupply)?.label;
+  const rawLabel7 = EXPLOSION_PROOF_OPTIONS.find((e) => e.value === explosionProof)?.label;
 
   return (
     <>
@@ -197,7 +241,7 @@ export default function InstrumentForm(props: InstrumentFormProps) {
                 Item Description *
               </label>
               <textarea
-                value={entry.description || generateItemDescription(entry)}
+                value={rawDescription || generateItemDescription(entry)}
                 onChange={(e) => onUpdateEntry(entry.id, { description: e.target.value })}
                 className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
                 rows={2}
@@ -254,8 +298,7 @@ export default function InstrumentForm(props: InstrumentFormProps) {
                 <div className="mt-2 text-xs text-cyan-700 dark:text-cyan-300">
                   <span className="font-semibold">Principle:</span>{" "}
                   {selectedInstrument.measurementPrinciple} |{" "}
-                  <span className="font-semibold">Accuracy:</span>{" "}
-                  {selectedInstrument.accuracyRange || "N/A"} |{" "}
+                  <span className="font-semibold">Accuracy:</span> {rawAccuracyRange2 || "N/A"} |{" "}
                   <span className="font-semibold">Applications:</span>{" "}
                   {selectedInstrument.typicalApplications.join(", ")}
                 </div>
@@ -698,27 +741,23 @@ export default function InstrumentForm(props: InstrumentFormProps) {
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     <div className="text-green-800 dark:text-green-200">Output:</div>
                     <div className="font-semibold text-green-900 dark:text-green-100">
-                      {OUTPUT_SIGNAL_OPTIONS.find((o) => o.value === outputSignal)?.label ||
-                        outputSignal}
+                      {rawLabel3 || outputSignal}
                     </div>
                     {communicationProtocol && (
                       <>
                         <div className="text-green-800 dark:text-green-200">Protocol:</div>
                         <div className="font-semibold text-green-900 dark:text-green-100">
-                          {COMMUNICATION_PROTOCOL_OPTIONS.find(
-                            (p) => p.value === communicationProtocol,
-                          )?.label || communicationProtocol}
+                          {rawLabel4 || communicationProtocol}
                         </div>
                       </>
                     )}
                     <div className="text-green-800 dark:text-green-200">Display:</div>
                     <div className="font-semibold text-green-900 dark:text-green-100">
-                      {DISPLAY_OPTIONS.find((d) => d.value === displayType)?.label || displayType}
+                      {rawLabel5 || displayType}
                     </div>
                     <div className="text-green-800 dark:text-green-200">Power:</div>
                     <div className="font-semibold text-green-900 dark:text-green-100">
-                      {POWER_SUPPLY_OPTIONS.find((p) => p.value === powerSupply)?.label ||
-                        powerSupply}
+                      {rawLabel6 || powerSupply}
                     </div>
                     <div className="text-green-800 dark:text-green-200">IP Rating:</div>
                     <div className="font-semibold text-green-900 dark:text-green-100">
@@ -728,8 +767,7 @@ export default function InstrumentForm(props: InstrumentFormProps) {
                       <>
                         <div className="text-green-800 dark:text-green-200">Hazardous Area:</div>
                         <div className="font-semibold text-green-900 dark:text-green-100">
-                          {EXPLOSION_PROOF_OPTIONS.find((e) => e.value === explosionProof)?.label ||
-                            explosionProof}
+                          {rawLabel7 || explosionProof}
                         </div>
                       </>
                     )}
@@ -776,7 +814,6 @@ export default function InstrumentForm(props: InstrumentFormProps) {
           </div>
         }
       />
-
       <div className="flex justify-end mt-3">
         <button
           type="button"

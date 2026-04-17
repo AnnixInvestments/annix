@@ -72,7 +72,9 @@ function RestrictionTooltip({ position }: { position: RestrictionPopupPosition }
   );
 }
 
-const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
+const rawNEXT_PUBLIC_GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+
+const GOOGLE_MAPS_API_KEY = rawNEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 
 export type { PendingDocument } from "@/app/lib/store/rfqWizardStore";
 
@@ -1140,7 +1142,8 @@ export default function ProjectDetailsStep() {
 
   // Get fallback environmental data for a province
   const getFallbackEnvironmentalData = (province: string) => {
-    return fallbackEnvironmentalByProvince[province] || fallbackEnvironmentalByProvince["Gauteng"];
+    const rawProvince = fallbackEnvironmentalByProvince[province];
+    return rawProvince || fallbackEnvironmentalByProvince["Gauteng"];
   };
 
   // Fallback lining recommendations by risk levels
@@ -1451,7 +1454,8 @@ export default function ProjectDetailsStep() {
     if (note && !additionalNotes.includes(note)) {
       const newNotes = [...additionalNotes, note];
       setAdditionalNotes(newNotes);
-      const currentNotes = rfqData.notes || "";
+      const rawNotes = rfqData.notes;
+      const currentNotes = rawNotes || "";
       const updatedNotes = currentNotes ? `${currentNotes}\n• ${note}` : `• ${note}`;
       onUpdate("notes", updatedNotes);
     }
@@ -1491,26 +1495,35 @@ export default function ProjectDetailsStep() {
   };
 
   const hasRequiredEnvironmentalData = () => {
+    const rawSoilTexture = globalSpecs?.soilTexture;
+    const rawSoilMoistureClass = globalSpecs?.soilMoistureClass;
+    const rawSoilDrainage = globalSpecs?.soilDrainage;
     // Soil Conditions - visible fields required
     const hasSoilData = !!(
-      (globalSpecs?.soilTexture || rfqData.soilTexture) &&
-      (globalSpecs?.soilMoistureClass || rfqData.soilMoistureClass) &&
-      (globalSpecs?.soilDrainage || rfqData.soilDrainage)
+      (rawSoilTexture || rfqData.soilTexture) &&
+      (rawSoilMoistureClass || rfqData.soilMoistureClass) &&
+      (rawSoilDrainage || rfqData.soilDrainage)
     );
+
+    const rawAnnualRainfall = globalSpecs?.annualRainfall;
 
     // Atmospheric Conditions - only visible fields required
     const hasAtmosphericData = !!(
       (globalSpecs?.tempMin !== undefined || rfqData.tempMin !== undefined) &&
       (globalSpecs?.tempMax !== undefined || rfqData.tempMax !== undefined) &&
       globalSpecs?.humidityMean !== undefined &&
-      (globalSpecs?.annualRainfall || rfqData.rainfall)
+      (rawAnnualRainfall || rfqData.rainfall)
     );
+
+    const rawDetailedMarineInfluence = globalSpecs?.detailedMarineInfluence;
+    const rawFloodRisk = globalSpecs?.floodRisk;
+    const rawEcpIndustrialPollution = globalSpecs?.ecpIndustrialPollution;
 
     // Marine & Special Conditions - visible dropdown fields required
     const hasMarineData = !!(
-      (globalSpecs?.detailedMarineInfluence || rfqData.marineInfluence) &&
-      (globalSpecs?.floodRisk || rfqData.floodingRisk) &&
-      (globalSpecs?.ecpIndustrialPollution || rfqData.industrialPollution)
+      (rawDetailedMarineInfluence || rfqData.marineInfluence) &&
+      (rawFloodRisk || rfqData.floodingRisk) &&
+      (rawEcpIndustrialPollution || rfqData.industrialPollution)
     );
 
     return hasSoilData && hasAtmosphericData && hasMarineData;
@@ -1590,8 +1603,10 @@ export default function ProjectDetailsStep() {
       const updates: { customerName?: boolean; customerEmail?: boolean; customerPhone?: boolean } =
         {};
 
+      const rawFirstName = profile.firstName;
+
       // Auto-fill customer name if empty
-      if (!rfqData.customerName && (profile.firstName || profile.lastName)) {
+      if (!rfqData.customerName && (rawFirstName || profile.lastName)) {
         const fullName = [profile.firstName, profile.lastName].filter(Boolean).join(" ");
         onUpdate("customerName", fullName);
         updates.customerName = true;
@@ -1603,9 +1618,10 @@ export default function ProjectDetailsStep() {
         updates.customerEmail = true;
       }
 
+      const rawMobilePhone = profile.mobilePhone;
+
       // Auto-fill customer phone if empty (try mobilePhone, directPhone, or company primaryPhone)
-      const phoneNumber =
-        profile.mobilePhone || profile.directPhone || profile.company?.primaryPhone;
+      const phoneNumber = rawMobilePhone || profile.directPhone || profile.company?.primaryPhone;
       if (!rfqData.customerPhone && phoneNumber) {
         onUpdate("customerPhone", phoneNumber);
         updates.customerPhone = true;
@@ -1628,10 +1644,41 @@ export default function ProjectDetailsStep() {
   const isLocationLocked = locationConfirmed && !isEditingLocation;
   const isEnvironmentalLocked = environmentalConfirmed && !isEditingEnvironmental;
 
+  const rawCustomerRfqReference = rfqData.customerRfqReference;
+  const rawLength = pendingDocuments?.length;
+  const rawLength2 = pendingDocuments?.length;
+  const rawSoilType = globalSpecs?.soilType;
+  const rawSoilTexture2 = globalSpecs?.soilTexture;
+  const rawSoilMoistureClass2 = globalSpecs?.soilMoistureClass;
+  const rawSoilDrainage2 = globalSpecs?.soilDrainage;
+  const rawAnnualRainfall2 = globalSpecs?.annualRainfall;
+  const rawTempMin = globalSpecs?.tempMin;
+  const rawTempMean = globalSpecs?.tempMean;
+  const rawTempMax = globalSpecs?.tempMax;
+  const rawHumidityMean = globalSpecs?.humidityMean;
+  const rawUvExposure = globalSpecs?.uvExposure;
+  const rawDetailedMarineInfluence2 = globalSpecs?.detailedMarineInfluence;
+  const rawFloodRisk2 = globalSpecs?.floodRisk;
+  const rawEcpIndustrialPollution2 = globalSpecs?.ecpIndustrialPollution;
+  const rawSoilCorrosivity = rfqData.soilCorrosivity;
+  const rawEcpIso12944Category = globalSpecs?.ecpIso12944Category;
+  const rawEnvironmentSeverity = rfqData.environmentSeverity;
+  const rawRecommendedCoatingFamily = rfqData.recommendedCoatingFamily;
+  const rawMinCoatingThickness = rfqData.minCoatingThickness;
+  const rawSurfacePrep = rfqData.surfacePrep;
+  const rawCpCompatibility = rfqData.cpCompatibility;
+  const rawRequiresConcreteCoating = rfqData.requiresConcreteCoating;
+  const rawRequiresRockShield = rfqData.requiresRockShield;
+  const rawRequiresHolidayDetection = rfqData.requiresHolidayDetection;
+  const rawRequiresFieldJointCoating = rfqData.requiresFieldJointCoating;
+  const rawLength3 = pendingDocuments?.length;
+  const rawLength4 = pendingDocuments?.length;
+  const rawLength5 = pendingTenderDocuments?.length;
+  const rawLength6 = pendingTenderDocuments?.length;
+
   return (
     <div>
       <h2 className="text-lg font-bold text-gray-900 mb-2">Project/RFQ Details</h2>
-
       {/* Nix AI Assistant Active Banner */}
       {useNix && (
         <div className="mb-3 bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-300 rounded-lg p-3">
@@ -1671,7 +1718,6 @@ export default function ProjectDetailsStep() {
           </div>
         </div>
       )}
-
       <div className="space-y-2">
         {/* Customer Information - Required fields */}
         <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
@@ -1781,7 +1827,7 @@ export default function ProjectDetailsStep() {
             </label>
             <input
               type="text"
-              value={rfqData.customerRfqReference || ""}
+              value={rawCustomerRfqReference || ""}
               onChange={(e) => onUpdate("customerRfqReference", e.target.value)}
               className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 text-sm"
               placeholder="e.g., RFQ-2025-001"
@@ -1982,7 +2028,8 @@ export default function ProjectDetailsStep() {
                       checked={isSelected && !isDisabledForUnregistered && !isComingSoon}
                       onChange={(e) => {
                         if (isDisabledForUnregistered || isComingSoon) return;
-                        const currentProducts = rfqData.requiredProducts || [];
+                        const rawRequiredProducts = rfqData.requiredProducts;
+                        const currentProducts = rawRequiredProducts || [];
                         let newProducts: string[];
                         if (e.target.checked) {
                           newProducts = [...currentProducts, product.value];
@@ -2272,8 +2319,8 @@ export default function ProjectDetailsStep() {
                         clipRule="evenodd"
                       />
                     </svg>
-                    Confirmed ({pendingDocuments?.length || 0} file
-                    {(pendingDocuments?.length || 0) !== 1 ? "s" : ""})
+                    Confirmed ({rawLength || 0} file
+                    {(rawLength2 || 0) !== 1 ? "s" : ""})
                   </div>
                   <button
                     type="button"
@@ -2285,27 +2332,31 @@ export default function ProjectDetailsStep() {
                 </div>
                 {pendingDocuments && pendingDocuments.length > 0 && (
                   <div className="mt-1 flex flex-wrap gap-1">
-                    {pendingDocuments.map((doc: any, idx: number) => (
-                      <span
-                        key={idx}
-                        className="text-xs text-green-700 bg-green-100 px-2 py-0.5 rounded flex items-center gap-1"
-                      >
-                        <svg
-                          className="w-3 h-3"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
+                    {pendingDocuments.map((doc: any, idx: number) => {
+                      const rawName = doc.name;
+
+                      return (
+                        <span
+                          key={idx}
+                          className="text-xs text-green-700 bg-green-100 px-2 py-0.5 rounded flex items-center gap-1"
                         >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
-                          />
-                        </svg>
-                        {(doc.name || doc.file?.name)?.substring(0, 20)}...
-                      </span>
-                    ))}
+                          <svg
+                            className="w-3 h-3"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+                            />
+                          </svg>
+                          {(rawName || doc.file?.name)?.substring(0, 20)}...
+                        </span>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -2398,16 +2449,20 @@ export default function ProjectDetailsStep() {
                 >
                   + Add a mine not listed
                 </option>
-                {mines.map((mine) => (
-                  <option
-                    key={mine.id}
-                    value={mine.id}
-                    style={{ color: "#000000", backgroundColor: "#fef3c7" }}
-                  >
-                    {mine.mineName} - {mine.operatingCompany} ({mine.commodityName || "Unknown"}) -{" "}
-                    {mine.province}
-                  </option>
-                ))}
+                {mines.map((mine) => {
+                  const rawCommodityName = mine.commodityName;
+
+                  return (
+                    <option
+                      key={mine.id}
+                      value={mine.id}
+                      style={{ color: "#000000", backgroundColor: "#fef3c7" }}
+                    >
+                      {mine.mineName}- {mine.operatingCompany}({rawCommodityName || "Unknown"}) -{" "}
+                      {mine.province}
+                    </option>
+                  );
+                })}
               </select>
               <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
                 {isLoadingMines || mineDataLoading ? (
@@ -2719,7 +2774,7 @@ export default function ProjectDetailsStep() {
                     <div className="hidden">
                       <AutoFilledInput
                         type="text"
-                        value={globalSpecs?.soilType || ""}
+                        value={rawSoilType || ""}
                         onChange={(value) => updateEnvironmentalField("soilType", value)}
                         onOverride={() => markAsOverridden("soilType")}
                         isAutoFilled={wasAutoFilled("soilType")}
@@ -2729,7 +2784,7 @@ export default function ProjectDetailsStep() {
                     <div>
                       <label className="block text-xs text-gray-600">Soil Texture</label>
                       <AutoFilledSelect
-                        value={globalSpecs?.soilTexture || ""}
+                        value={rawSoilTexture2 || ""}
                         onChange={(value) => updateEnvironmentalField("soilTexture", value)}
                         onOverride={() => markAsOverridden("soilTexture")}
                         isAutoFilled={wasAutoFilled("soilTexture")}
@@ -2754,7 +2809,7 @@ export default function ProjectDetailsStep() {
                     <div>
                       <label className="block text-xs text-gray-600">Moisture</label>
                       <AutoFilledSelect
-                        value={globalSpecs?.soilMoistureClass || ""}
+                        value={rawSoilMoistureClass2 || ""}
                         onChange={(value) => updateEnvironmentalField("soilMoistureClass", value)}
                         onOverride={() => markAsOverridden("soilMoistureClass")}
                         isAutoFilled={wasAutoFilled("soilMoistureClass")}
@@ -2770,7 +2825,7 @@ export default function ProjectDetailsStep() {
                     <div>
                       <label className="block text-xs text-gray-600">Drainage</label>
                       <AutoFilledSelect
-                        value={globalSpecs?.soilDrainage || ""}
+                        value={rawSoilDrainage2 || ""}
                         onChange={(value) => updateEnvironmentalField("soilDrainage", value)}
                         onOverride={() => markAsOverridden("soilDrainage")}
                         isAutoFilled={wasAutoFilled("soilDrainage")}
@@ -2786,7 +2841,7 @@ export default function ProjectDetailsStep() {
                     <div>
                       <label className="block text-xs text-gray-600">Rainfall</label>
                       <AutoFilledSelect
-                        value={globalSpecs?.annualRainfall || ""}
+                        value={rawAnnualRainfall2 || ""}
                         onChange={(value) => updateEnvironmentalField("annualRainfall", value)}
                         onOverride={() => markAsOverridden("annualRainfall")}
                         isAutoFilled={wasAutoFilled("annualRainfall")}
@@ -2810,7 +2865,7 @@ export default function ProjectDetailsStep() {
                       <AutoFilledInput
                         type="number"
                         step="0.1"
-                        value={globalSpecs?.tempMin || ""}
+                        value={rawTempMin || ""}
                         onChange={(value) => updateEnvironmentalField("tempMin", value)}
                         onOverride={() => markAsOverridden("tempMin")}
                         isAutoFilled={wasAutoFilled("tempMin")}
@@ -2823,7 +2878,7 @@ export default function ProjectDetailsStep() {
                       <AutoFilledInput
                         type="number"
                         step="0.1"
-                        value={globalSpecs?.tempMean || ""}
+                        value={rawTempMean || ""}
                         onChange={(value) => updateEnvironmentalField("tempMean", value)}
                         onOverride={() => markAsOverridden("tempMean")}
                         isAutoFilled={wasAutoFilled("tempMean")}
@@ -2836,7 +2891,7 @@ export default function ProjectDetailsStep() {
                       <AutoFilledInput
                         type="number"
                         step="0.1"
-                        value={globalSpecs?.tempMax || ""}
+                        value={rawTempMax || ""}
                         onChange={(value) => updateEnvironmentalField("tempMax", value)}
                         onOverride={() => markAsOverridden("tempMax")}
                         isAutoFilled={wasAutoFilled("tempMax")}
@@ -2848,7 +2903,7 @@ export default function ProjectDetailsStep() {
                       <label className="block text-xs text-gray-600">Humidity %</label>
                       <AutoFilledInput
                         type="number"
-                        value={globalSpecs?.humidityMean || ""}
+                        value={rawHumidityMean || ""}
                         onChange={(value) =>
                           onUpdateGlobalSpecs({ ...globalSpecs, humidityMean: value })
                         }
@@ -2861,7 +2916,7 @@ export default function ProjectDetailsStep() {
                     <div>
                       <label className="block text-xs text-gray-600">UV Level</label>
                       <AutoFilledSelect
-                        value={globalSpecs?.uvExposure || ""}
+                        value={rawUvExposure || ""}
                         onChange={(value) =>
                           onUpdateGlobalSpecs({ ...globalSpecs, uvExposure: value })
                         }
@@ -2892,7 +2947,7 @@ export default function ProjectDetailsStep() {
                     <div>
                       <label className="block text-xs text-gray-600">Marine Influence</label>
                       <AutoFilledSelect
-                        value={globalSpecs?.detailedMarineInfluence || ""}
+                        value={rawDetailedMarineInfluence2 || ""}
                         onChange={(value) =>
                           updateEnvironmentalField("detailedMarineInfluence", value)
                         }
@@ -2927,7 +2982,7 @@ export default function ProjectDetailsStep() {
                     <div>
                       <label className="block text-xs text-gray-600">Flood Risk</label>
                       <AutoFilledSelect
-                        value={globalSpecs?.floodRisk || ""}
+                        value={rawFloodRisk2 || ""}
                         onChange={(value) => updateEnvironmentalField("floodRisk", value)}
                         onOverride={() => markAsOverridden("floodRisk")}
                         isAutoFilled={wasAutoFilled("floodRisk")}
@@ -2944,7 +2999,7 @@ export default function ProjectDetailsStep() {
                     <div>
                       <label className="block text-xs text-gray-600">Industrial Pollution</label>
                       <AutoFilledSelect
-                        value={globalSpecs?.ecpIndustrialPollution || ""}
+                        value={rawEcpIndustrialPollution2 || ""}
                         onChange={(value) =>
                           updateEnvironmentalField("ecpIndustrialPollution", value)
                         }
@@ -3001,8 +3056,11 @@ export default function ProjectDetailsStep() {
                         Soil Corrosivity (AMPP SP0169)
                       </label>
                       <select
-                        value={rfqData.soilCorrosivity || ""}
-                        onChange={(e) => onUpdate("soilCorrosivity", e.target.value || undefined)}
+                        value={rawSoilCorrosivity || ""}
+                        onChange={(e) => {
+                          const rawValue = e.target.value;
+                          return onUpdate("soilCorrosivity", rawValue || undefined);
+                        }}
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                       >
                         <option value="">Select soil corrosivity...</option>
@@ -3017,9 +3075,10 @@ export default function ProjectDetailsStep() {
                         ISO 12944 Corrosivity Category
                       </label>
                       <select
-                        value={globalSpecs?.ecpIso12944Category || ""}
+                        value={rawEcpIso12944Category || ""}
                         onChange={(e) => {
-                          const value = e.target.value || undefined;
+                          const rawValue2 = e.target.value;
+                          const value = rawValue2 || undefined;
                           log.debug("🌍 ISO 12944 Category selected:", value);
                           updateEnvironmentalField("ecpIso12944Category", value);
                         }}
@@ -3043,8 +3102,11 @@ export default function ProjectDetailsStep() {
                       Overall Environment Severity
                     </label>
                     <select
-                      value={rfqData.environmentSeverity || ""}
-                      onChange={(e) => onUpdate("environmentSeverity", e.target.value || undefined)}
+                      value={rawEnvironmentSeverity || ""}
+                      onChange={(e) => {
+                        const rawValue3 = e.target.value;
+                        return onUpdate("environmentSeverity", rawValue3 || undefined);
+                      }}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                     >
                       <option value="">Select overall severity...</option>
@@ -3082,10 +3144,11 @@ export default function ProjectDetailsStep() {
                         Suitable External Coating Families
                       </label>
                       <select
-                        value={rfqData.recommendedCoatingFamily || ""}
-                        onChange={(e) =>
-                          onUpdate("recommendedCoatingFamily", e.target.value || undefined)
-                        }
+                        value={rawRecommendedCoatingFamily || ""}
+                        onChange={(e) => {
+                          const rawValue4 = e.target.value;
+                          return onUpdate("recommendedCoatingFamily", rawValue4 || undefined);
+                        }}
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                       >
                         <option value="">Select recommended coating...</option>
@@ -3103,10 +3166,11 @@ export default function ProjectDetailsStep() {
                         Minimum Coating Thickness
                       </label>
                       <select
-                        value={rfqData.minCoatingThickness || ""}
-                        onChange={(e) =>
-                          onUpdate("minCoatingThickness", e.target.value || undefined)
-                        }
+                        value={rawMinCoatingThickness || ""}
+                        onChange={(e) => {
+                          const rawValue5 = e.target.value;
+                          return onUpdate("minCoatingThickness", rawValue5 || undefined);
+                        }}
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                       >
                         <option value="">Select minimum thickness...</option>
@@ -3127,8 +3191,11 @@ export default function ProjectDetailsStep() {
                         Surface Preparation Standard
                       </label>
                       <select
-                        value={rfqData.surfacePrep || ""}
-                        onChange={(e) => onUpdate("surfacePrep", e.target.value || undefined)}
+                        value={rawSurfacePrep || ""}
+                        onChange={(e) => {
+                          const rawValue6 = e.target.value;
+                          return onUpdate("surfacePrep", rawValue6 || undefined);
+                        }}
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                       >
                         <option value="">Select surface prep...</option>
@@ -3142,8 +3209,11 @@ export default function ProjectDetailsStep() {
                         Cathodic Protection Compatibility
                       </label>
                       <select
-                        value={rfqData.cpCompatibility || ""}
-                        onChange={(e) => onUpdate("cpCompatibility", e.target.value || undefined)}
+                        value={rawCpCompatibility || ""}
+                        onChange={(e) => {
+                          const rawValue7 = e.target.value;
+                          return onUpdate("cpCompatibility", rawValue7 || undefined);
+                        }}
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                       >
                         <option value="">Select CP requirement...</option>
@@ -3164,7 +3234,7 @@ export default function ProjectDetailsStep() {
                       <label className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100">
                         <input
                           type="checkbox"
-                          checked={rfqData.requiresConcreteCoating || false}
+                          checked={rawRequiresConcreteCoating || false}
                           onChange={(e) => onUpdate("requiresConcreteCoating", e.target.checked)}
                           className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
                         />
@@ -3173,7 +3243,7 @@ export default function ProjectDetailsStep() {
                       <label className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100">
                         <input
                           type="checkbox"
-                          checked={rfqData.requiresRockShield || false}
+                          checked={rawRequiresRockShield || false}
                           onChange={(e) => onUpdate("requiresRockShield", e.target.checked)}
                           className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
                         />
@@ -3182,7 +3252,7 @@ export default function ProjectDetailsStep() {
                       <label className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100">
                         <input
                           type="checkbox"
-                          checked={rfqData.requiresHolidayDetection || false}
+                          checked={rawRequiresHolidayDetection || false}
                           onChange={(e) => onUpdate("requiresHolidayDetection", e.target.checked)}
                           className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
                         />
@@ -3191,7 +3261,7 @@ export default function ProjectDetailsStep() {
                       <label className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100">
                         <input
                           type="checkbox"
-                          checked={rfqData.requiresFieldJointCoating || false}
+                          checked={rawRequiresFieldJointCoating || false}
                           onChange={(e) => onUpdate("requiresFieldJointCoating", e.target.checked)}
                           className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
                         />
@@ -3314,7 +3384,6 @@ export default function ProjectDetailsStep() {
           </div>
         )}
       </div>
-
       {/* Supporting Documents Section - At Bottom - Only shown when Nix is NOT enabled */}
       {!useNix && (
         <div className="mt-4 pt-4 border-t border-gray-300">
@@ -3451,8 +3520,8 @@ export default function ProjectDetailsStep() {
                             clipRule="evenodd"
                           />
                         </svg>
-                        Confirmed ({pendingDocuments?.length || 0} file
-                        {(pendingDocuments?.length || 0) !== 1 ? "s" : ""})
+                        Confirmed ({rawLength3 || 0} file
+                        {(rawLength4 || 0) !== 1 ? "s" : ""})
                       </div>
                       <button
                         type="button"
@@ -3464,27 +3533,31 @@ export default function ProjectDetailsStep() {
                     </div>
                     {pendingDocuments && pendingDocuments.length > 0 && (
                       <div className="mt-1 flex flex-wrap gap-1">
-                        {pendingDocuments.map((doc: any, idx: number) => (
-                          <span
-                            key={idx}
-                            className="text-xs text-green-700 bg-green-100 px-2 py-0.5 rounded flex items-center gap-1"
-                          >
-                            <svg
-                              className="w-3 h-3"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
+                        {pendingDocuments.map((doc: any, idx: number) => {
+                          const rawName2 = doc.name;
+
+                          return (
+                            <span
+                              key={idx}
+                              className="text-xs text-green-700 bg-green-100 px-2 py-0.5 rounded flex items-center gap-1"
                             >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
-                              />
-                            </svg>
-                            {(doc.name || doc.file?.name)?.substring(0, 20)}...
-                          </span>
-                        ))}
+                              <svg
+                                className="w-3 h-3"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+                                />
+                              </svg>
+                              {(rawName2 || doc.file?.name)?.substring(0, 20)}...
+                            </span>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -3622,8 +3695,8 @@ export default function ProjectDetailsStep() {
                             clipRule="evenodd"
                           />
                         </svg>
-                        Confirmed ({pendingTenderDocuments?.length || 0} file
-                        {(pendingTenderDocuments?.length || 0) !== 1 ? "s" : ""})
+                        Confirmed ({rawLength5 || 0} file
+                        {(rawLength6 || 0) !== 1 ? "s" : ""})
                       </div>
                       <button
                         type="button"
@@ -3635,27 +3708,31 @@ export default function ProjectDetailsStep() {
                     </div>
                     {pendingTenderDocuments && pendingTenderDocuments.length > 0 && (
                       <div className="mt-1 flex flex-wrap gap-1">
-                        {pendingTenderDocuments.map((doc: any, idx: number) => (
-                          <span
-                            key={idx}
-                            className="text-xs text-green-700 bg-green-100 px-2 py-0.5 rounded flex items-center gap-1"
-                          >
-                            <svg
-                              className="w-3 h-3"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
+                        {pendingTenderDocuments.map((doc: any, idx: number) => {
+                          const rawName3 = doc.name;
+
+                          return (
+                            <span
+                              key={idx}
+                              className="text-xs text-green-700 bg-green-100 px-2 py-0.5 rounded flex items-center gap-1"
                             >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
-                              />
-                            </svg>
-                            {(doc.name || doc.file?.name)?.substring(0, 20)}...
-                          </span>
-                        ))}
+                              <svg
+                                className="w-3 h-3"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+                                />
+                              </svg>
+                              {(rawName3 || doc.file?.name)?.substring(0, 20)}...
+                            </span>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -3665,7 +3742,6 @@ export default function ProjectDetailsStep() {
           </div>
         </div>
       )}
-
       {/* No Documents Confirmation Popup */}
       {showNoDocumentsPopup && (
         <div className="fixed inset-0 bg-black/10 backdrop-blur-md flex items-center justify-center z-50">
@@ -3719,7 +3795,6 @@ export default function ProjectDetailsStep() {
           </div>
         </div>
       )}
-
       {/* No Tender Documents Confirmation Popup */}
       {showNoTenderDocumentsPopup && (
         <div className="fixed inset-0 bg-black/10 backdrop-blur-md flex items-center justify-center z-50">
@@ -3773,14 +3848,12 @@ export default function ProjectDetailsStep() {
           </div>
         </div>
       )}
-
       {/* Add Mine Modal */}
       <AddMineModal
         isOpen={showAddMineModal}
         onClose={() => setShowAddMineModal(false)}
         onMineCreated={handleMineCreated}
       />
-
       {/* Restriction Popup for Unregistered Customers */}
       {restrictionPopup && <RestrictionTooltip position={restrictionPopup} />}
     </div>

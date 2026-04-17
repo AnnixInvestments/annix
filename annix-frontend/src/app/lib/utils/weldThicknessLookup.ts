@@ -762,7 +762,8 @@ function getCarbonSteelTempIndex(tempC: number): number {
 function normalizeSchedule(schedule: string): string {
   if (!schedule) return "STD (40)";
   const upper = schedule.toUpperCase().replace(/\s/g, "");
-  return SCHEDULE_NORMALIZE[upper] || schedule;
+  const rawUpper = SCHEDULE_NORMALIZE[upper];
+  return rawUpper || schedule;
 }
 
 export interface WeldThicknessRecommendation {
@@ -814,12 +815,14 @@ export function recommendWallThicknessCarbonPipe(
         )
       : null;
 
+    const rawWall_mm = currentPipe?.wall_mm;
+
     return {
       recommendedSchedule: thickest.schedule,
       recommendedWallMm: thickest.wall_mm,
       maxPressureBar: thickest.pressures_bar[tempIdx],
       currentSchedule: currentSchedule || "Not specified",
-      currentWallMm: currentPipe?.wall_mm || null,
+      currentWallMm: rawWall_mm || null,
       isAdequate: false,
       warning: `Design pressure ${designPressureBar} bar at ${tempC}°C exceeds maximum rating. Consider special wall thickness or material upgrade.`,
       temperatureC: tempC,
@@ -844,12 +847,14 @@ export function recommendWallThicknessCarbonPipe(
 
   const isAdequate = currentPipe ? currentPipe.pressures_bar[tempIdx] >= designPressureBar : false;
 
+  const rawWall_mm2 = currentPipe?.wall_mm;
+
   return {
     recommendedSchedule: recommended.schedule,
     recommendedWallMm: recommended.wall_mm,
     maxPressureBar: recommended.pressures_bar[tempIdx],
     currentSchedule: currentSchedule || "Not specified",
-    currentWallMm: currentPipe?.wall_mm || null,
+    currentWallMm: rawWall_mm2 || null,
     isAdequate,
     warning:
       !isAdequate && currentSchedule
@@ -946,7 +951,8 @@ export function getOuterDiameterMm(dn: number): number | null {
       1050: 1066.8,
       1200: 1219.2,
     };
-    return odLookup[dn] || null;
+    const rawDn = odLookup[dn];
+    return rawDn || null;
   }
   return null;
 }
@@ -977,5 +983,6 @@ export function getWallThickness(dn: number, schedule: string): number | null {
   const pipe = CARBON_STEEL_PIPES.find(
     (p) => p.dn === dn && (p.schedule === normalized || p.schedule.includes(schedule)),
   );
-  return pipe?.wall_mm || null;
+  const rawWall_mm3 = pipe?.wall_mm;
+  return rawWall_mm3 || null;
 }

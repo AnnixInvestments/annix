@@ -137,7 +137,11 @@ export const getProductServiceByValue = (value: string): ProductService | undefi
   PRODUCTS_AND_SERVICES.find((item) => item.value === value);
 
 export const getProductServiceLabels = (values: string[]): string[] =>
-  values.map((v) => getProductServiceByValue(v)?.label || v);
+  values.map((v) => {
+    const rawLabel = getProductServiceByValue(v)?.label;
+    const rawLabel2 = getProductServiceByValue(v)?.label;
+    return rawLabel2 || v;
+  });
 
 export const UNREGISTERED_ALLOWED_PRODUCTS = [
   "fabricated_steel",

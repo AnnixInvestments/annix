@@ -17,65 +17,76 @@ export { BEND_END_OPTIONS, FITTING_END_OPTIONS, PIPE_END_OPTIONS, REDUCER_END_OP
 
 export const weldCountPerBend = (bendEndConfig: string): number => {
   const config = BEND_END_OPTIONS.find((opt) => opt.value === bendEndConfig);
-  return config?.weldCount || 0;
+  const rawWeldCount = config?.weldCount;
+  return rawWeldCount || 0;
 };
 
 export const flangeWeldCountPerBend = (bendEndConfig: string): number => {
   const config = BEND_END_OPTIONS.find((opt) => opt.value === bendEndConfig);
-  return config?.flangeWeldCount || 0;
+  const rawFlangeWeldCount = config?.flangeWeldCount;
+  return rawFlangeWeldCount || 0;
 };
 
 export const flangeCountPerBend = (bendEndConfig: string): number => {
   const config = BEND_END_OPTIONS.find((opt) => opt.value === bendEndConfig);
-  return config?.flangeCount || 0;
+  const rawFlangeCount = config?.flangeCount;
+  return rawFlangeCount || 0;
 };
 
 export const tackWeldEndsPerBend = (bendEndConfig: string): number => {
   const config = BEND_END_OPTIONS.find((opt) => opt.value === bendEndConfig);
-  return config?.tackWeldEnds || 0;
+  const rawTackWeldEnds = config?.tackWeldEnds;
+  return rawTackWeldEnds || 0;
 };
 
 export const weldCountPerFitting = (fittingEndConfig: string): number => {
   const config =
     FITTING_END_OPTIONS.find((opt) => opt.value === fittingEndConfig) ||
     REDUCER_END_OPTIONS.find((opt) => opt.value === fittingEndConfig);
-  return config?.weldCount || 0;
+  const rawWeldCount2 = config?.weldCount;
+  return rawWeldCount2 || 0;
 };
 
 export const flangeWeldCountPerFitting = (fittingEndConfig: string): number => {
   const config =
     FITTING_END_OPTIONS.find((opt) => opt.value === fittingEndConfig) ||
     REDUCER_END_OPTIONS.find((opt) => opt.value === fittingEndConfig);
-  return config?.flangeWeldCount || 0;
+  const rawFlangeWeldCount2 = config?.flangeWeldCount;
+  return rawFlangeWeldCount2 || 0;
 };
 
 export const flangeCountPerFitting = (fittingEndConfig: string): number => {
   const config =
     FITTING_END_OPTIONS.find((opt) => opt.value === fittingEndConfig) ||
     REDUCER_END_OPTIONS.find((opt) => opt.value === fittingEndConfig);
-  return config?.flangeCount || 0;
+  const rawFlangeCount2 = config?.flangeCount;
+  return rawFlangeCount2 || 0;
 };
 
 export const tackWeldEndsPerFitting = (fittingEndConfig: string): number => {
   const config =
     FITTING_END_OPTIONS.find((opt) => opt.value === fittingEndConfig) ||
     REDUCER_END_OPTIONS.find((opt) => opt.value === fittingEndConfig);
-  return config?.tackWeldEnds || 0;
+  const rawTackWeldEnds2 = config?.tackWeldEnds;
+  return rawTackWeldEnds2 || 0;
 };
 
 export const flangeWeldCountPerPipe = (pipeEndConfig: string): number => {
   const config = PIPE_END_OPTIONS.find((opt) => opt.value === pipeEndConfig);
-  return config?.flangeWeldCount || 0;
+  const rawFlangeWeldCount3 = config?.flangeWeldCount;
+  return rawFlangeWeldCount3 || 0;
 };
 
 export const flangeCountPerPipe = (pipeEndConfig: string): number => {
   const config = PIPE_END_OPTIONS.find((opt) => opt.value === pipeEndConfig);
-  return config?.flangeCount || 0;
+  const rawFlangeCount3 = config?.flangeCount;
+  return rawFlangeCount3 || 0;
 };
 
 export const tackWeldEndsPerPipe = (pipeEndConfig: string): number => {
   const config = PIPE_END_OPTIONS.find((opt) => opt.value === pipeEndConfig);
-  return config?.tackWeldEnds || 0;
+  const rawTackWeldEnds3 = config?.tackWeldEnds;
+  return rawTackWeldEnds3 || 0;
 };
 
 export const fittingFlangeConfig = (
@@ -102,10 +113,14 @@ export const fittingFlangeConfig = (
     };
   }
 
+  const rawHasInlet = config?.hasInlet;
+  const rawHasOutlet = config?.hasOutlet;
+  const rawHasBranch = config?.hasBranch;
+
   return {
-    hasInlet: config?.hasInlet || false,
-    hasOutlet: config?.hasOutlet || false,
-    hasBranch: config?.hasBranch || false,
+    hasInlet: rawHasInlet || false,
+    hasOutlet: rawHasOutlet || false,
+    hasBranch: rawHasBranch || false,
     inletType: (config?.inletType as FlangeType) || null,
     outletType: (config?.outletType as FlangeType) || null,
     branchType: (config?.branchType as FlangeType) || null,
@@ -119,9 +134,11 @@ export const reducerFlangeConfig = (
   hasSmallEnd: boolean;
 } => {
   const config = REDUCER_END_OPTIONS.find((opt) => opt.value === reducerEndConfig);
+  const rawHasLargeEnd = config?.hasLargeEnd;
+  const rawHasSmallEnd = config?.hasSmallEnd;
   return {
-    hasLargeEnd: config?.hasLargeEnd || false,
-    hasSmallEnd: config?.hasSmallEnd || false,
+    hasLargeEnd: rawHasLargeEnd || false,
+    hasSmallEnd: rawHasSmallEnd || false,
   };
 };
 
@@ -171,7 +188,8 @@ export const fixedFlangeCount = (
 
 export const weldCountPerPipe = (pipeEndConfig: string): number => {
   const config = PIPE_END_OPTIONS.find((opt) => opt.value === pipeEndConfig);
-  return config?.weldCount || 0;
+  const rawWeldCount3 = config?.weldCount;
+  return rawWeldCount3 || 0;
 };
 
 export const flangesPerPipe = (pipeEndConfig: string): number => {
@@ -299,8 +317,9 @@ export const formatEndConfigForDescription = (
   mainEndConfig: string,
   stubs: StubFlangeConfig[],
 ): string => {
+  const rawItem0 = BEND_END_OPTIONS.find((o) => o.value === mainEndConfig)?.label?.split(" - ")[0];
   const mainLabel =
-    BEND_END_OPTIONS.find((o) => o.value === mainEndConfig)?.label?.split(" - ")[0] ||
+    rawItem0 ||
     PIPE_END_OPTIONS.find((o) => o.value === mainEndConfig)?.label?.split(" - ")[0] ||
     mainEndConfig;
 
@@ -385,7 +404,8 @@ export const recommendedPressureClassId = (
   const filteredClasses =
     flangeTypeCode && (isSabs1123 || isBs4504)
       ? availableClasses.filter((pc) => {
-          const designation = pc.designation || "";
+          const rawDesignation = pc.designation;
+          const designation = rawDesignation || "";
           return designation.endsWith(`/${flangeTypeCode}`);
         })
       : availableClasses;
@@ -394,7 +414,8 @@ export const recommendedPressureClassId = (
 
   const classesWithRating = classesToUse
     .map((pc) => {
-      const designation = pc.designation || "";
+      const rawDesignation2 = pc.designation;
+      const designation = rawDesignation2 || "";
       let barRating = 0;
 
       const pnMatch = designation.match(/PN\s*(\d+)/i);
@@ -426,7 +447,9 @@ export const recommendedPressureClassId = (
 
   const suitableClass = sorted.find((pc) => pc.barRating >= workingPressureBar);
 
-  return suitableClass?.id || null;
+  const rawId = suitableClass?.id;
+
+  return rawId || null;
 };
 
 export const hasRotatingFlange = (endConfig: string): boolean => {
@@ -455,7 +478,9 @@ export const availablePressureClasses = (
     return [];
   }
 
-  let classes = pressureClassesByStandard[flangeStandardId] || [];
+  const rawFlangeStandardId = pressureClassesByStandard[flangeStandardId];
+
+  let classes = rawFlangeStandardId || [];
 
   if (classes.length === 0) {
     classes = allPressureClasses.filter(

@@ -36,13 +36,15 @@ export function FastenersGasketsSection(props: FastenersGasketsSectionProps) {
     gasketRecommendation,
     currentPressureClass,
   } = props;
+  const rawBoltGrade = globalSpecs?.boltGrade;
+  const rawGasketType = globalSpecs?.gasketType;
+  const rawDesignation = currentPressureClass?.designation;
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3 pb-2 border-b border-gray-200">
         <span className="text-2xl">&#9881;&#65039;</span>
         <h3 className="text-xl font-bold text-gray-900">Nuts, Bolts, Washers & Gaskets</h3>
       </div>
-
       {globalSpecs?.fastenersConfirmed && globalSpecs?.boltGrade && globalSpecs?.gasketType && (
         <div className="bg-green-100 border border-green-400 rounded-md p-3">
           <div className="flex items-center justify-between">
@@ -73,7 +75,6 @@ export function FastenersGasketsSection(props: FastenersGasketsSectionProps) {
           </div>
         </div>
       )}
-
       {!globalSpecs?.fastenersConfirmed && (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -82,13 +83,15 @@ export function FastenersGasketsSection(props: FastenersGasketsSectionProps) {
                 Bolt, Nut & Washer Grade
               </label>
               <select
-                value={globalSpecs?.boltGrade || ""}
-                onChange={(e) =>
-                  onUpdateGlobalSpecs({
+                value={rawBoltGrade || ""}
+                onChange={(e) => {
+                  const rawValue = e.target.value;
+
+                  return onUpdateGlobalSpecs({
                     ...globalSpecs,
-                    boltGrade: e.target.value || undefined,
-                  })
-                }
+                    boltGrade: rawValue || undefined,
+                  });
+                }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 text-sm"
               >
                 <option value="">Select bolt grade...</option>
@@ -232,13 +235,15 @@ export function FastenersGasketsSection(props: FastenersGasketsSectionProps) {
                 Gasket Type & Thickness
               </label>
               <select
-                value={globalSpecs?.gasketType || ""}
-                onChange={(e) =>
-                  onUpdateGlobalSpecs({
+                value={rawGasketType || ""}
+                onChange={(e) => {
+                  const rawValue2 = e.target.value;
+
+                  return onUpdateGlobalSpecs({
                     ...globalSpecs,
-                    gasketType: e.target.value || undefined,
-                  })
-                }
+                    gasketType: rawValue2 || undefined,
+                  });
+                }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 text-sm"
               >
                 <option value="">Select gasket type...</option>
@@ -347,8 +352,7 @@ export function FastenersGasketsSection(props: FastenersGasketsSectionProps) {
                       <div className="flex-1">
                         <p className="text-amber-800">
                           Selected gasket differs from recommendation for{" "}
-                          {globalSpecs.workingTemperatureC}°C / Class{" "}
-                          {currentPressureClass?.designation || "N/A"}
+                          {globalSpecs.workingTemperatureC}°C / Class {rawDesignation || "N/A"}
                         </p>
                         <p className="text-amber-700 text-[10px] mt-0.5">
                           Recommended: {gasketRecommendation.gasketName}

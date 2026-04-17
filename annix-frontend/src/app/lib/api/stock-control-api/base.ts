@@ -106,7 +106,8 @@ export class StockControlApiClient {
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
-        return String(parsed.companyId ?? "0");
+        const rawCompanyId = parsed.companyId;
+        return String(rawCompanyId || "0");
       } catch {
         return "0";
       }

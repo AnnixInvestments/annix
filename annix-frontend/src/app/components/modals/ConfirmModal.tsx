@@ -42,11 +42,16 @@ const VARIANT_STYLES = {
 };
 
 export function ConfirmModal(props: ConfirmModalProps) {
-  const confirmLabel = props.confirmLabel ?? "Confirm";
-  const cancelLabel = props.cancelLabel ?? "Cancel";
-  const variant = props.variant ?? "danger";
-  const cancelFocusRingClass = props.cancelFocusRingClass ?? "focus:ring-blue-500";
-  const loading = props.loading ?? false;
+  const rawConfirmLabel = props.confirmLabel;
+  const confirmLabel = rawConfirmLabel || "Confirm";
+  const rawCancelLabel = props.cancelLabel;
+  const cancelLabel = rawCancelLabel || "Cancel";
+  const rawVariant = props.variant;
+  const variant = rawVariant || "danger";
+  const rawCancelFocusRingClass = props.cancelFocusRingClass;
+  const cancelFocusRingClass = rawCancelFocusRingClass || "focus:ring-blue-500";
+  const rawLoading = props.loading;
+  const loading = rawLoading || false;
   const cancelRef = useRef<HTMLButtonElement>(null);
 
   const isOpen = props.isOpen;

@@ -96,17 +96,29 @@ export function PumpProductBrowser(props: PumpProductBrowserProps) {
     }
 
     if (flowRateRange.min !== undefined) {
-      result = result.filter((p) => (p.flowRateMax ?? 0) >= flowRateRange.min!);
+      result = result.filter((p) => {
+        const rawFlowRateMax = p.flowRateMax;
+        return (rawFlowRateMax || 0) >= flowRateRange.min!;
+      });
     }
     if (flowRateRange.max !== undefined) {
-      result = result.filter((p) => (p.flowRateMin ?? 0) <= flowRateRange.max!);
+      result = result.filter((p) => {
+        const rawFlowRateMin = p.flowRateMin;
+        return (rawFlowRateMin || 0) <= flowRateRange.max!;
+      });
     }
 
     if (headRange.min !== undefined) {
-      result = result.filter((p) => (p.headMax ?? 0) >= headRange.min!);
+      result = result.filter((p) => {
+        const rawHeadMax = p.headMax;
+        return (rawHeadMax || 0) >= headRange.min!;
+      });
     }
     if (headRange.max !== undefined) {
-      result = result.filter((p) => (p.headMin ?? 0) <= headRange.max!);
+      result = result.filter((p) => {
+        const rawHeadMin = p.headMin;
+        return (rawHeadMin || 0) <= headRange.max!;
+      });
     }
 
     return result;
@@ -222,6 +234,12 @@ export function PumpProductBrowser(props: PumpProductBrowserProps) {
     );
   }
 
+  const rawLabel = selectionRequirements.recommendedTypes?.[0]?.type.label;
+  const rawMin = flowRateRange.min;
+  const rawMax = flowRateRange.max;
+  const rawMin2 = headRange.min;
+  const rawMax2 = headRange.max;
+
   return (
     <div className="space-y-6">
       {(showSelectionWizard || showApi610Wizard) && (
@@ -266,7 +284,6 @@ export function PumpProductBrowser(props: PumpProductBrowserProps) {
           </div>
         </div>
       )}
-
       {selectionRequirements && (
         <div className="bg-green-50 border border-green-200 rounded-lg p-4">
           <div className="flex items-start justify-between">
@@ -275,7 +292,7 @@ export function PumpProductBrowser(props: PumpProductBrowserProps) {
               <p className="text-sm text-green-700 mt-1">
                 {selectionRequirements.api610
                   ? `API 610 Category: ${selectionRequirements.api610.categoryRecommendation}`
-                  : `Recommended: ${selectionRequirements.recommendedTypes?.[0]?.type.label || "Based on your requirements"}`}
+                  : `Recommended: ${rawLabel || "Based on your requirements"}`}
               </p>
             </div>
             <button
@@ -294,7 +311,6 @@ export function PumpProductBrowser(props: PumpProductBrowserProps) {
           </div>
         </div>
       )}
-
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
         <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-1">
@@ -329,11 +345,15 @@ export function PumpProductBrowser(props: PumpProductBrowserProps) {
               className="border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">All Categories</option>
-              {categories.map((cat) => (
-                <option key={cat} value={cat}>
-                  {CATEGORY_LABELS[cat] ?? cat}
-                </option>
-              ))}
+              {categories.map((cat) => {
+                const rawCat = CATEGORY_LABELS[cat];
+
+                return (
+                  <option key={cat} value={cat}>
+                    {rawCat || cat}
+                  </option>
+                );
+              })}
             </select>
 
             <select
@@ -424,7 +444,7 @@ export function PumpProductBrowser(props: PumpProductBrowserProps) {
               <div className="flex gap-2">
                 <input
                   type="number"
-                  value={flowRateRange.min ?? ""}
+                  value={rawMin || ""}
                   onChange={(e) =>
                     setFlowRateRange((prev) => ({
                       ...prev,
@@ -436,7 +456,7 @@ export function PumpProductBrowser(props: PumpProductBrowserProps) {
                 />
                 <input
                   type="number"
-                  value={flowRateRange.max ?? ""}
+                  value={rawMax || ""}
                   onChange={(e) =>
                     setFlowRateRange((prev) => ({
                       ...prev,
@@ -454,7 +474,7 @@ export function PumpProductBrowser(props: PumpProductBrowserProps) {
               <div className="flex gap-2">
                 <input
                   type="number"
-                  value={headRange.min ?? ""}
+                  value={rawMin2 || ""}
                   onChange={(e) =>
                     setHeadRange((prev) => ({
                       ...prev,
@@ -466,7 +486,7 @@ export function PumpProductBrowser(props: PumpProductBrowserProps) {
                 />
                 <input
                   type="number"
-                  value={headRange.max ?? ""}
+                  value={rawMax2 || ""}
                   onChange={(e) =>
                     setHeadRange((prev) => ({
                       ...prev,
@@ -490,7 +510,6 @@ export function PumpProductBrowser(props: PumpProductBrowserProps) {
           </div>
         )}
       </div>
-
       <div className="flex items-center justify-between">
         <p className="text-sm text-gray-600">
           Showing {filteredProducts.length} of {products.length} products
@@ -526,7 +545,6 @@ export function PumpProductBrowser(props: PumpProductBrowserProps) {
           </div>
         )}
       </div>
-
       {filteredProducts.length === 0 ? (
         <div className="text-center py-12 bg-gray-50 rounded-lg">
           <svg

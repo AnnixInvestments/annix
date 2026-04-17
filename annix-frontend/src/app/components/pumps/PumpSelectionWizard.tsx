@@ -66,7 +66,8 @@ export function PumpSelectionWizard(props: PumpSelectionWizardProps) {
     priority: "efficiency" | "cost" | "reliability" | "maintenance" | "footprint",
   ) => {
     setCriteria((prev) => {
-      const current = prev.priorities ?? [];
+      const rawPriorities = prev.priorities;
+      const current = rawPriorities || [];
       const hasIt = current.includes(priority);
       return {
         ...prev,
@@ -108,6 +109,14 @@ export function PumpSelectionWizard(props: PumpSelectionWizardProps) {
     }
   };
 
+  const rawOperatingMode = criteria.operatingMode;
+  const rawFluidType = criteria.fluidType;
+  const rawTemperatureC = criteria.temperatureC;
+  const rawViscosityCp = criteria.viscosityCp;
+  const rawSolidsPercent = criteria.solidsPercent;
+  const rawSolidsPercent2 = criteria.solidsPercent;
+  const rawParticleSizeMm = criteria.particleSizeMm;
+
   return (
     <div className="bg-white rounded-lg shadow-lg overflow-hidden">
       <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
@@ -132,7 +141,6 @@ export function PumpSelectionWizard(props: PumpSelectionWizardProps) {
           Step {stepIndex + 1} of 5: {currentStep.charAt(0).toUpperCase() + currentStep.slice(1)}
         </p>
       </div>
-
       <div className="p-6">
         {currentStep === "application" && (
           <div className="space-y-4">
@@ -200,7 +208,7 @@ export function PumpSelectionWizard(props: PumpSelectionWizardProps) {
                   Operating Mode
                 </label>
                 <select
-                  value={criteria.operatingMode ?? ""}
+                  value={rawOperatingMode || ""}
                   onChange={(e) =>
                     updateCriteria(
                       "operatingMode",
@@ -230,7 +238,7 @@ export function PumpSelectionWizard(props: PumpSelectionWizardProps) {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Fluid Type</label>
                 <select
-                  value={criteria.fluidType ?? ""}
+                  value={rawFluidType || ""}
                   onChange={(e) =>
                     updateCriteria("fluidType", e.target.value as SelectionCriteria["fluidType"])
                   }
@@ -251,7 +259,7 @@ export function PumpSelectionWizard(props: PumpSelectionWizardProps) {
                 </label>
                 <input
                   type="number"
-                  value={criteria.temperatureC ?? 25}
+                  value={rawTemperatureC || 25}
                   onChange={(e) => updateCriteria("temperatureC", parseFloat(e.target.value) || 25)}
                   className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
                 />
@@ -263,7 +271,7 @@ export function PumpSelectionWizard(props: PumpSelectionWizardProps) {
                 </label>
                 <input
                   type="number"
-                  value={criteria.viscosityCp ?? 1}
+                  value={rawViscosityCp || 1}
                   onChange={(e) => updateCriteria("viscosityCp", parseFloat(e.target.value) || 1)}
                   className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
                   min={0}
@@ -277,7 +285,7 @@ export function PumpSelectionWizard(props: PumpSelectionWizardProps) {
                 </label>
                 <input
                   type="number"
-                  value={criteria.solidsPercent ?? 0}
+                  value={rawSolidsPercent || 0}
                   onChange={(e) => updateCriteria("solidsPercent", parseFloat(e.target.value) || 0)}
                   className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
                   min={0}
@@ -285,14 +293,14 @@ export function PumpSelectionWizard(props: PumpSelectionWizardProps) {
                 />
               </div>
 
-              {(criteria.solidsPercent ?? 0) > 0 && (
+              {(rawSolidsPercent2 || 0) > 0 && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Max Particle Size (mm)
                   </label>
                   <input
                     type="number"
-                    value={criteria.particleSizeMm ?? 0}
+                    value={rawParticleSizeMm || 0}
                     onChange={(e) =>
                       updateCriteria("particleSizeMm", parseFloat(e.target.value) || 0)
                     }
@@ -499,7 +507,6 @@ export function PumpSelectionWizard(props: PumpSelectionWizardProps) {
           </div>
         )}
       </div>
-
       <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex items-center justify-between">
         <button
           onClick={prevStep}

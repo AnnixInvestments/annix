@@ -33,8 +33,10 @@ interface PaginatedDrawingResult {
 
 async function fetchDrawings(params?: DrawingQueryParams): Promise<PaginatedDrawingResult> {
   const searchParams = new URLSearchParams();
-  searchParams.set("page", (params?.page || 1).toString());
-  searchParams.set("limit", (params?.limit || 20).toString());
+  const rawPage = params?.page;
+  searchParams.set("page", (rawPage || 1).toString());
+  const rawLimit = params?.limit;
+  searchParams.set("limit", (rawLimit || 20).toString());
   if (params?.status && params.status !== "all") {
     searchParams.set("status", params.status);
   }
@@ -249,7 +251,8 @@ export function useUploadDrawingVersion(drawingId: number) {
 
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        throw new Error(data.message || "Upload failed");
+        const rawMessage = data.message;
+        throw new Error(rawMessage || "Upload failed");
       }
 
       return response.json();
@@ -277,7 +280,8 @@ export function useSubmitDrawingForReview(drawingId: number) {
 
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        throw new Error(data.message || "Failed to submit for review");
+        const rawMessage2 = data.message;
+        throw new Error(rawMessage2 || "Failed to submit for review");
       }
 
       return response.json();
@@ -340,7 +344,8 @@ export function useUploadDrawing() {
 
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        throw new Error(data.message || "Upload failed");
+        const rawMessage3 = data.message;
+        throw new Error(rawMessage3 || "Upload failed");
       }
 
       return response.json();

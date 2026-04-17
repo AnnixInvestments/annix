@@ -84,6 +84,8 @@ const getFlangeSpecs = (
 } => {
   // If API specs are provided, use them
   if (apiSpecs) {
+    const rawBoltDiameterMm = apiSpecs.boltDiameterMm;
+    const rawBoltLengthMm = apiSpecs.boltLengthMm;
     return {
       specs: {
         flangeOD: apiSpecs.flangeOdMm,
@@ -91,8 +93,8 @@ const getFlangeSpecs = (
         boltHoles: apiSpecs.flangeNumHoles,
         holeID: apiSpecs.flangeBoltHoleDiameterMm,
         thickness: apiSpecs.flangeThicknessMm,
-        boltSize: apiSpecs.boltDiameterMm || 16,
-        boltLength: apiSpecs.boltLengthMm || 70,
+        boltSize: rawBoltDiameterMm || 16,
+        boltLength: rawBoltLengthMm || 70,
       },
       isFromApi: true,
     };
@@ -293,7 +295,9 @@ const getFlangeSpecs = (
     else break;
   }
 
-  return { specs: flangeData[closestSize] || flangeData[50], isFromApi: false };
+  const rawClosestSize = flangeData[closestSize];
+
+  return { specs: rawClosestSize || flangeData[50], isFromApi: false };
 };
 
 const pipeOuterMat = PIPE_MATERIALS.outer;
@@ -1045,7 +1049,6 @@ const HollowPipeScene = ({
           </mesh>
         )}
       </group>
-
       {/* Left flange */}
       {hasLeftFlange &&
         (hasLooseLeftFlange ? (
@@ -1208,7 +1211,6 @@ const HollowPipeScene = ({
             />
           </>
         ))}
-
       {/* Right flange */}
       {hasRightFlange &&
         (hasLooseRightFlange ? (
@@ -1371,7 +1373,6 @@ const HollowPipeScene = ({
             />
           </>
         ))}
-
       {/* Blank Flanges - positioned 50mm from the main flange */}
       {addBlankFlange && blankFlangePositions.includes("inlet") && hasLeftFlange && (
         <>
@@ -1409,7 +1410,6 @@ const HollowPipeScene = ({
           </Text>
         </>
       )}
-
       {/* Spigots - render when pipeType is 'spigot' */}
       {pipeType === "spigot" &&
         numberOfSpigots &&
@@ -1429,7 +1429,9 @@ const HollowPipeScene = ({
             (_, i) => distFromEnd + i * spacing,
           );
 
-          const spigotOdMm = nbToOdMap[spigotNominalBoreMm] || spigotNominalBoreMm * 1.1;
+          const rawSpigotNominalBoreMm = nbToOdMap[spigotNominalBoreMm];
+
+          const spigotOdMm = rawSpigotNominalBoreMm || spigotNominalBoreMm * 1.1;
           const spigotWtMm = spigotOdMm < 100 ? 3.2 : spigotOdMm < 200 ? 4.5 : 6.0;
           const spigotOuterRadius = spigotOdMm / 1000 / 2;
           const spigotInnerRadius = (spigotOdMm - 2 * spigotWtMm) / 1000 / 2;
@@ -1549,7 +1551,6 @@ const HollowPipeScene = ({
             </>
           );
         })()}
-
       {/* Puddle Flange - render when pipeType is 'puddle' and dimensions are provided */}
       {pipeType === "puddle" &&
         puddleFlangeOdMm &&
@@ -1629,7 +1630,6 @@ const HollowPipeScene = ({
             </>
           );
         })()}
-
       <DimensionLine
         start={[-halfLen, offsetDist, 0]}
         end={[halfLen, offsetDist, 0]}
@@ -1878,6 +1878,8 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
     );
   }
 
+  const rawEndConfiguration2 = props.endConfiguration;
+
   return (
     <div
       data-pipe-preview
@@ -1903,7 +1905,6 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
           View End B
         </button>
       </div>
-
       <Canvas
         shadows
         dpr={[1, 2]}
@@ -1959,22 +1960,26 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
           savedTarget={props.savedCameraTarget}
         />
       </Canvas>
-
       {/* HTML Info Box - top right corner */}
       {(() => {
         const idMm = props.outerDiameter - 2 * props.wallThickness;
         const matProps = getMaterialProps(props.materialName);
-        const configUpper = (props.endConfiguration || "PE").toUpperCase();
+        const rawEndConfiguration = props.endConfiguration;
+        const configUpper = (rawEndConfiguration || "PE").toUpperCase();
         const hasFlanges = configUpper !== "PE";
         const flangeResult =
           hasFlanges && props.nominalBoreMm
             ? getFlangeSpecs(props.nominalBoreMm, props.flangeSpecs)
             : null;
-        const flangeSpecs = flangeResult?.specs || null;
-        const isFromApi = flangeResult?.isFromApi || false;
+        const rawSpecs = flangeResult?.specs;
+        const flangeSpecs = rawSpecs || null;
+        const rawIsFromApi = flangeResult?.isFromApi;
+        const isFromApi = rawIsFromApi || false;
+
+        const rawFlangeStandardName = props.flangeStandardName;
 
         // Check if using fallback data with non-SABS standard
-        const standardName = props.flangeStandardName || "SABS 1123";
+        const standardName = rawFlangeStandardName || "SABS 1123";
         const isNonSabsStandard =
           !standardName.toLowerCase().includes("sabs") &&
           !standardName.toLowerCase().includes("sans");
@@ -2043,7 +2048,6 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
             </div>
             <div className="text-gray-700">WT: {props.wallThickness}mm</div>
             <div className="text-blue-600 font-medium">{matProps.name}</div>
-
             {hasFlanges && (
               <>
                 <div className="font-bold text-blue-800 mt-1 mb-0.5">FLANGE ({configUpper})</div>
@@ -2074,8 +2078,10 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
                       }
                     >
                       {(() => {
-                        const designation = props.pressureClassDesignation || "";
-                        const flangeType = props.flangeTypeCode || "";
+                        const rawPressureClassDesignation = props.pressureClassDesignation;
+                        const designation = rawPressureClassDesignation || "";
+                        const rawFlangeTypeCode = props.flangeTypeCode;
+                        const flangeType = rawFlangeTypeCode || "";
                         const pressureMatch = designation.match(/^(\d+)/);
                         const pressureValue = pressureMatch
                           ? pressureMatch[1]
@@ -2092,14 +2098,14 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
                 )}
               </>
             )}
-
             {/* Spigot Information */}
             {props.pipeType === "spigot" &&
               props.numberOfSpigots &&
               props.numberOfSpigots >= 2 &&
               props.spigotDistanceFromEndMm &&
               (() => {
-                const pipeLengthM = props.individualPipeLengthM || props.length || 0;
+                const rawIndividualPipeLengthM = props.individualPipeLengthM;
+                const pipeLengthM = rawIndividualPipeLengthM || props.length || 0;
                 const pipeLengthMm = pipeLengthM * 1000;
                 const distFromEnd = props.spigotDistanceFromEndMm;
                 const availableLength = pipeLengthMm - 2 * distFromEnd;
@@ -2118,7 +2124,10 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
                   spigotHasFlanges && props.spigotNominalBoreMm
                     ? getFlangeSpecs(props.spigotNominalBoreMm, null)
                     : null;
-                const spigotFlangeSpecs = spigotFlangeResult?.specs || null;
+                const rawSpecs2 = spigotFlangeResult?.specs;
+                const spigotFlangeSpecs = rawSpecs2 || null;
+
+                const rawSpigotHeightMm = props.spigotHeightMm;
 
                 return (
                   <>
@@ -2128,7 +2137,7 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
                     <div className="text-gray-900 font-medium">
                       NB: {props.spigotNominalBoreMm}mm
                     </div>
-                    <div className="text-gray-700">Height: {props.spigotHeightMm || 150}mm</div>
+                    <div className="text-gray-700">Height: {rawSpigotHeightMm || 150}mm</div>
                     <div className="text-teal-600 font-medium">
                       Distance from end: {distFromEnd}mm
                     </div>
@@ -2165,7 +2174,6 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
                   </>
                 );
               })()}
-
             {/* Puddle Flange Information */}
             {props.pipeType === "puddle" &&
               props.puddleFlangeOdMm &&
@@ -2194,7 +2202,6 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
           </div>
         );
       })()}
-
       {/* Notes Section - bottom left */}
       {props.selectedNotes && props.selectedNotes.length > 0 && (
         <div className="absolute bottom-2 left-2 text-[10px] bg-white px-2 py-1.5 rounded shadow-md border border-slate-200 max-w-[300px] max-h-[120px] overflow-y-auto">
@@ -2208,7 +2215,6 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
           </ol>
         </div>
       )}
-
       {/* Bottom toolbar - Expand, Print, Drag hint, and Hide button in horizontal row */}
       <div className="absolute bottom-2 right-2 flex flex-row items-center gap-2">
         <button
@@ -2367,8 +2373,10 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
               debouncedProps.numberOfSpigots &&
               debouncedProps.numberOfSpigots >= 2
             ) {
-              const distFromEnd = debouncedProps.spigotDistanceFromEndMm || 0;
-              const spigotOd = (debouncedProps.spigotNominalBoreMm || 50) * 1.2;
+              const rawSpigotDistanceFromEndMm = debouncedProps.spigotDistanceFromEndMm;
+              const distFromEnd = rawSpigotDistanceFromEndMm || 0;
+              const rawSpigotNominalBoreMm2 = debouncedProps.spigotNominalBoreMm;
+              const spigotOd = (rawSpigotNominalBoreMm2 || 50) * 1.2;
               const availableLen = pipeLengthMm - 2 * distFromEnd;
               const spacing = availableLen / (debouncedProps.numberOfSpigots - 1);
 
@@ -2432,7 +2440,6 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
           Hide Drawing
         </button>
       </div>
-
       {/* Expanded Modal */}
       {isExpanded && (
         <div className="fixed inset-0 z-[10000] bg-black/80 flex items-center justify-center p-4">
@@ -2503,7 +2510,7 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
                 Length: {isInputMeters ? props.length : (props.length / 1000).toFixed(2)}m | OD:{" "}
                 {props.outerDiameter}mm | WT: {props.wallThickness}mm
               </div>
-              <div className="text-gray-600 mt-1">Config: {props.endConfiguration || "PE"}</div>
+              <div className="text-gray-600 mt-1">Config: {rawEndConfiguration2 || "PE"}</div>
             </div>
 
             {/* Controls hint */}

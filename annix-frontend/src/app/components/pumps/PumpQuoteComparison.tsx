@@ -40,10 +40,12 @@ export function PumpQuoteComparison(props: PumpQuoteComparisonProps) {
       sorted.sort((a, b) => a.totalPrice - b.totalPrice);
     } else if (sortBy === "score") {
       sorted.sort((a, b) => {
-        const scoreA =
-          comparison.overallScores.find((s) => s.supplierId === a.supplierId)?.score || 0;
-        const scoreB =
-          comparison.overallScores.find((s) => s.supplierId === b.supplierId)?.score || 0;
+        const rawScore = comparison.overallScores.find((s) => s.supplierId === a.supplierId)?.score;
+        const scoreA = rawScore || 0;
+        const rawScore2 = comparison.overallScores.find(
+          (s) => s.supplierId === b.supplierId,
+        )?.score;
+        const scoreB = rawScore2 || 0;
         return scoreB - scoreA;
       });
     } else if (sortBy === "date") {
@@ -104,7 +106,6 @@ export function PumpQuoteComparison(props: PumpQuoteComparisonProps) {
           <div className="text-sm text-purple-600">Price Spread</div>
         </div>
       </div>
-
       {comparison.recommendations.length > 0 && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <div className="flex">
@@ -132,7 +133,6 @@ export function PumpQuoteComparison(props: PumpQuoteComparisonProps) {
           </div>
         </div>
       )}
-
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-medium text-gray-900">Quote Comparison</h3>
         <div className="flex items-center gap-2">
@@ -148,7 +148,6 @@ export function PumpQuoteComparison(props: PumpQuoteComparisonProps) {
           </select>
         </div>
       </div>
-
       <div className="bg-white shadow rounded-lg overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
@@ -186,6 +185,9 @@ export function PumpQuoteComparison(props: PumpQuoteComparisonProps) {
                   (s) => s.supplierId === quote.supplierId,
                 );
                 const isSelected = selectedQuoteId === quote.supplierId;
+
+                const rawScore3 = scoreInfo?.score;
+                const rawScore4 = scoreInfo?.score;
 
                 return (
                   <tr
@@ -226,10 +228,10 @@ export function PumpQuoteComparison(props: PumpQuoteComparisonProps) {
                         <div className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
                           <div
                             className="h-full bg-blue-500 rounded-full"
-                            style={{ width: `${scoreInfo?.score || 0}%` }}
+                            style={{ width: `${rawScore3 || 0}%` }}
                           />
                         </div>
-                        <span className="ml-2 text-sm text-gray-600">{scoreInfo?.score || 0}</span>
+                        <span className="ml-2 text-sm text-gray-600">{rawScore4 || 0}</span>
                       </div>
                     </td>
                     {comparison.specificationComparison.map((metric) => {
@@ -267,7 +269,6 @@ export function PumpQuoteComparison(props: PumpQuoteComparisonProps) {
           </table>
         </div>
       </div>
-
       {comparison.specificationComparison.length > 0 && (
         <div className="bg-white shadow rounded-lg p-6">
           <h3 className="text-lg font-medium text-gray-900 mb-4">Specification Comparison</h3>

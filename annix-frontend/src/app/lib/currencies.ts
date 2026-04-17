@@ -415,7 +415,8 @@ const COUNTRY_TO_CURRENCY: Record<string, string> = {
 export function currencyCodeForCountry(countryName: string): string | null {
   if (!countryName) return null;
   const normalized = countryName.toLowerCase().trim();
-  return COUNTRY_TO_CURRENCY[normalized] ?? null;
+  const rawNormalized = COUNTRY_TO_CURRENCY[normalized];
+  return rawNormalized || null;
 }
 
 const CURRENCY_VAT_RATES: Record<string, number> = {
@@ -483,5 +484,6 @@ const CURRENCY_VAT_RATES: Record<string, number> = {
 };
 
 export function vatRateForCurrency(currencyCode: string): number {
-  return CURRENCY_VAT_RATES[currencyCode] ?? 0;
+  const rawCurrencyCode = CURRENCY_VAT_RATES[currencyCode];
+  return rawCurrencyCode || 0;
 }

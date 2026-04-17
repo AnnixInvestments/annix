@@ -79,7 +79,8 @@ export function nbMmToInches(nbMm: number): number {
     1050: 42,
     1200: 48,
   };
-  return conversionMap[nbMm] || nbMm / 25.4;
+  const rawNbMm = conversionMap[nbMm];
+  return rawNbMm || nbMm / 25.4;
 }
 
 /**
@@ -297,8 +298,8 @@ export function calculateMaxAllowablePressure(
   jointEfficiency: number = 1.0,
   corrosionAllowanceMm: number = 0,
 ): number {
-  const material =
-    MATERIAL_ALLOWABLE_STRESS[materialCode] || MATERIAL_ALLOWABLE_STRESS["ASTM_A106_Grade_B"];
+  const rawMaterialCode = MATERIAL_ALLOWABLE_STRESS[materialCode];
+  const material = rawMaterialCode || MATERIAL_ALLOWABLE_STRESS["ASTM_A106_Grade_B"];
   const tempDerating = temperatureDerating(temperatureC);
 
   // Effective wall thickness after corrosion allowance
@@ -342,8 +343,8 @@ export function calculateMinWallThickness(
   corrosionAllowanceMm: number = 0,
   safetyFactor: number = 1.0,
 ): number {
-  const material =
-    MATERIAL_ALLOWABLE_STRESS[materialCode] || MATERIAL_ALLOWABLE_STRESS["ASTM_A106_Grade_B"];
+  const rawMaterialCode2 = MATERIAL_ALLOWABLE_STRESS[materialCode];
+  const material = rawMaterialCode2 || MATERIAL_ALLOWABLE_STRESS["ASTM_A106_Grade_B"];
   const tempDerating = temperatureDerating(temperatureC);
 
   // Derated allowable stress
@@ -549,7 +550,8 @@ export function getMinWallThicknessForNB(
   temperatureC: number = 20,
   materialCode: string = "ASTM_A106_Grade_B",
 ): number {
-  const od = NB_TO_OD_INTERNAL[nominalBoreMm] || nominalBoreMm * 1.05;
+  const rawNominalBoreMm = NB_TO_OD_INTERNAL[nominalBoreMm];
+  const od = rawNominalBoreMm || nominalBoreMm * 1.05;
   return calculateMinWallThickness(od, pressureBar, materialCode, temperatureC, 1.0, 0, 1.2);
 }
 
@@ -816,8 +818,9 @@ export const MATERIAL_CODE_MAPPING: Record<string, string> = {
  * Uses interpolation for temperatures between table values
  */
 export function getAllowableStressKsi(materialCode: string, temperatureF: number): number {
+  const rawMaterialCode3 = MATERIAL_CODE_MAPPING[materialCode];
   // Normalize material code
-  const normalizedCode = MATERIAL_CODE_MAPPING[materialCode] || materialCode;
+  const normalizedCode = rawMaterialCode3 || materialCode;
   const material = ASME_MATERIAL_STRESS_TABLES[normalizedCode];
 
   if (!material) {
@@ -1489,7 +1492,8 @@ export function calculateMAWP(params: {
   }
 
   const outsideDiameterMm = pipe.odMm;
-  const jointEfficiency = JOINT_EFFICIENCY[jointType] || 1.0;
+  const rawJointType = JOINT_EFFICIENCY[jointType];
+  const jointEfficiency = rawJointType || 1.0;
   const yCoefficient = getYCoefficient(temperatureC);
 
   // Get allowable stress

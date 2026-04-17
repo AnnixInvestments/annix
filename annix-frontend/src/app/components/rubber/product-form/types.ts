@@ -43,18 +43,27 @@ export const BASE_INITIAL_FORM_DATA: BaseProductFormData = {
 };
 
 export function baseFormDataFromProduct(product: RubberProductDto): BaseProductFormData {
+  const rawTitle = product.title;
+  const rawDescription = product.description;
+  const rawCompoundOwnerFirebaseUid = product.compoundOwnerFirebaseUid;
+  const rawCompoundFirebaseUid = product.compoundFirebaseUid;
+  const rawTypeFirebaseUid = product.typeFirebaseUid;
+  const rawColourFirebaseUid = product.colourFirebaseUid;
+  const rawHardnessFirebaseUid = product.hardnessFirebaseUid;
+  const rawCuringMethodFirebaseUid = product.curingMethodFirebaseUid;
+  const rawGradeFirebaseUid = product.gradeFirebaseUid;
   return {
-    title: product.title || "",
-    description: product.description || "",
+    title: rawTitle || "",
+    description: rawDescription || "",
     specificGravity: product.specificGravity?.toString() || "",
-    compoundOwnerFirebaseUid: product.compoundOwnerFirebaseUid || "",
-    compoundFirebaseUid: product.compoundFirebaseUid || "",
-    typeFirebaseUid: product.typeFirebaseUid || "",
+    compoundOwnerFirebaseUid: rawCompoundOwnerFirebaseUid || "",
+    compoundFirebaseUid: rawCompoundFirebaseUid || "",
+    typeFirebaseUid: rawTypeFirebaseUid || "",
     costPerKg: product.costPerKg?.toString() || "",
-    colourFirebaseUid: product.colourFirebaseUid || "",
-    hardnessFirebaseUid: product.hardnessFirebaseUid || "",
-    curingMethodFirebaseUid: product.curingMethodFirebaseUid || "",
-    gradeFirebaseUid: product.gradeFirebaseUid || "",
+    colourFirebaseUid: rawColourFirebaseUid || "",
+    hardnessFirebaseUid: rawHardnessFirebaseUid || "",
+    curingMethodFirebaseUid: rawCuringMethodFirebaseUid || "",
+    gradeFirebaseUid: rawGradeFirebaseUid || "",
     tensileStrengthMpa: product.tensileStrengthMpa?.toString() || "",
     elongationAtBreak: product.elongationAtBreak?.toString() || "",
     markup: product.markup?.toString() || "",
@@ -62,21 +71,27 @@ export function baseFormDataFromProduct(product: RubberProductDto): BaseProductF
 }
 
 export function baseFormDataToDto(formData: BaseProductFormData): CreateRubberProductDto {
+  const rawCompoundOwnerFirebaseUid2 = formData.compoundOwnerFirebaseUid;
+  const rawCompoundFirebaseUid2 = formData.compoundFirebaseUid;
+  const rawColourFirebaseUid2 = formData.colourFirebaseUid;
+  const rawHardnessFirebaseUid2 = formData.hardnessFirebaseUid;
+  const rawCuringMethodFirebaseUid2 = formData.curingMethodFirebaseUid;
+  const rawGradeFirebaseUid2 = formData.gradeFirebaseUid;
   return {
     title: formData.title.trim() || null,
     description: formData.description.trim() || null,
     specificGravity: formData.specificGravity ? parseFloat(formData.specificGravity) : null,
-    compoundOwnerFirebaseUid: formData.compoundOwnerFirebaseUid || null,
-    compoundFirebaseUid: formData.compoundFirebaseUid || null,
+    compoundOwnerFirebaseUid: rawCompoundOwnerFirebaseUid2 || null,
+    compoundFirebaseUid: rawCompoundFirebaseUid2 || null,
     typeFirebaseUid:
       formData.typeFirebaseUid && formData.typeFirebaseUid !== "NONE"
         ? formData.typeFirebaseUid
         : null,
     costPerKg: formData.costPerKg ? parseFloat(formData.costPerKg) : null,
-    colourFirebaseUid: formData.colourFirebaseUid || null,
-    hardnessFirebaseUid: formData.hardnessFirebaseUid || null,
-    curingMethodFirebaseUid: formData.curingMethodFirebaseUid || null,
-    gradeFirebaseUid: formData.gradeFirebaseUid || null,
+    colourFirebaseUid: rawColourFirebaseUid2 || null,
+    hardnessFirebaseUid: rawHardnessFirebaseUid2 || null,
+    curingMethodFirebaseUid: rawCuringMethodFirebaseUid2 || null,
+    gradeFirebaseUid: rawGradeFirebaseUid2 || null,
     tensileStrengthMpa: formData.tensileStrengthMpa
       ? parseFloat(formData.tensileStrengthMpa)
       : null,

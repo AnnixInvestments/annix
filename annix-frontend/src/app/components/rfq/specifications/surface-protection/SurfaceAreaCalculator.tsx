@@ -73,7 +73,8 @@ export function SurfaceAreaCalculator(props: SurfaceAreaCalculatorProps) {
   const items = propItems || manualItems;
 
   const odFromNb = (nb: number): number => {
-    return NB_TO_OD_MAP[nb] || nb + 10;
+    const rawNb = NB_TO_OD_MAP[nb];
+    return rawNb || nb + 10;
   };
 
   const calculateSurfaceArea = (item: PipeItem): SurfaceAreaResult => {
@@ -106,9 +107,11 @@ export function SurfaceAreaCalculator(props: SurfaceAreaCalculatorProps) {
     internalArea *= item.quantity;
     externalArea *= item.quantity;
 
+    const rawDescription = item.description;
+
     return {
       itemId: item.id,
-      description: item.description || `${item.type} DN${item.nominalBoreMm}`,
+      description: rawDescription || `${item.type} DN${item.nominalBoreMm}`,
       internalAreaM2: Math.round(internalArea * 100) / 100,
       externalAreaM2: Math.round(externalArea * 100) / 100,
       totalAreaM2:
@@ -176,7 +179,6 @@ export function SurfaceAreaCalculator(props: SurfaceAreaCalculatorProps) {
           Surface Area Calculator
         </h3>
       </div>
-
       {/* Options */}
       <div className="grid grid-cols-4 gap-3 mb-4 p-3 bg-gray-50 rounded">
         <div className="flex items-center gap-2">
@@ -215,7 +217,6 @@ export function SurfaceAreaCalculator(props: SurfaceAreaCalculatorProps) {
           />
         </div>
       </div>
-
       {/* Manual Item Entry (if no prop items) */}
       {!propItems && (
         <div className="mb-4">
@@ -230,98 +231,101 @@ export function SurfaceAreaCalculator(props: SurfaceAreaCalculatorProps) {
             </button>
           </div>
           <div className="space-y-2 max-h-[200px] overflow-y-auto">
-            {manualItems.map((item) => (
-              <div
-                key={item.id}
-                className="grid grid-cols-6 gap-2 items-center p-2 bg-gray-50 rounded"
-              >
-                <select
-                  value={item.type}
-                  onChange={(e) =>
-                    updateItem(item.id, {
-                      type: e.target.value as PipeItem["type"],
-                    })
-                  }
-                  className="px-2 py-1 text-xs border border-gray-300 rounded"
+            {manualItems.map((item) => {
+              const rawDescription2 = item.description;
+
+              return (
+                <div
+                  key={item.id}
+                  className="grid grid-cols-6 gap-2 items-center p-2 bg-gray-50 rounded"
                 >
-                  <option value="straight">Straight</option>
-                  <option value="bend">Bend</option>
-                  <option value="reducer">Reducer</option>
-                  <option value="tee">Tee</option>
-                </select>
-                <div>
-                  <label className="block text-[10px] text-gray-500">NB (mm)</label>
                   <select
-                    value={item.nominalBoreMm}
+                    value={item.type}
                     onChange={(e) =>
                       updateItem(item.id, {
-                        nominalBoreMm: parseInt(e.target.value, 10),
+                        type: e.target.value as PipeItem["type"],
                       })
                     }
-                    className="w-full px-2 py-1 text-xs border border-gray-300 rounded"
+                    className="px-2 py-1 text-xs border border-gray-300 rounded"
                   >
-                    {Object.keys(NB_TO_OD_MAP).map((nb) => (
-                      <option key={nb} value={nb}>
-                        DN{nb}
-                      </option>
-                    ))}
+                    <option value="straight">Straight</option>
+                    <option value="bend">Bend</option>
+                    <option value="reducer">Reducer</option>
+                    <option value="tee">Tee</option>
                   </select>
-                </div>
-                <div>
-                  <label className="block text-[10px] text-gray-500">Length (mm)</label>
-                  <input
-                    type="number"
-                    value={item.lengthMm}
-                    onChange={(e) =>
-                      updateItem(item.id, {
-                        lengthMm: parseInt(e.target.value, 10) || 0,
-                      })
-                    }
-                    className="w-full px-2 py-1 text-xs border border-gray-300 rounded"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] text-gray-500">Qty</label>
-                  <input
-                    type="number"
-                    value={item.quantity}
-                    onChange={(e) =>
-                      updateItem(item.id, {
-                        quantity: parseInt(e.target.value, 10) || 1,
-                      })
-                    }
-                    className="w-full px-2 py-1 text-xs border border-gray-300 rounded"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] text-gray-500">Description</label>
-                  <input
-                    type="text"
-                    value={item.description || ""}
-                    onChange={(e) => updateItem(item.id, { description: e.target.value })}
-                    placeholder="Optional"
-                    className="w-full px-2 py-1 text-xs border border-gray-300 rounded"
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={() => removeItem(item.id)}
-                  className="p-1 text-red-600 hover:text-red-800"
-                >
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                    <path
-                      fillRule="evenodd"
-                      d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
-                      clipRule="evenodd"
+                  <div>
+                    <label className="block text-[10px] text-gray-500">NB (mm)</label>
+                    <select
+                      value={item.nominalBoreMm}
+                      onChange={(e) =>
+                        updateItem(item.id, {
+                          nominalBoreMm: parseInt(e.target.value, 10),
+                        })
+                      }
+                      className="w-full px-2 py-1 text-xs border border-gray-300 rounded"
+                    >
+                      {Object.keys(NB_TO_OD_MAP).map((nb) => (
+                        <option key={nb} value={nb}>
+                          DN{nb}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-gray-500">Length (mm)</label>
+                    <input
+                      type="number"
+                      value={item.lengthMm}
+                      onChange={(e) =>
+                        updateItem(item.id, {
+                          lengthMm: parseInt(e.target.value, 10) || 0,
+                        })
+                      }
+                      className="w-full px-2 py-1 text-xs border border-gray-300 rounded"
                     />
-                  </svg>
-                </button>
-              </div>
-            ))}
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-gray-500">Qty</label>
+                    <input
+                      type="number"
+                      value={item.quantity}
+                      onChange={(e) =>
+                        updateItem(item.id, {
+                          quantity: parseInt(e.target.value, 10) || 1,
+                        })
+                      }
+                      className="w-full px-2 py-1 text-xs border border-gray-300 rounded"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-gray-500">Description</label>
+                    <input
+                      type="text"
+                      value={rawDescription2 || ""}
+                      onChange={(e) => updateItem(item.id, { description: e.target.value })}
+                      placeholder="Optional"
+                      className="w-full px-2 py-1 text-xs border border-gray-300 rounded"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeItem(item.id)}
+                    className="p-1 text-red-600 hover:text-red-800"
+                  >
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path
+                        fillRule="evenodd"
+                        d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
-
       {/* Results */}
       <div className="border border-gray-200 rounded overflow-hidden">
         <table className="w-full text-xs">
@@ -373,7 +377,6 @@ export function SurfaceAreaCalculator(props: SurfaceAreaCalculatorProps) {
           </tfoot>
         </table>
       </div>
-
       {/* Calculate Button */}
       {onCalculationComplete && (
         <button
