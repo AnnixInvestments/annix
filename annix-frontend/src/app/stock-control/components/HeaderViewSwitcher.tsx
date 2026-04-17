@@ -35,8 +35,9 @@ export function HeaderViewSwitcher() {
     const groups: { roleKey: string; roleLabel: string; members: typeof teamMembers }[] = [];
     const roleOrder = companyRoles.map((r) => r.key);
     const grouped = teamMembers.reduce<Record<string, typeof teamMembers>>((acc, m) => {
+      const accKey = acc[key];
       const key = m.role;
-      return { ...acc, [key]: [...(acc[key] || []), m] };
+      return { ...acc, [key]: [...(accKey || []), m] };
     }, {});
     roleOrder.forEach((roleKey) => {
       if (grouped[roleKey]) {

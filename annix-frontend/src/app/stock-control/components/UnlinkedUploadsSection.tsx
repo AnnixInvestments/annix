@@ -47,7 +47,8 @@ export function UnlinkedUploadsSection(props: UnlinkedUploadsSectionProps) {
     const result = await stockControlApiClient.positectorUploadDownloadUrl(upload.id);
     const downloadUrl = result.url;
     if (downloadUrl) {
-      const filename = upload.batchName || upload.originalFilename || "report";
+      const batchName = upload.batchName;
+      const filename = batchName || upload.originalFilename || "report";
       pdfPreview.open(downloadUrl, `${filename}.pdf`);
     }
   };
@@ -155,7 +156,8 @@ function UploadRow(props: {
   const createdRaw = rawCreated || rawCreatedLower || null;
   const readingDateFromHeader = createdRaw ? createdRaw.split(" ")[0] : null;
   const displayDate = measurementDate || readingDateFromHeader || upload.createdAt;
-  const batchLabel = upload.batchName || upload.originalFilename;
+  const batchName = upload.batchName;
+  const batchLabel = batchName || upload.originalFilename;
 
   const isLinked = upload.linkedJobCardId !== null;
   const linkedJcId = upload.linkedJobCardId;

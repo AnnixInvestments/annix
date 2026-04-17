@@ -162,7 +162,8 @@ function CertificatesTab() {
     try {
       const cert = await viewCertMutation.mutateAsync(id);
       if (cert.downloadUrl) {
-        pdfPreview.open(cert.downloadUrl, cert.originalFilename || "certificate.pdf");
+        const originalFilename = cert.originalFilename;
+        pdfPreview.open(cert.downloadUrl, originalFilename || "certificate.pdf");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to get download URL");
@@ -349,7 +350,8 @@ function CertificatesTab() {
     ? analysisResult.certificates.reduce<
         Record<string, { cert: IdentifiedCertificate; index: number }[]>
       >((groups, cert, index) => {
-        const key = cert.supplierName || "Unknown Supplier";
+        const supplierName = cert.supplierName;
+        const key = supplierName || "Unknown Supplier";
         return {
           ...groups,
           [key]: [...(groups[key] ? groups[key] : []), { cert, index }],
@@ -502,16 +504,18 @@ function CertificatesTab() {
                             : "bg-purple-100 text-purple-800"
                         }`}
                       >
-                        {cert.certificateType || "COC"}
+                        const certificateType = cert.certificateType;
+                        {certificateType || "COC"}
                       </span>
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-gray-900 truncate">
-                          {cert.productInfo || "Certificate"}
+                          const productInfo = cert.productInfo;
+                          {productInfo || "Certificate"}
+                          const batchNumber = cert.batchNumber;
                         </p>
                         <p className="text-xs text-gray-500">
-                          Batch: {cert.batchNumber || "Unknown"} | Pages:{" "}
-                          {cert.pageNumbers.join(", ")} | Confidence:{" "}
-                          {Math.round(cert.confidence * 100)}%
+                          Batch: {batchNumber || "Unknown"} | Pages: {cert.pageNumbers.join(", ")} |
+                          Confidence: {Math.round(cert.confidence * 100)}%
                         </p>
                       </div>
                     </div>
@@ -595,7 +599,8 @@ function CertificatesTab() {
             </select>
 
             {certificates.some((c) => {
-              const desc = c.description || "";
+              const description = c.description;
+              const desc = description || "";
               return (!desc && !c.stockItem) || desc.length > 60;
             }) && (
               <button
@@ -808,7 +813,8 @@ function CalibrationTab() {
     try {
       const cert = await viewCalCertMutation.mutateAsync(id);
       if (cert.downloadUrl) {
-        pdfPreview.open(cert.downloadUrl, cert.originalFilename || "calibration-certificate.pdf");
+        const originalFilename = cert.originalFilename;
+        pdfPreview.open(cert.downloadUrl, originalFilename || "calibration-certificate.pdf");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to get download URL");
@@ -910,10 +916,12 @@ function CalibrationTab() {
                     {cert.equipmentName}
                   </td>
                   <td className="hidden sm:table-cell whitespace-nowrap px-4 py-3 text-sm text-gray-600">
-                    {cert.equipmentIdentifier ?? "-"}
+                    const equipmentIdentifier = cert.equipmentIdentifier;
+                    {equipmentIdentifier || "-"}
                   </td>
                   <td className="hidden md:table-cell whitespace-nowrap px-4 py-3 text-sm text-gray-600">
-                    {cert.certificateNumber ?? "-"}
+                    const certificateNumber = cert.certificateNumber;
+                    {certificateNumber || "-"}
                   </td>
                   <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
                     {formatDateZA(cert.expiryDate)}
@@ -1071,7 +1079,8 @@ function DataBooksTab() {
                       {jc.jobName}
                     </td>
                     <td className="hidden md:table-cell whitespace-nowrap px-4 py-3 text-sm text-gray-600">
-                      {jc.customerName || "-"}
+                      const customerName = jc.customerName;
+                      {customerName || "-"}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm">
                       {status?.certificateCount ? (
@@ -1169,7 +1178,8 @@ function BatchLookupTab() {
     try {
       const cert = await viewCertLookupMutation.mutateAsync(id);
       if (cert.downloadUrl) {
-        pdfPreview.open(cert.downloadUrl, cert.originalFilename || "certificate.pdf");
+        const originalFilename = cert.originalFilename;
+        pdfPreview.open(cert.downloadUrl, originalFilename || "certificate.pdf");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to get download URL");

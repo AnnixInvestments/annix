@@ -70,7 +70,8 @@ export function createOfflineApiClient(options: ApiClientOptions) {
       }
 
       const responseData = await response.json();
-      const items = responseData.items ?? responseData.data ?? responseData;
+      const rawItems = responseData.items;
+      const items = (rawItems || responseData.data) ?? responseData;
 
       if (Array.isArray(items)) {
         await store.saveAll(items);

@@ -5,7 +5,8 @@ export function statusBadgeColor(status: string): string {
     completed: "bg-blue-100 text-blue-800",
     cancelled: "bg-red-100 text-red-800",
   };
-  return colors[status.toLowerCase()] || "bg-gray-100 text-gray-800";
+  const rawValue = colors[status.toLowerCase()];
+  return rawValue || "bg-gray-100 text-gray-800";
 }
 
 export const STATUS_TRANSITIONS: Record<string, { label: string; next: string; color: string }[]> =
@@ -86,5 +87,6 @@ export function extractionStatusBadge(status: string): string {
     analysed: "bg-green-100 text-green-800",
     failed: "bg-red-100 text-red-800",
   };
-  return statusColors[status] || "bg-gray-100 text-gray-800";
+  const statusColorsStatus = statusColors[status];
+  return statusColorsStatus || "bg-gray-100 text-gray-800";
 }

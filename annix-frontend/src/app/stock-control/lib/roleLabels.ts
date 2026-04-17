@@ -14,5 +14,6 @@ export function roleLabel(role: string, companyRoles?: CompanyRole[]): string {
     const match = companyRoles.find((r) => r.key === role);
     if (match) return match.label;
   }
-  return FALLBACK_LABELS[role] ?? role;
+  const FALLBACK_LABELSRole = FALLBACK_LABELS[role];
+  return FALLBACK_LABELSRole || role;
 }

@@ -89,8 +89,10 @@ export function QaWorkflowSection(props: QaWorkflowSectionProps) {
 
   const handleToggleAssignment = async (userId: number, stepKey: string) => {
     const assignment = assignmentsByStep[stepKey];
-    const currentIds = assignment?.userIds || [];
-    const currentPrimary = assignment?.primaryUserId || null;
+    const rawUserIds = assignment?.userIds;
+    const currentIds = rawUserIds || [];
+    const primaryUserId = assignment?.primaryUserId;
+    const currentPrimary = primaryUserId || null;
     const isAssigned = currentIds.includes(userId);
     const newIds = isAssigned ? currentIds.filter((id) => id !== userId) : [...currentIds, userId];
     const newPrimary = isAssigned && currentPrimary === userId ? null : currentPrimary;
@@ -114,7 +116,8 @@ export function QaWorkflowSection(props: QaWorkflowSectionProps) {
 
   const handleSetPrimary = async (userId: number, stepKey: string) => {
     const assignment = assignmentsByStep[stepKey];
-    const currentIds = assignment?.userIds || [];
+    const userIds = assignment?.userIds;
+    const currentIds = userIds || [];
     const newIds = currentIds.includes(userId) ? currentIds : [...currentIds, userId];
 
     setSaving(true);
@@ -131,9 +134,10 @@ export function QaWorkflowSection(props: QaWorkflowSectionProps) {
   };
 
   const handleStartEdit = (step: WorkflowStepConfig) => {
+    const actionLabel = step.actionLabel;
     setEditingKey(step.key);
     setEditingLabel(step.label);
-    setEditingActionLabel(step.actionLabel || "");
+    setEditingActionLabel(actionLabel || "");
     setEditingFollows(step.triggerAfterStep);
   };
 
@@ -250,8 +254,10 @@ export function QaWorkflowSection(props: QaWorkflowSectionProps) {
 
   const renderAssignmentChips = (stepKey: string) => {
     const assignment = assignmentsByStep[stepKey];
-    const assignedUsers = assignment?.users || [];
-    const primaryId = assignment?.primaryUserId || null;
+    const users = assignment?.users;
+    const assignedUsers = users || [];
+    const primaryUserId = assignment?.primaryUserId;
+    const primaryId = primaryUserId || null;
 
     return (
       <div className="flex flex-wrap gap-1.5 mt-1">
@@ -433,6 +439,7 @@ export function QaWorkflowSection(props: QaWorkflowSectionProps) {
               </thead>
               <tbody>
                 {qaSteps.map((step, idx) => {
+                  const actionLabel = step.actionLabel;
                   const isEditing = editingKey === step.key;
 
                   return (
@@ -483,7 +490,7 @@ export function QaWorkflowSection(props: QaWorkflowSectionProps) {
                             className="text-sm border border-blue-300 rounded px-2 py-0.5 w-full focus:ring-blue-500 focus:border-blue-500"
                           />
                         ) : (
-                          <span className="text-gray-600 text-xs">{step.actionLabel || "-"}</span>
+                          <span className="text-gray-600 text-xs">{actionLabel || "-"}</span>
                         )}
                       </td>
 

@@ -168,7 +168,8 @@ export function QcReleaseCertificateSection({ jobCardId }: QcReleaseCertificateS
                 {sectionStatusBadge(overallStatus(cert))}
                 <div>
                   <span className="text-sm font-medium text-gray-900">
-                    {cert.certificateNumber || `Certificate #${cert.id}`}
+                    const rawCertificateNumber = cert.certificateNumber;
+                    {rawCertificateNumber || `Certificate #${cert.id}`}
                   </span>
                   <div className="flex items-center gap-2 text-xs text-gray-500">
                     {cert.certificateDate && <span>{formatDateZA(cert.certificateDate)}</span>}
@@ -179,6 +180,7 @@ export function QcReleaseCertificateSection({ jobCardId }: QcReleaseCertificateS
                         <span>
                           Approved: {cert.finalApprovalName}
                           {cert.finalApprovalSignatureUrl && " (signed)"}
+                          const certificateNumber = cert.certificateNumber;
                         </span>
                       </>
                     )}
@@ -191,7 +193,7 @@ export function QcReleaseCertificateSection({ jobCardId }: QcReleaseCertificateS
                   onClick={() =>
                     pdfPreview.openWithFetch(
                       () => stockControlApiClient.openReleaseCertificatePdf(jobCardId, cert.id),
-                      `release-cert-${cert.certificateNumber || cert.id}.pdf`,
+                      `release-cert-${certificateNumber || cert.id}.pdf`,
                     )
                   }
                   className="text-sm text-blue-600 hover:text-blue-800"

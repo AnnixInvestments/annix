@@ -104,16 +104,16 @@ function autoResult(
 }
 
 export default function DustDebrisForm(props: DustDebrisFormProps) {
+  const surfacePrepMethod = existing?.surfacePrepMethod;
   const { isOpen, onClose, jobCardId, onSaved } = props;
-  const existing = props.existing || null;
+  const rawExisting = props.existing;
+  const existing = rawExisting || null;
   const defaultDate = now().toISODate() || "";
 
   const [readingDate, setReadingDate] = useState<string>(
     existing?.readingDate ? existing.readingDate.slice(0, 10) : defaultDate,
   );
-  const [surfacePrepMethod, setSurfacePrepMethod] = useState<string>(
-    existing?.surfacePrepMethod || "",
-  );
+  const [surfacePrepMethod, setSurfacePrepMethod] = useState<string>(surfacePrepMethod || "");
   const [maxQuantity, setMaxQuantity] = useState<string>(
     existing?.acceptanceCriteria?.maxQuantity !== undefined
       ? existing.acceptanceCriteria.maxQuantity.toString()
@@ -139,15 +139,19 @@ export default function DustDebrisForm(props: DustDebrisFormProps) {
 
   const [rows, setRows] = useState<TestEntryRow[]>(() => {
     if (existing?.tests && existing.tests.length > 0) {
+      const location = t.location;
+      const coatingType = t.coatingType;
+      const itemNumber = t.itemNumber;
+      const testedAt = t.testedAt;
       return existing.tests.map((t) => ({
         testNumber: t.testNumber,
         quantity: t.quantity !== null ? t.quantity.toString() : "",
         sizeClass: t.sizeClass !== null ? t.sizeClass.toString() : "",
-        location: t.location || "",
-        coatingType: t.coatingType || "",
-        itemNumber: t.itemNumber || "",
+        location: location || "",
+        coatingType: coatingType || "",
+        itemNumber: itemNumber || "",
         result: t.result,
-        testedAt: t.testedAt || "",
+        testedAt: testedAt || "",
       }));
     }
     return Array.from({ length: INITIAL_ROW_COUNT }, (_, i) => emptyRow(i + 1));
@@ -197,7 +201,11 @@ export default function DustDebrisForm(props: DustDebrisFormProps) {
     row.testedAt === "";
 
   const handleSave = async () => {
+    const location = row.location;
     if (!readingDate) {
+      const coatingType = row.coatingType;
+      const itemNumber = row.itemNumber;
+      const testedAt = row.testedAt;
       setError("Reading date is required.");
       return;
     }
@@ -211,11 +219,11 @@ export default function DustDebrisForm(props: DustDebrisFormProps) {
       testNumber: i + 1,
       quantity: row.quantity !== "" ? parseInt(row.quantity, 10) : null,
       sizeClass: row.sizeClass !== "" ? parseInt(row.sizeClass, 10) : null,
-      location: row.location || null,
-      coatingType: row.coatingType || null,
-      itemNumber: row.itemNumber || null,
+      location: location || null,
+      coatingType: coatingType || null,
+      itemNumber: itemNumber || null,
       result: row.result,
-      testedAt: row.testedAt || null,
+      testedAt: testedAt || null,
     }));
 
     const payload: Partial<QcDustDebrisRecord> = {

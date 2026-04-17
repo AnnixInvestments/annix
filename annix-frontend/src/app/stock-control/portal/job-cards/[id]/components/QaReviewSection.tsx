@@ -70,7 +70,8 @@ export function QaReviewSection(props: QaReviewSectionProps) {
 
   const qaReviewPending = qaReviewStep ? qaReviewStep.completedAt === null : false;
 
-  const qaStepKey = qaReviewStep?.stepKey || "qa_review";
+  const stepKey = qaReviewStep?.stepKey;
+  const qaStepKey = stepKey || "qa_review";
   const qaReviewActive = activeBgStepKeys.has(qaStepKey) || activeBgStepKeys.has("qa_review");
   const loadData = useCallback(async () => {
     try {
@@ -274,7 +275,8 @@ export function QaReviewSection(props: QaReviewSectionProps) {
         <div className="flex items-center gap-4 text-sm">
           <span className="text-gray-500">Reviewed by:</span>
           <span className="font-medium text-gray-900">
-            {latestDecision.reviewedByName || "Unknown"}
+            const reviewedByName = latestDecision.reviewedByName;
+            {reviewedByName || "Unknown"}
           </span>
           <span className="text-gray-400">{formatDateZA(latestDecision.reviewedAt)}</span>
           <span className="text-gray-400">Cycle {latestDecision.cycleNumber}</span>

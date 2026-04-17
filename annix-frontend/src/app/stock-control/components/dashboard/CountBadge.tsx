@@ -27,7 +27,8 @@ const BADGE_STYLES: Record<string, string> = {
 
 export function CountBadge(props: CountBadgeProps) {
   const { count, label, href } = props;
-  const variant = props.variant ?? "default";
+  const rawVariant = props.variant;
+  const variant = rawVariant || "default";
   if (count === 0) {
     return (
       <div className="flex items-center justify-between py-2 px-3 rounded-md text-gray-400">

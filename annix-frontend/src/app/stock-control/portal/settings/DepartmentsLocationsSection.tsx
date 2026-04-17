@@ -369,9 +369,10 @@ export function DepartmentsLocationsSection({
                           <button
                             type="button"
                             onClick={() => {
+                              const description = loc.description;
                               setEditingLocationId(loc.id);
                               setEditingLocationName(loc.name);
-                              setEditingLocationDescription(loc.description ?? "");
+                              setEditingLocationDescription(description || "");
                             }}
                             className="text-[10px] font-medium text-teal-600 hover:text-teal-800"
                           >

@@ -38,13 +38,14 @@ export function CpoReleaseDocumentGenerator(props: CpoReleaseDocumentGeneratorPr
 
   const fetchData = useCallback(async () => {
     try {
+      const items = releasable.items;
       setIsLoading(true);
       setError(null);
       const [releasable, releases] = await Promise.all([
         stockControlApiClient.releasableItemsForCpo(cpoId),
         stockControlApiClient.itemsReleasesForCpo(cpoId),
       ]);
-      setReleasableItems(releasable.items || []);
+      setReleasableItems(items || []);
       setExistingReleases(Array.isArray(releases) ? releases : []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load releasable items");
@@ -58,8 +59,10 @@ export function CpoReleaseDocumentGenerator(props: CpoReleaseDocumentGeneratorPr
   }, [fetchData]);
 
   const itemKey = (item: CpoReleasableItem): string => {
-    const code = (item.itemCode || "").toLowerCase();
-    const desc = (item.description || "").toLowerCase();
+    const itemCode = item.itemCode;
+    const description = item.description;
+    const code = (itemCode || "").toLowerCase();
+    const desc = (description || "").toLowerCase();
     return `${code}||${desc}`;
   };
 
@@ -108,10 +111,14 @@ export function CpoReleaseDocumentGenerator(props: CpoReleaseDocumentGeneratorPr
       setError(null);
       const itemsToRegen: SelectedItem[] = [];
       release.items.forEach((ri) => {
+        const rawItemCode = ri.itemCode;
+        const rawDescription = r.description;
+        const itemCode = r.itemCode;
+        const description = ri.description;
         const matchingReleasable = releasableItems.find(
           (r) =>
-            (r.itemCode || "").toLowerCase() === (ri.itemCode || "").toLowerCase() &&
-            (r.description || "").toLowerCase() === (ri.description || "").toLowerCase(),
+            (itemCode || "").toLowerCase() === (rawItemCode || "").toLowerCase() &&
+            (rawDescription || "").toLowerCase() === (description || "").toLowerCase(),
         );
         if (matchingReleasable) {
           let remaining = ri.quantity;
@@ -119,9 +126,11 @@ export function CpoReleaseDocumentGenerator(props: CpoReleaseDocumentGeneratorPr
             if (remaining <= 0) return;
             const portion = Math.min(remaining, d.quantity);
             if (portion > 0) {
+              const itemCode2 = ri.itemCode;
+              const description2 = ri.description;
               itemsToRegen.push({
-                itemCode: ri.itemCode || "",
-                description: ri.description || "",
+                itemCode: itemCode2 || "",
+                description: description2 || "",
                 quantity: portion,
                 jobCardId: d.jobCardId,
               });
@@ -159,11 +168,14 @@ export function CpoReleaseDocumentGenerator(props: CpoReleaseDocumentGeneratorPr
       const itemKeys = new Set<string>();
       const quantities: Record<string, number> = {};
       release.items.forEach((ri) => {
-        const code = (ri.itemCode || "").toLowerCase();
-        const desc = (ri.description || "").toLowerCase();
+        const description = ri.description;
+        const itemCode = ri.itemCode;
+        const quantitiesKey = quantities[key];
+        const code = (itemCode || "").toLowerCase();
+        const desc = (description || "").toLowerCase();
         const key = `${code}||${desc}`;
         itemKeys.add(key);
-        quantities[key] = (quantities[key] || 0) + ri.quantity;
+        quantities[key] = (quantitiesKey || 0) + ri.quantity;
       });
 
       await stockControlApiClient.deleteItemsReleaseForCpo(cpoId, release.id);
@@ -215,9 +227,11 @@ export function CpoReleaseDocumentGenerator(props: CpoReleaseDocumentGeneratorPr
         if (remaining <= 0) return;
         const deliveryPortion = Math.min(remaining, delivery.quantity);
         if (deliveryPortion > 0) {
+          const itemCode = item.itemCode;
+          const description = item.description;
           selectedItems.push({
-            itemCode: item.itemCode || "",
-            description: item.description || "",
+            itemCode: itemCode || "",
+            description: description || "",
             quantity: deliveryPortion,
             jobCardId: delivery.jobCardId,
           });
@@ -342,6 +356,7 @@ export function CpoReleaseDocumentGenerator(props: CpoReleaseDocumentGeneratorPr
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {releasableItems.map((item) => {
+                  const itemNo = item.itemNo;
                   const key = itemKey(item);
                   const isArrived = item.arrivedQty > 0;
                   const hasRemaining = item.remainingToRelease > 0;
@@ -364,12 +379,14 @@ export function CpoReleaseDocumentGenerator(props: CpoReleaseDocumentGeneratorPr
                           className="rounded border-gray-300 disabled:cursor-not-allowed disabled:opacity-50"
                         />
                       </td>
-                      <td className="px-2 py-2 text-gray-500">{item.itemNo || "-"}</td>
+                      <td className="px-2 py-2 text-gray-500">{itemNo || "-"}</td>
                       <td className="px-2 py-2 font-mono max-w-[100px] sm:max-w-none truncate">
-                        {item.itemCode || "-"}
+                        const itemCode = item.itemCode;
+                        {itemCode || "-"}
                       </td>
                       <td className="px-2 py-2 max-w-[120px] sm:max-w-[200px] truncate">
-                        {item.description || "-"}
+                        const description = item.description;
+                        {description || "-"}
                       </td>
                       <td className="px-2 py-2 text-right">{item.orderedQty}</td>
                       <td className="hidden sm:table-cell px-2 py-2 text-right">
@@ -412,7 +429,8 @@ export function CpoReleaseDocumentGenerator(props: CpoReleaseDocumentGeneratorPr
                       <td className="hidden md:table-cell px-2 py-2">
                         <div className="flex flex-wrap gap-1">
                           {item.deliveries.map((d) => {
-                            const jtLabel = d.jtNumber || `JC#${d.jobCardId}`;
+                            const jtNumber = d.jtNumber;
+                            const jtLabel = jtNumber || `JC#${d.jobCardId}`;
                             return (
                               <span
                                 key={d.jobCardId}

@@ -17,8 +17,10 @@ interface QcFormModalProps {
 }
 
 export function QcFormModal(props: QcFormModalProps) {
-  const maxWidth = props.maxWidth || "max-w-2xl";
-  const saveDisabled = props.saveDisabled || false;
+  const rawMaxWidth = props.maxWidth;
+  const maxWidth = rawMaxWidth || "max-w-2xl";
+  const rawSaveDisabled = props.saveDisabled;
+  const saveDisabled = rawSaveDisabled || false;
 
   return (
     <FormModal

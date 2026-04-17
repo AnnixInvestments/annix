@@ -66,6 +66,7 @@ export function JigsawEditor(props: {
   }, [allPanels]);
 
   const [rolls, setRolls] = useState<JigsawRoll[]>(() => {
+    const thicknessMm = rubberSpec?.thicknessMm;
     if (existingManualRolls.length > 0) {
       return existingManualRolls.map((r) => ({
         widthMm: r.widthMm,
@@ -77,7 +78,7 @@ export function JigsawEditor(props: {
       {
         widthMm: defaultRollWidthMm,
         lengthMm: 12500,
-        thicknessMm: rubberSpec?.thicknessMm || 5,
+        thicknessMm: thicknessMm || 5,
       },
     ];
   });
@@ -117,13 +118,17 @@ export function JigsawEditor(props: {
 
     const contexts = new Map<string, JigsawPanel>();
     unplacedPanels.forEach((p) => {
+      const itemType = p.dimensionContext.itemType;
+      const schedule = p.dimensionContext.schedule;
+      const nbMm = p.dimensionContext.nbMm;
+      const flangeConfig = p.dimensionContext.flangeConfig;
       if (p.panelId !== p.itemId) return;
       const key = [
-        p.dimensionContext.itemType ?? "",
-        p.dimensionContext.nbMm ?? 0,
-        p.dimensionContext.schedule ?? "",
+        itemType || "",
+        nbMm || 0,
+        schedule || "",
         p.dimensionContext.lengthMm,
-        p.dimensionContext.flangeConfig ?? "",
+        flangeConfig || "",
       ].join("|");
       if (!contexts.has(key)) contexts.set(key, p);
     });
@@ -158,13 +163,17 @@ export function JigsawEditor(props: {
       if (suggestionMap.size > 0) {
         setUnplacedPanels((prev) =>
           prev.map((p) => {
+            const itemType = p.dimensionContext.itemType;
+            const schedule = p.dimensionContext.schedule;
+            const nbMm = p.dimensionContext.nbMm;
+            const flangeConfig = p.dimensionContext.flangeConfig;
             if (p.panelId !== p.itemId) return p;
             const key = [
-              p.dimensionContext.itemType ?? "",
-              p.dimensionContext.nbMm ?? 0,
-              p.dimensionContext.schedule ?? "",
+              itemType || "",
+              nbMm || 0,
+              schedule || "",
               p.dimensionContext.lengthMm,
-              p.dimensionContext.flangeConfig ?? "",
+              flangeConfig || "",
             ].join("|");
             const suggestion = suggestionMap.get(key);
             if (suggestion) {
@@ -375,12 +384,13 @@ export function JigsawEditor(props: {
   );
 
   const addRoll = () => {
+    const thicknessMm = rubberSpec?.thicknessMm;
     setRolls((prev) => [
       ...prev,
       {
         widthMm: 1200,
         lengthMm: 12500,
-        thicknessMm: rubberSpec?.thicknessMm || 5,
+        thicknessMm: thicknessMm || 5,
       },
     ]);
   };
@@ -447,7 +457,8 @@ export function JigsawEditor(props: {
   };
 
   const activePanel = activeDragId ? findPanel(activeDragId) : null;
-  const activePanelData = activePanel?.panel || null;
+  const panel = activePanel?.panel;
+  const activePanelData = panel || null;
 
   return (
     <div>

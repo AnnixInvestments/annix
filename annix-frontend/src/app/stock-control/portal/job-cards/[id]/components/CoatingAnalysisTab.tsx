@@ -166,7 +166,8 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
   const [pmEdits, setPmEdits] = useState<Record<string, number>>({});
   const [isSavingPmEdits, setIsSavingPmEdits] = useState(false);
   const [pmEditError, setPmEditError] = useState<string | null>(null);
-  const isPmEditable = props.showStockDecision || props.isAdmin;
+  const showStockDecision = props.showStockDecision;
+  const isPmEditable = showStockDecision || props.isAdmin;
   const hasPmEdits = Object.keys(pmEdits).length > 0;
   const [correctionField, setCorrectionField] = useState("coatingSpec");
   const [correctionValue, setCorrectionValue] = useState("");
@@ -271,6 +272,8 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
               </thead>
               <tbody>
                 {lineItems.map((li, idx) => {
+                  const itemNo = li.itemNo;
+                  const itemDescription = li.itemDescription;
                   const m2 = Number(li.m2) || 0;
                   const qty = Number(li.quantity) || 1;
                   return (
@@ -279,9 +282,9 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
                       <td className="hidden sm:table-cell py-2 pr-4 text-gray-700">
                         {workTypeFromNotes(li.notes)}
                       </td>
-                      <td className="py-2 pr-4 text-gray-900 font-medium">{li.itemNo || "—"}</td>
+                      <td className="py-2 pr-4 text-gray-900 font-medium">{itemNo || "—"}</td>
                       <td className="py-2 pr-4 text-gray-700 max-w-[120px] sm:max-w-none truncate">
-                        {li.itemDescription || "—"}
+                        {itemDescription || "—"}
                       </td>
                       <td className="py-2 pr-4 text-right font-semibold text-gray-900">{qty}</td>
                       <td className="hidden sm:table-cell py-2 pr-4 text-right text-gray-700">
@@ -360,6 +363,8 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
               </div>
             </div>
             {(() => {
+              const extSurfacePrep = coatingAnalysis.extSurfacePrep;
+              const intSurfacePrep = coatingAnalysis.intSurfacePrep;
               const hasExtCoats = coatingAnalysis.coats.some((c) => c.area === "external");
               const hasIntCoats = coatingAnalysis.coats.some((c) => c.area === "internal");
               return (
@@ -377,7 +382,7 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
                       <span className="font-medium text-gray-500">Ext Surface Prep: </span>
                       {isPmEditable ? (
                         <select
-                          value={coatingAnalysis.extSurfacePrep || ""}
+                          value={extSurfacePrep || ""}
                           onChange={async (e) => {
                             const updated = await stockControlApiClient.updateSurfacePrep(jobId, {
                               extSurfacePrep: e.target.value,
@@ -410,7 +415,7 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
                       <span className="font-medium text-gray-500">Int Surface Prep: </span>
                       {isPmEditable ? (
                         <select
-                          value={coatingAnalysis.intSurfacePrep || ""}
+                          value={intSurfacePrep || ""}
                           onChange={async (e) => {
                             const updated = await stockControlApiClient.updateSurfacePrep(jobId, {
                               intSurfacePrep: e.target.value,
@@ -531,9 +536,10 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
             })()}
             {coatingAnalysis.stockAssessment.length > 0 &&
               (() => {
+                const pmEditedAssessment = coatingAnalysis.pmEditedAssessment;
                 const rawNotesForStock = coatingAnalysis.rawNotes;
                 const sourceAssessment = (
-                  coatingAnalysis.pmEditedAssessment || coatingAnalysis.stockAssessment
+                  pmEditedAssessment || coatingAnalysis.stockAssessment
                 ).filter((item) => !isBandingProduct(item.product, rawNotesForStock));
                 const deduped = sourceAssessment.reduce<typeof coatingAnalysis.stockAssessment>(
                   (acc, item) => {
@@ -670,6 +676,7 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
                     </div>
                     {props.showStockDecision &&
                       (() => {
+                        const isProcessingDecision = props.isProcessingDecision;
                         const allSufficient = deduped.every(
                           (item) =>
                             item.stockItemId !== null &&
@@ -692,7 +699,7 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
                               </button>
                               <button
                                 onClick={props.onUseCurrentStock}
-                                disabled={props.isProcessingDecision || !allSufficient}
+                                disabled={isProcessingDecision || !allSufficient}
                                 title={
                                   allSufficient
                                     ? "Reserve current stock for this job"

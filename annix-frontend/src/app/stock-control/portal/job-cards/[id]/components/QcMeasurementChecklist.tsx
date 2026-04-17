@@ -203,7 +203,8 @@ export function QcMeasurementChecklist(props: QcMeasurementChecklistProps) {
                 const readingCount = upload ? upload.readingCount : 0;
                 const uploadFilename = upload ? upload.originalFilename : "report.pdf";
                 const uploadId = upload ? upload.id : null;
-                const batchLabel = rowStatus.batch || "-";
+                const batch = rowStatus.batch;
+                const batchLabel = batch || "-";
                 const status = rowStatus.status;
 
                 return (

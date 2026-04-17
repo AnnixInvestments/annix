@@ -183,6 +183,7 @@ function MessageInput({
 }
 
 export function ChatPanel() {
+  const id = user?.id;
   const {
     user,
     messagingEnabled,
@@ -250,7 +251,7 @@ export function ChatPanel() {
             {state.view === "conversations" && "Messages"}
             {state.view === "conversation" &&
               state.activeConversation &&
-              conversationDisplayName(state.activeConversation, user?.id || 0)}
+              conversationDisplayName(state.activeConversation, id || 0)}
             {state.view === "new-conversation" && "New Message"}
           </span>
         </div>
@@ -361,7 +362,8 @@ export function ChatPanel() {
             )}
             {state.conversations.map((conv) => {
               const displayName = conversationDisplayName(conv, user?.id || 0);
-              const unread = state.convUnreadCounts[String(conv.id)] ?? 0;
+              const rawValue = state.convUnreadCounts[String(conv.id)];
+              const unread = rawValue || 0;
               return (
                 <button
                   type="button"

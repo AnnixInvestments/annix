@@ -73,10 +73,12 @@ export default function StockControlDashboard() {
       .catch(() => setNotifications([]));
   }, []);
 
-  const hiddenWidgets = preferences?.hiddenWidgets || [];
+  const hiddenWidgets2 = preferences?.hiddenWidgets;
+  const hiddenWidgets = hiddenWidgets2 || [];
 
   const widgetOrder = useMemo(() => {
-    const saved = preferences?.widgetOrder || [];
+    const rawWidgetOrder = preferences?.widgetOrder;
+    const saved = rawWidgetOrder || [];
     if (saved.length === 0) return DEFAULT_WIDGET_ORDER;
     const allKeys = new Set(DEFAULT_WIDGET_ORDER);
     const missing = DEFAULT_WIDGET_ORDER.filter((k) => !saved.includes(k));
@@ -86,7 +88,8 @@ export default function StockControlDashboard() {
 
   const handleWidgetToggle = useCallback(
     (widgetKey: string) => {
-      const current = preferences?.hiddenWidgets || [];
+      const rawHiddenWidgets = preferences?.hiddenWidgets;
+      const current = rawHiddenWidgets || [];
       const updated = current.includes(widgetKey)
         ? current.filter((k) => k !== widgetKey)
         : [...current, widgetKey];
@@ -138,6 +141,7 @@ export default function StockControlDashboard() {
   const visibleWidgets = widgetOrder.filter((key) => widgetVisible(key));
 
   const renderWidget = (key: string) => {
+    const name = user?.name;
     if (key === "role-summary") {
       return <RoleSummarySection activeView={effectiveRole} />;
     } else if (key === "my-tasks") {
@@ -171,7 +175,7 @@ export default function StockControlDashboard() {
   return (
     <div className="space-y-6">
       <HeroBanner
-        userName={user?.name || null}
+        userName={name || null}
         heroImageUrl={heroImageUrl ?? null}
         backgroundColor={colors.background}
       />

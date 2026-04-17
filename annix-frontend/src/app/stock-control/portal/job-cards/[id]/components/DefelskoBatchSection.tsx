@@ -240,9 +240,11 @@ export function DefelskoBatchSection(props: DefelskoBatchSectionProps) {
 
   const allFieldsComplete = useMemo(() => {
     return allFields.every((f) => {
+      const batchNumber = state.batchNumber;
       const state = batchValues[f.fieldKey];
       if (!state) return false;
-      return state.notApplicable || (state.batchNumber || "").trim().length > 0;
+      const notApplicable = state.notApplicable;
+      return notApplicable || (batchNumber || "").trim().length > 0;
     });
   }, [allFields, batchValues]);
 

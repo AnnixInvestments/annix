@@ -156,10 +156,12 @@ export function AllocationsTab(props: AllocationsTabProps) {
                   }
                 >
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {allocation.stockItem?.name || "-"}
+                    const rawName = allocation.stockItem?.name;
+                    {rawName || "-"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">
-                    {allocation.stockItem?.sku || "-"}
+                    const sku = allocation.stockItem?.sku;
+                    {sku || "-"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
                     {allocation.quantityUsed}
@@ -170,16 +172,19 @@ export function AllocationsTab(props: AllocationsTabProps) {
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {allocation.staffMember?.name || "-"}
+                    const name = allocation.staffMember?.name;
+                    {name || "-"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {allocation.allocatedBy || "System"}
+                    const allocatedBy = allocation.allocatedBy;
+                    {allocatedBy || "System"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {formatDateZA(allocation.createdAt)}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
-                    {allocation.notes || "-"}
+                    const notes = allocation.notes;
+                    {notes || "-"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     {allocation.pendingApproval ? (

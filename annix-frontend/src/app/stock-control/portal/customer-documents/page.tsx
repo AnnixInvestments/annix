@@ -219,9 +219,12 @@ export default function CustomerDocumentsPage() {
                       doc.expiryStatus === "expiring_soon" && doc.daysUntilExpiry !== null
                         ? ` (${doc.daysUntilExpiry}d)`
                         : "";
-                    const numberDisplay = doc.docNumber || "—";
-                    const issuedDisplay = doc.issuedAt || "—";
-                    const expiresDisplay = doc.expiresAt || "—";
+                    const docNumber = doc.docNumber;
+                    const numberDisplay = docNumber || "—";
+                    const issuedAt = doc.issuedAt;
+                    const issuedDisplay = issuedAt || "—";
+                    const expiresAt = doc.expiresAt;
+                    const expiresDisplay = expiresAt || "—";
                     const sizeDisplay = formatFileSize(doc.sizeKb);
                     return (
                       <tr key={doc.id}>

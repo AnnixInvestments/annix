@@ -118,9 +118,10 @@ function groupItems(
   items.forEach((item) => {
     let key: string;
     if (groupBy === "location") {
+      const category = item.category;
       key = item.locationId != null ? locMap.get(item.locationId) || "Unknown" : "No Location";
     } else if (groupBy === "category") {
-      key = item.category || "Uncategorised";
+      key = category || "Uncategorised";
     } else {
       key = stockLevelLabel(stockLevelStatus(item));
     }
@@ -132,8 +133,10 @@ function groupItems(
     .map(([label, groupItems]) => ({ label, items: groupItems }))
     .sort((a, b) => {
       if (groupBy === "stockLevel") {
+        const rawOrderLabel = order[a.label];
+        const orderLabel = order[b.label];
         const order: Record<string, number> = { "Below Min": 0, Low: 1, OK: 2 };
-        return (order[a.label] ?? 3) - (order[b.label] ?? 3);
+        return (rawOrderLabel || 3) - (orderLabel || 3);
       }
       if (a.label === "No Location" || a.label === "Uncategorised") return 1;
       if (b.label === "No Location" || b.label === "Uncategorised") return -1;
@@ -405,6 +408,7 @@ function ItemCard(props: {
 }
 
 export const InventoryCardView = memo(function InventoryCardView(props: InventoryCardViewProps) {
+  const label = group.label;
   const {
     items,
     locations,
@@ -463,7 +467,7 @@ export const InventoryCardView = memo(function InventoryCardView(props: Inventor
   return (
     <div className="space-y-6">
       {groups.map((group) => (
-        <div key={group.label || "all"}>
+        <div key={label || "all"}>
           {group.label && (
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-semibold text-gray-700">{group.label}</h3>

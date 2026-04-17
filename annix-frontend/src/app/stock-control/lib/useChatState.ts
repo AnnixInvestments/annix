@@ -71,7 +71,8 @@ function errorMessage(e: unknown, fallback: string): string {
 
 export function useChatState() {
   const { user, profile } = useStockControlAuth();
-  const messagingEnabled = profile?.messagingEnabled || false;
+  const rawMessagingEnabled = profile?.messagingEnabled;
+  const messagingEnabled = rawMessagingEnabled || false;
 
   const [state, setState] = useState<ChatState>(INITIAL_STATE);
 

@@ -395,13 +395,16 @@ function extractMappedRows(
       /^(production|foreman?\s*sign|forman\s*sign|material\s*spec|job\s*comp|completion\s*date|supervisor|quality\s*control|qc\s*sign|inspector|approved\s*by|checked\s*by|signature|remarks|comments|date\s+date|notes|sign|date)\b|^Sage\s*\d{3}\s*Evolution|\d{4}\/\d{2}\/\d{2}\s+\d{2}:\d{2}:\d{2}/i;
     if (grouped.size > 0) {
       grouped.forEach((entry) => {
+        const notes = li.notes;
         const cleanedLines: Record<string, string>[] = [];
         const pendingNotes: string[] = [];
         let sectionStartIdx = 0;
 
         entry.lines.forEach((li) => {
-          const code = (li.itemCode || "").trim();
-          const desc = (li.itemDescription || "").trim();
+          const itemDescription = li.itemDescription;
+          const itemCode = li.itemCode;
+          const code = (itemCode || "").trim();
+          const desc = (itemDescription || "").trim();
           const hasRealData = desc || li.itemNo || li.quantity || li.jtNo;
 
           if (!hasRealData && code && SPEC_NOTE_PATTERN.test(code)) {
@@ -441,7 +444,7 @@ function extractMappedRows(
           });
         }
 
-        const allSpecs = cleanedLines.map((li) => li.notes || "").filter(Boolean);
+        const allSpecs = cleanedLines.map((li) => notes || "").filter(Boolean);
 
         entry.lines = cleanedLines;
         if (allSpecs.length > 0) {
@@ -1049,8 +1052,11 @@ export default function JobCardImportPage() {
     const seen = new Set<string>();
     const missing: { rowIdx: number; specNote: string }[] = [];
     mappedRows.forEach((row, rowIdx) => {
-      const notes = (row.notes || "").trim();
-      const lineNotes = (row.lineItems || []).map((li) => (li.notes || "").trim()).filter(Boolean);
+      const notes2 = row.notes;
+      const rawLineItems = row.lineItems;
+      const rawNotes = li.notes;
+      const notes = (notes2 || "").trim();
+      const lineNotes = (rawLineItems || []).map((li) => (rawNotes || "").trim()).filter(Boolean);
       const allSpecs = [notes, ...lineNotes].filter(Boolean);
 
       allSpecs.forEach((spec) => {
@@ -1078,12 +1084,15 @@ export default function JobCardImportPage() {
     if (updates.length > 0) {
       const specToMicron = new Map(updates.map((u) => [u.specNote, u.microns.trim()]));
       const updatedRows = mappedRows.map((row) => {
-        const rowNotes = (row.notes || "").trim();
+        const rawNotes = row.notes;
+        const lineItems = row.lineItems;
+        const rowNotes = (rawNotes || "").trim();
         const rowMicron = specToMicron.get(rowNotes);
         const updatedNotes = rowMicron ? `${rowNotes} ${rowMicron}um` : row.notes;
 
-        const updatedLineItems = (row.lineItems || []).map((li) => {
-          const liNotes = (li.notes || "").trim();
+        const updatedLineItems = (lineItems || []).map((li) => {
+          const notes = li.notes;
+          const liNotes = (notes || "").trim();
           const liMicron = specToMicron.get(liNotes);
           if (liMicron) {
             return { ...li, notes: `${liNotes} ${liMicron}um` };

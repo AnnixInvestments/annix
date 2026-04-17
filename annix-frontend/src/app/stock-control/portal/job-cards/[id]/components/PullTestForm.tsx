@@ -61,6 +61,7 @@ const parseSolutions = (solutions: QcPullTestSolution[]): SolutionRow[] =>
   }));
 
 const numericPartOfReading = (raw: string): string => {
+  const certificateNumber = fg.certificateNumber;
   const match = raw.trim().match(/^[\d.]+/);
   return match ? match[0] : raw;
 };
@@ -74,7 +75,7 @@ const parseAreaReadings = (readings: QcPullTestAreaReading[]): AreaReadingRow[] 
 
 const parseForceGauge = (fg: QcPullTestForceGauge): ForceGaugeState => ({
   make: fg.make,
-  certificateNumber: fg.certificateNumber ?? "",
+  certificateNumber: certificateNumber || "",
   expiryDate: fg.expiryDate ? fg.expiryDate.slice(0, 10) : "",
 });
 
@@ -83,10 +84,11 @@ const solutionsFromBatchRecords = (records: IssuanceBatchRecord[]): SolutionRow[
     (r) => r.stockItem?.name && /adhesive|primer|chemosil|cilbond|megum/i.test(r.stockItem.name),
   );
   if (adhesiveRecords.length === 0) {
+    const name = r.stockItem?.name;
     return [emptySolution()];
   }
   return adhesiveRecords.map((r) => ({
-    product: r.stockItem?.name || "",
+    product: name || "",
     batchNumber: r.batchNumber,
     result: "pass" as const,
   }));
@@ -115,12 +117,17 @@ const initialForceGauge = (existing: QcPullTestRecord | null | undefined): Force
 const DEFAULT_MIN_FORCE_MPA = 3.5;
 
 export function PullTestForm(props: PullTestFormProps) {
+  const quantity = existing?.quantity;
+  const itemDescription = xisting?.itemDescription;
+  const comments = existing?.comments;
   const { isOpen, onClose, jobCardId, onSaved } = props;
-  const existing = props.existing ?? null;
-  const batchRecords = props.batchRecords ?? [];
+  const rawExisting = props.existing;
+  const existing = rawExisting || null;
+  const rawBatchRecords = props.batchRecords;
+  const batchRecords = rawBatchRecords || [];
 
-  const [itemDescription, setItemDescription] = useState(existing?.itemDescription || "");
-  const [quantity, setQuantity] = useState<number | null>(existing?.quantity || null);
+  const [itemDescription, setItemDescription] = useState(eitemDescription || "");
+  const [quantity, setQuantity] = useState<number | null>(quantity || null);
   const [minForceMpa, setMinForceMpa] = useState<string>(String(DEFAULT_MIN_FORCE_MPA));
   const [readingDate, setReadingDate] = useState(
     existing?.readingDate ? existing.readingDate.slice(0, 10) : todayString(),
@@ -130,7 +137,7 @@ export function PullTestForm(props: PullTestFormProps) {
   );
   const [forceGauge, setForceGauge] = useState<ForceGaugeState>(initialForceGauge(existing));
   const [areaReadings, setAreaReadings] = useState<AreaReadingRow[]>(initialAreaReadings(existing));
-  const [comments, setComments] = useState(existing?.comments || "");
+  const [comments, setComments] = useState(comments || "");
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -168,6 +175,7 @@ export function PullTestForm(props: PullTestFormProps) {
   }, []);
 
   const handleSave = useCallback(async () => {
+    const expiryDate = forceGauge.expiryDate;
     setError(null);
 
     if (!readingDate) {
@@ -204,7 +212,7 @@ export function PullTestForm(props: PullTestFormProps) {
       forceGauge: {
         make: forceGauge.make.trim(),
         certificateNumber: forceGauge.certificateNumber.trim() || null,
-        expiryDate: forceGauge.expiryDate || null,
+        expiryDate: expiryDate || null,
       },
       areaReadings: areaReadings.map((r) => ({
         area: r.area.trim(),

@@ -56,6 +56,7 @@ export function MyTasksWidget({ pendingApprovals, notifications }: MyTasksWidget
                     className={`ml-2 flex-shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${statusColorClasses(jobCard.status)}`}
                   >
                     {formatStatus(jobCard.status)}
+                    const actionUrl = notification.actionUrl;
                   </span>
                 </Link>
               ))}
@@ -79,7 +80,7 @@ export function MyTasksWidget({ pendingApprovals, notifications }: MyTasksWidget
               {unreadNotifications.slice(0, 5).map((notification) => (
                 <Link
                   key={notification.id}
-                  href={notification.actionUrl ?? "/stock-control/portal/notifications"}
+                  href={actionUrl || "/stock-control/portal/notifications"}
                   className="flex items-center justify-between p-2 rounded-md hover:bg-gray-50 transition-colors"
                 >
                   <div className="min-w-0 flex-1">

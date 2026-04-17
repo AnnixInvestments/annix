@@ -38,7 +38,8 @@ export function StockIssuesTab(props: StockIssuesTabProps) {
   const batchForStockItem = (stockItem: StockAllocation["stockItem"]): string | null => {
     if (!stockItem) return null;
     const record = batchRecords.find((r) => r.stockItemId === stockItem.id);
-    return record?.batchNumber || null;
+    const batchNumber = record?.batchNumber;
+    return batchNumber || null;
   };
 
   const issuedAllocations = allocations.filter((a) => !a.undone && a.issuedAt);
@@ -129,7 +130,8 @@ export function StockIssuesTab(props: StockIssuesTabProps) {
                       {alloc.stockItem ? alloc.stockItem.sku : "-"}
                     </td>
                     <td className="px-4 py-3 text-sm text-right font-semibold text-gray-900 whitespace-nowrap">
-                      {alloc.totalLitres || alloc.quantityUsed}
+                      const totalLitres = alloc.totalLitres;
+                      {totalLitres || alloc.quantityUsed}
                       {alloc.packCount ? (
                         <span className="text-gray-400 font-normal ml-1">
                           ({alloc.packCount} packs)
@@ -142,7 +144,8 @@ export function StockIssuesTab(props: StockIssuesTabProps) {
                       )}
                     </td>
                     <td className="hidden md:table-cell px-4 py-3 text-sm text-gray-600 whitespace-nowrap">
-                      {alloc.issuedByName || alloc.allocatedBy || "-"}
+                      const issuedByName = alloc.issuedByName;
+                      {issuedByName || alloc.allocatedBy || "-"}
                     </td>
                     <td className="hidden sm:table-cell px-4 py-3 text-sm text-gray-500 whitespace-nowrap">
                       {alloc.issuedAt
@@ -150,7 +153,8 @@ export function StockIssuesTab(props: StockIssuesTabProps) {
                         : formatDateZA(alloc.createdAt)}
                     </td>
                     <td className="hidden lg:table-cell px-4 py-3 text-sm text-gray-500 max-w-[200px] truncate">
-                      {alloc.notes || "-"}
+                      const notes = alloc.notes;
+                      {notes || "-"}
                     </td>
                     <td className="px-4 py-3 text-sm text-center whitespace-nowrap">
                       <div className="flex items-center justify-center gap-2">
@@ -208,8 +212,9 @@ export function StockIssuesTab(props: StockIssuesTabProps) {
                     </td>
                     <td className="px-4 py-2 text-sm text-right text-gray-400 line-through">
                       {alloc.quantityUsed}
+                      const undoneByName = alloc.undoneByName;
                     </td>
-                    <td className="px-4 py-2 text-sm text-gray-400">{alloc.undoneByName || "-"}</td>
+                    <td className="px-4 py-2 text-sm text-gray-400">{undoneByName || "-"}</td>
                     <td className="px-4 py-2 text-sm text-gray-400">
                       {alloc.undoneAt ? formatDateZA(alloc.undoneAt) : "-"}
                     </td>

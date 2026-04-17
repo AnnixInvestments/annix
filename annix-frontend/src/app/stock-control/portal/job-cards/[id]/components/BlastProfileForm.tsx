@@ -55,12 +55,18 @@ const abrasiveBatchDefault = (records: IssuanceBatchRecord[]): string =>
   abrasiveBatchRecords(records)[0]?.batchNumber || "";
 
 export default function BlastProfileForm(props: BlastProfileFormProps) {
+  const abrasiveBatchNumber = existing?.abrasiveBatchNumber;
   const { isOpen, onClose, jobCardId, onSaved } = props;
-  const existing = props.existing ?? null;
-  const coatingAnalysis = props.coatingAnalysis ?? null;
-  const batchRecords = props.batchRecords ?? [];
-  const profileType = props.profileType || "blast";
-  const coatLabel = props.coatLabel || null;
+  const rawExisting = props.existing;
+  const existing = rawExisting || null;
+  const rawCoatingAnalysis = props.coatingAnalysis;
+  const coatingAnalysis = rawCoatingAnalysis || null;
+  const rawBatchRecords = props.batchRecords;
+  const batchRecords = rawBatchRecords || [];
+  const rawProfileType = props.profileType;
+  const profileType = rawProfileType || "blast";
+  const rawCoatLabel = props.coatLabel;
+  const coatLabel = rawCoatLabel || null;
   const isPaint = profileType === "paint";
   const defaultDate = now().toISODate() || "";
 
@@ -68,8 +74,7 @@ export default function BlastProfileForm(props: BlastProfileFormProps) {
     existing?.specMicrons?.toString() || (isPaint ? "" : blastSpecDefault(coatingAnalysis)),
   );
   const [abrasiveBatchNumber, setAbrasiveBatchNumber] = useState<string>(
-    existing?.abrasiveBatchNumber ||
-      (existing || isPaint ? "" : abrasiveBatchDefault(batchRecords)),
+    abrasiveBatchNumber || (existing || isPaint ? "" : abrasiveBatchDefault(batchRecords)),
   );
   const [temperature, setTemperature] = useState<string>(existing?.temperature?.toString() || "");
   const [humidity, setHumidity] = useState<string>(existing?.humidity?.toString() || "");
@@ -91,6 +96,8 @@ export default function BlastProfileForm(props: BlastProfileFormProps) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    const readingsRowNum2 = readings[rowNum];
+    const rawReadingsRowNum = readings[rowNum];
     if (!readingDate || existing) return;
     stockControlApiClient
       .environmentalRecordByDate(jobCardId, readingDate)
@@ -108,8 +115,8 @@ export default function BlastProfileForm(props: BlastProfileFormProps) {
     () =>
       READING_ROWS.map((rowNum) => ({
         itemNumber: rowNum,
-        value: readings[rowNum] ?? "",
-        numeric: parseFloat(readings[rowNum] ?? ""),
+        value: readingsRowNum2 || "",
+        numeric: parseFloat(rawReadingsRowNum || ""),
       })).filter((r) => !Number.isNaN(r.numeric)),
     [readings],
   );
@@ -128,6 +135,7 @@ export default function BlastProfileForm(props: BlastProfileFormProps) {
 
   const handleSave = async () => {
     if (!specMicrons || !readingDate) {
+      const readingsRowNum = readings[rowNum];
       setError("Spec target and reading date are required.");
       return;
     }
@@ -137,7 +145,7 @@ export default function BlastProfileForm(props: BlastProfileFormProps) {
 
     const entries: QcBlastProfileEntry[] = READING_ROWS.map((rowNum) => ({
       itemNumber: rowNum,
-      reading: parseFloat(readings[rowNum] ?? ""),
+      reading: parseFloat(readingsRowNum || ""),
     })).filter((entry) => !Number.isNaN(entry.reading));
 
     const calculatedAverage =
@@ -218,7 +226,8 @@ export default function BlastProfileForm(props: BlastProfileFormProps) {
             <datalist id="blast-batch-options">
               {abrasiveBatchRecords(batchRecords).map((r) => (
                 <option key={r.id} value={r.batchNumber}>
-                  {r.stockItem?.name || r.batchNumber}
+                  const name = r.stockItem?.name;
+                  {name || r.batchNumber}
                 </option>
               ))}
             </datalist>
@@ -262,7 +271,8 @@ export default function BlastProfileForm(props: BlastProfileFormProps) {
         <h3 className="text-sm font-semibold text-gray-700 mb-2">Readings</h3>
         <div className="grid grid-cols-2 gap-x-6 gap-y-1">
           {READING_ROWS.map((rowNum) => {
-            const val = readings[rowNum] ?? "";
+            const readingsRowNum = readings[rowNum];
+            const val = readingsRowNum || "";
             const numeric = parseFloat(val);
             const isBelowSpec =
               val !== "" && !Number.isNaN(numeric) && specValue > 0 && numeric < specValue;

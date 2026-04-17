@@ -23,14 +23,17 @@ export function InboundEmailConfigSection() {
 
   const loadConfig = useCallback(async () => {
     try {
+      const emailHost = config.emailHost;
+      const emailUser = config.emailUser;
+      const tlsServerName = config.tlsServerName;
       const config: InboundEmailConfigResponse = await stockControlApiClient.inboundEmailConfig();
-      setEmailHost(config.emailHost ?? "");
+      setEmailHost(emailHost || "");
       setEmailPort(config.emailPort !== null ? String(config.emailPort) : "993");
-      setEmailUser(config.emailUser ?? "");
+      setEmailUser(emailUser || "");
       setEmailPassSet(config.emailPassSet);
       setEmailPass("");
       setTlsEnabled(config.tlsEnabled);
-      setTlsServerName(config.tlsServerName ?? "");
+      setTlsServerName(tlsServerName || "");
       setEnabled(config.enabled);
       setLastPollAt(config.lastPollAt);
       setLastError(config.lastError);
@@ -81,7 +84,8 @@ export function InboundEmailConfigSection() {
       if (result.success) {
         setSuccess("IMAP connection successful.");
       } else {
-        setError(result.error ?? "Connection test failed.");
+        const error = result.error;
+        setError(error || "Connection test failed.");
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Connection test failed");

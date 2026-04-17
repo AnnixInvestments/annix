@@ -383,7 +383,8 @@ const APPROVAL_STATUS_CONFIG: Record<QcpApprovalStatus, { label: string; color: 
 };
 
 function ApprovalStatusBadge(props: { status: QcpApprovalStatus }) {
-  const config = APPROVAL_STATUS_CONFIG[props.status] || APPROVAL_STATUS_CONFIG.draft;
+  const APPROVAL_STATUS_CONFIGStatus = APPROVAL_STATUS_CONFIG[props.status];
+  const config = APPROVAL_STATUS_CONFIGStatus || APPROVAL_STATUS_CONFIG.draft;
   return (
     <span
       className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${config.color}`}
@@ -394,19 +395,29 @@ function ApprovalStatusBadge(props: { status: QcpApprovalStatus }) {
 }
 
 export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormProps) {
+  const documentRef = existingPlan?.documentRef;
+  const planType = existingPlan?.planType;
+  const customerName = existingPlan?.customerName;
+  const orderNumber = existingPlan?.orderNumber;
+  const jobNumber = existingPlan?.jobNumber;
+  const jobName = existingPlan?.jobName;
+  const specification = existingPlan?.specification;
+  const qcpNumber = gPlan?.qcpNumber;
+  const revision = Plan?.revision;
+  const clientEmail = existingPlan?.clientEmail;
   const isEditing = existingPlan !== null;
 
   const [planType, setPlanType] = useState<QcpPlanType>(existingPlan?.planType || "paint_external");
-  const [qcpNumber, setQcpNumber] = useState(existingPlan?.qcpNumber || "");
+  const [qcpNumber, setQcpNumber] = useState(existinqcpNumber || "");
   const [documentRef, setDocumentRef] = useState(
-    existingPlan?.documentRef || PLAN_TYPE_DOC_REFS[existingPlan?.planType || "paint_external"],
+    documentRef || PLAN_TYPE_DOC_REFS[planType || "paint_external"],
   );
-  const [revision, setRevision] = useState(existingPlan?.revision || "01");
-  const [customerName, setCustomerName] = useState(existingPlan?.customerName || "");
-  const [orderNumber, setOrderNumber] = useState(existingPlan?.orderNumber || "");
-  const [jobNumber, setJobNumber] = useState(existingPlan?.jobNumber || "");
-  const [jobName, setJobName] = useState(existingPlan?.jobName || "");
-  const [specification, setSpecification] = useState(existingPlan?.specification || "");
+  const [revision, setRevision] = useState(existingrevision || "01");
+  const [customerName, setCustomerName] = useState(customerName || "");
+  const [orderNumber, setOrderNumber] = useState(orderNumber || "");
+  const [jobNumber, setJobNumber] = useState(jobNumber || "");
+  const [jobName, setJobName] = useState(jobName || "");
+  const [specification, setSpecification] = useState(specification || "");
   const [activities, setActivities] = useState<QcpActivity[]>(
     existingPlan?.activities?.length ? existingPlan.activities : templateForType("paint_external"),
   );
@@ -420,7 +431,7 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
           date: null,
         })),
   );
-  const [clientEmail, setClientEmail] = useState(existingPlan?.clientEmail || "");
+  const [clientEmail, setClientEmail] = useState(clientEmail || "");
   const [approvalStatus, setApprovalStatus] = useState<QcpApprovalStatus>(
     (existingPlan?.approvalStatus as QcpApprovalStatus) || "draft",
   );
@@ -480,21 +491,26 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
   useEffect(() => {
     const loadJobCardData = async () => {
       try {
+        const jobNumber = jobCard.jobNumber;
         const [jobCard, coatingAnalysis] = await Promise.all([
           stockControlApiClient.jobCardById(jobCardId),
           stockControlApiClient.jobCardCoatingAnalysis(jobCardId),
         ]);
 
-        setJobNumber(jobCard.jobNumber || "");
+        setJobNumber(jobNumber || "");
 
         if (isEditing) {
-          if (!existingPlan?.jobName || existingPlan.jobName.startsWith(`${jobCard.jobNumber} -`)) {
+          const customerName = jobCard.customerName;
+          const poNumber = jobCard.poNumber;
+          const rawJobName = Plan?.jobName;
+          const jobName = jobCard.jobName;
+          if (!existingrawJobName || existingPlan.jobName.startsWith(`${jobCard.jobNumber} -`)) {
             setJobName(jobCard.jobName || "");
           }
         } else {
-          setCustomerName(jobCard.customerName || "");
-          setOrderNumber(jobCard.poNumber || "");
-          setJobName(jobCard.jobName || "");
+          setCustomerName(customerName || "");
+          setOrderNumber(poNumber || "");
+          setJobName(jobName || "");
 
           if (coatingAnalysis && coatingAnalysis.status === "accepted") {
             populateFromCoating(planType, coatingAnalysis);
@@ -513,10 +529,11 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
       const relevantCoats = coating.coats.filter((c) => c.area === area);
       if (relevantCoats.length > 0) {
         const specParts = relevantCoats.map((c) => {
+          const maxDftUm = c.maxDftUm;
           const dft =
             c.minDftUm && c.maxDftUm && c.minDftUm !== c.maxDftUm
               ? `${c.minDftUm}-${c.maxDftUm}`
-              : `${c.maxDftUm || c.minDftUm}`;
+              : `${maxDftUm || c.minDftUm}`;
           return `${c.product} (${dft} μm DFT)`;
         });
         setSpecification(specParts.join("; "));
@@ -528,7 +545,8 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
           hand_tool: "Hand tool preparation",
           power_tool: "Power tool preparation",
         };
-        const prepLabel = prepLabels[coating.surfacePrep] || coating.surfacePrep;
+        const prepLabelsSurfacePrep = prepLabels[coating.surfacePrep];
+        const prepLabel = prepLabelsSurfacePrep || coating.surfacePrep;
         setActivities((prev) =>
           prev.map((a) =>
             a.description.toLowerCase().includes("surface preparation")
@@ -729,6 +747,7 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
   const handleResendApproval = async (partyRole: "mps" | "client" | "third_party") => {
     if (!existingPlan) return;
     try {
+      const statusMapPartyRole = statusMap[partyRole];
       setIsSendingApproval(true);
       setError(null);
       await stockControlApiClient.resendControlPlanApproval(jobCardId, existingPlan.id, partyRole);
@@ -737,7 +756,7 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
         client: "pending_client",
         third_party: "pending_third_party",
       };
-      setApprovalStatus(statusMap[partyRole] || "pending_mps");
+      setApprovalStatus(statusMapPartyRole || "pending_mps");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to resend approval");
     } finally {
@@ -943,7 +962,8 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
                     <select
                       value={activity.specification || ""}
                       onChange={(e) => {
-                        const val = e.target.value || null;
+                        const value = e.target.value;
+                        const val = value || null;
                         updateActivity(idx, "specification", val);
                         if (val === "NO BLASTING") {
                           updateActivity(idx, "description", "Surface Preparation");
@@ -987,12 +1007,15 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
                   />
                 </td>
                 {visiblePartyKeys.map((partyKey) => {
-                  const signOff = activity[partyKey] || emptyPartySignOff();
+                  const interventionType = signOff.interventionType;
+                  const initial = signOff.initial;
+                  const activityPartyKey = activity[partyKey];
+                  const signOff = activityPartyKey || emptyPartySignOff();
                   return (
                     <td key={partyKey} className="px-1 py-1.5">
                       <div className="flex items-center gap-1">
                         <select
-                          value={signOff.interventionType || ""}
+                          value={interventionType || ""}
                           onChange={(e) =>
                             updateActivityIntervention(
                               idx,
@@ -1021,7 +1044,7 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
                           className={`w-12 rounded border px-1 py-1 text-center text-xs ${line1InitialError && idx === 0 && partyKey === "pls" ? "border-2 border-red-500 bg-red-50 text-red-700 ring-2 ring-red-200" : signOff.initial ? "border-teal-300 bg-teal-50 font-medium text-teal-800" : "border-gray-300 text-gray-400 hover:border-teal-400 hover:bg-teal-50"}`}
                           title="Initial"
                         >
-                          {signOff.initial || "init"}
+                          {initial || "init"}
                         </button>
                         {line1InitialError && idx === 0 && partyKey === "pls" && (
                           <p className="mt-0.5 text-[10px] leading-tight text-red-600">
@@ -1240,7 +1263,8 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
         (() => {
           const act = activities[initialsTarget.activityIdx];
           const partyKey = initialsTarget.party;
-          const currentInitial = act?.[partyKey]?.initial || null;
+          const initial = act?.[partyKey]?.initial;
+          const currentInitial = initial || null;
           return (
             <InitialsPad
               currentValue={currentInitial}

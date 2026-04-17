@@ -257,8 +257,9 @@ const bgNodeState = (
   phase1ActionDone?: boolean,
 ): "completed" | "skipped" | "active" | "pending" => {
   if (bg.completedAt !== null) {
+    const notes = bg.notes;
     if (bg.completionType === "skipped") return "skipped";
-    if ((bg.notes || "").toLowerCase().includes("current stock")) return "skipped";
+    if ((notes || "").toLowerCase().includes("current stock")) return "skipped";
     return "completed";
   }
   const hasColoredBranch = branchBgSteps.some((b) => b.branchColor !== null);
@@ -293,8 +294,9 @@ const collectBranches = (
   const bgByKey = new Map(backgroundSteps.map((bg) => [bg.stepKey, bg]));
 
   const inheritedColor = (bg: BackgroundStepStatus): string | null => {
+    const triggerAfterStep = bg.triggerAfterStep;
     if (bg.branchColor) return bg.branchColor;
-    const parent = bgByKey.get(bg.triggerAfterStep || "");
+    const parent = bgByKey.get(triggerAfterStep || "");
     if (parent) return inheritedColor(parent);
     return null;
   };
@@ -571,7 +573,8 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
         const triggerNode = triggerIdx >= 0 ? fgNodeRefs.current[triggerIdx] : null;
         if (!triggerNode) return acc;
 
-        const rejoinKey = bp.rejoinAtStep || "";
+        const rejoinAtStep = bp.rejoinAtStep;
+        const rejoinKey = rejoinAtStep || "";
         const rejoinRef = bgNodeRefs.current[rejoinKey];
         const rejoinCustomRef = bgNodeRefs.current[`custom_${rejoinKey}`];
         const rejoinNode =
@@ -704,7 +707,8 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
         const branchActive =
           (pastTrigger || (atTrigger && currentStepPhase1Done)) && prevAmberComplete;
         const allComplete = branch.bgSteps.every((bg) => bg.completedAt !== null);
-        const activeColor = branch.branchColor || "#f59e0b";
+        const branchColor = branch.branchColor;
+        const activeColor = branchColor || "#f59e0b";
         const strokeColor = branchActive ? activeColor : "#d1d5db";
         const mergeColor = branchActive && allComplete ? activeColor : "#d1d5db";
 
@@ -890,7 +894,8 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
           ? branch.triggerFgIdx < currentStepIndex && prevBelowAmberComplete
           : branch.triggerFgIdx < currentStepIndex;
         const allComplete = branch.bgSteps.every((bg) => bg.completedAt !== null);
-        const activeColor = branch.branchColor || "#f59e0b";
+        const branchColor = branch.branchColor;
+        const activeColor = branchColor || "#f59e0b";
         const strokeColor = branchActive ? activeColor : "#d1d5db";
         const mergeColor = branchActive && allComplete ? activeColor : "#d1d5db";
 
@@ -1002,9 +1007,10 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
       ].includes(key);
     const reqBgSteps = backgroundSteps.filter((bg) => isReqStep(bg.stepKey));
     const isReqSkippedOrBypassed = (bg: BackgroundStepStatus) => {
+      const rawNotes = bg.notes;
       if (bg.completedAt === null) return false;
       if (bg.completionType === "skipped") return true;
-      const notes = (bg.notes || "").toLowerCase();
+      const notes = (rawNotes || "").toLowerCase();
       return notes.includes("current stock") || notes.includes("soh");
     };
     const isBypassed = reqBgSteps.length > 0 && reqBgSteps.every(isReqSkippedOrBypassed);
@@ -1018,6 +1024,8 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
         container.querySelector<HTMLElement>('[data-bg-step="custom_stock_allocation"]');
 
       if (!shouldShow || !recEl || !saEl) {
+        const strokeWidth = path.strokeWidth;
+        const dashArray = path.dashArray;
         pathEl.removeAttribute("d");
         return;
       }
@@ -1097,9 +1105,9 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
               d={path.d}
               fill="none"
               stroke={path.color}
-              strokeWidth={path.strokeWidth || 2.5}
+              strokeWidth={strokeWidth || 2.5}
               strokeLinecap="round"
-              strokeDasharray={path.dashArray || undefined}
+              strokeDasharray={dashArray || undefined}
             />
           ))}
         </svg>
@@ -1489,7 +1497,8 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
                         : "text-gray-400"
                   }`}
                 >
-                  {docUploadStep.label || "Doc Upload"}
+                  const label = docUploadStep.label;
+                  {label || "Doc Upload"}
                 </p>
                 {docState === "completed" && docUploadStep.completedByName && (
                   <p className="text-[8px] text-gray-400 truncate max-w-[60px]">
@@ -1691,7 +1700,8 @@ function MobileTransitMap(props: MobileTransitMapProps) {
   const mobileBypassByTrigger = useMemo(
     () =>
       mobileBypassSteps.reduce<Record<string, BackgroundStepStatus[]>>((acc, bp) => {
-        const trigger = bp.triggerAfterStep || "";
+        const triggerAfterStep = bp.triggerAfterStep;
+        const trigger = triggerAfterStep || "";
         const existing = acc[trigger];
         return { ...acc, [trigger]: [...(existing || []), bp] };
       }, {}),
@@ -1752,7 +1762,8 @@ function MobileTransitMap(props: MobileTransitMapProps) {
                         : "text-gray-400"
                   }`}
                 >
-                  {docUploadStep.label || "Doc Upload"}
+                  const label = docUploadStep.label;
+                  {label || "Doc Upload"}
                 </p>
                 {bgDisplayName && <p className="text-[10px] text-gray-500">{bgDisplayName}</p>}
               </div>

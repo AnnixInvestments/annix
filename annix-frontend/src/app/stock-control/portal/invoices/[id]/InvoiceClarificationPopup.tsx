@@ -41,7 +41,8 @@ export default function InvoiceClarificationPopup(props: InvoiceClarificationPop
   const [searchQuery, setSearchQuery] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const suggestedMatches = clarification.context?.suggestedMatches || [];
+  const rawSuggestedMatches = clarification.context?.suggestedMatches;
+  const suggestedMatches = rawSuggestedMatches || [];
   const isPriceConfirmation = clarification.clarificationType === "price_confirmation";
 
   const filteredStockItems = stockItems.filter(
@@ -168,7 +169,8 @@ export default function InvoiceClarificationPopup(props: InvoiceClarificationPop
                       : "bg-green-100 text-green-800"
                   }`}
                 >
-                  {(clarification.context.priceChangePercent || 0) > 0 ? "+" : ""}
+                  const priceChangePercent = clarification.context.priceChangePercent;
+                  {(priceChangePercent || 0) > 0 ? "+" : ""}
                   {clarification.context.priceChangePercent?.toFixed(1)}%
                 </span>
               </div>

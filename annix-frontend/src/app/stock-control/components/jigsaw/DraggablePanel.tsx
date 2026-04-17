@@ -73,6 +73,8 @@ export function DraggablePanel(props: {
     : "bg-white/30 hover:bg-white/50";
 
   if (isPlaced && scale !== null) {
+    const itemNo = panel.itemNo;
+    const rawItemNo = panel.itemNo;
     const widthPx = el * scale;
     const heightPx = ew * scale;
     const showFullLabel = widthPx > 60 && heightPx > 30;
@@ -94,7 +96,7 @@ export function DraggablePanel(props: {
         {showFullLabel ? (
           <>
             <span className="text-[10px] font-bold leading-tight truncate px-0.5">
-              {panel.itemNo || panel.panelId}
+              {itemNo || panel.panelId}
             </span>
             <span className="text-[8px] leading-tight opacity-80">
               {ew}x{el}
@@ -102,9 +104,7 @@ export function DraggablePanel(props: {
             </span>
           </>
         ) : (
-          <span className="text-[8px] font-bold truncate px-0.5">
-            {panel.itemNo || panel.panelId}
-          </span>
+          <span className="text-[8px] font-bold truncate px-0.5">{rawItemNo || panel.panelId}</span>
         )}
         {showRotateBtn && (
           <button
@@ -126,11 +126,12 @@ export function DraggablePanel(props: {
   }
 
   if (editing) {
+    const itemNo = panel.itemNo;
     return (
       <div
         className={`${colorClass} rounded border-2 border-yellow-300 p-2 text-white select-none`}
       >
-        <div className="text-xs font-bold truncate mb-1.5">{panel.itemNo || panel.panelId}</div>
+        <div className="text-xs font-bold truncate mb-1.5">{itemNo || panel.panelId}</div>
         <div className="flex items-center gap-1 mb-1">
           <label className="text-[10px] opacity-80">W</label>
           <input

@@ -80,7 +80,8 @@ const matchBatchByProduct = (records: IssuanceBatchRecord[], product: string): s
     }
   }
 
-  return paintRecords[0]?.batchNumber || "";
+  const rawBatchNumber = paintRecords[0]?.batchNumber;
+  return rawBatchNumber || "";
 };
 
 type DftCoatType = "primer" | "intermediate" | "final";
@@ -111,10 +112,18 @@ const coatDefaults = (
 };
 
 export default function DftReadingForm(props: DftReadingFormProps) {
+  const coatType = existing?.coatType;
+  const paintProduct = existing?.paintProduct;
+  const batchNumber = existing?.batchNumber;
+  const minUm = defaults?.minUm;
+  const maxUm = defaults?.maxUm;
   const { isOpen, onClose, jobCardId, onSaved } = props;
-  const existing = props.existing ?? null;
-  const coatingAnalysis = props.coatingAnalysis ?? null;
-  const batchRecords = props.batchRecords ?? [];
+  const rawExisting = props.existing;
+  const existing = rawExisting || null;
+  const rawCoatingAnalysis = props.coatingAnalysis;
+  const coatingAnalysis = rawCoatingAnalysis || null;
+  const rawBatchRecords = props.batchRecords;
+  const batchRecords = rawBatchRecords || [];
 
   const availableCoatTypes: DftCoatType[] = (() => {
     const extCoats = coatingAnalysis?.coats.filter((c) => c.area === "external") || [];
@@ -123,19 +132,15 @@ export default function DftReadingForm(props: DftReadingFormProps) {
       ? (["primer", "intermediate", "final"] as const).filter((r) => roles.includes(r))
       : ["primer", "final"];
   })();
-  const [coatType, setCoatType] = useState<DftCoatType>(existing?.coatType || "primer");
+  const [coatType, setCoatType] = useState<DftCoatType>(coatType || "primer");
   const defaults = existing ? null : coatDefaults(coatingAnalysis, coatType, batchRecords);
-  const [paintProduct, setPaintProduct] = useState(
-    existing?.paintProduct || defaults?.product || "",
-  );
-  const [batchNumber, setBatchNumber] = useState(
-    existing?.batchNumber || defaults?.batchNumber || "",
-  );
+  const [paintProduct, setPaintProduct] = useState(paintProduct || defaults?.product || "");
+  const [batchNumber, setBatchNumber] = useState(batchNumber || defaults?.batchNumber || "");
   const [specMinMicrons, setSpecMinMicrons] = useState(
-    existing?.specMinMicrons != null ? String(existing.specMinMicrons) : defaults?.minUm || "",
+    existing?.specMinMicrons != null ? String(existing.specMinMicrons) : minUm || "",
   );
   const [specMaxMicrons, setSpecMaxMicrons] = useState(
-    existing?.specMaxMicrons != null ? String(existing.specMaxMicrons) : defaults?.maxUm || "",
+    existing?.specMaxMicrons != null ? String(existing.specMaxMicrons) : maxUm || "",
   );
   const [readingDate, setReadingDate] = useState(
     existing?.readingDate ? existing.readingDate.slice(0, 10) : todayDateString(),
@@ -171,7 +176,8 @@ export default function DftReadingForm(props: DftReadingFormProps) {
   const filledReadings = useMemo(
     () =>
       READING_ROWS.map((num) => {
-        const value = readings[num] || "";
+        const readingsNum = readings[num];
+        const value = readingsNum || "";
         return { itemNumber: num, value };
       }).filter((r) => r.value !== "" && !Number.isNaN(Number(r.value))),
     [readings],
@@ -302,7 +308,8 @@ export default function DftReadingForm(props: DftReadingFormProps) {
             <datalist id="dft-batch-options">
               {paintBatchRecords(batchRecords).map((r) => (
                 <option key={r.id} value={r.batchNumber}>
-                  {r.stockItem?.name || r.batchNumber}
+                  const name = r.stockItem?.name;
+                  {name || r.batchNumber}
                 </option>
               ))}
             </datalist>
@@ -372,7 +379,8 @@ export default function DftReadingForm(props: DftReadingFormProps) {
 
       <div className="mb-4 grid grid-cols-2 gap-x-6 gap-y-1">
         {READING_ROWS.map((num) => {
-          const readingValue = readings[num] || "";
+          const readingsNum = readings[num];
+          const readingValue = readingsNum || "";
           const outOfSpec = readingOutOfSpec(readingValue);
           return (
             <div key={num} className="flex items-center gap-2">

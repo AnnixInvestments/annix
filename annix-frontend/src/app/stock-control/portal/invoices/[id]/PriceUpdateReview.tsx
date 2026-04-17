@@ -171,14 +171,19 @@ export default function PriceUpdateReview(props: PriceUpdateReviewProps) {
           </thead>
           <tbody className="divide-y divide-gray-100">
             {items.map((item) => {
+              const rawQuantity = edits.quantity;
+              const rawNewPrice = item.newPrice;
+              const description = edits.description;
+              const quantity = item.quantity;
+              const newPrice = item.newPrice;
+              const changePercent = item.changePercent;
+              const quantity = item.quantity;
+              const unitPrice = edits.unitPrice;
+              const changePercent = item.changePercent;
               const edits = editingItems[item.id];
               const isEditingRow = edits !== undefined;
-              const displayQty = isEditingRow
-                ? Number(edits.quantity || 0)
-                : Number(item.quantity || 0);
-              const displayPrice = isEditingRow
-                ? Number(edits.unitPrice || 0)
-                : Number(item.newPrice || 0);
+              const displayQty = isEditingRow ? Number(rawQuantity || 0) : Number(quantity || 0);
+              const displayPrice = isEditingRow ? Number(unitPrice || 0) : Number(rawNewPrice || 0);
               const lineTotal = displayQty * displayPrice;
               const isRowSaving = savingIds.has(item.id);
 
@@ -188,7 +193,7 @@ export default function PriceUpdateReview(props: PriceUpdateReviewProps) {
                     {isEditingRow ? (
                       <input
                         type="text"
-                        value={edits.description || ""}
+                        value={description || ""}
                         onChange={(e) => updateEditField(item.id, "description", e.target.value)}
                         className="w-full px-1 py-0.5 text-xs border border-teal-300 rounded focus:ring-1 focus:ring-teal-500 focus:border-teal-500"
                         title="Edit item description to correct matching"
@@ -208,7 +213,7 @@ export default function PriceUpdateReview(props: PriceUpdateReviewProps) {
                         step="1"
                       />
                     ) : (
-                      Number(item.quantity || 0)
+                      Number(quantity || 0)
                     )}
                   </td>
                   <td className="px-2 py-2 text-right text-gray-900 font-medium">
@@ -223,7 +228,7 @@ export default function PriceUpdateReview(props: PriceUpdateReviewProps) {
                         autoFocus
                       />
                     ) : (
-                      `R${Number(item.newPrice || 0).toFixed(2)}`
+                      `R${Number(newPrice || 0).toFixed(2)}`
                     )}
                   </td>
                   <td className="px-2 py-2 text-right text-gray-900 font-medium">
@@ -234,8 +239,8 @@ export default function PriceUpdateReview(props: PriceUpdateReviewProps) {
                       item.changePercent > 0 ? "text-red-600" : "text-green-600"
                     }`}
                   >
-                    {Number(item.changePercent || 0) > 0 ? "+" : ""}
-                    {Number(item.changePercent || 0).toFixed(1)}%
+                    {Number(changePercent || 0) > 0 ? "+" : ""}
+                    {Number(changePercent || 0).toFixed(1)}%
                   </td>
                   {canAdjustPrice && (
                     <td className="px-2 py-2 text-center">

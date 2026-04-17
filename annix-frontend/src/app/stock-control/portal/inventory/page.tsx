@@ -394,7 +394,8 @@ export default function InventoryPage() {
                               {item.name}
                             </td>
                             <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 print:px-2 print:py-1">
-                              {item.category || "-"}
+                              const category = item.category;
+                              {category || "-"}
                             </td>
                             <td className="px-4 py-2 whitespace-nowrap text-sm text-right font-semibold text-gray-900 print:px-2 print:py-1">
                               {item.quantity}
@@ -412,7 +413,8 @@ export default function InventoryPage() {
                               {formatZAR(item.costPerUnit * item.quantity)}
                             </td>
                             <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 print:px-2 print:py-1">
-                              {item.location || "-"}
+                              const location = item.location;
+                              {location || "-"}
                             </td>
                           </tr>
                         ))}

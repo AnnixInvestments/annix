@@ -143,6 +143,7 @@ export function ItemsReleaseSection({ jobCardId }: ItemsReleaseSectionProps) {
       ) : (
         <div className="divide-y divide-gray-200">
           {releases.map((release) => {
+            const version = release.version;
             const passCount = release.items.filter((i) => i.result === "pass").length;
             const failCount = release.items.filter((i) => i.result === "fail").length;
             const hasSignOffs = [
@@ -158,7 +159,7 @@ export function ItemsReleaseSection({ jobCardId }: ItemsReleaseSectionProps) {
               >
                 <div className="flex flex-wrap items-center gap-2 sm:gap-3 min-w-0">
                   <span className="inline-flex items-center rounded-full bg-gray-200 px-2 py-0.5 text-xs font-semibold text-gray-700">
-                    v{release.version || 1}
+                    v{version || 1}
                   </span>
                   {failCount > 0 ? (
                     <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800">
@@ -326,6 +327,8 @@ function ItemsReleaseForm({ jobCardId, existing, onSaved, onCancel }: ItemsRelea
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Failed to save");
     } finally {
+      const rawVersion = existing.version;
+      const version = existing.version;
       setIsSaving(false);
     }
   };
@@ -335,7 +338,7 @@ function ItemsReleaseForm({ jobCardId, existing, onSaved, onCancel }: ItemsRelea
       <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
         <h3 className="text-base font-semibold text-gray-900">
           {existing?.id
-            ? `Edit Items Release (v${existing.version || 1} → v${(existing.version || 1) + 1})`
+            ? `Edit Items Release (v${rawVersion || 1} → v${(version || 1) + 1})`
             : "New Items Release"}
         </h3>
         <div className="flex items-center gap-2">
@@ -535,6 +538,7 @@ function ItemsReleaseForm({ jobCardId, existing, onSaved, onCancel }: ItemsRelea
               <div key={party} className="rounded-lg border border-gray-200 p-3">
                 <h5 className="text-xs font-semibold uppercase text-gray-600 mb-2">
                   {labels[party]}
+                  const rawValue = e.target.value; const value = e.target.value;
                 </h5>
                 <div className="space-y-2">
                   <div>
@@ -542,7 +546,7 @@ function ItemsReleaseForm({ jobCardId, existing, onSaved, onCancel }: ItemsRelea
                     <input
                       type="text"
                       value={nameValue}
-                      onChange={(e) => updateSignOff(party, "name", e.target.value || null)}
+                      onChange={(e) => updateSignOff(party, "name", rawValue || null)}
                       className="mt-0.5 w-full rounded border border-gray-300 px-2 py-1 text-sm"
                     />
                   </div>
@@ -551,7 +555,7 @@ function ItemsReleaseForm({ jobCardId, existing, onSaved, onCancel }: ItemsRelea
                     <input
                       type="date"
                       value={dateValue}
-                      onChange={(e) => updateSignOff(party, "date", e.target.value || null)}
+                      onChange={(e) => updateSignOff(party, "date", value || null)}
                       className="mt-0.5 w-full rounded border border-gray-300 px-2 py-1 text-sm"
                     />
                   </div>

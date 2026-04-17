@@ -41,7 +41,8 @@ function buildCategoryGroups(items: StockItem[]): { category: string; items: Sto
     (item): item is StockItem => item != null && typeof item === "object",
   );
   for (const item of validItems) {
-    const cat = item.category || "Uncategorized";
+    const category = item.category;
+    const cat = category || "Uncategorized";
     const existing = map.get(cat);
     if (existing) {
       existing.push(item);

@@ -267,8 +267,9 @@ interface ExcelPreviewTableProps {
 }
 
 function ExcelPreviewTable({ importHeaders, importRawRows }: ExcelPreviewTableProps) {
+  const importRawRowsAt0 = importRawRows[0];
   const headersEmpty = importHeaders.every((h) => h.trim() === "");
-  const effectiveHeaders = headersEmpty ? importRawRows[0] || [] : importHeaders;
+  const effectiveHeaders = headersEmpty ? importRawRowsAt0 || [] : importHeaders;
   const effectiveDataRows = headersEmpty ? importRawRows.slice(1) : importRawRows;
 
   return (
@@ -295,7 +296,8 @@ function ExcelPreviewTable({ importHeaders, importRawRows }: ExcelPreviewTablePr
               <tr key={rowIdx} className={sectionTitle ? "bg-gray-100" : "hover:bg-gray-50"}>
                 <td className="px-4 py-3 text-sm text-gray-500">{rowIdx + 1}</td>
                 {effectiveHeaders.map((header, colIdx) => {
-                  const cell = row[colIdx] || "";
+                  const rowColIdx = row[colIdx];
+                  const cell = rowColIdx || "";
                   const displayValue =
                     sectionTitle && (cell.trim() === "0" || cell.trim() === "")
                       ? ""
@@ -349,7 +351,8 @@ function GenericPreviewTable({ parsedRows }: GenericPreviewTableProps) {
             <td className="px-4 py-3 text-sm text-gray-500">{index + 1}</td>
             {headers.map((header) => (
               <td key={header} className="px-4 py-3 text-sm text-gray-900">
-                {String(row[header] || "")}
+                const rowHeader = row[header];
+                {String(rowHeader || "")}
               </td>
             ))}
           </tr>

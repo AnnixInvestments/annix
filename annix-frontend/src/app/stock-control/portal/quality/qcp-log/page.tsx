@@ -220,10 +220,12 @@ export default function QcpLogPage() {
               sortedPlans.map((plan) => (
                 <tr key={plan.id} className="hover:bg-gray-50">
                   <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-gray-900">
-                    {plan.qcpNumber || `QCP #${plan.id}`}
+                    const qcpNumber = plan.qcpNumber;
+                    {qcpNumber || `QCP #${plan.id}`}
                   </td>
                   <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-gray-700">
-                    {plan.jobNumber || "-"}
+                    const jobNumber = plan.jobNumber;
+                    {jobNumber || "-"}
                   </td>
                   <td className="whitespace-nowrap px-4 py-3 text-sm">
                     <span
@@ -239,23 +241,28 @@ export default function QcpLogPage() {
                     </span>
                   </td>
                   <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500">
-                    {plan.documentRef || "-"}
+                    const documentRef = plan.documentRef;
+                    {documentRef || "-"}
+                    const revision = plan.revision;
                   </td>
                   <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500">
-                    v{plan.revision || "01"}
+                    v{revision || "01"}
                   </td>
                   <td className="max-w-[180px] px-4 py-3 text-sm text-gray-500">
                     <div className="overflow-x-auto whitespace-nowrap scrollbar-thin">
-                      {plan.customerName || "-"}
+                      const customerName = plan.customerName;
+                      {customerName || "-"}
                     </div>
                   </td>
                   <td className="max-w-[200px] px-4 py-3 text-sm text-gray-500">
                     <div className="overflow-x-auto whitespace-nowrap scrollbar-thin">
-                      {plan.jobName || "-"}
+                      const jobName = plan.jobName;
+                      {jobName || "-"}
                     </div>
                   </td>
                   <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500">
-                    {plan.createdByName || "-"}
+                    const createdByName = plan.createdByName;
+                    {createdByName || "-"}
                   </td>
                   <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500">
                     {plan.createdAt ? formatDateZA(plan.createdAt) : "-"}

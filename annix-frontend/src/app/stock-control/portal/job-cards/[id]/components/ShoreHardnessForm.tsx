@@ -66,7 +66,8 @@ const coatingAnalysisDefaults = (
     .filter((p) => p.trim().toUpperCase().startsWith("INT"))
     .map((p) => p.trim());
 
-  const intSpec = intParts[0] || analysis.rawNotes;
+  const intPartsAt0 = intParts[0];
+  const intSpec = intPartsAt0 || analysis.rawNotes;
   const shoreMatch = intSpec.match(SHORE_PATTERN);
   const requiredShore = shoreMatch ? parseInt(shoreMatch[1], 10) : null;
 
@@ -80,8 +81,9 @@ const rubberBatchDefaults = (
     (r) => r.stockItem?.name && /rubber|lining|nr\/sbr|neoprene|epdm/i.test(r.stockItem.name),
   );
   if (rubberRecord) {
+    const name = rubberRecord.stockItem?.name;
     return {
-      spec: rubberRecord.stockItem?.name || "",
+      spec: name || "",
       batchNumber: rubberRecord.batchNumber,
     };
   }
@@ -89,21 +91,28 @@ const rubberBatchDefaults = (
 };
 
 export function ShoreHardnessForm(props: ShoreHardnessFormProps) {
+  const rubberSpec = existing?.rubberSpec;
+  const rubberBatchNumber = existing?.rubberBatchNumber;
+  const requiredShore = existing?.requiredShore;
+  const rawBatchRecords = ps.batchRecords;
+  const rawValue = existing.readings.itemLabels?.[i];
   const { isOpen, onClose, jobCardId, onSaved } = props;
-  const existing = props.existing ?? null;
-  const batchRecords = props.batchRecords ?? [];
-  const coatingAnalysis = props.coatingAnalysis ?? null;
+  const rawExisting = props.existing;
+  const existing = rawExisting || null;
+  const batchRecords = prorawBatchRecords || [];
+  const rawCoatingAnalysis = props.coatingAnalysis;
+  const coatingAnalysis = rawCoatingAnalysis || null;
 
   const batchDefaults = existing ? null : rubberBatchDefaults(batchRecords);
   const coatingDefaults = existing ? null : coatingAnalysisDefaults(coatingAnalysis);
   const [rubberSpec, setRubberSpec] = useState(
-    existing?.rubberSpec || coatingDefaults?.rubberSpec || batchDefaults?.spec || "",
+    rubberSpec || coatingDefaults?.rubberSpec || batchDefaults?.spec || "",
   );
   const [rubberBatchNumber, setRubberBatchNumber] = useState(
-    existing?.rubberBatchNumber || batchDefaults?.batchNumber || "",
+    rubberBatchNumber || batchDefaults?.batchNumber || "",
   );
   const [requiredShore, setRequiredShore] = useState<number | null>(
-    existing?.requiredShore || coatingDefaults?.requiredShore || null,
+    requiredShore || coatingDefaults?.requiredShore || null,
   );
   const [readingDate, setReadingDate] = useState(
     existing?.readingDate ? existing.readingDate.slice(0, 10) : todayString(),
@@ -112,9 +121,7 @@ export function ShoreHardnessForm(props: ShoreHardnessFormProps) {
     existing ? parseExistingReadings(existing.readings) : emptyReadings(),
   );
   const [itemLabels, setItemLabels] = useState<string[]>(
-    existing?.readings.itemLabels
-      ? ROW_INDICES.map((i) => existing.readings.itemLabels?.[i] || "")
-      : emptyItemLabels(),
+    existing?.readings.itemLabels ? ROW_INDICES.map((i) => rawValue || "") : emptyItemLabels(),
   );
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);

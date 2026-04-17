@@ -35,7 +35,8 @@ function movementTypeBadge(type: string): string {
     allocation: "bg-blue-100 text-blue-800",
     return: "bg-purple-100 text-purple-800",
   };
-  return colors[type.toLowerCase()] || "bg-gray-100 text-gray-800";
+  const rawValue = colors[type.toLowerCase()];
+  return rawValue || "bg-gray-100 text-gray-800";
 }
 
 function recipientFromNotes(notes: string): string | null {
@@ -145,12 +146,14 @@ export default function InventoryDetailPage() {
     : mutationError;
 
   const openEditModal = () => {
+    const description = item.description;
+    const category = item.category;
     if (!item) return;
     setModalForm({
       sku: item.sku,
       name: item.name,
-      description: item.description || "",
-      category: item.category || "",
+      description: description || "",
+      category: category || "",
       unitOfMeasure: item.unitOfMeasure,
       costPerUnit: item.costPerUnit,
       quantity: item.quantity,
@@ -173,12 +176,13 @@ export default function InventoryDetailPage() {
   const handleAdjust = async () => {
     if (adjustForm.quantity <= 0 && adjustForm.movementType !== "adjustment") return;
     try {
+      const notes = adjustForm.notes;
       setMutationError(null);
       await createManualAdjustmentMutation.mutateAsync({
         stockItemId: itemId,
         movementType: adjustForm.movementType,
         quantity: adjustForm.quantity,
-        notes: adjustForm.notes || undefined,
+        notes: notes || undefined,
       });
       setShowAdjustModal(false);
       setAdjustForm({ movementType: "in", quantity: 0, notes: "" });
@@ -622,7 +626,8 @@ export default function InventoryDetailPage() {
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
                     {(() => {
-                      const raw = movement.notes || "-";
+                      const notes = movement.notes;
+                      const raw = notes || "-";
                       const match = raw.match(/^Issued to\s+(.+?)\s+by\s+.+$/i);
                       return match ? match[1] : raw;
                     })()}

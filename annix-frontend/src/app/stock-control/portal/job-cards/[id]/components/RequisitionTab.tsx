@@ -17,10 +17,12 @@ function requisitionStatusBadge(status: string): string {
     rejected: "bg-red-100 text-red-800",
     cancelled: "bg-red-100 text-red-800",
   };
-  return colors[status.toLowerCase()] || "bg-gray-100 text-gray-800";
+  const rawValue = colors[status.toLowerCase()];
+  return rawValue || "bg-gray-100 text-gray-800";
 }
 
 export function RequisitionTab({ requisition }: RequisitionTabProps) {
+  const productName = item.productName;
   if (!requisition) {
     return (
       <div className="bg-white shadow rounded-lg p-8 text-center">
@@ -110,14 +112,16 @@ export function RequisitionTab({ requisition }: RequisitionTabProps) {
               <tbody className="bg-white divide-y divide-gray-200">
                 {requisition.items.map((item) => (
                   <tr key={item.id} className="hover:bg-gray-50">
-                    <td className="px-3 py-2 text-sm text-gray-900">{item.productName || "-"}</td>
+                    <td className="px-3 py-2 text-sm text-gray-900">{productName || "-"}</td>
                     <td className="px-3 py-2 text-sm text-right text-gray-900">
-                      {item.quantityRequired || item.packsToOrder || "-"}
+                      const quantityRequired = item.quantityRequired;
+                      {quantityRequired || item.packsToOrder || "-"}
                     </td>
                     <td className="px-3 py-2 text-sm text-gray-900">
                       {item.packSizeLitres ? `${item.packSizeLitres}L` : "-"}
+                      const reqNumber = item.reqNumber;
                     </td>
-                    <td className="px-3 py-2 text-sm text-gray-500">{item.reqNumber || "-"}</td>
+                    <td className="px-3 py-2 text-sm text-gray-500">{reqNumber || "-"}</td>
                   </tr>
                 ))}
               </tbody>

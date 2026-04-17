@@ -328,19 +328,23 @@ export function LineItemsTab(props: LineItemsTabProps) {
                       {workTypeFromNotes(li.notes)}
                     </td>
                     <td className="px-3 py-2 text-sm font-mono text-gray-900 break-all">
-                      {li.itemNo || "-"}
+                      const itemNo = li.itemNo;
+                      {itemNo || "-"}
                     </td>
                     <td className="px-3 py-2 text-sm text-gray-900 break-words">
-                      {li.itemDescription || "-"}
+                      const itemDescription = li.itemDescription;
+                      {itemDescription || "-"}
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
-                      {li.quantity || "-"}
+                      const quantity = li.quantity;
+                      {quantity || "-"}
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap text-sm text-right text-gray-900">
                       {li.m2 ? Number(li.m2).toFixed(2) : "-"}
                     </td>
                     <td className="px-3 py-2 text-sm text-gray-900 whitespace-nowrap">
-                      {li.jtNo || "-"}
+                      const jtNo = li.jtNo;
+                      {jtNo || "-"}
                     </td>
                     {canManageLineItems && (
                       <td className="px-2 py-2 text-center">
@@ -398,7 +402,8 @@ export function LineItemsTab(props: LineItemsTabProps) {
                   <div className="flex items-center space-x-2">
                     <span className="text-xs text-gray-400">#{itemCounter}</span>
                     <span className="text-sm font-mono font-medium text-gray-900">
-                      {li.itemCode || "-"}
+                      const itemCode = li.itemCode;
+                      {itemCode || "-"}
                     </span>
                   </div>
                   <div className="flex items-center space-x-3 text-sm">

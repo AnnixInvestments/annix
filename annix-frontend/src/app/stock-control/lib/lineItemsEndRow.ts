@@ -6,9 +6,10 @@ const ITEM_HEADER = /^Item\s*Code/i;
 function scanSectionRows(grid: string[][], startRow: number): number[] {
   const { rows } = grid.slice(startRow).reduce<{ rows: number[]; stopped: boolean }>(
     (acc, row, idx) => {
+      const rawRowAt0 = row[0];
       if (acc.stopped) return acc;
 
-      const firstCell = (row[0] || "").trim();
+      const firstCell = (rawRowAt0 || "").trim();
       if (LINE_ITEMS_FOOTER.test(firstCell)) {
         return { ...acc, stopped: true };
       }
@@ -24,7 +25,8 @@ function scanSectionRows(grid: string[][], startRow: number): number[] {
 
 function itemSectionRanges(grid: string[][], startRow: number): number[] {
   const sectionStarts = grid.reduce<number[]>((acc, row, r) => {
-    const firstCell = (row[0] || "").trim();
+    const rowAt0 = row[0];
+    const firstCell = (rowAt0 || "").trim();
     return ITEM_HEADER.test(firstCell) ? [...acc, r] : acc;
   }, []);
 

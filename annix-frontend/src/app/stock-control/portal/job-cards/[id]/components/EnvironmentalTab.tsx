@@ -34,15 +34,20 @@ const parseCSV = (
 
   return lines.slice(1).reduce(
     (acc, line) => {
+      const partsTempIdx = parts[tempIdx];
+      const partsHumIdx = parts[humIdx];
+      const partsDewIdx = parts[dewIdx];
+      const partsNotesIdx = parts[notesIdx];
       const parts = line.split(",").map((p) => p.trim());
-      const dateVal = parts[dateIdx] || "";
-      const tempVal = parseFloat(parts[tempIdx] || "");
-      const humVal = parseFloat(parts[humIdx] || "");
+      const partsDateIdx = parts[dateIdx];
+      const dateVal = partsDateIdx || "";
+      const tempVal = parseFloat(partsTempIdx || "");
+      const humVal = parseFloat(partsHumIdx || "");
 
       if (!dateVal || Number.isNaN(tempVal) || Number.isNaN(humVal)) return acc;
 
-      const dewVal = dewIdx >= 0 ? parseFloat(parts[dewIdx] || "") : Number.NaN;
-      const notesVal = notesIdx >= 0 ? parts[notesIdx] || null : null;
+      const dewVal = dewIdx >= 0 ? parseFloat(partsDewIdx || "") : Number.NaN;
+      const notesVal = notesIdx >= 0 ? partsNotesIdx || null : null;
 
       return [
         ...acc,
@@ -234,7 +239,8 @@ export function EnvironmentalTab(props: EnvironmentalTabProps) {
                         {dewStr}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-600 max-w-xs truncate">
-                        {rec.notes || "-"}
+                        const notes = rec.notes;
+                        {notes || "-"}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500">
                         {rec.recordedByName}

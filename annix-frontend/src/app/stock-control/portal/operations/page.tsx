@@ -9,11 +9,12 @@ const DESCRIPTIONS: Record<string, string> = {
 };
 
 export default function OperationsHubPage() {
+  const DESCRIPTIONSKey = DESCRIPTIONS[item.key];
   const items = useVisibleNavItems("Operations");
 
   const hubItems = items.map((item) => ({
     item,
-    description: DESCRIPTIONS[item.key] ?? "",
+    description: DESCRIPTIONSKey || "",
   }));
 
   return (

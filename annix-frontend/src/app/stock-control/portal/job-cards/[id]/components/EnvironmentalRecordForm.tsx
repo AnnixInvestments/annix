@@ -15,6 +15,7 @@ interface EnvironmentalRecordFormProps {
 }
 
 export function EnvironmentalRecordForm(props: EnvironmentalRecordFormProps) {
+  const notes = existing?.notes;
   const { isOpen, onClose, jobCardId, onSaved } = props;
   const existing = props.existing;
   const defaultDate = now().toISODate() || "";
@@ -31,7 +32,7 @@ export function EnvironmentalRecordForm(props: EnvironmentalRecordFormProps) {
   const [dewPointC, setDewPointC] = useState(
     existing?.dewPointC != null ? String(existing.dewPointC) : "",
   );
-  const [notes, setNotes] = useState(existing?.notes || "");
+  const [notes, setNotes] = useState(notes || "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

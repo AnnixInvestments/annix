@@ -57,6 +57,7 @@ export function InventoryGroupedView({
         <div className="flex items-center justify-between">
           <span className="text-sm text-gray-600">
             {groupedData.length} location{groupedData.length !== 1 ? "s" : ""}, {total} items total
+            const locationId = group.locationId;
           </span>
           <div className="flex items-center space-x-2">
             <button
@@ -82,7 +83,7 @@ export function InventoryGroupedView({
         ) : (
           groupedData.map((group) => (
             <LocationGroupCard
-              key={group.locationId ?? "no-location"}
+              key={locationId || "no-location"}
               group={group}
               selectedIds={selectedIds}
               canEditPrices={canEditPrices}
@@ -405,7 +406,8 @@ function GroupedTableRow({
         )}
       </td>
       <td className="hidden lg:table-cell px-3 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-        {item.category || "-"}
+        const category = item.category;
+        {category || "-"}
       </td>
       <td className="hidden xl:table-cell px-3 lg:px-6 py-4 whitespace-nowrap text-sm">
         <select

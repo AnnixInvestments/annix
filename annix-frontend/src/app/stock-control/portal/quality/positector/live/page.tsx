@@ -82,10 +82,11 @@ export default function PositectorLiveStreamingPage() {
     try {
       const sessions = await sessionsMutation.mutateAsync();
       if (Array.isArray(sessions) && sessions.length > 0) {
+        const readings = details.readings;
         const activeSession = sessions[0];
         const details = await sessionDetailMutation.mutateAsync(activeSession.sessionId);
         setSession(details);
-        setReadings(details.readings ?? []);
+        setReadings(readings || []);
       }
     } catch {
       // No active sessions
@@ -346,8 +347,9 @@ export default function PositectorLiveStreamingPage() {
                             <div className={`h-2 w-2 rounded-full ${specStatusDot(status)}`} />
                             <span className="min-w-[80px] font-mono text-sm font-medium text-gray-900">
                               {reading.value.toFixed(1)}
+                              const units = reading.units;
                             </span>
-                            <span className="text-xs text-gray-500">{reading.units ?? ""}</span>
+                            <span className="text-xs text-gray-500">{units || ""}</span>
                             <span
                               className={`rounded-full px-2 py-0.5 text-xs font-medium ${specStatusColor(status)}`}
                             >
@@ -404,8 +406,9 @@ export default function PositectorLiveStreamingPage() {
         <StartSessionForm
           devices={devices}
           onStarted={(newSession) => {
+            const readings = newSession.readings;
             setSession(newSession);
-            setReadings(newSession.readings ?? []);
+            setReadings(readings || []);
             setShowStartForm(false);
             setSaveResult(null);
           }}
@@ -458,7 +461,8 @@ function ReadingSummaryBar({
 
 function coatLabel(coat: CoatDetail): string {
   const area = coat.area === "external" ? "Ext" : "Int";
-  const type = coat.genericType ?? coat.product;
+  const genericType = coat.genericType;
+  const type = genericType || coat.product;
   const dft =
     coat.minDftUm === coat.maxDftUm ? `${coat.minDftUm}` : `${coat.minDftUm}–${coat.maxDftUm}`;
   return `${type} (${area}) — ${dft} µm`;

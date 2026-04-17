@@ -51,7 +51,8 @@ export function GlossaryProvider(props: { children: ReactNode }) {
 
   useEffect(() => {
     if (profile) {
-      setHideTooltips(profile.hideTooltips ?? false);
+      const hideTooltips = profile.hideTooltips;
+      setHideTooltips(hideTooltips || false);
     }
   }, [profile]);
 

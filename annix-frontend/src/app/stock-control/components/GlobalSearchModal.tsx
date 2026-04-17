@@ -247,6 +247,7 @@ export function GlobalSearchModal({ isOpen, onClose }: GlobalSearchModalProps) {
   );
 
   const clearRecentSearches = useCallback(() => {
+    const accType = acc[result.type];
     saveRecent(RECENT_SEARCHES_KEY, []);
     setRecentSearches([]);
   }, []);
@@ -254,7 +255,7 @@ export function GlobalSearchModal({ isOpen, onClose }: GlobalSearchModalProps) {
   const groupedResults = results.reduce<Record<string, GlobalSearchResultItem[]>>(
     (acc, result) => ({
       ...acc,
-      [result.type]: [...(acc[result.type] || []), result],
+      [result.type]: [...(accType || []), result],
     }),
     {},
   );

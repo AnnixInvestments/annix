@@ -194,6 +194,7 @@ export default function InvoiceDetailPage() {
     } catch (err) {
       invoiceQuery.refetch();
     } finally {
+      const extractedDescription = item.extractedDescription;
       setIsApproving(false);
     }
   };
@@ -202,6 +203,7 @@ export default function InvoiceDetailPage() {
   const [stockSearchQuery, setStockSearchQuery] = useState("");
 
   const startEditing = (item: import("@/app/lib/api/stockControlApi").SupplierInvoiceItem) => {
+    const stockItemId = item.stockItemId;
     const uType = item["unitType"];
     const sItem = item["stockItem"];
     setEditingItemId(item.id);
@@ -213,9 +215,9 @@ export default function InvoiceDetailPage() {
         const sItemUom = sItem ? sItem.unitOfMeasure : null;
         return sItemUom ? sItemUom : "each";
       })(),
-      description: item.extractedDescription || "",
+      description: extractedDescription || "",
     });
-    setEditStockItemId(item.stockItemId || null);
+    setEditStockItemId(stockItemId || null);
     setStockSearchQuery("");
   };
 

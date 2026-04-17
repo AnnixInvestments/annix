@@ -24,10 +24,14 @@ export function ReturnLeftoverModal(props: ReturnLeftoverModalProps) {
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  const productName = allocation.stockItem?.name || "Unknown Product";
-  const totalLitres = allocation.totalLitres || 0;
-  const costPerUnit = allocation.stockItem?.costPerUnit || 0;
-  const packSizeLitres = allocation.stockItem?.packSizeLitres || null;
+  const name = allocation.stockItem?.name;
+  const productName = name || "Unknown Product";
+  const rawTotalLitres = allocation.totalLitres;
+  const totalLitres = rawTotalLitres || 0;
+  const rawCostPerUnit = allocation.stockItem?.costPerUnit;
+  const costPerUnit = rawCostPerUnit || 0;
+  const rawPackSizeLitres = allocation.stockItem?.packSizeLitres;
+  const packSizeLitres = rawPackSizeLitres || null;
 
   const costPerLitre = packSizeLitres ? costPerUnit / packSizeLitres : costPerUnit;
   const costReduction = litresReturned * costPerLitre;

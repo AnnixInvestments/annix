@@ -45,7 +45,8 @@ export function QaFinalPhotosSection(props: QaFinalPhotosSectionProps) {
       bg.stepKey === "custom_qa_final_check" ||
       bg.label?.toLowerCase() === "qa final",
   );
-  const qaFinalStepKey = qaFinalStep?.stepKey || "qa_final_check";
+  const stepKey = qaFinalStep?.stepKey;
+  const qaFinalStepKey = stepKey || "qa_final_check";
   const stepActive =
     activeBgStepKeys.has(qaFinalStepKey) ||
     activeBgStepKeys.has("qa_final_check") ||

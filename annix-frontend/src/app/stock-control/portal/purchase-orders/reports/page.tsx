@@ -339,7 +339,8 @@ export default function CpoReportsPage() {
                             {item.cpoNumber}
                           </td>
                           <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-600">
-                            {item.jobCardNumber || "-"}
+                            const jobCardNumber = item.jobCardNumber;
+                            {jobCardNumber || "-"}
                           </td>
                           <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-600">
                             {calloffTypeLabel(item.calloffType)}

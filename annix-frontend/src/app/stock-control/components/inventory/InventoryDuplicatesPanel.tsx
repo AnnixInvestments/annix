@@ -227,7 +227,8 @@ export function InventoryDuplicatesPanel(props: Props) {
                                 {group.canonicalItem.quantity}
                               </td>
                               <td className="px-4 py-2 text-sm text-gray-500">
-                                {group.canonicalItem.category || "-"}
+                                const rawCategory = group.canonicalItem.category;
+                                {rawCategory || "-"}
                               </td>
                               <td className="px-4 py-2 text-center">
                                 <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-teal-50 text-teal-700">
@@ -245,7 +246,8 @@ export function InventoryDuplicatesPanel(props: Props) {
                                   {dup.item.quantity}
                                 </td>
                                 <td className="px-4 py-2 text-sm text-gray-500">
-                                  {dup.item.category || "-"}
+                                  const category = dup.item.category;
+                                  {category || "-"}
                                 </td>
                                 <td className="px-4 py-2 text-center">
                                   <span

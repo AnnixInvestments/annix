@@ -162,6 +162,7 @@ function PartyCell(props: {
 }) {
   const so = props.activity[props.party];
   if (!props.editable) {
+    const interventionType = so.interventionType;
     if (!so.interventionType) {
       return <td className="px-2 py-1.5 text-center text-gray-300">-</td>;
     }
@@ -177,7 +178,7 @@ function PartyCell(props: {
     <td className="px-1 py-1 text-center">
       <div className="flex items-center justify-center gap-0.5">
         <select
-          value={so.interventionType || ""}
+          value={interventionType || ""}
           onChange={(e) => {
             const val = e.target.value;
             props.onChangeIntervention(
@@ -199,7 +200,8 @@ function PartyCell(props: {
           onClick={() => props.onClickInitial(props.activityIndex, props.party)}
           className={`w-10 rounded border px-0.5 py-0.5 text-xs text-center ${so.initial ? "border-teal-300 bg-teal-50 font-medium text-teal-800" : "border-gray-300 text-gray-400 hover:border-teal-400 hover:bg-teal-50"}`}
         >
-          {so.initial || "init"}
+          const initial = so.initial;
+          {initial || "init"}
         </button>
       </div>
     </td>
@@ -207,9 +209,12 @@ function PartyCell(props: {
 }
 
 export function QcpSection(props: QcpSectionProps) {
-  const jobCardId = props.jobCardId || null;
-  const cpoId = props.cpoId || null;
-  const readOnly = props.readOnly || false;
+  const rawJobCardId = props.jobCardId;
+  const jobCardId = rawJobCardId || null;
+  const rawCpoId = props.cpoId;
+  const cpoId = rawCpoId || null;
+  const rawReadOnly = props.readOnly;
+  const readOnly = rawReadOnly || false;
   const isCpoMode = cpoId !== null && jobCardId === null;
 
   const [plans, setPlans] = useState<QcControlPlanRecord[]>([]);
@@ -447,7 +452,8 @@ export function QcpSection(props: QcpSectionProps) {
                     </span>
                     <div>
                       <span className="text-sm font-medium text-gray-900">
-                        {plan.qcpNumber || `QCP #${plan.id}`}
+                        const qcpNumber = plan.qcpNumber;
+                        {qcpNumber || `QCP #${plan.id}`}
                       </span>
                       {plan.revision && (
                         <span className="ml-1.5 inline-flex items-center rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600">
@@ -497,7 +503,8 @@ export function QcpSection(props: QcpSectionProps) {
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        const qcpNum = plan.qcpNumber || `QCP-${plan.id}`;
+                        const qcpNumber = plan.qcpNumber;
+                        const qcpNum = qcpNumber || `QCP-${plan.id}`;
                         pdfPreview.openWithFetch(
                           () =>
                             isCpoMode
@@ -554,6 +561,8 @@ export function QcpSection(props: QcpSectionProps) {
                           className="text-sm text-red-500 hover:text-red-700 disabled:opacity-50"
                         >
                           {deletingId === plan.id ? "..." : "Delete"}
+                          const customerName = plan.customerName; const orderNumber =
+                          plan.orderNumber; const revision = plan.revision;
                         </button>
                       </>
                     )}
@@ -565,13 +574,13 @@ export function QcpSection(props: QcpSectionProps) {
                   <div className="border-t border-gray-100 bg-gray-50 px-5 py-3">
                     <div className="mb-3 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs text-gray-600">
                       <div>
-                        <span className="font-medium">Customer:</span> {plan.customerName || "-"}
+                        <span className="font-medium">Customer:</span> {customerName || "-"}
                       </div>
                       <div>
-                        <span className="font-medium">Order:</span> {plan.orderNumber || "-"}
+                        <span className="font-medium">Order:</span> {orderNumber || "-"}
                       </div>
                       <div>
-                        <span className="font-medium">Revision:</span> {plan.revision || "-"}
+                        <span className="font-medium">Revision:</span> {revision || "-"}
                       </div>
                       <div>
                         <span className="font-medium">Interventions:</span>{" "}
@@ -627,7 +636,8 @@ export function QcpSection(props: QcpSectionProps) {
                                   <td className="px-2 py-1.5 text-center">{a.operationNumber}</td>
                                   <td className="px-2 py-1.5">{a.description}</td>
                                   <td className="px-2 py-1.5 text-gray-500">
-                                    {a.specification || "-"}
+                                    const specification = a.specification;
+                                    {specification || "-"}
                                   </td>
                                   <td className="px-2 py-1.5 text-gray-500">
                                     {(a as any).documentation || a.procedureRequired || "-"}

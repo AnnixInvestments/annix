@@ -194,60 +194,68 @@ export function DeliveryNoteModal(props: DeliveryNoteModalProps) {
                 </div>
 
                 <div className="space-y-2">
-                  {form.items.map((lineItem, index) => (
-                    <div key={index} className="flex items-center gap-3 bg-gray-50 rounded-md p-3">
-                      <div className="flex-1">
-                        <select
-                          value={lineItem.stockItemId ?? ""}
-                          onChange={(e) =>
-                            handleLineItemChange(index, "stockItemId", e.target.value)
-                          }
-                          required
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-sm"
-                        >
-                          <option value="">Select stock item...</option>
-                          {stockItems.map((item) => (
-                            <option key={item.id} value={item.id}>
-                              {item.sku} - {item.name}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="w-28">
-                        <input
-                          type="number"
-                          value={lineItem.quantity}
-                          onChange={(e) => handleLineItemChange(index, "quantity", e.target.value)}
-                          min="1"
-                          required
-                          placeholder="Qty"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-sm"
-                        />
-                      </div>
-                      {form.items.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => removeLineItem(index)}
-                          className="p-1 text-red-400 hover:text-red-600"
-                          aria-label="Remove line item"
-                        >
-                          <svg
-                            className="w-5 h-5"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
+                  {form.items.map((lineItem, index) => {
+                    const stockItemId = lineItem.stockItemId;
+                    return (
+                      <div
+                        key={index}
+                        className="flex items-center gap-3 bg-gray-50 rounded-md p-3"
+                      >
+                        <div className="flex-1">
+                          <select
+                            value={stockItemId || ""}
+                            onChange={(e) =>
+                              handleLineItemChange(index, "stockItemId", e.target.value)
+                            }
+                            required
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-sm"
                           >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                            />
-                          </svg>
-                        </button>
-                      )}
-                    </div>
-                  ))}
+                            <option value="">Select stock item...</option>
+                            {stockItems.map((item) => (
+                              <option key={item.id} value={item.id}>
+                                {item.sku} - {item.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="w-28">
+                          <input
+                            type="number"
+                            value={lineItem.quantity}
+                            onChange={(e) =>
+                              handleLineItemChange(index, "quantity", e.target.value)
+                            }
+                            min="1"
+                            required
+                            placeholder="Qty"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-sm"
+                          />
+                        </div>
+                        {form.items.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeLineItem(index)}
+                            className="p-1 text-red-400 hover:text-red-600"
+                            aria-label="Remove line item"
+                          >
+                            <svg
+                              className="w-5 h-5"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                              />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>

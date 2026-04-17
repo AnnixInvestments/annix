@@ -36,7 +36,8 @@ const FILE_TYPE_BADGE: Record<string, { bg: string; text: string }> = {
 };
 
 function FileTypeBadge(props: { fileType: string }) {
-  const colors = FILE_TYPE_BADGE[props.fileType.toLowerCase()] || {
+  const rawValue = FILE_TYPE_BADGE[props.fileType.toLowerCase()];
+  const colors = rawValue || {
     bg: "bg-gray-100",
     text: "text-gray-700",
   };

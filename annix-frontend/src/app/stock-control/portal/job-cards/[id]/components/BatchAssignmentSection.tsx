@@ -314,8 +314,10 @@ export function BatchAssignmentSection(props: BatchAssignmentSectionProps) {
   const itemDescriptionMap = useMemo(() => {
     const map: Record<number, string> = {};
     lineItems.forEach((li) => {
-      const code = li.itemCode || "";
-      const desc = li.description || "";
+      const itemCode = li.itemCode;
+      const code = itemCode || "";
+      const description = li.description;
+      const desc = description || "";
       const label = code ? `${code} - ${desc}` : desc;
       map[li.id] = label || `Item #${li.id}`;
     });

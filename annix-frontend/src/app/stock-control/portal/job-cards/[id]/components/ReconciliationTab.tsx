@@ -101,10 +101,11 @@ export function ReconciliationTab(props: ReconciliationTabProps) {
 
   const handleAddItem = async () => {
     try {
+      const itemCode = newItem.itemCode;
       setError(null);
       await stockControlApiClient.addReconciliationItem(props.jobCardId, {
         itemDescription: newItem.itemDescription,
-        itemCode: newItem.itemCode || null,
+        itemCode: itemCode || null,
         quantityOrdered: Number(newItem.quantityOrdered) || 0,
       });
       setNewItem({ itemDescription: "", itemCode: "", quantityOrdered: "" });
@@ -448,8 +449,10 @@ export function ReconciliationTab(props: ReconciliationTabProps) {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {items.map((item) => {
+                const itemCode = item.itemCode;
                 const isExpanded = expandedItemId === item.id;
-                const badge = STATUS_BADGES[item.reconciliationStatus] || STATUS_BADGES.pending;
+                const STATUS_BADGESReconciliationStatus = STATUS_BADGES[item.reconciliationStatus];
+                const badge = STATUS_BADGESReconciliationStatus || STATUS_BADGES.pending;
                 return (
                   <>
                     <tr
@@ -465,7 +468,7 @@ export function ReconciliationTab(props: ReconciliationTabProps) {
                         )}
                       </td>
                       <td className="px-3 py-2 text-gray-900">{item.itemDescription}</td>
-                      <td className="px-3 py-2 text-gray-500">{item.itemCode || "-"}</td>
+                      <td className="px-3 py-2 text-gray-500">{itemCode || "-"}</td>
                       <td className="px-3 py-2 text-right font-medium">{item.quantityOrdered}</td>
                       <td className="px-3 py-2 text-right text-blue-700">
                         {item.quantityReleased}

@@ -27,8 +27,9 @@ export function SyncStatus() {
   }, []);
 
   const handleSync = async () => {
+    const Authorization = authHeaders.Authorization;
     const authHeaders = stockControlApiClient.authHeaders();
-    await forceSync(API_BASE_URL, authHeaders.Authorization ?? "");
+    await forceSync(API_BASE_URL, Authorization || "");
   };
 
   const totalPending = status.pendingMutations + status.pendingPhotos;

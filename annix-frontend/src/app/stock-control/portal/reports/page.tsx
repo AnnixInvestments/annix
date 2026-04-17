@@ -173,6 +173,7 @@ export default function ReportsPage() {
   );
 
   const renderCostByJob = () => {
+    const customerName = job.customerName;
     if (isLoading) return renderLoading();
     if (error) return renderError();
 
@@ -247,7 +248,7 @@ export default function ReportsPage() {
                   {job.jobName}
                 </td>
                 <td className="hidden px-3 py-4 text-sm text-gray-500 break-words md:table-cell sm:px-6">
-                  {job.customerName || "-"}
+                  {customerName || "-"}
                 </td>
                 <td className="hidden whitespace-nowrap px-3 py-4 text-right text-sm text-gray-900 lg:table-cell sm:px-6">
                   {job.totalItemsAllocated}
@@ -277,6 +278,7 @@ export default function ReportsPage() {
   };
 
   const renderStockValuation = () => {
+    const category = item.category;
     if (isLoading) return renderLoading();
     if (error) return renderError();
 
@@ -353,7 +355,7 @@ export default function ReportsPage() {
                 </td>
                 <td className="px-3 py-4 text-sm text-gray-900 break-words sm:px-6">{item.name}</td>
                 <td className="hidden whitespace-nowrap px-3 py-4 text-sm text-gray-500 md:table-cell sm:px-6">
-                  {item.category || "-"}
+                  {category || "-"}
                 </td>
                 <td className="whitespace-nowrap px-3 py-4 text-right text-sm text-gray-900 sm:px-6">
                   {item.quantity}
@@ -946,11 +948,17 @@ export default function ReportsPage() {
 
   const handleExportCSV = () => {
     if (activeTab === "cost-by-job") {
+      const customerName = job.customerName;
+      const category = item.category;
+      const createdBy = m.createdBy;
+      const employeeNumber = s.employeeNumber;
+      const notes = m.notes;
+      const department = s.department;
       const headers = ["Job Number", "Job Name", "Customer", "Items Allocated", "Total Cost"];
       const rows = costByJob.map((job) => [
         job.jobNumber,
         job.jobName,
-        job.customerName || "",
+        customerName || "",
         String(job.totalItemsAllocated),
         String(job.totalCost),
       ]);
@@ -960,7 +968,7 @@ export default function ReportsPage() {
       const rows = valuation.items.map((item) => [
         item.sku,
         item.name,
-        item.category || "",
+        category || "",
         String(item.quantity),
         String(item.costPerUnit),
         String(item.totalValue),
@@ -981,8 +989,8 @@ export default function ReportsPage() {
         m.movementType,
         String(m.quantity),
         m.referenceType ? `${m.referenceType} #${m.referenceId}` : "",
-        m.notes || "",
-        m.createdBy || "System",
+        notes || "",
+        createdBy || "System",
       ]);
       downloadCSV("movement-history.csv", headers, rows);
     } else if (activeTab === "staff-stock" && staffStockReport) {
@@ -998,8 +1006,8 @@ export default function ReportsPage() {
       ];
       const rows = staffStockReport.summaries.map((s) => [
         s.staffName,
-        s.employeeNumber || "",
-        s.department || "",
+        employeeNumber || "",
+        department || "",
         String(s.totalQuantityReceived),
         String(s.totalValue),
         String(s.issuanceCount),

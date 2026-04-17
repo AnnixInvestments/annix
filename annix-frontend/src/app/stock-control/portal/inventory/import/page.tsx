@@ -43,9 +43,10 @@ export default function ImportPage() {
       setImportFormat(response.format);
 
       if (response.format === "excel" && response.headers && response.rawRows) {
+        const mapping = response.mapping;
         setImportHeaders(response.headers);
         setImportRawRows(response.rawRows);
-        setImportMapping(response.mapping ?? null);
+        setImportMapping(mapping || null);
         setParsedRows([]);
       } else {
         setParsedRows((response.rows as Record<string, unknown>[]) ?? []);

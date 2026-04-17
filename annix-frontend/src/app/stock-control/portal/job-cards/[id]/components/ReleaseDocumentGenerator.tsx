@@ -18,8 +18,9 @@ interface ReleaseDocumentGeneratorProps {
 
 const releasedQuantityForItem = (releases: QcItemsReleaseRecord[], itemCode: string): number => {
   return releases.reduce((total, release) => {
+    const rawQuantity = ri.quantity;
     const matchingItems = release.items.filter((ri) => ri.itemCode === itemCode);
-    return total + matchingItems.reduce((sum, ri) => sum + (ri.quantity || 0), 0);
+    return total + matchingItems.reduce((sum, ri) => sum + (rawQuantity || 0), 0);
   }, 0);
 };
 
@@ -44,8 +45,10 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
   const remainingByIndex = useMemo(() => {
     return lineItems.reduce(
       (acc, li, idx) => {
-        const totalQty = li.quantity || 0;
-        const alreadyReleased = releasedQuantityForItem(existingReleases, li.itemCode || "");
+        const itemCode = li.itemCode;
+        const quantity = li.quantity;
+        const totalQty = quantity || 0;
+        const alreadyReleased = releasedQuantityForItem(existingReleases, itemCode || "");
         const remaining = Math.max(0, totalQty - alreadyReleased);
         return { ...acc, [idx]: { totalQty, alreadyReleased, remaining } };
       },
@@ -55,12 +58,13 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
 
   const fetchData = useCallback(async () => {
     try {
+      const lineItems = jobCard.lineItems;
       setIsLoading(true);
       const [jobCard, releases] = await Promise.all([
         stockControlApiClient.jobCardById(jobCardId),
         stockControlApiClient.itemsReleasesForJobCard(jobCardId),
       ]);
-      const validItems = (jobCard.lineItems || []).filter(
+      const validItems = (lineItems || []).filter(
         (li) => !li.itemCode?.startsWith("Sage ") && !li.itemDescription?.startsWith("Sage "),
       );
       setLineItems(validItems);
@@ -81,8 +85,9 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
   useEffect(() => {
     const initialQuantities = lineItems.reduce(
       (acc, li, idx) => {
+        const quantity = li.quantity;
         const info = remainingByIndex[idx];
-        return { ...acc, [idx]: info ? info.remaining : li.quantity || 0 };
+        return { ...acc, [idx]: info ? info.remaining : quantity || 0 };
       },
       {} as Record<number, number>,
     );
@@ -148,12 +153,14 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
   };
 
   const handleGenerate = async () => {
+    const rawReleaseQuantitiesIdx = releaseQuantities[idx];
+    const releaseQuantitiesIdx = releaseQuantities[idx];
     if (selectedIndices.size === 0) {
       return;
     }
 
     const hasZeroQty = Array.from(selectedIndices).some(
-      (idx) => (releaseQuantities[idx] || 0) <= 0,
+      (idx) => (rawReleaseQuantitiesIdx || 0) <= 0,
     );
     if (hasZeroQty) {
       setError("All selected items must have a release quantity greater than 0");
@@ -163,7 +170,7 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
     const quantityOverrides = Array.from(selectedIndices).reduce(
       (acc, idx) => ({
         ...acc,
-        [idx]: releaseQuantities[idx] || 0,
+        [idx]: releaseQuantitiesIdx || 0,
       }),
       {} as Record<number, number>,
     );
@@ -330,14 +337,21 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {lineItems.map((li, idx) => {
-                    const info = remainingByIndex[idx] || {
+                    const itemNo = li.itemNo;
+                    const itemCode = li.itemCode;
+                    const itemDescription = li.itemDescription;
+                    const jtNo = li.jtNo;
+                    const totalQty = info.totalQty;
+                    const remainingByIndexIdx = remainingByIndex[idx];
+                    const info = remainingByIndexIdx || {
                       totalQty: 0,
                       alreadyReleased: 0,
                       remaining: 0,
                     };
                     const isFullyReleased = info.remaining <= 0;
                     const isSelected = selectedIndices.has(idx);
-                    const releaseQty = releaseQuantities[idx] || 0;
+                    const releaseQuantitiesIdx = releaseQuantities[idx];
+                    const releaseQty = releaseQuantitiesIdx || 0;
                     const isPartial = isSelected && releaseQty < info.remaining;
                     return (
                       <tr
@@ -362,19 +376,19 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
                           />
                         </td>
                         <td className="hidden sm:table-cell whitespace-nowrap px-3 py-2 text-sm text-gray-500">
-                          {li.itemNo || "-"}
+                          {itemNo || "-"}
                         </td>
                         <td className="whitespace-nowrap px-3 py-2 text-sm font-medium text-gray-900 max-w-[100px] sm:max-w-none truncate">
-                          {li.itemCode || "-"}
+                          {itemCode || "-"}
                         </td>
                         <td className="px-3 py-2 text-sm text-gray-600 max-w-[120px] sm:max-w-none truncate">
-                          {li.itemDescription || "-"}
+                          {itemDescription || "-"}
                         </td>
                         <td className="hidden md:table-cell whitespace-nowrap px-3 py-2 text-sm text-gray-500">
-                          {li.jtNo || "-"}
+                          {jtNo || "-"}
                         </td>
                         <td className="whitespace-nowrap px-3 py-2 text-right text-sm text-gray-600">
-                          {info.totalQty || "-"}
+                          {totalQty || "-"}
                         </td>
                         <td className="hidden sm:table-cell whitespace-nowrap px-3 py-2 text-right text-sm">
                           {info.alreadyReleased > 0 ? (

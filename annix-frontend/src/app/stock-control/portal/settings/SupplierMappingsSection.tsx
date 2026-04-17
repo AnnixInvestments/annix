@@ -52,7 +52,8 @@ export function SupplierMappingsSection() {
 
   const grouped = mappings.reduce<Record<string, SupplierMapping[]>>((acc, m) => {
     const key = m.supplier;
-    const existing = acc[key] || [];
+    const accKey = acc[key];
+    const existing = accKey || [];
     return { ...acc, [key]: [...existing, m] };
   }, {});
 

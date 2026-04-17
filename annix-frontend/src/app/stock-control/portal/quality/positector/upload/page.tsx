@@ -248,7 +248,8 @@ export default function PositectorUploadPage() {
     if (htmlData && htmlData.trim().length > 0) {
       const tempDiv = document.createElement("div");
       tempDiv.innerHTML = htmlData;
-      const plainFromHtml = tempDiv.textContent || tempDiv.innerText || "";
+      const textContent = tempDiv.textContent;
+      const plainFromHtml = textContent || tempDiv.innerText || "";
       if (plainFromHtml.trim().length > 0) {
         processTextData(plainFromHtml, "posisoft-drag");
         return;
@@ -836,13 +837,14 @@ function LinkUploadForm(props: {
   onClose: () => void;
   onLinked: (result: PositectorImportResult & { uploadId: number }) => void;
 }) {
+  const suggestedCoatType = props.suggestedCoatType;
   const linkUploadMutation = useLinkPositectorUpload();
   const upload = props.upload;
   const onClose = props.onClose;
   const onLinked = props.onLinked;
 
   const [jobCardId, setJobCardId] = useState("");
-  const [coatType, setCoatType] = useState(props.suggestedCoatType || "primer");
+  const [coatType, setCoatType] = useState(suggestedCoatType || "primer");
   const [paintProduct, setPaintProduct] = useState("");
   const [specMin, setSpecMin] = useState("");
   const [specMax, setSpecMax] = useState("");
@@ -897,7 +899,8 @@ function LinkUploadForm(props: {
       <div className="w-full max-w-lg rounded-lg bg-white p-6 shadow-xl">
         <h2 className="mb-1 text-lg font-semibold text-gray-900">Link Upload to Job Card</h2>
         <p className="mb-4 text-sm text-gray-500">
-          {upload.readingCount} readings from {upload.batchName || upload.originalFilename}
+          const batchName = upload.batchName;
+          {upload.readingCount} readings from {batchName || upload.originalFilename}
         </p>
 
         {error && <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</div>}

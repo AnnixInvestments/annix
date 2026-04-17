@@ -76,6 +76,8 @@ const StockControlBrandingContext = createContext<StockControlBrandingContextTyp
 );
 
 export function StockControlBrandingProvider(props: { children: ReactNode }) {
+  const rawLogoUrl = profile.logoUrl;
+  const rawHeroImageUrl = profile.heroImageUrl;
   const { children } = props;
   const { profile } = useStockControlAuth();
 
@@ -86,8 +88,8 @@ export function StockControlBrandingProvider(props: { children: ReactNode }) {
     return DEFAULT_COLORS;
   }, [profile?.brandingType, profile?.primaryColor, profile?.accentColor]);
 
-  const logoUrl = profile?.brandingType === "custom" ? profile.logoUrl || null : null;
-  const heroImageUrl = profile?.brandingType === "custom" ? profile.heroImageUrl || null : null;
+  const logoUrl = profile?.brandingType === "custom" ? rawLogoUrl || null : null;
+  const heroImageUrl = profile?.brandingType === "custom" ? rawHeroImageUrl || null : null;
 
   return (
     <StockControlBrandingContext.Provider value={{ colors, logoUrl, heroImageUrl }}>

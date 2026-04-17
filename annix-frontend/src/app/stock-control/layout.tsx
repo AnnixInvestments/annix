@@ -2,9 +2,12 @@ import type { Metadata, Viewport } from "next";
 import { cookies } from "next/headers";
 import StockControlLayoutClient from "./StockControlLayoutClient";
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL?.startsWith("/")
-  ? `http://localhost:${process.env.PORT || "4000"}${process.env.NEXT_PUBLIC_API_URL}`
-  : process.env.NEXT_PUBLIC_API_URL || "http://localhost:4001/api";
+const rawPort = process.env.PORT;
+const port = rawPort || "4000";
+const rawApiUrl = process.env.NEXT_PUBLIC_API_URL;
+const BACKEND_URL = rawApiUrl?.startsWith("/")
+  ? `http://localhost:${port}${rawApiUrl}`
+  : rawApiUrl || "http://localhost:4001/api";
 
 interface PublicBranding {
   companyName: string;

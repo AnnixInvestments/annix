@@ -43,16 +43,19 @@ export function StockItemModal(props: StockItemModalProps) {
 
   useEffect(() => {
     if (item) {
+      const description = item.description;
+      const category = item.category;
+      const location = item.location;
       setForm({
         sku: item.sku,
         name: item.name,
-        description: item.description ?? "",
-        category: item.category ?? "",
+        description: description || "",
+        category: category || "",
         unitOfMeasure: item.unitOfMeasure,
         costPerUnit: String(item.costPerUnit),
         quantity: String(item.quantity),
         minStockLevel: String(item.minStockLevel),
-        location: item.location ?? "",
+        location: location || "",
       });
     } else {
       setForm(emptyForm);

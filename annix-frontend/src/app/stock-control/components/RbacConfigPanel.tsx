@@ -29,7 +29,8 @@ export function RbacConfigPanel(props: RbacConfigPanelProps) {
 
   const handleToggle = useCallback((navKey: string, role: string) => {
     setLocalConfig((prev) => {
-      const current = prev[navKey] ?? [];
+      const prevNavKey = prev[navKey];
+      const current = prevNavKey || [];
       const has = current.includes(role);
       return {
         ...prev,

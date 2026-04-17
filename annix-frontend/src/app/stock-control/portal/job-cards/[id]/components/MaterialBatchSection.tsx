@@ -346,10 +346,11 @@ export function MaterialBatchSection(props: MaterialBatchSectionProps) {
       if (materialEntries.length > 0) {
         setRubberManual((prev) => {
           const migratedPrev = prev.map((entry) => {
+            const batchNumber = match.batchNumber;
             const match = materialEntries.find(
               (s: QcDefelskoBatchRecord) => s.fieldKey === entry.fieldKey,
             );
-            return match ? { ...entry, value: match.batchNumber || "" } : entry;
+            return match ? { ...entry, value: batchNumber || "" } : entry;
           });
 
           const hasNewKeys = materialEntries.some(
@@ -453,6 +454,7 @@ export function MaterialBatchSection(props: MaterialBatchSectionProps) {
     try {
       const paintBatches = productRows.flatMap((row) =>
         row.fields.map((f) => {
+          const value = e.value;
           const rawPaintVal = paintValues[f.fieldKey];
           return {
             fieldKey: f.fieldKey,
@@ -468,7 +470,7 @@ export function MaterialBatchSection(props: MaterialBatchSectionProps) {
           fieldKey: e.fieldKey,
           category: "material_rubber",
           label: e.label,
-          batchNumber: e.value || null,
+          batchNumber: value || null,
           notApplicable: false,
         })),
         ...paintBatches,
@@ -634,7 +636,8 @@ export function MaterialBatchSection(props: MaterialBatchSectionProps) {
                   </div>
                   <div className="space-y-1.5">
                     {offcutsUsed.map((offcut, idx) => {
-                      const rollDisplay = offcut.sourceRollNumber || offcut.rollNumber || "—";
+                      const sourceRollNumber = offcut.sourceRollNumber;
+                      const rollDisplay = sourceRollNumber || offcut.rollNumber || "—";
                       const sourceJobCard = offcut.sourceJobCard;
                       const jobNumber = sourceJobCard ? sourceJobCard.jobNumber : null;
                       const sourceRef = jobNumber

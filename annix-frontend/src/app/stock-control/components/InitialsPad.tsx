@@ -35,9 +35,10 @@ function persistInitials(initials: SavedInitials): void {
 }
 
 export function InitialsPad(props: InitialsPadProps) {
+  const currentValue = props.currentValue;
   const saved = savedInitials();
   const [mode, setMode] = useState<"type" | "draw">(saved?.imageDataUrl ? "draw" : "type");
-  const [text, setText] = useState(props.currentValue || saved?.text || "");
+  const [text, setText] = useState(currentValue || saved?.text || "");
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasDrawn, setHasDrawn] = useState(false);

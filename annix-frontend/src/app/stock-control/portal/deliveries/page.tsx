@@ -114,6 +114,9 @@ export default function DeliveriesPage() {
   };
 
   const handleCreate = () => {
+    const receivedDate = createForm.receivedDate;
+    const notes = createForm.notes;
+    const receivedBy = createForm.receivedBy;
     const validItems = formItems.filter(
       (item) => item.stockItemId > 0 && item.quantityReceived > 0,
     );
@@ -123,9 +126,9 @@ export default function DeliveriesPage() {
       {
         deliveryNumber: createForm.deliveryNumber,
         supplierName: createForm.supplierName,
-        receivedDate: createForm.receivedDate || undefined,
-        notes: createForm.notes || undefined,
-        receivedBy: createForm.receivedBy || undefined,
+        receivedDate: receivedDate || undefined,
+        notes: notes || undefined,
+        receivedBy: receivedBy || undefined,
         items: validItems,
       },
       {
@@ -234,6 +237,7 @@ export default function DeliveriesPage() {
   const buildAnalyzedDataFromExtracted = (
     delivery: DeliveryNote,
   ): AnalyzedDeliveryNoteData | null => {
+    const supplierName = delivery.supplierName;
     const extracted = delivery.extractedData as Record<string, unknown> | null;
     if (!extracted) return null;
     return {
@@ -246,7 +250,7 @@ export default function DeliveriesPage() {
       purchaseOrderNumber: (extracted.purchaseOrderNumber as string) || null,
       customerReference: (extracted.customerReference as string) || null,
       fromCompany: (extracted.fromCompany as AnalyzedDeliveryNoteData["fromCompany"]) || {
-        name: delivery.supplierName || null,
+        name: supplierName || null,
         address: null,
         vatNumber: null,
         contactPerson: null,

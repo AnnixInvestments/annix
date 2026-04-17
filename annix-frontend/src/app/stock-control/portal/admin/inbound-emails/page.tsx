@@ -60,8 +60,10 @@ export default function InboundEmailsPage() {
     [reclassify],
   );
 
-  const emails = emailsData?.items || [];
-  const total = emailsData?.total || 0;
+  const items = emailsData?.items;
+  const emails = items || [];
+  const rawTotal = emailsData?.total;
+  const total = rawTotal || 0;
   const totalPages = Math.ceil(total / 25);
 
   return (
@@ -156,6 +158,7 @@ export default function InboundEmailsPage() {
 }
 
 function StatCard({ label, value, color }: { label: string; value: number; color?: string }) {
+  const rawValue = colorClasses[color ?? ""];
   const colorClasses: Record<string, string> = {
     green: "text-green-700",
     yellow: "text-yellow-700",
@@ -166,9 +169,7 @@ function StatCard({ label, value, color }: { label: string; value: number; color
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
       <p className="text-sm text-gray-500">{label}</p>
-      <p className={`text-2xl font-bold ${colorClasses[color ?? ""] ?? "text-gray-900"}`}>
-        {value}
-      </p>
+      <p className={`text-2xl font-bold ${rawValue || "text-gray-900"}`}>{value}</p>
     </div>
   );
 }
@@ -184,7 +185,8 @@ function EmailRow({
   onToggle: () => void;
   onReclassify: (attachmentId: number, newType: string) => void;
 }) {
-  const badge = STATUS_BADGES[email.processingStatus] ?? STATUS_BADGES.pending;
+  const STATUS_BADGESProcessingStatus = STATUS_BADGES[email.processingStatus];
+  const badge = STATUS_BADGESProcessingStatus || STATUS_BADGES.pending;
   const date = email.receivedAt
     ? new Date(email.receivedAt).toLocaleString("en-ZA", {
         day: "2-digit",
@@ -279,7 +281,8 @@ function AttachmentRow({
     skipped: { label: "Skipped", className: "text-gray-500" },
   };
 
-  const ext = extractionBadge[attachment.extractionStatus] ?? extractionBadge.pending;
+  const extractionBadgeExtractionStatus = extractionBadge[attachment.extractionStatus];
+  const ext = extractionBadgeExtractionStatus || extractionBadge.pending;
 
   return (
     <tr>

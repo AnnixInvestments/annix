@@ -10,11 +10,12 @@ const DESCRIPTIONS: Record<string, string> = {
 };
 
 export default function AdminHubPage() {
+  const DESCRIPTIONSKey = DESCRIPTIONS[item.key];
   const items = useVisibleNavItems("Resources");
 
   const hubItems = items.map((item) => ({
     item,
-    description: DESCRIPTIONS[item.key] ?? "",
+    description: DESCRIPTIONSKey || "",
   }));
 
   return (

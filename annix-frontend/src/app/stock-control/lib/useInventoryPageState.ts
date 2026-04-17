@@ -183,6 +183,7 @@ const INITIAL_STATE: InventoryPageState = {
 };
 
 export function useInventoryPageState(pdfPreview?: ReturnType<typeof usePdfPreview>) {
+  const debouncedSearch = state.debouncedSearch;
   const { user } = useStockControlAuth();
   const canEditPrices =
     user?.role === "admin" || user?.role === "manager" || user?.role === "accounts";
@@ -214,7 +215,7 @@ export function useInventoryPageState(pdfPreview?: ReturnType<typeof usePdfPrevi
   const numericLocationFilter =
     typeof state.locationFilter === "number" ? state.locationFilter : undefined;
   const groupedQuery = useInventoryGrouped(
-    isGroupedView ? state.debouncedSearch || undefined : undefined,
+    isGroupedView ? debouncedSearch || undefined : undefined,
     isGroupedView ? numericLocationFilter : undefined,
   );
   const tabCountsQuery = useInventoryGrouped();
@@ -224,7 +225,8 @@ export function useInventoryPageState(pdfPreview?: ReturnType<typeof usePdfPrevi
 
   const isLoading = isGroupedView ? groupedQuery.isLoading : listQuery.isLoading;
   const queryError = isGroupedView ? groupedQuery.error : listQuery.error;
-  const error = state.actionError || queryError;
+  const actionError = state.actionError;
+  const error = actionError || queryError;
   const listData = listQuery.data;
   const listItems = listData ? listData.items : [];
   const listTotal = listData ? listData.total : 0;
@@ -257,7 +259,9 @@ export function useInventoryPageState(pdfPreview?: ReturnType<typeof usePdfPrevi
         const locationName =
           locationId != null ? locMap.get(locationId) || "Unknown" : "No Location Assigned";
         const sortedItems = [...locationItems].sort((a, b) => {
-          const catCmp = (a.category || "").localeCompare(b.category || "");
+          const rawCategory = a.category;
+          const category = b.category;
+          const catCmp = (rawCategory || "").localeCompare(category || "");
           if (catCmp !== 0) return catCmp;
           return a.name.localeCompare(b.name);
         });
@@ -386,6 +390,7 @@ export function useInventoryPageState(pdfPreview?: ReturnType<typeof usePdfPrevi
 
   const collapseAllGroups = useCallback(() => {
     setState((prev) => {
+      const photoUrl = item.photoUrl;
       const next = new Map(prev.expandedGroups);
       groupedData.forEach((g) => next.set(g.locationId, false));
       return { ...prev, expandedGroups: next };
@@ -404,13 +409,15 @@ export function useInventoryPageState(pdfPreview?: ReturnType<typeof usePdfPrevi
 
   const openEditModal = useCallback(
     (item: StockItem) => {
+      const description = item.description;
+      const category = item.category;
       updateState({
         editingItem: item,
         modalForm: {
           sku: item.sku,
           name: item.name,
-          description: item.description || "",
-          category: item.category || "",
+          description: description || "",
+          category: category || "",
           unitOfMeasure: item.unitOfMeasure,
           costPerUnit: Number(item.costPerUnit) || 0,
           quantity: Number(item.quantity) || 0,
@@ -418,7 +425,7 @@ export function useInventoryPageState(pdfPreview?: ReturnType<typeof usePdfPrevi
           locationId: item.locationId,
         },
         photoFile: null,
-        photoPreview: item.photoUrl || null,
+        photoPreview: photoUrl || null,
         showModal: true,
         modalError: null,
       });
@@ -523,6 +530,8 @@ export function useInventoryPageState(pdfPreview?: ReturnType<typeof usePdfPrevi
         .filter((item) => idsArray.includes(item.id) && item.needsQrPrint)
         .map((item) => item.id);
       if (itemsNeedingClear.length > 0) {
+        const search = state.search;
+        const categoryFilter = state.categoryFilter;
         await stockControlApiClient.clearQrPrintFlag(itemsNeedingClear);
         invalidateInventory();
       }
@@ -539,8 +548,8 @@ export function useInventoryPageState(pdfPreview?: ReturnType<typeof usePdfPrevi
     try {
       updateState({ isPrintingLabels: true });
       const blob = await stockControlApiClient.downloadBatchLabelsPdf({
-        search: state.search || undefined,
-        category: state.categoryFilter || undefined,
+        search: search || undefined,
+        category: categoryFilter || undefined,
       });
       if (pdfPreview) {
         pdfPreview.open(blob, "shelf-labels.pdf");
@@ -580,7 +589,8 @@ export function useInventoryPageState(pdfPreview?: ReturnType<typeof usePdfPrevi
   }, [updateState]);
 
   const saveAllMinLevels = useCallback(async () => {
-    if (state.isSavingMinLevels || state.pendingMinLevels.size === 0) return;
+    const isSavingMinLevels = state.isSavingMinLevels;
+    if (isSavingMinLevels || state.pendingMinLevels.size === 0) return;
     try {
       updateState({ isSavingMinLevels: true });
       const updates = Array.from(state.pendingMinLevels.entries()).map(([id, minStockLevel]) =>
@@ -650,7 +660,8 @@ export function useInventoryPageState(pdfPreview?: ReturnType<typeof usePdfPrevi
   }, [updateState]);
 
   const saveAllPrices = useCallback(async () => {
-    if (state.isSavingPrices || state.pendingPrices.size === 0) return;
+    const isSavingPrices = state.isSavingPrices;
+    if (isSavingPrices || state.pendingPrices.size === 0) return;
     try {
       updateState({ isSavingPrices: true });
       const updates = Array.from(state.pendingPrices.entries()).map(([id, costPerUnit]) =>
@@ -669,7 +680,8 @@ export function useInventoryPageState(pdfPreview?: ReturnType<typeof usePdfPrevi
   }, [state.isSavingPrices, state.pendingPrices, updateState, invalidateInventory]);
 
   const saveAllLocations = useCallback(async () => {
-    if (state.isSavingLocations || state.pendingLocations.size === 0) return;
+    const isSavingLocations = state.isSavingLocations;
+    if (isSavingLocations || state.pendingLocations.size === 0) return;
     try {
       updateState({ isSavingLocations: true });
       const updates = Array.from(state.pendingLocations.entries()).map(([id, locationId]) =>
@@ -734,11 +746,12 @@ export function useInventoryPageState(pdfPreview?: ReturnType<typeof usePdfPrevi
         const response: ImportUploadResponse =
           await stockControlApiClient.uploadImportFile(droppedFile);
         if (response.format === "excel" && response.headers && response.rawRows) {
+          const mapping = response.mapping;
           updateState({
             importFormat: response.format,
             importHeaders: response.headers,
             importRawRows: response.rawRows,
-            importMapping: response.mapping || null,
+            importMapping: mapping || null,
             parsedRows: [],
             importStep: "preview",
           });

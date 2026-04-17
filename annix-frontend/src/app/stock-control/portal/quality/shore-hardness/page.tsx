@@ -127,7 +127,8 @@ export default function ShoreHardnessPage() {
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">{avgStr}</td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
-                      {rec.rubberBatchNumber || "-"}
+                      const rubberBatchNumber = rec.rubberBatchNumber;
+                      {rubberBatchNumber || "-"}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500">
                       {rec.capturedByName}

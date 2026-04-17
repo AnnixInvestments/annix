@@ -65,16 +65,23 @@ export default function IdentifyItemPage() {
     location?: string;
   }) => {
     try {
+      const description = data.description;
+      const category = data.category;
+      const unitOfMeasure = data.unitOfMeasure;
+      const costPerUnit = data.costPerUnit;
+      const quantity = data.quantity;
+      const minStockLevel = data.minStockLevel;
+      const location = data.location;
       const item = await createStockItem({
         sku: data.sku,
         name: data.name,
-        description: data.description || null,
-        category: data.category || null,
-        unitOfMeasure: data.unitOfMeasure || "each",
-        costPerUnit: parseFloat(data.costPerUnit || "0"),
-        quantity: parseInt(data.quantity || "0", 10),
-        minStockLevel: parseInt(data.minStockLevel || "0", 10),
-        location: data.location || null,
+        description: description || null,
+        category: category || null,
+        unitOfMeasure: unitOfMeasure || "each",
+        costPerUnit: parseFloat(costPerUnit || "0"),
+        quantity: parseInt(quantity || "0", 10),
+        minStockLevel: parseInt(minStockLevel || "0", 10),
+        location: location || null,
       });
       setShowCreateModal(false);
       router.push(`/stock-control/portal/inventory/${item.id}`);

@@ -253,13 +253,14 @@ export function DataBookCompletenessPanel({
                   >
                     <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
                       {section.group}
+                      const group = section.group;
                     </span>
                   </div>,
                 );
               }
               acc.elements.push(
                 <SectionRow
-                  key={`${section.group || "default"}-${section.key}-${idx}`}
+                  key={`${group || "default"}-${section.key}-${idx}`}
                   section={section}
                 />,
               );

@@ -707,13 +707,16 @@ function openEndsFromConfig(config: string | null): number {
 }
 
 function nbToOd(nbMm: number): number {
-  return NB_TO_OD_MM[nbMm] || nbMm * 1.1;
+  const NB_TO_OD_MMNbMm = NB_TO_OD_MM[nbMm];
+  return NB_TO_OD_MMNbMm || nbMm * 1.1;
 }
 
 function wallThickness(nbMm: number, schedule: string | null): number {
   const sch = schedule || "Sch Std";
-  const schTable = SCHEDULE_WALL_THICKNESS[sch] || SCHEDULE_WALL_THICKNESS["Sch Std"];
-  return schTable[nbMm] || 6;
+  const SCHEDULE_WALL_THICKNESSSch = SCHEDULE_WALL_THICKNESS[sch];
+  const schTable = SCHEDULE_WALL_THICKNESSSch || SCHEDULE_WALL_THICKNESS["Sch Std"];
+  const schTableNbMm = schTable[nbMm];
+  return schTableNbMm || 6;
 }
 
 function roundUpToNearest(value: number, increment: number): number {
@@ -727,12 +730,15 @@ export function parseRubberSpecNote(notes: string): RubberSpec | null {
     /R\/L\s+(\w+)?\s*(\d+)\s*SHORE\s+(\w+)\s*[-–]?\s*(\d+(?:\.\d+)?)\s*mm\s*(\w+)?/i,
   );
   if (match) {
+    const matchAt1 = match[1];
+    const matchAt3 = match[3];
+    const matchAt5 = match[5];
     return {
-      compound: match[1] || null,
+      compound: matchAt1 || null,
       shore: parseInt(match[2], 10),
-      color: match[3] || null,
+      color: matchAt3 || null,
       thicknessMm: parseFloat(match[4]),
-      pattern: match[5] || null,
+      pattern: matchAt5 || null,
     };
   }
 
@@ -740,12 +746,14 @@ export function parseRubberSpecNote(notes: string): RubberSpec | null {
     /(\d+(?:\.\d+)?)\s*mm\s+(\w+)?\s*(\w+)?\s*(?:rubber|lining|lagging)/i,
   );
   if (altMatch) {
+    const altMatchAt2 = altMatch[2];
+    const altMatchAt3 = altMatch[3];
     return {
       thicknessMm: parseFloat(altMatch[1]),
       compound: null,
       shore: null,
-      color: altMatch[2] || null,
-      pattern: altMatch[3] || null,
+      color: altMatchAt2 || null,
+      pattern: altMatchAt3 || null,
     };
   }
 
@@ -763,9 +771,11 @@ export function suggestPlyCombinations(thicknessMm: number): number[][] {
   });
 
   return combos.sort((x, y) => {
+    const xAt1 = x[1];
+    const yAt1 = y[1];
     if (x.length !== y.length) return x.length - y.length;
-    const spreadX = Math.abs(x[0] - (x[1] || x[0]));
-    const spreadY = Math.abs(y[0] - (y[1] || y[0]));
+    const spreadX = Math.abs(x[0] - (xAt1 || x[0]));
+    const spreadY = Math.abs(y[0] - (yAt1 || y[0]));
     return spreadX - spreadY;
   });
 }
@@ -943,7 +953,8 @@ function expandTeeItem(item: ParsedPipeItem): ParsedPipeItem {
   const branchLength = item.fittingBranchLengthMm as number;
 
   const mainOd = nbToOd(mainNb);
-  const mainWt = item.wallThicknessMm || wallThickness(mainNb, schedule);
+  const wallThicknessMm = item.wallThicknessMm;
+  const mainWt = wallThicknessMm || wallThickness(mainNb, schedule);
   const mainId = mainOd - 2 * mainWt;
   const mainCirc = Math.PI * mainId;
   const mainRubberWidth = roundUpToNearest(mainCirc + BEVEL_ALLOWANCE_MM, ROLL_WIDTH_INCREMENT_MM);
@@ -997,7 +1008,8 @@ export function expandAndRotateItems(parsedItems: ParsedPipeItem[]): ParsedPipeI
     .flatMap((item) => {
       const rotated = rotateIfNeeded(item);
       const count = Number(item.quantity) || 1;
-      const strips = item.stripsPerPiece || 1;
+      const stripsPerPiece = item.stripsPerPiece;
+      const strips = stripsPerPiece || 1;
       const totalPieces = count * strips;
       return Array.from({ length: totalPieces }, (_, i) => ({
         ...rotated,
@@ -1377,12 +1389,16 @@ export function calculateCuttingPlan(
 ): CuttingPlan {
   const { parsedItems, genericM2Items, rubberSpec } = lineItems.reduce(
     (acc, item) => {
-      const desc = item.itemDescription || item.itemCode || "";
-      const qty = item.quantity || 1;
+      const id = item.id;
+      const itemDescription = item.itemDescription;
+      const desc = itemDescription || item.itemCode || "";
+      const quantity = item.quantity;
+      const qty = quantity || 1;
       const m2 = item.m2 ? Number(item.m2) : null;
-      const itemNo = item.itemNo || null;
+      const rawItemNo = item.itemNo;
+      const itemNo = rawItemNo || null;
 
-      const parsed = parsePipeItem(String(item.id || Math.random()), desc, Number(qty), m2, itemNo);
+      const parsed = parsePipeItem(String(id || Math.random()), desc, Number(qty), m2, itemNo);
 
       if (parsed.isValidPipe) {
         const specFromNotes =
@@ -1469,9 +1485,10 @@ export function calculateCuttingPlan(
   }
 
   if (plies.length === 0) {
+    const thicknessMm = rubberSpec?.thicknessMm;
     plies = [
       {
-        thicknessMm: rubberSpec?.thicknessMm || 0,
+        thicknessMm: thicknessMm || 0,
         rolls: baseRolls,
         totalRollsNeeded: baseRolls.length,
         plyCount: 1,

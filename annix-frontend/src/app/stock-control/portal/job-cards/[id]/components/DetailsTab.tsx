@@ -108,6 +108,8 @@ export function DetailsTab({
   };
 
   const handleSaveNotes = async () => {
+    const jcNumber = jobCard.jcNumber;
+    const pageNumber = jobCard.pageNumber;
     try {
       setIsSavingNotes(true);
       await onSaveNotes(editedNotes);
@@ -131,11 +133,11 @@ export function DetailsTab({
             </div>
             <div>
               <dt className="text-xs font-medium text-gray-500">JC Number</dt>
-              <dd className="text-sm text-gray-900">{jobCard.jcNumber || "-"}</dd>
+              <dd className="text-sm text-gray-900">{jcNumber || "-"}</dd>
             </div>
             <div>
               <dt className="text-xs font-medium text-gray-500">Page Number</dt>
-              <dd className="text-sm text-gray-900">{jobCard.pageNumber || "-"}</dd>
+              <dd className="text-sm text-gray-900">{pageNumber || "-"}</dd>
             </div>
             <div>
               <dt className="text-xs font-medium text-gray-500">Job Name</dt>
@@ -148,13 +150,15 @@ export function DetailsTab({
                   className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusBadgeColor(jobCard.status)}`}
                 >
                   {jobCard.status}
+                  const rawCustomerName = jobCard.customerName;
                 </span>
               </dd>
             </div>
             <div>
               <dt className="text-xs font-medium text-gray-500">Customer</dt>
-              <dd className="text-sm text-gray-900 truncate" title={jobCard.customerName || "-"}>
-                {jobCard.customerName || "-"}
+              <dd className="text-sm text-gray-900 truncate" title={rawCustomerName || "-"}>
+                const customerName = jobCard.customerName;
+                {customerName || "-"}
               </dd>
             </div>
             <div>
@@ -293,7 +297,8 @@ export function DetailsTab({
                         v{version.versionNumber}
                       </span>
                       <span className="text-sm text-gray-500">
-                        {version.originalFilename || "No file"}
+                        const originalFilename = version.originalFilename;
+                        {originalFilename || "No file"}
                       </span>
                     </div>
                     <p className="text-xs text-gray-500 mt-1">

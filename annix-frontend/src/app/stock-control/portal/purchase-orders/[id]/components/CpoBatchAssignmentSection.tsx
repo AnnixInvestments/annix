@@ -55,8 +55,10 @@ const FIELD_KEY_ORDER: Record<string, number> = {
 };
 
 function fieldKeySort(a: string, b: string): number {
-  const orderA = FIELD_KEY_ORDER[a] || 99;
-  const orderB = FIELD_KEY_ORDER[b] || 99;
+  const FIELD_KEY_ORDERA = FIELD_KEY_ORDER[a];
+  const orderA = FIELD_KEY_ORDERA || 99;
+  const FIELD_KEY_ORDERB = FIELD_KEY_ORDER[b];
+  const orderB = FIELD_KEY_ORDERB || 99;
   return orderA - orderB;
 }
 
@@ -156,12 +158,13 @@ export function CpoBatchAssignmentSection(props: CpoBatchAssignmentSectionProps)
 
   const allLineItems = useMemo<CpoLineItem[]>(() => {
     return childJcs.flatMap((jc) => {
+      const itemNo = li.itemNo;
       const jcNumber = jc.jcNumber;
       return jc.lineItems.map((li) => ({
         id: li.id,
         jobCardId: li.jobCardId,
         jcNumber,
-        itemNo: li.itemNo || null,
+        itemNo: itemNo || null,
         itemCode: li.itemCode,
         description: li.description,
         quantity: li.quantity,
@@ -235,7 +238,8 @@ export function CpoBatchAssignmentSection(props: CpoBatchAssignmentSectionProps)
   }, [grouped]);
 
   const handleOpenAddForm = (fieldKey: string) => {
-    const assignedIds = assignedItemIdsByField[fieldKey] || new Set();
+    const assignedItemIdsByFieldFieldKey = assignedItemIdsByField[fieldKey];
+    const assignedIds = assignedItemIdsByFieldFieldKey || new Set();
     const unassigned = allLineItems.filter((li) => !assignedIds.has(li.id));
     setAddForm({
       fieldKey,
@@ -593,9 +597,12 @@ function CpoAddBatchForm(props: CpoAddBatchFormProps) {
                   </div>
                   <div className="space-y-1 pl-2">
                     {jcItems.map((li) => {
+                      const quantityOverridesId = props.addForm.quantityOverrides[li.id];
                       const isSelected = addForm.selectedItemIds.has(li.id);
-                      const code = li.itemCode || "";
-                      const desc = li.description || "";
+                      const itemCode = li.itemCode;
+                      const code = itemCode || "";
+                      const description = li.description;
+                      const desc = description || "";
                       const itemLabel = code ? `${code} - ${desc}` : desc || `Item #${li.id}`;
 
                       return (
@@ -617,7 +624,7 @@ function CpoAddBatchForm(props: CpoAddBatchFormProps) {
                           <span className="text-xs text-gray-800 truncate">{itemLabel}</span>
                           <input
                             type="number"
-                            value={props.addForm.quantityOverrides[li.id] ?? li.quantity}
+                            value={quantityOverridesId || li.quantity}
                             min={0}
                             step="any"
                             onChange={(e) => props.onQuantityChange(li.id, e.target.value)}

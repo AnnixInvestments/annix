@@ -588,6 +588,7 @@ function AddDeviceModal({ onClose, onAdded }: { onClose: () => void; onAdded: ()
     }
 
     try {
+      const name = device.name;
       setScanStatus("Waiting for Bluetooth device selection...");
       const device = await navigator.bluetooth.requestDevice({
         acceptAllDevices: true,
@@ -597,7 +598,7 @@ function AddDeviceModal({ onClose, onAdded }: { onClose: () => void; onAdded: ()
       if (device.name) {
         setDeviceName(device.name);
       }
-      setScanStatus(`Found Bluetooth device: ${device.name ?? device.id}`);
+      setScanStatus(`Found Bluetooth device: ${name || device.id}`);
     } catch (err) {
       if (err instanceof Error && err.name !== "NotFoundError") {
         setError(err.message);

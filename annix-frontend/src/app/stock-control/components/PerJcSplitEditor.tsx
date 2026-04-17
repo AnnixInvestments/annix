@@ -89,7 +89,8 @@ export function PerJcSplitEditor(props: PerJcSplitEditorProps) {
         {jobCards.map((jc) => {
           const existing = splitMap.get(jc.id);
           const value = existing === undefined ? 0 : existing;
-          const label = jc.jcNumber || jc.jobNumber;
+          const jcNumber = jc.jcNumber;
+          const label = jcNumber || jc.jobNumber;
           return (
             <div
               key={jc.id}
