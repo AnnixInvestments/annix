@@ -395,29 +395,29 @@ function ApprovalStatusBadge(props: { status: QcpApprovalStatus }) {
 }
 
 export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormProps) {
-  const documentRef = existingPlan?.documentRef;
-  const planType = existingPlan?.planType;
-  const customerName = existingPlan?.customerName;
-  const orderNumber = existingPlan?.orderNumber;
-  const jobNumber = existingPlan?.jobNumber;
-  const jobName = existingPlan?.jobName;
-  const specification = existingPlan?.specification;
-  const qcpNumber = gPlan?.qcpNumber;
-  const revision = Plan?.revision;
-  const clientEmail = existingPlan?.clientEmail;
+  const initialDocumentRef = existingPlan?.documentRef;
+  const initialPlanType = existingPlan?.planType;
+  const initialCustomerName = existingPlan?.customerName;
+  const initialOrderNumber = existingPlan?.orderNumber;
+  const initialJobNumber = existingPlan?.jobNumber;
+  const initialJobName = existingPlan?.jobName;
+  const initialSpecification = existingPlan?.specification;
+  const initialQcpNumber = existingPlan?.qcpNumber;
+  const initialRevision = existingPlan?.revision;
+  const initialClientEmail = existingPlan?.clientEmail;
   const isEditing = existingPlan !== null;
 
-  const [planType, setPlanType] = useState<QcpPlanType>(existingPlan?.planType || "paint_external");
-  const [qcpNumber, setQcpNumber] = useState(existinqcpNumber || "");
+  const [planType, setPlanType] = useState<QcpPlanType>(initialPlanType || "paint_external");
+  const [qcpNumber, setQcpNumber] = useState(initialQcpNumber || "");
   const [documentRef, setDocumentRef] = useState(
-    documentRef || PLAN_TYPE_DOC_REFS[planType || "paint_external"],
+    initialDocumentRef || PLAN_TYPE_DOC_REFS[initialPlanType || "paint_external"],
   );
-  const [revision, setRevision] = useState(existingrevision || "01");
-  const [customerName, setCustomerName] = useState(customerName || "");
-  const [orderNumber, setOrderNumber] = useState(orderNumber || "");
-  const [jobNumber, setJobNumber] = useState(jobNumber || "");
-  const [jobName, setJobName] = useState(jobName || "");
-  const [specification, setSpecification] = useState(specification || "");
+  const [revision, setRevision] = useState(initialRevision || "01");
+  const [customerName, setCustomerName] = useState(initialCustomerName || "");
+  const [orderNumber, setOrderNumber] = useState(initialOrderNumber || "");
+  const [jobNumber, setJobNumber] = useState(initialJobNumber || "");
+  const [jobName, setJobName] = useState(initialJobName || "");
+  const [specification, setSpecification] = useState(initialSpecification || "");
   const [activities, setActivities] = useState<QcpActivity[]>(
     existingPlan?.activities?.length ? existingPlan.activities : templateForType("paint_external"),
   );
@@ -431,7 +431,7 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
           date: null,
         })),
   );
-  const [clientEmail, setClientEmail] = useState(clientEmail || "");
+  const [clientEmail, setClientEmail] = useState(initialClientEmail || "");
   const [approvalStatus, setApprovalStatus] = useState<QcpApprovalStatus>(
     (existingPlan?.approvalStatus as QcpApprovalStatus) || "draft",
   );
@@ -491,26 +491,29 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
   useEffect(() => {
     const loadJobCardData = async () => {
       try {
-        const jobNumber = jobCard.jobNumber;
         const [jobCard, coatingAnalysis] = await Promise.all([
           stockControlApiClient.jobCardById(jobCardId),
           stockControlApiClient.jobCardCoatingAnalysis(jobCardId),
         ]);
 
-        setJobNumber(jobNumber || "");
+        const jcJobNumber = jobCard.jobNumber;
+        setJobNumber(jcJobNumber || "");
 
         if (isEditing) {
-          const customerName = jobCard.customerName;
-          const poNumber = jobCard.poNumber;
-          const rawJobName = Plan?.jobName;
-          const jobName = jobCard.jobName;
-          if (!existingrawJobName || existingPlan.jobName.startsWith(`${jobCard.jobNumber} -`)) {
-            setJobName(jobCard.jobName || "");
+          const jcCustomerName = jobCard.customerName;
+          const jcPoNumber = jobCard.poNumber;
+          const rawJobName = existingPlan?.jobName;
+          const jcJobName = jobCard.jobName;
+          if (!rawJobName || existingPlan.jobName.startsWith(`${jobCard.jobNumber} -`)) {
+            setJobName(jcJobName || "");
           }
         } else {
-          setCustomerName(customerName || "");
-          setOrderNumber(poNumber || "");
-          setJobName(jobName || "");
+          const jcCustomerName = jobCard.customerName;
+          const jcPoNumber = jobCard.poNumber;
+          const jcJobName = jobCard.jobName;
+          setCustomerName(jcCustomerName || "");
+          setOrderNumber(jcPoNumber || "");
+          setJobName(jcJobName || "");
 
           if (coatingAnalysis && coatingAnalysis.status === "accepted") {
             populateFromCoating(planType, coatingAnalysis);

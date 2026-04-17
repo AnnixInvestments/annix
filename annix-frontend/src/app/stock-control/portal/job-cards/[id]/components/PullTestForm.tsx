@@ -117,27 +117,28 @@ const initialForceGauge = (existing: QcPullTestRecord | null | undefined): Force
 const DEFAULT_MIN_FORCE_MPA = 3.5;
 
 export function PullTestForm(props: PullTestFormProps) {
-  const quantity = existing?.quantity;
-  const itemDescription = xisting?.itemDescription;
-  const comments = existing?.comments;
   const { isOpen, onClose, jobCardId, onSaved } = props;
   const rawExisting = props.existing;
   const existing = rawExisting || null;
   const rawBatchRecords = props.batchRecords;
   const batchRecords = rawBatchRecords || [];
 
-  const [itemDescription, setItemDescription] = useState(eitemDescription || "");
-  const [quantity, setQuantity] = useState<number | null>(quantity || null);
+  const initialQuantity = existing?.quantity;
+  const initialItemDescription = existing?.itemDescription;
+  const initialComments = existing?.comments;
+  const existingReadingDate = existing?.readingDate;
+  const [itemDescription, setItemDescription] = useState(initialItemDescription || "");
+  const [quantity, setQuantity] = useState<number | null>(initialQuantity || null);
   const [minForceMpa, setMinForceMpa] = useState<string>(String(DEFAULT_MIN_FORCE_MPA));
   const [readingDate, setReadingDate] = useState(
-    existing?.readingDate ? existing.readingDate.slice(0, 10) : todayString(),
+    existingReadingDate ? existingReadingDate.slice(0, 10) : todayString(),
   );
   const [solutions, setSolutions] = useState<SolutionRow[]>(
     initialSolutions(existing, batchRecords),
   );
   const [forceGauge, setForceGauge] = useState<ForceGaugeState>(initialForceGauge(existing));
   const [areaReadings, setAreaReadings] = useState<AreaReadingRow[]>(initialAreaReadings(existing));
-  const [comments, setComments] = useState(comments || "");
+  const [comments, setComments] = useState(initialComments || "");
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

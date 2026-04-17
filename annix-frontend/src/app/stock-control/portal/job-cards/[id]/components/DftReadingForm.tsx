@@ -112,11 +112,6 @@ const coatDefaults = (
 };
 
 export default function DftReadingForm(props: DftReadingFormProps) {
-  const coatType = existing?.coatType;
-  const paintProduct = existing?.paintProduct;
-  const batchNumber = existing?.batchNumber;
-  const minUm = defaults?.minUm;
-  const maxUm = defaults?.maxUm;
   const { isOpen, onClose, jobCardId, onSaved } = props;
   const rawExisting = props.existing;
   const existing = rawExisting || null;
@@ -125,6 +120,10 @@ export default function DftReadingForm(props: DftReadingFormProps) {
   const rawBatchRecords = props.batchRecords;
   const batchRecords = rawBatchRecords || [];
 
+  const initialCoatType = existing?.coatType;
+  const initialPaintProduct = existing?.paintProduct;
+  const initialBatchNumber = existing?.batchNumber;
+
   const availableCoatTypes: DftCoatType[] = (() => {
     const extCoats = coatingAnalysis?.coats.filter((c) => c.area === "external") || [];
     const roles = extCoats.map((c) => c.coatRole).filter(Boolean) as DftCoatType[];
@@ -132,15 +131,21 @@ export default function DftReadingForm(props: DftReadingFormProps) {
       ? (["primer", "intermediate", "final"] as const).filter((r) => roles.includes(r))
       : ["primer", "final"];
   })();
-  const [coatType, setCoatType] = useState<DftCoatType>(coatType || "primer");
+  const [coatType, setCoatType] = useState<DftCoatType>(initialCoatType || "primer");
   const defaults = existing ? null : coatDefaults(coatingAnalysis, coatType, batchRecords);
-  const [paintProduct, setPaintProduct] = useState(paintProduct || defaults?.product || "");
-  const [batchNumber, setBatchNumber] = useState(batchNumber || defaults?.batchNumber || "");
+  const initialProduct = defaults?.product;
+  const initialBatch = defaults?.batchNumber;
+  const initialMinUm = defaults?.minUm;
+  const initialMaxUm = defaults?.maxUm;
+  const [paintProduct, setPaintProduct] = useState(initialPaintProduct || initialProduct || "");
+  const [batchNumber, setBatchNumber] = useState(initialBatchNumber || initialBatch || "");
+  const specMinRaw = existing?.specMinMicrons;
   const [specMinMicrons, setSpecMinMicrons] = useState(
-    existing?.specMinMicrons != null ? String(existing.specMinMicrons) : minUm || "",
+    specMinRaw != null ? String(specMinRaw) : initialMinUm || "",
   );
+  const specMaxRaw = existing?.specMaxMicrons;
   const [specMaxMicrons, setSpecMaxMicrons] = useState(
-    existing?.specMaxMicrons != null ? String(existing.specMaxMicrons) : maxUm || "",
+    specMaxRaw != null ? String(specMaxRaw) : initialMaxUm || "",
   );
   const [readingDate, setReadingDate] = useState(
     existing?.readingDate ? existing.readingDate.slice(0, 10) : todayDateString(),

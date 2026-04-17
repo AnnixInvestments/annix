@@ -15,24 +15,28 @@ interface EnvironmentalRecordFormProps {
 }
 
 export function EnvironmentalRecordForm(props: EnvironmentalRecordFormProps) {
-  const notes = existing?.notes;
   const { isOpen, onClose, jobCardId, onSaved } = props;
   const existing = props.existing;
   const defaultDate = now().toISODate() || "";
 
+  const initialNotes = existing?.notes;
+  const existingRecordDate = existing?.recordDate;
+  const existingTempC = existing?.temperatureC;
+  const existingHumidity = existing?.humidity;
+  const existingDewPoint = existing?.dewPointC;
   const [recordDate, setRecordDate] = useState(
-    existing ? existing.recordDate.slice(0, 10) : defaultDate,
+    existingRecordDate ? existingRecordDate.slice(0, 10) : defaultDate,
   );
   const [temperatureC, setTemperatureC] = useState(
-    existing?.temperatureC != null ? String(existing.temperatureC) : "",
+    existingTempC != null ? String(existingTempC) : "",
   );
   const [humidity, setHumidity] = useState(
-    existing?.humidity != null ? String(existing.humidity) : "",
+    existingHumidity != null ? String(existingHumidity) : "",
   );
   const [dewPointC, setDewPointC] = useState(
-    existing?.dewPointC != null ? String(existing.dewPointC) : "",
+    existingDewPoint != null ? String(existingDewPoint) : "",
   );
-  const [notes, setNotes] = useState(notes || "");
+  const [notes, setNotes] = useState(initialNotes || "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

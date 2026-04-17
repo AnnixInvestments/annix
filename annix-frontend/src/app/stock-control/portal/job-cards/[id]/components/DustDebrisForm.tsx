@@ -104,16 +104,19 @@ function autoResult(
 }
 
 export default function DustDebrisForm(props: DustDebrisFormProps) {
-  const surfacePrepMethod = existing?.surfacePrepMethod;
   const { isOpen, onClose, jobCardId, onSaved } = props;
   const rawExisting = props.existing;
   const existing = rawExisting || null;
   const defaultDate = now().toISODate() || "";
 
+  const initialSurfacePrepMethod = existing?.surfacePrepMethod;
+  const existingReadingDate = existing?.readingDate;
   const [readingDate, setReadingDate] = useState<string>(
-    existing?.readingDate ? existing.readingDate.slice(0, 10) : defaultDate,
+    existingReadingDate ? existingReadingDate.slice(0, 10) : defaultDate,
   );
-  const [surfacePrepMethod, setSurfacePrepMethod] = useState<string>(surfacePrepMethod || "");
+  const [surfacePrepMethod, setSurfacePrepMethod] = useState<string>(
+    initialSurfacePrepMethod || "",
+  );
   const [maxQuantity, setMaxQuantity] = useState<string>(
     existing?.acceptanceCriteria?.maxQuantity !== undefined
       ? existing.acceptanceCriteria.maxQuantity.toString()
