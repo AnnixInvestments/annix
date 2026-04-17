@@ -51,7 +51,15 @@ export class CpoController {
   ) {}
 
   @Get()
-  @StockControlRoles("viewer", "quality", "storeman", "accounts", "manager", "admin")
+  @StockControlRoles(
+    "viewer",
+    "quality",
+    "storeman",
+    "receiving-clerk",
+    "accounts",
+    "manager",
+    "admin",
+  )
   @ApiOperation({ summary: "List all CPOs for the company" })
   async findAll(
     @Req() req: any,
