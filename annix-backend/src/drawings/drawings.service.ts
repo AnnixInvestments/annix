@@ -288,7 +288,7 @@ export class DrawingsService {
   async findOne(id: number): Promise<Drawing> {
     const drawing = await this.drawingRepository.findOne({
       where: { id },
-      relations: ["uploadedBy", "rfq", "versions", "versions.uploadedBy"],
+      relations: ["uploadedBy", "rfq"],
     });
 
     if (!drawing) {
@@ -351,13 +351,14 @@ export class DrawingsService {
     await this.drawingRepository.remove(drawing);
   }
 
-  async getVersionHistory(id: number): Promise<DrawingVersion[]> {
-    const drawing = await this.findOne(id);
+  async getVersionHistory(id: number, limit?: number): Promise<DrawingVersion[]> {
+    await this.findOne(id);
 
     return this.versionRepository.find({
-      where: { drawing: { id: drawing.id } },
+      where: { drawing: { id } },
       relations: ["uploadedBy"],
       order: { versionNumber: "DESC" },
+      ...(limit ? { take: limit } : {}),
     });
   }
 

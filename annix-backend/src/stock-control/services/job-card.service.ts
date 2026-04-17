@@ -11,6 +11,7 @@ import { DataSource, IsNull, LessThan, MoreThan, Repository } from "typeorm";
 import { AuditService } from "../../audit/audit.service";
 import { AuditAction } from "../../audit/entities/audit-log.entity";
 import { now } from "../../lib/datetime";
+import { PaginatedResponse } from "../../shared/dto/api-response.dto";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { JobCardCoatingAnalysis } from "../entities/coating-analysis.entity";
 import { JobCard } from "../entities/job-card.entity";
@@ -105,7 +106,7 @@ export class JobCardService {
   async findById(companyId: number, id: number): Promise<JobCard> {
     const jobCard = await this.jobCardRepo.findOne({
       where: { id, companyId },
-      relations: ["allocations", "allocations.stockItem", "allocations.staffMember", "lineItems"],
+      relations: ["lineItems"],
     });
     if (!jobCard) {
       throw new NotFoundException("Job card not found");
@@ -576,12 +577,27 @@ export class JobCardService {
     return allocations.filter((a) => a.stockItem?.isLeftover === true);
   }
 
-  async allocationsByJobCard(companyId: number, jobCardId: number): Promise<StockAllocation[]> {
-    return this.allocationRepo.find({
+  async allocationsByJobCard(
+    companyId: number,
+    jobCardId: number,
+    page = 1,
+    limit = 20,
+  ): Promise<PaginatedResponse<StockAllocation>> {
+    const [data, total] = await this.allocationRepo.findAndCount({
       where: { jobCard: { id: jobCardId }, companyId },
       relations: ["stockItem", "staffMember"],
       order: { createdAt: "DESC" },
+      skip: (page - 1) * limit,
+      take: limit,
     });
+
+    return {
+      data,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async undoAllocation(

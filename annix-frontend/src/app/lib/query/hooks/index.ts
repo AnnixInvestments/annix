@@ -591,6 +591,7 @@ export {
   useDrawingComments,
   useDrawingDetail,
   useDrawings,
+  useDrawingVersions,
   useSubmitDrawingForReview,
   useUploadDrawing,
   useUploadDrawingVersion,

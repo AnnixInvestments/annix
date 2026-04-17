@@ -258,7 +258,10 @@ proto.allocateStock = async function (jobCardId, data) {
 };
 
 proto.jobCardAllocations = async function (jobCardId) {
-  return this.request(`/stock-control/job-cards/${jobCardId}/allocations`);
+  const response = await this.request<{ data: StockAllocation[]; total: number }>(
+    `/stock-control/job-cards/${jobCardId}/allocations?limit=100`,
+  );
+  return response.data;
 };
 
 proto.jobCardCoatingAnalysis = async function (jobCardId) {

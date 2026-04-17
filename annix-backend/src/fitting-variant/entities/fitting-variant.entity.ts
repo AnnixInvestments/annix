@@ -21,20 +21,14 @@ export class FittingVariant {
   @OneToMany(
     () => FittingBore,
     (bore) => bore.variant,
-    {
-      cascade: true,
-      eager: true,
-    },
+    { cascade: true },
   )
   bores: FittingBore[];
 
   @OneToMany(
     () => FittingDimension,
     (dim) => dim.variant,
-    {
-      cascade: true,
-      eager: true,
-    },
+    { cascade: true },
   )
   dimensions: FittingDimension[];
 }

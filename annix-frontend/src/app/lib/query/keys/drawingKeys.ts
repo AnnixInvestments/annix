@@ -10,4 +10,5 @@ export const drawingKeys = {
   list: (params?: DrawingQueryParams) => [...drawingKeys.all, "list", params ?? {}] as const,
   detail: (id: number) => [...drawingKeys.all, "detail", id] as const,
   comments: (id: number) => [...drawingKeys.all, "comments", id] as const,
+  versions: (id: number) => [...drawingKeys.all, "versions", id] as const,
 } as const;

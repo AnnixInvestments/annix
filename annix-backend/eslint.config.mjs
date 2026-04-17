@@ -141,6 +141,11 @@ export default tseslint.config(
             "Use !isUndefined() from es-toolkit/compat instead of typeof checks. Note: prefer null over undefined for absence of value.",
         },
         {
+          selector: "Property[key.name='eager'][value.value=true]",
+          message:
+            "eager: true causes unbounded joins on every query touching this entity. Use explicit relations: [...] in the service query instead (ref #203).",
+        },
+        {
           selector: "Literal[value=/api\\.anthropic\\.com/]",
           message:
             "Direct calls to api.anthropic.com are forbidden. Use AiChatService (Gemini-first) per CLAUDE.md AI Provider Policy. Only the canonical Claude provider files inside src/nix/ai-providers/ may reference this URL.",

@@ -10,6 +10,7 @@ import {
   useAnalyzeDrawing,
   useDrawingComments,
   useDrawingDetail,
+  useDrawingVersions,
   useSubmitDrawingForReview,
   useUploadDrawingVersion,
 } from "@/app/lib/query/hooks";
@@ -23,6 +24,7 @@ export default function DrawingDetailPage() {
   const { showToast } = useToast();
 
   const { data: drawing, isLoading, error } = useDrawingDetail(drawingId);
+  const { data: versions = [] } = useDrawingVersions(drawingId);
   const { data: comments = [] } = useDrawingComments(drawingId);
 
   const addCommentMutation = useAddDrawingComment(drawingId);
@@ -290,35 +292,33 @@ export default function DrawingDetailPage() {
               <h2 className="text-lg font-bold text-gray-900 mb-4">Version History</h2>
 
               <div className="space-y-4">
-                {drawing.versions
-                  .sort((a, b) => b.versionNumber - a.versionNumber)
-                  .map((version) => (
-                    <div
-                      key={version.id}
-                      className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold">
-                          v{version.versionNumber}
-                        </div>
-                        <div>
-                          <p className="font-medium text-gray-900">{version.originalFilename}</p>
-                          <p className="text-sm text-gray-500">
-                            {formatDate(version.createdAt)} by {version.uploadedBy.username}
-                          </p>
-                          {version.changeNotes && (
-                            <p className="text-sm text-gray-600 mt-1">{version.changeNotes}</p>
-                          )}
-                        </div>
+                {versions.map((version) => (
+                  <div
+                    key={version.id}
+                    className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold">
+                        v{version.versionNumber}
                       </div>
-                      <button
-                        onClick={() => handleDownload(version.versionNumber)}
-                        className="px-3 py-1 text-blue-600 hover:bg-blue-50 rounded-lg text-sm font-medium"
-                      >
-                        Download
-                      </button>
+                      <div>
+                        <p className="font-medium text-gray-900">{version.originalFilename}</p>
+                        <p className="text-sm text-gray-500">
+                          {formatDate(version.createdAt)} by {version.uploadedBy.username}
+                        </p>
+                        {version.changeNotes && (
+                          <p className="text-sm text-gray-600 mt-1">{version.changeNotes}</p>
+                        )}
+                      </div>
                     </div>
-                  ))}
+                    <button
+                      onClick={() => handleDownload(version.versionNumber)}
+                      className="px-3 py-1 text-blue-600 hover:bg-blue-50 rounded-lg text-sm font-medium"
+                    >
+                      Download
+                    </button>
+                  </div>
+                ))}
               </div>
             </div>
 

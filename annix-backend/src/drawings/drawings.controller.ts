@@ -141,7 +141,7 @@ export class DrawingsController {
     "admin",
     "user",
   )
-  @ApiOperation({ summary: "Get drawing by ID with all versions" })
+  @ApiOperation({ summary: "Get drawing by ID" })
   @ApiResponse({ status: HttpStatus.OK, type: Drawing })
   async findOne(@Param("id", ParseIntPipe) id: number): Promise<Drawing> {
     return this.drawingsService.findOne(id);
@@ -194,8 +194,12 @@ export class DrawingsController {
   )
   @ApiOperation({ summary: "Get version history for a drawing" })
   @ApiResponse({ status: HttpStatus.OK, type: [DrawingVersion] })
-  async getVersionHistory(@Param("id", ParseIntPipe) id: number): Promise<DrawingVersion[]> {
-    return this.drawingsService.getVersionHistory(id);
+  async getVersionHistory(
+    @Param("id", ParseIntPipe) id: number,
+    @Query("limit") limitStr?: string,
+  ): Promise<DrawingVersion[]> {
+    const limit = limitStr ? Math.min(100, Math.max(1, parseInt(limitStr, 10) || 0)) : undefined;
+    return this.drawingsService.getVersionHistory(id, limit);
   }
 
   // === UPDATE ===

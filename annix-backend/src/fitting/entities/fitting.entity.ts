@@ -11,7 +11,6 @@ export class Fitting {
   @ManyToOne(
     () => SteelSpecification,
     (steelSpecification) => steelSpecification.fittings,
-    { eager: true },
   )
   @JoinColumn({ name: "steel_specification_id" })
   steelSpecification: SteelSpecification;
@@ -19,7 +18,6 @@ export class Fitting {
   @ManyToOne(
     () => FittingType,
     (type) => type.fittings,
-    { eager: true },
   )
   @JoinColumn({ name: "fitting_type_id" })
   fittingType: FittingType;
@@ -27,10 +25,7 @@ export class Fitting {
   @OneToMany(
     () => FittingVariant,
     (variant) => variant.fitting,
-    {
-      cascade: true,
-      eager: true,
-    },
+    { cascade: true },
   )
   variants: FittingVariant[];
 }

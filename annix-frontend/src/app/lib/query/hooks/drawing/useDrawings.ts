@@ -109,7 +109,7 @@ interface DrawingDetail {
     id: number;
     rfqNumber: string;
   };
-  versions: DrawingVersion[];
+  versions?: DrawingVersion[];
   createdAt: string;
   updatedAt: string;
 }
@@ -172,6 +172,24 @@ export function useDrawingDetail(id: number) {
   return useQuery<DrawingDetail>({
     queryKey: drawingKeys.detail(id),
     queryFn: () => fetchDrawingDetail(id),
+    enabled: id > 0,
+  });
+}
+
+export function useDrawingVersions(id: number) {
+  return useQuery<DrawingVersion[]>({
+    queryKey: drawingKeys.versions(id),
+    queryFn: async () => {
+      const response = await fetch(`${browserBaseUrl()}/drawings/${id}/versions?limit=5`, {
+        headers: getAuthHeaders(),
+      });
+
+      if (!response.ok) {
+        return [];
+      }
+
+      return response.json();
+    },
     enabled: id > 0,
   });
 }

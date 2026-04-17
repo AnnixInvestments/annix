@@ -353,6 +353,12 @@ const url = await this.storageService.presignedUrl(filePath, 3600);
 - **Frequency is adjustable at runtime**: The Admin > Scheduled Jobs page allows frequency changes without code deploys — start conservative and increase only if needed
 - **Cluster daily jobs**: If the job only needs to run once a day, schedule it at `0 8 * * *` (morning cluster) or `0 2 * * *` (nightly cluster) to share wake-ups with existing jobs
 
+### Neon Network Transfer Budget
+- **Never use `eager: true`** in TypeORM entity decorators — it causes unbounded joins on every query touching that entity. Use explicit `relations: [...]` in service queries, loading only what the caller needs. ESLint enforces this.
+- **Paginate unbounded collections**: Detail endpoints must not load related collections inline (allocations, versions, comments, etc.). Create separate paginated sub-resource endpoints (e.g. `/drawings/:id/versions`, `/job-cards/:id/allocations`). Default page size: 20 items.
+- **TanStack Query `refetchInterval` must be >= 120_000ms** (2 minutes) unless there is a documented justification. Use the `usePollingInterval()` hook for admin-configurable intervals. ESLint warns on all `refetchInterval` usage.
+- **Static/reference data endpoints must set** `Cache-Control: public, max-age=31536000, immutable` to prevent repeated fetches of data that rarely changes.
+
 ### Database Schema Changes
 - **Never use `synchronize: true`**: All schema changes must go through TypeORM migrations
 - **Never modify the database directly**: No manual DDL (CREATE TABLE, ALTER TABLE, etc.) outside of migration files

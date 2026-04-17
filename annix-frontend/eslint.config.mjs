@@ -124,6 +124,11 @@ export default tseslint.config(
             "Do not use optional member or bracket access on the left side of ?? in frontend code. Hoist it to a local const first to avoid the SWC miscompilation bug.",
         },
         {
+          selector: "Property[key.name='refetchInterval']",
+          message:
+            "Verify refetchInterval is >= 120_000 (2 min). Low intervals prevent Neon from suspending and burn network/compute budget. Use usePollingInterval() for admin-configurable intervals (ref #203).",
+        },
+        {
           selector:
             "CallExpression[callee.object.name='Array'][callee.property.name='isArray']",
           message:

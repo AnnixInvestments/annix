@@ -16,10 +16,7 @@ export class FittingDimension {
   @ManyToOne(
     () => AngleRange,
     (range) => range.fittingDimensions,
-    {
-      nullable: true,
-      eager: true,
-    },
+    { nullable: true },
   )
   @JoinColumn({ name: "angle_range_id" })
   angleRange: AngleRange | null;

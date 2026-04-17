@@ -870,9 +870,16 @@ export class JobCardsController {
   }
 
   @Get(":id/allocations")
-  @ApiOperation({ summary: "Allocations for a job card" })
-  async allocations(@Req() req: any, @Param("id") id: number) {
-    return this.jobCardService.allocationsByJobCard(req.user.companyId, id);
+  @ApiOperation({ summary: "Allocations for a job card (paginated)" })
+  async allocations(
+    @Req() req: any,
+    @Param("id") id: number,
+    @Query("page") pageStr?: string,
+    @Query("limit") limitStr?: string,
+  ) {
+    const page = Math.max(1, parseInt(pageStr || "1", 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(limitStr || "20", 10) || 20));
+    return this.jobCardService.allocationsByJobCard(req.user.companyId, id, page, limit);
   }
 
   @Get("allocations/pending")
