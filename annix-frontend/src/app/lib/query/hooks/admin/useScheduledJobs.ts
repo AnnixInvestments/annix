@@ -4,10 +4,10 @@ import { adminApiClient } from "@/app/lib/api/adminApi";
 import { adminKeys } from "@/app/lib/query/keys";
 import { usePollingInterval } from "./usePollingJobs";
 
-const TWO_MINUTES = 2 * 60 * 1000;
+const SIX_HOURS = 6 * 60 * 60 * 1000;
 
 export function useScheduledJobs() {
-  const refetchInterval = usePollingInterval("admin:scheduled-jobs-list", TWO_MINUTES);
+  const refetchInterval = usePollingInterval("admin:scheduled-jobs-list", SIX_HOURS);
   return useQuery({
     queryKey: adminKeys.scheduledJobs.list(),
     queryFn: () => adminApiClient.scheduledJobs(),
@@ -68,7 +68,7 @@ export function useSyncScheduledJobs() {
 }
 
 export function useScheduledJobsSyncStatus() {
-  const refetchInterval = usePollingInterval("admin:scheduled-jobs-sync-status", TWO_MINUTES);
+  const refetchInterval = usePollingInterval("admin:scheduled-jobs-sync-status", SIX_HOURS);
   return useQuery({
     queryKey: [...adminKeys.scheduledJobs.all, "sync-status"],
     queryFn: () => adminApiClient.scheduledJobsSyncStatus(),
@@ -77,7 +77,7 @@ export function useScheduledJobsSyncStatus() {
 }
 
 export function useScheduledJobsGlobalSettings() {
-  const refetchInterval = usePollingInterval("admin:scheduled-jobs-global-settings", TWO_MINUTES);
+  const refetchInterval = usePollingInterval("admin:scheduled-jobs-global-settings", SIX_HOURS);
   return useQuery({
     queryKey: [...adminKeys.scheduledJobs.all, "global-settings"],
     queryFn: () => adminApiClient.scheduledJobsGlobalSettings(),

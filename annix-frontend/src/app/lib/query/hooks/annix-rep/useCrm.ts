@@ -27,7 +27,7 @@ export function useCrmConfig(configId: number) {
 }
 
 export function useCrmSyncStatus(configId: number) {
-  const refetchInterval = usePollingInterval("annix-rep:crm", 5 * 60 * 1000);
+  const refetchInterval = usePollingInterval("annix-rep:crm", 6 * 60 * 60 * 1000);
   return useQuery({
     queryKey: annixRepKeys.crm.status(configId),
     queryFn: () => annixRepApi.crm.syncStatus(configId),

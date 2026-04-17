@@ -37,8 +37,6 @@ export interface PollingJobRuntimeConfigDto {
 }
 
 const SIX_HOURS = 6 * 60 * 60 * 1000;
-const FIVE_MIN = 5 * 60 * 1000;
-const TWO_MIN = 2 * 60 * 1000;
 
 export const POLLING_JOB_METADATA: Record<
   string,
@@ -92,22 +90,22 @@ export const POLLING_JOB_METADATA: Record<
   "admin:scheduled-jobs-list": {
     description: "Admin scheduled-jobs page — jobs list",
     module: "Admin",
-    defaultIntervalMs: TWO_MIN,
+    defaultIntervalMs: SIX_HOURS,
   },
   "admin:scheduled-jobs-sync-status": {
     description: "Admin scheduled-jobs page — sync status",
     module: "Admin",
-    defaultIntervalMs: TWO_MIN,
+    defaultIntervalMs: SIX_HOURS,
   },
   "admin:scheduled-jobs-global-settings": {
     description: "Admin scheduled-jobs page — global settings",
     module: "Admin",
-    defaultIntervalMs: TWO_MIN,
+    defaultIntervalMs: SIX_HOURS,
   },
   "annix-rep:crm": {
     description: "Annix Rep — CRM poll",
     module: "Annix Rep",
-    defaultIntervalMs: FIVE_MIN,
+    defaultIntervalMs: SIX_HOURS,
   },
 };
 
