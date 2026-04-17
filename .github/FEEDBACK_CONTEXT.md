@@ -24,6 +24,7 @@ Each comment contains:
 - The full feedback text
 - Screenshots (auto-captured and manually attached)
 - AI classification of the feedback type
+- In some cases, an AI judgment that the report is an engineering investigation request rather than a direct bug report
 
 Operational notes for this pipeline live in `.github/FEEDBACK_AUTOMATION_OPS.md`.
 
@@ -62,8 +63,9 @@ Screenshots show the exact state of the page when the user submitted feedback. L
 2. Identify the relevant page/component from the app context and page URL
 3. Read the component code, tracing the data flow from frontend to backend
 4. Identify the root cause — pinpoint exact files and line numbers
-5. Implement the fix if it is contained, safe, and testable in automation
-6. Open a PR targeting `main`, include `Ref #<tracker issue>` in the PR body, and comment on the issue with the outcome
+5. If the feedback asks whether an implementation is DRY, consistent, reused correctly, or follows the same pattern across modules, treat it as an investigation request and inspect the broader code path before deciding whether a safe change is warranted
+6. Implement the fix if it is contained, safe, and testable in automation
+7. Open a PR targeting `main`, include `Ref #<tracker issue>` in the PR body, and comment on the issue with the outcome
 
 ## What to Include in Your Issue Comment
 

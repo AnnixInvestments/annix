@@ -34,6 +34,12 @@ export const FEEDBACK_TRIAGE_REGRESSION_SET: FeedbackTriageFixture[] = [
     content: "How do I reset my supplier portal password without asking an admin?",
   },
   {
+    id: "dry-implementation-review",
+    expected: "question",
+    content:
+      "I'm asking whether the feedback widget implementation is dry across all modules and follows the same pattern everywhere.",
+  },
+  {
     id: "wrong-customer-name",
     expected: "data-issue",
     content:

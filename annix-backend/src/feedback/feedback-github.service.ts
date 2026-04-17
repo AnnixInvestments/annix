@@ -20,6 +20,8 @@ interface FeedbackTranslation {
   autoFixable: boolean;
 }
 
+type ClaudeRoutingMode = "autofix" | "investigation" | "skip";
+
 const TRANSLATOR_PROMPT = `You are a software feedback translator.
 
 Convert the report into strict engineering JSON using only evidence from the provided report and captured context.
@@ -48,6 +50,9 @@ Rules:
 - riskFlags must be an array of concise lowercase strings
 - likelyLocation, likelyCause, affectedSurface, and fixScope must be strings or null
 - autoFixable must be true only for narrow frontend-local issues with strong context
+- distinguish ordinary user questions from engineering investigation requests
+- when a question is really asking for code inspection, consistency review, DRYness, reuse, architecture, or implementation verification, classify it as question and set fixScope to investigation
+- for investigation requests with enough codebase context, set autoFixable true so they can be routed to Claude for autonomous investigation
 - do not suggest code changes
 - do not invent evidence
 - if the report is weak or risky, lower confidence and set autoFixable false`;
@@ -79,6 +84,13 @@ const APPROVED_FIX_SCOPES = new Set([
   "frontend-event-handler",
   "conditional-rendering",
   "label",
+]);
+const INVESTIGATION_FIX_SCOPES = new Set([
+  "investigation",
+  "implementation-review",
+  "consistency-review",
+  "refactor-review",
+  "architecture-review",
 ]);
 const FORCE_CLAUDE_LABEL = "force-claude";
 const SKIP_CLAUDE_LABEL = "skip-claude";
@@ -314,9 +326,9 @@ export class FeedbackGithubService {
     labels: string[],
   ): string {
     const claudeOverride = this.resolveClaudeOverride(labels);
-    const shouldTriggerClaude = this.shouldTriggerClaude(translation, claudeOverride);
+    const claudeRoutingMode = this.getClaudeRoutingMode(translation, claudeOverride);
 
-    if (!shouldTriggerClaude) {
+    if (claudeRoutingMode === "skip") {
       if (claudeOverride === "skip") {
         return `${commentBody}\n\n---\nClaude auto-fix was skipped because the tracker issue has the \`${SKIP_CLAUDE_LABEL}\` label.`;
       }
@@ -328,6 +340,10 @@ export class FeedbackGithubService {
       claudeOverride === "force"
         ? ` The tracker issue has the \`${FORCE_CLAUDE_LABEL}\` label, so Claude was triggered regardless of classification.`
         : "";
+
+    if (claudeRoutingMode === "investigation") {
+      return `${commentBody}\n\n---\n@claude This feedback was translated as an engineering investigation request with confidence ${translation.confidence.toFixed(2)}. Inspect the relevant code paths, assess whether the implementation is consistent and appropriately reused, and make the smallest safe change if a contained improvement is clearly warranted. If the issue is broader than a safe autonomous change, comment with a concrete investigation summary and recommended next steps instead of forcing a PR.${overrideNote}`;
+    }
 
     return `${commentBody}\n\n---\n@claude This feedback was translated as \`${translation.classification}\` with confidence ${translation.confidence.toFixed(2)}. Stay inside the structured brief and narrow safe scope. Please investigate and either fix the issue (create a branch and PR) or comment explaining what you found and whether human intervention is needed. The feedback includes screenshots showing the current state.${overrideNote}`;
   }
@@ -455,28 +471,49 @@ export class FeedbackGithubService {
       .slice(0, limit);
   }
 
+  private isInvestigationRequest(translation: FeedbackTranslation): boolean {
+    return (
+      translation.classification === "question" &&
+      Boolean(translation.fixScope) &&
+      INVESTIGATION_FIX_SCOPES.has(translation.fixScope ?? "")
+    );
+  }
+
+  private getClaudeRoutingMode(
+    translation: FeedbackTranslation,
+    claudeOverride: "force" | "skip" | null,
+  ): ClaudeRoutingMode {
+    if (claudeOverride === "skip") {
+      return "skip";
+    }
+    if (claudeOverride === "force") {
+      return this.isInvestigationRequest(translation) ? "investigation" : "autofix";
+    }
+    if (!translation.autoFixable) {
+      return "skip";
+    }
+    if (this.isInvestigationRequest(translation)) {
+      if (translation.confidence < 0.7) {
+        return "skip";
+      }
+      return "investigation";
+    }
+    if (!CLAUDE_AUTO_FIX_CLASSIFICATIONS.includes(translation.classification)) {
+      return "skip";
+    }
+    if (translation.confidence < 0.7) {
+      return "skip";
+    }
+    if (translation.fixScope && !APPROVED_FIX_SCOPES.has(translation.fixScope)) {
+      return "skip";
+    }
+    return translation.riskFlags.some((flag) => BLOCKED_RISK_FLAGS.has(flag)) ? "skip" : "autofix";
+  }
+
   private shouldTriggerClaude(
     translation: FeedbackTranslation,
     claudeOverride: "force" | "skip" | null,
   ): boolean {
-    if (claudeOverride === "skip") {
-      return false;
-    }
-    if (claudeOverride === "force") {
-      return true;
-    }
-    if (!translation.autoFixable) {
-      return false;
-    }
-    if (!CLAUDE_AUTO_FIX_CLASSIFICATIONS.includes(translation.classification)) {
-      return false;
-    }
-    if (translation.confidence < 0.7) {
-      return false;
-    }
-    if (translation.fixScope && !APPROVED_FIX_SCOPES.has(translation.fixScope)) {
-      return false;
-    }
-    return !translation.riskFlags.some((flag) => BLOCKED_RISK_FLAGS.has(flag));
+    return this.getClaudeRoutingMode(translation, claudeOverride) !== "skip";
   }
 }
