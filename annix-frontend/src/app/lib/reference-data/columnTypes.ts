@@ -1,4 +1,5 @@
 import { isString } from "es-toolkit/compat";
+import { fromISO } from "@/app/lib/datetime";
 
 export enum ColumnTypeCategory {
   Numeric = "numeric",
@@ -62,8 +63,8 @@ export function coerceFormValue(value: any, type: string): any {
   if (category === ColumnTypeCategory.Numeric) return Number(value);
   if (category === ColumnTypeCategory.Boolean) return Boolean(value);
   if (category === ColumnTypeCategory.Date || category === ColumnTypeCategory.Timestamp) {
-    const parsed = new Date(value);
-    return Number.isNaN(parsed.getTime()) ? null : value;
+    const parsed = fromISO(String(value));
+    return parsed.isValid ? value : null;
   }
   return value;
 }

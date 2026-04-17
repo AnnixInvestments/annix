@@ -278,15 +278,17 @@ export function temperatureDerating(temperatureC: number): number {
   if (temperatureC <= temps[0]) return TEMPERATURE_DERATING[temps[0]];
   if (temperatureC >= temps[temps.length - 1]) return TEMPERATURE_DERATING[temps[temps.length - 1]];
 
-  // Find surrounding temperatures and interpolate
-  for (let i = 0; i < temps.length - 1; i++) {
-    if (temperatureC >= temps[i] && temperatureC <= temps[i + 1]) {
-      const ratio = (temperatureC - temps[i]) / (temps[i + 1] - temps[i]);
-      return (
-        TEMPERATURE_DERATING[temps[i]] +
-        ratio * (TEMPERATURE_DERATING[temps[i + 1]] - TEMPERATURE_DERATING[temps[i]])
-      );
-    }
+  const bracketIndex = temps
+    .slice(0, -1)
+    .findIndex((t, i) => temperatureC >= t && temperatureC <= temps[i + 1]);
+  if (bracketIndex !== -1) {
+    const tLow = temps[bracketIndex];
+    const tHigh = temps[bracketIndex + 1];
+    const ratio = (temperatureC - tLow) / (tHigh - tLow);
+    return (
+      TEMPERATURE_DERATING[tLow] +
+      ratio * (TEMPERATURE_DERATING[tHigh] - TEMPERATURE_DERATING[tLow])
+    );
   }
 
   return 1.0;
@@ -879,27 +881,20 @@ export function getAllowableStressKsi(materialCode: string, temperatureF: number
     })
     .sort((a, b) => a.high - b.high);
 
-  // Find matching range or interpolate
-  for (let i = 0; i < stressEntries.length; i++) {
-    const entry = stressEntries[i];
-    if (temperatureF <= entry.high) {
-      // Check if within range
-      if (temperatureF >= entry.low) {
-        return entry.value;
-      }
-      // Before first range, use first value
-      if (i === 0) {
-        return entry.value;
-      }
-      // Interpolate between previous and current
-      const prev = stressEntries[i - 1];
-      const ratio = (temperatureF - prev.high) / (entry.low - prev.high);
-      return prev.value + ratio * (entry.value - prev.value);
-    }
+  const matchIndex = stressEntries.findIndex((e) => temperatureF <= e.high);
+  if (matchIndex === -1) {
+    return stressEntries[stressEntries.length - 1].value;
   }
-
-  // Beyond last temperature, return last value (or could throw error)
-  return stressEntries[stressEntries.length - 1].value;
+  const entry = stressEntries[matchIndex];
+  if (temperatureF >= entry.low) {
+    return entry.value;
+  }
+  if (matchIndex === 0) {
+    return entry.value;
+  }
+  const prev = stressEntries[matchIndex - 1];
+  const ratio = (temperatureF - prev.high) / (entry.low - prev.high);
+  return prev.value + ratio * (entry.value - prev.value);
 }
 
 /**

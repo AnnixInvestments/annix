@@ -259,6 +259,7 @@ export const nixApi = {
 
   extraction: async (extractionId: number): Promise<NixProcessResponse> => {
     const baseUrl = browserBaseUrl();
+    // eslint-disable-next-line no-restricted-syntax -- SSR guard
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
     const response = await fetch(`${baseUrl}/nix/extraction/${extractionId}`, {
       method: "GET",
@@ -278,6 +279,7 @@ export const nixApi = {
 
   pendingClarifications: async (extractionId: number): Promise<NixClarificationDto[]> => {
     const baseUrl = browserBaseUrl();
+    // eslint-disable-next-line no-restricted-syntax -- SSR guard
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
     const response = await fetch(`${baseUrl}/nix/extraction/${extractionId}/clarifications`, {
       method: "GET",
@@ -301,6 +303,7 @@ export const nixApi = {
     allowLearning: boolean = true,
   ): Promise<{ success: boolean; remainingClarifications: number }> => {
     const baseUrl = browserBaseUrl();
+    // eslint-disable-next-line no-restricted-syntax -- SSR guard
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
     const response = await fetch(`${baseUrl}/nix/clarification`, {
       method: "POST",
@@ -326,6 +329,7 @@ export const nixApi = {
 
   skipClarification: async (clarificationId: number): Promise<{ success: boolean }> => {
     const baseUrl = browserBaseUrl();
+    // eslint-disable-next-line no-restricted-syntax -- SSR guard
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
     const response = await fetch(`${baseUrl}/nix/clarification`, {
       method: "POST",
@@ -351,6 +355,7 @@ export const nixApi = {
 
   submitCorrection: async (correction: NixCorrectionPayload): Promise<{ success: boolean }> => {
     const baseUrl = browserBaseUrl();
+    // eslint-disable-next-line no-restricted-syntax -- SSR guard
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
     const response = await fetch(`${baseUrl}/nix/learning/correction`, {
       method: "POST",
@@ -394,6 +399,7 @@ export const nixApi = {
     formData.append("expectedData", JSON.stringify(expectedData));
 
     const baseUrl = browserBaseUrl();
+    // eslint-disable-next-line no-restricted-syntax -- SSR guard
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
     log.debug("[Nix] Verifying registration document:", file.name, documentType);
@@ -444,6 +450,7 @@ export const nixApi = {
     formData.append("expectedData", JSON.stringify(expectedData));
 
     const baseUrl = browserBaseUrl();
+    // eslint-disable-next-line no-restricted-syntax -- SSR guard
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
     log.debug("[Nix] Verifying registration batch:", files.length, "documents");
@@ -484,6 +491,7 @@ export const nixApi = {
     formData.append("scale", scale.toString());
 
     const baseUrl = browserBaseUrl();
+    // eslint-disable-next-line no-restricted-syntax -- SSR guard
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
     const response = await fetch(`${baseUrl}/nix/document-pages`, {
@@ -527,6 +535,7 @@ export const nixApi = {
     formData.append("fieldName", fieldName);
 
     const baseUrl = browserBaseUrl();
+    // eslint-disable-next-line no-restricted-syntax -- SSR guard
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
     const response = await fetch(`${baseUrl}/nix/extract-from-region`, {
@@ -547,6 +556,7 @@ export const nixApi = {
 
   saveExtractionRegion: async (data: ExtractionRegionData): Promise<{ success: boolean }> => {
     const baseUrl = browserBaseUrl();
+    // eslint-disable-next-line no-restricted-syntax -- SSR guard
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
     const response = await fetch(`${baseUrl}/nix/save-extraction-region`, {

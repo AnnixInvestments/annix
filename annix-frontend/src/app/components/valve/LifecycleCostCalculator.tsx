@@ -123,61 +123,77 @@ export default function LifecycleCostCalculator() {
 
     const { actuatorType, actuatorPowerKw, cyclesPerDay, operatingHoursPerYear } = valveSpecs;
 
-    const breakdownByYear: YearlyCost[] = [];
-    let cumulativeCost = purchaseCost + installationCost;
-    let totalEnergyCost = 0;
-    let totalMaintenanceCost = 0;
-    let totalOverhaulCost = 0;
-    let totalDowntimeCost = 0;
-    let totalNpv = purchaseCost + installationCost;
+    const initialAccumulator = {
+      breakdownByYear: [] as YearlyCost[],
+      cumulativeCost: purchaseCost + installationCost,
+      totalEnergyCost: 0,
+      totalMaintenanceCost: 0,
+      totalOverhaulCost: 0,
+      totalDowntimeCost: 0,
+      totalNpv: purchaseCost + installationCost,
+    };
 
-    for (let year = 1; year <= lifespanYears; year++) {
-      const inflationMultiplier = (1 + inflationRate / 100) ** (year - 1);
-      const discountFactor = 1 / (1 + discountRate / 100) ** year;
+    const aggregated = Array.from({ length: lifespanYears }, (_, i) => i + 1).reduce(
+      (acc, year) => {
+        const inflationMultiplier = (1 + inflationRate / 100) ** (year - 1);
+        const discountFactor = 1 / (1 + discountRate / 100) ** year;
 
-      let yearlyEnergyCost = 0;
-      if (actuatorType === "electric" && actuatorPowerKw && operatingHoursPerYear) {
-        const activeDutyCycle = 0.3;
-        yearlyEnergyCost =
-          actuatorPowerKw *
-          operatingHoursPerYear *
-          activeDutyCycle *
-          electricityCostPerKwh *
-          inflationMultiplier;
-      } else if (actuatorType === "pneumatic" && operatingHoursPerYear) {
-        const airCompressorCostPerHour = 5;
-        yearlyEnergyCost =
-          operatingHoursPerYear * airCompressorCostPerHour * 0.1 * inflationMultiplier;
-      }
+        const computedYearlyEnergyCost =
+          actuatorType === "electric" && actuatorPowerKw && operatingHoursPerYear
+            ? actuatorPowerKw *
+              operatingHoursPerYear *
+              0.3 *
+              electricityCostPerKwh *
+              inflationMultiplier
+            : actuatorType === "pneumatic" && operatingHoursPerYear
+              ? operatingHoursPerYear * 5 * 0.1 * inflationMultiplier
+              : 0;
 
-      const yearlyMaintenanceCost = annualMaintenanceCost * inflationMultiplier;
-      const yearlyOverhaulCost =
-        year % overhaulIntervalYears === 0 ? majorOverhaulCost * inflationMultiplier : 0;
-      const yearlyDowntimeCost =
-        expectedDowntimeHoursPerYear * downtimeCostPerHour * inflationMultiplier;
+        const yearlyMaintenanceCost = annualMaintenanceCost * inflationMultiplier;
+        const yearlyOverhaulCost =
+          year % overhaulIntervalYears === 0 ? majorOverhaulCost * inflationMultiplier : 0;
+        const yearlyDowntimeCost =
+          expectedDowntimeHoursPerYear * downtimeCostPerHour * inflationMultiplier;
 
-      const yearlyTotalCost =
-        yearlyEnergyCost + yearlyMaintenanceCost + yearlyOverhaulCost + yearlyDowntimeCost;
-      const yearlyPresentValue = yearlyTotalCost * discountFactor;
+        const yearlyTotalCost =
+          computedYearlyEnergyCost +
+          yearlyMaintenanceCost +
+          yearlyOverhaulCost +
+          yearlyDowntimeCost;
+        const yearlyPresentValue = yearlyTotalCost * discountFactor;
+        const nextCumulativeCost = acc.cumulativeCost + yearlyTotalCost;
 
-      cumulativeCost += yearlyTotalCost;
-      totalEnergyCost += yearlyEnergyCost;
-      totalMaintenanceCost += yearlyMaintenanceCost;
-      totalOverhaulCost += yearlyOverhaulCost;
-      totalDowntimeCost += yearlyDowntimeCost;
-      totalNpv += yearlyPresentValue;
+        return {
+          breakdownByYear: [
+            ...acc.breakdownByYear,
+            {
+              year,
+              energyCost: computedYearlyEnergyCost,
+              maintenanceCost: yearlyMaintenanceCost,
+              overhaulCost: yearlyOverhaulCost,
+              downtimeCost: yearlyDowntimeCost,
+              totalCost: yearlyTotalCost,
+              presentValue: yearlyPresentValue,
+              cumulativeCost: nextCumulativeCost,
+            },
+          ],
+          cumulativeCost: nextCumulativeCost,
+          totalEnergyCost: acc.totalEnergyCost + computedYearlyEnergyCost,
+          totalMaintenanceCost: acc.totalMaintenanceCost + yearlyMaintenanceCost,
+          totalOverhaulCost: acc.totalOverhaulCost + yearlyOverhaulCost,
+          totalDowntimeCost: acc.totalDowntimeCost + yearlyDowntimeCost,
+          totalNpv: acc.totalNpv + yearlyPresentValue,
+        };
+      },
+      initialAccumulator,
+    );
 
-      breakdownByYear.push({
-        year,
-        energyCost: yearlyEnergyCost,
-        maintenanceCost: yearlyMaintenanceCost,
-        overhaulCost: yearlyOverhaulCost,
-        downtimeCost: yearlyDowntimeCost,
-        totalCost: yearlyTotalCost,
-        presentValue: yearlyPresentValue,
-        cumulativeCost,
-      });
-    }
+    const breakdownByYear = aggregated.breakdownByYear;
+    const totalEnergyCost = aggregated.totalEnergyCost;
+    const totalMaintenanceCost = aggregated.totalMaintenanceCost;
+    const totalOverhaulCost = aggregated.totalOverhaulCost;
+    const totalDowntimeCost = aggregated.totalDowntimeCost;
+    const totalNpv = aggregated.totalNpv;
 
     const totalCostOfOwnership =
       purchaseCost +

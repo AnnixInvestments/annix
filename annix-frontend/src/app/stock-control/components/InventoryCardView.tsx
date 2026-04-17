@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { memo } from "react";
 import type { StockControlLocation, StockItem } from "@/app/lib/api/stockControlApi";
+import { fromISO } from "@/app/lib/datetime";
 import { InlineCategoryEdit } from "./inventory/InlineCategoryEdit";
 
 type SortField = "name" | "quantity" | "stockLevel" | "updatedAt";
@@ -99,7 +100,7 @@ function sortItems(items: StockItem[], field: SortField, direction: SortDirectio
       return a.name.localeCompare(b.name);
     }
     if (field === "updatedAt") {
-      return (new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime()) * dir;
+      return (fromISO(a.updatedAt).toMillis() - fromISO(b.updatedAt).toMillis()) * dir;
     }
     return 0;
   });

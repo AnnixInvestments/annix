@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { createPortal } from "react-dom";
+import { now } from "@/app/lib/datetime";
 
 interface SupplierOption {
   id: number;
@@ -31,13 +32,13 @@ const MONTHS = [
 
 export function StatementUploadModal(props: StatementUploadModalProps) {
   const { suppliers, onUpload, onClose } = props;
-  const currentDate = new Date();
+  const currentDate = now();
   const [companyId, setCompanyId] = useState<number | null>(null);
-  const [year, setYear] = useState(currentDate.getFullYear());
-  const [month, setMonth] = useState(currentDate.getMonth() + 1);
+  const [year, setYear] = useState(currentDate.year);
+  const [month, setMonth] = useState(currentDate.month);
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const years = Array.from({ length: 5 }, (_, i) => currentDate.getFullYear() - 2 + i);
+  const years = Array.from({ length: 5 }, (_, i) => currentDate.year - 2 + i);
 
   const handleSubmit = async () => {
     if (!companyId || !file) return;

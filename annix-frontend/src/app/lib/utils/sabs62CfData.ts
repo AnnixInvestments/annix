@@ -7644,14 +7644,8 @@ export function sabs62CFInterpolated(
     .map(Number)
     .sort((a, b) => a - b);
 
-  // Find surrounding angles for interpolation
-  let lowerAngle: number | undefined;
-  let upperAngle: number | undefined;
-
-  for (let i = 0; i < angles.length; i++) {
-    if (angles[i] <= angle) lowerAngle = angles[i];
-    if (angles[i] >= angle && upperAngle === undefined) upperAngle = angles[i];
-  }
+  const lowerAngle = angles.filter((a) => a <= angle).pop();
+  const upperAngle = angles.find((a) => a >= angle);
 
   if (lowerAngle === undefined || upperAngle === undefined) {
     return undefined;

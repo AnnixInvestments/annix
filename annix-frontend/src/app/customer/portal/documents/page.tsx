@@ -14,7 +14,7 @@ import {
   type CustomerDocument,
   customerDocumentApi,
 } from "@/app/lib/api/customerApi";
-import { formatDateZA } from "@/app/lib/datetime";
+import { formatDateZA, now } from "@/app/lib/datetime";
 import { log } from "@/app/lib/logger";
 import {
   nixApi,
@@ -668,7 +668,7 @@ function CustomerDocumentsContent() {
                     type="date"
                     value={expiryDate}
                     onChange={(e) => setExpiryDate(e.target.value)}
-                    min={new Date().toISOString().split("T")[0]}
+                    min={now().toISODate() ?? ""}
                     max="2099-12-31"
                     className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   />

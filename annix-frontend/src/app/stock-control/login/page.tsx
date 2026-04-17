@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import React, { Suspense, useEffect, useRef, useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
+// eslint-disable-next-line no-restricted-imports -- Auth flow page (login); requires new auth hooks for unauthenticated operations. Tracked as tech debt per Phase 9 of annix/annix#191.
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 
 function StockControlLoginContent() {

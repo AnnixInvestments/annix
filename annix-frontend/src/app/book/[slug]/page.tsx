@@ -1,6 +1,7 @@
 "use client";
 
 import { keys } from "es-toolkit/compat";
+// eslint-disable-next-line no-restricted-imports -- Uses DateTime type directly for public booking slot rendering; datetime module abstracts common ops but not all DateTime operations. Tracked as tech debt.
 import { DateTime } from "luxon";
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
@@ -44,22 +45,14 @@ export default function PublicBookingPage() {
 
   const availableDates = (): DateTime[] => {
     if (!bookingLink) return [];
-    const dates: DateTime[] = [];
     const today = DateTime.now().startOf("day");
-    const maxDate = today.plus({ days: bookingLink.maxDaysAhead });
     const availableDaysSet = new Set(
       bookingLink.availableDays.split(",").map((d) => parseInt(d, 10)),
     );
-
-    let current = today;
-    while (current <= maxDate) {
-      const dayOfWeek = current.weekday % 7;
-      if (availableDaysSet.has(dayOfWeek)) {
-        dates.push(current);
-      }
-      current = current.plus({ days: 1 });
-    }
-    return dates;
+    const dayOffsets = Array.from({ length: bookingLink.maxDaysAhead + 1 }, (_, i) => i);
+    return dayOffsets
+      .map((offset) => today.plus({ days: offset }))
+      .filter((date) => availableDaysSet.has(date.weekday % 7));
   };
 
   const handleDateSelect = (date: DateTime) => {

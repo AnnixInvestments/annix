@@ -505,18 +505,16 @@ describe("HDPE Configuration Tests", () => {
     describe("Butt Fusion Parameters Table", () => {
       it("should have increasing heating times with pipe size", () => {
         const sorted = [...BUTT_FUSION_PARAMETERS].sort((a, b) => a.dnMm - b.dnMm);
-        for (let i = 1; i < sorted.length; i++) {
-          expect(sorted[i].heatingTimeSec.min).toBeGreaterThanOrEqual(
-            sorted[i - 1].heatingTimeSec.min,
-          );
-        }
+        sorted.slice(1).forEach((current, idx) => {
+          expect(current.heatingTimeSec.min).toBeGreaterThanOrEqual(sorted[idx].heatingTimeSec.min);
+        });
       });
 
       it("should have increasing cooling times with pipe size", () => {
         const sorted = [...BUTT_FUSION_PARAMETERS].sort((a, b) => a.dnMm - b.dnMm);
-        for (let i = 1; i < sorted.length; i++) {
-          expect(sorted[i].coolingTimeMin).toBeGreaterThanOrEqual(sorted[i - 1].coolingTimeMin);
-        }
+        sorted.slice(1).forEach((current, idx) => {
+          expect(current.coolingTimeMin).toBeGreaterThanOrEqual(sorted[idx].coolingTimeMin);
+        });
       });
     });
   });
@@ -584,9 +582,9 @@ describe("HDPE Configuration Tests", () => {
 
       it("coupler prices should increase with size", () => {
         const sorted = [...ELECTROFUSION_COUPLER_COSTS].sort((a, b) => a.dnMm - b.dnMm);
-        for (let i = 1; i < sorted.length; i++) {
-          expect(sorted[i].couplerPrice).toBeGreaterThan(sorted[i - 1].couplerPrice);
-        }
+        sorted.slice(1).forEach((current, idx) => {
+          expect(current.couplerPrice).toBeGreaterThan(sorted[idx].couplerPrice);
+        });
       });
     });
 
@@ -600,9 +598,9 @@ describe("HDPE Configuration Tests", () => {
 
       it("should have increasing rental rates with machine size", () => {
         const sorted = [...FUSION_MACHINE_RENTALS].sort((a, b) => a.minDnMm - b.minDnMm);
-        for (let i = 1; i < sorted.length; i++) {
-          expect(sorted[i].dailyRate).toBeGreaterThan(sorted[i - 1].dailyRate);
-        }
+        sorted.slice(1).forEach((current, idx) => {
+          expect(current.dailyRate).toBeGreaterThan(sorted[idx].dailyRate);
+        });
       });
 
       it("should calculate rental cost correctly", () => {
@@ -743,11 +741,9 @@ describe("HDPE Configuration Tests", () => {
 
     it("PN should decrease as SDR increases", () => {
       const sorted = [...SDR_VALUES].sort((a, b) => a - b);
-      for (let i = 1; i < sorted.length; i++) {
-        expect(SDR_RATINGS[sorted[i]].pnPE100).toBeLessThanOrEqual(
-          SDR_RATINGS[sorted[i - 1]].pnPE100,
-        );
-      }
+      sorted.slice(1).forEach((current, idx) => {
+        expect(SDR_RATINGS[current].pnPE100).toBeLessThanOrEqual(SDR_RATINGS[sorted[idx]].pnPE100);
+      });
     });
   });
 });

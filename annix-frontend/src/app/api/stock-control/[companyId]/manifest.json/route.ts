@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateManifest } from "@/app/lib/branding";
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL?.startsWith("/")
-  ? `http://localhost:${process.env.PORT || "4000"}${process.env.NEXT_PUBLIC_API_URL}`
-  : process.env.NEXT_PUBLIC_API_URL || "http://localhost:4001/api";
+const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+const port = process.env.PORT;
+const BACKEND_URL = apiUrl?.startsWith("/")
+  ? `http://localhost:${port || "4000"}${apiUrl}`
+  : apiUrl || "http://localhost:4001/api";
 
 interface PublicBrandingResponse {
   companyName: string;
@@ -30,7 +32,8 @@ export async function GET(
 
     const branding: PublicBrandingResponse = await response.json();
 
-    const themeColor = branding.primaryColor || "#0d9488";
+    const primaryColor = branding.primaryColor;
+    const themeColor = primaryColor || "#0d9488";
     const hasCustomIcon = branding.hasCustomLogo;
 
     const manifest = generateManifest({

@@ -14,6 +14,7 @@ import type {
   PositectorStreamingSaveResult,
   PositectorStreamingSession,
 } from "@/app/lib/api/stockControlApi";
+import { fromISO } from "@/app/lib/datetime";
 import {
   positectorStreamingEventsUrl,
   positectorWebhookUrl,
@@ -361,7 +362,7 @@ export default function PositectorLiveStreamingPage() {
                                   : "-"}
                             </span>
                             <span className="ml-auto text-xs text-gray-400">
-                              {new Date(reading.timestamp).toLocaleTimeString("en-ZA")}
+                              {fromISO(reading.timestamp).toJSDate().toLocaleTimeString("en-ZA")}
                             </span>
                           </div>
                         );

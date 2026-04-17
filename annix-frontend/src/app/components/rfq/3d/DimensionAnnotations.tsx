@@ -335,21 +335,19 @@ export const AngularDimension = (props: AngularDimensionProps) => {
   const displayLabel = label ?? `${angleDegrees}°`;
 
   const arcPoints = useMemo(() => {
-    const points: [number, number, number][] = [];
-    for (let i = 0; i <= arcSegments; i++) {
+    return Array.from({ length: arcSegments + 1 }, (_, i): [number, number, number] => {
       const t = i / arcSegments;
       const angle = startAngle + t * angleDiff;
       const cos = Math.cos(angle);
       const sin = Math.sin(angle);
       if (plane === "xy") {
-        points.push([center.x + radius * cos, center.y + radius * sin, center.z]);
+        return [center.x + radius * cos, center.y + radius * sin, center.z];
       } else if (plane === "xz") {
-        points.push([center.x + radius * cos, center.y, center.z + radius * sin]);
+        return [center.x + radius * cos, center.y, center.z + radius * sin];
       } else {
-        points.push([center.x, center.y + radius * cos, center.z + radius * sin]);
+        return [center.x, center.y + radius * cos, center.z + radius * sin];
       }
-    }
-    return points;
+    });
   }, [center, radius, startAngle, endAngle, plane, angleDiff]);
 
   const midAngle = startAngle + angleDiff / 2;

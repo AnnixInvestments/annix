@@ -13,12 +13,13 @@ import {
 } from "lucide-react";
 import { useRef } from "react";
 import type { ChatConversationResponse, ChatMessageResponse } from "@/app/lib/api/stockControlApi";
+import { fromISO } from "@/app/lib/datetime";
 import { useChatState } from "../lib/useChatState";
 
 type ChatMsg = ChatMessageResponse;
 
 function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString("en-ZA", {
+  return fromISO(iso).toJSDate().toLocaleTimeString("en-ZA", {
     hour: "2-digit",
     minute: "2-digit",
   });

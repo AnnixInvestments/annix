@@ -307,9 +307,12 @@ export function StockControlHeader() {
               </svg>
               <span className="hidden xl:inline">Search...</span>
               <kbd className="hidden xl:inline-flex items-center px-1.5 py-0.5 text-xs bg-white/10 rounded font-mono">
-                {typeof navigator !== "undefined" && /Mac/.test(navigator.userAgent)
-                  ? "⌘"
-                  : "Ctrl+"}
+                {
+                  // eslint-disable-next-line no-restricted-syntax -- SSR guard
+                  typeof navigator !== "undefined" && /Mac/.test(navigator.userAgent)
+                    ? "⌘"
+                    : "Ctrl+"
+                }
                 K
               </kbd>
             </button>

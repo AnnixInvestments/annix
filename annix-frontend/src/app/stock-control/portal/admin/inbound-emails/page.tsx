@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react";
 import type { InboundEmail, InboundEmailAttachment } from "@/app/lib/api/stockControlApi";
+import { fromISO } from "@/app/lib/datetime";
 import {
   useInboundEmailStats,
   useInboundEmails,
@@ -192,7 +193,7 @@ function EmailRow({
   const rawFromName = email.fromName;
   const rawSubject = email.subject;
   const date = email.receivedAt
-    ? new Date(email.receivedAt).toLocaleString("en-ZA", {
+    ? fromISO(email.receivedAt).toJSDate().toLocaleString("en-ZA", {
         day: "2-digit",
         month: "short",
         year: "numeric",

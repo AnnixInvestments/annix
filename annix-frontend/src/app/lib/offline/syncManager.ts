@@ -26,6 +26,7 @@ export interface SyncStatus {
 }
 
 let syncStatus: SyncStatus = {
+  // eslint-disable-next-line no-restricted-syntax -- SSR guard
   isOnline: typeof navigator !== "undefined" ? navigator.onLine : true,
   isSyncing: false,
   pendingCount: 0,
@@ -245,6 +246,7 @@ export function stopBackgroundSync(): void {
   }
 }
 
+// eslint-disable-next-line no-restricted-syntax -- SSR guard
 if (typeof window !== "undefined") {
   window.addEventListener("online", () => {
     updateStatus({ isOnline: true });

@@ -7,6 +7,7 @@ import {
 } from "@annix/product-data/pumps/pumpComparison";
 import { isNumber } from "es-toolkit/compat";
 import { useMemo, useState } from "react";
+import { fromISO } from "@/app/lib/datetime";
 
 interface PumpQuoteComparisonProps {
   quotes: PumpQuote[];
@@ -20,7 +21,7 @@ function formatCurrency(value: number, currency = "ZAR"): string {
 }
 
 function formatDate(dateString: string): string {
-  return new Date(dateString).toLocaleDateString("en-ZA", {
+  return fromISO(dateString).toJSDate().toLocaleDateString("en-ZA", {
     year: "numeric",
     month: "short",
     day: "numeric",
@@ -50,7 +51,7 @@ export function PumpQuoteComparison(props: PumpQuoteComparisonProps) {
         return scoreB - scoreA;
       });
     } else if (sortBy === "date") {
-      sorted.sort((a, b) => new Date(b.quoteDate).getTime() - new Date(a.quoteDate).getTime());
+      sorted.sort((a, b) => fromISO(b.quoteDate).toMillis() - fromISO(a.quoteDate).toMillis());
     }
     return sorted;
   }, [quotes, sortBy, comparison.overallScores]);

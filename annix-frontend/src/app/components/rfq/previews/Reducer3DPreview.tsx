@@ -217,12 +217,14 @@ function EccentricReducerGeometry({
     const indices: number[] = [];
     const normals: number[] = [];
 
+    // eslint-disable-next-line no-restricted-syntax -- nested vertex buffer generation; declarative harms readability and performance
     for (let h = 0; h <= heightSegments; h++) {
       const t = h / heightSegments;
       const y = -length / 2 + t * length;
       const radius = largeOuterRadius + (smallOuterRadius - largeOuterRadius) * t;
       const xOffset = t * offset;
 
+      // eslint-disable-next-line no-restricted-syntax -- nested vertex buffer generation; declarative harms readability and performance
       for (let s = 0; s <= segments; s++) {
         const theta = (s / segments) * Math.PI * 2;
         const x = Math.cos(theta) * radius - xOffset;
@@ -239,7 +241,9 @@ function EccentricReducerGeometry({
       }
     }
 
+    // eslint-disable-next-line no-restricted-syntax -- nested triangle index generation; declarative harms readability and performance
     for (let h = 0; h < heightSegments; h++) {
+      // eslint-disable-next-line no-restricted-syntax -- nested triangle index generation; declarative harms readability and performance
       for (let s = 0; s < segments; s++) {
         const a = h * (segments + 1) + s;
         const b = a + 1;
@@ -267,12 +271,14 @@ function EccentricReducerGeometry({
     const indices: number[] = [];
     const normals: number[] = [];
 
+    // eslint-disable-next-line no-restricted-syntax -- nested vertex buffer generation; declarative harms readability and performance
     for (let h = 0; h <= heightSegments; h++) {
       const t = h / heightSegments;
       const y = -length / 2 + t * length;
       const radius = largeInnerRadius + (smallInnerRadius - largeInnerRadius) * t;
       const xOffset = t * offset;
 
+      // eslint-disable-next-line no-restricted-syntax -- nested vertex buffer generation; declarative harms readability and performance
       for (let s = 0; s <= segments; s++) {
         const theta = (s / segments) * Math.PI * 2;
         const x = Math.cos(theta) * radius - xOffset;
@@ -286,7 +292,9 @@ function EccentricReducerGeometry({
       }
     }
 
+    // eslint-disable-next-line no-restricted-syntax -- nested triangle index generation; declarative harms readability and performance
     for (let h = 0; h < heightSegments; h++) {
+      // eslint-disable-next-line no-restricted-syntax -- nested triangle index generation; declarative harms readability and performance
       for (let s = 0; s < segments; s++) {
         const a = h * (segments + 1) + s;
         const b = a + 1;

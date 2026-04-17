@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL?.startsWith("/")
-  ? `http://localhost:${process.env.PORT || "4000"}${process.env.NEXT_PUBLIC_API_URL}`
-  : process.env.NEXT_PUBLIC_API_URL || "http://localhost:4001/api";
+const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+const port = process.env.PORT;
+const BACKEND_URL = apiUrl?.startsWith("/")
+  ? `http://localhost:${port || "4000"}${apiUrl}`
+  : apiUrl || "http://localhost:4001/api";
 
 export async function GET(
   _request: NextRequest,

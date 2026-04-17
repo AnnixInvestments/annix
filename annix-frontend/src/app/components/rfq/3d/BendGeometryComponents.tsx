@@ -154,15 +154,15 @@ export const SegmentedBendPipe = ({
   const segmentsData = useMemo(() => {
     const totalAngle = endAngle - startAngle;
     const segmentAngle = totalAngle / numberOfSegments;
-    const data: Array<{
+    type SegmentData = {
       startPos: THREE.Vector3;
       endPos: THREE.Vector3;
       midAngle: number;
       weldPos?: THREE.Vector3;
       weldNormal?: THREE.Vector3;
-    }> = [];
+    };
 
-    for (let i = 0; i < numberOfSegments; i++) {
+    return Array.from({ length: numberOfSegments }, (_, i): SegmentData => {
       const segStart = startAngle + i * segmentAngle;
       const segEnd = startAngle + (i + 1) * segmentAngle;
       const segMid = (segStart + segEnd) / 2;
@@ -178,13 +178,7 @@ export const SegmentedBendPipe = ({
         bendCenter.z + bendRadius * Math.sin(segEnd),
       );
 
-      const segment: {
-        startPos: THREE.Vector3;
-        endPos: THREE.Vector3;
-        midAngle: number;
-        weldPos?: THREE.Vector3;
-        weldNormal?: THREE.Vector3;
-      } = { startPos, endPos, midAngle: segMid };
+      const segment: SegmentData = { startPos, endPos, midAngle: segMid };
 
       if (i < numberOfSegments - 1) {
         segment.weldPos = endPos.clone();
@@ -196,10 +190,8 @@ export const SegmentedBendPipe = ({
         ).normalize();
       }
 
-      data.push(segment);
-    }
-
-    return data;
+      return segment;
+    });
   }, [bendCenter, bendRadius, startAngle, endAngle, numberOfSegments]);
 
   return (
@@ -314,14 +306,14 @@ export const Flange = ({ center, normal, pipeR, innerR, nb }: FlangeProps) => {
     centerHole.absarc(0, 0, boreR, 0, Math.PI * 2, true);
     shape.holes.push(centerHole);
 
-    for (let i = 0; i < boltCount; i++) {
+    Array.from({ length: boltCount }).forEach((_, i) => {
       const angle = (i / boltCount) * Math.PI * 2;
       const x = Math.cos(angle) * boltR;
       const y = Math.sin(angle) * boltR;
       const boltHole = new THREE.Path();
       boltHole.absarc(x, y, holeR, 0, Math.PI * 2, true);
       shape.holes.push(boltHole);
-    }
+    });
 
     return new THREE.ShapeGeometry(shape, 32);
   }, [flangeR, boreR, boltR, holeR, boltCount]);
@@ -434,9 +426,11 @@ export const SaddleCutStubPipe = ({
 
     const endZ = mainPipeOuterR + length;
 
+    // eslint-disable-next-line no-restricted-syntax -- nested vertex buffer generation; declarative harms readability and performance
     for (let i = 0; i <= segments; i++) {
       const v = i / segments;
 
+      // eslint-disable-next-line no-restricted-syntax -- nested vertex buffer generation; declarative harms readability and performance
       for (let j = 0; j <= radialSegments; j++) {
         const theta = (j / radialSegments) * Math.PI * 2;
         const x = outerR * Math.cos(theta);
@@ -452,7 +446,9 @@ export const SaddleCutStubPipe = ({
       }
     }
 
+    // eslint-disable-next-line no-restricted-syntax -- nested triangle index generation; declarative harms readability and performance
     for (let i = 0; i < segments; i++) {
+      // eslint-disable-next-line no-restricted-syntax -- nested triangle index generation; declarative harms readability and performance
       for (let j = 0; j < radialSegments; j++) {
         const a = i * (radialSegments + 1) + j;
         const b = a + radialSegments + 1;
@@ -479,9 +475,11 @@ export const SaddleCutStubPipe = ({
 
     const endZ = mainPipeOuterR + length;
 
+    // eslint-disable-next-line no-restricted-syntax -- nested vertex buffer generation; declarative harms readability and performance
     for (let i = 0; i <= segments; i++) {
       const v = i / segments;
 
+      // eslint-disable-next-line no-restricted-syntax -- nested vertex buffer generation; declarative harms readability and performance
       for (let j = 0; j <= radialSegments; j++) {
         const theta = (j / radialSegments) * Math.PI * 2;
         const x = innerR * Math.cos(theta);
@@ -497,7 +495,9 @@ export const SaddleCutStubPipe = ({
       }
     }
 
+    // eslint-disable-next-line no-restricted-syntax -- nested triangle index generation; declarative harms readability and performance
     for (let i = 0; i < segments; i++) {
+      // eslint-disable-next-line no-restricted-syntax -- nested triangle index generation; declarative harms readability and performance
       for (let j = 0; j < radialSegments; j++) {
         const a = i * (radialSegments + 1) + j;
         const b = a + radialSegments + 1;
@@ -654,14 +654,14 @@ export const BlankFlange = ({ center, normal, pipeR, nb }: BlankFlangeProps) => 
     const shape = new THREE.Shape();
     shape.absarc(0, 0, flangeR, 0, Math.PI * 2, false);
 
-    for (let i = 0; i < boltCount; i++) {
+    Array.from({ length: boltCount }).forEach((_, i) => {
       const angle = (i / boltCount) * Math.PI * 2;
       const x = Math.cos(angle) * boltR;
       const y = Math.sin(angle) * boltR;
       const boltHole = new THREE.Path();
       boltHole.absarc(x, y, holeR, 0, Math.PI * 2, true);
       shape.holes.push(boltHole);
-    }
+    });
 
     return new THREE.ShapeGeometry(shape, 32);
   }, [flangeR, boltR, holeR, boltCount]);
@@ -767,14 +767,14 @@ export const RotatingFlange = ({ center, normal, pipeR, innerR, nb }: RotatingFl
     centerHole.absarc(0, 0, boreR, 0, Math.PI * 2, true);
     shape.holes.push(centerHole);
 
-    for (let i = 0; i < boltCount; i++) {
+    Array.from({ length: boltCount }).forEach((_, i) => {
       const angle = (i / boltCount) * Math.PI * 2;
       const x = Math.cos(angle) * boltR;
       const y = Math.sin(angle) * boltR;
       const boltHole = new THREE.Path();
       boltHole.absarc(x, y, holeR, 0, Math.PI * 2, true);
       shape.holes.push(boltHole);
-    }
+    });
 
     return new THREE.ShapeGeometry(shape, 32);
   }, [flangeR, boltR, holeR, boltCount, boreR]);

@@ -117,10 +117,8 @@ export function calculateSaddleWeldVolume(params: {
   const diameterRatio = branchOdMm / mainOdMm;
   const weldLengthMm =
     diameterRatio >= 0.95
-      ? // Equal diameters - use Steinmetz
-        STEINMETZ_FACTOR * branchOdMm
-      : // Unequal - approximation
-        Math.PI * branchOdMm * Math.sqrt(1 + diameterRatio * diameterRatio);
+      ? STEINMETZ_FACTOR * branchOdMm
+      : Math.PI * branchOdMm * Math.sqrt(1 + diameterRatio * diameterRatio);
 
   const rawFilletLegSizeMm2 = config?.filletLegSizeMm;
 

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import type { AnalyzedDeliveryNoteData, DeliveryNote } from "@/app/lib/api/stockControlApi";
+// eslint-disable-next-line no-restricted-imports -- SdnStatus is an enum value (not type) used in runtime checks; enum is colocated with API types. Tracked as tech debt per Phase 9 of annix/annix#191.
 import { SdnStatus } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
 import {

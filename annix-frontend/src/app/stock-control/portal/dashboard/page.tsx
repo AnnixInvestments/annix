@@ -15,6 +15,7 @@ import { isArray } from "es-toolkit/compat";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import type { WorkflowNotification } from "@/app/lib/api/stockControlApi";
+// eslint-disable-next-line no-restricted-imports -- Dashboard page has numerous inline operations not yet covered by hooks; migrating requires extensive hook scaffolding. Tracked as tech debt per Phase 9 of annix/annix#191.
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import {
   useCpoSummary,

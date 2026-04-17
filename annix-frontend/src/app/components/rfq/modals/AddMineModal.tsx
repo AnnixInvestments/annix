@@ -510,8 +510,7 @@ export default function AddMineModal(props: AddMineModalProps) {
             initialLocation={
               formData.latitude && formData.longitude
                 ? { lat: formData.latitude, lng: formData.longitude }
-                : // Center of South Africa
-                  { lat: -28.4793, lng: 24.6727 }
+                : { lat: -28.4793, lng: 24.6727 }
             }
             onLocationSelect={handleLocationSelect}
             onClose={() => setShowMapPicker(false)}

@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import { DynamicFavicon, DynamicManifest } from "@/app/lib/branding";
+import { fromISO } from "@/app/lib/datetime";
 
 export function StockControlDynamicBranding() {
   const { profile } = useStockControlAuth();
@@ -23,7 +24,7 @@ export function StockControlDynamicBranding() {
   }
 
   const cacheBuster = profile.companyUpdatedAt
-    ? `?v=${new Date(profile.companyUpdatedAt).getTime()}`
+    ? `?v=${fromISO(profile.companyUpdatedAt).toMillis()}`
     : "";
   const manifestUrl = `/api/stock-control/${profile.companyId}/manifest.json${cacheBuster}`;
   const hasCustomLogo = profile.brandingType === "custom" && !!profile.logoUrl;

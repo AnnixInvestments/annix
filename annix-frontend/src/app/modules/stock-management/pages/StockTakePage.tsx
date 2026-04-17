@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { now } from "@/app/lib/datetime";
+import { fromISO, now } from "@/app/lib/datetime";
 import { StockManagementApiClient } from "../api/stockManagementApi";
 import { useStockTake, useStockTakeMutations, useStockTakes } from "../hooks/useStockTakeQueries";
 import {
@@ -288,7 +288,7 @@ function StockTakeDetail(props: DetailProps) {
         <div className="mt-2 text-xs text-gray-500 space-x-3">
           <span>{periodDisplay}</span>
           {stockTake.snapshotAt && (
-            <span>Snapshot: {new Date(stockTake.snapshotAt).toLocaleString()}</span>
+            <span>Snapshot: {fromISO(stockTake.snapshotAt).toJSDate().toLocaleString()}</span>
           )}
         </div>
       </header>

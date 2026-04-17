@@ -522,6 +522,7 @@ async function scanSubnet(
   signal: AbortSignal,
 ): Promise<void> {
   const BATCH_SIZE = 20;
+  // eslint-disable-next-line no-restricted-syntax -- sequential batched subnet scan with abort signal check per batch
   for (let start = 1; start <= 254 && !signal.aborted; start += BATCH_SIZE) {
     const end = Math.min(start + BATCH_SIZE - 1, 254);
     const promises = Array.from({ length: end - start + 1 }, (_, i) => {

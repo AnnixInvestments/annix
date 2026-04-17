@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { InboundEmailConfigResponse } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
+import { fromISO } from "@/app/lib/datetime";
 
 export function InboundEmailConfigSection() {
   const [emailHost, setEmailHost] = useState("");
@@ -290,7 +291,7 @@ export function InboundEmailConfigSection() {
 
           {lastPollAt && (
             <p className="mt-2 text-[10px] text-gray-400">
-              Last polled: {new Date(lastPollAt).toLocaleString("en-ZA")}
+              Last polled: {fromISO(lastPollAt).toJSDate().toLocaleString("en-ZA")}
               {lastError && <span className="text-red-500 ml-2">Error: {lastError}</span>}
             </p>
           )}

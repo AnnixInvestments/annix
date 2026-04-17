@@ -243,6 +243,7 @@ export const nixChatApi = {
     let buffer = "";
 
     try {
+      // eslint-disable-next-line no-restricted-syntax -- SSE stream read loop requires sequential await with break on done
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;

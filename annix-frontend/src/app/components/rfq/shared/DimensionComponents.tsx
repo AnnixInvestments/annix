@@ -268,32 +268,21 @@ export const ChainDimension = ({
   }, [offset, offsetDirection]);
 
   const segments = useMemo(() => {
-    const result: Array<{
-      start: THREE.Vector3;
-      end: THREE.Vector3;
-      startOffset: THREE.Vector3;
-      endOffset: THREE.Vector3;
-      label: string;
-      length: number;
-    }> = [];
-
-    for (let i = 0; i < points.length - 1; i++) {
-      const start = points[i].position;
+    return points.slice(0, -1).map((point, i) => {
+      const start = point.position;
       const end = points[i + 1].position;
       const length = start.distanceTo(end);
       const rawLabel = points[i + 1].label;
       const label = rawLabel || `${Math.round(length * 1000)}mm`;
-
-      result.push({
+      return {
         start,
         end,
         startOffset: start.clone().add(offsetVector),
         endOffset: end.clone().add(offsetVector),
         label,
         length,
-      });
-    }
-    return result;
+      };
+    });
   }, [points, offsetVector]);
 
   const dimLineWidth = LINE_WIDTHS[lineWeight];
@@ -823,20 +812,11 @@ export const calculateAutoSpacing = (
   const offsetLevels: Array<{ rangeMin: number; rangeMax: number; offset: number }[]> = [[]];
 
   dimensionsWithRange.forEach((dim) => {
-    let assignedLevel = -1;
-
-    for (let level = 0; level < offsetLevels.length; level++) {
-      const levelDims = offsetLevels[level];
-      const hasOverlap = levelDims.some((existing) => rangesOverlap(dim, existing));
-
-      if (!hasOverlap) {
-        assignedLevel = level;
-        break;
-      }
-    }
-
-    if (assignedLevel === -1) {
-      assignedLevel = offsetLevels.length;
+    const foundLevel = offsetLevels.findIndex(
+      (levelDims) => !levelDims.some((existing) => rangesOverlap(dim, existing)),
+    );
+    const assignedLevel = foundLevel === -1 ? offsetLevels.length : foundLevel;
+    if (foundLevel === -1) {
       offsetLevels.push([]);
     }
 

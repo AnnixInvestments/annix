@@ -5,6 +5,7 @@ import type {
   RbacAppAccessSummary,
   RbacUserWithAccessSummary,
 } from "@/app/lib/api/adminApi";
+import { formatDateZA } from "@/app/lib/datetime";
 import { AppAccessBadge } from "./AppAccessBadge";
 import { UserAccessDetails } from "./UserAccessDetails";
 
@@ -79,9 +80,7 @@ export function UserRow(props: UserRowProps) {
           </div>
 
           <div className="hidden lg:block text-sm text-gray-500 whitespace-nowrap">
-            {user.lastLoginAt
-              ? `Last login: ${new Date(user.lastLoginAt).toLocaleDateString()}`
-              : "Never logged in"}
+            {user.lastLoginAt ? `Last login: ${formatDateZA(user.lastLoginAt)}` : "Never logged in"}
           </div>
 
           <button

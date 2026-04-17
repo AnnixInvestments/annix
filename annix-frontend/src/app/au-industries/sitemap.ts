@@ -1,37 +1,39 @@
 import type { MetadataRoute } from "next";
+import { fromISO, now } from "@/app/lib/datetime";
 import { resolveBaseUrl } from "@/lib/api-config";
 
 const SITE_URL = "https://auind.co.za";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const currentDate = now().toJSDate();
   const entries: MetadataRoute.Sitemap = [
     {
       url: SITE_URL,
-      lastModified: new Date(),
+      lastModified: currentDate,
       changeFrequency: "weekly",
       priority: 1.0,
     },
     {
       url: `${SITE_URL}/products-and-services`,
-      lastModified: new Date(),
+      lastModified: currentDate,
       changeFrequency: "monthly",
       priority: 0.9,
     },
     {
       url: `${SITE_URL}/gallery`,
-      lastModified: new Date(),
+      lastModified: currentDate,
       changeFrequency: "weekly",
       priority: 0.8,
     },
     {
       url: `${SITE_URL}/quote`,
-      lastModified: new Date(),
+      lastModified: currentDate,
       changeFrequency: "monthly",
       priority: 0.8,
     },
     {
       url: `${SITE_URL}/contact`,
-      lastModified: new Date(),
+      lastModified: currentDate,
       changeFrequency: "monthly",
       priority: 0.8,
     },
@@ -49,7 +51,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         .filter((page: { isHomePage: boolean }) => !page.isHomePage)
         .map((page: { slug: string; updatedAt: string }) => ({
           url: `${SITE_URL}/${page.slug}`,
-          lastModified: new Date(page.updatedAt),
+          lastModified: fromISO(page.updatedAt).toJSDate(),
           changeFrequency: "weekly" as const,
           priority: 0.7,
         }));

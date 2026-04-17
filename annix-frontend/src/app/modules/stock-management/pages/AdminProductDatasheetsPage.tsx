@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { fromISO } from "@/app/lib/datetime";
 import { StockManagementApiClient } from "../api/stockManagementApi";
 import { useAdminMutations, useProductDatasheets } from "../hooks/useAdminQueries";
 import { useStockManagementConfig } from "../provider/useStockManagementConfig";
@@ -190,7 +191,7 @@ export function AdminProductDatasheetsPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-xs text-gray-500">
-                    {new Date(datasheet.uploadedAt).toLocaleDateString()}
+                    {fromISO(datasheet.uploadedAt).toJSDate().toLocaleDateString()}
                   </td>
                   <td className="px-4 py-3 text-right space-x-3">
                     <button

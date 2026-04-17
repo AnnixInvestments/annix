@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
+import { fromISO } from "@/app/lib/datetime";
 
 interface SageCompany {
   ID: number;
@@ -174,7 +175,7 @@ export function SageConfigSection() {
                     <div>
                       <span className="font-medium text-gray-700">Connected:</span>{" "}
                       <span className="text-gray-900">
-                        {new Date(status.connectedAt).toLocaleDateString("en-ZA")}
+                        {fromISO(status.connectedAt).toJSDate().toLocaleDateString("en-ZA")}
                       </span>
                     </div>
                   )}

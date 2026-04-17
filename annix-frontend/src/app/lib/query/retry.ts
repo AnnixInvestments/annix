@@ -38,6 +38,7 @@ export async function retryableFetch(
   let lastError: Error | null = null;
   let lastResponse: Response | null = null;
 
+  // eslint-disable-next-line no-restricted-syntax -- sequential retry with backoff, continue, and inner return
   for (let attempt = 0; attempt <= config.maxRetries; attempt++) {
     try {
       const response = await fetch(url, fetchOptions);

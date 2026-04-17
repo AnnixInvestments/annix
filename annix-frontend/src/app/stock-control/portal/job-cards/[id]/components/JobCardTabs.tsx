@@ -17,9 +17,11 @@ interface JobCardTabsProps {
 
 export function useJobCardTabs(tabs: TabDefinition[], defaultTab?: string) {
   const visibleTabs = tabs.filter((t) => !t.hidden);
-  const initialTab = defaultTab || visibleTabs[0]?.id || "";
+  const firstVisibleTabId = visibleTabs[0]?.id;
+  const initialTab = defaultTab || firstVisibleTabId || "";
 
   const [activeTab, setActiveTab] = useState(() => {
+    // eslint-disable-next-line no-restricted-syntax -- SSR guard
     if (typeof window !== "undefined") {
       const hash = window.location.hash.slice(1);
       if (hash && visibleTabs.some((t) => t.id === hash)) {
@@ -34,6 +36,7 @@ export function useJobCardTabs(tabs: TabDefinition[], defaultTab?: string) {
   const handleTabChange = useCallback((tabId: string) => {
     setActiveTab(tabId);
     setVisitedTabs((prev) => new Set([...prev, tabId]));
+    // eslint-disable-next-line no-restricted-syntax -- SSR guard
     if (typeof window !== "undefined") {
       window.history.replaceState(null, "", `#${tabId}`);
     }

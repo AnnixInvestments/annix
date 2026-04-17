@@ -47,44 +47,37 @@ export function OperatingRangeValidator(props: OperatingRangeValidatorProps) {
     const distanceFromMaxFlow = maxFlow - operatingFlowM3h;
 
     const sortedPoints = [...pumpCurve.points].sort((a, b) => a.flowM3h - b.flowM3h);
-    let efficiencyAtOperatingPoint: number | undefined;
-    for (let i = 0; i < sortedPoints.length - 1; i++) {
-      if (
-        operatingFlowM3h >= sortedPoints[i].flowM3h &&
-        operatingFlowM3h <= sortedPoints[i + 1].flowM3h
-      ) {
-        const t =
-          (operatingFlowM3h - sortedPoints[i].flowM3h) /
-          (sortedPoints[i + 1].flowM3h - sortedPoints[i].flowM3h);
-        const eff1 = sortedPoints[i].efficiencyPercent;
-        const eff2 = sortedPoints[i + 1].efficiencyPercent;
-        if (eff1 !== undefined && eff2 !== undefined) {
-          efficiencyAtOperatingPoint = eff1 + t * (eff2 - eff1);
-        }
-        break;
-      }
-    }
+    const bracketIndex = sortedPoints
+      .slice(0, -1)
+      .findIndex(
+        (p, idx) =>
+          operatingFlowM3h >= p.flowM3h && operatingFlowM3h <= sortedPoints[idx + 1].flowM3h,
+      );
+    const bracketLower = bracketIndex >= 0 ? sortedPoints[bracketIndex] : null;
+    const bracketUpper = bracketIndex >= 0 ? sortedPoints[bracketIndex + 1] : null;
+    const interpolationT =
+      bracketLower && bracketUpper
+        ? (operatingFlowM3h - bracketLower.flowM3h) / (bracketUpper.flowM3h - bracketLower.flowM3h)
+        : 0;
+    const efficiencyAtOperatingPoint: number | undefined =
+      bracketLower &&
+      bracketUpper &&
+      bracketLower.efficiencyPercent !== undefined &&
+      bracketUpper.efficiencyPercent !== undefined
+        ? bracketLower.efficiencyPercent +
+          interpolationT * (bracketUpper.efficiencyPercent - bracketLower.efficiencyPercent)
+        : undefined;
 
-    let npshMargin: number | undefined;
-    if (npshAvailable !== undefined) {
-      for (let i = 0; i < sortedPoints.length - 1; i++) {
-        if (
-          operatingFlowM3h >= sortedPoints[i].flowM3h &&
-          operatingFlowM3h <= sortedPoints[i + 1].flowM3h
-        ) {
-          const t =
-            (operatingFlowM3h - sortedPoints[i].flowM3h) /
-            (sortedPoints[i + 1].flowM3h - sortedPoints[i].flowM3h);
-          const npshr1 = sortedPoints[i].npshRequiredM;
-          const npshr2 = sortedPoints[i + 1].npshRequiredM;
-          if (npshr1 !== undefined && npshr2 !== undefined) {
-            const npshr = npshr1 + t * (npshr2 - npshr1);
-            npshMargin = npshAvailable - npshr;
-          }
-          break;
-        }
-      }
-    }
+    const npshMargin: number | undefined =
+      npshAvailable !== undefined &&
+      bracketLower &&
+      bracketUpper &&
+      bracketLower.npshRequiredM !== undefined &&
+      bracketUpper.npshRequiredM !== undefined
+        ? npshAvailable -
+          (bracketLower.npshRequiredM +
+            interpolationT * (bracketUpper.npshRequiredM - bracketLower.npshRequiredM))
+        : undefined;
 
     if (operatingFlowM3h < minFlow) {
       issues.push({

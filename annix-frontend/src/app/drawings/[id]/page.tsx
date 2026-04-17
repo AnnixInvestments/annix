@@ -14,6 +14,7 @@ import {
   useSubmitDrawingForReview,
   useUploadDrawingVersion,
 } from "@/app/lib/query/hooks";
+// eslint-disable-next-line no-restricted-imports -- Drawing detail page performs inline file upload/download with auth headers; remaining mutations are migration candidates but not all drawing detail operations have hooks yet. Tracked as tech debt.
 import { browserBaseUrl, getAuthHeaders } from "@/lib/api-config";
 
 export default function DrawingDetailPage() {
@@ -52,10 +53,12 @@ export default function DrawingDetailPage() {
       }
 
       const blob = await response.blob();
-      const filename =
-        response.headers.get("Content-Disposition")?.split("filename=")[1]?.replace(/"/g, "") ||
-        drawing?.originalFilename ||
-        "download";
+      const contentDispositionFilename = response.headers
+        .get("Content-Disposition")
+        ?.split("filename=")[1]
+        ?.replace(/"/g, "");
+      const drawingOriginalFilename = drawing?.originalFilename;
+      const filename = contentDispositionFilename || drawingOriginalFilename || "download";
 
       const link = document.createElement("a");
       link.href = URL.createObjectURL(blob);

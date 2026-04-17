@@ -7,6 +7,7 @@ import type {
   SupplierDocumentExpiryStatus,
   SupplierDocumentType,
 } from "@/app/lib/api/stock-control-api/types";
+import { fromISO } from "@/app/lib/datetime";
 import {
   useDeleteSupplierDocument,
   useStockControlSuppliers,
@@ -54,8 +55,9 @@ function formatFileSize(bytes: number): string {
 
 function formatDate(iso: string | null): string {
   if (!iso) return "—";
-  const date = new Date(iso);
-  return date.toLocaleDateString("en-ZA", { year: "numeric", month: "short", day: "numeric" });
+  return fromISO(iso)
+    .toJSDate()
+    .toLocaleDateString("en-ZA", { year: "numeric", month: "short", day: "numeric" });
 }
 
 export default function SupplierDocumentsPage() {

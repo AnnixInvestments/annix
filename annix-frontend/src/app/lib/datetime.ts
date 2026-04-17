@@ -11,6 +11,7 @@ export const TIMEZONE = "Africa/Johannesburg";
 
 export const formatDate = (iso: string | Date | null | undefined): string => {
   if (!iso) return "";
+  // eslint-disable-next-line no-restricted-globals
   if (iso instanceof Date) {
     return DateTime.fromJSDate(iso).toFormat("dd MMM yyyy");
   }
@@ -19,6 +20,7 @@ export const formatDate = (iso: string | Date | null | undefined): string => {
 
 export const formatDateZA = (iso: string | Date | null | undefined): string => {
   if (!iso) return "";
+  // eslint-disable-next-line no-restricted-globals
   const dt = iso instanceof Date ? DateTime.fromJSDate(iso) : DateTime.fromISO(iso);
   return dt.toLocaleString({
     year: "numeric",
@@ -29,6 +31,7 @@ export const formatDateZA = (iso: string | Date | null | undefined): string => {
 
 export const formatDateLongZA = (iso: string | Date | null | undefined): string => {
   if (!iso) return "";
+  // eslint-disable-next-line no-restricted-globals
   const dt = iso instanceof Date ? DateTime.fromJSDate(iso) : DateTime.fromISO(iso);
   return dt.toLocaleString({
     year: "numeric",
@@ -39,6 +42,7 @@ export const formatDateLongZA = (iso: string | Date | null | undefined): string 
 
 export const formatDateTime = (iso: string | Date | null | undefined): string => {
   if (!iso) return "";
+  // eslint-disable-next-line no-restricted-globals
   if (iso instanceof Date) {
     return DateTime.fromJSDate(iso).toFormat("dd MMM yyyy HH:mm");
   }
@@ -47,6 +51,7 @@ export const formatDateTime = (iso: string | Date | null | undefined): string =>
 
 export const formatDateTimeZA = (iso: string | Date | null | undefined): string => {
   if (!iso) return "";
+  // eslint-disable-next-line no-restricted-globals
   const dt = iso instanceof Date ? DateTime.fromJSDate(iso) : DateTime.fromISO(iso);
   return dt.toLocaleString({
     year: "numeric",

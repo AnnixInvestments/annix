@@ -403,14 +403,12 @@ function extractRowsFromGrid(grid: string[][], mapping: ImportMappingConfig): Jo
     fm: { column: number; startRow: number; endRow: number } | null,
   ): string | undefined => {
     if (!fm) return undefined;
-    const vals: string[] = [];
     const endRow = Math.min(fm.endRow, gridData.length - 1);
-    for (let r = fm.startRow; r <= endRow; r++) {
-      const cell = gridData[r]?.[fm.column];
-      if (cell?.trim()) {
-        vals.push(cell.trim());
-      }
-    }
+    const rowCount = Math.max(0, endRow - fm.startRow + 1);
+    const vals = Array.from({ length: rowCount }, (_, idx) => {
+      const cell = gridData[fm.startRow + idx]?.[fm.column];
+      return cell?.trim() || "";
+    }).filter((v) => v.length > 0);
     return vals.length > 0 ? vals.join(" ") : undefined;
   };
 
@@ -438,32 +436,35 @@ function extractRowsFromGrid(grid: string[][], mapping: ImportMappingConfig): Jo
     jtNo?: string;
   }> = [];
 
-  for (let r = lineItemStart; r <= Math.min(lineItemEnd, grid.length - 1); r++) {
-    if (validRows.size > 0 && !validRows.has(r)) continue;
-    const gridRow = grid[r];
-    const liNo = mapping.lineItems?.itemNo;
-    const liQty = mapping.lineItems?.quantity;
-    const liJt = mapping.lineItems?.jtNo;
-    const codeCol = liItemCode ? liItemCode.column : -1;
-    const descCol = liItemDesc ? liItemDesc.column : -1;
-    const noCol = liNo ? liNo.column : -1;
-    const qtyCol = liQty ? liQty.column : -1;
-    const jtCol = liJt ? liJt.column : -1;
-    const cellOrEmpty = (col: number): string => {
-      if (col < 0 || !gridRow) return "";
-      const val = gridRow[col];
-      return val ? val.trim() : "";
-    };
-    const itemCode = liItemCode ? cellOrEmpty(codeCol) : "";
-    const itemDescription = liItemDesc ? cellOrEmpty(descCol) : "";
-    const itemNo = liNo ? cellOrEmpty(noCol) : "";
-    const quantity = liQty ? cellOrEmpty(qtyCol) : "";
-    const jtNo = liJt ? cellOrEmpty(jtCol) : "";
+  const lineEndRow = Math.min(lineItemEnd, grid.length - 1);
+  const lineRowCount = Math.max(0, lineEndRow - lineItemStart + 1);
+  Array.from({ length: lineRowCount }, (_, idx) => lineItemStart + idx)
+    .filter((r) => validRows.size === 0 || validRows.has(r))
+    .forEach((r) => {
+      const gridRow = grid[r];
+      const liNo = mapping.lineItems?.itemNo;
+      const liQty = mapping.lineItems?.quantity;
+      const liJt = mapping.lineItems?.jtNo;
+      const codeCol = liItemCode ? liItemCode.column : -1;
+      const descCol = liItemDesc ? liItemDesc.column : -1;
+      const noCol = liNo ? liNo.column : -1;
+      const qtyCol = liQty ? liQty.column : -1;
+      const jtCol = liJt ? liJt.column : -1;
+      const cellOrEmpty = (col: number): string => {
+        if (col < 0 || !gridRow) return "";
+        const val = gridRow[col];
+        return val ? val.trim() : "";
+      };
+      const itemCode = liItemCode ? cellOrEmpty(codeCol) : "";
+      const itemDescription = liItemDesc ? cellOrEmpty(descCol) : "";
+      const itemNo = liNo ? cellOrEmpty(noCol) : "";
+      const quantity = liQty ? cellOrEmpty(qtyCol) : "";
+      const jtNo = liJt ? cellOrEmpty(jtCol) : "";
 
-    if (itemCode || itemDescription || quantity) {
-      lineItems.push({ itemCode, itemDescription, itemNo, quantity, jtNo });
-    }
-  }
+      if (itemCode || itemDescription || quantity) {
+        lineItems.push({ itemCode, itemDescription, itemNo, quantity, jtNo });
+      }
+    });
 
   rows.push({
     jobNumber: jobNumber || "UNKNOWN",

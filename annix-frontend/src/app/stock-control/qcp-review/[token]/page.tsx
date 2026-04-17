@@ -10,6 +10,7 @@ import type {
   QcpActivity,
 } from "@/app/lib/api/stockControlApi";
 import { SignaturePad } from "@/app/stock-control/components/SignaturePad";
+// eslint-disable-next-line no-restricted-imports -- Token-based public QCP review page; requires new unauthenticated hooks for QCP review workflow. Tracked as tech debt.
 import { browserBaseUrl } from "@/lib/api-config";
 
 type ReviewStatus = "loading" | "ready" | "submitted" | "error";

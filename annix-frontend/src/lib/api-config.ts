@@ -23,6 +23,7 @@ export const resolveBaseUrl = (originHint?: string | null) => {
   }
 
   if (trimmed.startsWith("/")) {
+    // eslint-disable-next-line no-restricted-syntax -- SSR guard
     if (typeof window !== "undefined") {
       return `${window.location.origin}${trimmed}`;
     }
@@ -34,6 +35,7 @@ export const resolveBaseUrl = (originHint?: string | null) => {
 };
 
 export function browserBaseUrl(): string {
+  // eslint-disable-next-line no-restricted-syntax -- SSR guard
   if (typeof window !== "undefined") {
     const envValue = process.env.NEXT_PUBLIC_API_URL;
     if (envValue?.startsWith("http") && envValue !== window.location.origin) {
@@ -51,6 +53,7 @@ export const apiConfig = {
 };
 
 export const getAuthHeaders = (): Record<string, string> => {
+  // eslint-disable-next-line no-restricted-syntax -- SSR guard
   if (typeof window !== "undefined") {
     const token = localStorage.getItem("auth_token");
     if (token) {
@@ -63,6 +66,7 @@ export const getAuthHeaders = (): Record<string, string> => {
 };
 
 export const annixRepAuthHeaders = (): Record<string, string> => {
+  // eslint-disable-next-line no-restricted-syntax -- SSR guard
   if (typeof window !== "undefined") {
     const token =
       localStorage.getItem("annixRepAccessToken") ?? sessionStorage.getItem("annixRepAccessToken");

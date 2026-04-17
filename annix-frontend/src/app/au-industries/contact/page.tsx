@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+// eslint-disable-next-line no-restricted-imports -- AU Industries public contact form; requires new public company-profile + contact-submission hooks. Tracked as tech debt.
 import { browserBaseUrl } from "@/lib/api-config";
 
 interface CompanyProfile {

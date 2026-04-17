@@ -90,6 +90,7 @@ export function InspectionBookingModal(props: InspectionBookingModalProps) {
     if (startIdx === -1) return [];
     const maxIdx = Math.min(startIdx + MAX_DURATION_SLOTS, TIME_SLOTS.length - 1);
     const ends: string[] = [];
+    // eslint-disable-next-line no-restricted-syntax -- sliding window with two break conditions on occupied slots
     for (let i = startIdx + 1; i <= maxIdx; i++) {
       const slot = TIME_SLOTS[i];
       const prevSlot = TIME_SLOTS[i - 1];

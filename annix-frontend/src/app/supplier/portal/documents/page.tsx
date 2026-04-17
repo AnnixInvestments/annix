@@ -14,7 +14,7 @@ import {
   type SupplierDocumentDto,
   supplierPortalApi,
 } from "@/app/lib/api/supplierApi";
-import { formatDateZA } from "@/app/lib/datetime";
+import { formatDateZA, now } from "@/app/lib/datetime";
 import { log } from "@/app/lib/logger";
 import {
   nixApi,
@@ -452,7 +452,7 @@ function SupplierDocumentsContent() {
               type="date"
               value={expiryDate}
               onChange={(e) => setExpiryDate(e.target.value)}
-              min={new Date().toISOString().split("T")[0]}
+              min={now().toISODate() ?? ""}
               max="2099-12-31"
               className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             />

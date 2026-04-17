@@ -2,6 +2,7 @@
 
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { fromISO } from "@/app/lib/datetime";
 import { API_BASE_URL } from "@/lib/api-config";
 import { SignOffStatusBadge } from "../../components/accounting/SignOffStatusBadge";
 
@@ -145,7 +146,7 @@ export default function SignOffPage() {
             This sign-off has already been{" "}
             <span className="font-medium">{data.signOff.status.toLowerCase()}</span>
             {data.signOff.signedAt && (
-              <> on {new Date(data.signOff.signedAt).toLocaleDateString("en-ZA")}</>
+              <> on {fromISO(data.signOff.signedAt).toJSDate().toLocaleDateString("en-ZA")}</>
             )}
             .
           </p>

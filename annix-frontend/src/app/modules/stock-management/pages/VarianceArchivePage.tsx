@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { fromISO } from "@/app/lib/datetime";
 import { StockManagementApiClient } from "../api/stockManagementApi";
 import {
   useStockManagementConfig,
@@ -148,7 +149,9 @@ export function VarianceArchivePage() {
                       R {row.totalVarianceValueR.toFixed(2)}
                     </td>
                     <td className="px-4 py-3 text-xs text-gray-500">
-                      {row.lastSeenAt ? new Date(row.lastSeenAt).toLocaleDateString() : "—"}
+                      {row.lastSeenAt
+                        ? fromISO(row.lastSeenAt).toJSDate().toLocaleDateString()
+                        : "—"}
                     </td>
                   </tr>
                 );

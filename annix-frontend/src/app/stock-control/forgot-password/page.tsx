@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import React, { useState } from "react";
+// eslint-disable-next-line no-restricted-imports -- Auth flow page (forgot-password); requires new auth hooks for unauthenticated operations. Tracked as tech debt per Phase 9 of annix/annix#191.
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 
 export default function ForgotPasswordPage() {

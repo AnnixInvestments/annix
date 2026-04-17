@@ -18,6 +18,7 @@ import type {
   StockItem,
   WorkflowStatus as WorkflowStatusData,
 } from "@/app/lib/api/stockControlApi";
+// eslint-disable-next-line no-restricted-imports -- Job card detail page has deep inline operations (QC, allocations, signatures) not yet covered by hooks; migrating requires extensive hook scaffolding. Tracked as tech debt per Phase 9 of annix/annix#191.
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA, nowMillis } from "@/app/lib/datetime";
 import {

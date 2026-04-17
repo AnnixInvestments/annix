@@ -393,12 +393,13 @@ const SimpleFlange = ({
   const boltHoleSize = actualHoleIdMm ? actualHoleIdMm / 1000 / 2 : thickness * 0.4;
 
   const boltHoles = useMemo(() => {
-    const holes = [];
-    for (let i = 0; i < numHoles; i++) {
+    return Array.from({ length: numHoles }, (_, i) => {
       const angle = (i / numHoles) * Math.PI * 2;
-      holes.push({ x: Math.cos(angle) * boltCircleRadius, z: Math.sin(angle) * boltCircleRadius });
-    }
-    return holes;
+      return {
+        x: Math.cos(angle) * boltCircleRadius,
+        z: Math.sin(angle) * boltCircleRadius,
+      };
+    });
   }, [numHoles, boltCircleRadius]);
 
   return (
@@ -497,12 +498,13 @@ const BlankFlange = ({
   const boltHoleSize = thickness * 0.4;
 
   const boltHoles = useMemo(() => {
-    const holes = [];
-    for (let i = 0; i < numHoles; i++) {
+    return Array.from({ length: numHoles }, (_, i) => {
       const angle = (i / numHoles) * Math.PI * 2;
-      holes.push({ x: Math.cos(angle) * boltCircleRadius, z: Math.sin(angle) * boltCircleRadius });
-    }
-    return holes;
+      return {
+        x: Math.cos(angle) * boltCircleRadius,
+        z: Math.sin(angle) * boltCircleRadius,
+      };
+    });
   }, [numHoles, boltCircleRadius]);
 
   return (
@@ -800,12 +802,10 @@ const PuddleFlange = ({
   const holeRadius = holeId / 2;
 
   const boltHoles = useMemo(() => {
-    const holes = [];
-    for (let i = 0; i < holeCount; i++) {
+    return Array.from({ length: holeCount }, (_, i) => {
       const angle = (i / holeCount) * Math.PI * 2;
-      holes.push({ y: Math.cos(angle) * pcdRadius, z: Math.sin(angle) * pcdRadius });
-    }
-    return holes;
+      return { y: Math.cos(angle) * pcdRadius, z: Math.sin(angle) * pcdRadius };
+    });
   }, [holeCount, pcdRadius]);
 
   const flangeColor = "#b45309";
@@ -2393,10 +2393,10 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
               const availableLen = pipeLengthMm - 2 * distFromEnd;
               const spacing = availableLen / (debouncedProps.numberOfSpigots - 1);
 
-              for (let i = 0; i < debouncedProps.numberOfSpigots; i++) {
+              dxf += Array.from({ length: debouncedProps.numberOfSpigots }, (_, i) => {
                 const spigotX = distFromEnd + i * spacing;
-                dxf += `0\nCIRCLE\n8\nSPIGOT\n62\n3\n10\n${spigotX}\n20\n0\n40\n${spigotOd / 2}\n`;
-              }
+                return `0\nCIRCLE\n8\nSPIGOT\n62\n3\n10\n${spigotX}\n20\n0\n40\n${spigotOd / 2}\n`;
+              }).join("");
             }
 
             dxf += "0\nENDSEC\n0\nEOF\n";

@@ -1,5 +1,6 @@
 const envApiUrl = process.env.NEXT_PUBLIC_API_URL;
 const BASE_URL =
+  // eslint-disable-next-line no-restricted-syntax -- SSR guard
   typeof window !== "undefined"
     ? "/api/comply-sa"
     : `${envApiUrl || "http://localhost:4001"}/api/comply-sa`;
@@ -37,6 +38,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
       return secondResponse.json() as Promise<T>;
     }
 
+    // eslint-disable-next-line no-restricted-syntax -- SSR guard
     if (typeof window !== "undefined") {
       window.location.href = "/comply-sa/auth/login";
     }

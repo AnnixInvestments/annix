@@ -67,6 +67,7 @@ function BookingLinkCard({
 }) {
   const [showCopied, setShowCopied] = useState(false);
   const bookingUrl =
+    // eslint-disable-next-line no-restricted-syntax -- SSR guard
     typeof window !== "undefined"
       ? `${window.location.origin}/book/${link.slug}`
       : `/book/${link.slug}`;

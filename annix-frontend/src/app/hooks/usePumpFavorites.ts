@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PumpProductCardData } from "@/app/components/pumps/PumpProductCard";
+import { nowISO } from "@/app/lib/datetime";
 
 const FAVORITES_STORAGE_KEY = "pump_favorites";
 const RECENTLY_VIEWED_STORAGE_KEY = "pump_recently_viewed";
@@ -97,7 +98,7 @@ export function usePumpFavorites(): UsePumpFavoritesReturn {
       if (prev.some((entry) => entry.productId === productId)) {
         return prev;
       }
-      return [...prev, { productId, addedAt: new Date().toISOString() }];
+      return [...prev, { productId, addedAt: nowISO() }];
     });
   }, []);
 
@@ -125,7 +126,7 @@ export function usePumpFavorites(): UsePumpFavoritesReturn {
       const filtered = prev.filter((entry) => entry.product.id !== product.id);
       const newEntry: RecentlyViewedEntry = {
         product,
-        viewedAt: new Date().toISOString(),
+        viewedAt: nowISO(),
       };
       return [newEntry, ...filtered].slice(0, MAX_RECENTLY_VIEWED);
     });

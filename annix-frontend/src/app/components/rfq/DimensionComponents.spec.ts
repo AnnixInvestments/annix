@@ -237,14 +237,11 @@ describe("DimensionComponents", () => {
         new THREE.Vector3(6, 0, 0),
       ];
 
-      const segments = [];
-      for (let i = 0; i < points.length - 1; i++) {
-        segments.push({
-          start: points[i],
-          end: points[i + 1],
-          length: points[i].distanceTo(points[i + 1]),
-        });
-      }
+      const segments = points.slice(0, -1).map((start, i) => ({
+        start,
+        end: points[i + 1],
+        length: start.distanceTo(points[i + 1]),
+      }));
 
       const totalLength = segments.reduce((sum, seg) => sum + seg.length, 0);
 

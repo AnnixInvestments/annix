@@ -2,6 +2,7 @@
 
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
+// eslint-disable-next-line no-restricted-imports -- Token-based public inspection response page; requires new unauthenticated hooks for inspection booking and response flows. Tracked as tech debt.
 import { browserBaseUrl } from "@/lib/api-config";
 
 interface BookingDetails {

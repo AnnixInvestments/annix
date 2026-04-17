@@ -9,6 +9,7 @@ import type {
   PositectorImportResult,
   PositectorUploadResponse,
 } from "@/app/lib/api/stockControlApi";
+import { nowISO } from "@/app/lib/datetime";
 import {
   useAnalyzeBundlePdf,
   useImportBundlePdf,
@@ -811,7 +812,7 @@ export default function PositectorUploadPage() {
                       ...prev.upload,
                       linkedJobCardId: result.recordId,
                       importRecordId: result.recordId,
-                      importedAt: new Date().toISOString(),
+                      importedAt: nowISO(),
                     },
                   };
                 });

@@ -6,7 +6,7 @@ import { useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
-import { formatDateTimeZA, formatDateZA, fromJSDate } from "@/app/lib/datetime";
+import { formatDateTimeZA, formatDateZA, fromISO } from "@/app/lib/datetime";
 import {
   useCreateManualAdjustment,
   useDownloadStockItemQrPdf,
@@ -89,7 +89,7 @@ export default function InventoryDetailPage() {
     if (outMovements.length === 0) return [];
     const dailyMap = new Map<string, { issued: number; ts: number }>();
     for (const m of outMovements) {
-      const dt = fromJSDate(new Date(m.createdAt));
+      const dt = fromISO(m.createdAt);
       const dateKey = dt.toFormat("dd MMM yyyy");
       const existing = dailyMap.get(dateKey);
       const prev = existing ? existing.issued : 0;
@@ -126,7 +126,7 @@ export default function InventoryDetailPage() {
   const usageInsights = useMemo(() => {
     const outMovements = movements.filter((m) => m.movementType === "out");
     const totalOut = outMovements.reduce((sum, m) => sum + Number(m.quantity), 0);
-    const dates = outMovements.map((m) => new Date(m.createdAt).getTime());
+    const dates = outMovements.map((m) => fromISO(m.createdAt).toMillis());
     const firstOut = dates.length > 0 ? Math.min(...dates) : null;
     const lastOut = dates.length > 0 ? Math.max(...dates) : null;
     const daySpan =
@@ -136,7 +136,7 @@ export default function InventoryDetailPage() {
       avgDailyUsage > 0 && item ? Math.floor(item.quantity / avgDailyUsage) : null;
     const lastRestock = movements
       .filter((m) => m.movementType === "in" && m.referenceType !== "stock_take")
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+      .sort((a, b) => fromISO(b.createdAt).toMillis() - fromISO(a.createdAt).toMillis())[0];
     return { totalOut, avgDailyUsage, daysUntilStockout, lastRestock };
   }, [movements, item]);
 

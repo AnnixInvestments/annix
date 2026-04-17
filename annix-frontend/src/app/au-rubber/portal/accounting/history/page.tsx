@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
+import { fromISO } from "@/app/lib/datetime";
 import { SignOffStatusBadge } from "../../../components/accounting/SignOffStatusBadge";
 import { Breadcrumb } from "../../../components/Breadcrumb";
 import { RequirePermission } from "../../../components/RequirePermission";
@@ -106,7 +107,8 @@ export default function AccountingHistoryPage() {
                     </h3>
                     {account.generatedAt && (
                       <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                        Generated {new Date(account.generatedAt).toLocaleDateString("en-ZA")}
+                        Generated{" "}
+                        {fromISO(account.generatedAt).toJSDate().toLocaleDateString("en-ZA")}
                         {account.generatedBy && ` by ${account.generatedBy}`}
                       </p>
                     )}
@@ -146,7 +148,7 @@ export default function AccountingHistoryPage() {
                           <SignOffStatusBadge status={so.status} />
                           {so.signedAt && (
                             <span className="text-xs text-gray-400">
-                              {new Date(so.signedAt).toLocaleDateString("en-ZA")}
+                              {fromISO(so.signedAt).toJSDate().toLocaleDateString("en-ZA")}
                             </span>
                           )}
                         </div>

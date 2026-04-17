@@ -34,6 +34,7 @@ export function StockControlAuthProvider(props: { children: ReactNode }) {
   const checkAuth = useCallback(async () => {
     if (!stockControlApiClient.isAuthenticated()) {
       const adminToken =
+        // eslint-disable-next-line no-restricted-syntax -- SSR guard
         typeof window !== "undefined"
           ? localStorage.getItem("adminAccessToken") || sessionStorage.getItem("adminAccessToken")
           : null;

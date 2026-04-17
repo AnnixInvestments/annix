@@ -230,11 +230,19 @@ fi
 STAGED_FRONTEND_TS=$(echo "$STAGED_TS_FILES" | grep -E '^annix-frontend/src/.*\.(ts|tsx)$' || true)
 
 if [ -n "$STAGED_FRONTEND_TS" ]; then
-    # Frontend ESLint still deferred. Phase 2 has cleared the SWC-landmine
-    # bulk but pre-existing native-Date, imperative-for-loop, and
-    # no-restricted-imports errors remain. Tracked for ref #195 phase 3.
     echo ""
-    echo "Frontend ESLint skipped (deferred pending ref #195 phase 3)."
+    echo "Running frontend ESLint on staged files..."
+    FRONTEND_LINT_FILES=$(echo "$STAGED_FRONTEND_TS" | sed 's#^annix-frontend/##' | tr '\n' ' ')
+    if ! (cd "$ROOT_DIR/annix-frontend" && pnpm eslint $FRONTEND_LINT_FILES); then
+        echo ""
+        echo "============================================"
+        echo "COMMIT BLOCKED: Frontend ESLint errors"
+        echo "============================================"
+        echo "Run 'cd annix-frontend && pnpm lint' to see all frontend lint errors."
+        echo ""
+        exit 1
+    fi
+    echo "Frontend ESLint passed."
 
     # Sync the stale prod typed-route cache with the current dev cache before tsc.
     # Next.js maintains .next/types/routes.d.ts (updated by `next build`) and
@@ -289,10 +297,18 @@ if [ -n "$STAGED_FRONTEND_TS" ]; then
     SWC_LANDMINES=0
     SWC_REPORT=""
 
-    # Pass A: full-file high-signal patterns — will be re-enabled in ref #195
-    # phase 3. The phase 2 cleanup cleared ~988 of ~1000 landmines; the rest
-    # (5 surviving + any new ones) are better caught after the remaining
-    # ESLint cleanup is done.
+    # Pass A: full-file high-signal patterns
+    for f in $STAGED_FRONTEND_TS; do
+        if [ -f "$f" ]; then
+            MATCHES=$(git show ":$f" 2>/dev/null | grep -nE '(\?\.\w+ \?\?|\?\.\w+ \|\||\[[^]]+\] \?\?|\[[^]]+\] \|\|)' || true)
+            if [ -n "$MATCHES" ]; then
+                SWC_LANDMINES=1
+                SWC_REPORT="${SWC_REPORT}
+  $f (full-file):
+$(echo "$MATCHES" | sed 's/^/    /')"
+            fi
+        fi
+    done
 
     # Pass B: added-lines-only check for plain `.prop ?? / .prop ||`
     for f in $STAGED_FRONTEND_TS; do

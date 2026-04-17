@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
+import { fromISO } from "@/app/lib/datetime";
 import { SignOffStatusBadge } from "../../../components/accounting/SignOffStatusBadge";
 import { StatementUploadModal } from "../../../components/accounting/StatementUploadModal";
 import { Breadcrumb } from "../../../components/Breadcrumb";
@@ -160,7 +161,7 @@ export default function ReconciliationListPage() {
                       <SignOffStatusBadge status={r.status} />
                     </td>
                     <td className="px-4 py-3 text-gray-500 dark:text-gray-400 text-xs">
-                      {new Date(r.createdAt).toLocaleDateString("en-ZA")}
+                      {fromISO(r.createdAt).toJSDate().toLocaleDateString("en-ZA")}
                     </td>
                   </tr>
                 ))}

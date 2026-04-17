@@ -125,6 +125,7 @@ export default function ProjectDetailsStep() {
   const hasProjectTypeError = Boolean(errors.projectType);
 
   const getMapConfig = () =>
+    // eslint-disable-next-line no-restricted-syntax -- SSR guard
     typeof window !== "undefined" && window.innerWidth < 768 ? "responsive" : "default";
 
   // Document upload confirmation state

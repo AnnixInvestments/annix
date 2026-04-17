@@ -48,6 +48,7 @@ export default function SessionExpiredModal(props: SessionExpiredModalProps) {
 
   const handleLogin = () => {
     // Clear all auth tokens
+    // eslint-disable-next-line no-restricted-syntax -- SSR guard
     if (typeof window !== "undefined") {
       localStorage.removeItem("customerAccessToken");
       localStorage.removeItem("customerRefreshToken");

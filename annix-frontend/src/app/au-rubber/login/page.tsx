@@ -12,6 +12,7 @@ function AuRubberLoginContent() {
   const { login, isAuthenticated, isLoading: authLoading } = useAuRubberAuth();
 
   const [email, setEmail] = useState(() => {
+    // eslint-disable-next-line no-restricted-syntax -- SSR guard
     if (typeof window !== "undefined") {
       return localStorage.getItem("auRubberRememberedEmail") || "";
     }
@@ -20,6 +21,7 @@ function AuRubberLoginContent() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(() => {
+    // eslint-disable-next-line no-restricted-syntax -- SSR guard
     if (typeof window !== "undefined") {
       return localStorage.getItem("auRubberRememberMe") === "true";
     }

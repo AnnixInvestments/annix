@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { nowMillis } from "@/app/lib/datetime";
 import { onSyncStatusChange, type SyncStatus, syncPendingActions } from "@/app/lib/offline";
 
 export default function OfflineIndicator() {
@@ -193,8 +194,7 @@ export default function OfflineIndicator() {
 }
 
 function formatRelativeTime(date: Date): string {
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
+  const diffMs = nowMillis() - date.getTime();
   const diffSecs = Math.floor(diffMs / 1000);
   const diffMins = Math.floor(diffSecs / 60);
   const diffHours = Math.floor(diffMins / 60);

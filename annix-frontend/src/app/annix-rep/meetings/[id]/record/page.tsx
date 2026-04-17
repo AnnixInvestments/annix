@@ -130,20 +130,17 @@ function WaveformDisplay({ isRecording }: { isRecording: boolean }) {
       ctx.beginPath();
 
       const sliceWidth = canvas.width / bufferLength;
-      let x = 0;
 
-      for (let i = 0; i < bufferLength; i++) {
+      Array.from({ length: bufferLength }).forEach((_, i) => {
         const v = dataArray[i] / 128.0;
         const y = (v * canvas.height) / 2;
-
+        const x = sliceWidth * i;
         if (i === 0) {
           ctx.moveTo(x, y);
         } else {
           ctx.lineTo(x, y);
         }
-
-        x += sliceWidth;
-      }
+      });
 
       ctx.lineTo(canvas.width, canvas.height / 2);
       ctx.stroke();
@@ -228,6 +225,7 @@ export default function RecordMeetingPage() {
 
       isUploadingChunkRef.current = true;
 
+      // eslint-disable-next-line no-restricted-syntax -- sequential queue drain requires break on empty/shifted items
       while (chunkQueueRef.current.length > 0) {
         const chunk = chunkQueueRef.current.shift();
         if (!chunk) break;
@@ -280,6 +278,7 @@ export default function RecordMeetingPage() {
       return;
     }
 
+    // eslint-disable-next-line no-restricted-syntax -- poll-wait for queue drain before completing upload
     while (chunkQueueRef.current.length > 0 || isUploadingChunkRef.current) {
       await new Promise((resolve) => setTimeout(resolve, 100));
     }

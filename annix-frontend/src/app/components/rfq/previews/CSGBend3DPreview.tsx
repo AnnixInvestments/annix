@@ -1581,17 +1581,18 @@ const Scene = (props: Props) => {
                     {(() => {
                       const arcRadius3D = outerR * 0.8;
                       const arcSegments = 32;
-                      const arcPoints: [number, number, number][] = [];
-
-                      for (let i = 0; i <= arcSegments; i++) {
-                        const t = i / arcSegments;
-                        const currentAngle = t * angleRad;
-                        arcPoints.push([
-                          insideCorner.x + arcRadius3D * Math.sin(currentAngle),
-                          0,
-                          insideCorner.z + arcRadius3D * Math.cos(currentAngle),
-                        ]);
-                      }
+                      const arcPoints: [number, number, number][] = Array.from(
+                        { length: arcSegments + 1 },
+                        (_, i): [number, number, number] => {
+                          const t = i / arcSegments;
+                          const currentAngle = t * angleRad;
+                          return [
+                            insideCorner.x + arcRadius3D * Math.sin(currentAngle),
+                            0,
+                            insideCorner.z + arcRadius3D * Math.cos(currentAngle),
+                          ];
+                        },
+                      );
 
                       const midAngle = angleRad / 2;
                       const textRadius = arcRadius3D * 0.6;
@@ -2393,15 +2394,12 @@ const Scene = (props: Props) => {
                 // Semicircular cutout - arc from right side, down to center, up to left side
                 // Arc goes from 0 (right) to PI (left) - this creates a downward-facing semicircle
                 const arcSegments = 24;
-                for (let i = 0; i <= arcSegments; i++) {
-                  // 0 to PI
+                Array.from({ length: arcSegments + 1 }).forEach((_, i) => {
                   const angle = (i / arcSegments) * Math.PI;
-                  // Goes from +radius to -radius
                   const arcX = cutoutRadius * Math.cos(angle);
-                  // Dips down by radius at center
                   const arcY = cutoutCenterY - cutoutRadius * Math.sin(angle);
                   gusset2Shape.lineTo(arcX, arcY);
-                }
+                });
 
                 // Left edge down to bottom
                 gusset2Shape.lineTo(-gusset2Width / 2, 0);
@@ -2780,25 +2778,29 @@ const Scene = (props: Props) => {
                 const halfPlateX = basePlateXDim / 2;
                 const halfPlateY = basePlateYDim / 2;
 
-                const blueGussetCutoutPoints: Array<[number, number, number]> = [];
                 const arcSegments = 24;
-                for (let i = 0; i <= arcSegments; i++) {
-                  const angle = (i / arcSegments) * Math.PI;
-                  const arcZ = cutoutRadius * Math.cos(angle);
-                  const arcY = cutoutCenterY - cutoutRadius * Math.sin(angle);
-                  blueGussetCutoutPoints.push([0, arcY, arcZ]);
-                }
+                const blueGussetCutoutPoints: Array<[number, number, number]> = Array.from(
+                  { length: arcSegments + 1 },
+                  (_, i): [number, number, number] => {
+                    const angle = (i / arcSegments) * Math.PI;
+                    const arcZ = cutoutRadius * Math.cos(angle);
+                    const arcY = cutoutCenterY - cutoutRadius * Math.sin(angle);
+                    return [0, arcY, arcZ];
+                  },
+                );
 
-                const yellowGussetCurvePoints: Array<[number, number, number]> = [];
                 const curveSegments = 16;
-                for (let i = 0; i <= curveSegments; i++) {
-                  const angleDeg =
-                    pointDAngleDegrees +
-                    (i / curveSegments) * (pointCAngleDegrees - pointDAngleDegrees);
-                  const localX = extradosLocalX(angleDeg);
-                  const localY = extradosLocalY(angleDeg);
-                  yellowGussetCurvePoints.push([localX, Math.max(0.1, localY), 0]);
-                }
+                const yellowGussetCurvePoints: Array<[number, number, number]> = Array.from(
+                  { length: curveSegments + 1 },
+                  (_, i): [number, number, number] => {
+                    const angleDeg =
+                      pointDAngleDegrees +
+                      (i / curveSegments) * (pointCAngleDegrees - pointDAngleDegrees);
+                    const localX = extradosLocalX(angleDeg);
+                    const localY = extradosLocalY(angleDeg);
+                    return [localX, Math.max(0.1, localY), 0];
+                  },
+                );
 
                 const weldOffset = 0.05;
 

@@ -163,21 +163,13 @@ export function PumpCurveChart(props: PumpCurveChartProps) {
   }, [systemCurve, scales]);
 
   const gridLinesX = useMemo(() => {
-    const lines: number[] = [];
     const step = scales.maxFlow / 5;
-    for (let i = 0; i <= 5; i++) {
-      lines.push(i * step);
-    }
-    return lines;
+    return Array.from({ length: 6 }, (_, i) => i * step);
   }, [scales.maxFlow]);
 
   const gridLinesY = useMemo(() => {
-    const lines: number[] = [];
     const step = scales.maxHead / 5;
-    for (let i = 0; i <= 5; i++) {
-      lines.push(i * step);
-    }
-    return lines;
+    return Array.from({ length: 6 }, (_, i) => i * step);
   }, [scales.maxHead]);
 
   const bepZone = useMemo(() => {

@@ -353,8 +353,7 @@ export default function JobCardsPage() {
                   });
                   let processed = 0;
                   let failed = 0;
-                  for (let i = 0; i < eligible.length; i++) {
-                    const jc = eligible[i];
+                  for (const [i, jc] of eligible.entries()) {
                     setBulkProgress({
                       current: i + 1,
                       total: eligible.length,

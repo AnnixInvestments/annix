@@ -8,6 +8,7 @@ import { PumpProductBrowser } from "@/app/components/pumps";
 import type { PumpProductCardData } from "@/app/components/pumps/PumpProductCard";
 import { useToast } from "@/app/components/Toast";
 import { useCustomerAuth } from "@/app/context/CustomerAuthContext";
+// eslint-disable-next-line no-restricted-imports -- Customer pumps page uses pumpProductApi for CRUD; TanStack migration requires new customer-facing pump hooks. Tracked as tech debt per Phase 9 of annix/annix#191.
 import { PumpProduct, pumpProductApi } from "@/app/lib/api/client";
 import { log } from "@/app/lib/logger";
 

@@ -20,10 +20,12 @@ function LoginPageContent() {
 
   const [formData, setFormData] = useState<LoginFormData>(() => ({
     email:
+      // eslint-disable-next-line no-restricted-syntax -- SSR guard
       typeof window !== "undefined" ? localStorage.getItem("annixRepRememberedEmail") || "" : "",
     password: "",
   }));
   const [rememberMe, setRememberMe] = useState(() => {
+    // eslint-disable-next-line no-restricted-syntax -- SSR guard
     if (typeof window !== "undefined") {
       return localStorage.getItem("annixRepRememberMe") === "true";
     }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+// eslint-disable-next-line no-restricted-imports -- AU Industries public quote form; requires new public quote-submission mutation hook. Tracked as tech debt.
 import { browserBaseUrl } from "@/lib/api-config";
 
 export default function AuIndustriesQuotePage() {

@@ -13,6 +13,7 @@ const apiClient: ApiClient = createApiClient({
   refreshUrl: `${API_BASE_URL}/stock-control/auth/refresh`,
   onUnauthorized: () => {
     if (
+      // eslint-disable-next-line no-restricted-syntax -- SSR guard
       typeof window !== "undefined" &&
       !window.location.pathname.startsWith("/stock-control/login")
     ) {
@@ -51,6 +52,7 @@ export class StockControlApiClient {
   }
 
   setCompanyCookie(companyId: number) {
+    // eslint-disable-next-line no-restricted-syntax -- SSR guard
     if (typeof document !== "undefined") {
       // biome-ignore lint/suspicious/noDocumentCookie: Cookie Store API not universally supported
       document.cookie = `sc_company_id=${companyId};path=/stock-control;max-age=${60 * 60 * 24 * 365};SameSite=Lax`;
@@ -58,6 +60,7 @@ export class StockControlApiClient {
   }
 
   clearCompanyCookie() {
+    // eslint-disable-next-line no-restricted-syntax -- SSR guard
     if (typeof document !== "undefined") {
       // biome-ignore lint/suspicious/noDocumentCookie: Cookie Store API not universally supported
       document.cookie = "sc_company_id=;path=/stock-control;max-age=0;SameSite=Lax";
@@ -102,6 +105,7 @@ export class StockControlApiClient {
   }
 
   companyIdParam(): string {
+    // eslint-disable-next-line no-restricted-syntax -- SSR guard
     const stored = typeof window !== "undefined" ? localStorage.getItem("sc_user") : null;
     if (stored) {
       try {

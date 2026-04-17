@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import type { AdminTransferPending } from "@/app/lib/api/stock-control-api/types";
 import type { CandidateImage } from "@/app/lib/api/stockControlApi";
+import { fromISO } from "@/app/lib/datetime";
 import {
   useCancelAdminTransfer,
   useCompanyRoles,
@@ -1411,7 +1412,8 @@ function AdminTransferSection() {
                   </p>
                 )}
                 <p className="text-xs text-amber-500 mt-1">
-                  Expires: {new Date(pendingTransfer.expiresAt).toLocaleDateString("en-ZA")}
+                  Expires:{" "}
+                  {fromISO(pendingTransfer.expiresAt).toJSDate().toLocaleDateString("en-ZA")}
                 </p>
               </div>
             </div>
@@ -1603,7 +1605,7 @@ function AppInfoSection() {
           <div className="flex items-center justify-between py-2 border-b border-gray-100">
             <span className="text-sm text-gray-600">Last Sync</span>
             <span className="text-sm font-medium text-gray-900">
-              {new Date(lastSync).toLocaleString("en-ZA")}
+              {fromISO(lastSync).toJSDate().toLocaleString("en-ZA")}
             </span>
           </div>
         )}

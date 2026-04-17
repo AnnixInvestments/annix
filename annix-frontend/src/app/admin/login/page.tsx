@@ -12,6 +12,7 @@ function AdminLoginContent() {
   const { login, isAuthenticated, isLoading: authLoading } = useAdminAuth();
 
   const [email, setEmail] = useState(() => {
+    // eslint-disable-next-line no-restricted-syntax -- SSR guard
     if (typeof window !== "undefined") {
       return localStorage.getItem("adminRememberedEmail") || "";
     }
@@ -20,6 +21,7 @@ function AdminLoginContent() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(() => {
+    // eslint-disable-next-line no-restricted-syntax -- SSR guard
     if (typeof window !== "undefined") {
       return localStorage.getItem("adminRememberMe") === "true";
     }

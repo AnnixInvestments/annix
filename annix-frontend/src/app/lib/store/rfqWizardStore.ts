@@ -1553,8 +1553,7 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
           const allClarifications: NixClarificationDto[] = [];
 
           try {
-            for (let i = 0; i < pendingDocuments.length; i++) {
-              const doc = pendingDocuments[i];
+            for (const [i, doc] of pendingDocuments.entries()) {
               const docProgress = (i / pendingDocuments.length) * 100;
 
               set(
@@ -1632,7 +1631,7 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
                 await new Promise((resolve) => setTimeout(resolve, 300));
 
                 const totalItems = result.items.length;
-                for (let itemIdx = 0; itemIdx < totalItems; itemIdx++) {
+                for (const [itemIdx] of result.items.entries()) {
                   const itemProgress = docProgress + 70 + (itemIdx / totalItems) * 20;
                   set(
                     {

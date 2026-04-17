@@ -619,8 +619,8 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
 
     if (!isAuthenticated) {
       log.info("User not authenticated, redirecting to login to access draft");
-      // eslint-disable-next-line no-restricted-syntax -- SSR guard; isUndefined(window) would throw
       const currentUrl =
+        // eslint-disable-next-line no-restricted-syntax -- SSR guard
         typeof window !== "undefined" ? window.location.pathname + window.location.search : "/rfq";
       router.push(`/customer/login?returnUrl=${encodeURIComponent(currentUrl)}`);
       return;
@@ -896,19 +896,18 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
       return deratingCurve[deratingCurve.length - 1].factor;
     }
 
-    // Find surrounding points and interpolate
-    for (let i = 0; i < deratingCurve.length - 1; i++) {
-      if (
-        temperatureCelsius >= deratingCurve[i].temp &&
-        temperatureCelsius <= deratingCurve[i + 1].temp
-      ) {
-        const lower = deratingCurve[i];
-        const upper = deratingCurve[i + 1];
-        const tempRange = upper.temp - lower.temp;
-        const factorRange = upper.factor - lower.factor;
-        const tempOffset = temperatureCelsius - lower.temp;
-        return lower.factor + (factorRange * tempOffset) / tempRange;
-      }
+    const bracketIndex = deratingCurve
+      .slice(0, -1)
+      .findIndex(
+        (p, i) => temperatureCelsius >= p.temp && temperatureCelsius <= deratingCurve[i + 1].temp,
+      );
+    if (bracketIndex !== -1) {
+      const lower = deratingCurve[bracketIndex];
+      const upper = deratingCurve[bracketIndex + 1];
+      const tempRange = upper.temp - lower.temp;
+      const factorRange = upper.factor - lower.factor;
+      const tempOffset = temperatureCelsius - lower.temp;
+      return lower.factor + (factorRange * tempOffset) / tempRange;
     }
 
     return 1.0;
@@ -2057,25 +2056,30 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
 
   const handleCalculateAll = useCallback(async () => {
     const currentRfqData = rfqDataRef.current;
+    const currentGlobalSpecs = currentRfqData.globalSpecs;
+    const currentGlobalWorkingPressureBar = currentGlobalSpecs?.workingPressureBar;
+    const currentGlobalWorkingTemperatureC = currentGlobalSpecs?.workingTemperatureC;
+    const currentGlobalSteelSpecificationId = currentGlobalSpecs?.steelSpecificationId;
+    const currentGlobalFlangeStandardId = currentGlobalSpecs?.flangeStandardId;
+    const currentGlobalFlangePressureClassId = currentGlobalSpecs?.flangePressureClassId;
     try {
       for (const entry of currentRfqData.straightPipeEntries) {
         try {
           const rawWorkingPressureBar2 = entry.specs.workingPressureBar;
           // Merge entry specs with global specs (same as auto-calculate)
           const workingPressureBar =
-            rawWorkingPressureBar2 || currentRfqData.globalSpecs?.workingPressureBar || 10;
+            rawWorkingPressureBar2 || currentGlobalWorkingPressureBar || 10;
           const rawWorkingTemperatureC2 = entry.specs.workingTemperatureC;
           const workingTemperatureC =
-            rawWorkingTemperatureC2 || currentRfqData.globalSpecs?.workingTemperatureC || 20;
+            rawWorkingTemperatureC2 || currentGlobalWorkingTemperatureC || 20;
           const rawSteelSpecificationId2 = entry.specs.steelSpecificationId;
           const steelSpecificationId =
-            rawSteelSpecificationId2 || currentRfqData.globalSpecs?.steelSpecificationId || 2;
+            rawSteelSpecificationId2 || currentGlobalSteelSpecificationId || 2;
           const rawFlangeStandardId2 = entry.specs.flangeStandardId;
-          const flangeStandardId =
-            rawFlangeStandardId2 || currentRfqData.globalSpecs?.flangeStandardId || 1;
+          const flangeStandardId = rawFlangeStandardId2 || currentGlobalFlangeStandardId || 1;
           const rawFlangePressureClassId2 = entry.specs.flangePressureClassId;
           const flangePressureClassId =
-            rawFlangePressureClassId2 || currentRfqData.globalSpecs?.flangePressureClassId;
+            rawFlangePressureClassId2 || currentGlobalFlangePressureClassId;
 
           const calculationData = {
             ...entry.specs,
@@ -2930,6 +2934,13 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
     setIsSubmitting(true);
     setValidationErrors({});
 
+    const submitGlobalSpecs = rfqData.globalSpecs;
+    const submitGlobalWorkingPressureBar = submitGlobalSpecs?.workingPressureBar;
+    const submitGlobalWorkingTemperatureC = submitGlobalSpecs?.workingTemperatureC;
+    const submitGlobalSteelSpecificationId = submitGlobalSpecs?.steelSpecificationId;
+    const submitGlobalFlangeStandardId = submitGlobalSpecs?.flangeStandardId;
+    const submitGlobalFlangePressureClassId = submitGlobalSpecs?.flangePressureClassId;
+
     try {
       const rawItems2 = rfqData.items;
       const allItems = rawItems2 || rfqData.straightPipeEntries || [];
@@ -2951,17 +2962,18 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
       );
 
       const itemsRequiringCalculation = ["straight_pipe", "bend", "fitting"];
-      for (let i = 0; i < allItems.length; i++) {
-        const entry = allItems[i];
-        if (itemsRequiringCalculation.includes(entry.itemType) && !entry.calculation) {
-          const itemType =
-            entry.itemType === "bend" ? "Bend" : entry.itemType === "fitting" ? "Fitting" : "Pipe";
-          setValidationErrors({
-            submit: `${itemType} #${i + 1} (${entry.description}) has not been calculated. Please calculate all items before submitting.`,
-          });
-          setIsSubmitting(false);
-          return;
-        }
+      const uncalculatedIndex = allItems.findIndex(
+        (entry: any) => itemsRequiringCalculation.includes(entry.itemType) && !entry.calculation,
+      );
+      if (uncalculatedIndex !== -1) {
+        const entry = allItems[uncalculatedIndex];
+        const itemType =
+          entry.itemType === "bend" ? "Bend" : entry.itemType === "fitting" ? "Fitting" : "Pipe";
+        setValidationErrors({
+          submit: `${itemType} #${uncalculatedIndex + 1} (${entry.description}) has not been calculated. Please calculate all items before submitting.`,
+        });
+        setIsSubmitting(false);
+        return;
       }
 
       const { unifiedRfqApi } = await import("@/app/lib/api/client");
@@ -3022,16 +3034,13 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
               },
               quantityType: rawQuantityType4 || "number_of_items",
               quantityValue: rawQuantityValue6 || 1,
-              workingPressureBar:
-                rawWorkingPressureBar5 || rfqData.globalSpecs?.workingPressureBar || 10,
-              workingTemperatureC:
-                rawWorkingTemperatureC5 || rfqData.globalSpecs?.workingTemperatureC || 20,
+              workingPressureBar: rawWorkingPressureBar5 || submitGlobalWorkingPressureBar || 10,
+              workingTemperatureC: rawWorkingTemperatureC5 || submitGlobalWorkingTemperatureC || 20,
               steelSpecificationId:
-                rawSteelSpecificationId7 || rfqData.globalSpecs?.steelSpecificationId || 2,
+                rawSteelSpecificationId7 || submitGlobalSteelSpecificationId || 2,
               useGlobalFlangeSpecs: rawUseGlobalFlangeSpecs || true,
-              flangeStandardId: rawFlangeStandardId7 || rfqData.globalSpecs?.flangeStandardId,
-              flangePressureClassId:
-                rawFlangePressureClassId8 || rfqData.globalSpecs?.flangePressureClassId,
+              flangeStandardId: rawFlangeStandardId7 || submitGlobalFlangeStandardId,
+              flangePressureClassId: rawFlangePressureClassId8 || submitGlobalFlangePressureClassId,
             },
           };
         } else if (entry.itemType === "fitting") {
@@ -3157,15 +3166,11 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
               lengthUnit: specs.lengthUnit,
               quantityType: specs.quantityType,
               quantityValue: specs.quantityValue,
-              workingPressureBar:
-                rawWorkingPressureBar7 || rfqData.globalSpecs?.workingPressureBar || 10,
-              workingTemperatureC:
-                rawWorkingTemperatureC7 || rfqData.globalSpecs?.workingTemperatureC,
-              steelSpecificationId:
-                rawSteelSpecificationId8 || rfqData.globalSpecs?.steelSpecificationId,
-              flangeStandardId: rawFlangeStandardId8 || rfqData.globalSpecs?.flangeStandardId,
-              flangePressureClassId:
-                rawFlangePressureClassId9 || rfqData.globalSpecs?.flangePressureClassId,
+              workingPressureBar: rawWorkingPressureBar7 || submitGlobalWorkingPressureBar || 10,
+              workingTemperatureC: rawWorkingTemperatureC7 || submitGlobalWorkingTemperatureC,
+              steelSpecificationId: rawSteelSpecificationId8 || submitGlobalSteelSpecificationId,
+              flangeStandardId: rawFlangeStandardId8 || submitGlobalFlangeStandardId,
+              flangePressureClassId: rawFlangePressureClassId9 || submitGlobalFlangePressureClassId,
             },
           };
         }
@@ -3322,6 +3327,13 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
     setIsSubmitting(true);
     setValidationErrors({});
 
+    const resubmitGlobalSpecs = rfqData.globalSpecs;
+    const resubmitGlobalWorkingPressureBar = resubmitGlobalSpecs?.workingPressureBar;
+    const resubmitGlobalWorkingTemperatureC = resubmitGlobalSpecs?.workingTemperatureC;
+    const resubmitGlobalSteelSpecificationId = resubmitGlobalSpecs?.steelSpecificationId;
+    const resubmitGlobalFlangeStandardId = resubmitGlobalSpecs?.flangeStandardId;
+    const resubmitGlobalFlangePressureClassId = resubmitGlobalSpecs?.flangePressureClassId;
+
     try {
       const rawItems3 = rfqData.items;
       const allItems = rawItems3 || rfqData.straightPipeEntries || [];
@@ -3332,17 +3344,16 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
         return;
       }
 
-      for (let i = 0; i < allItems.length; i++) {
-        const entry = allItems[i];
-        if (!entry.calculation) {
-          const itemType =
-            entry.itemType === "bend" ? "Bend" : entry.itemType === "fitting" ? "Fitting" : "Pipe";
-          setValidationErrors({
-            submit: `${itemType} #${i + 1} (${entry.description}) has not been calculated. Please calculate all items before re-submitting.`,
-          });
-          setIsSubmitting(false);
-          return;
-        }
+      const missingCalcIndex = allItems.findIndex((entry: any) => !entry.calculation);
+      if (missingCalcIndex !== -1) {
+        const entry = allItems[missingCalcIndex];
+        const itemType =
+          entry.itemType === "bend" ? "Bend" : entry.itemType === "fitting" ? "Fitting" : "Pipe";
+        setValidationErrors({
+          submit: `${itemType} #${missingCalcIndex + 1} (${entry.description}) has not been calculated. Please calculate all items before re-submitting.`,
+        });
+        setIsSubmitting(false);
+        return;
       }
 
       const { unifiedRfqApi } = await import("@/app/lib/api/client");
@@ -3403,16 +3414,15 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
               },
               quantityType: rawQuantityType6 || "number_of_items",
               quantityValue: rawQuantityValue10 || 1,
-              workingPressureBar:
-                rawWorkingPressureBar8 || rfqData.globalSpecs?.workingPressureBar || 10,
+              workingPressureBar: rawWorkingPressureBar8 || resubmitGlobalWorkingPressureBar || 10,
               workingTemperatureC:
-                rawWorkingTemperatureC8 || rfqData.globalSpecs?.workingTemperatureC || 20,
+                rawWorkingTemperatureC8 || resubmitGlobalWorkingTemperatureC || 20,
               steelSpecificationId:
-                rawSteelSpecificationId9 || rfqData.globalSpecs?.steelSpecificationId || 2,
+                rawSteelSpecificationId9 || resubmitGlobalSteelSpecificationId || 2,
               useGlobalFlangeSpecs: rawUseGlobalFlangeSpecs2 || true,
-              flangeStandardId: rawFlangeStandardId9 || rfqData.globalSpecs?.flangeStandardId,
+              flangeStandardId: rawFlangeStandardId9 || resubmitGlobalFlangeStandardId,
               flangePressureClassId:
-                rawFlangePressureClassId10 || rfqData.globalSpecs?.flangePressureClassId,
+                rawFlangePressureClassId10 || resubmitGlobalFlangePressureClassId,
             },
           };
         } else if (entry.itemType === "fitting") {
@@ -3538,15 +3548,12 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
               lengthUnit: specs.lengthUnit,
               quantityType: specs.quantityType,
               quantityValue: specs.quantityValue,
-              workingPressureBar:
-                rawWorkingPressureBar10 || rfqData.globalSpecs?.workingPressureBar || 10,
-              workingTemperatureC:
-                rawWorkingTemperatureC10 || rfqData.globalSpecs?.workingTemperatureC,
-              steelSpecificationId:
-                rawSteelSpecificationId10 || rfqData.globalSpecs?.steelSpecificationId,
-              flangeStandardId: rawFlangeStandardId10 || rfqData.globalSpecs?.flangeStandardId,
+              workingPressureBar: rawWorkingPressureBar10 || resubmitGlobalWorkingPressureBar || 10,
+              workingTemperatureC: rawWorkingTemperatureC10 || resubmitGlobalWorkingTemperatureC,
+              steelSpecificationId: rawSteelSpecificationId10 || resubmitGlobalSteelSpecificationId,
+              flangeStandardId: rawFlangeStandardId10 || resubmitGlobalFlangeStandardId,
               flangePressureClassId:
-                rawFlangePressureClassId11 || rfqData.globalSpecs?.flangePressureClassId,
+                rawFlangePressureClassId11 || resubmitGlobalFlangePressureClassId,
             },
           };
         }

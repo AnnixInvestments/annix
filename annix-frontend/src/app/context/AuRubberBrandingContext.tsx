@@ -10,6 +10,7 @@ import {
   useState,
 } from "react";
 import { corpId } from "@/app/lib/corpId";
+import { nowMillis } from "@/app/lib/datetime";
 
 const STORAGE_KEY = "auRubberBranding";
 
@@ -74,6 +75,7 @@ export function AuRubberBrandingProvider(props: { children: ReactNode }) {
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line no-restricted-syntax -- SSR guard
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
@@ -93,13 +95,14 @@ export function AuRubberBrandingProvider(props: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line no-restricted-syntax -- SSR guard
     if (isLoaded && typeof window !== "undefined") {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(branding));
     }
   }, [branding, isLoaded]);
 
   const setBranding = useCallback((updates: Partial<AuRubberBranding>) => {
-    setBrandingState((prev) => ({ ...prev, ...updates, updatedAt: Date.now() }));
+    setBrandingState((prev) => ({ ...prev, ...updates, updatedAt: nowMillis() }));
   }, []);
 
   const resetBranding = useCallback(() => {

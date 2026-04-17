@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { nowMillis } from "@/app/lib/datetime";
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[];
@@ -39,7 +40,7 @@ export default function PwaInstallPrompt() {
     const dismissed = localStorage.getItem("pwa-install-dismissed");
     if (dismissed) {
       const dismissedAt = parseInt(dismissed, 10);
-      const daysSinceDismissed = (Date.now() - dismissedAt) / (1000 * 60 * 60 * 24);
+      const daysSinceDismissed = (nowMillis() - dismissedAt) / (1000 * 60 * 60 * 24);
       if (daysSinceDismissed < 7) {
         return;
       }
@@ -77,7 +78,7 @@ export default function PwaInstallPrompt() {
 
   const handleDismiss = () => {
     setShowPrompt(false);
-    localStorage.setItem("pwa-install-dismissed", Date.now().toString());
+    localStorage.setItem("pwa-install-dismissed", nowMillis().toString());
   };
 
   if (!showPrompt || isStandalone) {

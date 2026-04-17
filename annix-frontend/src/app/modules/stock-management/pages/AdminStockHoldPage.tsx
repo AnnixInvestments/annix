@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { fromISO } from "@/app/lib/datetime";
 import {
   useAdminMutations,
   useStockHoldAging,
@@ -124,7 +125,7 @@ export function AdminStockHoldPage() {
                 <td className="px-4 py-3 text-xs font-mono">R {item.writeOffValueR.toFixed(2)}</td>
                 <td className="px-4 py-3 text-xs text-gray-600">{item.reasonNotes}</td>
                 <td className="px-4 py-3 text-xs text-gray-500">
-                  {new Date(item.flaggedAt).toLocaleDateString()}
+                  {fromISO(item.flaggedAt).toJSDate().toLocaleDateString()}
                 </td>
                 <td className="px-4 py-3 text-right">
                   <button

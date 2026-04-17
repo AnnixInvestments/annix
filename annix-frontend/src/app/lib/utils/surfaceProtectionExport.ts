@@ -1,3 +1,4 @@
+import { now } from "@/app/lib/datetime";
 import type { GlobalSpecs } from "@/app/lib/hooks/useRfqForm";
 
 export interface SpQuantitySummary {
@@ -210,7 +211,7 @@ export function generateCoatingScheduleHtml(
   quantitySummary: SpQuantitySummary,
 ): string {
   const spec = extractSpSpecificationSummary(globalSpecs);
-  const date = new Date().toLocaleDateString();
+  const date = now().toJSDate().toLocaleDateString();
 
   const rawCoatingType = spec.externalCoating.coatingType;
   const rawIso12944Category = spec.iso12944Category;
@@ -371,7 +372,7 @@ export function generateInspectionChecklistHtml(
   customerName: string,
 ): string {
   const spec = extractSpSpecificationSummary(globalSpecs);
-  const date = new Date().toLocaleDateString();
+  const date = now().toJSDate().toLocaleDateString();
 
   const rawTotalDftMicrons = spec.externalCoating.totalDftMicrons;
 
@@ -633,7 +634,7 @@ export function generateApplicationProcedureHtml(
   customerName: string,
 ): string {
   const spec = extractSpSpecificationSummary(globalSpecs);
-  const date = new Date().toLocaleDateString();
+  const date = now().toJSDate().toLocaleDateString();
 
   const rawPrimerType2 = spec.externalCoating.primerType;
   const rawPrimerMicrons2 = spec.externalCoating.primerMicrons;
@@ -837,7 +838,7 @@ export function generateItpHtml(
   customerName: string,
 ): string {
   const spec = extractSpSpecificationSummary(globalSpecs);
-  const date = new Date().toLocaleDateString();
+  const date = now().toJSDate().toLocaleDateString();
 
   const rawCoatingType2 = spec.externalCoating.coatingType;
   const rawPrimerMicrons3 = spec.externalCoating.primerMicrons;

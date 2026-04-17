@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import React, { Suspense, useState } from "react";
+// eslint-disable-next-line no-restricted-imports -- Auth flow page (reset-password); requires new auth hooks for token-based unauthenticated operations. Tracked as tech debt per Phase 9 of annix/annix#191.
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 
 function ResetPasswordContent() {

@@ -6,7 +6,7 @@ import type {
   PositectorStreamingSaveResult,
   PositectorStreamingSession,
 } from "@/app/lib/api/stockControlApi";
-import { nowISO } from "@/app/lib/datetime";
+import { fromISO, nowISO } from "@/app/lib/datetime";
 import {
   useAddPositectorStreamingReading,
   useEndPositectorStreamingSession,
@@ -44,6 +44,7 @@ interface DiscoveredCharacteristic {
 }
 
 function isWebBluetoothSupported(): boolean {
+  // eslint-disable-next-line no-restricted-syntax -- SSR guard
   return typeof navigator !== "undefined" && "bluetooth" in navigator;
 }
 
@@ -669,7 +670,7 @@ export default function PositectorBlePage() {
                       </span>
                     )}
                     <span className="text-xs text-gray-400">
-                      {new Date(reading.timestamp).toLocaleTimeString("en-ZA")}
+                      {fromISO(reading.timestamp).toJSDate().toLocaleTimeString("en-ZA")}
                     </span>
                   </div>
                 );

@@ -7,6 +7,7 @@ import type {
   StockControlTeamMember,
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
+import { fromISO } from "@/app/lib/datetime";
 import { isValidEmail } from "../../lib/validation";
 
 interface TeamManagementSectionProps {
@@ -242,7 +243,7 @@ export function TeamManagementSection({ companyRoles }: TeamManagementSectionPro
                           </select>
                         </td>
                         <td className="hidden py-1 px-2 text-xs text-gray-500 md:table-cell">
-                          {new Date(member.createdAt).toLocaleDateString("en-ZA")}
+                          {fromISO(member.createdAt).toJSDate().toLocaleDateString("en-ZA")}
                         </td>
                         <td className="py-1 px-2 text-right">
                           <button

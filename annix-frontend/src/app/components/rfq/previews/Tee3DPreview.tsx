@@ -424,14 +424,14 @@ function BlankFlangeComponent({
     shape.absarc(0, 0, outerDiameter / 2, 0, Math.PI * 2, false);
 
     // Add bolt holes only (no center bore - it's a blank/blind flange)
-    for (let i = 0; i < boltHoles; i++) {
+    Array.from({ length: boltHoles }).forEach((_, i) => {
       const angle = (i / boltHoles) * Math.PI * 2;
       const x = Math.cos(angle) * (pcd / 2);
       const y = Math.sin(angle) * (pcd / 2);
       const boltHole = new THREE.Path();
       boltHole.absarc(x, y, holeID / 2, 0, Math.PI * 2, true);
       shape.holes.push(boltHole);
-    }
+    });
 
     const extrudeSettings = { depth: thickness, bevelEnabled: false };
     return new THREE.ExtrudeGeometry(shape, extrudeSettings);
@@ -523,14 +523,14 @@ function RotatingFlangeComponent({
     shape.holes.push(holePath);
 
     // Add bolt holes
-    for (let i = 0; i < boltHoles; i++) {
+    Array.from({ length: boltHoles }).forEach((_, i) => {
       const angle = (i / boltHoles) * Math.PI * 2;
       const x = Math.cos(angle) * (pcd / 2);
       const y = Math.sin(angle) * (pcd / 2);
       const boltHole = new THREE.Path();
       boltHole.absarc(x, y, holeID / 2, 0, Math.PI * 2, true);
       shape.holes.push(boltHole);
-    }
+    });
 
     const extrudeSettings = { depth: thickness, bevelEnabled: false };
     return new THREE.ExtrudeGeometry(shape, extrudeSettings);
@@ -577,14 +577,14 @@ function FlangeComponent({
     shape.holes.push(holePath);
 
     // Add bolt holes
-    for (let i = 0; i < boltHoles; i++) {
+    Array.from({ length: boltHoles }).forEach((_, i) => {
       const angle = (i / boltHoles) * Math.PI * 2;
       const x = Math.cos(angle) * (pcd / 2);
       const y = Math.sin(angle) * (pcd / 2);
       const boltHole = new THREE.Path();
       boltHole.absarc(x, y, holeID / 2, 0, Math.PI * 2, true);
       shape.holes.push(boltHole);
-    }
+    });
 
     const extrudeSettings = { depth: thickness, bevelEnabled: false };
     return new THREE.ExtrudeGeometry(shape, extrudeSettings);
@@ -639,6 +639,7 @@ function GussetPlate({
     // Extend slightly beyond branchRadius to ensure gusset reaches V-weld points
     const zExtent = branchRadius * 1.02;
 
+    // eslint-disable-next-line no-restricted-syntax -- nested vertex buffer generation with saddle curve; declarative harms readability and performance
     for (let ui = 0; ui <= segments; ui++) {
       const u = ui / segments;
       // Z goes from front V-weld to back V-weld
@@ -662,6 +663,7 @@ function GussetPlate({
       );
       const xAtSaddle = branchOffsetX + xDir * xSaddleOffset;
 
+      // eslint-disable-next-line no-restricted-syntax -- nested vertex buffer generation with saddle curve; declarative harms readability and performance
       for (let vi = 0; vi <= segments; vi++) {
         const v = vi / segments;
 
@@ -688,7 +690,9 @@ function GussetPlate({
 
     // Generate triangle indices
     const vertsPerRow = segments + 1;
+    // eslint-disable-next-line no-restricted-syntax -- nested triangle index generation; declarative harms readability and performance
     for (let ui = 0; ui < segments; ui++) {
+      // eslint-disable-next-line no-restricted-syntax -- nested triangle index generation; declarative harms readability and performance
       for (let vi = 0; vi < segments; vi++) {
         const a = ui * vertsPerRow + vi;
         const b = a + 1;
@@ -744,8 +748,7 @@ function GussetWeld({
   const zExtent = branchRadius * 1.02;
 
   // Inner edge: elevated at 45 degrees, meeting V-weld at the endpoints
-  const innerEdgePoints: THREE.Vector3[] = [];
-  for (let i = 0; i <= segments; i++) {
+  const innerEdgePoints: THREE.Vector3[] = Array.from({ length: segments + 1 }, (_, i) => {
     const u = i / segments;
     const z = zExtent * (1 - 2 * u);
     const zClamped = Math.max(-branchRadius, Math.min(branchRadius, z));
@@ -756,13 +759,12 @@ function GussetWeld({
     const xSaddleOffset = Math.sqrt(Math.max(0, branchRadius * branchRadius - zClamped * zClamped));
     const x = branchOffsetX + xDir * xSaddleOffset;
     const y = yOnRun + currentHalfWidth;
-    innerEdgePoints.push(new THREE.Vector3(x, y, z));
-  }
+    return new THREE.Vector3(x, y, z);
+  });
   const innerEdgeCurve = new THREE.CatmullRomCurve3(innerEdgePoints);
 
   // Outer edge: follows the diamond shape outline on run pipe surface
-  const outerEdgePoints: THREE.Vector3[] = [];
-  for (let i = 0; i <= segments; i++) {
+  const outerEdgePoints: THREE.Vector3[] = Array.from({ length: segments + 1 }, (_, i) => {
     const u = i / segments;
     const z = zExtent * (1 - 2 * u);
     const zClamped = Math.max(-branchRadius, Math.min(branchRadius, z));
@@ -772,8 +774,8 @@ function GussetWeld({
     const currentHalfWidth = halfWidth * widthFraction;
     const xSaddleOffset = Math.sqrt(Math.max(0, branchRadius * branchRadius - zClamped * zClamped));
     const x = branchOffsetX + xDir * (xSaddleOffset + currentHalfWidth);
-    outerEdgePoints.push(new THREE.Vector3(x, yOnRun, z));
-  }
+    return new THREE.Vector3(x, yOnRun, z);
+  });
   const outerEdgeCurve = new THREE.CatmullRomCurve3(outerEdgePoints);
 
   return (
@@ -810,21 +812,13 @@ function SaddleWeld({
     // - y (height) = runRadius + small offset for weld sitting on top
     // - z offset = branchRadius * sin(θ) adjusted for run surface curvature
     const segments = 64;
-    const points: THREE.Vector3[] = [];
-
-    for (let i = 0; i <= segments; i++) {
+    const points: THREE.Vector3[] = Array.from({ length: segments + 1 }, (_, i) => {
       const theta = (i / segments) * Math.PI * 2;
-      // The saddle curve follows the intersection of two cylinders
-      // For a branch of radius r meeting a run of radius R:
-      // The height varies as the branch wraps around the curved run surface
       const x = branchOffsetX + branchRadius * Math.cos(theta);
       const z = branchRadius * Math.sin(theta);
-      // Y position follows the run pipe's curved surface
-      // At the top (theta=0, z=0), y = runRadius
-      // As we go around, the weld dips down following the cylinder curvature
       const y = Math.sqrt(Math.max(0, runRadius * runRadius - z * z));
-      points.push(new THREE.Vector3(x, y, z));
-    }
+      return new THREE.Vector3(x, y, z);
+    });
 
     // true = closed curve
     const curve = new THREE.CatmullRomCurve3(points, true);
@@ -952,14 +946,15 @@ function TeeScene(props: Tee3DPreviewProps) {
   const gussetSection = teeType === "gusset" ? getGussetSection(nominalBore) : 0;
 
   // Calculate dimensions using proper lookup tables
-  const od = getOuterDiameter(nominalBore, outerDiameter || dims?.outsideDiameterMm || 0);
+  const dimsOuterDiameterMm = dims?.outsideDiameterMm;
+  const branchDimsOuterDiameterMm = branchDims?.outsideDiameterMm;
+  const od = getOuterDiameter(nominalBore, outerDiameter || dimsOuterDiameterMm || 0);
   const wt = getWallThickness(nominalBore, wallThickness || 0);
   const id = od - 2 * wt;
   // For reducing/unequal tees, use the effective branch NB dimensions; otherwise use same as run
   const branchOD = effectiveBranchNB
-    ? getOuterDiameter(effectiveBranchNB, branchOuterDiameter || branchDims?.outsideDiameterMm || 0)
-    : // Same as run for equal tee
-      od;
+    ? getOuterDiameter(effectiveBranchNB, branchOuterDiameter || branchDimsOuterDiameterMm || 0)
+    : od;
   const branchWT = effectiveBranchNB ? getWallThickness(effectiveBranchNB) : wt;
   const branchID = branchOD - 2 * branchWT;
 
@@ -1038,7 +1033,9 @@ function TeeScene(props: Tee3DPreviewProps) {
     };
 
     // Generate outer surface vertices
+    // eslint-disable-next-line no-restricted-syntax -- nested vertex buffer generation with saddle curve; declarative harms readability and performance
     for (let h = 0; h <= heightSegments; h++) {
+      // eslint-disable-next-line no-restricted-syntax -- nested vertex buffer generation with saddle curve; declarative harms readability and performance
       for (let r = 0; r <= radialSegments; r++) {
         const angle = (r / radialSegments) * Math.PI * 2;
         const x = branchOuterR * Math.cos(angle);
@@ -1077,7 +1074,9 @@ function TeeScene(props: Tee3DPreviewProps) {
       return gussetInnerY;
     };
 
+    // eslint-disable-next-line no-restricted-syntax -- nested vertex buffer generation with saddle curve; declarative harms readability and performance
     for (let h = 0; h <= heightSegments; h++) {
+      // eslint-disable-next-line no-restricted-syntax -- nested vertex buffer generation with saddle curve; declarative harms readability and performance
       for (let r = 0; r <= radialSegments; r++) {
         const angle = (r / radialSegments) * Math.PI * 2;
         const x = branchInnerR * Math.cos(angle);
@@ -1096,7 +1095,9 @@ function TeeScene(props: Tee3DPreviewProps) {
     }
 
     // Generate indices for outer surface
+    // eslint-disable-next-line no-restricted-syntax -- nested triangle index generation; declarative harms readability and performance
     for (let h = 0; h < heightSegments; h++) {
+      // eslint-disable-next-line no-restricted-syntax -- nested triangle index generation; declarative harms readability and performance
       for (let r = 0; r < radialSegments; r++) {
         const a = h * (radialSegments + 1) + r;
         const b = a + radialSegments + 1;
@@ -1109,7 +1110,9 @@ function TeeScene(props: Tee3DPreviewProps) {
     }
 
     // Generate indices for inner surface (reversed winding for correct normals)
+    // eslint-disable-next-line no-restricted-syntax -- nested triangle index generation; declarative harms readability and performance
     for (let h = 0; h < heightSegments; h++) {
+      // eslint-disable-next-line no-restricted-syntax -- nested triangle index generation; declarative harms readability and performance
       for (let r = 0; r < radialSegments; r++) {
         const a = outerVertexCount + h * (radialSegments + 1) + r;
         const b = a + radialSegments + 1;
@@ -1123,6 +1126,7 @@ function TeeScene(props: Tee3DPreviewProps) {
 
     // Add top cap (annular ring at top of pipe)
     const topCapStartIdx = vertices.length / 3;
+    // eslint-disable-next-line no-restricted-syntax -- radial vertex buffer generation; declarative harms readability and performance
     for (let r = 0; r <= radialSegments; r++) {
       const angle = (r / radialSegments) * Math.PI * 2;
       // Outer edge at top
@@ -1134,6 +1138,7 @@ function TeeScene(props: Tee3DPreviewProps) {
     }
 
     // Top cap indices
+    // eslint-disable-next-line no-restricted-syntax -- radial triangle index generation; declarative harms readability and performance
     for (let r = 0; r < radialSegments; r++) {
       const outer1 = topCapStartIdx + r * 2;
       const inner1 = outer1 + 1;
@@ -1282,7 +1287,9 @@ function TeeScene(props: Tee3DPreviewProps) {
     };
 
     // Build outer surface triangles
+    // eslint-disable-next-line no-restricted-syntax -- nested triangle index generation with hole cutouts; declarative harms readability and performance
     for (let li = 0; li < lengthSegments; li++) {
+      // eslint-disable-next-line no-restricted-syntax -- nested triangle index generation with hole cutouts; declarative harms readability and performance
       for (let ri = 0; ri < radialSegments; ri++) {
         const a = getOuterVertexIndex(li, ri);
         const b = getOuterVertexIndex(li + 1, ri);
@@ -1295,7 +1302,9 @@ function TeeScene(props: Tee3DPreviewProps) {
     }
 
     // Build inner surface triangles (reversed winding)
+    // eslint-disable-next-line no-restricted-syntax -- nested triangle index generation with hole cutouts; declarative harms readability and performance
     for (let li = 0; li < lengthSegments; li++) {
+      // eslint-disable-next-line no-restricted-syntax -- nested triangle index generation with hole cutouts; declarative harms readability and performance
       for (let ri = 0; ri < radialSegments; ri++) {
         const a = getInnerVertexIndex(li, ri);
         const b = getInnerVertexIndex(li + 1, ri);
@@ -1310,6 +1319,7 @@ function TeeScene(props: Tee3DPreviewProps) {
     // Add end caps (annular rings at both ends)
     const addEndCap = (xPos: number, normalX: number) => {
       const capStart = vertices.length / 3;
+      // eslint-disable-next-line no-restricted-syntax -- radial vertex buffer generation; declarative harms readability and performance
       for (let ri = 0; ri <= radialSegments; ri++) {
         const angle = (ri / radialSegments) * Math.PI * 2;
         const y = Math.cos(angle);
@@ -1323,6 +1333,7 @@ function TeeScene(props: Tee3DPreviewProps) {
         normals.push(normalX, 0, 0);
       }
 
+      // eslint-disable-next-line no-restricted-syntax -- radial triangle index generation; declarative harms readability and performance
       for (let ri = 0; ri < radialSegments; ri++) {
         const o1 = capStart + ri * 2;
         const i1 = o1 + 1;
@@ -2591,10 +2602,12 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
   // Effective branch NB - either reducing tee (branchNominalBore) or unequal tee (teeNominalBore)
   const effectiveBranchNB = rawBranchNominalBore || debouncedProps.teeNominalBore;
   const branchDims = effectiveBranchNB ? getSabs719TeeDimensions(effectiveBranchNB) : null;
+  const dimsOuterDiameterMm2 = dims?.outsideDiameterMm;
+  const branchDimsOuterDiameterMm2 = branchDims?.outsideDiameterMm;
   const rawOuterDiameter = debouncedProps.outerDiameter;
   const od = getOuterDiameter(
     debouncedProps.nominalBore,
-    rawOuterDiameter || dims?.outsideDiameterMm || 0,
+    rawOuterDiameter || dimsOuterDiameterMm2 || 0,
   );
   const rawWallThickness = debouncedProps.wallThickness;
   const wt = getWallThickness(debouncedProps.nominalBore, rawWallThickness || 0);
@@ -2602,10 +2615,7 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
   const rawBranchOuterDiameter = debouncedProps.branchOuterDiameter;
   // Branch dimensions for reducing/unequal tees
   const branchOD = effectiveBranchNB
-    ? getOuterDiameter(
-        effectiveBranchNB,
-        rawBranchOuterDiameter || branchDims?.outsideDiameterMm || 0,
-      )
+    ? getOuterDiameter(effectiveBranchNB, rawBranchOuterDiameter || branchDimsOuterDiameterMm2 || 0)
     : od;
   const branchWT = effectiveBranchNB ? getWallThickness(effectiveBranchNB) : wt;
   const branchID = branchOD - 2 * branchWT;

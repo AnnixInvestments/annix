@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
+// eslint-disable-next-line no-restricted-imports -- AU Industries CMS uses dynamic slug routing with editable content; TanStack Query hook would require new public CMS content hook infrastructure. Tracked as tech debt.
 import { browserBaseUrl } from "@/lib/api-config";
 import { useEditMode } from "../context/EditModeContext";
 

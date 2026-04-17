@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { now } from "@/app/lib/datetime";
 
 interface FooterProps {
   companyName: string;
@@ -82,7 +83,7 @@ export function AuIndustriesFooter(props: FooterProps) {
         </div>
         <div className="mt-8 pt-8 border-t border-gray-900/20 text-center text-sm text-gray-700">
           <p>
-            &copy; {new Date().getFullYear()} {props.companyName}. All rights reserved.
+            &copy; {now().year} {props.companyName}. All rights reserved.
           </p>
         </div>
       </div>

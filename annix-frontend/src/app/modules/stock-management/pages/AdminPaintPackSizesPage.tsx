@@ -60,6 +60,7 @@ export function AdminPaintPackSizesPage() {
       let page = 1;
       const all: PaintRow[] = [];
       let hasMore = true;
+      // eslint-disable-next-line no-restricted-syntax -- sequential paginated fetch, each page depends on prior
       while (hasMore) {
         const result = await clientRef.current.listProducts({
           productType: "paint",

@@ -1,4 +1,5 @@
 import { throwIfNotOk } from "@/app/lib/api/apiError";
+import { fromJSDate } from "@/app/lib/datetime";
 import { annixRepAuthHeaders, browserBaseUrl } from "@/lib/api-config";
 
 export interface TargetCustomerProfile {
@@ -1200,7 +1201,7 @@ export const annixRepApi = {
           title: m.title,
           prospectCompany: rawCompanyName || null,
 
-          time: new Date(m.scheduledStart).toLocaleTimeString("en-ZA", {
+          time: fromJSDate(m.scheduledStart).toJSDate().toLocaleTimeString("en-ZA", {
             hour: "2-digit",
             minute: "2-digit",
           }),

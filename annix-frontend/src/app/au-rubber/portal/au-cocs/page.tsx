@@ -91,8 +91,7 @@ export default function AuCocsPage() {
       setIsAutoGenerating(true);
       let generated = 0;
       const failures: string[] = [];
-      for (let i = 0; i < draftCocs.length; i++) {
-        const coc = draftCocs[i];
+      for (const [i, coc] of draftCocs.entries()) {
         setProgressModal({
           visible: true,
           title: "Auto-Generating CoCs",
@@ -193,8 +192,7 @@ export default function AuCocsPage() {
       let sent = 0;
       const sentNumbers: string[] = [];
       const failures: string[] = [];
-      for (let i = 0; i < cocsToSend.length; i++) {
-        const coc = cocsToSend[i];
+      for (const [i, coc] of cocsToSend.entries()) {
         setProgressModal({
           visible: true,
           title: `${actionLabel} CoCs`,

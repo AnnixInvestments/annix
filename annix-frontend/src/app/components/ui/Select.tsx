@@ -126,15 +126,13 @@ const SelectComponent = React.forwardRef<HTMLButtonElement, SelectProps>((props,
   };
 
   const findNextEnabledIndex = (currentIndex: number, direction: "up" | "down"): number => {
-    const step = direction === "down" ? 1 : -1;
-    let nextIndex = currentIndex + step;
-    while (nextIndex >= 0 && nextIndex < filteredOptions.length) {
-      if (!filteredOptions[nextIndex].disabled) {
-        return nextIndex;
-      }
-      nextIndex += step;
-    }
-    return currentIndex;
+    const indexed = filteredOptions.map((opt, idx) => ({ opt, idx }));
+    const candidates =
+      direction === "down"
+        ? indexed.filter(({ idx }) => idx > currentIndex)
+        : indexed.filter(({ idx }) => idx < currentIndex).reverse();
+    const match = candidates.find(({ opt }) => !opt.disabled);
+    return match ? match.idx : currentIndex;
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {

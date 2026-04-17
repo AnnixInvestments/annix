@@ -544,6 +544,7 @@ class CustomerDocumentApi {
 
   private async fetchDocumentBlob(id: number): Promise<{ blob: Blob; filename: string }> {
     const token =
+      // eslint-disable-next-line no-restricted-syntax -- SSR guard
       typeof window !== "undefined"
         ? (localStorage.getItem("customerAccessToken") ??
           sessionStorage.getItem("customerAccessToken"))

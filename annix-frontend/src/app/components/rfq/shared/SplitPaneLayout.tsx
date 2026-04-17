@@ -33,6 +33,7 @@ export default function SplitPaneLayout(props: SplitPaneLayoutProps) {
 
   // Load split pane preferences from localStorage on mount
   useEffect(() => {
+    // eslint-disable-next-line no-restricted-syntax -- SSR guard
     if (typeof window !== "undefined") {
       const savedEnabled = localStorage.getItem("rfq-split-pane-enabled");
       const savedWidth = localStorage.getItem("rfq-split-pane-width");
@@ -98,6 +99,7 @@ export default function SplitPaneLayout(props: SplitPaneLayoutProps) {
   ) => {
     setSplitPaneEnabledState((prev) => {
       const newState = typeof updater === "function" ? updater(prev) : updater;
+      // eslint-disable-next-line no-restricted-syntax -- SSR guard
       if (typeof window !== "undefined") {
         localStorage.setItem("rfq-split-pane-enabled", JSON.stringify(newState));
         if (newValue !== undefined) {
@@ -112,6 +114,7 @@ export default function SplitPaneLayout(props: SplitPaneLayoutProps) {
   const setSplitPaneWidth = (updater: React.SetStateAction<Record<string, number>>) => {
     setSplitPaneWidthState((prev) => {
       const newState = typeof updater === "function" ? updater(prev) : updater;
+      // eslint-disable-next-line no-restricted-syntax -- SSR guard
       if (typeof window !== "undefined") {
         localStorage.setItem("rfq-split-pane-width", JSON.stringify(newState));
         const currentWidth = newState[entryId];
@@ -127,6 +130,7 @@ export default function SplitPaneLayout(props: SplitPaneLayoutProps) {
   const setSplitPaneHeight = (updater: React.SetStateAction<Record<string, number>>) => {
     setSplitPaneHeightState((prev) => {
       const newState = typeof updater === "function" ? updater(prev) : updater;
+      // eslint-disable-next-line no-restricted-syntax -- SSR guard
       if (typeof window !== "undefined") {
         localStorage.setItem("rfq-split-pane-height", JSON.stringify(newState));
         const currentHeight = newState[entryId];
