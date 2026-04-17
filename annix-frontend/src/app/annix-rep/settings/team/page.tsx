@@ -134,7 +134,7 @@ function InviteMemberModal({ onClose }: { onClose: () => void }) {
     onClose();
   };
 
-  const invitePending = invitePending;
+  const invitePending = sendInvitation.isPending;
 
   return (
     <div className="fixed inset-0 bg-black/10 backdrop-blur-md flex items-center justify-center p-4 z-50">
@@ -213,6 +213,8 @@ function InviteMemberModal({ onClose }: { onClose: () => void }) {
 function ChangeRoleModal({ member, onClose }: { member: TeamMember; onClose: () => void }) {
   const updateRole = useUpdateMemberRole();
   const [role, setRole] = useState<TeamRole>(member.role);
+  const memberUserName = member.user?.name;
+  const memberUserEmail = member.user?.email;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -283,6 +285,7 @@ function TeamMemberCard({
   const memberUserEmail = member.user?.email;
 
   const handleRemove = async () => {
+    // eslint-disable-next-line no-restricted-globals
     if (confirm(`Are you sure you want to remove ${memberUserName || memberUserEmail}?`)) {
       await removeMember.mutateAsync(member.id);
     }
@@ -407,7 +410,7 @@ function PendingInvitationsSection() {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => resendInvitation.mutate(invitation.id)}
-                disabled={reinvitePending}
+                disabled={resendInvitation.isPending}
                 className="px-3 py-1 text-sm border border-amber-300 dark:border-amber-700 rounded text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/30"
               >
                 Resend

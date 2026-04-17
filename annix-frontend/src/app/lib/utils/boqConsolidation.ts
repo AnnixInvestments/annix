@@ -57,15 +57,15 @@ function flangeSpec(
   const flangeStandardId = rawFlangeStandardId || globalSpecs?.flangeStandardId;
   const rawFlangePressureClassId = entry.specs?.flangePressureClassId;
   const flangePressureClassId = rawFlangePressureClassId || globalSpecs?.flangePressureClassId;
-  const rawCode = masterData.flangeStandards.find((s) => s.id === flangeStandardId)?.code;
-  const flangeStandard = flangeStandardId && masterData?.flangeStandards ? rawCode || "" : "";
-  const rawDesignation = masterData.pressureClasses.find(
-    (p) => p.id === flangePressureClassId,
-  )?.designation;
+  const flangeStandards = masterData?.flangeStandards;
+  const pressureClasses = masterData?.pressureClasses;
+  const rawCode = flangeStandards?.find((s) => s.id === flangeStandardId)?.code;
+  const flangeStandard = flangeStandardId && flangeStandards ? rawCode || "" : "";
+  const rawDesignation = pressureClasses?.find((p) => p.id === flangePressureClassId)?.designation;
   const rawPressureClassDesignation = globalSpecs?.pressureClassDesignation;
   const pressureClass =
-    flangePressureClassId && masterData?.pressureClasses
-      ? rawDesignation || globalSpecs?.pressureClassDesignation || "PN16"
+    flangePressureClassId && pressureClasses
+      ? rawDesignation || rawPressureClassDesignation || "PN16"
       : rawPressureClassDesignation || "PN16";
   const rawFlangeTypeCode = entry.specs?.flangeTypeCode;
   const flangeTypeCode = rawFlangeTypeCode || globalSpecs?.flangeTypeCode;
@@ -181,7 +181,8 @@ export function consolidateBoqData(input: ConsolidationInput): ExtendedConsolida
   entries.forEach((entry, index) => {
     const itemNumber = index + 1;
     const rawQuantityValue = entry.specs?.quantityValue;
-    const qty = rawQuantityValue || entry.calculation?.calculatedPipeCount || 1;
+    const calculatedPipeCount = entry.calculation?.calculatedPipeCount;
+    const qty = rawQuantityValue || calculatedPipeCount || 1;
     const {
       spec: flangeSpecStr,
       standard: flangeStandard,
@@ -295,7 +296,8 @@ export function consolidateBoqData(input: ConsolidationInput): ExtendedConsolida
       }
     } else if (entry.itemType === "fitting") {
       const rawNominalDiameterMm = entry.specs?.nominalDiameterMm;
-      const nb = rawNominalDiameterMm || entry.specs?.nominalBoreMm || 100;
+      const rawNominalBoreMm = entry.specs?.nominalBoreMm;
+      const nb = rawNominalDiameterMm || rawNominalBoreMm || 100;
       const rawBranchNominalDiameterMm = entry.specs?.branchNominalDiameterMm;
       const branchNb = rawBranchNominalDiameterMm || nb;
       const rawPipeEndConfiguration = entry.specs?.pipeEndConfiguration;
