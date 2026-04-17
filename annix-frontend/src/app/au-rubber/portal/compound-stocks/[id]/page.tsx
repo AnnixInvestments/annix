@@ -13,9 +13,6 @@ import {
 import { formatDateZA } from "@/app/lib/datetime";
 
 export default function CompoundStockDetailPage() {
-  const rawStockCompoundName = stock.compoundName;
-  const rawStockLocation2 = stock.location;
-  const rawMovementNotes = movement.notes;
   const params = useParams();
   const router = useRouter();
   const { showToast } = useToast();
@@ -187,6 +184,9 @@ export default function CompoundStockDetailPage() {
     );
   }
 
+  const rawStockCompoundName = stock.compoundName;
+  const rawStockLocation2 = stock.location;
+
   return (
     <div className="space-y-6">
       <Breadcrumb
@@ -282,31 +282,36 @@ export default function CompoundStockDetailPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {movements.map((movement) => (
-                <tr key={movement.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {formatDateZA(movement.createdAt)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${movementTypeColor(movement.movementType)}`}
-                    >
-                      {movement.movementType}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {movement.movementType === "OUT" || movement.movementType === "ADJUSTMENT"
-                      ? "-"
-                      : "+"}
-                    {movement.quantityKg.toFixed(2)} kg
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {movement.referenceType}
-                    {movement.batchNumber && <span className="ml-2">({movement.batchNumber})</span>}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-500">{rawMovementNotes || "-"}</td>
-                </tr>
-              ))}
+              {movements.map((movement) => {
+                const rawMovementNotes = movement.notes;
+                return (
+                  <tr key={movement.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {formatDateZA(movement.createdAt)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span
+                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${movementTypeColor(movement.movementType)}`}
+                      >
+                        {movement.movementType}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {movement.movementType === "OUT" || movement.movementType === "ADJUSTMENT"
+                        ? "-"
+                        : "+"}
+                      {movement.quantityKg.toFixed(2)} kg
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {movement.referenceType}
+                      {movement.batchNumber && (
+                        <span className="ml-2">({movement.batchNumber})</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500">{rawMovementNotes || "-"}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}

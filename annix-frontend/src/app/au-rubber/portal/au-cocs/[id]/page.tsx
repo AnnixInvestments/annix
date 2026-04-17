@@ -14,11 +14,6 @@ import {
 import { formatDateTimeZA } from "@/app/lib/datetime";
 
 export default function AuCocDetailPage() {
-  const rawCocCustomerCompanyName = coc.customerCompanyName;
-  const rawItemsLength = coc.items?.length;
-  const rawRollThicknessMm = roll.thicknessMm;
-  const rawRollWidthMm = roll.widthMm;
-  const rawRollLengthM = roll.lengthM;
   const params = useParams();
   const router = useRouter();
   const { showToast } = useToast();
@@ -153,6 +148,9 @@ export default function AuCocDetailPage() {
       </div>
     );
   }
+
+  const rawCocCustomerCompanyName = coc.customerCompanyName;
+  const rawItemsLength = coc.items?.length;
 
   return (
     <div className="space-y-6">
@@ -331,9 +329,11 @@ export default function AuCocDetailPage() {
                       .toFixed(2);
                   }
                   if (coc.extractedRollData && coc.extractedRollData.length > 0) {
-                    const rawRollWeightKg = roll.weightKg;
                     return coc.extractedRollData
-                      .reduce((sum, roll) => sum + (rawRollWeightKg || 0), 0)
+                      .reduce((sum, roll) => {
+                        const rawRollWeightKg = roll.weightKg;
+                        return sum + (rawRollWeightKg || 0);
+                      }, 0)
                       .toFixed(2);
                   }
                   return "0.00";
@@ -462,25 +462,30 @@ export default function AuCocDetailPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {coc.extractedRollData.map((roll, index) => (
-                  <tr key={index}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {roll.rollNumber}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {rawRollThicknessMm || "-"}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {rawRollWidthMm || "-"}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {rawRollLengthM || "-"}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {roll.weightKg != null ? roll.weightKg.toFixed(2) : "-"}
-                    </td>
-                  </tr>
-                ))}
+                {coc.extractedRollData.map((roll, index) => {
+                  const rawRollThicknessMm = roll.thicknessMm;
+                  const rawRollWidthMm = roll.widthMm;
+                  const rawRollLengthM = roll.lengthM;
+                  return (
+                    <tr key={index}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {roll.rollNumber}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {rawRollThicknessMm || "-"}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {rawRollWidthMm || "-"}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {rawRollLengthM || "-"}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {roll.weightKg != null ? roll.weightKg.toFixed(2) : "-"}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

@@ -77,25 +77,28 @@ export function MyTasksWidget({ pendingApprovals, notifications }: MyTasksWidget
               Unread Notifications
             </p>
             <div className="space-y-2">
-              {unreadNotifications.slice(0, 5).map((notification) => (
-                <Link
-                  key={notification.id}
-                  href={actionUrl || "/stock-control/portal/notifications"}
-                  className="flex items-center justify-between p-2 rounded-md hover:bg-gray-50 transition-colors"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-gray-900 truncate">
-                      {notification.title}
-                    </p>
-                    {notification.message && (
-                      <p className="text-xs text-gray-500 truncate">{notification.message}</p>
-                    )}
-                  </div>
-                  <span className="ml-2 flex-shrink-0 text-xs text-gray-400">
-                    {formatDateTimeZA(notification.createdAt)}
-                  </span>
-                </Link>
-              ))}
+              {unreadNotifications.slice(0, 5).map((notification) => {
+                const actionUrl = notification.actionUrl;
+                return (
+                  <Link
+                    key={notification.id}
+                    href={actionUrl || "/stock-control/portal/notifications"}
+                    className="flex items-center justify-between p-2 rounded-md hover:bg-gray-50 transition-colors"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-gray-900 truncate">
+                        {notification.title}
+                      </p>
+                      {notification.message && (
+                        <p className="text-xs text-gray-500 truncate">{notification.message}</p>
+                      )}
+                    </div>
+                    <span className="ml-2 flex-shrink-0 text-xs text-gray-400">
+                      {formatDateTimeZA(notification.createdAt)}
+                    </span>
+                  </Link>
+                );
+              })}
               {unreadNotifications.length > 5 && (
                 <Link
                   href="/stock-control/portal/notifications"

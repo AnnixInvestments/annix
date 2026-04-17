@@ -31,19 +31,17 @@ type SortColumn =
   | "createdAt";
 
 const statusColor = (status: RubberProductionStatus) => {
-  const rawColorsByStatus = colors[status];
   const colors: Record<RubberProductionStatus, string> = {
     PENDING: "bg-yellow-100 text-yellow-800",
     IN_PROGRESS: "bg-blue-100 text-blue-800",
     COMPLETED: "bg-green-100 text-green-800",
     CANCELLED: "bg-gray-100 text-gray-800",
   };
+  const rawColorsByStatus = colors[status];
   return rawColorsByStatus || "bg-gray-100 text-gray-800";
 };
 
 export default function ProductionsPage() {
-  const rawPProductTitle = p.productTitle;
-  const rawPCompoundName = p.compoundName;
   const { showToast } = useToast();
   const [productions, setProductions] = useState<RubberProductionDto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -277,76 +275,80 @@ export default function ProductionsPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {paginatedProductions.map((p) => (
-                <tr key={p.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {p.productionNumber}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {rawPProductTitle || "N/A"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {formatDimensions(p)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {p.quantity}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <div>
-                      <span>{rawPCompoundName || "N/A"}</span>
-                      <div className="text-xs text-gray-400">
-                        {p.compoundUsedKg !== null
-                          ? `Used: ${p.compoundUsedKg.toFixed(2)} kg`
-                          : `Required: ${p.compoundRequiredKg.toFixed(2)} kg`}
+              {paginatedProductions.map((p) => {
+                const rawPProductTitle = p.productTitle;
+                const rawPCompoundName = p.compoundName;
+                return (
+                  <tr key={p.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {p.productionNumber}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {rawPProductTitle || "N/A"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {formatDimensions(p)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {p.quantity}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <div>
+                        <span>{rawPCompoundName || "N/A"}</span>
+                        <div className="text-xs text-gray-400">
+                          {p.compoundUsedKg !== null
+                            ? `Used: ${p.compoundUsedKg.toFixed(2)} kg`
+                            : `Required: ${p.compoundRequiredKg.toFixed(2)} kg`}
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusColor(p.status)}`}
-                    >
-                      {p.statusLabel}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {formatDateZA(p.createdAt)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                    {p.status === "PENDING" && (
-                      <>
-                        <button
-                          onClick={() => handleStart(p.id)}
-                          className="text-blue-600 hover:text-blue-900"
-                        >
-                          Start
-                        </button>
-                        <button
-                          onClick={() => setCancelId(p.id)}
-                          className="text-red-600 hover:text-red-900"
-                        >
-                          Cancel
-                        </button>
-                      </>
-                    )}
-                    {p.status === "IN_PROGRESS" && (
-                      <>
-                        <button
-                          onClick={() => setCompleteId(p.id)}
-                          className="text-green-600 hover:text-green-900"
-                        >
-                          Complete
-                        </button>
-                        <button
-                          onClick={() => setCancelId(p.id)}
-                          className="text-red-600 hover:text-red-900"
-                        >
-                          Cancel
-                        </button>
-                      </>
-                    )}
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span
+                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusColor(p.status)}`}
+                      >
+                        {p.statusLabel}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {formatDateZA(p.createdAt)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                      {p.status === "PENDING" && (
+                        <>
+                          <button
+                            onClick={() => handleStart(p.id)}
+                            className="text-blue-600 hover:text-blue-900"
+                          >
+                            Start
+                          </button>
+                          <button
+                            onClick={() => setCancelId(p.id)}
+                            className="text-red-600 hover:text-red-900"
+                          >
+                            Cancel
+                          </button>
+                        </>
+                      )}
+                      {p.status === "IN_PROGRESS" && (
+                        <>
+                          <button
+                            onClick={() => setCompleteId(p.id)}
+                            className="text-green-600 hover:text-green-900"
+                          >
+                            Complete
+                          </button>
+                          <button
+                            onClick={() => setCancelId(p.id)}
+                            className="text-red-600 hover:text-red-900"
+                          >
+                            Cancel
+                          </button>
+                        </>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}

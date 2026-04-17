@@ -68,6 +68,11 @@ function TextAreaField(props: {
 }
 
 export function CompanyInfoTab() {
+  const { showToast } = useToast();
+  const { branding } = useAuRubberBranding();
+  const [profile, setProfile] = useState<RubberAppProfileDto>(EMPTY_PROFILE);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const rawProfileLegalName = profile.legalName;
   const rawProfileTradingName = profile.tradingName;
   const rawProfileVatNumber = profile.vatNumber;
@@ -82,11 +87,6 @@ export function CompanyInfoTab() {
   const rawProfileDeliveryAddress = profile.deliveryAddress;
   const rawProfileWebsiteUrl = profile.websiteUrl;
   const rawProfileLogoUrl = profile.logoUrl;
-  const { showToast } = useToast();
-  const { branding } = useAuRubberBranding();
-  const [profile, setProfile] = useState<RubberAppProfileDto>(EMPTY_PROFILE);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     const load = async () => {

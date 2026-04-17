@@ -136,10 +136,6 @@ interface OriginalState {
 }
 
 export default function AuRubberOrderDetailPage() {
-  const rawSTATUS_LABELSByEventfromstatus = STATUS_LABELS[event.fromStatus];
-  const rawSTATUS_LABELSByEventtostatus = STATUS_LABELS[event.toStatus];
-  const rawItemQuantity6 = item.quantity;
-  const rawOrderCompanyName = order.companyName;
   const params = useParams();
   const router = useRouter();
   const orderId = Number(params.id);
@@ -203,29 +199,31 @@ export default function AuRubberOrderDetailPage() {
     if (order) {
       const rawOrderCompanyId = order.companyId;
       const rawOrderCompanyOrderNumber = order.companyOrderNumber;
-      const rawItemProductId = item.productId;
-      const rawItemThickness = item.thickness;
-      const rawItemWidth = item.width;
-      const rawItemLength = item.length;
-      const rawItemQuantity = item.quantity;
-      const rawItemCallOffs = item.callOffs;
       const rawOrderCompanyId2 = order.companyId;
       const rawOrderCompanyOrderNumber2 = order.companyOrderNumber;
       setEditStatus(order.status);
       setEditCompanyId(rawOrderCompanyId || undefined);
       setEditCompanyOrderNumber(rawOrderCompanyOrderNumber || "");
-      const mappedItems = order.items.map((item) => ({
-        id: item.id,
-        productId: rawItemProductId || undefined,
-        thickness: rawItemThickness || undefined,
-        width: rawItemWidth || undefined,
-        length: rawItemLength || undefined,
-        quantity: rawItemQuantity || undefined,
-        cpoUnitPrice: item.cpoUnitPrice,
-        pricePerKg: item.pricePerKg,
-        callOffs: rawItemCallOffs || [],
-        kgPerRoll: item.kgPerRoll,
-      }));
+      const mappedItems = order.items.map((item) => {
+        const rawItemProductId = item.productId;
+        const rawItemThickness = item.thickness;
+        const rawItemWidth = item.width;
+        const rawItemLength = item.length;
+        const rawItemQuantity = item.quantity;
+        const rawItemCallOffs = item.callOffs;
+        return {
+          id: item.id,
+          productId: rawItemProductId || undefined,
+          thickness: rawItemThickness || undefined,
+          width: rawItemWidth || undefined,
+          length: rawItemLength || undefined,
+          quantity: rawItemQuantity || undefined,
+          cpoUnitPrice: item.cpoUnitPrice,
+          pricePerKg: item.pricePerKg,
+          callOffs: rawItemCallOffs || [],
+          kgPerRoll: item.kgPerRoll,
+        };
+      });
       setEditItems(mappedItems);
       setOriginalState({
         status: order.status,
@@ -566,6 +564,8 @@ export default function AuRubberOrderDetailPage() {
     );
   }
 
+  const rawOrderCompanyName = order.companyName;
+
   return (
     <div className="space-y-6">
       {ConfirmDialog}
@@ -681,63 +681,67 @@ export default function AuRubberOrderDetailPage() {
           <h2 className="text-lg font-medium text-gray-900 mb-4">Status History</h2>
           <div className="flow-root">
             <ul className="-mb-8">
-              {order.statusHistory.map((event, idx) => (
-                <li key={idx}>
-                  <div className="relative pb-8">
-                    {idx !== order.statusHistory.length - 1 && (
-                      <span
-                        className="absolute left-4 top-4 -ml-px h-full w-0.5 bg-gray-200"
-                        aria-hidden="true"
-                      />
-                    )}
-                    <div className="relative flex space-x-3">
-                      <div>
-                        <span className="h-8 w-8 rounded-full bg-yellow-500 flex items-center justify-center ring-8 ring-white">
-                          <svg
-                            className="h-5 w-5 text-white"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                            />
-                          </svg>
-                        </span>
-                      </div>
-                      <div className="flex min-w-0 flex-1 justify-between space-x-4 pt-1.5">
+              {order.statusHistory.map((event, idx) => {
+                const rawSTATUS_LABELSByEventfromstatus = STATUS_LABELS[event.fromStatus];
+                const rawSTATUS_LABELSByEventtostatus = STATUS_LABELS[event.toStatus];
+                return (
+                  <li key={idx}>
+                    <div className="relative pb-8">
+                      {idx !== order.statusHistory.length - 1 && (
+                        <span
+                          className="absolute left-4 top-4 -ml-px h-full w-0.5 bg-gray-200"
+                          aria-hidden="true"
+                        />
+                      )}
+                      <div className="relative flex space-x-3">
                         <div>
-                          <p className="text-sm text-gray-500">
-                            <span
-                              className={`px-2 py-0.5 text-xs font-medium rounded-full ${statusColor(event.fromStatus)}`}
+                          <span className="h-8 w-8 rounded-full bg-yellow-500 flex items-center justify-center ring-8 ring-white">
+                            <svg
+                              className="h-5 w-5 text-white"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
                             >
-                              {rawSTATUS_LABELSByEventfromstatus || "Unknown"}
-                            </span>
-                            <span className="mx-2">→</span>
-                            <span
-                              className={`px-2 py-0.5 text-xs font-medium rounded-full ${statusColor(event.toStatus)}`}
-                            >
-                              {rawSTATUS_LABELSByEventtostatus || "Unknown"}
-                            </span>
-                          </p>
-                          {event.notes && (
-                            <p className="mt-1 text-sm text-gray-500 italic">{event.notes}</p>
-                          )}
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                              />
+                            </svg>
+                          </span>
                         </div>
-                        <div className="whitespace-nowrap text-right text-sm text-gray-500">
-                          <time>{formatDateTimeZA(fromMillis(event.timestamp).toISO())}</time>
-                          {event.changedBy && (
-                            <div className="text-xs text-gray-400">by {event.changedBy}</div>
-                          )}
+                        <div className="flex min-w-0 flex-1 justify-between space-x-4 pt-1.5">
+                          <div>
+                            <p className="text-sm text-gray-500">
+                              <span
+                                className={`px-2 py-0.5 text-xs font-medium rounded-full ${statusColor(event.fromStatus)}`}
+                              >
+                                {rawSTATUS_LABELSByEventfromstatus || "Unknown"}
+                              </span>
+                              <span className="mx-2">→</span>
+                              <span
+                                className={`px-2 py-0.5 text-xs font-medium rounded-full ${statusColor(event.toStatus)}`}
+                              >
+                                {rawSTATUS_LABELSByEventtostatus || "Unknown"}
+                              </span>
+                            </p>
+                            {event.notes && (
+                              <p className="mt-1 text-sm text-gray-500 italic">{event.notes}</p>
+                            )}
+                          </div>
+                          <div className="whitespace-nowrap text-right text-sm text-gray-500">
+                            <time>{formatDateTimeZA(fromMillis(event.timestamp).toISO())}</time>
+                            {event.changedBy && (
+                              <div className="text-xs text-gray-400">by {event.changedBy}</div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                </li>
-              ))}
+                  </li>
+                );
+              })}
             </ul>
           </div>
         </div>
@@ -857,8 +861,6 @@ export default function AuRubberOrderDetailPage() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {editItems.map((item, index) => {
                   const rawItemProductId2 = item.productId;
-                  const rawPTitle = p.title;
-                  const rawProductSpecificGravity = product.specificGravity;
                   const rawItemThickness2 = item.thickness;
                   const rawItemWidth2 = item.width;
                   const rawItemLength2 = item.length;
@@ -866,6 +868,7 @@ export default function AuRubberOrderDetailPage() {
                   const rawItemQuantity4 = item.quantity;
                   const rawItemQuantity5 = item.quantity;
                   const product = productById(item.productId);
+                  const rawProductSpecificGravity = product?.specificGravity;
                   const pricePerRoll = calculatePricePerRoll(item);
                   const totalPrice = calculateTotalPrice(item);
                   const summary = calloffSummary(item);
@@ -929,11 +932,14 @@ export default function AuRubberOrderDetailPage() {
                             className="w-full min-w-[200px] rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 text-sm border p-1.5"
                           >
                             <option value="">Select product</option>
-                            {products.map((p) => (
-                              <option key={p.id} value={p.id}>
-                                {rawPTitle || `Product #${p.id}`}
-                              </option>
-                            ))}
+                            {products.map((p) => {
+                              const rawPTitle = p.title;
+                              return (
+                                <option key={p.id} value={p.id}>
+                                  {rawPTitle || `Product #${p.id}`}
+                                </option>
+                              );
+                            })}
                           </select>
                           {product && (
                             <div className="text-xs text-gray-500 mt-1">
@@ -1334,7 +1340,11 @@ export default function AuRubberOrderDetailPage() {
               <div className="text-sm">
                 <span className="text-gray-500">Total Quantity:</span>{" "}
                 <span className="font-medium">
-                  {editItems.reduce((sum, item) => sum + (rawItemQuantity6 || 0), 0)} rolls
+                  {editItems.reduce((sum, item) => {
+                    const rawItemQuantity6 = item.quantity;
+                    return sum + (rawItemQuantity6 || 0);
+                  }, 0)}{" "}
+                  rolls
                 </span>
               </div>
               <div className="text-sm">

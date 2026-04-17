@@ -349,12 +349,14 @@ function GenericPreviewTable({ parsedRows }: GenericPreviewTableProps) {
         {parsedRows.map((row, index) => (
           <tr key={index} className="hover:bg-gray-50">
             <td className="px-4 py-3 text-sm text-gray-500">{index + 1}</td>
-            {headers.map((header) => (
-              <td key={header} className="px-4 py-3 text-sm text-gray-900">
-                const rowHeader = row[header];
-                {String(rowHeader || "")}
-              </td>
-            ))}
+            {headers.map((header) => {
+              const rowHeader = row[header];
+              return (
+                <td key={header} className="px-4 py-3 text-sm text-gray-900">
+                  {String(rowHeader || "")}
+                </td>
+              );
+            })}
           </tr>
         ))}
       </tbody>

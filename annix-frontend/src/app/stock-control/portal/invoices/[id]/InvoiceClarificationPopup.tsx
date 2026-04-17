@@ -161,19 +161,22 @@ export default function InvoiceClarificationPopup(props: InvoiceClarificationPop
                   </p>
                 </div>
               </div>
-              <div className="mt-2 text-center">
-                <span
-                  className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                    (clarification.context.priceChangePercent || 0) > 0
-                      ? "bg-red-100 text-red-800"
-                      : "bg-green-100 text-green-800"
-                  }`}
-                >
-                  const priceChangePercent = clarification.context.priceChangePercent;
-                  {(priceChangePercent || 0) > 0 ? "+" : ""}
-                  {clarification.context.priceChangePercent?.toFixed(1)}%
-                </span>
-              </div>
+              {(() => {
+                const priceChangePercent = clarification.context.priceChangePercent;
+                const pct = priceChangePercent || 0;
+                return (
+                  <div className="mt-2 text-center">
+                    <span
+                      className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                        pct > 0 ? "bg-red-100 text-red-800" : "bg-green-100 text-green-800"
+                      }`}
+                    >
+                      {pct > 0 ? "+" : ""}
+                      {priceChangePercent?.toFixed(1)}%
+                    </span>
+                  </div>
+                );
+              })()}
             </div>
           )}
 

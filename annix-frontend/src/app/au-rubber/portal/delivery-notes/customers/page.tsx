@@ -40,17 +40,10 @@ type SortColumn =
   | "auCocNumber";
 
 export default function CustomerDeliveryNotesPage() {
-  const rawCompaniesQueryData = companiesQuery.data;
-  const rawNotesQueryData = notesQuery.data;
-  const rawNoteDeliveryNoteNumber = note.deliveryNoteNumber;
-  const rawNoteSupplierCompanyName = note.supplierCompanyName;
-  const rawNoteCustomerReference = note.customerReference;
-  const rawNoteAuCocNumber = note.auCocNumber;
-  const rawNoteDeliveryNoteNumber2 = note.deliveryNoteNumber;
-  const rawBrandingPrimaryColor = branding?.primaryColor;
   const router = useRouter();
   const { showToast } = useToast();
   const { branding } = useAuRubberBranding();
+  const rawBrandingPrimaryColor = branding?.primaryColor;
   const [analyzeProgress, setAnalyzeProgress] = useState(0);
   const [analyzeStatus, setAnalyzeStatus] = useState("");
   const [analyzeDetail, setAnalyzeDetail] = useState("");
@@ -62,6 +55,8 @@ export default function CustomerDeliveryNotesPage() {
     status: filterStatus || undefined,
   });
   const companiesQuery = useAuRubberCompanies();
+  const rawCompaniesQueryData = companiesQuery.data;
+  const rawNotesQueryData = notesQuery.data;
   const customers = (rawCompaniesQueryData || []).filter((c) => c.companyType === "CUSTOMER");
   const customerIds = new Set(customers.map((c) => c.id));
   const notes = (rawNotesQueryData || []).filter((n) => customerIds.has(n.supplierCompanyId));
@@ -109,15 +104,17 @@ export default function CustomerDeliveryNotesPage() {
   const extractedDataSingle = (
     data: ExtractedDeliveryNoteData | ExtractedDeliveryNoteData[] | null,
   ): ExtractedDeliveryNoteData | null => {
-    const rawDataAt0 = data[0];
     if (!data) return null;
-    if (Array.isArray(data)) return rawDataAt0 || null;
+    if (Array.isArray(data)) {
+      const rawDataAt0 = data[0];
+      return rawDataAt0 || null;
+    }
     return data;
   };
 
   const noteRollNumbers = (note: RubberDeliveryNoteDto): string[] => {
-    const rawEdRolls = ed?.rolls;
     const ed = extractedDataSingle(note.extractedData);
+    const rawEdRolls = ed?.rolls;
     return (rawEdRolls || []).map((r) => r.rollNumber).filter(Boolean);
   };
 
@@ -679,92 +676,98 @@ export default function CustomerDeliveryNotesPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {paginatedNotes.map((note) => (
-                <tr key={note.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <Link
-                      href={`/au-rubber/portal/delivery-notes/${note.id}`}
-                      className="text-blue-600 hover:text-blue-800 font-medium"
-                    >
-                      {rawNoteDeliveryNoteNumber || `DN-${note.id}`}
-                    </Link>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {rawNoteSupplierCompanyName || "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {rawNoteCustomerReference || "-"}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-500">
-                    {noteRollNumbers(note).length > 0 ? noteRollNumbers(note).join(", ") : "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {typeBadge(note.deliveryNoteType)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {note.deliveryDate ? formatDateZA(note.deliveryDate) : "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">{statusBadge(note.status)}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {note.auCocId ? (
+              {paginatedNotes.map((note) => {
+                const rawNoteDeliveryNoteNumber = note.deliveryNoteNumber;
+                const rawNoteSupplierCompanyName = note.supplierCompanyName;
+                const rawNoteCustomerReference = note.customerReference;
+                const rawNoteAuCocNumber = note.auCocNumber;
+                return (
+                  <tr key={note.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
                       <Link
-                        href={`/au-rubber/portal/au-cocs/${note.auCocId}`}
-                        className="text-yellow-600 hover:text-yellow-800"
+                        href={`/au-rubber/portal/delivery-notes/${note.id}`}
+                        className="text-blue-600 hover:text-blue-800 font-medium"
                       >
-                        {rawNoteAuCocNumber || "View AU CoC"}
+                        {rawNoteDeliveryNoteNumber || `DN-${note.id}`}
                       </Link>
-                    ) : note.linkedCocId ? (
-                      <span className="text-teal-600">Linked</span>
-                    ) : (
-                      <span className="text-gray-400">Not linked</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                    <button
-                      onClick={() => handleReanalyze(note.id)}
-                      disabled={reanalyzingId === note.id}
-                      className="text-orange-600 hover:text-orange-800 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {reanalyzingId === note.id ? (
-                        <span className="inline-flex items-center">
-                          <Loader2 className="animate-spin h-3 w-3 mr-1" />
-                          Analyzing...
-                        </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {rawNoteSupplierCompanyName || "-"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {rawNoteCustomerReference || "-"}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500">
+                      {noteRollNumbers(note).length > 0 ? noteRollNumbers(note).join(", ") : "-"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {typeBadge(note.deliveryNoteType)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {note.deliveryDate ? formatDateZA(note.deliveryDate) : "-"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">{statusBadge(note.status)}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {note.auCocId ? (
+                        <Link
+                          href={`/au-rubber/portal/au-cocs/${note.auCocId}`}
+                          className="text-yellow-600 hover:text-yellow-800"
+                        >
+                          {rawNoteAuCocNumber || "View AU CoC"}
+                        </Link>
+                      ) : note.linkedCocId ? (
+                        <span className="text-teal-600">Linked</span>
                       ) : (
-                        "Reanalyze"
+                        <span className="text-gray-400">Not linked</span>
                       )}
-                    </button>
-                    <Link
-                      href={`/au-rubber/portal/delivery-notes/${note.id}`}
-                      className="text-blue-600 hover:text-blue-800"
-                    >
-                      View
-                    </Link>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        handleDeleteNote(note.id, rawNoteDeliveryNoteNumber2 || `DN-${note.id}`)
-                      }
-                      className="text-red-400 hover:text-red-600"
-                      title="Delete delivery note"
-                    >
-                      <svg
-                        className="w-4 h-4 inline"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                      <button
+                        onClick={() => handleReanalyze(note.id)}
+                        disabled={reanalyzingId === note.id}
+                        className="text-orange-600 hover:text-orange-800 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                        />
-                      </svg>
-                    </button>
-                  </td>
-                </tr>
-              ))}
+                        {reanalyzingId === note.id ? (
+                          <span className="inline-flex items-center">
+                            <Loader2 className="animate-spin h-3 w-3 mr-1" />
+                            Analyzing...
+                          </span>
+                        ) : (
+                          "Reanalyze"
+                        )}
+                      </button>
+                      <Link
+                        href={`/au-rubber/portal/delivery-notes/${note.id}`}
+                        className="text-blue-600 hover:text-blue-800"
+                      >
+                        View
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleDeleteNote(note.id, rawNoteDeliveryNoteNumber || `DN-${note.id}`)
+                        }
+                        className="text-red-400 hover:text-red-600"
+                        title="Delete delivery note"
+                      >
+                        <svg
+                          className="w-4 h-4 inline"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                          />
+                        </svg>
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}

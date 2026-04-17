@@ -20,7 +20,6 @@ interface SageConnectionStatus {
 }
 
 export function SageConfigSection() {
-  const rawStatusSageCompanyName = status.sageCompanyName;
   const [status, setStatus] = useState<SageConnectionStatus | null>(null);
   const [expanded, setExpanded] = useState(false);
   const [username, setUsername] = useState("");
@@ -85,8 +84,8 @@ export function SageConfigSection() {
     setError("");
     setSuccess("");
     try {
-      const rawSelectedName = selected?.Name;
       const selected = companies.find((c) => c.ID === selectedCompanyId);
+      const rawSelectedName = selected?.Name;
       await auRubberApiClient.updateSageConfig({
         sageUsername: username,
         sagePassword: password,
@@ -123,8 +122,9 @@ export function SageConfigSection() {
     }
   };
 
+  const rawStatusSageCompanyName = status?.sageCompanyName;
   const connectedSummary = status?.connected
-    ? `Connected to ${rawStatusSageCompanyName ?? "Sage"} as ${status.sageUsername}`
+    ? `Connected to ${rawStatusSageCompanyName || "Sage"} as ${status.sageUsername}`
     : "Not connected";
 
   return (

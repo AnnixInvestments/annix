@@ -11,8 +11,6 @@ import {
 } from "@/app/lib/api/auRubberApi";
 
 export default function ScanDeliveryNotePage() {
-  const rawItemUnitOfMeasure = item.unitOfMeasure;
-  const rawTotalsTotalWeightKg = result.data.totals.totalWeightKg;
   const router = useRouter();
   const { showToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -370,52 +368,60 @@ export default function ScanDeliveryNotePage() {
                     Line Items ({result.data.lineItems.length})
                   </h3>
                   <div className="space-y-2">
-                    {result.data.lineItems.map((item, idx) => (
-                      <div key={idx} className="bg-gray-50 rounded-lg p-3">
-                        <p className="text-sm font-medium text-gray-900">{item.description}</p>
-                        <p className="text-xs text-gray-600 mt-1">{formatLineItem(item)}</p>
-                        {item.quantity && (
-                          <p className="text-xs text-gray-500 mt-1">
-                            Qty: {item.quantity} {rawItemUnitOfMeasure || ""}
-                          </p>
-                        )}
-                      </div>
-                    ))}
+                    {result.data.lineItems.map((item, idx) => {
+                      const rawItemUnitOfMeasure = item.unitOfMeasure;
+                      return (
+                        <div key={idx} className="bg-gray-50 rounded-lg p-3">
+                          <p className="text-sm font-medium text-gray-900">{item.description}</p>
+                          <p className="text-xs text-gray-600 mt-1">{formatLineItem(item)}</p>
+                          {item.quantity && (
+                            <p className="text-xs text-gray-500 mt-1">
+                              Qty: {item.quantity} {rawItemUnitOfMeasure || ""}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
 
-              {(rawTotalsTotalWeightKg || result.data.totals.numberOfRolls) && (
-                <div className="border-t pt-4">
-                  <h3 className="text-sm font-medium text-gray-700 mb-2">Totals</h3>
-                  <div className="grid grid-cols-3 gap-4 text-center">
-                    {result.data.totals.totalQuantity && (
-                      <div className="bg-gray-50 rounded-lg p-3">
-                        <p className="text-lg font-semibold text-gray-900">
-                          {result.data.totals.totalQuantity}
-                        </p>
-                        <p className="text-xs text-gray-500">Total Qty</p>
-                      </div>
-                    )}
-                    {result.data.totals.numberOfRolls && (
-                      <div className="bg-gray-50 rounded-lg p-3">
-                        <p className="text-lg font-semibold text-gray-900">
-                          {result.data.totals.numberOfRolls}
-                        </p>
-                        <p className="text-xs text-gray-500">Rolls</p>
-                      </div>
-                    )}
-                    {result.data.totals.totalWeightKg && (
-                      <div className="bg-gray-50 rounded-lg p-3">
-                        <p className="text-lg font-semibold text-gray-900">
-                          {result.data.totals.totalWeightKg} kg
-                        </p>
-                        <p className="text-xs text-gray-500">Total Weight</p>
-                      </div>
-                    )}
+              {(() => {
+                const totalWeightKg = result.data.totals.totalWeightKg;
+                const numberOfRolls = result.data.totals.numberOfRolls;
+                const showTotals = totalWeightKg || numberOfRolls;
+                return showTotals ? (
+                  <div className="border-t pt-4">
+                    <h3 className="text-sm font-medium text-gray-700 mb-2">Totals</h3>
+                    <div className="grid grid-cols-3 gap-4 text-center">
+                      {result.data.totals.totalQuantity && (
+                        <div className="bg-gray-50 rounded-lg p-3">
+                          <p className="text-lg font-semibold text-gray-900">
+                            {result.data.totals.totalQuantity}
+                          </p>
+                          <p className="text-xs text-gray-500">Total Qty</p>
+                        </div>
+                      )}
+                      {result.data.totals.numberOfRolls && (
+                        <div className="bg-gray-50 rounded-lg p-3">
+                          <p className="text-lg font-semibold text-gray-900">
+                            {result.data.totals.numberOfRolls}
+                          </p>
+                          <p className="text-xs text-gray-500">Rolls</p>
+                        </div>
+                      )}
+                      {result.data.totals.totalWeightKg && (
+                        <div className="bg-gray-50 rounded-lg p-3">
+                          <p className="text-lg font-semibold text-gray-900">
+                            {result.data.totals.totalWeightKg} kg
+                          </p>
+                          <p className="text-xs text-gray-500">Total Weight</p>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
+                ) : null;
+              })()}
 
               {result.data.notes && (
                 <div className="border-t pt-4">

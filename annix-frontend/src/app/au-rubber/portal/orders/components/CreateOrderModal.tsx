@@ -115,20 +115,22 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
   };
 
   const handleSubmit = async () => {
-    const rawItemThickness = item.thickness;
-    const rawItemWidth = item.width;
-    const rawItemLength = item.length;
     if (!selectedCompanyId || lineItems.length === 0) return;
     await onCreateOrder({
       companyId: selectedCompanyId,
       companyOrderNumber,
-      items: lineItems.map((item) => ({
-        productId: item.productId,
-        thickness: rawItemThickness || undefined,
-        width: rawItemWidth || undefined,
-        length: rawItemLength || undefined,
-        quantity: item.quantity,
-      })),
+      items: lineItems.map((item) => {
+        const rawItemThickness = item.thickness;
+        const rawItemWidth = item.width;
+        const rawItemLength = item.length;
+        return {
+          productId: item.productId,
+          thickness: rawItemThickness || undefined,
+          width: rawItemWidth || undefined,
+          length: rawItemLength || undefined,
+          quantity: item.quantity,
+        };
+      }),
     });
   };
 

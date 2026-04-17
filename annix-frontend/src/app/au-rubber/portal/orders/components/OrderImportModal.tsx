@@ -98,11 +98,6 @@ export function OrderImportModal(props: OrderImportModalProps) {
     try {
       const rawAnalysisCompanyId = analysis.companyId;
       const rawAnalysisPoNumber = analysis.poNumber;
-      const rawLineProductId = line.productId;
-      const rawLineThickness = line.thickness;
-      const rawLineWidth = line.width;
-      const rawLineLength = line.length;
-      const rawLineQuantity = line.quantity;
       const newCompany: NewCompanyFromAnalysis | undefined =
         !analysis.companyId && newCompanyDetails?.name
           ? {
@@ -118,14 +113,21 @@ export function OrderImportModal(props: OrderImportModalProps) {
         overrides: {
           companyId: rawAnalysisCompanyId || undefined,
           poNumber: rawAnalysisPoNumber || undefined,
-          lines: analysis.lines.map((line) => ({
-            productId: rawLineProductId || undefined,
-            thickness: rawLineThickness || undefined,
-            width: rawLineWidth || undefined,
-            length: rawLineLength || undefined,
-            quantity: rawLineQuantity || undefined,
-            unitPrice: line.unitPrice,
-          })),
+          lines: analysis.lines.map((line) => {
+            const rawLineProductId = line.productId;
+            const rawLineThickness = line.thickness;
+            const rawLineWidth = line.width;
+            const rawLineLength = line.length;
+            const rawLineQuantity = line.quantity;
+            return {
+              productId: rawLineProductId || undefined,
+              thickness: rawLineThickness || undefined,
+              width: rawLineWidth || undefined,
+              length: rawLineLength || undefined,
+              quantity: rawLineQuantity || undefined,
+              unitPrice: line.unitPrice,
+            };
+          }),
           newCompany,
         },
       });

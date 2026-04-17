@@ -26,13 +26,13 @@ interface ProductFormProps {
 }
 
 export function ProductForm(props: ProductFormProps) {
+  const codingsQuery = useAuRubberCodings();
+  const companiesQuery = useAuRubberCompanies();
+  const specificationsQuery = useAuRubberSpecifications();
   const rawCodingsQueryIsLoading = codingsQuery.isLoading;
   const rawCodingsQueryData = codingsQuery.data;
   const rawCompaniesQueryData = companiesQuery.data;
   const rawSpecificationsQueryData = specificationsQuery.data;
-  const codingsQuery = useAuRubberCodings();
-  const companiesQuery = useAuRubberCompanies();
-  const specificationsQuery = useAuRubberSpecifications();
 
   const isLoadingData =
     rawCodingsQueryIsLoading || companiesQuery.isLoading || specificationsQuery.isLoading;

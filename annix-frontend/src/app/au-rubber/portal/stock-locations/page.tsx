@@ -19,7 +19,6 @@ const ITEMS_PER_PAGE = 25;
 type SortColumn = "name" | "description" | "displayOrder" | "active";
 
 export default function StockLocationsPage() {
-  const rawLocationDescription2 = location.description;
   const { showToast } = useToast();
   const [locations, setLocations] = useState<StockLocationDto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -295,47 +294,52 @@ export default function StockLocationsPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {paginatedLocations.map((location) => (
-                <tr
-                  key={location.id}
-                  className={`hover:bg-gray-50 ${!location.active ? "bg-gray-100" : ""}`}
-                >
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="text-sm font-medium text-gray-900">{location.name}</span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="text-sm text-gray-500">{rawLocationDescription2 || "-"}</span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {location.displayOrder}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {location.active ? (
-                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                        Active
+              {paginatedLocations.map((location) => {
+                const rawLocationDescription2 = location.description;
+                return (
+                  <tr
+                    key={location.id}
+                    className={`hover:bg-gray-50 ${!location.active ? "bg-gray-100" : ""}`}
+                  >
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="text-sm font-medium text-gray-900">{location.name}</span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="text-sm text-gray-500">
+                        {rawLocationDescription2 || "-"}
                       </span>
-                    ) : (
-                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
-                        Inactive
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                    <button
-                      onClick={() => openEditModal(location)}
-                      className="text-yellow-600 hover:text-yellow-900"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => setDeleteLocationId(location.id)}
-                      className="text-red-600 hover:text-red-900"
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {location.displayOrder}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {location.active ? (
+                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                          Active
+                        </span>
+                      ) : (
+                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                          Inactive
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                      <button
+                        onClick={() => openEditModal(location)}
+                        className="text-yellow-600 hover:text-yellow-900"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => setDeleteLocationId(location.id)}
+                        className="text-red-600 hover:text-red-900"
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}

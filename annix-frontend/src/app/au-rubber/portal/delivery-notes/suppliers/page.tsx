@@ -36,9 +36,6 @@ type SortColumn =
   | "linkedCoc";
 
 export default function SupplierDeliveryNotesPage() {
-  const rawCompaniesQueryData = companiesQuery.data;
-  const rawNotesQueryData = notesQuery.data;
-  const rawNoteCustomerReference = note.customerReference;
   const { showToast } = useToast();
   const { branding } = useAuRubberBranding();
   const [searchQuery, setSearchQuery] = useState("");
@@ -51,6 +48,8 @@ export default function SupplierDeliveryNotesPage() {
     includeAllVersions: showAllVersions || undefined,
   });
   const companiesQuery = useAuRubberCompanies();
+  const rawCompaniesQueryData = companiesQuery.data;
+  const rawNotesQueryData = notesQuery.data;
   const allCompanies = rawCompaniesQueryData || [];
   const suppliers = allCompanies.filter((c) => c.companyType === "SUPPLIER");
   const supplierIds = new Set(suppliers.map((c) => c.id));
@@ -310,18 +309,23 @@ export default function SupplierDeliveryNotesPage() {
   const extractedDataSingle = (
     data: ExtractedDeliveryNoteData | ExtractedDeliveryNoteData[] | null,
   ): ExtractedDeliveryNoteData | null => {
-    const rawDataAt0 = data[0];
     if (!data) return null;
-    if (Array.isArray(data)) return rawDataAt0 || null;
+    if (Array.isArray(data)) {
+      const rawDataAt0 = data[0];
+      return rawDataAt0 || null;
+    }
     return data;
   };
 
-  const notePoRef = (note: RubberDeliveryNoteDto): string =>
-    rawNoteCustomerReference || extractedDataSingle(note.extractedData)?.customerReference || "";
+  const notePoRef = (note: RubberDeliveryNoteDto): string => {
+    const rawNoteCustomerReference = note.customerReference;
+    const extractedRef = extractedDataSingle(note.extractedData)?.customerReference;
+    return rawNoteCustomerReference || extractedRef || "";
+  };
 
   const noteRollNumbers = (note: RubberDeliveryNoteDto): string[] => {
-    const rawEdRolls = ed?.rolls;
     const ed = extractedDataSingle(note.extractedData);
+    const rawEdRolls = ed?.rolls;
     return (rawEdRolls || []).map((r) => r.rollNumber).filter(Boolean);
   };
 

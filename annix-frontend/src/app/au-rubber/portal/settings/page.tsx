@@ -447,10 +447,6 @@ function BrandingTab() {
 }
 
 function AccessControlTab() {
-  const rawUserFirstName = user.firstName;
-  const rawUserFirstName2 = user.firstName;
-  const rawUserLastName = user.lastName;
-  const rawUserRoleName = user.roleName;
   const { showToast } = useToast();
   const { confirm, ConfirmDialog } = useConfirm();
   const usersQuery = useAuRubberAccessUsers();
@@ -667,35 +663,40 @@ function AccessControlTab() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {users.map((user) => (
-                <tr key={user.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 text-sm text-gray-900">
-                    {rawUserFirstName || user.lastName
-                      ? `${rawUserFirstName2 || ""} ${rawUserLastName || ""}`.trim()
-                      : "-"}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-500">{user.email}</td>
-                  <td className="px-4 py-3 text-sm">
-                    <span className="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">
-                      {rawUserRoleName || "No Role"}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-right text-sm">
-                    <button
-                      onClick={() => handleEditUserAccess(user)}
-                      className="text-yellow-600 hover:text-yellow-800 mr-3"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleRevokeAccess(user.id)}
-                      className="text-red-600 hover:text-red-800"
-                    >
-                      Revoke
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {users.map((user) => {
+                const rawUserFirstName = user.firstName;
+                const rawUserLastName = user.lastName;
+                const rawUserRoleName = user.roleName;
+                return (
+                  <tr key={user.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 text-sm text-gray-900">
+                      {rawUserFirstName || user.lastName
+                        ? `${rawUserFirstName || ""} ${rawUserLastName || ""}`.trim()
+                        : "-"}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-500">{user.email}</td>
+                    <td className="px-4 py-3 text-sm">
+                      <span className="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">
+                        {rawUserRoleName || "No Role"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right text-sm">
+                      <button
+                        onClick={() => handleEditUserAccess(user)}
+                        className="text-yellow-600 hover:text-yellow-800 mr-3"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleRevokeAccess(user.id)}
+                        className="text-red-600 hover:text-red-800"
+                      >
+                        Revoke
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
               {users.length === 0 && (
                 <tr>
                   <td colSpan={4} className="px-4 py-8 text-center text-sm text-gray-500">

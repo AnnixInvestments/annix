@@ -39,8 +39,8 @@ function SpecificationsTable({
 
   const groupedByType = specs.reduce<Record<string, RubberSpecificationDto[]>>((acc, spec) => {
     const rawSpecRubberTypeName = spec.rubberTypeName;
-    const rawAccByKey = acc[key];
     const key = `${spec.typeNumber}-${rawSpecRubberTypeName || "Unknown"}`;
+    const rawAccByKey = acc[key];
     return { ...acc, [key]: [...(rawAccByKey || []), spec] };
   }, {});
 

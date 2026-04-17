@@ -96,7 +96,6 @@ export async function syncData(
 
 async function syncStockItems(apiBaseUrl: string, authHeader: string): Promise<void> {
   try {
-    const rawItems = data.items;
     const response = await fetch(`${apiBaseUrl}/stock-control/inventory`, {
       headers: { Authorization: authHeader },
     });
@@ -104,6 +103,7 @@ async function syncStockItems(apiBaseUrl: string, authHeader: string): Promise<v
     if (!response.ok) return;
 
     const data = await response.json();
+    const rawItems = data.items;
     const items: StockItem[] = rawItems || data;
 
     await offlineStockItems.saveAll(items);

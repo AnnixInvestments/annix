@@ -26,8 +26,6 @@ function PropertyBadge({ label, color }: { label: string; color: string }) {
 }
 
 export default function AuRubberProductDetailPage() {
-  const rawProductTitle = product.title;
-  const rawProductTitle2 = product.title;
   const params = useParams();
   const router = useRouter();
   const productId = Number(params.id);
@@ -97,6 +95,8 @@ export default function AuRubberProductDetailPage() {
     );
   }
 
+  const rawProductTitle = product.title;
+  const rawProductTitle2 = product.title;
   const calculatedPricePerKg =
     product.costPerKg && product.markup ? product.costPerKg * (1 + product.markup / 100) : null;
 

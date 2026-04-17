@@ -311,12 +311,15 @@ export default function DftReadingForm(props: DftReadingFormProps) {
           />
           {batchRecords.length > 0 && (
             <datalist id="dft-batch-options">
-              {paintBatchRecords(batchRecords).map((r) => (
-                <option key={r.id} value={r.batchNumber}>
-                  const name = r.stockItem?.name;
-                  {name || r.batchNumber}
-                </option>
-              ))}
+              {paintBatchRecords(batchRecords).map((r) => {
+                const stockItem = r.stockItem;
+                const name = stockItem ? stockItem.name : null;
+                return (
+                  <option key={r.id} value={r.batchNumber}>
+                    {name || r.batchNumber}
+                  </option>
+                );
+              })}
             </datalist>
           )}
         </div>

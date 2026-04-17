@@ -153,8 +153,8 @@ function MetricChart(props: { batches: BatchMetricData[]; metric: MetricDef }) {
             ];
           }}
           labelFormatter={(label: unknown, payload: readonly unknown[]) => {
-            const rawPayloadDate = first?.payload?.date;
             const first = payload[0] as { payload?: { date?: string } } | undefined;
+            const rawPayloadDate = first?.payload?.date;
             return `Batch ${String(label)} (${rawPayloadDate || ""})`;
           }}
           contentStyle={{ fontSize: 12 }}

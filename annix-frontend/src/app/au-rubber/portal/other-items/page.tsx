@@ -40,23 +40,6 @@ const UNIT_OF_MEASURE_OPTIONS: { value: OtherStockUnitOfMeasure; label: string }
 ];
 
 export default function OtherItemsPage() {
-  const rawItemCategory = item.category;
-  const rawItemLocation = item.location;
-  const rawItemFormCategory = itemForm.category;
-  const rawTargetValue = e.target.value;
-  const rawItemFormQuantity = itemForm.quantity;
-  const rawItemFormMinStockLevel = itemForm.minStockLevel;
-  const rawItemFormReorderPoint = itemForm.reorderPoint;
-  const rawItemFormLocationId = itemForm.locationId;
-  const rawItemFormCostPerUnit = itemForm.costPerUnit;
-  const rawItemFormPricePerUnit = itemForm.pricePerUnit;
-  const rawItemFormSupplier = itemForm.supplier;
-  const rawTargetValue2 = e.target.value;
-  const rawItemFormDescription = itemForm.description;
-  const rawTargetValue3 = e.target.value;
-  const rawItemFormNotes = itemForm.notes;
-  const rawTargetValue4 = e.target.value;
-  const rawRowCategory = row.category;
   const { showToast } = useToast();
   const [items, setItems] = useState<RubberOtherStockDto[]>([]);
   const [locations, setLocations] = useState<StockLocationDto[]>([]);
@@ -244,6 +227,7 @@ export default function OtherItemsPage() {
       const lines = text.split("\n").filter((line) => line.trim());
       const headers = lines[0].split(",").map((h) => h.trim().toLowerCase());
       const rows: ImportOtherStockRowDto[] = lines.slice(1).map((line) => {
+        const values = line.split(",").map((v) => v.trim());
         const rawValuesByHeadersindexofitemcode = values[headers.indexOf("item_code")];
         const rawValuesByHeadersindexofitemname = values[headers.indexOf("item_name")];
         const rawValuesByHeadersindexofdescription = values[headers.indexOf("description")];
@@ -252,7 +236,6 @@ export default function OtherItemsPage() {
         const rawValuesByHeadersindexoflocation = values[headers.indexOf("location")];
         const rawValuesByHeadersindexofsupplier = values[headers.indexOf("supplier")];
         const rawValuesByHeadersindexofnotes = values[headers.indexOf("notes")];
-        const values = line.split(",").map((v) => v.trim());
         const rowData: ImportOtherStockRowDto = {
           itemCode: rawValuesByHeadersindexofitemcode || "",
           itemName: rawValuesByHeadersindexofitemname || "",
@@ -389,6 +372,17 @@ export default function OtherItemsPage() {
       </div>
     );
   }
+
+  const rawItemFormCategory = itemForm.category;
+  const rawItemFormQuantity = itemForm.quantity;
+  const rawItemFormMinStockLevel = itemForm.minStockLevel;
+  const rawItemFormReorderPoint = itemForm.reorderPoint;
+  const rawItemFormLocationId = itemForm.locationId;
+  const rawItemFormCostPerUnit = itemForm.costPerUnit;
+  const rawItemFormPricePerUnit = itemForm.pricePerUnit;
+  const rawItemFormSupplier = itemForm.supplier;
+  const rawItemFormDescription = itemForm.description;
+  const rawItemFormNotes = itemForm.notes;
 
   return (
     <div className="space-y-6">
@@ -532,71 +526,75 @@ export default function OtherItemsPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {paginatedItems.map((item) => (
-                <tr key={item.id} className={item.isLowStock ? "bg-red-50" : ""}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {item.itemCode}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    <div>
-                      {item.itemName}
-                      {item.description && (
-                        <div className="text-xs text-gray-500 truncate max-w-xs">
-                          {item.description}
-                        </div>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {rawItemCategory || "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
-                    <span
-                      className={`font-medium ${item.isLowStock ? "text-red-600" : "text-gray-900"}`}
-                    >
-                      {item.quantity.toLocaleString()} {item.unitOfMeasureLabel}
-                    </span>
-                    {item.isLowStock && (
-                      <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
-                        Low
+              {paginatedItems.map((item) => {
+                const rawItemCategory = item.category;
+                const rawItemLocation = item.location;
+                return (
+                  <tr key={item.id} className={item.isLowStock ? "bg-red-50" : ""}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {item.itemCode}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <div>
+                        {item.itemName}
+                        {item.description && (
+                          <div className="text-xs text-gray-500 truncate max-w-xs">
+                            {item.description}
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {rawItemCategory || "-"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
+                      <span
+                        className={`font-medium ${item.isLowStock ? "text-red-600" : "text-gray-900"}`}
+                      >
+                        {item.quantity.toLocaleString()} {item.unitOfMeasureLabel}
                       </span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
-                    {item.reorderPoint}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {rawItemLocation || "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                    <button
-                      onClick={() => {
-                        setReceiveItemId(item.id);
-                        setShowReceiveModal(true);
-                      }}
-                      className="text-green-600 hover:text-green-900"
-                    >
-                      Receive
-                    </button>
-                    <button
-                      onClick={() => {
-                        setAdjustItemId(item.id);
-                        setAdjustQty(String(item.quantity));
-                        setShowAdjustModal(true);
-                      }}
-                      className="text-blue-600 hover:text-blue-900"
-                    >
-                      Adjust
-                    </button>
-                    <button
-                      onClick={() => setDeleteItemId(item.id)}
-                      className="text-red-600 hover:text-red-900"
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))}
+                      {item.isLowStock && (
+                        <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
+                          Low
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
+                      {item.reorderPoint}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {rawItemLocation || "-"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                      <button
+                        onClick={() => {
+                          setReceiveItemId(item.id);
+                          setShowReceiveModal(true);
+                        }}
+                        className="text-green-600 hover:text-green-900"
+                      >
+                        Receive
+                      </button>
+                      <button
+                        onClick={() => {
+                          setAdjustItemId(item.id);
+                          setAdjustQty(String(item.quantity));
+                          setShowAdjustModal(true);
+                        }}
+                        className="text-blue-600 hover:text-blue-900"
+                      >
+                        Adjust
+                      </button>
+                      <button
+                        onClick={() => setDeleteItemId(item.id)}
+                        className="text-red-600 hover:text-red-900"
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}
@@ -682,9 +680,10 @@ export default function OtherItemsPage() {
                       <input
                         type="text"
                         value={rawItemFormCategory || ""}
-                        onChange={(e) =>
-                          setItemForm({ ...itemForm, category: rawTargetValue || null })
-                        }
+                        onChange={(e) => {
+                          const rawTargetValue = e.target.value;
+                          setItemForm({ ...itemForm, category: rawTargetValue || null });
+                        }}
                         className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
                         placeholder="e.g., Tools, PPE"
                         list="category-suggestions"
@@ -826,9 +825,10 @@ export default function OtherItemsPage() {
                       <input
                         type="text"
                         value={rawItemFormSupplier || ""}
-                        onChange={(e) =>
-                          setItemForm({ ...itemForm, supplier: rawTargetValue2 || null })
-                        }
+                        onChange={(e) => {
+                          const rawTargetValue2 = e.target.value;
+                          setItemForm({ ...itemForm, supplier: rawTargetValue2 || null });
+                        }}
                         className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
                         placeholder="Supplier name"
                       />
@@ -838,9 +838,10 @@ export default function OtherItemsPage() {
                     <label className="block text-sm font-medium text-gray-700">Description</label>
                     <textarea
                       value={rawItemFormDescription || ""}
-                      onChange={(e) =>
-                        setItemForm({ ...itemForm, description: rawTargetValue3 || null })
-                      }
+                      onChange={(e) => {
+                        const rawTargetValue3 = e.target.value;
+                        setItemForm({ ...itemForm, description: rawTargetValue3 || null });
+                      }}
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
                       rows={2}
                       placeholder="Optional description"
@@ -850,7 +851,10 @@ export default function OtherItemsPage() {
                     <label className="block text-sm font-medium text-gray-700">Notes</label>
                     <textarea
                       value={rawItemFormNotes || ""}
-                      onChange={(e) => setItemForm({ ...itemForm, notes: rawTargetValue4 || null })}
+                      onChange={(e) => {
+                        const rawTargetValue4 = e.target.value;
+                        setItemForm({ ...itemForm, notes: rawTargetValue4 || null });
+                      }}
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
                       rows={2}
                       placeholder="Optional notes"
@@ -934,16 +938,25 @@ export default function OtherItemsPage() {
                             </tr>
                           </thead>
                           <tbody className="bg-white divide-y divide-gray-200">
-                            {csvData.slice(0, 10).map((row, idx) => (
-                              <tr key={idx}>
-                                <td className="px-3 py-2 text-sm text-gray-900">{row.itemCode}</td>
-                                <td className="px-3 py-2 text-sm text-gray-900">{row.itemName}</td>
-                                <td className="px-3 py-2 text-sm text-gray-900">{row.quantity}</td>
-                                <td className="px-3 py-2 text-sm text-gray-900">
-                                  {rawRowCategory || "-"}
-                                </td>
-                              </tr>
-                            ))}
+                            {csvData.slice(0, 10).map((row, idx) => {
+                              const rawRowCategory = row.category;
+                              return (
+                                <tr key={idx}>
+                                  <td className="px-3 py-2 text-sm text-gray-900">
+                                    {row.itemCode}
+                                  </td>
+                                  <td className="px-3 py-2 text-sm text-gray-900">
+                                    {row.itemName}
+                                  </td>
+                                  <td className="px-3 py-2 text-sm text-gray-900">
+                                    {row.quantity}
+                                  </td>
+                                  <td className="px-3 py-2 text-sm text-gray-900">
+                                    {rawRowCategory || "-"}
+                                  </td>
+                                </tr>
+                              );
+                            })}
                             {csvData.length > 10 && (
                               <tr>
                                 <td

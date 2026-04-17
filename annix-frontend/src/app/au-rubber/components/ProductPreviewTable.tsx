@@ -43,17 +43,6 @@ function calculateFinalPrice(
 }
 
 export function ProductPreviewTable(props: ProductPreviewTableProps) {
-  const rawProductTitle = product.title;
-  const rawTargetValue = e.target.value;
-  const rawProductType = product.type;
-  const rawTargetValue2 = e.target.value;
-  const rawProductCompound = product.compound;
-  const rawTargetValue3 = e.target.value;
-  const rawProductColour = product.colour;
-  const rawTargetValue4 = e.target.value;
-  const rawProductHardness = product.hardness;
-  const rawTargetValue5 = e.target.value;
-  const rawProductBaseCostPerKg = product.baseCostPerKg;
   const { products, costSettings, codings, onUpdate, onDelete, onToggleSelect, onSelectAll } =
     props;
   const typeCodings = codings.filter((c) => c.codingType === "TYPE");
@@ -134,119 +123,142 @@ export function ProductPreviewTable(props: ProductPreviewTableProps) {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {products.map((product, index) => (
-              <tr
-                key={index}
-                className={`${product.selected ? "bg-yellow-50" : ""} ${
-                  product.confidence < 0.5 ? "bg-red-50" : ""
-                }`}
-              >
-                <td className="px-3 py-2">
-                  <input
-                    type="checkbox"
-                    checked={product.selected}
-                    onChange={() => onToggleSelect(index)}
-                    className="h-4 w-4 text-yellow-600 focus:ring-yellow-500 border-gray-300 rounded"
-                  />
-                </td>
-                <td className="px-3 py-2 text-sm text-gray-500">{product.lineNumber}</td>
-                <td className="px-3 py-2">
-                  <input
-                    type="text"
-                    value={rawProductTitle || ""}
-                    onChange={(e) => handleFieldChange(index, "title", rawTargetValue || null)}
-                    className="w-full px-2 py-1 text-sm border border-gray-200 rounded focus:ring-yellow-500 focus:border-yellow-500"
-                    placeholder="Product title"
-                  />
-                </td>
-                <td className="px-3 py-2">
-                  <select
-                    value={rawProductType || ""}
-                    onChange={(e) => handleFieldChange(index, "type", rawTargetValue2 || null)}
-                    className="w-full px-2 py-1 text-sm border border-gray-200 rounded focus:ring-yellow-500 focus:border-yellow-500"
-                  >
-                    <option value="">Select type</option>
-                    {typeCodings.map((c) => (
-                      <option key={c.id} value={c.code}>
-                        {c.code}
-                      </option>
-                    ))}
-                  </select>
-                </td>
-                <td className="px-3 py-2">
-                  <select
-                    value={rawProductCompound || ""}
-                    onChange={(e) => handleFieldChange(index, "compound", rawTargetValue3 || null)}
-                    className="w-full px-2 py-1 text-sm border border-gray-200 rounded focus:ring-yellow-500 focus:border-yellow-500"
-                  >
-                    <option value="">Select compound</option>
-                    {compoundCodings.map((c) => (
-                      <option key={c.id} value={c.code}>
-                        {c.code}
-                      </option>
-                    ))}
-                  </select>
-                </td>
-                <td className="px-3 py-2">
-                  <select
-                    value={rawProductColour || ""}
-                    onChange={(e) => handleFieldChange(index, "colour", rawTargetValue4 || null)}
-                    className="w-full px-2 py-1 text-sm border border-gray-200 rounded focus:ring-yellow-500 focus:border-yellow-500"
-                  >
-                    <option value="">Select colour</option>
-                    {colourCodings.map((c) => (
-                      <option key={c.id} value={c.code}>
-                        {c.code}
-                      </option>
-                    ))}
-                  </select>
-                </td>
-                <td className="px-3 py-2">
-                  <select
-                    value={rawProductHardness || ""}
-                    onChange={(e) => handleFieldChange(index, "hardness", rawTargetValue5 || null)}
-                    className="w-full px-2 py-1 text-sm border border-gray-200 rounded focus:ring-yellow-500 focus:border-yellow-500"
-                  >
-                    <option value="">Select hardness</option>
-                    {hardnessCodings.map((c) => (
-                      <option key={c.id} value={c.code}>
-                        {c.code}
-                      </option>
-                    ))}
-                  </select>
-                </td>
-                <td className="px-3 py-2 text-right">
-                  <input
-                    type="number"
-                    value={rawProductBaseCostPerKg ?? ""}
-                    onChange={(e) =>
-                      handleFieldChange(
-                        index,
-                        "baseCostPerKg",
-                        e.target.value ? parseFloat(e.target.value) : null,
-                      )
-                    }
-                    className="w-24 px-2 py-1 text-sm text-right border border-gray-200 rounded focus:ring-yellow-500 focus:border-yellow-500"
-                    placeholder="R/kg"
-                    step={0.01}
-                    min={0}
-                  />
-                </td>
-                <td className="px-3 py-2 text-right text-sm font-medium text-gray-900">
-                  {formatCurrency(product.calculatedPrice)}
-                </td>
-                <td className="px-3 py-2 text-center">
-                  <button
-                    type="button"
-                    onClick={() => onDelete(index)}
-                    className="p-1 text-gray-400 hover:text-red-500"
-                    title="Remove row"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </td>
-              </tr>
-            ))}
+            {products.map((product, index) => {
+              const rawProductTitle = product.title;
+              const rawProductType = product.type;
+              const rawProductCompound = product.compound;
+              const rawProductColour = product.colour;
+              const rawProductHardness = product.hardness;
+              const rawProductBaseCostPerKg = product.baseCostPerKg;
+              return (
+                <tr
+                  key={index}
+                  className={`${product.selected ? "bg-yellow-50" : ""} ${
+                    product.confidence < 0.5 ? "bg-red-50" : ""
+                  }`}
+                >
+                  <td className="px-3 py-2">
+                    <input
+                      type="checkbox"
+                      checked={product.selected}
+                      onChange={() => onToggleSelect(index)}
+                      className="h-4 w-4 text-yellow-600 focus:ring-yellow-500 border-gray-300 rounded"
+                    />
+                  </td>
+                  <td className="px-3 py-2 text-sm text-gray-500">{product.lineNumber}</td>
+                  <td className="px-3 py-2">
+                    <input
+                      type="text"
+                      value={rawProductTitle || ""}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        handleFieldChange(index, "title", val || null);
+                      }}
+                      className="w-full px-2 py-1 text-sm border border-gray-200 rounded focus:ring-yellow-500 focus:border-yellow-500"
+                      placeholder="Product title"
+                    />
+                  </td>
+                  <td className="px-3 py-2">
+                    <select
+                      value={rawProductType || ""}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        handleFieldChange(index, "type", val || null);
+                      }}
+                      className="w-full px-2 py-1 text-sm border border-gray-200 rounded focus:ring-yellow-500 focus:border-yellow-500"
+                    >
+                      <option value="">Select type</option>
+                      {typeCodings.map((c) => (
+                        <option key={c.id} value={c.code}>
+                          {c.code}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="px-3 py-2">
+                    <select
+                      value={rawProductCompound || ""}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        handleFieldChange(index, "compound", val || null);
+                      }}
+                      className="w-full px-2 py-1 text-sm border border-gray-200 rounded focus:ring-yellow-500 focus:border-yellow-500"
+                    >
+                      <option value="">Select compound</option>
+                      {compoundCodings.map((c) => (
+                        <option key={c.id} value={c.code}>
+                          {c.code}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="px-3 py-2">
+                    <select
+                      value={rawProductColour || ""}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        handleFieldChange(index, "colour", val || null);
+                      }}
+                      className="w-full px-2 py-1 text-sm border border-gray-200 rounded focus:ring-yellow-500 focus:border-yellow-500"
+                    >
+                      <option value="">Select colour</option>
+                      {colourCodings.map((c) => (
+                        <option key={c.id} value={c.code}>
+                          {c.code}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="px-3 py-2">
+                    <select
+                      value={rawProductHardness || ""}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        handleFieldChange(index, "hardness", val || null);
+                      }}
+                      className="w-full px-2 py-1 text-sm border border-gray-200 rounded focus:ring-yellow-500 focus:border-yellow-500"
+                    >
+                      <option value="">Select hardness</option>
+                      {hardnessCodings.map((c) => (
+                        <option key={c.id} value={c.code}>
+                          {c.code}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="px-3 py-2 text-right">
+                    <input
+                      type="number"
+                      value={rawProductBaseCostPerKg ?? ""}
+                      onChange={(e) =>
+                        handleFieldChange(
+                          index,
+                          "baseCostPerKg",
+                          e.target.value ? parseFloat(e.target.value) : null,
+                        )
+                      }
+                      className="w-24 px-2 py-1 text-sm text-right border border-gray-200 rounded focus:ring-yellow-500 focus:border-yellow-500"
+                      placeholder="R/kg"
+                      step={0.01}
+                      min={0}
+                    />
+                  </td>
+                  <td className="px-3 py-2 text-right text-sm font-medium text-gray-900">
+                    {formatCurrency(product.calculatedPrice)}
+                  </td>
+                  <td className="px-3 py-2 text-center">
+                    <button
+                      type="button"
+                      onClick={() => onDelete(index)}
+                      className="p-1 text-gray-400 hover:text-red-500"
+                      title="Remove row"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

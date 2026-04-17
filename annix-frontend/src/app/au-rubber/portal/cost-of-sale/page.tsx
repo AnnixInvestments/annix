@@ -62,13 +62,6 @@ function ProfitBadge(props: { profitLossZar: number | null }) {
 }
 
 export default function CostOfSalePage() {
-  const rawRTotalCos = r.totalCos;
-  const rawRPriceZar = r.priceZar;
-  const rawRProfitLossZar = r.profitLossZar;
-  const rawRateCompoundCode = rate.compoundCode;
-  const rawRateCompoundName = rate.compoundName;
-  const rawRateNotes = rate.notes;
-  const rawRollCompoundCode = roll.compoundCode;
   const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<ActiveTab>("rates");
 
@@ -235,9 +228,18 @@ export default function CostOfSalePage() {
     (rollPage + 1) * effectiveRollPageSize,
   );
 
-  const totalCosSum = rollCosData.reduce((sum, r) => sum + (rawRTotalCos || 0), 0);
-  const totalRevenueSum = rollCosData.reduce((sum, r) => sum + (rawRPriceZar || 0), 0);
-  const totalProfitSum = rollCosData.reduce((sum, r) => sum + (rawRProfitLossZar || 0), 0);
+  const totalCosSum = rollCosData.reduce((sum, r) => {
+    const rawRTotalCos = r.totalCos;
+    return sum + (rawRTotalCos || 0);
+  }, 0);
+  const totalRevenueSum = rollCosData.reduce((sum, r) => {
+    const rawRPriceZar = r.priceZar;
+    return sum + (rawRPriceZar || 0);
+  }, 0);
+  const totalProfitSum = rollCosData.reduce((sum, r) => {
+    const rawRProfitLossZar = r.profitLossZar;
+    return sum + (rawRProfitLossZar || 0);
+  }, 0);
   const anomalyCount = rollCosData.filter(
     (r) => r.anomalyZar !== null && Math.abs(r.anomalyZar) >= 0.01,
   ).length;
@@ -439,92 +441,97 @@ export default function CostOfSalePage() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {compoundRates.map((rate) => (
-                      <tr key={rate.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {rawRateCompoundCode || "—"}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                          {rawRateCompoundName || "—"}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          {editingId === rate.id ? (
-                            <input
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              value={editValue}
-                              onChange={(e) => setEditValue(e.target.value)}
-                              className="w-28 border-gray-300 rounded-md shadow-sm focus:ring-yellow-500 focus:border-yellow-500 sm:text-sm border px-2 py-1"
-                              autoFocus
-                            />
-                          ) : (
-                            <span className="font-semibold text-gray-900">
-                              {formatZar(rate.costPerKgZar)}
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
-                          {editingId === rate.id ? (
-                            <input
-                              type="text"
-                              value={editNotes}
-                              onChange={(e) => setEditNotes(e.target.value)}
-                              className="w-full border-gray-300 rounded-md shadow-sm focus:ring-yellow-500 focus:border-yellow-500 sm:text-sm border px-2 py-1"
-                              placeholder="Notes"
-                            />
-                          ) : (
-                            rawRateNotes || "—"
-                          )}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {formatDateZA(rate.updatedAt)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          {editingId === rate.id ? (
-                            <div className="flex items-center space-x-2">
-                              <button
-                                onClick={() => handleUpdateRate(rate.id)}
-                                disabled={isSaving}
-                                className="text-green-600 hover:text-green-800"
-                                title="Save"
-                              >
-                                <Save className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => setEditingId(null)}
-                                className="text-gray-400 hover:text-gray-600"
-                                title="Cancel"
-                              >
-                                <X className="w-4 h-4" />
-                              </button>
-                            </div>
-                          ) : (
-                            <div className="flex items-center space-x-2">
-                              <button
-                                onClick={() => {
-                                  const rawRateNotes2 = rate.notes;
-                                  setEditingId(rate.id);
-                                  setEditValue(String(rate.costPerKgZar));
-                                  setEditNotes(rawRateNotes2 || "");
-                                }}
-                                className="text-yellow-600 hover:text-yellow-800"
-                                title="Edit"
-                              >
-                                <Edit2 className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => setDeletingId(rate.id)}
-                                className="text-red-500 hover:text-red-700"
-                                title="Delete"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
+                    {compoundRates.map((rate) => {
+                      const rawRateCompoundCode = rate.compoundCode;
+                      const rawRateCompoundName = rate.compoundName;
+                      const rawRateNotes = rate.notes;
+                      return (
+                        <tr key={rate.id} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {rawRateCompoundCode || "—"}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                            {rawRateCompoundName || "—"}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                            {editingId === rate.id ? (
+                              <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={editValue}
+                                onChange={(e) => setEditValue(e.target.value)}
+                                className="w-28 border-gray-300 rounded-md shadow-sm focus:ring-yellow-500 focus:border-yellow-500 sm:text-sm border px-2 py-1"
+                                autoFocus
+                              />
+                            ) : (
+                              <span className="font-semibold text-gray-900">
+                                {formatZar(rate.costPerKgZar)}
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
+                            {editingId === rate.id ? (
+                              <input
+                                type="text"
+                                value={editNotes}
+                                onChange={(e) => setEditNotes(e.target.value)}
+                                className="w-full border-gray-300 rounded-md shadow-sm focus:ring-yellow-500 focus:border-yellow-500 sm:text-sm border px-2 py-1"
+                                placeholder="Notes"
+                              />
+                            ) : (
+                              rawRateNotes || "—"
+                            )}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {formatDateZA(rate.updatedAt)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                            {editingId === rate.id ? (
+                              <div className="flex items-center space-x-2">
+                                <button
+                                  onClick={() => handleUpdateRate(rate.id)}
+                                  disabled={isSaving}
+                                  className="text-green-600 hover:text-green-800"
+                                  title="Save"
+                                >
+                                  <Save className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => setEditingId(null)}
+                                  className="text-gray-400 hover:text-gray-600"
+                                  title="Cancel"
+                                >
+                                  <X className="w-4 h-4" />
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center space-x-2">
+                                <button
+                                  onClick={() => {
+                                    const rawRateNotes2 = rate.notes;
+                                    setEditingId(rate.id);
+                                    setEditValue(String(rate.costPerKgZar));
+                                    setEditNotes(rawRateNotes2 || "");
+                                  }}
+                                  className="text-yellow-600 hover:text-yellow-800"
+                                  title="Edit"
+                                >
+                                  <Edit2 className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => setDeletingId(rate.id)}
+                                  className="text-red-500 hover:text-red-700"
+                                  title="Delete"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               )}
@@ -617,40 +624,43 @@ export default function CostOfSalePage() {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {paginatedRolls.map((roll) => (
-                        <tr key={roll.rollId} className="hover:bg-gray-50">
-                          <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
-                            {roll.rollNumber}
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
-                            {rawRollCompoundCode || "—"}
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-                            {roll.weightKg.toFixed(1)}
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
-                            {formatZar(roll.compoundCostTotal)}
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
-                            {formatZar(roll.calendererCostTotal)}
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm font-semibold text-gray-900">
-                            {formatZar(roll.totalCos)}
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
-                            {formatZar(roll.currentCostZar)}
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm">
-                            <AnomalyBadge anomalyZar={roll.anomalyZar} />
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
-                            {formatZar(roll.priceZar)}
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm">
-                            <ProfitBadge profitLossZar={roll.profitLossZar} />
-                          </td>
-                        </tr>
-                      ))}
+                      {paginatedRolls.map((roll) => {
+                        const rawRollCompoundCode = roll.compoundCode;
+                        return (
+                          <tr key={roll.rollId} className="hover:bg-gray-50">
+                            <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+                              {roll.rollNumber}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                              {rawRollCompoundCode || "—"}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                              {roll.weightKg.toFixed(1)}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                              {formatZar(roll.compoundCostTotal)}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                              {formatZar(roll.calendererCostTotal)}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-sm font-semibold text-gray-900">
+                              {formatZar(roll.totalCos)}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                              {formatZar(roll.currentCostZar)}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-sm">
+                              <AnomalyBadge anomalyZar={roll.anomalyZar} />
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                              {formatZar(roll.priceZar)}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-sm">
+                              <ProfitBadge profitLossZar={roll.profitLossZar} />
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                   <Pagination

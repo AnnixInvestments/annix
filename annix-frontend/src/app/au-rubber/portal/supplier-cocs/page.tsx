@@ -64,8 +64,6 @@ type SortColumn =
   | "createdAt";
 
 export default function SupplierCocsPage() {
-  const rawCocsQueryData = cocsQuery.data;
-  const rawCompaniesQueryData = companiesQuery.data;
   const { showToast } = useToast();
   const { isAdmin } = useAuRubberAuth();
   const { colors, branding } = useAuRubberBranding();
@@ -79,6 +77,8 @@ export default function SupplierCocsPage() {
     includeAllVersions: showAllVersions || undefined,
   });
   const companiesQuery = useAuRubberCompanies();
+  const rawCocsQueryData = cocsQuery.data;
+  const rawCompaniesQueryData = companiesQuery.data;
   const analyzeSupplierCocsMutation = useAuRubberAnalyzeSupplierCocs();
   const createCocsFromAnalysisMutation = useAuRubberCreateCocsFromAnalysis();
   const uploadSupplierCocWithFilesMutation = useAuRubberUploadSupplierCocWithFiles();

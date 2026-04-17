@@ -42,7 +42,6 @@ interface ReconciliationDetail {
 }
 
 export default function ReconciliationDetailPage() {
-  const rawLineInvoiceDate = line.invoiceDate;
   const params = useParams();
   const id = Number(params.id);
   const { showToast } = useToast();
@@ -229,29 +228,32 @@ export default function ReconciliationDetailPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {data.extractedData.map((line, idx) => (
-                    <tr
-                      key={`${line.invoiceNumber}-${idx}`}
-                      className="border-b border-gray-100 dark:border-gray-700"
-                    >
-                      <td className="px-4 py-2 text-gray-900 dark:text-gray-100">
-                        {line.invoiceNumber}
-                      </td>
-                      <td className="px-4 py-2 text-gray-600 dark:text-gray-400">
-                        {rawLineInvoiceDate || "-"}
-                      </td>
-                      <td className="px-4 py-2 text-right text-gray-900 dark:text-gray-100">
-                        R {line.amount.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
-                      </td>
-                      <td className="px-4 py-2">
-                        {line.isCredit ? (
-                          <span className="text-red-600 text-xs">Credit</span>
-                        ) : (
-                          <span className="text-gray-600 text-xs">Invoice</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                  {data.extractedData.map((line, idx) => {
+                    const rawLineInvoiceDate = line.invoiceDate;
+                    return (
+                      <tr
+                        key={`${line.invoiceNumber}-${idx}`}
+                        className="border-b border-gray-100 dark:border-gray-700"
+                      >
+                        <td className="px-4 py-2 text-gray-900 dark:text-gray-100">
+                          {line.invoiceNumber}
+                        </td>
+                        <td className="px-4 py-2 text-gray-600 dark:text-gray-400">
+                          {rawLineInvoiceDate || "-"}
+                        </td>
+                        <td className="px-4 py-2 text-right text-gray-900 dark:text-gray-100">
+                          R {line.amount.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
+                        </td>
+                        <td className="px-4 py-2">
+                          {line.isCredit ? (
+                            <span className="text-red-600 text-xs">Credit</span>
+                          ) : (
+                            <span className="text-gray-600 text-xs">Invoice</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

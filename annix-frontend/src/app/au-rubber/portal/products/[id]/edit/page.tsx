@@ -14,8 +14,6 @@ import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
 import type { CreateRubberProductDto, RubberProductDto } from "@/app/lib/api/rubberPortalApi";
 
 export default function AuRubberProductEditPage() {
-  const rawProductTitle = product.title;
-  const rawProductTitle2 = product.title;
   const params = useParams();
   const router = useRouter();
   const productId = Number(params.id);
@@ -109,6 +107,9 @@ export default function AuRubberProductEditPage() {
       </div>
     );
   }
+
+  const rawProductTitle = product.title;
+  const rawProductTitle2 = product.title;
 
   return (
     <div className="space-y-6">

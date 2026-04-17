@@ -48,11 +48,6 @@ type SortColumn =
   | "unit";
 
 export default function SupplierTaxInvoicesPage() {
-  const rawInvCompanyName = inv.companyName;
-  const rawInvProductDescription = inv.productDescription;
-  const rawInvUnit = inv.unit;
-  const rawCnOriginalInvoiceNumber = cn.originalInvoiceNumber;
-  const rawExtractedDataOriginalInvoiceRef = cn.extractedData?.originalInvoiceRef;
   const { showToast } = useToast();
   const { confirm, ConfirmDialog } = useConfirm();
   const [invoices, setInvoices] = useState<RubberTaxInvoiceDto[]>([]);
@@ -723,138 +718,143 @@ export default function SupplierTaxInvoicesPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {paginatedInvoices.map((inv) => (
-                  <tr
-                    key={inv.id}
-                    className={`hover:bg-gray-50 ${inv.versionStatus === "SUPERSEDED" || inv.versionStatus === "REJECTED" ? "opacity-40" : ""}`}
-                  >
-                    {hasApprovable && (
-                      <td className="px-2 py-3 w-8">
-                        {inv.status === "EXTRACTED" && (
-                          <input
-                            type="checkbox"
-                            checked={selectedForApproval.has(inv.id)}
-                            onChange={() => toggleApprovalSelection(inv.id)}
-                            className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
-                          />
-                        )}
+                {paginatedInvoices.map((inv) => {
+                  const rawInvCompanyName = inv.companyName;
+                  const rawInvProductDescription = inv.productDescription;
+                  const rawInvUnit = inv.unit;
+                  return (
+                    <tr
+                      key={inv.id}
+                      className={`hover:bg-gray-50 ${inv.versionStatus === "SUPERSEDED" || inv.versionStatus === "REJECTED" ? "opacity-40" : ""}`}
+                    >
+                      {hasApprovable && (
+                        <td className="px-2 py-3 w-8">
+                          {inv.status === "EXTRACTED" && (
+                            <input
+                              type="checkbox"
+                              checked={selectedForApproval.has(inv.id)}
+                              onChange={() => toggleApprovalSelection(inv.id)}
+                              className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                            />
+                          )}
+                        </td>
+                      )}
+                      <td className="px-3 py-3 whitespace-nowrap">
+                        <span className="flex items-center gap-1.5">
+                          <Link
+                            href={`/au-rubber/portal/tax-invoices/${inv.id}`}
+                            className="text-orange-600 text-sm font-medium hover:text-orange-800 hover:underline"
+                          >
+                            {inv.invoiceNumber}
+                          </Link>
+                          {inv.version > 1 && (
+                            <span className="px-1.5 py-0.5 text-xs font-semibold rounded-full bg-blue-100 text-blue-700">
+                              v{inv.version}
+                            </span>
+                          )}
+                        </span>
                       </td>
-                    )}
-                    <td className="px-3 py-3 whitespace-nowrap">
-                      <span className="flex items-center gap-1.5">
-                        <Link
-                          href={`/au-rubber/portal/tax-invoices/${inv.id}`}
-                          className="text-orange-600 text-sm font-medium hover:text-orange-800 hover:underline"
-                        >
-                          {inv.invoiceNumber}
-                        </Link>
-                        {inv.version > 1 && (
-                          <span className="px-1.5 py-0.5 text-xs font-semibold rounded-full bg-blue-100 text-blue-700">
-                            v{inv.version}
-                          </span>
-                        )}
-                      </span>
-                    </td>
-                    <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-900">
-                      {rawInvCompanyName || "-"}
-                    </td>
-                    <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-500">
-                      {inv.invoiceDate ? formatDateZA(inv.invoiceDate) : "-"}
-                    </td>
-                    <td className="px-3 py-3 text-sm text-gray-900 max-w-xs truncate">
-                      {rawInvProductDescription || "-"}
-                    </td>
-                    <td className="px-2 py-3 whitespace-nowrap text-sm text-gray-900 text-right">
-                      {inv.numberOfRolls != null ? inv.numberOfRolls : "-"}
-                    </td>
-                    <td className="px-2 py-3 whitespace-nowrap text-sm text-gray-500">
-                      {rawInvUnit || "-"}
-                    </td>
-                    <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-500 text-right">
-                      {formatCurrency(inv.costPerUnit)}
-                    </td>
-                    <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-900 text-right">
-                      {formatCurrency(inv.totalAmount)}
-                    </td>
-                    <td className="px-3 py-3 whitespace-nowrap">
-                      <span className="flex items-center gap-1">
-                        {statusBadge(inv.status)}
-                        {inv.versionStatus === "PENDING_AUTHORIZATION" && (
-                          <span className="px-1.5 inline-flex text-xs leading-5 font-semibold rounded-full bg-amber-100 text-amber-800">
-                            Awaiting Authorization
-                          </span>
-                        )}
-                        {inv.postedToSageAt ? (
-                          <span className="px-1.5 inline-flex text-xs leading-5 font-semibold rounded-full bg-indigo-100 text-indigo-800">
-                            Posted
-                          </span>
-                        ) : inv.exportedToSageAt ? (
-                          <span className="px-1.5 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">
-                            Exported
-                          </span>
-                        ) : null}
-                      </span>
-                    </td>
-                    <td className="px-2 py-3 whitespace-nowrap text-right">
-                      <span className="flex items-center justify-end gap-1">
-                        {inv.versionStatus === "PENDING_AUTHORIZATION" && (
-                          <>
+                      <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-900">
+                        {rawInvCompanyName || "-"}
+                      </td>
+                      <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-500">
+                        {inv.invoiceDate ? formatDateZA(inv.invoiceDate) : "-"}
+                      </td>
+                      <td className="px-3 py-3 text-sm text-gray-900 max-w-xs truncate">
+                        {rawInvProductDescription || "-"}
+                      </td>
+                      <td className="px-2 py-3 whitespace-nowrap text-sm text-gray-900 text-right">
+                        {inv.numberOfRolls != null ? inv.numberOfRolls : "-"}
+                      </td>
+                      <td className="px-2 py-3 whitespace-nowrap text-sm text-gray-500">
+                        {rawInvUnit || "-"}
+                      </td>
+                      <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-500 text-right">
+                        {formatCurrency(inv.costPerUnit)}
+                      </td>
+                      <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-900 text-right">
+                        {formatCurrency(inv.totalAmount)}
+                      </td>
+                      <td className="px-3 py-3 whitespace-nowrap">
+                        <span className="flex items-center gap-1">
+                          {statusBadge(inv.status)}
+                          {inv.versionStatus === "PENDING_AUTHORIZATION" && (
+                            <span className="px-1.5 inline-flex text-xs leading-5 font-semibold rounded-full bg-amber-100 text-amber-800">
+                              Awaiting Authorization
+                            </span>
+                          )}
+                          {inv.postedToSageAt ? (
+                            <span className="px-1.5 inline-flex text-xs leading-5 font-semibold rounded-full bg-indigo-100 text-indigo-800">
+                              Posted
+                            </span>
+                          ) : inv.exportedToSageAt ? (
+                            <span className="px-1.5 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">
+                              Exported
+                            </span>
+                          ) : null}
+                        </span>
+                      </td>
+                      <td className="px-2 py-3 whitespace-nowrap text-right">
+                        <span className="flex items-center justify-end gap-1">
+                          {inv.versionStatus === "PENDING_AUTHORIZATION" && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleAuthorizeVersion(inv);
+                                }}
+                                disabled={authorizingId === inv.id}
+                                className="text-gray-400 hover:text-green-600 disabled:opacity-50"
+                                title="Authorize version"
+                              >
+                                <ShieldCheck className="w-4 h-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRejectVersion(inv);
+                                }}
+                                disabled={rejectingId === inv.id}
+                                className="text-gray-400 hover:text-red-600 disabled:opacity-50"
+                                title="Reject version"
+                              >
+                                <ShieldX className="w-4 h-4" />
+                              </button>
+                            </>
+                          )}
+                          {inv.status === "APPROVED" && inv.sageInvoiceId === null && (
                             <button
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleAuthorizeVersion(inv);
+                                handlePostToSage(inv);
                               }}
-                              disabled={authorizingId === inv.id}
-                              className="text-gray-400 hover:text-green-600 disabled:opacity-50"
-                              title="Authorize version"
+                              disabled={postingToSageId === inv.id}
+                              className="text-gray-400 hover:text-indigo-600 disabled:opacity-50"
+                              title="Post to Sage"
                             >
-                              <ShieldCheck className="w-4 h-4" />
+                              <Send className="w-4 h-4" />
                             </button>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleRejectVersion(inv);
-                              }}
-                              disabled={rejectingId === inv.id}
-                              className="text-gray-400 hover:text-red-600 disabled:opacity-50"
-                              title="Reject version"
-                            >
-                              <ShieldX className="w-4 h-4" />
-                            </button>
-                          </>
-                        )}
-                        {inv.status === "APPROVED" && inv.sageInvoiceId === null && (
+                          )}
                           <button
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              handlePostToSage(inv);
+                              handleDelete(inv.id, inv.invoiceNumber);
                             }}
-                            disabled={postingToSageId === inv.id}
-                            className="text-gray-400 hover:text-indigo-600 disabled:opacity-50"
-                            title="Post to Sage"
+                            disabled={deletingId === inv.id}
+                            className="text-gray-400 hover:text-red-600 disabled:opacity-50"
+                            title="Delete invoice"
                           >
-                            <Send className="w-4 h-4" />
+                            <Trash2 className="w-4 h-4" />
                           </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDelete(inv.id, inv.invoiceNumber);
-                          }}
-                          disabled={deletingId === inv.id}
-                          className="text-gray-400 hover:text-red-600 disabled:opacity-50"
-                          title="Delete invoice"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </span>
-                    </td>
-                  </tr>
-                ))}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -912,138 +912,142 @@ export default function SupplierTaxInvoicesPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {creditNotes.map((cn) => (
-                  <tr key={cn.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-sm">
-                      <Link
-                        href={`/au-rubber/portal/tax-invoices/${cn.id}`}
-                        className="text-amber-700 hover:text-amber-900 font-medium"
-                      >
-                        {cn.invoiceNumber}
-                      </Link>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">{cn.companyName}</td>
-                    <td className="px-4 py-3 text-sm text-gray-600">
-                      {cn.invoiceDate ? formatDateZA(cn.invoiceDate) : "-"}
-                    </td>
-                    <td className="px-4 py-3 text-sm">
-                      {cn.originalInvoiceId ? (
-                        <Link
-                          href={`/au-rubber/portal/tax-invoices/${cn.originalInvoiceId}`}
-                          className="text-amber-700 hover:text-amber-900"
-                        >
-                          {rawCnOriginalInvoiceNumber || `#${cn.originalInvoiceId}`}
-                        </Link>
-                      ) : (
-                        <span className="text-gray-400">
-                          {rawExtractedDataOriginalInvoiceRef || "-"}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-sm">
-                      {cn.creditNoteRollNumbers.length > 0 ? (
-                        <span className="text-red-600 font-medium">
-                          {cn.creditNoteRollNumbers.join(", ")}
-                        </span>
-                      ) : (
-                        <span className="text-gray-400">-</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">
-                      {cn.totalAmount != null
-                        ? `R ${Number(cn.totalAmount).toLocaleString("en-ZA", { minimumFractionDigits: 2 })}`
-                        : "-"}
-                    </td>
-                    <td className="px-4 py-3 text-sm">{statusBadge(cn.status)}</td>
-                    <td className="px-4 py-3 text-sm text-right">
-                      <div className="flex items-center justify-end gap-1">
+                {creditNotes.map((cn) => {
+                  const rawCnOriginalInvoiceNumber = cn.originalInvoiceNumber;
+                  const rawExtractedDataOriginalInvoiceRef = cn.extractedData?.originalInvoiceRef;
+                  return (
+                    <tr key={cn.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3 text-sm">
                         <Link
                           href={`/au-rubber/portal/tax-invoices/${cn.id}`}
-                          className="p-1 text-gray-400 hover:text-amber-600"
-                          title="View"
+                          className="text-amber-700 hover:text-amber-900 font-medium"
                         >
-                          <FileText className="w-4 h-4" />
+                          {cn.invoiceNumber}
                         </Link>
-                        {cn.status === "PENDING" && (
-                          <button
-                            onClick={async () => {
-                              try {
-                                await auRubberApiClient.extractTaxInvoice(cn.id);
-                                showToast("Credit note extracted", "success");
-                                fetchData();
-                              } catch (err) {
-                                showToast(
-                                  err instanceof Error ? err.message : "Extraction failed",
-                                  "error",
-                                );
-                              }
-                            }}
-                            className="p-1 text-gray-400 hover:text-blue-600"
-                            title="Extract"
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-600">{cn.companyName}</td>
+                      <td className="px-4 py-3 text-sm text-gray-600">
+                        {cn.invoiceDate ? formatDateZA(cn.invoiceDate) : "-"}
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        {cn.originalInvoiceId ? (
+                          <Link
+                            href={`/au-rubber/portal/tax-invoices/${cn.originalInvoiceId}`}
+                            className="text-amber-700 hover:text-amber-900"
+                          >
+                            {rawCnOriginalInvoiceNumber || `#${cn.originalInvoiceId}`}
+                          </Link>
+                        ) : (
+                          <span className="text-gray-400">
+                            {rawExtractedDataOriginalInvoiceRef || "-"}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        {cn.creditNoteRollNumbers.length > 0 ? (
+                          <span className="text-red-600 font-medium">
+                            {cn.creditNoteRollNumbers.join(", ")}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-600">
+                        {cn.totalAmount != null
+                          ? `R ${Number(cn.totalAmount).toLocaleString("en-ZA", { minimumFractionDigits: 2 })}`
+                          : "-"}
+                      </td>
+                      <td className="px-4 py-3 text-sm">{statusBadge(cn.status)}</td>
+                      <td className="px-4 py-3 text-sm text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Link
+                            href={`/au-rubber/portal/tax-invoices/${cn.id}`}
+                            className="p-1 text-gray-400 hover:text-amber-600"
+                            title="View"
                           >
                             <FileText className="w-4 h-4" />
-                          </button>
-                        )}
-                        {cn.status !== "APPROVED" && (
+                          </Link>
+                          {cn.status === "PENDING" && (
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await auRubberApiClient.extractTaxInvoice(cn.id);
+                                  showToast("Credit note extracted", "success");
+                                  fetchData();
+                                } catch (err) {
+                                  showToast(
+                                    err instanceof Error ? err.message : "Extraction failed",
+                                    "error",
+                                  );
+                                }
+                              }}
+                              className="p-1 text-gray-400 hover:text-blue-600"
+                              title="Extract"
+                            >
+                              <FileText className="w-4 h-4" />
+                            </button>
+                          )}
+                          {cn.status !== "APPROVED" && (
+                            <button
+                              onClick={async () => {
+                                const rollCount = cn.creditNoteRollNumbers.length;
+                                const message =
+                                  rollCount > 0
+                                    ? `Approving this credit note will mark ${rollCount} roll(s) as REJECTED. Continue?`
+                                    : "Approve this credit note?";
+                                const confirmed = await confirm({
+                                  title: "Approve Credit Note",
+                                  message,
+                                });
+                                if (!confirmed) return;
+                                try {
+                                  await auRubberApiClient.approveTaxInvoice(cn.id);
+                                  showToast(
+                                    "Credit note approved — rolls marked as rejected",
+                                    "success",
+                                  );
+                                  fetchData();
+                                } catch (err) {
+                                  showToast(
+                                    err instanceof Error ? err.message : "Approval failed",
+                                    "error",
+                                  );
+                                }
+                              }}
+                              className="p-1 text-gray-400 hover:text-green-600"
+                              title="Approve"
+                            >
+                              <CheckCircle className="w-4 h-4" />
+                            </button>
+                          )}
                           <button
                             onClick={async () => {
-                              const rollCount = cn.creditNoteRollNumbers.length;
-                              const message =
-                                rollCount > 0
-                                  ? `Approving this credit note will mark ${rollCount} roll(s) as REJECTED. Continue?`
-                                  : "Approve this credit note?";
                               const confirmed = await confirm({
-                                title: "Approve Credit Note",
-                                message,
+                                title: "Delete Credit Note",
+                                message: "Delete this credit note?",
                               });
                               if (!confirmed) return;
                               try {
-                                await auRubberApiClient.approveTaxInvoice(cn.id);
-                                showToast(
-                                  "Credit note approved — rolls marked as rejected",
-                                  "success",
-                                );
+                                await auRubberApiClient.deleteTaxInvoice(cn.id);
+                                showToast("Credit note deleted", "success");
                                 fetchData();
                               } catch (err) {
                                 showToast(
-                                  err instanceof Error ? err.message : "Approval failed",
+                                  err instanceof Error ? err.message : "Failed to delete",
                                   "error",
                                 );
                               }
                             }}
-                            className="p-1 text-gray-400 hover:text-green-600"
-                            title="Approve"
+                            className="p-1 text-gray-400 hover:text-red-600"
+                            title="Delete"
                           >
-                            <CheckCircle className="w-4 h-4" />
+                            <Trash2 className="w-4 h-4" />
                           </button>
-                        )}
-                        <button
-                          onClick={async () => {
-                            const confirmed = await confirm({
-                              title: "Delete Credit Note",
-                              message: "Delete this credit note?",
-                            });
-                            if (!confirmed) return;
-                            try {
-                              await auRubberApiClient.deleteTaxInvoice(cn.id);
-                              showToast("Credit note deleted", "success");
-                              fetchData();
-                            } catch (err) {
-                              showToast(
-                                err instanceof Error ? err.message : "Failed to delete",
-                                "error",
-                              );
-                            }
-                          }}
-                          className="p-1 text-gray-400 hover:text-red-600"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

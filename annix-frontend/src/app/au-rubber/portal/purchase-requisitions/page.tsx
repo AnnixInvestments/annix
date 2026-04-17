@@ -49,7 +49,6 @@ const sourceColors: Record<RequisitionSourceType, string> = {
 };
 
 export default function PurchaseRequisitionsPage() {
-  const rawItemCompoundStockId2 = item.compoundStockId;
   const { showToast } = useToast();
   const [requisitions, setRequisitions] = useState<RequisitionDto[]>([]);
   const [compoundStocks, setCompoundStocks] = useState<RubberCompoundStockDto[]>([]);
@@ -219,8 +218,8 @@ export default function PurchaseRequisitionsPage() {
         notes: formNotes || undefined,
         items: validItems.map((item) => {
           const rawItemCompoundStockId = item.compoundStockId;
-          const rawStockCompoundName = stock?.compoundName;
           const stock = compoundStocks.find((s) => s.id === item.compoundStockId);
+          const rawStockCompoundName = stock?.compoundName;
           return {
             itemType: "COMPOUND" as const,
             compoundStockId: rawItemCompoundStockId || undefined,
@@ -572,57 +571,60 @@ export default function PurchaseRequisitionsPage() {
                     </button>
                   </div>
                   <div className="space-y-2">
-                    {formItems.map((item, index) => (
-                      <div key={index} className="flex items-center space-x-2">
-                        <select
-                          value={rawItemCompoundStockId2 || ""}
-                          onChange={(e) =>
-                            updateFormItem(
-                              index,
-                              "compoundStockId",
-                              e.target.value ? Number(e.target.value) : null,
-                            )
-                          }
-                          className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
-                        >
-                          <option value="">Select compound</option>
-                          {compoundStocks.map((s) => (
-                            <option key={s.id} value={s.id}>
-                              {s.compoundName} ({s.compoundCode})
-                            </option>
-                          ))}
-                        </select>
-                        <input
-                          type="number"
-                          value={item.quantityKg}
-                          onChange={(e) => updateFormItem(index, "quantityKg", e.target.value)}
-                          placeholder="Qty (kg)"
-                          className="w-32 rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
-                          step="0.01"
-                        />
-                        {formItems.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => removeFormItem(index)}
-                            className="text-red-600 hover:text-red-800"
+                    {formItems.map((item, index) => {
+                      const rawItemCompoundStockId2 = item.compoundStockId;
+                      return (
+                        <div key={index} className="flex items-center space-x-2">
+                          <select
+                            value={rawItemCompoundStockId2 || ""}
+                            onChange={(e) =>
+                              updateFormItem(
+                                index,
+                                "compoundStockId",
+                                e.target.value ? Number(e.target.value) : null,
+                              )
+                            }
+                            className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
                           >
-                            <svg
-                              className="w-5 h-5"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
+                            <option value="">Select compound</option>
+                            {compoundStocks.map((s) => (
+                              <option key={s.id} value={s.id}>
+                                {s.compoundName} ({s.compoundCode})
+                              </option>
+                            ))}
+                          </select>
+                          <input
+                            type="number"
+                            value={item.quantityKg}
+                            onChange={(e) => updateFormItem(index, "quantityKg", e.target.value)}
+                            placeholder="Qty (kg)"
+                            className="w-32 rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
+                            step="0.01"
+                          />
+                          {formItems.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => removeFormItem(index)}
+                              className="text-red-600 hover:text-red-800"
                             >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M6 18L18 6M6 6l12 12"
-                              />
-                            </svg>
-                          </button>
-                        )}
-                      </div>
-                    ))}
+                              <svg
+                                className="w-5 h-5"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M6 18L18 6M6 6l12 12"
+                                />
+                              </svg>
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </div>

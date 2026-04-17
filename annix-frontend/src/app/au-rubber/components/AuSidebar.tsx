@@ -300,12 +300,12 @@ const singleNavItems: SingleNavItem[] = [
 ];
 
 export function AuSidebar() {
+  const pathname = usePathname();
+  const { user, logout, hasPermission, isAdmin } = useAuRubberAuth();
   const rawEmailSplitAt0 = user?.email?.split("@")[0];
   const rawFirstNameAt0 = user?.firstName?.[0];
   const rawLastNameAt0 = user?.lastName?.[0];
   const rawUserEmail = user?.email;
-  const pathname = usePathname();
-  const { user, logout, hasPermission, isAdmin } = useAuRubberAuth();
   const { colors } = useAuRubberBranding();
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["Products"]));
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);

@@ -35,13 +35,15 @@ export function AllocationPlanSection(props: AllocationPlanSectionProps) {
     stockControlApiClient
       .allocationPlan(jobId)
       .then((response) => {
-        const recommendedPacks = item.recommendedPacks;
         setPlan(response);
         const initialCounts = response.items.reduce(
-          (acc, item) => ({
-            ...acc,
-            [item.stockItemId]: recommendedPacks || 0,
-          }),
+          (acc, item) => {
+            const recommendedPacks = item.recommendedPacks;
+            return {
+              ...acc,
+              [item.stockItemId]: recommendedPacks || 0,
+            };
+          },
           {} as Record<number, number>,
         );
         setPackCounts(initialCounts);

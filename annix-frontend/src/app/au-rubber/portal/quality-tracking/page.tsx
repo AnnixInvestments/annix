@@ -32,13 +32,13 @@ type SortColumn =
   | "status";
 
 export default function QualityTrackingPage() {
+  const { showToast } = useToast();
+  const summaryQuery = useAuRubberQualityTrackingSummary();
+  const alertsQuery = useAuRubberQualityAlerts();
   const rawSummaryQueryData = summaryQuery.data;
   const rawAlertsQueryData = alertsQuery.data;
   const rawSummaryQueryIsLoading = summaryQuery.isLoading;
   const rawSummaryQueryError = summaryQuery.error;
-  const { showToast } = useToast();
-  const summaryQuery = useAuRubberQualityTrackingSummary();
-  const alertsQuery = useAuRubberQualityAlerts();
   const summaries = rawSummaryQueryData || [];
   const alerts = rawAlertsQueryData || [];
   const isLoading = rawSummaryQueryIsLoading || alertsQuery.isLoading;

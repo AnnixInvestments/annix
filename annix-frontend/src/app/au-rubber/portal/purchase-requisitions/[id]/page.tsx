@@ -22,14 +22,11 @@ const statusColors: Record<RequisitionStatus, string> = {
 };
 
 export default function PurchaseRequisitionDetailPage() {
-  const rawUserEmail = user?.email;
-  const rawRequisitionSupplierCompanyName = requisition.supplierCompanyName;
-  const rawRequisitionExternalPoNumber = requisition.externalPoNumber;
-  const rawRequisitionCreatedBy = requisition.createdBy;
   const params = useParams();
   const router = useRouter();
   const { showToast } = useToast();
   const { user } = useAuRubberAuth();
+  const rawUserEmail = user?.email;
   const [requisition, setRequisition] = useState<RequisitionDto | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -191,6 +188,9 @@ export default function PurchaseRequisitionDetailPage() {
   const canReceive =
     requisition.status === "ORDERED" || requisition.status === "PARTIALLY_RECEIVED";
   const canCancel = requisition.status !== "RECEIVED" && requisition.status !== "CANCELLED";
+  const rawRequisitionSupplierCompanyName = requisition.supplierCompanyName;
+  const rawRequisitionExternalPoNumber = requisition.externalPoNumber;
+  const rawRequisitionCreatedBy = requisition.createdBy;
 
   return (
     <div className="space-y-6">

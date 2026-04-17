@@ -47,12 +47,6 @@ interface ExtractedSpecs {
 }
 
 export default function SupplierCocDetailPage() {
-  const rawCocCocNumber2 = coc.cocNumber;
-  const rawCocCocNumber3 = coc.cocNumber;
-  const rawCocSupplierCompanyName = coc.supplierCompanyName;
-  const rawCocCompoundCode2 = coc.compoundCode;
-  const rawCocOrderNumber2 = coc.orderNumber;
-  const rawCocTicketNumber2 = coc.ticketNumber;
   const params = useParams();
   const router = useRouter();
   const { showToast } = useToast();
@@ -181,11 +175,11 @@ export default function SupplierCocDetailPage() {
   };
 
   const startEditing = () => {
+    if (!coc) return;
     const rawCocCocNumber = coc.cocNumber;
     const rawCocCompoundCode = coc.compoundCode;
     const rawCocOrderNumber = coc.orderNumber;
     const rawCocTicketNumber = coc.ticketNumber;
-    if (!coc) return;
     setEditFields({
       cocType: coc.cocType,
       cocNumber: rawCocCocNumber || "",
@@ -276,13 +270,13 @@ export default function SupplierCocDetailPage() {
   };
 
   const startEditingExtracted = useCallback(() => {
+    const extracted = coc?.extractedData as Record<string, unknown> | null;
     const rawExtractedBatches = extracted?.batches;
     const rawExtractedCompoundCode = extracted?.compoundCode;
     const rawExtractedCocNumber = extracted?.cocNumber;
     const rawExtractedProductionDate = extracted?.productionDate;
     const rawExtractedOrderNumber = extracted?.orderNumber;
     const rawExtractedTicketNumber = extracted?.ticketNumber;
-    const extracted = coc?.extractedData as Record<string, unknown> | null;
     const rawBatches = (rawExtractedBatches || []) as ExtractedBatch[];
     setEditedBatches(rawBatches.map((b) => ({ ...b })));
     setEditedExtractedFields({
@@ -408,6 +402,13 @@ export default function SupplierCocDetailPage() {
       </div>
     );
   }
+
+  const rawCocCocNumber2 = coc.cocNumber;
+  const rawCocCocNumber3 = coc.cocNumber;
+  const rawCocSupplierCompanyName = coc.supplierCompanyName;
+  const rawCocCompoundCode2 = coc.compoundCode;
+  const rawCocOrderNumber2 = coc.orderNumber;
+  const rawCocTicketNumber2 = coc.ticketNumber;
 
   return (
     <div className="space-y-6">
@@ -710,32 +711,10 @@ export default function SupplierCocDetailPage() {
             </div>
 
             {(() => {
+              const extracted = coc.extractedData as Record<string, unknown>;
               const rawExtractedSpecifications = extracted.specifications;
               const rawExtractedBatches2 = extracted.batches;
               const rawExtractedCompoundCode2 = extracted.compoundCode;
-              const rawEditedExtractedFieldsByFkey = editedExtractedFields[f.key];
-              const rawBatchBatchNumber2 = batch.batchNumber;
-              const rawBatchShoreA = batch.shoreA;
-              const rawBatchSpecificGravity = batch.specificGravity;
-              const rawBatchTensileStrengthMpa = batch.tensileStrengthMpa;
-              const rawBatchElongationPercent = batch.elongationPercent;
-              const rawBatchTearStrengthKnM = batch.tearStrengthKnM;
-              const rawBatchReboundPercent = batch.reboundPercent;
-              const rawBatchRheometerSMin = batch.rheometerSMin;
-              const rawBatchRheometerSMax = batch.rheometerSMax;
-              const rawBatchRheometerTs2 = batch.rheometerTs2;
-              const rawBatchRheometerTc90 = batch.rheometerTc90;
-              const rawBatchShoreA2 = batch.shoreA;
-              const rawBatchSpecificGravity2 = batch.specificGravity;
-              const rawBatchTensileStrengthMpa2 = batch.tensileStrengthMpa;
-              const rawBatchElongationPercent2 = batch.elongationPercent;
-              const rawBatchTearStrengthKnM2 = batch.tearStrengthKnM;
-              const rawBatchReboundPercent2 = batch.reboundPercent;
-              const rawBatchRheometerSMin2 = batch.rheometerSMin;
-              const rawBatchRheometerSMax2 = batch.rheometerSMax;
-              const rawBatchRheometerTs22 = batch.rheometerTs2;
-              const rawBatchRheometerTc902 = batch.rheometerTc90;
-              const extracted = coc.extractedData as Record<string, unknown>;
               const specs = (rawExtractedSpecifications || {}) as ExtractedSpecs;
               const rawBatches = isEditingExtracted
                 ? editedBatches
@@ -765,26 +744,29 @@ export default function SupplierCocDetailPage() {
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
                     {editableFields
                       .filter((f) => isEditingExtracted || f.value)
-                      .map((f) => (
-                        <div key={f.label}>
-                          <dt className="text-xs font-medium text-gray-500">{f.label}</dt>
-                          {isEditingExtracted ? (
-                            <input
-                              type="text"
-                              value={rawEditedExtractedFieldsByFkey || ""}
-                              onChange={(e) =>
-                                setEditedExtractedFields((prev) => ({
-                                  ...prev,
-                                  [f.key]: e.target.value,
-                                }))
-                              }
-                              className="mt-0.5 w-full rounded border border-gray-300 px-2 py-1 text-sm"
-                            />
-                          ) : (
-                            <dd className="mt-0.5 text-sm text-gray-900">{String(f.value)}</dd>
-                          )}
-                        </div>
-                      ))}
+                      .map((f) => {
+                        const rawEditedExtractedFieldsByFkey = editedExtractedFields[f.key];
+                        return (
+                          <div key={f.label}>
+                            <dt className="text-xs font-medium text-gray-500">{f.label}</dt>
+                            {isEditingExtracted ? (
+                              <input
+                                type="text"
+                                value={rawEditedExtractedFieldsByFkey || ""}
+                                onChange={(e) =>
+                                  setEditedExtractedFields((prev) => ({
+                                    ...prev,
+                                    [f.key]: e.target.value,
+                                  }))
+                                }
+                                className="mt-0.5 w-full rounded border border-gray-300 px-2 py-1 text-sm"
+                              />
+                            ) : (
+                              <dd className="mt-0.5 text-sm text-gray-900">{String(f.value)}</dd>
+                            )}
+                          </div>
+                        );
+                      })}
                     {hasGraphField && !isEditingExtracted ? (
                       <div>
                         <dt className="text-xs font-medium text-gray-500">{hasGraphField.label}</dt>
@@ -907,8 +889,29 @@ export default function SupplierCocDetailPage() {
                           </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
-                          {rawBatches.map((batch, bIdx) =>
-                            isEditingExtracted ? (
+                          {rawBatches.map((batch, bIdx) => {
+                            const rawBatchBatchNumber2 = batch.batchNumber;
+                            const rawBatchShoreA = batch.shoreA;
+                            const rawBatchSpecificGravity = batch.specificGravity;
+                            const rawBatchTensileStrengthMpa = batch.tensileStrengthMpa;
+                            const rawBatchElongationPercent = batch.elongationPercent;
+                            const rawBatchTearStrengthKnM = batch.tearStrengthKnM;
+                            const rawBatchReboundPercent = batch.reboundPercent;
+                            const rawBatchRheometerSMin = batch.rheometerSMin;
+                            const rawBatchRheometerSMax = batch.rheometerSMax;
+                            const rawBatchRheometerTs2 = batch.rheometerTs2;
+                            const rawBatchRheometerTc90 = batch.rheometerTc90;
+                            const rawBatchShoreA2 = batch.shoreA;
+                            const rawBatchSpecificGravity2 = batch.specificGravity;
+                            const rawBatchTensileStrengthMpa2 = batch.tensileStrengthMpa;
+                            const rawBatchElongationPercent2 = batch.elongationPercent;
+                            const rawBatchTearStrengthKnM2 = batch.tearStrengthKnM;
+                            const rawBatchReboundPercent2 = batch.reboundPercent;
+                            const rawBatchRheometerSMin2 = batch.rheometerSMin;
+                            const rawBatchRheometerSMax2 = batch.rheometerSMax;
+                            const rawBatchRheometerTs22 = batch.rheometerTs2;
+                            const rawBatchRheometerTc902 = batch.rheometerTc90;
+                            return isEditingExtracted ? (
                               <tr key={bIdx} className="bg-yellow-50">
                                 <td className="px-3 py-1.5">
                                   <input
@@ -1117,8 +1120,8 @@ export default function SupplierCocDetailPage() {
                                   {rawBatchRheometerTc902 || "-"}
                                 </td>
                               </tr>
-                            ),
-                          )}
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>

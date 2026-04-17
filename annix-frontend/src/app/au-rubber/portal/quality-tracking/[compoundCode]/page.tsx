@@ -117,13 +117,6 @@ function MetricCard(props: MetricCardProps) {
 }
 
 export default function QualityTrackingDetailPage() {
-  const rawConfigFormWindowSize = configForm.windowSize;
-  const rawConfigFormShoreADriftThreshold = configForm.shoreADriftThreshold;
-  const rawConfigFormSpecificGravityDriftThreshold = configForm.specificGravityDriftThreshold;
-  const rawConfigFormTensileStrengthDropPercent = configForm.tensileStrengthDropPercent;
-  const rawConfigFormTearStrengthDropPercent = configForm.tearStrengthDropPercent;
-  const rawConfigFormElongationDropPercent = configForm.elongationDropPercent;
-  const rawConfigFormTc90CvThreshold = configForm.tc90CvThreshold;
   const params = useParams();
   const router = useRouter();
   const { showToast } = useToast();
@@ -134,6 +127,13 @@ export default function QualityTrackingDetailPage() {
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [configForm, setConfigForm] = useState<Partial<QualityConfigDto>>({});
   const [isSavingConfig, setIsSavingConfig] = useState(false);
+  const rawConfigFormWindowSize = configForm.windowSize;
+  const rawConfigFormShoreADriftThreshold = configForm.shoreADriftThreshold;
+  const rawConfigFormSpecificGravityDriftThreshold = configForm.specificGravityDriftThreshold;
+  const rawConfigFormTensileStrengthDropPercent = configForm.tensileStrengthDropPercent;
+  const rawConfigFormTearStrengthDropPercent = configForm.tearStrengthDropPercent;
+  const rawConfigFormElongationDropPercent = configForm.elongationDropPercent;
+  const rawConfigFormTc90CvThreshold = configForm.tc90CvThreshold;
 
   const compoundCode = decodeURIComponent(params.compoundCode as string);
 

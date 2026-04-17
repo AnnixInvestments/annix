@@ -59,16 +59,6 @@ function safeFixed(value: unknown, decimals: number): string | null {
 }
 
 export default function DeliveryNoteDetailPage() {
-  const rawNoteDeliveryNoteNumber = note.deliveryNoteNumber;
-  const rawNoteDeliveryNoteNumber2 = note.deliveryNoteNumber;
-  const rawNoteDeliveryNoteNumber3 = note.deliveryNoteNumber;
-  const rawNoteSupplierCompanyName = note.supplierCompanyName;
-  const rawNoteCustomerReference = note.customerReference;
-  const rawDnDeliveryNoteNumber = dn.deliveryNoteNumber;
-  const rawDnDeliveryDate = dn.deliveryDate;
-  const rawDnCustomerName = dn.customerName;
-  const rawDnCustomerReference = dn.customerReference;
-  const rawCocCocNumber = coc.cocNumber;
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -224,10 +214,10 @@ export default function DeliveryNoteDetailPage() {
   };
 
   const handleAddRow = (dnIdx: number) => {
-    const rawExistingRolls = existing.rolls;
     if (!editedData) return;
     const newData = [...editedData];
     const existing = newData[dnIdx];
+    const rawExistingRolls = existing.rolls;
     const lastRoll = existing.rolls?.length ? existing.rolls[existing.rolls.length - 1] : null;
     const lastThickness = lastRoll?.thicknessMm;
     const lastWidth = lastRoll?.widthMm;
@@ -514,16 +504,26 @@ export default function DeliveryNoteDetailPage() {
   const hasExtractedData =
     note.extractedData &&
     (() => {
-      const rawItemDeliveryNoteNumber = item.deliveryNoteNumber;
-      const hasFields = (item: ExtractedDeliveryNoteData) =>
-        rawItemDeliveryNoteNumber ||
-        item.deliveryDate ||
-        item.supplierName ||
-        item.customerName ||
-        item.customerReference ||
-        item.batchRange ||
-        item.totalWeightKg ||
-        (item.rolls && item.rolls.length > 0);
+      const hasFields = (item: ExtractedDeliveryNoteData) => {
+        const rawItemDeliveryNoteNumber = item.deliveryNoteNumber;
+        const rawItemDeliveryDate = item.deliveryDate;
+        const rawItemSupplierName = item.supplierName;
+        const rawItemCustomerName = item.customerName;
+        const rawItemCustomerReference = item.customerReference;
+        const rawItemBatchRange = item.batchRange;
+        const rawItemTotalWeightKg = item.totalWeightKg;
+        const rawItemRolls = item.rolls;
+        return (
+          rawItemDeliveryNoteNumber ||
+          rawItemDeliveryDate ||
+          rawItemSupplierName ||
+          rawItemCustomerName ||
+          rawItemCustomerReference ||
+          rawItemBatchRange ||
+          rawItemTotalWeightKg ||
+          (rawItemRolls && rawItemRolls.length > 0)
+        );
+      };
 
       if (Array.isArray(note.extractedData)) {
         return (
@@ -542,6 +542,12 @@ export default function DeliveryNoteDetailPage() {
           (item): item is ExtractedDeliveryNoteData => item !== null && item !== undefined,
         )
       : [];
+
+  const rawNoteDeliveryNoteNumber = note.deliveryNoteNumber;
+  const rawNoteDeliveryNoteNumber2 = note.deliveryNoteNumber;
+  const rawNoteDeliveryNoteNumber3 = note.deliveryNoteNumber;
+  const rawNoteSupplierCompanyName = note.supplierCompanyName;
+  const rawNoteCustomerReference = note.customerReference;
 
   return (
     <div className="space-y-6">
@@ -911,8 +917,12 @@ export default function DeliveryNoteDetailPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {displayData.flatMap((dn, dnIdx) =>
-                  dn.rolls && dn.rolls.length > 0
+                {displayData.flatMap((dn, dnIdx) => {
+                  const rawDnDeliveryNoteNumber = dn.deliveryNoteNumber;
+                  const rawDnDeliveryDate = dn.deliveryDate;
+                  const rawDnCustomerName = dn.customerName;
+                  const rawDnCustomerReference = dn.customerReference;
+                  return dn.rolls && dn.rolls.length > 0
                     ? dn.rolls
                         .filter((r): r is EditableRoll => r != null && typeof r === "object")
                         .map((roll, rollIdx) => {
@@ -1180,8 +1190,8 @@ export default function DeliveryNoteDetailPage() {
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">-</td>
                         </tr>,
-                      ],
-                )}
+                      ];
+                })}
               </tbody>
             </table>
             {isEditing && (
@@ -1437,12 +1447,15 @@ export default function DeliveryNoteDetailPage() {
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
                   >
                     <option value="">Select a CoC</option>
-                    {unlinkedCocs.map((coc) => (
-                      <option key={coc.id} value={coc.id}>
-                        {rawCocCocNumber || `COC-${coc.id}`} - {coc.supplierCompanyName} (
-                        {coc.cocTypeLabel})
-                      </option>
-                    ))}
+                    {unlinkedCocs.map((coc) => {
+                      const rawCocCocNumber = coc.cocNumber;
+                      return (
+                        <option key={coc.id} value={coc.id}>
+                          {rawCocCocNumber || `COC-${coc.id}`} - {coc.supplierCompanyName} (
+                          {coc.cocTypeLabel})
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
               </div>

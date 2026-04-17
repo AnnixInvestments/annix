@@ -32,27 +32,26 @@ type SortColumn =
   | "createdAt";
 
 const typeColor = (type: CompoundMovementType) => {
-  const rawColorsByType = colors[type];
   const colors: Record<CompoundMovementType, string> = {
     IN: "bg-green-100 text-green-800",
     OUT: "bg-red-100 text-red-800",
     ADJUSTMENT: "bg-blue-100 text-blue-800",
   };
+  const rawColorsByType = colors[type];
   return rawColorsByType || "bg-gray-100 text-gray-800";
 };
 
 const typeLabel = (type: CompoundMovementType) => {
-  const rawLabelsByType = labels[type];
   const labels: Record<CompoundMovementType, string> = {
     IN: "In",
     OUT: "Out",
     ADJUSTMENT: "Adjustment",
   };
+  const rawLabelsByType = labels[type];
   return rawLabelsByType || type;
 };
 
 const referenceLabel = (type: CompoundMovementReferenceType) => {
-  const rawLabelsByType2 = labels[type];
   const labels: Record<CompoundMovementReferenceType, string> = {
     PURCHASE: "Purchase Order",
     PRODUCTION: "Production",
@@ -64,14 +63,11 @@ const referenceLabel = (type: CompoundMovementReferenceType) => {
     INVOICE_RECEIPT: "Invoice Receipt",
     DELIVERY_DEDUCTION: "Delivery Deduction",
   };
+  const rawLabelsByType2 = labels[type];
   return rawLabelsByType2 || type;
 };
 
 export default function StockMovementsPage() {
-  const rawMCompoundName = m.compoundName;
-  const rawMBatchNumber = m.batchNumber;
-  const rawMNotes = m.notes;
-  const rawMNotes2 = m.notes;
   const { showToast } = useToast();
   const [movements, setMovements] = useState<RubberCompoundMovementDto[]>([]);
   const [stocks, setStocks] = useState<RubberCompoundStockDto[]>([]);
@@ -312,52 +308,57 @@ export default function StockMovementsPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {paginatedMovements.map((m) => (
-                <tr key={m.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {formatDateZA(m.createdAt)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {rawMCompoundName || "N/A"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${typeColor(m.movementType)}`}
+              {paginatedMovements.map((m) => {
+                const rawMCompoundName = m.compoundName;
+                const rawMBatchNumber = m.batchNumber;
+                const rawMNotes = m.notes;
+                return (
+                  <tr key={m.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {formatDateZA(m.createdAt)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {rawMCompoundName || "N/A"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span
+                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${typeColor(m.movementType)}`}
+                      >
+                        {typeLabel(m.movementType)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <span
+                        className={
+                          m.movementType === "OUT"
+                            ? "text-red-600"
+                            : m.movementType === "IN"
+                              ? "text-green-600"
+                              : "text-blue-600"
+                        }
+                      >
+                        {m.movementType === "OUT" ? "-" : m.movementType === "IN" ? "+" : ""}
+                        {m.quantityKg.toFixed(2)} kg
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {referenceLabel(m.referenceType)}
+                      {m.referenceId && (
+                        <span className="ml-1 text-xs text-gray-400">#{m.referenceId}</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {rawMBatchNumber || "-"}
+                    </td>
+                    <td
+                      className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate"
+                      title={rawMNotes || ""}
                     >
-                      {typeLabel(m.movementType)}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <span
-                      className={
-                        m.movementType === "OUT"
-                          ? "text-red-600"
-                          : m.movementType === "IN"
-                            ? "text-green-600"
-                            : "text-blue-600"
-                      }
-                    >
-                      {m.movementType === "OUT" ? "-" : m.movementType === "IN" ? "+" : ""}
-                      {m.quantityKg.toFixed(2)} kg
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {referenceLabel(m.referenceType)}
-                    {m.referenceId && (
-                      <span className="ml-1 text-xs text-gray-400">#{m.referenceId}</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {rawMBatchNumber || "-"}
-                  </td>
-                  <td
-                    className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate"
-                    title={rawMNotes || ""}
-                  >
-                    {rawMNotes2 || "-"}
-                  </td>
-                </tr>
-              ))}
+                      {rawMNotes || "-"}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}

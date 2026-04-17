@@ -443,7 +443,12 @@ function extractMappedRows(
           });
         }
 
-        const allSpecs = cleanedLines.map((li) => notes || "").filter(Boolean);
+        const allSpecs = cleanedLines
+          .map((li) => {
+            const liNotes = li.notes;
+            return liNotes || "";
+          })
+          .filter(Boolean);
 
         entry.lines = cleanedLines;
         if (allSpecs.length > 0) {

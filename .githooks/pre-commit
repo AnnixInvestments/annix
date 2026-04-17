@@ -230,14 +230,13 @@ fi
 STAGED_FRONTEND_TS=$(echo "$STAGED_TS_FILES" | grep -E '^annix-frontend/src/.*\.(ts|tsx)$' || true)
 
 if [ -n "$STAGED_FRONTEND_TS" ]; then
-    # Frontend ESLint is deferred pending SWC-hoist fallout cleanup (ref #195).
-    # The hoist passes left pre-existing lint errors on many files (Object.keys,
-    # typeof, inline comments, console statements, rules-of-hooks), which fire
-    # on every staged file and block hoist cleanup commits. The SWC-landmine
-    # check below still runs and blocks new landmines.
-    # Re-enable once the ref #195 TypeScript backlog is resolved.
+    # Frontend ESLint is still deferred. The hoist-fallout TypeScript errors
+    # have been resolved, but the same files still carry a large pre-existing
+    # ESLint backlog (Object.keys, typeof, inline comments, console statements,
+    # rules-of-hooks) — ~2100 errors repo-wide. Tracked under ref #195 cleanup
+    # phase 2; the SWC-landmine check below still runs and blocks new landmines.
     echo ""
-    echo "Frontend ESLint skipped (deferred pending ref #195)."
+    echo "Frontend ESLint skipped (deferred pending ref #195 phase 2)."
 
     # Sync the stale prod typed-route cache with the current dev cache before tsc.
     # Next.js maintains .next/types/routes.d.ts (updated by `next build`) and
@@ -255,9 +254,17 @@ if [ -n "$STAGED_FRONTEND_TS" ]; then
         fi
     fi
 
-    # Frontend tsc is deferred pending SWC-hoist fallout cleanup (ref #195).
-    # Re-enable once the ~868 hoist-induced TS errors are resolved.
-    echo "Frontend type-check skipped (deferred pending ref #195)."
+    echo "Running frontend type-check..."
+    if ! (cd "$ROOT_DIR/annix-frontend" && npx tsc --noEmit 2>/dev/null); then
+        echo ""
+        echo "============================================"
+        echo "COMMIT BLOCKED: TypeScript errors detected"
+        echo "============================================"
+        echo "Run 'cd annix-frontend && npx tsc --noEmit' to see errors."
+        echo ""
+        exit 1
+    fi
+    echo "Frontend type-check passed."
 fi
 
 # 4. SWC landmine check — two passes against staged frontend files. SWC

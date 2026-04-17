@@ -43,20 +43,21 @@ function allPartItems(lineItems: CustomerDnLineItem[]): boolean {
 }
 
 export function CustomerDnAnalysisModal(props: CustomerDnAnalysisModalProps) {
-  const rawGroupCustomerId = group.customerId;
-  const rawGroupCustomerReference = group.customerReference;
-  const rawGroupDeliveryDate = group.deliveryDate;
-  const rawOverridesByIndexCustomerId = overrides[index]?.customerId;
   const { analysis, files, customers, onClose, onConfirm, isCreating } = props;
   const [overrides, setOverrides] = useState<CustomerDnOverride[]>(
-    analysis.groups.map((group) => ({
-      deliveryNoteNumber: group.deliveryNoteNumber,
-      customerId: rawGroupCustomerId || null,
-      customerReference: rawGroupCustomerReference || null,
-      deliveryDate: rawGroupDeliveryDate || null,
-      stockCategory: allPartItems(group.allLineItems) ? "Pump Parts" : null,
-      lineItems: group.allLineItems.map((item) => ({ ...item })),
-    })),
+    analysis.groups.map((group) => {
+      const rawGroupCustomerId = group.customerId;
+      const rawGroupCustomerReference = group.customerReference;
+      const rawGroupDeliveryDate = group.deliveryDate;
+      return {
+        deliveryNoteNumber: group.deliveryNoteNumber,
+        customerId: rawGroupCustomerId || null,
+        customerReference: rawGroupCustomerReference || null,
+        deliveryDate: rawGroupDeliveryDate || null,
+        stockCategory: allPartItems(group.allLineItems) ? "Pump Parts" : null,
+        lineItems: group.allLineItems.map((item) => ({ ...item })),
+      };
+    }),
   );
   const [expandedGroups, setExpandedGroups] = useState<Set<number>>(new Set([0]));
 
@@ -97,13 +98,13 @@ export function CustomerDnAnalysisModal(props: CustomerDnAnalysisModalProps) {
     setOverrides((prev) =>
       prev.map((o, gi) => {
         const rawOLineItems2 = o.lineItems;
+        if (gi !== groupIndex) return o;
+        const items = [...(rawOLineItems2 || [])];
+        const lastItem = items[items.length - 1];
         const rawLastItemCompoundType = lastItem?.compoundType;
         const rawLastItemThicknessMm = lastItem?.thicknessMm;
         const rawLastItemWidthMm = lastItem?.widthMm;
         const rawLastItemLengthM = lastItem?.lengthM;
-        if (gi !== groupIndex) return o;
-        const items = [...(rawOLineItems2 || [])];
-        const lastItem = items[items.length - 1];
         const isPart = category === "PART";
         const newItem: CustomerDnLineItem = {
           lineNumber: items.length + 1,
@@ -134,9 +135,11 @@ export function CustomerDnAnalysisModal(props: CustomerDnAnalysisModalProps) {
     );
   };
 
-  const validGroups = analysis.groups.filter(
-    (group, index) => rawOverridesByIndexCustomerId || group.customerName,
-  );
+  const validGroups = analysis.groups.filter((group, index) => {
+    const override = overrides[index];
+    const rawOverrideCustomerId = override?.customerId;
+    return rawOverrideCustomerId || group.customerName;
+  });
 
   const handleConfirm = async () => {
     await onConfirm(overrides);
@@ -274,13 +277,6 @@ interface GroupCardProps {
 }
 
 function GroupCard(props: GroupCardProps) {
-  const rawOverrideLineItems = override.lineItems;
-  const rawOverrideDeliveryNoteNumber = override.deliveryNoteNumber;
-  const rawOverrideDeliveryNoteNumber2 = override.deliveryNoteNumber;
-  const rawOverrideCustomerId = override.customerId;
-  const rawOverrideStockCategory = override.stockCategory;
-  const rawOverrideCustomerReference = override.customerReference;
-  const rawOverrideDeliveryDate = override.deliveryDate;
   const group = props.group;
   const override = props.override;
   const customers = props.customers;
@@ -292,6 +288,13 @@ function GroupCard(props: GroupCardProps) {
   const onUpdateLineItem = props.onUpdateLineItem;
   const onAddLineItem = props.onAddLineItem;
   const onRemoveLineItem = props.onRemoveLineItem;
+  const rawOverrideLineItems = override.lineItems;
+  const rawOverrideDeliveryNoteNumber = override.deliveryNoteNumber;
+  const rawOverrideDeliveryNoteNumber2 = override.deliveryNoteNumber;
+  const rawOverrideCustomerId = override.customerId;
+  const rawOverrideStockCategory = override.stockCategory;
+  const rawOverrideCustomerReference = override.customerReference;
+  const rawOverrideDeliveryDate = override.deliveryDate;
   const isValid = !!override.customerId || !!group.customerName;
   const willCreateNewCustomer = !override.customerId && !!group.customerName;
   const lineItems = rawOverrideLineItems || group.allLineItems;

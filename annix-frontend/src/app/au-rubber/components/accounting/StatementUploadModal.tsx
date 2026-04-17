@@ -30,7 +30,6 @@ const MONTHS = [
 ];
 
 export function StatementUploadModal(props: StatementUploadModalProps) {
-  const rawFilesAt0 = e.target.files?.[0];
   const { suppliers, onUpload, onClose } = props;
   const currentDate = new Date();
   const [companyId, setCompanyId] = useState<number | null>(null);
@@ -114,7 +113,10 @@ export function StatementUploadModal(props: StatementUploadModalProps) {
             <input
               type="file"
               accept=".pdf"
-              onChange={(e) => setFile(rawFilesAt0 || null)}
+              onChange={(e) => {
+                const rawFilesAt0 = e.target.files?.[0];
+                setFile(rawFilesAt0 || null);
+              }}
               className="w-full text-sm text-gray-700 dark:text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-yellow-50 file:text-yellow-700 hover:file:bg-yellow-100"
             />
           </div>

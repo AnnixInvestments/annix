@@ -140,8 +140,8 @@ export default function StockControlDashboard() {
 
   const visibleWidgets = widgetOrder.filter((key) => widgetVisible(key));
 
+  const name = user?.name;
   const renderWidget = (key: string) => {
-    const name = user?.name;
     if (key === "role-summary") {
       return <RoleSummarySection activeView={effectiveRole} />;
     } else if (key === "my-tasks") {

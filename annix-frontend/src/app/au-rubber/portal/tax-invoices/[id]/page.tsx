@@ -14,13 +14,6 @@ import {
 import { formatDateTimeZA, formatDateZA } from "@/app/lib/datetime";
 
 export default function TaxInvoiceDetailPage() {
-  const rawInvoiceInvoiceNumber = invoice.invoiceNumber;
-  const rawInvoiceInvoiceNumber2 = invoice.invoiceNumber;
-  const rawInvoiceCompanyName = invoice.companyName;
-  const rawInvoiceProductDescription2 = invoice.productDescription;
-  const rawExtractedDataDeliveryNoteRef2 = invoice.extractedData.deliveryNoteRef;
-  const rawExtractedDataOrderNumber2 = invoice.extractedData.orderNumber;
-  const rawInvoiceUnit2 = invoice.unit;
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -143,11 +136,11 @@ export default function TaxInvoiceDetailPage() {
   };
 
   const startEditingSummary = () => {
+    if (!invoice) return;
     const rawInvoiceProductDescription = invoice.productDescription;
     const rawExtractedDataDeliveryNoteRef = invoice.extractedData?.deliveryNoteRef;
     const rawExtractedDataOrderNumber = invoice.extractedData?.orderNumber;
     const rawInvoiceUnit = invoice.unit;
-    if (!invoice) return;
     setEditForm({
       productDescription: rawInvoiceProductDescription || "",
       deliveryNoteRef: rawExtractedDataDeliveryNoteRef || "",
@@ -282,6 +275,14 @@ export default function TaxInvoiceDetailPage() {
     : invoice.invoiceType === "SUPPLIER"
       ? "Supplier Tax Invoices"
       : "Customer Tax Invoices";
+
+  const rawInvoiceInvoiceNumber = invoice.invoiceNumber;
+  const rawInvoiceInvoiceNumber2 = invoice.invoiceNumber;
+  const rawInvoiceCompanyName = invoice.companyName;
+  const rawInvoiceProductDescription2 = invoice.productDescription;
+  const rawExtractedDataDeliveryNoteRef2 = invoice.extractedData?.deliveryNoteRef;
+  const rawExtractedDataOrderNumber2 = invoice.extractedData?.orderNumber;
+  const rawInvoiceUnit2 = invoice.unit;
 
   return (
     <div className="space-y-6">

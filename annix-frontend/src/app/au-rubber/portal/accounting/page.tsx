@@ -27,15 +27,15 @@ interface AccountData {
 }
 
 export default function AccountingDashboardPage() {
-  const rawPayableSummaryGrandPayable = payableSummary?.grandPayable;
-  const rawCompaniesLength = payableSummary?.companies.length;
-  const rawReceivableSummaryGrandPayable = receivableSummary?.grandPayable;
-  const rawCompaniesLength2 = receivableSummary?.companies.length;
   const { showToast } = useToast();
   const [recentAccounts, setRecentAccounts] = useState<MonthlyAccountSummary[]>([]);
   const [payableSummary, setPayableSummary] = useState<AccountData | null>(null);
   const [receivableSummary, setReceivableSummary] = useState<AccountData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const rawPayableSummaryGrandPayable = payableSummary?.grandPayable;
+  const rawCompaniesLength = payableSummary?.companies.length;
+  const rawReceivableSummaryGrandPayable = receivableSummary?.grandPayable;
+  const rawCompaniesLength2 = receivableSummary?.companies.length;
 
   const previousMonth = DateTime.now().minus({ months: 1 });
   const currentYear = previousMonth.year;

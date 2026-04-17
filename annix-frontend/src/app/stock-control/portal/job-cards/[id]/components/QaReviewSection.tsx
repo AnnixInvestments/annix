@@ -270,14 +270,12 @@ export function QaReviewSection(props: QaReviewSectionProps) {
 
   const renderDecisionSummary = () => {
     if (!latestDecision) return null;
+    const reviewedByName = latestDecision.reviewedByName;
     return (
       <>
         <div className="flex items-center gap-4 text-sm">
           <span className="text-gray-500">Reviewed by:</span>
-          <span className="font-medium text-gray-900">
-            const reviewedByName = latestDecision.reviewedByName;
-            {reviewedByName || "Unknown"}
-          </span>
+          <span className="font-medium text-gray-900">{reviewedByName || "Unknown"}</span>
           <span className="text-gray-400">{formatDateZA(latestDecision.reviewedAt)}</span>
           <span className="text-gray-400">Cycle {latestDecision.cycleNumber}</span>
         </div>

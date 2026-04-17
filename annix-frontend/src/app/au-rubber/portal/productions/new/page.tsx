@@ -13,8 +13,6 @@ import {
 import type { RubberProductDto } from "@/app/lib/api/rubberPortalApi";
 
 export default function NewProductionPage() {
-  const rawSelectedStockLocation = selectedStock.location;
-  const rawCalculationCompoundRequiredKg = calculation?.compoundRequiredKg;
   const router = useRouter();
   const { showToast } = useToast();
   const { confirm, ConfirmDialog } = useConfirm();
@@ -295,51 +293,62 @@ export default function NewProductionPage() {
               )}
             </div>
 
-            {selectedStock && (
-              <div className={`rounded-lg p-6 ${insufficientStock ? "bg-red-50" : "bg-green-50"}`}>
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Selected Compound Stock</h3>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Compound:</span>
-                    <span className="font-medium">{selectedStock.compoundName}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Available:</span>
-                    <span className="font-medium">{selectedStock.quantityKg.toFixed(2)} kg</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Location:</span>
-                    <span className="font-medium">{rawSelectedStockLocation || "-"}</span>
-                  </div>
-                  {insufficientStock && (
-                    <div className="mt-4 p-3 bg-red-100 rounded-md">
-                      <div className="flex items-center">
-                        <svg
-                          className="w-5 h-5 text-red-600 mr-2"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                          />
-                        </svg>
-                        <span className="text-sm font-medium text-red-800">
-                          Insufficient stock - need{" "}
-                          {(
-                            (rawCalculationCompoundRequiredKg || 0) - selectedStock.quantityKg
-                          ).toFixed(2)}{" "}
-                          kg more
+            {selectedStock &&
+              (() => {
+                const rawSelectedStockLocation = selectedStock.location;
+                const rawCalculationCompoundRequiredKg = calculation?.compoundRequiredKg;
+                return (
+                  <div
+                    className={`rounded-lg p-6 ${insufficientStock ? "bg-red-50" : "bg-green-50"}`}
+                  >
+                    <h3 className="text-lg font-medium text-gray-900 mb-4">
+                      Selected Compound Stock
+                    </h3>
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-600">Compound:</span>
+                        <span className="font-medium">{selectedStock.compoundName}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-600">Available:</span>
+                        <span className="font-medium">
+                          {selectedStock.quantityKg.toFixed(2)} kg
                         </span>
                       </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-600">Location:</span>
+                        <span className="font-medium">{rawSelectedStockLocation || "-"}</span>
+                      </div>
+                      {insufficientStock && (
+                        <div className="mt-4 p-3 bg-red-100 rounded-md">
+                          <div className="flex items-center">
+                            <svg
+                              className="w-5 h-5 text-red-600 mr-2"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                              />
+                            </svg>
+                            <span className="text-sm font-medium text-red-800">
+                              Insufficient stock - need{" "}
+                              {(
+                                (rawCalculationCompoundRequiredKg || 0) - selectedStock.quantityKg
+                              ).toFixed(2)}{" "}
+                              kg more
+                            </span>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              </div>
-            )}
+                  </div>
+                );
+              })()}
           </div>
         </div>
 

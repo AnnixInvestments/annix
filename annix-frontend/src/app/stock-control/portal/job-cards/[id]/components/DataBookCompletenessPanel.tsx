@@ -244,16 +244,16 @@ export function DataBookCompletenessPanel({
             elements: React.ReactNode[];
           }>(
             (acc, section, idx) => {
-              if (section.group && !acc.seenGroups.has(section.group)) {
-                acc.seenGroups.add(section.group);
+              const group = section.group;
+              if (group && !acc.seenGroups.has(group)) {
+                acc.seenGroups.add(group);
                 acc.elements.push(
                   <div
-                    key={`group-${section.group}-${idx}`}
+                    key={`group-${group}-${idx}`}
                     className="border-t border-gray-200 bg-gray-50 px-4 py-2"
                   >
                     <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                      {section.group}
-                      const group = section.group;
+                      {group}
                     </span>
                   </div>,
                 );

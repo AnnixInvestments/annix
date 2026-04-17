@@ -34,12 +34,6 @@ type SortColumn =
   | "createdAt";
 
 export default function AuCocsPage() {
-  const rawCocsQueryData = cocsQuery.data;
-  const rawCocCustomerCompanyName = coc.customerCompanyName;
-  const rawCocPoNumber = coc.poNumber;
-  const rawCocDeliveryNoteRef = coc.deliveryNoteRef;
-  const rawCocDeliveryNoteRef2 = coc.deliveryNoteRef;
-  const rawCocItemCount = coc.itemCount;
   const { showToast } = useToast();
   const { isAdmin } = useAuRubberAuth();
   const [searchQuery, setSearchQuery] = useState("");
@@ -47,6 +41,7 @@ export default function AuCocsPage() {
   const cocsQuery = useAuRubberAuCocs({
     status: filterStatus || undefined,
   });
+  const rawCocsQueryData = cocsQuery.data;
   const cocs = rawCocsQueryData || [];
   const isLoading = cocsQuery.isLoading;
   const error = cocsQuery.error;
@@ -408,8 +403,6 @@ export default function AuCocsPage() {
   };
 
   const readinessBadge = (coc: RubberAuCocDto) => {
-    const rawReadinessColorsByCocreadinessstatus = readinessColors[coc.readinessStatus];
-    const rawReadinessLabelsByCocreadinessstatus = readinessLabels[coc.readinessStatus];
     if (!coc.readinessStatus || coc.readinessStatus === "NOT_TRACKED") return null;
 
     const readinessColors: Record<string, string> = {
@@ -430,6 +423,8 @@ export default function AuCocsPage() {
       AUTO_GENERATED: "Auto-generated",
       GENERATION_FAILED: "Generation Failed",
     };
+    const rawReadinessColorsByCocreadinessstatus = readinessColors[coc.readinessStatus];
+    const rawReadinessLabelsByCocreadinessstatus = readinessLabels[coc.readinessStatus];
 
     return (
       <span
@@ -706,114 +701,120 @@ export default function AuCocsPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {paginatedCocs.map((coc) => (
-                <tr key={coc.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <Link
-                      href={`/au-rubber/portal/au-cocs/${coc.id}`}
-                      className="text-yellow-600 hover:text-yellow-800 font-medium"
-                    >
-                      {coc.cocNumber}
-                    </Link>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {rawCocCustomerCompanyName || "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {rawCocPoNumber || "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {coc.sourceDeliveryNoteId ? (
-                      <button
-                        onClick={() =>
-                          window.open(
-                            `/au-rubber/portal/delivery-notes/${coc.sourceDeliveryNoteId}`,
-                            `dn-${coc.sourceDeliveryNoteId}`,
-                            "width=1200,height=800,scrollbars=yes,resizable=yes",
-                          )
-                        }
-                        className="text-yellow-600 hover:text-yellow-800 hover:underline"
+              {paginatedCocs.map((coc) => {
+                const rawCocCustomerCompanyName = coc.customerCompanyName;
+                const rawCocPoNumber = coc.poNumber;
+                const rawCocDeliveryNoteRef = coc.deliveryNoteRef;
+                const rawCocItemCount = coc.itemCount;
+                return (
+                  <tr key={coc.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <Link
+                        href={`/au-rubber/portal/au-cocs/${coc.id}`}
+                        className="text-yellow-600 hover:text-yellow-800 font-medium"
                       >
-                        {rawCocDeliveryNoteRef || coc.sourceDeliveryNoteId}
-                      </button>
-                    ) : (
-                      rawCocDeliveryNoteRef2 || "-"
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {rawCocItemCount || 0}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {statusBadge(coc.status)}
-                    {readinessBadge(coc)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {formatDateZA(coc.createdAt)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                    <Link
-                      href={`/au-rubber/portal/au-cocs/${coc.id}`}
-                      className="text-yellow-600 hover:text-yellow-800"
-                    >
-                      View
-                    </Link>
-                    {coc.status === "DRAFT" && (
-                      <button
-                        onClick={() => handleGeneratePdf(coc.id)}
-                        className="text-blue-600 hover:text-blue-800"
-                      >
-                        Generate PDF
-                      </button>
-                    )}
-                    {(coc.status === "GENERATED" ||
-                      (coc.status === "SENT" && coc.generatedPdfPath)) && (
-                      <>
+                        {coc.cocNumber}
+                      </Link>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {rawCocCustomerCompanyName || "-"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {rawCocPoNumber || "-"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {coc.sourceDeliveryNoteId ? (
                         <button
-                          onClick={() => handlePreview(coc)}
-                          disabled={previewingId === coc.id}
-                          className="inline-flex items-center text-indigo-600 hover:text-indigo-800 disabled:opacity-50"
-                          title="View PDF in browser"
+                          onClick={() =>
+                            window.open(
+                              `/au-rubber/portal/delivery-notes/${coc.sourceDeliveryNoteId}`,
+                              `dn-${coc.sourceDeliveryNoteId}`,
+                              "width=1200,height=800,scrollbars=yes,resizable=yes",
+                            )
+                          }
+                          className="text-yellow-600 hover:text-yellow-800 hover:underline"
                         >
-                          {previewingId === coc.id ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <Eye className="w-4 h-4" />
-                          )}
+                          {rawCocDeliveryNoteRef || coc.sourceDeliveryNoteId}
                         </button>
+                      ) : (
+                        rawCocDeliveryNoteRef || "-"
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {rawCocItemCount || 0}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {statusBadge(coc.status)}
+                      {readinessBadge(coc)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {formatDateZA(coc.createdAt)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                      <Link
+                        href={`/au-rubber/portal/au-cocs/${coc.id}`}
+                        className="text-yellow-600 hover:text-yellow-800"
+                      >
+                        View
+                      </Link>
+                      {coc.status === "DRAFT" && (
                         <button
-                          onClick={() => handleDownload(coc)}
-                          disabled={downloadingId === coc.id}
-                          className="text-green-600 hover:text-green-800 disabled:opacity-50"
+                          onClick={() => handleGeneratePdf(coc.id)}
+                          className="text-blue-600 hover:text-blue-800"
                         >
-                          {downloadingId === coc.id ? "Downloading..." : "Download"}
+                          Generate PDF
                         </button>
-                      </>
-                    )}
-                    {coc.status === "GENERATED" && (
-                      <button
-                        onClick={() => {
-                          setSendingId(coc.id);
-                          setShowSendModal(true);
-                        }}
-                        className="text-purple-600 hover:text-purple-800"
-                      >
-                        Send
-                      </button>
-                    )}
-                    {isAdmin && (
-                      <button
-                        onClick={() => {
-                          setDeletingId(coc.id);
-                          setShowDeleteModal(true);
-                        }}
-                        className="text-red-600 hover:text-red-800"
-                      >
-                        Delete
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
+                      )}
+                      {(coc.status === "GENERATED" ||
+                        (coc.status === "SENT" && coc.generatedPdfPath)) && (
+                        <>
+                          <button
+                            onClick={() => handlePreview(coc)}
+                            disabled={previewingId === coc.id}
+                            className="inline-flex items-center text-indigo-600 hover:text-indigo-800 disabled:opacity-50"
+                            title="View PDF in browser"
+                          >
+                            {previewingId === coc.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Eye className="w-4 h-4" />
+                            )}
+                          </button>
+                          <button
+                            onClick={() => handleDownload(coc)}
+                            disabled={downloadingId === coc.id}
+                            className="text-green-600 hover:text-green-800 disabled:opacity-50"
+                          >
+                            {downloadingId === coc.id ? "Downloading..." : "Download"}
+                          </button>
+                        </>
+                      )}
+                      {coc.status === "GENERATED" && (
+                        <button
+                          onClick={() => {
+                            setSendingId(coc.id);
+                            setShowSendModal(true);
+                          }}
+                          className="text-purple-600 hover:text-purple-800"
+                        >
+                          Send
+                        </button>
+                      )}
+                      {isAdmin && (
+                        <button
+                          onClick={() => {
+                            setDeletingId(coc.id);
+                            setShowDeleteModal(true);
+                          }}
+                          className="text-red-600 hover:text-red-800"
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}

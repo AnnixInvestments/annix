@@ -31,7 +31,6 @@ function formatCurrency(amount: number): string {
 }
 
 export function AccountsTable(props: AccountsTableProps) {
-  const rawInvInvoiceDate = inv.invoiceDate;
   const { companies } = props;
 
   if (companies.length === 0) {
@@ -72,30 +71,33 @@ export function AccountsTable(props: AccountsTableProps) {
                 </tr>
               </thead>
               <tbody>
-                {company.invoices.map((inv) => (
-                  <tr
-                    key={inv.id}
-                    className={`border-b border-gray-100 dark:border-gray-700 ${
-                      inv.isCreditNote ? "bg-red-50 dark:bg-red-900/10" : ""
-                    }`}
-                  >
-                    <td className="px-4 py-2 text-gray-900 dark:text-gray-100">
-                      {inv.invoiceNumber}
-                    </td>
-                    <td className="px-4 py-2 text-gray-600 dark:text-gray-400">
-                      {rawInvInvoiceDate || "-"}
-                    </td>
-                    <td className="px-4 py-2 text-right text-gray-900 dark:text-gray-100">
-                      {inv.isCreditNote ? "-" : formatCurrency(inv.totalAmount)}
-                    </td>
-                    <td className="px-4 py-2 text-right text-red-600 dark:text-red-400">
-                      {inv.isCreditNote ? `(${formatCurrency(Math.abs(inv.totalAmount))})` : "-"}
-                    </td>
-                    <td className="px-4 py-2 text-right text-gray-600 dark:text-gray-400">
-                      {formatCurrency(inv.vatAmount)}
-                    </td>
-                  </tr>
-                ))}
+                {company.invoices.map((inv) => {
+                  const rawInvInvoiceDate = inv.invoiceDate;
+                  return (
+                    <tr
+                      key={inv.id}
+                      className={`border-b border-gray-100 dark:border-gray-700 ${
+                        inv.isCreditNote ? "bg-red-50 dark:bg-red-900/10" : ""
+                      }`}
+                    >
+                      <td className="px-4 py-2 text-gray-900 dark:text-gray-100">
+                        {inv.invoiceNumber}
+                      </td>
+                      <td className="px-4 py-2 text-gray-600 dark:text-gray-400">
+                        {rawInvInvoiceDate || "-"}
+                      </td>
+                      <td className="px-4 py-2 text-right text-gray-900 dark:text-gray-100">
+                        {inv.isCreditNote ? "-" : formatCurrency(inv.totalAmount)}
+                      </td>
+                      <td className="px-4 py-2 text-right text-red-600 dark:text-red-400">
+                        {inv.isCreditNote ? `(${formatCurrency(Math.abs(inv.totalAmount))})` : "-"}
+                      </td>
+                      <td className="px-4 py-2 text-right text-gray-600 dark:text-gray-400">
+                        {formatCurrency(inv.vatAmount)}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
               <tfoot>
                 <tr className="bg-gray-50 dark:bg-gray-700 font-semibold text-gray-900 dark:text-gray-100">

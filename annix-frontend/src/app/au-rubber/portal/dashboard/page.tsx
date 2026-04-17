@@ -27,18 +27,16 @@ interface StatusCount {
 const ORDERS_PER_PAGE = 5;
 
 export default function AuRubberDashboard() {
+  const ordersQuery = useAuRubberOrders();
+  const companiesQuery = useAuRubberCompanies();
+  const productsQuery = useAuRubberProducts();
+  const pendingAuCocsQuery = useAuRubberPendingAuCocs();
   const rawOrdersQueryData = ordersQuery.data;
   const rawCompaniesQueryData = companiesQuery.data;
   const rawProductsQueryData = productsQuery.data;
   const rawPendingAuCocsQueryData = pendingAuCocsQuery.data;
   const rawOrdersQueryIsLoading = ordersQuery.isLoading;
   const rawOrdersQueryError = ordersQuery.error;
-  const rawOrderCompanyName = order.companyName;
-  const rawCocCustomerCompanyName = coc.customerCompanyName;
-  const ordersQuery = useAuRubberOrders();
-  const companiesQuery = useAuRubberCompanies();
-  const productsQuery = useAuRubberProducts();
-  const pendingAuCocsQuery = useAuRubberPendingAuCocs();
   const orders = rawOrdersQueryData || [];
   const companies = rawCompaniesQueryData || [];
   const products = rawProductsQueryData || [];
@@ -67,7 +65,6 @@ export default function AuRubberDashboard() {
   };
 
   const readinessLabel = (status: string | null): string => {
-    const rawLabelsByStatus = labels[status || ""];
     const labels: Record<string, string> = {
       WAITING_FOR_CALENDERER_COC: "Waiting for Calenderer CoC",
       WAITING_FOR_COMPOUNDER_COC: "Waiting for Compounder CoC",
@@ -75,11 +72,11 @@ export default function AuRubberDashboard() {
       WAITING_FOR_APPROVAL: "Waiting for Approval",
       READY_FOR_GENERATION: "Ready to Generate",
     };
+    const rawLabelsByStatus = labels[status || ""];
     return rawLabelsByStatus || status || "Unknown";
   };
 
   const readinessColor = (status: string | null): string => {
-    const rawColorsByStatus = colors[status || ""];
     const colors: Record<string, string> = {
       WAITING_FOR_CALENDERER_COC: "bg-orange-100 text-orange-800",
       WAITING_FOR_COMPOUNDER_COC: "bg-orange-100 text-orange-800",
@@ -87,6 +84,7 @@ export default function AuRubberDashboard() {
       WAITING_FOR_APPROVAL: "bg-yellow-100 text-yellow-800",
       READY_FOR_GENERATION: "bg-green-100 text-green-800",
     };
+    const rawColorsByStatus = colors[status || ""];
     return rawColorsByStatus || "bg-gray-100 text-gray-800";
   };
 
@@ -404,34 +402,37 @@ export default function AuRubberDashboard() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {paginatedOrders.map((order) => (
-                  <tr key={order.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <Link
-                        href={`/au-rubber/portal/orders/${order.id}`}
-                        className="text-blue-600 hover:text-blue-800"
-                      >
-                        {order.orderNumber}
-                      </Link>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {rawOrderCompanyName || "N/A"}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusColor(order.status)}`}
-                      >
-                        {order.statusLabel}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {order.items.length}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {formatDateZA(order.createdAt)}
-                    </td>
-                  </tr>
-                ))}
+                {paginatedOrders.map((order) => {
+                  const rawOrderCompanyName = order.companyName;
+                  return (
+                    <tr key={order.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <Link
+                          href={`/au-rubber/portal/orders/${order.id}`}
+                          className="text-blue-600 hover:text-blue-800"
+                        >
+                          {order.orderNumber}
+                        </Link>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {rawOrderCompanyName || "N/A"}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span
+                          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusColor(order.status)}`}
+                        >
+                          {order.statusLabel}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {order.items.length}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {formatDateZA(order.createdAt)}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}
@@ -500,61 +501,64 @@ export default function AuRubberDashboard() {
               </Link>
             </div>
             <div className="divide-y divide-gray-200">
-              {pendingAuCocs.map((coc) => (
-                <div key={coc.id} className="px-4 py-4 sm:px-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center space-x-3">
-                        <Link
-                          href={`/au-rubber/portal/au-cocs/${coc.id}`}
-                          className="text-sm font-medium text-blue-600 hover:text-blue-800 truncate"
-                        >
-                          {coc.cocNumber}
-                        </Link>
-                        <span
-                          className={`px-2 py-0.5 text-xs font-medium rounded-full ${readinessColor(coc.readinessStatus)}`}
-                        >
-                          {readinessLabel(coc.readinessStatus)}
-                        </span>
+              {pendingAuCocs.map((coc) => {
+                const rawCocCustomerCompanyName = coc.customerCompanyName;
+                return (
+                  <div key={coc.id} className="px-4 py-4 sm:px-6">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center space-x-3">
+                          <Link
+                            href={`/au-rubber/portal/au-cocs/${coc.id}`}
+                            className="text-sm font-medium text-blue-600 hover:text-blue-800 truncate"
+                          >
+                            {coc.cocNumber}
+                          </Link>
+                          <span
+                            className={`px-2 py-0.5 text-xs font-medium rounded-full ${readinessColor(coc.readinessStatus)}`}
+                          >
+                            {readinessLabel(coc.readinessStatus)}
+                          </span>
+                        </div>
+                        <div className="mt-1 flex items-center space-x-4 text-sm text-gray-500">
+                          <span>{rawCocCustomerCompanyName || "Unknown Customer"}</span>
+                          {coc.deliveryNoteRef && <span>DN: {coc.deliveryNoteRef}</span>}
+                          {coc.poNumber && <span>PO: {coc.poNumber}</span>}
+                        </div>
+                        {coc.readinessDetails?.missingDocuments &&
+                          coc.readinessDetails.missingDocuments.length > 0 && (
+                            <div className="mt-2 flex flex-wrap gap-1">
+                              {coc.readinessDetails.missingDocuments.map((doc) => (
+                                <span
+                                  key={doc}
+                                  className="inline-flex items-center px-2 py-0.5 text-xs font-medium bg-red-50 text-red-700 rounded"
+                                >
+                                  {doc}
+                                </span>
+                              ))}
+                            </div>
+                          )}
                       </div>
-                      <div className="mt-1 flex items-center space-x-4 text-sm text-gray-500">
-                        <span>{rawCocCustomerCompanyName || "Unknown Customer"}</span>
-                        {coc.deliveryNoteRef && <span>DN: {coc.deliveryNoteRef}</span>}
-                        {coc.poNumber && <span>PO: {coc.poNumber}</span>}
-                      </div>
-                      {coc.readinessDetails?.missingDocuments &&
-                        coc.readinessDetails.missingDocuments.length > 0 && (
-                          <div className="mt-2 flex flex-wrap gap-1">
-                            {coc.readinessDetails.missingDocuments.map((doc) => (
-                              <span
-                                key={doc}
-                                className="inline-flex items-center px-2 py-0.5 text-xs font-medium bg-red-50 text-red-700 rounded"
-                              >
-                                {doc}
-                              </span>
-                            ))}
-                          </div>
-                        )}
+                      {coc.readinessStatus === "READY_FOR_GENERATION" && (
+                        <button
+                          onClick={() => triggerGeneration(coc.id)}
+                          disabled={generatingIds.has(coc.id)}
+                          className="ml-4 inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                        >
+                          {generatingIds.has(coc.id) ? (
+                            <>
+                              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-1.5"></div>
+                              Generating...
+                            </>
+                          ) : (
+                            "Generate"
+                          )}
+                        </button>
+                      )}
                     </div>
-                    {coc.readinessStatus === "READY_FOR_GENERATION" && (
-                      <button
-                        onClick={() => triggerGeneration(coc.id)}
-                        disabled={generatingIds.has(coc.id)}
-                        className="ml-4 inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-                      >
-                        {generatingIds.has(coc.id) ? (
-                          <>
-                            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-1.5"></div>
-                            Generating...
-                          </>
-                        ) : (
-                          "Generate"
-                        )}
-                      </button>
-                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}

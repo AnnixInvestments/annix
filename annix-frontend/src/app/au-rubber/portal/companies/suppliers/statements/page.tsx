@@ -138,7 +138,6 @@ export default function SupplierStatementsPage() {
           <div className="space-y-4">
             {statements.map((statement) => {
               const rawEmailConfigStatementEmail = statement.company.emailConfig?.statementEmail;
-              const rawInvoiceInvoiceDate = invoice.invoiceDate;
               const isExpanded = expandedCompanyId === statement.company.id;
               const statementEmail = rawEmailConfigStatementEmail || null;
 
@@ -231,44 +230,47 @@ export default function SupplierStatementsPage() {
                           </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
-                          {statement.invoices.map((invoice) => (
-                            <tr key={invoice.id} className="hover:bg-gray-50">
-                              <td className="px-6 py-3 whitespace-nowrap">
-                                <Link
-                                  href={`/au-rubber/portal/tax-invoices/${invoice.id}`}
-                                  className="text-sm font-medium text-orange-600 hover:text-orange-900"
-                                >
-                                  {invoice.invoiceNumber}
-                                </Link>
-                              </td>
-                              <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-500">
-                                {rawInvoiceInvoiceDate || "-"}
-                              </td>
-                              <td className="px-6 py-3 whitespace-nowrap">
-                                <span
-                                  className={`px-2 text-xs font-semibold rounded-full ${
-                                    invoice.status === "APPROVED"
-                                      ? "bg-green-100 text-green-800"
-                                      : invoice.status === "EXTRACTED"
-                                        ? "bg-blue-100 text-blue-800"
-                                        : "bg-yellow-100 text-yellow-800"
-                                  }`}
-                                >
-                                  {invoice.statusLabel}
-                                </span>
-                              </td>
-                              <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-500 text-right">
-                                {invoice.vatAmount !== null
-                                  ? formatCurrency(Number(invoice.vatAmount))
-                                  : "-"}
-                              </td>
-                              <td className="px-6 py-3 whitespace-nowrap text-sm font-medium text-gray-900 text-right">
-                                {invoice.totalAmount !== null
-                                  ? formatCurrency(Number(invoice.totalAmount))
-                                  : "-"}
-                              </td>
-                            </tr>
-                          ))}
+                          {statement.invoices.map((invoice) => {
+                            const rawInvoiceInvoiceDate = invoice.invoiceDate;
+                            return (
+                              <tr key={invoice.id} className="hover:bg-gray-50">
+                                <td className="px-6 py-3 whitespace-nowrap">
+                                  <Link
+                                    href={`/au-rubber/portal/tax-invoices/${invoice.id}`}
+                                    className="text-sm font-medium text-orange-600 hover:text-orange-900"
+                                  >
+                                    {invoice.invoiceNumber}
+                                  </Link>
+                                </td>
+                                <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-500">
+                                  {rawInvoiceInvoiceDate || "-"}
+                                </td>
+                                <td className="px-6 py-3 whitespace-nowrap">
+                                  <span
+                                    className={`px-2 text-xs font-semibold rounded-full ${
+                                      invoice.status === "APPROVED"
+                                        ? "bg-green-100 text-green-800"
+                                        : invoice.status === "EXTRACTED"
+                                          ? "bg-blue-100 text-blue-800"
+                                          : "bg-yellow-100 text-yellow-800"
+                                    }`}
+                                  >
+                                    {invoice.statusLabel}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-500 text-right">
+                                  {invoice.vatAmount !== null
+                                    ? formatCurrency(Number(invoice.vatAmount))
+                                    : "-"}
+                                </td>
+                                <td className="px-6 py-3 whitespace-nowrap text-sm font-medium text-gray-900 text-right">
+                                  {invoice.totalAmount !== null
+                                    ? formatCurrency(Number(invoice.totalAmount))
+                                    : "-"}
+                                </td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                         <tfoot className="bg-gray-50">
                           <tr>

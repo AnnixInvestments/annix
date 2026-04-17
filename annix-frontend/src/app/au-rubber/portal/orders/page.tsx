@@ -56,19 +56,19 @@ const STATUS_TABS = [
   { value: RUBBER_ORDER_STATUS.COMPLETE, label: "Complete" },
 ];
 
+const DELETABLE_STATUSES: number[] = [RUBBER_ORDER_STATUS.DRAFT, RUBBER_ORDER_STATUS.NEW];
+const isDeletable = (status: number): boolean => DELETABLE_STATUSES.includes(status);
+
 export default function AuRubberOrdersPage() {
-  const rawOrdersQueryData = ordersQuery.data;
-  const rawCompaniesQueryData = companiesQuery.data;
-  const rawProductsQueryData = productsQuery.data;
-  const rawOrderCompanyOrderNumber = order.companyOrderNumber;
-  const rawOrderCompanyName = order.companyName;
-  const rawItemsLength3 = order.items?.length;
   const { showToast } = useToast();
 
   const [statusFilter, setStatusFilter] = useState<number | undefined>(undefined);
   const ordersQuery = useAuRubberOrders(statusFilter);
   const companiesQuery = useAuRubberCompanies();
   const productsQuery = useAuRubberProducts();
+  const rawOrdersQueryData = ordersQuery.data;
+  const rawCompaniesQueryData = companiesQuery.data;
+  const rawProductsQueryData = productsQuery.data;
   const orders = rawOrdersQueryData || [];
   const companies = (rawCompaniesQueryData || []) as RubberCompanyDto[];
   const products = (rawProductsQueryData || []) as RubberProductDto[];
@@ -487,54 +487,58 @@ export default function AuRubberOrdersPage() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {paginatedOrders.map((order) => (
-                    <tr key={order.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <Link
-                          href={`/au-rubber/portal/orders/${order.id}`}
-                          className="text-sm font-medium text-yellow-600 hover:text-yellow-900"
-                        >
-                          {order.orderNumber}
-                        </Link>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {rawOrderCompanyOrderNumber || "-"}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {rawOrderCompanyName || "-"}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {rawItemsLength3 || 0}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColor(order.status)}`}
-                        >
-                          {statusLabel(order.status)}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {order.createdAt ? formatDateZA(order.createdAt) : "-"}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
-                        <Link
-                          href={`/au-rubber/portal/orders/${order.id}`}
-                          className="text-yellow-600 hover:text-yellow-900"
-                        >
-                          View
-                        </Link>
-                        {(order.status === RUBBER_ORDER_STATUS.DRAFT ||
-                          order.status === RUBBER_ORDER_STATUS.NEW) && (
-                          <button
-                            onClick={() => setDeleteOrderId(order.id)}
-                            className="text-red-600 hover:text-red-900"
+                  {paginatedOrders.map((order) => {
+                    const rawOrderCompanyOrderNumber = order.companyOrderNumber;
+                    const rawOrderCompanyName = order.companyName;
+                    const rawItemsLength3 = order.items?.length;
+                    return (
+                      <tr key={order.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <Link
+                            href={`/au-rubber/portal/orders/${order.id}`}
+                            className="text-sm font-medium text-yellow-600 hover:text-yellow-900"
                           >
-                            Delete
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                            {order.orderNumber}
+                          </Link>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {rawOrderCompanyOrderNumber || "-"}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {rawOrderCompanyName || "-"}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {rawItemsLength3 || 0}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColor(order.status)}`}
+                          >
+                            {statusLabel(order.status)}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {order.createdAt ? formatDateZA(order.createdAt) : "-"}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
+                          <Link
+                            href={`/au-rubber/portal/orders/${order.id}`}
+                            className="text-yellow-600 hover:text-yellow-900"
+                          >
+                            View
+                          </Link>
+                          {isDeletable(order.status) && (
+                            <button
+                              onClick={() => setDeleteOrderId(order.id)}
+                              className="text-red-600 hover:text-red-900"
+                            >
+                              Delete
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

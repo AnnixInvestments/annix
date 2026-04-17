@@ -8,8 +8,6 @@ import {
 } from "@/app/lib/api/auRubberApi";
 
 export function SageContactSyncSection() {
-  const rawCompanySageContactName = company.sageContactName;
-  const rawManualSelectionsByCompanyid = manualSelections[company.id];
   const [mappings, setMappings] = useState<SageContactMappingStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -153,77 +151,81 @@ export function SageContactSyncSection() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {mappings.companies.map((company) => (
-                <tr key={company.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 text-sm text-gray-900">{company.name}</td>
-                  <td className="px-4 py-3 text-sm">
-                    <span
-                      className={`px-2 py-0.5 text-xs font-medium rounded-full ${
-                        company.companyType === "SUPPLIER"
-                          ? "bg-blue-100 text-blue-800"
-                          : "bg-amber-100 text-amber-800"
-                      }`}
-                    >
-                      {company.companyType}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-700">
-                    {company.sageContactId !== null ? (
-                      rawCompanySageContactName || `ID: ${company.sageContactId}`
-                    ) : company.suggestedMatches.length > 0 ? (
-                      <select
-                        value={rawManualSelectionsByCompanyid ?? ""}
-                        onChange={(e) =>
-                          setManualSelections((prev) => ({
-                            ...prev,
-                            [company.id]: Number(e.target.value),
-                          }))
-                        }
-                        className="block w-full px-2 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
+              {mappings.companies.map((company) => {
+                const rawCompanySageContactName = company.sageContactName;
+                const rawManualSelectionsByCompanyid = manualSelections[company.id];
+                return (
+                  <tr key={company.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 text-sm text-gray-900">{company.name}</td>
+                    <td className="px-4 py-3 text-sm">
+                      <span
+                        className={`px-2 py-0.5 text-xs font-medium rounded-full ${
+                          company.companyType === "SUPPLIER"
+                            ? "bg-blue-100 text-blue-800"
+                            : "bg-amber-100 text-amber-800"
+                        }`}
                       >
-                        <option value="">Select Sage contact...</option>
-                        {company.suggestedMatches.map((match) => (
-                          <option key={match.sageId} value={match.sageId}>
-                            {match.sageName} ({Math.round(match.confidence * 100)}%)
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      <span className="text-gray-400">No suggestions</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-sm">
-                    {company.sageContactId !== null ? (
-                      <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-800">
-                        Mapped
+                        {company.companyType}
                       </span>
-                    ) : (
-                      <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-600">
-                        Unmapped
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-right text-sm">
-                    {company.sageContactId !== null ? (
-                      <button
-                        type="button"
-                        onClick={() => handleUnmap(company.id)}
-                        className="text-red-600 hover:text-red-800 text-sm"
-                      >
-                        Unmap
-                      </button>
-                    ) : manualSelections[company.id] ? (
-                      <button
-                        type="button"
-                        onClick={() => handleManualMap(company.id, company.companyType)}
-                        className="text-orange-600 hover:text-orange-800 text-sm font-medium"
-                      >
-                        Map
-                      </button>
-                    ) : null}
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-700">
+                      {company.sageContactId !== null ? (
+                        rawCompanySageContactName || `ID: ${company.sageContactId}`
+                      ) : company.suggestedMatches.length > 0 ? (
+                        <select
+                          value={rawManualSelectionsByCompanyid ?? ""}
+                          onChange={(e) =>
+                            setManualSelections((prev) => ({
+                              ...prev,
+                              [company.id]: Number(e.target.value),
+                            }))
+                          }
+                          className="block w-full px-2 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
+                        >
+                          <option value="">Select Sage contact...</option>
+                          {company.suggestedMatches.map((match) => (
+                            <option key={match.sageId} value={match.sageId}>
+                              {match.sageName} ({Math.round(match.confidence * 100)}%)
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <span className="text-gray-400">No suggestions</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      {company.sageContactId !== null ? (
+                        <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-800">
+                          Mapped
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-600">
+                          Unmapped
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-right text-sm">
+                      {company.sageContactId !== null ? (
+                        <button
+                          type="button"
+                          onClick={() => handleUnmap(company.id)}
+                          className="text-red-600 hover:text-red-800 text-sm"
+                        >
+                          Unmap
+                        </button>
+                      ) : manualSelections[company.id] ? (
+                        <button
+                          type="button"
+                          onClick={() => handleManualMap(company.id, company.companyType)}
+                          className="text-orange-600 hover:text-orange-800 text-sm font-medium"
+                        >
+                          Map
+                        </button>
+                      ) : null}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

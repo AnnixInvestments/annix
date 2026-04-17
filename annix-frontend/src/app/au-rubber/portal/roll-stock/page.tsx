@@ -34,18 +34,6 @@ type SortColumn =
   | "createdAt";
 
 export default function RollStockPage() {
-  const rawRollCompoundName = roll.compoundName;
-  const rawRollSoldToCompanyName = roll.soldToCompanyName;
-  const rawOpeningStockFormWeightKg = openingStockForm.weightKg;
-  const rawOpeningStockFormCostZar = openingStockForm.costZar;
-  const rawOpeningStockFormPriceZar = openingStockForm.priceZar;
-  const rawOpeningStockFormLocationId = openingStockForm.locationId;
-  const rawOpeningStockFormProductionDate = openingStockForm.productionDate;
-  const rawTargetValue = e.target.value;
-  const rawOpeningStockFormNotes = openingStockForm.notes;
-  const rawTargetValue2 = e.target.value;
-  const rawRowCostZar = row.costZar;
-  const rawRowPriceZar = row.priceZar;
   const { showToast } = useToast();
   const [rolls, setRolls] = useState<RubberRollStockDto[]>([]);
   const [companies, setCompanies] = useState<RubberCompanyDto[]>([]);
@@ -273,11 +261,11 @@ export default function RollStockPage() {
       const lines = text.split("\n").filter((line) => line.trim());
       const headers = lines[0].split(",").map((h) => h.trim().toLowerCase());
       const rows: ImportOpeningStockRowDto[] = lines.slice(1).map((line) => {
+        const values = line.split(",").map((v) => v.trim());
         const rawValuesByHeadersindexofrollnumber = values[headers.indexOf("roll_number")];
         const rawValuesByHeadersindexofcompoundcode = values[headers.indexOf("compound_code")];
         const rawValuesByHeadersindexoflocation = values[headers.indexOf("location")];
         const rawValuesByHeadersindexofproductiondate = values[headers.indexOf("production_date")];
-        const values = line.split(",").map((v) => v.trim());
         const rowData: ImportOpeningStockRowDto = {
           rollNumber: rawValuesByHeadersindexofrollnumber || "",
           compoundCode: rawValuesByHeadersindexofcompoundcode || "",
@@ -367,6 +355,13 @@ export default function RollStockPage() {
       </div>
     );
   }
+
+  const rawOpeningStockFormWeightKg = openingStockForm.weightKg;
+  const rawOpeningStockFormCostZar = openingStockForm.costZar;
+  const rawOpeningStockFormPriceZar = openingStockForm.priceZar;
+  const rawOpeningStockFormLocationId = openingStockForm.locationId;
+  const rawOpeningStockFormProductionDate = openingStockForm.productionDate;
+  const rawOpeningStockFormNotes = openingStockForm.notes;
 
   return (
     <div className="space-y-6">
@@ -526,74 +521,78 @@ export default function RollStockPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {paginatedRolls.map((roll) => (
-                <tr key={roll.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <Link
-                      href={`/au-rubber/portal/roll-stock/${roll.id}`}
-                      className="text-yellow-600 hover:text-yellow-800 font-medium"
-                    >
-                      {roll.rollNumber}
-                    </Link>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {rawRollCompoundName || "-"}
-                    {roll.compoundCode && (
-                      <span className="ml-1 text-xs text-gray-500">({roll.compoundCode})</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {roll.weightKg.toFixed(2)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {roll.widthMm && roll.thicknessMm && roll.lengthM
-                      ? `${roll.widthMm}mm x ${roll.thicknessMm}mm x ${roll.lengthM}m`
-                      : "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">{statusBadge(roll.status)}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {rawRollSoldToCompanyName || "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                    <Link
-                      href={`/au-rubber/portal/roll-stock/${roll.id}`}
-                      className="text-yellow-600 hover:text-yellow-800"
-                    >
-                      View
-                    </Link>
-                    {roll.status === "IN_STOCK" && (
-                      <>
-                        <button
-                          onClick={() => {
-                            setReserveRollId(roll.id);
-                            setShowReserveModal(true);
-                          }}
-                          className="text-blue-600 hover:text-blue-800"
-                        >
-                          Reserve
-                        </button>
-                        <button
-                          onClick={() => {
-                            setScrapRollId(roll.id);
-                            setShowScrapModal(true);
-                          }}
-                          className="text-red-600 hover:text-red-800"
-                        >
-                          Scrap
-                        </button>
-                      </>
-                    )}
-                    {roll.status === "RESERVED" && (
-                      <button
-                        onClick={() => handleUnreserve(roll.id)}
-                        className="text-orange-600 hover:text-orange-800"
+              {paginatedRolls.map((roll) => {
+                const rawRollCompoundName = roll.compoundName;
+                const rawRollSoldToCompanyName = roll.soldToCompanyName;
+                return (
+                  <tr key={roll.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <Link
+                        href={`/au-rubber/portal/roll-stock/${roll.id}`}
+                        className="text-yellow-600 hover:text-yellow-800 font-medium"
                       >
-                        Unreserve
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
+                        {roll.rollNumber}
+                      </Link>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {rawRollCompoundName || "-"}
+                      {roll.compoundCode && (
+                        <span className="ml-1 text-xs text-gray-500">({roll.compoundCode})</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {roll.weightKg.toFixed(2)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {roll.widthMm && roll.thicknessMm && roll.lengthM
+                        ? `${roll.widthMm}mm x ${roll.thicknessMm}mm x ${roll.lengthM}m`
+                        : "-"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">{statusBadge(roll.status)}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {rawRollSoldToCompanyName || "-"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                      <Link
+                        href={`/au-rubber/portal/roll-stock/${roll.id}`}
+                        className="text-yellow-600 hover:text-yellow-800"
+                      >
+                        View
+                      </Link>
+                      {roll.status === "IN_STOCK" && (
+                        <>
+                          <button
+                            onClick={() => {
+                              setReserveRollId(roll.id);
+                              setShowReserveModal(true);
+                            }}
+                            className="text-blue-600 hover:text-blue-800"
+                          >
+                            Reserve
+                          </button>
+                          <button
+                            onClick={() => {
+                              setScrapRollId(roll.id);
+                              setShowScrapModal(true);
+                            }}
+                            className="text-red-600 hover:text-red-800"
+                          >
+                            Scrap
+                          </button>
+                        </>
+                      )}
+                      {roll.status === "RESERVED" && (
+                        <button
+                          onClick={() => handleUnreserve(roll.id)}
+                          className="text-orange-600 hover:text-orange-800"
+                        >
+                          Unreserve
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}
@@ -861,12 +860,13 @@ export default function RollStockPage() {
                       <input
                         type="date"
                         value={rawOpeningStockFormProductionDate || ""}
-                        onChange={(e) =>
+                        onChange={(e) => {
+                          const rawTargetValue = e.target.value;
                           setOpeningStockForm({
                             ...openingStockForm,
                             productionDate: rawTargetValue || null,
-                          })
-                        }
+                          });
+                        }}
                         className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
                       />
                     </div>
@@ -875,12 +875,13 @@ export default function RollStockPage() {
                     <label className="block text-sm font-medium text-gray-700">Notes</label>
                     <textarea
                       value={rawOpeningStockFormNotes || ""}
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        const rawTargetValue2 = e.target.value;
                         setOpeningStockForm({
                           ...openingStockForm,
                           notes: rawTargetValue2 || null,
-                        })
-                      }
+                        });
+                      }}
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
                       rows={2}
                       placeholder="Optional notes"
@@ -966,23 +967,29 @@ export default function RollStockPage() {
                             </tr>
                           </thead>
                           <tbody className="bg-white divide-y divide-gray-200">
-                            {csvData.slice(0, 10).map((row, idx) => (
-                              <tr key={idx}>
-                                <td className="px-3 py-2 text-sm text-gray-900">
-                                  {row.rollNumber}
-                                </td>
-                                <td className="px-3 py-2 text-sm text-gray-900">
-                                  {row.compoundCode}
-                                </td>
-                                <td className="px-3 py-2 text-sm text-gray-900">{row.weightKg}</td>
-                                <td className="px-3 py-2 text-sm text-gray-900">
-                                  {rawRowCostZar || "-"}
-                                </td>
-                                <td className="px-3 py-2 text-sm text-gray-900">
-                                  {rawRowPriceZar || "-"}
-                                </td>
-                              </tr>
-                            ))}
+                            {csvData.slice(0, 10).map((row, idx) => {
+                              const rawRowCostZar = row.costZar;
+                              const rawRowPriceZar = row.priceZar;
+                              return (
+                                <tr key={idx}>
+                                  <td className="px-3 py-2 text-sm text-gray-900">
+                                    {row.rollNumber}
+                                  </td>
+                                  <td className="px-3 py-2 text-sm text-gray-900">
+                                    {row.compoundCode}
+                                  </td>
+                                  <td className="px-3 py-2 text-sm text-gray-900">
+                                    {row.weightKg}
+                                  </td>
+                                  <td className="px-3 py-2 text-sm text-gray-900">
+                                    {rawRowCostZar || "-"}
+                                  </td>
+                                  <td className="px-3 py-2 text-sm text-gray-900">
+                                    {rawRowPriceZar || "-"}
+                                  </td>
+                                </tr>
+                              );
+                            })}
                             {csvData.length > 10 && (
                               <tr>
                                 <td

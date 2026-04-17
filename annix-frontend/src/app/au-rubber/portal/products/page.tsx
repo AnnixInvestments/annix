@@ -28,14 +28,6 @@ import { PAGE_PERMISSIONS } from "../../config/pagePermissions";
 type SortColumn = "title" | "type" | "costPerKg" | "markup" | "pricePerKg" | "specificGravity";
 
 const exportProductsToCSV = (products: RubberProductDto[]) => {
-  const rawProductTitle = product.title;
-  const rawProductDescription = product.description;
-  const rawProductTypeName = product.typeName;
-  const rawProductCompoundName = product.compoundName;
-  const rawProductColourName = product.colourName;
-  const rawProductHardnessName = product.hardnessName;
-  const rawProductGradeName = product.gradeName;
-  const rawProductCuringMethodName = product.curingMethodName;
   const headers = [
     "Title",
     "Description",
@@ -50,20 +42,34 @@ const exportProductsToCSV = (products: RubberProductDto[]) => {
     "Price/kg",
     "Specific Gravity",
   ];
-  const rows = products.map((product) => [
-    rawProductTitle || "",
-    rawProductDescription || "",
-    rawProductTypeName || "",
-    rawProductCompoundName || "",
-    rawProductColourName || "",
-    rawProductHardnessName || "",
-    rawProductGradeName || "",
-    rawProductCuringMethodName || "",
-    product.costPerKg?.toString() || "",
-    product.markup?.toString() || "",
-    product.pricePerKg?.toString() || "",
-    product.specificGravity?.toString() || "",
-  ]);
+  const rows = products.map((product) => {
+    const rawProductTitle = product.title;
+    const rawProductDescription = product.description;
+    const rawProductTypeName = product.typeName;
+    const rawProductCompoundName = product.compoundName;
+    const rawProductColourName = product.colourName;
+    const rawProductHardnessName = product.hardnessName;
+    const rawProductGradeName = product.gradeName;
+    const rawProductCuringMethodName = product.curingMethodName;
+    const rawCostPerKg = product.costPerKg;
+    const rawMarkup = product.markup;
+    const rawPricePerKg = product.pricePerKg;
+    const rawSpecificGravity = product.specificGravity;
+    return [
+      rawProductTitle || "",
+      rawProductDescription || "",
+      rawProductTypeName || "",
+      rawProductCompoundName || "",
+      rawProductColourName || "",
+      rawProductHardnessName || "",
+      rawProductGradeName || "",
+      rawProductCuringMethodName || "",
+      rawCostPerKg?.toString() || "",
+      rawMarkup?.toString() || "",
+      rawPricePerKg?.toString() || "",
+      rawSpecificGravity?.toString() || "",
+    ];
+  });
 
   const csvContent = [headers, ...rows]
     .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
@@ -82,15 +88,12 @@ const exportProductsToCSV = (products: RubberProductDto[]) => {
 };
 
 export default function AuRubberProductsPage() {
-  const rawProductsQueryData = productsQuery.data;
-  const rawCodingsQueryData = codingsQuery.data;
-  const rawProductTitle2 = product.title;
-  const rawProductTypeName2 = product.typeName;
-  const rawProductCompoundName2 = product.compoundName;
   const { showToast } = useToast();
 
   const productsQuery = useAuRubberProducts();
   const codingsQuery = useAuRubberCodings();
+  const rawProductsQueryData = productsQuery.data;
+  const rawCodingsQueryData = codingsQuery.data;
   const products = rawProductsQueryData || [];
   const codings = rawCodingsQueryData || [];
   const isLoading = productsQuery.isLoading;
@@ -507,90 +510,95 @@ export default function AuRubberProductsPage() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {paginatedProducts.map((product) => (
-                    <tr
-                      key={product.id}
-                      className={`hover:bg-gray-50 ${selectedProducts.has(product.id) ? "bg-yellow-50" : ""}`}
-                    >
-                      <td className="px-6 py-4">
-                        <input
-                          type="checkbox"
-                          checked={selectedProducts.has(product.id)}
-                          onChange={() => toggleSelectProduct(product.id)}
-                          className="h-4 w-4 text-yellow-600 focus:ring-yellow-500 border-gray-300 rounded"
-                        />
-                      </td>
-                      <td className="px-6 py-4">
-                        <Link
-                          href={`/au-rubber/portal/products/${product.id}/edit`}
-                          className="text-sm font-medium text-yellow-600 hover:text-yellow-900"
-                        >
-                          {rawProductTitle2 || "Untitled"}
-                        </Link>
-                        {product.description && (
-                          <div className="text-sm text-gray-500 truncate max-w-xs">
-                            {product.description}
+                  {paginatedProducts.map((product) => {
+                    const rawProductTitle2 = product.title;
+                    const rawProductTypeName2 = product.typeName;
+                    const rawProductCompoundName2 = product.compoundName;
+                    return (
+                      <tr
+                        key={product.id}
+                        className={`hover:bg-gray-50 ${selectedProducts.has(product.id) ? "bg-yellow-50" : ""}`}
+                      >
+                        <td className="px-6 py-4">
+                          <input
+                            type="checkbox"
+                            checked={selectedProducts.has(product.id)}
+                            onChange={() => toggleSelectProduct(product.id)}
+                            className="h-4 w-4 text-yellow-600 focus:ring-yellow-500 border-gray-300 rounded"
+                          />
+                        </td>
+                        <td className="px-6 py-4">
+                          <Link
+                            href={`/au-rubber/portal/products/${product.id}/edit`}
+                            className="text-sm font-medium text-yellow-600 hover:text-yellow-900"
+                          >
+                            {rawProductTitle2 || "Untitled"}
+                          </Link>
+                          {product.description && (
+                            <div className="text-sm text-gray-500 truncate max-w-xs">
+                              {product.description}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">{rawProductTypeName2 || "-"}</div>
+                          <div className="text-sm text-gray-500">
+                            {rawProductCompoundName2 || "-"}
                           </div>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{rawProductTypeName2 || "-"}</div>
-                        <div className="text-sm text-gray-500">
-                          {rawProductCompoundName2 || "-"}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex flex-wrap gap-1">
-                          {product.colourName && (
-                            <span className="px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-700">
-                              {product.colourName}
-                            </span>
-                          )}
-                          {product.hardnessName && (
-                            <span className="px-2 py-0.5 text-xs rounded-full bg-blue-100 text-blue-700">
-                              {product.hardnessName}
-                            </span>
-                          )}
-                          {product.gradeName && (
-                            <span className="px-2 py-0.5 text-xs rounded-full bg-green-100 text-green-700">
-                              {product.gradeName}
-                            </span>
-                          )}
-                          {product.curingMethodName && (
-                            <span className="px-2 py-0.5 text-xs rounded-full bg-purple-100 text-purple-700">
-                              {product.curingMethodName}
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {formatCurrency(product.costPerKg)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {product.markup ? `${product.markup}%` : "-"}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {formatCurrency(product.pricePerKg)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {product.specificGravity?.toFixed(2) || "-"}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
-                        <Link
-                          href={`/au-rubber/portal/products/${product.id}/edit`}
-                          className="text-yellow-600 hover:text-yellow-900"
-                        >
-                          Edit
-                        </Link>
-                        <button
-                          onClick={() => setDeleteProductId(product.id)}
-                          className="text-red-600 hover:text-red-900"
-                        >
-                          Delete
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex flex-wrap gap-1">
+                            {product.colourName && (
+                              <span className="px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-700">
+                                {product.colourName}
+                              </span>
+                            )}
+                            {product.hardnessName && (
+                              <span className="px-2 py-0.5 text-xs rounded-full bg-blue-100 text-blue-700">
+                                {product.hardnessName}
+                              </span>
+                            )}
+                            {product.gradeName && (
+                              <span className="px-2 py-0.5 text-xs rounded-full bg-green-100 text-green-700">
+                                {product.gradeName}
+                              </span>
+                            )}
+                            {product.curingMethodName && (
+                              <span className="px-2 py-0.5 text-xs rounded-full bg-purple-100 text-purple-700">
+                                {product.curingMethodName}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {formatCurrency(product.costPerKg)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {product.markup ? `${product.markup}%` : "-"}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {formatCurrency(product.pricePerKg)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {product.specificGravity?.toFixed(2) || "-"}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
+                          <Link
+                            href={`/au-rubber/portal/products/${product.id}/edit`}
+                            className="text-yellow-600 hover:text-yellow-900"
+                          >
+                            Edit
+                          </Link>
+                          <button
+                            onClick={() => setDeleteProductId(product.id)}
+                            className="text-red-600 hover:text-red-900"
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

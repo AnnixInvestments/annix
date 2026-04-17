@@ -36,7 +36,6 @@ interface WorkflowConfigurationSectionProps {
 }
 
 export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurationSectionProps) {
-  const stepOutcomes = step.stepOutcomes;
   const queryClient = useQueryClient();
   const [stepConfigs, setStepConfigs] = useState<WorkflowStepConfig[]>([]);
   const [assignments, setAssignments] = useState<WorkflowStepAssignment[]>([]);
@@ -115,7 +114,6 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
   const allUsers = assignments.reduce<EligibleUser[]>((acc, a) => {
     a.users.forEach((u) => {
       if (!acc.some((existing) => existing.id === u.id)) {
-        const accParent = acc[parent];
         acc.push(u);
       }
     });
@@ -134,11 +132,10 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
     ...uniqueTeamUsers.map((m) => ({ id: m.id, name: m.name, role: m.role })),
   ];
 
-  const resolvedOutcomes = useCallback(
-    (step: WorkflowStepConfig): StepOutcome[] | null =>
-      stepOutcomes || DEFAULT_STEP_OUTCOMES[step.key] || null,
-    [],
-  );
+  const resolvedOutcomes = useCallback((step: WorkflowStepConfig): StepOutcome[] | null => {
+    const stepOutcomes = step.stepOutcomes;
+    return stepOutcomes || DEFAULT_STEP_OUTCOMES[step.key] || null;
+  }, []);
 
   const allSteps = useMemo(
     () => [...stepConfigs, ...backgroundSteps],
@@ -157,6 +154,7 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
       allSteps.reduce<Record<string, WorkflowStepConfig[]>>((acc, s) => {
         const parent = triggerKey(s);
         if (parent) {
+          const accParent = acc[parent];
           return { ...acc, [parent]: [...(accParent || []), s] };
         }
         return acc;
@@ -303,8 +301,8 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
   };
 
   const handleSetSecondary = async (userId: number | null, step: string) => {
-    const primaryUserId = assignment?.primaryUserId;
     const assignment = assignmentsByStep[step];
+    const primaryUserId = assignment?.primaryUserId;
     const rawUserIds = assignment?.userIds;
     const currentIds = rawUserIds || [];
     const currentPrimary = primaryUserId || (currentIds.length === 1 ? currentIds[0] : null);
@@ -450,8 +448,8 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
   };
 
   const handleEditNotify = (step: string) => {
-    const emails = existing?.emails;
     const existing = recipientsByStep[step];
+    const emails = existing?.emails;
     setEditEmails(emails || []);
     setSelectedEmail("");
     setEditingNotifyStep(step);
@@ -517,8 +515,8 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
   const fgIndex = (key: string) => stepConfigs.findIndex((s) => s.key === key);
 
   const primaryName = (stepKey: string) => {
-    const primaryUserId = assignment?.primaryUserId;
     const assignment = assignmentsByStep[stepKey];
+    const primaryUserId = assignment?.primaryUserId;
     const users = assignment?.users;
     const assignedUsers = users || [];
     const pId = primaryUserId || (assignedUsers.length === 1 ? assignedUsers[0].id : null);
@@ -721,10 +719,17 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
               </thead>
               <tbody>
                 {unifiedSteps.map((step) => {
-                  const primaryUserId = assignment?.primaryUserId;
                   const fi = fgIndex(step.key);
                   const isBg = step.isBackground;
+                  const branchColor = step.branchColor;
+                  const actionLabel = step.actionLabel;
+                  const rejoinAtStep = step.rejoinAtStep;
                   const assignment = assignmentsByStep[step.key];
+                  const primaryUserId = assignment?.primaryUserId;
+                  const secondaryUserId = assignment?.secondaryUserId;
+                  const stepRecipients = recipientsByStep[step.key];
+                  const stepRecipientEmails = stepRecipients?.emails;
+                  const notifyFirstEmail = stepRecipientEmails?.[0];
                   const users = assignment?.users;
                   const assignedUsers = users || [];
                   const pId =
@@ -848,11 +853,13 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                           </button>
                         </td>
                         {/* Follows */}
-                        const value = e.target.value;
                         <td className="py-2 px-2">
                           <select
                             value={triggerKey(step)}
-                            onChange={(e) => handleUpdateFollows(step.key, value || null)}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              handleUpdateFollows(step.key, value || null);
+                            }}
                             disabled={saving}
                             className="text-xs border border-gray-200 rounded px-1 py-0.5 text-gray-600 bg-white cursor-pointer max-w-[120px] focus:ring-teal-500 focus:border-teal-500"
                           >
@@ -863,8 +870,6 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                                 <option key={s.key} value={s.key}>
                                   {s.label}
                                   {s.isBackground ? " (bg)" : ""}
-                                  const branchColor = step.branchColor; const rawValue =
-                                  e.target.value; const rawActionLabel = step.actionLabel;
                                 </option>
                               ))}
                           </select>
@@ -874,7 +879,10 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                           {isBg ? (
                             <select
                               value={branchColor || ""}
-                              onChange={(e) => handleUpdateBranchColor(step.key, rawValue || null)}
+                              onChange={(e) => {
+                                const rawValue = e.target.value;
+                                handleUpdateBranchColor(step.key, rawValue || null);
+                              }}
                               disabled={saving}
                               className="text-xs border border-gray-200 rounded px-1 py-0.5 text-gray-600 bg-white cursor-pointer focus:ring-teal-500 focus:border-teal-500"
                               style={
@@ -921,9 +929,8 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                                 setEditValue(rawActionLabel || "");
                               }}
                               className="text-gray-600 hover:text-teal-600 text-left truncate max-w-[120px] block"
-                              title={rawActionLabel || "Click to set action label"}
+                              title={actionLabel || "Click to set action label"}
                             >
-                              const actionLabel = step.actionLabel;
                               {actionLabel || <span className="text-gray-300 italic">--</span>}
                             </button>
                           )}
@@ -952,13 +959,13 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                                     ))}
                                   {hasOutcomes &&
                                     outcomes.map((o) => {
-                                      const colorMapStyle = colorMap[o.style];
                                       const colorMap: Record<string, string> = {
                                         green: "bg-green-100 text-green-700 border-green-300",
                                         red: "bg-red-100 text-red-700 border-red-300",
                                         amber: "bg-amber-100 text-amber-700 border-amber-300",
                                         blue: "bg-blue-100 text-blue-700 border-blue-300",
                                       };
+                                      const colorMapStyle = colorMap[o.style];
                                       const cls =
                                         colorMapStyle ||
                                         "bg-gray-100 text-gray-700 border-gray-300";
@@ -1049,7 +1056,6 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                           </select>
                         </td>
                         {/* Secondary user */}
-                        const secondaryUserId = assignment?.secondaryUserId;
                         <td className="py-2 px-2">
                           <select
                             value={secondaryUserId || ""}
@@ -1073,10 +1079,9 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                           </select>
                         </td>
                         {/* Notifications */}
-                        const rawValue = recipientsByStep[step.key]?.emails?.[0];
                         <td className="py-2 px-2">
                           <select
-                            value={rawValue || ""}
+                            value={notifyFirstEmail || ""}
                             onChange={async (e) => {
                               const email = e.target.value;
                               const emails = email ? [email] : [];
@@ -1160,9 +1165,9 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                         <tr key={`${step.key}-detail`} className="bg-gray-50/80">
                           <td colSpan={11} className="p-3 text-xs border-b border-gray-200">
                             {(() => {
-                              const primaryUserId = assignment?.primaryUserId;
                               if (!step) return null;
                               const assignment = assignmentsByStep[step.key];
+                              const primaryUserId = assignment?.primaryUserId;
                               const users = assignment?.users;
                               const assignedUsers = users || [];
                               const pId =
@@ -1310,12 +1315,12 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                                             const member = teamMembers.find(
                                               (m) => m.email.toLowerCase() === email,
                                             );
+                                            const name = member?.name;
                                             return (
                                               <span
                                                 key={email}
                                                 className="inline-flex items-center px-2 py-0.5 rounded-full bg-blue-100 text-blue-700"
                                               >
-                                                const name = member?.name;
                                                 {name || email}
                                                 <button
                                                   type="button"
@@ -1366,6 +1371,9 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                                       const phase2Steps = bgForStep.filter(
                                         (bg) => bg.branchColor === null,
                                       );
+                                      const phaseLabels = step.phaseActionLabels;
+                                      const phase1Label = phaseLabels?.["1"];
+                                      const phase2Label = phaseLabels?.["2"];
 
                                       return (
                                         <div>
@@ -1391,9 +1399,7 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                                                   />
                                                 ) : (
                                                   <span className="font-medium text-blue-800">
-                                                    const rawRawValue =
-                                                    step.phaseActionLabels?.["1"];
-                                                    {rawRawValue || "Auto"}
+                                                    {phase1Label || "Auto"}
                                                   </span>
                                                 )}
                                               </div>
@@ -1425,6 +1431,7 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                                                           notifyEmail.toLowerCase(),
                                                       )
                                                     : null;
+                                                  const name = notifyMember?.name;
                                                   return (
                                                     <span
                                                       key={bg.key}
@@ -1433,7 +1440,6 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                                                       <span className="font-medium">
                                                         {bg.label}:
                                                       </span>
-                                                      const name = notifyMember?.name;
                                                       {name || notifyEmail || (
                                                         <span className="italic text-gray-400">
                                                           none
@@ -1463,9 +1469,7 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                                                   />
                                                 ) : (
                                                   <span className="font-medium text-amber-800">
-                                                    const rawRawValue =
-                                                    step.phaseActionLabels?.["2"];
-                                                    {rawRawValue || "Auto"}
+                                                    {phase2Label || "Auto"}
                                                   </span>
                                                 )}
                                               </div>
@@ -1497,6 +1501,7 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                                                           notifyEmail.toLowerCase(),
                                                       )
                                                     : null;
+                                                  const name = notifyMember?.name;
                                                   return (
                                                     <span
                                                       key={bg.key}
@@ -1505,7 +1510,6 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                                                       <span className="font-medium">
                                                         {bg.label}:
                                                       </span>
-                                                      const name = notifyMember?.name;
                                                       {name || notifyEmail || (
                                                         <span className="italic text-gray-400">
                                                           none
@@ -1572,7 +1576,6 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                                           <select
                                             value={step.branchType || "loop"}
                                             onChange={async (e) => {
-                                              const rejoinAtStep = step.rejoinAtStep;
                                               const val = e.target.value as "loop" | "connect";
                                               setSaving(true);
                                               try {
@@ -1658,97 +1661,104 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                                       </span>
                                       {editingOutcomesKey === step.key ? (
                                         <div className="mt-1 space-y-1.5">
-                                          {editingOutcomes.map((outcome, oi) => (
-                                            <div
-                                              key={oi}
-                                              className="flex items-center gap-2 flex-wrap"
-                                            >
-                                              <input
-                                                type="text"
-                                                value={outcome.key}
-                                                onChange={(e) => {
-                                                  const updated = editingOutcomes.map((o, i) =>
-                                                    i === oi
-                                                      ? {
-                                                          ...o,
-                                                          key: e.target.value
-                                                            .replace(/\s+/g, "_")
-                                                            .toLowerCase(),
-                                                        }
-                                                      : o,
-                                                  );
-                                                  setEditingOutcomes(updated);
-                                                }}
-                                                placeholder="Key"
-                                                className="px-1.5 py-0.5 border border-gray-300 rounded w-16"
-                                              />
-                                              <input
-                                                type="text"
-                                                value={outcome.label}
-                                                onChange={(e) => {
-                                                  const updated = editingOutcomes.map((o, i) =>
-                                                    i === oi ? { ...o, label: e.target.value } : o,
-                                                  );
-                                                  setEditingOutcomes(updated);
-                                                }}
-                                                placeholder="Button Label"
-                                                className="px-1.5 py-0.5 border border-gray-300 rounded flex-1 min-w-[100px]"
-                                              />
-                                              <select
-                                                value={outcome.style}
-                                                onChange={(e) => {
-                                                  const updated = editingOutcomes.map((o, i) =>
-                                                    i === oi ? { ...o, style: e.target.value } : o,
-                                                  );
-                                                  setEditingOutcomes(updated);
-                                                }}
-                                                className="px-1.5 py-0.5 border border-gray-300 rounded"
+                                          {editingOutcomes.map((outcome, oi) => {
+                                            const notifyStepKey = outcome.notifyStepKey;
+                                            return (
+                                              <div
+                                                key={oi}
+                                                className="flex items-center gap-2 flex-wrap"
                                               >
-                                                <option value="green">Green</option>
-                                                <option value="red">Red</option>
-                                                <option value="amber">Amber</option>
-                                                <option value="blue">Blue</option>
-                                              </select>
-                                              <select
-                                                value={notifyStepKey || ""}
-                                                onChange={(e) => {
-                                                  const value = e.target.value;
-                                                  const val = value || null;
-                                                  const updated = editingOutcomes.map((o, i) =>
-                                                    i === oi
-                                                      ? {
-                                                          ...o,
-                                                          notifyStepKey: val,
-                                                          nextStepKey: val,
-                                                        }
-                                                      : o,
-                                                  );
-                                                  setEditingOutcomes(updated);
-                                                }}
-                                                className="px-1.5 py-0.5 border border-gray-300 rounded"
-                                              >
-                                                <option value="">Next (linear)</option>
-                                                {backgroundSteps
-                                                  .filter((bg) => bg.key !== step.key)
-                                                  .map((bg) => (
-                                                    <option key={bg.key} value={bg.key}>
-                                                      {bg.label}
-                                                    </option>
-                                                  ))}
-                                              </select>
-                                              <button
-                                                type="button"
-                                                onClick={() =>
-                                                  setEditingOutcomes(
-                                                    editingOutcomes.filter((_, i) => i !== oi),
-                                                  )
-                                                }
-                                                className="text-red-400 hover:text-red-600"
-                                              >
-                                                &times;
-                                              </button>
-                                            </div>
-                                          ))}
+                                                <input
+                                                  type="text"
+                                                  value={outcome.key}
+                                                  onChange={(e) => {
+                                                    const updated = editingOutcomes.map((o, i) =>
+                                                      i === oi
+                                                        ? {
+                                                            ...o,
+                                                            key: e.target.value
+                                                              .replace(/\s+/g, "_")
+                                                              .toLowerCase(),
+                                                          }
+                                                        : o,
+                                                    );
+                                                    setEditingOutcomes(updated);
+                                                  }}
+                                                  placeholder="Key"
+                                                  className="px-1.5 py-0.5 border border-gray-300 rounded w-16"
+                                                />
+                                                <input
+                                                  type="text"
+                                                  value={outcome.label}
+                                                  onChange={(e) => {
+                                                    const updated = editingOutcomes.map((o, i) =>
+                                                      i === oi
+                                                        ? { ...o, label: e.target.value }
+                                                        : o,
+                                                    );
+                                                    setEditingOutcomes(updated);
+                                                  }}
+                                                  placeholder="Button Label"
+                                                  className="px-1.5 py-0.5 border border-gray-300 rounded flex-1 min-w-[100px]"
+                                                />
+                                                <select
+                                                  value={outcome.style}
+                                                  onChange={(e) => {
+                                                    const updated = editingOutcomes.map((o, i) =>
+                                                      i === oi
+                                                        ? { ...o, style: e.target.value }
+                                                        : o,
+                                                    );
+                                                    setEditingOutcomes(updated);
+                                                  }}
+                                                  className="px-1.5 py-0.5 border border-gray-300 rounded"
+                                                >
+                                                  <option value="green">Green</option>
+                                                  <option value="red">Red</option>
+                                                  <option value="amber">Amber</option>
+                                                  <option value="blue">Blue</option>
+                                                </select>
+                                                <select
+                                                  value={notifyStepKey || ""}
+                                                  onChange={(e) => {
+                                                    const value = e.target.value;
+                                                    const val = value || null;
+                                                    const updated = editingOutcomes.map((o, i) =>
+                                                      i === oi
+                                                        ? {
+                                                            ...o,
+                                                            notifyStepKey: val,
+                                                            nextStepKey: val,
+                                                          }
+                                                        : o,
+                                                    );
+                                                    setEditingOutcomes(updated);
+                                                  }}
+                                                  className="px-1.5 py-0.5 border border-gray-300 rounded"
+                                                >
+                                                  <option value="">Next (linear)</option>
+                                                  {backgroundSteps
+                                                    .filter((bg) => bg.key !== step.key)
+                                                    .map((bg) => (
+                                                      <option key={bg.key} value={bg.key}>
+                                                        {bg.label}
+                                                      </option>
+                                                    ))}
+                                                </select>
+                                                <button
+                                                  type="button"
+                                                  onClick={() =>
+                                                    setEditingOutcomes(
+                                                      editingOutcomes.filter((_, i) => i !== oi),
+                                                    )
+                                                  }
+                                                  className="text-red-400 hover:text-red-600"
+                                                >
+                                                  &times;
+                                                </button>
+                                              </div>
+                                            );
+                                          })}
                                           <div className="flex items-center gap-2 mt-1">
                                             <button
                                               type="button"
@@ -1792,13 +1802,13 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                                             return outcomes && outcomes.length > 0 ? (
                                               <>
                                                 {outcomes.map((o) => {
-                                                  const colorMapStyle = colorMap[o.style];
                                                   const colorMap: Record<string, string> = {
                                                     green: "bg-green-50 text-green-700",
                                                     red: "bg-red-50 text-red-700",
                                                     amber: "bg-amber-50 text-amber-700",
                                                     blue: "bg-blue-50 text-blue-700",
                                                   };
+                                                  const colorMapStyle = colorMap[o.style];
                                                   const cls =
                                                     colorMapStyle || "bg-gray-50 text-gray-700";
                                                   const target = o.notifyStepKey

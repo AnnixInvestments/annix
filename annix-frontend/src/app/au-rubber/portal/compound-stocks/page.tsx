@@ -86,9 +86,9 @@ function CompoundCard(props: {
   onToggle: () => void;
   onInvoiceClick: (invoice: RubberTaxInvoiceDto) => void;
 }) {
-  const rawStockCompoundName = stock.compoundName;
   const { section, isExpanded, onToggle, onInvoiceClick } = props;
   const { stock } = section;
+  const rawStockCompoundName = stock.compoundName;
   const actualSOH = section.totalReceived - section.totalDispatched;
   const available = actualSOH - section.committedKg;
   const isLow = stock.isLowStock;
@@ -226,8 +226,8 @@ function ReceivedSection(props: {
       ) : (
         <div className="space-y-2 max-h-64 overflow-y-auto">
           {movements.map((m) => {
-            const rawInvoiceCompanyName = invoice.companyName;
             const invoice = m.referenceId ? invoices.get(m.referenceId) : null;
+            const rawInvoiceCompanyName = invoice?.companyName;
             return (
               <div key={m.id} className="p-2 rounded border border-gray-100 bg-gray-50 text-sm">
                 <div className="flex items-center justify-between">
@@ -260,9 +260,6 @@ function CommittedSection(props: {
   committedOrders: CompoundSection["committedOrders"];
   totalCommitted: number;
 }) {
-  const rawCoCompanyName = co.companyName;
-  const rawCoQuantity = co.quantity;
-  const rawCoQuantity2 = co.quantity;
   const { committedOrders, totalCommitted } = props;
 
   return (
@@ -282,27 +279,34 @@ function CommittedSection(props: {
         <p className="text-sm text-gray-500">No active commitments</p>
       ) : (
         <div className="space-y-2 max-h-64 overflow-y-auto">
-          {committedOrders.map((co, idx) => (
-            <Link
-              key={`${co.orderId}-${idx}`}
-              href={`/au-rubber/portal/orders/${co.orderId}`}
-              className="block p-2 rounded border border-gray-100 bg-amber-50 text-sm hover:bg-amber-100 transition-colors"
-            >
-              <div className="flex items-center justify-between">
-                <span className="font-medium text-amber-700">{co.orderNumber}</span>
-                <span className="font-medium text-amber-700">{formatKg(co.totalKg)}</span>
-              </div>
-              <div className="flex items-center justify-between mt-0.5">
-                <span className="text-xs text-gray-500">
-                  {rawCoCompanyName || "Unknown customer"}
-                </span>
-                <span className="text-xs text-gray-500">
-                  {rawCoQuantity || 0} roll{(rawCoQuantity2 || 0) !== 1 ? "s" : ""}
-                </span>
-              </div>
-              {co.productTitle && <p className="text-xs text-gray-400 mt-0.5">{co.productTitle}</p>}
-            </Link>
-          ))}
+          {committedOrders.map((co, idx) => {
+            const rawCoCompanyName = co.companyName;
+            const rawCoQuantity = co.quantity;
+            const rawCoQuantity2 = co.quantity;
+            return (
+              <Link
+                key={`${co.orderId}-${idx}`}
+                href={`/au-rubber/portal/orders/${co.orderId}`}
+                className="block p-2 rounded border border-gray-100 bg-amber-50 text-sm hover:bg-amber-100 transition-colors"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-medium text-amber-700">{co.orderNumber}</span>
+                  <span className="font-medium text-amber-700">{formatKg(co.totalKg)}</span>
+                </div>
+                <div className="flex items-center justify-between mt-0.5">
+                  <span className="text-xs text-gray-500">
+                    {rawCoCompanyName || "Unknown customer"}
+                  </span>
+                  <span className="text-xs text-gray-500">
+                    {rawCoQuantity || 0} roll{(rawCoQuantity2 || 0) !== 1 ? "s" : ""}
+                  </span>
+                </div>
+                {co.productTitle && (
+                  <p className="text-xs text-gray-400 mt-0.5">{co.productTitle}</p>
+                )}
+              </Link>
+            );
+          })}
         </div>
       )}
     </div>
@@ -351,11 +355,10 @@ function DispatchedSection(props: {
         <div className="space-y-2 max-h-80 overflow-y-auto">
           {[...calendaringByRef.entries()].map(([refId, refMovements]) => {
             const rawCreatedAtSplitAt0 = refMovements[0]?.createdAt.split("T")[0];
-            const rawLinkedDnDeliveryNoteNumber = linkedDn.deliveryNoteNumber;
-            const rawCalInvCompanyName = calInv.companyName;
-            const rawRollRollNumber = roll.rollNumber;
             const linkedDn = calendaredInvoiceDns.get(refId);
             const calInv = calendaredInvoices.get(refId);
+            const rawLinkedDnDeliveryNoteNumber = linkedDn?.deliveryNoteNumber;
+            const rawCalInvCompanyName = calInv?.companyName;
             const dnRolls = linkedDn ? rollsFromExtractedData(linkedDn.extractedData) : [];
             const actualRollWeight = dnRolls.reduce(
               (sum, r) => sum + (r.weightKg != null ? Number(r.weightKg) : 0),
@@ -396,15 +399,18 @@ function DispatchedSection(props: {
                 )}
                 {dnRolls.length > 0 ? (
                   <div className="mt-1 ml-2 space-y-0.5">
-                    {dnRolls.map((roll, ri) => (
-                      <div
-                        key={ri}
-                        className="flex items-center justify-between text-xs text-gray-500"
-                      >
-                        <span>Roll {rawRollRollNumber || ri + 1}</span>
-                        <span>{roll.weightKg != null ? formatKg(roll.weightKg) : "-"}</span>
-                      </div>
-                    ))}
+                    {dnRolls.map((roll, ri) => {
+                      const rawRollRollNumber = roll.rollNumber;
+                      return (
+                        <div
+                          key={ri}
+                          className="flex items-center justify-between text-xs text-gray-500"
+                        >
+                          <span>Roll {rawRollRollNumber || ri + 1}</span>
+                          <span>{roll.weightKg != null ? formatKg(roll.weightKg) : "-"}</span>
+                        </div>
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="mt-1 ml-2 space-y-0.5">
@@ -424,10 +430,9 @@ function DispatchedSection(props: {
           })}
 
           {nonCalendaringMovements.map((m) => {
-            const rawDnDeliveryNoteNumber = dn.deliveryNoteNumber;
-            const rawDnSupplierCompanyName = dn.supplierCompanyName;
-            const rawRollRollNumber2 = roll.rollNumber;
             const dn = m.referenceId ? deliveryNotes.get(m.referenceId) : null;
+            const rawDnDeliveryNoteNumber = dn?.deliveryNoteNumber;
+            const rawDnSupplierCompanyName = dn?.supplierCompanyName;
             const rolls = dn ? rollsFromExtractedData(dn.extractedData) : [];
             const actualRollWeight = rolls.reduce(
               (sum, r) => sum + (r.weightKg != null ? Number(r.weightKg) : 0),
@@ -454,18 +459,21 @@ function DispatchedSection(props: {
                 )}
                 {rolls.length > 0 && (
                   <div className="mt-1 ml-2 space-y-0.5">
-                    {rolls.map((roll, ri) => (
-                      <div
-                        key={ri}
-                        className="flex items-center justify-between text-xs text-gray-500"
-                      >
-                        <span>Roll {rawRollRollNumber2 || ri + 1}</span>
-                        <div className="flex items-center space-x-3">
-                          {roll.weightKg != null && <span>{formatKg(roll.weightKg)}</span>}
-                          {roll.deliveryDate && <span>{roll.deliveryDate}</span>}
+                    {rolls.map((roll, ri) => {
+                      const rawRollRollNumber2 = roll.rollNumber;
+                      return (
+                        <div
+                          key={ri}
+                          className="flex items-center justify-between text-xs text-gray-500"
+                        >
+                          <span>Roll {rawRollRollNumber2 || ri + 1}</span>
+                          <div className="flex items-center space-x-3">
+                            {roll.weightKg != null && <span>{formatKg(roll.weightKg)}</span>}
+                            {roll.deliveryDate && <span>{roll.deliveryDate}</span>}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
                 {m.batchNumber && (
@@ -481,17 +489,6 @@ function DispatchedSection(props: {
 }
 
 export default function CompoundStocksPage() {
-  const rawInvoiceInvoiceNumber = stiModal.invoice?.invoiceNumber;
-  const rawOpeningStockFormQuantityKg = openingStockForm.quantityKg;
-  const rawOpeningStockFormMinStockLevelKg = openingStockForm.minStockLevelKg;
-  const rawOpeningStockFormReorderPointKg = openingStockForm.reorderPointKg;
-  const rawOpeningStockFormBatchNumber = openingStockForm.batchNumber;
-  const rawTargetValue = e.target.value;
-  const rawOpeningStockFormDate = openingStockForm.date;
-  const rawTargetValue2 = e.target.value;
-  const rawOpeningStockFormNotes = openingStockForm.notes;
-  const rawTargetValue3 = e.target.value;
-  const rawRowLocation = row.location;
   const { showToast } = useToast();
 
   const [sections, setSections] = useState<CompoundSection[]>([]);
@@ -559,8 +556,6 @@ export default function CompoundStocksPage() {
 
   const fetchData = async () => {
     try {
-      const rawStockCompoundName2 = a.stock.compoundName;
-      const rawStockCompoundName3 = b.stock.compoundName;
       setIsLoading(true);
       const [
         stocksData,
@@ -732,9 +727,11 @@ export default function CompoundStocksPage() {
         };
       });
 
-      builtSections.sort((a, b) =>
-        (rawStockCompoundName2 || "").localeCompare(rawStockCompoundName3 || ""),
-      );
+      builtSections.sort((a, b) => {
+        const rawStockCompoundName2 = a.stock.compoundName;
+        const rawStockCompoundName3 = b.stock.compoundName;
+        return (rawStockCompoundName2 || "").localeCompare(rawStockCompoundName3 || "");
+      });
       setSections(builtSections);
       setError(null);
     } catch (err) {
@@ -862,10 +859,10 @@ export default function CompoundStocksPage() {
       const lines = text.split("\n").filter((line) => line.trim());
       const headers = lines[0].split(",").map((h) => h.trim().toLowerCase());
       const rows: ImportCompoundOpeningStockRowDto[] = lines.slice(1).map((line) => {
+        const values = line.split(",").map((v) => v.trim());
         const rawValuesByHeadersindexofcompoundcode = values[headers.indexOf("compound_code")];
         const rawValuesByHeadersindexoflocation = values[headers.indexOf("location")];
         const rawValuesByHeadersindexofbatchnumber = values[headers.indexOf("batch_number")];
-        const values = line.split(",").map((v) => v.trim());
         return {
           compoundCode: rawValuesByHeadersindexofcompoundcode || "",
           quantityKg: Number(values[headers.indexOf("quantity_kg")]) || 0,
@@ -937,6 +934,14 @@ export default function CompoundStocksPage() {
       </div>
     );
   }
+
+  const rawInvoiceInvoiceNumber = stiModal.invoice?.invoiceNumber;
+  const rawOpeningStockFormQuantityKg = openingStockForm.quantityKg;
+  const rawOpeningStockFormMinStockLevelKg = openingStockForm.minStockLevelKg;
+  const rawOpeningStockFormReorderPointKg = openingStockForm.reorderPointKg;
+  const rawOpeningStockFormBatchNumber = openingStockForm.batchNumber;
+  const rawOpeningStockFormDate = openingStockForm.date;
+  const rawOpeningStockFormNotes = openingStockForm.notes;
 
   return (
     <div className="space-y-6">
@@ -1323,12 +1328,13 @@ export default function CompoundStocksPage() {
                       <input
                         type="text"
                         value={rawOpeningStockFormBatchNumber || ""}
-                        onChange={(e) =>
+                        onChange={(e) => {
+                          const rawTargetValue = e.target.value;
                           setOpeningStockForm({
                             ...openingStockForm,
                             batchNumber: rawTargetValue || null,
-                          })
-                        }
+                          });
+                        }}
                         className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
                         placeholder="Optional"
                       />
@@ -1338,12 +1344,13 @@ export default function CompoundStocksPage() {
                       <input
                         type="date"
                         value={rawOpeningStockFormDate || ""}
-                        onChange={(e) =>
+                        onChange={(e) => {
+                          const rawTargetValue2 = e.target.value;
                           setOpeningStockForm({
                             ...openingStockForm,
                             date: rawTargetValue2 || null,
-                          })
-                        }
+                          });
+                        }}
                         className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
                       />
                     </div>
@@ -1352,12 +1359,13 @@ export default function CompoundStocksPage() {
                     <label className="block text-sm font-medium text-gray-700">Notes</label>
                     <textarea
                       value={rawOpeningStockFormNotes || ""}
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        const rawTargetValue3 = e.target.value;
                         setOpeningStockForm({
                           ...openingStockForm,
                           notes: rawTargetValue3 || null,
-                        })
-                      }
+                        });
+                      }}
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
                       rows={2}
                       placeholder="Optional notes"
@@ -1440,22 +1448,25 @@ export default function CompoundStocksPage() {
                             </tr>
                           </thead>
                           <tbody className="bg-white divide-y divide-gray-200">
-                            {csvData.slice(0, 10).map((row, idx) => (
-                              <tr key={idx}>
-                                <td className="px-3 py-2 text-sm text-gray-900">
-                                  {row.compoundCode}
-                                </td>
-                                <td className="px-3 py-2 text-sm text-gray-900">
-                                  {row.quantityKg}
-                                </td>
-                                <td className="px-3 py-2 text-sm text-gray-900">
-                                  {row.costPerKg != null ? row.costPerKg : "-"}
-                                </td>
-                                <td className="px-3 py-2 text-sm text-gray-900">
-                                  {rawRowLocation || "-"}
-                                </td>
-                              </tr>
-                            ))}
+                            {csvData.slice(0, 10).map((row, idx) => {
+                              const rawRowLocation = row.location;
+                              return (
+                                <tr key={idx}>
+                                  <td className="px-3 py-2 text-sm text-gray-900">
+                                    {row.compoundCode}
+                                  </td>
+                                  <td className="px-3 py-2 text-sm text-gray-900">
+                                    {row.quantityKg}
+                                  </td>
+                                  <td className="px-3 py-2 text-sm text-gray-900">
+                                    {row.costPerKg != null ? row.costPerKg : "-"}
+                                  </td>
+                                  <td className="px-3 py-2 text-sm text-gray-900">
+                                    {rawRowLocation || "-"}
+                                  </td>
+                                </tr>
+                              );
+                            })}
                             {csvData.length > 10 && (
                               <tr>
                                 <td

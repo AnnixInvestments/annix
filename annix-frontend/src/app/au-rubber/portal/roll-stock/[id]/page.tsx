@@ -14,13 +14,6 @@ import type { RubberCompanyDto } from "@/app/lib/api/rubberPortalApi";
 import { formatDateTimeZA } from "@/app/lib/datetime";
 
 export default function RollStockDetailPage() {
-  const rawRollCompoundName = roll.compoundName;
-  const rawAuCocCustomerCompanyName = auCoc.customerCompanyName;
-  const rawCocCocNumber = coc.cocNumber;
-  const rawBatchShoreAHardness = batch.shoreAHardness;
-  const rawBatchSpecificGravity = batch.specificGravity;
-  const rawBatchTensileStrengthMpa = batch.tensileStrengthMpa;
-  const rawBatchElongationPercent = batch.elongationPercent;
   const params = useParams();
   const router = useRouter();
   const { showToast } = useToast();
@@ -150,6 +143,8 @@ export default function RollStockDetailPage() {
   }
 
   const { roll, batches, supplierCocs, auCoc } = traceability;
+  const rawRollCompoundName = roll.compoundName;
+  const rawAuCocCustomerCompanyName = auCoc?.customerCompanyName;
 
   return (
     <div className="space-y-6">
@@ -280,27 +275,30 @@ export default function RollStockDetailPage() {
         <div className="relative">
           <div className="absolute left-4 top-0 h-full w-0.5 bg-gray-200" />
           <div className="space-y-6">
-            {supplierCocs.map((coc, index) => (
-              <div key={coc.id} className="relative flex items-start">
-                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center z-10">
-                  <span className="text-xs font-medium text-purple-600">{index + 1}</span>
-                </div>
-                <div className="ml-4 flex-1">
-                  <div className="text-sm font-medium text-gray-900">
-                    Supplier CoC: {rawCocCocNumber || `COC-${coc.id}`}
+            {supplierCocs.map((coc, index) => {
+              const rawCocCocNumber = coc.cocNumber;
+              return (
+                <div key={coc.id} className="relative flex items-start">
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center z-10">
+                    <span className="text-xs font-medium text-purple-600">{index + 1}</span>
                   </div>
-                  <div className="text-sm text-gray-500">
-                    {coc.cocTypeLabel} - {coc.supplierCompanyName}
+                  <div className="ml-4 flex-1">
+                    <div className="text-sm font-medium text-gray-900">
+                      Supplier CoC: {rawCocCocNumber || `COC-${coc.id}`}
+                    </div>
+                    <div className="text-sm text-gray-500">
+                      {coc.cocTypeLabel} - {coc.supplierCompanyName}
+                    </div>
+                    <Link
+                      href={`/au-rubber/portal/supplier-cocs/${coc.id}`}
+                      className="text-sm text-yellow-600 hover:text-yellow-800"
+                    >
+                      View Details
+                    </Link>
                   </div>
-                  <Link
-                    href={`/au-rubber/portal/supplier-cocs/${coc.id}`}
-                    className="text-sm text-yellow-600 hover:text-yellow-800"
-                  >
-                    View Details
-                  </Link>
                 </div>
-              </div>
-            ))}
+              );
+            })}
             {batches.length > 0 && (
               <div className="relative flex items-start">
                 <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center z-10">
@@ -401,38 +399,44 @@ export default function RollStockDetailPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {batches.map((batch) => (
-                <tr key={batch.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {batch.batchNumber}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {rawBatchShoreAHardness || "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {rawBatchSpecificGravity || "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {rawBatchTensileStrengthMpa || "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {rawBatchElongationPercent || "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        batch.passFailStatus === "PASS"
-                          ? "bg-green-100 text-green-800"
-                          : batch.passFailStatus === "FAIL"
-                            ? "bg-red-100 text-red-800"
-                            : "bg-gray-100 text-gray-800"
-                      }`}
-                    >
-                      {batch.passFailStatusLabel}
-                    </span>
-                  </td>
-                </tr>
-              ))}
+              {batches.map((batch) => {
+                const rawBatchShoreAHardness = batch.shoreAHardness;
+                const rawBatchSpecificGravity = batch.specificGravity;
+                const rawBatchTensileStrengthMpa = batch.tensileStrengthMpa;
+                const rawBatchElongationPercent = batch.elongationPercent;
+                return (
+                  <tr key={batch.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {batch.batchNumber}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {rawBatchShoreAHardness || "-"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {rawBatchSpecificGravity || "-"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {rawBatchTensileStrengthMpa || "-"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {rawBatchElongationPercent || "-"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span
+                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                          batch.passFailStatus === "PASS"
+                            ? "bg-green-100 text-green-800"
+                            : batch.passFailStatus === "FAIL"
+                              ? "bg-red-100 text-red-800"
+                              : "bg-gray-100 text-gray-800"
+                        }`}
+                      >
+                        {batch.passFailStatusLabel}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

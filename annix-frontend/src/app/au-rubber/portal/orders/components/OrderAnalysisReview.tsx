@@ -21,13 +21,13 @@ interface OrderAnalysisReviewProps {
 }
 
 export function OrderAnalysisReview(props: OrderAnalysisReviewProps) {
+  const { analysis, companies, products, onUpdate, onNewCompanyChange } = props;
   const rawAnalysisCompanyName = analysis.companyName;
   const rawAnalysisCompanyVatNumber = analysis.companyVatNumber;
   const rawAnalysisCompanyAddress = analysis.companyAddress;
   const rawAnalysisCompanyRegistrationNumber = analysis.companyRegistrationNumber;
   const rawAnalysisCompanyId = analysis.companyId;
   const rawAnalysisPoNumber = analysis.poNumber;
-  const { analysis, companies, products, onUpdate, onNewCompanyChange } = props;
   const [editingLineIndex, setEditingLineIndex] = useState<number | null>(null);
   const [editedLine, setEditedLine] = useState<AnalyzedOrderLine | null>(null);
   const [isCreatingNewCompany, setIsCreatingNewCompany] = useState(false);
@@ -69,11 +69,11 @@ export function OrderAnalysisReview(props: OrderAnalysisReviewProps) {
       });
       notifyNewCompany(name, vat, regNum, addr);
     } else {
-      const rawCompanyName = company?.name;
       setIsCreatingNewCompany(false);
       onNewCompanyChange?.(null);
       const companyId = value ? Number(value) : null;
       const company = companyId ? companies.find((c) => c.id === companyId) : null;
+      const rawCompanyName = company?.name;
       onUpdate({
         ...analysis,
         companyId,
@@ -115,11 +115,11 @@ export function OrderAnalysisReview(props: OrderAnalysisReviewProps) {
   };
 
   const handleProductChange = (productId: number | null) => {
-    const rawProductTitle = product?.title;
     if (!editedLine) {
       return;
     }
     const product = productId ? products.find((p) => p.id === productId) : null;
+    const rawProductTitle = product?.title;
     setEditedLine({
       ...editedLine,
       productId: productId,

@@ -8,7 +8,6 @@ import { auRubberApiClient, type RubberRollStockDto } from "@/app/lib/api/auRubb
 import type { RubberCompanyDto } from "@/app/lib/api/rubberPortalApi";
 
 export default function NewAuCocPage() {
-  const rawRollCompoundName = roll.compoundName;
   const router = useRouter();
   const searchParams = useSearchParams();
   const { showToast } = useToast();
@@ -271,42 +270,45 @@ export default function NewAuCocPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredRolls.map((roll) => (
-                  <tr
-                    key={roll.id}
-                    className={`cursor-pointer hover:bg-gray-50 ${
-                      selectedRollIds.has(roll.id) ? "bg-yellow-50" : ""
-                    }`}
-                    onClick={() => toggleRollSelection(roll.id)}
-                  >
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <input
-                        type="checkbox"
-                        checked={selectedRollIds.has(roll.id)}
-                        onChange={() => toggleRollSelection(roll.id)}
-                        onClick={(e) => e.stopPropagation()}
-                        className="h-4 w-4 text-yellow-600 focus:ring-yellow-500 border-gray-300 rounded"
-                      />
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {roll.rollNumber}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                      {rawRollCompoundName || "-"}
-                      {roll.compoundCode && (
-                        <span className="ml-1 text-xs text-gray-400">({roll.compoundCode})</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                      {roll.weightKg.toFixed(2)}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                      {roll.widthMm && roll.thicknessMm && roll.lengthM
-                        ? `${roll.widthMm}mm x ${roll.thicknessMm}mm x ${roll.lengthM}m`
-                        : "-"}
-                    </td>
-                  </tr>
-                ))}
+                {filteredRolls.map((roll) => {
+                  const rawRollCompoundName = roll.compoundName;
+                  return (
+                    <tr
+                      key={roll.id}
+                      className={`cursor-pointer hover:bg-gray-50 ${
+                        selectedRollIds.has(roll.id) ? "bg-yellow-50" : ""
+                      }`}
+                      onClick={() => toggleRollSelection(roll.id)}
+                    >
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <input
+                          type="checkbox"
+                          checked={selectedRollIds.has(roll.id)}
+                          onChange={() => toggleRollSelection(roll.id)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="h-4 w-4 text-yellow-600 focus:ring-yellow-500 border-gray-300 rounded"
+                        />
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {roll.rollNumber}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                        {rawRollCompoundName || "-"}
+                        {roll.compoundCode && (
+                          <span className="ml-1 text-xs text-gray-400">({roll.compoundCode})</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                        {roll.weightKg.toFixed(2)}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                        {roll.widthMm && roll.thicknessMm && roll.lengthM
+                          ? `${roll.widthMm}mm x ${roll.thicknessMm}mm x ${roll.lengthM}m`
+                          : "-"}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

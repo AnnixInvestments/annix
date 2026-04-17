@@ -7,8 +7,7 @@
   "scripts": {
     "claude-swarm": "claude-swarm",
     "test:backend": "cd annix-backend && pnpm test",
-    "test:frontend": "echo 'frontend tsc skipped pending SWC-hoist fallout cleanup (ref #195)'",
-    "test:frontend:strict": "cd annix-frontend && pnpm type-check",
+    "test:frontend": "cd annix-frontend && pnpm type-check",
     "test:all": "pnpm test:backend && pnpm test:frontend",
     "test:coverage": "cd annix-backend && pnpm test:cov",
     "test:watch": "cd annix-backend && pnpm test:watch",
