@@ -36,7 +36,8 @@ export function DraggableMeeting(props: DraggableMeetingProps) {
     height: "100%",
   };
 
-  const colors = meetingTypeColors[meeting.meetingType] || meetingTypeColors.in_person;
+  const rawColors = meetingTypeColors[meeting.meetingType];
+  const colors = rawColors || meetingTypeColors.in_person;
   const statusColor = statusIndicators[meeting.status];
 
   const startTime = fromJSDate(meeting.scheduledStart);

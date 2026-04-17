@@ -20,8 +20,10 @@ function ConflictCard({
   onResolve: (resolution: "keep_local" | "keep_remote" | "dismissed") => void;
   isResolving: boolean;
 }) {
-  const localTitle = conflict.localData.title ?? "Meeting";
-  const remoteTitle = conflict.remoteData.title ?? "Calendar Event";
+  const rawLocalTitle = conflict.localData.title;
+  const localTitle = rawLocalTitle || "Meeting";
+  const rawRemoteTitle = conflict.remoteData.title;
+  const remoteTitle = rawRemoteTitle || "Calendar Event";
 
   return (
     <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden">

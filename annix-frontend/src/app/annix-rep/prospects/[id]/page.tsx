@@ -29,7 +29,8 @@ import {
 } from "@/app/lib/query/hooks";
 import { ProspectDetailSkeleton } from "../../components/Skeleton";
 
-const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
+const rawGoogleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+const GOOGLE_MAPS_API_KEY = rawGoogleMapsApiKey || "";
 
 const statusColors: Record<ProspectStatus, { bg: string; text: string }> = {
   new: { bg: "bg-blue-100 dark:bg-blue-900/30", text: "text-blue-700 dark:text-blue-300" },
@@ -214,22 +215,35 @@ export default function ProspectDetailPage() {
       : null;
 
   const handleStartEdit = () => {
+    const rawContactName = prospect.contactName;
+    const rawContactEmail = prospect.contactEmail;
+    const rawContactPhone = prospect.contactPhone;
+    const rawContactTitle = prospect.contactTitle;
+    const rawStreetAddress = prospect.streetAddress;
+    const rawCity = prospect.city;
+    const rawProvince = prospect.province;
+    const rawPostalCode = prospect.postalCode;
+    const rawLatitude = prospect.latitude;
+    const rawLongitude = prospect.longitude;
+    const rawNotes = prospect.notes;
+    const rawEstimatedValue = prospect.estimatedValue;
+    const rawTags = prospect.tags;
     setEditForm({
       companyName: prospect.companyName,
-      contactName: prospect.contactName ?? "",
-      contactEmail: prospect.contactEmail ?? "",
-      contactPhone: prospect.contactPhone ?? "",
-      contactTitle: prospect.contactTitle ?? "",
-      streetAddress: prospect.streetAddress ?? "",
-      city: prospect.city ?? "",
-      province: prospect.province ?? "",
-      postalCode: prospect.postalCode ?? "",
-      latitude: prospect.latitude ?? undefined,
-      longitude: prospect.longitude ?? undefined,
-      notes: prospect.notes ?? "",
+      contactName: rawContactName || "",
+      contactEmail: rawContactEmail || "",
+      contactPhone: rawContactPhone || "",
+      contactTitle: rawContactTitle || "",
+      streetAddress: rawStreetAddress || "",
+      city: rawCity || "",
+      province: rawProvince || "",
+      postalCode: rawPostalCode || "",
+      latitude: rawLatitude || undefined,
+      longitude: rawLongitude || undefined,
+      notes: rawNotes || "",
       priority: prospect.priority,
-      estimatedValue: prospect.estimatedValue ?? undefined,
-      tags: prospect.tags ?? [],
+      estimatedValue: rawEstimatedValue || undefined,
+      tags: rawTags || [],
       nextFollowUpAt: prospect.nextFollowUpAt
         ? fromJSDate(prospect.nextFollowUpAt).toFormat("yyyy-MM-dd'T'HH:mm")
         : undefined,
@@ -241,12 +255,14 @@ export default function ProspectDetailPage() {
     location: { lat: number; lng: number },
     addressComponents?: { address: string; region: string; country: string },
   ) => {
+    const addr = addressComponents?.address;
+    const reg = addressComponents?.region;
     setEditForm({
       ...editForm,
       latitude: location.lat,
       longitude: location.lng,
-      streetAddress: addressComponents?.address || editForm.streetAddress,
-      province: addressComponents?.region || editForm.province,
+      streetAddress: addr || editForm.streetAddress,
+      province: reg || editForm.province,
     });
     setShowLocationPicker(false);
   };
@@ -274,15 +290,17 @@ export default function ProspectDetailPage() {
   const handleAddTag = () => {
     const tag = tagInput.trim().toLowerCase();
     if (tag && !editForm.tags?.includes(tag)) {
-      setEditForm({ ...editForm, tags: [...(editForm.tags ?? []), tag] });
+      const currentTags = editForm.tags;
+      setEditForm({ ...editForm, tags: [...(currentTags || []), tag] });
     }
     setTagInput("");
   };
 
   const handleRemoveTag = (tagToRemove: string) => {
+    const existingTags = editForm.tags;
     setEditForm({
       ...editForm,
-      tags: (editForm.tags ?? []).filter((t) => t !== tagToRemove),
+      tags: (existingTags || []).filter((t) => t !== tagToRemove),
     });
   };
 
@@ -309,6 +327,21 @@ export default function ProspectDetailPage() {
       dto: { nextFollowUpAt: undefined },
     });
   };
+
+  const editCompanyName = editForm.companyName;
+  const editContactName = editForm.contactName;
+  const editContactEmail = editForm.contactEmail;
+  const editContactPhone = editForm.contactPhone;
+  const editStreetAddress = editForm.streetAddress;
+  const editCity = editForm.city;
+  const editProvince = editForm.province;
+  const editPostalCode = editForm.postalCode;
+  const editNotes = editForm.notes;
+  const editEstimatedValue = editForm.estimatedValue;
+  const editNextFollowUpAt = editForm.nextFollowUpAt;
+  const prospectStreetAddress = prospect.streetAddress;
+  const prospectCity = prospect.city;
+  const prospectProvince = prospect.province;
 
   return (
     <div className="space-y-6">
@@ -373,7 +406,7 @@ export default function ProspectDetailPage() {
                     </label>
                     <input
                       type="text"
-                      value={editForm.companyName ?? ""}
+                      value={editCompanyName || ""}
                       onChange={(e) => setEditForm({ ...editForm, companyName: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-white"
                     />
@@ -384,7 +417,7 @@ export default function ProspectDetailPage() {
                     </label>
                     <input
                       type="text"
-                      value={editForm.contactName ?? ""}
+                      value={editContactName || ""}
                       onChange={(e) => setEditForm({ ...editForm, contactName: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-white"
                     />
@@ -398,7 +431,7 @@ export default function ProspectDetailPage() {
                     </label>
                     <input
                       type="email"
-                      value={editForm.contactEmail ?? ""}
+                      value={editContactEmail || ""}
                       onChange={(e) => setEditForm({ ...editForm, contactEmail: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-white"
                     />
@@ -409,7 +442,7 @@ export default function ProspectDetailPage() {
                     </label>
                     <input
                       type="tel"
-                      value={editForm.contactPhone ?? ""}
+                      value={editContactPhone || ""}
                       onChange={(e) => setEditForm({ ...editForm, contactPhone: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-white"
                     />
@@ -423,7 +456,7 @@ export default function ProspectDetailPage() {
                   <div className="flex gap-2">
                     <input
                       type="text"
-                      value={editForm.streetAddress ?? ""}
+                      value={editStreetAddress || ""}
                       onChange={(e) => setEditForm({ ...editForm, streetAddress: e.target.value })}
                       placeholder="Street address"
                       className="flex-1 px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-white"
@@ -481,7 +514,7 @@ export default function ProspectDetailPage() {
                     </label>
                     <input
                       type="text"
-                      value={editForm.city ?? ""}
+                      value={editCity || ""}
                       onChange={(e) => setEditForm({ ...editForm, city: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-white"
                     />
@@ -492,7 +525,7 @@ export default function ProspectDetailPage() {
                     </label>
                     <input
                       type="text"
-                      value={editForm.province ?? ""}
+                      value={editProvince || ""}
                       onChange={(e) => setEditForm({ ...editForm, province: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-white"
                     />
@@ -503,7 +536,7 @@ export default function ProspectDetailPage() {
                     </label>
                     <input
                       type="text"
-                      value={editForm.postalCode ?? ""}
+                      value={editPostalCode || ""}
                       onChange={(e) => setEditForm({ ...editForm, postalCode: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-white"
                     />
@@ -516,7 +549,7 @@ export default function ProspectDetailPage() {
                   </label>
                   <textarea
                     rows={3}
-                    value={editForm.notes ?? ""}
+                    value={editNotes || ""}
                     onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-white"
                   />
@@ -582,10 +615,11 @@ export default function ProspectDetailPage() {
                   </label>
                   <input
                     type="datetime-local"
-                    value={editForm.nextFollowUpAt ?? ""}
-                    onChange={(e) =>
-                      setEditForm({ ...editForm, nextFollowUpAt: e.target.value || undefined })
-                    }
+                    value={editNextFollowUpAt || ""}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setEditForm({ ...editForm, nextFollowUpAt: val || undefined });
+                    }}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-white"
                   />
                 </div>
@@ -641,7 +675,7 @@ export default function ProspectDetailPage() {
                   )}
                 </div>
 
-                {(prospect.streetAddress || prospect.city || prospect.province) && (
+                {(prospectStreetAddress || prospectCity || prospectProvince) && (
                   <div>
                     <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">
                       Address

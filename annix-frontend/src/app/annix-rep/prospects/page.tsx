@@ -32,7 +32,8 @@ import {
 import { QueryErrorFallback } from "../components/ErrorBoundary";
 import { ProspectListSkeleton } from "../components/Skeleton";
 
-const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
+const rawMapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+const GOOGLE_MAPS_API_KEY = rawMapsKey || "";
 
 const statusColors: Record<ProspectStatus, { bg: string; text: string }> = {
   new: { bg: "bg-blue-100 dark:bg-blue-900/30", text: "text-blue-700 dark:text-blue-300" },
@@ -93,6 +94,8 @@ function ProspectCard({
   onSelect: (id: number, selected: boolean) => void;
 }) {
   const [showActions, setShowActions] = useState(false);
+  const prospectCity = prospect.city;
+  const prospectProvince = prospect.province;
 
   const wazeUrl =
     prospect.latitude && prospect.longitude
@@ -129,7 +132,7 @@ function ProspectCard({
                 {prospect.contactTitle && ` - ${prospect.contactTitle}`}
               </p>
             )}
-            {(prospect.city || prospect.province) && (
+            {(prospectCity || prospectProvince) && (
               <p className="text-sm text-gray-500 dark:text-gray-500 flex items-center gap-1 mt-1">
                 <svg
                   className="w-4 h-4"
@@ -351,15 +354,19 @@ function CreateProspectModal({
     location: { lat: number; lng: number },
     addressComponents?: { address: string; region: string; country: string },
   ) => {
+    const selectedAddress = addressComponents?.address;
+    const selectedRegion = addressComponents?.region;
     setFormData({
       ...formData,
       latitude: location.lat,
       longitude: location.lng,
-      streetAddress: addressComponents?.address || formData.streetAddress,
-      province: addressComponents?.region || formData.province,
+      streetAddress: selectedAddress || formData.streetAddress,
+      province: selectedRegion || formData.province,
     });
     setShowLocationPicker(false);
   };
+
+  const formStreetAddress = formData.streetAddress;
 
   return (
     <>
@@ -443,7 +450,7 @@ function CreateProspectModal({
                 <div className="flex gap-2">
                   <input
                     type="text"
-                    value={formData.streetAddress || ""}
+                    value={formStreetAddress || ""}
                     onChange={(e) => setFormData({ ...formData, streetAddress: e.target.value })}
                     placeholder="Street address"
                     className="flex-1 px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-white"
@@ -778,22 +785,28 @@ function ImportProspectsModal({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
-                      {parsedRows.slice(0, 10).map((row, i) => (
-                        <tr key={i} className={!row.companyName?.trim() ? "opacity-50" : ""}>
-                          <td className="py-2 pr-4 text-gray-900 dark:text-white">
-                            {row.companyName || <span className="text-red-500">Missing</span>}
-                          </td>
-                          <td className="py-2 pr-4 text-gray-600 dark:text-gray-400">
-                            {row.contactName || "-"}
-                          </td>
-                          <td className="py-2 pr-4 text-gray-600 dark:text-gray-400">
-                            {row.contactEmail || "-"}
-                          </td>
-                          <td className="py-2 text-gray-600 dark:text-gray-400">
-                            {row.city || "-"}
-                          </td>
-                        </tr>
-                      ))}
+                      {parsedRows.slice(0, 10).map((row, i) => {
+                        const rowCompanyName = row.companyName;
+                        const rowContactName = row.contactName;
+                        const rowContactEmail = row.contactEmail;
+                        const rowCity = row.city;
+                        return (
+                          <tr key={i} className={!rowCompanyName?.trim() ? "opacity-50" : ""}>
+                            <td className="py-2 pr-4 text-gray-900 dark:text-white">
+                              {rowCompanyName || <span className="text-red-500">Missing</span>}
+                            </td>
+                            <td className="py-2 pr-4 text-gray-600 dark:text-gray-400">
+                              {rowContactName || "-"}
+                            </td>
+                            <td className="py-2 pr-4 text-gray-600 dark:text-gray-400">
+                              {rowContactEmail || "-"}
+                            </td>
+                            <td className="py-2 text-gray-600 dark:text-gray-400">
+                              {rowCity || "-"}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                   {parsedRows.length > 10 && (
@@ -880,13 +893,22 @@ export default function ProspectsPage() {
     );
   }
 
+  const prospectList = prospects || [];
   const allTags = Array.from(
-    new Set((prospects ?? []).flatMap((p) => p.tags ?? []).filter(Boolean)),
+    new Set(
+      prospectList
+        .flatMap((p) => {
+          const tags = p.tags;
+          return tags || [];
+        })
+        .filter(Boolean),
+    ),
   ).sort();
 
-  const filteredProspects = (prospects ?? []).filter((p) => {
+  const filteredProspects = prospectList.filter((p) => {
     if (statusFilter !== "all" && p.status !== statusFilter) return false;
-    if (tagFilter && !(p.tags ?? []).includes(tagFilter)) return false;
+    const pTags = p.tags;
+    if (tagFilter && !(pTags || []).includes(tagFilter)) return false;
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       return (
@@ -895,7 +917,7 @@ export default function ProspectsPage() {
         false ||
         p.city?.toLowerCase().includes(query) ||
         false ||
-        (p.tags ?? []).some((t) => t.toLowerCase().includes(query))
+        (pTags || []).some((t) => t.toLowerCase().includes(query))
       );
     }
     return true;
@@ -1163,19 +1185,22 @@ export default function ProspectsPage() {
 
         {stats && (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
-            {(Object.keys(statusLabels) as ProspectStatus[]).map((status) => (
-              <button
-                key={status}
-                onClick={() => setStatusFilter(statusFilter === status ? "all" : status)}
-                className={`px-3 py-2 text-sm font-medium rounded-lg border transition-colors ${
-                  statusFilter === status
-                    ? `${statusColors[status].bg} ${statusColors[status].text} border-transparent`
-                    : "bg-white dark:bg-slate-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700"
-                }`}
-              >
-                {statusLabels[status]} ({stats[status] ?? 0})
-              </button>
-            ))}
+            {(Object.keys(statusLabels) as ProspectStatus[]).map((status) => {
+              const statusCount = stats[status];
+              return (
+                <button
+                  key={status}
+                  onClick={() => setStatusFilter(statusFilter === status ? "all" : status)}
+                  className={`px-3 py-2 text-sm font-medium rounded-lg border transition-colors ${
+                    statusFilter === status
+                      ? `${statusColors[status].bg} ${statusColors[status].text} border-transparent`
+                      : "bg-white dark:bg-slate-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700"
+                  }`}
+                >
+                  {statusLabels[status]} ({statusCount || 0})
+                </button>
+              );
+            })}
           </div>
         )}
 

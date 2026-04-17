@@ -48,8 +48,11 @@ const meetingTypeIcons: Record<string, string> = {
     "M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z",
 };
 
-function MeetingCard({ meeting }: { meeting: Meeting }) {
+function MeetingCard(props: { meeting: Meeting }) {
+  const meeting = props.meeting;
   const colors = statusColors[meeting.status];
+  const meetingIsRecurring = meeting.isRecurring;
+  const meetingRecurringParentId = meeting.recurringParentId;
 
   return (
     <Link href={`/annix-rep/meetings/${meeting.id}`}>
@@ -76,7 +79,7 @@ function MeetingCard({ meeting }: { meeting: Meeting }) {
             >
               {statusLabels[meeting.status]}
             </span>
-            {(meeting.isRecurring || meeting.recurringParentId) && (
+            {(meetingIsRecurring || meetingRecurringParentId) && (
               <span className="flex items-center gap-1 text-xs text-purple-600 dark:text-purple-400">
                 <svg
                   className="w-3.5 h-3.5"
@@ -224,6 +227,8 @@ function CreateMeetingModal({
     setRecurrence(defaultRecurrenceOptions());
   };
 
+  const formDescription = formData.description;
+
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex min-h-full items-end justify-center p-4 sm:items-center sm:p-0">
@@ -325,7 +330,7 @@ function CreateMeetingModal({
               </label>
               <textarea
                 rows={3}
-                value={formData.description ?? ""}
+                value={formDescription || ""}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-white"
                 placeholder="Meeting description or agenda"

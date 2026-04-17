@@ -192,7 +192,8 @@ function ConnectionCard({
     },
   };
 
-  const config = providerConfig[connection.provider] ?? providerConfig.caldav;
+  const rawProviderCfg = providerConfig[connection.provider];
+  const config = rawProviderCfg || providerConfig.caldav;
 
   const statusConfig = {
     active: {
@@ -213,7 +214,8 @@ function ConnectionCard({
     },
   };
 
-  const status = statusConfig[connection.syncStatus] ?? statusConfig.error;
+  const rawStatusCfg = statusConfig[connection.syncStatus];
+  const status = rawStatusCfg || statusConfig.error;
 
   return (
     <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-6">
@@ -326,6 +328,8 @@ export default function CalendarsSettingsPage() {
   };
 
   const connectedProviders = new Set(connections?.map((c) => c.provider) || []);
+  const rawConflictCount = conflictCountData?.count;
+  const conflictCount = rawConflictCount || 0;
 
   return (
     <div className="space-y-6">
@@ -487,14 +491,14 @@ export default function CalendarsSettingsPage() {
               <div className="flex items-center gap-4">
                 <div
                   className={`p-3 rounded-lg ${
-                    (conflictCountData?.count || 0) > 0
+                    conflictCount > 0
                       ? "bg-amber-50 dark:bg-amber-900/20"
                       : "bg-green-50 dark:bg-green-900/20"
                   }`}
                 >
                   <svg
                     className={`w-6 h-6 ${
-                      (conflictCountData?.count || 0) > 0
+                      conflictCount > 0
                         ? "text-amber-600 dark:text-amber-400"
                         : "text-green-600 dark:text-green-400"
                     }`}
@@ -503,7 +507,7 @@ export default function CalendarsSettingsPage() {
                     strokeWidth={1.5}
                     stroke="currentColor"
                   >
-                    {(conflictCountData?.count || 0) > 0 ? (
+                    {conflictCount > 0 ? (
                       <path
                         strokeLinecap="round"
                         strokeLinejoin="round"
@@ -523,7 +527,7 @@ export default function CalendarsSettingsPage() {
                     Sync Conflicts
                   </h3>
                   <p className="text-sm text-gray-500 dark:text-gray-400">
-                    {(conflictCountData?.count || 0) > 0
+                    {conflictCount > 0
                       ? `${conflictCountData?.count} conflict${conflictCountData?.count === 1 ? "" : "s"} need attention`
                       : "No conflicts detected"}
                   </p>

@@ -91,6 +91,8 @@ function TerritoryCoverageReportContent() {
     } catch {}
   };
 
+  const exportPdfPending = exportPdf.isPending;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -121,7 +123,7 @@ function TerritoryCoverageReportContent() {
 
         <button
           onClick={handleExportPdf}
-          disabled={exportPdf.isPending || !report}
+          disabled={exportPdfPending || !report}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           {exportPdf.isPending ? (
@@ -228,46 +230,49 @@ function TerritoryCoverageReportContent() {
                     {report.prospects
                       .sort((a, b) => b.visitCount - a.visitCount)
                       .slice(0, 20)
-                      .map((prospect) => (
-                        <tr
-                          key={prospect.id}
-                          className="border-b border-gray-100 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700"
-                        >
-                          <td className="py-3 px-4">
-                            <Link
-                              href={`/annix-rep/prospects/${prospect.id}`}
-                              className="text-sm font-medium text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400"
-                            >
-                              {prospect.companyName}
-                            </Link>
-                          </td>
-                          <td className="py-3 px-4">
-                            <span
-                              className={`text-xs px-2 py-1 rounded-full ${
-                                prospect.status === "won"
-                                  ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300"
-                                  : prospect.status === "lost"
-                                    ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300"
-                                    : "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300"
-                              }`}
-                            >
-                              {statusLabels[prospect.status] ?? prospect.status}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4">
-                            <span className="text-sm text-gray-600 dark:text-gray-400">
-                              {prospect.visitCount}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4">
-                            <span className="text-sm text-gray-600 dark:text-gray-400">
-                              {prospect.lastVisitDate
-                                ? formatDateZA(prospect.lastVisitDate)
-                                : "Never"}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
+                      .map((prospect) => {
+                        const prospectStatusLabel = statusLabels[prospect.status];
+                        return (
+                          <tr
+                            key={prospect.id}
+                            className="border-b border-gray-100 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700"
+                          >
+                            <td className="py-3 px-4">
+                              <Link
+                                href={`/annix-rep/prospects/${prospect.id}`}
+                                className="text-sm font-medium text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400"
+                              >
+                                {prospect.companyName}
+                              </Link>
+                            </td>
+                            <td className="py-3 px-4">
+                              <span
+                                className={`text-xs px-2 py-1 rounded-full ${
+                                  prospect.status === "won"
+                                    ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300"
+                                    : prospect.status === "lost"
+                                      ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300"
+                                      : "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300"
+                                }`}
+                              >
+                                {prospectStatusLabel || prospect.status}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4">
+                              <span className="text-sm text-gray-600 dark:text-gray-400">
+                                {prospect.visitCount}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4">
+                              <span className="text-sm text-gray-600 dark:text-gray-400">
+                                {prospect.lastVisitDate
+                                  ? formatDateZA(prospect.lastVisitDate)
+                                  : "Never"}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
                   </tbody>
                 </table>
                 {report.prospects.length > 20 && (

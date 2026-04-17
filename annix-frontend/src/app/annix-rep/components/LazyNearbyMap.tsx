@@ -63,8 +63,9 @@ export default function NearbyMap(props: NearbyMapProps) {
   const { userLocation, prospects, selectedProspect, onSelectProspect } = props;
   const [infoWindowProspect, setInfoWindowProspect] = useState<Prospect | null>(null);
 
+  const mapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   const { isLoaded, loadError } = useJsApiLoader({
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "",
+    googleMapsApiKey: mapsApiKey || "",
   });
 
   const onMapClick = useCallback(() => {

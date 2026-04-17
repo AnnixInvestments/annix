@@ -159,6 +159,8 @@ export default function CustomFieldsSettingsPage() {
     );
   }
 
+  const createFieldPending = createField.isPending;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
@@ -648,7 +650,7 @@ export default function CustomFieldsSettingsPage() {
                 }
                 className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {createField.isPending || updateField.isPending
+                {createFieldPending || updateField.isPending
                   ? "Saving..."
                   : editingId
                     ? "Update Field"

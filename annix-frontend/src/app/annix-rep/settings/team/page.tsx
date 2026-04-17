@@ -53,6 +53,8 @@ function CreateOrganizationForm() {
     await createOrg.mutateAsync(dto);
   };
 
+  const createOrgPending = createOrg.isPending;
+
   return (
     <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-8 text-center max-w-lg mx-auto">
       <svg
@@ -105,7 +107,7 @@ function CreateOrganizationForm() {
 
         <button
           type="submit"
-          disabled={createOrg.isPending || !name.trim()}
+          disabled={createOrgPending || !name.trim()}
           className="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
         >
           {createOrg.isPending ? "Creating..." : "Create Organization"}
@@ -131,6 +133,8 @@ function InviteMemberModal({ onClose }: { onClose: () => void }) {
     await sendInvitation.mutateAsync(dto);
     onClose();
   };
+
+  const invitePending = invitePending;
 
   return (
     <div className="fixed inset-0 bg-black/10 backdrop-blur-md flex items-center justify-center p-4 z-50">
@@ -193,10 +197,10 @@ function InviteMemberModal({ onClose }: { onClose: () => void }) {
               </button>
               <button
                 type="submit"
-                disabled={sendInvitation.isPending || !email.trim()}
+                disabled={invitePending || !email.trim()}
                 className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
               >
-                {sendInvitation.isPending ? "Sending..." : "Send Invitation"}
+                {invitePending ? "Sending..." : "Send Invitation"}
               </button>
             </div>
           </form>
@@ -222,7 +226,7 @@ function ChangeRoleModal({ member, onClose }: { member: TeamMember; onClose: () 
         <div className="p-6">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Change Role</h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-            Update role for {member.user?.name || member.user?.email}
+            Update role for {memberUserName || memberUserEmail}
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -275,9 +279,11 @@ function TeamMemberCard({
 }) {
   const removeMember = useRemoveMember();
   const [showRoleModal, setShowRoleModal] = useState(false);
+  const memberUserName = member.user?.name;
+  const memberUserEmail = member.user?.email;
 
   const handleRemove = async () => {
-    if (confirm(`Are you sure you want to remove ${member.user?.name || member.user?.email}?`)) {
+    if (confirm(`Are you sure you want to remove ${memberUserName || memberUserEmail}?`)) {
       await removeMember.mutateAsync(member.id);
     }
   };
@@ -288,13 +294,13 @@ function TeamMemberCard({
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
             <span className="text-indigo-600 dark:text-indigo-400 font-medium">
-              {(member.user?.name || member.user?.email || "?")[0].toUpperCase()}
+              {(memberUserName || memberUserEmail || "?")[0].toUpperCase()}
             </span>
           </div>
           <div>
             <div className="flex items-center gap-2">
               <span className="font-medium text-gray-900 dark:text-white">
-                {member.user?.name || member.user?.email}
+                {memberUserName || memberUserEmail}
               </span>
               {isCurrentUser && (
                 <span className="text-xs text-gray-500 dark:text-gray-400">(You)</span>
@@ -401,7 +407,7 @@ function PendingInvitationsSection() {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => resendInvitation.mutate(invitation.id)}
-                disabled={resendInvitation.isPending}
+                disabled={reinvitePending}
                 className="px-3 py-1 text-sm border border-amber-300 dark:border-amber-700 rounded text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/30"
               >
                 Resend
@@ -425,8 +431,10 @@ function OrganizationSettings() {
   const { data: organization } = useOrganization();
   const updateOrg = useUpdateOrganization();
   const [isEditing, setIsEditing] = useState(false);
-  const [name, setName] = useState(organization?.name || "");
-  const [industry, setIndustry] = useState(organization?.industry || "");
+  const rawOrgName = organization?.name;
+  const rawOrgIndustry = organization?.industry;
+  const [name, setName] = useState(rawOrgName || "");
+  const [industry, setIndustry] = useState(rawOrgIndustry || "");
 
   const handleSave = async () => {
     if (!organization) return;
@@ -447,7 +455,8 @@ function OrganizationSettings() {
           <button
             onClick={() => {
               setName(organization.name);
-              setIndustry(organization.industry || "");
+              const orgInd = organization.industry;
+              setIndustry(orgInd || "");
               setIsEditing(true);
             }}
             className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline"
@@ -595,6 +604,7 @@ export default function TeamSettingsPage() {
 
   const currentUserMember = members?.find((m) => m.userId === organization.ownerId);
   const canManage = currentUserMember?.role === "admin";
+  const membersLength = members?.length;
 
   return (
     <div className="space-y-6">
@@ -632,10 +642,10 @@ export default function TeamSettingsPage() {
           <div>
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Team Members</h2>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              {members?.length || 0} of {organization.maxMembers} members
+              {membersLength || 0} of {organization.maxMembers} members
             </p>
           </div>
-          {canManage && (members?.length || 0) < organization.maxMembers && (
+          {canManage && (membersLength || 0) < organization.maxMembers && (
             <button
               onClick={() => setShowInviteModal(true)}
               className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2"

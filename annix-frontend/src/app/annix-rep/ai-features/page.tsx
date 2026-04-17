@@ -9,7 +9,8 @@ function RecentAIActivity() {
   const { data: meetings, isLoading: meetingsLoading } = useMeetings();
 
   const completedMeetings = meetings?.filter((m) => m.status === "completed")?.slice(0, 3) || [];
-  const completedCount = summary?.completedMeetings || 0;
+  const rawCompletedCount = summary?.completedMeetings;
+  const completedCount = rawCompletedCount || 0;
 
   if (summaryLoading || meetingsLoading) {
     return (

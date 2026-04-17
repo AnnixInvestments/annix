@@ -254,7 +254,8 @@ function ActivityHeatmapChart({ data }: { data: ActivityHeatmapCell[] }) {
 
   const cellData = (day: number, hour: number) => {
     const cell = data.find((d) => d.dayOfWeek === day && d.hour === hour);
-    return cell?.count || 0;
+    const rawCount = cell?.count;
+    return rawCount || 0;
   };
 
   const intensityColor = (count: number) => {
@@ -585,6 +586,12 @@ export default function AnalyticsDashboard() {
   const { data: topProspects } = useTopProspects(10);
   const { data: goalProgress, isLoading: goalProgressLoading } = useGoalProgress(goalPeriod);
 
+  const totalProspects = summary?.totalProspects;
+  const activeProspects = summary?.activeProspects;
+  const totalMeetings = summary?.totalMeetings;
+  const completedMeetings = summary?.completedMeetings;
+  const totalPipelineValue = summary?.totalPipelineValue;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
@@ -615,17 +622,17 @@ export default function AnalyticsDashboard() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <StatCard
               label="Total Prospects"
-              value={summary?.totalProspects || 0}
-              subValue={`${summary?.activeProspects || 0} active`}
+              value={totalProspects || 0}
+              subValue={`${activeProspects || 0} active`}
             />
             <StatCard
               label="Total Meetings"
-              value={summary?.totalMeetings || 0}
-              subValue={`${summary?.completedMeetings || 0} completed`}
+              value={totalMeetings || 0}
+              subValue={`${completedMeetings || 0} completed`}
             />
             <StatCard
               label="Pipeline Value"
-              value={`R${formatCurrency(summary?.totalPipelineValue || 0)}`}
+              value={`R${formatCurrency(totalPipelineValue || 0)}`}
             />
             <StatCard
               label="Win Rate"

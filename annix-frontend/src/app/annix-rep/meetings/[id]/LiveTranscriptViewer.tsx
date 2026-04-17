@@ -28,11 +28,13 @@ const speakerTextColors: Record<string, string> = {
 };
 
 function speakerColor(name: string): string {
-  return speakerColors[name] ?? "bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-600";
+  const color = speakerColors[name];
+  return color || "bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-600";
 }
 
 function speakerTextColor(name: string): string {
-  return speakerTextColors[name] ?? "text-gray-700 dark:text-gray-300";
+  const textColor = speakerTextColors[name];
+  return textColor || "text-gray-700 dark:text-gray-300";
 }
 
 function formatTimestamp(isoString: string): string {
@@ -90,12 +92,14 @@ export function LiveTranscriptViewer(props: LiveTranscriptViewerProps) {
 
     eventSource.addEventListener("participant_joined", (event) => {
       const data = JSON.parse(event.data);
-      setParticipantCount(data.count ?? participantCount + 1);
+      const joinedCount = data.count;
+      setParticipantCount(joinedCount || participantCount + 1);
     });
 
     eventSource.addEventListener("participant_left", (event) => {
       const data = JSON.parse(event.data);
-      setParticipantCount(data.count ?? Math.max(0, participantCount - 1));
+      const leftCount = data.count;
+      setParticipantCount(leftCount || Math.max(0, participantCount - 1));
     });
 
     eventSource.addEventListener("session_ended", () => {

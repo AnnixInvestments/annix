@@ -525,12 +525,13 @@ function CreateConfigModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    const webhookHeaders = formData.webhookHeaders;
     const webhookConfig: WebhookConfig | undefined =
       formData.crmType === "webhook"
         ? {
             url: formData.webhookUrl,
             method: formData.webhookMethod,
-            headers: JSON.parse(formData.webhookHeaders || "{}"),
+            headers: JSON.parse(webhookHeaders || "{}"),
             authType: "none",
           }
         : undefined;
@@ -556,6 +557,9 @@ function CreateConfigModal({
 
     onClose();
   };
+
+  const createCrmPending = createConfig.isPending;
+  const updateCrmPending = updateConfig.isPending;
 
   return (
     <div className="fixed inset-0 bg-black/10 backdrop-blur-md flex items-center justify-center p-4 z-50">
@@ -714,10 +718,10 @@ function CreateConfigModal({
               </button>
               <button
                 type="submit"
-                disabled={createConfig.isPending || updateConfig.isPending}
+                disabled={createCrmPending || updateCrmPending}
                 className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
               >
-                {createConfig.isPending || updateConfig.isPending
+                {createCrmPending || updateCrmPending
                   ? "Saving..."
                   : editConfig
                     ? "Update"

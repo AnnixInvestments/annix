@@ -98,6 +98,8 @@ function MeetingOutcomesReportContent() {
     } catch {}
   };
 
+  const exportPdfPending = exportPdf.isPending;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -128,7 +130,7 @@ function MeetingOutcomesReportContent() {
 
         <button
           onClick={handleExportPdf}
-          disabled={exportPdf.isPending || !report}
+          disabled={exportPdfPending || !report}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           {exportPdf.isPending ? (
@@ -204,11 +206,12 @@ function MeetingOutcomesReportContent() {
             <div className="space-y-4">
               {report.outcomesByType.map((item) => {
                 const totalForType = Math.max(item.total, 1);
+                const typeLabel = meetingTypeLabels[item.meetingType];
                 return (
                   <div key={item.meetingType}>
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                        {meetingTypeLabels[item.meetingType] ?? item.meetingType}
+                        {typeLabel || item.meetingType}
                       </span>
                       <span className="text-sm text-gray-500 dark:text-gray-400">
                         {item.total} meetings
@@ -286,43 +289,48 @@ function MeetingOutcomesReportContent() {
                     </tr>
                   </thead>
                   <tbody>
-                    {report.detailedMeetings.map((meeting) => (
-                      <tr
-                        key={meeting.id}
-                        className="border-b border-gray-100 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700"
-                      >
-                        <td className="py-3 px-4">
-                          <Link
-                            href={`/annix-rep/meetings/${meeting.id}`}
-                            className="text-sm font-medium text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400"
-                          >
-                            {meeting.title}
-                          </Link>
-                        </td>
-                        <td className="py-3 px-4">
-                          <span className="text-sm text-gray-600 dark:text-gray-400">
-                            {meeting.prospectName ?? "-"}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4">
-                          <span className="text-sm text-gray-600 dark:text-gray-400">
-                            {formatDateZA(meeting.scheduledDate)}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4">
-                          <span
-                            className={`text-xs px-2 py-1 rounded-full ${statusColors[meeting.status] ?? "bg-gray-100 text-gray-700"}`}
-                          >
-                            {statusLabels[meeting.status] ?? meeting.status}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4">
-                          <span className="text-sm text-gray-600 dark:text-gray-400">
-                            {meeting.duration !== null ? `${meeting.duration} min` : "-"}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
+                    {report.detailedMeetings.map((meeting) => {
+                      const mtgProspectName = meeting.prospectName;
+                      const mtgStatusColor = statusColors[meeting.status];
+                      const mtgStatusLabel = statusLabels[meeting.status];
+                      return (
+                        <tr
+                          key={meeting.id}
+                          className="border-b border-gray-100 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700"
+                        >
+                          <td className="py-3 px-4">
+                            <Link
+                              href={`/annix-rep/meetings/${meeting.id}`}
+                              className="text-sm font-medium text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400"
+                            >
+                              {meeting.title}
+                            </Link>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className="text-sm text-gray-600 dark:text-gray-400">
+                              {mtgProspectName || "-"}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className="text-sm text-gray-600 dark:text-gray-400">
+                              {formatDateZA(meeting.scheduledDate)}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span
+                              className={`text-xs px-2 py-1 rounded-full ${mtgStatusColor || "bg-gray-100 text-gray-700"}`}
+                            >
+                              {mtgStatusLabel || meeting.status}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className="text-sm text-gray-600 dark:text-gray-400">
+                              {meeting.duration !== null ? `${meeting.duration} min` : "-"}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

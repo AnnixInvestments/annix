@@ -174,35 +174,43 @@ function TerritoryPerformanceSection() {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      {territories.map((territory) => (
-        <div key={territory.territoryId} className="p-4 bg-gray-50 dark:bg-slate-700/50 rounded-lg">
-          <div className="flex items-start justify-between mb-2">
-            <div>
-              <h4 className="font-medium text-gray-900 dark:text-white">
-                {territory.territoryName}
-              </h4>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                {territory.assignedToName || "Unassigned"}
-              </p>
+      {territories.map((territory) => {
+        const assignedName = territory.assignedToName;
+        return (
+          <div
+            key={territory.territoryId}
+            className="p-4 bg-gray-50 dark:bg-slate-700/50 rounded-lg"
+          >
+            <div className="flex items-start justify-between mb-2">
+              <div>
+                <h4 className="font-medium text-gray-900 dark:text-white">
+                  {territory.territoryName}
+                </h4>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  {assignedName || "Unassigned"}
+                </p>
+              </div>
+              <span className="px-2 py-0.5 text-xs bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 rounded">
+                {territory.dealsWon} won
+              </span>
             </div>
-            <span className="px-2 py-0.5 text-xs bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 rounded">
-              {territory.dealsWon} won
-            </span>
+            <div className="grid grid-cols-2 gap-4 mt-3 text-sm">
+              <div>
+                <span className="text-gray-500 dark:text-gray-400">Prospects</span>
+                <p className="font-medium text-gray-900 dark:text-white">
+                  {territory.prospectCount}
+                </p>
+              </div>
+              <div>
+                <span className="text-gray-500 dark:text-gray-400">Pipeline</span>
+                <p className="font-medium text-gray-900 dark:text-white">
+                  R{territory.pipelineValue.toLocaleString()}
+                </p>
+              </div>
+            </div>
           </div>
-          <div className="grid grid-cols-2 gap-4 mt-3 text-sm">
-            <div>
-              <span className="text-gray-500 dark:text-gray-400">Prospects</span>
-              <p className="font-medium text-gray-900 dark:text-white">{territory.prospectCount}</p>
-            </div>
-            <div>
-              <span className="text-gray-500 dark:text-gray-400">Pipeline</span>
-              <p className="font-medium text-gray-900 dark:text-white">
-                R{territory.pipelineValue.toLocaleString()}
-              </p>
-            </div>
-          </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -381,35 +389,38 @@ function ActivityFeedSection() {
 
   return (
     <div className="space-y-3">
-      {activities.map((activity) => (
-        <div
-          key={activity.id}
-          className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-slate-700/50 rounded-lg"
-        >
+      {activities.map((activity) => {
+        const activityUserName = activity.userName;
+        return (
           <div
-            className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${ACTIVITY_COLORS[activity.activityType]}`}
+            key={activity.id}
+            className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-slate-700/50 rounded-lg"
           >
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={1.5}
-              stroke="currentColor"
+            <div
+              className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${ACTIVITY_COLORS[activity.activityType]}`}
             >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-            </svg>
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1.5}
+                stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              </svg>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-gray-900 dark:text-white">
+                <span className="font-medium">{activityUserName || "Someone"}</span>{" "}
+                {activity.description}
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                {formatTime(activity.createdAt)}
+              </p>
+            </div>
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm text-gray-900 dark:text-white">
-              <span className="font-medium">{activity.userName || "Someone"}</span>{" "}
-              {activity.description}
-            </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-              {formatTime(activity.createdAt)}
-            </p>
-          </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -478,6 +489,11 @@ export default function ManagerDashboardPage() {
     );
   }
 
+  const dashTeamSize = dashboard?.teamSize;
+  const dashTotalPipelineValue = dashboard?.totalPipelineValue;
+  const dashMeetingsThisMonth = dashboard?.teamMeetingsThisMonth;
+  const dashDealsWon = dashboard?.teamDealsWonThisMonth;
+
   return (
     <div className="space-y-6">
       <div>
@@ -490,7 +506,7 @@ export default function ManagerDashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
           label="Team Size"
-          value={dashboard?.teamSize || 0}
+          value={dashTeamSize || 0}
           color="bg-indigo-50 dark:bg-indigo-900/20"
           icon={
             <svg
@@ -510,7 +526,7 @@ export default function ManagerDashboardPage() {
         />
         <StatCard
           label="Total Pipeline"
-          value={`R${(dashboard?.totalPipelineValue || 0).toLocaleString()}`}
+          value={`R${(dashTotalPipelineValue || 0).toLocaleString()}`}
           color="bg-emerald-50 dark:bg-emerald-900/20"
           icon={
             <svg
@@ -530,7 +546,7 @@ export default function ManagerDashboardPage() {
         />
         <StatCard
           label="Meetings This Month"
-          value={dashboard?.teamMeetingsThisMonth || 0}
+          value={dashMeetingsThisMonth || 0}
           color="bg-blue-50 dark:bg-blue-900/20"
           icon={
             <svg
@@ -550,7 +566,7 @@ export default function ManagerDashboardPage() {
         />
         <StatCard
           label="Deals Won"
-          value={dashboard?.teamDealsWonThisMonth || 0}
+          value={dashDealsWon || 0}
           color="bg-green-50 dark:bg-green-900/20"
           icon={
             <svg

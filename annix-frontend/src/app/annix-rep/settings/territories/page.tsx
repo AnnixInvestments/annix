@@ -37,10 +37,14 @@ function TerritoryModal({
   const createTerritory = useCreateTerritory();
   const updateTerritory = useUpdateTerritory();
 
-  const [name, setName] = useState(territory?.name || "");
-  const [description, setDescription] = useState(territory?.description || "");
-  const [provinces, setProvinces] = useState<string[]>(territory?.provinces || []);
-  const [cities, setCities] = useState(territory?.cities?.join(", ") || "");
+  const rawTerritoryName = territory?.name;
+  const rawTerritoryDesc = territory?.description;
+  const rawTerritoryProvinces = territory?.provinces;
+  const rawTerritoryCities = territory?.cities?.join(", ");
+  const [name, setName] = useState(rawTerritoryName || "");
+  const [description, setDescription] = useState(rawTerritoryDesc || "");
+  const [provinces, setProvinces] = useState<string[]>(rawTerritoryProvinces || []);
+  const [cities, setCities] = useState(rawTerritoryCities || "");
 
   const handleProvinceToggle = (province: string) => {
     setProvinces((prev) =>
@@ -72,7 +76,8 @@ function TerritoryModal({
     onClose();
   };
 
-  const isPending = createTerritory.isPending || updateTerritory.isPending;
+  const createPending = createTerritory.isPending;
+  const isPending = createPending || updateTerritory.isPending;
 
   return (
     <div className="fixed inset-0 bg-black/10 backdrop-blur-md flex items-center justify-center p-4 z-50">
@@ -212,11 +217,15 @@ function AssignTerritoryModal({
                 className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
               >
                 <option value="">Unassigned</option>
-                {members.map((member) => (
-                  <option key={member.id} value={member.userId}>
-                    {member.user?.name || member.user?.email}
-                  </option>
-                ))}
+                {members.map((member) => {
+                  const mName = member.user?.name;
+                  const mEmail = member.user?.email;
+                  return (
+                    <option key={member.id} value={member.userId}>
+                      {mName || mEmail}
+                    </option>
+                  );
+                })}
               </select>
             </div>
 
@@ -257,6 +266,8 @@ function TerritoryCard({
   const [showAssignModal, setShowAssignModal] = useState(false);
 
   const assignedMember = members.find((m) => m.userId === territory.assignedToId);
+  const assignedName = assignedMember?.user?.name;
+  const assignedEmail = assignedMember?.user?.email;
 
   const handleDelete = async () => {
     if (confirm(`Are you sure you want to delete "${territory.name}"?`)) {
@@ -360,7 +371,7 @@ function TerritoryCard({
               </span>
               {assignedMember ? (
                 <p className="text-sm font-medium text-gray-900 dark:text-white mt-1">
-                  {assignedMember.user?.name || assignedMember.user?.email}
+                  {assignedName || assignedEmail}
                 </p>
               ) : (
                 <p className="text-sm text-gray-400 dark:text-gray-500 mt-1 italic">Unassigned</p>

@@ -70,11 +70,13 @@ export default function NearbyProspectsPage() {
   const [selectedBusinesses, setSelectedBusinesses] = useState<Set<string>>(new Set());
   const [selectedSources, setSelectedSources] = useState<DiscoverySource[]>(["google_places"]);
 
+  const rawLat = userLocation?.lat;
+  const rawLng = userLocation?.lng;
   const {
     data: prospects,
     isLoading,
     refetch,
-  } = useNearbyProspects(userLocation?.lat || 0, userLocation?.lng || 0, radiusKm, 50);
+  } = useNearbyProspects(rawLat || 0, rawLng || 0, radiusKm, 50);
 
   const { data: quota } = useDiscoveryQuota();
   const discoveryMutation = useDiscoverySearchMutation();
@@ -182,6 +184,8 @@ export default function NearbyProspectsPage() {
       </div>
     );
   }
+
+  const discoveryPending = discoveryMutation.isPending;
 
   return (
     <div className="space-y-4">
@@ -321,7 +325,7 @@ export default function NearbyProspectsPage() {
             ))}
             <button
               onClick={handleDiscover}
-              disabled={discoveryMutation.isPending || selectedSources.length === 0}
+              disabled={discoveryPending || selectedSources.length === 0}
               className="ml-auto px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-md hover:bg-orange-700 disabled:opacity-50 flex items-center gap-2"
             >
               {discoveryMutation.isPending ? (

@@ -42,7 +42,8 @@ function MeetingCard({ meeting }: { meeting: Meeting }) {
   const endTime = fromJSDate(meeting.scheduledEnd);
   const timeString = `${startTime.toFormat("HH:mm")} - ${endTime.toFormat("HH:mm")}`;
 
-  const colors = statusColors[meeting.status] || statusColors.scheduled;
+  const rawStatusColor = statusColors[meeting.status];
+  const colors = rawStatusColor || statusColors.scheduled;
 
   return (
     <Link href={`/annix-rep/meetings/${meeting.id}`}>
@@ -213,7 +214,8 @@ function CalendarEventCard({ event }: { event: CalendarEvent }) {
     ? "All Day"
     : `${startTime.toFormat("HH:mm")} - ${endTime.toFormat("HH:mm")}`;
 
-  const colors = providerColors[event.provider] || providerColors.caldav;
+  const rawProviderColor = providerColors[event.provider];
+  const colors = rawProviderColor || providerColors.caldav;
 
   return (
     <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-4 border-l-4 border-l-indigo-500">
@@ -378,6 +380,10 @@ export default function SchedulePage() {
     return meetingDate > today;
   });
 
+  const meetingsCount = todaysMeetings?.length;
+  const calendarEventsCount = calendarEvents?.length;
+  const visitsCount = todaysVisits?.length;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -498,7 +504,7 @@ export default function SchedulePage() {
         <div className="space-y-6">
           <div>
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              Meetings ({todaysMeetings?.length || 0})
+              Meetings ({meetingsCount || 0})
             </h2>
             {!todaysMeetings || todaysMeetings.length === 0 ? (
               <div className="text-center py-8 bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700">
@@ -531,7 +537,7 @@ export default function SchedulePage() {
           <div>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Calendar Events ({calendarEvents?.length || 0})
+                Calendar Events ({calendarEventsCount || 0})
               </h2>
               <Link
                 href="/annix-rep/settings/calendars"
@@ -599,7 +605,7 @@ export default function SchedulePage() {
 
           <div>
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              Visits ({todaysVisits?.length || 0})
+              Visits ({visitsCount || 0})
             </h2>
             {!todaysVisits || todaysVisits.length === 0 ? (
               <div className="text-center py-8 bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700">

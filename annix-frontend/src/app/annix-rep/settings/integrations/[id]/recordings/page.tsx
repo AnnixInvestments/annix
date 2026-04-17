@@ -56,7 +56,8 @@ function RecordingStatusBadge({ status }: { status: string }) {
     },
   };
 
-  const config = statusConfig[status] ?? statusConfig.pending;
+  const rawConfig = statusConfig[status];
+  const config = rawConfig || statusConfig.pending;
 
   return (
     <span className={`px-2 py-0.5 text-xs rounded-full ${config.bg} ${config.text}`}>
@@ -175,6 +176,9 @@ export default function PlatformRecordingsPage() {
       }
     : null;
 
+  const platformName = connection ? PLATFORM_NAMES[connection.platform] : null;
+  const accountEmail = connection?.accountEmail;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
@@ -199,11 +203,11 @@ export default function PlatformRecordingsPage() {
         <div className="flex-1">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
             {connection
-              ? `${PLATFORM_NAMES[connection.platform] ?? connection.platform} Recordings`
+              ? `${platformName || connection.platform} Recordings`
               : "Platform Recordings"}
           </h1>
           <p className="text-gray-500 dark:text-gray-400">
-            {connection?.accountEmail || "View all synced recordings from this platform"}
+            {accountEmail || "View all synced recordings from this platform"}
           </p>
         </div>
       </div>

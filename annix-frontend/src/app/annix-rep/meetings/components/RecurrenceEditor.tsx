@@ -44,7 +44,8 @@ export function RecurrenceEditor(props: RecurrenceEditorProps) {
   };
 
   const toggleWeekDay = (day: number) => {
-    const currentDays = value.byWeekDay ?? [];
+    const rawByWeekDay = value.byWeekDay;
+    const currentDays = rawByWeekDay || [];
     const newDays = currentDays.includes(day)
       ? currentDays.filter((d) => d !== day)
       : [...currentDays, day].sort((a, b) => a - b);
@@ -61,6 +62,11 @@ export function RecurrenceEditor(props: RecurrenceEditorProps) {
     return labels[freq];
   };
 
+  const valueInterval = value.interval;
+  const valueByMonthDay = value.byMonthDay;
+  const valueCount = value.count;
+  const valueUntil = value.until;
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
@@ -69,7 +75,7 @@ export function RecurrenceEditor(props: RecurrenceEditorProps) {
           type="number"
           min={1}
           max={99}
-          value={value.interval ?? 1}
+          value={valueInterval || 1}
           onChange={(e) => updateField("interval", parseInt(e.target.value, 10) || 1)}
           className="w-16 px-2 py-1.5 text-sm border border-gray-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
         />
@@ -118,7 +124,7 @@ export function RecurrenceEditor(props: RecurrenceEditorProps) {
             type="number"
             min={1}
             max={31}
-            value={value.byMonthDay ?? 1}
+            value={valueByMonthDay || 1}
             onChange={(e) => updateField("byMonthDay", parseInt(e.target.value, 10) || 1)}
             className="w-16 px-2 py-1.5 text-sm border border-gray-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
           />
@@ -146,7 +152,7 @@ export function RecurrenceEditor(props: RecurrenceEditorProps) {
                     type="number"
                     min={1}
                     max={999}
-                    value={value.count ?? 10}
+                    value={valueCount || 10}
                     onChange={(e) => updateField("count", parseInt(e.target.value, 10) || 10)}
                     className="w-16 px-2 py-1 text-sm border border-gray-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
                   />
@@ -157,7 +163,7 @@ export function RecurrenceEditor(props: RecurrenceEditorProps) {
               {endType.value === "until" && value.endType === "until" && (
                 <input
                   type="date"
-                  value={value.until ?? ""}
+                  value={valueUntil || ""}
                   onChange={(e) => updateField("until", e.target.value)}
                   className="px-2 py-1 text-sm border border-gray-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
                 />
@@ -175,7 +181,8 @@ export function RecurrenceEditor(props: RecurrenceEditorProps) {
 }
 
 export function summarizeRecurrence(options: RecurrenceOptions): string {
-  const interval = options.interval ?? 1;
+  const rawInterval = options.interval;
+  const interval = rawInterval || 1;
   let summary = "Repeats ";
 
   if (interval === 1) {

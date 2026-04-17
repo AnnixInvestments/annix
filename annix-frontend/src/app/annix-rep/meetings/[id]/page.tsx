@@ -99,7 +99,8 @@ export default function MeetingDetailPage() {
 
   const activeBotSession = activeBotSessions?.find((s) => s.meetingId === meetingId);
   const hasBotActive = Boolean(activeBotSession);
-  const botStatus = activeBotSession?.status || null;
+  const rawBotStatus = activeBotSession?.status;
+  const botStatus = rawBotStatus || null;
 
   if (meetingLoading) {
     return <MeetingDetailSkeleton />;

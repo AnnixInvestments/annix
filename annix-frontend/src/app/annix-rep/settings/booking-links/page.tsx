@@ -436,6 +436,8 @@ export default function BookingLinksSettingsPage() {
   const [editingLink, setEditingLink] = useState<BookingLink | null>(null);
 
   const handleCreate = async (data: BookingLinkFormData) => {
+    const createLocation = data.location;
+    const createDescription = data.description;
     await createBookingLink.mutateAsync({
       name: data.name,
       meetingDurationMinutes: data.meetingDurationMinutes,
@@ -446,14 +448,16 @@ export default function BookingLinksSettingsPage() {
       availableEndHour: data.availableEndHour,
       maxDaysAhead: data.maxDaysAhead,
       meetingType: data.meetingType,
-      location: data.location || undefined,
-      description: data.description || undefined,
+      location: createLocation || undefined,
+      description: createDescription || undefined,
     });
     setShowForm(false);
   };
 
   const handleUpdate = async (data: BookingLinkFormData) => {
     if (!editingLink) return;
+    const updateLocation = data.location;
+    const updateDescription = data.description;
     await updateBookingLink.mutateAsync({
       id: editingLink.id,
       dto: {
@@ -466,8 +470,8 @@ export default function BookingLinksSettingsPage() {
         availableEndHour: data.availableEndHour,
         maxDaysAhead: data.maxDaysAhead,
         meetingType: data.meetingType,
-        location: data.location || undefined,
-        description: data.description || undefined,
+        location: updateLocation || undefined,
+        description: updateDescription || undefined,
       },
     });
     setEditingLink(null);
@@ -485,19 +489,26 @@ export default function BookingLinksSettingsPage() {
     await deleteBookingLink.mutateAsync(link.id);
   };
 
-  const linkToFormData = (link: BookingLink): BookingLinkFormData => ({
-    name: link.name,
-    meetingDurationMinutes: link.meetingDurationMinutes,
-    bufferBeforeMinutes: link.bufferBeforeMinutes,
-    bufferAfterMinutes: link.bufferAfterMinutes,
-    availableDays: link.availableDays.split(","),
-    availableStartHour: link.availableStartHour,
-    availableEndHour: link.availableEndHour,
-    maxDaysAhead: link.maxDaysAhead,
-    meetingType: link.meetingType,
-    location: link.location ?? "",
-    description: link.description ?? "",
-  });
+  const linkToFormData = (link: BookingLink): BookingLinkFormData => {
+    const linkLocation = link.location;
+    const linkDescription = link.description;
+    return {
+      name: link.name,
+      meetingDurationMinutes: link.meetingDurationMinutes,
+      bufferBeforeMinutes: link.bufferBeforeMinutes,
+      bufferAfterMinutes: link.bufferAfterMinutes,
+      availableDays: link.availableDays.split(","),
+      availableStartHour: link.availableStartHour,
+      availableEndHour: link.availableEndHour,
+      maxDaysAhead: link.maxDaysAhead,
+      meetingType: link.meetingType,
+      location: linkLocation || "",
+      description: linkDescription || "",
+    };
+  };
+
+  const createPending = createBookingLink.isPending;
+  const updatePending = updateBookingLink.isPending;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
@@ -537,7 +548,7 @@ export default function BookingLinksSettingsPage() {
                 setShowForm(false);
                 setEditingLink(null);
               }}
-              isSubmitting={createBookingLink.isPending || updateBookingLink.isPending}
+              isSubmitting={createPending || updatePending}
             />
           </div>
         )}

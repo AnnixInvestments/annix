@@ -652,27 +652,30 @@ export default function IntegrationsSettingsPage() {
               Recent Sessions
             </h3>
             <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 divide-y divide-gray-100 dark:divide-slate-700">
-              {botSessionHistory.map((session) => (
-                <div key={session.id} className="p-3 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div>
-                      <p className="text-sm text-gray-900 dark:text-white">
-                        Meeting #{session.meetingId ?? "N/A"}
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        {session.startedAt ? formatDateTimeZA(session.startedAt) : "Not started"}
-                        {" - "}
-                        {session.transcriptEntryCount} entries
-                      </p>
+              {botSessionHistory.map((session) => {
+                const sessionMeetingId = session.meetingId;
+                return (
+                  <div key={session.id} className="p-3 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div>
+                        <p className="text-sm text-gray-900 dark:text-white">
+                          Meeting #{sessionMeetingId || "N/A"}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          {session.startedAt ? formatDateTimeZA(session.startedAt) : "Not started"}
+                          {" - "}
+                          {session.transcriptEntryCount} entries
+                        </p>
+                      </div>
                     </div>
+                    <span
+                      className={`px-2 py-0.5 text-xs rounded-full ${botStatusLabels[session.status].color}`}
+                    >
+                      {botStatusLabels[session.status].label}
+                    </span>
                   </div>
-                  <span
-                    className={`px-2 py-0.5 text-xs rounded-full ${botStatusLabels[session.status].color}`}
-                  >
-                    {botStatusLabels[session.status].label}
-                  </span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}

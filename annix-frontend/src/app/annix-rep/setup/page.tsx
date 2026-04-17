@@ -183,14 +183,17 @@ export default function RepSetupPage() {
   };
 
   const handleSubmit = async () => {
+    const rawCompanyName = formData.companyName;
+    const rawJobTitle = formData.jobTitle;
+    const rawTerritoryDesc = formData.territoryDescription;
     try {
       await createProfile.mutateAsync({
         industry: formData.industry,
         subIndustries: formData.subIndustries,
         productCategories: formData.productCategories,
-        companyName: formData.companyName || undefined,
-        jobTitle: formData.jobTitle || undefined,
-        territoryDescription: formData.territoryDescription || undefined,
+        companyName: rawCompanyName || undefined,
+        jobTitle: rawJobTitle || undefined,
+        territoryDescription: rawTerritoryDesc || undefined,
         customSearchTerms:
           formData.customSearchTerms.length > 0 ? formData.customSearchTerms : undefined,
       });

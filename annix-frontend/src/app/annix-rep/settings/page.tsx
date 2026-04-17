@@ -28,11 +28,16 @@ function ScheduleSettingsSection() {
   const [hasInitialized, setHasInitialized] = useState(false);
 
   if (profile && !hasInitialized) {
-    setBufferBefore(profile.defaultBufferBeforeMinutes ?? 15);
-    setBufferAfter(profile.defaultBufferAfterMinutes ?? 15);
-    setWorkingStart(profile.workingHoursStart ?? "08:00");
-    setWorkingEnd(profile.workingHoursEnd ?? "17:00");
-    setWorkingDays((profile.workingDays ?? "1,2,3,4,5").split(","));
+    const rawBufferBefore = profile.defaultBufferBeforeMinutes;
+    const rawBufferAfter = profile.defaultBufferAfterMinutes;
+    const rawWorkStart = profile.workingHoursStart;
+    const rawWorkEnd = profile.workingHoursEnd;
+    const rawWorkDays = profile.workingDays;
+    setBufferBefore(rawBufferBefore || 15);
+    setBufferAfter(rawBufferAfter || 15);
+    setWorkingStart(rawWorkStart || "08:00");
+    setWorkingEnd(rawWorkEnd || "17:00");
+    setWorkingDays((rawWorkDays || "1,2,3,4,5").split(","));
     setHasInitialized(true);
   }
 

@@ -1122,8 +1122,10 @@ export default function TranscriptPage() {
 
           {transcript.processingTimeMs && (
             <p className="text-xs text-gray-400 dark:text-gray-500 text-center">
-              Processed in {(transcript.processingTimeMs / 1000).toFixed(1)}s using{" "}
-              {transcript.whisperModel ?? "Whisper"}
+              Processed in {(transcript.processingTimeMs / 1000).toFixed(1)}s using {(() => {
+                const model = transcript.whisperModel;
+                return model || "Whisper";
+              })()}
             </p>
           )}
         </div>

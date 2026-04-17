@@ -103,6 +103,7 @@ function MonthlySalesReportContent() {
   };
 
   const monthDisplay = fromISO(`${month}-01`).toFormat("MMMM yyyy");
+  const exportPdfPending = exportPdf.isPending;
 
   return (
     <div className="space-y-6">
@@ -132,7 +133,7 @@ function MonthlySalesReportContent() {
 
         <button
           onClick={handleExportPdf}
-          disabled={exportPdf.isPending || !report}
+          disabled={exportPdfPending || !report}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           {exportPdf.isPending ? (
@@ -276,14 +277,16 @@ function MonthlySalesReportContent() {
               <div className="space-y-3">
                 {report.prospectsByStatus.map((item) => {
                   const maxCount = Math.max(...report.prospectsByStatus.map((p) => p.count), 1);
+                  const itemStatusLabel = statusLabels[item.status];
+                  const itemStatusColor = statusColors[item.status];
                   return (
                     <div key={item.status} className="flex items-center gap-3">
                       <div className="w-24 text-sm text-gray-600 dark:text-gray-400 flex-shrink-0">
-                        {statusLabels[item.status] ?? item.status}
+                        {itemStatusLabel || item.status}
                       </div>
                       <div className="flex-1 h-6 bg-gray-100 dark:bg-slate-700 rounded-lg overflow-hidden">
                         <div
-                          className={`h-full ${statusColors[item.status] ?? "bg-gray-400"} flex items-center justify-end px-2`}
+                          className={`h-full ${itemStatusColor || "bg-gray-400"} flex items-center justify-end px-2`}
                           style={{
                             width: `${(item.count / maxCount) * 100}%`,
                             minWidth: "fit-content",

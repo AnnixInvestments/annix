@@ -55,7 +55,8 @@ export default function TerritoryMap(props: TerritoryMapProps) {
       }).addTo(map);
 
       const createProspectIcon = (status: string) => {
-        const color = statusColors[status] ?? "#9CA3AF";
+        const rawColor = statusColors[status];
+        const color = rawColor || "#9CA3AF";
         return L.divIcon({
           className: "custom-marker",
           html: `<div style="
@@ -93,12 +94,14 @@ export default function TerritoryMap(props: TerritoryMapProps) {
           icon: createProspectIcon(prospect.status),
         }).addTo(map);
 
+        const prospectStatusColor = statusColors[prospect.status];
+        const prospectStatusLabel = statusLabels[prospect.status];
         marker.bindPopup(`
           <div style="min-width: 200px;">
             <h3 style="font-weight: 600; margin: 0 0 8px 0;">${prospect.companyName}</h3>
             <p style="margin: 4px 0; color: #666;">
-              Status: <span style="color: ${statusColors[prospect.status] ?? "#666"}; font-weight: 500;">
-                ${statusLabels[prospect.status] ?? prospect.status}
+              Status: <span style="color: ${prospectStatusColor || "#666"}; font-weight: 500;">
+                ${prospectStatusLabel || prospect.status}
               </span>
             </p>
             <p style="margin: 4px 0; color: #666;">
