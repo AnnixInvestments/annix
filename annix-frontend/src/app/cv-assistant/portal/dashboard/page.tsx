@@ -32,8 +32,14 @@ export default function DashboardPage() {
       reference_check: "bg-purple-100 text-purple-800",
       accepted: "bg-emerald-100 text-emerald-800",
     };
-    return colors[status] || "bg-gray-100 text-gray-800";
+    const color = colors[status];
+    return color || "bg-gray-100 text-gray-800";
   };
+
+  const totalCandidates = stats?.totalCandidates;
+  const activeJobPostings = stats?.activeJobPostings;
+  const averageScore = stats?.averageScore;
+  const pendingReferences = stats?.pendingReferences;
 
   return (
     <div className="space-y-8">
@@ -62,7 +68,7 @@ export default function DashboardPage() {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500">Total Candidates</p>
-              <p className="text-2xl font-bold text-gray-900">{stats?.totalCandidates || 0}</p>
+              <p className="text-2xl font-bold text-gray-900">{totalCandidates || 0}</p>
             </div>
           </div>
         </div>
@@ -86,7 +92,7 @@ export default function DashboardPage() {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500">Active Jobs</p>
-              <p className="text-2xl font-bold text-gray-900">{stats?.activeJobPostings || 0}</p>
+              <p className="text-2xl font-bold text-gray-900">{activeJobPostings || 0}</p>
             </div>
           </div>
         </div>
@@ -110,7 +116,7 @@ export default function DashboardPage() {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500">Avg. Match Score</p>
-              <p className="text-2xl font-bold text-gray-900">{stats?.averageScore || "-"}%</p>
+              <p className="text-2xl font-bold text-gray-900">{averageScore || "-"}%</p>
             </div>
           </div>
         </div>
@@ -134,7 +140,7 @@ export default function DashboardPage() {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500">Pending References</p>
-              <p className="text-2xl font-bold text-gray-900">{stats?.pendingReferences || 0}</p>
+              <p className="text-2xl font-bold text-gray-900">{pendingReferences || 0}</p>
             </div>
           </div>
         </div>
@@ -324,14 +330,17 @@ function CandidateRow({
   candidate: Candidate;
   statusColor: (status: string) => string;
 }) {
+  const candidateName = candidate.name;
+  const candidateEmail = candidate.email;
+  const candidateJobTitle = candidate.jobPosting?.title;
   return (
     <tr className="hover:bg-gray-50">
       <td className="px-6 py-4 whitespace-nowrap">
-        <div className="text-sm font-medium text-gray-900">{candidate.name || "Unknown"}</div>
-        <div className="text-sm text-gray-500">{candidate.email || "-"}</div>
+        <div className="text-sm font-medium text-gray-900">{candidateName || "Unknown"}</div>
+        <div className="text-sm text-gray-500">{candidateEmail || "-"}</div>
       </td>
       <td className="px-6 py-4 whitespace-nowrap">
-        <div className="text-sm text-gray-900">{candidate.jobPosting?.title || "-"}</div>
+        <div className="text-sm text-gray-900">{candidateJobTitle || "-"}</div>
       </td>
       <td className="px-6 py-4 whitespace-nowrap">
         {candidate.matchScore !== null ? (

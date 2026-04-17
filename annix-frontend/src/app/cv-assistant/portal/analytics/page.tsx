@@ -53,7 +53,8 @@ function accuracyBarColor(accuracy: number): string {
 
 function funnelStageColor(index: number): string {
   const colors = ["bg-violet-600", "bg-violet-500", "bg-teal-500", "bg-teal-400", "bg-emerald-500"];
-  return colors[index] || "bg-gray-400";
+  const color = colors[index];
+  return color || "bg-gray-400";
 }
 
 function SkeletonCard() {
@@ -100,8 +101,10 @@ export default function AnalyticsPage() {
   const handlePresetClick = (preset: DatePreset) => {
     setActivePreset(preset);
     const dates = presetDates(preset);
-    setDateFrom(dates.from || "");
-    setDateTo(dates.to || "");
+    const fromDate = dates.from;
+    const toDate = dates.to;
+    setDateFrom(fromDate || "");
+    setDateTo(toDate || "");
   };
 
   const handleDateChange = (from: string, to: string) => {

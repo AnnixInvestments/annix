@@ -37,12 +37,17 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (settings) {
+      const imapHostVal = settings.imapHost;
+      const imapPortVal = settings.imapPort;
+      const imapUserVal = settings.imapUser;
+      const imapPortStr = imapPortVal?.toString();
+      const emailFromVal = settings.emailFromAddress;
       setCompanyName(settings.name);
-      setImapHost(settings.imapHost || "");
-      setImapPort(settings.imapPort?.toString() || "993");
-      setImapUser(settings.imapUser || "");
+      setImapHost(imapHostVal || "");
+      setImapPort(imapPortStr || "993");
+      setImapUser(imapUserVal || "");
       setMonitoringEnabled(settings.monitoringEnabled);
-      setEmailFromAddress(settings.emailFromAddress || "");
+      setEmailFromAddress(emailFromVal || "");
     }
   }, [settings]);
 

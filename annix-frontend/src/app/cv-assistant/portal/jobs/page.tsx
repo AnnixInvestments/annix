@@ -32,7 +32,8 @@ export default function JobsPage() {
       paused: "bg-yellow-100 text-yellow-800",
       closed: "bg-red-100 text-red-800",
     };
-    return colors[status] || "bg-gray-100 text-gray-800";
+    const color = colors[status];
+    return color || "bg-gray-100 text-gray-800";
   };
 
   if (isLoading) {

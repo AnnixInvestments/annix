@@ -6,22 +6,34 @@ import type { JobPosting } from "@/app/lib/api/cvAssistantApi";
 import { useCvCreateJobPosting, useCvUpdateJobPosting } from "@/app/lib/query/hooks";
 
 export function JobFormModal({ job, onClose }: { job: JobPosting | null; onClose: () => void }) {
-  const [title, setTitle] = useState(job?.title || "");
-  const [description, setDescription] = useState(job?.description || "");
-  const [skillsInput, setSkillsInput] = useState(job?.requiredSkills.join(", ") || "");
-  const [minExperience, setMinExperience] = useState(job?.minExperienceYears?.toString() || "");
-  const [education, setEducation] = useState(job?.requiredEducation || "");
-  const [autoReject, setAutoReject] = useState(job?.autoRejectEnabled || false);
-  const [rejectThreshold, setRejectThreshold] = useState(
-    job?.autoRejectThreshold?.toString() || "30",
-  );
-  const [acceptThreshold, setAcceptThreshold] = useState(
-    job?.autoAcceptThreshold?.toString() || "80",
-  );
+  const jobTitle = job?.title;
+  const jobDescription = job?.description;
+  const jobSkills = job?.requiredSkills;
+  const jobMinExp = job?.minExperienceYears;
+  const jobEducation = job?.requiredEducation;
+  const jobAutoReject = job?.autoRejectEnabled;
+  const jobRejectThreshold = job?.autoRejectThreshold;
+  const jobAcceptThreshold = job?.autoAcceptThreshold;
+
+  const [title, setTitle] = useState(jobTitle || "");
+  const [description, setDescription] = useState(jobDescription || "");
+  const skillsJoined = jobSkills?.join(", ");
+  const minExpStr = jobMinExp?.toString();
+  const rejectStr = jobRejectThreshold?.toString();
+  const acceptStr = jobAcceptThreshold?.toString();
+
+  const [skillsInput, setSkillsInput] = useState(skillsJoined || "");
+  const [minExperience, setMinExperience] = useState(minExpStr || "");
+  const [education, setEducation] = useState(jobEducation || "");
+  const [autoReject, setAutoReject] = useState(jobAutoReject || false);
+  const [rejectThreshold, setRejectThreshold] = useState(rejectStr || "30");
+  const [acceptThreshold, setAcceptThreshold] = useState(acceptStr || "80");
 
   const createMutation = useCvCreateJobPosting();
   const updateMutation = useCvUpdateJobPosting();
-  const isLoading = createMutation.isPending || updateMutation.isPending;
+  const isCreating = createMutation.isPending;
+  const isUpdating = updateMutation.isPending;
+  const isLoading = isCreating || isUpdating;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

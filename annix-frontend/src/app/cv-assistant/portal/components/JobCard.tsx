@@ -101,6 +101,8 @@ export function JobCard({ job }: { job: ExternalJob }) {
 
 function MatchRow({ match }: { match: CandidateJobMatch }) {
   const candidate = match.candidate;
+  const candidateName = candidate?.name;
+  const candidateEmail = candidate?.email;
   const scorePct = Math.round(match.overallScore * 100);
 
   return (
@@ -114,8 +116,8 @@ function MatchRow({ match }: { match: CandidateJobMatch }) {
           {scorePct}%
         </span>
         <div>
-          <p className="text-sm font-medium text-gray-900">{candidate?.name || "Unknown"}</p>
-          <p className="text-xs text-gray-500">{candidate?.email || ""}</p>
+          <p className="text-sm font-medium text-gray-900">{candidateName || "Unknown"}</p>
+          <p className="text-xs text-gray-500">{candidateEmail || ""}</p>
         </div>
       </div>
       {match.matchDetails && (

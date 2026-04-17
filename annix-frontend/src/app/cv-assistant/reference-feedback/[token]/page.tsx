@@ -28,9 +28,12 @@ export default function ReferenceFeedbackPage() {
       const result = await cvAssistantApiClient.validateReferenceToken(token);
       setIsValid(result.valid);
       if (result.valid) {
-        setCandidateName(result.candidateName || "");
-        setJobTitle(result.jobTitle || "");
-        setReferenceName(result.referenceName || "");
+        const resultCandidateName = result.candidateName;
+        const resultJobTitle = result.jobTitle;
+        const resultReferenceName = result.referenceName;
+        setCandidateName(resultCandidateName || "");
+        setJobTitle(resultJobTitle || "");
+        setReferenceName(resultReferenceName || "");
       }
     } catch {
       setIsValid(false);

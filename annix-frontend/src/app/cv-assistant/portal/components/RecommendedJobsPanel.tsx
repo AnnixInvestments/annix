@@ -33,6 +33,7 @@ export function RecommendedJobsPanel({
       <h4 className="text-sm font-semibold text-violet-800">Recommended Jobs</h4>
       {matches.map((match) => {
         const job = match.externalJob;
+        const jobTitle = job?.title;
         const scorePct = Math.round(match.overallScore * 100);
         const details = match.matchDetails;
         return (
@@ -48,7 +49,7 @@ export function RecommendedJobsPanel({
                   {scorePct}%
                 </span>
                 <span className="text-sm font-medium text-gray-900 truncate">
-                  {job?.title || "Unknown job"}
+                  {jobTitle || "Unknown job"}
                 </span>
               </div>
               <div className="flex items-center gap-2 mt-0.5 text-xs text-gray-500">

@@ -15,7 +15,8 @@ export default function ReferencesPage() {
       responded: "bg-green-100 text-green-800",
       expired: "bg-red-100 text-red-800",
     };
-    return colors[status] || "bg-gray-100 text-gray-800";
+    const color = colors[status];
+    return color || "bg-gray-100 text-gray-800";
   };
 
   const ratingStars = (rating: number | null) => {
@@ -97,45 +98,47 @@ export default function ReferencesPage() {
                   </td>
                 </tr>
               ) : (
-                references.map((ref) => (
-                  <tr key={ref.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">
-                      <div className="text-sm font-medium text-gray-900">{ref.name}</div>
-                      <div className="text-sm text-gray-500">{ref.email}</div>
-                      {ref.relationship && (
-                        <div className="text-xs text-gray-400">{ref.relationship}</div>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">
-                        {(ref as CandidateReference & { candidate?: { name: string } }).candidate
-                          ?.name || "-"}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${statusColor(ref.status)}`}
-                      >
-                        {ref.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {ratingStars(ref.feedbackRating)}
-                    </td>
-                    <td className="px-6 py-4">
-                      {ref.feedbackText ? (
-                        <p
-                          className="text-sm text-gray-600 max-w-xs truncate"
-                          title={ref.feedbackText}
+                references.map((ref) => {
+                  const refCandidateName = (
+                    ref as CandidateReference & { candidate?: { name: string } }
+                  ).candidate?.name;
+                  return (
+                    <tr key={ref.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4">
+                        <div className="text-sm font-medium text-gray-900">{ref.name}</div>
+                        <div className="text-sm text-gray-500">{ref.email}</div>
+                        {ref.relationship && (
+                          <div className="text-xs text-gray-400">{ref.relationship}</div>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">{refCandidateName || "-"}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span
+                          className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${statusColor(ref.status)}`}
                         >
-                          {ref.feedbackText}
-                        </p>
-                      ) : (
-                        <span className="text-sm text-gray-400">-</span>
-                      )}
-                    </td>
-                  </tr>
-                ))
+                          {ref.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {ratingStars(ref.feedbackRating)}
+                      </td>
+                      <td className="px-6 py-4">
+                        {ref.feedbackText ? (
+                          <p
+                            className="text-sm text-gray-600 max-w-xs truncate"
+                            title={ref.feedbackText}
+                          >
+                            {ref.feedbackText}
+                          </p>
+                        ) : (
+                          <span className="text-sm text-gray-400">-</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

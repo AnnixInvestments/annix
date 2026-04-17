@@ -12,6 +12,7 @@ export function UploadCvModal({ jobs, onClose }: { jobs: JobPosting[]; onClose: 
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const uploadMutation = useCvUploadCv();
+  const isUploading = uploadMutation.isPending;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,7 +84,10 @@ export function UploadCvModal({ jobs, onClose }: { jobs: JobPosting[]; onClose: 
             <input
               type="file"
               accept=".pdf"
-              onChange={(e) => setFile(e.target.files?.[0] || null)}
+              onChange={(e) => {
+                const selectedFile = e.target.files?.[0];
+                setFile(selectedFile || null);
+              }}
               required
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
             />
@@ -98,10 +102,10 @@ export function UploadCvModal({ jobs, onClose }: { jobs: JobPosting[]; onClose: 
             </button>
             <button
               type="submit"
-              disabled={uploadMutation.isPending || !file || !selectedJobId}
+              disabled={isUploading || !file || !selectedJobId}
               className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 disabled:opacity-50"
             >
-              {uploadMutation.isPending ? "Uploading..." : "Upload & Process"}
+              {isUploading ? "Uploading..." : "Upload & Process"}
             </button>
           </div>
         </form>

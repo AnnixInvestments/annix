@@ -31,8 +31,10 @@ export default function JobMarketPage() {
     limit: 20,
   });
 
-  const jobs = jobsData?.jobs || [];
-  const jobsTotal = jobsData?.total || 0;
+  const rawJobs = jobsData?.jobs;
+  const rawTotal = jobsData?.total;
+  const jobs = rawJobs || [];
+  const jobsTotal = rawTotal || 0;
   const totalPages = Math.ceil(jobsTotal / 20);
 
   const triggerIngestion = useCvTriggerIngestion();
