@@ -11,6 +11,14 @@ const apiClient: ApiClient = createApiClient({
   baseURL: API_BASE_URL,
   tokenStore: stockControlTokenStore,
   refreshUrl: `${API_BASE_URL}/stock-control/auth/refresh`,
+  onUnauthorized: () => {
+    if (
+      typeof window !== "undefined" &&
+      !window.location.pathname.startsWith("/stock-control/login")
+    ) {
+      window.location.href = "/stock-control/login?expired=1";
+    }
+  },
 });
 
 export class StockControlApiClient {

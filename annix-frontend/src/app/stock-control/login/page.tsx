@@ -11,6 +11,7 @@ function StockControlLoginContent() {
   const searchParams = useSearchParams();
   const returnUrl = searchParams.get("returnUrl");
   const adminTransferToken = searchParams.get("admin-transfer");
+  const sessionExpired = searchParams.get("expired") === "1";
   const { login, isAuthenticated, isLoading: authLoading, profile } = useStockControlAuth();
 
   const [mounted, setMounted] = useState(false);
@@ -215,6 +216,14 @@ function StockControlLoginContent() {
                 Remember me
               </label>
             </div>
+
+            {sessionExpired && !error && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                <p className="text-sm text-amber-700">
+                  Your session has expired. Please sign in again.
+                </p>
+              </div>
+            )}
 
             {adminTransferToken && !transferMessage && (
               <div className="bg-[#f3f4ff] border border-[#323288]/30 rounded-lg p-4">

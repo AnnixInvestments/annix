@@ -36,6 +36,7 @@ export class PortalTokenStore {
   }
 
   refreshToken(): string | null {
+    if (!this.refreshTokenValue) this.loadFromStorage();
     return this.refreshTokenValue;
   }
 
