@@ -170,35 +170,39 @@ function ProgressBar(props: { currentStep: number }) {
   return (
     <div className="mb-8">
       <div className="flex items-center">
-        {steps.map((step, index) => (
-          <Fragment key={step.label}>
-            <div className="flex flex-col items-center shrink-0">
-              <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                  step.completed
-                    ? "bg-teal-500 text-white"
-                    : step.active
-                      ? "border-2 border-teal-500 bg-teal-500/10 text-teal-400"
-                      : "bg-slate-700 text-slate-500"
-                }`}
-              >
-                {step.completed ? <CheckCircle2 className="h-4 w-4" /> : step.num}
+        {steps.map((step, index) => {
+          const isActive = step.active;
+          const isCompleted = step.completed;
+          return (
+            <Fragment key={step.label}>
+              <div className="flex flex-col items-center shrink-0">
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                    isCompleted
+                      ? "bg-teal-500 text-white"
+                      : isActive
+                        ? "border-2 border-teal-500 bg-teal-500/10 text-teal-400"
+                        : "bg-slate-700 text-slate-500"
+                  }`}
+                >
+                  {isCompleted ? <CheckCircle2 className="h-4 w-4" /> : step.num}
+                </div>
+                <span
+                  className={`text-[10px] mt-1 whitespace-nowrap ${
+                    isActive || isCompleted ? "text-teal-400 font-medium" : "text-slate-500"
+                  }`}
+                >
+                  {step.label}
+                </span>
               </div>
-              <span
-                className={`text-[10px] mt-1 whitespace-nowrap ${
-                  step.active || step.completed ? "text-teal-400 font-medium" : "text-slate-500"
-                }`}
-              >
-                {step.label}
-              </span>
-            </div>
-            {index < steps.length - 1 && (
-              <div
-                className={`flex-1 h-0.5 mx-3 mb-4 ${step.completed ? "bg-teal-500" : "bg-slate-700"}`}
-              />
-            )}
-          </Fragment>
-        ))}
+              {index < steps.length - 1 && (
+                <div
+                  className={`flex-1 h-0.5 mx-3 mb-4 ${isCompleted ? "bg-teal-500" : "bg-slate-700"}`}
+                />
+              )}
+            </Fragment>
+          );
+        })}
       </div>
     </div>
   );
@@ -531,6 +535,8 @@ function SuccessModal(props: {
       : props.entityType === "trust"
         ? "Trust"
         : "Company";
+  const propsIndustry = props.industry;
+  const industryLabel = propsIndustry || "selected";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-md px-4">
@@ -542,8 +548,8 @@ function SuccessModal(props: {
         <p className="text-slate-300 text-sm mb-4">
           Your personalised South African compliance dashboard is ready. Based on your{" "}
           <strong className="text-teal-400">{entityLabel}</strong> in the{" "}
-          <strong className="text-teal-400">{props.industry || "selected"}</strong> sector, here are
-          your top 3 urgent actions:
+          <strong className="text-teal-400">{industryLabel}</strong> sector, here are your top 3
+          urgent actions:
         </p>
         <div className="text-left bg-slate-900 rounded-lg p-4 mb-6 space-y-3">
           {[
@@ -745,27 +751,42 @@ export default function SignupPage() {
 
   function buildPayload(profileComplete: boolean) {
     const industry = form.industrySector === "Other" ? form.otherIndustry : form.industrySector;
+    const companyName = form.companyName;
+    const registrationNumber = form.registrationNumber;
+    const idNumber = form.idNumber;
+    const passportNumber = form.passportNumber;
+    const passportCountry = form.passportCountry;
+    const sarsTaxReference = form.sarsTaxReference;
+    const dateOfBirth = form.dateOfBirth;
+    const phone = form.phone;
+    const trustName = form.trustName;
+    const trustRegistrationNumber = form.trustRegistrationNumber;
+    const mastersOffice = form.mastersOffice;
+    const trusteeCount = form.trusteeCount;
+    const employeeCountRange = form.employeeCountRange;
+    const businessAddress = form.businessAddress;
+    const province = form.province;
     return {
       name: form.name,
       email: form.email,
       password: form.password,
       termsAccepted: form.termsAccepted,
       entityType: form.entityType,
-      companyName: form.companyName || null,
-      registrationNumber: form.registrationNumber || null,
-      idNumber: !form.usePassport ? form.idNumber || null : null,
-      passportNumber: form.usePassport ? form.passportNumber || null : null,
-      passportCountry: form.usePassport ? form.passportCountry || null : null,
-      sarsTaxReference: form.sarsTaxReference || null,
-      dateOfBirth: !form.usePassport ? dobFromSaId(form.idNumber) : form.dateOfBirth || null,
-      phone: form.phone || null,
-      trustName: form.trustName || null,
-      trustRegistrationNumber: form.trustRegistrationNumber || null,
-      mastersOffice: form.mastersOffice || null,
-      trusteeCount: form.trusteeCount ? parseInt(form.trusteeCount, 10) : null,
-      employeeCountRange: form.employeeCountRange || null,
-      businessAddress: form.businessAddress || null,
-      province: form.province || null,
+      companyName: companyName || null,
+      registrationNumber: registrationNumber || null,
+      idNumber: !form.usePassport ? idNumber || null : null,
+      passportNumber: form.usePassport ? passportNumber || null : null,
+      passportCountry: form.usePassport ? passportCountry || null : null,
+      sarsTaxReference: sarsTaxReference || null,
+      dateOfBirth: !form.usePassport ? dobFromSaId(form.idNumber) : dateOfBirth || null,
+      phone: phone || null,
+      trustName: trustName || null,
+      trustRegistrationNumber: trustRegistrationNumber || null,
+      mastersOffice: mastersOffice || null,
+      trusteeCount: trusteeCount ? parseInt(trusteeCount, 10) : null,
+      employeeCountRange: employeeCountRange || null,
+      businessAddress: businessAddress || null,
+      province: province || null,
       industrySector: industry || null,
       complianceAreas: form.complianceAreas.length > 0 ? form.complianceAreas : null,
       profileComplete,

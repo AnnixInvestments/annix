@@ -46,8 +46,9 @@ const MONTHS = [
 ];
 
 function TypeBadge({ type }: { type: string }) {
-  const colorClass =
-    TYPE_COLORS[type.toLowerCase()] ?? "bg-slate-500/20 text-slate-400 border-slate-500/30";
+  const typeLower = type.toLowerCase();
+  const colorLookup = TYPE_COLORS[typeLower];
+  const colorClass = colorLookup || "bg-slate-500/20 text-slate-400 border-slate-500/30";
   return (
     <span
       className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${colorClass}`}
@@ -78,7 +79,9 @@ function MonthCard({ month, deadlines }: { month: string; deadlines: Deadline[] 
         {deadlines.length > 0 ? (
           <div className="space-y-2">
             {deadlines.map((d, i) => {
-              const dotColor = TYPE_DOT_COLORS[d.type.toLowerCase()] ?? "bg-slate-400";
+              const deadlineTypeLower = d.type.toLowerCase();
+              const dotLookup = TYPE_DOT_COLORS[deadlineTypeLower];
+              const dotColor = dotLookup || "bg-slate-400";
               const upcoming = isUpcoming(d.date);
               return (
                 <div
@@ -157,7 +160,8 @@ export default function TaxCalendarPage() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
   const { data: profile } = useCompanyProfile();
-  const resolvedYearEndMonth = profile?.financialYearEndMonth || yearEndMonth;
+  const profileYearEnd = profile?.financialYearEndMonth;
+  const resolvedYearEndMonth = profileYearEnd || yearEndMonth;
   const { data: deadlines = [], isLoading: loading } = useTaxCalendar(resolvedYearEndMonth);
 
   const deadlinesByMonth = MONTHS.reduce(

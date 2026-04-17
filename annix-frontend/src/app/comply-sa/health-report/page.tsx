@@ -39,6 +39,9 @@ export default function HealthReportPage() {
     printWindow.print();
   }
 
+  const reportError = reportMutation.error;
+  const reportErrorMsg = reportError ? reportError.message : null;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -70,7 +73,7 @@ export default function HealthReportPage() {
 
       {reportMutation.error && (
         <div className="bg-red-500/10 border border-red-500/30 text-red-400 rounded-lg px-4 py-3 text-sm">
-          {reportMutation.error.message ?? "Failed to generate report"}
+          {reportErrorMsg || "Failed to generate report"}
         </div>
       )}
 

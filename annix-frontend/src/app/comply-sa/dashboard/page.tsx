@@ -57,8 +57,9 @@ const STATUS_CONFIG: Record<
 };
 
 function statusConfig(status: string) {
+  const config = STATUS_CONFIG[status];
   return (
-    STATUS_CONFIG[status] || {
+    config || {
       color: "text-slate-500 dark:text-slate-400",
       bg: "bg-slate-500/10 border-slate-500/30",
       icon: CheckCircle,
@@ -417,22 +418,26 @@ export default function DashboardPage() {
           All Requirements
         </h2>
         <div className="space-y-6">
-          {categories.map((category) => (
-            <div key={category}>
-              <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
-                {CATEGORY_LABELS[category] || category}
-              </h3>
-              <div className="space-y-2">
-                {groupedRequirements[category].map((req) => (
-                  <RequirementCard
-                    key={req.id}
-                    requirement={req}
-                    onDocumentUpload={handleDocumentUpload}
-                  />
-                ))}
+          {categories.map((category) => {
+            const labelLookup = CATEGORY_LABELS[category];
+            const categoryLabel = labelLookup || category;
+            return (
+              <div key={category}>
+                <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
+                  {categoryLabel}
+                </h3>
+                <div className="space-y-2">
+                  {groupedRequirements[category].map((req) => (
+                    <RequirementCard
+                      key={req.id}
+                      requirement={req}
+                      onDocumentUpload={handleDocumentUpload}
+                    />
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>

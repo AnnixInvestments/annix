@@ -103,6 +103,10 @@ function NotificationSection() {
     return <p className="text-sm text-slate-500 py-4">Unable to load notification preferences</p>;
   }
 
+  const prefsSms = activePrefs.sms;
+  const prefsWhatsapp = activePrefs.whatsapp;
+  const prefsPhoneNumber = activePrefs.phoneNumber;
+
   return (
     <div className="space-y-4">
       <div className="divide-y divide-slate-700/50">
@@ -133,14 +137,15 @@ function NotificationSection() {
         />
       </div>
 
-      {(activePrefs.sms || activePrefs.whatsapp) && (
+      {(prefsSms || prefsWhatsapp) && (
         <div>
           <label className="block text-sm font-medium text-slate-300 mb-1.5">Phone Number</label>
           <input
             type="tel"
-            value={activePrefs.phoneNumber ?? ""}
+            value={prefsPhoneNumber || ""}
             onChange={(e) => {
-              setLocalPrefs({ ...activePrefs, phoneNumber: e.target.value || null });
+              const val = e.target.value;
+              setLocalPrefs({ ...activePrefs, phoneNumber: val || null });
               setSaved(false);
             }}
             placeholder="+27 XX XXX XXXX"
@@ -220,6 +225,12 @@ function CompanySection() {
     return <p className="text-sm text-slate-500 py-4">Unable to load company profile</p>;
   }
 
+  const companyRegNum = activeCompany.registrationNumber;
+  const companyEmail = activeCompany.email;
+  const companyPhone = activeCompany.phone;
+  const companyIndustry = activeCompany.industry;
+  const companyYearEnd = activeCompany.financialYearEndMonth;
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -238,8 +249,11 @@ function CompanySection() {
           </label>
           <input
             type="text"
-            value={activeCompany.registrationNumber ?? ""}
-            onChange={(e) => handleChange("registrationNumber", e.target.value || null)}
+            value={companyRegNum || ""}
+            onChange={(e) => {
+              const val = e.target.value;
+              handleChange("registrationNumber", val || null);
+            }}
             placeholder="e.g. 2024/123456/07"
             className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500"
           />
@@ -248,8 +262,11 @@ function CompanySection() {
           <label className="block text-sm font-medium text-slate-300 mb-1.5">Email</label>
           <input
             type="email"
-            value={activeCompany.email ?? ""}
-            onChange={(e) => handleChange("email", e.target.value || null)}
+            value={companyEmail || ""}
+            onChange={(e) => {
+              const val = e.target.value;
+              handleChange("email", val || null);
+            }}
             className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500"
           />
         </div>
@@ -257,8 +274,11 @@ function CompanySection() {
           <label className="block text-sm font-medium text-slate-300 mb-1.5">Phone</label>
           <input
             type="tel"
-            value={activeCompany.phone ?? ""}
-            onChange={(e) => handleChange("phone", e.target.value || null)}
+            value={companyPhone || ""}
+            onChange={(e) => {
+              const val = e.target.value;
+              handleChange("phone", val || null);
+            }}
             placeholder="+27 XX XXX XXXX"
             className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500"
           />
@@ -267,8 +287,11 @@ function CompanySection() {
           <label className="block text-sm font-medium text-slate-300 mb-1.5">Industry</label>
           <input
             type="text"
-            value={activeCompany.industry ?? ""}
-            onChange={(e) => handleChange("industry", e.target.value || null)}
+            value={companyIndustry || ""}
+            onChange={(e) => {
+              const val = e.target.value;
+              handleChange("industry", val || null);
+            }}
             className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500"
           />
         </div>
@@ -277,10 +300,11 @@ function CompanySection() {
             Financial Year End
           </label>
           <select
-            value={activeCompany.financialYearEndMonth ?? ""}
-            onChange={(e) =>
-              handleChange("financialYearEndMonth" as keyof CompanyProfile, e.target.value || null)
-            }
+            value={companyYearEnd || ""}
+            onChange={(e) => {
+              const val = e.target.value;
+              handleChange("financialYearEndMonth" as keyof CompanyProfile, val || null);
+            }}
             className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
           >
             <option value="">Select month</option>
@@ -424,7 +448,8 @@ function SubscriptionSection() {
     return <p className="text-sm text-slate-500 py-4">Unable to load subscription information</p>;
   }
 
-  const badgeStyle = STATUS_BADGE_STYLES[sub.status] ?? STATUS_BADGE_STYLES.active;
+  const badgeLookup = STATUS_BADGE_STYLES[sub.status];
+  const badgeStyle = badgeLookup || STATUS_BADGE_STYLES.active;
 
   return (
     <div className="space-y-4">

@@ -37,9 +37,12 @@ function CategoryBadge({ category }: { category: string }) {
     Generic: "bg-purple-500/20 text-purple-400 border-purple-500/30",
   };
 
+  const colorLookup = colorMap[category];
+  const badgeColor = colorLookup || "bg-slate-500/20 text-slate-400 border-slate-500/30";
+
   return (
     <span
-      className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold border ${colorMap[category] ?? "bg-slate-500/20 text-slate-400 border-slate-500/30"}`}
+      className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold border ${badgeColor}`}
     >
       {category}
     </span>
@@ -47,9 +50,8 @@ function CategoryBadge({ category }: { category: string }) {
 }
 
 function ResultCard({ result }: { result: BbeeResult }) {
-  const gradientClass = result.level
-    ? (LEVEL_COLORS[result.level] ?? "from-slate-600 to-slate-500")
-    : "from-slate-600 to-slate-500";
+  const levelColor = result.level ? LEVEL_COLORS[result.level] : null;
+  const gradientClass = levelColor || "from-slate-600 to-slate-500";
 
   return (
     <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br p-[1px]">
@@ -146,7 +148,8 @@ export default function BbeePage() {
   const calculateMutation = useBbeeCalculate();
 
   const elements: ScorecardElement[] = Array.isArray(scorecardElements) ? scorecardElements : [];
-  const result: BbeeResult | null = calculateMutation.data ?? null;
+  const mutationData = calculateMutation.data;
+  const result: BbeeResult | null = mutationData || null;
 
   function handleCalculate() {
     const numericTurnover = Number(turnover.replace(/[^0-9.]/g, ""));

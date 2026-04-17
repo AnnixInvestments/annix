@@ -1,7 +1,8 @@
+const envApiUrl = process.env.NEXT_PUBLIC_API_URL;
 const BASE_URL =
   typeof window !== "undefined"
     ? "/api/comply-sa"
-    : `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4001"}/api/comply-sa`;
+    : `${envApiUrl || "http://localhost:4001"}/api/comply-sa`;
 
 function buildFetchInit(opts: RequestInit): RequestInit {
   return {
@@ -30,7 +31,8 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 
       if (!secondResponse.ok) {
         const errorData = await secondResponse.json().catch(() => ({}));
-        throw new Error(errorData.message || `Request failed: ${secondResponse.status}`);
+        const errorMsg = errorData.message;
+        throw new Error(errorMsg || `Request failed: ${secondResponse.status}`);
       }
       return secondResponse.json() as Promise<T>;
     }
@@ -43,7 +45,8 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 
   if (!response.ok) {
     const errorBody = await response.json().catch(() => null);
-    throw new Error(errorBody?.message || `Request failed with status ${response.status}`);
+    const bodyMsg = errorBody?.message;
+    throw new Error(bodyMsg || `Request failed with status ${response.status}`);
   }
 
   return response.json();

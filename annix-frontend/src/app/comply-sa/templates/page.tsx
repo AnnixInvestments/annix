@@ -22,8 +22,8 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
 
 function CategoryBadge({ category }: { category: string }) {
-  const colorClass =
-    CATEGORY_COLORS[category] ?? "bg-slate-500/20 text-slate-400 border-slate-500/30";
+  const colorLookup = CATEGORY_COLORS[category];
+  const colorClass = colorLookup || "bg-slate-500/20 text-slate-400 border-slate-500/30";
   return (
     <span
       className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${colorClass}`}
@@ -40,6 +40,9 @@ function TemplateCard({
   template: Template;
   onSelect: (t: Template) => void;
 }) {
+  const rawFields = template.fields;
+  const fields = rawFields || [];
+
   return (
     <button
       type="button"
@@ -54,16 +57,17 @@ function TemplateCard({
       </div>
       <p className="text-xs text-slate-400 line-clamp-2">{template.description}</p>
       <p className="text-xs text-teal-500 mt-3 font-medium">
-        {(template.fields || []).length} field{(template.fields || []).length !== 1 ? "s" : ""}{" "}
-        required
+        {fields.length} field{fields.length !== 1 ? "s" : ""} required
       </p>
     </button>
   );
 }
 
 function TemplateForm({ template, onClose }: { template: Template; onClose: () => void }) {
+  const rawTemplateFields = template.fields;
+  const templateFields = rawTemplateFields || [];
   const [formData, setFormData] = useState<Record<string, string>>(
-    (template.fields || []).reduce(
+    templateFields.reduce(
       (acc, field) => ({ ...acc, [field.name]: "" }),
       {} as Record<string, string>,
     ),
@@ -117,19 +121,23 @@ function TemplateForm({ template, onClose }: { template: Template; onClose: () =
         {!generatedHtml ? (
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {(template.fields || []).map((field) => (
-                <div key={field.name}>
-                  <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                    {field.label}
-                  </label>
-                  <input
-                    type={field.type === "date" ? "date" : "text"}
-                    value={formData[field.name] ?? ""}
-                    onChange={(e) => handleFieldChange(field.name, e.target.value)}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500"
-                  />
-                </div>
-              ))}
+              {templateFields.map((field) => {
+                const fieldLookup = formData[field.name];
+                const fieldValue = fieldLookup || "";
+                return (
+                  <div key={field.name}>
+                    <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                      {field.label}
+                    </label>
+                    <input
+                      type={field.type === "date" ? "date" : "text"}
+                      value={fieldValue}
+                      onChange={(e) => handleFieldChange(field.name, e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    />
+                  </div>
+                );
+              })}
             </div>
 
             {generateMutation.error && (

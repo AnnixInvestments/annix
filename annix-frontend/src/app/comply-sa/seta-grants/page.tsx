@@ -86,8 +86,10 @@ const FALLBACK_DATA: GrantInfo = {
 };
 
 function GrantCard({ grant }: { grant: GrantInfo["grants"][number] }) {
-  const Icon = GRANT_ICONS[grant.type] ?? BookOpen;
-  const iconColor = GRANT_COLORS[grant.type] ?? "bg-slate-500/10 text-slate-400";
+  const iconLookup = GRANT_ICONS[grant.type];
+  const Icon = iconLookup || BookOpen;
+  const colorLookup = GRANT_COLORS[grant.type];
+  const iconColor = colorLookup || "bg-slate-500/10 text-slate-400";
 
   return (
     <div className="bg-slate-800 border border-slate-700 rounded-xl p-5">

@@ -35,10 +35,14 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
 
 function categoryStyle(category: string): string {
-  return CATEGORY_COLORS[category] ?? "bg-slate-500/10 text-slate-400 border-slate-500/30";
+  const style = CATEGORY_COLORS[category];
+  return style || "bg-slate-500/10 text-slate-400 border-slate-500/30";
 }
 
 function UpdateCard({ update }: { update: RegulatoryUpdate }) {
+  const rawAreas = update.affectedAreas;
+  const areas = rawAreas || [];
+
   return (
     <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 space-y-3">
       <div className="flex items-start justify-between gap-4">
@@ -71,9 +75,9 @@ function UpdateCard({ update }: { update: RegulatoryUpdate }) {
         )}
       </div>
 
-      {(update.affectedAreas || []).length > 0 && (
+      {areas.length > 0 && (
         <div className="flex flex-wrap gap-1.5 pt-1">
-          {(update.affectedAreas || []).map((area) => (
+          {areas.map((area) => (
             <span
               key={area}
               className="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-700 text-slate-300"

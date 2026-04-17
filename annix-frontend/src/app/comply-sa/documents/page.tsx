@@ -54,7 +54,8 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
 
 function categoryColor(key: string): string {
-  return CATEGORY_COLORS[key] || "text-slate-400 border-slate-500/30 bg-slate-500/10";
+  const color = CATEGORY_COLORS[key];
+  return color || "text-slate-400 border-slate-500/30 bg-slate-500/10";
 }
 
 function CategoryAccordion(props: {
@@ -65,6 +66,7 @@ function CategoryAccordion(props: {
   const category = props.category;
   const expanded = props.expanded;
   const onToggle = props.onToggle;
+  const deptUrl = category.departmentUrl;
 
   return (
     <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
@@ -93,7 +95,7 @@ function CategoryAccordion(props: {
           {category.department && (
             <div className="px-5 py-3 bg-slate-700/20">
               <a
-                href={category.departmentUrl || "#"}
+                href={deptUrl || "#"}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1.5 text-xs text-teal-400 hover:text-teal-300 transition-colors"
@@ -214,14 +216,18 @@ function GovernmentDocumentsTab() {
         </button>
       </div>
 
-      {(categories || []).map((category) => (
-        <CategoryAccordion
-          key={category.key}
-          category={category}
-          expanded={expandedCategories[category.key] || false}
-          onToggle={() => toggleCategory(category.key)}
-        />
-      ))}
+      {(categories || []).map((category) => {
+        const expandedLookup = expandedCategories[category.key];
+        const isExpanded = expandedLookup || false;
+        return (
+          <CategoryAccordion
+            key={category.key}
+            category={category}
+            expanded={isExpanded}
+            onToggle={() => toggleCategory(category.key)}
+          />
+        );
+      })}
     </div>
   );
 }
@@ -250,7 +256,10 @@ export default function DocumentsPage() {
       { file, requirementId: reqId },
       {
         onSuccess: () => showToast("Document uploaded successfully", "success"),
-        onError: (error) => showToast(error.message || "Failed to upload document", "error"),
+        onError: (error) => {
+          const errMsg = error.message;
+          showToast(errMsg || "Failed to upload document", "error");
+        },
       },
     );
   }
@@ -270,7 +279,10 @@ export default function DocumentsPage() {
   function handleDelete(id: string) {
     deleteMutation.mutate(id, {
       onSuccess: () => showToast("Document deleted", "success"),
-      onError: (error) => showToast(error.message || "Failed to delete document", "error"),
+      onError: (error) => {
+        const errMsg = error.message;
+        showToast(errMsg || "Failed to delete document", "error");
+      },
     });
   }
 
@@ -405,43 +417,46 @@ export default function DocumentsPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-700">
-                    {filteredDocs.slice(0, visibleCount).map((doc: Document) => (
-                      <tr key={doc.id} className="hover:bg-slate-700/30 transition-colors">
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2">
-                            <FileText className="h-4 w-4 text-slate-400 shrink-0" />
-                            <span className="text-white truncate max-w-[200px]">{doc.name}</span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-slate-400 hidden sm:table-cell">
-                          {doc.requirementName ?? "-"}
-                        </td>
-                        <td className="px-4 py-3 text-slate-400 hidden md:table-cell">
-                          {formatDateZA(doc.uploadedAt)}
-                        </td>
-                        <td className="px-4 py-3 text-slate-400 hidden md:table-cell">
-                          {formatFileSize(doc.size)}
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center justify-end gap-2">
-                            <a
-                              href={doc.url}
-                              download
-                              className="text-slate-400 hover:text-white transition-colors"
-                            >
-                              <Download className="h-4 w-4" />
-                            </a>
-                            <button
-                              type="button"
-                              onClick={() => handleDelete(doc.id)}
-                              className="text-slate-400 hover:text-red-400 transition-colors"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                    {filteredDocs.slice(0, visibleCount).map((doc: Document) => {
+                      const reqName = doc.requirementName;
+                      return (
+                        <tr key={doc.id} className="hover:bg-slate-700/30 transition-colors">
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              <FileText className="h-4 w-4 text-slate-400 shrink-0" />
+                              <span className="text-white truncate max-w-[200px]">{doc.name}</span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-slate-400 hidden sm:table-cell">
+                            {reqName || "-"}
+                          </td>
+                          <td className="px-4 py-3 text-slate-400 hidden md:table-cell">
+                            {formatDateZA(doc.uploadedAt)}
+                          </td>
+                          <td className="px-4 py-3 text-slate-400 hidden md:table-cell">
+                            {formatFileSize(doc.size)}
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center justify-end gap-2">
+                              <a
+                                href={doc.url}
+                                download
+                                className="text-slate-400 hover:text-white transition-colors"
+                              >
+                                <Download className="h-4 w-4" />
+                              </a>
+                              <button
+                                type="button"
+                                onClick={() => handleDelete(doc.id)}
+                                className="text-slate-400 hover:text-red-400 transition-colors"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

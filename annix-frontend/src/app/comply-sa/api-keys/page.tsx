@@ -27,10 +27,13 @@ function GenerateModal({
   const [name, setName] = useState("");
   const generateMutation = useGenerateApiKey();
 
+  const isGenerating = generateMutation.isPending;
+  const nameTrimmed = name.trim();
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim()) return;
-    generateMutation.mutate(name.trim(), {
+    if (!nameTrimmed) return;
+    generateMutation.mutate(nameTrimmed, {
       onSuccess: (result) => onGenerated(result.key),
       onError: () => onClose(),
     });
@@ -63,7 +66,7 @@ function GenerateModal({
           </div>
           <button
             type="submit"
-            disabled={generateMutation.isPending || !name.trim()}
+            disabled={isGenerating || !nameTrimmed}
             className="w-full px-4 py-2.5 bg-teal-500 hover:bg-teal-600 disabled:opacity-50 text-white font-medium rounded-lg text-sm transition-colors inline-flex items-center justify-center gap-2"
           >
             {generateMutation.isPending ? (
@@ -211,7 +214,8 @@ export default function ApiKeysPage() {
     );
   }
 
-  const displayError = error?.message || revokeError;
+  const errorMsg = error?.message;
+  const displayError = errorMsg || revokeError;
 
   return (
     <div className="space-y-6">

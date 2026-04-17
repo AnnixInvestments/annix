@@ -30,7 +30,8 @@ export default function AcceptTermsPage() {
 
       if (!response.ok) {
         const body = await response.json().catch(() => null);
-        throw new Error(body?.message || "Failed to accept terms");
+        const bodyMsg = body?.message;
+        throw new Error(bodyMsg || "Failed to accept terms");
       }
 
       router.push("/comply-sa/dashboard");

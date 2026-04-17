@@ -23,7 +23,8 @@ const NOTIFICATION_ICONS: Record<string, React.ComponentType<{ className?: strin
 };
 
 function notificationIcon(type: string): React.ComponentType<{ className?: string }> {
-  return NOTIFICATION_ICONS[type] ?? Bell;
+  const icon = NOTIFICATION_ICONS[type];
+  return icon || Bell;
 }
 
 const NOTIFICATION_COLORS: Record<string, string> = {
@@ -35,7 +36,8 @@ const NOTIFICATION_COLORS: Record<string, string> = {
 };
 
 function notificationColor(type: string): string {
-  return NOTIFICATION_COLORS[type] ?? "text-slate-400";
+  const color = NOTIFICATION_COLORS[type];
+  return color || "text-slate-400";
 }
 
 const ITEMS_PER_PAGE = 20;
@@ -59,6 +61,10 @@ export default function NotificationsPage() {
     );
   }
 
+  const fetchErrorMsg = error?.message;
+  const markReadErrorMsg = markRead.error?.message;
+  const errorMessage = fetchErrorMsg || markReadErrorMsg || "An error occurred";
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -72,7 +78,7 @@ export default function NotificationsPage() {
 
       {(error || markRead.error) && (
         <div className="bg-red-500/10 border border-red-500/30 text-red-400 rounded-lg px-4 py-3 text-sm">
-          {error?.message || markRead.error?.message || "An error occurred"}
+          {errorMessage}
         </div>
       )}
 

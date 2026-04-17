@@ -36,8 +36,10 @@ function ComplianceBadge({
   compliant: boolean;
   labels?: { yes: string; no: string };
 }) {
-  const yesLabel = labels?.yes || "Compliant";
-  const noLabel = labels?.no || "Non-Compliant";
+  const rawYesLabel = labels?.yes;
+  const yesLabel = rawYesLabel || "Compliant";
+  const rawNoLabel = labels?.no;
+  const noLabel = rawNoLabel || "Non-Compliant";
 
   return compliant ? (
     <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium bg-green-500/10 border border-green-500/30 text-green-400">
@@ -81,7 +83,8 @@ function MinimumWageTab() {
     mutation.mutate(rate);
   }
 
-  const result = mutation.data ?? null;
+  const mutationData = mutation.data;
+  const result = mutationData || null;
 
   return (
     <div className="space-y-4">
@@ -140,7 +143,8 @@ function VatTab() {
     mutation.mutate(amount);
   }
 
-  const result = mutation.data ?? null;
+  const mutationData = mutation.data;
+  const result = mutationData || null;
 
   const statusBadge = (status: string) => {
     const config: Record<
@@ -163,7 +167,8 @@ function VatTab() {
         label: "Not Required",
       },
     };
-    const c = config[status] ?? config["not_required"]!;
+    const statusConfig = config[status];
+    const c = statusConfig || config["not_required"]!;
     const Icon = c.icon;
     return (
       <span
@@ -226,7 +231,8 @@ function TurnoverTaxTab() {
     mutation.mutate(amount);
   }
 
-  const result = mutation.data ?? null;
+  const mutationData = mutation.data;
+  const result = mutationData || null;
 
   return (
     <div className="space-y-4">
@@ -286,7 +292,8 @@ function UifTab() {
     mutation.mutate(amount);
   }
 
-  const result = mutation.data ?? null;
+  const mutationData = mutation.data;
+  const result = mutationData || null;
 
   return (
     <div className="space-y-4">
@@ -351,7 +358,8 @@ function SdlTab() {
     mutation.mutate(amount);
   }
 
-  const result = mutation.data ?? null;
+  const mutationData = mutation.data;
+  const result = mutationData || null;
 
   return (
     <div className="space-y-4">

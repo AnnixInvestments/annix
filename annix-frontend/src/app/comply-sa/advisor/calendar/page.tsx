@@ -46,7 +46,8 @@ function urgencyDot(daysRemaining: number): string {
 }
 
 function daysInMonth(month: number, year: number): number {
-  return DateTime.local(year, month).daysInMonth ?? 30;
+  const rawDays = DateTime.local(year, month).daysInMonth;
+  return rawDays || 30;
 }
 
 function firstDayOfMonth(month: number, year: number): number {
@@ -73,9 +74,11 @@ function CalendarGrid({
   const entriesByDay = entries.reduce(
     (acc, entry) => {
       const day = fromISO(entry.date).day;
+      const accDay = acc[day];
+      const existing = accDay || [];
       return {
         ...acc,
-        [day]: [...(acc[day] ?? []), entry],
+        [day]: [...existing, entry],
       };
     },
     {} as Record<number, CalendarEntry[]>,
@@ -94,31 +97,35 @@ function CalendarGrid({
         ))}
       </div>
       <div className="grid grid-cols-7">
-        {allCells.map((day, idx) => (
-          <div
-            key={idx}
-            className={`min-h-[100px] border-b border-r border-slate-700/50 p-1.5 ${
-              day === null ? "bg-slate-800/50" : "bg-slate-800"
-            }`}
-          >
-            {day !== null && (
-              <>
-                <span className="text-xs font-medium text-slate-400">{day}</span>
-                <div className="mt-1 space-y-1">
-                  {(entriesByDay[day] ?? []).map((entry, entryIdx) => (
-                    <div
-                      key={entryIdx}
-                      className={`rounded px-1.5 py-1 border text-[10px] leading-tight ${urgencyColor(entry.daysRemaining)}`}
-                    >
-                      <p className="font-medium truncate">{entry.requirementName}</p>
-                      <p className="truncate opacity-75">{entry.companyName}</p>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-        ))}
+        {allCells.map((day, idx) => {
+          const dayLookup = day !== null ? entriesByDay[day] : null;
+          const dayEntries = dayLookup || [];
+          return (
+            <div
+              key={idx}
+              className={`min-h-[100px] border-b border-r border-slate-700/50 p-1.5 ${
+                day === null ? "bg-slate-800/50" : "bg-slate-800"
+              }`}
+            >
+              {day !== null && (
+                <>
+                  <span className="text-xs font-medium text-slate-400">{day}</span>
+                  <div className="mt-1 space-y-1">
+                    {dayEntries.map((entry, entryIdx) => (
+                      <div
+                        key={entryIdx}
+                        className={`rounded px-1.5 py-1 border text-[10px] leading-tight ${urgencyColor(entry.daysRemaining)}`}
+                      >
+                        <p className="font-medium truncate">{entry.requirementName}</p>
+                        <p className="truncate opacity-75">{entry.companyName}</p>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

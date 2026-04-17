@@ -149,6 +149,9 @@ export default function AiAssistantPage() {
     }
   }
 
+  const isChatPending = chatMutation.isPending;
+  const inputTrimmed = input.trim();
+
   return (
     <div className="flex flex-col h-[calc(100vh-120px)]">
       <div className="mb-4">
@@ -206,13 +209,13 @@ export default function AiAssistantPage() {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Ask a compliance question..."
-            disabled={chatMutation.isPending}
+            disabled={isChatPending}
             className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent disabled:opacity-50"
           />
           <button
             type="button"
             onClick={() => handleSend()}
-            disabled={chatMutation.isPending || !input.trim()}
+            disabled={isChatPending || !inputTrimmed}
             className="px-4 py-3 bg-teal-500 hover:bg-teal-600 disabled:opacity-50 disabled:hover:bg-teal-500 text-white rounded-xl transition-colors"
           >
             {chatMutation.isPending ? (

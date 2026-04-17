@@ -76,11 +76,12 @@ export default function OnboardingPage() {
 
     try {
       const selectedTurnover = TURNOVER_OPTIONS.find((t) => t.label === annualTurnover);
+      const turnoverValue = selectedTurnover?.value;
 
       await updateCompanyProfile({
         industry,
         employeeCount: parseInt(employeeCount, 10),
-        annualTurnover: selectedTurnover?.value || null,
+        annualTurnover: turnoverValue || null,
         vatRegistered,
         vatNumber: vatRegistered ? vatNumber : null,
         financialYearEnd,
@@ -113,7 +114,8 @@ export default function OnboardingPage() {
     }
   }
 
-  const municipalitiesForProvince = province ? MUNICIPALITIES[province] || [] : [];
+  const provinceMunicipalities = province ? MUNICIPALITIES[province] : null;
+  const municipalitiesForProvince = provinceMunicipalities || [];
 
   const inputClass =
     "w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2.5 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-teal-500 transition-colors";

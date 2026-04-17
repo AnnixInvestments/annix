@@ -71,9 +71,12 @@ const FALLBACK_INTEGRATIONS: IntegrationItem[] = [
 ];
 
 function IntegrationCard({ integration }: { integration: IntegrationItem }) {
-  const Icon = INTEGRATION_ICONS[integration.id] ?? Plug;
-  const iconColor = INTEGRATION_COLORS[integration.id] ?? "bg-slate-500/10 text-slate-400";
-  const statusStyle = STATUS_STYLES[integration.status] ?? STATUS_STYLES.coming_soon;
+  const iconLookup = INTEGRATION_ICONS[integration.id];
+  const Icon = iconLookup || Plug;
+  const colorLookup = INTEGRATION_COLORS[integration.id];
+  const iconColor = colorLookup || "bg-slate-500/10 text-slate-400";
+  const styleLookup = STATUS_STYLES[integration.status];
+  const statusStyle = styleLookup || STATUS_STYLES.coming_soon;
   const isComingSoon = integration.status === "coming_soon";
 
   return (

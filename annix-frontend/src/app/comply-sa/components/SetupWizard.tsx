@@ -230,10 +230,13 @@ export default function SetupWizard() {
   }
 
   function fileForKey(key: string): File | null {
-    return documentFiles.find((d) => d.key === key)?.file || null;
+    const match = documentFiles.find((d) => d.key === key);
+    const matchFile = match?.file;
+    return matchFile || null;
   }
 
-  const municipalitiesForProvince = province ? MUNICIPALITIES[province] || [] : [];
+  const provinceMunicipalities = province ? MUNICIPALITIES[province] : null;
+  const municipalitiesForProvince = provinceMunicipalities || [];
 
   async function handleProcess() {
     setError(null);
@@ -242,11 +245,12 @@ export default function SetupWizard() {
     try {
       setProcessingStep("Saving business profile...");
       const selectedTurnover = TURNOVER_OPTIONS.find((t) => t.label === annualTurnover);
+      const turnoverValue = selectedTurnover?.value;
 
       await updateProfile.mutateAsync({
         industry,
         employeeCount: parseInt(employeeCount, 10),
-        annualTurnover: selectedTurnover?.value || null,
+        annualTurnover: turnoverValue || null,
         vatRegistered,
         vatNumber: vatRegistered ? vatNumber : null,
         financialYearEnd,
