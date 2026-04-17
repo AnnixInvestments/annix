@@ -121,60 +121,63 @@ export function StockIssuesTab(props: StockIssuesTabProps) {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {issuedAllocations.map((alloc) => (
-                  <tr key={alloc.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-sm font-medium text-gray-900 whitespace-nowrap">
-                      {alloc.stockItem ? alloc.stockItem.name : "-"}
-                    </td>
-                    <td className="hidden md:table-cell px-4 py-3 text-sm text-gray-500 whitespace-nowrap font-mono">
-                      {alloc.stockItem ? alloc.stockItem.sku : "-"}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-right font-semibold text-gray-900 whitespace-nowrap">
-                      const totalLitres = alloc.totalLitres;
-                      {totalLitres || alloc.quantityUsed}
-                      {alloc.packCount ? (
-                        <span className="text-gray-400 font-normal ml-1">
-                          ({alloc.packCount} packs)
-                        </span>
-                      ) : null}
-                    </td>
-                    <td className="hidden sm:table-cell px-4 py-3 text-sm text-gray-600 whitespace-nowrap font-mono">
-                      {batchForStockItem(alloc.stockItem) || (
-                        <span className="text-gray-300">-</span>
-                      )}
-                    </td>
-                    <td className="hidden md:table-cell px-4 py-3 text-sm text-gray-600 whitespace-nowrap">
-                      const issuedByName = alloc.issuedByName;
-                      {issuedByName || alloc.allocatedBy || "-"}
-                    </td>
-                    <td className="hidden sm:table-cell px-4 py-3 text-sm text-gray-500 whitespace-nowrap">
-                      {alloc.issuedAt
-                        ? formatDateZA(alloc.issuedAt)
-                        : formatDateZA(alloc.createdAt)}
-                    </td>
-                    <td className="hidden lg:table-cell px-4 py-3 text-sm text-gray-500 max-w-[200px] truncate">
-                      const notes = alloc.notes;
-                      {notes || "-"}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-center whitespace-nowrap">
-                      <div className="flex items-center justify-center gap-2">
-                        <button
-                          onClick={() => setReturnAllocation(alloc)}
-                          className="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-md text-amber-700 bg-amber-50 hover:bg-amber-100 transition-colors"
-                        >
-                          Return Leftover
-                        </button>
-                        <button
-                          onClick={() => handleDelete(alloc.id)}
-                          disabled={deletingId === alloc.id}
-                          className="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-md text-red-700 bg-red-50 hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                        >
-                          {deletingId === alloc.id ? "Removing..." : "Delete"}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {issuedAllocations.map((alloc) => {
+                  const totalLitres = alloc.totalLitres;
+                  const issuedByName = alloc.issuedByName;
+                  const allocatedBy = alloc.allocatedBy;
+                  const notes = alloc.notes;
+                  return (
+                    <tr key={alloc.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3 text-sm font-medium text-gray-900 whitespace-nowrap">
+                        {alloc.stockItem ? alloc.stockItem.name : "-"}
+                      </td>
+                      <td className="hidden md:table-cell px-4 py-3 text-sm text-gray-500 whitespace-nowrap font-mono">
+                        {alloc.stockItem ? alloc.stockItem.sku : "-"}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-right font-semibold text-gray-900 whitespace-nowrap">
+                        {totalLitres || alloc.quantityUsed}
+                        {alloc.packCount ? (
+                          <span className="text-gray-400 font-normal ml-1">
+                            ({alloc.packCount} packs)
+                          </span>
+                        ) : null}
+                      </td>
+                      <td className="hidden sm:table-cell px-4 py-3 text-sm text-gray-600 whitespace-nowrap font-mono">
+                        {batchForStockItem(alloc.stockItem) || (
+                          <span className="text-gray-300">-</span>
+                        )}
+                      </td>
+                      <td className="hidden md:table-cell px-4 py-3 text-sm text-gray-600 whitespace-nowrap">
+                        {issuedByName || allocatedBy || "-"}
+                      </td>
+                      <td className="hidden sm:table-cell px-4 py-3 text-sm text-gray-500 whitespace-nowrap">
+                        {alloc.issuedAt
+                          ? formatDateZA(alloc.issuedAt)
+                          : formatDateZA(alloc.createdAt)}
+                      </td>
+                      <td className="hidden lg:table-cell px-4 py-3 text-sm text-gray-500 max-w-[200px] truncate">
+                        {notes || "-"}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-center whitespace-nowrap">
+                        <div className="flex items-center justify-center gap-2">
+                          <button
+                            onClick={() => setReturnAllocation(alloc)}
+                            className="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-md text-amber-700 bg-amber-50 hover:bg-amber-100 transition-colors"
+                          >
+                            Return Leftover
+                          </button>
+                          <button
+                            onClick={() => handleDelete(alloc.id)}
+                            disabled={deletingId === alloc.id}
+                            className="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-md text-red-700 bg-red-50 hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                          >
+                            {deletingId === alloc.id ? "Removing..." : "Delete"}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -205,21 +208,23 @@ export function StockIssuesTab(props: StockIssuesTabProps) {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-100">
-                {undoneAllocations.map((alloc) => (
-                  <tr key={alloc.id} className="opacity-50">
-                    <td className="px-4 py-2 text-sm text-gray-400 line-through">
-                      {alloc.stockItem ? alloc.stockItem.name : "-"}
-                    </td>
-                    <td className="px-4 py-2 text-sm text-right text-gray-400 line-through">
-                      {alloc.quantityUsed}
-                      const undoneByName = alloc.undoneByName;
-                    </td>
-                    <td className="px-4 py-2 text-sm text-gray-400">{undoneByName || "-"}</td>
-                    <td className="px-4 py-2 text-sm text-gray-400">
-                      {alloc.undoneAt ? formatDateZA(alloc.undoneAt) : "-"}
-                    </td>
-                  </tr>
-                ))}
+                {undoneAllocations.map((alloc) => {
+                  const undoneByName = alloc.undoneByName;
+                  return (
+                    <tr key={alloc.id} className="opacity-50">
+                      <td className="px-4 py-2 text-sm text-gray-400 line-through">
+                        {alloc.stockItem ? alloc.stockItem.name : "-"}
+                      </td>
+                      <td className="px-4 py-2 text-sm text-right text-gray-400 line-through">
+                        {alloc.quantityUsed}
+                      </td>
+                      <td className="px-4 py-2 text-sm text-gray-400">{undoneByName || "-"}</td>
+                      <td className="px-4 py-2 text-sm text-gray-400">
+                        {alloc.undoneAt ? formatDateZA(alloc.undoneAt) : "-"}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

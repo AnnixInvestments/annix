@@ -161,8 +161,8 @@ function PartyCell(props: {
   onClickInitial: (idx: number, party: PartyKey) => void;
 }) {
   const so = props.activity[props.party];
+  const interventionType = so.interventionType;
   if (!props.editable) {
-    const interventionType = so.interventionType;
     if (!so.interventionType) {
       return <td className="px-2 py-1.5 text-center text-gray-300">-</td>;
     }
@@ -174,6 +174,7 @@ function PartyCell(props: {
     );
   }
 
+  const initial = so.initial;
   return (
     <td className="px-1 py-1 text-center">
       <div className="flex items-center justify-center gap-0.5">
@@ -200,7 +201,6 @@ function PartyCell(props: {
           onClick={() => props.onClickInitial(props.activityIndex, props.party)}
           className={`w-10 rounded border px-0.5 py-0.5 text-xs text-center ${so.initial ? "border-teal-300 bg-teal-50 font-medium text-teal-800" : "border-gray-300 text-gray-400 hover:border-teal-400 hover:bg-teal-50"}`}
         >
-          const initial = so.initial;
           {initial || "init"}
         </button>
       </div>
@@ -438,6 +438,10 @@ export function QcpSection(props: QcpSectionProps) {
             const progress = signOffProgress(plan);
             const isExpanded = expandedId === plan.id;
             const custLabel = customerShortName(plan.customerName);
+            const qcpNumber = plan.qcpNumber;
+            const customerName = plan.customerName;
+            const orderNumber = plan.orderNumber;
+            const revision = plan.revision;
             return (
               <div key={plan.id}>
                 <div
@@ -452,7 +456,6 @@ export function QcpSection(props: QcpSectionProps) {
                     </span>
                     <div>
                       <span className="text-sm font-medium text-gray-900">
-                        const qcpNumber = plan.qcpNumber;
                         {qcpNumber || `QCP #${plan.id}`}
                       </span>
                       {plan.revision && (
@@ -503,7 +506,6 @@ export function QcpSection(props: QcpSectionProps) {
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        const qcpNumber = plan.qcpNumber;
                         const qcpNum = qcpNumber || `QCP-${plan.id}`;
                         pdfPreview.openWithFetch(
                           () =>
@@ -561,8 +563,6 @@ export function QcpSection(props: QcpSectionProps) {
                           className="text-sm text-red-500 hover:text-red-700 disabled:opacity-50"
                         >
                           {deletingId === plan.id ? "..." : "Delete"}
-                          const customerName = plan.customerName; const orderNumber =
-                          plan.orderNumber; const revision = plan.revision;
                         </button>
                       </>
                     )}
@@ -631,38 +631,42 @@ export function QcpSection(props: QcpSectionProps) {
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
-                              {plan.activities.map((a, i) => (
-                                <tr key={i}>
-                                  <td className="px-2 py-1.5 text-center">{a.operationNumber}</td>
-                                  <td className="px-2 py-1.5">{a.description}</td>
-                                  <td className="px-2 py-1.5 text-gray-500">
-                                    const specification = a.specification;
-                                    {specification || "-"}
-                                  </td>
-                                  <td className="px-2 py-1.5 text-gray-500">
-                                    {(a as any).documentation || a.procedureRequired || "-"}
-                                  </td>
-                                  {visibleParties.map((p) => (
-                                    <PartyCell
-                                      key={p.key}
-                                      activity={a}
-                                      activityIndex={i}
-                                      party={p.key}
-                                      editable={!readOnly && (p.key === "pls" || p.key === "mps")}
-                                      onChangeIntervention={(idx, party, val) =>
-                                        handlePartyInterventionChange(plan.id, idx, party, val)
-                                      }
-                                      onClickInitial={(idx, party) =>
-                                        setInitialsTarget({
-                                          planId: plan.id,
-                                          activityIdx: idx,
-                                          party,
-                                        })
-                                      }
-                                    />
-                                  ))}
-                                </tr>
-                              ))}
+                              {plan.activities.map((a, i) => {
+                                const specification = a.specification;
+                                const documentation = (a as any).documentation;
+                                const procedureRequired = a.procedureRequired;
+                                return (
+                                  <tr key={i}>
+                                    <td className="px-2 py-1.5 text-center">{a.operationNumber}</td>
+                                    <td className="px-2 py-1.5">{a.description}</td>
+                                    <td className="px-2 py-1.5 text-gray-500">
+                                      {specification || "-"}
+                                    </td>
+                                    <td className="px-2 py-1.5 text-gray-500">
+                                      {documentation || procedureRequired || "-"}
+                                    </td>
+                                    {visibleParties.map((p) => (
+                                      <PartyCell
+                                        key={p.key}
+                                        activity={a}
+                                        activityIndex={i}
+                                        party={p.key}
+                                        editable={!readOnly && (p.key === "pls" || p.key === "mps")}
+                                        onChangeIntervention={(idx, party, val) =>
+                                          handlePartyInterventionChange(plan.id, idx, party, val)
+                                        }
+                                        onClickInitial={(idx, party) =>
+                                          setInitialsTarget({
+                                            planId: plan.id,
+                                            activityIdx: idx,
+                                            party,
+                                          })
+                                        }
+                                      />
+                                    ))}
+                                  </tr>
+                                );
+                              })}
                             </tbody>
                           </table>
                         </div>

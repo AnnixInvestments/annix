@@ -183,7 +183,6 @@ function MessageInput({
 }
 
 export function ChatPanel() {
-  const id = user?.id;
   const {
     user,
     messagingEnabled,
@@ -212,6 +211,7 @@ export function ChatPanel() {
     createConversation,
     toggleUserSelection,
   } = useChatState();
+  const id = user?.id;
 
   if (!messagingEnabled) return null;
 

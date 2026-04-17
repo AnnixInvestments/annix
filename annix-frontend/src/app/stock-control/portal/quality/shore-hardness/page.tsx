@@ -106,6 +106,7 @@ export default function ShoreHardnessPage() {
                 const jcLabel = [rec.jobNumber, rec.jcNumber].filter(Boolean).join(" / ");
                 const overallAvg = rec.averages?.overall;
                 const avgStr = overallAvg != null ? overallAvg.toFixed(1) : "-";
+                const rubberBatchNumber = rec.rubberBatchNumber;
                 return (
                   <tr key={rec.id} className="hover:bg-gray-50">
                     <td className="whitespace-nowrap px-4 py-3 text-sm">
@@ -127,7 +128,6 @@ export default function ShoreHardnessPage() {
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">{avgStr}</td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
-                      const rubberBatchNumber = rec.rubberBatchNumber;
                       {rubberBatchNumber || "-"}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500">

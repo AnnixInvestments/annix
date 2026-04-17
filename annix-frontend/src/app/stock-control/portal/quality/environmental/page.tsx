@@ -111,6 +111,7 @@ export default function EnvironmentalPage() {
                 const dewPoint = rec.dewPointC;
                 const dewStr = dewPoint != null ? String(dewPoint) : "-";
                 const jcLabel = [rec.jobNumber, rec.jcNumber].filter(Boolean).join(" / ");
+                const notes = rec.notes;
                 return (
                   <tr key={rec.id} className="hover:bg-gray-50">
                     <td className="whitespace-nowrap px-4 py-3 text-sm">
@@ -128,7 +129,6 @@ export default function EnvironmentalPage() {
                     <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">{humStr}</td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">{dewStr}</td>
                     <td className="px-4 py-3 text-sm text-gray-600 max-w-xs truncate">
-                      const notes = rec.notes;
                       {notes || "-"}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500">

@@ -395,7 +395,6 @@ function extractMappedRows(
       /^(production|foreman?\s*sign|forman\s*sign|material\s*spec|job\s*comp|completion\s*date|supervisor|quality\s*control|qc\s*sign|inspector|approved\s*by|checked\s*by|signature|remarks|comments|date\s+date|notes|sign|date)\b|^Sage\s*\d{3}\s*Evolution|\d{4}\/\d{2}\/\d{2}\s+\d{2}:\d{2}:\d{2}/i;
     if (grouped.size > 0) {
       grouped.forEach((entry) => {
-        const notes = li.notes;
         const cleanedLines: Record<string, string>[] = [];
         const pendingNotes: string[] = [];
         let sectionStartIdx = 0;
@@ -1054,9 +1053,13 @@ export default function JobCardImportPage() {
     mappedRows.forEach((row, rowIdx) => {
       const notes2 = row.notes;
       const rawLineItems = row.lineItems;
-      const rawNotes = li.notes;
       const notes = (notes2 || "").trim();
-      const lineNotes = (rawLineItems || []).map((li) => (rawNotes || "").trim()).filter(Boolean);
+      const lineNotes = (rawLineItems || [])
+        .map((li) => {
+          const liNotes = li.notes;
+          return (liNotes || "").trim();
+        })
+        .filter(Boolean);
       const allSpecs = [notes, ...lineNotes].filter(Boolean);
 
       allSpecs.forEach((spec) => {

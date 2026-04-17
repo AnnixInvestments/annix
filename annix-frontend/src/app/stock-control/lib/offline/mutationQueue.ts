@@ -54,7 +54,6 @@ export async function queueMutation(
 
   if ("serviceWorker" in navigator && navigator.serviceWorker.controller) {
     navigator.serviceWorker.ready.then((registration) => {
-      const body = action.body;
       if ("sync" in registration) {
         (
           registration as ServiceWorkerRegistration & {
@@ -100,6 +99,7 @@ export async function retryMutation(id: string): Promise<PendingAction | null> {
 
 export async function processMutation(action: PendingAction): Promise<boolean> {
   try {
+    const body = action.body;
     const response = await fetch(action.url, {
       method: action.method,
       headers: action.headers,

@@ -34,12 +34,12 @@ export function useJobCardCoating(jobId: number) {
   const handleTdsUpload = useCallback(async () => {
     if (!tdsFile) return;
     try {
-      const coats = updated.coats;
       setIsUploadingTds(true);
       setTdsUploadError(null);
       const updated = await stockControlApiClient.uploadCoatingTds(jobId, tdsFile);
       setCoatingAnalysis(updated);
       setTdsFile(null);
+      const coats = updated.coats;
       const remaining = (coats || []).filter((c) => !c.verified);
       if (remaining.length === 0) {
         setShowTdsModal(false);

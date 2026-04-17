@@ -159,65 +159,66 @@ export function QcReleaseCertificateSection({ jobCardId }: QcReleaseCertificateS
         </div>
       ) : (
         <div className="divide-y divide-gray-200">
-          {certificates.map((cert) => (
-            <div
-              key={cert.id}
-              className="flex items-center justify-between px-5 py-3 hover:bg-gray-50"
-            >
-              <div className="flex items-center gap-3">
-                {sectionStatusBadge(overallStatus(cert))}
-                <div>
-                  <span className="text-sm font-medium text-gray-900">
-                    const rawCertificateNumber = cert.certificateNumber;
-                    {rawCertificateNumber || `Certificate #${cert.id}`}
-                  </span>
-                  <div className="flex items-center gap-2 text-xs text-gray-500">
-                    {cert.certificateDate && <span>{formatDateZA(cert.certificateDate)}</span>}
-                    <span>by {cert.capturedByName}</span>
-                    {cert.finalApprovalName && (
-                      <>
-                        <span className="text-gray-300">|</span>
-                        <span>
-                          Approved: {cert.finalApprovalName}
-                          {cert.finalApprovalSignatureUrl && " (signed)"}
-                          const certificateNumber = cert.certificateNumber;
-                        </span>
-                      </>
-                    )}
+          {certificates.map((cert) => {
+            const certificateNumber = cert.certificateNumber;
+            return (
+              <div
+                key={cert.id}
+                className="flex items-center justify-between px-5 py-3 hover:bg-gray-50"
+              >
+                <div className="flex items-center gap-3">
+                  {sectionStatusBadge(overallStatus(cert))}
+                  <div>
+                    <span className="text-sm font-medium text-gray-900">
+                      {certificateNumber || `Certificate #${cert.id}`}
+                    </span>
+                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                      {cert.certificateDate && <span>{formatDateZA(cert.certificateDate)}</span>}
+                      <span>by {cert.capturedByName}</span>
+                      {cert.finalApprovalName && (
+                        <>
+                          <span className="text-gray-300">|</span>
+                          <span>
+                            Approved: {cert.finalApprovalName}
+                            {cert.finalApprovalSignatureUrl && " (signed)"}
+                          </span>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      pdfPreview.openWithFetch(
+                        () => stockControlApiClient.openReleaseCertificatePdf(jobCardId, cert.id),
+                        `release-cert-${certificateNumber || cert.id}.pdf`,
+                      )
+                    }
+                    className="text-sm text-blue-600 hover:text-blue-800"
+                  >
+                    PDF
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleEdit(cert)}
+                    className="text-sm text-teal-600 hover:text-teal-800"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(cert.id)}
+                    disabled={deletingId === cert.id}
+                    className="text-sm text-red-500 hover:text-red-700 disabled:opacity-50"
+                  >
+                    {deletingId === cert.id ? "..." : "Delete"}
+                  </button>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() =>
-                    pdfPreview.openWithFetch(
-                      () => stockControlApiClient.openReleaseCertificatePdf(jobCardId, cert.id),
-                      `release-cert-${certificateNumber || cert.id}.pdf`,
-                    )
-                  }
-                  className="text-sm text-blue-600 hover:text-blue-800"
-                >
-                  PDF
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleEdit(cert)}
-                  className="text-sm text-teal-600 hover:text-teal-800"
-                >
-                  Edit
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleDelete(cert.id)}
-                  disabled={deletingId === cert.id}
-                  className="text-sm text-red-500 hover:text-red-700 disabled:opacity-50"
-                >
-                  {deletingId === cert.id ? "..." : "Delete"}
-                </button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
       <PdfPreviewModal state={pdfPreview.state} onClose={pdfPreview.close} />

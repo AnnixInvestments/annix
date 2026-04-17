@@ -27,8 +27,8 @@ export function SyncStatus() {
   }, []);
 
   const handleSync = async () => {
-    const Authorization = authHeaders.Authorization;
     const authHeaders = stockControlApiClient.authHeaders();
+    const Authorization = authHeaders.Authorization;
     await forceSync(API_BASE_URL, Authorization || "");
   };
 

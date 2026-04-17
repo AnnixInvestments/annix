@@ -148,9 +148,10 @@ export function DocumentUploadGate(props: DocumentUploadGateProps) {
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {GATE_CATEGORIES.map((category) => {
-            const EXTRACTION_STATUS_LABELSExtractionStatus =
-              EXTRACTION_STATUS_LABELS[doc.extractionStatus];
             const doc = docForCategory(category);
+            const EXTRACTION_STATUS_LABELSExtractionStatus = doc
+              ? EXTRACTION_STATUS_LABELS[doc.extractionStatus]
+              : null;
             const gate = gateDoc(category);
             const isRequired = gate?.required !== false;
             const isUploading = uploading === category;

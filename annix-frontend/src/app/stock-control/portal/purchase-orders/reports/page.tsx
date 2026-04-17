@@ -333,28 +333,30 @@ export default function CpoReportsPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
-                      {overdueItems.map((item) => (
-                        <tr key={item.recordId} className="hover:bg-gray-50">
-                          <td className="px-6 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
-                            {item.cpoNumber}
-                          </td>
-                          <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-600">
-                            const jobCardNumber = item.jobCardNumber;
-                            {jobCardNumber || "-"}
-                          </td>
-                          <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-600">
-                            {calloffTypeLabel(item.calloffType)}
-                          </td>
-                          <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-600">
-                            {item.deliveredAt ? formatDateZA(item.deliveredAt) : "-"}
-                          </td>
-                          <td className="px-6 py-3 whitespace-nowrap text-sm text-right">
-                            <span className="text-red-600 font-semibold">
-                              {item.daysSinceDelivery} days
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
+                      {overdueItems.map((item) => {
+                        const jobCardNumber = item.jobCardNumber;
+                        return (
+                          <tr key={item.recordId} className="hover:bg-gray-50">
+                            <td className="px-6 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+                              {item.cpoNumber}
+                            </td>
+                            <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-600">
+                              {jobCardNumber || "-"}
+                            </td>
+                            <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-600">
+                              {calloffTypeLabel(item.calloffType)}
+                            </td>
+                            <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-600">
+                              {item.deliveredAt ? formatDateZA(item.deliveredAt) : "-"}
+                            </td>
+                            <td className="px-6 py-3 whitespace-nowrap text-sm text-right">
+                              <span className="text-red-600 font-semibold">
+                                {item.daysSinceDelivery} days
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

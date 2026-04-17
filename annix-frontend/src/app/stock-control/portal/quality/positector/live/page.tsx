@@ -82,9 +82,9 @@ export default function PositectorLiveStreamingPage() {
     try {
       const sessions = await sessionsMutation.mutateAsync();
       if (Array.isArray(sessions) && sessions.length > 0) {
-        const readings = details.readings;
         const activeSession = sessions[0];
         const details = await sessionDetailMutation.mutateAsync(activeSession.sessionId);
+        const readings = details.readings;
         setSession(details);
         setReadings(readings || []);
       }
@@ -336,6 +336,7 @@ export default function PositectorLiveStreamingPage() {
                     <div className="space-y-1">
                       {readings.map((reading, index) => {
                         const status = specStatus(reading.value, specLimits);
+                        const units = reading.units;
                         return (
                           <div
                             key={`${reading.timestamp}-${index}`}
@@ -347,7 +348,6 @@ export default function PositectorLiveStreamingPage() {
                             <div className={`h-2 w-2 rounded-full ${specStatusDot(status)}`} />
                             <span className="min-w-[80px] font-mono text-sm font-medium text-gray-900">
                               {reading.value.toFixed(1)}
-                              const units = reading.units;
                             </span>
                             <span className="text-xs text-gray-500">{units || ""}</span>
                             <span

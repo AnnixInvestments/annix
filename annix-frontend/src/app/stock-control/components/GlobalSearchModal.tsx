@@ -247,18 +247,17 @@ export function GlobalSearchModal({ isOpen, onClose }: GlobalSearchModalProps) {
   );
 
   const clearRecentSearches = useCallback(() => {
-    const accType = acc[result.type];
     saveRecent(RECENT_SEARCHES_KEY, []);
     setRecentSearches([]);
   }, []);
 
-  const groupedResults = results.reduce<Record<string, GlobalSearchResultItem[]>>(
-    (acc, result) => ({
+  const groupedResults = results.reduce<Record<string, GlobalSearchResultItem[]>>((acc, result) => {
+    const accType = acc[result.type];
+    return {
       ...acc,
       [result.type]: [...(accType || []), result],
-    }),
-    {},
-  );
+    };
+  }, {});
 
   const flatResults = Object.values(groupedResults).flat();
 

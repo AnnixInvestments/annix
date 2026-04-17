@@ -317,6 +317,10 @@ export function LineItemsTab(props: LineItemsTabProps) {
                 const isLastInNoteGroup =
                   li.notes &&
                   (idx === validItems.length - 1 || validItems[idx + 1].notes !== li.notes);
+                const itemNo = li.itemNo;
+                const itemDescription = li.itemDescription;
+                const quantity = li.quantity;
+                const jtNo = li.jtNo;
 
                 itemCounter++;
                 rows.push(
@@ -328,22 +332,18 @@ export function LineItemsTab(props: LineItemsTabProps) {
                       {workTypeFromNotes(li.notes)}
                     </td>
                     <td className="px-3 py-2 text-sm font-mono text-gray-900 break-all">
-                      const itemNo = li.itemNo;
                       {itemNo || "-"}
                     </td>
                     <td className="px-3 py-2 text-sm text-gray-900 break-words">
-                      const itemDescription = li.itemDescription;
                       {itemDescription || "-"}
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
-                      const quantity = li.quantity;
                       {quantity || "-"}
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap text-sm text-right text-gray-900">
                       {li.m2 ? Number(li.m2).toFixed(2) : "-"}
                     </td>
                     <td className="px-3 py-2 text-sm text-gray-900 whitespace-nowrap">
-                      const jtNo = li.jtNo;
                       {jtNo || "-"}
                     </td>
                     {canManageLineItems && (
@@ -394,6 +394,7 @@ export function LineItemsTab(props: LineItemsTabProps) {
           validItems.forEach((li, idx) => {
             const isLastInNoteGroup =
               li.notes && (idx === validItems.length - 1 || validItems[idx + 1].notes !== li.notes);
+            const itemCode = li.itemCode;
 
             itemCounter++;
             elements.push(
@@ -402,7 +403,6 @@ export function LineItemsTab(props: LineItemsTabProps) {
                   <div className="flex items-center space-x-2">
                     <span className="text-xs text-gray-400">#{itemCounter}</span>
                     <span className="text-sm font-mono font-medium text-gray-900">
-                      const itemCode = li.itemCode;
                       {itemCode || "-"}
                     </span>
                   </div>

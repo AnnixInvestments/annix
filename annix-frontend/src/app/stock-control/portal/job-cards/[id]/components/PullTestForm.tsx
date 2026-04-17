@@ -61,7 +61,6 @@ const parseSolutions = (solutions: QcPullTestSolution[]): SolutionRow[] =>
   }));
 
 const numericPartOfReading = (raw: string): string => {
-  const certificateNumber = fg.certificateNumber;
   const match = raw.trim().match(/^[\d.]+/);
   return match ? match[0] : raw;
 };
@@ -73,25 +72,30 @@ const parseAreaReadings = (readings: QcPullTestAreaReading[]): AreaReadingRow[] 
     result: r.result,
   }));
 
-const parseForceGauge = (fg: QcPullTestForceGauge): ForceGaugeState => ({
-  make: fg.make,
-  certificateNumber: certificateNumber || "",
-  expiryDate: fg.expiryDate ? fg.expiryDate.slice(0, 10) : "",
-});
+const parseForceGauge = (fg: QcPullTestForceGauge): ForceGaugeState => {
+  const certificateNumber = fg.certificateNumber;
+  return {
+    make: fg.make,
+    certificateNumber: certificateNumber || "",
+    expiryDate: fg.expiryDate ? fg.expiryDate.slice(0, 10) : "",
+  };
+};
 
 const solutionsFromBatchRecords = (records: IssuanceBatchRecord[]): SolutionRow[] => {
   const adhesiveRecords = records.filter(
     (r) => r.stockItem?.name && /adhesive|primer|chemosil|cilbond|megum/i.test(r.stockItem.name),
   );
   if (adhesiveRecords.length === 0) {
-    const name = r.stockItem?.name;
     return [emptySolution()];
   }
-  return adhesiveRecords.map((r) => ({
-    product: name || "",
-    batchNumber: r.batchNumber,
-    result: "pass" as const,
-  }));
+  return adhesiveRecords.map((r) => {
+    const name = r.stockItem?.name;
+    return {
+      product: name || "",
+      batchNumber: r.batchNumber,
+      result: "pass" as const,
+    };
+  });
 };
 
 const initialSolutions = (

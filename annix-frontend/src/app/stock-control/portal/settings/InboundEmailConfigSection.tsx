@@ -23,17 +23,17 @@ export function InboundEmailConfigSection() {
 
   const loadConfig = useCallback(async () => {
     try {
-      const emailHost = config.emailHost;
-      const emailUser = config.emailUser;
-      const tlsServerName = config.tlsServerName;
       const config: InboundEmailConfigResponse = await stockControlApiClient.inboundEmailConfig();
-      setEmailHost(emailHost || "");
+      const loadedEmailHost = config.emailHost;
+      const loadedEmailUser = config.emailUser;
+      const loadedTlsServerName = config.tlsServerName;
+      setEmailHost(loadedEmailHost || "");
       setEmailPort(config.emailPort !== null ? String(config.emailPort) : "993");
-      setEmailUser(emailUser || "");
+      setEmailUser(loadedEmailUser || "");
       setEmailPassSet(config.emailPassSet);
       setEmailPass("");
       setTlsEnabled(config.tlsEnabled);
-      setTlsServerName(tlsServerName || "");
+      setTlsServerName(loadedTlsServerName || "");
       setEnabled(config.enabled);
       setLastPollAt(config.lastPollAt);
       setLastError(config.lastError);

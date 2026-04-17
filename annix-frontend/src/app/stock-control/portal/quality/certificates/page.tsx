@@ -494,55 +494,57 @@ function CertificatesTab() {
                 </div>
               </div>
               <div className="divide-y divide-gray-100">
-                {items.map(({ cert, index }) => (
-                  <div key={index} className="px-4 py-3 flex items-center justify-between">
-                    <div className="flex items-center gap-4 min-w-0">
-                      <span
-                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium shrink-0 ${
-                          cert.certificateType === "COA"
-                            ? "bg-blue-100 text-blue-800"
-                            : "bg-purple-100 text-purple-800"
-                        }`}
-                      >
-                        const certificateType = cert.certificateType;
-                        {certificateType || "COC"}
-                      </span>
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">
-                          const productInfo = cert.productInfo;
-                          {productInfo || "Certificate"}
-                          const batchNumber = cert.batchNumber;
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          Batch: {batchNumber || "Unknown"} | Pages: {cert.pageNumbers.join(", ")} |
-                          Confidence: {Math.round(cert.confidence * 100)}%
-                        </p>
+                {items.map(({ cert, index }) => {
+                  const certificateType = cert.certificateType;
+                  const productInfo = cert.productInfo;
+                  const batchNumber = cert.batchNumber;
+                  return (
+                    <div key={index} className="px-4 py-3 flex items-center justify-between">
+                      <div className="flex items-center gap-4 min-w-0">
+                        <span
+                          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium shrink-0 ${
+                            cert.certificateType === "COA"
+                              ? "bg-blue-100 text-blue-800"
+                              : "bg-purple-100 text-purple-800"
+                          }`}
+                        >
+                          {certificateType || "COC"}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">
+                            {productInfo || "Certificate"}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            Batch: {batchNumber || "Unknown"} | Pages: {cert.pageNumbers.join(", ")}{" "}
+                            | Confidence: {Math.round(cert.confidence * 100)}%
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0 ml-4">
+                        {savedCerts.has(index) ? (
+                          <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700">
+                            <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                              <path
+                                fillRule="evenodd"
+                                d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
+                            Saved
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => handleSaveCertificate(cert, index)}
+                            disabled={savingCerts.has(index)}
+                            className="rounded-md bg-teal-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-700 disabled:opacity-50"
+                          >
+                            {savingCerts.has(index) ? "Saving..." : "Save"}
+                          </button>
+                        )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0 ml-4">
-                      {savedCerts.has(index) ? (
-                        <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700">
-                          <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                            <path
-                              fillRule="evenodd"
-                              d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                              clipRule="evenodd"
-                            />
-                          </svg>
-                          Saved
-                        </span>
-                      ) : (
-                        <button
-                          onClick={() => handleSaveCertificate(cert, index)}
-                          disabled={savingCerts.has(index)}
-                          className="rounded-md bg-teal-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-700 disabled:opacity-50"
-                        >
-                          {savingCerts.has(index) ? "Saving..." : "Save"}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           ))}
@@ -910,70 +912,72 @@ function CalibrationTab() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {calCerts.map((cert) => (
-                <tr key={cert.id} className="hover:bg-gray-50">
-                  <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-gray-900">
-                    {cert.equipmentName}
-                  </td>
-                  <td className="hidden sm:table-cell whitespace-nowrap px-4 py-3 text-sm text-gray-600">
-                    const equipmentIdentifier = cert.equipmentIdentifier;
-                    {equipmentIdentifier || "-"}
-                  </td>
-                  <td className="hidden md:table-cell whitespace-nowrap px-4 py-3 text-sm text-gray-600">
-                    const certificateNumber = cert.certificateNumber;
-                    {certificateNumber || "-"}
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
-                    {formatDateZA(cert.expiryDate)}
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3">
-                    {isExpired(cert.expiryDate) ? (
-                      <span className="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-800">
-                        Expired
+              {calCerts.map((cert) => {
+                const equipmentIdentifier = cert.equipmentIdentifier;
+                const certificateNumber = cert.certificateNumber;
+                return (
+                  <tr key={cert.id} className="hover:bg-gray-50">
+                    <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-gray-900">
+                      {cert.equipmentName}
+                    </td>
+                    <td className="hidden sm:table-cell whitespace-nowrap px-4 py-3 text-sm text-gray-600">
+                      {equipmentIdentifier || "-"}
+                    </td>
+                    <td className="hidden md:table-cell whitespace-nowrap px-4 py-3 text-sm text-gray-600">
+                      {certificateNumber || "-"}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
+                      {formatDateZA(cert.expiryDate)}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3">
+                      {isExpired(cert.expiryDate) ? (
+                        <span className="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-800">
+                          Expired
+                        </span>
+                      ) : isExpiringSoon(cert.expiryDate) ? (
+                        <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
+                          Expiring Soon
+                        </span>
+                      ) : cert.isActive ? (
+                        <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
+                          Active
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800">
+                          Inactive
+                        </span>
+                      )}
+                    </td>
+                    <td className="hidden sm:table-cell px-4 py-3 text-sm text-gray-600">
+                      <span className="max-w-[150px] truncate block" title={cert.originalFilename}>
+                        {cert.originalFilename}
                       </span>
-                    ) : isExpiringSoon(cert.expiryDate) ? (
-                      <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
-                        Expiring Soon
-                      </span>
-                    ) : cert.isActive ? (
-                      <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
-                        Active
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800">
-                        Inactive
-                      </span>
-                    )}
-                  </td>
-                  <td className="hidden sm:table-cell px-4 py-3 text-sm text-gray-600">
-                    <span className="max-w-[150px] truncate block" title={cert.originalFilename}>
-                      {cert.originalFilename}
-                    </span>
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-right text-sm">
-                    <button
-                      onClick={() => handleView(cert.id)}
-                      className="mr-2 text-teal-600 hover:text-teal-800"
-                    >
-                      View
-                    </button>
-                    {cert.isActive ? (
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-right text-sm">
                       <button
-                        onClick={() => handleDeactivate(cert.id)}
-                        className="mr-2 text-amber-600 hover:text-amber-800"
+                        onClick={() => handleView(cert.id)}
+                        className="mr-2 text-teal-600 hover:text-teal-800"
                       >
-                        Deactivate
+                        View
                       </button>
-                    ) : null}
-                    <button
-                      onClick={() => handleDelete(cert.id)}
-                      className="text-red-600 hover:text-red-800"
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))}
+                      {cert.isActive ? (
+                        <button
+                          onClick={() => handleDeactivate(cert.id)}
+                          className="mr-2 text-amber-600 hover:text-amber-800"
+                        >
+                          Deactivate
+                        </button>
+                      ) : null}
+                      <button
+                        onClick={() => handleDelete(cert.id)}
+                        className="text-red-600 hover:text-red-800"
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -1070,6 +1074,7 @@ function DataBooksTab() {
             <tbody className="divide-y divide-gray-200">
               {jobCards.map((jc) => {
                 const status = statuses[jc.id];
+                const customerName = jc.customerName;
                 return (
                   <tr key={jc.id} className="hover:bg-gray-50">
                     <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-teal-700">
@@ -1079,7 +1084,6 @@ function DataBooksTab() {
                       {jc.jobName}
                     </td>
                     <td className="hidden md:table-cell whitespace-nowrap px-4 py-3 text-sm text-gray-600">
-                      const customerName = jc.customerName;
                       {customerName || "-"}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm">

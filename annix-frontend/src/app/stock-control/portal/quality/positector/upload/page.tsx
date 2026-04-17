@@ -856,6 +856,7 @@ function LinkUploadForm(props: {
   const [error, setError] = useState<string | null>(null);
 
   const entityType = upload.entityType;
+  const batchName = upload.batchName;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -899,7 +900,6 @@ function LinkUploadForm(props: {
       <div className="w-full max-w-lg rounded-lg bg-white p-6 shadow-xl">
         <h2 className="mb-1 text-lg font-semibold text-gray-900">Link Upload to Job Card</h2>
         <p className="mb-4 text-sm text-gray-500">
-          const batchName = upload.batchName;
           {upload.readingCount} readings from {batchName || upload.originalFilename}
         </p>
 

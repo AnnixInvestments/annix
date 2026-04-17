@@ -76,10 +76,10 @@ const StockControlBrandingContext = createContext<StockControlBrandingContextTyp
 );
 
 export function StockControlBrandingProvider(props: { children: ReactNode }) {
-  const rawLogoUrl = profile.logoUrl;
-  const rawHeroImageUrl = profile.heroImageUrl;
   const { children } = props;
   const { profile } = useStockControlAuth();
+  const rawLogoUrl = profile ? profile.logoUrl : null;
+  const rawHeroImageUrl = profile ? profile.heroImageUrl : null;
 
   const colors = useMemo(() => {
     if (profile?.brandingType === "custom" && profile.primaryColor && profile.accentColor) {

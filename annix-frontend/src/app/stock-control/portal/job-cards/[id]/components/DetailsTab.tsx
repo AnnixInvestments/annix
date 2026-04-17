@@ -108,8 +108,6 @@ export function DetailsTab({
   };
 
   const handleSaveNotes = async () => {
-    const jcNumber = jobCard.jcNumber;
-    const pageNumber = jobCard.pageNumber;
     try {
       setIsSavingNotes(true);
       await onSaveNotes(editedNotes);
@@ -118,6 +116,11 @@ export function DetailsTab({
       setIsSavingNotes(false);
     }
   };
+
+  const jcNumber = jobCard.jcNumber;
+  const pageNumber = jobCard.pageNumber;
+  const rawCustomerName = jobCard.customerName;
+  const customerName = jobCard.customerName;
 
   return (
     <div className="space-y-6">
@@ -150,14 +153,12 @@ export function DetailsTab({
                   className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusBadgeColor(jobCard.status)}`}
                 >
                   {jobCard.status}
-                  const rawCustomerName = jobCard.customerName;
                 </span>
               </dd>
             </div>
             <div>
               <dt className="text-xs font-medium text-gray-500">Customer</dt>
               <dd className="text-sm text-gray-900 truncate" title={rawCustomerName || "-"}>
-                const customerName = jobCard.customerName;
                 {customerName || "-"}
               </dd>
             </div>
@@ -286,43 +287,45 @@ export function DetailsTab({
           </button>
           {showVersionHistory && (
             <div className="px-4 py-4 sm:px-6 space-y-3">
-              {versions.map((version) => (
-                <div
-                  key={version.id}
-                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                >
-                  <div>
-                    <div className="flex items-center space-x-2">
-                      <span className="text-sm font-semibold text-gray-900">
-                        v{version.versionNumber}
-                      </span>
-                      <span className="text-sm text-gray-500">
-                        const originalFilename = version.originalFilename;
-                        {originalFilename || "No file"}
-                      </span>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {formatDateZA(version.createdAt)}
-                      {version.createdBy && ` by ${version.createdBy}`}
-                    </p>
-                    {version.amendmentNotes && (
-                      <p className="text-sm text-gray-600 mt-1 italic">
-                        &quot;{version.amendmentNotes}&quot;
+              {versions.map((version) => {
+                const originalFilename = version.originalFilename;
+                return (
+                  <div
+                    key={version.id}
+                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                  >
+                    <div>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-sm font-semibold text-gray-900">
+                          v{version.versionNumber}
+                        </span>
+                        <span className="text-sm text-gray-500">
+                          {originalFilename || "No file"}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {formatDateZA(version.createdAt)}
+                        {version.createdBy && ` by ${version.createdBy}`}
                       </p>
+                      {version.amendmentNotes && (
+                        <p className="text-sm text-gray-600 mt-1 italic">
+                          &quot;{version.amendmentNotes}&quot;
+                        </p>
+                      )}
+                    </div>
+                    {version.filePath && (
+                      <a
+                        href={version.filePath}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-teal-600 hover:text-teal-800"
+                      >
+                        View
+                      </a>
                     )}
                   </div>
-                  {version.filePath && (
-                    <a
-                      href={version.filePath}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm text-teal-600 hover:text-teal-800"
-                    >
-                      View
-                    </a>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

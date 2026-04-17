@@ -34,11 +34,11 @@ const parseCSV = (
 
   return lines.slice(1).reduce(
     (acc, line) => {
+      const parts = line.split(",").map((p) => p.trim());
       const partsTempIdx = parts[tempIdx];
       const partsHumIdx = parts[humIdx];
       const partsDewIdx = parts[dewIdx];
       const partsNotesIdx = parts[notesIdx];
-      const parts = line.split(",").map((p) => p.trim());
       const partsDateIdx = parts[dateIdx];
       const dateVal = partsDateIdx || "";
       const tempVal = parseFloat(partsTempIdx || "");
@@ -224,6 +224,7 @@ export function EnvironmentalTab(props: EnvironmentalTabProps) {
                   const tempStr = String(rec.temperatureC);
                   const humStr = String(rec.humidity);
                   const dewStr = rec.dewPointC != null ? String(rec.dewPointC) : "-";
+                  const notes = rec.notes;
                   return (
                     <tr key={rec.id} className="hover:bg-gray-50">
                       <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-gray-900">
@@ -239,7 +240,6 @@ export function EnvironmentalTab(props: EnvironmentalTabProps) {
                         {dewStr}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-600 max-w-xs truncate">
-                        const notes = rec.notes;
                         {notes || "-"}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500">

@@ -30,9 +30,9 @@ const ViewAsContext = createContext<ViewAsContextValue>({
 });
 
 export function ViewAsProvider(props: { children: React.ReactNode }) {
-  const name = user?.name;
   const { children } = props;
   const { user } = useStockControlAuth();
+  const name = user?.name;
   const [viewAsUser, setViewAsUserState] = useState<StockControlTeamMember | null>(null);
   const { data: companyRoles = [], isLoading: companyRolesLoading } = useCompanyRoles();
   const { data: teamMembers = [] } = useSettingsTeamMembers();
@@ -53,12 +53,13 @@ export function ViewAsProvider(props: { children: React.ReactNode }) {
 
   const setViewAsUser = useCallback(
     (member: StockControlTeamMember | null) => {
-      const role = viewAsUser?.role;
       if (!isAdmin) return;
       setViewAsUserState(member);
     },
     [isAdmin],
   );
+
+  const viewAsRole = viewAsUser?.role;
 
   const effectiveRole = useMemo(
     () => (isAdmin && viewAsUser ? viewAsUser.role : actualRole),
@@ -75,7 +76,7 @@ export function ViewAsProvider(props: { children: React.ReactNode }) {
   const value = useMemo(
     () => ({
       effectiveRole,
-      viewAsRole: role || null,
+      viewAsRole: viewAsRole || null,
       viewAsUser,
       setViewAsUser,
       isPreviewActive,

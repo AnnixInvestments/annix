@@ -346,10 +346,10 @@ export function MaterialBatchSection(props: MaterialBatchSectionProps) {
       if (materialEntries.length > 0) {
         setRubberManual((prev) => {
           const migratedPrev = prev.map((entry) => {
-            const batchNumber = match.batchNumber;
             const match = materialEntries.find(
               (s: QcDefelskoBatchRecord) => s.fieldKey === entry.fieldKey,
             );
+            const batchNumber = match ? match.batchNumber : null;
             return match ? { ...entry, value: batchNumber || "" } : entry;
           });
 
@@ -454,7 +454,6 @@ export function MaterialBatchSection(props: MaterialBatchSectionProps) {
     try {
       const paintBatches = productRows.flatMap((row) =>
         row.fields.map((f) => {
-          const value = e.value;
           const rawPaintVal = paintValues[f.fieldKey];
           return {
             fieldKey: f.fieldKey,
@@ -466,13 +465,16 @@ export function MaterialBatchSection(props: MaterialBatchSectionProps) {
         }),
       );
       const batches = [
-        ...rubberManual.map((e) => ({
-          fieldKey: e.fieldKey,
-          category: "material_rubber",
-          label: e.label,
-          batchNumber: value || null,
-          notApplicable: false,
-        })),
+        ...rubberManual.map((e) => {
+          const value = e.value;
+          return {
+            fieldKey: e.fieldKey,
+            category: "material_rubber",
+            label: e.label,
+            batchNumber: value || null,
+            notApplicable: false,
+          };
+        }),
         ...paintBatches,
       ];
       await stockControlApiClient.saveDefelskoBatches(jobCardId, { batches });

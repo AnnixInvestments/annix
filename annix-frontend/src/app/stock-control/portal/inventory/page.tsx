@@ -372,52 +372,54 @@ export default function InventoryPage() {
                         .filter(
                           (item): item is StockItem => item != null && typeof item === "object",
                         )
-                        .map((item) => (
-                          <tr
-                            key={item.id}
-                            className={
-                              item.minStockLevel > 0 && item.quantity <= item.minStockLevel
-                                ? "bg-amber-50"
-                                : ""
-                            }
-                          >
-                            <td className="px-4 py-2 whitespace-nowrap text-sm font-mono text-gray-900 print:px-2 print:py-1">
-                              {item.sku}
-                            </td>
-                            <td className="px-4 py-2 text-sm font-mono text-gray-500 print:px-2 print:py-1">
-                              <RollNumberCell
-                                rollNumbers={item.rollNumbers}
-                                rollNumber={item.rollNumber}
-                              />
-                            </td>
-                            <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900 print:px-2 print:py-1">
-                              {item.name}
-                            </td>
-                            <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 print:px-2 print:py-1">
-                              const category = item.category;
-                              {category || "-"}
-                            </td>
-                            <td className="px-4 py-2 whitespace-nowrap text-sm text-right font-semibold text-gray-900 print:px-2 print:py-1">
-                              {item.quantity}
-                              {item.minStockLevel > 0 &&
-                                item.quantity <= item.minStockLevel &&
-                                " *"}
-                            </td>
-                            <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-500 print:px-2 print:py-1">
-                              {item.minStockLevel}
-                            </td>
-                            <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-900 print:px-2 print:py-1">
-                              {formatZAR(item.costPerUnit)}
-                            </td>
-                            <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-900 print:px-2 print:py-1">
-                              {formatZAR(item.costPerUnit * item.quantity)}
-                            </td>
-                            <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 print:px-2 print:py-1">
-                              const location = item.location;
-                              {location || "-"}
-                            </td>
-                          </tr>
-                        ))}
+                        .map((item) => {
+                          const category = item.category;
+                          const location = item.location;
+                          return (
+                            <tr
+                              key={item.id}
+                              className={
+                                item.minStockLevel > 0 && item.quantity <= item.minStockLevel
+                                  ? "bg-amber-50"
+                                  : ""
+                              }
+                            >
+                              <td className="px-4 py-2 whitespace-nowrap text-sm font-mono text-gray-900 print:px-2 print:py-1">
+                                {item.sku}
+                              </td>
+                              <td className="px-4 py-2 text-sm font-mono text-gray-500 print:px-2 print:py-1">
+                                <RollNumberCell
+                                  rollNumbers={item.rollNumbers}
+                                  rollNumber={item.rollNumber}
+                                />
+                              </td>
+                              <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900 print:px-2 print:py-1">
+                                {item.name}
+                              </td>
+                              <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 print:px-2 print:py-1">
+                                {category || "-"}
+                              </td>
+                              <td className="px-4 py-2 whitespace-nowrap text-sm text-right font-semibold text-gray-900 print:px-2 print:py-1">
+                                {item.quantity}
+                                {item.minStockLevel > 0 &&
+                                  item.quantity <= item.minStockLevel &&
+                                  " *"}
+                              </td>
+                              <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-500 print:px-2 print:py-1">
+                                {item.minStockLevel}
+                              </td>
+                              <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-900 print:px-2 print:py-1">
+                                {formatZAR(item.costPerUnit)}
+                              </td>
+                              <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-900 print:px-2 print:py-1">
+                                {formatZAR(item.costPerUnit * item.quantity)}
+                              </td>
+                              <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 print:px-2 print:py-1">
+                                {location || "-"}
+                              </td>
+                            </tr>
+                          );
+                        })}
                     </tbody>
                     <tfoot className="bg-gray-50 print:bg-gray-100">
                       <tr>

@@ -85,6 +85,8 @@ export default function PurchaseOrdersPage() {
     );
   }
 
+  const confirmDeleteCpoNumber = confirmDelete?.cpoNumber;
+
   return (
     <div
       className="space-y-6"
@@ -247,8 +249,8 @@ export default function PurchaseOrdersPage() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {cpos.map((cpo) => {
-                  const cpoNumber = confirmDelete?.cpoNumber;
                   const pct = fulfillmentPercent(cpo);
+                  const jobName = cpo.jobName;
                   return (
                     <tr
                       key={cpo.id}
@@ -260,7 +262,6 @@ export default function PurchaseOrdersPage() {
                       </td>
                       <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900">
-                          const jobName = cpo.jobName;
                           {jobName || cpo.jobNumber}
                         </div>
                         {cpo.customerName && (
@@ -311,7 +312,7 @@ export default function PurchaseOrdersPage() {
       <ConfirmModal
         isOpen={confirmDelete !== null}
         title="Delete Purchase Order"
-        message={`Delete CPO ${cpoNumber || ""}? This cannot be undone.`}
+        message={`Delete CPO ${confirmDeleteCpoNumber || ""}? This cannot be undone.`}
         confirmLabel="Delete"
         variant="danger"
         loading={deleteCpo.isPending}

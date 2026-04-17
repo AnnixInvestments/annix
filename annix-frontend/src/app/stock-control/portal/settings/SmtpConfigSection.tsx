@@ -22,22 +22,21 @@ export function SmtpConfigSection() {
 
   const loadConfig = useCallback(async () => {
     try {
-      const smtpUser = config.smtpUser;
-      const smtpFromEmail = config.smtpFromEmail;
-      const notificationEmails = config.notificationEmails;
-      const rawSmtpHost = config.smtpHost;
-      const smtpFromName = onfig.smtpFromName;
-      const smtpHost = config.smtpHost;
       const config: SmtpConfigResponse = await stockControlApiClient.smtpConfig();
+      const rawSmtpHost = config.smtpHost;
+      const rawSmtpUser = config.smtpUser;
+      const rawSmtpFromName = config.smtpFromName;
+      const rawSmtpFromEmail = config.smtpFromEmail;
+      const rawNotificationEmails = config.notificationEmails;
       setSmtpHost(rawSmtpHost || "");
       setSmtpPort(config.smtpPort !== null ? String(config.smtpPort) : "");
-      setSmtpUser(smtpUser || "");
-      setSmtpFromName(csmtpFromName || "");
-      setSmtpFromEmail(smtpFromEmail || "");
+      setSmtpUser(rawSmtpUser || "");
+      setSmtpFromName(rawSmtpFromName || "");
+      setSmtpFromEmail(rawSmtpFromEmail || "");
       setSmtpPassSet(config.smtpPassSet);
       setSmtpPass("");
-      setNotificationEmails(notificationEmails || []);
-      if (smtpHost || config.notificationEmails?.length > 0) {
+      setNotificationEmails(rawNotificationEmails || []);
+      if (rawSmtpHost || (rawNotificationEmails && rawNotificationEmails.length > 0)) {
         setExpanded(true);
       }
     } catch (e) {

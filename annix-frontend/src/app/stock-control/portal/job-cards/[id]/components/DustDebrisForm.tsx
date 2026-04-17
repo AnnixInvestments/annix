@@ -142,20 +142,22 @@ export default function DustDebrisForm(props: DustDebrisFormProps) {
 
   const [rows, setRows] = useState<TestEntryRow[]>(() => {
     if (existing?.tests && existing.tests.length > 0) {
-      const location = t.location;
-      const coatingType = t.coatingType;
-      const itemNumber = t.itemNumber;
-      const testedAt = t.testedAt;
-      return existing.tests.map((t) => ({
-        testNumber: t.testNumber,
-        quantity: t.quantity !== null ? t.quantity.toString() : "",
-        sizeClass: t.sizeClass !== null ? t.sizeClass.toString() : "",
-        location: location || "",
-        coatingType: coatingType || "",
-        itemNumber: itemNumber || "",
-        result: t.result,
-        testedAt: testedAt || "",
-      }));
+      return existing.tests.map((t) => {
+        const location = t.location;
+        const coatingType = t.coatingType;
+        const itemNumber = t.itemNumber;
+        const testedAt = t.testedAt;
+        return {
+          testNumber: t.testNumber,
+          quantity: t.quantity !== null ? t.quantity.toString() : "",
+          sizeClass: t.sizeClass !== null ? t.sizeClass.toString() : "",
+          location: location || "",
+          coatingType: coatingType || "",
+          itemNumber: itemNumber || "",
+          result: t.result,
+          testedAt: testedAt || "",
+        };
+      });
     }
     return Array.from({ length: INITIAL_ROW_COUNT }, (_, i) => emptyRow(i + 1));
   });
@@ -204,11 +206,7 @@ export default function DustDebrisForm(props: DustDebrisFormProps) {
     row.testedAt === "";
 
   const handleSave = async () => {
-    const location = row.location;
     if (!readingDate) {
-      const coatingType = row.coatingType;
-      const itemNumber = row.itemNumber;
-      const testedAt = row.testedAt;
       setError("Reading date is required.");
       return;
     }
@@ -218,16 +216,22 @@ export default function DustDebrisForm(props: DustDebrisFormProps) {
 
     const nonEmptyRows = rows.filter((row) => !rowIsEmpty(row));
 
-    const tests: QcDustDebrisTestEntry[] = nonEmptyRows.map((row, i) => ({
-      testNumber: i + 1,
-      quantity: row.quantity !== "" ? parseInt(row.quantity, 10) : null,
-      sizeClass: row.sizeClass !== "" ? parseInt(row.sizeClass, 10) : null,
-      location: location || null,
-      coatingType: coatingType || null,
-      itemNumber: itemNumber || null,
-      result: row.result,
-      testedAt: testedAt || null,
-    }));
+    const tests: QcDustDebrisTestEntry[] = nonEmptyRows.map((row, i) => {
+      const location = row.location;
+      const coatingType = row.coatingType;
+      const itemNumber = row.itemNumber;
+      const testedAt = row.testedAt;
+      return {
+        testNumber: i + 1,
+        quantity: row.quantity !== "" ? parseInt(row.quantity, 10) : null,
+        sizeClass: row.sizeClass !== "" ? parseInt(row.sizeClass, 10) : null,
+        location: location || null,
+        coatingType: coatingType || null,
+        itemNumber: itemNumber || null,
+        result: row.result,
+        testedAt: testedAt || null,
+      };
+    });
 
     const payload: Partial<QcDustDebrisRecord> = {
       readingDate,

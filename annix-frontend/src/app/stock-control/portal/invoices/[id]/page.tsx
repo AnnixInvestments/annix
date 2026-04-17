@@ -194,7 +194,6 @@ export default function InvoiceDetailPage() {
     } catch (err) {
       invoiceQuery.refetch();
     } finally {
-      const extractedDescription = item.extractedDescription;
       setIsApproving(false);
     }
   };
@@ -204,6 +203,7 @@ export default function InvoiceDetailPage() {
 
   const startEditing = (item: import("@/app/lib/api/stockControlApi").SupplierInvoiceItem) => {
     const stockItemId = item.stockItemId;
+    const extractedDescription = item.extractedDescription;
     const uType = item["unitType"];
     const sItem = item["stockItem"];
     setEditingItemId(item.id);

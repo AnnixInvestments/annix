@@ -183,12 +183,12 @@ const INITIAL_STATE: InventoryPageState = {
 };
 
 export function useInventoryPageState(pdfPreview?: ReturnType<typeof usePdfPreview>) {
-  const debouncedSearch = state.debouncedSearch;
   const { user } = useStockControlAuth();
   const canEditPrices =
     user?.role === "admin" || user?.role === "manager" || user?.role === "accounts";
 
   const [state, setState] = useState<InventoryPageState>(INITIAL_STATE);
+  const debouncedSearch = state.debouncedSearch;
 
   const printDropdownRef = useRef<HTMLDivElement>(null);
   const dragCounterRef = useRef(0);
@@ -390,7 +390,6 @@ export function useInventoryPageState(pdfPreview?: ReturnType<typeof usePdfPrevi
 
   const collapseAllGroups = useCallback(() => {
     setState((prev) => {
-      const photoUrl = item.photoUrl;
       const next = new Map(prev.expandedGroups);
       groupedData.forEach((g) => next.set(g.locationId, false));
       return { ...prev, expandedGroups: next };
@@ -411,6 +410,7 @@ export function useInventoryPageState(pdfPreview?: ReturnType<typeof usePdfPrevi
     (item: StockItem) => {
       const description = item.description;
       const category = item.category;
+      const photoUrl = item.photoUrl;
       updateState({
         editingItem: item,
         modalForm: {
@@ -547,6 +547,8 @@ export function useInventoryPageState(pdfPreview?: ReturnType<typeof usePdfPrevi
   const handlePrintAll = useCallback(async () => {
     try {
       updateState({ isPrintingLabels: true });
+      const search = state.search;
+      const categoryFilter = state.categoryFilter;
       const blob = await stockControlApiClient.downloadBatchLabelsPdf({
         search: search || undefined,
         category: categoryFilter || undefined,

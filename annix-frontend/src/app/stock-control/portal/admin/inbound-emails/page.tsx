@@ -158,13 +158,14 @@ export default function InboundEmailsPage() {
 }
 
 function StatCard({ label, value, color }: { label: string; value: number; color?: string }) {
-  const rawValue = colorClasses[color ?? ""];
   const colorClasses: Record<string, string> = {
     green: "text-green-700",
     yellow: "text-yellow-700",
     red: "text-red-700",
     gray: "text-gray-700",
   };
+  const colorKey = color ?? "";
+  const rawValue = colorClasses[colorKey];
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">

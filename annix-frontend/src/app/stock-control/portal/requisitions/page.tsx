@@ -104,61 +104,63 @@ export default function RequisitionsPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {requisitions.map((req) => (
-                <tr key={req.id} className="hover:bg-gray-50 cursor-pointer">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <Link
-                      href={`/stock-control/portal/requisitions/${req.id}`}
-                      className="text-sm font-medium text-teal-700 hover:text-teal-900"
-                    >
-                      {req.requisitionNumber}
-                    </Link>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    <div className="flex items-center space-x-2">
-                      {req.source === "reorder" ? (
-                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-orange-100 text-orange-800">
-                          Low Stock Reorder
-                        </span>
-                      ) : req.source === "cpo" ? (
-                        <Link
-                          href={`/stock-control/portal/purchase-orders/${req.cpoId}`}
-                          className="text-purple-700 hover:text-purple-900"
-                        >
-                          CPO Call-Off
-                        </Link>
-                      ) : req.jobCard ? (
-                        <Link
-                          href={`/stock-control/portal/job-cards/${req.jobCardId}`}
-                          className="text-teal-700 hover:text-teal-900"
-                        >
-                          {req.jobCard.jobNumber}
-                        </Link>
-                      ) : (
-                        "-"
-                      )}
-                      {req.isCalloffOrder ? (
-                        <span className="px-1.5 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">
-                          Call-Off
-                        </span>
-                      ) : null}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <StatusBadge status={req.status} />
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
-                    {req.items ? req.items.length : 0}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {formatDateZA(req.createdAt)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    const createdBy = req.createdBy;
-                    {createdBy || "-"}
-                  </td>
-                </tr>
-              ))}
+              {requisitions.map((req) => {
+                const createdBy = req.createdBy;
+                return (
+                  <tr key={req.id} className="hover:bg-gray-50 cursor-pointer">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <Link
+                        href={`/stock-control/portal/requisitions/${req.id}`}
+                        className="text-sm font-medium text-teal-700 hover:text-teal-900"
+                      >
+                        {req.requisitionNumber}
+                      </Link>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <div className="flex items-center space-x-2">
+                        {req.source === "reorder" ? (
+                          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-orange-100 text-orange-800">
+                            Low Stock Reorder
+                          </span>
+                        ) : req.source === "cpo" ? (
+                          <Link
+                            href={`/stock-control/portal/purchase-orders/${req.cpoId}`}
+                            className="text-purple-700 hover:text-purple-900"
+                          >
+                            CPO Call-Off
+                          </Link>
+                        ) : req.jobCard ? (
+                          <Link
+                            href={`/stock-control/portal/job-cards/${req.jobCardId}`}
+                            className="text-teal-700 hover:text-teal-900"
+                          >
+                            {req.jobCard.jobNumber}
+                          </Link>
+                        ) : (
+                          "-"
+                        )}
+                        {req.isCalloffOrder ? (
+                          <span className="px-1.5 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">
+                            Call-Off
+                          </span>
+                        ) : null}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <StatusBadge status={req.status} />
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
+                      {req.items ? req.items.length : 0}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {formatDateZA(req.createdAt)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {createdBy || "-"}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}

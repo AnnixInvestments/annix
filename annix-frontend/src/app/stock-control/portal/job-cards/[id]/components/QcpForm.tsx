@@ -504,7 +504,7 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
           const jcPoNumber = jobCard.poNumber;
           const rawJobName = existingPlan?.jobName;
           const jcJobName = jobCard.jobName;
-          if (!rawJobName || existingPlan.jobName.startsWith(`${jobCard.jobNumber} -`)) {
+          if (!rawJobName || rawJobName.startsWith(`${jobCard.jobNumber} -`)) {
             setJobName(jcJobName || "");
           }
         } else {
@@ -750,7 +750,6 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
   const handleResendApproval = async (partyRole: "mps" | "client" | "third_party") => {
     if (!existingPlan) return;
     try {
-      const statusMapPartyRole = statusMap[partyRole];
       setIsSendingApproval(true);
       setError(null);
       await stockControlApiClient.resendControlPlanApproval(jobCardId, existingPlan.id, partyRole);
@@ -759,6 +758,7 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
         client: "pending_client",
         third_party: "pending_third_party",
       };
+      const statusMapPartyRole = statusMap[partyRole];
       setApprovalStatus(statusMapPartyRole || "pending_mps");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to resend approval");
@@ -1010,10 +1010,10 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
                   />
                 </td>
                 {visiblePartyKeys.map((partyKey) => {
-                  const interventionType = signOff.interventionType;
-                  const initial = signOff.initial;
                   const activityPartyKey = activity[partyKey];
                   const signOff = activityPartyKey || emptyPartySignOff();
+                  const interventionType = signOff.interventionType;
+                  const initial = signOff.initial;
                   return (
                     <td key={partyKey} className="px-1 py-1.5">
                       <div className="flex items-center gap-1">

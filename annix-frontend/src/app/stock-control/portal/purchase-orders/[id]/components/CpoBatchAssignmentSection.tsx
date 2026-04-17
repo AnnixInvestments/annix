@@ -158,17 +158,19 @@ export function CpoBatchAssignmentSection(props: CpoBatchAssignmentSectionProps)
 
   const allLineItems = useMemo<CpoLineItem[]>(() => {
     return childJcs.flatMap((jc) => {
-      const itemNo = li.itemNo;
       const jcNumber = jc.jcNumber;
-      return jc.lineItems.map((li) => ({
-        id: li.id,
-        jobCardId: li.jobCardId,
-        jcNumber,
-        itemNo: itemNo || null,
-        itemCode: li.itemCode,
-        description: li.description,
-        quantity: li.quantity,
-      }));
+      return jc.lineItems.map((li) => {
+        const itemNo = li.itemNo;
+        return {
+          id: li.id,
+          jobCardId: li.jobCardId,
+          jcNumber,
+          itemNo: itemNo || null,
+          itemCode: li.itemCode,
+          description: li.description,
+          quantity: li.quantity,
+        };
+      });
     });
   }, [childJcs]);
 

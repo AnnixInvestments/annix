@@ -14,13 +14,15 @@ const DESCRIPTIONS: Record<string, string> = {
 };
 
 export default function CustomerHubPage() {
-  const DESCRIPTIONSKey = DESCRIPTIONS[item.key];
   const items = useVisibleNavItems("Customer");
 
-  const hubItems = items.map((item) => ({
-    item,
-    description: DESCRIPTIONSKey || "",
-  }));
+  const hubItems = items.map((item) => {
+    const description = DESCRIPTIONS[item.key];
+    return {
+      item,
+      description: description || "",
+    };
+  });
 
   return (
     <HubPage

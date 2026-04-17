@@ -57,7 +57,6 @@ export function InventoryGroupedView({
         <div className="flex items-center justify-between">
           <span className="text-sm text-gray-600">
             {groupedData.length} location{groupedData.length !== 1 ? "s" : ""}, {total} items total
-            const locationId = group.locationId;
           </span>
           <div className="flex items-center space-x-2">
             <button
@@ -81,29 +80,32 @@ export function InventoryGroupedView({
         {groupedData.length === 0 ? (
           <EmptyState />
         ) : (
-          groupedData.map((group) => (
-            <LocationGroupCard
-              key={locationId || "no-location"}
-              group={group}
-              selectedIds={selectedIds}
-              canEditPrices={canEditPrices}
-              locations={locations}
-              pendingMinLevels={pendingMinLevels}
-              pendingPrices={pendingPrices}
-              pendingLocations={pendingLocations}
-              onToggleGroupExpanded={onToggleGroupExpanded}
-              onUpdateSelectedIds={onUpdateSelectedIds}
-              onToggleSelectItem={onToggleSelectItem}
-              onEditItem={onEditItem}
-              onRequestDelete={onRequestDelete}
-              onMinLevelChange={onMinLevelChange}
-              onPriceChange={onPriceChange}
-              onLocationChange={onLocationChange}
-              minLevelForItem={minLevelForItem}
-              priceForItem={priceForItem}
-              locationForItem={locationForItem}
-            />
-          ))
+          groupedData.map((group) => {
+            const locationId = group.locationId;
+            return (
+              <LocationGroupCard
+                key={locationId || "no-location"}
+                group={group}
+                selectedIds={selectedIds}
+                canEditPrices={canEditPrices}
+                locations={locations}
+                pendingMinLevels={pendingMinLevels}
+                pendingPrices={pendingPrices}
+                pendingLocations={pendingLocations}
+                onToggleGroupExpanded={onToggleGroupExpanded}
+                onUpdateSelectedIds={onUpdateSelectedIds}
+                onToggleSelectItem={onToggleSelectItem}
+                onEditItem={onEditItem}
+                onRequestDelete={onRequestDelete}
+                onMinLevelChange={onMinLevelChange}
+                onPriceChange={onPriceChange}
+                onLocationChange={onLocationChange}
+                minLevelForItem={minLevelForItem}
+                priceForItem={priceForItem}
+                locationForItem={locationForItem}
+              />
+            );
+          })
         )}
       </div>
     </>
@@ -327,6 +329,7 @@ function GroupedTableRow({
   onPriceChange,
   onLocationChange,
 }: GroupedTableRowProps) {
+  const category = item.category;
   const rowClassName = item.needsQrPrint
     ? "bg-red-50 hover:bg-red-100"
     : item.minStockLevel > 0 && item.quantity <= item.minStockLevel
@@ -406,7 +409,6 @@ function GroupedTableRow({
         )}
       </td>
       <td className="hidden lg:table-cell px-3 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-        const category = item.category;
         {category || "-"}
       </td>
       <td className="hidden xl:table-cell px-3 lg:px-6 py-4 whitespace-nowrap text-sm">

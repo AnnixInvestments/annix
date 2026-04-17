@@ -327,11 +327,12 @@ function ItemsReleaseForm({ jobCardId, existing, onSaved, onCancel }: ItemsRelea
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Failed to save");
     } finally {
-      const rawVersion = existing.version;
-      const version = existing.version;
       setIsSaving(false);
     }
   };
+
+  const rawVersion = existing ? existing.version : null;
+  const version = existing ? existing.version : null;
 
   return (
     <div className="space-y-6">
@@ -538,7 +539,6 @@ function ItemsReleaseForm({ jobCardId, existing, onSaved, onCancel }: ItemsRelea
               <div key={party} className="rounded-lg border border-gray-200 p-3">
                 <h5 className="text-xs font-semibold uppercase text-gray-600 mb-2">
                   {labels[party]}
-                  const rawValue = e.target.value; const value = e.target.value;
                 </h5>
                 <div className="space-y-2">
                   <div>
@@ -546,7 +546,10 @@ function ItemsReleaseForm({ jobCardId, existing, onSaved, onCancel }: ItemsRelea
                     <input
                       type="text"
                       value={nameValue}
-                      onChange={(e) => updateSignOff(party, "name", rawValue || null)}
+                      onChange={(e) => {
+                        const rawValue = e.target.value;
+                        updateSignOff(party, "name", rawValue || null);
+                      }}
                       className="mt-0.5 w-full rounded border border-gray-300 px-2 py-1 text-sm"
                     />
                   </div>
@@ -555,7 +558,10 @@ function ItemsReleaseForm({ jobCardId, existing, onSaved, onCancel }: ItemsRelea
                     <input
                       type="date"
                       value={dateValue}
-                      onChange={(e) => updateSignOff(party, "date", value || null)}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        updateSignOff(party, "date", value || null);
+                      }}
                       className="mt-0.5 w-full rounded border border-gray-300 px-2 py-1 text-sm"
                     />
                   </div>

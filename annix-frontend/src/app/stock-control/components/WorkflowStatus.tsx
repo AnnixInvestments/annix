@@ -1024,8 +1024,6 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
         container.querySelector<HTMLElement>('[data-bg-step="custom_stock_allocation"]');
 
       if (!shouldShow || !recEl || !saEl) {
-        const strokeWidth = path.strokeWidth;
-        const dashArray = path.dashArray;
         pathEl.removeAttribute("d");
         return;
       }
@@ -1099,17 +1097,21 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
           height={containerSize.height}
           style={{ overflow: "visible" }}
         >
-          {svgPaths.map((path) => (
-            <path
-              key={path.key}
-              d={path.d}
-              fill="none"
-              stroke={path.color}
-              strokeWidth={strokeWidth || 2.5}
-              strokeLinecap="round"
-              strokeDasharray={dashArray || undefined}
-            />
-          ))}
+          {svgPaths.map((path) => {
+            const strokeWidth = path.strokeWidth;
+            const dashArray = path.dashArray;
+            return (
+              <path
+                key={path.key}
+                d={path.d}
+                fill="none"
+                stroke={path.color}
+                strokeWidth={strokeWidth || 2.5}
+                strokeLinecap="round"
+                strokeDasharray={dashArray || undefined}
+              />
+            );
+          })}
         </svg>
       )}
       <svg
@@ -1465,6 +1467,7 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
             undefined,
             true,
           );
+          const label = docUploadStep.label;
 
           return (
             <div
@@ -1497,7 +1500,6 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
                         : "text-gray-400"
                   }`}
                 >
-                  const label = docUploadStep.label;
                   {label || "Doc Upload"}
                 </p>
                 {docState === "completed" && docUploadStep.completedByName && (
@@ -1727,6 +1729,7 @@ function MobileTransitMap(props: MobileTransitMapProps) {
           const bgAssigned = assignedNameForStep("document_upload", stepAssignments);
           const bgDisplayName =
             docState === "completed" ? docUploadStep.completedByName : bgAssigned;
+          const label = docUploadStep.label;
 
           return (
             <div className="flex items-start mb-1">
@@ -1762,7 +1765,6 @@ function MobileTransitMap(props: MobileTransitMapProps) {
                         : "text-gray-400"
                   }`}
                 >
-                  const label = docUploadStep.label;
                   {label || "Doc Upload"}
                 </p>
                 {bgDisplayName && <p className="text-[10px] text-gray-500">{bgDisplayName}</p>}

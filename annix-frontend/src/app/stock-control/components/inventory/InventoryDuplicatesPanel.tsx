@@ -166,6 +166,7 @@ export function InventoryDuplicatesPanel(props: Props) {
                 <div className="space-y-6">
                   {groups.map((group) => {
                     const allItems = [group.canonicalItem, ...group.duplicates.map((d) => d.item)];
+                    const rawCategory = group.canonicalItem.category;
 
                     return (
                       <div
@@ -227,7 +228,6 @@ export function InventoryDuplicatesPanel(props: Props) {
                                 {group.canonicalItem.quantity}
                               </td>
                               <td className="px-4 py-2 text-sm text-gray-500">
-                                const rawCategory = group.canonicalItem.category;
                                 {rawCategory || "-"}
                               </td>
                               <td className="px-4 py-2 text-center">
@@ -236,28 +236,32 @@ export function InventoryDuplicatesPanel(props: Props) {
                                 </span>
                               </td>
                             </tr>
-                            {group.duplicates.map((dup) => (
-                              <tr key={dup.item.id}>
-                                <td className="px-4 py-2 text-sm font-mono text-gray-900">
-                                  {dup.item.sku}
-                                </td>
-                                <td className="px-4 py-2 text-sm text-gray-900">{dup.item.name}</td>
-                                <td className="px-4 py-2 text-sm text-right font-semibold text-gray-900">
-                                  {dup.item.quantity}
-                                </td>
-                                <td className="px-4 py-2 text-sm text-gray-500">
-                                  const category = dup.item.category;
-                                  {category || "-"}
-                                </td>
-                                <td className="px-4 py-2 text-center">
-                                  <span
-                                    className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${scoreColor(dup.score)}`}
-                                  >
-                                    {scoreLabel(dup.score)} ({Math.round(dup.score * 100)}%)
-                                  </span>
-                                </td>
-                              </tr>
-                            ))}
+                            {group.duplicates.map((dup) => {
+                              const category = dup.item.category;
+                              return (
+                                <tr key={dup.item.id}>
+                                  <td className="px-4 py-2 text-sm font-mono text-gray-900">
+                                    {dup.item.sku}
+                                  </td>
+                                  <td className="px-4 py-2 text-sm text-gray-900">
+                                    {dup.item.name}
+                                  </td>
+                                  <td className="px-4 py-2 text-sm text-right font-semibold text-gray-900">
+                                    {dup.item.quantity}
+                                  </td>
+                                  <td className="px-4 py-2 text-sm text-gray-500">
+                                    {category || "-"}
+                                  </td>
+                                  <td className="px-4 py-2 text-center">
+                                    <span
+                                      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${scoreColor(dup.score)}`}
+                                    >
+                                      {scoreLabel(dup.score)} ({Math.round(dup.score * 100)}%)
+                                    </span>
+                                  </td>
+                                </tr>
+                              );
+                            })}
                           </tbody>
                         </table>
                       </div>

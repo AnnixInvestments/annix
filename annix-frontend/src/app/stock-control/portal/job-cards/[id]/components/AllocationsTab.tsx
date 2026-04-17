@@ -144,99 +144,103 @@ export function AllocationsTab(props: AllocationsTabProps) {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {allocations.map((allocation) => (
-                <tr
-                  key={allocation.id}
-                  className={
-                    allocation.pendingApproval
-                      ? "bg-amber-50 hover:bg-amber-100"
-                      : allocation.rejectedAt
-                        ? "bg-red-50 hover:bg-red-100"
-                        : "hover:bg-gray-50"
-                  }
-                >
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    const rawName = allocation.stockItem?.name;
-                    {rawName || "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">
-                    const sku = allocation.stockItem?.sku;
-                    {sku || "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
-                    {allocation.quantityUsed}
-                    {allocation.allowedLitres && (
-                      <span className="text-xs text-gray-400 ml-1">
-                        / {allocation.allowedLitres}L allowed
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    const name = allocation.staffMember?.name;
-                    {name || "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    const allocatedBy = allocation.allocatedBy;
-                    {allocatedBy || "System"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {formatDateZA(allocation.createdAt)}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
-                    const notes = allocation.notes;
-                    {notes || "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    {allocation.pendingApproval ? (
-                      <div className="flex flex-col space-y-2">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
-                          Pending Approval
+              {allocations.map((allocation) => {
+                const rawName = allocation.stockItem?.name;
+                const sku = allocation.stockItem?.sku;
+                const staffName = allocation.staffMember?.name;
+                const allocatedBy = allocation.allocatedBy;
+                const notes = allocation.notes;
+                return (
+                  <tr
+                    key={allocation.id}
+                    className={
+                      allocation.pendingApproval
+                        ? "bg-amber-50 hover:bg-amber-100"
+                        : allocation.rejectedAt
+                          ? "bg-red-50 hover:bg-red-100"
+                          : "hover:bg-gray-50"
+                    }
+                  >
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {rawName || "-"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">
+                      {sku || "-"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
+                      {allocation.quantityUsed}
+                      {allocation.allowedLitres && (
+                        <span className="text-xs text-gray-400 ml-1">
+                          / {allocation.allowedLitres}L allowed
                         </span>
-                        {(userRole === "manager" || userRole === "admin") && (
-                          <div className="flex space-x-2">
-                            <button
-                              onClick={() => onApproveAllocation(allocation.id)}
-                              disabled={approvingAllocationId === allocation.id}
-                              className="text-xs px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
-                            >
-                              {approvingAllocationId === allocation.id ? "..." : "Approve"}
-                            </button>
-                            <button
-                              onClick={() => {
-                                const reason = prompt("Enter rejection reason:");
-                                if (reason) {
-                                  onRejectAllocation(allocation.id, reason);
-                                }
-                              }}
-                              disabled={rejectingAllocationId === allocation.id}
-                              className="text-xs px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
-                            >
-                              {rejectingAllocationId === allocation.id ? "..." : "Reject"}
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    ) : allocation.rejectedAt ? (
-                      <div>
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                          Rejected
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {staffName || "-"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {allocatedBy || "System"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {formatDateZA(allocation.createdAt)}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
+                      {notes || "-"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      {allocation.pendingApproval ? (
+                        <div className="flex flex-col space-y-2">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                            Pending Approval
+                          </span>
+                          {(userRole === "manager" || userRole === "admin") && (
+                            <div className="flex space-x-2">
+                              <button
+                                onClick={() => onApproveAllocation(allocation.id)}
+                                disabled={approvingAllocationId === allocation.id}
+                                className="text-xs px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
+                              >
+                                {approvingAllocationId === allocation.id ? "..." : "Approve"}
+                              </button>
+                              <button
+                                onClick={() => {
+                                  const reason = prompt("Enter rejection reason:");
+                                  if (reason) {
+                                    onRejectAllocation(allocation.id, reason);
+                                  }
+                                }}
+                                disabled={rejectingAllocationId === allocation.id}
+                                className="text-xs px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
+                              >
+                                {rejectingAllocationId === allocation.id ? "..." : "Reject"}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ) : allocation.rejectedAt ? (
+                        <div>
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                            Rejected
+                          </span>
+                          {allocation.rejectionReason && (
+                            <p className="text-xs text-red-600 mt-1">
+                              {allocation.rejectionReason}
+                            </p>
+                          )}
+                        </div>
+                      ) : allocation.approvedAt ? (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          Approved
                         </span>
-                        {allocation.rejectionReason && (
-                          <p className="text-xs text-red-600 mt-1">{allocation.rejectionReason}</p>
-                        )}
-                      </div>
-                    ) : allocation.approvedAt ? (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                        Approved
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                        Allocated
-                      </span>
-                    )}
-                  </td>
-                </tr>
-              ))}
+                      ) : (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                          Allocated
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}

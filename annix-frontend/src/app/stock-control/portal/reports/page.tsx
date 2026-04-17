@@ -173,7 +173,6 @@ export default function ReportsPage() {
   );
 
   const renderCostByJob = () => {
-    const customerName = job.customerName;
     if (isLoading) return renderLoading();
     if (error) return renderError();
 
@@ -239,25 +238,28 @@ export default function ReportsPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white">
-            {costByJob.map((job) => (
-              <tr key={job.jobCardId} className="hover:bg-gray-50">
-                <td className="whitespace-nowrap px-3 py-4 text-sm font-medium text-teal-700 sm:px-6">
-                  {job.jobNumber}
-                </td>
-                <td className="hidden px-3 py-4 text-sm text-gray-900 break-words sm:table-cell sm:px-6">
-                  {job.jobName}
-                </td>
-                <td className="hidden px-3 py-4 text-sm text-gray-500 break-words md:table-cell sm:px-6">
-                  {customerName || "-"}
-                </td>
-                <td className="hidden whitespace-nowrap px-3 py-4 text-right text-sm text-gray-900 lg:table-cell sm:px-6">
-                  {job.totalItemsAllocated}
-                </td>
-                <td className="whitespace-nowrap px-3 py-4 text-right text-sm font-semibold text-gray-900 sm:px-6">
-                  {formatZAR(job.totalCost)}
-                </td>
-              </tr>
-            ))}
+            {costByJob.map((job) => {
+              const customerName = job.customerName;
+              return (
+                <tr key={job.jobCardId} className="hover:bg-gray-50">
+                  <td className="whitespace-nowrap px-3 py-4 text-sm font-medium text-teal-700 sm:px-6">
+                    {job.jobNumber}
+                  </td>
+                  <td className="hidden px-3 py-4 text-sm text-gray-900 break-words sm:table-cell sm:px-6">
+                    {job.jobName}
+                  </td>
+                  <td className="hidden px-3 py-4 text-sm text-gray-500 break-words md:table-cell sm:px-6">
+                    {customerName || "-"}
+                  </td>
+                  <td className="hidden whitespace-nowrap px-3 py-4 text-right text-sm text-gray-900 lg:table-cell sm:px-6">
+                    {job.totalItemsAllocated}
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-4 text-right text-sm font-semibold text-gray-900 sm:px-6">
+                    {formatZAR(job.totalCost)}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
           <tfoot className="bg-gray-50">
             <tr>
@@ -278,7 +280,6 @@ export default function ReportsPage() {
   };
 
   const renderStockValuation = () => {
-    const category = item.category;
     if (isLoading) return renderLoading();
     if (error) return renderError();
 
@@ -348,26 +349,31 @@ export default function ReportsPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white">
-            {valuation.items.map((item) => (
-              <tr key={item.id} className="hover:bg-gray-50">
-                <td className="hidden whitespace-nowrap px-3 py-4 font-mono text-sm text-gray-900 sm:table-cell sm:px-6">
-                  {item.sku}
-                </td>
-                <td className="px-3 py-4 text-sm text-gray-900 break-words sm:px-6">{item.name}</td>
-                <td className="hidden whitespace-nowrap px-3 py-4 text-sm text-gray-500 md:table-cell sm:px-6">
-                  {category || "-"}
-                </td>
-                <td className="whitespace-nowrap px-3 py-4 text-right text-sm text-gray-900 sm:px-6">
-                  {item.quantity}
-                </td>
-                <td className="hidden whitespace-nowrap px-3 py-4 text-right text-sm text-gray-900 lg:table-cell sm:px-6">
-                  {formatZAR(item.costPerUnit)}
-                </td>
-                <td className="whitespace-nowrap px-3 py-4 text-right text-sm font-semibold text-gray-900 sm:px-6">
-                  {formatZAR(item.totalValue)}
-                </td>
-              </tr>
-            ))}
+            {valuation.items.map((item) => {
+              const category = item.category;
+              return (
+                <tr key={item.id} className="hover:bg-gray-50">
+                  <td className="hidden whitespace-nowrap px-3 py-4 font-mono text-sm text-gray-900 sm:table-cell sm:px-6">
+                    {item.sku}
+                  </td>
+                  <td className="px-3 py-4 text-sm text-gray-900 break-words sm:px-6">
+                    {item.name}
+                  </td>
+                  <td className="hidden whitespace-nowrap px-3 py-4 text-sm text-gray-500 md:table-cell sm:px-6">
+                    {category || "-"}
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-4 text-right text-sm text-gray-900 sm:px-6">
+                    {item.quantity}
+                  </td>
+                  <td className="hidden whitespace-nowrap px-3 py-4 text-right text-sm text-gray-900 lg:table-cell sm:px-6">
+                    {formatZAR(item.costPerUnit)}
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-4 text-right text-sm font-semibold text-gray-900 sm:px-6">
+                    {formatZAR(item.totalValue)}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
           <tfoot className="bg-gray-50">
             <tr>
@@ -948,50 +954,54 @@ export default function ReportsPage() {
 
   const handleExportCSV = () => {
     if (activeTab === "cost-by-job") {
-      const customerName = job.customerName;
-      const category = item.category;
-      const createdBy = m.createdBy;
-      const employeeNumber = s.employeeNumber;
-      const notes = m.notes;
-      const department = s.department;
       const headers = ["Job Number", "Job Name", "Customer", "Items Allocated", "Total Cost"];
-      const rows = costByJob.map((job) => [
-        job.jobNumber,
-        job.jobName,
-        customerName || "",
-        String(job.totalItemsAllocated),
-        String(job.totalCost),
-      ]);
+      const rows = costByJob.map((job) => {
+        const customerName = job.customerName;
+        return [
+          job.jobNumber,
+          job.jobName,
+          customerName || "",
+          String(job.totalItemsAllocated),
+          String(job.totalCost),
+        ];
+      });
       downloadCSV("cost-by-job.csv", headers, rows);
     } else if (activeTab === "stock-valuation" && valuation) {
       const headers = ["SKU", "Name", "Category", "Qty", "Cost/Unit", "Total Value"];
-      const rows = valuation.items.map((item) => [
-        item.sku,
-        item.name,
-        category || "",
-        String(item.quantity),
-        String(item.costPerUnit),
-        String(item.totalValue),
-      ]);
+      const rows = valuation.items.map((item) => {
+        const category = item.category;
+        return [
+          item.sku,
+          item.name,
+          category || "",
+          String(item.quantity),
+          String(item.costPerUnit),
+          String(item.totalValue),
+        ];
+      });
       downloadCSV("stock-valuation.csv", headers, rows);
     } else if (activeTab === "movement-history") {
       const headers = ["Date", "Item", "SKU", "Type", "Qty", "Reference", "Notes", "By"];
-      const rows = movements.map((m) => [
-        formatDateZA(m.createdAt),
-        (() => {
-          const csn = m.stockItem ? m.stockItem.name : "";
-          return csn;
-        })(),
-        (() => {
-          const csku = m.stockItem ? m.stockItem.sku : "";
-          return csku;
-        })(),
-        m.movementType,
-        String(m.quantity),
-        m.referenceType ? `${m.referenceType} #${m.referenceId}` : "",
-        notes || "",
-        createdBy || "System",
-      ]);
+      const rows = movements.map((m) => {
+        const notes = m.notes;
+        const createdBy = m.createdBy;
+        return [
+          formatDateZA(m.createdAt),
+          (() => {
+            const csn = m.stockItem ? m.stockItem.name : "";
+            return csn;
+          })(),
+          (() => {
+            const csku = m.stockItem ? m.stockItem.sku : "";
+            return csku;
+          })(),
+          m.movementType,
+          String(m.quantity),
+          m.referenceType ? `${m.referenceType} #${m.referenceId}` : "",
+          notes || "",
+          createdBy || "System",
+        ];
+      });
       downloadCSV("movement-history.csv", headers, rows);
     } else if (activeTab === "staff-stock" && staffStockReport) {
       const headers = [
@@ -1004,16 +1014,20 @@ export default function ReportsPage() {
         "Anomaly Score",
         "Is Anomaly",
       ];
-      const rows = staffStockReport.summaries.map((s) => [
-        s.staffName,
-        employeeNumber || "",
-        department || "",
-        String(s.totalQuantityReceived),
-        String(s.totalValue),
-        String(s.issuanceCount),
-        String(s.anomalyScore),
-        s.isAnomaly ? "Yes" : "No",
-      ]);
+      const rows = staffStockReport.summaries.map((s) => {
+        const employeeNumber = s.employeeNumber;
+        const department = s.department;
+        return [
+          s.staffName,
+          employeeNumber || "",
+          department || "",
+          String(s.totalQuantityReceived),
+          String(s.totalValue),
+          String(s.issuanceCount),
+          String(s.anomalyScore),
+          s.isAnomaly ? "Yes" : "No",
+        ];
+      });
       downloadCSV("staff-stock-report.csv", headers, rows);
     }
   };

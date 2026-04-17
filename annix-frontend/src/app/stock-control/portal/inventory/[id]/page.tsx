@@ -146,9 +146,9 @@ export default function InventoryDetailPage() {
     : mutationError;
 
   const openEditModal = () => {
+    if (!item) return;
     const description = item.description;
     const category = item.category;
-    if (!item) return;
     setModalForm({
       sku: item.sku,
       name: item.name,

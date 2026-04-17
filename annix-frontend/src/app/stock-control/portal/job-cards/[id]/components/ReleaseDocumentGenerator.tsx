@@ -18,9 +18,14 @@ interface ReleaseDocumentGeneratorProps {
 
 const releasedQuantityForItem = (releases: QcItemsReleaseRecord[], itemCode: string): number => {
   return releases.reduce((total, release) => {
-    const rawQuantity = ri.quantity;
     const matchingItems = release.items.filter((ri) => ri.itemCode === itemCode);
-    return total + matchingItems.reduce((sum, ri) => sum + (rawQuantity || 0), 0);
+    return (
+      total +
+      matchingItems.reduce((sum, ri) => {
+        const rawQuantity = ri.quantity;
+        return sum + (rawQuantity || 0);
+      }, 0)
+    );
   }, 0);
 };
 
@@ -58,12 +63,12 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
 
   const fetchData = useCallback(async () => {
     try {
-      const lineItems = jobCard.lineItems;
       setIsLoading(true);
       const [jobCard, releases] = await Promise.all([
         stockControlApiClient.jobCardById(jobCardId),
         stockControlApiClient.itemsReleasesForJobCard(jobCardId),
       ]);
+      const lineItems = jobCard.lineItems;
       const validItems = (lineItems || []).filter(
         (li) => !li.itemCode?.startsWith("Sage ") && !li.itemDescription?.startsWith("Sage "),
       );
@@ -153,25 +158,27 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
   };
 
   const handleGenerate = async () => {
-    const rawReleaseQuantitiesIdx = releaseQuantities[idx];
-    const releaseQuantitiesIdx = releaseQuantities[idx];
     if (selectedIndices.size === 0) {
       return;
     }
 
-    const hasZeroQty = Array.from(selectedIndices).some(
-      (idx) => (rawReleaseQuantitiesIdx || 0) <= 0,
-    );
+    const hasZeroQty = Array.from(selectedIndices).some((idx) => {
+      const rawReleaseQuantitiesIdx = releaseQuantities[idx];
+      return (rawReleaseQuantitiesIdx || 0) <= 0;
+    });
     if (hasZeroQty) {
       setError("All selected items must have a release quantity greater than 0");
       return;
     }
 
     const quantityOverrides = Array.from(selectedIndices).reduce(
-      (acc, idx) => ({
-        ...acc,
-        [idx]: releaseQuantitiesIdx || 0,
-      }),
+      (acc, idx) => {
+        const releaseQuantitiesIdx = releaseQuantities[idx];
+        return {
+          ...acc,
+          [idx]: releaseQuantitiesIdx || 0,
+        };
+      },
       {} as Record<number, number>,
     );
 
@@ -341,13 +348,13 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
                     const itemCode = li.itemCode;
                     const itemDescription = li.itemDescription;
                     const jtNo = li.jtNo;
-                    const totalQty = info.totalQty;
                     const remainingByIndexIdx = remainingByIndex[idx];
                     const info = remainingByIndexIdx || {
                       totalQty: 0,
                       alreadyReleased: 0,
                       remaining: 0,
                     };
+                    const totalQty = info.totalQty;
                     const isFullyReleased = info.remaining <= 0;
                     const isSelected = selectedIndices.has(idx);
                     const releaseQuantitiesIdx = releaseQuantities[idx];

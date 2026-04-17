@@ -22,7 +22,6 @@ function requisitionStatusBadge(status: string): string {
 }
 
 export function RequisitionTab({ requisition }: RequisitionTabProps) {
-  const productName = item.productName;
   if (!requisition) {
     return (
       <div className="bg-white shadow rounded-lg p-8 text-center">
@@ -110,20 +109,24 @@ export function RequisitionTab({ requisition }: RequisitionTabProps) {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {requisition.items.map((item) => (
-                  <tr key={item.id} className="hover:bg-gray-50">
-                    <td className="px-3 py-2 text-sm text-gray-900">{productName || "-"}</td>
-                    <td className="px-3 py-2 text-sm text-right text-gray-900">
-                      const quantityRequired = item.quantityRequired;
-                      {quantityRequired || item.packsToOrder || "-"}
-                    </td>
-                    <td className="px-3 py-2 text-sm text-gray-900">
-                      {item.packSizeLitres ? `${item.packSizeLitres}L` : "-"}
-                      const reqNumber = item.reqNumber;
-                    </td>
-                    <td className="px-3 py-2 text-sm text-gray-500">{reqNumber || "-"}</td>
-                  </tr>
-                ))}
+                {requisition.items.map((item) => {
+                  const productName = item.productName;
+                  const quantityRequired = item.quantityRequired;
+                  const packsToOrder = item.packsToOrder;
+                  const reqNumber = item.reqNumber;
+                  return (
+                    <tr key={item.id} className="hover:bg-gray-50">
+                      <td className="px-3 py-2 text-sm text-gray-900">{productName || "-"}</td>
+                      <td className="px-3 py-2 text-sm text-right text-gray-900">
+                        {quantityRequired || packsToOrder || "-"}
+                      </td>
+                      <td className="px-3 py-2 text-sm text-gray-900">
+                        {item.packSizeLitres ? `${item.packSizeLitres}L` : "-"}
+                      </td>
+                      <td className="px-3 py-2 text-sm text-gray-500">{reqNumber || "-"}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

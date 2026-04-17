@@ -31,7 +31,6 @@ export async function compressPhoto(
 
 export async function fileToDataUrl(file: File | Blob): Promise<string> {
   return new Promise((resolve, reject) => {
-    const name = params.file.name;
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result as string);
     reader.onerror = () => reject(new Error("Failed to read file"));
@@ -47,6 +46,7 @@ export async function queuePhotoUpload(params: {
   authHeader: string;
 }): Promise<PendingPhoto> {
   const compressed = await compressPhoto(params.file);
+  const name = params.file.name;
 
   const photo: PendingPhoto = {
     id: `photo-${nowMillis()}-${Math.random().toString(36).slice(2, 9)}`,

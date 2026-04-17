@@ -38,13 +38,13 @@ export function CpoReleaseDocumentGenerator(props: CpoReleaseDocumentGeneratorPr
 
   const fetchData = useCallback(async () => {
     try {
-      const items = releasable.items;
       setIsLoading(true);
       setError(null);
       const [releasable, releases] = await Promise.all([
         stockControlApiClient.releasableItemsForCpo(cpoId),
         stockControlApiClient.itemsReleasesForCpo(cpoId),
       ]);
+      const items = releasable.items;
       setReleasableItems(items || []);
       setExistingReleases(Array.isArray(releases) ? releases : []);
     } catch (err) {
@@ -112,14 +112,15 @@ export function CpoReleaseDocumentGenerator(props: CpoReleaseDocumentGeneratorPr
       const itemsToRegen: SelectedItem[] = [];
       release.items.forEach((ri) => {
         const rawItemCode = ri.itemCode;
-        const rawDescription = r.description;
-        const itemCode = r.itemCode;
         const description = ri.description;
-        const matchingReleasable = releasableItems.find(
-          (r) =>
+        const matchingReleasable = releasableItems.find((r) => {
+          const itemCode = r.itemCode;
+          const rawDescription = r.description;
+          return (
             (itemCode || "").toLowerCase() === (rawItemCode || "").toLowerCase() &&
-            (rawDescription || "").toLowerCase() === (description || "").toLowerCase(),
-        );
+            (rawDescription || "").toLowerCase() === (description || "").toLowerCase()
+          );
+        });
         if (matchingReleasable) {
           let remaining = ri.quantity;
           matchingReleasable.deliveries.forEach((d) => {
@@ -170,10 +171,10 @@ export function CpoReleaseDocumentGenerator(props: CpoReleaseDocumentGeneratorPr
       release.items.forEach((ri) => {
         const description = ri.description;
         const itemCode = ri.itemCode;
-        const quantitiesKey = quantities[key];
         const code = (itemCode || "").toLowerCase();
         const desc = (description || "").toLowerCase();
         const key = `${code}||${desc}`;
+        const quantitiesKey = quantities[key];
         itemKeys.add(key);
         quantities[key] = (quantitiesKey || 0) + ri.quantity;
       });
@@ -357,6 +358,8 @@ export function CpoReleaseDocumentGenerator(props: CpoReleaseDocumentGeneratorPr
               <tbody className="divide-y divide-gray-100">
                 {releasableItems.map((item) => {
                   const itemNo = item.itemNo;
+                  const itemCode = item.itemCode;
+                  const description = item.description;
                   const key = itemKey(item);
                   const isArrived = item.arrivedQty > 0;
                   const hasRemaining = item.remainingToRelease > 0;
@@ -381,11 +384,9 @@ export function CpoReleaseDocumentGenerator(props: CpoReleaseDocumentGeneratorPr
                       </td>
                       <td className="px-2 py-2 text-gray-500">{itemNo || "-"}</td>
                       <td className="px-2 py-2 font-mono max-w-[100px] sm:max-w-none truncate">
-                        const itemCode = item.itemCode;
                         {itemCode || "-"}
                       </td>
                       <td className="px-2 py-2 max-w-[120px] sm:max-w-[200px] truncate">
-                        const description = item.description;
                         {description || "-"}
                       </td>
                       <td className="px-2 py-2 text-right">{item.orderedQty}</td>
