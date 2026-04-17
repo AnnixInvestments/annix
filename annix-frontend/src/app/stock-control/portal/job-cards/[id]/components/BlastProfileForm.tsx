@@ -51,11 +51,13 @@ const abrasiveBatchRecords = (records: IssuanceBatchRecord[]): IssuanceBatchReco
       (r.stockItem?.name && ABRASIVE_PATTERN.test(r.stockItem.name)),
   );
 
-const abrasiveBatchDefault = (records: IssuanceBatchRecord[]): string =>
-  abrasiveBatchRecords(records)[0]?.batchNumber || "";
+const abrasiveBatchDefault = (records: IssuanceBatchRecord[]): string => {
+  const firstBatch = abrasiveBatchRecords(records)[0];
+  const batchNumber = firstBatch?.batchNumber;
+  return batchNumber || "";
+};
 
 export default function BlastProfileForm(props: BlastProfileFormProps) {
-  const abrasiveBatchNumber = existing?.abrasiveBatchNumber;
   const { isOpen, onClose, jobCardId, onSaved } = props;
   const rawExisting = props.existing;
   const existing = rawExisting || null;
@@ -69,12 +71,13 @@ export default function BlastProfileForm(props: BlastProfileFormProps) {
   const coatLabel = rawCoatLabel || null;
   const isPaint = profileType === "paint";
   const defaultDate = now().toISODate() || "";
+  const existingAbrasiveBatchNumber = existing?.abrasiveBatchNumber;
 
   const [specMicrons, setSpecMicrons] = useState<string>(
     existing?.specMicrons?.toString() || (isPaint ? "" : blastSpecDefault(coatingAnalysis)),
   );
   const [abrasiveBatchNumber, setAbrasiveBatchNumber] = useState<string>(
-    abrasiveBatchNumber || (existing || isPaint ? "" : abrasiveBatchDefault(batchRecords)),
+    existingAbrasiveBatchNumber || (existing || isPaint ? "" : abrasiveBatchDefault(batchRecords)),
   );
   const [temperature, setTemperature] = useState<string>(existing?.temperature?.toString() || "");
   const [humidity, setHumidity] = useState<string>(existing?.humidity?.toString() || "");
@@ -96,8 +99,6 @@ export default function BlastProfileForm(props: BlastProfileFormProps) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const readingsRowNum2 = readings[rowNum];
-    const rawReadingsRowNum = readings[rowNum];
     if (!readingDate || existing) return;
     stockControlApiClient
       .environmentalRecordByDate(jobCardId, readingDate)
@@ -113,11 +114,15 @@ export default function BlastProfileForm(props: BlastProfileFormProps) {
 
   const filledReadings = useMemo(
     () =>
-      READING_ROWS.map((rowNum) => ({
-        itemNumber: rowNum,
-        value: readingsRowNum2 || "",
-        numeric: parseFloat(rawReadingsRowNum || ""),
-      })).filter((r) => !Number.isNaN(r.numeric)),
+      READING_ROWS.map((rowNum) => {
+        const rawReading = readings[rowNum];
+        const reading = rawReading || "";
+        return {
+          itemNumber: rowNum,
+          value: reading,
+          numeric: parseFloat(reading),
+        };
+      }).filter((r) => !Number.isNaN(r.numeric)),
     [readings],
   );
 
@@ -135,7 +140,6 @@ export default function BlastProfileForm(props: BlastProfileFormProps) {
 
   const handleSave = async () => {
     if (!specMicrons || !readingDate) {
-      const readingsRowNum = readings[rowNum];
       setError("Spec target and reading date are required.");
       return;
     }
@@ -143,10 +147,13 @@ export default function BlastProfileForm(props: BlastProfileFormProps) {
     setSaving(true);
     setError(null);
 
-    const entries: QcBlastProfileEntry[] = READING_ROWS.map((rowNum) => ({
-      itemNumber: rowNum,
-      reading: parseFloat(readingsRowNum || ""),
-    })).filter((entry) => !Number.isNaN(entry.reading));
+    const entries: QcBlastProfileEntry[] = READING_ROWS.map((rowNum) => {
+      const rawReading = readings[rowNum];
+      return {
+        itemNumber: rowNum,
+        reading: parseFloat(rawReading || ""),
+      };
+    }).filter((entry) => !Number.isNaN(entry.reading));
 
     const calculatedAverage =
       entries.length > 0
@@ -224,12 +231,14 @@ export default function BlastProfileForm(props: BlastProfileFormProps) {
           />
           {batchRecords.length > 0 && (
             <datalist id="blast-batch-options">
-              {abrasiveBatchRecords(batchRecords).map((r) => (
-                <option key={r.id} value={r.batchNumber}>
-                  const name = r.stockItem?.name;
-                  {name || r.batchNumber}
-                </option>
-              ))}
+              {abrasiveBatchRecords(batchRecords).map((r) => {
+                const stockItemName = r.stockItem?.name;
+                return (
+                  <option key={r.id} value={r.batchNumber}>
+                    {stockItemName || r.batchNumber}
+                  </option>
+                );
+              })}
             </datalist>
           )}
         </div>

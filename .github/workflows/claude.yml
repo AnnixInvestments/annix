@@ -26,7 +26,7 @@ env:
 
 jobs:
   merge-feedback-pr:
-    if: github.event_name == 'issue_comment' && startsWith(github.event.comment.body, '/merge #')
+    if: github.event_name == 'issue_comment' && startsWith(github.event.comment.body, '/merge ')
     runs-on: ubuntu-latest
     permissions:
       contents: write

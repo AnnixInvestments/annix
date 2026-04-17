@@ -1,5 +1,6 @@
 "use client";
 
+import { keys } from "es-toolkit/compat";
 import { useState } from "react";
 import type { PriceChangeSummary } from "@/app/lib/api/stockControlApi";
 
@@ -74,7 +75,7 @@ export default function PriceUpdateReview(props: PriceUpdateReviewProps) {
       updates.extractedDescription = edits.description;
     }
 
-    if (Object.keys(updates).length === 0) {
+    if (keys(updates).length === 0) {
       cancelEditing(itemId);
       return;
     }
@@ -171,17 +172,15 @@ export default function PriceUpdateReview(props: PriceUpdateReviewProps) {
           </thead>
           <tbody className="divide-y divide-gray-100">
             {items.map((item) => {
+              const edits = editingItems[item.id];
+              const isEditingRow = edits !== undefined;
               const rawQuantity = edits.quantity;
               const rawNewPrice = item.newPrice;
               const description = edits.description;
               const quantity = item.quantity;
               const newPrice = item.newPrice;
               const changePercent = item.changePercent;
-              const quantity = item.quantity;
               const unitPrice = edits.unitPrice;
-              const changePercent = item.changePercent;
-              const edits = editingItems[item.id];
-              const isEditingRow = edits !== undefined;
               const displayQty = isEditingRow ? Number(rawQuantity || 0) : Number(quantity || 0);
               const displayPrice = isEditingRow ? Number(unitPrice || 0) : Number(rawNewPrice || 0);
               const lineTotal = displayQty * displayPrice;

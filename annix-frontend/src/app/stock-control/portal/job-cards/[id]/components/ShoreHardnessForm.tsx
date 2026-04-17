@@ -37,12 +37,30 @@ const emptyReadings = (): Record<ColumnKey, (number | null)[]> => ({
 
 const parseExistingReadings = (
   readings: QcShoreHardnessRecord["readings"],
-): Record<ColumnKey, (number | null)[]> => ({
-  column1: ROW_INDICES.map((i) => readings.column1[i] ?? null),
-  column2: ROW_INDICES.map((i) => readings.column2[i] ?? null),
-  column3: ROW_INDICES.map((i) => readings.column3[i] ?? null),
-  column4: ROW_INDICES.map((i) => readings.column4[i] ?? null),
-});
+): Record<ColumnKey, (number | null)[]> => {
+  const column1 = readings.column1;
+  const column2 = readings.column2;
+  const column3 = readings.column3;
+  const column4 = readings.column4;
+  return {
+    column1: ROW_INDICES.map((i) => {
+      const value = column1[i];
+      return value ?? null;
+    }),
+    column2: ROW_INDICES.map((i) => {
+      const value = column2[i];
+      return value ?? null;
+    }),
+    column3: ROW_INDICES.map((i) => {
+      const value = column3[i];
+      return value ?? null;
+    }),
+    column4: ROW_INDICES.map((i) => {
+      const value = column4[i];
+      return value ?? null;
+    }),
+  };
+};
 
 const columnAverage = (values: (number | null)[]): number | null => {
   const filled = values.filter((v): v is number => v !== null);
@@ -91,28 +109,31 @@ const rubberBatchDefaults = (
 };
 
 export function ShoreHardnessForm(props: ShoreHardnessFormProps) {
-  const rubberSpec = existing?.rubberSpec;
-  const rubberBatchNumber = existing?.rubberBatchNumber;
-  const requiredShore = existing?.requiredShore;
-  const rawBatchRecords = ps.batchRecords;
-  const rawValue = existing.readings.itemLabels?.[i];
   const { isOpen, onClose, jobCardId, onSaved } = props;
   const rawExisting = props.existing;
   const existing = rawExisting || null;
-  const batchRecords = prorawBatchRecords || [];
+  const rawBatchRecords = props.batchRecords;
+  const batchRecords = rawBatchRecords || [];
   const rawCoatingAnalysis = props.coatingAnalysis;
   const coatingAnalysis = rawCoatingAnalysis || null;
+  const existingRubberSpec = existing?.rubberSpec;
+  const existingRubberBatchNumber = existing?.rubberBatchNumber;
+  const existingRequiredShore = existing?.requiredShore;
 
   const batchDefaults = existing ? null : rubberBatchDefaults(batchRecords);
   const coatingDefaults = existing ? null : coatingAnalysisDefaults(coatingAnalysis);
+  const coatingDefaultRubberSpec = coatingDefaults?.rubberSpec;
+  const coatingDefaultRequiredShore = coatingDefaults?.requiredShore;
+  const batchDefaultSpec = batchDefaults?.spec;
+  const batchDefaultBatchNumber = batchDefaults?.batchNumber;
   const [rubberSpec, setRubberSpec] = useState(
-    rubberSpec || coatingDefaults?.rubberSpec || batchDefaults?.spec || "",
+    existingRubberSpec || coatingDefaultRubberSpec || batchDefaultSpec || "",
   );
   const [rubberBatchNumber, setRubberBatchNumber] = useState(
-    rubberBatchNumber || batchDefaults?.batchNumber || "",
+    existingRubberBatchNumber || batchDefaultBatchNumber || "",
   );
   const [requiredShore, setRequiredShore] = useState<number | null>(
-    requiredShore || coatingDefaults?.requiredShore || null,
+    existingRequiredShore || coatingDefaultRequiredShore || null,
   );
   const [readingDate, setReadingDate] = useState(
     existing?.readingDate ? existing.readingDate.slice(0, 10) : todayString(),
@@ -120,8 +141,14 @@ export function ShoreHardnessForm(props: ShoreHardnessFormProps) {
   const [readings, setReadings] = useState<Record<ColumnKey, (number | null)[]>>(
     existing ? parseExistingReadings(existing.readings) : emptyReadings(),
   );
+  const existingItemLabels = existing?.readings.itemLabels;
   const [itemLabels, setItemLabels] = useState<string[]>(
-    existing?.readings.itemLabels ? ROW_INDICES.map((i) => rawValue || "") : emptyItemLabels(),
+    existingItemLabels
+      ? ROW_INDICES.map((i) => {
+          const label = existingItemLabels[i];
+          return label || "";
+        })
+      : emptyItemLabels(),
   );
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -317,20 +344,23 @@ export function ShoreHardnessForm(props: ShoreHardnessFormProps) {
                     className="w-full rounded-md border border-gray-200 px-2 py-2 text-sm text-center text-gray-600 placeholder:text-gray-400"
                   />
                 </td>
-                {COLUMNS.map((col) => (
-                  <td key={col} className="px-2 py-1">
-                    <input
-                      type="number"
-                      value={readings[col][rowIdx] ?? ""}
-                      onChange={(e) => updateReading(col, rowIdx, e.target.value)}
-                      className={`w-full rounded-md border px-3 py-2 text-sm text-center ${
-                        isOutOfRange(readings[col][rowIdx])
-                          ? "border-red-400 bg-red-50 text-red-700"
-                          : "border-gray-300"
-                      }`}
-                    />
-                  </td>
-                ))}
+                {COLUMNS.map((col) => {
+                  const cellValue = readings[col][rowIdx];
+                  return (
+                    <td key={col} className="px-2 py-1">
+                      <input
+                        type="number"
+                        value={cellValue ?? ""}
+                        onChange={(e) => updateReading(col, rowIdx, e.target.value)}
+                        className={`w-full rounded-md border px-3 py-2 text-sm text-center ${
+                          isOutOfRange(cellValue)
+                            ? "border-red-400 bg-red-50 text-red-700"
+                            : "border-gray-300"
+                        }`}
+                      />
+                    </td>
+                  );
+                })}
               </tr>
             ))}
           </tbody>
