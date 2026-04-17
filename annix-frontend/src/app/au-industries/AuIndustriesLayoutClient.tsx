@@ -6,6 +6,7 @@ import { browserBaseUrl } from "@/lib/api-config";
 import { AuIndustriesFooter } from "./components/AuIndustriesFooter";
 import { AuIndustriesNav } from "./components/AuIndustriesNav";
 import { WhatsAppButton } from "./components/WhatsAppButton";
+import { EditModeProvider } from "./context/EditModeContext";
 
 interface NavPage {
   slug: string;
@@ -24,11 +25,21 @@ interface CompanyProfile {
 
 const GA_MEASUREMENT_ID = "G-SSG705PB3R";
 
+function hasAuRubberToken(): boolean {
+  if (typeof window === "undefined") return false;
+  const token =
+    localStorage.getItem("auRubberAccessToken") || sessionStorage.getItem("auRubberAccessToken");
+  return !!token;
+}
+
 export function AuIndustriesLayoutClient(props: { children: React.ReactNode }) {
   const [pages, setPages] = useState<NavPage[]>([]);
   const [profile, setProfile] = useState<CompanyProfile | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
+    setIsAdmin(hasAuRubberToken());
+
     const base = browserBaseUrl();
     fetch(`${base}/public/au-industries/pages`)
       .then((res) => res.json())
@@ -96,33 +107,43 @@ export function AuIndustriesLayoutClient(props: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-white text-gray-900">
-      <Script id="au-industries-jsonld" type="application/ld+json" strategy="afterInteractive">
-        {JSON.stringify(jsonLd)}
-      </Script>
+    <EditModeProvider isAdmin={isAdmin}>
+      <div className="min-h-screen flex flex-col bg-white text-gray-900">
+        <Script id="au-industries-jsonld" type="application/ld+json" strategy="afterInteractive">
+          {JSON.stringify(jsonLd)}
+        </Script>
 
-      <Script
-        src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
-        strategy="afterInteractive"
-      />
-      <Script id="ga4-init" strategy="afterInteractive">
-        {`
+        <Script
+          src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
+          strategy="afterInteractive"
+        />
+        <Script id="ga4-init" strategy="afterInteractive">
+          {`
           window.dataLayer = window.dataLayer || [];
           function gtag(){dataLayer.push(arguments);}
           gtag('js', new Date());
           gtag('config', '${GA_MEASUREMENT_ID}');
         `}
-      </Script>
+        </Script>
 
-      <Script src="https://static.elfsight.com/platform/platform.js" strategy="afterInteractive" />
+        <Script
+          src="https://static.elfsight.com/platform/platform.js"
+          strategy="afterInteractive"
+        />
 
-      <AuIndustriesNav pages={pages} />
+        <AuIndustriesNav pages={pages} />
 
-      <main className="flex-1">{props.children}</main>
+        <main className="flex-1">{props.children}</main>
 
-      <AuIndustriesFooter companyName={companyName} phone={phone} email={email} address={address} />
+        <AuIndustriesFooter
+          companyName={companyName}
+          phone={phone}
+          email={email}
+          address={address}
+        />
 
-      <WhatsAppButton phone="+27720398429" />
-    </div>
+        <WhatsAppButton phone="+27720398429" />
+      </div>
+    </EditModeProvider>
   );
 }

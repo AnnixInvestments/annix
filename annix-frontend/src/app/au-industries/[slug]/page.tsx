@@ -3,8 +3,11 @@
 import dynamic from "next/dynamic";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
 import { browserBaseUrl } from "@/lib/api-config";
+import { useEditMode } from "../context/EditModeContext";
 
+const MDEditor = dynamic(() => import("@uiw/react-md-editor"), { ssr: false });
 const MarkdownPreview = dynamic(
   () => import("@uiw/react-md-editor").then((mod) => mod.default.Markdown),
   { ssr: false },
@@ -23,10 +26,14 @@ interface WebsitePage {
 export default function AuIndustriesSlugPage() {
   const params = useParams();
   const slug = params.slug as string;
+  const { editMode } = useEditMode();
 
   const [page, setPage] = useState<WebsitePage | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [editContent, setEditContent] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!slug) return;
@@ -42,6 +49,7 @@ export default function AuIndustriesSlugPage() {
       .then((data) => {
         if (data) {
           setPage(data);
+          setEditContent(data.content);
           const pageTitle = data.metaTitle || data.title;
           document.title = `${pageTitle} | AU Industries`;
           const metaDesc = document.querySelector('meta[name="description"]');
@@ -53,6 +61,27 @@ export default function AuIndustriesSlugPage() {
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false));
   }, [slug]);
+
+  const handleSave = async () => {
+    if (!page) return;
+    setSaving(true);
+    setSaveMessage(null);
+    try {
+      await auRubberApiClient.updateWebsitePage(page.id, {
+        content: editContent,
+      });
+      setPage({ ...page, content: editContent });
+      setSaveMessage("Saved");
+      setTimeout(() => setSaveMessage(null), 2000);
+    } catch {
+      setSaveMessage("Failed to save");
+      setTimeout(() => setSaveMessage(null), 3000);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const hasChanges = page ? editContent !== page.content : false;
 
   if (loading) {
     return (
@@ -94,28 +123,63 @@ export default function AuIndustriesSlugPage() {
               {page.title}
             </h1>
           )}
-          <div
-            data-color-mode="light"
-            className="au-industries-content prose prose-lg max-w-none prose-headings:text-[#B8860B] prose-headings:uppercase prose-headings:tracking-wide prose-strong:text-gray-900"
-          >
-            <style>{`
-              .au-industries-content p > a:only-child {
-                display: inline-block;
-                padding: 12px 40px;
-                background-color: #B8860B;
-                color: #fff !important;
-                font-weight: 600;
-                text-transform: uppercase;
-                letter-spacing: 0.05em;
-                text-decoration: none !important;
-                transition: background-color 0.2s;
-              }
-              .au-industries-content p > a:only-child:hover {
-                background-color: #9A7209;
-              }
-            `}</style>
-            <MarkdownPreview source={page.content} style={{ backgroundColor: "transparent" }} />
-          </div>
+
+          {editMode ? (
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-sm text-gray-500">
+                  Editing markdown content — changes are saved directly to the live site
+                </p>
+                <div className="flex items-center gap-3">
+                  {saveMessage && (
+                    <span
+                      className={`text-sm font-medium ${saveMessage === "Saved" ? "text-green-600" : "text-red-600"}`}
+                    >
+                      {saveMessage}
+                    </span>
+                  )}
+                  <button
+                    onClick={handleSave}
+                    disabled={saving || !hasChanges}
+                    className="px-5 py-2 text-sm font-semibold text-white bg-[#B8860B] rounded hover:bg-[#9A7209] disabled:opacity-50 transition-colors"
+                  >
+                    {saving ? "Saving..." : "Save"}
+                  </button>
+                </div>
+              </div>
+              <div data-color-mode="light">
+                <MDEditor
+                  value={editContent}
+                  onChange={(val) => setEditContent(val || "")}
+                  height={600}
+                  preview="live"
+                />
+              </div>
+            </div>
+          ) : (
+            <div
+              data-color-mode="light"
+              className="au-industries-content prose prose-lg max-w-none prose-headings:text-[#B8860B] prose-headings:uppercase prose-headings:tracking-wide prose-strong:text-gray-900"
+            >
+              <style>{`
+                .au-industries-content p > a:only-child {
+                  display: inline-block;
+                  padding: 12px 40px;
+                  background-color: #B8860B;
+                  color: #fff !important;
+                  font-weight: 600;
+                  text-transform: uppercase;
+                  letter-spacing: 0.05em;
+                  text-decoration: none !important;
+                  transition: background-color 0.2s;
+                }
+                .au-industries-content p > a:only-child:hover {
+                  background-color: #9A7209;
+                }
+              `}</style>
+              <MarkdownPreview source={page.content} style={{ backgroundColor: "transparent" }} />
+            </div>
+          )}
         </div>
       </section>
     </div>
