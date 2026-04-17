@@ -134,11 +134,56 @@ export class Company {
   @Column({ name: "firebase_uid", type: "varchar", length: 100, nullable: true })
   firebaseUid: string | null;
 
+  @Column({ name: "trading_name", type: "varchar", length: 255, nullable: true })
+  tradingName: string | null;
+
+  @Column({ name: "legal_name", type: "varchar", length: 255, nullable: true })
+  legalName: string | null;
+
+  @Column({ type: "varchar", length: 100, nullable: true })
+  industry: string | null;
+
+  @Column({ name: "company_size", type: "varchar", length: 50, nullable: true })
+  companySize: string | null;
+
+  @Column({ type: "varchar", length: 100, default: "South Africa" })
+  country: string;
+
+  @Column({ name: "currency_code", type: "varchar", length: 3, default: "ZAR" })
+  currencyCode: string;
+
+  @Column({ name: "bee_level", type: "int", nullable: true })
+  beeLevel: number | null;
+
+  @Column({ name: "bee_certificate_expiry", type: "date", nullable: true })
+  beeCertificateExpiry: Date | null;
+
+  @Column({ name: "bee_verification_agency", type: "varchar", length: 255, nullable: true })
+  beeVerificationAgency: string | null;
+
+  @Column({ name: "is_exempt_micro_enterprise", type: "boolean", default: false })
+  isExemptMicroEnterprise: boolean;
+
+  @Column({ name: "bee_expiry_notification_sent_at", type: "timestamptz", nullable: true })
+  beeExpiryNotificationSentAt: Date | null;
+
   @Column({ name: "legacy_sc_company_id", type: "int", nullable: true })
   legacyScCompanyId: number | null;
 
   @Column({ name: "legacy_rubber_company_id", type: "int", nullable: true })
   legacyRubberCompanyId: number | null;
+
+  @Column({ name: "legacy_customer_company_id", type: "int", nullable: true })
+  legacyCustomerCompanyId: number | null;
+
+  @Column({ name: "legacy_supplier_company_id", type: "int", nullable: true })
+  legacySupplierCompanyId: number | null;
+
+  @Column({ name: "legacy_comply_company_id", type: "int", nullable: true })
+  legacyComplyCompanyId: number | null;
+
+  @Column({ name: "legacy_cv_company_id", type: "int", nullable: true })
+  legacyCvCompanyId: number | null;
 
   @OneToMany(
     () => CompanyModuleSubscription,

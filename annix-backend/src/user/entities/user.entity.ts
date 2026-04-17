@@ -48,6 +48,31 @@ export class User {
   @Column({ nullable: true })
   salt: string;
 
+  @ApiProperty({ description: "Canonical bcrypt password hash (replaces password+salt)" })
+  @Exclude()
+  @Column({ name: "password_hash", type: "varchar", length: 255, nullable: true })
+  passwordHash: string | null;
+
+  @ApiProperty({ description: "Whether the user's email has been verified" })
+  @Column({ name: "email_verified", type: "boolean", default: false })
+  emailVerified: boolean;
+
+  @ApiProperty({ description: "Email verification token" })
+  @Column({ name: "email_verification_token", type: "varchar", length: 500, nullable: true })
+  emailVerificationToken: string | null;
+
+  @ApiProperty({ description: "Email verification token expiry" })
+  @Column({ name: "email_verification_expires", type: "timestamptz", nullable: true })
+  emailVerificationExpires: Date | null;
+
+  @ApiProperty({ description: "Password reset token" })
+  @Column({ name: "reset_password_token", type: "varchar", length: 255, nullable: true })
+  resetPasswordToken: string | null;
+
+  @ApiProperty({ description: "Password reset token expiry" })
+  @Column({ name: "reset_password_expires", type: "timestamptz", nullable: true })
+  resetPasswordExpires: Date | null;
+
   @ApiProperty({ description: "OAuth provider (google, microsoft, zoom)" })
   @Column({ nullable: true })
   oauthProvider?: string;
