@@ -12,7 +12,9 @@ import { getRepositoryToken } from "@nestjs/typeorm";
 import * as bcrypt from "bcrypt";
 import { EmailService } from "../../email/email.service";
 import { now } from "../../lib/datetime";
+import { PasswordService } from "../../shared/auth/password.service";
 import { S3StorageService } from "../../storage/s3-storage.service";
+import { User } from "../../user/entities/user.entity";
 import { PushSubscription } from "../entities/push-subscription.entity";
 import { StaffMember } from "../entities/staff-member.entity";
 import { StockControlAdminTransfer } from "../entities/stock-control-admin-transfer.entity";
@@ -21,6 +23,7 @@ import {
   StockControlInvitation,
   StockControlInvitationStatus,
 } from "../entities/stock-control-invitation.entity";
+import { StockControlProfile } from "../entities/stock-control-profile.entity";
 import { StockControlRole, StockControlUser } from "../entities/stock-control-user.entity";
 import { StockControlAuthService } from "./auth.service";
 import { CompanyRoleService } from "./company-role.service";
@@ -34,6 +37,13 @@ const mockedBcrypt = bcrypt as jest.Mocked<typeof bcrypt>;
 describe("StockControlAuthService", () => {
   let service: StockControlAuthService;
 
+  const mockQueryBuilder = {
+    update: jest.fn().mockReturnThis(),
+    set: jest.fn().mockReturnThis(),
+    where: jest.fn().mockReturnThis(),
+    execute: jest.fn().mockResolvedValue({ affected: 1 }),
+  };
+
   const mockUserRepo = {
     findOne: jest.fn(),
     find: jest.fn(),
@@ -41,6 +51,7 @@ describe("StockControlAuthService", () => {
     save: jest.fn().mockImplementation((entity) => Promise.resolve({ id: 1, ...entity })),
     count: jest.fn(),
     update: jest.fn().mockResolvedValue({ affected: 1 }),
+    createQueryBuilder: jest.fn().mockReturnValue(mockQueryBuilder),
   };
 
   const mockCompanyRepo = {
@@ -90,6 +101,11 @@ describe("StockControlAuthService", () => {
 
   const mockCompanyRoleService = {
     rolesForCompany: jest.fn(),
+  };
+
+  const mockPasswordService = {
+    hashSimple: jest.fn().mockResolvedValue("hashed-password"),
+    verify: jest.fn().mockResolvedValue(true),
   };
 
   const baseUser: StockControlUser = {
@@ -170,12 +186,33 @@ describe("StockControlAuthService", () => {
             delete: jest.fn().mockResolvedValue(null),
           },
         },
+        {
+          provide: getRepositoryToken(User),
+          useValue: {
+            findOne: jest.fn(),
+            create: jest.fn().mockImplementation((data) => ({ ...data })),
+            save: jest.fn().mockImplementation((entity) => Promise.resolve({ id: 1, ...entity })),
+            createQueryBuilder: jest.fn().mockReturnValue(mockQueryBuilder),
+          },
+        },
+        {
+          provide: getRepositoryToken(StockControlProfile),
+          useValue: {
+            findOne: jest.fn(),
+            create: jest.fn().mockImplementation((data) => ({ ...data })),
+            save: jest.fn().mockImplementation((entity) => Promise.resolve(entity)),
+          },
+        },
         { provide: JwtService, useValue: mockJwtService },
         { provide: EmailService, useValue: mockEmailService },
         { provide: S3StorageService, useValue: mockS3StorageService },
         { provide: ConfigService, useValue: mockConfigService },
         { provide: PublicBrandingService, useValue: mockPublicBrandingService },
         { provide: CompanyRoleService, useValue: mockCompanyRoleService },
+        {
+          provide: PasswordService,
+          useValue: mockPasswordService,
+        },
       ],
     }).compile();
 
@@ -369,7 +406,7 @@ describe("StockControlAuthService", () => {
 
     it("throws UnauthorizedException for wrong password", async () => {
       mockUserRepo.findOne.mockResolvedValue(baseUser);
-      (mockedBcrypt.compare as jest.Mock).mockResolvedValue(false);
+      mockPasswordService.verify.mockResolvedValueOnce(false);
 
       await expect(service.login("test@example.com", "wrong")).rejects.toThrow(
         UnauthorizedException,
@@ -541,12 +578,11 @@ describe("StockControlAuthService", () => {
     it("resets password for valid token", async () => {
       const user = { ...baseUser, resetPasswordToken: "reset-token" };
       mockUserRepo.findOne.mockResolvedValue(user);
-      (mockedBcrypt.hash as jest.Mock).mockResolvedValue("new-hash");
 
       const result = await service.resetPassword("reset-token", "new-password");
 
       expect(result.message).toContain("Password reset successfully");
-      expect(user.passwordHash).toBe("new-hash");
+      expect(user.passwordHash).toBe("hashed-password");
       expect(user.resetPasswordToken).toBeNull();
       expect(user.resetPasswordExpires).toBeNull();
     });
