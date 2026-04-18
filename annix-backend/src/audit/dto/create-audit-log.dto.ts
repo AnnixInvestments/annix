@@ -24,3 +24,16 @@ export class AdminAuditLogDto {
   metadata?: Record<string, any>;
   ipAddress?: string;
 }
+
+/**
+ * DTO for per-app audit logging (e.g. Comply SA)
+ */
+export class AppAuditLogDto {
+  appName: string;
+  subAction: string;
+  companyId?: number | null;
+  userId?: number | null;
+  entityType?: string;
+  entityId?: number | null;
+  details?: Record<string, unknown>;
+}

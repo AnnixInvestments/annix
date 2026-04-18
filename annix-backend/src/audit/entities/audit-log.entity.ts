@@ -76,6 +76,26 @@ export class AuditLog {
   @JoinColumn({ name: "performed_by_user_id" })
   performedBy?: User;
 
+  @ApiProperty({ description: "App that generated this log entry", required: false })
+  @Column({ name: "app_name", type: "varchar", length: 50, nullable: true })
+  appName: string | null;
+
+  @ApiProperty({ description: "App-specific action name (free-form)", required: false })
+  @Column({ name: "sub_action", type: "varchar", length: 100, nullable: true })
+  subAction: string | null;
+
+  @ApiProperty({ description: "Free-form details (per-app context)", required: false })
+  @Column({ type: "jsonb", nullable: true })
+  details: Record<string, unknown> | null;
+
+  @ApiProperty({ description: "Company ID (unified)", required: false })
+  @Column({ name: "company_id", type: "int", nullable: true })
+  companyId: number | null;
+
+  @ApiProperty({ description: "Raw user ID (for non-unified user references)", required: false })
+  @Column({ name: "user_id_raw", type: "int", nullable: true })
+  userIdRaw: number | null;
+
   @ApiProperty({ description: "IP address of the request", required: false })
   @Column({ name: "ip_address", length: 45, nullable: true })
   ipAddress?: string;

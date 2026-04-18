@@ -2,7 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Between, FindOptionsWhere, Repository } from "typeorm";
 import { User } from "../user/entities/user.entity";
-import { AdminAuditLogDto, CreateAuditLogDto } from "./dto/create-audit-log.dto";
+import { AdminAuditLogDto, AppAuditLogDto, CreateAuditLogDto } from "./dto/create-audit-log.dto";
 import { AuditAction, AuditLog } from "./entities/audit-log.entity";
 
 export interface AuditLogQuery {
@@ -71,6 +71,21 @@ export class AuditService {
       performedBy: standardDto.performedBy,
       ipAddress: standardDto.ipAddress,
       userAgent: standardDto.userAgent,
+    });
+
+    return this.auditLogRepository.save(auditLog);
+  }
+
+  async logApp(dto: AppAuditLogDto): Promise<AuditLog> {
+    const auditLog = this.auditLogRepository.create({
+      entityType: dto.entityType || "app",
+      entityId: dto.entityId ?? 0,
+      action: AuditAction.UPDATE,
+      appName: dto.appName,
+      subAction: dto.subAction,
+      companyId: dto.companyId ?? null,
+      userIdRaw: dto.userId ?? null,
+      details: dto.details ?? null,
     });
 
     return this.auditLogRepository.save(auditLog);

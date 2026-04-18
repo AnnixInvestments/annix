@@ -1,6 +1,7 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { In, Repository } from "typeorm";
+import { AuditService } from "../../audit/audit.service";
 import { ComplySaCompany } from "../companies/entities/company.entity";
 import { ComplySaDocument } from "../comply-documents/entities/document.entity";
 import { daysBetween, fromISO, fromJSDate, now } from "../lib/datetime";
@@ -36,6 +37,7 @@ export class ComplySaComplianceService {
     private readonly documentRepository: Repository<ComplySaDocument>,
     private readonly ruleEngineService: ComplySaRuleEngineService,
     private readonly deadlineService: ComplySaDeadlineService,
+    private readonly auditService: AuditService,
   ) {}
 
   async assessCompany(companyId: number): Promise<ComplySaComplianceStatus[]> {
@@ -221,6 +223,14 @@ export class ComplySaComplianceService {
       details: { previousStatus, newStatus: saved.status },
     });
     await this.auditLogRepository.save(auditEntry);
+    await this.auditService.logApp({
+      appName: "comply-sa",
+      subAction: "status_change",
+      companyId,
+      entityType: "compliance_status",
+      entityId: statusId,
+      details: { previousStatus, newStatus: saved.status },
+    });
 
     return saved;
   }
@@ -293,6 +303,14 @@ export class ComplySaComplianceService {
       details: { stepIndices, reasoning },
     });
     await this.auditLogRepository.save(auditEntry);
+    await this.auditService.logApp({
+      appName: "comply-sa",
+      subAction: "ai_checklist_complete",
+      companyId,
+      entityType: "compliance_checklist",
+      entityId: requirementId,
+      details: { stepIndices, reasoning },
+    });
   }
 
   async toggleChecklistStep(
@@ -398,6 +416,15 @@ export class ComplySaComplianceService {
           details: { requirementId, totalSteps },
         });
         await this.auditLogRepository.save(auditEntry);
+        await this.auditService.logApp({
+          appName: "comply-sa",
+          subAction: "checklist_complete",
+          companyId,
+          userId,
+          entityType: "compliance_status",
+          entityId: status.id,
+          details: { requirementId, totalSteps },
+        });
       }
     }
   }
@@ -440,5 +467,13 @@ export class ComplySaComplianceService {
       details: { vatSubmissionCycle: cycle, source: "ai_document_analysis" },
     });
     await this.auditLogRepository.save(auditEntry);
+    await this.auditService.logApp({
+      appName: "comply-sa",
+      subAction: "vat_cycle_detected",
+      companyId,
+      entityType: "company",
+      entityId: companyId,
+      details: { vatSubmissionCycle: cycle, source: "ai_document_analysis" },
+    });
   }
 }
