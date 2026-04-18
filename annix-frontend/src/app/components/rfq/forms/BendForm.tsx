@@ -3322,211 +3322,42 @@ function BendFormComponent(props: BendFormProps) {
                             </span>
                           </div>
                           {/* Standard */}
-                          <div>
-                            <label className="block text-xs text-gray-700 dark:text-gray-300 mb-0.5">
-                              Standard
-                              {isStandardFromGlobal && (
-                                <span className="ml-1 text-green-600 dark:text-lime-400">
-                                  (From Specs Page)
-                                </span>
-                              )}
-                              {isStandardOverride && (
-                                <span className="ml-1 text-yellow-600 dark:text-yellow-400">
-                                  (Override)
-                                </span>
-                              )}
-                            </label>
-                            <select
-                              value={effectiveStandardId || ""}
-                              onChange={(e) => {
-                                const standardId = parseInt(e.target.value, 10) || undefined;
-                                const rawStubs9 = specs.stubs;
-                                const stubs = [...(rawStubs9 || [])];
-                                stubs[0] = {
-                                  ...stubs[0],
-                                  flangeStandardId: standardId,
-                                  flangePressureClassId: undefined,
-                                  flangeTypeCode: undefined,
-                                };
-                                onUpdateEntry(entry.id, { specs: { ...entry.specs, stubs } });
-                                if (standardId) {
-                                  getFilteredPressureClasses(standardId);
-                                }
-                              }}
-                              className={
-                                isStandardFromGlobal
-                                  ? globalSelectClass
-                                  : isStandardOverride
-                                    ? overrideSelectClass
-                                    : defaultSelectClass
-                              }
-                            >
-                              <option value="">Select...</option>
-                              {masterData.flangeStandards?.map((s: FlangeStandardItem) => (
-                                <option key={s.id} value={s.id}>
-                                  {s.code}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                          {/* Class */}
-                          <div>
-                            <label className="block text-xs text-gray-700 dark:text-gray-300 mb-0.5">
-                              {stub1IsSabs1123 ? "Class (kPa)" : "Class"}
-                              {isClassFromGlobal && !stub1IsPressureClassUnsuitable && (
-                                <span className="ml-1 text-green-600 dark:text-lime-400">
-                                  (From Specs Page)
-                                </span>
-                              )}
-                              {isClassOverride && !stub1IsPressureClassUnsuitable && (
-                                <span className="ml-1 text-yellow-600 dark:text-yellow-400">
-                                  (Override)
-                                </span>
-                              )}
-                              {stub1IsPressureClassUnsuitable && (
-                                <span className="ml-1 text-red-600 dark:text-red-400">
-                                  (NOT SUITABLE)
-                                </span>
-                              )}
-                            </label>
-                            {showFlangeType ? (
-                              <select
-                                value={effectivePressureClassId || ""}
-                                onChange={(e) => {
-                                  const rawStubs10 = specs.stubs;
-                                  const stubs = [...(rawStubs10 || [])];
-                                  stubs[0] = {
-                                    ...stubs[0],
-                                    flangePressureClassId:
-                                      parseInt(e.target.value, 10) || undefined,
-                                  };
-                                  onUpdateEntry(entry.id, { specs: { ...entry.specs, stubs } });
-                                }}
-                                className={
-                                  stub1IsPressureClassUnsuitable
-                                    ? unsuitableSelectClass
-                                    : isClassFromGlobal
-                                      ? globalSelectClass
-                                      : isClassOverride
-                                        ? overrideSelectClass
-                                        : defaultSelectClass
-                                }
-                              >
-                                <option value="">Select...</option>
-                                {pressureClasses.map((pc) => {
-                                  const pcValue = String(pc.value);
-                                  const equivalentValue = pcValue === "64" ? "63" : pcValue;
-                                  const targetDesignation = normalizedFlangeTypeCode
-                                    ? `${pcValue}/${normalizedFlangeTypeCode}`
-                                    : null;
-                                  const matchingPc = masterData.pressureClasses?.find(
-                                    (mpc: PressureClassItem) => {
-                                      if (
-                                        targetDesignation &&
-                                        mpc.designation === targetDesignation
-                                      )
-                                        return true;
-                                      return (
-                                        mpc.designation?.includes(pcValue) ||
-                                        mpc.designation?.includes(equivalentValue)
-                                      );
-                                    },
-                                  );
-                                  return matchingPc ? (
-                                    <option key={matchingPc.id} value={matchingPc.id}>
-                                      {stub1IsSabs1123 ? pc.value : pc.label}
-                                    </option>
-                                  ) : null;
-                                })}
-                              </select>
-                            ) : (
-                              <select
-                                value={effectivePressureClassId || ""}
-                                onChange={(e) => {
-                                  const rawStubs11 = specs.stubs;
-                                  const stubs = [...(rawStubs11 || [])];
-                                  stubs[0] = {
-                                    ...stubs[0],
-                                    flangePressureClassId:
-                                      parseInt(e.target.value, 10) || undefined,
-                                  };
-                                  onUpdateEntry(entry.id, { specs: { ...entry.specs, stubs } });
-                                }}
-                                className={
-                                  stub1IsPressureClassUnsuitable
-                                    ? unsuitableSelectClass
-                                    : isClassFromGlobal
-                                      ? globalSelectClass
-                                      : isClassOverride
-                                        ? overrideSelectClass
-                                        : defaultSelectClass
-                                }
-                              >
-                                <option value="">Select...</option>
-                                {(rawVal2 || masterData.pressureClasses || []).map(
-                                  (pc: PressureClassItem) => (
-                                    <option key={pc.id} value={pc.id}>
-                                      {pc.designation?.replace(/\/\d+$/, "") || pc.designation}
-                                    </option>
-                                  ),
-                                )}
-                              </select>
-                            )}
-                          </div>
-                          {/* Type */}
-                          <div>
-                            <label className="block text-xs text-gray-700 dark:text-gray-300 mb-0.5">
-                              Type
-                              {isTypeFromGlobal && showFlangeType && (
-                                <span className="ml-1 text-green-600 dark:text-lime-400">
-                                  (From Specs Page)
-                                </span>
-                              )}
-                              {isTypeOverride && showFlangeType && (
-                                <span className="ml-1 text-yellow-600 dark:text-yellow-400">
-                                  (Override)
-                                </span>
-                              )}
-                            </label>
-                            {showFlangeType ? (
-                              <select
-                                value={effectiveFlangeTypeCode || ""}
-                                onChange={(e) => {
-                                  const rawStubs12 = specs.stubs;
-                                  const stubs = [...(rawStubs12 || [])];
-                                  const rawValue6 = e.target.value;
-                                  stubs[0] = {
-                                    ...stubs[0],
-                                    flangeTypeCode: rawValue6 || undefined,
-                                  };
-                                  const updatedEntry = {
-                                    ...entry,
-                                    specs: { ...entry.specs, stubs },
-                                  };
-                                  updatedEntry.description = generateItemDescription(updatedEntry);
-                                  onUpdateEntry(entry.id, updatedEntry);
-                                }}
-                                className={
-                                  isTypeFromGlobal
-                                    ? globalSelectClass
-                                    : isTypeOverride
-                                      ? overrideSelectClass
-                                      : defaultSelectClass
-                                }
-                              >
-                                <option value="">Select...</option>
-                                {flangeTypes.map((ft) => (
-                                  <option key={ft.code} value={ft.code}>
-                                    {ft.name} ({ft.code})
-                                  </option>
-                                ))}
-                              </select>
-                            ) : (
-                              <div className="w-full px-2 py-1.5 border border-gray-200 dark:border-gray-600 rounded text-xs bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400">
-                                N/A
-                              </div>
-                            )}
-                          </div>
+                          <FlangeDropdownTriplet
+                            flangeStandardId={stub0.flangeStandardId}
+                            flangePressureClassId={stub0.flangePressureClassId}
+                            flangeTypeCode={stub0.flangeTypeCode}
+                            globalFlangeStandardId={globalSpecs?.flangeStandardId}
+                            globalFlangePressureClassId={globalSpecs?.flangePressureClassId}
+                            globalFlangeTypeCode={globalSpecs?.flangeTypeCode}
+                            flangeStandards={masterData.flangeStandards || []}
+                            pressureClasses={masterData.pressureClasses || []}
+                            pressureClassesByStandard={pressureClassesByStandard}
+                            allFlangeTypes={allFlangeTypes}
+                            workingPressureBar={
+                              specs.workingPressureBar || globalSpecs?.workingPressureBar || 0
+                            }
+                            onStandardChange={(standardId) => {
+                              const stubs = [...(specs.stubs || [])];
+                              stubs[0] = {
+                                ...stubs[0],
+                                flangeStandardId: standardId,
+                                flangePressureClassId: undefined,
+                                flangeTypeCode: undefined,
+                              };
+                              onUpdateEntry(entry.id, { specs: { ...entry.specs, stubs } });
+                            }}
+                            onPressureClassChange={(classId) => {
+                              const stubs = [...(specs.stubs || [])];
+                              stubs[0] = { ...stubs[0], flangePressureClassId: classId };
+                              onUpdateEntry(entry.id, { specs: { ...entry.specs, stubs } });
+                            }}
+                            onFlangeTypeChange={(typeCode) => {
+                              const stubs = [...(specs.stubs || [])];
+                              stubs[0] = { ...stubs[0], flangeTypeCode: typeCode };
+                              onUpdateEntry(entry.id, { specs: { ...entry.specs, stubs } });
+                            }}
+                            onLoadPressureClasses={getFilteredPressureClasses}
+                          />
                           <div className="flex items-end">
                             <label className="flex items-center gap-1.5 pb-1.5">
                               <input
@@ -4042,217 +3873,42 @@ function BendFormComponent(props: BendFormProps) {
                                 Stub 2 Flange
                               </span>
                             </div>
-                            {/* Standard */}
-                            <div>
-                              <label className="block text-xs text-gray-700 dark:text-gray-300 mb-0.5">
-                                Standard
-                                {isStandardFromGlobal && (
-                                  <span className="ml-1 text-green-600 dark:text-lime-400">
-                                    (From Specs Page)
-                                  </span>
-                                )}
-                                {isStandardOverride && (
-                                  <span className="ml-1 text-yellow-600 dark:text-yellow-400">
-                                    (Override)
-                                  </span>
-                                )}
-                              </label>
-                              <select
-                                value={effectiveStandardId || ""}
-                                onChange={(e) => {
-                                  const standardId = parseInt(e.target.value, 10) || undefined;
-                                  const rawStubs20 = specs.stubs;
-                                  const stubs = [...(rawStubs20 || [])];
-                                  stubs[1] = {
-                                    ...stubs[1],
-                                    flangeStandardId: standardId,
-                                    flangePressureClassId: undefined,
-                                    flangeTypeCode: undefined,
-                                  };
-                                  onUpdateEntry(entry.id, { specs: { ...entry.specs, stubs } });
-                                  if (standardId) {
-                                    getFilteredPressureClasses(standardId);
-                                  }
-                                }}
-                                className={
-                                  isStandardFromGlobal
-                                    ? globalSelectClass
-                                    : isStandardOverride
-                                      ? overrideSelectClass
-                                      : defaultSelectClass
-                                }
-                              >
-                                <option value="">Select...</option>
-                                {masterData.flangeStandards?.map((s: FlangeStandardItem) => (
-                                  <option key={s.id} value={s.id}>
-                                    {s.code}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                            {/* Class */}
-                            <div>
-                              <label className="block text-xs text-gray-700 dark:text-gray-300 mb-0.5">
-                                {stub2IsSabs1123 ? "Class (kPa)" : "Class"}
-                                {isClassFromGlobal && !stub2IsPressureClassUnsuitable && (
-                                  <span className="ml-1 text-green-600 dark:text-lime-400">
-                                    (From Specs Page)
-                                  </span>
-                                )}
-                                {isClassOverride && !stub2IsPressureClassUnsuitable && (
-                                  <span className="ml-1 text-yellow-600 dark:text-yellow-400">
-                                    (Override)
-                                  </span>
-                                )}
-                                {stub2IsPressureClassUnsuitable && (
-                                  <span className="ml-1 text-red-600 dark:text-red-400">
-                                    (NOT SUITABLE)
-                                  </span>
-                                )}
-                              </label>
-                              {showFlangeType ? (
-                                <select
-                                  value={effectivePressureClassId || ""}
-                                  onChange={(e) => {
-                                    const rawStubs21 = specs.stubs;
-                                    const stubs = [...(rawStubs21 || [])];
-                                    stubs[1] = {
-                                      ...stubs[1],
-                                      flangePressureClassId:
-                                        parseInt(e.target.value, 10) || undefined,
-                                    };
-                                    onUpdateEntry(entry.id, {
-                                      specs: { ...entry.specs, stubs },
-                                    });
-                                  }}
-                                  className={
-                                    stub2IsPressureClassUnsuitable
-                                      ? unsuitableSelectClass
-                                      : isClassFromGlobal
-                                        ? globalSelectClass
-                                        : isClassOverride
-                                          ? overrideSelectClass
-                                          : defaultSelectClass
-                                  }
-                                >
-                                  <option value="">Select...</option>
-                                  {pressureClasses.map((pc) => {
-                                    const pcValue = String(pc.value);
-                                    const equivalentValue = pcValue === "64" ? "63" : pcValue;
-                                    const targetDesignation = normalizedFlangeTypeCode
-                                      ? `${pcValue}/${normalizedFlangeTypeCode}`
-                                      : null;
-                                    const matchingPc = masterData.pressureClasses?.find(
-                                      (mpc: PressureClassItem) => {
-                                        if (
-                                          targetDesignation &&
-                                          mpc.designation === targetDesignation
-                                        )
-                                          return true;
-                                        return (
-                                          mpc.designation?.includes(pcValue) ||
-                                          mpc.designation?.includes(equivalentValue)
-                                        );
-                                      },
-                                    );
-                                    return matchingPc ? (
-                                      <option key={matchingPc.id} value={matchingPc.id}>
-                                        {stub2IsSabs1123 ? pc.value : pc.label}
-                                      </option>
-                                    ) : null;
-                                  })}
-                                </select>
-                              ) : (
-                                <select
-                                  value={effectivePressureClassId || ""}
-                                  onChange={(e) => {
-                                    const rawStubs22 = specs.stubs;
-                                    const stubs = [...(rawStubs22 || [])];
-                                    stubs[1] = {
-                                      ...stubs[1],
-                                      flangePressureClassId:
-                                        parseInt(e.target.value, 10) || undefined,
-                                    };
-                                    onUpdateEntry(entry.id, {
-                                      specs: { ...entry.specs, stubs },
-                                    });
-                                  }}
-                                  className={
-                                    stub2IsPressureClassUnsuitable
-                                      ? unsuitableSelectClass
-                                      : isClassFromGlobal
-                                        ? globalSelectClass
-                                        : isClassOverride
-                                          ? overrideSelectClass
-                                          : defaultSelectClass
-                                  }
-                                >
-                                  <option value="">Select...</option>
-                                  {(rawVal3 || masterData.pressureClasses || []).map(
-                                    (pc: PressureClassItem) => (
-                                      <option key={pc.id} value={pc.id}>
-                                        {pc.designation?.replace(/\/\d+$/, "") || pc.designation}
-                                      </option>
-                                    ),
-                                  )}
-                                </select>
-                              )}
-                            </div>
-                            {/* Type */}
-                            <div>
-                              <label className="block text-xs text-gray-700 dark:text-gray-300 mb-0.5">
-                                Type
-                                {isTypeFromGlobal && showFlangeType && (
-                                  <span className="ml-1 text-green-600 dark:text-lime-400">
-                                    (From Specs Page)
-                                  </span>
-                                )}
-                                {isTypeOverride && showFlangeType && (
-                                  <span className="ml-1 text-yellow-600 dark:text-yellow-400">
-                                    (Override)
-                                  </span>
-                                )}
-                              </label>
-                              {showFlangeType ? (
-                                <select
-                                  value={effectiveFlangeTypeCode || ""}
-                                  onChange={(e) => {
-                                    const rawStubs23 = specs.stubs;
-                                    const stubs = [...(rawStubs23 || [])];
-                                    const rawValue7 = e.target.value;
-                                    stubs[1] = {
-                                      ...stubs[1],
-                                      flangeTypeCode: rawValue7 || undefined,
-                                    };
-                                    const updatedEntry = {
-                                      ...entry,
-                                      specs: { ...entry.specs, stubs },
-                                    };
-                                    updatedEntry.description =
-                                      generateItemDescription(updatedEntry);
-                                    onUpdateEntry(entry.id, updatedEntry);
-                                  }}
-                                  className={
-                                    isTypeFromGlobal
-                                      ? globalSelectClass
-                                      : isTypeOverride
-                                        ? overrideSelectClass
-                                        : defaultSelectClass
-                                  }
-                                >
-                                  <option value="">Select...</option>
-                                  {flangeTypes.map((ft) => (
-                                    <option key={ft.code} value={ft.code}>
-                                      {ft.name} ({ft.code})
-                                    </option>
-                                  ))}
-                                </select>
-                              ) : (
-                                <div className="w-full px-2 py-1.5 border border-gray-200 dark:border-gray-600 rounded text-xs bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400">
-                                  N/A
-                                </div>
-                              )}
-                            </div>
+                            <FlangeDropdownTriplet
+                              flangeStandardId={stub1.flangeStandardId}
+                              flangePressureClassId={stub1.flangePressureClassId}
+                              flangeTypeCode={stub1.flangeTypeCode}
+                              globalFlangeStandardId={globalSpecs?.flangeStandardId}
+                              globalFlangePressureClassId={globalSpecs?.flangePressureClassId}
+                              globalFlangeTypeCode={globalSpecs?.flangeTypeCode}
+                              flangeStandards={masterData.flangeStandards || []}
+                              pressureClasses={masterData.pressureClasses || []}
+                              pressureClassesByStandard={pressureClassesByStandard}
+                              allFlangeTypes={allFlangeTypes}
+                              workingPressureBar={
+                                specs.workingPressureBar || globalSpecs?.workingPressureBar || 0
+                              }
+                              onStandardChange={(standardId) => {
+                                const stubs = [...(specs.stubs || [])];
+                                stubs[1] = {
+                                  ...stubs[1],
+                                  flangeStandardId: standardId,
+                                  flangePressureClassId: undefined,
+                                  flangeTypeCode: undefined,
+                                };
+                                onUpdateEntry(entry.id, { specs: { ...entry.specs, stubs } });
+                              }}
+                              onPressureClassChange={(classId) => {
+                                const stubs = [...(specs.stubs || [])];
+                                stubs[1] = { ...stubs[1], flangePressureClassId: classId };
+                                onUpdateEntry(entry.id, { specs: { ...entry.specs, stubs } });
+                              }}
+                              onFlangeTypeChange={(typeCode) => {
+                                const stubs = [...(specs.stubs || [])];
+                                stubs[1] = { ...stubs[1], flangeTypeCode: typeCode };
+                                onUpdateEntry(entry.id, { specs: { ...entry.specs, stubs } });
+                              }}
+                              onLoadPressureClasses={getFilteredPressureClasses}
+                            />
                             <div className="flex items-end">
                               <label className="flex items-center gap-1.5 pb-1.5">
                                 <input
