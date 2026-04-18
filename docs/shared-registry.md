@@ -123,7 +123,8 @@ Shared hooks extracted from BendForm, FittingForm, and StraightPipeForm (ref #19
 
 | Component | Use for |
 |---|---|
-| `PressureClassField` | Pressure class dropdown with SABS 1123/BS 4504/generic rendering, status badges, bar-rating matching. |
+| `FlangeDropdownTriplet` | Flange standard + pressure class + flange type dropdown triplet with SABS/BS/generic rendering, override detection, pressure class validation. Replaces ~200 lines of inline JSX per form. |
+| `PressureClassField` | Standalone pressure class dropdown with SABS 1123/BS 4504/generic rendering, status badges, bar-rating matching. |
 | `MaterialSpecificationSection` | Steel spec grouped select with from-global/override/unsuitable indicators. |
 | `WeldSummarySection` | Weld count/length summary card with breakdown lines and volume info. |
 | `EndConfigurationSelector` | End configuration dropdown with dynamic options per product type. |

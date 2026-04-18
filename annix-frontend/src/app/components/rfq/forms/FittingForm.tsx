@@ -15,7 +15,6 @@ import { Select } from "@/app/components/ui/Select";
 import { masterDataApi } from "@/app/lib/api/client";
 import {
   ALL_FITTING_SIZES,
-  BS_4504_PRESSURE_CLASSES,
   FITTING_CLASS_WALL_THICKNESS,
   FITTING_END_OPTIONS,
   closureWeight as getClosureWeight,
@@ -27,7 +26,6 @@ import {
   REDUCER_END_OPTIONS,
   recommendedFlangeTypeCode,
   recommendedPressureClassId,
-  SABS_1123_PRESSURE_CLASSES,
   SABS62_FITTING_SIZES,
   SABS719_FITTING_SIZES,
   scheduleListForSpec,
@@ -78,6 +76,7 @@ import { getPipeEndConfigurationDetails } from "@/app/lib/utils/systemUtils";
 import { roundToWeldIncrement } from "@/app/lib/utils/weldThicknessLookup";
 import { useFlangeResolution } from "./hooks/useFlangeResolution";
 import { useMaterialSelector } from "./hooks/useMaterialSelector";
+import { FlangeDropdownTriplet } from "./sections/FlangeDropdownTriplet";
 import {
   type FlangeStandardItem,
   type PressureClassItem,
@@ -2378,204 +2377,50 @@ function FittingFormComponent({
                 const rawBlankFlangePositions = specs.blankFlangePositions;
                 const currentBlankPositions = rawBlankFlangePositions || [];
 
-                const rawFlangeStandardId4 = specs.flangeStandardId;
-                const rawFlangePressureClassId3 = specs.flangePressureClassId;
-                const rawFlangePressureClassId4 = specs.flangePressureClassId;
-                const rawFlangeTypeCode3 = specs.flangeTypeCode;
                 const rawPipeEndConfiguration3 = specs.pipeEndConfiguration;
 
                 return (
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-                    <div>
-                      <label className="block text-xs font-semibold text-amber-900 mb-1">
-                        Standard
-                        {isStandardFromGlobal && (
-                          <span className="ml-1 text-green-600 font-normal">(From Specs Page)</span>
-                        )}
-                        {isStandardOverride && (
-                          <span className="ml-1 text-orange-600 font-normal">(Override)</span>
-                        )}
-                      </label>
-                      <select
-                        value={rawFlangeStandardId4 || globalSpecs?.flangeStandardId || ""}
-                        onChange={(e) => {
-                          const standardId = parseInt(e.target.value, 10) || undefined;
-                          onUpdateEntry(entry.id, {
-                            specs: {
-                              ...entry.specs,
-                              flangeStandardId: standardId,
-                              flangePressureClassId: undefined,
-                              flangeTypeCode: undefined,
-                            },
-                          });
-                          if (standardId) {
-                            getFilteredPressureClasses(standardId);
-                          }
-                        }}
-                        className={
-                          isStandardFromGlobal
-                            ? globalSelectClass
-                            : isStandardOverride
-                              ? overrideSelectClass
-                              : defaultSelectClass
-                        }
-                      >
-                        <option value="">Select Standard...</option>
-                        {masterData.flangeStandards?.map((standard: FlangeStandardItem) => (
-                          <option key={standard.id} value={standard.id}>
-                            {standard.code}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-amber-900 mb-1">
-                        Pressure Class
-                        {isPressureClassUnsuitable && (
-                          <span className="ml-1 text-red-600 font-bold">(NOT SUITABLE)</span>
-                        )}
-                        {!isPressureClassUnsuitable && isClassFromGlobal && (
-                          <span className="ml-1 text-green-600 font-normal">(From Specs Page)</span>
-                        )}
-                        {!isPressureClassUnsuitable && isClassOverride && (
-                          <span className="ml-1 text-orange-600 font-normal">(Override)</span>
-                        )}
-                      </label>
-                      {hasThreeDropdowns ? (
-                        <select
-                          value={rawFlangePressureClassId3 || effectiveClassId || ""}
-                          onChange={(e) =>
-                            onUpdateEntry(entry.id, {
-                              specs: {
-                                ...entry.specs,
-                                flangePressureClassId: parseInt(e.target.value, 10) || undefined,
-                              },
-                            })
-                          }
-                          className={
-                            isPressureClassUnsuitable
-                              ? unsuitableSelectClass
-                              : isClassFromGlobal
-                                ? globalSelectClass
-                                : isClassOverride
-                                  ? overrideSelectClass
-                                  : defaultSelectClass
-                          }
-                        >
-                          <option value="">Select Class...</option>
-                          {(isSabs1123 ? SABS_1123_PRESSURE_CLASSES : BS_4504_PRESSURE_CLASSES).map(
-                            (pc) => {
-                              const pcValue = String(pc.value);
-                              const equivalentValue = pcValue === "64" ? "63" : pcValue;
-                              const targetDesignation = normalizedTypeCode
-                                ? `${pcValue}/${normalizedTypeCode}`
-                                : null;
-                              const matchingPc = masterData.pressureClasses?.find(
-                                (mpc: PressureClassItem) => {
-                                  if (targetDesignation && mpc.designation === targetDesignation)
-                                    return true;
-                                  return (
-                                    mpc.designation?.includes(pcValue) ||
-                                    mpc.designation?.includes(equivalentValue)
-                                  );
-                                },
-                              );
-                              return matchingPc ? (
-                                <option key={matchingPc.id} value={matchingPc.id}>
-                                  {isSabs1123 ? pc.value : pc.label}
-                                </option>
-                              ) : null;
-                            },
-                          )}
-                        </select>
-                      ) : (
-                        <select
-                          value={rawFlangePressureClassId4 || effectiveClassId || ""}
-                          onChange={(e) =>
-                            onUpdateEntry(entry.id, {
-                              specs: {
-                                ...entry.specs,
-                                flangePressureClassId: parseInt(e.target.value, 10) || undefined,
-                              },
-                            })
-                          }
-                          className={
-                            isPressureClassUnsuitable
-                              ? unsuitableSelectClass
-                              : isClassFromGlobal
-                                ? globalSelectClass
-                                : isClassOverride
-                                  ? overrideSelectClass
-                                  : defaultSelectClass
-                          }
-                        >
-                          <option value="">Select Class...</option>
-                          {(() => {
-                            const rawFlangeStandardId5 = specs.flangeStandardId;
-                            const stdId = rawFlangeStandardId5 || globalSpecs?.flangeStandardId;
-                            const rawStdId = pressureClassesByStandard[stdId];
-                            const rawPressureClasses = masterData.pressureClasses;
-                            const filtered = stdId ? rawStdId || [] : rawPressureClasses || [];
-                            return filtered.map((pressureClass: PressureClassItem) => (
-                              <option key={pressureClass.id} value={pressureClass.id}>
-                                {pressureClass.designation?.replace(/\/\d+$/, "") ||
-                                  pressureClass.designation}
-                              </option>
-                            ));
-                          })()}
-                        </select>
-                      )}
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-amber-900 mb-1">
-                        Flange Type
-                        {isTypeFromGlobal && hasThreeDropdowns && (
-                          <span className="ml-1 text-green-600 font-normal">(From Specs Page)</span>
-                        )}
-                        {isTypeOverride && hasThreeDropdowns && (
-                          <span className="ml-1 text-orange-600 font-normal">(Override)</span>
-                        )}
-                      </label>
-                      {hasThreeDropdowns ? (
-                        <select
-                          value={rawFlangeTypeCode3 || globalSpecs?.flangeTypeCode || ""}
-                          onChange={(e) => {
-                            const rawValue5 = e.target.value;
-
-                            return onUpdateEntry(entry.id, {
-                              specs: {
-                                ...entry.specs,
-                                flangeTypeCode: rawValue5 || undefined,
-                              },
-                            });
-                          }}
-                          className={
-                            isTypeFromGlobal
-                              ? globalSelectClass
-                              : isTypeOverride
-                                ? overrideSelectClass
-                                : defaultSelectClass
-                          }
-                        >
-                          <option value="">Select Type...</option>
-                          {(isSabs1123
-                            ? flangeTypesForStandardCode(allFlangeTypes, "SABS 1123") || []
-                            : flangeTypesForStandardCode(allFlangeTypes, "BS 4504") || []
-                          ).map((ft) => (
-                            <option key={ft.code} value={ft.code} title={ft.description}>
-                              {ft.name} ({ft.code})
-                            </option>
-                          ))}
-                        </select>
-                      ) : (
-                        <select
-                          disabled
-                          className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs bg-gray-100 text-gray-500"
-                        >
-                          <option>N/A for this standard</option>
-                        </select>
-                      )}
-                    </div>
+                    <FlangeDropdownTriplet
+                      flangeStandardId={specs.flangeStandardId}
+                      flangePressureClassId={specs.flangePressureClassId}
+                      flangeTypeCode={specs.flangeTypeCode}
+                      globalFlangeStandardId={globalSpecs?.flangeStandardId}
+                      globalFlangePressureClassId={globalSpecs?.flangePressureClassId}
+                      globalFlangeTypeCode={globalSpecs?.flangeTypeCode}
+                      flangeStandards={masterData.flangeStandards || []}
+                      pressureClasses={masterData.pressureClasses || []}
+                      pressureClassesByStandard={pressureClassesByStandard}
+                      allFlangeTypes={allFlangeTypes}
+                      workingPressureBar={workingPressureBar}
+                      onStandardChange={(standardId) => {
+                        onUpdateEntry(entry.id, {
+                          specs: {
+                            ...entry.specs,
+                            flangeStandardId: standardId,
+                            flangePressureClassId: undefined,
+                            flangeTypeCode: undefined,
+                          },
+                        });
+                      }}
+                      onPressureClassChange={(classId) => {
+                        onUpdateEntry(entry.id, {
+                          specs: {
+                            ...entry.specs,
+                            flangePressureClassId: classId,
+                          },
+                        });
+                      }}
+                      onFlangeTypeChange={(typeCode) => {
+                        onUpdateEntry(entry.id, {
+                          specs: {
+                            ...entry.specs,
+                            flangeTypeCode: typeCode,
+                          },
+                        });
+                      }}
+                      onLoadPressureClasses={getFilteredPressureClasses}
+                    />
                     {/* 4th Column: Flange Config & Blank Flanges */}
                     <div>
                       <div className="flex items-center justify-between mb-1">
