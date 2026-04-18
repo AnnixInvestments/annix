@@ -2,8 +2,8 @@ import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
+import { Company } from "../../platform/entities/company.entity";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
-import { ComplySaCompany } from "../companies/entities/company.entity";
 import { ComplySaComplianceRequirement } from "../compliance/entities/compliance-requirement.entity";
 import { ComplySaComplianceStatus } from "../compliance/entities/compliance-status.entity";
 import { formatDateZA, fromJSDate } from "../lib/datetime";
@@ -64,8 +64,8 @@ export class ComplySaAiService {
   private readonly logger = new Logger(ComplySaAiService.name);
 
   constructor(
-    @InjectRepository(ComplySaCompany)
-    private readonly companyRepository: Repository<ComplySaCompany>,
+    @InjectRepository(Company)
+    private readonly companyRepository: Repository<Company>,
     @InjectRepository(ComplySaComplianceStatus)
     private readonly statusRepository: Repository<ComplySaComplianceStatus>,
     @InjectRepository(ComplySaComplianceRequirement)

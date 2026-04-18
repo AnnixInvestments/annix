@@ -6,8 +6,8 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from "typeorm";
-import { ComplySaCompany } from "../../companies/entities/company.entity";
-import { ComplySaUser } from "../../companies/entities/user.entity";
+import { Company } from "../../../platform/entities/company.entity";
+import { User } from "../../../user/entities/user.entity";
 import { ComplySaComplianceRequirement } from "../../compliance/entities/compliance-requirement.entity";
 
 @Entity("comply_sa_notifications")
@@ -39,17 +39,13 @@ export class ComplySaNotification {
   @Column({ name: "read_at", type: "timestamp", nullable: true })
   readAt!: Date | null;
 
-  @ManyToOne(
-    () => ComplySaCompany,
-    (company) => company.notifications,
-    { onDelete: "CASCADE" },
-  )
+  @ManyToOne(() => Company, { onDelete: "CASCADE" })
   @JoinColumn({ name: "company_id" })
-  company!: ComplySaCompany;
+  company!: Company;
 
-  @ManyToOne(() => ComplySaUser, { onDelete: "SET NULL" })
+  @ManyToOne(() => User, { onDelete: "SET NULL" })
   @JoinColumn({ name: "user_id" })
-  user!: ComplySaUser | null;
+  user!: User | null;
 
   @ManyToOne(() => ComplySaComplianceRequirement, { onDelete: "SET NULL" })
   @JoinColumn({ name: "requirement_id" })

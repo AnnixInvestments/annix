@@ -1,5 +1,5 @@
 import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
-import { ComplySaCompany } from "../../companies/entities/company.entity";
+import { Company } from "../../../platform/entities/company.entity";
 import { ComplySaComplianceRequirement } from "./compliance-requirement.entity";
 
 @Entity("comply_sa_compliance_checklist_progress")
@@ -31,9 +31,9 @@ export class ComplySaChecklistProgress {
   @Column({ type: "text", nullable: true })
   notes!: string | null;
 
-  @ManyToOne(() => ComplySaCompany, { onDelete: "CASCADE" })
+  @ManyToOne(() => Company, { onDelete: "CASCADE" })
   @JoinColumn({ name: "company_id" })
-  company!: ComplySaCompany;
+  company!: Company;
 
   @ManyToOne(() => ComplySaComplianceRequirement)
   @JoinColumn({ name: "requirement_id" })

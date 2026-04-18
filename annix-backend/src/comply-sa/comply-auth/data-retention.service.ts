@@ -2,8 +2,8 @@ import { Injectable, Logger } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
 import { LessThan, Repository } from "typeorm";
-import { ComplySaCompany } from "../companies/entities/company.entity";
-import { ComplySaUser } from "../companies/entities/user.entity";
+import { Company } from "../../platform/entities/company.entity";
+import { User } from "../../user/entities/user.entity";
 import { now } from "../lib/datetime";
 
 const TAX_DATA_RETENTION_YEARS = 5;
@@ -15,10 +15,10 @@ export class ComplySaDataRetentionService {
   private readonly logger = new Logger(ComplySaDataRetentionService.name);
 
   constructor(
-    @InjectRepository(ComplySaUser)
-    private readonly usersRepository: Repository<ComplySaUser>,
-    @InjectRepository(ComplySaCompany)
-    private readonly companiesRepository: Repository<ComplySaCompany>,
+    @InjectRepository(User)
+    private readonly usersRepository: Repository<User>,
+    @InjectRepository(Company)
+    private readonly companiesRepository: Repository<Company>,
   ) {}
 
   @Cron("0 3 1 * *", {

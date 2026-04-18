@@ -6,7 +6,7 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from "typeorm";
-import { ComplySaCompany } from "../../companies/entities/company.entity";
+import { Company } from "../../../platform/entities/company.entity";
 
 @Entity("comply_sa_api_keys")
 export class ComplySaApiKey {
@@ -34,10 +34,7 @@ export class ComplySaApiKey {
   @CreateDateColumn({ name: "created_at" })
   createdAt!: Date;
 
-  @ManyToOne(
-    () => ComplySaCompany,
-    (company) => company.apiKeys,
-  )
+  @ManyToOne(() => Company)
   @JoinColumn({ name: "company_id" })
-  company!: ComplySaCompany;
+  company!: Company;
 }

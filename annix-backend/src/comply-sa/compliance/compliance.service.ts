@@ -2,10 +2,9 @@ import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { In, Repository } from "typeorm";
 import { AuditService } from "../../audit/audit.service";
-import { ComplySaCompany } from "../companies/entities/company.entity";
+import { Company } from "../../platform/entities/company.entity";
 import { ComplySaDocument } from "../comply-documents/entities/document.entity";
 import { daysBetween, fromISO, fromJSDate, now } from "../lib/datetime";
-import { ComplySaAuditLog } from "./entities/audit-log.entity";
 import { ComplySaChecklistProgress } from "./entities/checklist-progress.entity";
 import { ComplySaComplianceRequirement } from "./entities/compliance-requirement.entity";
 import { ComplySaComplianceStatus } from "./entities/compliance-status.entity";
@@ -29,10 +28,8 @@ export class ComplySaComplianceService {
     private readonly requirementRepository: Repository<ComplySaComplianceRequirement>,
     @InjectRepository(ComplySaChecklistProgress)
     private readonly checklistRepository: Repository<ComplySaChecklistProgress>,
-    @InjectRepository(ComplySaAuditLog)
-    private readonly auditLogRepository: Repository<ComplySaAuditLog>,
-    @InjectRepository(ComplySaCompany)
-    private readonly companyRepository: Repository<ComplySaCompany>,
+    @InjectRepository(Company)
+    private readonly companyRepository: Repository<Company>,
     @InjectRepository(ComplySaDocument)
     private readonly documentRepository: Repository<ComplySaDocument>,
     private readonly ruleEngineService: ComplySaRuleEngineService,
@@ -215,14 +212,6 @@ export class ComplySaComplianceService {
 
     const saved = await this.statusRepository.save(status);
 
-    const auditEntry = this.auditLogRepository.create({
-      companyId,
-      action: "status_change",
-      entityType: "compliance_status",
-      entityId: statusId,
-      details: { previousStatus, newStatus: saved.status },
-    });
-    await this.auditLogRepository.save(auditEntry);
     await this.auditService.logApp({
       appName: "comply-sa",
       subAction: "status_change",
@@ -295,14 +284,6 @@ export class ComplySaComplianceService {
 
     await this.autoCompleteStatus(companyId, requirementId, null);
 
-    const auditEntry = this.auditLogRepository.create({
-      companyId,
-      action: "ai_checklist_complete",
-      entityType: "compliance_checklist",
-      entityId: requirementId,
-      details: { stepIndices, reasoning },
-    });
-    await this.auditLogRepository.save(auditEntry);
     await this.auditService.logApp({
       appName: "comply-sa",
       subAction: "ai_checklist_complete",
@@ -407,15 +388,6 @@ export class ComplySaComplianceService {
         status.completedByUserId = userId;
         await this.statusRepository.save(status);
 
-        const auditEntry = this.auditLogRepository.create({
-          companyId,
-          userId,
-          action: "checklist_complete",
-          entityType: "compliance_status",
-          entityId: status.id,
-          details: { requirementId, totalSteps },
-        });
-        await this.auditLogRepository.save(auditEntry);
         await this.auditService.logApp({
           appName: "comply-sa",
           subAction: "checklist_complete",
@@ -459,14 +431,6 @@ export class ComplySaComplianceService {
       }
     }
 
-    const auditEntry = this.auditLogRepository.create({
-      companyId,
-      action: "vat_cycle_detected",
-      entityType: "company",
-      entityId: companyId,
-      details: { vatSubmissionCycle: cycle, source: "ai_document_analysis" },
-    });
-    await this.auditLogRepository.save(auditEntry);
     await this.auditService.logApp({
       appName: "comply-sa",
       subAction: "vat_cycle_detected",

@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { ComplySaCompany } from "../companies/entities/company.entity";
+import { Company } from "../../platform/entities/company.entity";
 import { ComplySaDocument } from "../comply-documents/entities/document.entity";
 
 export interface TenderDocument {
@@ -53,8 +53,8 @@ const REQUIRED_TENDER_DOCUMENTS: { name: string; description: string }[] = [
 @Injectable()
 export class ComplySaTenderService {
   constructor(
-    @InjectRepository(ComplySaCompany)
-    private readonly companyRepository: Repository<ComplySaCompany>,
+    @InjectRepository(Company)
+    private readonly companyRepository: Repository<Company>,
     @InjectRepository(ComplySaDocument)
     private readonly documentRepository: Repository<ComplySaDocument>,
   ) {}

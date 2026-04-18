@@ -1,61 +1,71 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { ComplySaCompany } from "../../companies/entities/company.entity";
+import { Company } from "../../../platform/entities/company.entity";
+import { ComplySaCompanyDetails } from "../../companies/entities/comply-sa-company-details.entity";
 import { ComplySaComplianceRequirement } from "../entities/compliance-requirement.entity";
+
+interface CompanyWithDetails {
+  company: Company;
+  details: ComplySaCompanyDetails | null;
+}
 
 interface ConditionCheck {
   key: string;
-  evaluate: (company: ComplySaCompany, value: unknown) => boolean;
+  evaluate: (ctx: CompanyWithDetails, value: unknown) => boolean;
 }
 
 const CONDITION_EVALUATORS: ConditionCheck[] = [
   {
     key: "employee_count_gte",
-    evaluate: (company, value) => company.employeeCount >= (value as number),
+    evaluate: (ctx, value) => (ctx.details?.employeeCount ?? 0) >= (value as number),
   },
   {
     key: "employee_count_lte",
-    evaluate: (company, value) => company.employeeCount <= (value as number),
+    evaluate: (ctx, value) => (ctx.details?.employeeCount ?? 0) <= (value as number),
   },
   {
     key: "vat_registered",
-    evaluate: (company, value) => company.vatRegistered === (value as boolean),
+    evaluate: (ctx, value) => (ctx.details?.vatRegistered ?? false) === (value as boolean),
   },
   {
     key: "handles_personal_data",
-    evaluate: (company, value) => company.handlesPersonalData === (value as boolean),
+    evaluate: (ctx, value) => (ctx.details?.handlesPersonalData ?? false) === (value as boolean),
   },
   {
     key: "has_payroll",
-    evaluate: (company, value) => company.hasPayroll === (value as boolean),
+    evaluate: (ctx, value) => (ctx.details?.hasPayroll ?? false) === (value as boolean),
   },
   {
     key: "annual_turnover_gte",
-    evaluate: (company, value) =>
-      company.annualTurnover !== null && parseFloat(company.annualTurnover) >= (value as number),
+    evaluate: (ctx, value) =>
+      ctx.details?.annualTurnover !== null &&
+      ctx.details?.annualTurnover !== undefined &&
+      Number(ctx.details.annualTurnover) >= (value as number),
   },
   {
     key: "annual_turnover_lte",
-    evaluate: (company, value) =>
-      company.annualTurnover !== null && parseFloat(company.annualTurnover) <= (value as number),
+    evaluate: (ctx, value) =>
+      ctx.details?.annualTurnover !== null &&
+      ctx.details?.annualTurnover !== undefined &&
+      Number(ctx.details.annualTurnover) <= (value as number),
   },
   {
     key: "imports_exports",
-    evaluate: (company, value) => company.importsExports === (value as boolean),
+    evaluate: (ctx, value) => (ctx.details?.importsExports ?? false) === (value as boolean),
   },
   {
     key: "industry_in",
-    evaluate: (company, value) =>
-      company.industry !== null && (value as string[]).includes(company.industry),
+    evaluate: (ctx, value) =>
+      ctx.company.industry !== null && (value as string[]).includes(ctx.company.industry),
   },
   {
     key: "entity_type",
-    evaluate: (company, value) => company.entityType === (value as string),
+    evaluate: (ctx, value) => (ctx.details?.entityType ?? "company") === (value as string),
   },
   {
     key: "entity_type_in",
-    evaluate: (company, value) => (value as string[]).includes(company.entityType),
+    evaluate: (ctx, value) => (value as string[]).includes(ctx.details?.entityType ?? "company"),
   },
 ];
 
@@ -66,15 +76,19 @@ export class ComplySaRuleEngineService {
     private readonly requirementsRepository: Repository<ComplySaComplianceRequirement>,
   ) {}
 
-  async matchRequirements(company: ComplySaCompany): Promise<ComplySaComplianceRequirement[]> {
+  async matchRequirements(
+    company: Company,
+    details: ComplySaCompanyDetails | null,
+  ): Promise<ComplySaComplianceRequirement[]> {
     const allRequirements = await this.requirementsRepository.find();
+    const ctx: CompanyWithDetails = { company, details };
 
-    return allRequirements.filter((requirement) => this.conditionsMet(requirement, company));
+    return allRequirements.filter((requirement) => this.conditionsMet(requirement, ctx));
   }
 
   private conditionsMet(
     requirement: ComplySaComplianceRequirement,
-    company: ComplySaCompany,
+    ctx: CompanyWithDetails,
   ): boolean {
     if (requirement.applicableConditions === null) {
       return true;
@@ -89,7 +103,7 @@ export class ComplySaRuleEngineService {
         return true;
       }
 
-      return evaluator.evaluate(company, value);
+      return evaluator.evaluate(ctx, value);
     });
   }
 }

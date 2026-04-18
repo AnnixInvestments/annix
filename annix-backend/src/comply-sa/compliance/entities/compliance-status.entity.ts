@@ -6,7 +6,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
-import { ComplySaCompany } from "../../companies/entities/company.entity";
+import { Company } from "../../../platform/entities/company.entity";
 import { ComplySaComplianceRequirement } from "./compliance-requirement.entity";
 
 @Entity("comply_sa_compliance_statuses")
@@ -38,13 +38,9 @@ export class ComplySaComplianceStatus {
   @UpdateDateColumn({ name: "updated_at" })
   updatedAt!: Date;
 
-  @ManyToOne(
-    () => ComplySaCompany,
-    (company) => company.complianceStatuses,
-    { onDelete: "CASCADE" },
-  )
+  @ManyToOne(() => Company, { onDelete: "CASCADE" })
   @JoinColumn({ name: "company_id" })
-  company!: ComplySaCompany;
+  company!: Company;
 
   @ManyToOne(() => ComplySaComplianceRequirement)
   @JoinColumn({ name: "requirement_id" })

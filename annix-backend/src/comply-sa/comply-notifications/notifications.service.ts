@@ -6,7 +6,7 @@ import {
   ChannelKey,
   NotificationDispatcherService,
 } from "../../notifications/notification-dispatcher.service";
-import { ComplySaUser } from "../companies/entities/user.entity";
+import { ComplySaProfile } from "../companies/entities/comply-sa-profile.entity";
 import { ComplySaComplianceStatus } from "../compliance/entities/compliance-status.entity";
 import { ComplySaDocument } from "../comply-documents/entities/document.entity";
 import { daysBetween, formatDateZA, fromJSDate, now } from "../lib/datetime";
@@ -33,8 +33,8 @@ export class ComplySaNotificationsService {
     private readonly notificationRepository: Repository<ComplySaNotification>,
     @InjectRepository(ComplySaNotificationPreferences)
     private readonly preferencesRepository: Repository<ComplySaNotificationPreferences>,
-    @InjectRepository(ComplySaUser)
-    private readonly userRepository: Repository<ComplySaUser>,
+    @InjectRepository(ComplySaProfile)
+    private readonly profileRepository: Repository<ComplySaProfile>,
     @InjectRepository(ComplySaDocument)
     private readonly documentRepository: Repository<ComplySaDocument>,
     private readonly dispatcher: NotificationDispatcherService,
@@ -81,14 +81,15 @@ export class ComplySaNotificationsService {
         ...new Set(pendingNotifications.map(({ status }) => status.companyId)),
       ];
 
-      const allUsers =
+      const allProfiles =
         affectedCompanyIds.length > 0
-          ? await this.userRepository.find({
+          ? await this.profileRepository.find({
               where: { companyId: In(affectedCompanyIds) },
+              relations: ["user"],
             })
           : [];
 
-      const allUserIds = allUsers.map((u) => u.id);
+      const allUserIds = allProfiles.map((p) => p.userId);
 
       const allPreferences =
         allUserIds.length > 0
@@ -97,10 +98,10 @@ export class ComplySaNotificationsService {
             })
           : [];
 
-      const usersByCompany = allUsers.reduce<Record<number, ComplySaUser[]>>(
-        (acc, user) => ({
+      const profilesByCompany = allProfiles.reduce<Record<number, ComplySaProfile[]>>(
+        (acc, profile) => ({
           ...acc,
-          [user.companyId]: [...(acc[user.companyId] ?? []), user],
+          [profile.companyId]: [...(acc[profile.companyId] ?? []), profile],
         }),
         {},
       );
@@ -134,17 +135,17 @@ export class ComplySaNotificationsService {
         pendingNotifications.map(async ({ status, type, daysUntilDue }) => {
           const message = this.buildMessage(status, type, daysUntilDue);
           const isCritical = type === "overdue" || type === "reminder_3d";
-          const users = usersByCompany[status.companyId] ?? [];
+          const profiles = profilesByCompany[status.companyId] ?? [];
 
           await Promise.all(
-            users.map(async (user) => {
-              const channels = channelsFromPreferences(user.id);
-              const prefs = preferencesByUserId[user.id] ?? null;
+            profiles.map(async (profile) => {
+              const channels = channelsFromPreferences(profile.userId);
+              const prefs = preferencesByUserId[profile.userId] ?? null;
 
               if (channels.inApp) {
                 const notification = this.notificationRepository.create({
                   companyId: status.companyId,
-                  userId: user.id,
+                  userId: profile.userId,
                   requirementId: status.requirementId,
                   channel: "in_app",
                   type,
@@ -166,10 +167,11 @@ export class ComplySaNotificationsService {
 
               if (channelKeys.length > 0) {
                 const subject = this.emailSubject(type, status.requirement?.name ?? "Requirement");
+                const userEmail = profile.user?.email || "";
                 await this.dispatcher.dispatch({
                   recipient: {
-                    userId: user.id,
-                    email: user.email,
+                    userId: profile.userId,
+                    email: userEmail,
                     phone: prefs?.phone ?? null,
                   },
                   content: {
@@ -241,14 +243,15 @@ export class ComplySaNotificationsService {
 
       const docCompanyIds = [...new Set(documentsInRange.map((doc) => doc.companyId))];
 
-      const docUsers =
+      const docProfiles =
         docCompanyIds.length > 0
-          ? await this.userRepository.find({
+          ? await this.profileRepository.find({
               where: { companyId: In(docCompanyIds) },
+              relations: ["user"],
             })
           : [];
 
-      const docUserIds = docUsers.map((u) => u.id);
+      const docUserIds = docProfiles.map((p) => p.userId);
 
       const docPreferences =
         docUserIds.length > 0
@@ -257,10 +260,10 @@ export class ComplySaNotificationsService {
             })
           : [];
 
-      const docUsersByCompany = docUsers.reduce<Record<number, ComplySaUser[]>>(
-        (acc, user) => ({
+      const docProfilesByCompany = docProfiles.reduce<Record<number, ComplySaProfile[]>>(
+        (acc, profile) => ({
           ...acc,
-          [user.companyId]: [...(acc[user.companyId] ?? []), user],
+          [profile.companyId]: [...(acc[profile.companyId] ?? []), profile],
         }),
         {},
       );
@@ -302,16 +305,16 @@ export class ComplySaNotificationsService {
               : `EXPIRING: Document "${doc.name}" expires on ${formattedDate} (${daysUntil} days). Please renew before expiry.`;
 
           const type = daysUntil < 0 ? "document_expired" : "document_expiring";
-          const users = docUsersByCompany[doc.companyId] ?? [];
+          const profiles = docProfilesByCompany[doc.companyId] ?? [];
 
           await Promise.all(
-            users.map(async (user) => {
-              const channels = docChannelsFromPreferences(user.id);
+            profiles.map(async (profile) => {
+              const channels = docChannelsFromPreferences(profile.userId);
 
               if (channels.inApp) {
                 const notification = this.notificationRepository.create({
                   companyId: doc.companyId,
-                  userId: user.id,
+                  userId: profile.userId,
                   channel: "in_app",
                   type,
                   message,
@@ -324,8 +327,9 @@ export class ComplySaNotificationsService {
                   daysUntil < 0
                     ? `[EXPIRED] ${doc.name} - Comply SA`
                     : `[Expiring] ${doc.name} expires in ${daysUntil} days - Comply SA`;
+                const userEmail = profile.user?.email || "";
                 await this.dispatcher.dispatch({
-                  recipient: { userId: user.id, email: user.email },
+                  recipient: { userId: profile.userId, email: userEmail },
                   content: {
                     subject,
                     body: message,

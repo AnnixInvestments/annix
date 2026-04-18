@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { ComplySaCompany } from "../../companies/entities/company.entity";
+import { Company } from "../../../platform/entities/company.entity";
 import { DateTime, fromISO, now } from "../../lib/datetime";
 import { ComplySaComplianceRequirement } from "../entities/compliance-requirement.entity";
 
@@ -37,10 +37,7 @@ type DeadlineRule =
 
 @Injectable()
 export class ComplySaDeadlineService {
-  calculateNextDueDate(
-    requirement: ComplySaComplianceRequirement,
-    company: ComplySaCompany,
-  ): Date | null {
+  calculateNextDueDate(requirement: ComplySaComplianceRequirement, company: Company): Date | null {
     if (requirement.deadlineRule === null) {
       return null;
     }
@@ -65,7 +62,7 @@ export class ComplySaDeadlineService {
 
   private anniversaryOffset(
     rule: AnniversaryOffsetRule,
-    company: ComplySaCompany,
+    company: Company,
     today: DateTime,
   ): Date | null {
     const fieldValue = (company as unknown as Record<string, unknown>)[rule.field] as string | null;
@@ -114,7 +111,7 @@ export class ComplySaDeadlineService {
     return futureDates[0].toJSDate();
   }
 
-  private biMonthly(rule: BiMonthlyRule, today: DateTime, company: ComplySaCompany): Date {
+  private biMonthly(rule: BiMonthlyRule, today: DateTime, company: Company): Date {
     const cycle = company.vatSubmissionCycle || "even";
     const isSubmissionMonth = cycle === "odd" ? today.month % 2 !== 0 : today.month % 2 === 0;
 

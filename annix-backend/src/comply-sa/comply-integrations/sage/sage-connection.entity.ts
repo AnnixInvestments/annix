@@ -7,7 +7,7 @@ import {
   PrimaryGeneratedColumn,
   Unique,
 } from "typeorm";
-import { ComplySaCompany } from "../../companies/entities/company.entity";
+import { Company } from "../../../platform/entities/company.entity";
 
 @Entity("comply_sa_sage_connections")
 @Unique(["companyId"])
@@ -36,10 +36,7 @@ export class ComplySaSageConnection {
   @CreateDateColumn({ name: "connected_at" })
   connectedAt!: Date;
 
-  @ManyToOne(
-    () => ComplySaCompany,
-    (company) => company.sageConnections,
-  )
+  @ManyToOne(() => Company)
   @JoinColumn({ name: "company_id" })
-  company!: ComplySaCompany;
+  company!: Company;
 }

@@ -7,8 +7,8 @@ import {
   PrimaryGeneratedColumn,
   Unique,
 } from "typeorm";
-import { ComplySaCompany } from "../../companies/entities/company.entity";
-import { ComplySaUser } from "../../companies/entities/user.entity";
+import { Company } from "../../../platform/entities/company.entity";
+import { User } from "../../../user/entities/user.entity";
 
 @Entity("comply_sa_advisor_clients")
 @Unique(["advisorUserId", "clientCompanyId"])
@@ -25,11 +25,11 @@ export class ComplySaAdvisorClient {
   @CreateDateColumn({ name: "added_at" })
   addedAt!: Date;
 
-  @ManyToOne(() => ComplySaUser)
+  @ManyToOne(() => User)
   @JoinColumn({ name: "advisor_user_id" })
-  advisorUser!: ComplySaUser;
+  advisorUser!: User;
 
-  @ManyToOne(() => ComplySaCompany)
+  @ManyToOne(() => Company)
   @JoinColumn({ name: "client_company_id" })
-  clientCompany!: ComplySaCompany;
+  clientCompany!: Company;
 }

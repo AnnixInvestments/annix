@@ -11,7 +11,6 @@ import { User } from "../../user/entities/user.entity";
 import { ComplySaCompaniesModule } from "../companies/companies.module";
 import { ComplySaCompanyDetails } from "../companies/entities/comply-sa-company-details.entity";
 import { ComplySaProfile } from "../companies/entities/comply-sa-profile.entity";
-import { ComplySaUser } from "../companies/entities/user.entity";
 import { ComplySaAuthController } from "./auth.controller";
 import { ComplySaAuthService } from "./auth.service";
 import { ComplySaDataRetentionService } from "./data-retention.service";
@@ -24,7 +23,6 @@ import { ComplySaJwtStrategy } from "./strategies/jwt.strategy";
     ComplySaCompaniesModule,
     PassportModule,
     TypeOrmModule.forFeature([
-      ComplySaUser,
       User,
       Company,
       ComplySaProfile,

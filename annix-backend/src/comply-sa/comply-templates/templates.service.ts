@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { ComplySaCompany } from "../companies/entities/company.entity";
+import { Company } from "../../platform/entities/company.entity";
 import { ComplySaComplianceStatus } from "../compliance/entities/compliance-status.entity";
 import { formatDateLongZA, formatDateZA, fromJSDate, now } from "../lib/datetime";
 
@@ -187,8 +187,8 @@ const TEMPLATE_REGISTRY: TemplateMetadata[] = [
 @Injectable()
 export class ComplySaTemplatesService {
   constructor(
-    @InjectRepository(ComplySaCompany)
-    private readonly companyRepository: Repository<ComplySaCompany>,
+    @InjectRepository(Company)
+    private readonly companyRepository: Repository<Company>,
     @InjectRepository(ComplySaComplianceStatus)
     private readonly statusRepository: Repository<ComplySaComplianceStatus>,
   ) {}

@@ -2,7 +2,6 @@ import { ForbiddenException, Injectable, Logger, NotFoundException } from "@nest
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { AuditService } from "../../audit/audit.service";
-import { ComplySaAuditLog } from "../compliance/entities/audit-log.entity";
 import { fromJSDate, now } from "../lib/datetime";
 import { ComplySaSubscription } from "./entities/subscription.entity";
 
@@ -65,8 +64,6 @@ export class ComplySaSubscriptionsService {
   constructor(
     @InjectRepository(ComplySaSubscription)
     private readonly subscriptionRepository: Repository<ComplySaSubscription>,
-    @InjectRepository(ComplySaAuditLog)
-    private readonly auditLogRepository: Repository<ComplySaAuditLog>,
     private readonly auditService: AuditService,
   ) {}
 
@@ -246,13 +243,6 @@ export class ComplySaSubscriptionsService {
     details: Record<string, unknown>,
   ): Promise<void> {
     try {
-      const entry = this.auditLogRepository.create({
-        companyId,
-        action,
-        entityType: "subscription",
-        details,
-      });
-      await this.auditLogRepository.save(entry);
       await this.auditService.logApp({
         appName: "comply-sa",
         subAction: action,

@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
-import { ComplySaUser } from "../companies/entities/user.entity";
+import { User } from "../../user/entities/user.entity";
+import { ComplySaProfile } from "../companies/entities/comply-sa-profile.entity";
 import { ComplySaComplianceStatus } from "../compliance/entities/compliance-status.entity";
 import { ComplySaDocument } from "../comply-documents/entities/document.entity";
 import { ComplySaNotification } from "./entities/notification.entity";
@@ -14,7 +15,8 @@ import { ComplySaNotificationsService } from "./notifications.service";
       ComplySaNotification,
       ComplySaComplianceStatus,
       ComplySaNotificationPreferences,
-      ComplySaUser,
+      ComplySaProfile,
+      User,
       ComplySaDocument,
     ]),
   ],

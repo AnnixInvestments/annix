@@ -1,16 +1,19 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { ComplySaCompany } from "./entities/company.entity";
+import { Company } from "../../platform/entities/company.entity";
+import { ComplySaCompanyDetails } from "./entities/comply-sa-company-details.entity";
 
 @Injectable()
 export class ComplySaCompaniesService {
   constructor(
-    @InjectRepository(ComplySaCompany)
-    private readonly companyRepository: Repository<ComplySaCompany>,
+    @InjectRepository(Company)
+    private readonly companyRepository: Repository<Company>,
+    @InjectRepository(ComplySaCompanyDetails)
+    private readonly detailsRepository: Repository<ComplySaCompanyDetails>,
   ) {}
 
-  async companyProfile(companyId: number): Promise<ComplySaCompany> {
+  async companyProfile(companyId: number): Promise<Company> {
     const company = await this.companyRepository.findOne({
       where: { id: companyId },
     });
@@ -22,7 +25,7 @@ export class ComplySaCompaniesService {
     return company;
   }
 
-  async updateProfile(companyId: number, data: Partial<ComplySaCompany>): Promise<ComplySaCompany> {
+  async updateProfile(companyId: number, data: Partial<Company>): Promise<Company> {
     const company = await this.companyRepository.findOne({
       where: { id: companyId },
     });

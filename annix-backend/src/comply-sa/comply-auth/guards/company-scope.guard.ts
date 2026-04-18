@@ -7,15 +7,15 @@ import {
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { ComplySaUser } from "../../companies/entities/user.entity";
+import { ComplySaProfile } from "../../companies/entities/comply-sa-profile.entity";
 
 @Injectable()
 export class ComplySaCompanyScopeGuard implements CanActivate {
   private readonly logger = new Logger(ComplySaCompanyScopeGuard.name);
 
   constructor(
-    @InjectRepository(ComplySaUser)
-    private readonly userRepository: Repository<ComplySaUser>,
+    @InjectRepository(ComplySaProfile)
+    private readonly profileRepository: Repository<ComplySaProfile>,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -26,17 +26,17 @@ export class ComplySaCompanyScopeGuard implements CanActivate {
       throw new ForbiddenException("Authentication required");
     }
 
-    const user = await this.userRepository.findOne({
-      where: { id: jwtPayload.userId },
+    const profile = await this.profileRepository.findOne({
+      where: { userId: jwtPayload.userId },
     });
 
-    if (user === null) {
+    if (profile === null) {
       throw new ForbiddenException("User not found");
     }
 
-    if (user.companyId !== jwtPayload.companyId) {
+    if (profile.companyId !== jwtPayload.companyId) {
       this.logger.warn(
-        `Company scope mismatch: user ${user.id} belongs to company ${user.companyId} but JWT claims ${jwtPayload.companyId}`,
+        `Company scope mismatch: user ${jwtPayload.userId} belongs to company ${profile.companyId} but JWT claims ${jwtPayload.companyId}`,
       );
       throw new ForbiddenException("You do not have access to this company");
     }

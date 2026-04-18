@@ -7,7 +7,7 @@ import {
   PrimaryGeneratedColumn,
   Unique,
 } from "typeorm";
-import { ComplySaCompany } from "../../companies/entities/company.entity";
+import { Company } from "../../../platform/entities/company.entity";
 import { ComplySaComplianceRequirement } from "../../compliance/entities/compliance-requirement.entity";
 
 @Entity("comply_sa_documents")
@@ -43,13 +43,9 @@ export class ComplySaDocument {
   @CreateDateColumn({ name: "created_at" })
   createdAt!: Date;
 
-  @ManyToOne(
-    () => ComplySaCompany,
-    (company) => company.documents,
-    { onDelete: "CASCADE" },
-  )
+  @ManyToOne(() => Company, { onDelete: "CASCADE" })
   @JoinColumn({ name: "company_id" })
-  company!: ComplySaCompany;
+  company!: Company;
 
   @ManyToOne(() => ComplySaComplianceRequirement, { onDelete: "SET NULL" })
   @JoinColumn({ name: "requirement_id" })

@@ -1,9 +1,9 @@
 import { Body, Controller, Get, Patch, Req, UseGuards } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
+import { Company } from "../../platform/entities/company.entity";
 import { ComplySaCompanyScopeGuard } from "../comply-auth/guards/company-scope.guard";
 import { ComplySaJwtAuthGuard } from "../comply-auth/guards/jwt-auth.guard";
 import { ComplySaCompaniesService } from "./companies.service";
-import { ComplySaCompany } from "./entities/company.entity";
 
 @ApiTags("comply-sa/companies")
 @ApiBearerAuth()
@@ -18,10 +18,7 @@ export class ComplySaCompaniesController {
   }
 
   @Patch("profile")
-  async updateProfile(
-    @Req() req: { user: { companyId: number } },
-    @Body() data: Partial<ComplySaCompany>,
-  ) {
+  async updateProfile(@Req() req: { user: { companyId: number } }, @Body() data: Partial<Company>) {
     return this.companiesService.updateProfile(req.user.companyId, data);
   }
 }
