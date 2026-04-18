@@ -150,6 +150,9 @@ function currentCronToPresetValue(cronTime: string): string {
 function JobRow(props: { job: ScheduledJobDto }) {
   const job = props.job;
 
+  const [pendingCron, setPendingCron] = useState<string | null>(null);
+  const [pendingNightSuspension, setPendingNightSuspension] = useState<string | null>(null);
+
   const pauseMutation = usePauseJob();
   const resumeMutation = useResumeJob();
   const frequencyMutation = useUpdateJobFrequency();
@@ -171,10 +174,12 @@ function JobRow(props: { job: ScheduledJobDto }) {
   };
 
   const handleFrequencyChange = (newCron: string) => {
+    setPendingCron(newCron);
     frequencyMutation.mutate({ name: job.name, cronExpression: newCron });
   };
 
   const handleNightSuspensionChange = (value: string) => {
+    setPendingNightSuspension(value);
     const hours: NightSuspensionHours = value === "none" ? null : (Number(value) as 6 | 8 | 12);
     nightSuspensionMutation.mutate({ name: job.name, nightSuspensionHours: hours });
   };
@@ -184,12 +189,19 @@ function JobRow(props: { job: ScheduledJobDto }) {
     ? moduleColorEntry
     : "bg-gray-100 text-gray-700 dark:bg-gray-700/50 dark:text-gray-300";
 
-  const currentValue = currentCronToPresetValue(job.cronTime);
+  const serverCronValue = currentCronToPresetValue(job.cronTime);
+  const currentValue = frequencyIsPending && pendingCron !== null ? pendingCron : serverCronValue;
   const isCustomCron = !PRESET_FREQUENCIES.some((p) => p.value === currentValue);
   const defaultValue = job.defaultCron ? normalizeCronToFiveField(job.defaultCron) : null;
   const isOverridden = defaultValue ? currentValue !== defaultValue : false;
 
-  const nightSuspensionValue = job.nightSuspensionHours ? String(job.nightSuspensionHours) : "none";
+  const serverNightSuspensionValue = job.nightSuspensionHours
+    ? String(job.nightSuspensionHours)
+    : "none";
+  const nightSuspensionValue =
+    nightSuspensionIsPending && pendingNightSuspension !== null
+      ? pendingNightSuspension
+      : serverNightSuspensionValue;
 
   return (
     <tr className="hover:bg-gray-50 dark:hover:bg-slate-700/30">
