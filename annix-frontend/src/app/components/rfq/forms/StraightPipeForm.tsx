@@ -1530,51 +1530,39 @@ function StraightPipeFormComponent({
                                     );
                                   }
 
-                                  const rawFlangeTypeCode6 = globalSpecs?.flangeTypeCode;
-
                                   const effectiveFlangeTypeCode =
-                                    rawFlangeTypeCode6 || recommendedFlangeTypeCode(newConfig);
-
-                                  const rawFlangeStandardId8 = specs.flangeStandardId;
-
-                                  const flangeStandardId =
-                                    rawFlangeStandardId8 || globalSpecs?.flangeStandardId;
-                                  const flangeStandard = masterData.flangeStandards?.find(
-                                    (s: FlangeStandardItem) => s.id === flangeStandardId,
-                                  );
-                                  const rawCode3 = flangeStandard?.code;
-                                  const flangeCode = rawCode3 || "";
-                                  const isSabs1123 =
-                                    flangeCode.includes("SABS 1123") ||
-                                    flangeCode.includes("SANS 1123");
-
-                                  const rawWorkingPressureBar10 = specs.workingPressureBar;
-
-                                  const workingPressure =
-                                    rawWorkingPressureBar10 || globalSpecs?.workingPressureBar || 0;
-                                  const rawFlangeStandardId9 =
-                                    pressureClassesByStandard[flangeStandardId];
-                                  let availableClasses = flangeStandardId
-                                    ? rawFlangeStandardId9 || []
+                                    globalSpecs?.flangeTypeCode ||
+                                    recommendedFlangeTypeCode(newConfig);
+                                  const flangeStdId =
+                                    specs.flangeStandardId || globalSpecs?.flangeStandardId;
+                                  const flangeStdCode =
+                                    masterData.flangeStandards?.find(
+                                      (s: FlangeStandardItem) => s.id === flangeStdId,
+                                    )?.code || "";
+                                  const wp =
+                                    specs.workingPressureBar ||
+                                    globalSpecs?.workingPressureBar ||
+                                    0;
+                                  let availableClasses = flangeStdId
+                                    ? pressureClassesByStandard[flangeStdId] || []
                                     : [];
-                                  if (availableClasses.length === 0) {
+                                  if (availableClasses.length === 0 && flangeStdId) {
                                     availableClasses =
                                       masterData.pressureClasses?.filter(
                                         (pc: PressureClassItem) =>
-                                          pc.flangeStandardId === flangeStandardId ||
-                                          pc.standardId === flangeStandardId,
+                                          pc.flangeStandardId === flangeStdId ||
+                                          pc.standardId === flangeStdId,
                                       ) || [];
                                   }
-                                  const rawFlangePressureClassId4 = specs.flangePressureClassId;
                                   const newPressureClassId =
-                                    workingPressure > 0 && availableClasses.length > 0
+                                    wp > 0 && availableClasses.length > 0
                                       ? recommendedPressureClassId(
-                                          workingPressure,
+                                          wp,
                                           availableClasses,
-                                          flangeCode,
+                                          flangeStdCode,
                                           effectiveFlangeTypeCode,
                                         )
-                                      : rawFlangePressureClassId4 ||
+                                      : specs.flangePressureClassId ||
                                         globalSpecs?.flangePressureClassId;
 
                                   const updatedEntry: any = {

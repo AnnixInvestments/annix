@@ -19,7 +19,6 @@ import { masterDataApi } from "@/app/lib/api/client";
 import {
   allowedBendTypes,
   BEND_END_OPTIONS,
-  BS_4504_PRESSURE_CLASSES,
   FITTING_CLASS_WALL_THICKNESS,
   FITTING_END_OPTIONS,
   fittingFlangeConfig as getFittingFlangeConfig,
@@ -28,7 +27,6 @@ import {
   isNominalBoreValidForSpec,
   MAX_BEND_DEGREES,
   MIN_BEND_DEGREES,
-  SABS_1123_PRESSURE_CLASSES,
   SABS719_BEND_TYPES,
   STEEL_SPEC_NB_FALLBACK,
   scheduleListForSpec,
@@ -38,12 +36,7 @@ import {
 } from "@/app/lib/config/rfq";
 import { FlangeSpecData, fetchFlangeSpecsStatic } from "@/app/lib/hooks/useFlangeSpecs";
 import { log } from "@/app/lib/logger";
-import {
-  flangeTypesForStandardCode,
-  useAllFlangeTypes,
-  useAllFlangeTypeWeights,
-  useNbToOdMap,
-} from "@/app/lib/query/hooks";
+import { useAllFlangeTypes, useAllFlangeTypeWeights, useNbToOdMap } from "@/app/lib/query/hooks";
 import type { GlobalSpecs, MasterData } from "@/app/lib/types/rfqTypes";
 import {
   calculateMinWallThickness,
@@ -2007,48 +2000,6 @@ function BendFormComponent(props: BendFormProps) {
             {/* Flange Configuration Row - 4 columns (matching Pipes form) */}
             <div className="bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-lg p-3 mt-3">
               {(() => {
-                const rawFlangeStandardId2 = specs.flangeStandardId;
-                const effectiveStandardId = rawFlangeStandardId2 || globalSpecs?.flangeStandardId;
-                const rawFlangeTypeCode2 = specs.flangeTypeCode;
-                const effectiveFlangeTypeCode = rawFlangeTypeCode2 || globalSpecs?.flangeTypeCode;
-                const normalizedFlangeTypeCode = effectiveFlangeTypeCode?.replace(/^\//, "") || "";
-                const selectedStandard = masterData.flangeStandards?.find(
-                  (fs: FlangeStandardItem) => fs.id === effectiveStandardId,
-                );
-                const standardCode = selectedStandard?.code?.toUpperCase() || "";
-                const isSabs1123 =
-                  (standardCode.includes("SABS") || standardCode.includes("SANS")) &&
-                  standardCode.includes("1123");
-                const isBs4504 =
-                  (standardCode.includes("BS") && standardCode.includes("4504")) ||
-                  (standardCode.includes("EN") &&
-                    (standardCode.includes("1092") || standardCode.includes("10921")));
-                const showFlangeType = isSabs1123 || isBs4504;
-                const flangeTypes = isSabs1123
-                  ? flangeTypesForStandardCode(allFlangeTypes, "SABS 1123") || []
-                  : flangeTypesForStandardCode(allFlangeTypes, "BS 4504") || [];
-                const pressureClasses = isSabs1123
-                  ? SABS_1123_PRESSURE_CLASSES
-                  : BS_4504_PRESSURE_CLASSES;
-
-                const globalClass = masterData.pressureClasses?.find(
-                  (p: PressureClassItem) => p.id === globalSpecs?.flangePressureClassId,
-                );
-                const globalBasePressure = globalClass?.designation?.replace(/\/\d+$/, "") || "";
-                const targetDesignationForGlobal =
-                  normalizedFlangeTypeCode && globalBasePressure
-                    ? `${globalBasePressure}/${normalizedFlangeTypeCode}`
-                    : null;
-                const matchingClassForGlobal = targetDesignationForGlobal
-                  ? masterData.pressureClasses?.find(
-                      (pc: PressureClassItem) => pc.designation === targetDesignationForGlobal,
-                    )
-                  : null;
-                const rawFlangePressureClassId2 = specs.flangePressureClassId;
-                const effectivePressureClassId =
-                  rawFlangePressureClassId2 ||
-                  matchingClassForGlobal?.id ||
-                  globalSpecs?.flangePressureClassId;
                 const rawBendEndConfiguration2 = specs.bendEndConfiguration;
                 const bendEndConfig = rawBendEndConfiguration2 || "PE";
                 const configUpper = bendEndConfig.toUpperCase();
@@ -2065,21 +2016,6 @@ function BendFormComponent(props: BendFormProps) {
                 ];
                 const rawBlankFlangePositions = specs.blankFlangePositions;
                 const currentBlankPositions = rawBlankFlangePositions || [];
-
-                const isStandardFromGlobal =
-                  globalSpecs?.flangeStandardId &&
-                  effectiveStandardId === globalSpecs?.flangeStandardId;
-                const effectiveClass = masterData.pressureClasses?.find(
-                  (p: PressureClassItem) => p.id === effectivePressureClassId,
-                );
-                const effectiveBasePressure =
-                  effectiveClass?.designation?.replace(/\/\d+$/, "") || "";
-                const isClassFromGlobal =
-                  globalSpecs?.flangePressureClassId &&
-                  effectiveBasePressure === globalBasePressure;
-                const isTypeFromGlobal =
-                  globalSpecs?.flangeTypeCode &&
-                  effectiveFlangeTypeCode === globalSpecs?.flangeTypeCode;
 
                 return (
                   <>
@@ -3193,124 +3129,6 @@ function BendFormComponent(props: BendFormProps) {
                 {(rawNumberOfStubs9 || 0) >= 1 && (
                   <div className="mt-2 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-lg px-3 py-2">
                     {(() => {
-                      const rawFlangeStandardId3 = stub0.flangeStandardId;
-                      const effectiveStandardId =
-                        rawFlangeStandardId3 || globalSpecs?.flangeStandardId;
-                      const rawFlangeTypeCode3 = stub0.flangeTypeCode;
-                      const effectiveFlangeTypeCode =
-                        rawFlangeTypeCode3 || globalSpecs?.flangeTypeCode;
-                      const normalizedFlangeTypeCode =
-                        effectiveFlangeTypeCode?.replace(/^\//, "") || "";
-                      const selectedStandard = masterData.flangeStandards?.find(
-                        (fs: FlangeStandardItem) => fs.id === effectiveStandardId,
-                      );
-                      const isSabs1123 =
-                        selectedStandard?.code?.toUpperCase().includes("SABS") &&
-                        selectedStandard?.code?.includes("1123");
-                      const isBs4504 =
-                        selectedStandard?.code?.toUpperCase().includes("BS") &&
-                        selectedStandard?.code?.includes("4504");
-                      const showFlangeType = isSabs1123 || isBs4504;
-                      const flangeTypes = isSabs1123
-                        ? flangeTypesForStandardCode(allFlangeTypes, "SABS 1123") || []
-                        : flangeTypesForStandardCode(allFlangeTypes, "BS 4504") || [];
-                      const pressureClasses = isSabs1123
-                        ? SABS_1123_PRESSURE_CLASSES
-                        : BS_4504_PRESSURE_CLASSES;
-
-                      const stub1GlobalClass = masterData.pressureClasses?.find(
-                        (p: PressureClassItem) => p.id === globalSpecs?.flangePressureClassId,
-                      );
-                      const stub1GlobalBasePressure =
-                        stub1GlobalClass?.designation?.replace(/\/\d+$/, "") || "";
-                      const stub1TargetDesignation =
-                        normalizedFlangeTypeCode && stub1GlobalBasePressure
-                          ? `${stub1GlobalBasePressure}/${normalizedFlangeTypeCode}`
-                          : null;
-                      const stub1MatchingClass = stub1TargetDesignation
-                        ? masterData.pressureClasses?.find(
-                            (pc: PressureClassItem) => pc.designation === stub1TargetDesignation,
-                          )
-                        : null;
-                      const rawFlangePressureClassId3 = stub0.flangePressureClassId;
-                      const effectivePressureClassId =
-                        rawFlangePressureClassId3 ||
-                        stub1MatchingClass?.id ||
-                        globalSpecs?.flangePressureClassId;
-
-                      const rawFlangeStandardId4 = stub0.flangeStandardId;
-
-                      const stub1EffectiveStandardId =
-                        rawFlangeStandardId4 || globalSpecs?.flangeStandardId;
-                      const stub1EffectiveClassId = effectivePressureClassId;
-                      const rawFlangeTypeCode4 = stub0.flangeTypeCode;
-                      const stub1EffectiveTypeCode =
-                        rawFlangeTypeCode4 || globalSpecs?.flangeTypeCode;
-                      const stub1EffectiveClass = masterData.pressureClasses?.find(
-                        (p: PressureClassItem) => p.id === stub1EffectiveClassId,
-                      );
-                      const stub1EffectiveBasePressure =
-                        stub1EffectiveClass?.designation?.replace(/\/\d+$/, "") || "";
-                      const isStandardFromGlobal =
-                        globalSpecs?.flangeStandardId &&
-                        stub1EffectiveStandardId === globalSpecs?.flangeStandardId &&
-                        !stub0.flangeStandardId;
-                      const isClassFromGlobal =
-                        globalSpecs?.flangePressureClassId &&
-                        stub1EffectiveBasePressure === stub1GlobalBasePressure &&
-                        !stub0.flangePressureClassId;
-                      const isTypeFromGlobal =
-                        globalSpecs?.flangeTypeCode &&
-                        stub1EffectiveTypeCode === globalSpecs?.flangeTypeCode &&
-                        !stub0.flangeTypeCode;
-                      const isStandardOverride =
-                        stub0.flangeStandardId &&
-                        stub0.flangeStandardId !== globalSpecs?.flangeStandardId;
-                      const isClassOverride =
-                        stub0.flangePressureClassId &&
-                        stub1EffectiveBasePressure !== stub1GlobalBasePressure;
-                      const isTypeOverride =
-                        stub0.flangeTypeCode &&
-                        stub0.flangeTypeCode !== globalSpecs?.flangeTypeCode;
-
-                      const stub1SelectedStandard = masterData.flangeStandards?.find(
-                        (s: FlangeStandardItem) => s.id === stub1EffectiveStandardId,
-                      );
-                      const stub1StandardCode = stub1SelectedStandard?.code?.toUpperCase() || "";
-                      const stub1IsSabs1123 =
-                        (stub1StandardCode.includes("SABS") ||
-                          stub1StandardCode.includes("SANS")) &&
-                        stub1StandardCode.includes("1123");
-                      const stub1IsBs4504 =
-                        (stub1StandardCode.includes("BS") && stub1StandardCode.includes("4504")) ||
-                        (stub1StandardCode.includes("EN") &&
-                          (stub1StandardCode.includes("1092") ||
-                            stub1StandardCode.includes("10921")));
-                      const stub1SelectedClass = masterData.pressureClasses?.find(
-                        (pc: PressureClassItem) => pc.id === stub1EffectiveClassId,
-                      );
-                      const stub1PressureClassRatingRaw = stub1SelectedClass?.designation
-                        ? parseInt(stub1SelectedClass.designation.replace(/[^\d]/g, ""), 10)
-                        : 0;
-                      const rawWorkingPressureBar8 = specs.workingPressureBar;
-                      const stub1WorkingPressureBar =
-                        rawWorkingPressureBar8 || globalSpecs?.workingPressureBar || 0;
-                      const stub1IsPressureClassUnsuitable =
-                        stub1EffectiveClassId &&
-                        stub1WorkingPressureBar > 0 &&
-                        stub1PressureClassRatingRaw > 0 &&
-                        ((stub1IsSabs1123 &&
-                          stub1PressureClassRatingRaw < stub1WorkingPressureBar * 100) ||
-                          (stub1IsBs4504 && stub1PressureClassRatingRaw < stub1WorkingPressureBar));
-                      const globalSelectClass =
-                        "w-full px-2 py-1.5 border-2 rounded text-xs text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-green-500 dark:border-lime-400";
-                      const overrideSelectClass =
-                        "w-full px-2 py-1.5 border-2 rounded text-xs text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-yellow-500 dark:border-yellow-400";
-                      const unsuitableSelectClass =
-                        "w-full px-2 py-1.5 border-2 rounded text-xs text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-red-500 dark:border-red-400";
-                      const defaultSelectClass =
-                        "w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800";
-                      const rawVal2 = pressureClassesByStandard[effectiveStandardId || 0];
                       const rawHasBlankFlange = stub0.hasBlankFlange;
                       const rawNominalBoreMm6 = stub0.nominalBoreMm;
                       return (
@@ -3742,127 +3560,6 @@ function BendFormComponent(props: BendFormProps) {
                     {/* Stub 2 Flange - matching Stub 1 layout */}
                     <div className="mt-2 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-lg px-3 py-2">
                       {(() => {
-                        const rawFlangeStandardId5 = stub1.flangeStandardId;
-                        const effectiveStandardId =
-                          rawFlangeStandardId5 || globalSpecs?.flangeStandardId;
-                        const rawFlangeTypeCode5 = stub1.flangeTypeCode;
-                        const effectiveFlangeTypeCode =
-                          rawFlangeTypeCode5 || globalSpecs?.flangeTypeCode;
-                        const normalizedFlangeTypeCode =
-                          effectiveFlangeTypeCode?.replace(/^\//, "") || "";
-                        const selectedStandard = masterData.flangeStandards?.find(
-                          (fs: FlangeStandardItem) => fs.id === effectiveStandardId,
-                        );
-                        const isSabs1123 =
-                          selectedStandard?.code?.toUpperCase().includes("SABS") &&
-                          selectedStandard?.code?.includes("1123");
-                        const isBs4504 =
-                          selectedStandard?.code?.toUpperCase().includes("BS") &&
-                          selectedStandard?.code?.includes("4504");
-                        const showFlangeType = isSabs1123 || isBs4504;
-                        const flangeTypes = isSabs1123
-                          ? flangeTypesForStandardCode(allFlangeTypes, "SABS 1123") || []
-                          : flangeTypesForStandardCode(allFlangeTypes, "BS 4504") || [];
-                        const pressureClasses = isSabs1123
-                          ? SABS_1123_PRESSURE_CLASSES
-                          : BS_4504_PRESSURE_CLASSES;
-
-                        const stub2GlobalClass = masterData.pressureClasses?.find(
-                          (p: PressureClassItem) => p.id === globalSpecs?.flangePressureClassId,
-                        );
-                        const stub2GlobalBasePressure =
-                          stub2GlobalClass?.designation?.replace(/\/\d+$/, "") || "";
-                        const stub2TargetDesignation =
-                          normalizedFlangeTypeCode && stub2GlobalBasePressure
-                            ? `${stub2GlobalBasePressure}/${normalizedFlangeTypeCode}`
-                            : null;
-                        const stub2MatchingClass = stub2TargetDesignation
-                          ? masterData.pressureClasses?.find(
-                              (pc: PressureClassItem) => pc.designation === stub2TargetDesignation,
-                            )
-                          : null;
-                        const rawFlangePressureClassId4 = stub1.flangePressureClassId;
-                        const effectivePressureClassId =
-                          rawFlangePressureClassId4 ||
-                          stub2MatchingClass?.id ||
-                          globalSpecs?.flangePressureClassId;
-
-                        const rawFlangeStandardId6 = stub1.flangeStandardId;
-
-                        const stub2EffectiveStandardId =
-                          rawFlangeStandardId6 || globalSpecs?.flangeStandardId;
-                        const stub2EffectiveClassId = effectivePressureClassId;
-                        const rawFlangeTypeCode6 = stub1.flangeTypeCode;
-                        const stub2EffectiveTypeCode =
-                          rawFlangeTypeCode6 || globalSpecs?.flangeTypeCode;
-                        const stub2EffectiveClass = masterData.pressureClasses?.find(
-                          (p: PressureClassItem) => p.id === stub2EffectiveClassId,
-                        );
-                        const stub2EffectiveBasePressure =
-                          stub2EffectiveClass?.designation?.replace(/\/\d+$/, "") || "";
-                        const isStandardFromGlobal =
-                          globalSpecs?.flangeStandardId &&
-                          stub2EffectiveStandardId === globalSpecs?.flangeStandardId &&
-                          !stub1.flangeStandardId;
-                        const isClassFromGlobal =
-                          globalSpecs?.flangePressureClassId &&
-                          stub2EffectiveBasePressure === stub2GlobalBasePressure &&
-                          !stub1.flangePressureClassId;
-                        const isTypeFromGlobal =
-                          globalSpecs?.flangeTypeCode &&
-                          stub2EffectiveTypeCode === globalSpecs?.flangeTypeCode &&
-                          !stub1.flangeTypeCode;
-                        const isStandardOverride =
-                          stub1.flangeStandardId &&
-                          stub1.flangeStandardId !== globalSpecs?.flangeStandardId;
-                        const isClassOverride =
-                          stub1.flangePressureClassId &&
-                          stub2EffectiveBasePressure !== stub2GlobalBasePressure;
-                        const isTypeOverride =
-                          stub1.flangeTypeCode &&
-                          stub1.flangeTypeCode !== globalSpecs?.flangeTypeCode;
-
-                        const stub2SelectedStandard = masterData.flangeStandards?.find(
-                          (s: FlangeStandardItem) => s.id === stub2EffectiveStandardId,
-                        );
-                        const stub2StandardCode = stub2SelectedStandard?.code?.toUpperCase() || "";
-                        const stub2IsSabs1123 =
-                          (stub2StandardCode.includes("SABS") ||
-                            stub2StandardCode.includes("SANS")) &&
-                          stub2StandardCode.includes("1123");
-                        const stub2IsBs4504 =
-                          (stub2StandardCode.includes("BS") &&
-                            stub2StandardCode.includes("4504")) ||
-                          (stub2StandardCode.includes("EN") &&
-                            (stub2StandardCode.includes("1092") ||
-                              stub2StandardCode.includes("10921")));
-                        const stub2SelectedClass = masterData.pressureClasses?.find(
-                          (pc: PressureClassItem) => pc.id === stub2EffectiveClassId,
-                        );
-                        const stub2PressureClassRatingRaw = stub2SelectedClass?.designation
-                          ? parseInt(stub2SelectedClass.designation.replace(/[^\d]/g, ""), 10)
-                          : 0;
-                        const rawWorkingPressureBar9 = specs.workingPressureBar;
-                        const stub2WorkingPressureBar =
-                          rawWorkingPressureBar9 || globalSpecs?.workingPressureBar || 0;
-                        const stub2IsPressureClassUnsuitable =
-                          stub2EffectiveClassId &&
-                          stub2WorkingPressureBar > 0 &&
-                          stub2PressureClassRatingRaw > 0 &&
-                          ((stub2IsSabs1123 &&
-                            stub2PressureClassRatingRaw < stub2WorkingPressureBar * 100) ||
-                            (stub2IsBs4504 &&
-                              stub2PressureClassRatingRaw < stub2WorkingPressureBar));
-
-                        const globalSelectClass =
-                          "w-full px-2 py-1.5 border-2 rounded text-xs text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-green-500 dark:border-lime-400";
-                        const overrideSelectClass =
-                          "w-full px-2 py-1.5 border-2 rounded text-xs text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-yellow-500 dark:border-yellow-400";
-                        const unsuitableSelectClass =
-                          "w-full px-2 py-1.5 border-2 rounded text-xs text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-red-500 dark:border-red-400";
-                        const defaultSelectClass =
-                          "w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800";
-                        const rawVal3 = pressureClassesByStandard[effectiveStandardId || 0];
                         const rawHasBlankFlange2 = stub1.hasBlankFlange;
                         const rawNominalBoreMm8 = stub1.nominalBoreMm;
                         return (

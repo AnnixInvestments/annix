@@ -59,7 +59,6 @@ import {
   calculatePipeWeightPerMeter,
   getMinWallThicknessForNB,
 } from "@/app/lib/utils/pipeCalculations";
-import { validatePressureClass } from "@/app/lib/utils/pressureClassValidation";
 import {
   calculateBlankFlangeWeight,
   flangeWeightOr,
@@ -1982,94 +1981,10 @@ function FittingFormComponent({
               </div>
 
               {(() => {
-                const selectedStandard = masterData.flangeStandards?.find(
-                  (fs: FlangeStandardItem) => {
-                    const rawFlangeStandardId2 = specs.flangeStandardId;
-                    return fs.id === (rawFlangeStandardId2 || globalSpecs?.flangeStandardId);
-                  },
-                );
-                const isSabs1123 =
-                  selectedStandard?.code?.toUpperCase().includes("SABS") &&
-                  selectedStandard?.code?.includes("1123");
-                const isBs4504 =
-                  selectedStandard?.code?.toUpperCase().includes("BS") &&
-                  selectedStandard?.code?.includes("4504");
-                const hasThreeDropdowns = isSabs1123 || isBs4504;
-
-                const rawFlangeStandardId3 = specs.flangeStandardId;
-
-                const effectiveStandardId = rawFlangeStandardId3 || globalSpecs?.flangeStandardId;
-                const rawFlangeTypeCode2 = specs.flangeTypeCode;
-                const effectiveTypeCode = rawFlangeTypeCode2 || globalSpecs?.flangeTypeCode;
-                const normalizedTypeCode = effectiveTypeCode?.replace(/^\//, "") || "";
-
-                const globalClass = masterData.pressureClasses?.find(
-                  (p: PressureClassItem) => p.id === globalSpecs?.flangePressureClassId,
-                );
-                const globalBasePressure = globalClass?.designation?.replace(/\/\d+$/, "") || "";
-                const targetDesignationForGlobal =
-                  normalizedTypeCode && globalBasePressure
-                    ? `${globalBasePressure}/${normalizedTypeCode}`
-                    : null;
-                const matchingClassForGlobal = targetDesignationForGlobal
-                  ? masterData.pressureClasses?.find(
-                      (pc: PressureClassItem) => pc.designation === targetDesignationForGlobal,
-                    )
-                  : null;
-                const rawFlangePressureClassId2 = specs.flangePressureClassId;
-                const effectiveClassId =
-                  rawFlangePressureClassId2 ||
-                  matchingClassForGlobal?.id ||
-                  globalSpecs?.flangePressureClassId;
-
-                const isStandardFromGlobal =
-                  globalSpecs?.flangeStandardId &&
-                  effectiveStandardId === globalSpecs?.flangeStandardId;
-                const isStandardOverride =
-                  globalSpecs?.flangeStandardId &&
-                  effectiveStandardId !== globalSpecs?.flangeStandardId;
-                const effectiveClass = masterData.pressureClasses?.find(
-                  (p: PressureClassItem) => p.id === effectiveClassId,
-                );
-                const effectiveBasePressure =
-                  effectiveClass?.designation?.replace(/\/\d+$/, "") || "";
-                const isClassFromGlobal =
-                  globalSpecs?.flangePressureClassId &&
-                  effectiveBasePressure === globalBasePressure;
-                const isClassOverride =
-                  globalSpecs?.flangePressureClassId &&
-                  effectiveBasePressure !== globalBasePressure;
-                const isTypeFromGlobal =
-                  globalSpecs?.flangeTypeCode && effectiveTypeCode === globalSpecs?.flangeTypeCode;
-                const isTypeOverride =
-                  globalSpecs?.flangeTypeCode && effectiveTypeCode !== globalSpecs?.flangeTypeCode;
-
                 const rawWorkingPressureBar3 = specs.workingPressureBar;
-
                 const workingPressureBar =
                   rawWorkingPressureBar3 || globalSpecs?.workingPressureBar || 0;
-                const selectedPressureClass = masterData.pressureClasses?.find(
-                  (pc: PressureClassItem) => pc.id === effectiveClassId,
-                );
-                const pressureClassValidation = validatePressureClass(
-                  selectedStandard?.code,
-                  selectedPressureClass?.designation,
-                  workingPressureBar,
-                );
-                const isPressureClassUnsuitable = pressureClassValidation.isUnsuitable;
-
-                const globalSelectClass =
-                  "w-full px-2 py-1.5 border-2 rounded text-xs focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-green-500 dark:border-green-400";
-                const overrideSelectClass =
-                  "w-full px-2 py-1.5 border-2 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-orange-500 dark:border-orange-400";
-                const unsuitableSelectClass =
-                  "w-full px-2 py-1.5 border-2 rounded text-xs focus:outline-none focus:ring-1 focus:ring-red-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-red-500 dark:border-red-400";
-                const defaultSelectClass =
-                  "w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800";
-
                 const rawPipeEndConfiguration2 = specs.pipeEndConfiguration;
-
-                // Get flange configuration for blank flange options
                 const fittingEndConfig = rawPipeEndConfiguration2 || "PE";
                 const fittingFlangeConfig = getFittingFlangeConfig(
                   fittingEndConfig,
@@ -2085,12 +2000,12 @@ function FittingFormComponent({
                   ? [
                       {
                         key: "large",
-                        label: "Large",
+                        label: "Large End",
                         hasFlange: reducerFlangeConfigVal.hasLargeEnd,
                       },
                       {
                         key: "small",
-                        label: "Small",
+                        label: "Small End",
                         hasFlange: reducerFlangeConfigVal.hasSmallEnd,
                       },
                     ].filter((p) => p.hasFlange)
@@ -2101,8 +2016,9 @@ function FittingFormComponent({
                     ].filter((p) => p.hasFlange);
                 const rawBlankFlangePositions = specs.blankFlangePositions;
                 const currentBlankPositions = rawBlankFlangePositions || [];
-
                 const rawPipeEndConfiguration3 = specs.pipeEndConfiguration;
+                const defaultSelectClass =
+                  "w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800";
 
                 return (
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
@@ -2194,43 +2110,36 @@ function FittingFormComponent({
                           } catch (error) {
                             log.warn("Could not get pipe end configuration details:", error);
                           }
-                          const rawFlangeTypeCode4 = globalSpecs?.flangeTypeCode;
                           const effectiveFlangeTypeCode =
-                            rawFlangeTypeCode4 || recommendedFlangeTypeCode(newConfig);
-                          const rawFlangeStandardId6 = specs.flangeStandardId;
-                          const flangeStandardIdLocal =
-                            rawFlangeStandardId6 || globalSpecs?.flangeStandardId;
-                          const flangeStandardLocal = masterData.flangeStandards?.find(
-                            (s: FlangeStandardItem) => s.id === flangeStandardIdLocal,
-                          );
-                          const rawCode = flangeStandardLocal?.code;
-                          const flangeCodeLocal = rawCode || "";
-                          const rawWorkingPressureBar4 = specs.workingPressureBar;
-                          const workingPressureLocal =
-                            rawWorkingPressureBar4 || globalSpecs?.workingPressureBar || 0;
-                          const rawFlangeStandardIdLocal =
-                            pressureClassesByStandard[flangeStandardIdLocal];
-                          let availableClasses = flangeStandardIdLocal
-                            ? rawFlangeStandardIdLocal || []
+                            globalSpecs?.flangeTypeCode || recommendedFlangeTypeCode(newConfig);
+                          const flangeStdId =
+                            specs.flangeStandardId || globalSpecs?.flangeStandardId;
+                          const flangeStdCode =
+                            masterData.flangeStandards?.find(
+                              (s: FlangeStandardItem) => s.id === flangeStdId,
+                            )?.code || "";
+                          const wp =
+                            specs.workingPressureBar || globalSpecs?.workingPressureBar || 0;
+                          let availableClasses = flangeStdId
+                            ? pressureClassesByStandard[flangeStdId] || []
                             : [];
-                          if (availableClasses.length === 0) {
+                          if (availableClasses.length === 0 && flangeStdId) {
                             availableClasses =
                               masterData.pressureClasses?.filter(
                                 (pc: PressureClassItem) =>
-                                  pc.flangeStandardId === flangeStandardIdLocal ||
-                                  pc.standardId === flangeStandardIdLocal,
+                                  pc.flangeStandardId === flangeStdId ||
+                                  pc.standardId === flangeStdId,
                               ) || [];
                           }
-                          const rawFlangePressureClassId5 = specs.flangePressureClassId;
                           const newPressureClassId =
-                            workingPressureLocal > 0 && availableClasses.length > 0
+                            wp > 0 && availableClasses.length > 0
                               ? recommendedPressureClassId(
-                                  workingPressureLocal,
+                                  wp,
                                   availableClasses,
-                                  flangeCodeLocal,
+                                  flangeStdCode,
                                   effectiveFlangeTypeCode,
                                 )
-                              : rawFlangePressureClassId5 || globalSpecs?.flangePressureClassId;
+                              : specs.flangePressureClassId || globalSpecs?.flangePressureClassId;
                           const updatedEntry: any = {
                             specs: {
                               ...entry.specs,
