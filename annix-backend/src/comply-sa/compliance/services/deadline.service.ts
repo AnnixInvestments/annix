@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { Company } from "../../../platform/entities/company.entity";
+import { ComplySaCompanyDetails } from "../../companies/entities/comply-sa-company-details.entity";
 import { DateTime, fromISO, now } from "../../lib/datetime";
 import { ComplySaComplianceRequirement } from "../entities/compliance-requirement.entity";
 
@@ -37,7 +38,11 @@ type DeadlineRule =
 
 @Injectable()
 export class ComplySaDeadlineService {
-  calculateNextDueDate(requirement: ComplySaComplianceRequirement, company: Company): Date | null {
+  calculateNextDueDate(
+    requirement: ComplySaComplianceRequirement,
+    company: Company,
+    details?: ComplySaCompanyDetails | null,
+  ): Date | null {
     if (requirement.deadlineRule === null) {
       return null;
     }
@@ -54,7 +59,7 @@ export class ComplySaDeadlineService {
     } else if (rule.type === "fixed_dates") {
       return this.fixedDates(rule, today);
     } else if (rule.type === "bi_monthly") {
-      return this.biMonthly(rule, today, company);
+      return this.biMonthly(rule, today, details);
     } else {
       return null;
     }
@@ -111,8 +116,12 @@ export class ComplySaDeadlineService {
     return futureDates[0].toJSDate();
   }
 
-  private biMonthly(rule: BiMonthlyRule, today: DateTime, company: Company): Date {
-    const cycle = company.vatSubmissionCycle || "even";
+  private biMonthly(
+    rule: BiMonthlyRule,
+    today: DateTime,
+    details?: ComplySaCompanyDetails | null,
+  ): Date {
+    const cycle = details?.vatSubmissionCycle || "even";
     const isSubmissionMonth = cycle === "odd" ? today.month % 2 !== 0 : today.month % 2 === 0;
 
     const currentDay = today.set({ day: rule.day });

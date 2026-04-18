@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { Company } from "../../platform/entities/company.entity";
 import { ComplySaCompaniesModule } from "../companies/companies.module";
+import { ComplySaCompanyDetails } from "../companies/entities/comply-sa-company-details.entity";
 import { ComplySaDocument } from "../comply-documents/entities/document.entity";
 import { ComplySaComplianceController } from "./compliance.controller";
 import { ComplySaComplianceService } from "./compliance.service";
@@ -18,6 +19,7 @@ import { ComplySaRuleEngineService } from "./services/rule-engine.service";
       ComplySaComplianceStatus,
       ComplySaChecklistProgress,
       Company,
+      ComplySaCompanyDetails,
       ComplySaDocument,
     ]),
     ComplySaCompaniesModule,

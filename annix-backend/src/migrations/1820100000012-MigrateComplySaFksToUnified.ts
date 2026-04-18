@@ -1,7 +1,7 @@
 import type { MigrationInterface, QueryRunner } from "typeorm";
 
 export class MigrateComplySaFksToUnified1820100000012 implements MigrationInterface {
-  private readonly tables = [
+  private readonly companyIdTables = [
     "comply_sa_compliance_statuses",
     "comply_sa_compliance_checklist_progress",
     "comply_sa_documents",
@@ -12,81 +12,92 @@ export class MigrateComplySaFksToUnified1820100000012 implements MigrationInterf
   ];
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    for (const table of this.tables) {
+    for (const table of this.companyIdTables) {
       await queryRunner.query(`
-        ALTER TABLE ${table}
-          ADD COLUMN IF NOT EXISTS unified_company_id INT REFERENCES companies(id)
+        DO $$ BEGIN
+          ALTER TABLE ${table} DROP CONSTRAINT IF EXISTS "FK_${table}_company";
+        EXCEPTION WHEN undefined_object THEN NULL;
+        END $$
       `);
 
       await queryRunner.query(`
         UPDATE ${table} t
-        SET unified_company_id = c.id
+        SET company_id = c.id
         FROM companies c
         WHERE c.legacy_comply_company_id = t.company_id
-          AND t.unified_company_id IS NULL
+      `);
+
+      await queryRunner.query(`
+        ALTER TABLE ${table}
+          ADD CONSTRAINT "FK_${table}_company"
+          FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
       `);
     }
 
     await queryRunner.query(`
-      ALTER TABLE comply_sa_advisor_clients
-        ADD COLUMN IF NOT EXISTS unified_client_company_id INT REFERENCES companies(id),
-        ADD COLUMN IF NOT EXISTS unified_advisor_user_id INT REFERENCES "user"(id)
+      DO $$ BEGIN
+        ALTER TABLE comply_sa_advisor_clients
+          DROP CONSTRAINT IF EXISTS "FK_comply_sa_advisor_clients_company";
+      EXCEPTION WHEN undefined_object THEN NULL;
+      END $$
+    `);
+    await queryRunner.query(`
+      DO $$ BEGIN
+        ALTER TABLE comply_sa_advisor_clients
+          DROP CONSTRAINT IF EXISTS "FK_comply_sa_advisor_clients_user";
+      EXCEPTION WHEN undefined_object THEN NULL;
+      END $$
     `);
 
     await queryRunner.query(`
       UPDATE comply_sa_advisor_clients ac
-      SET unified_client_company_id = c.id
+      SET client_company_id = c.id
       FROM companies c
       WHERE c.legacy_comply_company_id = ac.client_company_id
-        AND ac.unified_client_company_id IS NULL
     `);
 
     await queryRunner.query(`
       UPDATE comply_sa_advisor_clients ac
-      SET unified_advisor_user_id = u.id
+      SET advisor_user_id = u.id
       FROM comply_sa_users csu
       JOIN "user" u ON LOWER(u.email) = LOWER(csu.email)
       WHERE csu.id = ac.advisor_user_id
-        AND ac.unified_advisor_user_id IS NULL
     `);
 
     await queryRunner.query(`
-      ALTER TABLE comply_sa_notifications
-        ADD COLUMN IF NOT EXISTS unified_user_id INT REFERENCES "user"(id)
+      ALTER TABLE comply_sa_advisor_clients
+        ADD CONSTRAINT "FK_comply_sa_advisor_clients_company"
+        FOREIGN KEY (client_company_id) REFERENCES companies(id) ON DELETE CASCADE,
+        ADD CONSTRAINT "FK_comply_sa_advisor_clients_user"
+        FOREIGN KEY (advisor_user_id) REFERENCES "user"(id) ON DELETE CASCADE
+    `);
+
+    await queryRunner.query(`
+      DO $$ BEGIN
+        ALTER TABLE comply_sa_notifications
+          DROP CONSTRAINT IF EXISTS "FK_comply_sa_notifications_user";
+      EXCEPTION WHEN undefined_object THEN NULL;
+      END $$
     `);
 
     await queryRunner.query(`
       UPDATE comply_sa_notifications n
-      SET unified_user_id = u.id
+      SET user_id = u.id
       FROM comply_sa_users csu
       JOIN "user" u ON LOWER(u.email) = LOWER(csu.email)
       WHERE csu.id = n.user_id
-        AND n.unified_user_id IS NULL
+        AND n.user_id IS NOT NULL
     `);
 
-    for (const table of this.tables) {
-      await queryRunner.query(`
-        DO $$ BEGIN
-          ALTER TABLE ${table} DROP CONSTRAINT IF EXISTS fk_${table}_legacy_company;
-        EXCEPTION WHEN undefined_object THEN NULL;
-        END $$
-      `);
-    }
+    await queryRunner.query(`
+      ALTER TABLE comply_sa_notifications
+        ADD CONSTRAINT "FK_comply_sa_notifications_user"
+        FOREIGN KEY (user_id) REFERENCES "user"(id) ON DELETE SET NULL
+    `);
   }
 
-  public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(
-      "ALTER TABLE comply_sa_notifications DROP COLUMN IF EXISTS unified_user_id",
-    );
-    await queryRunner.query(
-      "ALTER TABLE comply_sa_advisor_clients DROP COLUMN IF EXISTS unified_advisor_user_id",
-    );
-    await queryRunner.query(
-      "ALTER TABLE comply_sa_advisor_clients DROP COLUMN IF EXISTS unified_client_company_id",
-    );
-
-    for (const table of [...this.tables].reverse()) {
-      await queryRunner.query(`ALTER TABLE ${table} DROP COLUMN IF EXISTS unified_company_id`);
-    }
+  public async down(_queryRunner: QueryRunner): Promise<void> {
+    // Down migration not supported — legacy company/user IDs are not recoverable
+    // after the swap. Restore from backup if rollback is needed.
   }
 }

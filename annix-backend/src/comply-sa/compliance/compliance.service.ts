@@ -3,6 +3,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { In, Repository } from "typeorm";
 import { AuditService } from "../../audit/audit.service";
 import { Company } from "../../platform/entities/company.entity";
+import { ComplySaCompanyDetails } from "../companies/entities/comply-sa-company-details.entity";
 import { ComplySaDocument } from "../comply-documents/entities/document.entity";
 import { daysBetween, fromISO, fromJSDate, now } from "../lib/datetime";
 import { ComplySaChecklistProgress } from "./entities/checklist-progress.entity";
@@ -30,6 +31,8 @@ export class ComplySaComplianceService {
     private readonly checklistRepository: Repository<ComplySaChecklistProgress>,
     @InjectRepository(Company)
     private readonly companyRepository: Repository<Company>,
+    @InjectRepository(ComplySaCompanyDetails)
+    private readonly detailsRepository: Repository<ComplySaCompanyDetails>,
     @InjectRepository(ComplySaDocument)
     private readonly documentRepository: Repository<ComplySaDocument>,
     private readonly ruleEngineService: ComplySaRuleEngineService,
@@ -46,7 +49,11 @@ export class ComplySaComplianceService {
       throw new NotFoundException("Company not found");
     }
 
-    const matchedRequirements = await this.ruleEngineService.matchRequirements(company);
+    const details = await this.detailsRepository.findOne({
+      where: { companyId },
+    });
+
+    const matchedRequirements = await this.ruleEngineService.matchRequirements(company, details);
 
     const statuses = await Promise.all(
       matchedRequirements.map(async (requirement) => {
@@ -54,7 +61,11 @@ export class ComplySaComplianceService {
           where: { companyId, requirementId: requirement.id },
         });
 
-        const nextDueDate = this.deadlineService.calculateNextDueDate(requirement, company);
+        const nextDueDate = this.deadlineService.calculateNextDueDate(
+          requirement,
+          company,
+          details,
+        );
 
         if (existing !== null) {
           existing.nextDueDate = nextDueDate;
@@ -402,16 +413,17 @@ export class ComplySaComplianceService {
   }
 
   async updateVatSubmissionCycle(companyId: number, cycle: "odd" | "even"): Promise<void> {
-    const company = await this.companyRepository.findOne({
-      where: { id: companyId },
-    });
+    const [company, details] = await Promise.all([
+      this.companyRepository.findOne({ where: { id: companyId } }),
+      this.detailsRepository.findOne({ where: { companyId } }),
+    ]);
 
-    if (company === null || company.vatSubmissionCycle === cycle) {
+    if (company === null || details === null || details.vatSubmissionCycle === cycle) {
       return;
     }
 
-    company.vatSubmissionCycle = cycle;
-    await this.companyRepository.save(company);
+    details.vatSubmissionCycle = cycle;
+    await this.detailsRepository.save(details);
 
     this.logger.log(`Updated VAT submission cycle for company ${companyId} to ${cycle}`);
 
@@ -425,7 +437,11 @@ export class ComplySaComplianceService {
       });
 
       if (status !== null) {
-        const nextDueDate = this.deadlineService.calculateNextDueDate(vatRequirement, company);
+        const nextDueDate = this.deadlineService.calculateNextDueDate(
+          vatRequirement,
+          company,
+          details,
+        );
         status.nextDueDate = nextDueDate;
         await this.statusRepository.save(status);
       }

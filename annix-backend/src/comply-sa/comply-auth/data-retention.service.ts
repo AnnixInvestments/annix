@@ -4,6 +4,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { LessThan, Repository } from "typeorm";
 import { Company } from "../../platform/entities/company.entity";
 import { User } from "../../user/entities/user.entity";
+import { ComplySaCompanyDetails } from "../companies/entities/comply-sa-company-details.entity";
 import { now } from "../lib/datetime";
 
 const TAX_DATA_RETENTION_YEARS = 5;
@@ -19,6 +20,8 @@ export class ComplySaDataRetentionService {
     private readonly usersRepository: Repository<User>,
     @InjectRepository(Company)
     private readonly companiesRepository: Repository<Company>,
+    @InjectRepository(ComplySaCompanyDetails)
+    private readonly detailsRepository: Repository<ComplySaCompanyDetails>,
   ) {}
 
   @Cron("0 3 1 * *", {
@@ -37,14 +40,14 @@ export class ComplySaDataRetentionService {
         .minus({ years: DELETED_ACCOUNT_RETENTION_YEARS })
         .toJSDate();
 
-      const expiredTaxRecords = await this.companiesRepository.count({
+      const expiredTaxRecords = await this.detailsRepository.count({
         where: {
           createdAt: LessThan(taxCutoff),
           subscriptionStatus: "cancelled",
         },
       });
 
-      const expiredCompanyRecords = await this.companiesRepository.count({
+      const expiredCompanyRecords = await this.detailsRepository.count({
         where: {
           createdAt: LessThan(companyCutoff),
           subscriptionStatus: "cancelled",

@@ -3,10 +3,6 @@ import type { MigrationInterface, QueryRunner } from "typeorm";
 export class DropComplySaLegacyTables1820100000013 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query("DROP TABLE IF EXISTS comply_sa_audit_logs CASCADE");
-    await queryRunner.query("DROP TABLE IF EXISTS comply_sa_advisor_clients CASCADE");
-    await queryRunner.query("DROP TABLE IF EXISTS comply_sa_notification_preferences CASCADE");
-    await queryRunner.query("DROP TABLE IF EXISTS comply_sa_regulatory_updates CASCADE");
-    await queryRunner.query("DROP TABLE IF EXISTS comply_sa_government_documents CASCADE");
     await queryRunner.query("DROP TABLE IF EXISTS comply_sa_users CASCADE");
     await queryRunner.query("DROP TABLE IF EXISTS comply_sa_companies CASCADE");
   }
@@ -30,7 +26,6 @@ export class DropComplySaLegacyTables1820100000013 implements MigrationInterface
         profile_complete BOOLEAN NOT NULL DEFAULT false,
         subscription_tier VARCHAR(20) NOT NULL DEFAULT 'free',
         subscription_status VARCHAR(20) NOT NULL DEFAULT 'trial',
-        unified_company_id INT,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
@@ -50,6 +45,19 @@ export class DropComplySaLegacyTables1820100000013 implements MigrationInterface
         password_reset_expires_at TIMESTAMPTZ,
         terms_accepted_at TIMESTAMPTZ,
         terms_version VARCHAR(20),
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+
+    await queryRunner.query(`
+      CREATE TABLE IF NOT EXISTS comply_sa_audit_logs (
+        id SERIAL PRIMARY KEY,
+        company_id INT REFERENCES comply_sa_companies(id) ON DELETE CASCADE,
+        user_id INT,
+        action VARCHAR(50) NOT NULL,
+        entity_type VARCHAR(50),
+        entity_id INT,
+        details JSONB,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
     `);

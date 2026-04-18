@@ -4,6 +4,7 @@ import { Repository } from "typeorm";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { Company } from "../../platform/entities/company.entity";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
+import { ComplySaCompanyDetails } from "../companies/entities/comply-sa-company-details.entity";
 import { ComplySaComplianceRequirement } from "../compliance/entities/compliance-requirement.entity";
 import { ComplySaComplianceStatus } from "../compliance/entities/compliance-status.entity";
 import { formatDateZA, fromJSDate } from "../lib/datetime";
@@ -66,6 +67,8 @@ export class ComplySaAiService {
   constructor(
     @InjectRepository(Company)
     private readonly companyRepository: Repository<Company>,
+    @InjectRepository(ComplySaCompanyDetails)
+    private readonly detailsRepository: Repository<ComplySaCompanyDetails>,
     @InjectRepository(ComplySaComplianceStatus)
     private readonly statusRepository: Repository<ComplySaComplianceStatus>,
     @InjectRepository(ComplySaComplianceRequirement)
@@ -84,17 +87,20 @@ export class ComplySaAiService {
       throw new NotFoundException("Company not found");
     }
 
-    const statuses = await this.statusRepository.find({
-      where: { companyId },
-      relations: ["requirement"],
-    });
+    const [statuses, details] = await Promise.all([
+      this.statusRepository.find({
+        where: { companyId },
+        relations: ["requirement"],
+      }),
+      this.detailsRepository.findOne({ where: { companyId } }),
+    ]);
 
     const contextParts = [
       `Company: ${company.name}`,
       company.industry !== null ? `Industry: ${company.industry}` : null,
-      company.employeeCount !== null ? `Employees: ${company.employeeCount}` : null,
-      company.annualTurnover !== null ? `Annual Turnover: R${company.annualTurnover}` : null,
-      company.vatRegistered ? "VAT Registered: Yes" : "VAT Registered: No",
+      details !== null ? `Employees: ${details.employeeCount}` : null,
+      details?.annualTurnover !== null ? `Annual Turnover: R${details?.annualTurnover}` : null,
+      details?.vatRegistered ? "VAT Registered: Yes" : "VAT Registered: No",
       company.province !== null ? `Province: ${company.province}` : null,
     ].filter((part): part is string => part !== null);
 
