@@ -9,12 +9,13 @@ import {
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import { InjectRepository } from "@nestjs/typeorm";
-import * as bcrypt from "bcrypt";
 import { ILike, MoreThan, Repository } from "typeorm";
 import { v4 as uuidv4 } from "uuid";
 import { EmailService } from "../../email/email.service";
 import { now } from "../../lib/datetime";
+import { PasswordService } from "../../shared/auth/password.service";
 import { S3StorageService } from "../../storage/s3-storage.service";
+import { User } from "../../user/entities/user.entity";
 import { UpdateCompanyDetailsDto } from "../dto/update-company-details.dto";
 import { PushSubscription } from "../entities/push-subscription.entity";
 import { StaffMember } from "../entities/staff-member.entity";
@@ -27,6 +28,7 @@ import {
   StockControlInvitation,
   StockControlInvitationStatus,
 } from "../entities/stock-control-invitation.entity";
+import { StockControlProfile } from "../entities/stock-control-profile.entity";
 import { StockControlRole, StockControlUser } from "../entities/stock-control-user.entity";
 import { CompanyRoleService } from "./company-role.service";
 import { PublicBrandingService } from "./public-branding.service";
@@ -50,12 +52,17 @@ export class StockControlAuthService {
     private readonly staffRepo: Repository<StaffMember>,
     @InjectRepository(PushSubscription)
     private readonly pushSubscriptionRepo: Repository<PushSubscription>,
+    @InjectRepository(User)
+    private readonly unifiedUserRepo: Repository<User>,
+    @InjectRepository(StockControlProfile)
+    private readonly profileRepo: Repository<StockControlProfile>,
     private readonly jwtService: JwtService,
     private readonly emailService: EmailService,
     private readonly s3StorageService: S3StorageService,
     private readonly configService: ConfigService,
     private readonly publicBrandingService: PublicBrandingService,
     private readonly companyRoleService: CompanyRoleService,
+    private readonly passwordService: PasswordService,
   ) {
     this.storageType = this.configService.get<string>("STORAGE_TYPE") || "local";
   }
@@ -84,7 +91,7 @@ export class StockControlAuthService {
       throw new ConflictException("Email already registered");
     }
 
-    const passwordHash = await bcrypt.hash(password, 10);
+    const passwordHash = await this.passwordService.hashSimple(password);
     const verificationToken = uuidv4();
     const verificationExpires = now().plus({ hours: VERIFICATION_EXPIRY_HOURS }).toJSDate();
 
@@ -155,6 +162,14 @@ export class StockControlAuthService {
 
     const saved = await this.userRepo.save(user);
 
+    await this.dualWriteUnifiedUser(
+      normalizedEmail,
+      passwordHash,
+      name,
+      verificationToken,
+      verificationExpires,
+    );
+
     await this.emailService.sendStockControlVerificationEmail(normalizedEmail, verificationToken);
 
     return {
@@ -190,6 +205,18 @@ export class StockControlAuthService {
     user.emailVerificationExpires = null;
     await this.userRepo.save(user);
 
+    await this.unifiedUserRepo
+      .createQueryBuilder()
+      .update()
+      .set({
+        emailVerified: true,
+        emailVerificationToken: null,
+        emailVerificationExpires: null,
+        status: "active",
+      })
+      .where("LOWER(email) = LOWER(:email)", { email: user.email })
+      .execute();
+
     const result: Record<string, unknown> = {
       message: "Email verified successfully. You can now sign in.",
       userId: user.id,
@@ -224,6 +251,16 @@ export class StockControlAuthService {
     user.emailVerificationExpires = verificationExpires;
     await this.userRepo.save(user);
 
+    await this.unifiedUserRepo
+      .createQueryBuilder()
+      .update()
+      .set({
+        emailVerificationToken: verificationToken,
+        emailVerificationExpires: verificationExpires,
+      })
+      .where("LOWER(email) = LOWER(:email)", { email: user.email })
+      .execute();
+
     await this.emailService.sendStockControlVerificationEmail(email, verificationToken);
 
     return { message: "Verification email resent. Please check your inbox." };
@@ -239,6 +276,13 @@ export class StockControlAuthService {
       user.resetPasswordToken = resetToken;
       user.resetPasswordExpires = resetExpires;
       await this.userRepo.save(user);
+
+      await this.unifiedUserRepo
+        .createQueryBuilder()
+        .update()
+        .set({ resetPasswordToken: resetToken, resetPasswordExpires: resetExpires })
+        .where("LOWER(email) = LOWER(:email)", { email: user.email })
+        .execute();
 
       await this.emailService.sendStockControlPasswordResetEmail(email, resetToken);
     }
@@ -260,10 +304,18 @@ export class StockControlAuthService {
       throw new BadRequestException("Invalid or expired reset link. Please request a new one.");
     }
 
-    user.passwordHash = await bcrypt.hash(password, 10);
+    const newHash = await this.passwordService.hashSimple(password);
+    user.passwordHash = newHash;
     user.resetPasswordToken = null;
     user.resetPasswordExpires = null;
     await this.userRepo.save(user);
+
+    await this.unifiedUserRepo
+      .createQueryBuilder()
+      .update()
+      .set({ passwordHash: newHash, resetPasswordToken: null, resetPasswordExpires: null })
+      .where("LOWER(email) = LOWER(:email)", { email: user.email })
+      .execute();
 
     return { message: "Password reset successfully. You can now sign in with your new password." };
   }
@@ -274,7 +326,7 @@ export class StockControlAuthService {
       throw new UnauthorizedException("Invalid credentials");
     }
 
-    const valid = await bcrypt.compare(password, user.passwordHash);
+    const valid = await this.passwordService.verify(password, user.passwordHash);
     if (!valid) {
       throw new UnauthorizedException("Invalid credentials");
     }
@@ -776,6 +828,43 @@ export class StockControlAuthService {
         role: scUser.role,
       },
     };
+  }
+
+  private async dualWriteUnifiedUser(
+    email: string,
+    passwordHash: string,
+    name: string,
+    verificationToken: string,
+    verificationExpires: Date,
+  ): Promise<void> {
+    try {
+      const existingUnified = await this.unifiedUserRepo.findOne({
+        where: { email },
+      });
+
+      if (existingUnified) {
+        existingUnified.passwordHash = passwordHash;
+        existingUnified.emailVerificationToken = verificationToken;
+        existingUnified.emailVerificationExpires = verificationExpires;
+        await this.unifiedUserRepo.save(existingUnified);
+      } else {
+        const nameParts = name.split(" ");
+        const user = this.unifiedUserRepo.create({
+          email,
+          username: email,
+          passwordHash,
+          firstName: nameParts[0],
+          lastName: nameParts.length > 1 ? nameParts.slice(1).join(" ") : undefined,
+          status: "pending",
+          emailVerified: false,
+          emailVerificationToken: verificationToken,
+          emailVerificationExpires: verificationExpires,
+        } as Partial<User>);
+        await this.unifiedUserRepo.save(user);
+      }
+    } catch {
+      // Dual-write failure is non-fatal — legacy table is still canonical
+    }
   }
 
   private generateTokens(user: StockControlUser) {

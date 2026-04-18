@@ -17,6 +17,7 @@ import { SageExportModule } from "../sage-export/sage-export.module";
 import { SharedModule } from "../shared/shared.module";
 import { StaffLeaveModule } from "../staff-leave/staff-leave.module";
 import { StorageModule } from "../storage/storage.module";
+import { User } from "../user/entities/user.entity";
 import { StockControlAuthController } from "./controllers/auth.controller";
 import { CertificateController } from "./controllers/certificate.controller";
 import { ChatController } from "./controllers/chat.controller";
@@ -94,6 +95,7 @@ import { StockControlCompanyRole } from "./entities/stock-control-company-role.e
 import { StockControlDepartment } from "./entities/stock-control-department.entity";
 import { StockControlInvitation } from "./entities/stock-control-invitation.entity";
 import { StockControlLocation } from "./entities/stock-control-location.entity";
+import { StockControlProfile } from "./entities/stock-control-profile.entity";
 import { StockControlRbacConfig } from "./entities/stock-control-rbac-config.entity";
 import { StockControlSupplier } from "./entities/stock-control-supplier.entity";
 import { StockControlUser } from "./entities/stock-control-user.entity";
@@ -182,6 +184,8 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
     TypeOrmModule.forFeature([
       StockControlUser,
       StockControlCompany,
+      StockControlProfile,
+      User,
       StockControlInvitation,
       StockControlDepartment,
       StockControlLocation,
