@@ -52,11 +52,7 @@ import {
   recommendDuckfootGussetThickness,
 } from "@/app/lib/utils/pipeCalculations";
 import { validatePressureClass } from "@/app/lib/utils/pressureClassValidation";
-import {
-  flangeWeightOr,
-  resolveFlangeConfig,
-  scheduleToFittingClass,
-} from "@/app/lib/utils/rfqFlangeCalculations";
+import { flangeWeightOr, scheduleToFittingClass } from "@/app/lib/utils/rfqFlangeCalculations";
 import {
   SABS62_BEND_RADIUS,
   SABS62BendType,
@@ -65,13 +61,14 @@ import {
 } from "@/app/lib/utils/sabs62CfData";
 import { isApi5LSpec } from "@/app/lib/utils/steelSpecGroups";
 import { roundToWeldIncrement } from "@/app/lib/utils/weldThicknessLookup";
+import { useFlangeResolution } from "./hooks/useFlangeResolution";
+import { useMaterialSelector } from "./hooks/useMaterialSelector";
 import {
   type FlangeStandardItem,
   type FlangeTypeItem,
   type PressureClassItem,
   type SteelSpecItem,
   SurfaceAreaDisplay,
-  useGroupedSteelOptions,
 } from "./shared";
 
 type ScheduleItem = { id: number; scheduleDesignation: string; wallThicknessMm: number };
@@ -162,7 +159,26 @@ function BendFormComponent(props: BendFormProps) {
   const bendEndConfiguration = rawBendEndConfiguration || "PE";
   const hasFlanges = bendEndConfiguration !== "PE";
 
-  const groupedSteelOptions = useGroupedSteelOptions(masterData);
+  const {
+    groupedOptions: groupedSteelOptions,
+    effectiveSpecId: effectiveSteelSpecId,
+    specName: selectedSteelSpecName,
+    isFromGlobal: isSteelFromGlobal,
+    isOverride: isSteelOverride,
+  } = useMaterialSelector({
+    masterData,
+    steelSpecificationId: specs.steelSpecificationId,
+    globalSpecs,
+  });
+
+  const flangeResolution = useFlangeResolution({
+    flangeStandardId: specs.flangeStandardId,
+    flangePressureClassId: specs.flangePressureClassId,
+    flangeTypeCode: specs.flangeTypeCode,
+    globalSpecs,
+    masterData,
+    endConfiguration: bendEndConfiguration,
+  });
 
   const rawLength = masterData?.flangeTypes?.length;
 
@@ -724,16 +740,7 @@ function BendFormComponent(props: BendFormProps) {
             />
             <MaterialSuitabilityWarning
               color="purple"
-              steelSpecName={(() => {
-                const rawSteelSpecificationId4 = specs.steelSpecificationId;
-                const steelSpecId = rawSteelSpecificationId4 || globalSpecs?.steelSpecificationId;
-
-                const rawSteelSpecName4 = masterData.steelSpecs?.find(
-                  (s: SteelSpecItem) => s.id === steelSpecId,
-                )?.steelSpecName;
-
-                return rawSteelSpecName4 || "";
-              })()}
+              steelSpecName={selectedSteelSpecName}
               effectivePressure={rawWorkingPressureBar2 || globalSpecs?.workingPressureBar}
               effectiveTemperature={rawWorkingTemperatureC2 || globalSpecs?.workingTemperatureC}
               allSteelSpecs={rawSteelSpecs || []}
@@ -745,15 +752,7 @@ function BendFormComponent(props: BendFormProps) {
             />
             {/* PSL Level and CVN Fields - Only for API 5L specs */}
             {(() => {
-              const rawSteelSpecificationId5 = specs.steelSpecificationId;
-              const steelSpecId = rawSteelSpecificationId5 || globalSpecs?.steelSpecificationId;
-
-              const rawSteelSpecName5 = masterData.steelSpecs?.find(
-                (s: SteelSpecItem) => s.id === steelSpecId,
-              )?.steelSpecName;
-
-              const steelSpecName = rawSteelSpecName5 || "";
-              const showPslFields = isApi5LSpec(steelSpecName);
+              const showPslFields = isApi5LSpec(selectedSteelSpecName);
               const pslLevel = specs.pslLevel;
               const showCvnFields = pslLevel === "PSL2";
 
@@ -5116,7 +5115,7 @@ function BendFormComponent(props: BendFormProps) {
                   const stub2Wt = stub2NB && stub2RawWt ? roundToWeldIncrement(stub2RawWt) : 0;
 
                   const { flangeStandardCode, pressureClassDesignation, flangeTypeCode } =
-                    resolveFlangeConfig(specs, globalSpecs, masterData);
+                    flangeResolution;
 
                   const rawFlangeWeightPerUnit = entry.calculation?.flangeWeightPerUnit;
 

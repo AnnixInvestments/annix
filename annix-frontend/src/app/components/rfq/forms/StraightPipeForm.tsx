@@ -66,80 +66,24 @@ import { validatePressureClass } from "@/app/lib/utils/pressureClassValidation";
 import {
   calculateBlankFlangeWeight,
   flangeWeightOr,
-  resolveFlangeConfig,
   scheduleToFittingClass,
 } from "@/app/lib/utils/rfqFlangeCalculations";
 import { isApi5LSpec } from "@/app/lib/utils/steelSpecGroups";
 import { getPipeEndConfigurationDetails } from "@/app/lib/utils/systemUtils";
 import { roundToWeldIncrement } from "@/app/lib/utils/weldThicknessLookup";
+import { useFlangeResolution } from "./hooks/useFlangeResolution";
+import { useMaterialSelector } from "./hooks/useMaterialSelector";
 import {
   type FlangeStandardItem,
   type FlangeTypeItem,
   type PressureClassItem,
   type SteelSpecItem,
   SurfaceAreaDisplay,
-  useGroupedSteelOptions,
 } from "./shared";
 
 const formatWeight = (weight: number | undefined) => {
   if (weight === undefined || weight === null || Number.isNaN(weight)) return "Not calculated";
   return `${weight.toFixed(2)} kg`;
-};
-
-const extractBarRating = (designation: string, isSabs1123: boolean, isBs4504: boolean): number => {
-  const pnMatch = designation.match(/PN\s*(\d+)/i);
-  if (pnMatch) {
-    return parseInt(pnMatch[1], 10);
-  }
-  if (isSabs1123) {
-    const kpaMatch = designation.match(/^(\d+)/);
-    if (kpaMatch) {
-      return parseInt(kpaMatch[1], 10) / 100;
-    }
-  }
-  if (isBs4504) {
-    const numMatch = designation.match(/^(\d+)/);
-    if (numMatch) {
-      return parseInt(numMatch[1], 10);
-    }
-  }
-  const numMatch = designation.match(/^(\d+)/);
-  if (numMatch) {
-    const num = parseInt(numMatch[1], 10);
-    return num >= 500 ? num / 100 : num;
-  }
-  return 0;
-};
-
-const findRecommendedPressureClass = (
-  availableClasses: PressureClassItem[],
-  workingPressure: number,
-  isSabs1123: boolean,
-  isBs4504: boolean,
-): number | undefined => {
-  if (!workingPressure || availableClasses.length === 0) return undefined;
-
-  const classesWithRating = availableClasses
-    .map((pc: PressureClassItem) => {
-      const rawDesignation = pc.designation;
-
-      return {
-        ...pc,
-        barRating: extractBarRating(rawDesignation || "", isSabs1123, isBs4504),
-      };
-    })
-    .filter((pc: PressureClassItem & { barRating: number }) => pc.barRating > 0)
-    .sort(
-      (
-        a: PressureClassItem & { barRating: number },
-        b: PressureClassItem & { barRating: number },
-      ) => a.barRating - b.barRating,
-    );
-
-  const suitableClass = classesWithRating.find(
-    (pc: PressureClassItem & { barRating: number }) => pc.barRating >= workingPressure,
-  );
-  return suitableClass?.id;
 };
 
 const calculateQuantities = (entry: any, field: string, value: number) => {
@@ -260,7 +204,26 @@ function StraightPipeFormComponent({
   const pipeEndConfiguration = rawPipeEndConfiguration || "PE";
   const hasFlanges = pipeEndConfiguration !== "PE";
 
-  const groupedSteelOptions = useGroupedSteelOptions(masterData);
+  const {
+    groupedOptions: groupedSteelOptions,
+    effectiveSpecId: effectiveSteelSpecId,
+    specName: selectedSteelSpecName,
+    isFromGlobal: isSteelFromGlobal,
+    isOverride: isSteelOverride,
+  } = useMaterialSelector({
+    masterData,
+    steelSpecificationId: specs.steelSpecificationId,
+    globalSpecs,
+  });
+
+  const flangeResolution = useFlangeResolution({
+    flangeStandardId: specs.flangeStandardId,
+    flangePressureClassId: specs.flangePressureClassId,
+    flangeTypeCode: specs.flangeTypeCode,
+    globalSpecs,
+    masterData,
+    endConfiguration: pipeEndConfiguration,
+  });
 
   const rawLength = masterData?.flangeTypes?.length;
 
@@ -268,14 +231,6 @@ function StraightPipeFormComponent({
 
   const handleWorkingPressureChange = useCallback(
     (value: number | undefined) => {
-      const flangeStandard = masterData.flangeStandards?.find(
-        (s: FlangeStandardItem) => s.id === flangeStandardId,
-      );
-      const rawCode = flangeStandard?.code;
-      const flangeCode = rawCode || "";
-      const isSabs1123 = flangeCode.includes("SABS 1123") || flangeCode.includes("SANS 1123");
-      const isBs4504 = flangeCode.includes("BS 4504");
-
       if (flangeStandardId && !pressureClassesByStandard[flangeStandardId]) {
         getFilteredPressureClasses(flangeStandardId);
       }
@@ -291,24 +246,22 @@ function StraightPipeFormComponent({
           ) || [];
       }
 
-      const recommendedPressureClassId = value
-        ? findRecommendedPressureClass(availableClasses, value, isSabs1123, isBs4504) ||
-          specs.flangePressureClassId
-        : specs.flangePressureClassId;
-
-      const rawPipeEndConfiguration2 = specs.pipeEndConfiguration;
-
-      const endConfig = rawPipeEndConfiguration2 || "PE";
-      const rawFlangeTypeCode2 = specs.flangeTypeCode;
-      const effectiveFlangeTypeCode =
-        rawFlangeTypeCode2 || globalSpecs?.flangeTypeCode || recommendedFlangeTypeCode(endConfig);
+      const newPressureClassId =
+        value && availableClasses.length > 0
+          ? recommendedPressureClassId(
+              value,
+              availableClasses,
+              flangeResolution.flangeStandardCode,
+              flangeResolution.effectiveFlangeTypeCode,
+            ) || specs.flangePressureClassId
+          : specs.flangePressureClassId;
 
       onUpdateEntry(entry.id, {
         specs: {
           ...entry.specs,
           workingPressureBar: value,
-          flangePressureClassId: recommendedPressureClassId,
-          flangeTypeCode: effectiveFlangeTypeCode,
+          flangePressureClassId: newPressureClassId,
+          flangeTypeCode: flangeResolution.effectiveFlangeTypeCode,
         },
       });
     },
@@ -316,8 +269,8 @@ function StraightPipeFormComponent({
       entry.id,
       entry.specs,
       flangeStandardId,
-      globalSpecs?.flangeTypeCode,
-      masterData.flangeStandards,
+      flangeResolution.flangeStandardCode,
+      flangeResolution.effectiveFlangeTypeCode,
       masterData.pressureClasses,
       pressureClassesByStandard,
       getFilteredPressureClasses,
@@ -953,16 +906,7 @@ function StraightPipeFormComponent({
               </div>
               <MaterialSuitabilityWarning
                 color="blue"
-                steelSpecName={(() => {
-                  const rawSteelSpecificationId5 = specs.steelSpecificationId;
-                  const steelSpecId = rawSteelSpecificationId5 || globalSpecs?.steelSpecificationId;
-
-                  const rawSteelSpecName5 = masterData.steelSpecs?.find(
-                    (s: SteelSpecItem) => s.id === steelSpecId,
-                  )?.steelSpecName;
-
-                  return rawSteelSpecName5 || "";
-                })()}
+                steelSpecName={selectedSteelSpecName}
                 effectivePressure={rawWorkingPressureBar6 || globalSpecs?.workingPressureBar}
                 effectiveTemperature={rawWorkingTemperatureC4 || globalSpecs?.workingTemperatureC}
                 allSteelSpecs={rawSteelSpecs || []}
@@ -974,15 +918,7 @@ function StraightPipeFormComponent({
               />
               {/* PSL Level and CVN Fields - Only for API 5L specs */}
               {(() => {
-                const rawSteelSpecificationId6 = specs.steelSpecificationId;
-                const steelSpecId = rawSteelSpecificationId6 || globalSpecs?.steelSpecificationId;
-
-                const rawSteelSpecName6 = masterData.steelSpecs?.find(
-                  (s: SteelSpecItem) => s.id === steelSpecId,
-                )?.steelSpecName;
-
-                const steelSpecName = rawSteelSpecName6 || "";
-                const showPslFields = isApi5LSpec(steelSpecName);
+                const showPslFields = isApi5LSpec(selectedSteelSpecName);
                 const pslLevel = specs.pslLevel;
                 const showCvnFields = pslLevel === "PSL2";
 
@@ -3209,7 +3145,7 @@ function StraightPipeFormComponent({
                     const nominalBore = specs.nominalBoreMm;
 
                     const { flangeStandardCode, pressureClassDesignation, flangeTypeCode } =
-                      resolveFlangeConfig(specs, globalSpecs, masterData);
+                      flangeResolution;
 
                     const rawFlangeWeightPerUnit = entry.calculation?.flangeWeightPerUnit;
 
@@ -3474,7 +3410,7 @@ function StraightPipeFormComponent({
                     const nominalBore = specs.nominalBoreMm;
 
                     const { flangeStandardCode, pressureClassDesignation, flangeTypeCode } =
-                      resolveFlangeConfig(specs, globalSpecs, masterData);
+                      flangeResolution;
 
                     const rawFlangeWeightPerUnit2 = entry.calculation?.flangeWeightPerUnit;
 

@@ -1,6 +1,6 @@
 # Shared Module Registry
 
-**Last updated:** 2026-04-16
+**Last updated:** 2026-04-18
 
 This is the canonical index of shared modules across the Annix monorepo. Every Claude session MUST consult this file before writing new constants, components, services, or utilities (see `CLAUDE.md` §"Discovery-first protocol").
 
@@ -106,6 +106,27 @@ Host-app-agnostic inventory management module. Currently consumed by Stock Contr
 The canonical frontend components directory. **App-specific components live in `app/<app>/components/` only if they're truly unique to that app** — if there's any chance another app might use it, put it here.
 
 Existing shared components include: `DataTable`, `TableComponents`, `ConfirmModal`, `FormModal` (reusable form-based modal shell with portal, backdrop, header, scrollable body, and footer), `AdminActionModal` (approve/suspend/reject modal for admin entity actions), `ImportModal`, `MonthYearPicker`, `FileDropzone`, `SurfaceAreaDisplay`, `WeldSummaryCard`, `CalloffInput`, `SageExportModal`, `PortalToolbar`, `PdfPreviewModal` (+ `usePdfPreview` hook — mandatory for all generated PDF documents).
+
+#### RFQ form hooks (`components/rfq/forms/hooks/`)
+
+Shared hooks extracted from BendForm, FittingForm, and StraightPipeForm (ref #196):
+
+| Hook | Use for |
+|---|---|
+| `usePressureClassSelector` | Pressure class resolution, validation, bar-rating extraction, margin calculation. Wraps `recommendedPressureClassId`, `availablePressureClasses`, `validatePressureClass`. |
+| `useMaterialSelector` | Steel spec grouped options, effective spec resolution, from-global/override detection. Wraps `useGroupedSteelOptions`. |
+| `useWeldCalculations` | Weld thickness resolution (fitting class → round to 1.5mm), flange weld volume, flange weight lookup. Wraps `roundToWeldIncrement`, `calculateFlangeWeldVolume`, `flangeWeightOr`. |
+| `useFlangeResolution` | Flange standard/pressure class/type resolution with global spec fallback, recommended type code, override detection. Wraps `resolveFlangeConfig`, `recommendedFlangeTypeCode`. |
+| `useEndConfigurationSelector` | Routes product type to correct END_OPTIONS constant, resolves weld/flange counts. |
+
+#### RFQ form section components (`components/rfq/forms/sections/`)
+
+| Component | Use for |
+|---|---|
+| `PressureClassField` | Pressure class dropdown with SABS 1123/BS 4504/generic rendering, status badges, bar-rating matching. |
+| `MaterialSpecificationSection` | Steel spec grouped select with from-global/override/unsuitable indicators. |
+| `WeldSummarySection` | Weld count/length summary card with breakdown lines and volume info. |
+| `EndConfigurationSelector` | End configuration dropdown with dynamic options per product type. |
 
 Shared feedback capture support lives alongside the widget in `components/feedbackCapture.ts` and is responsible for lightweight client-side action, console-error, failed-network-call, and clicked-element capture that feeds the feedback reliability pipeline.
 

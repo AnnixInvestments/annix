@@ -66,7 +66,6 @@ import { validatePressureClass } from "@/app/lib/utils/pressureClassValidation";
 import {
   calculateBlankFlangeWeight,
   flangeWeightOr,
-  resolveFlangeConfig,
   scheduleToFittingClass,
 } from "@/app/lib/utils/rfqFlangeCalculations";
 import {
@@ -77,12 +76,13 @@ import { getGussetSection } from "@/app/lib/utils/sabs719TeeData";
 import { isApi5LSpec } from "@/app/lib/utils/steelSpecGroups";
 import { getPipeEndConfigurationDetails } from "@/app/lib/utils/systemUtils";
 import { roundToWeldIncrement } from "@/app/lib/utils/weldThicknessLookup";
+import { useFlangeResolution } from "./hooks/useFlangeResolution";
+import { useMaterialSelector } from "./hooks/useMaterialSelector";
 import {
   type FlangeStandardItem,
   type PressureClassItem,
   type SteelSpecItem,
   SurfaceAreaDisplay,
-  useGroupedSteelOptions,
   WeldSummaryCard,
 } from "./shared";
 
@@ -304,7 +304,26 @@ function FittingFormComponent({
 
   const flangeTypesLength = rawLength || 0;
 
-  const groupedSteelOptions = useGroupedSteelOptions(masterData);
+  const {
+    groupedOptions: groupedSteelOptions,
+    effectiveSpecId: effectiveSteelSpecId,
+    specName: selectedSteelSpecName,
+    isFromGlobal: isSteelFromGlobal,
+    isOverride: isSteelOverride,
+  } = useMaterialSelector({
+    masterData,
+    steelSpecificationId: specs.steelSpecificationId,
+    globalSpecs,
+  });
+
+  const flangeResolution = useFlangeResolution({
+    flangeStandardId: specs.flangeStandardId,
+    flangePressureClassId: specs.flangePressureClassId,
+    flangeTypeCode: specs.flangeTypeCode,
+    globalSpecs,
+    masterData,
+    endConfiguration: pipeEndConfiguration,
+  });
 
   useEffect(() => {
     log.info(`🔥 FittingForm useEffect[flangeSpecs] FIRED - entry.id: ${entry.id}`);
@@ -693,16 +712,7 @@ function FittingFormComponent({
             />
             <MaterialSuitabilityWarning
               color="green"
-              steelSpecName={(() => {
-                const rawSteelSpecificationId4 = specs.steelSpecificationId;
-                const steelSpecId = rawSteelSpecificationId4 || globalSpecs?.steelSpecificationId;
-
-                const rawSteelSpecName2 = masterData.steelSpecs?.find(
-                  (s: SteelSpecItem) => s.id === steelSpecId,
-                )?.steelSpecName;
-
-                return rawSteelSpecName2 || "";
-              })()}
+              steelSpecName={selectedSteelSpecName}
               effectivePressure={rawWorkingPressureBar || globalSpecs?.workingPressureBar}
               effectiveTemperature={rawWorkingTemperatureC || globalSpecs?.workingTemperatureC}
               allSteelSpecs={rawSteelSpecs || []}
@@ -755,15 +765,7 @@ function FittingFormComponent({
             />
             {/* PSL Level and CVN Fields - Only for API 5L specs */}
             {(() => {
-              const rawSteelSpecificationId5 = specs.steelSpecificationId;
-              const steelSpecId = rawSteelSpecificationId5 || globalSpecs?.steelSpecificationId;
-
-              const rawSteelSpecName3 = masterData.steelSpecs?.find(
-                (s: SteelSpecItem) => s.id === steelSpecId,
-              )?.steelSpecName;
-
-              const steelSpecName = rawSteelSpecName3 || "";
-              const showPslFields = isApi5LSpec(steelSpecName);
+              const showPslFields = isApi5LSpec(selectedSteelSpecName);
               const pslLevel = specs.pslLevel;
               const showCvnFields = pslLevel === "PSL2";
 
@@ -4851,7 +4853,7 @@ function FittingFormComponent({
                       (flangeConfig.branchType === "rotating" ? branchRingWeight : 0);
 
                     const { flangeStandardCode, pressureClassDesignation, flangeTypeCode } =
-                      resolveFlangeConfig(specs, globalSpecs, masterData);
+                      flangeResolution;
 
                     const mainFlangeWeightPerUnit = flangeWeightOr(
                       allWeights,
