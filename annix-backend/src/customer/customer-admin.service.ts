@@ -5,6 +5,7 @@ import { AuditService } from "../audit/audit.service";
 import { AuditAction } from "../audit/entities/audit-log.entity";
 import { EmailService } from "../email/email.service";
 import { now } from "../lib/datetime";
+import { Company } from "../platform/entities/company.entity";
 import { SecureDocumentsService } from "../secure-documents/secure-documents.service";
 import { S3StorageService } from "../storage/s3-storage.service";
 import { User } from "../user/entities/user.entity";
@@ -18,7 +19,6 @@ import {
 } from "./dto";
 import {
   CustomerAccountStatus,
-  CustomerCompany,
   CustomerDeviceBinding,
   CustomerDocument,
   CustomerLoginAttempt,
@@ -35,8 +35,8 @@ export class CustomerAdminService {
   private readonly logger = new Logger(CustomerAdminService.name);
 
   constructor(
-    @InjectRepository(CustomerCompany)
-    private readonly companyRepo: Repository<CustomerCompany>,
+    @InjectRepository(Company)
+    private readonly companyRepo: Repository<Company>,
     @InjectRepository(CustomerProfile)
     private readonly profileRepo: Repository<CustomerProfile>,
     @InjectRepository(CustomerDeviceBinding)
@@ -172,20 +172,20 @@ export class CustomerAdminService {
       termsAcceptedAt: profile.termsAcceptedAt,
       company: {
         id: profile.company.id,
-        legalName: profile.company.legalName,
-        tradingName: profile.company.tradingName,
-        registrationNumber: profile.company.registrationNumber,
-        vatNumber: profile.company.vatNumber,
-        industry: profile.company.industry,
-        companySize: profile.company.companySize,
-        streetAddress: profile.company.streetAddress,
-        city: profile.company.city,
-        provinceState: profile.company.provinceState,
-        postalCode: profile.company.postalCode,
-        country: profile.company.country,
-        primaryPhone: profile.company.primaryPhone,
-        generalEmail: profile.company.generalEmail,
-        website: profile.company.website,
+        legalName: profile.company.legalName || "",
+        tradingName: profile.company.tradingName ?? undefined,
+        registrationNumber: profile.company.registrationNumber || "",
+        vatNumber: profile.company.vatNumber ?? undefined,
+        industry: profile.company.industry ?? undefined,
+        companySize: profile.company.companySize ?? undefined,
+        streetAddress: profile.company.streetAddress || "",
+        city: profile.company.city || "",
+        provinceState: profile.company.province || "",
+        postalCode: profile.company.postalCode || "",
+        country: profile.company.country || "",
+        primaryPhone: profile.company.phone || "",
+        generalEmail: profile.company.email ?? undefined,
+        website: profile.company.websiteUrl ?? undefined,
       },
       deviceBinding: activeBinding
         ? {
@@ -507,10 +507,10 @@ export class CustomerAdminService {
         industry: onboarding.customer.company.industry,
         streetAddress: onboarding.customer.company.streetAddress,
         city: onboarding.customer.company.city,
-        provinceState: onboarding.customer.company.provinceState,
+        provinceState: onboarding.customer.company.province,
         postalCode: onboarding.customer.company.postalCode,
         country: onboarding.customer.company.country,
-        primaryPhone: onboarding.customer.company.primaryPhone,
+        primaryPhone: onboarding.customer.company.phone,
       },
       documents: documents.map((doc) => ({
         id: doc.id,
@@ -605,7 +605,7 @@ export class CustomerAdminService {
     // Send approval email
     await this.emailService.sendCustomerOnboardingApprovalEmail(
       profile.user.email,
-      profile.company.tradingName || profile.company.legalName,
+      profile.company.tradingName || profile.company.legalName || "",
     );
 
     const adminUser = await this.userRepo.findOne({
@@ -668,7 +668,7 @@ export class CustomerAdminService {
     const profile = onboarding.customer;
     await this.emailService.sendCustomerOnboardingRejectionEmail(
       profile.user.email,
-      profile.company.tradingName || profile.company.legalName,
+      profile.company.tradingName || profile.company.legalName || "",
       reason,
       remediationSteps,
     );
@@ -896,7 +896,7 @@ export class CustomerAdminService {
       vatNumber: company.vatNumber,
       streetAddress: company.streetAddress,
       city: company.city,
-      provinceState: company.provinceState,
+      provinceState: company.province,
       postalCode: company.postalCode,
       beeLevel: company.beeLevel,
       beeCertificateExpiry: company.beeCertificateExpiry,

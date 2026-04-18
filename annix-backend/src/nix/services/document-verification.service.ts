@@ -1,7 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { CustomerCompany } from "../../customer/entities/customer-company.entity";
 import {
   CustomerDocument,
   CustomerDocumentType,
@@ -9,8 +8,8 @@ import {
 } from "../../customer/entities/customer-document.entity";
 import { CustomerProfile } from "../../customer/entities/customer-profile.entity";
 import { now } from "../../lib/datetime";
+import { Company } from "../../platform/entities/company.entity";
 import { S3StorageService } from "../../storage/s3-storage.service";
-import { SupplierCompany } from "../../supplier/entities/supplier-company.entity";
 import {
   SupplierDocument,
   SupplierDocumentType,
@@ -119,7 +118,7 @@ export class DocumentVerificationService {
       };
     }
 
-    const expectedData = this.buildExpectedDataFromCustomerCompany(profile.company);
+    const expectedData = this.buildExpectedDataFromCompany(profile.company);
     const fileBuffer = await this.storageService.download(document.filePath);
     const multerFile = this.bufferToMulterFile(fileBuffer, document.fileName, document.mimeType);
 
@@ -180,7 +179,7 @@ export class DocumentVerificationService {
       };
     }
 
-    const expectedData = this.buildExpectedDataFromSupplierCompany(profile.company);
+    const expectedData = this.buildExpectedDataFromCompany(profile.company);
     const fileBuffer = await this.storageService.download(document.filePath);
     const multerFile = this.bufferToMulterFile(fileBuffer, document.fileName, document.mimeType);
 
@@ -224,28 +223,15 @@ export class DocumentVerificationService {
     return mapping[docType] ?? null;
   }
 
-  private buildExpectedDataFromCustomerCompany(company: CustomerCompany): ExpectedCompanyData {
+  private buildExpectedDataFromCompany(company: Company): ExpectedCompanyData {
     return {
       vatNumber: company.vatNumber ?? undefined,
-      registrationNumber: company.registrationNumber,
-      companyName: company.legalName,
-      streetAddress: company.streetAddress,
-      city: company.city,
-      provinceState: company.provinceState,
-      postalCode: company.postalCode,
-      beeLevel: company.beeLevel ?? undefined,
-    };
-  }
-
-  private buildExpectedDataFromSupplierCompany(company: SupplierCompany): ExpectedCompanyData {
-    return {
-      vatNumber: company.vatNumber ?? undefined,
-      registrationNumber: company.registrationNumber,
-      companyName: company.legalName,
-      streetAddress: company.streetAddress,
-      city: company.city,
-      provinceState: company.provinceState,
-      postalCode: company.postalCode,
+      registrationNumber: company.registrationNumber ?? undefined,
+      companyName: company.legalName ?? undefined,
+      streetAddress: company.streetAddress ?? undefined,
+      city: company.city ?? undefined,
+      provinceState: company.province ?? undefined,
+      postalCode: company.postalCode ?? undefined,
       beeLevel: company.beeLevel ?? undefined,
     };
   }

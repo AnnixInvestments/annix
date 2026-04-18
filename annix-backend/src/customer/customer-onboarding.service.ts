@@ -9,7 +9,8 @@ import { Repository } from "typeorm";
 import { AuditService } from "../audit/audit.service";
 import { AuditAction } from "../audit/entities/audit-log.entity";
 import { now } from "../lib/datetime";
-import { CustomerCompany, CustomerDocument, CustomerOnboarding, CustomerProfile } from "./entities";
+import { Company } from "../platform/entities/company.entity";
+import { CustomerDocument, CustomerOnboarding, CustomerProfile } from "./entities";
 import { CustomerDocumentType } from "./entities/customer-document.entity";
 import { CustomerOnboardingStatus } from "./entities/customer-onboarding.entity";
 
@@ -28,8 +29,8 @@ export class CustomerOnboardingService {
     private readonly profileRepo: Repository<CustomerProfile>,
     @InjectRepository(CustomerDocument)
     private readonly documentRepo: Repository<CustomerDocument>,
-    @InjectRepository(CustomerCompany)
-    private readonly companyRepo: Repository<CustomerCompany>,
+    @InjectRepository(Company)
+    private readonly companyRepo: Repository<Company>,
     private readonly auditService: AuditService,
   ) {}
 
@@ -91,7 +92,7 @@ export class CustomerOnboardingService {
     };
   }
 
-  private getCompanyChecklist(company: CustomerCompany | null | undefined) {
+  private getCompanyChecklist(company: Company | null | undefined) {
     if (!company) return [];
 
     return [
@@ -114,12 +115,12 @@ export class CustomerOnboardingService {
       {
         field: "primaryPhone",
         label: "Primary Phone",
-        complete: !!company.primaryPhone,
+        complete: !!company.phone,
       },
     ];
   }
 
-  async updateCompanyDetails(customerId: number, data: Partial<CustomerCompany>, clientIp: string) {
+  async updateCompanyDetails(customerId: number, data: Partial<Company>, clientIp: string) {
     const profile = await this.profileRepo.findOne({
       where: { id: customerId },
       relations: ["company"],
@@ -157,7 +158,7 @@ export class CustomerOnboardingService {
       company.registrationNumber &&
       company.streetAddress &&
       company.city &&
-      company.primaryPhone
+      company.phone
     );
 
     onboarding.companyDetailsComplete = isComplete;
@@ -242,7 +243,7 @@ export class CustomerOnboardingService {
     };
   }
 
-  async saveDraft(customerId: number, data: Partial<CustomerCompany>, clientIp: string) {
+  async saveDraft(customerId: number, data: Partial<Company>, clientIp: string) {
     return this.updateCompanyDetails(customerId, data, clientIp);
   }
 }

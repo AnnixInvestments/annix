@@ -12,8 +12,8 @@ import { AuditService } from "../audit/audit.service";
 import { AuditAction } from "../audit/entities/audit-log.entity";
 import { EmailService } from "../email/email.service";
 import { now } from "../lib/datetime";
+import { Company } from "../platform/entities/company.entity";
 import { SupplierCapability } from "../supplier/entities/supplier-capability.entity";
-import { SupplierCompany } from "../supplier/entities/supplier-company.entity";
 import {
   SupplierAccountStatus,
   SupplierProfile,
@@ -21,7 +21,6 @@ import {
 import { DirectoryQueryDto, DirectorySupplierDto } from "./dto/supplier-directory.dto";
 import {
   CustomerBlockedSupplier,
-  CustomerCompany,
   CustomerPreferredSupplier,
   CustomerProfile,
   CustomerRole,
@@ -42,12 +41,10 @@ export class CustomerSupplierService {
     private readonly invitationRepo: Repository<SupplierInvitation>,
     @InjectRepository(CustomerProfile)
     private readonly profileRepo: Repository<CustomerProfile>,
-    @InjectRepository(CustomerCompany)
-    private readonly companyRepo: Repository<CustomerCompany>,
+    @InjectRepository(Company)
+    private readonly companyRepo: Repository<Company>,
     @InjectRepository(SupplierProfile)
     private readonly supplierProfileRepo: Repository<SupplierProfile>,
-    @InjectRepository(SupplierCompany)
-    private readonly supplierCompanyRepo: Repository<SupplierCompany>,
     @InjectRepository(SupplierCapability)
     private readonly supplierCapabilityRepo: Repository<SupplierCapability>,
     private readonly auditService: AuditService,
@@ -335,7 +332,7 @@ export class CustomerSupplierService {
     // Send invitation email
     await this.emailService.sendSupplierInvitationEmail(
       data.email,
-      profile.company.tradingName || profile.company.legalName,
+      profile.company.tradingName || profile.company.legalName || "",
       token,
       data.message,
     );
@@ -429,7 +426,7 @@ export class CustomerSupplierService {
     // Resend email
     await this.emailService.sendSupplierInvitationEmail(
       invitation.email,
-      profile.company.tradingName || profile.company.legalName,
+      profile.company.tradingName || profile.company.legalName || "",
       invitation.token,
       invitation.message ?? undefined,
     );
@@ -649,7 +646,7 @@ export class CustomerSupplierService {
         return {
           supplierProfileId: supplier.id,
           companyName: supplier.company?.tradingName || supplier.company?.legalName || "",
-          province: supplier.company?.provinceState || "",
+          province: supplier.company?.province || "",
           products,
           productLabels: products.map((p) => this.productLabelMap[p] || p),
           status,

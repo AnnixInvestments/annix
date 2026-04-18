@@ -16,6 +16,7 @@ import { AuditAction } from "../audit/entities/audit-log.entity";
 import { EmailService } from "../email/email.service";
 import { FeatureFlagsService } from "../feature-flags/feature-flags.service";
 import { now, nowMillis } from "../lib/datetime";
+import { Company, CompanyType } from "../platform/entities/company.entity";
 import { SecureDocumentsService } from "../secure-documents/secure-documents.service";
 import {
   AUTH_CONSTANTS,
@@ -38,7 +39,6 @@ import {
 } from "./dto";
 import {
   CustomerAccountStatus,
-  CustomerCompany,
   CustomerDeviceBinding,
   CustomerDocument,
   CustomerLoginAttempt,
@@ -61,8 +61,8 @@ export class CustomerAuthService {
   private readonly uploadDir: string;
 
   constructor(
-    @InjectRepository(CustomerCompany)
-    private readonly companyRepo: Repository<CustomerCompany>,
+    @InjectRepository(Company)
+    private readonly companyRepo: Repository<Company>,
     @InjectRepository(CustomerProfile)
     private readonly profileRepo: Repository<CustomerProfile>,
     @InjectRepository(CustomerDeviceBinding)
@@ -130,8 +130,22 @@ export class CustomerAuthService {
 
     try {
       const company = this.companyRepo.create({
-        ...dto.company,
+        name: dto.company.legalName,
+        companyType: CompanyType.CUSTOMER,
+        legalName: dto.company.legalName,
+        tradingName: dto.company.tradingName,
+        registrationNumber: dto.company.registrationNumber,
+        vatNumber: dto.company.vatNumber,
+        industry: dto.company.industry,
+        companySize: dto.company.companySize,
+        streetAddress: dto.company.streetAddress,
+        city: dto.company.city,
+        province: dto.company.provinceState,
+        postalCode: dto.company.postalCode,
         country: dto.company.country || "South Africa",
+        phone: dto.company.primaryPhone,
+        email: dto.company.generalEmail,
+        websiteUrl: dto.company.website,
       });
       const savedCompany = await queryRunner.manager.save(company);
 
@@ -229,7 +243,7 @@ export class CustomerAuthService {
       await this.secureDocumentsService.createEntityFolder(
         "customer",
         savedProfile.id,
-        savedCompany.tradingName || savedCompany.legalName,
+        savedCompany.tradingName || savedCompany.legalName || "",
       );
 
       const { session, sessionToken } = this.sessionService.createSession(this.sessionRepo, {
@@ -257,7 +271,7 @@ export class CustomerAuthService {
         expiresIn: 3600,
         customerId: savedProfile.id,
         name: `${savedProfile.firstName} ${savedProfile.lastName}`,
-        companyName: savedCompany.tradingName || savedCompany.legalName,
+        companyName: savedCompany.tradingName || savedCompany.legalName || "",
       };
     } catch (error) {
       await queryRunner.rollbackTransaction();
@@ -555,7 +569,7 @@ export class CustomerAuthService {
       expiresIn: 3600,
       customerId: profile.id,
       name: `${profile.firstName} ${profile.lastName}`,
-      companyName: profile.company.tradingName || profile.company.legalName,
+      companyName: profile.company.tradingName || profile.company.legalName || "",
       ipMismatchWarning,
       registeredIp: undefined,
     };
@@ -632,7 +646,7 @@ export class CustomerAuthService {
         expiresIn: 3600,
         customerId: profile.id,
         name: `${profile.firstName} ${profile.lastName}`,
-        companyName: profile.company.tradingName || profile.company.legalName,
+        companyName: profile.company.tradingName || profile.company.legalName || "",
       };
     } catch (error) {
       throw new UnauthorizedException("Invalid refresh token");

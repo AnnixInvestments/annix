@@ -89,7 +89,7 @@ export class FeedbackService {
       firstName: profile.firstName,
       lastName: profile.lastName,
       email: profile.user.email,
-      companyName: profile.company.legalName,
+      companyName: profile.company.legalName || "",
       userId: profile.userId,
     };
 

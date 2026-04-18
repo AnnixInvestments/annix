@@ -519,7 +519,7 @@ export class CustomerDocumentService {
     // Send admin notification if manual review is required
     if (validationStatus === CustomerDocumentValidationStatus.MANUAL_REVIEW) {
       await this.emailService.sendManualReviewNotification(
-        document.customer.company.tradingName || document.customer.company.legalName,
+        document.customer.company.tradingName || document.customer.company.legalName || "",
         document.customer.user.email,
         document.customer.id,
         document.documentType,

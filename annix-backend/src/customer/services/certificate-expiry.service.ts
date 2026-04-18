@@ -4,7 +4,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { EmailService } from "../../email/email.service";
 import { formatDate, now } from "../../lib/datetime";
-import { CustomerCompany } from "../entities/customer-company.entity";
+import { Company } from "../../platform/entities/company.entity";
 import { CustomerProfile } from "../entities/customer-profile.entity";
 
 @Injectable()
@@ -12,8 +12,8 @@ export class CertificateExpiryService {
   private readonly logger = new Logger(CertificateExpiryService.name);
 
   constructor(
-    @InjectRepository(CustomerCompany)
-    private readonly companyRepo: Repository<CustomerCompany>,
+    @InjectRepository(Company)
+    private readonly companyRepo: Repository<Company>,
     @InjectRepository(CustomerProfile)
     private readonly profileRepo: Repository<CustomerProfile>,
     private readonly emailService: EmailService,
@@ -24,28 +24,35 @@ export class CertificateExpiryService {
     this.logger.log("Running daily BEE certificate expiry check...");
 
     try {
-      const today = now().startOf("day").toJSDate();
       const todayStr = now().toFormat("yyyy-MM-dd");
 
-      const companiesWithExpiredBee = await this.companyRepo
-        .createQueryBuilder("company")
-        .leftJoinAndSelect("company.profiles", "profile")
+      const profiles = await this.profileRepo
+        .createQueryBuilder("profile")
+        .leftJoinAndSelect("profile.company", "company")
         .leftJoinAndSelect("profile.user", "user")
         .where("company.beeCertificateExpiry IS NOT NULL")
-        .andWhere("DATE(company.beeCertificateExpiry) <= :today", {
-          today: todayStr,
-        })
+        .andWhere("DATE(company.beeCertificateExpiry) <= :today", { today: todayStr })
         .andWhere(
           "(company.beeExpiryNotificationSentAt IS NULL OR DATE(company.beeExpiryNotificationSentAt) < DATE(company.beeCertificateExpiry))",
         )
         .getMany();
 
+      const companiesMap = new Map<number, { company: Company; profiles: CustomerProfile[] }>();
+      for (const profile of profiles) {
+        const existing = companiesMap.get(profile.companyId);
+        if (existing) {
+          existing.profiles.push(profile);
+        } else {
+          companiesMap.set(profile.companyId, { company: profile.company, profiles: [profile] });
+        }
+      }
+
       this.logger.log(
-        `Found ${companiesWithExpiredBee.length} companies with expiring/expired BEE certificates`,
+        `Found ${companiesMap.size} companies with expiring/expired BEE certificates`,
       );
 
-      for (const company of companiesWithExpiredBee) {
-        await this.sendExpiryNotification(company);
+      for (const { company, profiles: companyProfiles } of companiesMap.values()) {
+        await this.sendExpiryNotification(company, companyProfiles);
       }
 
       this.logger.log("BEE certificate expiry check completed");
@@ -54,9 +61,10 @@ export class CertificateExpiryService {
     }
   }
 
-  private async sendExpiryNotification(company: CustomerCompany): Promise<void> {
-    const profiles = company.profiles || [];
-
+  private async sendExpiryNotification(
+    company: Company,
+    profiles: CustomerProfile[],
+  ): Promise<void> {
     if (profiles.length === 0) {
       this.logger.warn(`Company ${company.id} (${company.legalName}) has no profiles to notify`);
       return;

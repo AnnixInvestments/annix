@@ -15,6 +15,7 @@ import { EmailService } from "../email/email.service";
 import { FeatureFlagsService } from "../feature-flags/feature-flags.service";
 import { now } from "../lib/datetime";
 import { DocumentVerificationService } from "../nix/services/document-verification.service";
+import { Company, CompanyType } from "../platform/entities/company.entity";
 import { SecureDocumentsService } from "../secure-documents/secure-documents.service";
 import {
   AUTH_CONSTANTS,
@@ -32,7 +33,6 @@ import { UserRole } from "../user-roles/entities/user-role.entity";
 import { CreateSupplierRegistrationDto, SupplierLoginDto, SupplierLoginResponseDto } from "./dto";
 import {
   SupplierAccountStatus,
-  SupplierCompany,
   SupplierDeviceBinding,
   SupplierDocument,
   SupplierDocumentType,
@@ -52,8 +52,8 @@ export class SupplierAuthService {
   private readonly uploadDir: string;
 
   constructor(
-    @InjectRepository(SupplierCompany)
-    private readonly companyRepo: Repository<SupplierCompany>,
+    @InjectRepository(Company)
+    private readonly companyRepo: Repository<Company>,
     @InjectRepository(SupplierProfile)
     private readonly profileRepo: Repository<SupplierProfile>,
     @InjectRepository(SupplierDeviceBinding)
@@ -284,25 +284,22 @@ export class SupplierAuthService {
 
     try {
       const company = this.companyRepo.create({
+        name: dto.company.legalName,
+        companyType: CompanyType.SUPPLIER,
         legalName: dto.company.legalName,
         tradingName: dto.company.tradingName,
         registrationNumber: dto.company.registrationNumber,
-        taxNumber: dto.company.taxNumber,
         vatNumber: dto.company.vatNumber,
         streetAddress: dto.company.streetAddress,
-        addressLine2: dto.company.addressLine2,
         city: dto.company.city,
-        provinceState: dto.company.provinceState,
+        province: dto.company.provinceState,
         postalCode: dto.company.postalCode,
         country: dto.company.country || "South Africa",
-        primaryContactName: dto.company.primaryContactName,
-        primaryContactEmail: dto.company.primaryContactEmail,
-        primaryContactPhone: dto.company.primaryContactPhone,
-        primaryPhone: dto.company.primaryPhone,
-        faxNumber: dto.company.faxNumber,
-        generalEmail: dto.company.generalEmail,
-        website: dto.company.website,
-        industryType: dto.company.industryType,
+        phone: dto.company.primaryPhone || dto.company.primaryContactPhone,
+        contactPerson: dto.company.primaryContactName,
+        email: dto.company.generalEmail || dto.company.primaryContactEmail,
+        websiteUrl: dto.company.website,
+        industry: dto.company.industryType,
         companySize: dto.company.companySize,
         beeLevel: dto.company.beeLevel,
         beeCertificateExpiry: dto.company.beeCertificateExpiry,
@@ -400,7 +397,7 @@ export class SupplierAuthService {
       await this.secureDocumentsService.createEntityFolder(
         "supplier",
         savedProfile.id,
-        savedCompany.tradingName || savedCompany.legalName,
+        savedCompany.tradingName || savedCompany.legalName || "",
       );
 
       if (documentIdsNeedingVerification.length > 0) {
@@ -435,7 +432,7 @@ export class SupplierAuthService {
           email: savedUser.email,
           firstName: savedProfile.firstName,
           lastName: savedProfile.lastName,
-          companyName: savedCompany.tradingName || savedCompany.legalName,
+          companyName: savedCompany.tradingName || savedCompany.legalName || undefined,
           accountStatus: savedProfile.accountStatus,
           onboardingStatus: SupplierOnboardingStatus.DRAFT,
         },
@@ -908,7 +905,7 @@ export class SupplierAuthService {
         email: user.email,
         firstName: profile.firstName,
         lastName: profile.lastName,
-        companyName: profile.company?.tradingName || profile.company?.legalName,
+        companyName: profile.company?.tradingName || profile.company?.legalName || undefined,
         accountStatus: profile.accountStatus,
         onboardingStatus: profile.onboarding?.status || SupplierOnboardingStatus.DRAFT,
       },
@@ -994,7 +991,7 @@ export class SupplierAuthService {
           email: profile.user.email,
           firstName: profile.firstName,
           lastName: profile.lastName,
-          companyName: profile.company?.tradingName || profile.company?.legalName,
+          companyName: profile.company?.tradingName || profile.company?.legalName || undefined,
           accountStatus: profile.accountStatus,
           onboardingStatus: profile.onboarding?.status || SupplierOnboardingStatus.DRAFT,
         },

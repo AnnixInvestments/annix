@@ -10,6 +10,7 @@ import { EmailModule } from "../email/email.module";
 import { FeatureFlagsModule } from "../feature-flags/feature-flags.module";
 import { MessagingModule } from "../messaging/messaging.module";
 import { NixModule } from "../nix/nix.module";
+import { Company } from "../platform/entities/company.entity";
 import { PumpRfq } from "../rfq/entities/pump-rfq.entity";
 import { Rfq } from "../rfq/entities/rfq.entity";
 import { RfqItem } from "../rfq/entities/rfq-item.entity";
@@ -22,7 +23,6 @@ import { UserRole } from "../user-roles/entities/user-role.entity";
 // Entities
 import {
   SupplierCapability,
-  SupplierCompany,
   SupplierDeviceBinding,
   SupplierDocument,
   SupplierLoginAttempt,
@@ -47,7 +47,7 @@ import { SupplierPumpQuoteController } from "./supplier-pump-quote.controller";
 @Module({
   imports: [
     TypeOrmModule.forFeature([
-      SupplierCompany,
+      Company,
       SupplierProfile,
       SupplierOnboarding,
       SupplierDocument,

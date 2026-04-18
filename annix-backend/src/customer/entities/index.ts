@@ -1,5 +1,4 @@
 export * from "./customer-blocked-supplier.entity";
-export * from "./customer-company.entity";
 export * from "./customer-device-binding.entity";
 export * from "./customer-document.entity";
 export * from "./customer-login-attempt.entity";

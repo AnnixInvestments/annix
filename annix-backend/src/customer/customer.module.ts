@@ -8,12 +8,12 @@ import { EmailModule } from "../email/email.module";
 import { FeatureFlagsModule } from "../feature-flags/feature-flags.module";
 import { MessagingModule } from "../messaging/messaging.module";
 import { NixModule } from "../nix/nix.module";
+import { Company } from "../platform/entities/company.entity";
 import { Rfq } from "../rfq/entities/rfq.entity";
 import { RfqDraft } from "../rfq/entities/rfq-draft.entity";
 import { SecureDocumentsModule } from "../secure-documents/secure-documents.module";
 import { StorageModule } from "../storage/storage.module";
 import { SupplierCapability } from "../supplier/entities/supplier-capability.entity";
-import { SupplierCompany } from "../supplier/entities/supplier-company.entity";
 import { SupplierProfile } from "../supplier/entities/supplier-profile.entity";
 import { User } from "../user/entities/user.entity";
 // External modules
@@ -38,7 +38,6 @@ import { DocumentOcrService } from "./document-ocr.service";
 // Entities
 import {
   CustomerBlockedSupplier,
-  CustomerCompany,
   CustomerDeviceBinding,
   CustomerDocument,
   CustomerLoginAttempt,
@@ -55,7 +54,7 @@ import { CertificateExpiryService } from "./services/certificate-expiry.service"
 @Module({
   imports: [
     TypeOrmModule.forFeature([
-      CustomerCompany,
+      Company,
       CustomerProfile,
       CustomerDeviceBinding,
       CustomerLoginAttempt,
@@ -66,7 +65,6 @@ import { CertificateExpiryService } from "./services/certificate-expiry.service"
       CustomerBlockedSupplier,
       SupplierInvitation,
       SupplierProfile,
-      SupplierCompany,
       SupplierCapability,
       User,
       UserRole,

@@ -4,6 +4,7 @@ import * as bcrypt from "bcrypt";
 import { Repository } from "typeorm";
 import { AuditService } from "../audit/audit.service";
 import { AuditAction } from "../audit/entities/audit-log.entity";
+import { Company } from "../platform/entities/company.entity";
 import { Rfq, RfqStatus } from "../rfq/entities/rfq.entity";
 import { RfqDraft } from "../rfq/entities/rfq-draft.entity";
 import { User } from "../user/entities/user.entity";
@@ -13,13 +14,13 @@ import {
   UpdateCompanyAddressDto,
   UpdateCustomerProfileDto,
 } from "./dto";
-import { CustomerCompany, CustomerDeviceBinding, CustomerProfile } from "./entities";
+import { CustomerDeviceBinding, CustomerProfile } from "./entities";
 
 @Injectable()
 export class CustomerService {
   constructor(
-    @InjectRepository(CustomerCompany)
-    private readonly companyRepo: Repository<CustomerCompany>,
+    @InjectRepository(Company)
+    private readonly companyRepo: Repository<Company>,
     @InjectRepository(CustomerProfile)
     private readonly profileRepo: Repository<CustomerProfile>,
     @InjectRepository(CustomerDeviceBinding)
@@ -60,14 +61,14 @@ export class CustomerService {
       createdAt: profile.createdAt,
       company: {
         id: profile.company.id,
-        legalName: profile.company.legalName,
-        tradingName: profile.company.tradingName,
-        streetAddress: profile.company.streetAddress,
-        city: profile.company.city,
-        provinceState: profile.company.provinceState,
-        postalCode: profile.company.postalCode,
-        country: profile.company.country,
-        primaryPhone: profile.company.primaryPhone,
+        legalName: profile.company.legalName || "",
+        tradingName: profile.company.tradingName || "",
+        streetAddress: profile.company.streetAddress || "",
+        city: profile.company.city || "",
+        provinceState: profile.company.province || "",
+        postalCode: profile.company.postalCode || "",
+        country: profile.company.country || "",
+        primaryPhone: profile.company.phone || "",
       },
       security: {
         deviceBound: !!activeBinding,
@@ -151,17 +152,17 @@ export class CustomerService {
     const oldValues = {
       streetAddress: company.streetAddress,
       city: company.city,
-      provinceState: company.provinceState,
+      provinceState: company.province,
       postalCode: company.postalCode,
-      primaryPhone: company.primaryPhone,
+      primaryPhone: company.phone,
     };
 
     // Update allowed fields only
     if (dto.streetAddress !== undefined) company.streetAddress = dto.streetAddress;
     if (dto.city !== undefined) company.city = dto.city;
-    if (dto.provinceState !== undefined) company.provinceState = dto.provinceState;
+    if (dto.provinceState !== undefined) company.province = dto.provinceState;
     if (dto.postalCode !== undefined) company.postalCode = dto.postalCode;
-    if (dto.primaryPhone !== undefined) company.primaryPhone = dto.primaryPhone;
+    if (dto.primaryPhone !== undefined) company.phone = dto.primaryPhone;
 
     await this.companyRepo.save(company);
 

@@ -12,6 +12,7 @@ import { EmailService } from "../email/email.service";
 import { now } from "../lib/datetime";
 import { ConversationType, RelatedEntityType } from "../messaging/entities";
 import { MessagingService } from "../messaging/messaging.service";
+import { Company } from "../platform/entities/company.entity";
 import { SecureDocumentsService } from "../secure-documents/secure-documents.service";
 import { S3StorageService } from "../storage/s3-storage.service";
 import { User } from "../user/entities/user.entity";
@@ -24,7 +25,6 @@ import {
 } from "./dto";
 import {
   SupplierAccountStatus,
-  SupplierCompany,
   SupplierDocument,
   SupplierOnboarding,
   SupplierOnboardingStatus,
@@ -38,8 +38,8 @@ export class SupplierAdminService {
   constructor(
     @InjectRepository(SupplierProfile)
     private readonly profileRepo: Repository<SupplierProfile>,
-    @InjectRepository(SupplierCompany)
-    private readonly companyRepo: Repository<SupplierCompany>,
+    @InjectRepository(Company)
+    private readonly companyRepo: Repository<Company>,
     @InjectRepository(SupplierOnboarding)
     private readonly onboardingRepo: Repository<SupplierOnboarding>,
     @InjectRepository(SupplierDocument)
@@ -96,7 +96,7 @@ export class SupplierAdminService {
       email: profile.user?.email,
       firstName: profile.firstName,
       lastName: profile.lastName,
-      companyName: profile.company?.tradingName || profile.company?.legalName,
+      companyName: profile.company?.tradingName || profile.company?.legalName || undefined,
       accountStatus: profile.accountStatus,
       onboardingStatus: profile.onboarding?.status || SupplierOnboardingStatus.DRAFT,
       createdAt: profile.createdAt,
@@ -124,7 +124,7 @@ export class SupplierAdminService {
       email: profile.user?.email,
       firstName: profile.firstName,
       lastName: profile.lastName,
-      companyName: profile.company?.tradingName || profile.company?.legalName,
+      companyName: profile.company?.tradingName || profile.company?.legalName || undefined,
       accountStatus: profile.accountStatus,
       onboardingStatus: profile.onboarding?.status,
       createdAt: profile.createdAt,
@@ -149,25 +149,25 @@ export class SupplierAdminService {
       email: profile.user?.email,
       firstName: profile.firstName,
       lastName: profile.lastName,
-      companyName: profile.company?.tradingName || profile.company?.legalName,
+      companyName: profile.company?.tradingName || profile.company?.legalName || undefined,
       accountStatus: profile.accountStatus,
       onboardingStatus: profile.onboarding?.status || SupplierOnboardingStatus.DRAFT,
       createdAt: profile.createdAt,
       company: profile.company
         ? {
             id: profile.company.id,
-            legalName: profile.company.legalName,
-            tradingName: profile.company.tradingName,
-            registrationNumber: profile.company.registrationNumber,
-            taxNumber: profile.company.taxNumber,
-            vatNumber: profile.company.vatNumber,
-            city: profile.company.city,
-            provinceState: profile.company.provinceState,
-            country: profile.company.country,
-            primaryContactName: profile.company.primaryContactName,
-            primaryContactEmail: profile.company.primaryContactEmail,
-            primaryContactPhone: profile.company.primaryContactPhone,
-            industryType: profile.company.industryType,
+            legalName: profile.company.legalName || "",
+            tradingName: profile.company.tradingName ?? undefined,
+            registrationNumber: profile.company.registrationNumber || "",
+            taxNumber: undefined,
+            vatNumber: profile.company.vatNumber ?? undefined,
+            city: profile.company.city || "",
+            provinceState: profile.company.province || "",
+            country: profile.company.country || "",
+            primaryContactName: profile.company.contactPerson || "",
+            primaryContactEmail: profile.company.email || "",
+            primaryContactPhone: profile.company.phone || "",
+            industryType: profile.company.industry ?? undefined,
           }
         : undefined,
       documents: (profile.documents || []).map((doc) => ({
@@ -546,7 +546,7 @@ export class SupplierAdminService {
       vatNumber: company.vatNumber,
       streetAddress: company.streetAddress,
       city: company.city,
-      provinceState: company.provinceState,
+      provinceState: company.province,
       postalCode: company.postalCode,
       beeLevel: company.beeLevel,
       beeCertificateExpiry: company.beeCertificateExpiry,

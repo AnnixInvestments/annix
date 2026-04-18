@@ -13,6 +13,7 @@ import { AuditAction } from "../audit/entities/audit-log.entity";
 import { BoqDistributionService } from "../boq/boq-distribution.service";
 import { fromISO, now } from "../lib/datetime";
 import { DocumentVerificationService } from "../nix/services/document-verification.service";
+import { Company, CompanyType } from "../platform/entities/company.entity";
 import { SecureDocumentsService } from "../secure-documents/secure-documents.service";
 import { IStorageService, STORAGE_SERVICE } from "../storage/storage.interface";
 import {
@@ -24,7 +25,6 @@ import {
 } from "./dto";
 import {
   SupplierCapability,
-  SupplierCompany,
   SupplierDocument,
   SupplierDocumentType,
   SupplierDocumentValidationStatus,
@@ -47,8 +47,8 @@ export class SupplierService {
   constructor(
     @InjectRepository(SupplierProfile)
     private readonly profileRepo: Repository<SupplierProfile>,
-    @InjectRepository(SupplierCompany)
-    private readonly companyRepo: Repository<SupplierCompany>,
+    @InjectRepository(Company)
+    private readonly companyRepo: Repository<Company>,
     @InjectRepository(SupplierOnboarding)
     private readonly onboardingRepo: Repository<SupplierOnboarding>,
     @InjectRepository(SupplierDocument)
@@ -201,7 +201,7 @@ export class SupplierService {
     supplierId: number,
     dto: SupplierCompanyDto,
     clientIp: string,
-  ): Promise<SupplierCompany> {
+  ): Promise<Company> {
     const profile = await this.profileRepo.findOne({
       where: { id: supplierId },
       relations: ["company", "onboarding"],
@@ -221,12 +221,32 @@ export class SupplierService {
     await queryRunner.startTransaction();
 
     try {
-      let company: SupplierCompany;
+      let company: Company;
 
       if (profile.company) {
-        // Update existing company
         const oldValues = { ...profile.company };
-        Object.assign(profile.company, dto);
+        Object.assign(profile.company, {
+          name: dto.legalName || profile.company.name,
+          legalName: dto.legalName,
+          tradingName: dto.tradingName,
+          registrationNumber: dto.registrationNumber,
+          vatNumber: dto.vatNumber,
+          streetAddress: dto.streetAddress,
+          city: dto.city,
+          province: dto.provinceState,
+          postalCode: dto.postalCode,
+          country: dto.country || profile.company.country,
+          phone: dto.primaryPhone || dto.primaryContactPhone,
+          contactPerson: dto.primaryContactName,
+          email: dto.generalEmail || dto.primaryContactEmail,
+          websiteUrl: dto.website,
+          industry: dto.industryType,
+          companySize: dto.companySize,
+          beeLevel: dto.beeLevel,
+          beeCertificateExpiry: dto.beeCertificateExpiry,
+          beeVerificationAgency: dto.beeVerificationAgency,
+          isExemptMicroEnterprise: dto.isExemptMicroEnterprise,
+        });
         company = await queryRunner.manager.save(profile.company);
 
         await this.auditService.log({
@@ -238,10 +258,28 @@ export class SupplierService {
           ipAddress: clientIp,
         });
       } else {
-        // Create new company
         company = this.companyRepo.create({
-          ...dto,
+          name: dto.legalName,
+          companyType: CompanyType.SUPPLIER,
+          legalName: dto.legalName,
+          tradingName: dto.tradingName,
+          registrationNumber: dto.registrationNumber,
+          vatNumber: dto.vatNumber,
+          streetAddress: dto.streetAddress,
+          city: dto.city,
+          province: dto.provinceState,
+          postalCode: dto.postalCode,
           country: dto.country || "South Africa",
+          phone: dto.primaryPhone || dto.primaryContactPhone,
+          contactPerson: dto.primaryContactName,
+          email: dto.generalEmail || dto.primaryContactEmail,
+          websiteUrl: dto.website,
+          industry: dto.industryType,
+          companySize: dto.companySize,
+          beeLevel: dto.beeLevel,
+          beeCertificateExpiry: dto.beeCertificateExpiry,
+          beeVerificationAgency: dto.beeVerificationAgency,
+          isExemptMicroEnterprise: dto.isExemptMicroEnterprise || false,
         });
         company = await queryRunner.manager.save(company);
 
@@ -677,7 +715,7 @@ export class SupplierService {
         firstName: profile.firstName,
         lastName: profile.lastName,
         email: profile.user?.email,
-        companyName: profile.company?.tradingName || profile.company?.legalName,
+        companyName: profile.company?.tradingName || profile.company?.legalName || undefined,
       },
       onboarding: {
         status: profile.onboarding?.status || SupplierOnboardingStatus.DRAFT,
@@ -691,17 +729,17 @@ export class SupplierService {
 
   // Private helper methods
 
-  private isCompanyComplete(company: SupplierCompany): boolean {
+  private isCompanyComplete(company: Company): boolean {
     return !!(
       company.legalName &&
       company.registrationNumber &&
       company.streetAddress &&
       company.city &&
-      company.provinceState &&
+      company.province &&
       company.postalCode &&
-      company.primaryContactName &&
-      company.primaryContactEmail &&
-      company.primaryContactPhone
+      company.contactPerson &&
+      company.email &&
+      company.phone
     );
   }
 

@@ -1,6 +1,6 @@
 import { Column, Entity, JoinColumn, ManyToOne, OneToMany, OneToOne } from "typeorm";
 import { BasePortalProfile } from "../../platform/entities/base-portal-profile";
-import { CustomerCompany } from "./customer-company.entity";
+import { Company } from "../../platform/entities/company.entity";
 import { CustomerDeviceBinding } from "./customer-device-binding.entity";
 import { CustomerDocument } from "./customer-document.entity";
 import { CustomerLoginAttempt } from "./customer-login-attempt.entity";
@@ -21,12 +21,9 @@ export enum CustomerRole {
 
 @Entity("customer_profiles")
 export class CustomerProfile extends BasePortalProfile {
-  @ManyToOne(
-    () => CustomerCompany,
-    (company) => company.profiles,
-  )
+  @ManyToOne(() => Company)
   @JoinColumn({ name: "company_id" })
-  company: CustomerCompany;
+  company: Company;
 
   @Column({ name: "company_id" })
   companyId: number;

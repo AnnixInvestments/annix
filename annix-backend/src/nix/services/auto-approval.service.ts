@@ -351,7 +351,7 @@ export class AutoApprovalService {
 
     await this.emailService.sendCustomerOnboardingApprovalEmail(
       profile.user.email,
-      profile.company.tradingName || profile.company.legalName,
+      profile.company.tradingName || profile.company.legalName || "",
     );
 
     await this.auditService.log({
@@ -387,7 +387,7 @@ export class AutoApprovalService {
 
     await this.emailService.sendSupplierApprovalEmail(
       profile.user.email,
-      profile.company.tradingName || profile.company.legalName,
+      profile.company.tradingName || profile.company.legalName || "",
     );
 
     await this.auditService.log({
@@ -410,7 +410,7 @@ export class AutoApprovalService {
     }
 
     await this.emailService.sendManualReviewNotification(
-      onboarding.customer.company.tradingName || onboarding.customer.company.legalName,
+      onboarding.customer.company.tradingName || onboarding.customer.company.legalName || "",
       onboarding.customer.user.email,
       onboarding.customerId,
       "multiple documents",
@@ -425,7 +425,7 @@ export class AutoApprovalService {
     }
 
     await this.emailService.sendSupplierManualReviewNotification(
-      onboarding.supplier.company.tradingName || onboarding.supplier.company.legalName,
+      onboarding.supplier.company.tradingName || onboarding.supplier.company.legalName || "",
       onboarding.supplier.user.email,
       onboarding.supplierId,
       "multiple documents",

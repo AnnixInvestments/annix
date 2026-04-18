@@ -1,7 +1,7 @@
 import { Column, Entity, JoinColumn, ManyToOne, OneToMany, OneToOne } from "typeorm";
 import { BasePortalProfile } from "../../platform/entities/base-portal-profile";
+import { Company } from "../../platform/entities/company.entity";
 import { SupplierCapability } from "./supplier-capability.entity";
-import { SupplierCompany } from "./supplier-company.entity";
 import { SupplierDeviceBinding } from "./supplier-device-binding.entity";
 import { SupplierDocument } from "./supplier-document.entity";
 import { SupplierLoginAttempt } from "./supplier-login-attempt.entity";
@@ -17,15 +17,11 @@ export enum SupplierAccountStatus {
 
 @Entity("supplier_profiles")
 export class SupplierProfile extends BasePortalProfile {
-  @ManyToOne(
-    () => SupplierCompany,
-    (company) => company.profiles,
-    {
-      nullable: true,
-    },
-  )
+  @ManyToOne(() => Company, {
+    nullable: true,
+  })
   @JoinColumn({ name: "company_id" })
-  company: SupplierCompany;
+  company: Company;
 
   @Column({ name: "company_id", nullable: true })
   companyId: number;

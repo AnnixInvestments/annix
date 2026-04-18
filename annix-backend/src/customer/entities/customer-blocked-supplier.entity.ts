@@ -8,8 +8,8 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
+import { Company } from "../../platform/entities/company.entity";
 import { SupplierProfile } from "../../supplier/entities/supplier-profile.entity";
-import { CustomerCompany } from "./customer-company.entity";
 import { CustomerProfile } from "./customer-profile.entity";
 
 @Entity("customer_blocked_suppliers")
@@ -18,9 +18,9 @@ export class CustomerBlockedSupplier {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne(() => CustomerCompany)
+  @ManyToOne(() => Company)
   @JoinColumn({ name: "customer_company_id" })
-  customerCompany: CustomerCompany;
+  customerCompany: Company;
 
   @Column({ name: "customer_company_id" })
   customerCompanyId: number;
