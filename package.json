@@ -31,7 +31,8 @@
     "lint:backend": "cd annix-backend && pnpm lint",
     "lint:frontend": "cd annix-frontend && pnpm lint",
     "type-check": "cd annix-frontend && pnpm type-check",
-    "start:prod": "NEXT_PUBLIC_API_URL=/api pnpm build && cd annix-backend && npx ts-node --project tsconfig.json --transpile-only ./node_modules/typeorm/cli -d ./src/config/data-source.ts migration:run && NODE_ENV=production PORT=4000 FRONTEND_URL=http://localhost:4000 node dist/src/main.js"
+    "start:prod": "NEXT_PUBLIC_API_URL=/api pnpm build && cd annix-backend && npx ts-node --project tsconfig.json --transpile-only ./node_modules/typeorm/cli -d ./src/config/data-source.ts migration:run && NODE_ENV=production PORT=4000 FRONTEND_URL=http://localhost:4000 node dist/src/main.js",
+    "prepare": "git config core.hooksPath .githooks"
   },
   "pnpm": {
     "patchedDependencies": {
