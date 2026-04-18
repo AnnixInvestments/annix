@@ -11,14 +11,32 @@ export class MigrateComplySaFksToUnified1820100000012 implements MigrationInterf
     "comply_sa_api_keys",
   ];
 
+  private async dropFkConstraints(
+    queryRunner: QueryRunner,
+    table: string,
+    column: string,
+  ): Promise<void> {
+    const constraints: { constraint_name: string }[] = await queryRunner.query(`
+      SELECT tc.constraint_name
+      FROM information_schema.table_constraints tc
+      JOIN information_schema.key_column_usage kcu
+        ON tc.constraint_name = kcu.constraint_name
+        AND tc.table_schema = kcu.table_schema
+      WHERE tc.table_name = '${table}'
+        AND tc.constraint_type = 'FOREIGN KEY'
+        AND kcu.column_name = '${column}'
+    `);
+
+    for (const row of constraints) {
+      await queryRunner.query(
+        `ALTER TABLE ${table} DROP CONSTRAINT IF EXISTS "${row.constraint_name}"`,
+      );
+    }
+  }
+
   public async up(queryRunner: QueryRunner): Promise<void> {
     for (const table of this.companyIdTables) {
-      await queryRunner.query(`
-        DO $$ BEGIN
-          ALTER TABLE ${table} DROP CONSTRAINT IF EXISTS "FK_${table}_company";
-        EXCEPTION WHEN undefined_object THEN NULL;
-        END $$
-      `);
+      await this.dropFkConstraints(queryRunner, table, "company_id");
 
       await queryRunner.query(`
         UPDATE ${table} t
@@ -28,26 +46,19 @@ export class MigrateComplySaFksToUnified1820100000012 implements MigrationInterf
       `);
 
       await queryRunner.query(`
+        DELETE FROM ${table}
+        WHERE company_id NOT IN (SELECT id FROM companies)
+      `);
+
+      await queryRunner.query(`
         ALTER TABLE ${table}
           ADD CONSTRAINT "FK_${table}_company"
           FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
       `);
     }
 
-    await queryRunner.query(`
-      DO $$ BEGIN
-        ALTER TABLE comply_sa_advisor_clients
-          DROP CONSTRAINT IF EXISTS "FK_comply_sa_advisor_clients_company";
-      EXCEPTION WHEN undefined_object THEN NULL;
-      END $$
-    `);
-    await queryRunner.query(`
-      DO $$ BEGIN
-        ALTER TABLE comply_sa_advisor_clients
-          DROP CONSTRAINT IF EXISTS "FK_comply_sa_advisor_clients_user";
-      EXCEPTION WHEN undefined_object THEN NULL;
-      END $$
-    `);
+    await this.dropFkConstraints(queryRunner, "comply_sa_advisor_clients", "client_company_id");
+    await this.dropFkConstraints(queryRunner, "comply_sa_advisor_clients", "advisor_user_id");
 
     await queryRunner.query(`
       UPDATE comply_sa_advisor_clients ac
@@ -65,6 +76,12 @@ export class MigrateComplySaFksToUnified1820100000012 implements MigrationInterf
     `);
 
     await queryRunner.query(`
+      DELETE FROM comply_sa_advisor_clients
+      WHERE client_company_id NOT IN (SELECT id FROM companies)
+         OR advisor_user_id NOT IN (SELECT id FROM "user")
+    `);
+
+    await queryRunner.query(`
       ALTER TABLE comply_sa_advisor_clients
         ADD CONSTRAINT "FK_comply_sa_advisor_clients_company"
         FOREIGN KEY (client_company_id) REFERENCES companies(id) ON DELETE CASCADE,
@@ -72,13 +89,7 @@ export class MigrateComplySaFksToUnified1820100000012 implements MigrationInterf
         FOREIGN KEY (advisor_user_id) REFERENCES "user"(id) ON DELETE CASCADE
     `);
 
-    await queryRunner.query(`
-      DO $$ BEGIN
-        ALTER TABLE comply_sa_notifications
-          DROP CONSTRAINT IF EXISTS "FK_comply_sa_notifications_user";
-      EXCEPTION WHEN undefined_object THEN NULL;
-      END $$
-    `);
+    await this.dropFkConstraints(queryRunner, "comply_sa_notifications", "user_id");
 
     await queryRunner.query(`
       UPDATE comply_sa_notifications n
@@ -87,6 +98,13 @@ export class MigrateComplySaFksToUnified1820100000012 implements MigrationInterf
       JOIN "user" u ON LOWER(u.email) = LOWER(csu.email)
       WHERE csu.id = n.user_id
         AND n.user_id IS NOT NULL
+    `);
+
+    await queryRunner.query(`
+      UPDATE comply_sa_notifications
+      SET user_id = NULL
+      WHERE user_id IS NOT NULL
+        AND user_id NOT IN (SELECT id FROM "user")
     `);
 
     await queryRunner.query(`
