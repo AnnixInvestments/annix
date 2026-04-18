@@ -7,10 +7,11 @@ import { EmailService } from "../../email/email.service";
 import { DateTime } from "../../lib/datetime";
 import { WebPushChannel, WebPushSendResult } from "../../notifications/channels/web-push.channel";
 import { NotificationDispatcherService } from "../../notifications/notification-dispatcher.service";
+import { User } from "../../user/entities/user.entity";
 import { isCvAssistantCronEnabled } from "../cv-assistant-cron.config";
 import { Candidate } from "../entities/candidate.entity";
 import { CandidateJobMatch } from "../entities/candidate-job-match.entity";
-import { CvAssistantUser } from "../entities/cv-assistant-user.entity";
+import { CvAssistantProfile } from "../entities/cv-assistant-profile.entity";
 import { CvPushSubscription } from "../entities/cv-push-subscription.entity";
 import { ExternalJob } from "../entities/external-job.entity";
 import { JobPosting, JobPostingStatus } from "../entities/job-posting.entity";
@@ -27,8 +28,10 @@ export class CvNotificationService {
   private readonly logger = new Logger(CvNotificationService.name);
 
   constructor(
-    @InjectRepository(CvAssistantUser)
-    private readonly userRepo: Repository<CvAssistantUser>,
+    @InjectRepository(CvAssistantProfile)
+    private readonly profileRepo: Repository<CvAssistantProfile>,
+    @InjectRepository(User)
+    private readonly userRepo: Repository<User>,
     @InjectRepository(CvPushSubscription)
     private readonly pushSubRepo: Repository<CvPushSubscription>,
     @InjectRepository(CandidateJobMatch)
@@ -76,7 +79,7 @@ export class CvNotificationService {
       );
     }
 
-    await this.userRepo.update(userId, { pushEnabled: true });
+    await this.profileRepo.update({ userId }, { pushEnabled: true });
   }
 
   async unsubscribe(userId: number, endpoint: string): Promise<void> {
@@ -84,7 +87,7 @@ export class CvNotificationService {
 
     const remaining = await this.pushSubRepo.count({ where: { userId } });
     if (remaining === 0) {
-      await this.userRepo.update(userId, { pushEnabled: false });
+      await this.profileRepo.update({ userId }, { pushEnabled: false });
     }
   }
 
@@ -139,17 +142,20 @@ export class CvNotificationService {
       return;
     } else {
       const companyId = candidate.jobPosting.companyId;
-      const recruiters = await this.userRepo.find({ where: { companyId } });
+      const profiles = await this.profileRepo.find({
+        where: { companyId },
+        relations: ["user"],
+      });
       const highMatches = matches.filter((m) => m.overallScore >= 0.5);
 
       await Promise.all(
-        recruiters
-          .filter((recruiter) => {
-            const threshold = recruiter.matchAlertThreshold / 100;
+        profiles
+          .filter((profile) => {
+            const threshold = profile.matchAlertThreshold / 100;
             return highMatches.some((m) => m.overallScore >= threshold);
           })
-          .map(async (recruiter) => {
-            const threshold = recruiter.matchAlertThreshold / 100;
+          .map(async (profile) => {
+            const threshold = profile.matchAlertThreshold / 100;
             const qualifyingMatches = highMatches.filter((m) => m.overallScore >= threshold);
 
             const topMatch = qualifyingMatches.reduce((best, m) =>
@@ -160,19 +166,22 @@ export class CvNotificationService {
               where: { id: topMatch.externalJobId },
             });
             const scorePct = Math.round(topMatch.overallScore * 100);
+            const userName =
+              [profile.user.firstName, profile.user.lastName].filter(Boolean).join(" ") ||
+              profile.user.email;
 
-            if (recruiter.digestEnabled) {
+            if (profile.digestEnabled) {
               await this.emailService.sendCvAssistantMatchAlertEmail(
-                recruiter.email,
-                recruiter.name,
+                profile.user.email,
+                userName,
                 candidate.name ?? "Unknown candidate",
                 job?.title ?? "External job",
                 scorePct,
               );
             }
 
-            if (recruiter.pushEnabled) {
-              await this.sendPushToUser(recruiter.id, {
+            if (profile.pushEnabled) {
+              await this.sendPushToUser(profile.userId, {
                 title: "High-scoring candidate match",
                 body: `${candidate.name ?? "A candidate"} matched ${job?.title ?? "a job"} at ${scorePct}%`,
                 tag: `match-${candidateId}`,
@@ -189,10 +198,10 @@ export class CvNotificationService {
     if (!isCvAssistantCronEnabled()) return;
     const sevenDaysAgo = DateTime.now().minus({ days: 7 }).toJSDate();
 
-    const companies = await this.userRepo
-      .createQueryBuilder("user")
-      .select("DISTINCT user.company_id", "companyId")
-      .where("user.digest_enabled = true")
+    const companies = await this.profileRepo
+      .createQueryBuilder("profile")
+      .select("DISTINCT profile.company_id", "companyId")
+      .where("profile.digest_enabled = true")
       .getRawMany();
 
     const companyCounts = await Promise.all(
@@ -204,9 +213,14 @@ export class CvNotificationService {
         if (jobPostings.length === 0) {
           return 0;
         } else {
-          const recruiters = await this.userRepo.find({
+          const recruiterProfiles = await this.profileRepo.find({
             where: { companyId, digestEnabled: true },
+            relations: ["user"],
           });
+          const recruiters = recruiterProfiles.map((p) => ({
+            email: p.user.email,
+            name: [p.user.firstName, p.user.lastName].filter(Boolean).join(" ") || p.user.email,
+          }));
 
           const jobPostingIds = jobPostings.map((jp) => jp.id);
           const candidates = await this.candidateRepo.find({

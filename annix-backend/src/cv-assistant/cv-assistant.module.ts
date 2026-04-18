@@ -24,9 +24,7 @@ import { SettingsController } from "./controllers/settings.controller";
 import { Candidate } from "./entities/candidate.entity";
 import { CandidateJobMatch } from "./entities/candidate-job-match.entity";
 import { CandidateReference } from "./entities/candidate-reference.entity";
-import { CvAssistantCompany } from "./entities/cv-assistant-company.entity";
 import { CvAssistantProfile } from "./entities/cv-assistant-profile.entity";
-import { CvAssistantUser } from "./entities/cv-assistant-user.entity";
 import { CvPushSubscription } from "./entities/cv-push-subscription.entity";
 import { ExternalJob } from "./entities/external-job.entity";
 import { JobMarketSource } from "./entities/job-market-source.entity";
@@ -55,8 +53,6 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
 @Module({
   imports: [
     TypeOrmModule.forFeature([
-      CvAssistantUser,
-      CvAssistantCompany,
       CvAssistantProfile,
       User,
       Company,

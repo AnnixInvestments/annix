@@ -16,10 +16,8 @@ import { AppRole } from "../../rbac/entities/app-role.entity";
 import { UserAppAccess } from "../../rbac/entities/user-app-access.entity";
 import { PasswordService } from "../../shared/auth/password.service";
 import { User } from "../../user/entities/user.entity";
-import { ComplySaCompany } from "../companies/entities/company.entity";
 import { ComplySaCompanyDetails } from "../companies/entities/comply-sa-company-details.entity";
 import { ComplySaProfile } from "../companies/entities/comply-sa-profile.entity";
-import { ComplySaUser } from "../companies/entities/user.entity";
 import { fromJSDate, now } from "../lib/datetime";
 import { ComplySaLoginDto } from "./dto/login.dto";
 import { ComplySaSignupDto } from "./dto/signup.dto";
@@ -40,10 +38,6 @@ export class ComplySaAuthService {
     private readonly companyRepo: Repository<Company>,
     @InjectRepository(ComplySaCompanyDetails)
     private readonly companyDetailsRepo: Repository<ComplySaCompanyDetails>,
-    @InjectRepository(ComplySaUser)
-    private readonly legacyUserRepo: Repository<ComplySaUser>,
-    @InjectRepository(ComplySaCompany)
-    private readonly legacyCompanyRepo: Repository<ComplySaCompany>,
     @InjectRepository(App)
     private readonly appRepo: Repository<App>,
     @InjectRepository(AppRole)
@@ -134,41 +128,6 @@ export class ComplySaAuthService {
 
     await this.bridgeToRbac(savedUser.id);
 
-    const legacyCompany = this.legacyCompanyRepo.create({
-      name: companyName,
-      entityType,
-      registrationNumber: dto.registrationNumber ?? null,
-      industry: dto.industrySector ?? null,
-      province: dto.province ?? null,
-      complianceAreas: dto.complianceAreas ?? null,
-      idNumber: dto.idNumber ?? null,
-      passportNumber: dto.passportNumber ?? null,
-      passportCountry: dto.passportCountry ?? null,
-      sarsTaxReference: dto.sarsTaxReference ?? null,
-      dateOfBirth: dto.dateOfBirth ?? null,
-      phone: dto.phone ?? null,
-      trustRegistrationNumber: dto.trustRegistrationNumber ?? null,
-      mastersOffice: dto.mastersOffice ?? null,
-      trusteeCount: dto.trusteeCount ?? null,
-      employeeCountRange: dto.employeeCountRange ?? null,
-      businessAddress: dto.businessAddress ?? null,
-      profileComplete: dto.profileComplete ?? false,
-    });
-    const savedLegacyCompany = await this.legacyCompanyRepo.save(legacyCompany);
-
-    const legacyUser = this.legacyUserRepo.create({
-      name: dto.name,
-      email: dto.email,
-      passwordHash,
-      companyId: savedLegacyCompany.id,
-      role: "owner",
-      emailVerified: false,
-      emailVerificationToken: verificationToken,
-      termsAcceptedAt: now().toJSDate(),
-      termsVersion: CURRENT_TERMS_VERSION,
-    });
-    await this.legacyUserRepo.save(legacyUser);
-
     await this.sendVerificationEmail(savedUser.email, verificationToken);
 
     const token = this.jwtService.sign({
@@ -202,13 +161,6 @@ export class ComplySaAuthService {
     user.status = "active";
     await this.userRepo.save(user);
 
-    await this.legacyUserRepo
-      .createQueryBuilder()
-      .update()
-      .set({ emailVerified: true, emailVerificationToken: null })
-      .where("email = :email", { email: user.email })
-      .execute();
-
     this.logger.log(`Email verified for user ${user.email}`);
 
     return { verified: true };
@@ -228,13 +180,6 @@ export class ComplySaAuthService {
     const verificationToken = randomBytes(32).toString("hex");
     user.emailVerificationToken = verificationToken;
     await this.userRepo.save(user);
-
-    await this.legacyUserRepo
-      .createQueryBuilder()
-      .update()
-      .set({ emailVerificationToken: verificationToken })
-      .where("email = :email", { email: user.email })
-      .execute();
 
     await this.sendVerificationEmail(user.email, verificationToken);
 
@@ -297,13 +242,6 @@ export class ComplySaAuthService {
     user.resetPasswordExpires = expiresAt;
     await this.userRepo.save(user);
 
-    await this.legacyUserRepo
-      .createQueryBuilder()
-      .update()
-      .set({ passwordResetToken: resetToken, passwordResetExpiresAt: expiresAt })
-      .where("email = :email", { email: user.email })
-      .execute();
-
     await this.sendPasswordResetEmail(user.email, resetToken);
 
     this.logger.log(`Password reset requested for ${user.email}`);
@@ -332,13 +270,6 @@ export class ComplySaAuthService {
     user.resetPasswordToken = null;
     user.resetPasswordExpires = null;
     await this.userRepo.save(user);
-
-    await this.legacyUserRepo
-      .createQueryBuilder()
-      .update()
-      .set({ passwordHash: newHash, passwordResetToken: null, passwordResetExpiresAt: null })
-      .where("email = :email", { email: user.email })
-      .execute();
 
     this.logger.log(`Password reset completed for ${user.email}`);
 
@@ -390,13 +321,6 @@ export class ComplySaAuthService {
     profile.termsAcceptedAt = now().toJSDate();
     profile.termsVersion = CURRENT_TERMS_VERSION;
     await this.profileRepo.save(profile);
-
-    await this.legacyUserRepo
-      .createQueryBuilder()
-      .update()
-      .set({ termsAcceptedAt: now().toJSDate(), termsVersion: CURRENT_TERMS_VERSION })
-      .where("id = :id", { id: profile.legacyComplyUserId })
-      .execute();
 
     const user = await this.userRepo.findOne({ where: { id: userId } });
     this.logger.log(`User ${user?.email} accepted terms version ${CURRENT_TERMS_VERSION}`);

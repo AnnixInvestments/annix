@@ -18,9 +18,8 @@ import { AppRole } from "../../rbac/entities/app-role.entity";
 import { UserAppAccess } from "../../rbac/entities/user-app-access.entity";
 import { PasswordService } from "../../shared/auth/password.service";
 import { User } from "../../user/entities/user.entity";
-import { CvAssistantCompany } from "../entities/cv-assistant-company.entity";
 import { CvAssistantProfile } from "../entities/cv-assistant-profile.entity";
-import { CvAssistantRole, CvAssistantUser } from "../entities/cv-assistant-user.entity";
+import { CvAssistantRole } from "../entities/cv-assistant-user.entity";
 
 const VERIFICATION_EXPIRY_HOURS = 24;
 
@@ -35,10 +34,6 @@ export class CvAssistantAuthService {
     private readonly profileRepo: Repository<CvAssistantProfile>,
     @InjectRepository(Company)
     private readonly companyRepo: Repository<Company>,
-    @InjectRepository(CvAssistantUser)
-    private readonly legacyUserRepo: Repository<CvAssistantUser>,
-    @InjectRepository(CvAssistantCompany)
-    private readonly legacyCompanyRepo: Repository<CvAssistantCompany>,
     @InjectRepository(App)
     private readonly appRepo: Repository<App>,
     @InjectRepository(AppRole)
@@ -89,23 +84,6 @@ export class CvAssistantAuthService {
 
     await this.bridgeToRbac(savedUser.id, "admin");
 
-    const legacyCompany = this.legacyCompanyRepo.create({
-      name: resolvedCompanyName,
-    });
-    const savedLegacyCompany = await this.legacyCompanyRepo.save(legacyCompany);
-
-    const legacyUser = this.legacyUserRepo.create({
-      email,
-      passwordHash,
-      name,
-      role: CvAssistantRole.ADMIN,
-      companyId: savedLegacyCompany.id,
-      emailVerified: false,
-      emailVerificationToken: verificationToken,
-      emailVerificationExpires: verificationExpires,
-    });
-    await this.legacyUserRepo.save(legacyUser);
-
     await this.emailService.sendCvAssistantVerificationEmail(email, verificationToken);
 
     return {
@@ -139,17 +117,6 @@ export class CvAssistantAuthService {
     user.status = "active";
     await this.userRepo.save(user);
 
-    await this.legacyUserRepo
-      .createQueryBuilder()
-      .update()
-      .set({
-        emailVerified: true,
-        emailVerificationToken: null,
-        emailVerificationExpires: null,
-      })
-      .where("email = :email", { email: user.email })
-      .execute();
-
     const profile = await this.profileRepo.findOne({ where: { userId: user.id } });
     const role = await this.resolveRole(user.id);
     const tokens = this.generateTokens(user, profile, role);
@@ -181,16 +148,6 @@ export class CvAssistantAuthService {
     user.emailVerificationExpires = verificationExpires;
     await this.userRepo.save(user);
 
-    await this.legacyUserRepo
-      .createQueryBuilder()
-      .update()
-      .set({
-        emailVerificationToken: verificationToken,
-        emailVerificationExpires: verificationExpires,
-      })
-      .where("email = :email", { email: user.email })
-      .execute();
-
     await this.emailService.sendCvAssistantVerificationEmail(email, verificationToken);
 
     return { message: "Verification email resent. Please check your inbox." };
@@ -206,13 +163,6 @@ export class CvAssistantAuthService {
       user.resetPasswordToken = resetToken;
       user.resetPasswordExpires = resetExpires;
       await this.userRepo.save(user);
-
-      await this.legacyUserRepo
-        .createQueryBuilder()
-        .update()
-        .set({ resetPasswordToken: resetToken, resetPasswordExpires: resetExpires })
-        .where("email = :email", { email: user.email })
-        .execute();
 
       await this.emailService.sendCvAssistantPasswordResetEmail(email, resetToken);
     }
@@ -239,13 +189,6 @@ export class CvAssistantAuthService {
     user.resetPasswordToken = null;
     user.resetPasswordExpires = null;
     await this.userRepo.save(user);
-
-    await this.legacyUserRepo
-      .createQueryBuilder()
-      .update()
-      .set({ passwordHash: newHash, resetPasswordToken: null, resetPasswordExpires: null })
-      .where("email = :email", { email: user.email })
-      .execute();
 
     return { message: "Password reset successfully. You can now sign in with your new password." };
   }
