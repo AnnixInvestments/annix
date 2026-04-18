@@ -8,10 +8,17 @@ import {
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { InjectRepository } from "@nestjs/typeorm";
-import * as bcrypt from "bcrypt";
 import { Repository } from "typeorm";
 import { EmailService } from "../../email/email.service";
+import { Company, CompanyType } from "../../platform/entities/company.entity";
+import { App } from "../../rbac/entities/app.entity";
+import { AppRole } from "../../rbac/entities/app-role.entity";
+import { UserAppAccess } from "../../rbac/entities/user-app-access.entity";
+import { PasswordService } from "../../shared/auth/password.service";
+import { User } from "../../user/entities/user.entity";
 import { ComplySaCompany } from "../companies/entities/company.entity";
+import { ComplySaCompanyDetails } from "../companies/entities/comply-sa-company-details.entity";
+import { ComplySaProfile } from "../companies/entities/comply-sa-profile.entity";
 import { ComplySaUser } from "../companies/entities/user.entity";
 import { fromJSDate, now } from "../lib/datetime";
 import { ComplySaLoginDto } from "./dto/login.dto";
@@ -25,24 +32,40 @@ export class ComplySaAuthService {
   private readonly logger = new Logger(ComplySaAuthService.name);
 
   constructor(
+    @InjectRepository(User)
+    private readonly userRepo: Repository<User>,
+    @InjectRepository(ComplySaProfile)
+    private readonly profileRepo: Repository<ComplySaProfile>,
+    @InjectRepository(Company)
+    private readonly companyRepo: Repository<Company>,
+    @InjectRepository(ComplySaCompanyDetails)
+    private readonly companyDetailsRepo: Repository<ComplySaCompanyDetails>,
     @InjectRepository(ComplySaUser)
-    private readonly usersRepository: Repository<ComplySaUser>,
+    private readonly legacyUserRepo: Repository<ComplySaUser>,
     @InjectRepository(ComplySaCompany)
-    private readonly companiesRepository: Repository<ComplySaCompany>,
+    private readonly legacyCompanyRepo: Repository<ComplySaCompany>,
+    @InjectRepository(App)
+    private readonly appRepo: Repository<App>,
+    @InjectRepository(AppRole)
+    private readonly appRoleRepo: Repository<AppRole>,
+    @InjectRepository(UserAppAccess)
+    private readonly userAppAccessRepo: Repository<UserAppAccess>,
     private readonly jwtService: JwtService,
     private readonly emailService: EmailService,
+    private readonly passwordService: PasswordService,
   ) {}
 
-  async signup(
-    dto: ComplySaSignupDto,
-  ): Promise<{ access_token: string; user: Partial<ComplySaUser> }> {
+  async signup(dto: ComplySaSignupDto): Promise<{
+    access_token: string;
+    user: { id: number; name: string; email: string; role: string };
+  }> {
     if (!dto.termsAccepted) {
       throw new BadRequestException(
         "You must accept the Terms and Conditions to create an account",
       );
     }
 
-    const existingUser = await this.usersRepository.findOne({
+    const existingUser = await this.userRepo.findOne({
       where: { email: dto.email },
     });
 
@@ -59,7 +82,59 @@ export class ComplySaAuthService {
     };
     const companyName = entityNameMap[entityType] || dto.name;
 
-    const company = this.companiesRepository.create({
+    const unifiedCompany = this.companyRepo.create({
+      name: companyName,
+      companyType: CompanyType.CUSTOMER,
+      registrationNumber: dto.registrationNumber ?? null,
+      industry: dto.industrySector ?? null,
+      province: dto.province ?? null,
+      phone: dto.phone ?? null,
+    });
+    const savedUnifiedCompany = await this.companyRepo.save(unifiedCompany);
+
+    const companyDetails = this.companyDetailsRepo.create({
+      companyId: savedUnifiedCompany.id,
+      entityType,
+      complianceAreas: (dto.complianceAreas as unknown as Record<string, unknown>) ?? null,
+      idNumber: dto.idNumber ?? null,
+      passportNumber: dto.passportNumber ?? null,
+      passportCountry: dto.passportCountry ?? null,
+      sarsTaxReference: dto.sarsTaxReference ?? null,
+      dateOfBirth: dto.dateOfBirth ?? null,
+      trustRegistrationNumber: dto.trustRegistrationNumber ?? null,
+      mastersOffice: dto.mastersOffice ?? null,
+      trusteeCount: dto.trusteeCount ?? null,
+      employeeCountRange: dto.employeeCountRange ?? null,
+      businessAddress: dto.businessAddress ?? null,
+      profileComplete: dto.profileComplete ?? false,
+    });
+    await this.companyDetailsRepo.save(companyDetails);
+
+    const passwordHash = await this.passwordService.hashSimple(dto.password);
+    const verificationToken = randomBytes(32).toString("hex");
+
+    const user = this.userRepo.create({
+      email: dto.email,
+      username: dto.email,
+      passwordHash,
+      firstName: dto.name,
+      status: "pending",
+      emailVerified: false,
+      emailVerificationToken: verificationToken,
+    } as Partial<User>);
+    const savedUser = await this.userRepo.save(user);
+
+    const profile = this.profileRepo.create({
+      userId: savedUser.id,
+      companyId: savedUnifiedCompany.id,
+      termsAcceptedAt: now().toJSDate(),
+      termsVersion: CURRENT_TERMS_VERSION,
+    });
+    await this.profileRepo.save(profile);
+
+    await this.bridgeToRbac(savedUser.id);
+
+    const legacyCompany = this.legacyCompanyRepo.create({
       name: companyName,
       entityType,
       registrationNumber: dto.registrationNumber ?? null,
@@ -79,45 +154,42 @@ export class ComplySaAuthService {
       businessAddress: dto.businessAddress ?? null,
       profileComplete: dto.profileComplete ?? false,
     });
-    const savedCompany = await this.companiesRepository.save(company);
+    const savedLegacyCompany = await this.legacyCompanyRepo.save(legacyCompany);
 
-    const passwordHash = await bcrypt.hash(dto.password, 12);
-    const verificationToken = randomBytes(32).toString("hex");
-
-    const user = this.usersRepository.create({
+    const legacyUser = this.legacyUserRepo.create({
       name: dto.name,
       email: dto.email,
       passwordHash,
-      companyId: savedCompany.id,
+      companyId: savedLegacyCompany.id,
       role: "owner",
       emailVerified: false,
       emailVerificationToken: verificationToken,
       termsAcceptedAt: now().toJSDate(),
       termsVersion: CURRENT_TERMS_VERSION,
     });
-    const savedUser = await this.usersRepository.save(user);
+    await this.legacyUserRepo.save(legacyUser);
 
     await this.sendVerificationEmail(savedUser.email, verificationToken);
 
     const token = this.jwtService.sign({
       sub: savedUser.id,
       email: savedUser.email,
-      companyId: savedCompany.id,
+      companyId: savedUnifiedCompany.id,
     });
 
     return {
       access_token: token,
       user: {
         id: savedUser.id,
-        name: savedUser.name,
+        name: dto.name,
         email: savedUser.email,
-        role: savedUser.role,
+        role: "owner",
       },
     };
   }
 
   async verifyEmail(token: string): Promise<{ verified: boolean }> {
-    const user = await this.usersRepository.findOne({
+    const user = await this.userRepo.findOne({
       where: { emailVerificationToken: token },
     });
 
@@ -127,7 +199,15 @@ export class ComplySaAuthService {
 
     user.emailVerified = true;
     user.emailVerificationToken = null;
-    await this.usersRepository.save(user);
+    user.status = "active";
+    await this.userRepo.save(user);
+
+    await this.legacyUserRepo
+      .createQueryBuilder()
+      .update()
+      .set({ emailVerified: true, emailVerificationToken: null })
+      .where("email = :email", { email: user.email })
+      .execute();
 
     this.logger.log(`Email verified for user ${user.email}`);
 
@@ -135,9 +215,7 @@ export class ComplySaAuthService {
   }
 
   async resendVerification(email: string): Promise<{ sent: boolean }> {
-    const user = await this.usersRepository.findOne({
-      where: { email },
-    });
+    const user = await this.userRepo.findOne({ where: { email } });
 
     if (user === null) {
       return { sent: true };
@@ -149,7 +227,14 @@ export class ComplySaAuthService {
 
     const verificationToken = randomBytes(32).toString("hex");
     user.emailVerificationToken = verificationToken;
-    await this.usersRepository.save(user);
+    await this.userRepo.save(user);
+
+    await this.legacyUserRepo
+      .createQueryBuilder()
+      .update()
+      .set({ emailVerificationToken: verificationToken })
+      .where("email = :email", { email: user.email })
+      .execute();
 
     await this.sendVerificationEmail(user.email, verificationToken);
 
@@ -158,45 +243,48 @@ export class ComplySaAuthService {
 
   async login(dto: ComplySaLoginDto): Promise<{
     access_token: string;
-    user: Partial<ComplySaUser>;
+    user: { id: number; name: string; email: string; role: string };
     emailVerified: boolean;
     termsOutdated: boolean;
   }> {
-    const user = await this.usersRepository.findOne({
-      where: { email: dto.email },
-      relations: ["company"],
-    });
+    const user = await this.userRepo.findOne({ where: { email: dto.email } });
 
     if (user === null) {
       throw new UnauthorizedException("Invalid credentials");
     }
 
-    const passwordValid = await bcrypt.compare(dto.password, user.passwordHash);
+    const passwordToCheck = user.passwordHash || user.password;
+    const passwordValid = await this.passwordService.verify(dto.password, passwordToCheck);
 
     if (!passwordValid) {
       throw new UnauthorizedException("Invalid credentials");
     }
 
-    const termsOutdated = user.termsVersion !== CURRENT_TERMS_VERSION;
+    const profile = await this.profileRepo.findOne({
+      where: { userId: user.id },
+      relations: ["company"],
+    });
+
+    const termsOutdated = profile?.termsVersion !== CURRENT_TERMS_VERSION;
+    const companyId = profile?.companyId ?? null;
+    const userName = user.firstName || user.email;
 
     const token = this.jwtService.sign({
       sub: user.id,
       email: user.email,
-      companyId: user.companyId,
+      companyId,
     });
 
     return {
       access_token: token,
-      user: { id: user.id, name: user.name, email: user.email, role: user.role },
+      user: { id: user.id, name: userName, email: user.email, role: "owner" },
       emailVerified: user.emailVerified,
       termsOutdated,
     };
   }
 
   async forgotPassword(email: string): Promise<{ sent: boolean }> {
-    const user = await this.usersRepository.findOne({
-      where: { email },
-    });
+    const user = await this.userRepo.findOne({ where: { email } });
 
     if (user === null) {
       return { sent: true };
@@ -205,9 +293,16 @@ export class ComplySaAuthService {
     const resetToken = randomBytes(32).toString("hex");
     const expiresAt = now().plus({ hours: PASSWORD_RESET_EXPIRY_HOURS }).toJSDate();
 
-    user.passwordResetToken = resetToken;
-    user.passwordResetExpiresAt = expiresAt;
-    await this.usersRepository.save(user);
+    user.resetPasswordToken = resetToken;
+    user.resetPasswordExpires = expiresAt;
+    await this.userRepo.save(user);
+
+    await this.legacyUserRepo
+      .createQueryBuilder()
+      .update()
+      .set({ passwordResetToken: resetToken, passwordResetExpiresAt: expiresAt })
+      .where("email = :email", { email: user.email })
+      .execute();
 
     await this.sendPasswordResetEmail(user.email, resetToken);
 
@@ -217,86 +312,127 @@ export class ComplySaAuthService {
   }
 
   async resetPassword(token: string, newPassword: string): Promise<{ reset: boolean }> {
-    const user = await this.usersRepository.findOne({
-      where: { passwordResetToken: token },
+    const user = await this.userRepo.findOne({
+      where: { resetPasswordToken: token },
     });
 
     if (user === null) {
       throw new BadRequestException("Invalid or expired reset token");
     }
 
-    if (user.passwordResetExpiresAt !== null) {
-      const expiresAt = fromJSDate(user.passwordResetExpiresAt);
+    if (user.resetPasswordExpires !== null) {
+      const expiresAt = fromJSDate(user.resetPasswordExpires);
       if (now() > expiresAt) {
         throw new BadRequestException("Reset token has expired. Please request a new one.");
       }
     }
 
-    user.passwordHash = await bcrypt.hash(newPassword, 12);
-    user.passwordResetToken = null;
-    user.passwordResetExpiresAt = null;
-    await this.usersRepository.save(user);
+    const newHash = await this.passwordService.hashSimple(newPassword);
+    user.passwordHash = newHash;
+    user.resetPasswordToken = null;
+    user.resetPasswordExpires = null;
+    await this.userRepo.save(user);
+
+    await this.legacyUserRepo
+      .createQueryBuilder()
+      .update()
+      .set({ passwordHash: newHash, passwordResetToken: null, passwordResetExpiresAt: null })
+      .where("email = :email", { email: user.email })
+      .execute();
 
     this.logger.log(`Password reset completed for ${user.email}`);
 
     return { reset: true };
   }
 
-  async refreshToken(
-    userId: number,
-  ): Promise<{ access_token: string; user: Partial<ComplySaUser> }> {
-    const user = await this.usersRepository.findOne({
-      where: { id: userId },
-      relations: ["company"],
-    });
+  async refreshToken(userId: number): Promise<{
+    access_token: string;
+    user: { id: number; name: string; email: string; role: string; companyId: number | null };
+  }> {
+    const user = await this.userRepo.findOne({ where: { id: userId } });
 
     if (user === null) {
       throw new UnauthorizedException("User no longer exists");
     }
 
+    const profile = await this.profileRepo.findOne({
+      where: { userId: user.id },
+    });
+
+    const companyId = profile?.companyId ?? null;
+    const userName = user.firstName || user.email;
+
     const token = this.jwtService.sign({
       sub: user.id,
       email: user.email,
-      companyId: user.companyId,
+      companyId,
     });
 
     return {
       access_token: token,
       user: {
         id: user.id,
-        name: user.name,
+        name: userName,
         email: user.email,
-        role: user.role,
-        companyId: user.companyId,
+        role: "owner",
+        companyId,
       },
     };
   }
 
   async acceptCurrentTerms(userId: number): Promise<{ accepted: boolean }> {
-    const user = await this.usersRepository.findOne({
-      where: { id: userId },
-    });
+    const profile = await this.profileRepo.findOne({ where: { userId } });
 
-    if (user === null) {
+    if (profile === null) {
       throw new UnauthorizedException("User not found");
     }
 
-    user.termsAcceptedAt = now().toJSDate();
-    user.termsVersion = CURRENT_TERMS_VERSION;
-    await this.usersRepository.save(user);
+    profile.termsAcceptedAt = now().toJSDate();
+    profile.termsVersion = CURRENT_TERMS_VERSION;
+    await this.profileRepo.save(profile);
 
-    this.logger.log(`User ${user.email} accepted terms version ${CURRENT_TERMS_VERSION}`);
+    await this.legacyUserRepo
+      .createQueryBuilder()
+      .update()
+      .set({ termsAcceptedAt: now().toJSDate(), termsVersion: CURRENT_TERMS_VERSION })
+      .where("id = :id", { id: profile.legacyComplyUserId })
+      .execute();
+
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    this.logger.log(`User ${user?.email} accepted terms version ${CURRENT_TERMS_VERSION}`);
 
     return { accepted: true };
   }
 
-  async validateUser(userId: number): Promise<ComplySaUser | null> {
-    const user = await this.usersRepository.findOne({
-      where: { id: userId },
-      relations: ["company"],
-    });
+  async validateUser(userId: number): Promise<User | null> {
+    return this.userRepo.findOne({ where: { id: userId } });
+  }
 
-    return user ?? null;
+  private async bridgeToRbac(userId: number): Promise<void> {
+    try {
+      const app = await this.appRepo.findOne({ where: { code: "comply-sa" } });
+      if (!app) return;
+
+      const rbacRole = await this.appRoleRepo.findOne({
+        where: { appId: app.id, code: "administrator" },
+      });
+      if (!rbacRole) return;
+
+      const existing = await this.userAppAccessRepo.findOne({
+        where: { userId, appId: app.id },
+      });
+      if (existing) return;
+
+      const access = this.userAppAccessRepo.create({
+        userId,
+        appId: app.id,
+        roleId: rbacRole.id,
+        grantedAt: now().toJSDate(),
+      });
+      await this.userAppAccessRepo.save(access);
+    } catch (err) {
+      this.logger.warn(`Failed to bridge Comply SA user ${userId} to RBAC: ${err}`);
+    }
   }
 
   private async sendVerificationEmail(email: string, token: string): Promise<void> {
