@@ -31,586 +31,20 @@ import {
   useAllMaterialLimits,
 } from "@/app/lib/query/hooks";
 import { useRfqWizardStore } from "@/app/lib/store/rfqWizardStore";
-
-interface MaterialProperties {
-  particleSize: "Fine" | "Medium" | "Coarse" | "VeryCoarse";
-  particleShape: "Rounded" | "SubAngular" | "Angular";
-  specificGravity: "Light" | "Medium" | "Heavy";
-  hardnessClass: "Low" | "Medium" | "High";
-  silicaContent: "Low" | "Moderate" | "High";
-}
-
-interface ChemicalProperties {
-  phRange: "Acidic" | "Neutral" | "Alkaline";
-  chlorides: "Low" | "Moderate" | "High";
-  temperatureRange: "Ambient" | "Elevated" | "High";
-}
-
-interface FlowProperties {
-  solidsPercent: "Low" | "Medium" | "High" | "VeryHigh";
-  velocity: "Low" | "Medium" | "High";
-  flowRegime: "Laminar" | "Turbulent";
-  impactAngle: "Low" | "Mixed" | "High";
-}
-
-interface EquipmentProperties {
-  equipmentType: "Pipe" | "Tank" | "Chute" | "Hopper" | "Launder";
-  impactZones: boolean;
-  operatingPressure: "Low" | "Medium" | "High";
-}
-
-interface MaterialTransferProfile {
-  material: Partial<MaterialProperties>;
-  chemistry: Partial<ChemicalProperties>;
-  flow: Partial<FlowProperties>;
-  equipment: Partial<EquipmentProperties>;
-}
-
-interface DamageMechanisms {
-  abrasion: "Low" | "Moderate" | "Severe";
-  impact: "Low" | "Moderate" | "Severe";
-  corrosion: "Low" | "Moderate" | "High";
-  dominantMechanism: "Impact Abrasion" | "Sliding Abrasion" | "Corrosion" | "Mixed";
-}
-
-interface LiningRecommendation {
-  lining: string;
-  liningType: string;
-  thicknessRange: string;
-  standardsBasis: string[];
-  rationale: string;
-  engineeringNotes: string[];
-}
-
-// Fallback pipe schedule data (ASTM A106 Gr B) for when backend is unavailable
-// Defined at module level so it can be used by both ItemUploadStep and main component
-function classifyDamageMechanisms(profile: MaterialTransferProfile): DamageMechanisms {
-  const { material, chemistry, flow, equipment } = profile;
-
-  const abrasionSeverity = (): "Low" | "Moderate" | "Severe" => {
-    if (
-      material.hardnessClass === "High" &&
-      (flow.velocity === "High" || material.silicaContent === "High")
-    ) {
-      return "Severe";
-    }
-    if (
-      material.hardnessClass === "Medium" ||
-      flow.velocity === "Medium" ||
-      material.particleShape === "Angular"
-    ) {
-      return "Moderate";
-    }
-    return "Low";
-  };
-
-  const impactSeverity = (): "Low" | "Moderate" | "Severe" => {
-    if (flow.impactAngle === "High" && equipment.impactZones) {
-      return "Severe";
-    }
-    if (
-      flow.impactAngle === "Mixed" ||
-      material.particleSize === "Coarse" ||
-      material.particleSize === "VeryCoarse"
-    ) {
-      return "Moderate";
-    }
-    return "Low";
-  };
-
-  const corrosionSeverity = (): "Low" | "Moderate" | "High" => {
-    if (chemistry.phRange === "Acidic" || chemistry.chlorides === "High") {
-      return "High";
-    }
-    if (chemistry.chlorides === "Moderate" || chemistry.temperatureRange === "High") {
-      return "Moderate";
-    }
-    return "Low";
-  };
-
-  const abrasion = abrasionSeverity();
-  const impact = impactSeverity();
-  const corrosion = corrosionSeverity();
-
-  const dominantMechanism = (): "Impact Abrasion" | "Sliding Abrasion" | "Corrosion" | "Mixed" => {
-    if (impact === "Severe") return "Impact Abrasion";
-    if (abrasion === "Severe") return "Sliding Abrasion";
-    if (corrosion === "High") return "Corrosion";
-    return "Mixed";
-  };
-
-  return {
-    abrasion,
-    impact,
-    corrosion,
-    dominantMechanism: dominantMechanism(),
-  };
-}
-
-function recommendLining(
-  profile: MaterialTransferProfile,
-  damage: DamageMechanisms,
-): LiningRecommendation {
-  if (damage.impact === "Severe") {
-    return {
-      lining: "Rubber-Ceramic Composite",
-      liningType: "Ceramic Lined",
-      thicknessRange: "15–30 mm",
-      standardsBasis: ["ASTM C1327", "SANS 1198:2013", "ISO 4649"],
-      rationale: "High impact combined with abrasion requires composite protection",
-      engineeringNotes: [
-        "SANS 1198 Type 1 rubber backing absorbs impact energy",
-        "Ceramic face provides wear resistance",
-        "Consider 92% or 95% alumina tiles for severe applications",
-        "Rubber backing: 40-50 IRHD for maximum impact absorption",
-      ],
-    };
-  }
-
-  if (damage.abrasion === "Severe") {
-    return {
-      lining: "Alumina Ceramic Tile",
-      liningType: "Ceramic Lined",
-      thicknessRange: "10–20 mm",
-      standardsBasis: ["ASTM C1327", "ISO 14705", "ASTM C773"],
-      rationale: "Severe sliding abrasion with moderate impact",
-      engineeringNotes: [
-        "96% or 99% alumina recommended for high silica content",
-        "Hexagonal tiles provide better coverage in curved sections",
-        "Ensure proper adhesive selection for operating temperature",
-      ],
-    };
-  }
-
-  if (damage.corrosion === "High") {
-    const isHighTemp = profile.chemistry.temperatureRange === "High";
-    const isAcidic = profile.chemistry.phRange === "Acidic";
-    return {
-      lining: isHighTemp
-        ? "Type 2 Butyl (IIR)"
-        : isAcidic
-          ? "Type 5 CSM (Hypalon)"
-          : "Type 1 Natural Rubber",
-      liningType: "Rubber Lined",
-      thicknessRange: "6–15 mm",
-      standardsBasis: ["SANS 1198:2013", "SANS 1201:2005", "ASTM D412"],
-      rationale:
-        "Acidic or high chloride environment requires chemical-resistant lining per SANS 1198",
-      engineeringNotes: [
-        "SANS 1198 Type 2 (Butyl) for chemical resistance up to 120°C",
-        "SANS 1198 Type 5 (CSM/Hypalon) for acid and ozone resistance",
-        "Grade A (18+ MPa) recommended for high-stress applications",
-        "50-60 IRHD hardness class for abrasion resistance",
-      ],
-    };
-  }
-
-  if (damage.abrasion === "Moderate" && profile.material.particleSize === "Fine") {
-    return {
-      lining: "Cast Polyurethane",
-      liningType: "PU Lined",
-      thicknessRange: "5–10 mm",
-      standardsBasis: ["ASTM D412", "ASTM D2240", "ISO 4649"],
-      rationale: "Fine particle abrasion with moderate severity",
-      engineeringNotes: [
-        "Excellent for fine particle slurries",
-        "Low friction coefficient reduces buildup",
-        "Shore hardness 70-85A typical for slurry applications",
-      ],
-    };
-  }
-
-  if (profile.chemistry.phRange === "Neutral" && damage.abrasion === "Low") {
-    return {
-      lining: "HDPE Lining",
-      liningType: "HDPE Lined",
-      thicknessRange: "3–8 mm",
-      standardsBasis: ["ASTM D3350", "ISO 4427"],
-      rationale: "Low wear, neutral chemistry - cost-effective protection",
-      engineeringNotes: [
-        "PE100 grade for improved pressure resistance",
-        "Consider PE100-RC for stress crack resistance",
-        "Suitable for non-abrasive slurries",
-      ],
-    };
-  }
-
-  return {
-    lining: "Type 1 Natural Rubber (NR/SBR)",
-    liningType: "Rubber Lined",
-    thicknessRange: "6–12 mm",
-    standardsBasis: ["SANS 1198:2013", "SANS 1201:2005", "ASTM D412"],
-    rationale: "General-purpose protection per SANS 1198 Type 1 specification",
-    engineeringNotes: [
-      "SANS 1198 Type 1 (NR/SBR) for general industrial applications",
-      "Grade B (14+ MPa) suitable for standard applications",
-      "40-50 IRHD hardness class for impact absorption",
-      "Autoclave vulcanization preferred per SANS 1201",
-    ],
-  };
-}
-
-function hasCompleteProfile(profile: MaterialTransferProfile): boolean {
-  const { material, chemistry, flow, equipment } = profile;
-  return !!(
-    material.particleSize &&
-    material.particleShape &&
-    material.hardnessClass &&
-    chemistry.phRange &&
-    flow.velocity &&
-    flow.impactAngle &&
-    equipment.equipmentType
-  );
-}
-
-interface ExternalEnvironmentProfile {
-  installation: {
-    type?: "AboveGround" | "Buried" | "Submerged" | "Splash";
-    uvExposure?: "None" | "Moderate" | "High";
-    mechanicalRisk?: "Low" | "Medium" | "High";
-  };
-  atmosphere: {
-    iso12944Category?: "C1" | "C2" | "C3" | "C4" | "C5" | "CX";
-    marineInfluence?: "None" | "Coastal" | "Offshore";
-    industrialPollution?: "None" | "Moderate" | "Heavy";
-  };
-  soil: {
-    soilType?: "Sandy" | "Clay" | "Rocky" | "Marshy";
-    resistivity?: "VeryLow" | "Low" | "Medium" | "High";
-    moisture?: "Dry" | "Normal" | "Wet" | "Saturated";
-  };
-  operating: {
-    temperature?: "Ambient" | "Elevated" | "High" | "Cyclic";
-    cathodicProtection?: boolean;
-    serviceLife?: "Short" | "Medium" | "Long" | "Extended";
-  };
-}
-
-interface ExternalCoatingRecommendation {
-  coating: string;
-  coatingType: string;
-  system: string;
-  thicknessRange: string;
-  standardsBasis: string[];
-  rationale: string;
-  engineeringNotes: string[];
-}
-
-interface ExternalDamageMechanisms {
-  atmosphericCorrosion: "Low" | "Moderate" | "High" | "Severe";
-  soilCorrosion: "Low" | "Moderate" | "High" | "Severe";
-  mechanicalDamage: "Low" | "Moderate" | "High";
-  dominantMechanism: "Atmospheric" | "Soil/Buried" | "Marine" | "Mechanical" | "Mixed";
-}
-
-function classifyExternalDamageMechanisms(
-  profile: ExternalEnvironmentProfile,
-): ExternalDamageMechanisms {
-  const { installation, atmosphere, soil } = profile;
-
-  const atmosphericSeverity = (): "Low" | "Moderate" | "High" | "Severe" => {
-    if (atmosphere.iso12944Category === "CX" || atmosphere.marineInfluence === "Offshore") {
-      return "Severe";
-    }
-    if (
-      atmosphere.iso12944Category === "C5" ||
-      atmosphere.marineInfluence === "Coastal" ||
-      atmosphere.industrialPollution === "Heavy"
-    ) {
-      return "High";
-    }
-    if (
-      atmosphere.iso12944Category === "C3" ||
-      atmosphere.iso12944Category === "C4" ||
-      atmosphere.industrialPollution === "Moderate"
-    ) {
-      return "Moderate";
-    }
-    return "Low";
-  };
-
-  const soilSeverity = (): "Low" | "Moderate" | "High" | "Severe" => {
-    if (installation.type !== "Buried") return "Low";
-    if (soil.resistivity === "VeryLow" && soil.moisture === "Saturated") {
-      return "Severe";
-    }
-    if (
-      soil.resistivity === "VeryLow" ||
-      soil.resistivity === "Low" ||
-      soil.moisture === "Wet" ||
-      soil.moisture === "Saturated"
-    ) {
-      return "High";
-    }
-    if (soil.resistivity === "Medium" || soil.soilType === "Clay") {
-      return "Moderate";
-    }
-    return "Low";
-  };
-
-  const mechanicalSeverity = (): "Low" | "Moderate" | "High" => {
-    if (installation.mechanicalRisk === "High") return "High";
-    if (installation.mechanicalRisk === "Medium" || installation.type === "Buried")
-      return "Moderate";
-    return "Low";
-  };
-
-  const atmospheric = atmosphericSeverity();
-  const soilCorrosion = soilSeverity();
-  const mechanical = mechanicalSeverity();
-
-  const dominantMechanism = ():
-    | "Atmospheric"
-    | "Soil/Buried"
-    | "Marine"
-    | "Mechanical"
-    | "Mixed" => {
-    if (atmosphere.marineInfluence === "Offshore" || atmosphere.marineInfluence === "Coastal")
-      return "Marine";
-    if (installation.type === "Buried" && (soilCorrosion === "Severe" || soilCorrosion === "High"))
-      return "Soil/Buried";
-    if (atmospheric === "Severe" || atmospheric === "High") return "Atmospheric";
-    if (mechanical === "High") return "Mechanical";
-    return "Mixed";
-  };
-
-  return {
-    atmosphericCorrosion: atmospheric,
-    soilCorrosion,
-    mechanicalDamage: mechanical,
-    dominantMechanism: dominantMechanism(),
-  };
-}
-
-function recommendExternalCoating(
-  profile: ExternalEnvironmentProfile,
-  damage: ExternalDamageMechanisms,
-): ExternalCoatingRecommendation {
-  const { installation, operating } = profile;
-  const isHighUV = installation.uvExposure === "High";
-
-  // Helper to ensure polyurethane topcoat is included for high UV exposure
-  const addUVTopcoatNote = (
-    recommendation: ExternalCoatingRecommendation,
-  ): ExternalCoatingRecommendation => {
-    if (!isHighUV) return recommendation;
-
-    // Check if polyurethane is already included in the system
-    const hasPolyurethane =
-      recommendation.system.toLowerCase().includes("polyurethane") ||
-      recommendation.system.toLowerCase().includes("pu ") ||
-      recommendation.coating.toLowerCase().includes("polyurethane");
-
-    if (!hasPolyurethane) {
-      return {
-        ...recommendation,
-        system: `${recommendation.system} + Aliphatic Polyurethane UV topcoat (50-80μm)`,
-        engineeringNotes: [
-          ...recommendation.engineeringNotes,
-          "High UV exposure: Aliphatic polyurethane topcoat required for UV resistance and color/gloss retention",
-        ],
-      };
-    }
-    return recommendation;
-  };
-
-  if (installation.type === "Buried") {
-    if (damage.soilCorrosion === "Severe" || damage.soilCorrosion === "High") {
-      return {
-        coating: "Fusion Bonded Epoxy (FBE) or 3-Layer Polyethylene (3LPE)",
-        coatingType: "Paint",
-        system: "SA 2.5 blast (ISO 8501-1) → FBE: 350-500μm or 3LPE: 1.8-3.0mm total",
-        thicknessRange: "350–3000 μm",
-        standardsBasis: ["ISO 8501-1", "ISO 21809-1", "ISO 21809-2", "NACE SP0169", "AS/NZS 4822"],
-        rationale:
-          "Severe soil corrosivity requires heavy-duty pipeline coating with CP compatibility",
-        engineeringNotes: [
-          "Surface prep: SA 2.5 (ISO 8501-1) minimum - very thorough blast cleaning",
-          "FBE provides excellent adhesion and CP compatibility",
-          "3LPE recommended for rocky terrain or high mechanical stress",
-          "Ensure holiday detection testing per NACE SP0188",
-          "Field joint coating critical - use compatible shrink sleeves",
-        ],
-      };
-    }
-    return {
-      coating: "Coal Tar Epoxy or Polyurethane Coating",
-      coatingType: "Paint",
-      system: "SA 2.5 blast (ISO 8501-1) → Primer + 2 coats, 400-600μm DFT",
-      thicknessRange: "400–600 μm",
-      standardsBasis: ["ISO 8501-1", "ISO 21809-3", "AWWA C222", "NACE SP0169"],
-      rationale: "Moderate soil conditions with cathodic protection compatibility",
-      engineeringNotes: [
-        "Surface prep: SA 2.5 (ISO 8501-1) minimum - very thorough blast cleaning",
-        "Coal tar epoxy for proven long-term performance",
-        "Consider wrap coating for additional mechanical protection",
-      ],
-    };
-  }
-
-  if (damage.dominantMechanism === "Marine" || damage.atmosphericCorrosion === "Severe") {
-    return addUVTopcoatNote({
-      coating: "High-Build Epoxy System",
-      coatingType: "Paint",
-      system:
-        "SA 2.5 blast (ISO 8501-1) → Zinc-rich primer + Epoxy MIO intermediate + Polyurethane topcoat",
-      thicknessRange: "320–450 μm total DFT",
-      standardsBasis: ["ISO 8501-1", "ISO 12944-5", "ISO 12944-6", "NORSOK M-501", "SSPC-PA 2"],
-      rationale: "Marine/offshore environment requires maximum corrosion protection",
-      engineeringNotes: [
-        "Surface prep: SA 2.5 (ISO 8501-1) minimum - very thorough blast cleaning",
-        "Zinc-rich primer (60-80μm) for cathodic protection",
-        "Epoxy MIO intermediate (150-200μm) for barrier protection",
-        "Polyurethane topcoat (60-80μm) for UV and gloss retention",
-        "Consider thermal spray aluminium (TSA) for splash zones",
-      ],
-    });
-  }
-
-  if (damage.atmosphericCorrosion === "High") {
-    return addUVTopcoatNote({
-      coating: "Epoxy-Polyurethane System",
-      coatingType: "Paint",
-      system:
-        "SA 2.5 blast (ISO 8501-1) → Zinc phosphate primer + Epoxy intermediate + Polyurethane topcoat",
-      thicknessRange: "250–350 μm total DFT",
-      standardsBasis: ["ISO 8501-1", "ISO 12944-5", "AS/NZS 2312.1", "SSPC-PA 2"],
-      rationale: "Industrial or coastal atmosphere with high corrosion risk",
-      engineeringNotes: [
-        "Surface prep: SA 2.5 (ISO 8501-1) minimum - very thorough blast cleaning",
-        "Zinc phosphate primer (50-75μm) for steel adhesion",
-        "High-build epoxy intermediate (125-175μm)",
-        "Aliphatic polyurethane topcoat for UV stability",
-        "Recoat intervals per ISO 12944-9",
-      ],
-    });
-  }
-
-  if (installation.mechanicalRisk === "High" || installation.type === "Splash") {
-    return addUVTopcoatNote({
-      coating: "Rubber Coating or Polyurea",
-      coatingType: "Rubber Lined",
-      system: "SA 2.5 blast (ISO 8501-1) → Chloroprene rubber 3-6mm or Polyurea 1.5-3mm",
-      thicknessRange: "1500–6000 μm",
-      standardsBasis: ["ISO 8501-1", "ASTM D4541", "ASTM D2000", "ISO 4649"],
-      rationale: "High mechanical stress or splash zone requires impact-resistant coating",
-      engineeringNotes: [
-        "Surface prep: SA 2.5 (ISO 8501-1) minimum - very thorough blast cleaning",
-        "Chloroprene (Neoprene) rubber for abrasion and weathering",
-        "Polyurea for rapid application and seamless coverage",
-        "Shore A hardness 50-70 for impact absorption",
-        "Consider armoring at support points",
-      ],
-    });
-  }
-
-  if (damage.atmosphericCorrosion === "Moderate") {
-    return addUVTopcoatNote({
-      coating: "Alkyd or Acrylic System",
-      coatingType: "Paint",
-      system: "SA 2.5 blast (ISO 8501-1) → Alkyd primer + Alkyd/Acrylic topcoat",
-      thicknessRange: "150–250 μm total DFT",
-      standardsBasis: ["ISO 8501-1", "ISO 12944-5", "AS/NZS 2312.1"],
-      rationale: "Moderate atmospheric exposure - cost-effective protection",
-      engineeringNotes: [
-        "Surface prep: SA 2.5 (ISO 8501-1) minimum - very thorough blast cleaning",
-        "Suitable for C2-C3 environments",
-        "Alkyd primer (50-75μm) on prepared steel",
-        "Acrylic topcoat for better UV resistance than alkyd",
-        "Regular maintenance inspection recommended",
-      ],
-    });
-  }
-
-  if (operating.temperature === "Elevated" || operating.temperature === "High") {
-    return addUVTopcoatNote({
-      coating: "Silicone or Epoxy Phenolic",
-      coatingType: "Paint",
-      system: "SA 2.5 blast (ISO 8501-1) → Heat-resistant primer + Silicone topcoat",
-      thicknessRange: "75–150 μm total DFT",
-      standardsBasis: ["ISO 8501-1", "ISO 12944-5", "ASTM D6695"],
-      rationale: "Elevated temperature service requires heat-resistant coating",
-      engineeringNotes: [
-        "Surface prep: SA 2.5 (ISO 8501-1) minimum - very thorough blast cleaning",
-        "Silicone coatings for temperatures up to 540°C",
-        "Epoxy phenolic for temperatures up to 200°C with chemical resistance",
-        "Inorganic zinc silicate primer for high-temp applications",
-        "Cure requirements critical for performance",
-      ],
-    });
-  }
-
-  if (installation.uvExposure === "None" && damage.atmosphericCorrosion === "Low") {
-    return {
-      coating: "Hot-Dip Galvanizing",
-      coatingType: "Galvanized",
-      system: "HDG per ISO 1461 (no blasting required - pickling process)",
-      thicknessRange: "45–85 μm (depends on steel thickness)",
-      standardsBasis: ["ISO 1461", "ASTM A123", "AS/NZS 4680"],
-      rationale: "Indoor or sheltered environment with low corrosion risk",
-      engineeringNotes: [
-        "Surface prep: Chemical cleaning & pickling (no blast cleaning required)",
-        "Minimum 45μm for steel <1.5mm, 85μm for steel >6mm",
-        "Self-healing zinc protection",
-        "Can be duplex coated (galvanized + paint) for extended life",
-        "Ensure proper drainage design to avoid wet storage stain",
-      ],
-    };
-  }
-
-  return addUVTopcoatNote({
-    coating: "Standard Epoxy System",
-    coatingType: "Paint",
-    system: "SA 2.5 blast (ISO 8501-1) → Epoxy primer + Epoxy topcoat",
-    thicknessRange: "200–300 μm total DFT",
-    standardsBasis: ["ISO 8501-1", "ISO 12944-5", "SSPC-PA 2"],
-    rationale: "General-purpose protection for mild environments",
-    engineeringNotes: [
-      "Surface prep: SA 2.5 (ISO 8501-1) minimum - very thorough blast cleaning",
-      "Epoxy primer (75-100μm) for adhesion",
-      "High-build epoxy topcoat (125-200μm)",
-      "Good chemical and abrasion resistance",
-      "Note: Epoxy may chalk under UV - consider PU topcoat for exposed areas",
-    ],
-  });
-}
-
-function hasCompleteExternalProfile(profile: ExternalEnvironmentProfile): boolean {
-  const { installation, atmosphere, operating } = profile;
-  return !!(installation.type && atmosphere.iso12944Category && operating.serviceLife);
-}
-
-// Steel specs allowed for unregistered customers
-const isSteelSpecAllowedForUnregistered = (specName: string): boolean => {
-  const name = specName.toLowerCase();
-  // Allow SABS 62 (Medium and Heavy variants)
-  if (name.includes("sabs 62") && (name.includes("medium") || name.includes("heavy"))) {
-    return true;
-  }
-  // Allow SABS 719
-  if (name.includes("sabs 719")) {
-    return true;
-  }
-  // Allow ASTM A106 Gr.B (Grade B)
-  if (
-    name.includes("astm a106") &&
-    (name.includes("gr.b") || name.includes("grade b") || name.includes("gr b"))
-  ) {
-    return true;
-  }
-  return false;
-};
-
-// Flange standards allowed for unregistered customers
-const UNREGISTERED_ALLOWED_FLANGE_STANDARDS = ["BS 4504", "SABS 1123", "BS 10", "ASME B16.5"];
-
-const isFlangeStandardAllowedForUnregistered = (standardCode: string): boolean => {
-  return UNREGISTERED_ALLOWED_FLANGE_STANDARDS.some(
-    (allowed) =>
-      standardCode.toLowerCase().includes(allowed.toLowerCase()) ||
-      allowed.toLowerCase().includes(standardCode.toLowerCase()),
-  );
-};
+import {
+  classifyDamageMechanisms,
+  classifyExternalDamageMechanisms,
+  type ExternalEnvironmentProfile,
+  hasCompleteExternalProfile,
+  hasCompleteProfile,
+  type MaterialTransferProfile,
+  recommendExternalCoating,
+  recommendLining,
+} from "@/app/lib/utils/coatingLiningRecommendations";
+import {
+  isFlangeStandardAllowedForUnregistered,
+  isSteelSpecAllowedForUnregistered,
+} from "@/app/lib/utils/rfq/registrationRestrictions";
 
 interface RestrictionPopupPosition {
   x: number;
@@ -771,6 +205,21 @@ export default function SpecificationsStep(props: {
   const availablePressureClasses = useRfqWizardStore((s) => s.availablePressureClasses);
   const onUpdateGlobalSpecs = useRfqWizardStore((s) => s.updateGlobalSpecs) as (specs: any) => void;
   const globalSpecs = rfqData.globalSpecs;
+  const gsDetailedMarineInfluence = globalSpecs?.detailedMarineInfluence;
+  const gsMarineInfluence = globalSpecs?.marineInfluence;
+  const gsWorkingPressureBar = globalSpecs?.workingPressureBar;
+  const gsWorkingTemperatureC = globalSpecs?.workingTemperatureC;
+  const gsExternalCoatingConfirmed = globalSpecs?.externalCoatingConfirmed;
+  const gsExternalCoatingType = globalSpecs?.externalCoatingType;
+  const gsShowExternalCoatingProfile = globalSpecs?.showExternalCoatingProfile;
+  const gsInternalLiningConfirmed = globalSpecs?.internalLiningConfirmed;
+  const gsHdpeGrade = globalSpecs?.hdpeGrade;
+  const gsHdpeSdr = globalSpecs?.hdpeSdr;
+  const gsPvcType = globalSpecs?.pvcType;
+  const gsPvcPressureClass = globalSpecs?.pvcPressureClass;
+  const gsEcpIso12944Category = globalSpecs?.ecpIso12944Category;
+  const gsEcpMarineInfluence = globalSpecs?.ecpMarineInfluence;
+  const gsShowMaterialTransferProfile = globalSpecs?.showMaterialTransferProfile;
   const rawRequiredProducts = rfqData.requiredProducts;
   const requiredProducts = rawRequiredProducts || [];
   // Authentication status for restrictions
@@ -905,8 +354,8 @@ export default function SpecificationsStep(props: {
     isLoading: ptLoading,
   } = usePtRecommendations({
     standardId: globalSpecs?.flangeStandardId !== "PE" ? globalSpecs?.flangeStandardId : null,
-    workingPressureBar: globalSpecs?.workingPressureBar,
-    temperatureCelsius: globalSpecs?.workingTemperatureC,
+    workingPressureBar: gsWorkingPressureBar,
+    temperatureCelsius: gsWorkingTemperatureC,
     currentPressureClassId: globalSpecs?.flangePressureClassId,
     steelSpecName: currentSteelSpec?.steelSpecName,
     pressureClassDesignation: currentPressureClass?.designation,
@@ -979,7 +428,7 @@ export default function SpecificationsStep(props: {
   })();
 
   // Derive temperature category from working temperature if not manually set
-  const derivedTempCategory = deriveTemperatureCategory(globalSpecs?.workingTemperatureC);
+  const derivedTempCategory = deriveTemperatureCategory(gsWorkingTemperatureC);
   const rawEcpTemperature = globalSpecs?.ecpTemperature;
   const effectiveEcpTemperature = rawEcpTemperature || derivedTempCategory;
   const isEcpTemperatureAutoFilled = !globalSpecs?.ecpTemperature && !!derivedTempCategory;
@@ -988,18 +437,17 @@ export default function SpecificationsStep(props: {
 
   // Derive atmospheric fields from Page 1 Environmental Intelligence data
   // Check multiple sources: user override (ecp prefix), rfqData, and globalSpecs (from mine selection)
-  const derivedIso12944 = rawIso12944Category || globalSpecs?.iso12944Category;
-  const rawEcpIso12944Category = globalSpecs?.ecpIso12944Category;
-  const effectiveIso12944 = rawEcpIso12944Category || derivedIso12944;
-  const isIso12944AutoFilled = !globalSpecs?.ecpIso12944Category && !!derivedIso12944;
+  const gsIso12944Category = globalSpecs?.iso12944Category;
+  const derivedIso12944 = rawIso12944Category || gsIso12944Category;
+  const effectiveIso12944 = gsEcpIso12944Category || derivedIso12944;
+  const isIso12944AutoFilled = !gsEcpIso12944Category && !!derivedIso12944;
 
   const rawMarineInfluence = rfqData?.marineInfluence;
 
   const derivedMarineInfluence =
-    rawMarineInfluence || globalSpecs?.detailedMarineInfluence || globalSpecs?.marineInfluence;
-  const rawEcpMarineInfluence = globalSpecs?.ecpMarineInfluence;
-  const effectiveMarineInfluence = rawEcpMarineInfluence || derivedMarineInfluence;
-  const isMarineInfluenceAutoFilled = !globalSpecs?.ecpMarineInfluence && !!derivedMarineInfluence;
+    rawMarineInfluence || gsDetailedMarineInfluence || gsMarineInfluence;
+  const effectiveMarineInfluence = gsEcpMarineInfluence || derivedMarineInfluence;
+  const isMarineInfluenceAutoFilled = !gsEcpMarineInfluence && !!derivedMarineInfluence;
 
   const rawIndustrialPollution = rfqData?.industrialPollution;
 
@@ -1119,14 +567,14 @@ export default function SpecificationsStep(props: {
     (s: any) => s.id === globalSpecs.flangeStandardId,
   )?.code;
 
-  const rawWorkingPressureBar = globalSpecs?.workingPressureBar;
-  const rawWorkingTemperatureC = globalSpecs?.workingTemperatureC;
+  const rawWorkingPressureBar = gsWorkingPressureBar;
+  const rawWorkingTemperatureC = gsWorkingTemperatureC;
 
   const rawSteelSpecName2 = masterData.steelSpecs?.find(
     (s: any) => s.id === globalSpecs.steelSpecificationId,
   )?.steelSpecName;
 
-  const rawWorkingPressureBar3 = globalSpecs?.workingPressureBar;
+  const rawWorkingPressureBar3 = gsWorkingPressureBar;
 
   const rawCode2 = masterData.flangeStandards?.find(
     (s: any) => s.id === globalSpecs.flangeStandardId,
@@ -1137,9 +585,9 @@ export default function SpecificationsStep(props: {
   const rawFlangeFace = globalSpecs?.flangeFace;
   const rawSurfaceProtectionConfirmed = globalSpecs?.surfaceProtectionConfirmed;
   const rawExternalCoatingRecommendation = globalSpecs?.externalCoatingRecommendation;
-  const rawExternalCoatingConfirmed = globalSpecs?.externalCoatingConfirmed;
+  const rawExternalCoatingConfirmed = gsExternalCoatingConfirmed;
   const rawCoating = globalSpecs.externalCoatingRecommendation?.coating;
-  const rawInternalLiningConfirmed = globalSpecs?.internalLiningConfirmed;
+  const rawInternalLiningConfirmed = gsInternalLiningConfirmed;
   const rawInternalLiningType = globalSpecs.internalLiningType;
   const rawEcpSoilType = globalSpecs?.ecpSoilType;
   const rawEcpSoilResistivity = globalSpecs?.ecpSoilResistivity;
@@ -1168,7 +616,7 @@ export default function SpecificationsStep(props: {
   const rawIndustrialPollution2 =
     globalSpecs.externalCoatingRecommendation.environmentProfile?.industrialPollution;
 
-  const rawExternalCoatingType = globalSpecs?.externalCoatingType;
+  const rawExternalCoatingType = gsExternalCoatingType;
   const rawExternalRubberType = globalSpecs?.externalRubberType;
   const rawExternalRubberThickness = globalSpecs?.externalRubberThickness;
   const rawExternalRubberColour = globalSpecs?.externalRubberColour;
@@ -1248,11 +696,11 @@ export default function SpecificationsStep(props: {
   const rawInternalPrimerMicrons3 = globalSpecs.internalPrimerMicrons;
   const rawInternalIntermediateMicrons3 = globalSpecs.internalIntermediateMicrons;
   const rawInternalTopcoatMicrons3 = globalSpecs.internalTopcoatMicrons;
-  const rawExternalCoatingType2 = globalSpecs?.externalCoatingType;
-  const rawHdpeGrade = globalSpecs?.hdpeGrade;
-  const rawHdpeSdr = globalSpecs?.hdpeSdr;
-  const rawPvcType = globalSpecs?.pvcType;
-  const rawPvcPressureClass = globalSpecs?.pvcPressureClass;
+  const rawExternalCoatingType2 = gsExternalCoatingType;
+  const rawHdpeGrade = gsHdpeGrade;
+  const rawHdpeSdr = gsHdpeSdr;
+  const rawPvcType = gsPvcType;
+  const rawPvcPressureClass = gsPvcPressureClass;
   const rawBoltGrade = globalSpecs?.boltGrade;
   const rawGasketType = globalSpecs?.gasketType;
   const rawDesignation3 = currentPressureClass?.designation;
@@ -1316,7 +764,7 @@ export default function SpecificationsStep(props: {
                     <span className="font-medium">Steel Pipe Specifications Confirmed</span>
                     <span className="mx-2">•</span>
                     <span>
-                      {globalSpecs?.workingPressureBar} bar @ {globalSpecs?.workingTemperatureC}°C
+                      {gsWorkingPressureBar} bar @ {gsWorkingTemperatureC}°C
                     </span>
                     {globalSpecs?.steelSpecificationId && masterData?.steelSpecs && (
                       <>
@@ -1379,7 +827,7 @@ export default function SpecificationsStep(props: {
                             recommendedPressureClassId = await fetchAndSelectPressureClass(
                               globalSpecs.flangeStandardId,
                               newPressure,
-                              globalSpecs?.workingTemperatureC,
+                              gsWorkingTemperatureC,
                               materialGroup,
                             );
                           }
@@ -1422,7 +870,7 @@ export default function SpecificationsStep(props: {
                           let recommendedPressureClassId = globalSpecs?.flangePressureClassId;
                           if (
                             newTemp !== null &&
-                            globalSpecs?.workingPressureBar &&
+                            gsWorkingPressureBar &&
                             globalSpecs?.flangeStandardId
                           ) {
                             // Get material group from selected steel spec
@@ -1508,17 +956,13 @@ export default function SpecificationsStep(props: {
                         <div className="absolute z-[10000] mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto">
                           {(() => {
                             const isSpecSuitable = (specName: string): boolean => {
-                              if (
-                                !globalSpecs?.workingPressureBar &&
-                                !globalSpecs?.workingTemperatureC
-                              )
-                                return true;
+                              if (!gsWorkingPressureBar && !gsWorkingTemperatureC) return true;
                               if (!allLimits) return true;
                               const suitability = checkSuitabilityFromCache(
                                 allLimits,
                                 specName,
-                                globalSpecs?.workingTemperatureC,
-                                globalSpecs?.workingPressureBar,
+                                gsWorkingTemperatureC,
+                                gsWorkingPressureBar,
                               );
                               return suitability.isSuitable;
                             };
@@ -1539,16 +983,13 @@ export default function SpecificationsStep(props: {
                               const specName = rawSteelSpecName3 || "";
 
                               try {
-                                const rawWorkingPressureBar2 = globalSpecs?.workingPressureBar;
-                                if (
-                                  specName &&
-                                  (rawWorkingPressureBar2 || globalSpecs?.workingTemperatureC)
-                                ) {
+                                const rawWorkingPressureBar2 = gsWorkingPressureBar;
+                                if (specName && (rawWorkingPressureBar2 || gsWorkingTemperatureC)) {
                                   const suitability =
                                     await materialValidationApi.checkMaterialSuitability(
                                       specName,
-                                      globalSpecs?.workingTemperatureC,
-                                      globalSpecs?.workingPressureBar,
+                                      gsWorkingTemperatureC,
+                                      gsWorkingPressureBar,
                                     );
 
                                   if (!suitability.isSuitable) {
@@ -1585,7 +1026,7 @@ export default function SpecificationsStep(props: {
                                 if (
                                   specId &&
                                   globalSpecs?.flangeStandardId &&
-                                  globalSpecs?.workingPressureBar
+                                  gsWorkingPressureBar
                                 ) {
                                   const materialGroup = getFlangeMaterialGroup(
                                     newSteelSpec?.steelSpecName,
@@ -1767,7 +1208,7 @@ export default function SpecificationsStep(props: {
                       )}
                       {/* Show current suitability status */}
                       {globalSpecs?.steelSpecificationId &&
-                        (rawWorkingPressureBar3 || globalSpecs?.workingTemperatureC) &&
+                        (rawWorkingPressureBar3 || gsWorkingTemperatureC) &&
                         (() => {
                           const currentSpec = masterData.steelSpecs?.find(
                             (s: any) => s.id === globalSpecs.steelSpecificationId,
@@ -1776,8 +1217,8 @@ export default function SpecificationsStep(props: {
                           const suitability = checkSuitabilityFromCache(
                             allLimits,
                             currentSpec.steelSpecName,
-                            globalSpecs?.workingTemperatureC,
-                            globalSpecs?.workingPressureBar,
+                            gsWorkingTemperatureC,
+                            gsWorkingPressureBar,
                           );
                           if (suitability.isSuitable) {
                             return (
@@ -1881,13 +1322,13 @@ export default function SpecificationsStep(props: {
 
                               log.debug("[PT-DEBUG] handleFlangeStandardSelect called:", {
                                 standardId,
-                                workingPressureBar: globalSpecs?.workingPressureBar,
-                                workingTemperatureC: globalSpecs?.workingTemperatureC,
+                                workingPressureBar: gsWorkingPressureBar,
+                                workingTemperatureC: gsWorkingTemperatureC,
                                 materialGroup,
                               });
 
                               try {
-                                if (standardId && globalSpecs?.workingPressureBar) {
+                                if (standardId && gsWorkingPressureBar) {
                                   recommendedPressureClassId =
                                     (await fetchAndSelectPressureClass(
                                       standardId,
@@ -1919,7 +1360,7 @@ export default function SpecificationsStep(props: {
 
                               // FALLBACK: If no class was selected but classes are available, pick the appropriate one
                               if (!newPressureClassId && availablePressureClasses?.length > 0) {
-                                const rawWorkingPressureBar4 = globalSpecs?.workingPressureBar;
+                                const rawWorkingPressureBar4 = gsWorkingPressureBar;
                                 const targetPressure = rawWorkingPressureBar4 || 10;
                                 // Find the lowest class that can handle the working pressure
                                 const suitable = availablePressureClasses
@@ -2044,7 +1485,7 @@ export default function SpecificationsStep(props: {
                     <div>
                       <label className="block text-xs font-semibold text-gray-900 mb-1">
                         Pressure Class <span className="text-red-500">*</span>
-                        {globalSpecs?.workingPressureBar &&
+                        {gsWorkingPressureBar &&
                           globalSpecs?.flangeStandardId !== "PE" &&
                           (pressureClassOverrideStatus.isOverride ? (
                             <span
@@ -2421,8 +1862,8 @@ export default function SpecificationsStep(props: {
                     const suitability = checkSuitabilityFromCache(
                       allLimits,
                       currentSpec.steelSpecName,
-                      globalSpecs?.workingTemperatureC,
-                      globalSpecs?.workingPressureBar,
+                      gsWorkingTemperatureC,
+                      gsWorkingPressureBar,
                     );
                     if (!suitability.isSuitable) {
                       warnings.push(
@@ -2452,7 +1893,7 @@ export default function SpecificationsStep(props: {
                   });
                 }
               }}
-              disabled={!globalSpecs?.workingPressureBar || !globalSpecs?.workingTemperatureC}
+              disabled={!gsWorkingPressureBar || !gsWorkingTemperatureC}
               className="px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Confirm Steel Pipe Specifications
@@ -2470,10 +1911,10 @@ export default function SpecificationsStep(props: {
 
             {/* Confirmed Surface Protection Summary - Show when ANY surface protection is confirmed */}
             {(rawSurfaceProtectionConfirmed ||
-              globalSpecs?.externalCoatingConfirmed ||
-              globalSpecs?.internalLiningConfirmed) &&
+              gsExternalCoatingConfirmed ||
+              gsInternalLiningConfirmed) &&
               (rawExternalCoatingRecommendation ||
-                globalSpecs?.externalCoatingType ||
+                gsExternalCoatingType ||
                 globalSpecs?.internalLiningType) && (
                 <div className="bg-green-100 border border-green-400 rounded-md p-3">
                   <div className="flex items-center justify-between">
@@ -2487,7 +1928,7 @@ export default function SpecificationsStep(props: {
                       </svg>
                       <span className="font-semibold">Surface Protection Confirmed</span>
                       {(rawExternalCoatingConfirmed ||
-                        globalSpecs?.externalCoatingType ||
+                        gsExternalCoatingType ||
                         globalSpecs?.externalCoatingRecommendation) && (
                         <>
                           <span className="mx-2">•</span>
@@ -2529,7 +1970,7 @@ export default function SpecificationsStep(props: {
               <h3 className="text-xs font-semibold text-gray-800 mb-2">External Coating</h3>
 
               {/* External Environment Profile - Coating Recommendation Assistant */}
-              {!globalSpecs?.externalCoatingConfirmed && (
+              {!gsExternalCoatingConfirmed && (
                 <div className="mb-2">
                   <button
                     type="button"
@@ -2539,7 +1980,7 @@ export default function SpecificationsStep(props: {
                         : () =>
                             onUpdateGlobalSpecs({
                               ...globalSpecs,
-                              showExternalCoatingProfile: !globalSpecs?.showExternalCoatingProfile,
+                              showExternalCoatingProfile: !gsShowExternalCoatingProfile,
                             })
                     }
                     onMouseEnter={
@@ -2567,7 +2008,7 @@ export default function SpecificationsStep(props: {
                       </svg>
                     )}
                     <svg
-                      className={`w-3 h-3 transition-transform ${globalSpecs?.showExternalCoatingProfile ? "rotate-90" : ""}`}
+                      className={`w-3 h-3 transition-transform ${gsShowExternalCoatingProfile ? "rotate-90" : ""}`}
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -2579,11 +2020,11 @@ export default function SpecificationsStep(props: {
                         d="M9 5l7 7-7 7"
                       />
                     </svg>
-                    {globalSpecs?.showExternalCoatingProfile ? "Hide" : "Show"} Coating Assistant
-                    (ISO 12944/21809)
+                    {gsShowExternalCoatingProfile ? "Hide" : "Show"} Coating Assistant (ISO
+                    12944/21809)
                   </button>
 
-                  {globalSpecs?.showExternalCoatingProfile && (
+                  {gsShowExternalCoatingProfile && (
                     <div className="bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-lg p-3">
                       <div className="flex items-center gap-2 mb-2">
                         <svg
@@ -3046,7 +2487,7 @@ export default function SpecificationsStep(props: {
                               </div>
                               {isEcpTemperatureAutoFilled && (
                                 <span className="text-[10px] bg-emerald-200 text-emerald-800 px-1.5 py-0.5 rounded-full font-medium">
-                                  Temp: {globalSpecs?.workingTemperatureC}°C
+                                  Temp: {gsWorkingTemperatureC}°C
                                 </span>
                               )}
                             </div>
@@ -3787,228 +3228,222 @@ export default function SpecificationsStep(props: {
               )}
 
               {/* LOCKED SUPPLIER SPECIFICATION - Shows when recommendation is confirmed */}
-              {globalSpecs?.externalCoatingConfirmed &&
-                globalSpecs?.externalCoatingRecommendation && (
-                  <div className="bg-green-50 border-2 border-green-500 rounded-lg p-4">
-                    <div className="flex items-center gap-2 mb-4">
-                      <svg
-                        className="w-6 h-6 text-green-600"
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                      <h4 className="text-lg font-bold text-green-800">
-                        External Coating Specification (Locked)
-                      </h4>
+              {gsExternalCoatingConfirmed && globalSpecs?.externalCoatingRecommendation && (
+                <div className="bg-green-50 border-2 border-green-500 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-4">
+                    <svg className="w-6 h-6 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                      <path
+                        fillRule="evenodd"
+                        d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    <h4 className="text-lg font-bold text-green-800">
+                      External Coating Specification (Locked)
+                    </h4>
+                  </div>
+
+                  {/* Supplier Specification Summary */}
+                  <div className="bg-white rounded-lg border border-green-300 p-4 space-y-4">
+                    <div className="text-center border-b border-green-200 pb-3">
+                      <h5 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
+                        Coating System
+                      </h5>
+                      <p className="text-xl font-bold text-green-800 mt-1">
+                        {globalSpecs.externalCoatingRecommendation.coating}
+                      </p>
                     </div>
 
-                    {/* Supplier Specification Summary */}
-                    <div className="bg-white rounded-lg border border-green-300 p-4 space-y-4">
-                      <div className="text-center border-b border-green-200 pb-3">
-                        <h5 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
-                          Coating System
-                        </h5>
-                        <p className="text-xl font-bold text-green-800 mt-1">
-                          {globalSpecs.externalCoatingRecommendation.coating}
+                    {/* Surface Preparation */}
+                    {globalSpecs?.externalBlastingGrade && (
+                      <div className="bg-amber-50 rounded-lg p-3 border border-amber-200">
+                        <span className="font-semibold text-amber-800 text-sm">
+                          Surface Preparation:
+                        </span>
+                        <p className="text-amber-900 font-medium mt-1">
+                          {globalSpecs.externalBlastingGrade}
                         </p>
                       </div>
+                    )}
 
-                      {/* Surface Preparation */}
-                      {globalSpecs?.externalBlastingGrade && (
-                        <div className="bg-amber-50 rounded-lg p-3 border border-amber-200">
-                          <span className="font-semibold text-amber-800 text-sm">
-                            Surface Preparation:
-                          </span>
-                          <p className="text-amber-900 font-medium mt-1">
-                            {globalSpecs.externalBlastingGrade}
-                          </p>
-                        </div>
-                      )}
-
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <span className="font-semibold text-gray-700">System:</span>
-                          <p className="text-gray-900 mt-0.5">
-                            {globalSpecs.externalCoatingRecommendation.system}
-                          </p>
-                        </div>
-                        <div>
-                          <span className="font-semibold text-gray-700">Thickness Range:</span>
-                          <p className="text-gray-900 font-medium mt-0.5">
-                            {globalSpecs.externalCoatingRecommendation.thicknessRange}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Colour Specifications */}
-                      {(rawExternalTopcoatColour || globalSpecs?.externalBand1Colour) && (
-                        <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
-                          <span className="font-semibold text-blue-800 text-sm">
-                            Colour Specifications:
-                          </span>
-                          <div className="grid grid-cols-3 gap-3 mt-2 text-sm">
-                            {globalSpecs?.externalTopcoatColour && (
-                              <div>
-                                <span className="text-blue-600 text-xs">Topcoat Colour:</span>
-                                <p className="font-medium text-blue-900">
-                                  {globalSpecs.externalTopcoatColour}
-                                </p>
-                              </div>
-                            )}
-                            {globalSpecs?.externalBand1Colour && (
-                              <div>
-                                <span className="text-blue-600 text-xs">Band 1 Colour:</span>
-                                <p className="font-medium text-blue-900">
-                                  {globalSpecs.externalBand1Colour}
-                                </p>
-                              </div>
-                            )}
-                            {globalSpecs?.externalBand2Colour && (
-                              <div>
-                                <span className="text-blue-600 text-xs">Band 2 Colour:</span>
-                                <p className="font-medium text-blue-900">
-                                  {globalSpecs.externalBand2Colour}
-                                </p>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )}
-
+                    <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
-                        <span className="font-semibold text-gray-700 text-sm">
-                          Applicable Standards:
-                        </span>
-                        <div className="flex flex-wrap gap-2 mt-1">
-                          {globalSpecs.externalCoatingRecommendation.standardsBasis.map(
-                            (std: string, i: number) => (
-                              <span
-                                key={i}
-                                className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded font-medium"
-                              >
-                                {std}
-                              </span>
-                            ),
-                          )}
-                        </div>
+                        <span className="font-semibold text-gray-700">System:</span>
+                        <p className="text-gray-900 mt-0.5">
+                          {globalSpecs.externalCoatingRecommendation.system}
+                        </p>
                       </div>
-
-                      <div className="bg-gray-50 rounded-lg p-3">
-                        <span className="font-semibold text-gray-700 text-sm">
-                          Environment Profile:
-                        </span>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2 text-xs">
-                          <div>
-                            <span className="text-gray-500">Installation:</span>{" "}
-                            <span className="font-medium">{rawInstallationType || "N/A"}</span>
-                          </div>
-                          <div>
-                            <span className="text-gray-500">ISO 12944:</span>{" "}
-                            <span className="font-medium">{rawIso12944Category2 || "N/A"}</span>
-                          </div>
-                          <div>
-                            <span className="text-gray-500">Marine:</span>{" "}
-                            <span className="font-medium">{rawMarineInfluence2 || "None"}</span>
-                          </div>
-                          <div>
-                            <span className="text-gray-500">UV Exposure:</span>{" "}
-                            <span className="font-medium">{rawUvExposure || "N/A"}</span>
-                          </div>
-                          <div>
-                            <span className="text-gray-500">Temperature:</span>{" "}
-                            <span className="font-medium">{rawTemperature || "N/A"}</span>
-                          </div>
-                          <div>
-                            <span className="text-gray-500">Service Life:</span>{" "}
-                            <span className="font-medium">{rawServiceLife || "N/A"}</span>
-                          </div>
-                          <div>
-                            <span className="text-gray-500">Mech. Risk:</span>{" "}
-                            <span className="font-medium">{rawMechanicalRisk || "N/A"}</span>
-                          </div>
-                          <div>
-                            <span className="text-gray-500">Pollution:</span>{" "}
-                            <span className="font-medium">{rawIndustrialPollution2 || "None"}</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="bg-green-100 rounded-lg p-3">
-                        <span className="font-semibold text-green-800 text-sm">
-                          Engineering Notes for Suppliers:
-                        </span>
-                        <ul className="mt-2 text-xs text-green-900 space-y-1">
-                          {globalSpecs.externalCoatingRecommendation.engineeringNotes.map(
-                            (note: string, i: number) => (
-                              <li key={i} className="flex items-start gap-2">
-                                <span className="text-green-600 mt-0.5">•</span>
-                                {note}
-                              </li>
-                            ),
-                          )}
-                        </ul>
-                      </div>
-
-                      <div className="text-xs text-gray-500 italic border-t border-gray-200 pt-3">
-                        <strong>Rationale:</strong>{" "}
-                        {globalSpecs.externalCoatingRecommendation.rationale}
+                      <div>
+                        <span className="font-semibold text-gray-700">Thickness Range:</span>
+                        <p className="text-gray-900 font-medium mt-0.5">
+                          {globalSpecs.externalCoatingRecommendation.thicknessRange}
+                        </p>
                       </div>
                     </div>
 
-                    <div className="mt-3 p-2 bg-green-100 rounded text-xs text-green-800 text-center">
-                      <strong>This specification will be sent to suppliers for quotation.</strong>
+                    {/* Colour Specifications */}
+                    {(rawExternalTopcoatColour || globalSpecs?.externalBand1Colour) && (
+                      <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+                        <span className="font-semibold text-blue-800 text-sm">
+                          Colour Specifications:
+                        </span>
+                        <div className="grid grid-cols-3 gap-3 mt-2 text-sm">
+                          {globalSpecs?.externalTopcoatColour && (
+                            <div>
+                              <span className="text-blue-600 text-xs">Topcoat Colour:</span>
+                              <p className="font-medium text-blue-900">
+                                {globalSpecs.externalTopcoatColour}
+                              </p>
+                            </div>
+                          )}
+                          {globalSpecs?.externalBand1Colour && (
+                            <div>
+                              <span className="text-blue-600 text-xs">Band 1 Colour:</span>
+                              <p className="font-medium text-blue-900">
+                                {globalSpecs.externalBand1Colour}
+                              </p>
+                            </div>
+                          )}
+                          {globalSpecs?.externalBand2Colour && (
+                            <div>
+                              <span className="text-blue-600 text-xs">Band 2 Colour:</span>
+                              <p className="font-medium text-blue-900">
+                                {globalSpecs.externalBand2Colour}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    <div>
+                      <span className="font-semibold text-gray-700 text-sm">
+                        Applicable Standards:
+                      </span>
+                      <div className="flex flex-wrap gap-2 mt-1">
+                        {globalSpecs.externalCoatingRecommendation.standardsBasis.map(
+                          (std: string, i: number) => (
+                            <span
+                              key={i}
+                              className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded font-medium"
+                            >
+                              {std}
+                            </span>
+                          ),
+                        )}
+                      </div>
                     </div>
 
-                    <div className="mt-4 flex justify-end">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const rawExternalCoatingActionLog3 =
-                            globalSpecs?.externalCoatingActionLog;
+                    <div className="bg-gray-50 rounded-lg p-3">
+                      <span className="font-semibold text-gray-700 text-sm">
+                        Environment Profile:
+                      </span>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2 text-xs">
+                        <div>
+                          <span className="text-gray-500">Installation:</span>{" "}
+                          <span className="font-medium">{rawInstallationType || "N/A"}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">ISO 12944:</span>{" "}
+                          <span className="font-medium">{rawIso12944Category2 || "N/A"}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Marine:</span>{" "}
+                          <span className="font-medium">{rawMarineInfluence2 || "None"}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">UV Exposure:</span>{" "}
+                          <span className="font-medium">{rawUvExposure || "N/A"}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Temperature:</span>{" "}
+                          <span className="font-medium">{rawTemperature || "N/A"}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Service Life:</span>{" "}
+                          <span className="font-medium">{rawServiceLife || "N/A"}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Mech. Risk:</span>{" "}
+                          <span className="font-medium">{rawMechanicalRisk || "N/A"}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Pollution:</span>{" "}
+                          <span className="font-medium">{rawIndustrialPollution2 || "None"}</span>
+                        </div>
+                      </div>
+                    </div>
 
-                          return onUpdateGlobalSpecs({
-                            ...globalSpecs,
-                            externalCoatingConfirmed: false,
-                            externalCoatingRecommendation: null,
-                            externalCoatingActionLog: [
-                              ...(rawExternalCoatingActionLog3 || []),
-                              { action: "UNLOCKED_FOR_EDIT", timestamp: nowISO() },
-                            ],
-                          });
-                        }}
-                        className="px-4 py-2 text-sm bg-gray-500 text-white rounded-lg hover:bg-gray-600 flex items-center gap-2"
-                      >
-                        <svg
-                          className="w-4 h-4"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"
-                          />
-                        </svg>
-                        Unlock & Edit Specification
-                      </button>
+                    <div className="bg-green-100 rounded-lg p-3">
+                      <span className="font-semibold text-green-800 text-sm">
+                        Engineering Notes for Suppliers:
+                      </span>
+                      <ul className="mt-2 text-xs text-green-900 space-y-1">
+                        {globalSpecs.externalCoatingRecommendation.engineeringNotes.map(
+                          (note: string, i: number) => (
+                            <li key={i} className="flex items-start gap-2">
+                              <span className="text-green-600 mt-0.5">•</span>
+                              {note}
+                            </li>
+                          ),
+                        )}
+                      </ul>
+                    </div>
+
+                    <div className="text-xs text-gray-500 italic border-t border-gray-200 pt-3">
+                      <strong>Rationale:</strong>{" "}
+                      {globalSpecs.externalCoatingRecommendation.rationale}
                     </div>
                   </div>
-                )}
+
+                  <div className="mt-3 p-2 bg-green-100 rounded text-xs text-green-800 text-center">
+                    <strong>This specification will be sent to suppliers for quotation.</strong>
+                  </div>
+
+                  <div className="mt-4 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const rawExternalCoatingActionLog3 = globalSpecs?.externalCoatingActionLog;
+
+                        return onUpdateGlobalSpecs({
+                          ...globalSpecs,
+                          externalCoatingConfirmed: false,
+                          externalCoatingRecommendation: null,
+                          externalCoatingActionLog: [
+                            ...(rawExternalCoatingActionLog3 || []),
+                            { action: "UNLOCKED_FOR_EDIT", timestamp: nowISO() },
+                          ],
+                        });
+                      }}
+                      className="px-4 py-2 text-sm bg-gray-500 text-white rounded-lg hover:bg-gray-600 flex items-center gap-2"
+                    >
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"
+                        />
+                      </svg>
+                      Unlock & Edit Specification
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* MANUAL COATING FIELDS - Show when:
               1. Recommendation assistant is NOT open (!showExternalCoatingProfile), OR
               2. User has rejected the recommendation (externalCoatingRecommendationRejected)
               AND not already confirmed */}
-              {(!globalSpecs?.showExternalCoatingProfile ||
+              {(!gsShowExternalCoatingProfile ||
                 globalSpecs?.externalCoatingRecommendationRejected) &&
-                !globalSpecs?.externalCoatingConfirmed && (
+                !gsExternalCoatingConfirmed && (
                   <>
                     {/* Show rejection banner only if user explicitly rejected after viewing recommendation */}
                     {globalSpecs?.externalCoatingRecommendationRejected && (
@@ -4099,9 +3534,9 @@ export default function SpecificationsStep(props: {
                 )}
 
               {/* Confirmed Non-Paint External Coating - Only for manual selection, not recommendation */}
-              {globalSpecs?.externalCoatingConfirmed &&
-                globalSpecs?.externalCoatingType &&
-                globalSpecs?.externalCoatingType !== "Paint" &&
+              {gsExternalCoatingConfirmed &&
+                gsExternalCoatingType &&
+                gsExternalCoatingType !== "Paint" &&
                 !globalSpecs?.externalCoatingRecommendation && (
                   <div className="bg-green-50 border border-green-200 rounded-md p-3">
                     <div className="flex items-center justify-between">
@@ -4135,12 +3570,12 @@ export default function SpecificationsStep(props: {
                 )}
 
               {/* Confirm button for simple selections (not Paint or Rubber Lined) - Only for manual selection */}
-              {(!globalSpecs?.showExternalCoatingProfile ||
+              {(!gsShowExternalCoatingProfile ||
                 globalSpecs?.externalCoatingRecommendationRejected) &&
-                !globalSpecs?.externalCoatingConfirmed &&
-                globalSpecs?.externalCoatingType &&
-                globalSpecs?.externalCoatingType !== "Paint" &&
-                globalSpecs?.externalCoatingType !== "Rubber Lined" && (
+                !gsExternalCoatingConfirmed &&
+                gsExternalCoatingType &&
+                gsExternalCoatingType !== "Paint" &&
+                gsExternalCoatingType !== "Rubber Lined" && (
                   <div className="mt-4">
                     <button
                       type="button"
@@ -4158,10 +3593,10 @@ export default function SpecificationsStep(props: {
                 )}
 
               {/* Rubber Lined Options - Only show when selected AND not confirmed AND (assistant closed OR rejected) */}
-              {(!globalSpecs?.showExternalCoatingProfile ||
+              {(!gsShowExternalCoatingProfile ||
                 globalSpecs?.externalCoatingRecommendationRejected) &&
-                globalSpecs?.externalCoatingType === "Rubber Lined" &&
-                !globalSpecs?.externalCoatingConfirmed && (
+                gsExternalCoatingType === "Rubber Lined" &&
+                !gsExternalCoatingConfirmed && (
                   <div className="mt-3 pt-3 border-t border-gray-200">
                     <h4 className="text-xs font-semibold text-gray-800 mb-2">
                       External Rubber Lining Specifications
@@ -4309,8 +3744,8 @@ export default function SpecificationsStep(props: {
                 )}
 
               {/* Confirmed External Rubber Lining */}
-              {globalSpecs?.externalCoatingConfirmed &&
-                globalSpecs?.externalCoatingType === "Rubber Lined" &&
+              {gsExternalCoatingConfirmed &&
+                gsExternalCoatingType === "Rubber Lined" &&
                 globalSpecs?.externalRubberType && (
                   <div className="bg-green-100 border border-green-400 rounded-md p-2 flex items-center justify-between">
                     <div className="flex items-center gap-2 text-xs text-green-800">
@@ -4342,8 +3777,8 @@ export default function SpecificationsStep(props: {
                 )}
 
               {/* Confirmed External Paint Specification - Always visible when confirmed */}
-              {globalSpecs?.externalCoatingConfirmed &&
-                globalSpecs?.externalCoatingType === "Paint" &&
+              {gsExternalCoatingConfirmed &&
+                gsExternalCoatingType === "Paint" &&
                 globalSpecs?.externalPrimerType && (
                   <div className="mt-3 pt-3 border-t border-gray-200">
                     <div className="bg-green-50 border border-green-200 rounded-md p-3">
@@ -4475,10 +3910,10 @@ export default function SpecificationsStep(props: {
                 )}
 
               {/* Paint Options - Only show when selected AND not confirmed AND (assistant closed OR rejected) */}
-              {(!globalSpecs?.showExternalCoatingProfile ||
+              {(!gsShowExternalCoatingProfile ||
                 globalSpecs?.externalCoatingRecommendationRejected) &&
-                globalSpecs?.externalCoatingType === "Paint" &&
-                !globalSpecs?.externalCoatingConfirmed && (
+                gsExternalCoatingType === "Paint" &&
+                !gsExternalCoatingConfirmed && (
                   <div className="mt-3 pt-3 border-t border-gray-200">
                     <h4 className="text-xs font-semibold text-gray-800 mb-2">
                       External Paint Specifications
@@ -5405,7 +4840,7 @@ export default function SpecificationsStep(props: {
               <h3 className="text-xs font-semibold text-gray-800 mb-2">Internal Lining</h3>
 
               {/* Auto-set to Galvanized when external is galvanized */}
-              {globalSpecs?.externalCoatingType === "Galvanized" && (
+              {gsExternalCoatingType === "Galvanized" && (
                 <div className="bg-green-50 border-2 border-green-500 rounded-lg p-2 mb-2">
                   <div className="flex items-center gap-1.5 mb-1">
                     <svg className="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
@@ -5435,648 +4870,644 @@ export default function SpecificationsStep(props: {
               )}
 
               {/* Material Transfer Profile - Lining Recommendation Assistant */}
-              {!globalSpecs?.internalLiningConfirmed &&
-                globalSpecs?.externalCoatingType !== "Galvanized" && (
-                  <div className="mb-2">
-                    <button
-                      type="button"
-                      onClick={
-                        isUnregisteredCustomer
-                          ? showFeatureRestrictionPopup("lining-assistant")
-                          : () =>
-                              onUpdateGlobalSpecs({
-                                ...globalSpecs,
-                                showMaterialTransferProfile:
-                                  !globalSpecs?.showMaterialTransferProfile,
-                              })
-                      }
-                      onMouseEnter={
-                        isUnregisteredCustomer
-                          ? showFeatureRestrictionPopup("lining-assistant")
-                          : undefined
-                      }
-                      className={`flex items-center gap-1.5 font-medium text-xs mb-2 ${
-                        isUnregisteredCustomer
-                          ? "text-gray-400 cursor-not-allowed"
-                          : "text-blue-600 hover:text-blue-800"
-                      }`}
-                    >
-                      {isUnregisteredCustomer && (
-                        <svg
-                          className="w-3 h-3 text-gray-400"
-                          fill="currentColor"
-                          viewBox="0 0 20 20"
-                        >
-                          <path
-                            fillRule="evenodd"
-                            d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                      )}
+              {!gsInternalLiningConfirmed && gsExternalCoatingType !== "Galvanized" && (
+                <div className="mb-2">
+                  <button
+                    type="button"
+                    onClick={
+                      isUnregisteredCustomer
+                        ? showFeatureRestrictionPopup("lining-assistant")
+                        : () =>
+                            onUpdateGlobalSpecs({
+                              ...globalSpecs,
+                              showMaterialTransferProfile: !gsShowMaterialTransferProfile,
+                            })
+                    }
+                    onMouseEnter={
+                      isUnregisteredCustomer
+                        ? showFeatureRestrictionPopup("lining-assistant")
+                        : undefined
+                    }
+                    className={`flex items-center gap-1.5 font-medium text-xs mb-2 ${
+                      isUnregisteredCustomer
+                        ? "text-gray-400 cursor-not-allowed"
+                        : "text-blue-600 hover:text-blue-800"
+                    }`}
+                  >
+                    {isUnregisteredCustomer && (
                       <svg
-                        className={`w-3 h-3 transition-transform ${globalSpecs?.showMaterialTransferProfile ? "rotate-90" : ""}`}
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
+                        className="w-3 h-3 text-gray-400"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
                       >
                         <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M9 5l7 7-7 7"
+                          fillRule="evenodd"
+                          d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
+                          clipRule="evenodd"
                         />
                       </svg>
-                      {globalSpecs?.showMaterialTransferProfile ? "Hide" : "Show"} Lining Assistant
-                      (ASTM/ISO)
-                    </button>
+                    )}
+                    <svg
+                      className={`w-3 h-3 transition-transform ${gsShowMaterialTransferProfile ? "rotate-90" : ""}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 5l7 7-7 7"
+                      />
+                    </svg>
+                    {gsShowMaterialTransferProfile ? "Hide" : "Show"} Lining Assistant (ASTM/ISO)
+                  </button>
 
-                    {globalSpecs?.showMaterialTransferProfile && (
-                      <div className="bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-200 rounded-lg p-3">
-                        <div className="flex items-center gap-2 mb-2">
-                          <svg
-                            className="w-4 h-4 text-indigo-600"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
-                            />
-                          </svg>
-                          <h4 className="text-sm font-semibold text-indigo-900">
-                            Material Transfer Profile
-                          </h4>
-                        </div>
+                  {gsShowMaterialTransferProfile && (
+                    <div className="bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-200 rounded-lg p-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <svg
+                          className="w-4 h-4 text-indigo-600"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+                          />
+                        </svg>
+                        <h4 className="text-sm font-semibold text-indigo-900">
+                          Material Transfer Profile
+                        </h4>
+                      </div>
 
-                        {/* Material Properties */}
-                        <div className="bg-white rounded-md p-2 mb-2 border border-gray-200">
-                          <h5 className="text-xs font-semibold text-gray-800 mb-2 flex items-center gap-1.5">
-                            <span className="w-4 h-4 bg-amber-100 text-amber-700 rounded-full flex items-center justify-center text-[10px] font-bold">
-                              1
-                            </span>
-                            Material Properties
-                          </h5>
-                          <div className="grid grid-cols-3 gap-2">
-                            <div>
-                              <label className="block text-[10px] font-medium text-gray-700 mb-0.5">
-                                Particle Size
-                              </label>
-                              <select
-                                value={rawMtpParticleSize || ""}
-                                onChange={(e) => {
-                                  const rawValue27 = e.target.value;
+                      {/* Material Properties */}
+                      <div className="bg-white rounded-md p-2 mb-2 border border-gray-200">
+                        <h5 className="text-xs font-semibold text-gray-800 mb-2 flex items-center gap-1.5">
+                          <span className="w-4 h-4 bg-amber-100 text-amber-700 rounded-full flex items-center justify-center text-[10px] font-bold">
+                            1
+                          </span>
+                          Material Properties
+                        </h5>
+                        <div className="grid grid-cols-3 gap-2">
+                          <div>
+                            <label className="block text-[10px] font-medium text-gray-700 mb-0.5">
+                              Particle Size
+                            </label>
+                            <select
+                              value={rawMtpParticleSize || ""}
+                              onChange={(e) => {
+                                const rawValue27 = e.target.value;
 
-                                  return onUpdateGlobalSpecs({
-                                    ...globalSpecs,
-                                    mtpParticleSize: rawValue27 || null,
-                                  });
-                                }}
-                                className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 text-gray-900"
-                              >
-                                <option value="">Select...</option>
-                                <option value="Fine">Fine (&lt;0.5mm D50)</option>
-                                <option value="Medium">Medium (0.5–2mm)</option>
-                                <option value="Coarse">Coarse (2–10mm)</option>
-                                <option value="VeryCoarse">Very Coarse (&gt;10mm)</option>
-                              </select>
-                            </div>
-                            <div>
-                              <label className="block text-xs font-medium text-gray-700 mb-1">
-                                Particle Shape
-                              </label>
-                              <select
-                                value={rawMtpParticleShape || ""}
-                                onChange={(e) => {
-                                  const rawValue28 = e.target.value;
+                                return onUpdateGlobalSpecs({
+                                  ...globalSpecs,
+                                  mtpParticleSize: rawValue27 || null,
+                                });
+                              }}
+                              className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 text-gray-900"
+                            >
+                              <option value="">Select...</option>
+                              <option value="Fine">Fine (&lt;0.5mm D50)</option>
+                              <option value="Medium">Medium (0.5–2mm)</option>
+                              <option value="Coarse">Coarse (2–10mm)</option>
+                              <option value="VeryCoarse">Very Coarse (&gt;10mm)</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">
+                              Particle Shape
+                            </label>
+                            <select
+                              value={rawMtpParticleShape || ""}
+                              onChange={(e) => {
+                                const rawValue28 = e.target.value;
 
-                                  return onUpdateGlobalSpecs({
-                                    ...globalSpecs,
-                                    mtpParticleShape: rawValue28 || null,
-                                  });
-                                }}
-                                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-gray-900"
-                              >
-                                <option value="">Select...</option>
-                                <option value="Rounded">Rounded</option>
-                                <option value="SubAngular">Sub-Angular</option>
-                                <option value="Angular">Angular</option>
-                              </select>
-                            </div>
-                            <div>
-                              <label className="block text-xs font-medium text-gray-700 mb-1">
-                                Material Hardness
-                              </label>
-                              <select
-                                value={rawMtpHardnessClass || ""}
-                                onChange={(e) => {
-                                  const rawValue29 = e.target.value;
+                                return onUpdateGlobalSpecs({
+                                  ...globalSpecs,
+                                  mtpParticleShape: rawValue28 || null,
+                                });
+                              }}
+                              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-gray-900"
+                            >
+                              <option value="">Select...</option>
+                              <option value="Rounded">Rounded</option>
+                              <option value="SubAngular">Sub-Angular</option>
+                              <option value="Angular">Angular</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">
+                              Material Hardness
+                            </label>
+                            <select
+                              value={rawMtpHardnessClass || ""}
+                              onChange={(e) => {
+                                const rawValue29 = e.target.value;
 
-                                  return onUpdateGlobalSpecs({
-                                    ...globalSpecs,
-                                    mtpHardnessClass: rawValue29 || null,
-                                  });
-                                }}
-                                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-gray-900"
-                              >
-                                <option value="">Select...</option>
-                                <option value="Low">Low (Mohs &lt;4)</option>
-                                <option value="Medium">Medium (Mohs 4–6)</option>
-                                <option value="High">High (Mohs &gt;6)</option>
-                              </select>
-                            </div>
-                            <div>
-                              <label className="block text-xs font-medium text-gray-700 mb-1">
-                                Silica Content
-                              </label>
-                              <select
-                                value={rawMtpSilicaContent || ""}
-                                onChange={(e) => {
-                                  const rawValue30 = e.target.value;
+                                return onUpdateGlobalSpecs({
+                                  ...globalSpecs,
+                                  mtpHardnessClass: rawValue29 || null,
+                                });
+                              }}
+                              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-gray-900"
+                            >
+                              <option value="">Select...</option>
+                              <option value="Low">Low (Mohs &lt;4)</option>
+                              <option value="Medium">Medium (Mohs 4–6)</option>
+                              <option value="High">High (Mohs &gt;6)</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">
+                              Silica Content
+                            </label>
+                            <select
+                              value={rawMtpSilicaContent || ""}
+                              onChange={(e) => {
+                                const rawValue30 = e.target.value;
 
-                                  return onUpdateGlobalSpecs({
-                                    ...globalSpecs,
-                                    mtpSilicaContent: rawValue30 || null,
-                                  });
-                                }}
-                                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-gray-900"
-                              >
-                                <option value="">Select...</option>
-                                <option value="Low">Low (&lt;20%)</option>
-                                <option value="Moderate">Moderate (20–50%)</option>
-                                <option value="High">High (&gt;50%)</option>
-                              </select>
-                            </div>
-                            <div>
-                              <label className="block text-xs font-medium text-gray-700 mb-1">
-                                Specific Gravity
-                              </label>
-                              <select
-                                value={rawMtpSpecificGravity || ""}
-                                onChange={(e) => {
-                                  const rawValue31 = e.target.value;
+                                return onUpdateGlobalSpecs({
+                                  ...globalSpecs,
+                                  mtpSilicaContent: rawValue30 || null,
+                                });
+                              }}
+                              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-gray-900"
+                            >
+                              <option value="">Select...</option>
+                              <option value="Low">Low (&lt;20%)</option>
+                              <option value="Moderate">Moderate (20–50%)</option>
+                              <option value="High">High (&gt;50%)</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">
+                              Specific Gravity
+                            </label>
+                            <select
+                              value={rawMtpSpecificGravity || ""}
+                              onChange={(e) => {
+                                const rawValue31 = e.target.value;
 
-                                  return onUpdateGlobalSpecs({
-                                    ...globalSpecs,
-                                    mtpSpecificGravity: rawValue31 || null,
-                                  });
-                                }}
-                                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-gray-900"
-                              >
-                                <option value="">Select...</option>
-                                <option value="Light">Light (&lt;2.0)</option>
-                                <option value="Medium">Medium (2.0–3.5)</option>
-                                <option value="Heavy">Heavy (&gt;3.5)</option>
-                              </select>
-                            </div>
+                                return onUpdateGlobalSpecs({
+                                  ...globalSpecs,
+                                  mtpSpecificGravity: rawValue31 || null,
+                                });
+                              }}
+                              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-gray-900"
+                            >
+                              <option value="">Select...</option>
+                              <option value="Light">Light (&lt;2.0)</option>
+                              <option value="Medium">Medium (2.0–3.5)</option>
+                              <option value="Heavy">Heavy (&gt;3.5)</option>
+                            </select>
                           </div>
                         </div>
+                      </div>
 
-                        {/* Chemical Environment */}
-                        <div className="bg-white rounded-md p-2 mb-2 border border-gray-200">
-                          <h5 className="text-xs font-semibold text-gray-800 mb-2 flex items-center gap-1.5">
-                            <span className="w-4 h-4 bg-green-100 text-green-700 rounded-full flex items-center justify-center text-[10px] font-bold">
-                              2
-                            </span>
-                            Chemical Environment
-                          </h5>
-                          <div className="grid grid-cols-3 gap-2">
-                            <div>
-                              <label className="block text-[10px] font-medium text-gray-700 mb-0.5">
-                                pH Range
-                              </label>
-                              <select
-                                value={rawMtpPhRange || ""}
-                                onChange={(e) => {
-                                  const rawValue32 = e.target.value;
+                      {/* Chemical Environment */}
+                      <div className="bg-white rounded-md p-2 mb-2 border border-gray-200">
+                        <h5 className="text-xs font-semibold text-gray-800 mb-2 flex items-center gap-1.5">
+                          <span className="w-4 h-4 bg-green-100 text-green-700 rounded-full flex items-center justify-center text-[10px] font-bold">
+                            2
+                          </span>
+                          Chemical Environment
+                        </h5>
+                        <div className="grid grid-cols-3 gap-2">
+                          <div>
+                            <label className="block text-[10px] font-medium text-gray-700 mb-0.5">
+                              pH Range
+                            </label>
+                            <select
+                              value={rawMtpPhRange || ""}
+                              onChange={(e) => {
+                                const rawValue32 = e.target.value;
 
-                                  return onUpdateGlobalSpecs({
-                                    ...globalSpecs,
-                                    mtpPhRange: rawValue32 || null,
-                                  });
-                                }}
-                                className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 text-gray-900"
-                              >
-                                <option value="">Select...</option>
-                                <option value="Acidic">Acidic (&lt;5)</option>
-                                <option value="Neutral">Neutral (5–9)</option>
-                                <option value="Alkaline">Alkaline (&gt;9)</option>
-                              </select>
-                            </div>
-                            <div>
-                              <label className="block text-[10px] font-medium text-gray-700 mb-0.5">
-                                Chloride Level
-                              </label>
-                              <select
-                                value={rawMtpChlorides || ""}
-                                onChange={(e) => {
-                                  const rawValue33 = e.target.value;
+                                return onUpdateGlobalSpecs({
+                                  ...globalSpecs,
+                                  mtpPhRange: rawValue32 || null,
+                                });
+                              }}
+                              className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 text-gray-900"
+                            >
+                              <option value="">Select...</option>
+                              <option value="Acidic">Acidic (&lt;5)</option>
+                              <option value="Neutral">Neutral (5–9)</option>
+                              <option value="Alkaline">Alkaline (&gt;9)</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-medium text-gray-700 mb-0.5">
+                              Chloride Level
+                            </label>
+                            <select
+                              value={rawMtpChlorides || ""}
+                              onChange={(e) => {
+                                const rawValue33 = e.target.value;
 
-                                  return onUpdateGlobalSpecs({
-                                    ...globalSpecs,
-                                    mtpChlorides: rawValue33 || null,
-                                  });
-                                }}
-                                className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 text-gray-900"
-                              >
-                                <option value="">Select...</option>
-                                <option value="Low">Low (&lt;100ppm)</option>
-                                <option value="Moderate">Moderate (100–500)</option>
-                                <option value="High">High (&gt;500ppm)</option>
-                              </select>
-                            </div>
-                            <div>
-                              <label className="block text-[10px] font-medium text-gray-700 mb-0.5">
-                                Operating Temp
-                              </label>
-                              <select
-                                value={rawMtpTemperatureRange || ""}
-                                onChange={(e) => {
-                                  const rawValue34 = e.target.value;
+                                return onUpdateGlobalSpecs({
+                                  ...globalSpecs,
+                                  mtpChlorides: rawValue33 || null,
+                                });
+                              }}
+                              className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 text-gray-900"
+                            >
+                              <option value="">Select...</option>
+                              <option value="Low">Low (&lt;100ppm)</option>
+                              <option value="Moderate">Moderate (100–500)</option>
+                              <option value="High">High (&gt;500ppm)</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-medium text-gray-700 mb-0.5">
+                              Operating Temp
+                            </label>
+                            <select
+                              value={rawMtpTemperatureRange || ""}
+                              onChange={(e) => {
+                                const rawValue34 = e.target.value;
 
-                                  return onUpdateGlobalSpecs({
-                                    ...globalSpecs,
-                                    mtpTemperatureRange: rawValue34 || null,
-                                  });
-                                }}
-                                className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 text-gray-900"
-                              >
-                                <option value="">Select...</option>
-                                <option value="Ambient">Ambient (&lt;40°C)</option>
-                                <option value="Elevated">Elevated (40–80°C)</option>
-                                <option value="High">High (&gt;80°C)</option>
-                              </select>
-                            </div>
+                                return onUpdateGlobalSpecs({
+                                  ...globalSpecs,
+                                  mtpTemperatureRange: rawValue34 || null,
+                                });
+                              }}
+                              className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 text-gray-900"
+                            >
+                              <option value="">Select...</option>
+                              <option value="Ambient">Ambient (&lt;40°C)</option>
+                              <option value="Elevated">Elevated (40–80°C)</option>
+                              <option value="High">High (&gt;80°C)</option>
+                            </select>
                           </div>
                         </div>
+                      </div>
 
-                        {/* Flow & Equipment */}
-                        <div className="bg-white rounded-md p-2 mb-2 border border-gray-200">
-                          <h5 className="text-xs font-semibold text-gray-800 mb-2 flex items-center gap-1.5">
-                            <span className="w-4 h-4 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center text-[10px] font-bold">
-                              3
-                            </span>
-                            Flow & Equipment
-                          </h5>
-                          <div className="grid grid-cols-3 gap-2">
-                            <div>
-                              <label className="block text-[10px] font-medium text-gray-700 mb-0.5">
-                                Flow Velocity
-                              </label>
-                              <select
-                                value={rawMtpVelocity || ""}
-                                onChange={(e) => {
-                                  const rawValue35 = e.target.value;
+                      {/* Flow & Equipment */}
+                      <div className="bg-white rounded-md p-2 mb-2 border border-gray-200">
+                        <h5 className="text-xs font-semibold text-gray-800 mb-2 flex items-center gap-1.5">
+                          <span className="w-4 h-4 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center text-[10px] font-bold">
+                            3
+                          </span>
+                          Flow & Equipment
+                        </h5>
+                        <div className="grid grid-cols-3 gap-2">
+                          <div>
+                            <label className="block text-[10px] font-medium text-gray-700 mb-0.5">
+                              Flow Velocity
+                            </label>
+                            <select
+                              value={rawMtpVelocity || ""}
+                              onChange={(e) => {
+                                const rawValue35 = e.target.value;
 
-                                  return onUpdateGlobalSpecs({
-                                    ...globalSpecs,
-                                    mtpVelocity: rawValue35 || null,
-                                  });
-                                }}
-                                className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 text-gray-900"
-                              >
-                                <option value="">Select...</option>
-                                <option value="Low">Low (&lt;2 m/s)</option>
-                                <option value="Medium">Medium (2–4 m/s)</option>
-                                <option value="High">High (&gt;4 m/s)</option>
-                              </select>
-                            </div>
-                            <div>
-                              <label className="block text-[10px] font-medium text-gray-700 mb-0.5">
-                                Impact Angle
-                              </label>
-                              <select
-                                value={rawMtpImpactAngle || ""}
-                                onChange={(e) => {
-                                  const rawValue36 = e.target.value;
+                                return onUpdateGlobalSpecs({
+                                  ...globalSpecs,
+                                  mtpVelocity: rawValue35 || null,
+                                });
+                              }}
+                              className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 text-gray-900"
+                            >
+                              <option value="">Select...</option>
+                              <option value="Low">Low (&lt;2 m/s)</option>
+                              <option value="Medium">Medium (2–4 m/s)</option>
+                              <option value="High">High (&gt;4 m/s)</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-medium text-gray-700 mb-0.5">
+                              Impact Angle
+                            </label>
+                            <select
+                              value={rawMtpImpactAngle || ""}
+                              onChange={(e) => {
+                                const rawValue36 = e.target.value;
 
-                                  return onUpdateGlobalSpecs({
-                                    ...globalSpecs,
-                                    mtpImpactAngle: rawValue36 || null,
-                                  });
-                                }}
-                                className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 text-gray-900"
-                              >
-                                <option value="">Select...</option>
-                                <option value="Low">Low (&lt;30°)</option>
-                                <option value="Mixed">Mixed (30–60°)</option>
-                                <option value="High">High (&gt;60°)</option>
-                              </select>
-                            </div>
-                            <div>
-                              <label className="block text-[10px] font-medium text-gray-700 mb-0.5">
-                                Equipment Type
-                              </label>
-                              <select
-                                value={rawMtpEquipmentType || ""}
-                                onChange={(e) => {
-                                  const rawValue37 = e.target.value;
+                                return onUpdateGlobalSpecs({
+                                  ...globalSpecs,
+                                  mtpImpactAngle: rawValue36 || null,
+                                });
+                              }}
+                              className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 text-gray-900"
+                            >
+                              <option value="">Select...</option>
+                              <option value="Low">Low (&lt;30°)</option>
+                              <option value="Mixed">Mixed (30–60°)</option>
+                              <option value="High">High (&gt;60°)</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-medium text-gray-700 mb-0.5">
+                              Equipment Type
+                            </label>
+                            <select
+                              value={rawMtpEquipmentType || ""}
+                              onChange={(e) => {
+                                const rawValue37 = e.target.value;
 
-                                  return onUpdateGlobalSpecs({
-                                    ...globalSpecs,
-                                    mtpEquipmentType: rawValue37 || null,
-                                  });
-                                }}
-                                className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 text-gray-900"
-                              >
-                                <option value="">Select...</option>
-                                <option value="Pipe">Pipe</option>
-                                <option value="Tank">Tank</option>
-                                <option value="Chute">Chute</option>
-                                <option value="Hopper">Hopper</option>
-                                <option value="Launder">Launder</option>
-                              </select>
-                            </div>
-                            <div>
-                              <label className="block text-[10px] font-medium text-gray-700 mb-0.5">
-                                Solids Conc.
-                              </label>
-                              <select
-                                value={rawMtpSolidsPercent || ""}
-                                onChange={(e) => {
-                                  const rawValue38 = e.target.value;
+                                return onUpdateGlobalSpecs({
+                                  ...globalSpecs,
+                                  mtpEquipmentType: rawValue37 || null,
+                                });
+                              }}
+                              className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 text-gray-900"
+                            >
+                              <option value="">Select...</option>
+                              <option value="Pipe">Pipe</option>
+                              <option value="Tank">Tank</option>
+                              <option value="Chute">Chute</option>
+                              <option value="Hopper">Hopper</option>
+                              <option value="Launder">Launder</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-medium text-gray-700 mb-0.5">
+                              Solids Conc.
+                            </label>
+                            <select
+                              value={rawMtpSolidsPercent || ""}
+                              onChange={(e) => {
+                                const rawValue38 = e.target.value;
 
-                                  return onUpdateGlobalSpecs({
-                                    ...globalSpecs,
-                                    mtpSolidsPercent: rawValue38 || null,
-                                  });
-                                }}
-                                className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 text-gray-900"
-                              >
-                                <option value="">Select...</option>
-                                <option value="Low">Low (&lt;20%)</option>
-                                <option value="Medium">Medium (20–40%)</option>
-                                <option value="High">High (40–60%)</option>
-                                <option value="VeryHigh">Very High (&gt;60%)</option>
-                              </select>
-                            </div>
-                            <div>
-                              <label className="block text-[10px] font-medium text-gray-700 mb-0.5">
-                                Impact Zones?
-                              </label>
-                              <select
-                                value={
-                                  globalSpecs?.mtpImpactZones === true
-                                    ? "true"
-                                    : globalSpecs?.mtpImpactZones === false
-                                      ? "false"
-                                      : ""
-                                }
-                                onChange={(e) =>
-                                  onUpdateGlobalSpecs({
-                                    ...globalSpecs,
-                                    mtpImpactZones:
-                                      e.target.value === "true"
-                                        ? true
-                                        : e.target.value === "false"
-                                          ? false
-                                          : null,
-                                  })
-                                }
-                                className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 text-gray-900"
-                              >
-                                <option value="">Select...</option>
-                                <option value="true">Yes (bends, drops)</option>
-                                <option value="false">No (straight only)</option>
-                              </select>
-                            </div>
+                                return onUpdateGlobalSpecs({
+                                  ...globalSpecs,
+                                  mtpSolidsPercent: rawValue38 || null,
+                                });
+                              }}
+                              className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 text-gray-900"
+                            >
+                              <option value="">Select...</option>
+                              <option value="Low">Low (&lt;20%)</option>
+                              <option value="Medium">Medium (20–40%)</option>
+                              <option value="High">High (40–60%)</option>
+                              <option value="VeryHigh">Very High (&gt;60%)</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-medium text-gray-700 mb-0.5">
+                              Impact Zones?
+                            </label>
+                            <select
+                              value={
+                                globalSpecs?.mtpImpactZones === true
+                                  ? "true"
+                                  : globalSpecs?.mtpImpactZones === false
+                                    ? "false"
+                                    : ""
+                              }
+                              onChange={(e) =>
+                                onUpdateGlobalSpecs({
+                                  ...globalSpecs,
+                                  mtpImpactZones:
+                                    e.target.value === "true"
+                                      ? true
+                                      : e.target.value === "false"
+                                        ? false
+                                        : null,
+                                })
+                              }
+                              className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 text-gray-900"
+                            >
+                              <option value="">Select...</option>
+                              <option value="true">Yes (bends, drops)</option>
+                              <option value="false">No (straight only)</option>
+                            </select>
                           </div>
                         </div>
+                      </div>
 
-                        {/* Recommendation Display */}
-                        {(() => {
-                          const profile: MaterialTransferProfile = {
-                            material: {
-                              particleSize: globalSpecs?.mtpParticleSize as any,
-                              particleShape: globalSpecs?.mtpParticleShape as any,
-                              specificGravity: globalSpecs?.mtpSpecificGravity as any,
-                              hardnessClass: globalSpecs?.mtpHardnessClass as any,
-                              silicaContent: globalSpecs?.mtpSilicaContent as any,
-                            },
-                            chemistry: {
-                              phRange: globalSpecs?.mtpPhRange as any,
-                              chlorides: globalSpecs?.mtpChlorides as any,
-                              temperatureRange: globalSpecs?.mtpTemperatureRange as any,
-                            },
-                            flow: {
-                              solidsPercent: globalSpecs?.mtpSolidsPercent as any,
-                              velocity: globalSpecs?.mtpVelocity as any,
-                              impactAngle: globalSpecs?.mtpImpactAngle as any,
-                            },
-                            equipment: {
-                              equipmentType: globalSpecs?.mtpEquipmentType as any,
-                              impactZones: globalSpecs?.mtpImpactZones,
-                            },
-                          };
+                      {/* Recommendation Display */}
+                      {(() => {
+                        const profile: MaterialTransferProfile = {
+                          material: {
+                            particleSize: globalSpecs?.mtpParticleSize as any,
+                            particleShape: globalSpecs?.mtpParticleShape as any,
+                            specificGravity: globalSpecs?.mtpSpecificGravity as any,
+                            hardnessClass: globalSpecs?.mtpHardnessClass as any,
+                            silicaContent: globalSpecs?.mtpSilicaContent as any,
+                          },
+                          chemistry: {
+                            phRange: globalSpecs?.mtpPhRange as any,
+                            chlorides: globalSpecs?.mtpChlorides as any,
+                            temperatureRange: globalSpecs?.mtpTemperatureRange as any,
+                          },
+                          flow: {
+                            solidsPercent: globalSpecs?.mtpSolidsPercent as any,
+                            velocity: globalSpecs?.mtpVelocity as any,
+                            impactAngle: globalSpecs?.mtpImpactAngle as any,
+                          },
+                          equipment: {
+                            equipmentType: globalSpecs?.mtpEquipmentType as any,
+                            impactZones: globalSpecs?.mtpImpactZones,
+                          },
+                        };
 
-                          if (!hasCompleteProfile(profile)) {
-                            return (
-                              <div className="bg-gray-100 rounded-lg p-4 border border-gray-200">
-                                <p className="text-sm text-gray-600 text-center">
-                                  Complete the required fields above to receive a lining
-                                  recommendation.
-                                </p>
-                              </div>
-                            );
-                          }
-
-                          const damage = classifyDamageMechanisms(profile);
-                          const recommendation = recommendLining(profile, damage);
-
+                        if (!hasCompleteProfile(profile)) {
                           return (
-                            <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-lg p-4 border-2 border-emerald-300">
-                              <div className="flex items-center gap-2 mb-3">
-                                <svg
-                                  className="w-6 h-6 text-emerald-600"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                                  />
-                                </svg>
-                                <h5 className="text-md font-bold text-emerald-900">
-                                  Recommended Lining
-                                </h5>
-                              </div>
-
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                <div className="bg-white rounded-lg p-3 border border-emerald-200">
-                                  <div className="text-xs font-medium text-gray-500 mb-1">
-                                    Lining Type
-                                  </div>
-                                  <div className="text-lg font-bold text-emerald-800">
-                                    {recommendation.lining}
-                                  </div>
-                                  <div className="text-xs text-gray-600 mt-1">
-                                    {recommendation.thicknessRange}
-                                  </div>
-                                </div>
-                                <div className="bg-white rounded-lg p-3 border border-emerald-200">
-                                  <div className="text-xs font-medium text-gray-500 mb-1">
-                                    Dominant Mechanism
-                                  </div>
-                                  <div className="text-md font-semibold text-gray-800">
-                                    {damage.dominantMechanism}
-                                  </div>
-                                  <div className="flex gap-2 mt-1">
-                                    <span
-                                      className={`text-xs px-2 py-0.5 rounded ${damage.abrasion === "Severe" ? "bg-red-100 text-red-700" : damage.abrasion === "Moderate" ? "bg-amber-100 text-amber-700" : "bg-green-100 text-green-700"}`}
-                                    >
-                                      Abrasion: {damage.abrasion}
-                                    </span>
-                                    <span
-                                      className={`text-xs px-2 py-0.5 rounded ${damage.impact === "Severe" ? "bg-red-100 text-red-700" : damage.impact === "Moderate" ? "bg-amber-100 text-amber-700" : "bg-green-100 text-green-700"}`}
-                                    >
-                                      Impact: {damage.impact}
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div className="bg-white rounded-lg p-3 border border-emerald-200 mb-3">
-                                <div className="text-xs font-medium text-gray-500 mb-1">
-                                  Rationale
-                                </div>
-                                <p className="text-sm text-gray-700">{recommendation.rationale}</p>
-                              </div>
-
-                              <div className="bg-white rounded-lg p-3 border border-emerald-200 mb-3">
-                                <div className="text-xs font-medium text-gray-500 mb-2">
-                                  Applicable Standards
-                                </div>
-                                <div className="flex flex-wrap gap-2">
-                                  {recommendation.standardsBasis.map((std, i) => (
-                                    <span
-                                      key={i}
-                                      className="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded font-medium"
-                                    >
-                                      {std}
-                                    </span>
-                                  ))}
-                                </div>
-                              </div>
-
-                              <div className="bg-white rounded-lg p-3 border border-emerald-200 mb-3">
-                                <div className="text-xs font-medium text-gray-500 mb-2">
-                                  Engineering Notes
-                                </div>
-                                <ul className="text-xs text-gray-700 space-y-1">
-                                  {recommendation.engineeringNotes.map((note, i) => (
-                                    <li key={i} className="flex items-start gap-2">
-                                      <span className="text-emerald-500 mt-0.5">•</span>
-                                      {note}
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  onUpdateGlobalSpecs({
-                                    ...globalSpecs,
-                                    internalLiningType: recommendation.liningType,
-                                  })
-                                }
-                                className="w-full px-4 py-2 bg-emerald-600 text-white font-semibold rounded-lg hover:bg-emerald-700 text-sm flex items-center justify-center gap-2"
-                              >
-                                <svg
-                                  className="w-4 h-4"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M5 13l4 4L19 7"
-                                  />
-                                </svg>
-                                Apply Recommendation: {recommendation.liningType}
-                              </button>
-
-                              <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                                <p className="text-xs text-amber-800">
-                                  <strong>Engineering Disclaimer:</strong> Lining recommendations
-                                  are indicative and based on generalized abrasion, impact, and
-                                  corrosion models aligned with ASTM and ISO test standards. They do
-                                  not replace site-specific trials, operational history, or
-                                  manufacturer design verification.
-                                </p>
-                              </div>
+                            <div className="bg-gray-100 rounded-lg p-4 border border-gray-200">
+                              <p className="text-sm text-gray-600 text-center">
+                                Complete the required fields above to receive a lining
+                                recommendation.
+                              </p>
                             </div>
                           );
-                        })()}
-                      </div>
-                    )}
-                  </div>
-                )}
+                        }
+
+                        const damage = classifyDamageMechanisms(profile);
+                        const recommendation = recommendLining(profile, damage);
+
+                        return (
+                          <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-lg p-4 border-2 border-emerald-300">
+                            <div className="flex items-center gap-2 mb-3">
+                              <svg
+                                className="w-6 h-6 text-emerald-600"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                                />
+                              </svg>
+                              <h5 className="text-md font-bold text-emerald-900">
+                                Recommended Lining
+                              </h5>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                              <div className="bg-white rounded-lg p-3 border border-emerald-200">
+                                <div className="text-xs font-medium text-gray-500 mb-1">
+                                  Lining Type
+                                </div>
+                                <div className="text-lg font-bold text-emerald-800">
+                                  {recommendation.lining}
+                                </div>
+                                <div className="text-xs text-gray-600 mt-1">
+                                  {recommendation.thicknessRange}
+                                </div>
+                              </div>
+                              <div className="bg-white rounded-lg p-3 border border-emerald-200">
+                                <div className="text-xs font-medium text-gray-500 mb-1">
+                                  Dominant Mechanism
+                                </div>
+                                <div className="text-md font-semibold text-gray-800">
+                                  {damage.dominantMechanism}
+                                </div>
+                                <div className="flex gap-2 mt-1">
+                                  <span
+                                    className={`text-xs px-2 py-0.5 rounded ${damage.abrasion === "Severe" ? "bg-red-100 text-red-700" : damage.abrasion === "Moderate" ? "bg-amber-100 text-amber-700" : "bg-green-100 text-green-700"}`}
+                                  >
+                                    Abrasion: {damage.abrasion}
+                                  </span>
+                                  <span
+                                    className={`text-xs px-2 py-0.5 rounded ${damage.impact === "Severe" ? "bg-red-100 text-red-700" : damage.impact === "Moderate" ? "bg-amber-100 text-amber-700" : "bg-green-100 text-green-700"}`}
+                                  >
+                                    Impact: {damage.impact}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="bg-white rounded-lg p-3 border border-emerald-200 mb-3">
+                              <div className="text-xs font-medium text-gray-500 mb-1">
+                                Rationale
+                              </div>
+                              <p className="text-sm text-gray-700">{recommendation.rationale}</p>
+                            </div>
+
+                            <div className="bg-white rounded-lg p-3 border border-emerald-200 mb-3">
+                              <div className="text-xs font-medium text-gray-500 mb-2">
+                                Applicable Standards
+                              </div>
+                              <div className="flex flex-wrap gap-2">
+                                {recommendation.standardsBasis.map((std, i) => (
+                                  <span
+                                    key={i}
+                                    className="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded font-medium"
+                                  >
+                                    {std}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+
+                            <div className="bg-white rounded-lg p-3 border border-emerald-200 mb-3">
+                              <div className="text-xs font-medium text-gray-500 mb-2">
+                                Engineering Notes
+                              </div>
+                              <ul className="text-xs text-gray-700 space-y-1">
+                                {recommendation.engineeringNotes.map((note, i) => (
+                                  <li key={i} className="flex items-start gap-2">
+                                    <span className="text-emerald-500 mt-0.5">•</span>
+                                    {note}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                onUpdateGlobalSpecs({
+                                  ...globalSpecs,
+                                  internalLiningType: recommendation.liningType,
+                                })
+                              }
+                              className="w-full px-4 py-2 bg-emerald-600 text-white font-semibold rounded-lg hover:bg-emerald-700 text-sm flex items-center justify-center gap-2"
+                            >
+                              <svg
+                                className="w-4 h-4"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M5 13l4 4L19 7"
+                                />
+                              </svg>
+                              Apply Recommendation: {recommendation.liningType}
+                            </button>
+
+                            <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                              <p className="text-xs text-amber-800">
+                                <strong>Engineering Disclaimer:</strong> Lining recommendations are
+                                indicative and based on generalized abrasion, impact, and corrosion
+                                models aligned with ASTM and ISO test standards. They do not replace
+                                site-specific trials, operational history, or manufacturer design
+                                verification.
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Show dropdown only if no lining confirmed AND external is not galvanized */}
-              {!globalSpecs?.internalLiningConfirmed &&
-                globalSpecs?.externalCoatingType !== "Galvanized" && (
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-900 mb-1">
-                        Internal Lining Type <span className="text-red-500">*</span>
-                      </label>
-                      <select
-                        value={rawInternalLiningType2 || ""}
-                        onChange={(e) => {
-                          const rawValue39 = e.target.value;
+              {!gsInternalLiningConfirmed && gsExternalCoatingType !== "Galvanized" && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-900 mb-1">
+                      Internal Lining Type <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={rawInternalLiningType2 || ""}
+                      onChange={(e) => {
+                        const rawValue39 = e.target.value;
 
-                          return onUpdateGlobalSpecs({
-                            ...globalSpecs,
-                            internalLiningType: rawValue39 || null,
-                            // Clear related fields when changing lining type
-                            internalPrimerType: null,
-                            internalPrimerMicrons: null,
-                            internalIntermediateType: null,
-                            internalIntermediateMicrons: null,
-                            internalTopcoatType: null,
-                            internalTopcoatMicrons: null,
-                            internalPaintConfirmed: null,
-                            internalRubberType: null,
-                            internalRubberThickness: null,
-                            internalRubberColour: null,
-                            internalRubberHardness: null,
-                            internalCeramicType: null,
-                            internalCeramicShape: null,
-                            internalCeramicThickness: null,
-                            internalHdpeMaterialGrade: null,
-                            internalHdpePressureRating: null,
-                            internalHdpeSdr: null,
-                            internalHdpePipeType: null,
-                            internalPuThickness: null,
-                            internalPuHardness: null,
-                          });
-                        }}
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
-                        required
-                      >
-                        <option value="">Select lining...</option>
-                        <option value="Raw Steel">Raw Steel (No Lining)</option>
-                        <option value="Paint">Paint</option>
-                        <option value="Rubber Lined">Rubber Lined</option>
-                        <option value="Ceramic Lined">Ceramic Lined</option>
-                        <option value="HDPE Lined">HDPE Lined</option>
-                        <option value="PU Lined">PU Lined</option>
-                      </select>
-                    </div>
+                        return onUpdateGlobalSpecs({
+                          ...globalSpecs,
+                          internalLiningType: rawValue39 || null,
+                          // Clear related fields when changing lining type
+                          internalPrimerType: null,
+                          internalPrimerMicrons: null,
+                          internalIntermediateType: null,
+                          internalIntermediateMicrons: null,
+                          internalTopcoatType: null,
+                          internalTopcoatMicrons: null,
+                          internalPaintConfirmed: null,
+                          internalRubberType: null,
+                          internalRubberThickness: null,
+                          internalRubberColour: null,
+                          internalRubberHardness: null,
+                          internalCeramicType: null,
+                          internalCeramicShape: null,
+                          internalCeramicThickness: null,
+                          internalHdpeMaterialGrade: null,
+                          internalHdpePressureRating: null,
+                          internalHdpeSdr: null,
+                          internalHdpePipeType: null,
+                          internalPuThickness: null,
+                          internalPuHardness: null,
+                        });
+                      }}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+                      required
+                    >
+                      <option value="">Select lining...</option>
+                      <option value="Raw Steel">Raw Steel (No Lining)</option>
+                      <option value="Paint">Paint</option>
+                      <option value="Rubber Lined">Rubber Lined</option>
+                      <option value="Ceramic Lined">Ceramic Lined</option>
+                      <option value="HDPE Lined">HDPE Lined</option>
+                      <option value="PU Lined">PU Lined</option>
+                    </select>
                   </div>
-                )}
+                </div>
+              )}
 
               {/* Confirmed Non-Paint Internal Lining - Only for simple types without specific boxes */}
-              {globalSpecs?.internalLiningConfirmed &&
+              {gsInternalLiningConfirmed &&
                 globalSpecs?.internalLiningType &&
                 globalSpecs?.internalLiningType !== "Paint" &&
                 globalSpecs?.internalLiningType !== "Rubber Lined" &&
@@ -6110,7 +5541,7 @@ export default function SpecificationsStep(props: {
                 )}
 
               {/* Confirm button for simple selections (not Paint or Rubber Lined) */}
-              {!globalSpecs?.internalLiningConfirmed &&
+              {!gsInternalLiningConfirmed &&
                 globalSpecs?.internalLiningType &&
                 globalSpecs?.internalLiningType !== "Paint" &&
                 globalSpecs?.internalLiningType !== "Rubber Lined" && (
@@ -6131,387 +5562,379 @@ export default function SpecificationsStep(props: {
                 )}
 
               {/* Rubber Lined Options - Only show when selected AND not confirmed */}
-              {globalSpecs?.internalLiningType === "Rubber Lined" &&
-                !globalSpecs?.internalLiningConfirmed && (
-                  <div className="mt-3 pt-3 border-t border-gray-200">
-                    <h4 className="text-xs font-semibold text-gray-800 mb-2">
-                      Internal Rubber Lining Specifications (SANS 1198:2013)
-                    </h4>
+              {globalSpecs?.internalLiningType === "Rubber Lined" && !gsInternalLiningConfirmed && (
+                <div className="mt-3 pt-3 border-t border-gray-200">
+                  <h4 className="text-xs font-semibold text-gray-800 mb-2">
+                    Internal Rubber Lining Specifications (SANS 1198:2013)
+                  </h4>
 
-                    {/* Row 1: SANS Type and Grade */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-900 mb-1">
-                          SANS Type
-                        </label>
-                        <select
-                          value={rawInternalRubberSansType || ""}
-                          onChange={(e) => {
-                            const sansType = e.target.value ? Number(e.target.value) : null;
-                            const typeMap: Record<number, string> = {
-                              1: "Natural Rubber",
-                              2: "Bromobutyl Rubber",
-                              3: "Nitrile Rubber (NBR)",
-                              4: "Neoprene (CR)",
-                              5: "Hypalon (CSM)",
-                            };
-                            onUpdateGlobalSpecs({
-                              ...globalSpecs,
-                              internalRubberSansType: sansType,
-                              internalRubberType: sansType ? typeMap[sansType] : null,
-                            });
-                          }}
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
-                        >
-                          <option value="">Select...</option>
-                          <option value="1">Type 1 - NR/SBR (General purpose)</option>
-                          <option value="2">Type 2 - IIR/Butyl (Chemical resistant)</option>
-                          <option value="3">Type 3 - NBR/Nitrile (Oil resistant)</option>
-                          <option value="4">Type 4 - CR/Neoprene (Weather resistant)</option>
-                          <option value="5">Type 5 - CSM/Hypalon (Acid/ozone resistant)</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-900 mb-1">
-                          Grade (Tensile Strength)
-                        </label>
-                        <select
-                          value={rawInternalRubberGrade || ""}
-                          onChange={(e) => {
-                            const rawValue40 = e.target.value;
-
-                            return onUpdateGlobalSpecs({
-                              ...globalSpecs,
-                              internalRubberGrade: rawValue40 || null,
-                            });
-                          }}
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
-                        >
-                          <option value="">Select...</option>
-                          <option value="A">Grade A - High Strength (18+ MPa)</option>
-                          <option value="B">Grade B - Standard (14+ MPa)</option>
-                          <option value="C">Grade C - Economy (7+ MPa)</option>
-                          <option value="D">Grade D - Ebonite (Hard rubber)</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-900 mb-1">
-                          Hardness Class (IRHD)
-                        </label>
-                        <select
-                          value={rawInternalRubberHardness || ""}
-                          onChange={(e) =>
-                            onUpdateGlobalSpecs({
-                              ...globalSpecs,
-                              internalRubberHardness: e.target.value
-                                ? Number(e.target.value)
-                                : null,
-                            })
-                          }
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
-                        >
-                          <option value="">Select...</option>
-                          <option value="40">40 IRHD - Soft (High flexibility)</option>
-                          <option value="50">50 IRHD - Medium-Soft (General)</option>
-                          <option value="60">60 IRHD - Medium-Hard (Abrasion)</option>
-                          <option value="70">70 IRHD - Hard (High abrasion)</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-900 mb-1">
-                          Thickness (mm)
-                        </label>
-                        <select
-                          value={rawInternalRubberThickness || ""}
-                          onChange={(e) =>
-                            onUpdateGlobalSpecs({
-                              ...globalSpecs,
-                              internalRubberThickness: e.target.value
-                                ? Number(e.target.value)
-                                : null,
-                            })
-                          }
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
-                        >
-                          <option value="">Select...</option>
-                          <option value="3">3mm (Min 1 ply)</option>
-                          <option value="4">4mm (Min 1 ply)</option>
-                          <option value="5">5mm (Min 2 plies)</option>
-                          <option value="6">6mm (Min 2 plies)</option>
-                          <option value="8">8mm (Min 2 plies)</option>
-                          <option value="10">10mm (Min 2 plies)</option>
-                          <option value="12">12mm (Min 3 plies)</option>
-                          <option value="15">15mm (Min 3 plies)</option>
-                          <option value="20">20mm (Min 4 plies)</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    {/* Row 2: Vulcanization, Colour */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-900 mb-1">
-                          Vulcanization Method
-                        </label>
-                        <select
-                          value={rawInternalRubberVulcanizationMethod || ""}
-                          onChange={(e) => {
-                            const rawValue41 = e.target.value;
-
-                            return onUpdateGlobalSpecs({
-                              ...globalSpecs,
-                              internalRubberVulcanizationMethod: rawValue41 || null,
-                            });
-                          }}
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
-                        >
-                          <option value="">Select...</option>
-                          <option value="autoclave">Autoclave (Preferred)</option>
-                          <option value="open">Open Steam</option>
-                          <option value="hot_water">Hot Water</option>
-                          <option value="chemical">Chemical/Self-cure</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-900 mb-1">
-                          Colour
-                        </label>
-                        <select
-                          value={rawInternalRubberColour || ""}
-                          onChange={(e) => {
-                            const rawValue42 = e.target.value;
-
-                            return onUpdateGlobalSpecs({
-                              ...globalSpecs,
-                              internalRubberColour: rawValue42 || null,
-                            });
-                          }}
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
-                        >
-                          <option value="">Select...</option>
-                          <option value="Black">Black</option>
-                          <option value="Red">Red</option>
-                          <option value="Natural (Tan)">Natural (Tan)</option>
-                          <option value="Grey">Grey</option>
-                          <option value="Green">Green</option>
-                          <option value="Blue">Blue</option>
-                          <option value="White">White</option>
-                        </select>
-                      </div>
-
-                      <div className="col-span-2">
-                        <label className="block text-xs font-semibold text-gray-900 mb-1">
-                          Chemical Exposure
-                        </label>
-                        <select
-                          value=""
-                          onChange={(e) => {
-                            if (e.target.value) {
-                              const rawInternalRubberChemicalExposure =
-                                globalSpecs?.internalRubberChemicalExposure;
-                              const current = rawInternalRubberChemicalExposure || [];
-                              if (!current.includes(e.target.value)) {
-                                onUpdateGlobalSpecs({
-                                  ...globalSpecs,
-                                  internalRubberChemicalExposure: [...current, e.target.value],
-                                });
-                              }
-                            }
-                          }}
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
-                        >
-                          <option value="">Add chemical exposure...</option>
-                          <option value="acids_inorganic">Inorganic Acids (H2SO4, HCl)</option>
-                          <option value="acids_organic">Organic Acids (Acetic, Citric)</option>
-                          <option value="alkalis">Alkalis (NaOH, KOH)</option>
-                          <option value="alcohols">Alcohols</option>
-                          <option value="hydrocarbons">Hydrocarbons</option>
-                          <option value="oils_mineral">Mineral Oils</option>
-                          <option value="oils_vegetable">Vegetable Oils</option>
-                          <option value="chlorine_compounds">Chlorine Compounds</option>
-                          <option value="oxidizing_agents">Oxidizing Agents</option>
-                          <option value="solvents">Solvents</option>
-                          <option value="water">Water</option>
-                          <option value="slurry_abrasive">Abrasive Slurries</option>
-                        </select>
-                        {globalSpecs?.internalRubberChemicalExposure &&
-                          globalSpecs.internalRubberChemicalExposure.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mt-1">
-                              {globalSpecs.internalRubberChemicalExposure.map((chem: string) => (
-                                <span
-                                  key={chem}
-                                  className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-blue-100 text-blue-800"
-                                >
-                                  {chem.replace(/_/g, " ")}
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      onUpdateGlobalSpecs({
-                                        ...globalSpecs,
-                                        internalRubberChemicalExposure:
-                                          globalSpecs.internalRubberChemicalExposure?.filter(
-                                            (c: string) => c !== chem,
-                                          ),
-                                      })
-                                    }
-                                    className="ml-1 text-blue-600 hover:text-blue-800"
-                                  >
-                                    x
-                                  </button>
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                      </div>
-                    </div>
-
-                    {/* Row 3: Special Properties (SANS 1198 Table 4) */}
-                    <div className="mb-3">
+                  {/* Row 1: SANS Type and Grade */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+                    <div>
                       <label className="block text-xs font-semibold text-gray-900 mb-1">
-                        Special Properties (SANS 1198 Table 4)
+                        SANS Type
                       </label>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                        {[
-                          { value: 1, label: "I - Heat Resistance", code: "I" },
-                          { value: 2, label: "II - Ozone Resistance", code: "II" },
-                          { value: 3, label: "III - Chemical Resistance", code: "III" },
-                          { value: 4, label: "IV - Abrasion Resistance", code: "IV" },
-                          { value: 5, label: "V - Contaminant Release", code: "V" },
-                          { value: 6, label: "VI - Water Resistance", code: "VI" },
-                          { value: 7, label: "VII - Oil Resistance", code: "VII" },
-                        ].map((prop) => (
-                          <label
-                            key={prop.value}
-                            className="flex items-center space-x-2 text-xs text-gray-700 cursor-pointer"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={
-                                globalSpecs?.internalRubberSpecialProperties?.includes(
-                                  prop.value,
-                                ) || false
-                              }
-                              onChange={(e) => {
-                                const rawInternalRubberSpecialProperties =
-                                  globalSpecs?.internalRubberSpecialProperties;
-                                const current = rawInternalRubberSpecialProperties || [];
-                                const updated = e.target.checked
-                                  ? [...current, prop.value].sort((a, b) => a - b)
-                                  : current.filter((p: number) => p !== prop.value);
-                                onUpdateGlobalSpecs({
-                                  ...globalSpecs,
-                                  internalRubberSpecialProperties:
-                                    updated.length > 0 ? updated : null,
-                                });
-                              }}
-                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                            />
-                            <span>{prop.label}</span>
-                          </label>
-                        ))}
-                      </div>
+                      <select
+                        value={rawInternalRubberSansType || ""}
+                        onChange={(e) => {
+                          const sansType = e.target.value ? Number(e.target.value) : null;
+                          const typeMap: Record<number, string> = {
+                            1: "Natural Rubber",
+                            2: "Bromobutyl Rubber",
+                            3: "Nitrile Rubber (NBR)",
+                            4: "Neoprene (CR)",
+                            5: "Hypalon (CSM)",
+                          };
+                          onUpdateGlobalSpecs({
+                            ...globalSpecs,
+                            internalRubberSansType: sansType,
+                            internalRubberType: sansType ? typeMap[sansType] : null,
+                          });
+                        }}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+                      >
+                        <option value="">Select...</option>
+                        <option value="1">Type 1 - NR/SBR (General purpose)</option>
+                        <option value="2">Type 2 - IIR/Butyl (Chemical resistant)</option>
+                        <option value="3">Type 3 - NBR/Nitrile (Oil resistant)</option>
+                        <option value="4">Type 4 - CR/Neoprene (Weather resistant)</option>
+                        <option value="5">Type 5 - CSM/Hypalon (Acid/ozone resistant)</option>
+                      </select>
                     </div>
 
-                    {/* SANS 1198 Line Callout Generator */}
-                    {globalSpecs?.internalRubberSansType &&
-                      globalSpecs?.internalRubberGrade &&
-                      globalSpecs?.internalRubberHardness && (
-                        <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-3">
-                          <div className="text-xs font-semibold text-blue-900 mb-1">
-                            SANS 1198:2013 Line Call-out
-                          </div>
-                          <div className="font-mono text-sm text-blue-800 bg-white px-2 py-1 rounded border border-blue-300">
-                            {globalSpecs.internalRubberSansType} {globalSpecs.internalRubberGrade}{" "}
-                            {globalSpecs.internalRubberHardness}
-                            {globalSpecs.internalRubberSpecialProperties &&
-                              globalSpecs.internalRubberSpecialProperties.length > 0 && (
-                                <span>
-                                  {" "}
-                                  {globalSpecs.internalRubberSpecialProperties
-                                    .map(
-                                      (p: number) =>
-                                        `(${["I", "II", "III", "IV", "V", "VI", "VII"][p - 1]})`,
-                                    )
-                                    .join(" ")}
-                                </span>
-                              )}
-                          </div>
-                          <div className="text-xs text-blue-700 mt-1">
-                            Type {globalSpecs.internalRubberSansType}, Grade{" "}
-                            {globalSpecs.internalRubberGrade} (
-                            {globalSpecs.internalRubberGrade === "A"
-                              ? "18+"
-                              : globalSpecs.internalRubberGrade === "B"
-                                ? "14+"
-                                : globalSpecs.internalRubberGrade === "C"
-                                  ? "7+"
-                                  : "Ebonite"}{" "}
-                            MPa), {globalSpecs.internalRubberHardness} IRHD
-                            {globalSpecs.internalRubberSpecialProperties &&
-                              globalSpecs.internalRubberSpecialProperties.length > 0 && (
-                                <span> with special properties</span>
-                              )}
-                          </div>
-                        </div>
-                      )}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-900 mb-1">
+                        Grade (Tensile Strength)
+                      </label>
+                      <select
+                        value={rawInternalRubberGrade || ""}
+                        onChange={(e) => {
+                          const rawValue40 = e.target.value;
 
-                    {/* Rubber Lining Summary */}
-                    {globalSpecs?.internalRubberSansType &&
-                      globalSpecs?.internalRubberGrade &&
-                      globalSpecs?.internalRubberThickness &&
-                      globalSpecs?.internalRubberHardness && (
-                        <div className="mt-3 pt-3 border-t border-gray-200">
-                          <div className="bg-amber-50 border border-amber-200 rounded-md p-2 flex items-center justify-between">
-                            <div className="text-xs text-amber-800">
-                              <span className="font-medium">
-                                Type {globalSpecs.internalRubberSansType}
-                              </span>{" "}
-                              • Grade {globalSpecs.internalRubberGrade} •{" "}
-                              {globalSpecs.internalRubberThickness}mm •{" "}
-                              {globalSpecs.internalRubberHardness} IRHD
-                              {globalSpecs.internalRubberColour && (
-                                <span> • {globalSpecs.internalRubberColour}</span>
-                              )}
-                              {globalSpecs.internalRubberVulcanizationMethod && (
-                                <span> • {globalSpecs.internalRubberVulcanizationMethod}</span>
-                              )}
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const rawInternalRubberSpecialProperties2 =
-                                  globalSpecs.internalRubberSpecialProperties;
-                                const specialPropsRoman = (
-                                  rawInternalRubberSpecialProperties2 || []
-                                )
+                          return onUpdateGlobalSpecs({
+                            ...globalSpecs,
+                            internalRubberGrade: rawValue40 || null,
+                          });
+                        }}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+                      >
+                        <option value="">Select...</option>
+                        <option value="A">Grade A - High Strength (18+ MPa)</option>
+                        <option value="B">Grade B - Standard (14+ MPa)</option>
+                        <option value="C">Grade C - Economy (7+ MPa)</option>
+                        <option value="D">Grade D - Ebonite (Hard rubber)</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-900 mb-1">
+                        Hardness Class (IRHD)
+                      </label>
+                      <select
+                        value={rawInternalRubberHardness || ""}
+                        onChange={(e) =>
+                          onUpdateGlobalSpecs({
+                            ...globalSpecs,
+                            internalRubberHardness: e.target.value ? Number(e.target.value) : null,
+                          })
+                        }
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+                      >
+                        <option value="">Select...</option>
+                        <option value="40">40 IRHD - Soft (High flexibility)</option>
+                        <option value="50">50 IRHD - Medium-Soft (General)</option>
+                        <option value="60">60 IRHD - Medium-Hard (Abrasion)</option>
+                        <option value="70">70 IRHD - Hard (High abrasion)</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-900 mb-1">
+                        Thickness (mm)
+                      </label>
+                      <select
+                        value={rawInternalRubberThickness || ""}
+                        onChange={(e) =>
+                          onUpdateGlobalSpecs({
+                            ...globalSpecs,
+                            internalRubberThickness: e.target.value ? Number(e.target.value) : null,
+                          })
+                        }
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+                      >
+                        <option value="">Select...</option>
+                        <option value="3">3mm (Min 1 ply)</option>
+                        <option value="4">4mm (Min 1 ply)</option>
+                        <option value="5">5mm (Min 2 plies)</option>
+                        <option value="6">6mm (Min 2 plies)</option>
+                        <option value="8">8mm (Min 2 plies)</option>
+                        <option value="10">10mm (Min 2 plies)</option>
+                        <option value="12">12mm (Min 3 plies)</option>
+                        <option value="15">15mm (Min 3 plies)</option>
+                        <option value="20">20mm (Min 4 plies)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Row 2: Vulcanization, Colour */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-900 mb-1">
+                        Vulcanization Method
+                      </label>
+                      <select
+                        value={rawInternalRubberVulcanizationMethod || ""}
+                        onChange={(e) => {
+                          const rawValue41 = e.target.value;
+
+                          return onUpdateGlobalSpecs({
+                            ...globalSpecs,
+                            internalRubberVulcanizationMethod: rawValue41 || null,
+                          });
+                        }}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+                      >
+                        <option value="">Select...</option>
+                        <option value="autoclave">Autoclave (Preferred)</option>
+                        <option value="open">Open Steam</option>
+                        <option value="hot_water">Hot Water</option>
+                        <option value="chemical">Chemical/Self-cure</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-900 mb-1">
+                        Colour
+                      </label>
+                      <select
+                        value={rawInternalRubberColour || ""}
+                        onChange={(e) => {
+                          const rawValue42 = e.target.value;
+
+                          return onUpdateGlobalSpecs({
+                            ...globalSpecs,
+                            internalRubberColour: rawValue42 || null,
+                          });
+                        }}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+                      >
+                        <option value="">Select...</option>
+                        <option value="Black">Black</option>
+                        <option value="Red">Red</option>
+                        <option value="Natural (Tan)">Natural (Tan)</option>
+                        <option value="Grey">Grey</option>
+                        <option value="Green">Green</option>
+                        <option value="Blue">Blue</option>
+                        <option value="White">White</option>
+                      </select>
+                    </div>
+
+                    <div className="col-span-2">
+                      <label className="block text-xs font-semibold text-gray-900 mb-1">
+                        Chemical Exposure
+                      </label>
+                      <select
+                        value=""
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            const rawInternalRubberChemicalExposure =
+                              globalSpecs?.internalRubberChemicalExposure;
+                            const current = rawInternalRubberChemicalExposure || [];
+                            if (!current.includes(e.target.value)) {
+                              onUpdateGlobalSpecs({
+                                ...globalSpecs,
+                                internalRubberChemicalExposure: [...current, e.target.value],
+                              });
+                            }
+                          }
+                        }}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+                      >
+                        <option value="">Add chemical exposure...</option>
+                        <option value="acids_inorganic">Inorganic Acids (H2SO4, HCl)</option>
+                        <option value="acids_organic">Organic Acids (Acetic, Citric)</option>
+                        <option value="alkalis">Alkalis (NaOH, KOH)</option>
+                        <option value="alcohols">Alcohols</option>
+                        <option value="hydrocarbons">Hydrocarbons</option>
+                        <option value="oils_mineral">Mineral Oils</option>
+                        <option value="oils_vegetable">Vegetable Oils</option>
+                        <option value="chlorine_compounds">Chlorine Compounds</option>
+                        <option value="oxidizing_agents">Oxidizing Agents</option>
+                        <option value="solvents">Solvents</option>
+                        <option value="water">Water</option>
+                        <option value="slurry_abrasive">Abrasive Slurries</option>
+                      </select>
+                      {globalSpecs?.internalRubberChemicalExposure &&
+                        globalSpecs.internalRubberChemicalExposure.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {globalSpecs.internalRubberChemicalExposure.map((chem: string) => (
+                              <span
+                                key={chem}
+                                className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-blue-100 text-blue-800"
+                              >
+                                {chem.replace(/_/g, " ")}
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    onUpdateGlobalSpecs({
+                                      ...globalSpecs,
+                                      internalRubberChemicalExposure:
+                                        globalSpecs.internalRubberChemicalExposure?.filter(
+                                          (c: string) => c !== chem,
+                                        ),
+                                    })
+                                  }
+                                  className="ml-1 text-blue-600 hover:text-blue-800"
+                                >
+                                  x
+                                </button>
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                    </div>
+                  </div>
+
+                  {/* Row 3: Special Properties (SANS 1198 Table 4) */}
+                  <div className="mb-3">
+                    <label className="block text-xs font-semibold text-gray-900 mb-1">
+                      Special Properties (SANS 1198 Table 4)
+                    </label>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                      {[
+                        { value: 1, label: "I - Heat Resistance", code: "I" },
+                        { value: 2, label: "II - Ozone Resistance", code: "II" },
+                        { value: 3, label: "III - Chemical Resistance", code: "III" },
+                        { value: 4, label: "IV - Abrasion Resistance", code: "IV" },
+                        { value: 5, label: "V - Contaminant Release", code: "V" },
+                        { value: 6, label: "VI - Water Resistance", code: "VI" },
+                        { value: 7, label: "VII - Oil Resistance", code: "VII" },
+                      ].map((prop) => (
+                        <label
+                          key={prop.value}
+                          className="flex items-center space-x-2 text-xs text-gray-700 cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={
+                              globalSpecs?.internalRubberSpecialProperties?.includes(prop.value) ||
+                              false
+                            }
+                            onChange={(e) => {
+                              const rawInternalRubberSpecialProperties =
+                                globalSpecs?.internalRubberSpecialProperties;
+                              const current = rawInternalRubberSpecialProperties || [];
+                              const updated = e.target.checked
+                                ? [...current, prop.value].sort((a, b) => a - b)
+                                : current.filter((p: number) => p !== prop.value);
+                              onUpdateGlobalSpecs({
+                                ...globalSpecs,
+                                internalRubberSpecialProperties:
+                                  updated.length > 0 ? updated : null,
+                              });
+                            }}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <span>{prop.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* SANS 1198 Line Callout Generator */}
+                  {globalSpecs?.internalRubberSansType &&
+                    globalSpecs?.internalRubberGrade &&
+                    globalSpecs?.internalRubberHardness && (
+                      <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-3">
+                        <div className="text-xs font-semibold text-blue-900 mb-1">
+                          SANS 1198:2013 Line Call-out
+                        </div>
+                        <div className="font-mono text-sm text-blue-800 bg-white px-2 py-1 rounded border border-blue-300">
+                          {globalSpecs.internalRubberSansType} {globalSpecs.internalRubberGrade}{" "}
+                          {globalSpecs.internalRubberHardness}
+                          {globalSpecs.internalRubberSpecialProperties &&
+                            globalSpecs.internalRubberSpecialProperties.length > 0 && (
+                              <span>
+                                {" "}
+                                {globalSpecs.internalRubberSpecialProperties
                                   .map(
                                     (p: number) =>
                                       `(${["I", "II", "III", "IV", "V", "VI", "VII"][p - 1]})`,
                                   )
-                                  .join(" ");
-                                const lineCallout = `${globalSpecs.internalRubberSansType} ${globalSpecs.internalRubberGrade} ${globalSpecs.internalRubberHardness}${specialPropsRoman ? ` ${specialPropsRoman}` : ""}`;
-                                onUpdateGlobalSpecs({
-                                  ...globalSpecs,
-                                  internalLiningConfirmed: true,
-                                  internalRubberLineCallout: lineCallout,
-                                });
-                              }}
-                              className="px-3 py-1.5 bg-green-600 text-white font-medium rounded text-xs hover:bg-green-700"
-                            >
-                              Confirm
-                            </button>
-                          </div>
+                                  .join(" ")}
+                              </span>
+                            )}
                         </div>
-                      )}
-                  </div>
-                )}
+                        <div className="text-xs text-blue-700 mt-1">
+                          Type {globalSpecs.internalRubberSansType}, Grade{" "}
+                          {globalSpecs.internalRubberGrade} (
+                          {globalSpecs.internalRubberGrade === "A"
+                            ? "18+"
+                            : globalSpecs.internalRubberGrade === "B"
+                              ? "14+"
+                              : globalSpecs.internalRubberGrade === "C"
+                                ? "7+"
+                                : "Ebonite"}{" "}
+                          MPa), {globalSpecs.internalRubberHardness} IRHD
+                          {globalSpecs.internalRubberSpecialProperties &&
+                            globalSpecs.internalRubberSpecialProperties.length > 0 && (
+                              <span> with special properties</span>
+                            )}
+                        </div>
+                      </div>
+                    )}
+
+                  {/* Rubber Lining Summary */}
+                  {globalSpecs?.internalRubberSansType &&
+                    globalSpecs?.internalRubberGrade &&
+                    globalSpecs?.internalRubberThickness &&
+                    globalSpecs?.internalRubberHardness && (
+                      <div className="mt-3 pt-3 border-t border-gray-200">
+                        <div className="bg-amber-50 border border-amber-200 rounded-md p-2 flex items-center justify-between">
+                          <div className="text-xs text-amber-800">
+                            <span className="font-medium">
+                              Type {globalSpecs.internalRubberSansType}
+                            </span>{" "}
+                            • Grade {globalSpecs.internalRubberGrade} •{" "}
+                            {globalSpecs.internalRubberThickness}mm •{" "}
+                            {globalSpecs.internalRubberHardness} IRHD
+                            {globalSpecs.internalRubberColour && (
+                              <span> • {globalSpecs.internalRubberColour}</span>
+                            )}
+                            {globalSpecs.internalRubberVulcanizationMethod && (
+                              <span> • {globalSpecs.internalRubberVulcanizationMethod}</span>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const rawInternalRubberSpecialProperties2 =
+                                globalSpecs.internalRubberSpecialProperties;
+                              const specialPropsRoman = (rawInternalRubberSpecialProperties2 || [])
+                                .map(
+                                  (p: number) =>
+                                    `(${["I", "II", "III", "IV", "V", "VI", "VII"][p - 1]})`,
+                                )
+                                .join(" ");
+                              const lineCallout = `${globalSpecs.internalRubberSansType} ${globalSpecs.internalRubberGrade} ${globalSpecs.internalRubberHardness}${specialPropsRoman ? ` ${specialPropsRoman}` : ""}`;
+                              onUpdateGlobalSpecs({
+                                ...globalSpecs,
+                                internalLiningConfirmed: true,
+                                internalRubberLineCallout: lineCallout,
+                              });
+                            }}
+                            className="px-3 py-1.5 bg-green-600 text-white font-medium rounded text-xs hover:bg-green-700"
+                          >
+                            Confirm
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                </div>
+              )}
 
               {/* Confirmed Internal Rubber Lining */}
-              {globalSpecs?.internalLiningConfirmed &&
+              {gsInternalLiningConfirmed &&
                 globalSpecs?.internalLiningType === "Rubber Lined" &&
                 (rawInternalRubberType || globalSpecs?.internalRubberSansType) && (
                   <div className="bg-green-100 border border-green-400 rounded-md p-3">
@@ -6586,7 +6009,7 @@ export default function SpecificationsStep(props: {
 
               {/* Ceramic Lining Options - Only show when selected AND not confirmed */}
               {globalSpecs?.internalLiningType === "Ceramic Lined" &&
-                !globalSpecs?.internalLiningConfirmed && (
+                !gsInternalLiningConfirmed && (
                   <div className="mt-3 pt-3 border-t border-gray-200">
                     <h4 className="text-xs font-semibold text-gray-800 mb-2">
                       Internal Ceramic Lining Specifications
@@ -6705,7 +6128,7 @@ export default function SpecificationsStep(props: {
                 )}
 
               {/* Confirmed Internal Ceramic Lining */}
-              {globalSpecs?.internalLiningConfirmed &&
+              {gsInternalLiningConfirmed &&
                 globalSpecs?.internalLiningType === "Ceramic Lined" &&
                 globalSpecs?.internalCeramicType && (
                   <div className="bg-green-50 border border-green-200 rounded-md p-3">
@@ -6740,152 +6163,149 @@ export default function SpecificationsStep(props: {
                 )}
 
               {/* HDPE Lining Options - Only show when selected AND not confirmed */}
-              {globalSpecs?.internalLiningType === "HDPE Lined" &&
-                !globalSpecs?.internalLiningConfirmed && (
-                  <div className="mt-3 pt-3 border-t border-gray-200">
-                    <h4 className="text-xs font-semibold text-gray-800 mb-2">
-                      Internal HDPE Lining Specifications
-                    </h4>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-900 mb-1">
-                          Material Grade
-                        </label>
-                        <select
-                          value={rawInternalHdpeMaterialGrade || ""}
-                          onChange={(e) => {
-                            const rawValue45 = e.target.value;
+              {globalSpecs?.internalLiningType === "HDPE Lined" && !gsInternalLiningConfirmed && (
+                <div className="mt-3 pt-3 border-t border-gray-200">
+                  <h4 className="text-xs font-semibold text-gray-800 mb-2">
+                    Internal HDPE Lining Specifications
+                  </h4>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-900 mb-1">
+                        Material Grade
+                      </label>
+                      <select
+                        value={rawInternalHdpeMaterialGrade || ""}
+                        onChange={(e) => {
+                          const rawValue45 = e.target.value;
 
-                            return onUpdateGlobalSpecs({
-                              ...globalSpecs,
-                              internalHdpeMaterialGrade: rawValue45 || null,
-                            });
-                          }}
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
-                        >
-                          <option value="">Select...</option>
-                          <option value="PE63">PE63</option>
-                          <option value="PE80">PE80</option>
-                          <option value="PE100">PE100</option>
-                          <option value="PE100-RC">PE100-RC</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-900 mb-1">
-                          Pressure Rating
-                        </label>
-                        <select
-                          value={rawInternalHdpePressureRating || ""}
-                          onChange={(e) => {
-                            const rawValue46 = e.target.value;
-
-                            return onUpdateGlobalSpecs({
-                              ...globalSpecs,
-                              internalHdpePressureRating: rawValue46 || null,
-                            });
-                          }}
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
-                        >
-                          <option value="">Select...</option>
-                          <option value="PN 2.5">PN 2.5</option>
-                          <option value="PN 4">PN 4</option>
-                          <option value="PN 6">PN 6</option>
-                          <option value="PN 8">PN 8</option>
-                          <option value="PN 10">PN 10</option>
-                          <option value="PN 12.5">PN 12.5</option>
-                          <option value="PN 16">PN 16</option>
-                          <option value="PN 20">PN 20</option>
-                          <option value="PN 25">PN 25</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-900 mb-1">
-                          SDR
-                        </label>
-                        <select
-                          value={rawInternalHdpeSdr || ""}
-                          onChange={(e) => {
-                            const rawValue47 = e.target.value;
-
-                            return onUpdateGlobalSpecs({
-                              ...globalSpecs,
-                              internalHdpeSdr: rawValue47 || null,
-                            });
-                          }}
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
-                        >
-                          <option value="">Select...</option>
-                          <option value="SDR 41">SDR 41</option>
-                          <option value="SDR 26">SDR 26</option>
-                          <option value="SDR 17">SDR 17</option>
-                          <option value="SDR 13.6">SDR 13.6</option>
-                          <option value="SDR 11">SDR 11</option>
-                          <option value="SDR 9">SDR 9</option>
-                          <option value="SDR 7.4">SDR 7.4</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-900 mb-1">
-                          Pipe Type
-                        </label>
-                        <select
-                          value={rawInternalHdpePipeType || ""}
-                          onChange={(e) => {
-                            const rawValue48 = e.target.value;
-
-                            return onUpdateGlobalSpecs({
-                              ...globalSpecs,
-                              internalHdpePipeType: rawValue48 || null,
-                            });
-                          }}
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
-                        >
-                          <option value="">Select...</option>
-                          <option value="Solid Wall HDPE Pipe">Solid Wall</option>
-                          <option value="Corrugated HDPE Pipe">Corrugated</option>
-                          <option value="Slitted HDPE Pipe">Slitted</option>
-                          <option value="Sleeve HDPE for Steel Lining">Sleeve for Steel</option>
-                        </select>
-                      </div>
+                          return onUpdateGlobalSpecs({
+                            ...globalSpecs,
+                            internalHdpeMaterialGrade: rawValue45 || null,
+                          });
+                        }}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+                      >
+                        <option value="">Select...</option>
+                        <option value="PE63">PE63</option>
+                        <option value="PE80">PE80</option>
+                        <option value="PE100">PE100</option>
+                        <option value="PE100-RC">PE100-RC</option>
+                      </select>
                     </div>
 
-                    {/* HDPE Lining Summary */}
-                    {globalSpecs?.internalHdpeMaterialGrade &&
-                      globalSpecs?.internalHdpePressureRating &&
-                      globalSpecs?.internalHdpeSdr &&
-                      globalSpecs?.internalHdpePipeType && (
-                        <div className="mt-3 pt-3 border-t border-gray-200">
-                          <div className="bg-amber-50 border border-amber-200 rounded-md p-2 flex items-center justify-between">
-                            <div className="text-xs text-amber-800">
-                              <span className="font-medium">
-                                {globalSpecs.internalHdpeMaterialGrade}
-                              </span>{" "}
-                              • {globalSpecs.internalHdpePressureRating} •{" "}
-                              {globalSpecs.internalHdpeSdr} • {globalSpecs.internalHdpePipeType}
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                onUpdateGlobalSpecs({
-                                  ...globalSpecs,
-                                  internalLiningConfirmed: true,
-                                })
-                              }
-                              className="px-3 py-1.5 bg-green-600 text-white font-medium rounded text-xs hover:bg-green-700"
-                            >
-                              Confirm
-                            </button>
-                          </div>
-                        </div>
-                      )}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-900 mb-1">
+                        Pressure Rating
+                      </label>
+                      <select
+                        value={rawInternalHdpePressureRating || ""}
+                        onChange={(e) => {
+                          const rawValue46 = e.target.value;
+
+                          return onUpdateGlobalSpecs({
+                            ...globalSpecs,
+                            internalHdpePressureRating: rawValue46 || null,
+                          });
+                        }}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+                      >
+                        <option value="">Select...</option>
+                        <option value="PN 2.5">PN 2.5</option>
+                        <option value="PN 4">PN 4</option>
+                        <option value="PN 6">PN 6</option>
+                        <option value="PN 8">PN 8</option>
+                        <option value="PN 10">PN 10</option>
+                        <option value="PN 12.5">PN 12.5</option>
+                        <option value="PN 16">PN 16</option>
+                        <option value="PN 20">PN 20</option>
+                        <option value="PN 25">PN 25</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-900 mb-1">SDR</label>
+                      <select
+                        value={rawInternalHdpeSdr || ""}
+                        onChange={(e) => {
+                          const rawValue47 = e.target.value;
+
+                          return onUpdateGlobalSpecs({
+                            ...globalSpecs,
+                            internalHdpeSdr: rawValue47 || null,
+                          });
+                        }}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+                      >
+                        <option value="">Select...</option>
+                        <option value="SDR 41">SDR 41</option>
+                        <option value="SDR 26">SDR 26</option>
+                        <option value="SDR 17">SDR 17</option>
+                        <option value="SDR 13.6">SDR 13.6</option>
+                        <option value="SDR 11">SDR 11</option>
+                        <option value="SDR 9">SDR 9</option>
+                        <option value="SDR 7.4">SDR 7.4</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-900 mb-1">
+                        Pipe Type
+                      </label>
+                      <select
+                        value={rawInternalHdpePipeType || ""}
+                        onChange={(e) => {
+                          const rawValue48 = e.target.value;
+
+                          return onUpdateGlobalSpecs({
+                            ...globalSpecs,
+                            internalHdpePipeType: rawValue48 || null,
+                          });
+                        }}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+                      >
+                        <option value="">Select...</option>
+                        <option value="Solid Wall HDPE Pipe">Solid Wall</option>
+                        <option value="Corrugated HDPE Pipe">Corrugated</option>
+                        <option value="Slitted HDPE Pipe">Slitted</option>
+                        <option value="Sleeve HDPE for Steel Lining">Sleeve for Steel</option>
+                      </select>
+                    </div>
                   </div>
-                )}
+
+                  {/* HDPE Lining Summary */}
+                  {globalSpecs?.internalHdpeMaterialGrade &&
+                    globalSpecs?.internalHdpePressureRating &&
+                    globalSpecs?.internalHdpeSdr &&
+                    globalSpecs?.internalHdpePipeType && (
+                      <div className="mt-3 pt-3 border-t border-gray-200">
+                        <div className="bg-amber-50 border border-amber-200 rounded-md p-2 flex items-center justify-between">
+                          <div className="text-xs text-amber-800">
+                            <span className="font-medium">
+                              {globalSpecs.internalHdpeMaterialGrade}
+                            </span>{" "}
+                            • {globalSpecs.internalHdpePressureRating} •{" "}
+                            {globalSpecs.internalHdpeSdr} • {globalSpecs.internalHdpePipeType}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              onUpdateGlobalSpecs({
+                                ...globalSpecs,
+                                internalLiningConfirmed: true,
+                              })
+                            }
+                            className="px-3 py-1.5 bg-green-600 text-white font-medium rounded text-xs hover:bg-green-700"
+                          >
+                            Confirm
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                </div>
+              )}
 
               {/* Confirmed Internal HDPE Lining */}
-              {globalSpecs?.internalLiningConfirmed &&
+              {gsInternalLiningConfirmed &&
                 globalSpecs?.internalLiningType === "HDPE Lined" &&
                 globalSpecs?.internalHdpeMaterialGrade && (
                   <div className="bg-green-50 border border-green-200 rounded-md p-3">
@@ -6920,100 +6340,99 @@ export default function SpecificationsStep(props: {
                 )}
 
               {/* PU Lining Options - Only show when selected AND not confirmed */}
-              {globalSpecs?.internalLiningType === "PU Lined" &&
-                !globalSpecs?.internalLiningConfirmed && (
-                  <div className="mt-3 pt-3 border-t border-gray-200">
-                    <h4 className="text-xs font-semibold text-gray-800 mb-2">
-                      Internal PU Lining Specifications
-                    </h4>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-900 mb-1">
-                          Thickness (mm)
-                        </label>
-                        <select
-                          value={rawInternalPuThickness || ""}
-                          onChange={(e) =>
-                            onUpdateGlobalSpecs({
-                              ...globalSpecs,
-                              internalPuThickness: e.target.value ? Number(e.target.value) : null,
-                            })
-                          }
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
-                        >
-                          <option value="">Select...</option>
-                          <option value="1">1</option>
-                          <option value="2">2</option>
-                          <option value="3">3</option>
-                          <option value="4">4</option>
-                          <option value="5">5</option>
-                          <option value="6">6</option>
-                          <option value="8">8</option>
-                          <option value="10">10</option>
-                          <option value="12">12</option>
-                          <option value="15">15</option>
-                          <option value="20">20</option>
-                          <option value="25">25</option>
-                          <option value="30">30</option>
-                          <option value="40">40</option>
-                          <option value="50">50</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-900 mb-1">
-                          Shore Hardness
-                        </label>
-                        <select
-                          value={rawInternalPuHardness || ""}
-                          onChange={(e) =>
-                            onUpdateGlobalSpecs({
-                              ...globalSpecs,
-                              internalPuHardness: e.target.value ? Number(e.target.value) : null,
-                            })
-                          }
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
-                        >
-                          <option value="">Select...</option>
-                          <option value="40">40 Shore A</option>
-                          <option value="50">50 Shore A</option>
-                          <option value="60">60 Shore A</option>
-                          <option value="70">70 Shore A</option>
-                          <option value="80">80 Shore A</option>
-                          <option value="90">90 Shore A</option>
-                        </select>
-                      </div>
+              {globalSpecs?.internalLiningType === "PU Lined" && !gsInternalLiningConfirmed && (
+                <div className="mt-3 pt-3 border-t border-gray-200">
+                  <h4 className="text-xs font-semibold text-gray-800 mb-2">
+                    Internal PU Lining Specifications
+                  </h4>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-900 mb-1">
+                        Thickness (mm)
+                      </label>
+                      <select
+                        value={rawInternalPuThickness || ""}
+                        onChange={(e) =>
+                          onUpdateGlobalSpecs({
+                            ...globalSpecs,
+                            internalPuThickness: e.target.value ? Number(e.target.value) : null,
+                          })
+                        }
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+                      >
+                        <option value="">Select...</option>
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5</option>
+                        <option value="6">6</option>
+                        <option value="8">8</option>
+                        <option value="10">10</option>
+                        <option value="12">12</option>
+                        <option value="15">15</option>
+                        <option value="20">20</option>
+                        <option value="25">25</option>
+                        <option value="30">30</option>
+                        <option value="40">40</option>
+                        <option value="50">50</option>
+                      </select>
                     </div>
 
-                    {/* PU Lining Summary */}
-                    {globalSpecs?.internalPuThickness && globalSpecs?.internalPuHardness && (
-                      <div className="mt-3 pt-3 border-t border-gray-200">
-                        <div className="bg-amber-50 border border-amber-200 rounded-md p-2 flex items-center justify-between">
-                          <div className="text-xs text-amber-800">
-                            <span className="font-medium">PU Lining:</span>{" "}
-                            {globalSpecs.internalPuThickness}mm • {globalSpecs.internalPuHardness}{" "}
-                            Shore A
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              onUpdateGlobalSpecs({
-                                ...globalSpecs,
-                                internalLiningConfirmed: true,
-                              })
-                            }
-                            className="px-3 py-1.5 bg-green-600 text-white font-medium rounded text-xs hover:bg-green-700"
-                          >
-                            Confirm
-                          </button>
-                        </div>
-                      </div>
-                    )}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-900 mb-1">
+                        Shore Hardness
+                      </label>
+                      <select
+                        value={rawInternalPuHardness || ""}
+                        onChange={(e) =>
+                          onUpdateGlobalSpecs({
+                            ...globalSpecs,
+                            internalPuHardness: e.target.value ? Number(e.target.value) : null,
+                          })
+                        }
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+                      >
+                        <option value="">Select...</option>
+                        <option value="40">40 Shore A</option>
+                        <option value="50">50 Shore A</option>
+                        <option value="60">60 Shore A</option>
+                        <option value="70">70 Shore A</option>
+                        <option value="80">80 Shore A</option>
+                        <option value="90">90 Shore A</option>
+                      </select>
+                    </div>
                   </div>
-                )}
+
+                  {/* PU Lining Summary */}
+                  {globalSpecs?.internalPuThickness && globalSpecs?.internalPuHardness && (
+                    <div className="mt-3 pt-3 border-t border-gray-200">
+                      <div className="bg-amber-50 border border-amber-200 rounded-md p-2 flex items-center justify-between">
+                        <div className="text-xs text-amber-800">
+                          <span className="font-medium">PU Lining:</span>{" "}
+                          {globalSpecs.internalPuThickness}mm • {globalSpecs.internalPuHardness}{" "}
+                          Shore A
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            onUpdateGlobalSpecs({
+                              ...globalSpecs,
+                              internalLiningConfirmed: true,
+                            })
+                          }
+                          className="px-3 py-1.5 bg-green-600 text-white font-medium rounded text-xs hover:bg-green-700"
+                        >
+                          Confirm
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Confirmed Internal PU Lining */}
-              {globalSpecs?.internalLiningConfirmed &&
+              {gsInternalLiningConfirmed &&
                 globalSpecs?.internalLiningType === "PU Lined" &&
                 globalSpecs?.internalPuThickness && (
                   <div className="bg-green-50 border border-green-200 rounded-md p-3">
@@ -7048,7 +6467,7 @@ export default function SpecificationsStep(props: {
                 )}
 
               {/* Confirmed Internal Paint Specification - Always visible when confirmed */}
-              {globalSpecs?.internalLiningConfirmed &&
+              {gsInternalLiningConfirmed &&
                 globalSpecs?.internalLiningType === "Paint" &&
                 globalSpecs?.internalPrimerType && (
                   <div className="bg-green-50 border border-green-200 rounded-md p-3">
@@ -7142,50 +6561,146 @@ export default function SpecificationsStep(props: {
                 )}
 
               {/* Paint Options - Only show when selected AND not confirmed */}
-              {globalSpecs?.internalLiningType === "Paint" &&
-                !globalSpecs?.internalLiningConfirmed && (
-                  <div className="mt-3 pt-3 border-t border-gray-200">
-                    <h4 className="text-xs font-semibold text-gray-800 mb-2">
-                      Internal Paint Specifications
-                    </h4>
-                    <div className="grid grid-cols-3 gap-3 mb-3">
+              {globalSpecs?.internalLiningType === "Paint" && !gsInternalLiningConfirmed && (
+                <div className="mt-3 pt-3 border-t border-gray-200">
+                  <h4 className="text-xs font-semibold text-gray-800 mb-2">
+                    Internal Paint Specifications
+                  </h4>
+                  <div className="grid grid-cols-3 gap-3 mb-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-900 mb-1">
+                        Primer Type
+                      </label>
+                      <select
+                        value={rawInternalPrimerType || ""}
+                        onChange={(e) => {
+                          const rawValue49 = e.target.value;
+
+                          return onUpdateGlobalSpecs({
+                            ...globalSpecs,
+                            internalPrimerType: rawValue49 || null,
+                          });
+                        }}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+                      >
+                        <option value="">Select...</option>
+                        <option value="Epoxy Primer">Epoxy Primer</option>
+                        <option value="Phenolic Epoxy">Phenolic Epoxy</option>
+                        <option value="Novolac Epoxy">Novolac Epoxy</option>
+                        <option value="Coal Tar Epoxy">Coal Tar Epoxy</option>
+                        <option value="Polyurethane Primer">PU Primer</option>
+                        <option value="Zinc Phosphate Epoxy">Zinc Phosphate</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-900 mb-1">
+                        Primer (μm)
+                      </label>
+                      <input
+                        type="number"
+                        value={rawInternalPrimerMicrons2 || ""}
+                        onChange={(e) =>
+                          onUpdateGlobalSpecs({
+                            ...globalSpecs,
+                            internalPrimerMicrons: e.target.value ? Number(e.target.value) : null,
+                          })
+                        }
+                        placeholder="50-75"
+                        min="0"
+                        max="500"
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-900 mb-1">
+                        Intermediate
+                      </label>
+                      <select
+                        value={rawInternalIntermediateType || ""}
+                        onChange={(e) => {
+                          const rawValue50 = e.target.value;
+
+                          return onUpdateGlobalSpecs({
+                            ...globalSpecs,
+                            internalIntermediateType: rawValue50 || null,
+                          });
+                        }}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+                      >
+                        <option value="">None</option>
+                        <option value="High Build Epoxy">High Build Epoxy</option>
+                        <option value="Glass Flake Epoxy">Glass Flake Epoxy</option>
+                        <option value="Phenolic Epoxy">Phenolic Epoxy</option>
+                        <option value="Novolac Epoxy">Novolac Epoxy</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-3">
+                    {globalSpecs?.internalIntermediateType && (
                       <div>
                         <label className="block text-xs font-semibold text-gray-900 mb-1">
-                          Primer Type
-                        </label>
-                        <select
-                          value={rawInternalPrimerType || ""}
-                          onChange={(e) => {
-                            const rawValue49 = e.target.value;
-
-                            return onUpdateGlobalSpecs({
-                              ...globalSpecs,
-                              internalPrimerType: rawValue49 || null,
-                            });
-                          }}
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
-                        >
-                          <option value="">Select...</option>
-                          <option value="Epoxy Primer">Epoxy Primer</option>
-                          <option value="Phenolic Epoxy">Phenolic Epoxy</option>
-                          <option value="Novolac Epoxy">Novolac Epoxy</option>
-                          <option value="Coal Tar Epoxy">Coal Tar Epoxy</option>
-                          <option value="Polyurethane Primer">PU Primer</option>
-                          <option value="Zinc Phosphate Epoxy">Zinc Phosphate</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-900 mb-1">
-                          Primer (μm)
+                          Intermediate (μm)
                         </label>
                         <input
                           type="number"
-                          value={rawInternalPrimerMicrons2 || ""}
+                          value={rawInternalIntermediateMicrons2 || ""}
                           onChange={(e) =>
                             onUpdateGlobalSpecs({
                               ...globalSpecs,
-                              internalPrimerMicrons: e.target.value ? Number(e.target.value) : null,
+                              internalIntermediateMicrons: e.target.value
+                                ? Number(e.target.value)
+                                : null,
+                            })
+                          }
+                          placeholder="125-200"
+                          min="0"
+                          max="500"
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+                        />
+                      </div>
+                    )}
+
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-900 mb-1">
+                        Topcoat
+                      </label>
+                      <select
+                        value={rawInternalTopcoatType || ""}
+                        onChange={(e) => {
+                          const rawValue51 = e.target.value;
+
+                          return onUpdateGlobalSpecs({
+                            ...globalSpecs,
+                            internalTopcoatType: rawValue51 || null,
+                          });
+                        }}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+                      >
+                        <option value="">None</option>
+                        <option value="Epoxy Topcoat">Epoxy Topcoat</option>
+                        <option value="Phenolic Epoxy">Phenolic Epoxy</option>
+                        <option value="Novolac Epoxy">Novolac Epoxy</option>
+                        <option value="Polyurethane">Polyurethane</option>
+                      </select>
+                    </div>
+
+                    {globalSpecs?.internalTopcoatType && (
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-900 mb-1">
+                          Topcoat (μm)
+                        </label>
+                        <input
+                          type="number"
+                          value={rawInternalTopcoatMicrons2 || ""}
+                          onChange={(e) =>
+                            onUpdateGlobalSpecs({
+                              ...globalSpecs,
+                              internalTopcoatMicrons: e.target.value
+                                ? Number(e.target.value)
+                                : null,
                             })
                           }
                           placeholder="50-75"
@@ -7194,169 +6709,72 @@ export default function SpecificationsStep(props: {
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
                         />
                       </div>
-
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-900 mb-1">
-                          Intermediate
-                        </label>
-                        <select
-                          value={rawInternalIntermediateType || ""}
-                          onChange={(e) => {
-                            const rawValue50 = e.target.value;
-
-                            return onUpdateGlobalSpecs({
-                              ...globalSpecs,
-                              internalIntermediateType: rawValue50 || null,
-                            });
-                          }}
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
-                        >
-                          <option value="">None</option>
-                          <option value="High Build Epoxy">High Build Epoxy</option>
-                          <option value="Glass Flake Epoxy">Glass Flake Epoxy</option>
-                          <option value="Phenolic Epoxy">Phenolic Epoxy</option>
-                          <option value="Novolac Epoxy">Novolac Epoxy</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-3">
-                      {globalSpecs?.internalIntermediateType && (
-                        <div>
-                          <label className="block text-xs font-semibold text-gray-900 mb-1">
-                            Intermediate (μm)
-                          </label>
-                          <input
-                            type="number"
-                            value={rawInternalIntermediateMicrons2 || ""}
-                            onChange={(e) =>
-                              onUpdateGlobalSpecs({
-                                ...globalSpecs,
-                                internalIntermediateMicrons: e.target.value
-                                  ? Number(e.target.value)
-                                  : null,
-                              })
-                            }
-                            placeholder="125-200"
-                            min="0"
-                            max="500"
-                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
-                          />
-                        </div>
-                      )}
-
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-900 mb-1">
-                          Topcoat
-                        </label>
-                        <select
-                          value={rawInternalTopcoatType || ""}
-                          onChange={(e) => {
-                            const rawValue51 = e.target.value;
-
-                            return onUpdateGlobalSpecs({
-                              ...globalSpecs,
-                              internalTopcoatType: rawValue51 || null,
-                            });
-                          }}
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
-                        >
-                          <option value="">None</option>
-                          <option value="Epoxy Topcoat">Epoxy Topcoat</option>
-                          <option value="Phenolic Epoxy">Phenolic Epoxy</option>
-                          <option value="Novolac Epoxy">Novolac Epoxy</option>
-                          <option value="Polyurethane">Polyurethane</option>
-                        </select>
-                      </div>
-
-                      {globalSpecs?.internalTopcoatType && (
-                        <div>
-                          <label className="block text-xs font-semibold text-gray-900 mb-1">
-                            Topcoat (μm)
-                          </label>
-                          <input
-                            type="number"
-                            value={rawInternalTopcoatMicrons2 || ""}
-                            onChange={(e) =>
-                              onUpdateGlobalSpecs({
-                                ...globalSpecs,
-                                internalTopcoatMicrons: e.target.value
-                                  ? Number(e.target.value)
-                                  : null,
-                              })
-                            }
-                            placeholder="50-75"
-                            min="0"
-                            max="500"
-                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
-                          />
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Paint Specification Summary - shows when primer is selected */}
-                    {globalSpecs?.internalPrimerType && globalSpecs?.internalPrimerMicrons && (
-                      <div className="mt-3 pt-3 border-t border-gray-200">
-                        <div className="bg-amber-50 border border-amber-200 rounded-md p-2">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-1.5 text-xs text-amber-800">
-                              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                <path
-                                  fillRule="evenodd"
-                                  d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-                                  clipRule="evenodd"
-                                />
-                              </svg>
-                              <span className="font-medium">Review:</span>
-                              <span>
-                                {globalSpecs.internalPrimerType} (
-                                {globalSpecs.internalPrimerMicrons}μm)
-                              </span>
-                              {globalSpecs?.internalIntermediateType &&
-                                globalSpecs?.internalIntermediateMicrons && (
-                                  <span>
-                                    • {globalSpecs.internalIntermediateType} (
-                                    {globalSpecs.internalIntermediateMicrons}μm)
-                                  </span>
-                                )}
-                              {globalSpecs?.internalTopcoatType &&
-                                globalSpecs?.internalTopcoatMicrons && (
-                                  <span>
-                                    • {globalSpecs.internalTopcoatType} (
-                                    {globalSpecs.internalTopcoatMicrons}μm)
-                                  </span>
-                                )}
-                              <span className="font-semibold ml-1">
-                                ={" "}
-                                {(rawInternalPrimerMicrons3 || 0) +
-                                  (rawInternalIntermediateMicrons3 || 0) +
-                                  (rawInternalTopcoatMicrons3 || 0)}
-                                μm DFT
-                              </span>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                onUpdateGlobalSpecs({
-                                  ...globalSpecs,
-                                  internalLiningConfirmed: true,
-                                })
-                              }
-                              className="px-3 py-1 bg-green-600 text-white font-medium rounded text-xs hover:bg-green-700"
-                            >
-                              Confirm
-                            </button>
-                          </div>
-                        </div>
-                      </div>
                     )}
                   </div>
-                )}
+
+                  {/* Paint Specification Summary - shows when primer is selected */}
+                  {globalSpecs?.internalPrimerType && globalSpecs?.internalPrimerMicrons && (
+                    <div className="mt-3 pt-3 border-t border-gray-200">
+                      <div className="bg-amber-50 border border-amber-200 rounded-md p-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5 text-xs text-amber-800">
+                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                              <path
+                                fillRule="evenodd"
+                                d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
+                            <span className="font-medium">Review:</span>
+                            <span>
+                              {globalSpecs.internalPrimerType} ({globalSpecs.internalPrimerMicrons}
+                              μm)
+                            </span>
+                            {globalSpecs?.internalIntermediateType &&
+                              globalSpecs?.internalIntermediateMicrons && (
+                                <span>
+                                  • {globalSpecs.internalIntermediateType} (
+                                  {globalSpecs.internalIntermediateMicrons}μm)
+                                </span>
+                              )}
+                            {globalSpecs?.internalTopcoatType &&
+                              globalSpecs?.internalTopcoatMicrons && (
+                                <span>
+                                  • {globalSpecs.internalTopcoatType} (
+                                  {globalSpecs.internalTopcoatMicrons}μm)
+                                </span>
+                              )}
+                            <span className="font-semibold ml-1">
+                              ={" "}
+                              {(rawInternalPrimerMicrons3 || 0) +
+                                (rawInternalIntermediateMicrons3 || 0) +
+                                (rawInternalTopcoatMicrons3 || 0)}
+                              μm DFT
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              onUpdateGlobalSpecs({
+                                ...globalSpecs,
+                                internalLiningConfirmed: true,
+                              })
+                            }
+                            className="px-3 py-1 bg-green-600 text-white font-medium rounded text-xs hover:bg-green-700"
+                          >
+                            Confirm
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Fallback Edit Button for Internal Lining - Shows when confirmed but no specific type block is displaying */}
-              {globalSpecs?.internalLiningConfirmed &&
+              {gsInternalLiningConfirmed &&
                 globalSpecs?.internalLiningType &&
-                globalSpecs?.externalCoatingType !== "Galvanized" &&
+                gsExternalCoatingType !== "Galvanized" &&
                 !(
                   globalSpecs?.internalLiningType === "Rubber Lined" &&
                   globalSpecs?.internalRubberType
@@ -7406,7 +6824,7 @@ export default function SpecificationsStep(props: {
             </div>
 
             {/* Confirm Surface Protection Button - Only show when not all confirmed */}
-            {(!globalSpecs?.externalCoatingConfirmed || !globalSpecs?.internalLiningConfirmed) &&
+            {(!gsExternalCoatingConfirmed || !gsInternalLiningConfirmed) &&
               (rawExternalCoatingType2 || globalSpecs?.internalLiningType) && (
                 <div className="mt-4 flex justify-end">
                   <button
@@ -7419,7 +6837,7 @@ export default function SpecificationsStep(props: {
                         surfaceProtectionConfirmed: true,
                       })
                     }
-                    disabled={!globalSpecs?.externalCoatingType}
+                    disabled={!gsExternalCoatingType}
                     className="px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Confirm Surface Protection
@@ -7492,19 +6910,11 @@ export default function SpecificationsStep(props: {
                   <button
                     type="button"
                     onClick={() => {
-                      if (
-                        globalSpecs?.hdpeGrade &&
-                        globalSpecs?.hdpeSdr &&
-                        globalSpecs?.hdpeJoiningMethod
-                      ) {
+                      if (gsHdpeGrade && gsHdpeSdr && globalSpecs?.hdpeJoiningMethod) {
                         onUpdateGlobalSpecs({ ...globalSpecs, hdpeSpecsConfirmed: true });
                       }
                     }}
-                    disabled={
-                      !globalSpecs?.hdpeGrade ||
-                      !globalSpecs?.hdpeSdr ||
-                      !globalSpecs?.hdpeJoiningMethod
-                    }
+                    disabled={!gsHdpeGrade || !gsHdpeSdr || !globalSpecs?.hdpeJoiningMethod}
                     className="px-4 py-2 bg-gray-900 text-white font-semibold rounded-lg hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-500 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Confirm HDPE Specifications
@@ -7577,19 +6987,11 @@ export default function SpecificationsStep(props: {
                   <button
                     type="button"
                     onClick={() => {
-                      if (
-                        globalSpecs?.pvcType &&
-                        globalSpecs?.pvcPressureClass &&
-                        globalSpecs?.pvcJoiningMethod
-                      ) {
+                      if (gsPvcType && gsPvcPressureClass && globalSpecs?.pvcJoiningMethod) {
                         onUpdateGlobalSpecs({ ...globalSpecs, pvcSpecsConfirmed: true });
                       }
                     }}
-                    disabled={
-                      !globalSpecs?.pvcType ||
-                      !globalSpecs?.pvcPressureClass ||
-                      !globalSpecs?.pvcJoiningMethod
-                    }
+                    disabled={!gsPvcType || !gsPvcPressureClass || !globalSpecs?.pvcJoiningMethod}
                     className="px-4 py-2 bg-blue-400 text-white font-semibold rounded-lg hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-300 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Confirm PVC Specifications
@@ -7695,7 +7097,7 @@ export default function SpecificationsStep(props: {
                     </select>
                     {!globalSpecs?.boltGrade &&
                       boltRecommendation &&
-                      globalSpecs?.workingTemperatureC != null && (
+                      gsWorkingTemperatureC != null && (
                         <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
                           <div className="flex items-start gap-2">
                             <svg
@@ -7739,7 +7141,7 @@ export default function SpecificationsStep(props: {
                     {globalSpecs?.boltGrade &&
                       boltRecommendation &&
                       globalSpecs.boltGrade !== boltRecommendation.grade &&
-                      globalSpecs?.workingTemperatureC != null && (
+                      gsWorkingTemperatureC != null && (
                         <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded text-xs">
                           <div className="flex items-start gap-2">
                             <svg
@@ -7835,7 +7237,7 @@ export default function SpecificationsStep(props: {
                     {/* Gasket Recommendation - show when no gasket selected */}
                     {!globalSpecs?.gasketType &&
                       gasketRecommendation &&
-                      globalSpecs?.workingTemperatureC != null && (
+                      gsWorkingTemperatureC != null && (
                         <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
                           <div className="flex items-start gap-2">
                             <svg
@@ -7879,7 +7281,7 @@ export default function SpecificationsStep(props: {
                     {globalSpecs?.gasketType &&
                       gasketRecommendation &&
                       globalSpecs.gasketType !== gasketRecommendation.gasketCode &&
-                      globalSpecs?.workingTemperatureC != null && (
+                      gsWorkingTemperatureC != null && (
                         <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded text-xs">
                           <div className="flex items-start gap-2">
                             <svg
@@ -8147,11 +7549,7 @@ export default function SpecificationsStep(props: {
                     const newSpecId = materialWarning.specId;
                     let recommendedPressureClassId = globalSpecs?.flangePressureClassId;
 
-                    if (
-                      newSpecId &&
-                      globalSpecs?.flangeStandardId &&
-                      globalSpecs?.workingPressureBar
-                    ) {
+                    if (newSpecId && globalSpecs?.flangeStandardId && gsWorkingPressureBar) {
                       const newSteelSpec = masterData.steelSpecs?.find(
                         (s: any) => s.id === newSpecId,
                       );

@@ -55,6 +55,8 @@ interface CoatDetail {
   coatRole: string | null;
   litersRequired: number;
   coverageM2PerLiter: number;
+  minDftUm: number | null;
+  maxDftUm: number | null;
 }
 
 interface CpoChildJc {
@@ -584,7 +586,16 @@ export function IssueStockPage() {
     let totalSelectedM2 = 0;
     const allCoats = selectedJcs.flatMap((jc) => jc.coats);
     const hasIntermediate = allCoats.some((c) => c.coatRole === "intermediate");
-    const paintMap = new Map<string, { litres: number; role: string | null }>();
+    const paintMap = new Map<
+      string,
+      {
+        litres: number;
+        role: string | null;
+        minDftUm: number | null;
+        maxDftUm: number | null;
+        genericType: string | null;
+      }
+    >();
 
     for (const jc of selectedJcs) {
       const selectedItems = jc.lineItems.filter((li) => selectedLineItemIds.includes(li.id));
@@ -648,9 +659,21 @@ export function IssueStockPage() {
         const key = coat.product;
         const existing = paintMap.get(key);
         if (existing) {
-          paintMap.set(key, { litres: existing.litres + scaledLitres, role: displayRole });
+          paintMap.set(key, {
+            litres: existing.litres + scaledLitres,
+            role: displayRole,
+            minDftUm: existing.minDftUm,
+            maxDftUm: existing.maxDftUm,
+            genericType: existing.genericType,
+          });
         } else {
-          paintMap.set(key, { litres: scaledLitres, role: displayRole });
+          paintMap.set(key, {
+            litres: scaledLitres,
+            role: displayRole,
+            minDftUm: coat.minDftUm,
+            maxDftUm: coat.maxDftUm,
+            genericType: coat.genericType,
+          });
         }
       }
     }
@@ -664,6 +687,9 @@ export function IssueStockPage() {
       product,
       litres: info.litres,
       role: info.role,
+      minDftUm: info.minDftUm,
+      maxDftUm: info.maxDftUm,
+      genericType: info.genericType,
     }));
     return { selectedM2: totalSelectedM2, paints, selectedJcCount: activeJcCount };
   }, [
@@ -1573,6 +1599,9 @@ export function IssueStockPage() {
                                                 : liCoats[roleLabel];
                                           const remaining = Math.max(fullQty - issuedQty, 0);
                                           const done = issuedQty >= fullQty && fullQty > 0;
+                                          const ctMinDft = ct.minDftUm;
+                                          const ctMaxDft = ct.maxDftUm;
+                                          const hasDft = ctMinDft != null && ctMaxDft != null;
                                           return (
                                             <div
                                               key={ct.product + roleLabel}
@@ -1591,6 +1620,13 @@ export function IssueStockPage() {
                                                 {roleLabel}
                                               </span>
                                               <span className="flex-1 truncate">{ct.product}</span>
+                                              {hasDft ? (
+                                                <span className="text-gray-500 shrink-0">
+                                                  {ctMinDft}
+                                                  {"\u2013"}
+                                                  {ctMaxDft} {"\u00b5m"}
+                                                </span>
+                                              ) : null}
                                               {coatLitres > 0 ? (
                                                 <span className="font-mono shrink-0">
                                                   {coatLitres.toFixed(1)}L
@@ -1694,18 +1730,35 @@ export function IssueStockPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
                       {selectedCoatsSummary.paints.map((p) => {
                         const roleLabel = p.role == null ? "" : ` (${p.role})`;
+                        const pMinDft = p.minDftUm;
+                        const pMaxDft = p.maxDftUm;
+                        const pGeneric = p.genericType;
+                        const dftLabel =
+                          pMinDft != null && pMaxDft != null
+                            ? `${pMinDft}\u2013${pMaxDft} \u00b5m`
+                            : null;
                         return (
                           <div
                             key={p.product}
-                            className="flex items-center justify-between rounded bg-blue-50 px-2 py-1 text-xs"
+                            className="flex flex-col rounded bg-blue-50 px-2 py-1 text-xs"
                           >
-                            <span className="text-blue-900 truncate flex-1">
-                              {p.product}
-                              {roleLabel}
-                            </span>
-                            <span className="text-blue-700 font-mono font-semibold shrink-0 ml-2">
-                              {p.litres.toFixed(1)} L
-                            </span>
+                            <div className="flex items-center justify-between">
+                              <span className="text-blue-900 truncate flex-1">
+                                {p.product}
+                                {roleLabel}
+                              </span>
+                              <span className="text-blue-700 font-mono font-semibold shrink-0 ml-2">
+                                {p.litres.toFixed(1)} L
+                              </span>
+                            </div>
+                            {dftLabel != null || pGeneric != null ? (
+                              <div className="flex gap-2 text-[10px] text-blue-600 mt-0.5">
+                                {pGeneric != null ? (
+                                  <span>{pGeneric.replace(/_/g, " ")}</span>
+                                ) : null}
+                                {dftLabel != null ? <span>DFT: {dftLabel}</span> : null}
+                              </div>
+                            ) : null}
                           </div>
                         );
                       })}
