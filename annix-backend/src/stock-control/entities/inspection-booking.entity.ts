@@ -7,6 +7,8 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
+import { Company } from "../../platform/entities/company.entity";
+import { User } from "../../user/entities/user.entity";
 import { JobCard } from "./job-card.entity";
 import { StockControlCompany } from "./stock-control-company.entity";
 import { StockControlUser } from "./stock-control-user.entity";
@@ -97,6 +99,27 @@ export class InspectionBooking {
 
   @Column({ name: "responded_at", type: "timestamptz", nullable: true })
   respondedAt: Date | null;
+
+  @ManyToOne(() => Company, { onDelete: "CASCADE", nullable: true })
+  @JoinColumn({ name: "unified_company_id" })
+  unifiedCompany?: Company | null;
+
+  @Column({ name: "unified_company_id", nullable: true })
+  unifiedCompanyId?: number | null;
+
+  @ManyToOne(() => User, { onDelete: "SET NULL", nullable: true })
+  @JoinColumn({ name: "unified_booked_by_id" })
+  unifiedBookedBy?: User | null;
+
+  @Column({ name: "unified_booked_by_id", nullable: true })
+  unifiedBookedById?: number | null;
+
+  @ManyToOne(() => User, { onDelete: "SET NULL", nullable: true })
+  @JoinColumn({ name: "unified_completed_by_id" })
+  unifiedCompletedBy?: User | null;
+
+  @Column({ name: "unified_completed_by_id", nullable: true })
+  unifiedCompletedById?: number | null;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

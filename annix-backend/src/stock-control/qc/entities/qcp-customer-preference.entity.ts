@@ -8,6 +8,7 @@ import {
   Unique,
   UpdateDateColumn,
 } from "typeorm";
+import { Company } from "../../../platform/entities/company.entity";
 import { StockControlCompany } from "../../entities/stock-control-company.entity";
 
 @Entity("qcp_customer_preferences")
@@ -34,6 +35,13 @@ export class QcpCustomerPreference {
 
   @Column({ name: "intervention_defaults", type: "jsonb", nullable: true })
   interventionDefaults: Record<number, string> | null;
+
+  @ManyToOne(() => Company, { onDelete: "CASCADE", nullable: true })
+  @JoinColumn({ name: "unified_company_id" })
+  unifiedCompany?: Company | null;
+
+  @Column({ name: "unified_company_id", nullable: true })
+  unifiedCompanyId?: number | null;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

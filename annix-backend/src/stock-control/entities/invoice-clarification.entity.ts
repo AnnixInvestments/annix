@@ -7,6 +7,8 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
+import { Company } from "../../platform/entities/company.entity";
+import { User } from "../../user/entities/user.entity";
 import { StockControlCompany } from "./stock-control-company.entity";
 import { StockControlUser } from "./stock-control-user.entity";
 import { StockItem } from "./stock-item.entity";
@@ -111,6 +113,20 @@ export class InvoiceClarification {
 
   @Column({ name: "answered_at", type: "timestamp", nullable: true })
   answeredAt: Date | null;
+
+  @ManyToOne(() => Company, { onDelete: "CASCADE", nullable: true })
+  @JoinColumn({ name: "unified_company_id" })
+  unifiedCompany?: Company | null;
+
+  @Column({ name: "unified_company_id", nullable: true })
+  unifiedCompanyId?: number | null;
+
+  @ManyToOne(() => User, { onDelete: "SET NULL", nullable: true })
+  @JoinColumn({ name: "unified_answered_by" })
+  unifiedAnsweredByUser?: User | null;
+
+  @Column({ name: "unified_answered_by", nullable: true })
+  unifiedAnsweredBy?: number | null;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

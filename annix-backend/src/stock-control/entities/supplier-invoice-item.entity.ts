@@ -7,6 +7,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
+import { Company } from "../../platform/entities/company.entity";
 import { StockControlCompany } from "./stock-control-company.entity";
 import { StockItem } from "./stock-item.entity";
 import { SupplierInvoice } from "./supplier-invoice.entity";
@@ -109,6 +110,13 @@ export class SupplierInvoiceItem {
 
   @Column({ name: "roll_numbers", type: "jsonb", nullable: true })
   rollNumbers: string[] | null;
+
+  @ManyToOne(() => Company, { onDelete: "CASCADE", nullable: true })
+  @JoinColumn({ name: "unified_company_id" })
+  unifiedCompany?: Company | null;
+
+  @Column({ name: "unified_company_id", nullable: true })
+  unifiedCompanyId?: number | null;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

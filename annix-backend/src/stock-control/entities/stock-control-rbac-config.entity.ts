@@ -13,6 +13,8 @@ export class StockControlRbacConfig {
 
   @Column({ type: "varchar", length: 30 })
   role: string;
+  @Column({ name: "unified_company_id", type: "int", nullable: true })
+  unifiedCompanyId?: number | null;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

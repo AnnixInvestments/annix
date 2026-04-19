@@ -7,6 +7,7 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from "typeorm";
+import { User } from "../../user/entities/user.entity";
 import { ChatConversation } from "./chat-conversation.entity";
 import { StockControlUser } from "./stock-control-user.entity";
 
@@ -36,6 +37,13 @@ export class ChatConversationParticipant {
 
   @Column({ name: "last_read_at", type: "timestamp", nullable: true })
   lastReadAt: Date | null;
+
+  @ManyToOne(() => User, { onDelete: "SET NULL", nullable: true })
+  @JoinColumn({ name: "unified_user_id" })
+  unifiedUser?: User | null;
+
+  @Column({ name: "unified_user_id", nullable: true })
+  unifiedUserId?: number | null;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

@@ -7,6 +7,8 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from "typeorm";
+import { Company } from "../../platform/entities/company.entity";
+import { User } from "../../user/entities/user.entity";
 import { StockControlCompany } from "./stock-control-company.entity";
 import { StockControlUser } from "./stock-control-user.entity";
 
@@ -54,6 +56,20 @@ export class StockControlInvitation {
 
   @Column({ name: "accepted_at", type: "timestamptz", nullable: true })
   acceptedAt: Date | null;
+
+  @ManyToOne(() => Company, { onDelete: "CASCADE", nullable: true })
+  @JoinColumn({ name: "unified_company_id" })
+  unifiedCompany?: Company | null;
+
+  @Column({ name: "unified_company_id", nullable: true })
+  unifiedCompanyId?: number | null;
+
+  @ManyToOne(() => User, { onDelete: "SET NULL", nullable: true })
+  @JoinColumn({ name: "unified_invited_by_id" })
+  unifiedInvitedBy?: User | null;
+
+  @Column({ name: "unified_invited_by_id", nullable: true })
+  unifiedInvitedById?: number | null;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

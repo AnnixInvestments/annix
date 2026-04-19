@@ -7,6 +7,7 @@ import {
   OneToMany,
   PrimaryGeneratedColumn,
 } from "typeorm";
+import { Company } from "../../platform/entities/company.entity";
 import { DeliveryNoteItem } from "./delivery-note-item.entity";
 import { StockControlCompany } from "./stock-control-company.entity";
 import { StockControlSupplier } from "./stock-control-supplier.entity";
@@ -91,6 +92,13 @@ export class DeliveryNote {
     (invoice) => invoice.deliveryNote,
   )
   invoices: SupplierInvoice[];
+
+  @ManyToOne(() => Company, { onDelete: "CASCADE", nullable: true })
+  @JoinColumn({ name: "unified_company_id" })
+  unifiedCompany?: Company | null;
+
+  @Column({ name: "unified_company_id", nullable: true })
+  unifiedCompanyId?: number | null;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

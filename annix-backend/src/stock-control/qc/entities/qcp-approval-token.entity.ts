@@ -7,6 +7,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
+import { Company } from "../../../platform/entities/company.entity";
 import { StockControlCompany } from "../../entities/stock-control-company.entity";
 
 export enum QcpApprovalTokenStatus {
@@ -82,6 +83,13 @@ export class QcpApprovalToken {
 
   @Column({ name: "sent_by_party", type: "varchar", length: 20, nullable: true })
   sentByParty: string | null;
+
+  @ManyToOne(() => Company, { onDelete: "CASCADE", nullable: true })
+  @JoinColumn({ name: "unified_company_id" })
+  unifiedCompany?: Company | null;
+
+  @Column({ name: "unified_company_id", nullable: true })
+  unifiedCompanyId?: number | null;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

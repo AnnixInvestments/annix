@@ -8,6 +8,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
+import { Company } from "../../platform/entities/company.entity";
 import { StockAllocation } from "./stock-allocation.entity";
 import { StockControlCompany } from "./stock-control-company.entity";
 import { StockControlDepartment } from "./stock-control-department.entity";
@@ -54,6 +55,13 @@ export class StaffMember {
     (allocation) => allocation.staffMember,
   )
   allocations: StockAllocation[];
+
+  @ManyToOne(() => Company, { onDelete: "CASCADE", nullable: true })
+  @JoinColumn({ name: "unified_company_id" })
+  unifiedCompany?: Company | null;
+
+  @Column({ name: "unified_company_id", nullable: true })
+  unifiedCompanyId?: number | null;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

@@ -8,6 +8,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
+import { Company } from "../../platform/entities/company.entity";
 import { CustomerPurchaseOrder } from "./customer-purchase-order.entity";
 import { DispatchCdn } from "./dispatch-cdn.entity";
 import { DispatchLoadPhoto } from "./dispatch-load-photo.entity";
@@ -238,6 +239,13 @@ export class JobCard {
     (attachment) => attachment.jobCard,
   )
   attachments: JobCardAttachment[];
+
+  @ManyToOne(() => Company, { onDelete: "CASCADE", nullable: true })
+  @JoinColumn({ name: "unified_company_id" })
+  unifiedCompany?: Company | null;
+
+  @Column({ name: "unified_company_id", nullable: true })
+  unifiedCompanyId?: number | null;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

@@ -7,6 +7,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
+import { Company } from "../../../platform/entities/company.entity";
 import { StockControlCompany } from "../../entities/stock-control-company.entity";
 import { SupplierCertificate } from "../../entities/supplier-certificate.entity";
 
@@ -52,6 +53,13 @@ export class QcDefelskoBatch {
 
   @Column({ name: "supplier_certificate_id", nullable: true })
   supplierCertificateId: number | null;
+
+  @ManyToOne(() => Company, { onDelete: "CASCADE", nullable: true })
+  @JoinColumn({ name: "unified_company_id" })
+  unifiedCompany?: Company | null;
+
+  @Column({ name: "unified_company_id", nullable: true })
+  unifiedCompanyId?: number | null;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

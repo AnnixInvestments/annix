@@ -8,6 +8,8 @@ import {
   OneToMany,
   PrimaryGeneratedColumn,
 } from "typeorm";
+import { Company } from "../../platform/entities/company.entity";
+import { User } from "../../user/entities/user.entity";
 import { ChatConversationParticipant } from "./chat-conversation-participant.entity";
 import { ChatMessage } from "./chat-message.entity";
 import { StockControlCompany } from "./stock-control-company.entity";
@@ -53,6 +55,20 @@ export class ChatConversation {
 
   @Column({ name: "last_message_at", type: "timestamp", nullable: true })
   lastMessageAt: Date | null;
+
+  @ManyToOne(() => Company, { onDelete: "CASCADE", nullable: true })
+  @JoinColumn({ name: "unified_company_id" })
+  unifiedCompany?: Company | null;
+
+  @Column({ name: "unified_company_id", nullable: true })
+  unifiedCompanyId?: number | null;
+
+  @ManyToOne(() => User, { onDelete: "SET NULL", nullable: true })
+  @JoinColumn({ name: "unified_created_by_id" })
+  unifiedCreatedBy?: User | null;
+
+  @Column({ name: "unified_created_by_id", nullable: true })
+  unifiedCreatedById?: number | null;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

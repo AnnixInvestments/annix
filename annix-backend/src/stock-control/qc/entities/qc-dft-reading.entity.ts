@@ -7,6 +7,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
+import { Company } from "../../../platform/entities/company.entity";
 import { StockControlCompany } from "../../entities/stock-control-company.entity";
 
 export enum DftCoatType {
@@ -70,6 +71,13 @@ export class QcDftReading {
 
   @Column({ name: "captured_by_id", type: "integer", nullable: true })
   capturedById: number | null;
+
+  @ManyToOne(() => Company, { onDelete: "CASCADE", nullable: true })
+  @JoinColumn({ name: "unified_company_id" })
+  unifiedCompany?: Company | null;
+
+  @Column({ name: "unified_company_id", nullable: true })
+  unifiedCompanyId?: number | null;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

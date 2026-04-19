@@ -6,6 +6,7 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from "typeorm";
+import { Company } from "../../platform/entities/company.entity";
 import { CustomerPurchaseOrder } from "./customer-purchase-order.entity";
 import { IssuanceSession } from "./issuance-session.entity";
 import { JobCard } from "./job-card.entity";
@@ -73,6 +74,13 @@ export class IssuanceBatchRecord {
 
   @Column({ name: "supplier_certificate_id", nullable: true })
   supplierCertificateId: number | null;
+
+  @ManyToOne(() => Company, { onDelete: "CASCADE", nullable: true })
+  @JoinColumn({ name: "unified_company_id" })
+  unifiedCompany?: Company | null;
+
+  @Column({ name: "unified_company_id", nullable: true })
+  unifiedCompanyId?: number | null;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

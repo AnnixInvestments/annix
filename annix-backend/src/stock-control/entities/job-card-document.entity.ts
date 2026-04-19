@@ -6,6 +6,8 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from "typeorm";
+import { Company } from "../../platform/entities/company.entity";
+import { User } from "../../user/entities/user.entity";
 import { JobCard } from "./job-card.entity";
 import { StockControlCompany } from "./stock-control-company.entity";
 import { StockControlUser } from "./stock-control-user.entity";
@@ -63,6 +65,20 @@ export class JobCardDocument {
 
   @Column({ name: "uploaded_by_name", type: "varchar", length: 255, nullable: true })
   uploadedByName: string | null;
+
+  @ManyToOne(() => Company, { onDelete: "CASCADE", nullable: true })
+  @JoinColumn({ name: "unified_company_id" })
+  unifiedCompany?: Company | null;
+
+  @Column({ name: "unified_company_id", nullable: true })
+  unifiedCompanyId?: number | null;
+
+  @ManyToOne(() => User, { onDelete: "SET NULL", nullable: true })
+  @JoinColumn({ name: "unified_uploaded_by_id" })
+  unifiedUploadedBy?: User | null;
+
+  @Column({ name: "unified_uploaded_by_id", nullable: true })
+  unifiedUploadedById?: number | null;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

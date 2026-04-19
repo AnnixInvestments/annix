@@ -6,6 +6,8 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from "typeorm";
+import { Company } from "../../platform/entities/company.entity";
+import { User } from "../../user/entities/user.entity";
 import { StockControlCompany } from "./stock-control-company.entity";
 import { StockControlUser } from "./stock-control-user.entity";
 import { StockItem } from "./stock-item.entity";
@@ -59,6 +61,20 @@ export class StockPriceHistory {
 
   @Column({ name: "changed_by", nullable: true })
   changedBy: number | null;
+
+  @ManyToOne(() => Company, { onDelete: "CASCADE", nullable: true })
+  @JoinColumn({ name: "unified_company_id" })
+  unifiedCompany?: Company | null;
+
+  @Column({ name: "unified_company_id", nullable: true })
+  unifiedCompanyId?: number | null;
+
+  @ManyToOne(() => User, { onDelete: "SET NULL", nullable: true })
+  @JoinColumn({ name: "unified_changed_by" })
+  unifiedChangedByUser?: User | null;
+
+  @Column({ name: "unified_changed_by", nullable: true })
+  unifiedChangedBy?: number | null;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

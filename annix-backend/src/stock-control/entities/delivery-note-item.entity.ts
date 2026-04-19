@@ -1,4 +1,5 @@
 import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
+import { Company } from "../../platform/entities/company.entity";
 import { DeliveryNote } from "./delivery-note.entity";
 import { StockControlCompany } from "./stock-control-company.entity";
 import { StockItem } from "./stock-item.entity";
@@ -40,4 +41,11 @@ export class DeliveryNoteItem {
 
   @Column({ name: "company_id" })
   companyId: number;
+
+  @ManyToOne(() => Company, { onDelete: "CASCADE", nullable: true })
+  @JoinColumn({ name: "unified_company_id" })
+  unifiedCompany?: Company | null;
+
+  @Column({ name: "unified_company_id", nullable: true })
+  unifiedCompanyId?: number | null;
 }

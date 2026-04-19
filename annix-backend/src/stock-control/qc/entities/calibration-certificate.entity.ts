@@ -7,6 +7,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
+import { Company } from "../../../platform/entities/company.entity";
 import { StockControlCompany } from "../../entities/stock-control-company.entity";
 
 @Entity("calibration_certificates")
@@ -62,6 +63,13 @@ export class CalibrationCertificate {
 
   @Column({ name: "uploaded_by_name", type: "varchar", length: 255, nullable: true })
   uploadedByName: string | null;
+
+  @ManyToOne(() => Company, { onDelete: "CASCADE", nullable: true })
+  @JoinColumn({ name: "unified_company_id" })
+  unifiedCompany?: Company | null;
+
+  @Column({ name: "unified_company_id", nullable: true })
+  unifiedCompanyId?: number | null;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

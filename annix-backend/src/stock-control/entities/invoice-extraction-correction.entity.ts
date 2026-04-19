@@ -6,6 +6,8 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from "typeorm";
+import { Company } from "../../platform/entities/company.entity";
+import { User } from "../../user/entities/user.entity";
 import { StockControlCompany } from "./stock-control-company.entity";
 import { StockControlUser } from "./stock-control-user.entity";
 import { SupplierInvoiceItem } from "./supplier-invoice-item.entity";
@@ -50,6 +52,20 @@ export class InvoiceExtractionCorrection {
 
   @Column({ name: "corrected_by", nullable: true })
   correctedBy: number | null;
+
+  @ManyToOne(() => Company, { onDelete: "CASCADE", nullable: true })
+  @JoinColumn({ name: "unified_company_id" })
+  unifiedCompany?: Company | null;
+
+  @Column({ name: "unified_company_id", nullable: true })
+  unifiedCompanyId?: number | null;
+
+  @ManyToOne(() => User, { onDelete: "SET NULL", nullable: true })
+  @JoinColumn({ name: "unified_corrected_by" })
+  unifiedCorrectedByUser?: User | null;
+
+  @Column({ name: "unified_corrected_by", nullable: true })
+  unifiedCorrectedBy?: number | null;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

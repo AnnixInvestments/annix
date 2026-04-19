@@ -6,6 +6,8 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from "typeorm";
+import { Company } from "../../platform/entities/company.entity";
+import { User } from "../../user/entities/user.entity";
 import { JobCard } from "./job-card.entity";
 import { StockAllocation } from "./stock-allocation.entity";
 import { StockControlCompany } from "./stock-control-company.entity";
@@ -64,6 +66,20 @@ export class DispatchScan {
 
   @Column({ name: "dispatch_notes", type: "text", nullable: true })
   dispatchNotes: string | null;
+
+  @ManyToOne(() => Company, { onDelete: "CASCADE", nullable: true })
+  @JoinColumn({ name: "unified_company_id" })
+  unifiedCompany?: Company | null;
+
+  @Column({ name: "unified_company_id", nullable: true })
+  unifiedCompanyId?: number | null;
+
+  @ManyToOne(() => User, { onDelete: "SET NULL", nullable: true })
+  @JoinColumn({ name: "unified_scanned_by_id" })
+  unifiedScannedBy?: User | null;
+
+  @Column({ name: "unified_scanned_by_id", nullable: true })
+  unifiedScannedById?: number | null;
 
   @CreateDateColumn({ name: "scanned_at" })
   scannedAt: Date;

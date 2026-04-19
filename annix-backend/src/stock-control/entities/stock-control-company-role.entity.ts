@@ -19,6 +19,8 @@ export class StockControlCompanyRole {
 
   @Column({ name: "sort_order", type: "int", default: 0 })
   sortOrder: number;
+  @Column({ name: "unified_company_id", type: "int", nullable: true })
+  unifiedCompanyId?: number | null;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

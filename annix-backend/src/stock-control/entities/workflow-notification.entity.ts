@@ -6,6 +6,8 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from "typeorm";
+import { Company } from "../../platform/entities/company.entity";
+import { User } from "../../user/entities/user.entity";
 import { JobCard } from "./job-card.entity";
 import { StockControlCompany } from "./stock-control-company.entity";
 import { StockControlUser } from "./stock-control-user.entity";
@@ -80,6 +82,27 @@ export class WorkflowNotification {
 
   @Column({ name: "sender_name", type: "varchar", length: 255, nullable: true })
   senderName: string | null;
+
+  @ManyToOne(() => Company, { onDelete: "CASCADE", nullable: true })
+  @JoinColumn({ name: "unified_company_id" })
+  unifiedCompany?: Company | null;
+
+  @Column({ name: "unified_company_id", nullable: true })
+  unifiedCompanyId?: number | null;
+
+  @ManyToOne(() => User, { onDelete: "SET NULL", nullable: true })
+  @JoinColumn({ name: "unified_user_id" })
+  unifiedUser?: User | null;
+
+  @Column({ name: "unified_user_id", nullable: true })
+  unifiedUserId?: number | null;
+
+  @ManyToOne(() => User, { onDelete: "SET NULL", nullable: true })
+  @JoinColumn({ name: "unified_sender_id" })
+  unifiedSender?: User | null;
+
+  @Column({ name: "unified_sender_id", nullable: true })
+  unifiedSenderId?: number | null;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

@@ -6,6 +6,8 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from "typeorm";
+import { Company } from "../../platform/entities/company.entity";
+import { User } from "../../user/entities/user.entity";
 import { CustomerPurchaseOrder } from "./customer-purchase-order.entity";
 import { IssuanceSession } from "./issuance-session.entity";
 import { JobCard } from "./job-card.entity";
@@ -95,6 +97,20 @@ export class StockIssuance {
 
   @Column({ name: "undone_by_name", type: "varchar", length: 255, nullable: true })
   undoneByName: string | null;
+
+  @ManyToOne(() => Company, { onDelete: "CASCADE", nullable: true })
+  @JoinColumn({ name: "unified_company_id" })
+  unifiedCompany?: Company | null;
+
+  @Column({ name: "unified_company_id", nullable: true })
+  unifiedCompanyId?: number | null;
+
+  @ManyToOne(() => User, { onDelete: "SET NULL", nullable: true })
+  @JoinColumn({ name: "unified_issued_by_user_id" })
+  unifiedIssuedByUser?: User | null;
+
+  @Column({ name: "unified_issued_by_user_id", nullable: true })
+  unifiedIssuedByUserId?: number | null;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

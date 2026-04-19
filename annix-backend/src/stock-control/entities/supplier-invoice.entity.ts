@@ -8,6 +8,8 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
+import { Company } from "../../platform/entities/company.entity";
+import { User } from "../../user/entities/user.entity";
 import { DeliveryNote } from "./delivery-note.entity";
 import { InvoiceClarification } from "./invoice-clarification.entity";
 import { StockControlCompany } from "./stock-control-company.entity";
@@ -131,6 +133,20 @@ export class SupplierInvoice {
     (clarification) => clarification.invoice,
   )
   clarifications: InvoiceClarification[];
+
+  @ManyToOne(() => Company, { onDelete: "CASCADE", nullable: true })
+  @JoinColumn({ name: "unified_company_id" })
+  unifiedCompany?: Company | null;
+
+  @Column({ name: "unified_company_id", nullable: true })
+  unifiedCompanyId?: number | null;
+
+  @ManyToOne(() => User, { onDelete: "SET NULL", nullable: true })
+  @JoinColumn({ name: "unified_approved_by" })
+  unifiedApprovedByUser?: User | null;
+
+  @Column({ name: "unified_approved_by", nullable: true })
+  unifiedApprovedBy?: number | null;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

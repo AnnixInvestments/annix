@@ -7,6 +7,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
+import { Company } from "../../platform/entities/company.entity";
 import { StockControlCompany } from "./stock-control-company.entity";
 
 export enum ReconciliationSourceType {
@@ -74,6 +75,13 @@ export class ReconciliationItem {
 
   @Column({ name: "sort_order", type: "int", default: 0 })
   sortOrder: number;
+
+  @ManyToOne(() => Company, { onDelete: "CASCADE", nullable: true })
+  @JoinColumn({ name: "unified_company_id" })
+  unifiedCompany?: Company | null;
+
+  @Column({ name: "unified_company_id", nullable: true })
+  unifiedCompanyId?: number | null;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

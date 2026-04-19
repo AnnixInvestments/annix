@@ -6,6 +6,7 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from "typeorm";
+import { Company } from "../../platform/entities/company.entity";
 import { JobCard } from "./job-card.entity";
 import { StaffMember } from "./staff-member.entity";
 import { StockControlCompany } from "./stock-control-company.entity";
@@ -124,6 +125,13 @@ export class StockAllocation {
 
   @Column({ name: "source_leftover_item_id", nullable: true })
   sourceLeftoverItemId: number | null;
+
+  @ManyToOne(() => Company, { onDelete: "CASCADE", nullable: true })
+  @JoinColumn({ name: "unified_company_id" })
+  unifiedCompany?: Company | null;
+
+  @Column({ name: "unified_company_id", nullable: true })
+  unifiedCompanyId?: number | null;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

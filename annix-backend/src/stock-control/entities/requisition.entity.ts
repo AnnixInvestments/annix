@@ -8,6 +8,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
+import { Company } from "../../platform/entities/company.entity";
 import { CustomerPurchaseOrder } from "./customer-purchase-order.entity";
 import { JobCard } from "./job-card.entity";
 import { RequisitionItem } from "./requisition-item.entity";
@@ -77,6 +78,13 @@ export class Requisition {
     (item) => item.requisition,
   )
   items: RequisitionItem[];
+
+  @ManyToOne(() => Company, { onDelete: "CASCADE", nullable: true })
+  @JoinColumn({ name: "unified_company_id" })
+  unifiedCompany?: Company | null;
+
+  @Column({ name: "unified_company_id", nullable: true })
+  unifiedCompanyId?: number | null;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

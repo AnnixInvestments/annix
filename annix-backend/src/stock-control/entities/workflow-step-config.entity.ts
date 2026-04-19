@@ -8,6 +8,7 @@ import {
   Unique,
   UpdateDateColumn,
 } from "typeorm";
+import { Company } from "../../platform/entities/company.entity";
 import { StockControlCompany } from "./stock-control-company.entity";
 
 export interface StepOutcome {
@@ -66,6 +67,13 @@ export class WorkflowStepConfig {
 
   @Column({ name: "rejoin_at_step", type: "varchar", length: 50, nullable: true, default: null })
   rejoinAtStep: string | null;
+
+  @ManyToOne(() => Company, { onDelete: "CASCADE", nullable: true })
+  @JoinColumn({ name: "unified_company_id" })
+  unifiedCompany?: Company | null;
+
+  @Column({ name: "unified_company_id", nullable: true })
+  unifiedCompanyId?: number | null;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

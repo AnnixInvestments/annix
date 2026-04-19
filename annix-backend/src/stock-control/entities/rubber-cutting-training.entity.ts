@@ -6,6 +6,7 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from "typeorm";
+import { Company } from "../../platform/entities/company.entity";
 import { StockControlCompany } from "./stock-control-company.entity";
 
 @Entity("rubber_cutting_training")
@@ -70,6 +71,13 @@ export class RubberCuttingTraining {
 
   @Column({ name: "reviewed_by", type: "varchar", length: 255, nullable: true })
   reviewedBy: string | null;
+
+  @ManyToOne(() => Company, { onDelete: "CASCADE", nullable: true })
+  @JoinColumn({ name: "unified_company_id" })
+  unifiedCompany?: Company | null;
+
+  @Column({ name: "unified_company_id", nullable: true })
+  unifiedCompanyId?: number | null;
 
   @CreateDateColumn({ name: "created_at", type: "timestamptz" })
   createdAt: Date;
