@@ -81,7 +81,14 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup("swagger", app, document);
 
+  const port = process.env.PORT ?? 4001;
+
   if (isProduction) {
+    // Start listening BEFORE Next.js prepare so the Fly.io health check
+    // passes while the frontend compiles. API routes are ready immediately;
+    // frontend requests get a 503 until nextApp.prepare() finishes.
+    await app.listen(port, "0.0.0.0");
+
     const next = require("next");
     const frontendDir = path.resolve(__dirname, "..", "..", "..", "annix-frontend");
     const nextApp = next({ dev: false, dir: frontendDir });
@@ -99,9 +106,8 @@ async function bootstrap() {
       }
       return nextHandler(req, res);
     });
+  } else {
+    await app.listen(port, "0.0.0.0");
   }
-
-  const port = process.env.PORT ?? 4001;
-  await app.listen(port, "0.0.0.0");
 }
 bootstrap();
