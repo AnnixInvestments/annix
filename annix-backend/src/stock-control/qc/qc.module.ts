@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { JwtModule } from "@nestjs/jwt";
 import { TypeOrmModule } from "@nestjs/typeorm";
+import { Company } from "../../platform/entities/company.entity";
 import { StorageModule } from "../../storage/storage.module";
 import { JobCardCoatingAnalysis } from "../entities/coating-analysis.entity";
 import { CustomerPurchaseOrder } from "../entities/customer-purchase-order.entity";
@@ -13,6 +14,7 @@ import { JobCardLineItem } from "../entities/job-card-line-item.entity";
 import { PushSubscription } from "../entities/push-subscription.entity";
 import { StockControlActionPermission } from "../entities/stock-control-action-permission.entity";
 import { StockControlCompany } from "../entities/stock-control-company.entity";
+import { StockControlProfile } from "../entities/stock-control-profile.entity";
 import { StockControlSupplier } from "../entities/stock-control-supplier.entity";
 import { StockControlUser } from "../entities/stock-control-user.entity";
 import { StockItem } from "../entities/stock-item.entity";
@@ -92,8 +94,10 @@ import { WORK_ITEM_PROVIDER } from "./work-item-provider.interface";
       QcPullTest,
       QcReleaseCertificate,
       QcShoreHardness,
+      Company,
       StockControlCompany,
       StockControlActionPermission,
+      StockControlProfile,
       StockControlSupplier,
       StockControlUser,
       StockItem,
