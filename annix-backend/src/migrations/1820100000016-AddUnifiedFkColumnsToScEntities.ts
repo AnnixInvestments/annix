@@ -150,27 +150,45 @@ export class AddUnifiedFkColumnsToScEntities1820100000016 implements MigrationIn
     }
 
     // ─── Step 3: Backfill unified_company_id from companies.legacy_sc_company_id ───
+    // Some tables don't have a direct company_id column (they link through a parent entity),
+    // so check information_schema before attempting the backfill.
     for (const table of this.companyTables) {
-      await queryRunner.query(`
-        UPDATE "${table}" t
-        SET unified_company_id = c.id
-        FROM companies c
-        WHERE c.legacy_sc_company_id = t.company_id
-          AND t.unified_company_id IS NULL
+      const hasCompanyId: { exists: boolean }[] = await queryRunner.query(`
+        SELECT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_schema = 'public' AND table_name = '${table}' AND column_name = 'company_id'
+        )
       `);
+      if (hasCompanyId[0]?.exists) {
+        await queryRunner.query(`
+          UPDATE "${table}" t
+          SET unified_company_id = c.id
+          FROM companies c
+          WHERE c.legacy_sc_company_id = t.company_id
+            AND t.unified_company_id IS NULL
+        `);
+      }
     }
 
     // ─── Step 4: Backfill unified user FK columns from stock_control_profiles.legacy_sc_user_id ───
     for (const { table, columns } of this.userFkColumns) {
       for (const col of columns) {
         const unifiedCol = `unified_${col}`;
-        await queryRunner.query(`
-          UPDATE "${table}" t
-          SET "${unifiedCol}" = scp.user_id
-          FROM stock_control_profiles scp
-          WHERE scp.legacy_sc_user_id = t."${col}"
-            AND t."${unifiedCol}" IS NULL
+        const hasCol: { exists: boolean }[] = await queryRunner.query(`
+          SELECT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema = 'public' AND table_name = '${table}' AND column_name = '${col}'
+          )
         `);
+        if (hasCol[0]?.exists) {
+          await queryRunner.query(`
+            UPDATE "${table}" t
+            SET "${unifiedCol}" = scp.user_id
+            FROM stock_control_profiles scp
+            WHERE scp.legacy_sc_user_id = t."${col}"
+              AND t."${unifiedCol}" IS NULL
+          `);
+        }
       }
     }
 
