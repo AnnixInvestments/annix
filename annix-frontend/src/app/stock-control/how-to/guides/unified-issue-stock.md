@@ -5,7 +5,7 @@ category: Inventory
 roles: [storeman, manager, admin]
 order: 15
 tags: [issuing, stock, consumable, paint, rubber, CPO, job card, QR scan]
-lastUpdated: 2026-04-13
+lastUpdated: 2026-04-19
 summary: Issue consumables, paint, rubber rolls, or solutions against job cards or CPOs in a single unified flow with per-product spec selection and coat-level tracking.
 readingMinutes: 4
 relatedPaths:
@@ -36,11 +36,13 @@ Each line item shows colour-coded coat rows beneath it:
 - **Amber** — partially issued, remaining quantity shown
 - **Red** — fully issued, no remaining quantity
 
+Each coat row also shows the DFT specification (e.g. "75–125 µm") from the coating analysis when available, so the storeman can verify they are issuing the correct product for the required film thickness.
+
 The editable quantity field shows remaining units for the selected product spec. Items that are fully issued are automatically unchecked and disabled.
 
 The JC header badge shows which coats have been issued (e.g. "Primer Issued", "Final + Primer Issued").
 
-The Selection Summary at the bottom dynamically adjusts m2 and litres based on remaining quantities.
+The Selection Summary at the bottom dynamically adjusts m2 and litres based on remaining quantities. It also shows the generic type (e.g. "epoxy mio", "polyurethane") and DFT range for each paint product.
 
 ## Rules
 

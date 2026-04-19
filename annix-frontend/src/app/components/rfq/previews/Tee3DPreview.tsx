@@ -1,30 +1,22 @@
 "use client";
 
-import {
-  Center,
-  ContactShadows,
-  Line as DreiLine,
-  Environment,
-  OrbitControls,
-  Text,
-} from "@react-three/drei";
-import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { isNumber, keys } from "es-toolkit/compat";
+import { Center, Line as DreiLine, Text } from "@react-three/drei";
+import { Canvas, useThree } from "@react-three/fiber";
+import { keys } from "es-toolkit/compat";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import {
   FLANGE_MATERIALS,
   GEOMETRY_CONSTANTS,
-  LIGHTING_CONFIG,
   PIPE_MATERIALS,
   SCENE_CONSTANTS,
   STEELWORK_MATERIALS,
   WELD_MATERIALS,
   wallThicknessFromNB,
 } from "@/app/lib/config/rfq/rendering3DStandards";
-import { log } from "@/app/lib/logger";
 import { useNbToOdLookup } from "@/app/lib/query/hooks";
-import { CaptureHelper, useDebouncedProps } from "./shared";
+import { CameraTracker, SceneShell } from "./hooks";
+import { useDebouncedProps } from "./shared";
 
 const Line = (props: React.ComponentProps<typeof DreiLine>) => {
   const { size } = useThree();
@@ -2450,129 +2442,6 @@ function TeeScene(props: Tee3DPreviewProps) {
   );
 }
 
-const CameraTracker = ({
-  onCameraChange,
-  savedPosition,
-  savedTarget,
-}: {
-  onCameraChange?: (position: [number, number, number], target: [number, number, number]) => void;
-  savedPosition?: [number, number, number];
-  savedTarget?: [number, number, number];
-}) => {
-  const { camera, controls } = useThree();
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const lastSavedRef = useRef<string>("");
-  const pendingSaveKeyRef = useRef<string>("");
-  const hasRestoredRef = useRef(false);
-
-  useEffect(() => {
-    log.debug(
-      "Tee CameraTracker useEffect",
-      JSON.stringify({
-        savedPosition,
-        savedTarget,
-        hasRestored: hasRestoredRef.current,
-        hasControls: !!controls,
-      }),
-    );
-    const hasValidPosition =
-      savedPosition &&
-      isNumber(savedPosition[0]) &&
-      isNumber(savedPosition[1]) &&
-      isNumber(savedPosition[2]);
-    if (hasValidPosition && controls && !hasRestoredRef.current) {
-      log.debug(
-        "Tee CameraTracker restoring camera position",
-        JSON.stringify({
-          position: savedPosition,
-          target: savedTarget,
-        }),
-      );
-      camera.position.set(savedPosition[0], savedPosition[1], savedPosition[2]);
-      if (
-        savedTarget &&
-        isNumber(savedTarget[0]) &&
-        isNumber(savedTarget[1]) &&
-        isNumber(savedTarget[2])
-      ) {
-        const orbitControls = controls as any;
-        if (orbitControls.target) {
-          orbitControls.target.set(savedTarget[0], savedTarget[1], savedTarget[2]);
-          orbitControls.update();
-        }
-      }
-      hasRestoredRef.current = true;
-      const restoredKey = `${savedPosition[0].toFixed(2)},${savedPosition[1].toFixed(2)},${savedPosition[2].toFixed(2)}`;
-      lastSavedRef.current = restoredKey;
-      pendingSaveKeyRef.current = "";
-    }
-  }, [camera, controls, savedPosition, savedTarget]);
-
-  const frameCountRef = useRef(0);
-
-  useFrame(() => {
-    frameCountRef.current++;
-    if (frameCountRef.current % 60 === 0) {
-      log.debug(
-        "Tee CameraTracker useFrame check",
-        JSON.stringify({
-          hasOnCameraChange: !!onCameraChange,
-          hasControls: !!controls,
-          cameraPos: [
-            camera.position.x.toFixed(2),
-            camera.position.y.toFixed(2),
-            camera.position.z.toFixed(2),
-          ],
-          lastSaved: lastSavedRef.current,
-        }),
-      );
-    }
-
-    if (onCameraChange && controls) {
-      const target = (controls as any).target;
-      if (target) {
-        const currentKey = `${camera.position.x.toFixed(2)},${camera.position.y.toFixed(2)},${camera.position.z.toFixed(2)}`;
-
-        const needsNewSave =
-          currentKey !== lastSavedRef.current && currentKey !== pendingSaveKeyRef.current;
-
-        if (needsNewSave) {
-          if (saveTimeoutRef.current) {
-            clearTimeout(saveTimeoutRef.current);
-          }
-
-          const posToSave = [camera.position.x, camera.position.y, camera.position.z] as [
-            number,
-            number,
-            number,
-          ];
-          const targetToSave = [target.x, target.y, target.z] as [number, number, number];
-          const keyToSave = currentKey;
-          pendingSaveKeyRef.current = keyToSave;
-
-          log.debug("Tee CameraTracker setting timeout for", keyToSave);
-
-          saveTimeoutRef.current = setTimeout(() => {
-            log.debug(
-              "Tee CameraTracker timeout fired, saving",
-              JSON.stringify({
-                position: posToSave,
-                target: targetToSave,
-                key: keyToSave,
-              }),
-            );
-            lastSavedRef.current = keyToSave;
-            pendingSaveKeyRef.current = "";
-            onCameraChange(posToSave, targetToSave);
-          }, 500);
-        }
-      }
-    }
-  });
-
-  return null;
-};
-
 // Main Preview component
 export default function Tee3DPreview(props: Tee3DPreviewProps) {
   const [isHidden, setIsHidden] = useState(false);
@@ -2752,32 +2621,19 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
         camera={{ position: defaultCameraPosition, fov: 50, near: 0.01, far: 50000 }}
         style={{ width: "100%", height: "100%" }}
       >
-        <CaptureHelper captureRef={captureRef} />
-        <ambientLight intensity={LIGHTING_CONFIG.ambient.intensity} />
-        <directionalLight
-          position={LIGHTING_CONFIG.keyLight.position}
-          intensity={LIGHTING_CONFIG.keyLight.intensity}
-          castShadow
-        />
-        <directionalLight
-          position={LIGHTING_CONFIG.fillLight.position}
-          intensity={LIGHTING_CONFIG.fillLight.intensity}
-        />
-        <Environment
-          preset={LIGHTING_CONFIG.environment.preset}
-          background={LIGHTING_CONFIG.environment.background}
-        />
-        <group scale={PREVIEW_SCALE}>
+        <SceneShell
+          captureRef={captureRef}
+          contactShadows={{ position: [0, -3, 0], opacity: 0.3, scale: 20, blur: 2 }}
+          orbitControls={{
+            enablePan: false,
+            minDistance: defaultControls.min,
+            maxDistance: defaultControls.max,
+          }}
+        >
           <TeeScene {...debouncedProps} />
-        </group>
-        <ContactShadows position={[0, -3, 0]} opacity={0.3} scale={20} blur={2} />
-        <OrbitControls
-          makeDefault
-          enablePan={false}
-          minDistance={defaultControls.min}
-          maxDistance={defaultControls.max}
-        />
+        </SceneShell>
         <CameraTracker
+          label="Tee"
           onCameraChange={props.onCameraChange}
           savedPosition={props.savedCameraPosition}
           savedTarget={props.savedCameraTarget}
@@ -3189,31 +3045,18 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
               dpr={[1, 2]}
               camera={{ position: expandedCameraPosition, fov: 45, near: 0.01, far: 50000 }}
             >
-              <ambientLight intensity={LIGHTING_CONFIG.ambient.intensity} />
-              <directionalLight
-                position={LIGHTING_CONFIG.keyLight.position}
-                intensity={LIGHTING_CONFIG.keyLight.intensity}
-                castShadow
-              />
-              <directionalLight
-                position={LIGHTING_CONFIG.fillLight.position}
-                intensity={LIGHTING_CONFIG.fillLight.intensity}
-              />
-              <Environment
-                preset={LIGHTING_CONFIG.environment.preset}
-                background={LIGHTING_CONFIG.environment.background}
-              />
-              <group scale={PREVIEW_SCALE}>
+              <SceneShell
+                contactShadows={{ position: [0, -3, 0], opacity: 0.3, scale: 20, blur: 2 }}
+                orbitControls={{
+                  enablePan: true,
+                  minDistance: expandedControls.min,
+                  maxDistance: expandedControls.max,
+                }}
+              >
                 <TeeScene {...debouncedProps} />
-              </group>
-              <ContactShadows position={[0, -3, 0]} opacity={0.3} scale={20} blur={2} />
-              <OrbitControls
-                makeDefault
-                enablePan
-                minDistance={expandedControls.min}
-                maxDistance={expandedControls.max}
-              />
+              </SceneShell>
               <CameraTracker
+                label="Tee"
                 onCameraChange={props.onCameraChange}
                 savedPosition={props.savedCameraPosition}
                 savedTarget={props.savedCameraTarget}

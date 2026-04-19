@@ -1,16 +1,8 @@
 "use client";
 
-import {
-  Billboard,
-  Center,
-  ContactShadows,
-  Environment,
-  OrbitControls,
-  Text,
-} from "@react-three/drei";
-import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { isNumber } from "es-toolkit/compat";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Billboard, Center, Text } from "@react-three/drei";
+import { Canvas } from "@react-three/fiber";
+import { useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import {
   AngularDimension,
@@ -27,7 +19,7 @@ import {
   WeldRing,
 } from "@/app/components/rfq/3d";
 import { type StubData } from "@/app/hooks/use3DSceneSetup";
-import { asOrbitControls, resolveFlangeData } from "@/app/lib/3d";
+import { resolveFlangeData } from "@/app/lib/3d";
 import {
   calculateVisualWallThickness,
   FLANGE_MATERIALS,
@@ -38,7 +30,7 @@ import {
 import { FlangeSpecData } from "@/app/lib/hooks/useFlangeSpecs";
 import { log } from "@/app/lib/logger";
 import { useNbToOdLookup } from "@/app/lib/query/hooks";
-import { CaptureHelper } from "./shared";
+import { CameraTracker, SceneShell } from "./hooks";
 
 interface SimpleLineProps {
   points: Array<[number, number, number]>;
@@ -125,134 +117,6 @@ const pipeEndMat = PIPE_MATERIALS.end;
 const weldColor = WELD_MATERIALS.standard;
 const flangeColor = FLANGE_MATERIALS.standard;
 const blankFlangeColor = FLANGE_MATERIALS.blank;
-
-const CameraTracker = ({
-  onCameraChange,
-  onCameraUpdate,
-  savedPosition,
-  savedTarget,
-}: {
-  onCameraChange?: (position: [number, number, number], target: [number, number, number]) => void;
-  onCameraUpdate?: (position: [number, number, number], zoom: number) => void;
-  savedPosition?: [number, number, number];
-  savedTarget?: [number, number, number];
-}) => {
-  const { camera, controls } = useThree();
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const lastSavedRef = useRef<string>("");
-  const pendingSaveKeyRef = useRef<string>("");
-  const hasRestoredRef = useRef(false);
-
-  useEffect(() => {
-    log.debug(
-      "CameraTracker useEffect",
-      JSON.stringify({
-        savedPosition,
-        savedTarget,
-        hasRestored: hasRestoredRef.current,
-        hasControls: !!controls,
-      }),
-    );
-    const hasValidPosition =
-      savedPosition &&
-      isNumber(savedPosition[0]) &&
-      isNumber(savedPosition[1]) &&
-      isNumber(savedPosition[2]);
-    if (hasValidPosition && controls && !hasRestoredRef.current) {
-      log.debug(
-        "CameraTracker restoring camera position",
-        JSON.stringify({
-          position: savedPosition,
-          target: savedTarget,
-        }),
-      );
-      camera.position.set(savedPosition[0], savedPosition[1], savedPosition[2]);
-      if (
-        savedTarget &&
-        isNumber(savedTarget[0]) &&
-        isNumber(savedTarget[1]) &&
-        isNumber(savedTarget[2])
-      ) {
-        const orbitControls = asOrbitControls(controls);
-        if (orbitControls) {
-          orbitControls.target.set(savedTarget[0], savedTarget[1], savedTarget[2]);
-          orbitControls.update();
-        }
-      }
-      hasRestoredRef.current = true;
-      const restoredKey = `${savedPosition[0].toFixed(2)},${savedPosition[1].toFixed(2)},${savedPosition[2].toFixed(2)}`;
-      lastSavedRef.current = restoredKey;
-      pendingSaveKeyRef.current = "";
-    }
-  }, [camera, controls, savedPosition, savedTarget]);
-
-  const frameCountRef = useRef(0);
-
-  useFrame(() => {
-    const distance = camera.position.length();
-    if (onCameraUpdate) {
-      onCameraUpdate([camera.position.x, camera.position.y, camera.position.z], distance);
-    }
-
-    frameCountRef.current++;
-    if (frameCountRef.current % 60 === 0) {
-      log.debug(
-        "CameraTracker useFrame check",
-        JSON.stringify({
-          hasOnCameraChange: !!onCameraChange,
-          hasControls: !!controls,
-          cameraPos: [
-            camera.position.x.toFixed(2),
-            camera.position.y.toFixed(2),
-            camera.position.z.toFixed(2),
-          ],
-          lastSaved: lastSavedRef.current,
-        }),
-      );
-    }
-
-    const orbitControls = asOrbitControls(controls);
-    if (onCameraChange && orbitControls) {
-      const target = orbitControls.target;
-      const currentKey = `${camera.position.x.toFixed(2)},${camera.position.y.toFixed(2)},${camera.position.z.toFixed(2)}`;
-      const needsNewSave =
-        currentKey !== lastSavedRef.current && currentKey !== pendingSaveKeyRef.current;
-
-      if (needsNewSave) {
-        if (saveTimeoutRef.current) {
-          clearTimeout(saveTimeoutRef.current);
-        }
-
-        const posToSave = [camera.position.x, camera.position.y, camera.position.z] as [
-          number,
-          number,
-          number,
-        ];
-        const targetToSave = [target.x, target.y, target.z] as [number, number, number];
-        const keyToSave = currentKey;
-        pendingSaveKeyRef.current = keyToSave;
-
-        log.debug("CameraTracker setting timeout for", keyToSave);
-
-        saveTimeoutRef.current = setTimeout(() => {
-          log.debug(
-            "CameraTracker timeout fired, saving",
-            JSON.stringify({
-              position: posToSave,
-              target: targetToSave,
-              key: keyToSave,
-            }),
-          );
-          lastSavedRef.current = keyToSave;
-          pendingSaveKeyRef.current = "";
-          onCameraChange(posToSave, targetToSave);
-        }, 500);
-      }
-    }
-  });
-
-  return null;
-};
 
 const Scene = (props: Props) => {
   const {
@@ -3016,21 +2880,18 @@ export default function CSGBend3DPreview(props: Props) {
         camera={{ position: cameraPosition, fov: 45, near: 0.01, far: 50000 }}
         style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%" }}
       >
-        <CaptureHelper captureRef={captureRef} />
-        <ambientLight intensity={0.4} />
-        <directionalLight
-          position={[10, 15, 10]}
-          intensity={2.5}
-          castShadow
-          shadow-mapSize={[1024, 1024]}
-        />
-        <directionalLight position={[-8, 10, -5]} intensity={1.5} />
-        <pointLight position={[0, -5, 0]} intensity={0.8} />
-        <Environment preset="warehouse" background={false} />
-        <Scene {...props} />
-        <ContactShadows position={[0, -2, 0]} opacity={0.4} scale={15} />
-        <OrbitControls makeDefault enablePan target={cameraTarget} />
+        <SceneShell
+          captureRef={captureRef}
+          includeShadowMap
+          includeRimLight
+          scaleGroup={false}
+          contactShadows={{ position: [0, -2, 0], opacity: 0.4, scale: 15 }}
+          orbitControls={{ enablePan: true, target: cameraTarget }}
+        >
+          <Scene {...props} />
+        </SceneShell>
         <CameraTracker
+          label="CSGBend"
           onCameraChange={props.onCameraChange}
           onCameraUpdate={(pos, zoom) => {
             setLiveCamera(pos);
@@ -3441,20 +3302,17 @@ export default function CSGBend3DPreview(props: Props) {
               camera={{ position: cameraPosition, fov: 40, near: 0.01, far: 50000 }}
               style={{ width: "100%", height: "100%" }}
             >
-              <ambientLight intensity={0.4} />
-              <directionalLight
-                position={[10, 15, 10]}
-                intensity={2.5}
-                castShadow
-                shadow-mapSize={[1024, 1024]}
-              />
-              <directionalLight position={[-8, 10, -5]} intensity={1.5} />
-              <pointLight position={[0, -5, 0]} intensity={0.8} />
-              <Environment preset="warehouse" background={false} />
-              <Scene {...props} />
-              <ContactShadows position={[0, -2, 0]} opacity={0.4} scale={15} />
-              <OrbitControls makeDefault enablePan target={cameraTarget} />
+              <SceneShell
+                includeShadowMap
+                includeRimLight
+                scaleGroup={false}
+                contactShadows={{ position: [0, -2, 0], opacity: 0.4, scale: 15 }}
+                orbitControls={{ enablePan: true, target: cameraTarget }}
+              >
+                <Scene {...props} />
+              </SceneShell>
               <CameraTracker
+                label="CSGBend"
                 onCameraChange={props.onCameraChange}
                 onCameraUpdate={(pos, zoom) => {
                   setLiveCamera(pos);

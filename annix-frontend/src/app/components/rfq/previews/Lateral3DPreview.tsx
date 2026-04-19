@@ -1,6 +1,6 @@
 "use client";
 
-import { Center, ContactShadows, Environment, Html, Line, OrbitControls } from "@react-three/drei";
+import { Center, Html, Line } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 import { useMemo, useState } from "react";
 import * as THREE from "three";
@@ -9,7 +9,6 @@ import { FLANGE_DATA } from "@/app/lib/3d/flangeData";
 import {
   FLANGE_MATERIALS,
   GEOMETRY_CONSTANTS,
-  LIGHTING_CONFIG,
   PIPE_MATERIALS,
   SCENE_CONSTANTS,
   WELD_MATERIALS,
@@ -21,6 +20,7 @@ import {
   getLateralDimensionsForAngle,
   LateralAngleRange,
 } from "@/app/lib/utils/sabs719LateralData";
+import { SceneShell } from "./hooks";
 
 const SCALE_FACTOR = GEOMETRY_CONSTANTS.SCALE;
 const PREVIEW_SCALE = SCENE_CONSTANTS.PREVIEW_SCALE;
@@ -1382,30 +1382,16 @@ export default function Lateral3DPreview(props: Lateral3DPreviewProps) {
           camera={{ position: defaultCameraPosition, fov: 50, near: 0.01, far: 50000 }}
           style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%" }}
         >
-          <ambientLight intensity={LIGHTING_CONFIG.ambient.intensity} />
-          <directionalLight
-            position={LIGHTING_CONFIG.keyLight.position}
-            intensity={LIGHTING_CONFIG.keyLight.intensity}
-            castShadow
-          />
-          <directionalLight
-            position={LIGHTING_CONFIG.fillLight.position}
-            intensity={LIGHTING_CONFIG.fillLight.intensity}
-          />
-          <Environment
-            preset={LIGHTING_CONFIG.environment.preset}
-            background={LIGHTING_CONFIG.environment.background}
-          />
-          <group scale={PREVIEW_SCALE}>
+          <SceneShell
+            contactShadows={{ position: [0, -3, 0], opacity: 0.4, scale: 15 }}
+            orbitControls={{
+              enablePan: true,
+              minDistance: defaultControls.min,
+              maxDistance: defaultControls.max,
+            }}
+          >
             <LateralScene {...props} />
-          </group>
-          <ContactShadows position={[0, -3, 0]} opacity={0.4} scale={15} />
-          <OrbitControls
-            makeDefault
-            enablePan
-            minDistance={defaultControls.min}
-            maxDistance={defaultControls.max}
-          />
+          </SceneShell>
         </Canvas>
 
         <div className="absolute top-2 left-2 text-[10px] bg-white/90 px-2 py-1 rounded">
@@ -1594,26 +1580,18 @@ export default function Lateral3DPreview(props: Lateral3DPreviewProps) {
               camera={{ position: defaultCameraPosition, fov: 50, near: 0.01, far: 50000 }}
               style={{ width: "100%", height: "100%" }}
             >
-              <ambientLight intensity={0.4} />
-              <directionalLight
-                position={[10, 15, 10]}
-                intensity={2.5}
-                castShadow
-                shadow-mapSize={[1024, 1024]}
-              />
-              <directionalLight position={[-8, 10, -5]} intensity={1.5} />
-              <pointLight position={[0, -5, 0]} intensity={0.8} />
-              <Environment preset="warehouse" background={false} />
-              <group scale={PREVIEW_SCALE}>
+              <SceneShell
+                includeShadowMap
+                includeRimLight
+                contactShadows={{ position: [0, -3, 0], opacity: 0.4, scale: 15 }}
+                orbitControls={{
+                  enablePan: true,
+                  minDistance: defaultControls.min,
+                  maxDistance: defaultControls.max,
+                }}
+              >
                 <LateralScene {...props} />
-              </group>
-              <ContactShadows position={[0, -3, 0]} opacity={0.4} scale={15} />
-              <OrbitControls
-                makeDefault
-                enablePan
-                minDistance={defaultControls.min}
-                maxDistance={defaultControls.max}
-              />
+              </SceneShell>
             </Canvas>
           </div>
         </div>

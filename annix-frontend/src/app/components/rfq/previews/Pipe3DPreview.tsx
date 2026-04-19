@@ -1,27 +1,20 @@
 "use client";
 
-import {
-  ContactShadows,
-  Line as DreiLine,
-  Environment,
-  OrbitControls,
-  Text,
-} from "@react-three/drei";
+import { Line as DreiLine, Text } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { isNumber, keys } from "es-toolkit/compat";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { asOrbitControls } from "@/app/lib/3d";
 import {
   FLANGE_MATERIALS,
-  LIGHTING_CONFIG,
   PIPE_MATERIALS,
   WELD_MATERIALS,
 } from "@/app/lib/config/rfq/rendering3DStandards";
 import { FlangeSpecData } from "@/app/lib/hooks/useFlangeSpecs";
-import { log } from "@/app/lib/logger";
 import { useNbToOdLookup } from "@/app/lib/query/hooks";
-import { CaptureHelper, useDebouncedProps } from "./shared";
+import { CameraTracker, SceneShell } from "./hooks";
+import { useDebouncedProps } from "./shared";
 
 const Line = (props: React.ComponentProps<typeof DreiLine>) => {
   const { size } = useThree();
@@ -1692,128 +1685,6 @@ const CameraRig = ({ viewMode, targets }: { viewMode: string; targets: any }) =>
   return null;
 };
 
-const CameraTracker = ({
-  onCameraChange,
-  savedPosition,
-  savedTarget,
-}: {
-  onCameraChange?: (position: [number, number, number], target: [number, number, number]) => void;
-  savedPosition?: [number, number, number];
-  savedTarget?: [number, number, number];
-}) => {
-  const { camera, controls } = useThree();
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const lastSavedRef = useRef<string>("");
-  const pendingSaveKeyRef = useRef<string>("");
-  const hasRestoredRef = useRef(false);
-
-  useEffect(() => {
-    log.debug(
-      "Pipe CameraTracker useEffect",
-      JSON.stringify({
-        savedPosition,
-        savedTarget,
-        hasRestored: hasRestoredRef.current,
-        hasControls: !!controls,
-      }),
-    );
-    const hasValidPosition =
-      savedPosition &&
-      isNumber(savedPosition[0]) &&
-      isNumber(savedPosition[1]) &&
-      isNumber(savedPosition[2]);
-    if (hasValidPosition && controls && !hasRestoredRef.current) {
-      log.debug(
-        "Pipe CameraTracker restoring camera position",
-        JSON.stringify({
-          position: savedPosition,
-          target: savedTarget,
-        }),
-      );
-      camera.position.set(savedPosition[0], savedPosition[1], savedPosition[2]);
-      if (
-        savedTarget &&
-        isNumber(savedTarget[0]) &&
-        isNumber(savedTarget[1]) &&
-        isNumber(savedTarget[2])
-      ) {
-        const orbitControls = asOrbitControls(controls);
-        if (orbitControls) {
-          orbitControls.target.set(savedTarget[0], savedTarget[1], savedTarget[2]);
-          orbitControls.update();
-        }
-      }
-      hasRestoredRef.current = true;
-      const restoredKey = `${savedPosition[0].toFixed(2)},${savedPosition[1].toFixed(2)},${savedPosition[2].toFixed(2)}`;
-      lastSavedRef.current = restoredKey;
-      pendingSaveKeyRef.current = "";
-    }
-  }, [camera, controls, savedPosition, savedTarget]);
-
-  const frameCountRef = useRef(0);
-
-  useFrame(() => {
-    frameCountRef.current++;
-    if (frameCountRef.current % 60 === 0) {
-      log.debug(
-        "Pipe CameraTracker useFrame check",
-        JSON.stringify({
-          hasOnCameraChange: !!onCameraChange,
-          hasControls: !!controls,
-          cameraPos: [
-            camera.position.x.toFixed(2),
-            camera.position.y.toFixed(2),
-            camera.position.z.toFixed(2),
-          ],
-          lastSaved: lastSavedRef.current,
-        }),
-      );
-    }
-
-    const orbitControls = asOrbitControls(controls);
-    if (onCameraChange && orbitControls) {
-      const target = orbitControls.target;
-      const currentKey = `${camera.position.x.toFixed(2)},${camera.position.y.toFixed(2)},${camera.position.z.toFixed(2)}`;
-
-      const needsNewSave =
-        currentKey !== lastSavedRef.current && currentKey !== pendingSaveKeyRef.current;
-
-      if (needsNewSave) {
-        if (saveTimeoutRef.current) {
-          clearTimeout(saveTimeoutRef.current);
-        }
-
-        const posToSave = [camera.position.x, camera.position.y, camera.position.z] as [
-          number,
-          number,
-          number,
-        ];
-        const targetToSave = [target.x, target.y, target.z] as [number, number, number];
-        const keyToSave = currentKey;
-        pendingSaveKeyRef.current = keyToSave;
-
-        log.debug("Pipe CameraTracker setting timeout for", keyToSave);
-
-        saveTimeoutRef.current = setTimeout(() => {
-          log.debug(
-            "Pipe CameraTracker timeout fired, saving",
-            JSON.stringify({
-              position: posToSave,
-              target: targetToSave,
-              key: keyToSave,
-            }),
-          );
-          lastSavedRef.current = keyToSave;
-          pendingSaveKeyRef.current = "";
-          onCameraChange(posToSave, targetToSave);
-        }, 500);
-      }
-    }
-  });
-
-  return null;
-};
-
 export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
   //'iso', 'inlet', 'outlet', 'free'
   const [viewMode, setViewMode] = useState(props.savedCameraPosition ? "free" : "iso");
@@ -1924,44 +1795,22 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
         }}
         style={{ width: "100%", height: "100%" }}
       >
-        <CaptureHelper captureRef={captureRef} />
-        <ambientLight intensity={LIGHTING_CONFIG.ambient.intensity} />
-        <directionalLight
-          position={LIGHTING_CONFIG.keyLight.position}
-          intensity={LIGHTING_CONFIG.keyLight.intensity}
-          castShadow
-        />
-        <directionalLight
-          position={LIGHTING_CONFIG.fillLight.position}
-          intensity={LIGHTING_CONFIG.fillLight.intensity}
-        />
-
-        <Environment
-          preset={LIGHTING_CONFIG.environment.preset}
-          background={LIGHTING_CONFIG.environment.background}
-        />
-
-        <HollowPipeScene {...debouncedProps} />
-
-        <ContactShadows
-          position={[0, -0.6, 0]}
-          opacity={0.4}
-          scale={10}
-          blur={2}
-          far={4}
-          color="#000000"
-        />
-
-        <OrbitControls
-          makeDefault
-          enablePan={false}
-          minDistance={0.5}
-          maxDistance={20}
-          onStart={() => setViewMode("free")}
-        />
-
+        <SceneShell
+          captureRef={captureRef}
+          scaleGroup={false}
+          contactShadows={{ position: [0, -0.6, 0], opacity: 0.4, scale: 10, blur: 2, far: 4 }}
+          orbitControls={{
+            enablePan: false,
+            minDistance: 0.5,
+            maxDistance: 20,
+            onStart: () => setViewMode("free"),
+          }}
+        >
+          <HollowPipeScene {...debouncedProps} />
+        </SceneShell>
         <CameraRig viewMode={viewMode} targets={cameraTargets} />
         <CameraTracker
+          label="Pipe"
           onCameraChange={props.onCameraChange}
           savedPosition={props.savedCameraPosition}
           savedTarget={props.savedCameraTarget}
@@ -2485,31 +2334,21 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
               camera={{ position: [0, 1.5, 5], fov: 45, near: 0.01, far: 50000 }}
               style={{ width: "100%", height: "100%" }}
             >
-              <ambientLight intensity={LIGHTING_CONFIG.ambient.intensity} />
-              <directionalLight
-                position={LIGHTING_CONFIG.keyLight.position}
-                intensity={LIGHTING_CONFIG.keyLight.intensity}
-                castShadow
-              />
-              <directionalLight
-                position={LIGHTING_CONFIG.fillLight.position}
-                intensity={LIGHTING_CONFIG.fillLight.intensity}
-              />
-              <Environment
-                preset={LIGHTING_CONFIG.environment.preset}
-                background={LIGHTING_CONFIG.environment.background}
-              />
-              <HollowPipeScene {...debouncedProps} />
-              <ContactShadows
-                position={[0, -0.6, 0]}
-                opacity={0.4}
-                scale={10}
-                blur={2}
-                far={4}
-                color="#000000"
-              />
-              <OrbitControls makeDefault enablePan={true} minDistance={0.3} maxDistance={30} />
+              <SceneShell
+                scaleGroup={false}
+                contactShadows={{
+                  position: [0, -0.6, 0],
+                  opacity: 0.4,
+                  scale: 10,
+                  blur: 2,
+                  far: 4,
+                }}
+                orbitControls={{ enablePan: true, minDistance: 0.3, maxDistance: 30 }}
+              >
+                <HollowPipeScene {...debouncedProps} />
+              </SceneShell>
               <CameraTracker
+                label="Pipe"
                 onCameraChange={props.onCameraChange}
                 savedPosition={props.savedCameraPosition}
                 savedTarget={props.savedCameraTarget}

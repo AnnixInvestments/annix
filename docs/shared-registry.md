@@ -107,6 +107,15 @@ The canonical frontend components directory. **App-specific components live in `
 
 Existing shared components include: `DataTable`, `TableComponents`, `ConfirmModal`, `FormModal` (reusable form-based modal shell with portal, backdrop, header, scrollable body, and footer), `AdminActionModal` (approve/suspend/reject modal for admin entity actions), `ImportModal`, `MonthYearPicker`, `FileDropzone`, `SurfaceAreaDisplay`, `WeldSummaryCard`, `CalloffInput`, `SageExportModal`, `PortalToolbar`, `PdfPreviewModal` (+ `usePdfPreview` hook — mandatory for all generated PDF documents).
 
+#### RFQ 3D preview hooks (`components/rfq/previews/hooks/`)
+
+Shared scene setup and camera state for all 6 Three.js/R3F 3D preview components (ref #197):
+
+| Export | Use for |
+|---|---|
+| `SceneShell` | Standard Canvas children wrapper: ambient + key + fill + rim lights, environment, contact shadows, orbit controls. Replaces ~20 LOC of inline boilerplate per Canvas instance. |
+| `CameraTracker` | Debounced camera position/target persistence via `useFrame`. Replaces ~120 LOC of inline CameraTracker per preview. |
+
 #### RFQ form hooks (`components/rfq/forms/hooks/`)
 
 Shared hooks extracted from BendForm, FittingForm, and StraightPipeForm (ref #196):

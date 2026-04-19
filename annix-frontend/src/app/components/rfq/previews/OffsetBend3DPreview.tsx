@@ -1,6 +1,6 @@
 "use client";
 
-import { Center, ContactShadows, Environment, Html, Line, OrbitControls } from "@react-three/drei";
+import { Center, Html, Line } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 import { useState } from "react";
 import * as THREE from "three";
@@ -14,11 +14,11 @@ import {
 import { FLANGE_DATA } from "@/app/lib/3d/flangeData";
 import {
   GEOMETRY_CONSTANTS,
-  LIGHTING_CONFIG,
   SCENE_CONSTANTS,
   wallThicknessFromNB,
 } from "@/app/lib/config/rfq/rendering3DStandards";
 import { useNbToOdLookup } from "@/app/lib/query/hooks";
+import { SceneShell } from "./hooks";
 
 const SCALE_FACTOR = GEOMETRY_CONSTANTS.SCALE;
 const PREVIEW_SCALE = SCENE_CONSTANTS.PREVIEW_SCALE;
@@ -472,39 +472,26 @@ export default function OffsetBend3DPreview(props: OffsetBend3DPreviewProps) {
       gl={{ antialias: true }}
       style={isExpanded ? { background: "#1e293b" } : undefined}
     >
-      <color attach="background" args={[isExpanded ? "#1e293b" : "#f1f5f9"]} />
-
-      <ambientLight intensity={LIGHTING_CONFIG.ambient.intensity} />
-      <directionalLight
-        position={LIGHTING_CONFIG.keyLight.position}
-        intensity={LIGHTING_CONFIG.keyLight.intensity}
-        castShadow
-        shadow-mapSize-width={LIGHTING_CONFIG.shadowMapSize}
-        shadow-mapSize-height={LIGHTING_CONFIG.shadowMapSize}
-      />
-      <pointLight
-        position={LIGHTING_CONFIG.fillLight.position}
-        intensity={LIGHTING_CONFIG.fillLight.intensity}
-      />
-
-      <Center>
-        <group scale={isExpanded ? PREVIEW_SCALE * 1.5 : PREVIEW_SCALE}>
-          <OffsetBendScene {...props} />
-        </group>
-      </Center>
-
-      <ContactShadows position={[0, -2, 0]} opacity={0.4} scale={20} blur={2} far={4} />
-
-      <Environment preset="studio" />
-
-      <OrbitControls
-        enablePan={true}
-        enableZoom={true}
-        enableRotate={true}
-        minDistance={MIN_CAMERA_DISTANCE}
-        maxDistance={MAX_CAMERA_DISTANCE}
-        makeDefault
-      />
+      <SceneShell
+        environmentPreset="studio"
+        backgroundColor={isExpanded ? "#1e293b" : "#f1f5f9"}
+        includeShadowMap
+        scaleGroup={false}
+        contactShadows={{ position: [0, -2, 0], opacity: 0.4, scale: 20, blur: 2, far: 4 }}
+        orbitControls={{
+          enablePan: true,
+          enableZoom: true,
+          enableRotate: true,
+          minDistance: MIN_CAMERA_DISTANCE,
+          maxDistance: MAX_CAMERA_DISTANCE,
+        }}
+      >
+        <Center>
+          <group scale={isExpanded ? PREVIEW_SCALE * 1.5 : PREVIEW_SCALE}>
+            <OffsetBendScene {...props} />
+          </group>
+        </Center>
+      </SceneShell>
     </Canvas>
   );
 
