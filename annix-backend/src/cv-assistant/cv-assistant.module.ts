@@ -25,6 +25,7 @@ import { Candidate } from "./entities/candidate.entity";
 import { CandidateJobMatch } from "./entities/candidate-job-match.entity";
 import { CandidateReference } from "./entities/candidate-reference.entity";
 import { CvAssistantProfile } from "./entities/cv-assistant-profile.entity";
+import { CvAssistantUser } from "./entities/cv-assistant-user.entity";
 import { CvPushSubscription } from "./entities/cv-push-subscription.entity";
 import { ExternalJob } from "./entities/external-job.entity";
 import { JobMarketSource } from "./entities/job-market-source.entity";
@@ -66,6 +67,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
       ExternalJob,
       CandidateJobMatch,
       CvPushSubscription,
+      CvAssistantUser,
     ]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
