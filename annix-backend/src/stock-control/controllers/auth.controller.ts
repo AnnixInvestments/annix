@@ -186,21 +186,25 @@ export class StockControlAuthController {
   @Get("me")
   @ApiOperation({ summary: "Current user profile" })
   async currentUser(@Req() req: any) {
-    return this.authService.currentUser(req.user.id);
+    return this.authService.currentUser(req.user.unifiedUserId);
   }
 
   @UseGuards(StockControlAuthGuard)
   @Patch("me/linked-staff")
   @ApiOperation({ summary: "Link or unlink a staff member to the current user" })
   async updateLinkedStaff(@Req() req: any, @Body() body: { linkedStaffId: number | null }) {
-    return this.authService.updateLinkedStaff(req.user.id, req.user.companyId, body.linkedStaffId);
+    return this.authService.updateLinkedStaff(
+      req.user.unifiedUserId,
+      req.user.unifiedCompanyId,
+      body.linkedStaffId,
+    );
   }
 
   @UseGuards(StockControlAuthGuard)
   @Patch("me/tooltip-preference")
   @ApiOperation({ summary: "Update tooltip visibility preference" })
   async updateTooltipPreference(@Req() req: any, @Body() body: { hideTooltips: boolean }) {
-    return this.authService.updateTooltipPreference(req.user.id, body.hideTooltips);
+    return this.authService.updateTooltipPreference(req.user.unifiedUserId, body.hideTooltips);
   }
 
   @UseGuards(StockControlAuthGuard)
@@ -210,7 +214,7 @@ export class StockControlAuthController {
     @Req() req: any,
     @Body() body: { emailNotificationsEnabled?: boolean; pushNotificationsEnabled?: boolean },
   ) {
-    return this.authService.updateNotificationPreferences(req.user.id, body);
+    return this.authService.updateNotificationPreferences(req.user.unifiedUserId, body);
   }
 
   @UseGuards(StockControlAuthGuard, StockControlRoleGuard)

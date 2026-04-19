@@ -2,14 +2,17 @@ import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from
 import { JwtService } from "@nestjs/jwt";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { StockControlUser } from "../entities/stock-control-user.entity";
+import { Company } from "../../platform/entities/company.entity";
+import { StockControlProfile } from "../entities/stock-control-profile.entity";
 
 @Injectable()
 export class StockControlAuthGuard implements CanActivate {
   constructor(
     private readonly jwtService: JwtService,
-    @InjectRepository(StockControlUser)
-    private readonly userRepo: Repository<StockControlUser>,
+    @InjectRepository(StockControlProfile)
+    private readonly profileRepo: Repository<StockControlProfile>,
+    @InjectRepository(Company)
+    private readonly companyRepo: Repository<Company>,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -34,14 +37,28 @@ export class StockControlAuthGuard implements CanActivate {
         throw new UnauthorizedException("Invalid token type");
       }
 
-      const user = await this.userRepo.findOne({ where: { id: payload.sub } });
+      // JWT sub is now unified User.id. Look up the profile to resolve
+      // the legacy SC user/company IDs so downstream services continue working.
+      const profile = await this.profileRepo.findOne({
+        where: { userId: payload.sub },
+      });
+
+      let legacyScCompanyId = payload.companyId;
+      if (profile) {
+        const company = await this.companyRepo.findOne({
+          where: { id: profile.companyId },
+        });
+        legacyScCompanyId = company?.legacyScCompanyId ?? payload.companyId;
+      }
 
       request.user = {
-        id: payload.sub,
+        id: profile?.legacyScUserId ?? payload.sub,
         email: payload.email,
         name: payload.name,
-        role: user?.role ?? payload.role,
-        companyId: payload.companyId,
+        role: payload.role,
+        companyId: legacyScCompanyId,
+        unifiedUserId: payload.sub,
+        unifiedCompanyId: profile?.companyId ?? payload.companyId,
       };
 
       return true;

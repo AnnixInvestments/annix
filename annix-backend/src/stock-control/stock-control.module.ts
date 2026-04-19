@@ -10,6 +10,7 @@ import { NbOdLookupModule } from "../nb-od-lookup/nb-od-lookup.module";
 import { NixLearning } from "../nix/entities/nix-learning.entity";
 import { NixModule } from "../nix/nix.module";
 import { PipeScheduleModule } from "../pipe-schedule/pipe-schedule.module";
+import { Company } from "../platform/entities/company.entity";
 import { RubberProductCoding } from "../rubber-lining/entities/rubber-product-coding.entity";
 import { RubberRollStock } from "../rubber-lining/entities/rubber-roll-stock.entity";
 import { RubberLiningModule } from "../rubber-lining/rubber-lining.module";
@@ -185,6 +186,7 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
       StockControlUser,
       StockControlCompany,
       StockControlProfile,
+      Company,
       User,
       StockControlInvitation,
       StockControlDepartment,

@@ -225,9 +225,18 @@ export class StockControlAuthService {
     };
 
     if (!isInvitedUser) {
-      const tokens = this.generateTokens(user);
-      result.accessToken = tokens.accessToken;
-      result.refreshToken = tokens.refreshToken;
+      // Issue unified JWT tokens for auto-login after verification
+      const unifiedUser = await this.unifiedUserRepo.findOne({
+        where: { email: user.email },
+      });
+      const profile = unifiedUser
+        ? await this.profileRepo.findOne({ where: { userId: unifiedUser.id } })
+        : null;
+      if (unifiedUser && profile) {
+        const tokens = this.generateTokens(unifiedUser, profile, user.role);
+        result.accessToken = tokens.accessToken;
+        result.refreshToken = tokens.refreshToken;
+      }
     }
 
     return result;
@@ -321,123 +330,172 @@ export class StockControlAuthService {
   }
 
   async login(email: string, password: string) {
-    const user = await this.userRepo.findOne({ where: { email: ILike(email.trim()) } });
-    if (!user) {
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // Look up the unified User for password verification
+    const unifiedUser = await this.unifiedUserRepo.findOne({
+      where: { email: ILike(normalizedEmail) },
+    });
+    if (!unifiedUser) {
       throw new UnauthorizedException("Invalid credentials");
     }
 
-    const valid = await this.passwordService.verify(password, user.passwordHash);
+    const valid = await this.passwordService.verify(password, unifiedUser.passwordHash || "");
     if (!valid) {
       throw new UnauthorizedException("Invalid credentials");
     }
 
-    if (!user.emailVerified) {
-      user.emailVerified = true;
-      await this.userRepo.save(user);
+    // Get the SC profile for company and role info
+    const profile = await this.profileRepo.findOne({
+      where: { userId: unifiedUser.id },
+    });
+    if (!profile) {
+      throw new UnauthorizedException("No Stock Control profile found");
     }
 
-    const tokens = this.generateTokens(user);
+    // Get role from legacy SC user (until roles are migrated to RBAC)
+    const scUser = profile.legacyScUserId
+      ? await this.userRepo.findOne({ where: { id: profile.legacyScUserId } })
+      : null;
+    const role = scUser?.role || StockControlRole.STOREMAN;
+
+    if (!unifiedUser.emailVerified) {
+      unifiedUser.emailVerified = true;
+      await this.unifiedUserRepo.save(unifiedUser);
+    }
+
+    const tokens = this.generateTokens(unifiedUser, profile, role);
+    const name =
+      [unifiedUser.firstName, unifiedUser.lastName].filter(Boolean).join(" ") || unifiedUser.email;
     return {
       ...tokens,
       user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
+        id: unifiedUser.id,
+        email: unifiedUser.email,
+        name,
+        role,
       },
     };
   }
 
-  async currentUser(userId: number) {
-    const user = await this.userRepo.findOne({
-      where: { id: userId },
-      relations: ["company"],
+  async currentUser(unifiedUserId: number) {
+    const profile = await this.profileRepo.findOne({
+      where: { userId: unifiedUserId },
+      relations: ["user", "company"],
     });
-    if (!user) {
+    if (!profile) {
       throw new UnauthorizedException("User not found");
     }
 
-    if (user.role !== StockControlRole.ADMIN) {
+    const unifiedUser = profile.user;
+    const company = profile.company;
+
+    // Get role from legacy SC user (until roles migrate to RBAC)
+    const scUser = profile.legacyScUserId
+      ? await this.userRepo.findOne({ where: { id: profile.legacyScUserId } })
+      : null;
+    let role = scUser?.role || StockControlRole.STOREMAN;
+
+    // Auto-promote to admin if no admins exist in this company
+    if (role !== StockControlRole.ADMIN && scUser) {
       const adminCount = await this.userRepo.count({
-        where: { companyId: user.companyId, role: StockControlRole.ADMIN },
+        where: { companyId: scUser.companyId, role: StockControlRole.ADMIN },
       });
       if (adminCount === 0) {
-        user.role = StockControlRole.ADMIN;
-        await this.userRepo.save(user);
+        scUser.role = StockControlRole.ADMIN;
+        await this.userRepo.save(scUser);
+        role = StockControlRole.ADMIN;
       }
     }
 
     const [logoUrl, heroImageUrl] = await Promise.all([
-      this.resolveStorageUrl(user.company?.logoUrl ?? null),
-      this.resolveStorageUrl(user.company?.heroImageUrl ?? null),
+      this.resolveStorageUrl(company?.logoUrl ?? null),
+      this.resolveStorageUrl(company?.heroImageUrl ?? null),
     ]);
 
+    const name =
+      [unifiedUser.firstName, unifiedUser.lastName].filter(Boolean).join(" ") || unifiedUser.email;
+
     return {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-      companyId: user.companyId,
-      companyName: user.company?.name ?? null,
-      brandingType: user.company?.brandingType ?? BrandingType.ANNIX,
-      primaryColor: user.company?.primaryColor ?? null,
-      accentColor: user.company?.accentColor ?? null,
+      id: unifiedUser.id,
+      email: unifiedUser.email,
+      name,
+      role,
+      companyId: company?.id ?? null,
+      companyName: company?.name ?? null,
+      brandingType: company?.brandingType ?? BrandingType.ANNIX,
+      primaryColor: company?.primaryColor ?? null,
+      accentColor: company?.accentColor ?? null,
       logoUrl,
       heroImageUrl,
-      registrationNumber: user.company?.registrationNumber ?? null,
-      vatNumber: user.company?.vatNumber ?? null,
-      streetAddress: user.company?.streetAddress ?? null,
-      city: user.company?.city ?? null,
-      province: user.company?.province ?? null,
-      postalCode: user.company?.postalCode ?? null,
-      phone: user.company?.phone ?? null,
-      companyEmail: user.company?.email ?? null,
-      websiteUrl: user.company?.websiteUrl ?? null,
-      pipingLossFactorPct: user.company?.pipingLossFactorPct ?? 45,
-      flatPlateLossFactorPct: user.company?.flatPlateLossFactorPct ?? 20,
-      structuralSteelLossFactorPct: user.company?.structuralSteelLossFactorPct ?? 30,
-      qcEnabled: user.company?.qcEnabled ?? false,
-      messagingEnabled: user.company?.messagingEnabled ?? false,
-      staffLeaveEnabled: user.company?.staffLeaveEnabled ?? false,
-      workflowEnabled: user.company?.workflowEnabled ?? true,
-      notificationsEnabled: user.company?.notificationsEnabled ?? true,
-      linkedStaffId: user.linkedStaffId ?? null,
-      createdAt: user.createdAt,
-      companyUpdatedAt: user.company?.updatedAt ?? null,
-      hideTooltips: user.hideTooltips ?? false,
-      emailNotificationsEnabled: user.emailNotificationsEnabled ?? true,
-      pushNotificationsEnabled: user.pushNotificationsEnabled ?? true,
+      registrationNumber: company?.registrationNumber ?? null,
+      vatNumber: company?.vatNumber ?? null,
+      streetAddress: company?.streetAddress ?? null,
+      city: company?.city ?? null,
+      province: company?.province ?? null,
+      postalCode: company?.postalCode ?? null,
+      phone: company?.phone ?? null,
+      companyEmail: company?.email ?? null,
+      websiteUrl: company?.websiteUrl ?? null,
+      pipingLossFactorPct: company?.pipingLossFactorPct ?? 45,
+      flatPlateLossFactorPct: company?.flatPlateLossFactorPct ?? 20,
+      structuralSteelLossFactorPct: company?.structuralSteelLossFactorPct ?? 30,
+      qcEnabled: company?.qcEnabled ?? false,
+      messagingEnabled: company?.messagingEnabled ?? false,
+      staffLeaveEnabled: company?.staffLeaveEnabled ?? false,
+      workflowEnabled: company?.workflowEnabled ?? true,
+      notificationsEnabled: (company as any)?.notificationsEnabled ?? true,
+      linkedStaffId: profile.linkedStaffId ?? null,
+      createdAt: unifiedUser.createdAt,
+      companyUpdatedAt: company?.updatedAt ?? null,
+      hideTooltips: profile.hideTooltips ?? false,
+      emailNotificationsEnabled: profile.emailNotificationsEnabled ?? true,
+      pushNotificationsEnabled: profile.pushNotificationsEnabled ?? true,
     };
   }
 
   async updateLinkedStaff(
-    userId: number,
-    companyId: number,
+    unifiedUserId: number,
+    unifiedCompanyId: number,
     linkedStaffId: number | null,
   ): Promise<{ linkedStaffId: number | null }> {
     if (linkedStaffId !== null) {
       const staff = await this.staffRepo.findOne({
-        where: { id: linkedStaffId, companyId, active: true },
+        where: { id: linkedStaffId, unifiedCompanyId, active: true } as any,
       });
       if (!staff) {
-        throw new NotFoundException("Staff member not found or inactive");
+        // Fall back to legacy companyId lookup for transition period
+        const profile = await this.profileRepo.findOne({ where: { userId: unifiedUserId } });
+        const scUser = profile?.legacyScUserId
+          ? await this.userRepo.findOne({ where: { id: profile.legacyScUserId } })
+          : null;
+        if (scUser) {
+          const staffLegacy = await this.staffRepo.findOne({
+            where: { id: linkedStaffId, companyId: scUser.companyId, active: true },
+          });
+          if (!staffLegacy) {
+            throw new NotFoundException("Staff member not found or inactive");
+          }
+        } else {
+          throw new NotFoundException("Staff member not found or inactive");
+        }
       }
     }
 
-    await this.userRepo.update(userId, { linkedStaffId });
+    await this.profileRepo.update({ userId: unifiedUserId }, { linkedStaffId });
     return { linkedStaffId };
   }
 
   async updateTooltipPreference(
-    userId: number,
+    unifiedUserId: number,
     hideTooltips: boolean,
   ): Promise<{ hideTooltips: boolean }> {
-    await this.userRepo.update(userId, { hideTooltips });
+    await this.profileRepo.update({ userId: unifiedUserId }, { hideTooltips });
     return { hideTooltips };
   }
 
   async updateNotificationPreferences(
-    userId: number,
+    unifiedUserId: number,
     prefs: { emailNotificationsEnabled?: boolean; pushNotificationsEnabled?: boolean },
   ): Promise<{ emailNotificationsEnabled: boolean; pushNotificationsEnabled: boolean }> {
     const updates: Record<string, boolean> = {};
@@ -447,34 +505,49 @@ export class StockControlAuthService {
     if (prefs.pushNotificationsEnabled !== undefined) {
       updates.pushNotificationsEnabled = prefs.pushNotificationsEnabled;
     }
-    await this.userRepo.update(userId, updates);
-    const user = await this.userRepo.findOneOrFail({ where: { id: userId } });
+    await this.profileRepo.update({ userId: unifiedUserId }, updates);
+    const profile = await this.profileRepo.findOneOrFail({ where: { userId: unifiedUserId } });
     return {
-      emailNotificationsEnabled: user.emailNotificationsEnabled,
-      pushNotificationsEnabled: user.pushNotificationsEnabled,
+      emailNotificationsEnabled: profile.emailNotificationsEnabled,
+      pushNotificationsEnabled: profile.pushNotificationsEnabled,
     };
   }
 
-  async refreshToken(refreshToken: string) {
+  async refreshToken(refreshTokenStr: string) {
     try {
-      const payload = this.jwtService.verify(refreshToken);
+      const payload = this.jwtService.verify(refreshTokenStr);
       if (payload.tokenType !== "refresh") {
         throw new UnauthorizedException("Invalid token type");
       }
 
-      const user = await this.userRepo.findOne({ where: { id: payload.sub } });
-      if (!user) {
+      // payload.sub is now unified User.id
+      const unifiedUser = await this.unifiedUserRepo.findOne({ where: { id: payload.sub } });
+      if (!unifiedUser) {
         throw new UnauthorizedException("User not found");
       }
+
+      const profile = await this.profileRepo.findOne({ where: { userId: unifiedUser.id } });
+      if (!profile) {
+        throw new UnauthorizedException("No Stock Control profile found");
+      }
+
+      // Get role from legacy SC user
+      const scUser = profile.legacyScUserId
+        ? await this.userRepo.findOne({ where: { id: profile.legacyScUserId } })
+        : null;
+      const role = scUser?.role || StockControlRole.STOREMAN;
+      const name =
+        [unifiedUser.firstName, unifiedUser.lastName].filter(Boolean).join(" ") ||
+        unifiedUser.email;
 
       return {
         accessToken: this.jwtService.sign(
           {
-            sub: user.id,
-            email: user.email,
-            name: user.name,
-            role: user.role,
-            companyId: user.companyId,
+            sub: unifiedUser.id,
+            email: unifiedUser.email,
+            name,
+            role,
+            companyId: profile.companyId,
             type: "stock-control",
           },
           { expiresIn: "1h" },
@@ -808,24 +881,39 @@ export class StockControlAuthService {
 
   async adminBridge(adminEmail: string) {
     const normalizedEmail = adminEmail.toLowerCase().trim();
-    const scUser = await this.userRepo.findOne({
+    const unifiedUser = await this.unifiedUserRepo.findOne({
       where: { email: normalizedEmail },
     });
 
-    if (!scUser) {
+    if (!unifiedUser) {
       throw new NotFoundException(
         "No Stock Control account found for this admin email. Please register first.",
       );
     }
 
-    const tokens = this.generateTokens(scUser);
+    const profile = await this.profileRepo.findOne({
+      where: { userId: unifiedUser.id },
+    });
+    if (!profile) {
+      throw new NotFoundException("No Stock Control profile found for this admin email.");
+    }
+
+    // Get role from legacy SC user
+    const scUser = profile.legacyScUserId
+      ? await this.userRepo.findOne({ where: { id: profile.legacyScUserId } })
+      : null;
+    const role = scUser?.role || StockControlRole.ADMIN;
+    const name =
+      [unifiedUser.firstName, unifiedUser.lastName].filter(Boolean).join(" ") || unifiedUser.email;
+
+    const tokens = this.generateTokens(unifiedUser, profile, role);
     return {
       ...tokens,
       user: {
-        id: scUser.id,
-        email: scUser.email,
-        name: scUser.name,
-        role: scUser.role,
+        id: unifiedUser.id,
+        email: unifiedUser.email,
+        name,
+        role,
       },
     };
   }
@@ -867,14 +955,17 @@ export class StockControlAuthService {
     }
   }
 
-  private generateTokens(user: StockControlUser) {
+  private generateTokens(unifiedUser: User, profile: StockControlProfile, role: string) {
+    const name =
+      [unifiedUser.firstName, unifiedUser.lastName].filter(Boolean).join(" ") || unifiedUser.email;
+
     const accessToken = this.jwtService.sign(
       {
-        sub: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        companyId: user.companyId,
+        sub: unifiedUser.id,
+        email: unifiedUser.email,
+        name,
+        role,
+        companyId: profile.companyId,
         type: "stock-control",
       },
       { expiresIn: "1h" },
@@ -882,8 +973,8 @@ export class StockControlAuthService {
 
     const refreshToken = this.jwtService.sign(
       {
-        sub: user.id,
-        companyId: user.companyId,
+        sub: unifiedUser.id,
+        companyId: profile.companyId,
         tokenType: "refresh",
         type: "stock-control",
       },

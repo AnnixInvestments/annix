@@ -108,6 +108,80 @@ describe("StockControlAuthService", () => {
     verify: jest.fn().mockResolvedValue(true),
   };
 
+  const mockUnifiedUserRepo = {
+    findOne: jest.fn(),
+    create: jest.fn().mockImplementation((data: any) => ({ ...data })),
+    save: jest.fn().mockImplementation((entity: any) => Promise.resolve({ id: 1, ...entity })),
+    createQueryBuilder: jest.fn().mockReturnValue(mockQueryBuilder),
+  };
+
+  const mockProfileRepo = {
+    findOne: jest.fn(),
+    findOneOrFail: jest.fn(),
+    create: jest.fn().mockImplementation((data: any) => ({ ...data })),
+    save: jest.fn().mockImplementation((entity: any) => Promise.resolve(entity)),
+    update: jest.fn().mockResolvedValue({ affected: 1 }),
+  };
+
+  const baseUnifiedUser = {
+    id: 100,
+    email: "test@example.com",
+    firstName: "Test",
+    lastName: "User",
+    passwordHash: "hashed-password",
+    emailVerified: true,
+    status: "active",
+    createdAt: now().toJSDate(),
+    updatedAt: now().toJSDate(),
+  };
+
+  const baseProfile = {
+    id: 1,
+    userId: 100,
+    companyId: 20,
+    legacyScUserId: 1,
+    hideTooltips: false,
+    emailNotificationsEnabled: true,
+    pushNotificationsEnabled: true,
+    linkedStaffId: null,
+    linkedStaff: null,
+    user: null as any,
+    company: null as any,
+    createdAt: now().toJSDate(),
+    updatedAt: now().toJSDate(),
+  };
+
+  const baseCompany = {
+    id: 20,
+    name: "Test Company",
+    companyType: "MANUFACTURER",
+    brandingType: BrandingType.ANNIX,
+    brandingAuthorized: false,
+    primaryColor: null,
+    accentColor: null,
+    logoUrl: null,
+    heroImageUrl: null,
+    registrationNumber: null,
+    vatNumber: null,
+    streetAddress: null,
+    city: null,
+    province: null,
+    postalCode: null,
+    phone: null,
+    email: null,
+    websiteUrl: null,
+    pipingLossFactorPct: 45,
+    flatPlateLossFactorPct: 20,
+    structuralSteelLossFactorPct: 30,
+    qcEnabled: false,
+    messagingEnabled: false,
+    staffLeaveEnabled: false,
+    workflowEnabled: true,
+    legacyScCompanyId: 10,
+    createdAt: now().toJSDate(),
+    updatedAt: now().toJSDate(),
+  };
+
   const baseUser: StockControlUser = {
     id: 1,
     email: "test@example.com",
@@ -186,23 +260,8 @@ describe("StockControlAuthService", () => {
             delete: jest.fn().mockResolvedValue(null),
           },
         },
-        {
-          provide: getRepositoryToken(User),
-          useValue: {
-            findOne: jest.fn(),
-            create: jest.fn().mockImplementation((data) => ({ ...data })),
-            save: jest.fn().mockImplementation((entity) => Promise.resolve({ id: 1, ...entity })),
-            createQueryBuilder: jest.fn().mockReturnValue(mockQueryBuilder),
-          },
-        },
-        {
-          provide: getRepositoryToken(StockControlProfile),
-          useValue: {
-            findOne: jest.fn(),
-            create: jest.fn().mockImplementation((data) => ({ ...data })),
-            save: jest.fn().mockImplementation((entity) => Promise.resolve(entity)),
-          },
-        },
+        { provide: getRepositoryToken(User), useValue: mockUnifiedUserRepo },
+        { provide: getRepositoryToken(StockControlProfile), useValue: mockProfileRepo },
         { provide: JwtService, useValue: mockJwtService },
         { provide: EmailService, useValue: mockEmailService },
         { provide: S3StorageService, useValue: mockS3StorageService },
@@ -384,20 +443,21 @@ describe("StockControlAuthService", () => {
 
   describe("login", () => {
     it("returns tokens and user data on valid credentials", async () => {
-      mockUserRepo.findOne.mockResolvedValue({ ...baseUser, emailVerified: true });
-      (mockedBcrypt.compare as jest.Mock).mockResolvedValue(true);
+      mockUnifiedUserRepo.findOne.mockResolvedValue({ ...baseUnifiedUser });
+      mockProfileRepo.findOne.mockResolvedValue({ ...baseProfile });
+      mockUserRepo.findOne.mockResolvedValue({ ...baseUser });
       mockJwtService.sign.mockReturnValueOnce("access-token").mockReturnValueOnce("refresh-token");
 
       const result = await service.login("test@example.com", "password");
 
       expect(result.accessToken).toBe("access-token");
       expect(result.refreshToken).toBe("refresh-token");
-      expect(result.user.id).toBe(1);
+      expect(result.user.id).toBe(100);
       expect(result.user.email).toBe("test@example.com");
     });
 
     it("throws UnauthorizedException for unknown email", async () => {
-      mockUserRepo.findOne.mockResolvedValue(null);
+      mockUnifiedUserRepo.findOne.mockResolvedValue(null);
 
       await expect(service.login("unknown@example.com", "password")).rejects.toThrow(
         UnauthorizedException,
@@ -405,7 +465,7 @@ describe("StockControlAuthService", () => {
     });
 
     it("throws UnauthorizedException for wrong password", async () => {
-      mockUserRepo.findOne.mockResolvedValue(baseUser);
+      mockUnifiedUserRepo.findOne.mockResolvedValue({ ...baseUnifiedUser });
       mockPasswordService.verify.mockResolvedValueOnce(false);
 
       await expect(service.login("test@example.com", "wrong")).rejects.toThrow(
@@ -414,13 +474,14 @@ describe("StockControlAuthService", () => {
     });
 
     it("auto-verifies email on first login if not verified", async () => {
-      const unverifiedUser = { ...baseUser, emailVerified: false };
-      mockUserRepo.findOne.mockResolvedValue(unverifiedUser);
-      (mockedBcrypt.compare as jest.Mock).mockResolvedValue(true);
+      const unverifiedUser = { ...baseUnifiedUser, emailVerified: false };
+      mockUnifiedUserRepo.findOne.mockResolvedValue(unverifiedUser);
+      mockProfileRepo.findOne.mockResolvedValue({ ...baseProfile });
+      mockUserRepo.findOne.mockResolvedValue({ ...baseUser });
 
       await service.login("test@example.com", "password");
 
-      expect(mockUserRepo.save).toHaveBeenCalledWith(
+      expect(mockUnifiedUserRepo.save).toHaveBeenCalledWith(
         expect.objectContaining({ emailVerified: true }),
       );
     });
@@ -428,8 +489,10 @@ describe("StockControlAuthService", () => {
 
   describe("refreshToken", () => {
     it("returns new access token for valid refresh token", async () => {
-      mockJwtService.verify.mockReturnValue({ sub: 1, tokenType: "refresh" });
-      mockUserRepo.findOne.mockResolvedValue(baseUser);
+      mockJwtService.verify.mockReturnValue({ sub: 100, tokenType: "refresh" });
+      mockUnifiedUserRepo.findOne.mockResolvedValue({ ...baseUnifiedUser });
+      mockProfileRepo.findOne.mockResolvedValue({ ...baseProfile });
+      mockUserRepo.findOne.mockResolvedValue({ ...baseUser });
       mockJwtService.sign.mockReturnValue("new-access-token");
 
       const result = await service.refreshToken("valid-refresh-token");
@@ -437,7 +500,7 @@ describe("StockControlAuthService", () => {
       expect(result.accessToken).toBe("new-access-token");
       expect(mockJwtService.sign).toHaveBeenCalledWith(
         expect.objectContaining({
-          sub: 1,
+          sub: 100,
           email: "test@example.com",
           type: "stock-control",
         }),
@@ -446,7 +509,7 @@ describe("StockControlAuthService", () => {
     });
 
     it("throws UnauthorizedException for invalid token type", async () => {
-      mockJwtService.verify.mockReturnValue({ sub: 1, tokenType: "access" });
+      mockJwtService.verify.mockReturnValue({ sub: 100, tokenType: "access" });
 
       await expect(service.refreshToken("access-token-as-refresh")).rejects.toThrow(
         UnauthorizedException,
@@ -455,7 +518,7 @@ describe("StockControlAuthService", () => {
 
     it("throws UnauthorizedException when user not found", async () => {
       mockJwtService.verify.mockReturnValue({ sub: 999, tokenType: "refresh" });
-      mockUserRepo.findOne.mockResolvedValue(null);
+      mockUnifiedUserRepo.findOne.mockResolvedValue(null);
 
       await expect(service.refreshToken("orphan-refresh-token")).rejects.toThrow(
         UnauthorizedException,
@@ -480,6 +543,8 @@ describe("StockControlAuthService", () => {
         role: StockControlRole.ADMIN,
       };
       mockUserRepo.findOne.mockResolvedValue(user);
+      mockUnifiedUserRepo.findOne.mockResolvedValue({ ...baseUnifiedUser });
+      mockProfileRepo.findOne.mockResolvedValue({ ...baseProfile });
       mockJwtService.sign.mockReturnValueOnce("access-token").mockReturnValueOnce("refresh-token");
 
       const result = await service.verifyEmail("token");
@@ -598,57 +663,73 @@ describe("StockControlAuthService", () => {
 
   describe("currentUser", () => {
     it("returns user profile with company details", async () => {
+      mockProfileRepo.findOne.mockResolvedValue({
+        ...baseProfile,
+        user: { ...baseUnifiedUser },
+        company: { ...baseCompany },
+      });
       mockUserRepo.findOne.mockResolvedValue({ ...baseUser });
 
-      const result = await service.currentUser(1);
+      const result = await service.currentUser(100);
 
-      expect(result.id).toBe(1);
+      expect(result.id).toBe(100);
       expect(result.email).toBe("test@example.com");
       expect(result.companyName).toBe("Test Company");
       expect(result.brandingType).toBe(BrandingType.ANNIX);
     });
 
     it("throws UnauthorizedException when user not found", async () => {
-      mockUserRepo.findOne.mockResolvedValue(null);
+      mockProfileRepo.findOne.mockResolvedValue(null);
 
       await expect(service.currentUser(999)).rejects.toThrow(UnauthorizedException);
     });
 
     it("promotes user to admin when no admin exists in company", async () => {
-      const nonAdminUser = { ...baseUser, role: StockControlRole.STOREMAN };
-      mockUserRepo.findOne.mockResolvedValue(nonAdminUser);
+      const scUser = { ...baseUser, role: StockControlRole.STOREMAN };
+      mockProfileRepo.findOne.mockResolvedValue({
+        ...baseProfile,
+        user: { ...baseUnifiedUser },
+        company: { ...baseCompany },
+      });
+      mockUserRepo.findOne.mockResolvedValue(scUser);
       mockUserRepo.count.mockResolvedValue(0);
 
-      await service.currentUser(1);
+      await service.currentUser(100);
 
-      expect(nonAdminUser.role).toBe(StockControlRole.ADMIN);
+      expect(scUser.role).toBe(StockControlRole.ADMIN);
       expect(mockUserRepo.save).toHaveBeenCalledWith(
         expect.objectContaining({ role: StockControlRole.ADMIN }),
       );
     });
 
     it("does not promote when admin already exists", async () => {
-      const nonAdminUser = { ...baseUser, role: StockControlRole.STOREMAN };
-      mockUserRepo.findOne.mockResolvedValue(nonAdminUser);
+      const scUser = { ...baseUser, role: StockControlRole.STOREMAN };
+      mockProfileRepo.findOne.mockResolvedValue({
+        ...baseProfile,
+        user: { ...baseUnifiedUser },
+        company: { ...baseCompany },
+      });
+      mockUserRepo.findOne.mockResolvedValue(scUser);
       mockUserRepo.count.mockResolvedValue(1);
 
-      await service.currentUser(1);
+      await service.currentUser(100);
 
-      expect(nonAdminUser.role).toBe(StockControlRole.STOREMAN);
+      expect(scUser.role).toBe(StockControlRole.STOREMAN);
     });
 
     it("resolves S3 presigned URLs for logo and hero image", async () => {
-      const userWithBranding = {
-        ...baseUser,
+      mockProfileRepo.findOne.mockResolvedValue({
+        ...baseProfile,
+        user: { ...baseUnifiedUser },
         company: {
-          ...baseUser.company,
+          ...baseCompany,
           logoUrl: "stock-control/logo.png",
           heroImageUrl: "stock-control/hero.png",
         },
-      };
-      mockUserRepo.findOne.mockResolvedValue(userWithBranding);
+      });
+      mockUserRepo.findOne.mockResolvedValue({ ...baseUser });
 
-      const result = await service.currentUser(1);
+      const result = await service.currentUser(100);
 
       expect(mockS3StorageService.presignedUrl).toHaveBeenCalledTimes(2);
       expect(result.logoUrl).toBe("https://s3.example.com/presigned");
@@ -746,33 +827,39 @@ describe("StockControlAuthService", () => {
 
   describe("updateLinkedStaff", () => {
     it("links staff member to user", async () => {
-      mockStaffRepo.findOne.mockResolvedValue({ id: 5, companyId: 10, active: true });
+      mockStaffRepo.findOne
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({ id: 5, companyId: 10, active: true });
+      mockProfileRepo.findOne.mockResolvedValue({ ...baseProfile });
+      mockUserRepo.findOne.mockResolvedValue({ ...baseUser });
 
-      const result = await service.updateLinkedStaff(1, 10, 5);
+      const result = await service.updateLinkedStaff(100, 20, 5);
 
-      expect(mockUserRepo.update).toHaveBeenCalledWith(1, { linkedStaffId: 5 });
+      expect(mockProfileRepo.update).toHaveBeenCalledWith({ userId: 100 }, { linkedStaffId: 5 });
       expect(result.linkedStaffId).toBe(5);
     });
 
     it("unlinks staff member when null", async () => {
-      const result = await service.updateLinkedStaff(1, 10, null);
+      const result = await service.updateLinkedStaff(100, 20, null);
 
-      expect(mockUserRepo.update).toHaveBeenCalledWith(1, { linkedStaffId: null });
+      expect(mockProfileRepo.update).toHaveBeenCalledWith({ userId: 100 }, { linkedStaffId: null });
       expect(result.linkedStaffId).toBeNull();
     });
 
     it("throws NotFoundException for inactive/missing staff", async () => {
       mockStaffRepo.findOne.mockResolvedValue(null);
+      mockProfileRepo.findOne.mockResolvedValue({ ...baseProfile });
+      mockUserRepo.findOne.mockResolvedValue({ ...baseUser });
 
-      await expect(service.updateLinkedStaff(1, 10, 99)).rejects.toThrow(NotFoundException);
+      await expect(service.updateLinkedStaff(100, 20, 99)).rejects.toThrow(NotFoundException);
     });
   });
 
   describe("updateTooltipPreference", () => {
     it("updates tooltip preference", async () => {
-      const result = await service.updateTooltipPreference(1, true);
+      const result = await service.updateTooltipPreference(100, true);
 
-      expect(mockUserRepo.update).toHaveBeenCalledWith(1, { hideTooltips: true });
+      expect(mockProfileRepo.update).toHaveBeenCalledWith({ userId: 100 }, { hideTooltips: true });
       expect(result.hideTooltips).toBe(true);
     });
   });
