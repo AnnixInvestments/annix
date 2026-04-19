@@ -173,12 +173,6 @@ export class Company {
   @Column({ name: "legacy_rubber_company_id", type: "int", nullable: true })
   legacyRubberCompanyId: number | null;
 
-  @Column({ name: "legacy_customer_company_id", type: "int", nullable: true })
-  legacyCustomerCompanyId: number | null;
-
-  @Column({ name: "legacy_supplier_company_id", type: "int", nullable: true })
-  legacySupplierCompanyId: number | null;
-
   @Column({ name: "legacy_comply_company_id", type: "int", nullable: true })
   legacyComplyCompanyId: number | null;
 
