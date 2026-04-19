@@ -84,28 +84,35 @@ async function bootstrap() {
   const port = process.env.PORT ?? 4001;
 
   if (isProduction) {
-    // Start listening BEFORE Next.js prepare so the Fly.io health check
-    // passes while the frontend compiles. API routes are ready immediately;
-    // frontend requests get a 503 until nextApp.prepare() finishes.
-    await app.listen(port, "0.0.0.0");
-
     const next = require("next");
     const frontendDir = path.resolve(__dirname, "..", "..", "..", "annix-frontend");
     const nextApp = next({ dev: false, dir: frontendDir });
-    await nextApp.prepare();
-    const nextHandler = nextApp.getRequestHandler();
 
+    // Register the Next.js catch-all BEFORE listening so it's in the
+    // middleware chain ahead of NestJS's 404 handler. A ready flag gates
+    // frontend requests until nextApp.prepare() finishes.
+    let nextReady = false;
     const expressApp = app.getHttpAdapter().getInstance();
-    expressApp.use((req, res, next) => {
+    expressApp.use((req, res, nextMiddleware) => {
       if (
         req.path.startsWith("/api") ||
         req.path === "/health" ||
         req.path.startsWith("/swagger")
       ) {
-        return next();
+        return nextMiddleware();
       }
-      return nextHandler(req, res);
+      if (!nextReady) {
+        res.status(503).send("Starting up — please refresh in a moment.");
+        return;
+      }
+      return nextApp.getRequestHandler()(req, res);
     });
+
+    await app.listen(port, "0.0.0.0");
+
+    // Prepare Next.js in the background — health check already passes.
+    await nextApp.prepare();
+    nextReady = true;
   } else {
     await app.listen(port, "0.0.0.0");
   }
