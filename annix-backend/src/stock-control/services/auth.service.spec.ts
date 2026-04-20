@@ -684,37 +684,17 @@ describe("StockControlAuthService", () => {
       await expect(service.currentUser(999)).rejects.toThrow(UnauthorizedException);
     });
 
-    it("promotes user to admin when no admin exists in company", async () => {
-      const scUser = { ...baseUser, role: StockControlRole.STOREMAN };
+    it("always returns storeman role from currentUser", async () => {
       mockProfileRepo.findOne.mockResolvedValue({
         ...baseProfile,
         user: { ...baseUnifiedUser },
         company: { ...baseCompany },
       });
-      mockUserRepo.findOne.mockResolvedValue(scUser);
-      mockUserRepo.count.mockResolvedValue(0);
+      mockUserRepo.findOne.mockResolvedValue({ ...baseUser });
 
-      await service.currentUser(100);
+      const result = await service.currentUser(100);
 
-      expect(scUser.role).toBe(StockControlRole.ADMIN);
-      expect(mockUserRepo.save).toHaveBeenCalledWith(
-        expect.objectContaining({ role: StockControlRole.ADMIN }),
-      );
-    });
-
-    it("does not promote when admin already exists", async () => {
-      const scUser = { ...baseUser, role: StockControlRole.STOREMAN };
-      mockProfileRepo.findOne.mockResolvedValue({
-        ...baseProfile,
-        user: { ...baseUnifiedUser },
-        company: { ...baseCompany },
-      });
-      mockUserRepo.findOne.mockResolvedValue(scUser);
-      mockUserRepo.count.mockResolvedValue(1);
-
-      await service.currentUser(100);
-
-      expect(scUser.role).toBe(StockControlRole.STOREMAN);
+      expect(result.role).toBe(StockControlRole.STOREMAN);
     });
 
     it("resolves S3 presigned URLs for logo and hero image", async () => {
@@ -827,11 +807,7 @@ describe("StockControlAuthService", () => {
 
   describe("updateLinkedStaff", () => {
     it("links staff member to user", async () => {
-      mockStaffRepo.findOne
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce({ id: 5, companyId: 10, active: true });
-      mockProfileRepo.findOne.mockResolvedValue({ ...baseProfile });
-      mockUserRepo.findOne.mockResolvedValue({ ...baseUser });
+      mockStaffRepo.findOne.mockResolvedValue({ id: 5, unifiedCompanyId: 20, active: true });
 
       const result = await service.updateLinkedStaff(100, 20, 5);
 
