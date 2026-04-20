@@ -132,12 +132,18 @@ export function QualityTab(props: QualityTabProps) {
       setSuccess(null);
       const result = await stockControlApiClient.compileDataBook(jobCardId, force);
       setSuccess(`Data book compiled with ${result.certificateCount} certificates`);
-      fetchQualityData();
-      const blob = await stockControlApiClient.downloadDataBook(jobCardId);
-      const url = URL.createObjectURL(blob);
-      pdfPreview.open(url, `DataBook-JC${jobCardId}.pdf`);
+      await fetchQualityData();
+      try {
+        const blob = await stockControlApiClient.downloadDataBook(jobCardId);
+        const url = URL.createObjectURL(blob);
+        pdfPreview.open(url, `DataBook-JC${jobCardId}.pdf`);
+      } catch (dlErr) {
+        const dlMsg = dlErr instanceof Error ? dlErr.message : String(dlErr);
+        setError(`Data book compiled but failed to open preview: ${dlMsg}`);
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to compile data book");
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(`Failed to compile data book: ${msg}`);
     } finally {
       setIsCompiling(false);
     }

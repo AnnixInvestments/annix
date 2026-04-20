@@ -701,10 +701,26 @@ export class QcMeasurementController {
   @Get("environmental-date-range")
   @ApiOperation({ summary: "Required environmental date range based on Positector uploads" })
   async environmentalDateRange(@Req() req: any, @Param("jobCardId") jobCardId: number) {
-    return this.batchAssignmentService.requiredEnvironmentalDateRange(
-      req.user.companyId,
+    const companyId = req.user.companyId;
+    const initial = await this.batchAssignmentService.requiredEnvironmentalDateRange(
+      companyId,
       jobCardId,
     );
+
+    if (initial.missingDates.length > 0 && initial.earliestDate && initial.latestDate) {
+      const linked = await this.positectorUploadService.autoLinkEnvironmentalByDateRange(
+        companyId,
+        jobCardId,
+        initial.earliestDate,
+        initial.latestDate,
+        req.user,
+      );
+      if (linked > 0) {
+        return this.batchAssignmentService.requiredEnvironmentalDateRange(companyId, jobCardId);
+      }
+    }
+
+    return initial;
   }
 
   @Post("defelsko-batches")

@@ -146,12 +146,19 @@ export class CertificateController {
     @Param("jobCardId") jobCardId: number,
     @Body() body?: { force?: boolean },
   ) {
-    return this.certificateService.compileDataBook(
-      req.user.companyId,
-      jobCardId,
-      req.user,
-      body?.force ?? false,
-    );
+    try {
+      return await this.certificateService.compileDataBook(
+        req.user.companyId,
+        jobCardId,
+        req.user,
+        body?.force ?? false,
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      const stack = err instanceof Error ? err.stack : "";
+      this.logger.error(`Data book compile failed for JC ${jobCardId}: ${msg}`, stack);
+      throw err;
+    }
   }
 
   @Get("job-card/:jobCardId/data-book")
@@ -161,18 +168,25 @@ export class CertificateController {
     @Res() res: Response,
     @Param("jobCardId") jobCardId: number,
   ) {
-    const { buffer, filename } = await this.certificateService.downloadDataBook(
-      req.user.companyId,
-      jobCardId,
-    );
+    try {
+      const { buffer, filename } = await this.certificateService.downloadDataBook(
+        req.user.companyId,
+        jobCardId,
+      );
 
-    res.set({
-      "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="${filename}"`,
-      "Content-Length": buffer.length.toString(),
-    });
+      res.set({
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `attachment; filename="${filename}"`,
+        "Content-Length": buffer.length.toString(),
+      });
 
-    res.end(buffer);
+      res.end(buffer);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      const stack = err instanceof Error ? err.stack : "";
+      this.logger.error(`Data book download failed for JC ${jobCardId}: ${msg}`, stack);
+      throw err;
+    }
   }
 
   @Get("recent-batches/:stockItemId")

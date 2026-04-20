@@ -475,6 +475,8 @@ export class CertificateService {
       }
     }
 
+    this.logger.log(`[compileDataBook] JC ${jobCardId}: starting compilation`);
+
     const [certs, calCerts, jobCard, company, coatingAnalysis] = await Promise.all([
       this.certificatesForJobCard(companyId, jobCardId),
       this.calCertRepo.find({
@@ -485,6 +487,10 @@ export class CertificateService {
       this.companyRepo.findOne({ where: { id: companyId } }),
       this.coatingRepo.findOne({ where: { companyId, jobCardId } }),
     ]);
+
+    this.logger.log(
+      `[compileDataBook] JC ${jobCardId}: ${certs.length} supplier certs, ${calCerts.length} cal certs, qcEnabled=${company?.qcEnabled}`,
+    );
 
     const qcEnabled = company?.qcEnabled ?? false;
 
@@ -501,9 +507,13 @@ export class CertificateService {
         ])
       : [[], []];
 
+    this.logger.log(`[compileDataBook] JC ${jobCardId}: generating structured sections...`);
     const structuredBuffer = await this.dataBookPdfService.generateStructuredSections(
       companyId,
       jobCardId,
+    );
+    this.logger.log(
+      `[compileDataBook] JC ${jobCardId}: structured sections ${structuredBuffer ? `${structuredBuffer.length} bytes` : "null"}`,
     );
 
     if (certs.length === 0 && calCerts.length === 0 && !structuredBuffer) {
@@ -524,6 +534,7 @@ export class CertificateService {
 
     const totalCertCount = certs.length + calCerts.length;
 
+    this.logger.log(`[compileDataBook] JC ${jobCardId}: generating cover page...`);
     const coverBuffer = await generateBrandedCoverPage(
       PDFKit,
       company ?? null,
@@ -537,6 +548,9 @@ export class CertificateService {
       { fetchLogo },
     );
 
+    this.logger.log(
+      `[compileDataBook] JC ${jobCardId}: cover page generated (${coverBuffer.length} bytes), merging...`,
+    );
     const coverPdf = await pdfLib.PDFDocument.load(coverBuffer);
     const coverPages = await mergedPdf.copyPages(coverPdf, coverPdf.getPageIndices());
     coverPages.forEach((page) => mergedPdf.addPage(page));
@@ -639,7 +653,11 @@ export class CertificateService {
       }
     }
 
+    this.logger.log(`[compileDataBook] JC ${jobCardId}: all sections merged, saving final PDF...`);
     const mergedBuffer = Buffer.from(await mergedPdf.save());
+    this.logger.log(
+      `[compileDataBook] JC ${jobCardId}: final PDF ${mergedBuffer.length} bytes, uploading to S3...`,
+    );
 
     const filename = `DataBook-JC${jobCardId}-${now().toFormat("yyyyMMdd-HHmmss")}.pdf`;
     const subPath = `${StorageArea.STOCK_CONTROL}/data-books/${companyId}/${jobCardId}`;
@@ -685,9 +703,10 @@ export class CertificateService {
       isStale: false,
     });
 
+    this.logger.log(`[compileDataBook] JC ${jobCardId}: S3 upload complete, saving DB record...`);
     const saved = await this.dataBookRepo.save(dataBook);
     this.logger.log(
-      `Data book compiled for job card ${jobCardId}: ${totalCertCount} certificates (${certs.length} supplier + ${calCerts.length} calibration), ${mergedBuffer.length} bytes`,
+      `[compileDataBook] JC ${jobCardId}: SUCCESS — ${totalCertCount} certificates (${certs.length} supplier + ${calCerts.length} calibration), ${mergedBuffer.length} bytes, id=${saved.id}`,
     );
 
     return saved;

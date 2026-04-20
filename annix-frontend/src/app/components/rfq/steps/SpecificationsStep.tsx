@@ -595,26 +595,23 @@ export default function SpecificationsStep(props: {
   const rawEcpServiceLife = globalSpecs?.ecpServiceLife;
   const rawExternalTopcoatColour = globalSpecs?.externalTopcoatColour;
 
-  const rawInstallationType =
-    globalSpecs.externalCoatingRecommendation.environmentProfile?.installationType;
-
-  const rawIso12944Category2 =
-    globalSpecs.externalCoatingRecommendation.environmentProfile?.iso12944Category;
-
-  const rawMarineInfluence2 =
-    globalSpecs.externalCoatingRecommendation.environmentProfile?.marineInfluence;
-
-  const rawUvExposure = globalSpecs.externalCoatingRecommendation.environmentProfile?.uvExposure;
-
-  const rawTemperature = globalSpecs.externalCoatingRecommendation.environmentProfile?.temperature;
-
-  const rawServiceLife = globalSpecs.externalCoatingRecommendation.environmentProfile?.serviceLife;
-
-  const rawMechanicalRisk =
-    globalSpecs.externalCoatingRecommendation.environmentProfile?.mechanicalRisk;
-
-  const rawIndustrialPollution2 =
-    globalSpecs.externalCoatingRecommendation.environmentProfile?.industrialPollution;
+  const envProfile = globalSpecs.externalCoatingRecommendation?.environmentProfile;
+  const epInstallationType = envProfile?.installationType;
+  const rawInstallationType = epInstallationType || null;
+  const epIso12944Category = envProfile?.iso12944Category;
+  const rawIso12944Category2 = epIso12944Category || null;
+  const epMarineInfluence = envProfile?.marineInfluence;
+  const rawMarineInfluence2 = epMarineInfluence || null;
+  const epUvExposure = envProfile?.uvExposure;
+  const rawUvExposure = epUvExposure || null;
+  const epTemperature = envProfile?.temperature;
+  const rawTemperature = epTemperature || null;
+  const epServiceLife = envProfile?.serviceLife;
+  const rawServiceLife = epServiceLife || null;
+  const epMechanicalRisk = envProfile?.mechanicalRisk;
+  const rawMechanicalRisk = epMechanicalRisk || null;
+  const epIndustrialPollution = envProfile?.industrialPollution;
+  const rawIndustrialPollution2 = epIndustrialPollution || null;
 
   const rawExternalCoatingType = gsExternalCoatingType;
   const rawExternalRubberType = globalSpecs?.externalRubberType;
