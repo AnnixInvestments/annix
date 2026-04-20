@@ -211,7 +211,7 @@ export function DataBookCompletenessPanel({
               onClick={onDownload}
               className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
             >
-              Download PDF
+              View PDF
             </button>
           )}
         </div>

@@ -2,6 +2,7 @@
 
 import { isArray, isNumber } from "es-toolkit/compat";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
 import type {
   BackgroundStepStatus,
   CalibrationCertificate,
@@ -80,6 +81,7 @@ export function QualityTab(props: QualityTabProps) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [activeForm, setActiveForm] = useState<QcFormType>(null);
+  const pdfPreview = usePdfPreview();
   const [editingShoreHardness, setEditingShoreHardness] = useState<QcShoreHardnessRecord | null>(
     null,
   );
@@ -131,6 +133,9 @@ export function QualityTab(props: QualityTabProps) {
       const result = await stockControlApiClient.compileDataBook(jobCardId, force);
       setSuccess(`Data book compiled with ${result.certificateCount} certificates`);
       fetchQualityData();
+      const blob = await stockControlApiClient.downloadDataBook(jobCardId);
+      const url = URL.createObjectURL(blob);
+      pdfPreview.open(url, `DataBook-JC${jobCardId}.pdf`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to compile data book");
     } finally {
@@ -141,7 +146,9 @@ export function QualityTab(props: QualityTabProps) {
   const handleDownload = async () => {
     try {
       setError(null);
-      await stockControlApiClient.downloadDataBook(jobCardId);
+      const blob = await stockControlApiClient.downloadDataBook(jobCardId);
+      const url = URL.createObjectURL(blob);
+      pdfPreview.open(url, `DataBook-JC${jobCardId}.pdf`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to download data book");
     }
@@ -802,6 +809,7 @@ export function QualityTab(props: QualityTabProps) {
         profileType="paint"
         coatLabel={paintProfileCoatLabel}
       />
+      <PdfPreviewModal state={pdfPreview.state} onClose={pdfPreview.close} />
     </div>
   );
 }
