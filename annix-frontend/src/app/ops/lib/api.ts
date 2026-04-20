@@ -1,4 +1,5 @@
-import { browserBaseUrl, getAuthHeaders } from "@/lib/api-config";
+import { stockControlTokenStore } from "@/app/lib/api/portalTokenStores";
+import { browserBaseUrl } from "@/lib/api-config";
 
 export async function opsApiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const url = `${browserBaseUrl()}${path}`;
@@ -7,7 +8,7 @@ export async function opsApiFetch<T>(path: string, options?: RequestInit): Promi
     ...options,
     headers: {
       "Content-Type": "application/json",
-      ...getAuthHeaders(),
+      ...stockControlTokenStore.authHeaders(),
       ...(extraHeaders || {}),
     },
   });

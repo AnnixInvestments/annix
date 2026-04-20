@@ -1,7 +1,8 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { browserBaseUrl, getAuthHeaders } from "@/lib/api-config";
+import { stockControlTokenStore } from "@/app/lib/api/portalTokenStores";
+import { browserBaseUrl } from "@/lib/api-config";
 import type { ModuleCode } from "../config/modules";
 
 interface OpsModuleContextValue {
@@ -41,7 +42,7 @@ export function OpsModuleProvider(props: OpsModuleProviderProps) {
         const response = await fetch(
           `${browserBaseUrl()}/platform/companies/${props.companyId}/modules`,
           {
-            headers: getAuthHeaders(),
+            headers: stockControlTokenStore.authHeaders(),
             signal: abortController.signal,
           },
         );
