@@ -202,21 +202,40 @@ function mergeRowsByJtNumber(rows: JobCardImportRow[]): JobCardImportRow[] {
     return alreadyHas ? acc : { ...acc, [base]: [...existing, rowNotes] };
   }, {});
 
-  return uniqueJtBases.map((jtBase) => {
+  const noJtItems = itemsByJtBase["__none"] || [];
+
+  const jtRows = uniqueJtBases.map((jtBase) => {
     const base = rows[0];
     const items = itemsByJtBase[jtBase] || [];
     const specs = notesByJtBase[jtBase] || notesByJtBase["__none"] || [];
-    const noJtItems = itemsByJtBase["__none"] || [];
 
     return {
       ...base,
       jcNumber: base.jcNumber || undefined,
-      lineItems: [...items, ...noJtItems],
+      lineItems: items,
       notes: deduplicateSpecs(specs, rows) || undefined,
       pageNumber: undefined,
       reference: jtBase,
     };
   });
+
+  if (noJtItems.length > 0) {
+    const base = rows[0];
+    const specs = notesByJtBase["__none"] || [];
+    return [
+      ...jtRows,
+      {
+        ...base,
+        jcNumber: base.jcNumber || undefined,
+        lineItems: noJtItems,
+        notes: deduplicateSpecs(specs, rows) || undefined,
+        pageNumber: undefined,
+        reference: undefined,
+      },
+    ];
+  }
+
+  return jtRows;
 }
 
 function mergeIntoSingleRow(group: JobCardImportRow[]): JobCardImportRow {
@@ -316,6 +335,22 @@ export function sanitizeNotes(notes: string | null | undefined): string | null {
   return cleaned || null;
 }
 
+function splitRowByJtNumber(row: JobCardImportRow): Map<string, LineItemImportRow[]> | null {
+  const lineItems = row.lineItems || [];
+  const jtNumbers = lineItems.map((li) => (li.jtNo || "").trim()).filter(Boolean);
+
+  const uniqueJts = [...new Set(jtNumbers)];
+  if (uniqueJts.length <= 1) return null;
+
+  return lineItems.reduce<Map<string, LineItemImportRow[]>>((acc, li) => {
+    const jt = (li.jtNo || "").trim();
+    if (!jt) return acc;
+    const existing = acc.get(jt) || [];
+    acc.set(jt, [...existing, li]);
+    return acc;
+  }, new Map());
+}
+
 const JT_DN_PATTERN = /(?:JT|DN|JT\/DN|JTDN)[\s\-#:]*([A-Z0-9-]+)/i;
 
 function detectJtDnNumber(row: JobCardImportRow): string | null {
@@ -342,7 +377,7 @@ function detectJtDnNumber(row: JobCardImportRow): string | null {
   }
 
   if (uniqueJtNumbers.length > 1) {
-    return uniqueJtNumbers[0];
+    return null;
   }
 
   return null;
@@ -1447,6 +1482,51 @@ export class JobCardImportService {
               : acc.deliveryMatches,
           };
         } else if (existing && !jtDnNumber) {
+          const jtSplit = splitRowByJtNumber(row);
+
+          if (jtSplit && jtSplit.size > 1) {
+            const deliveryResults = await [...jtSplit.entries()].reduce(
+              async (prevPromise, [jtNumber, items]) => {
+                const prev = await prevPromise;
+                const subRow: JobCardImportRow = {
+                  ...row,
+                  lineItems: items,
+                  reference: jtNumber,
+                };
+                const { jobCardId, deliveryMatch } = await this.createDeliveryJobCard(
+                  existing,
+                  subRow,
+                  jtNumber,
+                  companyId,
+                  sourceFilePath,
+                  sourceFileName,
+                );
+                return {
+                  ids: [...prev.ids, jobCardId],
+                  matches: deliveryMatch ? [...prev.matches, deliveryMatch] : prev.matches,
+                };
+              },
+              Promise.resolve({ ids: [] as number[], matches: [] as DeliveryMatchResult[] }),
+            );
+
+            const noJtLineItems = (row.lineItems || []).filter((li) => !(li.jtNo || "").trim());
+            if (noJtLineItems.length > 0) {
+              const entities = this.buildLineItemEntities(noJtLineItems, existing.id, companyId);
+              await this.lineItemRepo.save(entities);
+            }
+
+            this.logger.log(
+              `Split multi-JT row into ${jtSplit.size} delivery JCs for parent ${existing.id}: ${[...jtSplit.keys()].join(", ")}`,
+            );
+
+            return {
+              ...acc,
+              created: acc.created + jtSplit.size,
+              createdJobCardIds: [...acc.createdJobCardIds, ...deliveryResults.ids],
+              deliveryMatches: [...acc.deliveryMatches, ...deliveryResults.matches],
+            };
+          }
+
           const savedId = await this.archiveAndOverwrite(
             existing,
             row,
@@ -1491,6 +1571,57 @@ export class JobCardImportService {
           sourceFileName,
         });
         const saved = await this.jobCardRepo.save(jobCard);
+
+        const jtSplitNew = splitRowByJtNumber(row);
+
+        if (jtSplitNew && jtSplitNew.size > 1) {
+          const noJtLineItems = (row.lineItems || []).filter((li) => !(li.jtNo || "").trim());
+          if (noJtLineItems.length > 0) {
+            const parentEntities = this.buildLineItemEntities(noJtLineItems, saved.id, companyId);
+            await this.lineItemRepo.save(parentEntities);
+          }
+
+          const deliveryResults = await [...jtSplitNew.entries()].reduce(
+            async (prevPromise, [jtNumber, items]) => {
+              const prev = await prevPromise;
+              const subRow: JobCardImportRow = {
+                ...row,
+                lineItems: items,
+                reference: jtNumber,
+              };
+              const { jobCardId, deliveryMatch } = await this.createDeliveryJobCard(
+                saved,
+                subRow,
+                jtNumber,
+                companyId,
+                sourceFilePath,
+                sourceFileName,
+              );
+              return {
+                ids: [...prev.ids, jobCardId],
+                matches: deliveryMatch ? [...prev.matches, deliveryMatch] : prev.matches,
+              };
+            },
+            Promise.resolve({ ids: [] as number[], matches: [] as DeliveryMatchResult[] }),
+          );
+
+          this.logger.log(
+            `Created parent JC ${saved.id} with ${jtSplitNew.size} delivery JCs: ${[...jtSplitNew.keys()].join(", ")}`,
+          );
+
+          await this.cpoService.matchJobCardToCpo(companyId, saved.id).catch((err) => {
+            this.logger.warn(
+              `CPO matching failed for JC ${saved.id}: ${err instanceof Error ? err.message : "Unknown"}`,
+            );
+          });
+
+          return {
+            ...acc,
+            created: acc.created + 1 + jtSplitNew.size,
+            createdJobCardIds: [...acc.createdJobCardIds, saved.id, ...deliveryResults.ids],
+            deliveryMatches: [...acc.deliveryMatches, ...deliveryResults.matches],
+          };
+        }
 
         if (row.lineItems && row.lineItems.length > 0) {
           const entities = this.buildLineItemEntities(row.lineItems, saved.id, companyId);
