@@ -139,7 +139,6 @@ describe("StockControlAuthService", () => {
     id: 1,
     userId: 100,
     companyId: 20,
-    legacyScUserId: 1,
     hideTooltips: false,
     emailNotificationsEnabled: true,
     pushNotificationsEnabled: true,
@@ -177,7 +176,6 @@ describe("StockControlAuthService", () => {
     messagingEnabled: false,
     staffLeaveEnabled: false,
     workflowEnabled: true,
-    legacyScCompanyId: 10,
     createdAt: now().toJSDate(),
     updatedAt: now().toJSDate(),
   };

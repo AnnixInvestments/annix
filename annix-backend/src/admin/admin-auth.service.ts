@@ -66,7 +66,7 @@ export class AdminAuthService {
     if (!this.authConfigService.isPasswordVerificationDisabled()) {
       const isPasswordValid = await this.passwordService.verify(
         loginDto.password,
-        user.passwordHash || user.password || "",
+        user.passwordHash || "",
       );
       if (!isPasswordValid) {
         await this.auditService.log({

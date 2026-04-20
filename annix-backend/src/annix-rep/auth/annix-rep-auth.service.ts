@@ -60,17 +60,11 @@ export class AnnixRepAuthService {
       (await this.userRoleRepo.findOne({ where: { name: "annixRep" } })) ??
       (await this.userRoleRepo.save(this.userRoleRepo.create({ name: "annixRep" })));
 
-    const {
-      hash: hashedPassword,
-      salt,
-      passwordHash,
-    } = await this.passwordService.hash(dto.password);
+    const { passwordHash } = await this.passwordService.hash(dto.password);
 
     const user = this.userRepo.create({
       username: dto.email,
       email: dto.email,
-      password: hashedPassword,
-      salt,
       passwordHash,
       firstName: dto.firstName,
       lastName: dto.lastName,
@@ -130,7 +124,7 @@ export class AnnixRepAuthService {
 
     const isPasswordValid = await this.passwordService.verify(
       dto.password,
-      user.passwordHash || user.password,
+      user.passwordHash || "",
     );
     if (!isPasswordValid) {
       throw new UnauthorizedException("Invalid credentials");
@@ -364,7 +358,7 @@ export class AnnixRepAuthService {
         const created = this.userRepo.create({
           username: result.email,
           email: result.email,
-          password: "",
+          passwordHash: null,
           firstName: result.firstName || result.email.split("@")[0],
           lastName: result.lastName || "",
           roles: [annixRepRole],

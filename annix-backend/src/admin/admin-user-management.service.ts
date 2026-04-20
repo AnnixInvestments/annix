@@ -127,14 +127,10 @@ export class AdminUserManagementService {
       throw new ConflictException("A user with this email already exists");
     }
 
-    // Generate temporary password if not provided
     const temporaryPassword = dto.temporaryPassword || this.generateTemporaryPassword();
 
-    // Hash password
-    const salt = await bcrypt.genSalt();
-    const hashedPassword = await bcrypt.hash(temporaryPassword, salt);
+    const hashedPassword = await bcrypt.hash(temporaryPassword, 10);
 
-    // Get or create the specified role
     let userRole = await this.userRoleRepo.findOne({
       where: { name: dto.role },
     });
@@ -143,12 +139,10 @@ export class AdminUserManagementService {
       userRole = await this.userRoleRepo.save(userRole);
     }
 
-    // Create user
     const user = this.userRepo.create({
       email: dto.email,
       username: `${dto.firstName} ${dto.lastName}`,
-      password: hashedPassword,
-      salt: salt,
+      passwordHash: hashedPassword,
       roles: [userRole],
     });
 

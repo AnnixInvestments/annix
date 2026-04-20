@@ -123,11 +123,7 @@ export class SupplierAuthService {
     await queryRunner.startTransaction();
 
     try {
-      const {
-        hash: hashedPassword,
-        salt,
-        passwordHash,
-      } = await this.passwordService.hash(dto.password);
+      const { passwordHash } = await this.passwordService.hash(dto.password);
 
       let supplierRole = await this.userRoleRepo.findOne({
         where: { name: "supplier" },
@@ -140,8 +136,6 @@ export class SupplierAuthService {
       const user = this.userRepo.create({
         username: dto.email,
         email: dto.email,
-        password: hashedPassword,
-        salt: salt,
         passwordHash,
         roles: [supplierRole],
       });
@@ -308,11 +302,7 @@ export class SupplierAuthService {
       });
       const savedCompany = await queryRunner.manager.save(company);
 
-      const {
-        hash: hashedPassword,
-        salt,
-        passwordHash,
-      } = await this.passwordService.hash(dto.password);
+      const { passwordHash } = await this.passwordService.hash(dto.password);
 
       let supplierRole = await this.userRoleRepo.findOne({
         where: { name: "supplier" },
@@ -325,8 +315,6 @@ export class SupplierAuthService {
       const user = this.userRepo.create({
         username: dto.email,
         email: dto.email,
-        password: hashedPassword,
-        salt: salt,
         passwordHash,
         roles: [supplierRole],
       });
@@ -707,7 +695,7 @@ export class SupplierAuthService {
     if (!this.authConfigService.isPasswordVerificationDisabled()) {
       const isPasswordValid = await this.passwordService.verify(
         dto.password,
-        user.passwordHash || user.password,
+        user.passwordHash || "",
       );
       if (!isPasswordValid) {
         await this.logLoginAttempt(

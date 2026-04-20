@@ -201,18 +201,19 @@ export class CustomerService {
     }
 
     // Verify current password
-    const isCurrentPasswordValid = await bcrypt.compare(dto.currentPassword, user.password);
+    const isCurrentPasswordValid = await bcrypt.compare(
+      dto.currentPassword,
+      user.passwordHash || "",
+    );
 
     if (!isCurrentPasswordValid) {
       throw new BadRequestException("Current password is incorrect");
     }
 
     // Hash new password
-    const salt = await bcrypt.genSalt();
-    const hashedPassword = await bcrypt.hash(dto.newPassword, salt);
+    const hashedPassword = await bcrypt.hash(dto.newPassword, 10);
 
-    user.password = hashedPassword;
-    user.salt = salt;
+    user.passwordHash = hashedPassword;
     await this.userRepo.save(user);
 
     await this.auditService.log({

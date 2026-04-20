@@ -18,13 +18,11 @@ export class UserService {
   ) {}
 
   async create(createUserDto: CreateUserDto) {
-    const salt = await bcrypt.genSalt();
-    const hashedPassword = await bcrypt.hash(createUserDto.password, salt);
+    const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
 
     const user = this.userRepo.create({
       ...createUserDto,
-      password: hashedPassword,
-      salt: salt,
+      passwordHash: hashedPassword,
     });
 
     let employeeRole = await this.userRoleRepo.findOne({
@@ -57,7 +55,7 @@ export class UserService {
     Object.assign(user, updateUserDto);
 
     if (updateUserDto.password) {
-      user.password = await bcrypt.hash(updateUserDto.password, 10);
+      user.passwordHash = await bcrypt.hash(updateUserDto.password, 10);
     }
 
     const savedUser = this.userRepo.save(user);

@@ -57,8 +57,7 @@ describe("AuthService", () => {
         id: 1,
         username: "john",
         email: "john@example.com",
-        password: "hashed_pass",
-        salt: "random_salt",
+        passwordHash: "hashed_pass",
         roles: [{ id: 1, name: "employee" }],
       } as User;
 
@@ -87,8 +86,7 @@ describe("AuthService", () => {
         id: 1,
         username: "john",
         email: "john@example.com",
-        password: "hashed_pass",
-        salt: "random_salt",
+        passwordHash: "hashed_pass",
         roles: [{ id: 1, name: "employee" }],
       } as User;
 

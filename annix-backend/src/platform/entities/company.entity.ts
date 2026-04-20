@@ -167,18 +167,6 @@ export class Company {
   @Column({ name: "bee_expiry_notification_sent_at", type: "timestamptz", nullable: true })
   beeExpiryNotificationSentAt: Date | null;
 
-  @Column({ name: "legacy_sc_company_id", type: "int", nullable: true })
-  legacyScCompanyId: number | null;
-
-  @Column({ name: "legacy_rubber_company_id", type: "int", nullable: true })
-  legacyRubberCompanyId: number | null;
-
-  @Column({ name: "legacy_comply_company_id", type: "int", nullable: true })
-  legacyComplyCompanyId: number | null;
-
-  @Column({ name: "legacy_cv_company_id", type: "int", nullable: true })
-  legacyCvCompanyId: number | null;
-
   @OneToMany(
     () => CompanyModuleSubscription,
     (sub) => sub.company,

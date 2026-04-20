@@ -58,19 +58,17 @@ describe("UserService", () => {
         email: "john@example.com",
         password: "123456",
       };
-      const salt = "random_salt";
       const hashedPassword = "hashed_pass";
 
-      (bcrypt.genSalt as jest.Mock).mockResolvedValue(salt);
       (bcrypt.hash as jest.Mock).mockResolvedValue(hashedPassword);
 
       const role = { id: 1, name: "employee" } as UserRole;
       roleRepo.findOne.mockResolvedValue(role);
 
       const createdUser = {
-        ...dto,
-        password: hashedPassword,
-        salt,
+        username: dto.username,
+        email: dto.email,
+        passwordHash: hashedPassword,
         roles: [role],
       } as User;
       userRepo.create.mockReturnValue(createdUser);
@@ -80,8 +78,7 @@ describe("UserService", () => {
 
       expect(userRepo.create).toHaveBeenCalledWith({
         ...dto,
-        password: hashedPassword,
-        salt,
+        passwordHash: hashedPassword,
       });
       expect(userRepo.save).toHaveBeenCalled();
       expect(result).toMatchObject({
@@ -124,7 +121,7 @@ describe("UserService", () => {
 
   describe("update", () => {
     it("should update and return a user", async () => {
-      const user = { id: 1, username: "john", password: "old" } as User;
+      const user = { id: 1, username: "john", passwordHash: "old" } as User;
       jest.spyOn(service, "findOne").mockResolvedValue(user);
       userRepo.save.mockResolvedValue({ ...user, username: "john_updated" });
 

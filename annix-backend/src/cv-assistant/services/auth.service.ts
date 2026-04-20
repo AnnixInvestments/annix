@@ -199,8 +199,7 @@ export class CvAssistantAuthService {
       throw new UnauthorizedException("Invalid credentials");
     }
 
-    const passwordToCheck = user.passwordHash || user.password;
-    const valid = await this.passwordService.verify(password, passwordToCheck);
+    const valid = await this.passwordService.verify(password, user.passwordHash || "");
     if (!valid) {
       throw new UnauthorizedException("Invalid credentials");
     }

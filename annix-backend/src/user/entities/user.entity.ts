@@ -38,16 +38,6 @@ export class User {
   @Column({ nullable: true })
   lastName?: string;
 
-  @ApiProperty({ description: "Hashed password (never expose in responses)" })
-  @Exclude()
-  @Column({ nullable: true })
-  password: string;
-
-  @ApiProperty({ description: "Random salt used for password hashing" })
-  @Exclude()
-  @Column({ nullable: true })
-  salt: string;
-
   @ApiProperty({ description: "Canonical bcrypt password hash (replaces password+salt)" })
   @Exclude()
   @Column({ name: "password_hash", type: "varchar", length: 255, nullable: true })

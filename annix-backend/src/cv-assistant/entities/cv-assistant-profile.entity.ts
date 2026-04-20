@@ -40,9 +40,6 @@ export class CvAssistantProfile {
   @Column({ name: "push_enabled", type: "boolean", default: false })
   pushEnabled: boolean;
 
-  @Column({ name: "legacy_cv_user_id", type: "int", nullable: true })
-  legacyCvUserId: number | null;
-
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

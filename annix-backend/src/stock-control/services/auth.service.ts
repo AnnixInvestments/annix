@@ -353,11 +353,7 @@ export class StockControlAuthService {
       throw new UnauthorizedException("No Stock Control profile found");
     }
 
-    // Get role from legacy SC user (until roles are migrated to RBAC)
-    const scUser = profile.legacyScUserId
-      ? await this.userRepo.findOne({ where: { id: profile.legacyScUserId } })
-      : null;
-    const role = scUser?.role || StockControlRole.STOREMAN;
+    const role = StockControlRole.STOREMAN;
 
     if (!unifiedUser.emailVerified) {
       unifiedUser.emailVerified = true;
@@ -390,23 +386,7 @@ export class StockControlAuthService {
     const unifiedUser = profile.user;
     const company = profile.company;
 
-    // Get role from legacy SC user (until roles migrate to RBAC)
-    const scUser = profile.legacyScUserId
-      ? await this.userRepo.findOne({ where: { id: profile.legacyScUserId } })
-      : null;
-    let role = scUser?.role || StockControlRole.STOREMAN;
-
-    // Auto-promote to admin if no admins exist in this company
-    if (role !== StockControlRole.ADMIN && scUser) {
-      const adminCount = await this.userRepo.count({
-        where: { companyId: scUser.companyId, role: StockControlRole.ADMIN },
-      });
-      if (adminCount === 0) {
-        scUser.role = StockControlRole.ADMIN;
-        await this.userRepo.save(scUser);
-        role = StockControlRole.ADMIN;
-      }
-    }
+    const role = StockControlRole.STOREMAN;
 
     const [logoUrl, heroImageUrl] = await Promise.all([
       this.resolveStorageUrl(company?.logoUrl ?? null),
@@ -464,21 +444,7 @@ export class StockControlAuthService {
         where: { id: linkedStaffId, unifiedCompanyId, active: true } as any,
       });
       if (!staff) {
-        // Fall back to legacy companyId lookup for transition period
-        const profile = await this.profileRepo.findOne({ where: { userId: unifiedUserId } });
-        const scUser = profile?.legacyScUserId
-          ? await this.userRepo.findOne({ where: { id: profile.legacyScUserId } })
-          : null;
-        if (scUser) {
-          const staffLegacy = await this.staffRepo.findOne({
-            where: { id: linkedStaffId, companyId: scUser.companyId, active: true },
-          });
-          if (!staffLegacy) {
-            throw new NotFoundException("Staff member not found or inactive");
-          }
-        } else {
-          throw new NotFoundException("Staff member not found or inactive");
-        }
+        throw new NotFoundException("Staff member not found or inactive");
       }
     }
 
@@ -531,11 +497,7 @@ export class StockControlAuthService {
         throw new UnauthorizedException("No Stock Control profile found");
       }
 
-      // Get role from legacy SC user
-      const scUser = profile.legacyScUserId
-        ? await this.userRepo.findOne({ where: { id: profile.legacyScUserId } })
-        : null;
-      const role = scUser?.role || StockControlRole.STOREMAN;
+      const role = StockControlRole.STOREMAN;
       const name =
         [unifiedUser.firstName, unifiedUser.lastName].filter(Boolean).join(" ") ||
         unifiedUser.email;
@@ -898,11 +860,7 @@ export class StockControlAuthService {
       throw new NotFoundException("No Stock Control profile found for this admin email.");
     }
 
-    // Get role from legacy SC user
-    const scUser = profile.legacyScUserId
-      ? await this.userRepo.findOne({ where: { id: profile.legacyScUserId } })
-      : null;
-    const role = scUser?.role || StockControlRole.ADMIN;
+    const role = StockControlRole.ADMIN;
     const name =
       [unifiedUser.firstName, unifiedUser.lastName].filter(Boolean).join(" ") || unifiedUser.email;
 

@@ -25,11 +25,10 @@ export class AuthService {
       throw new UnauthorizedException("Invalid credentials");
     }
 
-    const passwordToCheck = user.passwordHash || user.password;
-    const isPasswordValid = await this.passwordService.verify(password, passwordToCheck);
+    const isPasswordValid = await this.passwordService.verify(password, user.passwordHash || "");
 
     if (isPasswordValid) {
-      const { password, salt, ...result } = user;
+      const { passwordHash, ...result } = user;
       return result;
     }
 
@@ -57,7 +56,7 @@ export class AuthService {
       access_token: accessToken,
       refresh_token: refreshToken,
       token_type: "Bearer",
-      expires_in: 3600, // 1 hour in seconds
+      expires_in: 3600,
     };
   }
 
@@ -73,7 +72,6 @@ export class AuthService {
     try {
       const payload = await this.jwtService.verifyAsync(refreshToken);
 
-      // Verify user still exists
       const user = await this.userRepo.findOne({
         where: { id: payload.sub },
         relations: ["roles"],

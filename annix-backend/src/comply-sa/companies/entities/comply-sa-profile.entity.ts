@@ -37,9 +37,6 @@ export class ComplySaProfile {
   @Column({ name: "terms_version", type: "varchar", length: 20, nullable: true })
   termsVersion: string | null;
 
-  @Column({ name: "legacy_comply_user_id", type: "int", nullable: true })
-  legacyComplyUserId: number | null;
-
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

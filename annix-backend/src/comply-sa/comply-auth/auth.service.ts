@@ -198,8 +198,7 @@ export class ComplySaAuthService {
       throw new UnauthorizedException("Invalid credentials");
     }
 
-    const passwordToCheck = user.passwordHash || user.password;
-    const passwordValid = await this.passwordService.verify(dto.password, passwordToCheck);
+    const passwordValid = await this.passwordService.verify(dto.password, user.passwordHash || "");
 
     if (!passwordValid) {
       throw new UnauthorizedException("Invalid credentials");

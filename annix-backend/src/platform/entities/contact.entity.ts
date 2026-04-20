@@ -123,12 +123,6 @@ export class Contact {
   })
   sageContactType: string | null;
 
-  @Column({ name: "legacy_sc_supplier_id", type: "int", nullable: true })
-  legacyScSupplierId: number | null;
-
-  @Column({ name: "legacy_rubber_company_id", type: "int", nullable: true })
-  legacyRubberCompanyId: number | null;
-
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 
