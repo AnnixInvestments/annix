@@ -1356,8 +1356,7 @@ function FittingFormComponent({
                         options={forgedSeries
                           .filter(
                             (s) =>
-                              !specs.forgedPressureClass ||
-                              s.pressureClass === specs.forgedPressureClass,
+                              !rawForgedPressureClass || s.pressureClass === rawForgedPressureClass,
                           )
                           .map((s) => s.connectionType)
                           .filter((ct, idx, arr) => arr.indexOf(ct) === idx)
