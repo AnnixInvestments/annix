@@ -519,6 +519,7 @@ function FittingFormComponent({
   const rawNominalDiameterMm9 = specs.nominalDiameterMm;
   const rawClosureLengthMm = specs.closureLengthMm;
   const rawWallThicknessMm17 = specs.wallThicknessMm;
+  const rawCalcWallThickness17 = entry.calculation?.wallThicknessMm;
   const rawSelectedNotes = entry.selectedNotes;
 
   return (
@@ -1982,37 +1983,42 @@ function FittingFormComponent({
 
               {(() => {
                 const rawWorkingPressureBar3 = specs.workingPressureBar;
+                const rawGlobalWorkingPressureBar3 = globalSpecs?.workingPressureBar;
                 const workingPressureBar =
-                  rawWorkingPressureBar3 || globalSpecs?.workingPressureBar || 0;
+                  rawWorkingPressureBar3 || rawGlobalWorkingPressureBar3 || 0;
                 const rawPipeEndConfiguration2 = specs.pipeEndConfiguration;
                 const fittingEndConfig = rawPipeEndConfiguration2 || "PE";
+                const rawFoePosition = specs.foePosition;
                 const fittingFlangeConfig = getFittingFlangeConfig(
                   fittingEndConfig,
-                  specs.foePosition,
+                  rawFoePosition,
                 );
                 const reducerFlangeConfigVal = getReducerFlangeConfig(fittingEndConfig);
                 const rawHasLargeEnd = reducerFlangeConfigVal.hasLargeEnd;
+                const rawHasSmallEnd = reducerFlangeConfigVal.hasSmallEnd;
                 const rawHasInlet = fittingFlangeConfig.hasInlet;
+                const rawHasOutlet = fittingFlangeConfig.hasOutlet;
+                const rawHasBranch = fittingFlangeConfig.hasBranch;
                 const hasFlangesSelected = isReducer
-                  ? rawHasLargeEnd || reducerFlangeConfigVal.hasSmallEnd
-                  : rawHasInlet || fittingFlangeConfig.hasOutlet || fittingFlangeConfig.hasBranch;
+                  ? rawHasLargeEnd || rawHasSmallEnd
+                  : rawHasInlet || rawHasOutlet || rawHasBranch;
                 const availableBlankPositions = isReducer
                   ? [
                       {
                         key: "large",
                         label: "Large End",
-                        hasFlange: reducerFlangeConfigVal.hasLargeEnd,
+                        hasFlange: rawHasLargeEnd,
                       },
                       {
                         key: "small",
                         label: "Small End",
-                        hasFlange: reducerFlangeConfigVal.hasSmallEnd,
+                        hasFlange: rawHasSmallEnd,
                       },
                     ].filter((p) => p.hasFlange)
                   : [
-                      { key: "inlet", label: "Inlet", hasFlange: fittingFlangeConfig.hasInlet },
-                      { key: "outlet", label: "Outlet", hasFlange: fittingFlangeConfig.hasOutlet },
-                      { key: "branch", label: "Branch", hasFlange: fittingFlangeConfig.hasBranch },
+                      { key: "inlet", label: "Inlet", hasFlange: rawHasInlet },
+                      { key: "outlet", label: "Outlet", hasFlange: rawHasOutlet },
+                      { key: "branch", label: "Branch", hasFlange: rawHasBranch },
                     ].filter((p) => p.hasFlange);
                 const rawBlankFlangePositions = specs.blankFlangePositions;
                 const currentBlankPositions = rawBlankFlangePositions || [];
@@ -2020,17 +2026,28 @@ function FittingFormComponent({
                 const defaultSelectClass =
                   "w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800";
 
+                const rawFlangeStandardId = specs.flangeStandardId;
+                const rawFlangePressureClassId = specs.flangePressureClassId;
+                const rawFlangeTypeCode = specs.flangeTypeCode;
+                const rawGlobalFlangeStandardId = globalSpecs?.flangeStandardId;
+                const rawGlobalFlangePressureClassId = globalSpecs?.flangePressureClassId;
+                const rawGlobalFlangeTypeCode = globalSpecs?.flangeTypeCode;
+                const rawFlangeStandards = masterData.flangeStandards;
+                const flangeStandardsList = rawFlangeStandards || [];
+                const rawPressureClasses = masterData.pressureClasses;
+                const pressureClassesList = rawPressureClasses || [];
+
                 return (
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
                     <FlangeDropdownTriplet
-                      flangeStandardId={specs.flangeStandardId}
-                      flangePressureClassId={specs.flangePressureClassId}
-                      flangeTypeCode={specs.flangeTypeCode}
-                      globalFlangeStandardId={globalSpecs?.flangeStandardId}
-                      globalFlangePressureClassId={globalSpecs?.flangePressureClassId}
-                      globalFlangeTypeCode={globalSpecs?.flangeTypeCode}
-                      flangeStandards={masterData.flangeStandards || []}
-                      pressureClasses={masterData.pressureClasses || []}
+                      flangeStandardId={rawFlangeStandardId}
+                      flangePressureClassId={rawFlangePressureClassId}
+                      flangeTypeCode={rawFlangeTypeCode}
+                      globalFlangeStandardId={rawGlobalFlangeStandardId}
+                      globalFlangePressureClassId={rawGlobalFlangePressureClassId}
+                      globalFlangeTypeCode={rawGlobalFlangeTypeCode}
+                      flangeStandards={flangeStandardsList}
+                      pressureClasses={pressureClassesList}
                       pressureClassesByStandard={pressureClassesByStandard}
                       allFlangeTypes={allFlangeTypes}
                       workingPressureBar={workingPressureBar}
@@ -2110,27 +2127,37 @@ function FittingFormComponent({
                           } catch (error) {
                             log.warn("Could not get pipe end configuration details:", error);
                           }
+                          const rawGlobalFlangeTypeCode2 = globalSpecs?.flangeTypeCode;
                           const effectiveFlangeTypeCode =
-                            globalSpecs?.flangeTypeCode || recommendedFlangeTypeCode(newConfig);
+                            rawGlobalFlangeTypeCode2 || recommendedFlangeTypeCode(newConfig);
+                          const rawSpecsFlangeStandardId = specs.flangeStandardId;
+                          const rawGlobalFlangeStandardId2 = globalSpecs?.flangeStandardId;
                           const flangeStdId =
-                            specs.flangeStandardId || globalSpecs?.flangeStandardId;
-                          const flangeStdCode =
-                            masterData.flangeStandards?.find(
-                              (s: FlangeStandardItem) => s.id === flangeStdId,
-                            )?.code || "";
+                            rawSpecsFlangeStandardId || rawGlobalFlangeStandardId2;
+                          const rawFlangeStdMatch = masterData.flangeStandards?.find(
+                            (s: FlangeStandardItem) => s.id === flangeStdId,
+                          );
+                          const rawFlangeStdMatchCode = rawFlangeStdMatch?.code;
+                          const flangeStdCode = rawFlangeStdMatchCode || "";
+                          const rawSpecsWorkingPressureBar = specs.workingPressureBar;
+                          const rawGlobalWorkingPressureBar2 = globalSpecs?.workingPressureBar;
                           const wp =
-                            specs.workingPressureBar || globalSpecs?.workingPressureBar || 0;
-                          let availableClasses = flangeStdId
-                            ? pressureClassesByStandard[flangeStdId] || []
-                            : [];
+                            rawSpecsWorkingPressureBar || rawGlobalWorkingPressureBar2 || 0;
+                          const rawClassesByStandard = flangeStdId
+                            ? pressureClassesByStandard[flangeStdId]
+                            : null;
+                          let availableClasses = rawClassesByStandard || [];
                           if (availableClasses.length === 0 && flangeStdId) {
-                            availableClasses =
-                              masterData.pressureClasses?.filter(
-                                (pc: PressureClassItem) =>
-                                  pc.flangeStandardId === flangeStdId ||
-                                  pc.standardId === flangeStdId,
-                              ) || [];
+                            const rawFilteredClasses = masterData.pressureClasses?.filter(
+                              (pc: PressureClassItem) =>
+                                pc.flangeStandardId === flangeStdId ||
+                                pc.standardId === flangeStdId,
+                            );
+                            availableClasses = rawFilteredClasses || [];
                           }
+                          const rawSpecsFlangePressureClassId = specs.flangePressureClassId;
+                          const rawGlobalFlangePressureClassId2 =
+                            globalSpecs?.flangePressureClassId;
                           const newPressureClassId =
                             wp > 0 && availableClasses.length > 0
                               ? recommendedPressureClassId(
@@ -2139,7 +2166,7 @@ function FittingFormComponent({
                                   flangeStdCode,
                                   effectiveFlangeTypeCode,
                                 )
-                              : specs.flangePressureClassId || globalSpecs?.flangePressureClassId;
+                              : rawSpecsFlangePressureClassId || rawGlobalFlangePressureClassId2;
                           const updatedEntry: any = {
                             specs: {
                               ...entry.specs,
@@ -3067,16 +3094,18 @@ function FittingFormComponent({
                       const smallNB = rawSmallNominalDiameterMm || 0;
                       const maxStubNB = smallNB - 50;
                       const rawReducerStubSteelSpecId2 = specs.reducerStubSteelSpecId;
+                      const rawSpecsSteelSpecId = specs.steelSpecificationId;
+                      const rawGlobalSteelSpecId = globalSpecs?.steelSpecificationId;
                       const stubSteelSpecId =
-                        rawReducerStubSteelSpecId2 ||
-                        specs.steelSpecificationId ||
-                        globalSpecs?.steelSpecificationId;
-                      const stubSteelSpec = masterData?.steelSpecs?.find(
+                        rawReducerStubSteelSpecId2 || rawSpecsSteelSpecId || rawGlobalSteelSpecId;
+                      const rawSteelSpecs = masterData?.steelSpecs;
+                      const stubSteelSpec = rawSteelSpecs?.find(
                         (s: SteelSpecItem) => s.id === stubSteelSpecId,
                       );
+                      const rawStubSpecName = stubSteelSpec?.steelSpecName;
                       const isSABS719Stub =
-                        stubSteelSpec?.steelSpecName?.includes("SABS 719") ||
-                        stubSteelSpec?.steelSpecName?.includes("SANS 719");
+                        rawStubSpecName?.includes("SABS 719") ||
+                        rawStubSpecName?.includes("SANS 719");
                       const minStubNB = isSABS719Stub ? 200 : 15;
                       const allStubSizes = [
                         15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150, 200, 250, 300,
@@ -3713,7 +3742,7 @@ function FittingFormComponent({
                   <ClosureLengthSelector
                     nominalBore={rawNominalDiameterMm9 || 100}
                     currentValue={rawClosureLengthMm || null}
-                    wallThickness={rawWallThicknessMm17 || entry.calculation?.wallThicknessMm || 5}
+                    wallThickness={rawWallThicknessMm17 || rawCalcWallThickness17 || 5}
                     onUpdate={(closureLength) =>
                       onUpdateEntry(entry.id, {
                         specs: { ...entry.specs, closureLengthMm: closureLength },
@@ -3774,7 +3803,8 @@ function FittingFormComponent({
                     const rawFittingType12 = specs.fittingType;
                     const fittingType = rawFittingType12 || "Tee";
                     const rawNominalDiameterMm10 = specs.nominalDiameterMm;
-                    const nominalBore = rawNominalDiameterMm10 || specs.nominalBoreMm || 0;
+                    const rawNominalBoreMm10 = specs.nominalBoreMm;
+                    const nominalBore = rawNominalDiameterMm10 || rawNominalBoreMm10 || 0;
 
                     const isReducerCalc = ["CON_REDUCER", "ECCENTRIC_REDUCER"].includes(
                       fittingType,
@@ -4188,11 +4218,12 @@ function FittingFormComponent({
                       "GUSSETTED_TEE",
                     ].includes(fittingType);
                     const rawBranchNominalDiameterMm = specs.branchNominalDiameterMm;
-                    // For unequal tees, use teeNominalDiameterMm; for reducing tees, use branchNominalDiameterMm
+                    const rawBranchNominalBoreMm = specs.branchNominalBoreMm;
+                    const rawTeeNominalDiameterMm = specs.teeNominalDiameterMm;
                     const branchNB =
                       rawBranchNominalDiameterMm ||
-                      specs.branchNominalBoreMm ||
-                      specs.teeNominalDiameterMm ||
+                      rawBranchNominalBoreMm ||
+                      rawTeeNominalDiameterMm ||
                       nominalBore;
                     const rawPipeLengthAMm3 = specs.pipeLengthAMm;
                     const pipeALength = rawPipeLengthAMm3 || 0;
@@ -4259,21 +4290,25 @@ function FittingFormComponent({
                     const rawBranchNB2 = nbToOdMap[branchNB];
                     const branchOdMm = branchNB ? rawBranchNB2 || branchNB * 1.05 : 0;
                     const rawPipeEndConfiguration8 = specs.pipeEndConfiguration;
+                    const rawFoePosition2 = specs.foePosition;
                     const flangeConfigCalc = getFittingFlangeConfig(
                       rawPipeEndConfiguration8 || "PE",
-                      specs.foePosition,
+                      rawFoePosition2,
                     );
+                    const flangeCalcHasInlet = flangeConfigCalc.hasInlet;
+                    const flangeCalcInletType = flangeConfigCalc.inletType;
+                    const flangeCalcHasOutlet = flangeConfigCalc.hasOutlet;
+                    const flangeCalcOutletType = flangeConfigCalc.outletType;
+                    const flangeCalcHasBranch = flangeConfigCalc.hasBranch;
+                    const flangeCalcBranchType = flangeConfigCalc.branchType;
                     const mainFlangeWeldCount =
-                      (flangeConfigCalc.hasInlet && flangeConfigCalc.inletType !== "loose"
-                        ? 1
-                        : 0) +
-                      (flangeConfigCalc.hasOutlet && flangeConfigCalc.outletType !== "loose"
-                        ? 1
-                        : 0);
+                      (flangeCalcHasInlet && flangeCalcInletType !== "loose" ? 1 : 0) +
+                      (flangeCalcHasOutlet && flangeCalcOutletType !== "loose" ? 1 : 0);
                     const branchFlangeWeldCount =
-                      flangeConfigCalc.hasBranch && flangeConfigCalc.branchType !== "loose" ? 1 : 0;
+                      flangeCalcHasBranch && flangeCalcBranchType !== "loose" ? 1 : 0;
+                    const rawCalcGussetSectionMm2 = entry.calculation?.gussetSectionMm;
                     const gussetSectionMm = isGussetTee
-                      ? getGussetSection(nominalBore) || entry.calculation?.gussetSectionMm || 0
+                      ? getGussetSection(nominalBore) || rawCalcGussetSectionMm2 || 0
                       : 0;
                     const gussetAreaMm2 = 0.5 * gussetSectionMm * gussetSectionMm;
                     const gussetVolumeDm3 = (gussetAreaMm2 * (pipeWallThickness || 0)) / 1e6;
@@ -4383,11 +4418,9 @@ function FittingFormComponent({
 
                     const closureLengthMm = rawClosureLengthMm2 || 0;
                     const rawWallThicknessMm20 = specs.wallThicknessMm;
+                    const rawCalcWallThicknessMm20 = entry.calculation?.wallThicknessMm;
                     const closureWallThickness =
-                      rawWallThicknessMm20 ||
-                      entry.calculation?.wallThicknessMm ||
-                      pipeWallThickness ||
-                      5;
+                      rawWallThicknessMm20 || rawCalcWallThicknessMm20 || pipeWallThickness || 5;
                     const closureTotalWeight =
                       nominalBore && closureLengthMm > 0 && closureWallThickness > 0
                         ? getClosureWeight(
@@ -4711,10 +4744,9 @@ function FittingFormComponent({
                           const STEINMETZ_FACTOR = 2.7;
                           const mainCircMm = Math.PI * mainOdMm;
                           const totalFlangeWeldMm = numFlanges * 2 * mainCircMm;
+                          const rawCalcGussetSection3 = entry.calculation?.gussetSectionMm;
                           const effectiveGussetSection =
-                            getGussetSection(nominalBore) ||
-                            entry.calculation?.gussetSectionMm ||
-                            0;
+                            getGussetSection(nominalBore) || rawCalcGussetSection3 || 0;
                           const calculatedGussetWeldLengthMm =
                             effectiveGussetSection > 0
                               ? 2 *
@@ -4956,34 +4988,43 @@ function FittingFormComponent({
           const nominalBore = rawNominalDiameterMm11 || 500;
           const branchNominalBore = specs.branchNominalDiameterMm;
           const rawWallThicknessMm21 = specs.wallThicknessMm;
-          const wallThickness = rawWallThicknessMm21 || entry.calculation?.wallThicknessMm || 8;
+          const rawCalcWallThickness21 = entry.calculation?.wallThicknessMm;
+          const wallThickness = rawWallThicknessMm21 || rawCalcWallThickness21 || 8;
           const outerDiameter = entry.calculation?.outsideDiameterMm;
 
-          const steelSpec = masterData.steelSpecs?.find((s: SteelSpecItem) => {
-            const rawSteelSpecificationId23 = specs.steelSpecificationId;
-            return s.id === (rawSteelSpecificationId23 || globalSpecs?.steelSpecificationId);
+          const rawSteelSpecsList = masterData.steelSpecs;
+          const rawSpecsSteelSpecId2 = specs.steelSpecificationId;
+          const rawGlobalSteelSpecId2 = globalSpecs?.steelSpecificationId;
+          const steelSpec = rawSteelSpecsList?.find((s: SteelSpecItem) => {
+            return s.id === (rawSpecsSteelSpecId2 || rawGlobalSteelSpecId2);
           });
 
           const rawFlangeStandardId10 = specs.flangeStandardId;
-
-          const flangeStandardId = rawFlangeStandardId10 || globalSpecs?.flangeStandardId;
+          const rawGlobalFlangeStandardId3 = globalSpecs?.flangeStandardId;
+          const flangeStandardId = rawFlangeStandardId10 || rawGlobalFlangeStandardId3;
           const rawFlangePressureClassId9 = specs.flangePressureClassId;
+          const rawGlobalFlangePressureClassId3 = globalSpecs?.flangePressureClassId;
           const flangePressureClassId =
-            rawFlangePressureClassId9 || globalSpecs?.flangePressureClassId;
-          const flangeStandard = masterData.flangeStandards?.find(
+            rawFlangePressureClassId9 || rawGlobalFlangePressureClassId3;
+          const rawFlangeStandardsList = masterData.flangeStandards;
+          const flangeStandard = rawFlangeStandardsList?.find(
             (s: FlangeStandardItem) => s.id === flangeStandardId,
           );
-          const pressureClass = masterData.pressureClasses?.find(
+          const rawPressureClassesList = masterData.pressureClasses;
+          const pressureClass = rawPressureClassesList?.find(
             (p: PressureClassItem) => p.id === flangePressureClassId,
           );
           const rawFlangeTypeCode8 = specs.flangeTypeCode;
-          const flangeTypeCode = rawFlangeTypeCode8 || globalSpecs?.flangeTypeCode;
+          const rawGlobalFlangeTypeCode3 = globalSpecs?.flangeTypeCode;
+          const flangeTypeCode = rawFlangeTypeCode8 || rawGlobalFlangeTypeCode3;
+          const rawFlangeStandardCode = flangeStandard?.code;
+          const rawFlangeStdCodeFormatted = rawFlangeStandardCode?.replace(/_/g, " ");
           const flangeStandardName =
-            flangeStandard?.code === "SABS_1123"
+            rawFlangeStandardCode === "SABS_1123"
               ? "SABS 1123"
-              : flangeStandard?.code === "BS_4504"
+              : rawFlangeStandardCode === "BS_4504"
                 ? "BS 4504"
-                : flangeStandard?.code?.replace(/_/g, " ") || "";
+                : rawFlangeStdCodeFormatted || "";
           const rawDesignation3 = pressureClass?.designation;
           const pressureClassDesignation = rawDesignation3 || "";
 

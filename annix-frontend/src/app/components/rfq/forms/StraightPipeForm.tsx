@@ -283,8 +283,8 @@ function StraightPipeFormComponent({
       if (!nominalBore) return;
 
       const rawSteelSpecificationId = entry.specs.steelSpecificationId;
-
-      const steelSpecId = rawSteelSpecificationId || globalSpecs?.steelSpecificationId || 2;
+      const gsSpecId = globalSpecs?.steelSpecificationId;
+      const steelSpecId = rawSteelSpecificationId || gsSpecId || 2;
       const rawSteelSpecName = masterData.steelSpecs?.find(
         (s: SteelSpecItem) => s.id === steelSpecId,
       )?.steelSpecName;
@@ -406,7 +406,8 @@ function StraightPipeFormComponent({
         return schedName === newSchedule;
       });
       const rawWallThicknessMm = selectedDimension?.wallThicknessMm;
-      const autoWallThickness = rawWallThicknessMm || selectedDimension?.wall_thickness_mm || null;
+      const sdWallThickness = selectedDimension?.wall_thickness_mm;
+      const autoWallThickness = rawWallThicknessMm || sdWallThickness || null;
       const updatedEntry: any = {
         specs: {
           ...entry.specs,
@@ -569,6 +570,10 @@ function StraightPipeFormComponent({
   const rawClosureLengthMm = specs.closureLengthMm;
   const rawWallThicknessMm15 = specs.wallThicknessMm;
   const rawSelectedNotes = entry.selectedNotes;
+  const gsWorkingPressureBar = globalSpecs?.workingPressureBar;
+  const gsWorkingTemperatureC = globalSpecs?.workingTemperatureC;
+  const rawFlangeStandards = masterData.flangeStandards;
+  const rawPressureClasses = masterData.pressureClasses;
 
   return (
     <>
@@ -688,7 +693,7 @@ function StraightPipeFormComponent({
                   <select
                     id={`pipe-pressure-${entry.id}`}
                     aria-describedby={`pipe-pressure-help-${entry.id}`}
-                    value={rawWorkingPressureBar4 || globalSpecs?.workingPressureBar || ""}
+                    value={rawWorkingPressureBar4 || gsWorkingPressureBar || ""}
                     onChange={(e) =>
                       handleWorkingPressureChange(
                         e.target.value ? Number(e.target.value) : undefined,
@@ -721,7 +726,7 @@ function StraightPipeFormComponent({
                   <select
                     id={`pipe-temp-${entry.id}`}
                     aria-describedby={`pipe-temp-help-${entry.id}`}
-                    value={rawWorkingTemperatureC2 || globalSpecs?.workingTemperatureC || ""}
+                    value={rawWorkingTemperatureC2 || gsWorkingTemperatureC || ""}
                     onChange={(e) =>
                       handleTemperatureChange(e.target.value ? Number(e.target.value) : undefined)
                     }
@@ -1049,11 +1054,11 @@ function StraightPipeFormComponent({
                           const allSchedules =
                             fallbackSchedules.length > 0 ? fallbackSchedules : mapSchedules;
                           const rawWorkingPressureBar7 = specs.workingPressureBar;
-                          const effectivePressure =
-                            rawWorkingPressureBar7 || globalSpecs?.workingPressureBar || 0;
+                          const gsWpb7 = globalSpecs?.workingPressureBar;
+                          const effectivePressure = rawWorkingPressureBar7 || gsWpb7 || 0;
                           const rawWorkingTemperatureC5 = specs.workingTemperatureC;
-                          const effectiveTemp =
-                            rawWorkingTemperatureC5 || globalSpecs?.workingTemperatureC || 20;
+                          const gsWtc5 = globalSpecs?.workingTemperatureC;
+                          const effectiveTemp = rawWorkingTemperatureC5 || gsWtc5 || 20;
                           const nominalBore = specs.nominalBoreMm;
                           const rawNominalBore3 = nbToOdMap[nominalBore];
                           const od = rawNominalBore3 || nominalBore * 1.05;
@@ -1405,8 +1410,8 @@ function StraightPipeFormComponent({
                     const currentBlankPositions = rawBlankFlangePositions || [];
                     const rawPipeEndConfiguration7 = entry.specs.pipeEndConfiguration;
                     const rawWorkingPressureBar8 = specs.workingPressureBar;
-                    const effectiveWorkingPressure =
-                      rawWorkingPressureBar8 || globalSpecs?.workingPressureBar || 0;
+                    const gsWpb8 = globalSpecs?.workingPressureBar;
+                    const effectiveWorkingPressure = rawWorkingPressureBar8 || gsWpb8 || 0;
 
                     return (
                       <>
@@ -1418,33 +1423,37 @@ function StraightPipeFormComponent({
                             globalFlangeStandardId={globalSpecs?.flangeStandardId}
                             globalFlangePressureClassId={globalSpecs?.flangePressureClassId}
                             globalFlangeTypeCode={globalSpecs?.flangeTypeCode}
-                            flangeStandards={masterData.flangeStandards || []}
-                            pressureClasses={masterData.pressureClasses || []}
+                            flangeStandards={rawFlangeStandards || []}
+                            pressureClasses={rawPressureClasses || []}
                             pressureClassesByStandard={pressureClassesByStandard}
                             allFlangeTypes={allFlangeTypes}
                             workingPressureBar={effectiveWorkingPressure}
                             onStandardChange={(standardId) => {
-                              const newStandard = masterData.flangeStandards?.find(
+                              const newStandard = rawFlangeStandards?.find(
                                 (s: FlangeStandardItem) => s.id === standardId,
                               );
-                              const newStandardCode = newStandard?.code || "";
-                              const endConfig = specs.pipeEndConfiguration || "PE";
+                              const rawNewStdCode = newStandard?.code;
+                              const newStandardCode = rawNewStdCode || "";
+                              const rawEndConfig = specs.pipeEndConfiguration;
+                              const endConfig = rawEndConfig || "PE";
+                              const rawFtc = specs.flangeTypeCode;
+                              const gsFtc = globalSpecs?.flangeTypeCode;
                               const effectiveFlangeTypeCode =
-                                specs.flangeTypeCode ||
-                                globalSpecs?.flangeTypeCode ||
-                                recommendedFlangeTypeCode(endConfig);
-                              const workingPressure =
-                                specs.workingPressureBar || globalSpecs?.workingPressureBar || 0;
+                                rawFtc || gsFtc || recommendedFlangeTypeCode(endConfig);
+                              const rawSpecWpb = specs.workingPressureBar;
+                              const gsWpbStd = globalSpecs?.workingPressureBar;
+                              const workingPressure = rawSpecWpb || gsWpbStd || 0;
                               let newPressureClassId: number | undefined;
                               if (standardId && workingPressure > 0) {
-                                let availableClasses = pressureClassesByStandard[standardId] || [];
+                                const rawPcByStd = pressureClassesByStandard[standardId];
+                                let availableClasses = rawPcByStd || [];
                                 if (availableClasses.length === 0) {
-                                  availableClasses =
-                                    masterData.pressureClasses?.filter(
-                                      (pc: PressureClassItem) =>
-                                        pc.flangeStandardId === standardId ||
-                                        pc.standardId === standardId,
-                                    ) || [];
+                                  const rawFilteredPcStd = rawPressureClasses?.filter(
+                                    (pc: PressureClassItem) =>
+                                      pc.flangeStandardId === standardId ||
+                                      pc.standardId === standardId,
+                                  );
+                                  availableClasses = rawFilteredPcStd || [];
                                 }
                                 if (availableClasses.length > 0) {
                                   newPressureClassId =
@@ -1530,30 +1539,34 @@ function StraightPipeFormComponent({
                                     );
                                   }
 
+                                  const gsFtcCfg = globalSpecs?.flangeTypeCode;
                                   const effectiveFlangeTypeCode =
-                                    globalSpecs?.flangeTypeCode ||
-                                    recommendedFlangeTypeCode(newConfig);
-                                  const flangeStdId =
-                                    specs.flangeStandardId || globalSpecs?.flangeStandardId;
-                                  const flangeStdCode =
-                                    masterData.flangeStandards?.find(
-                                      (s: FlangeStandardItem) => s.id === flangeStdId,
-                                    )?.code || "";
-                                  const wp =
-                                    specs.workingPressureBar ||
-                                    globalSpecs?.workingPressureBar ||
-                                    0;
-                                  let availableClasses = flangeStdId
-                                    ? pressureClassesByStandard[flangeStdId] || []
-                                    : [];
+                                    gsFtcCfg || recommendedFlangeTypeCode(newConfig);
+                                  const rawSpecFsId = specs.flangeStandardId;
+                                  const gsFsIdCfg = globalSpecs?.flangeStandardId;
+                                  const flangeStdId = rawSpecFsId || gsFsIdCfg;
+                                  const flangeStdObj = rawFlangeStandards?.find(
+                                    (s: FlangeStandardItem) => s.id === flangeStdId,
+                                  );
+                                  const rawFlangeStdObjCode = flangeStdObj?.code;
+                                  const flangeStdCode = rawFlangeStdObjCode || "";
+                                  const rawSpecWpbCfg = specs.workingPressureBar;
+                                  const gsWpbCfg = globalSpecs?.workingPressureBar;
+                                  const wp = rawSpecWpbCfg || gsWpbCfg || 0;
+                                  const rawPcByFsId = flangeStdId
+                                    ? pressureClassesByStandard[flangeStdId]
+                                    : undefined;
+                                  let availableClasses = flangeStdId ? rawPcByFsId || [] : [];
                                   if (availableClasses.length === 0 && flangeStdId) {
-                                    availableClasses =
-                                      masterData.pressureClasses?.filter(
-                                        (pc: PressureClassItem) =>
-                                          pc.flangeStandardId === flangeStdId ||
-                                          pc.standardId === flangeStdId,
-                                      ) || [];
+                                    const rawFilteredPc = rawPressureClasses?.filter(
+                                      (pc: PressureClassItem) =>
+                                        pc.flangeStandardId === flangeStdId ||
+                                        pc.standardId === flangeStdId,
+                                    );
+                                    availableClasses = rawFilteredPc || [];
                                   }
+                                  const gsPcIdCfg = globalSpecs?.flangePressureClassId;
+                                  const rawSpecPcId = specs.flangePressureClassId;
                                   const newPressureClassId =
                                     wp > 0 && availableClasses.length > 0
                                       ? recommendedPressureClassId(
@@ -1562,8 +1575,7 @@ function StraightPipeFormComponent({
                                           flangeStdCode,
                                           effectiveFlangeTypeCode,
                                         )
-                                      : specs.flangePressureClassId ||
-                                        globalSpecs?.flangePressureClassId;
+                                      : rawSpecPcId || gsPcIdCfg;
 
                                   const updatedEntry: any = {
                                     specs: {
@@ -2552,8 +2564,8 @@ function StraightPipeFormComponent({
 
                     const closureLengthMm = rawClosureLengthMm2 || 0;
                     const rawWallThicknessMm17 = specs.wallThicknessMm;
-                    const wallThickness =
-                      rawWallThicknessMm17 || entry.calculation?.wallThicknessMm || 0;
+                    const calcWt = entry.calculation?.wallThicknessMm;
+                    const wallThickness = rawWallThicknessMm17 || calcWt || 0;
                     const rawCalculatedPipeCount5 = entry.calculation?.calculatedPipeCount;
                     const closureTotalWeight =
                       nominalBore && closureLengthMm > 0 && wallThickness > 0
