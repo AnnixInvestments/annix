@@ -51,26 +51,14 @@ export class RubberExtractionOrchestratorService {
           : null;
 
         if (isPdf) {
-          const pdfText = await extractTextFromPdf(fileBuffer);
-          if (pdfText.length >= 50) {
-            const extractionResult = await this.cocExtractionService.extractTaxInvoice(
-              pdfText,
-              correctionHints,
-            );
-            await this.taxInvoiceService.setExtractedData(invoiceId, extractionResult.data);
-            this.logger.log(
-              `Auto-extracted Tax Invoice ${invoiceId} in ${extractionResult.processingTimeMs}ms`,
-            );
-          } else {
-            const extractionResult = await this.cocExtractionService.extractTaxInvoiceFromImages(
-              fileBuffer,
-              correctionHints,
-            );
-            await this.taxInvoiceService.setExtractedData(invoiceId, extractionResult.data);
-            this.logger.log(
-              `Auto-extracted Tax Invoice ${invoiceId} via OCR in ${extractionResult.processingTimeMs}ms`,
-            );
-          }
+          const extractionResult = await this.cocExtractionService.extractTaxInvoiceFromImages(
+            fileBuffer,
+            correctionHints,
+          );
+          await this.taxInvoiceService.setExtractedData(invoiceId, extractionResult.data);
+          this.logger.log(
+            `Auto-extracted Tax Invoice ${invoiceId} via Vision in ${extractionResult.processingTimeMs}ms`,
+          );
         } else {
           const docText = await extractTextFromWord(fileBuffer);
           if (docText.length >= 20) {
