@@ -368,3 +368,78 @@ if [ -n "$STAGED_BACKEND_TS" ]; then
     fi
     echo "Backend type-check passed."
 fi
+
+# 6. Migration column validation — cross-check INSERT INTO column names
+#    against the actual entity @Column() definitions. Catches mismatches like
+#    "role_id" vs "app_role_id" that compile fine but crash at deploy time.
+#    Uses sed/awk instead of grep -P for Git Bash (Windows) compatibility.
+STAGED_MIGRATIONS=$(echo "$STAGED_FILES" | grep -E '^annix-backend/src/migrations/.*\.ts$' || true)
+
+if [ -n "$STAGED_MIGRATIONS" ]; then
+    echo ""
+    echo "Checking migration column names against entity definitions..."
+    MIG_ERR_FILE=$(mktemp)
+    echo "0" > "$MIG_ERR_FILE"
+
+    for mig_file in $STAGED_MIGRATIONS; do
+        if [ ! -f "$mig_file" ]; then
+            continue
+        fi
+
+        mig_content=$(git show ":$mig_file" 2>/dev/null || cat "$mig_file")
+
+        # Extract lines with INSERT INTO "tablename" ("col1", "col2", ...)
+        insert_lines=$(echo "$mig_content" | grep -i 'INSERT INTO' || true)
+        if [ -z "$insert_lines" ]; then
+            continue
+        fi
+
+        echo "$insert_lines" | while IFS= read -r line; do
+            table=$(echo "$line" | sed -n 's/.*INSERT INTO[[:space:]]*"\([^"]*\)".*/\1/p')
+            if [ -z "$table" ]; then
+                continue
+            fi
+
+            col_part=$(echo "$line" | sed -n 's/.*INSERT INTO[[:space:]]*"[^"]*"[[:space:]]*(\([^)]*\)).*/\1/p')
+            if [ -z "$col_part" ]; then
+                continue
+            fi
+
+            entity_file=$(grep -rl "@Entity(\"$table\")" "$ROOT_DIR/annix-backend/src/" --include="*.entity.ts" 2>/dev/null | head -1 || true)
+            if [ -z "$entity_file" ]; then
+                continue
+            fi
+
+            columns=$(echo "$col_part" | tr ',' '\n' | sed 's/[" ]//g' | sed '/^$/d')
+
+            for col in $columns; do
+                case "$col" in
+                    id|created_at|updated_at|\$*|"") continue ;;
+                esac
+
+                if ! grep -qE "name:[[:space:]]*[\"']${col}[\"']" "$entity_file" 2>/dev/null; then
+                    echo "  WARNING: Migration $mig_file inserts column \"$col\" into table \"$table\""
+                    echo "           but no @Column/@JoinColumn with name: \"$col\" found in $(basename $entity_file)"
+                    cur=$(cat "$MIG_ERR_FILE")
+                    echo "$((cur + 1))" > "$MIG_ERR_FILE"
+                fi
+            done
+        done
+    done
+
+    MIGRATION_ERRORS=$(cat "$MIG_ERR_FILE")
+    rm -f "$MIG_ERR_FILE"
+
+    if [ "$MIGRATION_ERRORS" -gt 0 ]; then
+        echo ""
+        echo "============================================"
+        echo "COMMIT BLOCKED: Migration column mismatch"
+        echo "============================================"
+        echo "Found $MIGRATION_ERRORS column(s) in migration INSERT/UPDATE"
+        echo "statements that don't match entity @Column definitions."
+        echo "Verify column names by reading the entity file."
+        echo ""
+        exit 1
+    fi
+    echo "Migration column check passed."
+fi
