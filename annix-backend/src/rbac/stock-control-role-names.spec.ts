@@ -19,7 +19,7 @@ describe("STOCK_CONTROL_ROLE_NAMES", () => {
 
   it("returns undefined for unknown role codes so callers can fall back", () => {
     expect(STOCK_CONTROL_ROLE_NAMES.nonexistent).toBeUndefined();
-    expect(STOCK_CONTROL_ROLE_NAMES["quality"]).toBeUndefined();
+    expect(STOCK_CONTROL_ROLE_NAMES["fabricator"]).toBeUndefined();
   });
 
   it("uses 'Administrator' not 'Admin' for the admin role", () => {

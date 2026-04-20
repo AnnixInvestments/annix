@@ -120,6 +120,8 @@ describe("SageExportService", () => {
 
     it("should handle null unitPrice as 0.00", () => {
       const inv = invoice({
+        totalAmount: 0,
+        vatAmount: 0,
         lineItems: [
           {
             description: "Unknown",
@@ -136,11 +138,11 @@ describe("SageExportService", () => {
       expect(rows[1][9]).toBe("0.00");
     });
 
-    it("should handle null reference as empty string", () => {
+    it("should handle null reference by falling back to invoice number", () => {
       const inv = invoice({ reference: null });
       const rows = parseCsv(service.generateCsv([inv]));
 
-      expect(rows[1][4]).toBe("");
+      expect(rows[1][4]).toBe("INV-001");
     });
 
     it("should escape fields containing commas", () => {
@@ -204,7 +206,7 @@ describe("SageExportService", () => {
     });
 
     it("should handle invoice with zero line items", () => {
-      const inv = invoice({ lineItems: [] });
+      const inv = invoice({ lineItems: [], totalAmount: 0, vatAmount: 0 });
       const rows = parseCsv(service.generateCsv([inv]));
 
       expect(rows.length).toBe(1);
