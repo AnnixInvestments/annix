@@ -79,11 +79,21 @@ const NOTE_ROW_PATTERN =
 
 function isNoteRow(li: LineItemImportRow): boolean {
   const itemCode = (li.itemCode || "").trim();
-  if (!itemCode) return false;
   const description = (li.itemDescription || "").trim();
   const qty = li.quantity ? parseFloat(li.quantity) : null;
-  const hasNoData = !description && !li.itemNo && !li.jtNo && (qty === null || Number.isNaN(qty));
-  return hasNoData && NOTE_ROW_PATTERN.test(itemCode);
+  const noQty = qty === null || Number.isNaN(qty);
+  const noIdentifiers = !li.itemNo && !li.jtNo;
+
+  if (!itemCode && !description) return false;
+
+  const codeIsSpec = itemCode && NOTE_ROW_PATTERN.test(itemCode);
+  const descIsSpec = description && NOTE_ROW_PATTERN.test(description);
+
+  if (codeIsSpec && !description && noIdentifiers && noQty) return true;
+  if (codeIsSpec && descIsSpec && noIdentifiers && noQty) return true;
+  if (!itemCode && descIsSpec && noIdentifiers && noQty) return true;
+
+  return false;
 }
 
 function mergeNoteRowsIntoItems(items: LineItemImportRow[]): LineItemImportRow[] {
@@ -94,11 +104,13 @@ function mergeNoteRowsIntoItems(items: LineItemImportRow[]): LineItemImportRow[]
 
   items.forEach((item) => {
     if (isNoteRow(item)) {
-      const noteText = (item.itemCode || "")
-        .trim()
-        .replace(/\s+PRODUCTION\s*$/i, "")
-        .trim();
-      pendingNotes.push(noteText);
+      const code = (item.itemCode || "").trim();
+      const desc = (item.itemDescription || "").trim();
+      const raw = code && desc && code !== desc ? `${code} ${desc}` : code || desc;
+      const noteText = raw.replace(/\s+PRODUCTION\s*$/i, "").trim();
+      if (noteText) {
+        pendingNotes.push(noteText);
+      }
       return;
     }
 

@@ -471,7 +471,7 @@ export class SageJcDumpService {
             jtNo: jtNumber,
             sortOrder: idx,
             companyId,
-            notes: item.specNotes,
+            notes: item.specNotes || jtNotes,
           }),
         );
 
