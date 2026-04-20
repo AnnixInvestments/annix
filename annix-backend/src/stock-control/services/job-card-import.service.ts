@@ -1165,11 +1165,20 @@ export class JobCardImportService {
     await this.lineItemRepo.delete({ jobCardId });
 
     const entities = this.buildLineItemEntities(rawLineItems, jobCardId, companyId);
-    if (entities.length > 0) {
-      await this.lineItemRepo.save(entities);
+
+    const jcNotes = jobCard.notes || null;
+    const entitiesWithNotes = entities.map((entity) => {
+      if (!entity.notes && jcNotes) {
+        return { ...entity, notes: jcNotes };
+      }
+      return entity;
+    });
+
+    if (entitiesWithNotes.length > 0) {
+      await this.lineItemRepo.save(entitiesWithNotes);
     }
 
-    const combinedNotes = entities
+    const combinedNotes = entitiesWithNotes
       .map((e) => e.notes)
       .filter((n): n is string => n !== null && n.trim().length > 0)
       .join("\n");
