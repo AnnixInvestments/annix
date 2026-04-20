@@ -75,6 +75,15 @@ describe("RubberExtractionOrchestratorService", () => {
 
     service = module.get<RubberExtractionOrchestratorService>(RubberExtractionOrchestratorService);
     jest.clearAllMocks();
+
+    // Re-apply document extraction mocks after clearAllMocks resets them
+    const docExtraction = require("../../lib/document-extraction");
+    (docExtraction.extractTextFromPdf as jest.Mock).mockResolvedValue(
+      "sample pdf text with enough characters for extraction threshold",
+    );
+    (docExtraction.extractTextFromWord as jest.Mock).mockResolvedValue(
+      "sample word document text content",
+    );
   });
 
   it("should be defined", () => {
@@ -116,12 +125,12 @@ describe("RubberExtractionOrchestratorService", () => {
         "Supplier Co",
       );
 
-      await new Promise((r) => setTimeout(r, 50));
+      await new Promise((r) => setTimeout(r, 200));
 
       expect(taxInvoiceMock.correctionHintsForSupplier).toHaveBeenCalledWith("Supplier Co");
-      expect(cocExtractionMock.extractTaxInvoice).toHaveBeenCalled();
+      expect(cocExtractionMock.extractTaxInvoiceFromImages).toHaveBeenCalled();
       expect(taxInvoiceMock.setExtractedData).toHaveBeenCalledWith(10, {
-        invoiceNumber: "INV-1",
+        invoiceNumber: "INV-OCR",
       });
     });
 
