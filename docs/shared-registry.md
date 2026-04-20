@@ -1,6 +1,6 @@
 # Shared Module Registry
 
-**Last updated:** 2026-04-18
+**Last updated:** 2026-04-20
 
 This is the canonical index of shared modules across the Annix monorepo. Every Claude session MUST consult this file before writing new constants, components, services, or utilities (see `CLAUDE.md` §"Discovery-first protocol").
 
@@ -78,6 +78,11 @@ Shared workspace package (pnpm workspace). Both `annix-backend` and `annix-front
 | Platform Delivery Notes | `platform/delivery-note.service.ts` | Unified delivery note model with `source_module` discriminator. Supports GENERAL, COMPOUND, ROLL types. |
 | Platform Invoices | `platform/invoice.service.ts` | Unified invoice model for both supplier and customer invoices. Supports SC clarification workflow and AR simple flow. |
 | Platform Certificates | `platform/certificate.service.ts` | Unified certificate/CoC model. Categories: COA, COC, COMPOUNDER, CALENDARER, CALENDER_ROLL, CALIBRATION. |
+| RFQ calculation service | `rfq/services/rfq-calculation.service.ts` | Weld, weight, and pricing calculations extracted from rfq.service.ts (ref #198). |
+| Rubber reference data API | `rubber-lining/rubber-reference-data.controller.ts` | Public reference data endpoints for rubber products, extracted from rubber-lining.controller.ts (ref #198). |
+| Pipe/steel work data | `pipe-steel-work/pipe-steel-work-data.ts` | Static pipe/steel bracket and spacing data extracted from pipe-steel-work.service.ts (ref #198). |
+| Bracket compatibility | `pipe-steel-work/bracket-compatibility.service.ts` | Bracket type validation and compatibility checks (ref #198). |
+| Support spacing | `pipe-steel-work/support-spacing.service.ts` | Pipe support spacing calculations per standard (ref #198). |
 | Platform base entities | `platform/entities/base-portal-profile.ts` | Extend this for any portal-profile-shaped entity (customer, supplier). |
 | TanStack-compatible query helpers | `shared/validators/` | Shared NestJS validators (e.g. `rfq-compliance.validator.ts`). |
 
@@ -176,6 +181,9 @@ Host-app-agnostic React module. Consumed by Stock Control (via `app/stock-contro
 | Query hooks | `lib/query/hooks/<subject>/use<Subject>.ts` | ALL page-level data fetching must use these. Subjects: `admin`, `au-rubber`, `boq`, `customer`, `drawing`, `rfq`, `supplier`, `reference`. |
 | Query keys | `lib/query/keys/<subject>Keys.ts` | Query key factories with shape `{ all, list, detail }`. |
 | corpId (static branding) | `lib/config/corpId.ts` | Colors, fonts, logos. **Never legal data** — use the company profile hook for that. |
+| RFQ registration restrictions | `lib/utils/rfq/registrationRestrictions.ts` | Unregistered customer restriction checks and popup helpers. Extracted from SpecificationsStep (ref #198). |
+| RFQ submission helpers | `components/rfq/utils/rfqSubmissionHelpers.ts` | RFQ submit/resubmit flow helpers extracted from StraightPipeRfqOrchestrator (ref #198). |
+| Project details fallback data | `components/rfq/steps/projectDetailsFallbackData.ts` | Mine selection fallback data extracted from ProjectDetailsStep (ref #198). |
 | Company profile hook | `lib/query/hooks/useAnnixCompanyProfile` | Annix legal/contact info. Never hardcode. |
 | Feature flags | `lib/query/hooks/useFeatureFlags` | Feature flag queries. |
 
