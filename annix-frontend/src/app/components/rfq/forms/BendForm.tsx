@@ -1150,6 +1150,15 @@ function BendFormComponent(props: BendFormProps) {
                         value={rawBendRadiusType || ""}
                         onChange={(radiusType) => {
                           const isSweepTee = specs.bendItemType === "SWEEP_TEE";
+                          const nb = specs.nominalBoreMm;
+                          let newCenterToFace: number | undefined;
+                          let newBendRadius: number | undefined;
+                          if (radiusType && nb) {
+                            const bt = radiusType as SABS62BendType;
+                            newCenterToFace = sabs62CFInterpolated(bt, 90, nb);
+                            const radiusMap = SABS62_BEND_RADIUS[bt];
+                            newBendRadius = radiusMap?.[nb];
+                          }
                           const updatedEntry: any = {
                             ...entry,
                             specs: {
@@ -1157,10 +1166,10 @@ function BendFormComponent(props: BendFormProps) {
                               bendRadiusType: radiusType || undefined,
                               bendType: undefined,
                               numberOfSegments: undefined,
-                              centerToFaceMm: undefined,
-                              bendRadiusMm: undefined,
+                              centerToFaceMm: newCenterToFace,
+                              bendRadiusMm: newBendRadius,
                               bendDegrees: isSweepTee ? 90 : undefined,
-                              nominalBoreMm: specs.nominalBoreMm,
+                              nominalBoreMm: nb,
                               scheduleNumber: specs.scheduleNumber,
                               wallThicknessMm: specs.wallThicknessMm,
                               sweepTeePipeALengthMm: isSweepTee
@@ -1174,6 +1183,9 @@ function BendFormComponent(props: BendFormProps) {
                           }
                           updatedEntry.description = generateItemDescription(updatedEntry);
                           onUpdateEntry(entry.id, updatedEntry);
+                          if (nb && specs.scheduleNumber) {
+                            debouncedCalculate();
+                          }
                         }}
                         options={options}
                         placeholder="Select Radius Type"
