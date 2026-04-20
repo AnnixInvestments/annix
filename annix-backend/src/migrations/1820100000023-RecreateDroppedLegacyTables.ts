@@ -158,11 +158,39 @@ export class RecreateDroppedLegacyTables1820100000023 implements MigrationInterf
     if (Number(scCompanyCount[0]?.cnt) === 0) {
       await queryRunner.query(`
         INSERT INTO stock_control_companies (
-          name, qc_enabled, workflow_enabled, notifications_enabled,
+          name, branding_type, website_url, branding_authorized,
+          primary_color, accent_color, logo_url, hero_image_url,
+          registration_number, vat_number, street_address, city,
+          province, postal_code, phone, email,
+          smtp_host, smtp_port, smtp_user, smtp_pass_encrypted,
+          smtp_from_name, smtp_from_email, notification_emails,
+          qc_enabled, workflow_enabled, notifications_enabled,
           unified_company_id, created_at, updated_at
         )
         SELECT
           COALESCE(c.legal_name, c.name),
+          COALESCE(c.branding_type, 'annix'),
+          c.website_url,
+          COALESCE(c.branding_authorized, false),
+          c.primary_color,
+          c.accent_color,
+          c.logo_url,
+          c.hero_image_url,
+          c.registration_number,
+          c.vat_number,
+          c.street_address,
+          c.city,
+          c.province,
+          c.postal_code,
+          c.phone,
+          c.email,
+          c.smtp_host,
+          c.smtp_port,
+          c.smtp_user,
+          c.smtp_pass_encrypted,
+          c.smtp_from_name,
+          c.smtp_from_email,
+          COALESCE(c.notification_emails, '[]'::jsonb),
           true,
           true,
           true,
@@ -175,6 +203,28 @@ export class RecreateDroppedLegacyTables1820100000023 implements MigrationInterf
         ON CONFLICT DO NOTHING
       `);
     }
+
+    // Backfill branding for rows that already exist but have default branding
+    await queryRunner.query(`
+      UPDATE stock_control_companies sc
+      SET
+        branding_type = COALESCE(c.branding_type, sc.branding_type),
+        website_url = COALESCE(c.website_url, sc.website_url),
+        branding_authorized = COALESCE(c.branding_authorized, sc.branding_authorized),
+        primary_color = COALESCE(c.primary_color, sc.primary_color),
+        accent_color = COALESCE(c.accent_color, sc.accent_color),
+        logo_url = COALESCE(c.logo_url, sc.logo_url),
+        hero_image_url = COALESCE(c.hero_image_url, sc.hero_image_url),
+        registration_number = COALESCE(c.registration_number, sc.registration_number),
+        vat_number = COALESCE(c.vat_number, sc.vat_number),
+        phone = COALESCE(c.phone, sc.phone),
+        email = COALESCE(c.email, sc.email),
+        updated_at = NOW()
+      FROM companies c
+      WHERE sc.unified_company_id = c.id
+        AND sc.branding_type = 'annix'
+        AND c.branding_type = 'custom'
+    `);
 
     // stock_control_users: one row per user with SC app access
     const scUserCount = await queryRunner.query("SELECT COUNT(*) as cnt FROM stock_control_users");

@@ -1,11 +1,11 @@
 "use client";
 
-import { isArray, keys } from "es-toolkit/compat";
+import { isArray } from "es-toolkit/compat";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
+import { PdfPreviewModal } from "@/app/components/PdfPreviewModal";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import type {
   BackgroundStepStatus,
@@ -13,42 +13,19 @@ import type {
   JobCardApproval,
   QcControlPlanRecord,
   Requisition,
-  StaffMember,
   StockAllocation,
-  StockItem,
   WorkflowStatus as WorkflowStatusData,
 } from "@/app/lib/api/stockControlApi";
 // eslint-disable-next-line no-restricted-imports -- Job card detail page has deep inline operations (QC, allocations, signatures) not yet covered by hooks; migrating requires extensive hook scaffolding. Tracked as tech debt per Phase 9 of annix/annix#191.
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
-import { formatDateZA, nowMillis } from "@/app/lib/datetime";
+import { formatDateZA } from "@/app/lib/datetime";
 import {
-  useAllocateStock,
-  useApproveOverAllocation,
-  useApproveWorkflowStep,
-  useCompleteAction,
-  useCompleteBackgroundStepWithOutcome,
-  useConfirmIssuance,
-  useDownloadJobCardQrPdf,
-  useDownloadSignedJobCardPdf,
-  useInvalidateJobCards,
-  useLoadApprovalHistory,
   useLoadBackgroundStepsForJobCard,
   useLoadControlPlansForJobCard,
-  useLoadDeliveryJobCards,
   useLoadJobCardAdjacentIds,
-  useLoadJobCardPdfPreview,
   useLoadReconciliationGateStatus,
-  useLoadRequisitions,
   useLoadSourceFileUrl,
   useLoadWorkflowStatus,
-  usePlaceRequisitionDecision,
-  useReExtractJobCardNotes,
-  useRejectOverAllocation,
-  useRejectWorkflowStep,
-  useSaveJobCardCorrection,
-  useUpdateJobCard,
-  useUploadReadyPhoto,
-  useUseCurrentStockDecision,
 } from "@/app/lib/query/hooks";
 import { ApprovalModal } from "@/app/stock-control/components/ApprovalModal";
 import { JobCardNextAction } from "@/app/stock-control/components/NextActionBanner";
@@ -70,14 +47,19 @@ import {
 import { JobFileTab } from "./components/JobFileTab";
 import { LineItemsTab } from "./components/LineItemsTab";
 import { QualityTab } from "./components/QualityTab";
+import { ReadyPhotoModal } from "./components/ReadyPhotoModal";
 import { ReconciliationTab } from "./components/ReconciliationTab";
 import { RequisitionTab } from "./components/RequisitionTab";
 import { RubberAllocationGuard } from "./components/RubberAllocation";
+import { SourceFileModal } from "./components/SourceFileModal";
 import { StockIssuesTab } from "./components/StockIssuesTab";
+import { WorkflowActionsBar } from "./components/WorkflowActionsBar";
+import { useJobCardActions } from "./hooks/useJobCardActions";
 import { useJobCardCoating } from "./hooks/useJobCardCoating";
 import { useJobCardDocuments } from "./hooks/useJobCardDocuments";
 import { useJobCardJobFiles } from "./hooks/useJobCardJobFiles";
-import { isValidLineItem, STATUS_TRANSITIONS, statusBadgeColor } from "./lib/helpers";
+import { useWorkflowActions } from "./hooks/useWorkflowActions";
+import { isValidLineItem, statusBadgeColor } from "./lib/helpers";
 
 export default function JobCardDetailPage() {
   const params = useParams();
@@ -87,33 +69,12 @@ export default function JobCardDetailPage() {
   const profile = authContext.profile;
   const { effectiveRole, isPreviewActive, effectiveName } = useViewAs();
   const { confirm, ConfirmDialog } = useConfirm();
-  const invalidateJobCardsList = useInvalidateJobCards();
   const jobId = Number(params.id);
 
-  const { mutateAsync: loadRequisitions } = useLoadRequisitions();
-  const { mutateAsync: loadDeliveryJobCards } = useLoadDeliveryJobCards();
   const { mutateAsync: loadWorkflowStatus } = useLoadWorkflowStatus();
-  const { mutateAsync: loadApprovalHistory } = useLoadApprovalHistory();
   const { mutateAsync: loadBackgroundSteps } = useLoadBackgroundStepsForJobCard();
   const { mutateAsync: loadJobCardAdjacentIds } = useLoadJobCardAdjacentIds();
   const { mutateAsync: loadControlPlans } = useLoadControlPlansForJobCard();
-  const { mutateAsync: allocateStockMutation } = useAllocateStock();
-  const { mutateAsync: approveOverAllocation } = useApproveOverAllocation();
-  const { mutateAsync: rejectOverAllocation } = useRejectOverAllocation();
-  const { mutateAsync: loadJobCardPdfPreview } = useLoadJobCardPdfPreview();
-  const { mutateAsync: downloadJobCardQrPdf } = useDownloadJobCardQrPdf();
-  const { mutateAsync: downloadSignedJobCardPdf } = useDownloadSignedJobCardPdf();
-  const { mutateAsync: updateJobCard } = useUpdateJobCard();
-  const { mutateAsync: approveWorkflowStep } = useApproveWorkflowStep();
-  const { mutateAsync: rejectWorkflowStep } = useRejectWorkflowStep();
-  const { mutateAsync: completeBackgroundStepWithOutcome } = useCompleteBackgroundStepWithOutcome();
-  const { mutateAsync: completeAction } = useCompleteAction();
-  const { mutateAsync: reExtractJobCardNotes } = useReExtractJobCardNotes();
-  const { mutateAsync: saveJobCardCorrection } = useSaveJobCardCorrection();
-  const { mutateAsync: uploadReadyPhoto } = useUploadReadyPhoto();
-  const { mutateAsync: confirmIssuance } = useConfirmIssuance();
-  const { mutateAsync: placeRequisitionDecision } = usePlaceRequisitionDecision();
-  const { mutateAsync: submitUseCurrentStockDecision } = useUseCurrentStockDecision();
   const { mutateAsync: loadSourceFileUrl } = useLoadSourceFileUrl();
   const { mutateAsync: loadReconciliationGateStatus } = useLoadReconciliationGateStatus();
 
@@ -123,30 +84,10 @@ export default function JobCardDetailPage() {
   const [jobCard, setJobCard] = useState<JobCard | null>(null);
   const [workflowStatus, setWorkflowStatus] = useState<WorkflowStatusData | null>(null);
   const [approvals, setApprovals] = useState<JobCardApproval[]>([]);
-  const [showApprovalModal, setShowApprovalModal] = useState(false);
-  const [currentApprovalStep, setCurrentApprovalStep] = useState("");
   const [allocations, setAllocations] = useState<StockAllocation[]>([]);
   const [requisition, setRequisition] = useState<Requisition | null>(null);
-  const [stockItems, setStockItems] = useState<StockItem[]>([]);
-  const [activeStaff, setActiveStaff] = useState<StaffMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
-  const [showAllocateModal, setShowAllocateModal] = useState(false);
-  const [allocateForm, setAllocateForm] = useState({
-    stockItemId: 0,
-    quantityUsed: 1,
-    notes: "",
-    staffMemberId: 0,
-  });
-  const [isAllocating, setIsAllocating] = useState(false);
-  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
-  const [approvingAllocationId, setApprovingAllocationId] = useState<number | null>(null);
-  const [rejectingAllocationId, setRejectingAllocationId] = useState<number | null>(null);
-  const [isDownloadingQr, setIsDownloadingQr] = useState(false);
-  const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
-  const [capturedFile, setCapturedFile] = useState<File | null>(null);
   const [backgroundSteps, setBackgroundSteps] = useState<BackgroundStepStatus[]>([]);
-  const [completingStepKey, setCompletingStepKey] = useState<string | null>(null);
   const [controlPlans, setControlPlans] = useState<QcControlPlanRecord[]>([]);
   const [deliveryJobCards, setDeliveryJobCards] = useState<JobCard[]>([]);
   const [adjacentIds, setAdjacentIds] = useState<{
@@ -163,7 +104,6 @@ export default function JobCardDetailPage() {
       ]);
       setJobCard(jobData);
       setAllocations(isArray(allocationsData) ? allocationsData : []);
-      setError(null);
 
       stockControlApiClient
         .requisitions()
@@ -203,7 +143,7 @@ export default function JobCardDetailPage() {
         .then((data) => setControlPlans(data))
         .catch(() => setControlPlans([]));
     } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to load job card"));
+      actions.setError(err instanceof Error ? err : new Error("Failed to load job card"));
     } finally {
       setIsLoading(false);
     }
@@ -218,14 +158,37 @@ export default function JobCardDetailPage() {
       stockControlApiClient
         .backgroundStepsForJobCard(jobId)
         .then((data) => setBackgroundSteps(data)),
-    ]).catch((err) => {
-      console.error("Failed to refresh workflow state:", err);
-    });
+    ]).catch(() => null);
   }, [jobId]);
 
-  const documents = useJobCardDocuments(jobId, fetchData, confirm);
   const coating = useJobCardCoating(jobId);
   const jobFilesHook = useJobCardJobFiles(jobId, confirm);
+  const documents = useJobCardDocuments(jobId, fetchData, confirm);
+
+  const currentStatus = workflowStatus?.currentStatus ? workflowStatus.currentStatus : null;
+  const currentStep = workflowStatus?.currentStep ? workflowStatus.currentStep : null;
+  const userRole = effectiveRole;
+  const isAdminView = userRole === "admin" && !isPreviewActive;
+
+  const actions = useJobCardActions({
+    jobId,
+    currentStep,
+    fetchData,
+    onTabChange: (tabId: string) => handleTabChange(tabId),
+    coating,
+  });
+
+  const workflow = useWorkflowActions({
+    workflowStatus,
+    backgroundSteps,
+    currentStatus,
+    currentStep,
+    userName: user?.name,
+    effectiveName,
+    userRole,
+    isPreviewActive,
+    isAdminView,
+  });
 
   useEffect(() => {
     fetchData();
@@ -238,330 +201,6 @@ export default function JobCardDetailPage() {
     const interval = setInterval(refreshWorkflowState, 15000);
     return () => clearInterval(interval);
   }, [refreshWorkflowState]);
-
-  const fetchStockItems = async () => {
-    try {
-      const result = await stockControlApiClient.stockItems({ limit: "1000" });
-      setStockItems(isArray(result.items) ? result.items : []);
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to load stock items"));
-    }
-  };
-
-  const openAllocateModal = async () => {
-    await fetchStockItems();
-    try {
-      const staff = await stockControlApiClient.staffMembers({ active: "true" });
-      setActiveStaff(isArray(staff) ? staff : []);
-    } catch {
-      setActiveStaff([]);
-    }
-    setAllocateForm({ stockItemId: 0, quantityUsed: 1, notes: "", staffMemberId: 0 });
-    setCapturedFile(null);
-    setShowAllocateModal(true);
-  };
-
-  const handleAllocate = async () => {
-    if (!allocateForm.stockItemId) return;
-    try {
-      setIsAllocating(true);
-      await allocateStockMutation({
-        jobId,
-        data: {
-          stockItemId: allocateForm.stockItemId,
-          quantityUsed: allocateForm.quantityUsed,
-          notes: allocateForm.notes ? allocateForm.notes : undefined,
-          staffMemberId: allocateForm.staffMemberId ? allocateForm.staffMemberId : undefined,
-        },
-        photoFile: capturedFile ? capturedFile : undefined,
-      });
-      setShowAllocateModal(false);
-      setCapturedFile(null);
-      fetchData();
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to allocate stock"));
-    } finally {
-      setIsAllocating(false);
-    }
-  };
-
-  const handleApproveAllocation = async (allocationId: number) => {
-    try {
-      setApprovingAllocationId(allocationId);
-      await approveOverAllocation({ jobId, allocationId });
-      fetchData();
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to approve allocation"));
-    } finally {
-      setApprovingAllocationId(null);
-    }
-  };
-
-  const handleRejectAllocation = async (allocationId: number, reason: string) => {
-    if (!reason.trim()) return;
-    try {
-      setRejectingAllocationId(allocationId);
-      await rejectOverAllocation({ jobId, allocationId, reason });
-      fetchData();
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to reject allocation"));
-    } finally {
-      setRejectingAllocationId(null);
-    }
-  };
-
-  const [downloadError, setDownloadError] = useState<string | null>(null);
-  const pdfPreview = usePdfPreview();
-
-  const handlePrintQr = async () => {
-    try {
-      setIsDownloadingQr(true);
-      setDownloadError(null);
-      const blobUrl = await loadJobCardPdfPreview(jobId);
-      setPdfPreviewUrl(blobUrl);
-    } catch (err) {
-      setDownloadError(err instanceof Error ? err.message : "Failed to generate job card PDF");
-    } finally {
-      setIsDownloadingQr(false);
-    }
-  };
-
-  const handleExportPdf = async () => {
-    try {
-      setIsDownloadingQr(true);
-      await downloadJobCardQrPdf(jobId);
-    } catch (err) {
-      setDownloadError(err instanceof Error ? err.message : "Failed to download job card PDF");
-    } finally {
-      setIsDownloadingQr(false);
-    }
-  };
-
-  const handleStatusUpdate = async (newStatus: string) => {
-    if (newStatus === "active") {
-      const activateWithStatus = async () => {
-        try {
-          setIsUpdatingStatus(true);
-          await updateJobCard({ jobCardId: jobId, data: { status: "active" } });
-          invalidateJobCardsList();
-          fetchData();
-        } catch (err) {
-          setError(err instanceof Error ? err : new Error("Failed to update status"));
-        } finally {
-          setIsUpdatingStatus(false);
-        }
-      };
-      const hasUnverified = await coating.checkUnverifiedProducts(activateWithStatus);
-      if (hasUnverified) return;
-      await activateWithStatus();
-      return;
-    }
-
-    try {
-      setIsUpdatingStatus(true);
-      await updateJobCard({ jobCardId: jobId, data: { status: newStatus } });
-      invalidateJobCardsList();
-      fetchData();
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to update status"));
-    } finally {
-      setIsUpdatingStatus(false);
-    }
-  };
-
-  const activateJobCard = async (skipTdsCheck?: boolean) => {
-    try {
-      setIsUpdatingStatus(true);
-      await updateJobCard({
-        jobCardId: jobId,
-        data: {
-          status: "active",
-          ...(skipTdsCheck ? { skipTdsCheck: true } : {}),
-        },
-      });
-      invalidateJobCardsList();
-      fetchData();
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to activate job card"));
-    } finally {
-      setIsUpdatingStatus(false);
-    }
-  };
-
-  const handleDraftAccepted = async () => {
-    const hasUnverified = await coating.checkUnverifiedProducts(() => activateJobCard());
-    if (hasUnverified) {
-      handleTabChange("coating");
-      return;
-    }
-
-    await activateJobCard();
-  };
-
-  const handleSkipTdsAndActivate = async () => {
-    coating.setShowTdsModal(false);
-    coating.setUnverifiedProducts([]);
-    await activateJobCard(true);
-  };
-
-  const handleApprove = async (
-    signatureDataUrl?: string,
-    comments?: string,
-    outcomeKey?: string,
-  ) => {
-    await approveWorkflowStep({
-      jobId,
-      signatureDataUrl,
-      comments,
-      outcomeKey,
-    });
-    invalidateJobCardsList();
-    fetchData();
-  };
-
-  const handleReject = async (reason: string) => {
-    await rejectWorkflowStep({ jobId, reason });
-    invalidateJobCardsList();
-    fetchData();
-  };
-
-  const [bgStepError, setBgStepError] = useState<string | null>(null);
-  const handleCompleteBackgroundStep = async (stepKey: string, outcomeKey?: string) => {
-    try {
-      setCompletingStepKey(stepKey);
-      setBgStepError(null);
-      await completeBackgroundStepWithOutcome({ jobCardId: jobId, stepKey, outcomeKey });
-      fetchData();
-    } catch (err) {
-      setBgStepError(err instanceof Error ? err.message : "Failed to complete background step");
-    } finally {
-      setCompletingStepKey(null);
-    }
-  };
-
-  const [isCompletingFgAction, setIsCompletingFgAction] = useState(false);
-  const handleCompleteFgAction = async () => {
-    if (!currentStep) return;
-    try {
-      setIsCompletingFgAction(true);
-      await completeAction({ jobCardId: jobId, stepKey: currentStep, actionType: "primary" });
-      fetchData();
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Failed to complete action";
-      setError(new Error(msg));
-    } finally {
-      setIsCompletingFgAction(false);
-    }
-  };
-
-  const handleSaveNotes = async (editedNotes: string) => {
-    const jobCardNotes = jobCard?.notes;
-    const originalNotes = jobCardNotes ? jobCardNotes : null;
-    await updateJobCard({ jobCardId: jobId, data: { notes: editedNotes } });
-    const fallbackOriginal = originalNotes ? originalNotes : "";
-    if (editedNotes !== fallbackOriginal) {
-      await saveJobCardCorrection({
-        jobCardId: jobId,
-        data: {
-          fieldName: "notes",
-          originalValue: originalNotes,
-          correctedValue: editedNotes,
-        },
-      }).catch(() => null);
-    }
-    fetchData();
-  };
-
-  const [isReExtractingNotes, setIsReExtractingNotes] = useState(false);
-  const handleReExtractNotes = async () => {
-    try {
-      setIsReExtractingNotes(true);
-      await reExtractJobCardNotes(jobId);
-      await stockControlApiClient.recalculateM2(jobId);
-      fetchData();
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to re-extract notes"));
-    } finally {
-      setIsReExtractingNotes(false);
-    }
-  };
-
-  const openApprovalModal = (stepName: string) => {
-    setCurrentApprovalStep(stepName);
-    setShowApprovalModal(true);
-  };
-
-  const handlePrintSignedPdf = () => {
-    setDownloadError(null);
-    pdfPreview.openWithFetch(() => downloadSignedJobCardPdf(jobId), `job-card-signed-${jobId}.pdf`);
-  };
-
-  const currentStatus = workflowStatus?.currentStatus ? workflowStatus.currentStatus : null;
-  const currentStep = workflowStatus?.currentStep ? workflowStatus.currentStep : null;
-  const currentStepLabel = (() => {
-    if (!currentStep || !workflowStatus) return null;
-    const fgSteps = workflowStatus.foregroundSteps;
-    if (!fgSteps) return null;
-    const match = fgSteps.find((s) => s.key === currentStep);
-    return match ? match.label : null;
-  })();
-  const userRole = effectiveRole;
-  const isAdminView = userRole === "admin" && !isPreviewActive;
-
-  const canApprove = useMemo(() => {
-    if (!currentStep || !workflowStatus) return false;
-    const jcStatus = workflowStatus.jobCardStatus;
-    if (jcStatus !== "active") return false;
-
-    if (isPreviewActive) {
-      const checkName = effectiveName;
-      if (!checkName) return false;
-      const allAssignments = workflowStatus.stepAssignments;
-      const assigned = allAssignments ? allAssignments[currentStep] : null;
-      if (!assigned || assigned.length === 0) return false;
-      return assigned.some((u) => u.name === checkName);
-    }
-
-    if (userRole === "admin") return true;
-
-    return workflowStatus.canApprove;
-  }, [currentStep, workflowStatus, isPreviewActive, effectiveName, userRole]);
-
-  const isQualityUser = useMemo(() => {
-    if (!workflowStatus) return false;
-    if (workflowStatus.jobCardStatus !== "active") return false;
-    const checkName = isPreviewActive ? effectiveName : user?.name;
-    if (!checkName) return false;
-    const stepAssignments = workflowStatus.stepAssignments;
-    const assignments = stepAssignments || {};
-    const qualityKeys = keys(assignments).filter(
-      (k) => k.includes("quality") || k === "qa_review" || k === "qa_final_check",
-    );
-    return qualityKeys.some((k) => {
-      const assigned = assignments[k];
-      return assigned?.some((u) => u.name === checkName);
-    });
-  }, [workflowStatus, user?.name, effectiveName, isPreviewActive]);
-
-  const canAcceptDraft = useMemo(() => {
-    if (!workflowStatus || workflowStatus.jobCardStatus !== "draft") return false;
-    if (userRole === "admin" && !isPreviewActive) return true;
-    const checkName = effectiveName || user?.name;
-    if (!checkName) return false;
-    const assigned = workflowStatus.stepAssignments?.["document_upload"];
-    if (!assigned || assigned.length === 0) return false;
-    return assigned.some((u) => u.name === checkName);
-  }, [workflowStatus, user?.name, effectiveName, userRole, isPreviewActive]);
-
-  const adminBlockedFromStep = useCallback(
-    (stepKey: string | null | undefined) => {
-      if (!isAdminView || !stepKey || !workflowStatus) return false;
-      const assigned = workflowStatus.stepAssignments?.[stepKey];
-      if (!assigned || assigned.length === 0) return true;
-      return !assigned.some((u) => u.name === user?.name);
-    },
-    [isAdminView, workflowStatus, user?.name],
-  );
 
   const scrollToElementId = useCallback((elementId: string) => {
     const findScrollParent = (el: HTMLElement): HTMLElement | Window => {
@@ -605,6 +244,14 @@ export default function JobCardDetailPage() {
     () => (jobCard?.lineItems ? jobCard.lineItems.filter(isValidLineItem).length : 0),
     [jobCard],
   );
+
+  const currentStepLabel = (() => {
+    if (!currentStep || !workflowStatus) return null;
+    const fgSteps = workflowStatus.foregroundSteps;
+    if (!fgSteps) return null;
+    const match = fgSteps.find((s) => s.key === currentStep);
+    return match ? match.label : null;
+  })();
 
   const tabDefinitions: TabDefinition[] = useMemo(() => {
     const status = jobCard?.status?.toLowerCase() || "draft";
@@ -661,223 +308,6 @@ export default function JobCardDetailPage() {
     ];
   }, [jobCard, validLineItemCount, allocations.length, currentStatus]);
 
-  const userPendingBgSteps = useMemo(() => {
-    const checkName = effectiveName || user?.name;
-    if (!workflowStatus || !checkName) return [];
-    if (workflowStatus.jobCardStatus === "draft") return [];
-    const foregroundSteps = workflowStatus.foregroundSteps;
-    const fgSteps = foregroundSteps || [];
-    const fgKeys = fgSteps.filter((s) => s.key !== "draft").map((s) => s.key);
-    const fgKeySet = new Set(fgKeys);
-    const currentFgIdx = fgKeys.indexOf(currentStatus || "");
-    const completedKeys = new Set(
-      backgroundSteps.filter((bg) => bg.completedAt !== null).map((bg) => bg.stepKey),
-    );
-    const stepAssignments = workflowStatus.stepAssignments;
-    const assignments = stepAssignments || {};
-    const bgKeySet = new Set(backgroundSteps.map((bg) => bg.stepKey));
-
-    const triggerGroups = backgroundSteps.reduce<Record<string, BackgroundStepStatus[]>>(
-      (acc, bg) => {
-        const triggerAfterStep = bg.triggerAfterStep;
-        const trigger = triggerAfterStep || "__root__";
-        return { ...acc, [trigger]: [...(acc[trigger] ? acc[trigger] : []), bg] };
-      },
-      {},
-    );
-
-    const resolveOriginFgIdx = (trigger: string, visited: Set<string> = new Set()): number => {
-      if (trigger === "__root__") return 0;
-      if (fgKeySet.has(trigger)) return fgKeys.indexOf(trigger);
-      if (visited.has(trigger)) return 0;
-      visited.add(trigger);
-      const parentBg = backgroundSteps.find((bg) => bg.stepKey === trigger);
-      if (parentBg) {
-        const parentTriggerAfterStep = parentBg.triggerAfterStep;
-        return resolveOriginFgIdx(parentTriggerAfterStep || "__root__", visited);
-      }
-      return 0;
-    };
-
-    const bgByKey = new Map(backgroundSteps.map((bg) => [bg.stepKey, bg]));
-    const isInColoredBranch = (stepKey: string, visited: Set<string> = new Set()): boolean => {
-      if (visited.has(stepKey)) return false;
-      visited.add(stepKey);
-      const step = bgByKey.get(stepKey);
-      if (!step) return false;
-      if (step.branchColor) return true;
-      const parent = step.triggerAfterStep;
-      if (parent && bgKeySet.has(parent)) return isInColoredBranch(parent, visited);
-      return false;
-    };
-
-    const coloredSteps = backgroundSteps.filter((bg) => isInColoredBranch(bg.stepKey));
-    const hasIncompleteColored = coloredSteps.some((bg) => bg.completedAt === null);
-
-    const qaReviewPending = backgroundSteps.some(
-      (bg) => bg.stepKey === "qa_review" && bg.completedAt === null,
-    );
-
-    const allActionable = backgroundSteps.filter((bg) => {
-      if (bg.completedAt !== null) return false;
-
-      if (qaReviewPending && (bg.stepKey === "qc_repairs" || bg.stepKey === "qa_final_check")) {
-        return false;
-      }
-
-      const triggerAfterStep = bg.triggerAfterStep;
-      const trigger = triggerAfterStep || "__root__";
-      const originFgIdx = resolveOriginFgIdx(trigger);
-      const isColored = isInColoredBranch(bg.stepKey);
-      const coloredAtTrigger = isColored && originFgIdx === currentFgIdx;
-      const currentFgKey = fgKeys[currentFgIdx];
-      const rawCompletions = workflowStatus.actionCompletions;
-      const completions = rawCompletions || [];
-      const phase1Done = currentFgKey
-        ? completions.some((ac) => ac.stepKey === currentFgKey && ac.actionType === "primary")
-        : false;
-      const coloredUnlocked = coloredAtTrigger && phase1Done;
-      const effectiveOrigin = coloredUnlocked
-        ? originFgIdx
-        : isColored
-          ? originFgIdx + 1
-          : originFgIdx;
-
-      const isNonBlocking = bg.rejoinAtStep !== null;
-
-      if (isAdminView) {
-        if (effectiveOrigin >= currentFgIdx && !isNonBlocking && !coloredUnlocked) return false;
-      } else {
-        if (effectiveOrigin >= currentFgIdx && !isNonBlocking && !coloredUnlocked) return false;
-
-        if (hasIncompleteColored && !isInColoredBranch(bg.stepKey) && !isNonBlocking) {
-          const originKey = fgKeys[resolveOriginFgIdx(trigger)];
-          const coloredOrigin =
-            coloredSteps.length > 0
-              ? (() => {
-                  const coloredStepTriggerAfterStep = coloredSteps[0].triggerAfterStep;
-                  return fgKeys[resolveOriginFgIdx(coloredStepTriggerAfterStep || "__root__")];
-                })()
-              : null;
-          if (originKey === coloredOrigin) return false;
-        }
-      }
-
-      if (bgKeySet.has(trigger) && !completedKeys.has(trigger)) return false;
-
-      const isNonBlockingBranch = bg.rejoinAtStep !== null;
-      if (!isNonBlockingBranch) {
-        const allSiblings = triggerGroups[trigger] ? triggerGroups[trigger] : [];
-        const sameBranchSiblings = allSiblings.filter((s) => {
-          const siblingBranchColor = s.branchColor;
-          const branchColor = bg.branchColor;
-          return (siblingBranchColor || null) === (branchColor || null);
-        });
-        const myIdx = sameBranchSiblings.findIndex((s) => s.stepKey === bg.stepKey);
-        if (myIdx > 0) {
-          const allPriorComplete = sameBranchSiblings
-            .slice(0, myIdx)
-            .every((s) => completedKeys.has(s.stepKey));
-          if (!allPriorComplete) return false;
-        }
-      }
-
-      const assigned = assignments[bg.stepKey];
-      if (!assigned || assigned.length === 0) return false;
-      if (!isAdminView && !assigned.some((u) => u.name === checkName)) {
-        return false;
-      }
-
-      return true;
-    });
-
-    if (isAdminView || allActionable.length <= 1) return allActionable;
-
-    const firstActionableTriggerAfterStep = allActionable[0].triggerAfterStep;
-    const firstOriginIdx = resolveOriginFgIdx(firstActionableTriggerAfterStep || "__root__");
-
-    return allActionable.filter((bg) => {
-      if (bg.rejoinAtStep !== null) return true;
-      const triggerAfterStep = bg.triggerAfterStep;
-      const originIdx = resolveOriginFgIdx(triggerAfterStep || "__root__");
-      return originIdx === firstOriginIdx;
-    });
-  }, [
-    workflowStatus,
-    backgroundSteps,
-    currentStatus,
-    user?.name,
-    effectiveName,
-    userRole,
-    isPreviewActive,
-  ]);
-
-  const activeBgStepKeys = useMemo(
-    () => new Set(userPendingBgSteps.map((bg) => bg.stepKey)),
-    [userPendingBgSteps],
-  );
-
-  const currentStepPhaseInfo = useMemo(() => {
-    if (!workflowStatus || !currentStep) {
-      return {
-        isMultiPhase: false,
-        currentPhase: 1,
-        phase1ActionLabel: null as string | null,
-        phase2ActionLabel: null as string | null,
-        phase1Complete: false,
-        phase1ActionDone: false,
-        actionLabel: null as string | null,
-      };
-    }
-
-    const actionCompletions = workflowStatus.actionCompletions;
-    const completions = actionCompletions || [];
-    const phase1ActionDone = completions.some(
-      (ac) => ac.stepKey === currentStep && ac.actionType === "primary",
-    );
-
-    const foregroundSteps = workflowStatus.foregroundSteps;
-    const fgSteps = foregroundSteps || [];
-    const stepConfig = fgSteps.find((s) => s.key === currentStep);
-    const actionLabel = stepConfig?.actionLabel ? stepConfig.actionLabel : null;
-
-    const phaseEntry = workflowStatus.phaseInfo?.[currentStep];
-    if (!phaseEntry || phaseEntry.phases.length <= 1) {
-      return {
-        isMultiPhase: false,
-        currentPhase: 1,
-        phase1ActionLabel: null,
-        phase2ActionLabel: null,
-        phase1Complete: false,
-        phase1ActionDone: phase1ActionDone,
-        actionLabel,
-      };
-    }
-
-    const backgroundWorkflowSteps = workflowStatus.backgroundSteps;
-    const bgSteps: BackgroundStepStatus[] = backgroundWorkflowSteps || [];
-    const phase1Keys = new Set(phaseEntry.phases[0].bgStepKeys);
-    const phase1BgSteps = bgSteps.filter((bg) => phase1Keys.has(bg.stepKey));
-    const phase1Complete =
-      phase1BgSteps.length > 0 && phase1BgSteps.every((bg) => bg.completedAt !== null);
-
-    return {
-      isMultiPhase: true,
-      currentPhase: phaseEntry.currentPhase,
-      phase1ActionLabel: phaseEntry.phases[0].actionLabel,
-      phase2ActionLabel: phaseEntry.phases[1].actionLabel,
-      phase1Complete,
-      phase1ActionDone: phase1ActionDone,
-      actionLabel,
-    };
-  }, [workflowStatus, currentStep]);
-
-  const currentStepActionCompleted = currentStepPhaseInfo.phase1ActionDone;
-
-  const currentStepActionLabel = currentStepPhaseInfo.isMultiPhase
-    ? currentStepPhaseInfo.phase1ActionLabel
-    : currentStepPhaseInfo.actionLabel;
-
   const qcpsNeedApproval = useMemo(() => {
     if (controlPlans.length === 0) return true;
     return controlPlans.some((plan) => plan.approvalStatus !== "approved");
@@ -898,181 +328,21 @@ export default function JobCardDetailPage() {
     return coatingPending || rubberPlanPending || false;
   }, [currentStep, coating.coatingAnalysis, rubberPlanPending]);
 
-  const prevStepBgPending = useMemo(() => {
-    if (!workflowStatus || !currentStep) return false;
-    const foregroundSteps = workflowStatus.foregroundSteps;
-    const fgSteps = foregroundSteps || [];
-    const currentIdx = fgSteps.findIndex((s) => s.key === currentStep);
-    if (currentIdx <= 0) return false;
-    const prevStepKey = fgSteps[currentIdx - 1].key;
-    const backgroundWorkflowSteps = workflowStatus.backgroundSteps;
-    const bgSteps: BackgroundStepStatus[] = backgroundWorkflowSteps || [];
-    const fgKeySet = new Set(fgSteps.map((s) => s.key));
-    const bgKeySet = new Set(bgSteps.map((bg) => bg.stepKey));
-    const bgByTrigger = bgSteps.reduce<Record<string, BackgroundStepStatus[]>>((acc, bg) => {
-      const raw = bg.triggerAfterStep;
-      const isFgTrigger = raw !== null && fgKeySet.has(raw);
-      const isBgChain = raw !== null && bgKeySet.has(raw);
-      const firstFgKey = fgSteps[0]?.key;
-      const fallbackTrigger = firstFgKey ? firstFgKey : "";
-      const trigger = isFgTrigger || isBgChain ? raw : fallbackTrigger;
-      return { ...acc, [trigger]: [...(acc[trigger] ? acc[trigger] : []), bg] };
-    }, {});
-    const resolveChain = (trigger: string): BackgroundStepStatus[] => {
-      const direct = bgByTrigger[trigger] ? bgByTrigger[trigger] : [];
-      return direct.reduce<BackgroundStepStatus[]>((chain, bg) => {
-        const rest = bgKeySet.has(bg.stepKey) ? resolveChain(bg.stepKey) : [];
-        return [...chain, bg, ...rest];
-      }, []);
-    };
-    const prevBgTasks = resolveChain(prevStepKey).filter((bg) => bg.rejoinAtStep === null);
-    return prevBgTasks.length > 0 && prevBgTasks.some((bg) => bg.completedAt === null);
-  }, [workflowStatus, currentStep]);
-
   const currentStepBlueBgPending =
-    currentStepPhaseInfo.isMultiPhase && !currentStepPhaseInfo.phase1Complete;
-
-  const hasBlueLineTasks = currentStepPhaseInfo.isMultiPhase;
-
-  const currentStepBgPending = useMemo(() => {
-    if (!workflowStatus || !currentStep) return false;
-    const rawFg = workflowStatus.foregroundSteps;
-    const rawBg: BackgroundStepStatus[] | undefined = workflowStatus.backgroundSteps;
-    const fgSteps = rawFg ? rawFg : [];
-    const bgSteps: BackgroundStepStatus[] = rawBg ? rawBg : [];
-    const fgKeySet = new Set(fgSteps.map((s) => s.key));
-    const bgKeySet = new Set(bgSteps.map((bg) => bg.stepKey));
-    const bgByTrigger = bgSteps.reduce<Record<string, BackgroundStepStatus[]>>((acc, bg) => {
-      const raw = bg.triggerAfterStep;
-      const isFgTrigger = raw !== null && fgKeySet.has(raw);
-      const isBgChain = raw !== null && bgKeySet.has(raw);
-      const firstFgKey = fgSteps[0]?.key;
-      const fallbackTrigger = firstFgKey ? firstFgKey : "";
-      const trigger = isFgTrigger || isBgChain ? raw : fallbackTrigger;
-      return { ...acc, [trigger]: [...(acc[trigger] ? acc[trigger] : []), bg] };
-    }, {});
-    const resolveChain = (trigger: string): BackgroundStepStatus[] => {
-      const direct = bgByTrigger[trigger] ? bgByTrigger[trigger] : [];
-      return direct.reduce<BackgroundStepStatus[]>((chain, bg) => {
-        const rest = bgKeySet.has(bg.stepKey) ? resolveChain(bg.stepKey) : [];
-        return [...chain, bg, ...rest];
-      }, []);
-    };
-    const currentBgTasks = resolveChain(currentStep).filter(
-      (bg) => bg.rejoinAtStep === currentStep,
-    );
-    return currentBgTasks.length > 0 && currentBgTasks.some((bg) => bg.completedAt === null);
-  }, [workflowStatus, currentStep]);
-
-  const fgActionAssignedToOther = useMemo(() => {
-    if (!currentStepPhaseInfo.isMultiPhase) return false;
-    if (userRole === "admin" && !isPreviewActive) return false;
-    const checkName = effectiveName || user?.name;
-    if (!workflowStatus || !currentStep || !checkName) return false;
-    if (!currentStepActionLabel) return false;
-    const rawFgaAssignments = workflowStatus.stepAssignments;
-    const assignments = rawFgaAssignments || {};
-    const fgStepAssigned = assignments[currentStep];
-    if (!fgStepAssigned || fgStepAssigned.length === 0) return false;
-    return !fgStepAssigned.some((u) => u.name === checkName);
-  }, [
-    workflowStatus,
-    currentStep,
-    currentStepActionLabel,
-    currentStepPhaseInfo.isMultiPhase,
-    user?.name,
-    effectiveName,
-    userRole,
-    isPreviewActive,
-  ]);
-
-  const isReceptionStep = useCallback(
-    (bg: BackgroundStepStatus) =>
-      bg.stepKey === "reception" ||
-      bg.stepKey === "custom_reception" ||
-      bg.label?.toLowerCase() === "reception",
-    [],
-  );
-
-  const receptionIsPending = useMemo(() => {
-    return userPendingBgSteps.some(isReceptionStep);
-  }, [userPendingBgSteps, isReceptionStep]);
-
-  const isRequisitionStep = useCallback(
-    (bg: BackgroundStepStatus) =>
-      bg.stepKey === "requisition" || bg.label?.toLowerCase() === "requisition",
-    [],
-  );
-
-  const isReqAuthStep = useCallback(
-    (bg: BackgroundStepStatus) =>
-      bg.stepKey === "custom_req_auth" || bg.label?.toLowerCase().includes("req auth"),
-    [],
-  );
-
-  const isOrderPlacementStep = useCallback(
-    (bg: BackgroundStepStatus) =>
-      bg.stepKey === "custom_order_placement" ||
-      bg.label?.toLowerCase().includes("order placement"),
-    [],
-  );
-
-  const isStockAllocStep = useCallback(
-    (bg: BackgroundStepStatus) =>
-      bg.stepKey === "stock_allocation" || bg.label?.toLowerCase().includes("stock alloc"),
-    [],
-  );
-
-  const isReadyStep = useCallback(
-    (bg: BackgroundStepStatus) => bg.stepKey === "ready" || bg.label?.toLowerCase() === "ready",
-    [],
-  );
-
-  const isQaReviewStep = useCallback(
-    (bg: BackgroundStepStatus) =>
-      bg.stepKey === "qa_review" || bg.label?.toLowerCase() === "qa review",
-    [],
-  );
-
-  const isQcRepairsStep = useCallback(
-    (bg: BackgroundStepStatus) =>
-      bg.stepKey === "qc_repairs" || bg.label?.toLowerCase().includes("repair"),
-    [],
-  );
-
-  const isQaChainStep = useCallback(
-    (bg: BackgroundStepStatus) =>
-      bg.stepKey === "qa_review" || bg.stepKey === "qc_repairs" || bg.stepKey === "qa_final_check",
-    [],
-  );
-
-  const isQaFinalCheckStep = useCallback(
-    (bg: BackgroundStepStatus) => bg.stepKey === "qa_final_check",
-    [],
-  );
-
-  const isInspectionBookingStep = useCallback(
-    (bg: BackgroundStepStatus) => bg.stepKey === "book_3rd_party_inspections",
-    [],
-  );
-
-  const isDataBookStep = useCallback(
-    (bg: BackgroundStepStatus) => bg.stepKey === "compile_data_book",
-    [],
-  );
-
-  const isJobFileReviewStep = useCallback(
-    (bg: BackgroundStepStatus) => bg.stepKey === "job_file_review",
-    [],
-  );
-
-  const isDocUploadStep = useCallback(
-    (bg: BackgroundStepStatus) => bg.stepKey === "upload_source_documents",
-    [],
-  );
+    workflow.currentStepPhaseInfo.isMultiPhase && !workflow.currentStepPhaseInfo.phase1Complete;
+  const hasBlueLineTasks = workflow.currentStepPhaseInfo.isMultiPhase;
+  const currentStepActionCompleted = workflow.currentStepPhaseInfo.phase1ActionDone;
+  const currentStepActionLabel = workflow.currentStepPhaseInfo.isMultiPhase
+    ? workflow.currentStepPhaseInfo.phase1ActionLabel
+    : workflow.currentStepPhaseInfo.actionLabel;
 
   const [jobFileGateSatisfied, setJobFileGateSatisfied] = useState(false);
   const [docUploadGateSatisfied, setDocUploadGateSatisfied] = useState(false);
+  const [showReadyPhotoModal, setShowReadyPhotoModal] = useState(false);
+  const [showInspectionModal, setShowInspectionModal] = useState(false);
+  const [showSourceFileModal, setShowSourceFileModal] = useState(false);
+  const [sourceFileUrl, setSourceFileUrl] = useState<string | null>(null);
+  const [sourceFileLoading, setSourceFileLoading] = useState(false);
 
   const docUploadStepPending = useMemo(
     () =>
@@ -1081,7 +351,6 @@ export default function JobCardDetailPage() {
       ),
     [backgroundSteps],
   );
-
   const docUploadStepActive = docUploadStepPending;
 
   useEffect(() => {
@@ -1110,196 +379,32 @@ export default function JobCardDetailPage() {
     [jobFilesHook.jobFiles],
   );
 
-  const readyPhotoInputRef = useRef<HTMLInputElement>(null);
-  const readyPhotoVideoRef = useRef<HTMLVideoElement>(null);
-  const readyPhotoCanvasRef = useRef<HTMLCanvasElement>(null);
-  const [isUploadingReadyPhoto, setIsUploadingReadyPhoto] = useState(false);
-  const [showReadyPhotoModal, setShowReadyPhotoModal] = useState(false);
-  const [showInspectionModal, setShowInspectionModal] = useState(false);
-  const [showSourceFileModal, setShowSourceFileModal] = useState(false);
-  const [sourceFileUrl, setSourceFileUrl] = useState<string | null>(null);
-  const [sourceFileLoading, setSourceFileLoading] = useState(false);
-  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
-  const [cameraError, setCameraError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (cameraStream && readyPhotoVideoRef.current) {
-      readyPhotoVideoRef.current.srcObject = cameraStream;
-    }
-  }, [cameraStream]);
-
-  const stopCamera = useCallback(() => {
-    if (cameraStream) {
-      cameraStream.getTracks().forEach((t) => t.stop());
-      setCameraStream(null);
-    }
-    setCameraError(null);
-  }, [cameraStream]);
-
-  const closeReadyPhotoModal = useCallback(() => {
-    stopCamera();
-    setShowReadyPhotoModal(false);
-  }, [stopCamera]);
-
-  const startCamera = useCallback(async () => {
-    setCameraError(null);
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" },
-      });
-      setCameraStream(stream);
-      if (readyPhotoVideoRef.current) {
-        readyPhotoVideoRef.current.srcObject = stream;
-      }
-    } catch {
-      setCameraError("Could not access camera. Use 'Upload from Device' instead.");
-    }
-  }, []);
-
-  const handleCameraCapture = useCallback(async () => {
-    const video = readyPhotoVideoRef.current;
-    const canvas = readyPhotoCanvasRef.current;
-    if (!video || !canvas) return;
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    ctx.drawImage(video, 0, 0);
-    const blob = await new Promise<Blob | null>((resolve) =>
-      canvas.toBlob(resolve, "image/jpeg", 0.85),
-    );
-    if (!blob) return;
-    const file = new File([blob], `ready-photo-${nowMillis()}.jpg`, { type: "image/jpeg" });
-    try {
-      setIsUploadingReadyPhoto(true);
-      await uploadReadyPhoto({ jobCardId: jobId, file });
-      await jobFilesHook.loadJobFiles();
-      closeReadyPhotoModal();
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Failed to upload photo";
-      setCameraError(msg);
-    } finally {
-      setIsUploadingReadyPhoto(false);
-    }
-  }, [jobId, jobFilesHook.loadJobFiles, closeReadyPhotoModal]);
-
-  const handleReadyPhotoSelected = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      try {
-        setIsUploadingReadyPhoto(true);
-        await uploadReadyPhoto({ jobCardId: jobId, file });
-        await jobFilesHook.loadJobFiles();
-        closeReadyPhotoModal();
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : "Failed to upload photo";
-        setCameraError(msg);
-      } finally {
-        setIsUploadingReadyPhoto(false);
-        if (readyPhotoInputRef.current) {
-          readyPhotoInputRef.current.value = "";
-        }
-      }
-    },
-    [jobId, jobFilesHook.loadJobFiles, closeReadyPhotoModal],
-  );
-
   const hasAllocations = allocations.some((a) => !a.undone);
   const hasUnissuedAllocations = allocations.some((a) => !a.undone && !a.issuedAt);
-  const [isConfirmingIssuance, setIsConfirmingIssuance] = useState(false);
+
+  const batchesSaved =
+    actions.batchesSavedLocal ||
+    backgroundSteps.some((bg) => bg.stepKey === "qc_batch_certs" && bg.completedAt !== null);
+
+  const { activeTab, visitedTabs, handleTabChange, visibleTabs } = useJobCardTabs(tabDefinitions);
 
   const handleConfirmIssuance = async () => {
     const unissued = allocations.filter((a) => !a.undone && !a.issuedAt);
-    if (unissued.length === 0) return;
-
-    const confirmed = await confirm({
-      title: "Confirm Issuance",
-      message: `Issue ${unissued.length} allocated item(s)? This confirms physical handover.`,
-      confirmLabel: "Issue",
-      variant: "default",
-    });
-    if (!confirmed) return;
-
-    try {
-      setIsConfirmingIssuance(true);
-      await confirmIssuance({
-        jobCardId: jobId,
-        allocationIds: unissued.map((a) => a.id),
-      });
-      fetchData();
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to confirm issuance"));
-    } finally {
-      setIsConfirmingIssuance(false);
-    }
-  };
-
-  const requisitionIsPending = useMemo(() => {
-    if (userPendingBgSteps.some(isRequisitionStep)) return true;
-    const checkName = effectiveName || user?.name;
-    if (!workflowStatus || !checkName) return false;
-    const reqStep = backgroundSteps.find(
-      (bg) =>
-        (bg.stepKey === "requisition" || bg.label?.toLowerCase() === "requisition") &&
-        bg.completedAt === null,
+    await actions.handleConfirmIssuance(
+      unissued.map((a) => a.id),
+      confirm,
     );
-    if (!reqStep) return false;
-    const assigned = workflowStatus.stepAssignments?.[reqStep.stepKey];
-    return !!assigned && assigned.some((u) => u.name === checkName);
-  }, [
-    userPendingBgSteps,
-    isRequisitionStep,
-    workflowStatus,
-    backgroundSteps,
-    user?.name,
-    effectiveName,
-  ]);
-
-  const [batchesSavedLocal, setBatchesSaved] = useState(false);
-  const batchesSaved =
-    batchesSavedLocal ||
-    backgroundSteps.some((bg) => bg.stepKey === "qc_batch_certs" && bg.completedAt !== null);
-  const [finalPhotosSaved, setFinalPhotosSaved] = useState(false);
-  const [isProcessingDecision, setIsProcessingDecision] = useState(false);
-  const [decisionError, setDecisionError] = useState<string | null>(null);
+  };
 
   const handlePlaceRequisition = async () => {
-    try {
-      setIsProcessingDecision(true);
-      setDecisionError(null);
-      const result = await placeRequisitionDecision(jobId);
-      fetchData();
-      if (result.requisitionId) {
-        router.push(
-          `/stock-control/portal/requisitions/${result.requisitionId}?fromJobCard=${jobId}`,
-        );
-      } else {
-        handleTabChange("requisition");
-      }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to place requisition";
-      setDecisionError(message);
-    } finally {
-      setIsProcessingDecision(false);
-    }
+    await actions.handlePlaceRequisition(router);
   };
 
-  const handleUseCurrentStock = async () => {
-    try {
-      setIsProcessingDecision(true);
-      setDecisionError(null);
-      await submitUseCurrentStockDecision(jobId);
-      fetchData();
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to use current stock";
-      setDecisionError(message);
-    } finally {
-      setIsProcessingDecision(false);
-    }
+  const handleSaveNotes = async (editedNotes: string) => {
+    const jobCardNotes = jobCard?.notes;
+    const originalNotes = jobCardNotes ? jobCardNotes : null;
+    await actions.handleSaveNotes(editedNotes, originalNotes);
   };
-
-  const { activeTab, visitedTabs, handleTabChange, visibleTabs } = useJobCardTabs(tabDefinitions);
 
   if (isLoading) {
     return (
@@ -1312,12 +417,14 @@ export default function JobCardDetailPage() {
     );
   }
 
-  if (error || !jobCard) {
+  if (actions.error || !jobCard) {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Data</div>
-          <p className="text-gray-600">{error?.message ? error.message : "Job card not found"}</p>
+          <p className="text-gray-600">
+            {actions.error?.message ? actions.error.message : "Job card not found"}
+          </p>
           <Link
             href="/stock-control/portal/job-cards"
             className="mt-4 inline-block text-teal-600 hover:text-teal-800"
@@ -1329,20 +436,24 @@ export default function JobCardDetailPage() {
     );
   }
 
-  const statusTransitions = STATUS_TRANSITIONS[jobCard.status.toLowerCase()];
-  const transitions = statusTransitions ? statusTransitions : [];
-
   return (
     <div className="space-y-6">
       {ConfirmDialog}
-      <input
-        ref={readyPhotoInputRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={handleReadyPhotoSelected}
+      <ReadyPhotoModal
+        isOpen={showReadyPhotoModal}
+        jobCardId={jobId}
+        onClose={() => setShowReadyPhotoModal(false)}
+        onUploaded={() => jobFilesHook.loadJobFiles()}
       />
-      <canvas ref={readyPhotoCanvasRef} className="hidden" />
+      <SourceFileModal
+        isOpen={showSourceFileModal}
+        sourceFileUrl={sourceFileUrl}
+        sourceFileName={jobCard.sourceFileName || null}
+        onClose={() => {
+          setShowSourceFileModal(false);
+          setSourceFileUrl(null);
+        }}
+      />
       {showInspectionModal && (
         <InspectionBookingModal
           jobCardId={jobId}
@@ -1357,106 +468,6 @@ export default function JobCardDetailPage() {
             fetchData();
           }}
         />
-      )}
-      {showReadyPhotoModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-md">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900">Photo of Completed Item(s)</h3>
-              <button onClick={closeReadyPhotoModal} className="text-gray-400 hover:text-gray-600">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            </div>
-            <div className="p-6 space-y-4">
-              {cameraStream ? (
-                <div className="space-y-3">
-                  <video
-                    ref={readyPhotoVideoRef}
-                    autoPlay
-                    playsInline
-                    muted
-                    className="w-full rounded-lg bg-black"
-                  />
-                  <div className="flex gap-3">
-                    <button
-                      onClick={handleCameraCapture}
-                      disabled={isUploadingReadyPhoto}
-                      className="flex-1 inline-flex items-center justify-center px-4 py-3 text-sm font-medium rounded-md bg-green-600 text-white hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                    >
-                      {isUploadingReadyPhoto ? "Uploading..." : "Capture Photo"}
-                    </button>
-                    <button
-                      onClick={stopCamera}
-                      className="px-4 py-3 text-sm font-medium rounded-md bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {cameraError && (
-                    <p className="text-sm text-red-600 bg-red-50 rounded-md px-3 py-2">
-                      {cameraError}
-                    </p>
-                  )}
-                  <button
-                    onClick={startCamera}
-                    className="w-full inline-flex items-center justify-center px-4 py-4 text-sm font-medium rounded-lg border-2 border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors"
-                  >
-                    <svg
-                      className="w-6 h-6 mr-3"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
-                      />
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
-                      />
-                    </svg>
-                    Take Photo with Camera
-                  </button>
-                  <button
-                    onClick={() => readyPhotoInputRef.current?.click()}
-                    disabled={isUploadingReadyPhoto}
-                    className="w-full inline-flex items-center justify-center px-4 py-4 text-sm font-medium rounded-lg border-2 border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100 disabled:bg-gray-200 disabled:cursor-not-allowed transition-colors"
-                  >
-                    <svg
-                      className="w-6 h-6 mr-3"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                      />
-                    </svg>
-                    {isUploadingReadyPhoto ? "Uploading..." : "Upload from Device"}
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
       )}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center space-x-4 min-w-0">
@@ -1547,501 +558,69 @@ export default function JobCardDetailPage() {
           </div>
         </div>
         {workflowStatus && (
-          <div
-            id="workflow-actions"
-            className="flex-1 min-w-0 rounded-lg border border-gray-200 bg-white px-3 py-2"
-          >
-            <h3 className="text-xs font-semibold text-gray-500 mb-1.5">Workflow Actions</h3>
-            <div className="flex flex-wrap items-center gap-2">
-              {canApprove && currentStep && specsNeedReview && (
-                <>
-                  {coating.coatingAnalysis &&
-                    coating.coatingAnalysis.coats.length > 0 &&
-                    coating.coatingAnalysis.status !== "accepted" && (
-                      <button
-                        onClick={() => {
-                          handleTabChange("coating");
-                          scrollToElementId("coating-spec-review");
-                        }}
-                        className="px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium text-xs transition-colors"
-                      >
-                        Check Coating Spec
-                      </button>
-                    )}
-                  {rubberPlanPending && (
-                    <button
-                      onClick={() => {
-                        handleTabChange("rubber-analysis");
-                        scrollToElementId("rubber-spec-review");
-                      }}
-                      className="px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium text-xs transition-colors"
-                    >
-                      Accept Rubber Plan
-                    </button>
-                  )}
-                </>
-              )}
-              {canApprove &&
-                currentStep &&
-                !specsNeedReview &&
-                !prevStepBgPending &&
-                !fgActionAssignedToOther &&
-                !currentStepActionCompleted &&
-                currentStepActionLabel && (
-                  <button
-                    onClick={handleCompleteFgAction}
-                    disabled={isCompletingFgAction || adminBlockedFromStep(currentStep)}
-                    className="px-3 py-1.5 bg-amber-600 text-white rounded-md hover:bg-amber-700 font-medium text-xs disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                  >
-                    {isCompletingFgAction ? "..." : currentStepActionLabel}
-                  </button>
-                )}
-              {(() => {
-                const phase2Label = currentStepPhaseInfo.phase2ActionLabel;
-                const approveLabel = hasBlueLineTasks ? phase2Label || "Release" : "Approve & Sign";
-                const actionGateSatisfied = currentStepActionCompleted || !currentStepActionLabel;
-                if (
-                  canApprove &&
-                  currentStep &&
-                  actionGateSatisfied &&
-                  !prevStepBgPending &&
-                  !currentStepBgPending &&
-                  (!hasBlueLineTasks || !currentStepBlueBgPending)
-                ) {
-                  return (
-                    <button
-                      onClick={() => openApprovalModal(currentStep)}
-                      disabled={adminBlockedFromStep(currentStep)}
-                      className="px-3 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 font-medium text-xs disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                    >
-                      {approveLabel}
-                    </button>
-                  );
-                }
-                return null;
-              })()}
-              {(isQualityUser || isAdminView) &&
-                qcpsNeedApproval &&
-                currentStep &&
-                currentStep !== "admin_approval" && (
-                  <button
-                    onClick={() => {
-                      handleTabChange("quality");
-                      scrollToElementId("quality-tab-content");
-                    }}
-                    className="px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium text-xs transition-colors"
-                  >
-                    Approve QCP
-                  </button>
-                )}
-              {canAcceptDraft && (
-                <button
-                  onClick={handleDraftAccepted}
-                  disabled={isUpdatingStatus || adminBlockedFromStep("document_upload")}
-                  className="px-3 py-1.5 bg-amber-600 text-white rounded-md hover:bg-amber-700 font-medium text-xs disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                >
-                  {isUpdatingStatus ? "..." : "Draft Accepted"}
-                </button>
-              )}
-              {receptionIsPending && (
-                <button
-                  onClick={async () => {
-                    const receptionStep = userPendingBgSteps.find(isReceptionStep);
-                    if (receptionStep) {
-                      await handlePrintQr();
-                      handleCompleteBackgroundStep(receptionStep.stepKey);
-                    }
-                  }}
-                  disabled={(() => {
-                    const receptionStep = userPendingBgSteps.find(isReceptionStep);
-                    const receptionStepKey = receptionStep?.stepKey;
-                    return (
-                      isDownloadingQr ||
-                      completingStepKey === receptionStepKey ||
-                      adminBlockedFromStep(receptionStepKey)
-                    );
-                  })()}
-                  className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                >
-                  <svg
-                    className="w-4 h-4 mr-2"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"
-                    />
-                  </svg>
-                  {isDownloadingQr ? "Generating..." : "Print JC"}
-                </button>
-              )}
-              {userPendingBgSteps.filter((bg) => !isReceptionStep(bg)).length > 0 &&
-                userPendingBgSteps
-                  .filter((bg) => !isReceptionStep(bg))
-                  .filter(
-                    (bg) =>
-                      bg.rejoinAtStep !== null ||
-                      isAdminView ||
-                      !canApprove ||
-                      prevStepBgPending ||
-                      currentStepBlueBgPending ||
-                      currentStepBgPending,
-                  )
-                  .map((bg) =>
-                    isRequisitionStep(bg) ? (
-                      <button
-                        key={bg.stepKey}
-                        onClick={() => {
-                          handleTabChange("coating");
-                          scrollToElementId("stock-decision");
-                        }}
-                        className="px-3 py-1.5 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 transition-colors"
-                      >
-                        Stock Assessment
-                      </button>
-                    ) : (isReqAuthStep(bg) || isOrderPlacementStep(bg)) && requisition ? (
-                      <button
-                        key={bg.stepKey}
-                        onClick={() =>
-                          router.push(
-                            `/stock-control/portal/requisitions/${requisition.id}?fromJobCard=${jobId}&completeStep=${bg.stepKey}`,
-                          )
-                        }
-                        className="px-3 py-1.5 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 transition-colors"
-                      >
-                        View Requisition
-                      </button>
-                    ) : isStockAllocStep(bg) ? (
-                      <div key={bg.stepKey} className="flex flex-wrap gap-2">
-                        <button
-                          onClick={() => {
-                            handleTabChange("stock-issues");
-                            scrollToElementId("stock-allocation-section");
-                          }}
-                          className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 transition-colors"
-                        >
-                          <svg
-                            className="w-4 h-4 mr-1"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
-                            />
-                          </svg>
-                          Allocate Stock
-                        </button>
-                        {hasUnissuedAllocations && (
-                          <button
-                            onClick={handleConfirmIssuance}
-                            disabled={isConfirmingIssuance}
-                            className="px-3 py-1.5 text-xs font-medium rounded-md bg-green-600 text-white hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                          >
-                            {isConfirmingIssuance ? "Issuing..." : "Issue Allocated"}
-                          </button>
-                        )}
-                        {hasAllocations && (
-                          <button
-                            onClick={() => handleCompleteBackgroundStep(bg.stepKey)}
-                            disabled={
-                              completingStepKey === bg.stepKey || adminBlockedFromStep(bg.stepKey)
-                            }
-                            className="px-3 py-1.5 text-xs font-medium rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                          >
-                            {(() => {
-                              const actionLabel = bg.actionLabel;
-                              return completingStepKey === bg.stepKey
-                                ? "..."
-                                : actionLabel || `Complete ${bg.label}`;
-                            })()}
-                          </button>
-                        )}
-                      </div>
-                    ) : isReadyStep(bg) ? (
-                      <div key={bg.stepKey} className="flex flex-wrap gap-2">
-                        {!hasReadyPhoto ? (
-                          <button
-                            onClick={() => setShowReadyPhotoModal(true)}
-                            disabled={isUploadingReadyPhoto}
-                            className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                          >
-                            <svg
-                              className="w-4 h-4 mr-2"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
-                              />
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
-                              />
-                            </svg>
-                            {isUploadingReadyPhoto ? "Uploading..." : "Upload / Take Photo"}
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => handleCompleteBackgroundStep(bg.stepKey)}
-                            disabled={
-                              completingStepKey === bg.stepKey || adminBlockedFromStep(bg.stepKey)
-                            }
-                            className="px-3 py-1.5 text-xs font-medium rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                          >
-                            {completingStepKey === bg.stepKey ? "..." : "Complete Ready"}
-                          </button>
-                        )}
-                      </div>
-                    ) : isQaReviewStep(bg) ? (
-                      <button
-                        key={bg.stepKey}
-                        onClick={() => {
-                          handleTabChange("quality");
-                          scrollToElementId("qa-review-section");
-                        }}
-                        className="px-3 py-1.5 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 transition-colors"
-                      >
-                        QA Review
-                      </button>
-                    ) : isQcRepairsStep(bg) ? (
-                      <button
-                        key={bg.stepKey}
-                        onClick={() => {
-                          handleTabChange("quality");
-                          scrollToElementId("qa-review-section");
-                        }}
-                        className="px-3 py-1.5 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 transition-colors"
-                      >
-                        View QA Repairs
-                      </button>
-                    ) : bg.stepKey === "qc_batch_certs" && !batchesSaved ? (
-                      <button
-                        key={bg.stepKey}
-                        onClick={() => {
-                          handleTabChange("quality");
-                          scrollToElementId("defelsko-batch-section");
-                        }}
-                        className="px-3 py-1.5 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
-                      >
-                        Input Batches
-                      </button>
-                    ) : bg.stepKey === "qc_batch_certs" && batchesSaved ? (
-                      <button
-                        key={bg.stepKey}
-                        onClick={() => handleCompleteBackgroundStep(bg.stepKey)}
-                        disabled={
-                          completingStepKey === bg.stepKey || adminBlockedFromStep(bg.stepKey)
-                        }
-                        className="px-3 py-1.5 text-xs font-medium rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                      >
-                        {completingStepKey === bg.stepKey ? "..." : "Batches Completed"}
-                      </button>
-                    ) : isQaFinalCheckStep(bg) && !finalPhotosSaved ? (
-                      <button
-                        key={bg.stepKey}
-                        onClick={() => {
-                          handleTabChange("quality");
-                          scrollToElementId("qa-final-photos-section");
-                        }}
-                        className="px-3 py-1.5 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 transition-colors"
-                      >
-                        Upload Final Photos
-                      </button>
-                    ) : isInspectionBookingStep(bg) ? (
-                      <button
-                        key={bg.stepKey}
-                        onClick={() => setShowInspectionModal(true)}
-                        className="px-3 py-1.5 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 transition-colors"
-                      >
-                        Book Inspection
-                      </button>
-                    ) : isDataBookStep(bg) ? (
-                      <button
-                        key={bg.stepKey}
-                        onClick={() => {
-                          handleTabChange("quality");
-                          scrollToElementId("data-book-section");
-                        }}
-                        className="px-3 py-1.5 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 transition-colors"
-                      >
-                        Review Data Book
-                      </button>
-                    ) : isJobFileReviewStep(bg) ? (
-                      <div key={bg.stepKey} className="flex flex-wrap gap-2">
-                        <button
-                          onClick={() => {
-                            handleTabChange("job-files");
-                            scrollToElementId("job-file-upload-area");
-                          }}
-                          className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
-                        >
-                          <svg
-                            className="w-4 h-4 mr-1"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
-                            />
-                          </svg>
-                          Upload Docs
-                        </button>
-                        {jobFileGateSatisfied && (
-                          <button
-                            onClick={() => handleCompleteBackgroundStep(bg.stepKey)}
-                            disabled={
-                              completingStepKey === bg.stepKey || adminBlockedFromStep(bg.stepKey)
-                            }
-                            className="px-3 py-1.5 text-xs font-medium rounded-md bg-green-600 text-white hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                          >
-                            {completingStepKey === bg.stepKey ? "..." : "Complete File Review"}
-                          </button>
-                        )}
-                      </div>
-                    ) : isDocUploadStep(bg) ? (
-                      <div key={bg.stepKey} className="flex flex-wrap gap-2">
-                        <button
-                          onClick={() => {
-                            handleTabChange("job-files");
-                            scrollToElementId("document-upload-gate");
-                          }}
-                          className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
-                        >
-                          <svg
-                            className="w-4 h-4 mr-1"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
-                            />
-                          </svg>
-                          Upload Docs
-                        </button>
-                        {docUploadGateSatisfied && (
-                          <button
-                            onClick={() => handleCompleteBackgroundStep(bg.stepKey)}
-                            disabled={
-                              completingStepKey === bg.stepKey || adminBlockedFromStep(bg.stepKey)
-                            }
-                            className="px-3 py-1.5 text-xs font-medium rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                          >
-                            {(() => {
-                              const actionLabel = bg.actionLabel;
-                              return completingStepKey === bg.stepKey
-                                ? "..."
-                                : actionLabel || "Docs Uploaded";
-                            })()}
-                          </button>
-                        )}
-                      </div>
-                    ) : bg.stepOutcomes && bg.stepOutcomes.length > 1 ? (
-                      bg.stepOutcomes.map((outcome) => {
-                        const styleMap: Record<string, string> = {
-                          green: "bg-green-600 hover:bg-green-700",
-                          red: "bg-red-600 hover:bg-red-700",
-                          amber: "bg-amber-600 hover:bg-amber-700",
-                          blue: "bg-blue-600 hover:bg-blue-700",
-                        };
-                        const mappedStyle = styleMap[outcome.style];
-                        const btnClass = mappedStyle
-                          ? mappedStyle
-                          : "bg-amber-600 hover:bg-amber-700";
-                        return (
-                          <button
-                            key={`${bg.stepKey}-${outcome.key}`}
-                            onClick={() => handleCompleteBackgroundStep(bg.stepKey, outcome.key)}
-                            disabled={
-                              completingStepKey === bg.stepKey || adminBlockedFromStep(bg.stepKey)
-                            }
-                            className={`px-3 py-1.5 text-xs font-medium rounded-md text-white disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors ${btnClass}`}
-                          >
-                            {completingStepKey === bg.stepKey ? "..." : outcome.label}
-                          </button>
-                        );
-                      })
-                    ) : (
-                      <button
-                        key={bg.stepKey}
-                        onClick={() => handleCompleteBackgroundStep(bg.stepKey)}
-                        disabled={
-                          completingStepKey === bg.stepKey || adminBlockedFromStep(bg.stepKey)
-                        }
-                        className="px-3 py-1.5 text-xs font-medium rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                      >
-                        {(() => {
-                          const actionLabel = bg.actionLabel;
-                          return completingStepKey === bg.stepKey
-                            ? "..."
-                            : actionLabel || `Complete ${bg.label}`;
-                        })()}
-                      </button>
-                    ),
-                  )}
-              {bgStepError && (
-                <span className="text-xs text-red-600">
-                  {bgStepError}
-                  <button
-                    onClick={() => setBgStepError(null)}
-                    className="ml-1 font-medium underline"
-                  >
-                    Dismiss
-                  </button>
-                </span>
-              )}
-              {canApprove &&
-                currentStep &&
-                currentStepActionCompleted &&
-                (prevStepBgPending || currentStepBlueBgPending) && (
-                  <span className="text-xs text-amber-600 italic">
-                    Waiting for background tasks to complete before approval
-                  </span>
-                )}
-              {!canApprove &&
-                !canAcceptDraft &&
-                !receptionIsPending &&
-                userPendingBgSteps.length === 0 &&
-                !qcpsNeedApproval &&
-                currentStep === "manager_approval" &&
-                !specsNeedReview && (
-                  <span className="text-xs text-green-600 italic">
-                    Coating spec and rubber plan accepted — awaiting PM release to factory
-                  </span>
-                )}
-              {!canApprove &&
-                !canAcceptDraft &&
-                !receptionIsPending &&
-                userPendingBgSteps.length === 0 &&
-                !qcpsNeedApproval &&
-                !(currentStep === "manager_approval" && !specsNeedReview) && (
-                  <span className="text-xs text-gray-400 italic">
-                    No pending actions for you on this job card
-                  </span>
-                )}
-            </div>
-          </div>
+          <WorkflowActionsBar
+            jobId={jobId}
+            currentStep={currentStep}
+            canApprove={workflow.canApprove}
+            canAcceptDraft={workflow.canAcceptDraft}
+            isAdminView={isAdminView}
+            isQualityUser={workflow.isQualityUser}
+            specsNeedReview={specsNeedReview}
+            prevStepBgPending={workflow.prevStepBgPending}
+            currentStepBgPending={workflow.currentStepBgPending}
+            currentStepBlueBgPending={currentStepBlueBgPending}
+            hasBlueLineTasks={hasBlueLineTasks}
+            fgActionAssignedToOther={workflow.fgActionAssignedToOther}
+            currentStepActionCompleted={currentStepActionCompleted}
+            currentStepActionLabel={currentStepActionLabel}
+            receptionIsPending={workflow.receptionIsPending}
+            qcpsNeedApproval={qcpsNeedApproval}
+            rubberPlanPending={rubberPlanPending}
+            userPendingBgSteps={workflow.userPendingBgSteps}
+            bgStepError={actions.bgStepError}
+            completingStepKey={actions.completingStepKey}
+            isDownloadingQr={actions.isDownloadingQr}
+            isUpdatingStatus={actions.isUpdatingStatus}
+            isCompletingFgAction={actions.isCompletingFgAction}
+            isUploadingReadyPhoto={false}
+            isConfirmingIssuance={actions.isConfirmingIssuance}
+            isProcessingDecision={actions.isProcessingDecision}
+            hasAllocations={hasAllocations}
+            hasUnissuedAllocations={hasUnissuedAllocations}
+            hasReadyPhoto={hasReadyPhoto}
+            batchesSaved={batchesSaved}
+            finalPhotosSaved={actions.finalPhotosSaved}
+            jobFileGateSatisfied={jobFileGateSatisfied}
+            docUploadGateSatisfied={docUploadGateSatisfied}
+            requisition={requisition}
+            coatingAnalysis={coating.coatingAnalysis}
+            phase2ActionLabel={workflow.currentStepPhaseInfo.phase2ActionLabel}
+            adminBlockedFromStep={workflow.adminBlockedFromStep}
+            isReceptionStep={workflow.isReceptionStep}
+            isRequisitionStep={workflow.isRequisitionStep}
+            isReqAuthStep={workflow.isReqAuthStep}
+            isOrderPlacementStep={workflow.isOrderPlacementStep}
+            isStockAllocStep={workflow.isStockAllocStep}
+            isReadyStep={workflow.isReadyStep}
+            isQaReviewStep={workflow.isQaReviewStep}
+            isQcRepairsStep={workflow.isQcRepairsStep}
+            isQaFinalCheckStep={workflow.isQaFinalCheckStep}
+            isInspectionBookingStep={workflow.isInspectionBookingStep}
+            isDataBookStep={workflow.isDataBookStep}
+            isJobFileReviewStep={workflow.isJobFileReviewStep}
+            isDocUploadStep={workflow.isDocUploadStep}
+            onPrintQr={actions.handlePrintQr}
+            onCompleteFgAction={actions.handleCompleteFgAction}
+            onCompleteBackgroundStep={actions.handleCompleteBackgroundStep}
+            onOpenApprovalModal={actions.openApprovalModal}
+            onDraftAccepted={actions.handleDraftAccepted}
+            onConfirmIssuance={handleConfirmIssuance}
+            onShowReadyPhotoModal={() => setShowReadyPhotoModal(true)}
+            onShowInspectionModal={() => setShowInspectionModal(true)}
+            onTabChange={handleTabChange}
+            onScrollToElement={scrollToElementId}
+            onDismissBgStepError={() => actions.setBgStepError(null)}
+          />
         )}
         <div className="flex flex-wrap items-center gap-2 flex-shrink-0">
           <div className="inline-flex rounded-md shadow-sm">
@@ -2122,10 +701,10 @@ export default function JobCardDetailPage() {
               </span>
             )}
           </div>
-          {jobCard.status.toLowerCase() !== "draft" && !receptionIsPending && (
+          {jobCard.status.toLowerCase() !== "draft" && !workflow.receptionIsPending && (
             <button
-              onClick={handlePrintQr}
-              disabled={isDownloadingQr}
+              onClick={actions.handlePrintQr}
+              disabled={actions.isDownloadingQr}
               className="inline-flex items-center px-3 py-1.5 sm:px-4 sm:py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:bg-gray-100 disabled:cursor-not-allowed"
             >
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2136,12 +715,12 @@ export default function JobCardDetailPage() {
                   d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"
                 />
               </svg>
-              {isDownloadingQr ? "Generating..." : "Print JC"}
+              {actions.isDownloadingQr ? "Generating..." : "Print JC"}
             </button>
           )}
           {currentStatus === "dispatched" && (
             <button
-              onClick={handlePrintSignedPdf}
+              onClick={actions.handlePrintSignedPdf}
               className="inline-flex items-center px-3 py-1.5 sm:px-4 sm:py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
             >
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2158,11 +737,11 @@ export default function JobCardDetailPage() {
         </div>
       </div>
 
-      {downloadError && (
+      {actions.downloadError && (
         <div className="flex items-center justify-between bg-red-50 border border-red-200 rounded-md px-4 py-3">
-          <p className="text-sm text-red-700">{downloadError}</p>
+          <p className="text-sm text-red-700">{actions.downloadError}</p>
           <button
-            onClick={() => setDownloadError(null)}
+            onClick={() => actions.setDownloadError(null)}
             className="text-red-500 hover:text-red-700 ml-4"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2197,17 +776,17 @@ export default function JobCardDetailPage() {
       <InspectionProposalBanner jobCardId={jobId} onChanged={fetchData} />
 
       {!specsNeedReview &&
-        !prevStepBgPending &&
+        !workflow.prevStepBgPending &&
         !currentStepBlueBgPending &&
-        !currentStepBgPending &&
+        !workflow.currentStepBgPending &&
         (currentStepActionCompleted || !currentStepActionLabel) && (
           <JobCardNextAction
             currentStatus={currentStatus}
-            canApprove={canApprove}
+            canApprove={workflow.canApprove}
             currentStep={currentStep}
             currentStepLabel={currentStepLabel}
             userRole={userRole}
-            onApprove={currentStep ? () => openApprovalModal(currentStep) : undefined}
+            onApprove={currentStep ? () => actions.openApprovalModal(currentStep) : undefined}
             jobCardId={jobId}
             hasLineItems={validLineItemCount > 0}
           />
@@ -2261,8 +840,8 @@ export default function JobCardDetailPage() {
               onDeleteAttachment={documents.handleDeleteAttachment}
               canEditNotes={userRole === "admin" || userRole === "accounts"}
               onSaveNotes={handleSaveNotes}
-              onReExtractNotes={handleReExtractNotes}
-              isReExtracting={isReExtractingNotes}
+              onReExtractNotes={actions.handleReExtractNotes}
+              isReExtracting={actions.isReExtractingNotes}
             />
 
             {documents.versions.length > 0 && (
@@ -2468,15 +1047,15 @@ export default function JobCardDetailPage() {
               isUploadingTds={coating.isUploadingTds}
               onTdsUpload={coating.handleTdsUpload}
               tdsUploadError={coating.tdsUploadError}
-              onSkipTds={handleSkipTdsAndActivate}
+              onSkipTds={actions.handleSkipTdsAndActivate}
               isAdmin={userRole === "admin"}
               sourceFileUrl={jobCard?.sourceFilePath ? jobCard.sourceFilePath : null}
               lineItems={jobCard?.lineItems ? jobCard.lineItems : []}
-              showStockDecision={requisitionIsPending}
+              showStockDecision={workflow.requisitionIsPending}
               onPlaceRequisition={handlePlaceRequisition}
-              onUseCurrentStock={handleUseCurrentStock}
-              isProcessingDecision={isProcessingDecision}
-              decisionError={decisionError}
+              onUseCurrentStock={actions.handleUseCurrentStock}
+              isProcessingDecision={actions.isProcessingDecision}
+              decisionError={actions.decisionError}
             />
           </TabPanel>
 
@@ -2504,16 +1083,18 @@ export default function JobCardDetailPage() {
                 jobCardId={jobId}
                 cpoId={jobCard?.cpoId ? jobCard.cpoId : null}
                 backgroundSteps={backgroundSteps}
-                activeBgStepKeys={activeBgStepKeys}
+                activeBgStepKeys={workflow.activeBgStepKeys}
                 stepAssignments={
                   workflowStatus?.stepAssignments ? workflowStatus.stepAssignments : {}
                 }
                 currentUserName={effectiveName || authUserName}
                 rubberPlanOverride={jobCard?.rubberPlanOverride ? jobCard.rubberPlanOverride : null}
                 onBatchComplete={
-                  userPendingBgSteps.some((bg) => bg.branchColor && bg.stepKey === "qc_batch_certs")
+                  workflow.userPendingBgSteps.some(
+                    (bg) => bg.branchColor && bg.stepKey === "qc_batch_certs",
+                  )
                     ? () => {
-                        setBatchesSaved(true);
+                        actions.setBatchesSaved(true);
                         handleTabChange("details");
                         setTimeout(() => {
                           const wfa = document.getElementById("workflow-actions");
@@ -2535,7 +1116,7 @@ export default function JobCardDetailPage() {
                   }, 200);
                 }}
                 onFinalPhotosSaved={() => {
-                  setFinalPhotosSaved(true);
+                  actions.setFinalPhotosSaved(true);
                 }}
                 lineItems={(jobCard?.lineItems ? jobCard.lineItems : []).map((li) => {
                   const itemCode = li.itemCode;
@@ -2580,106 +1161,24 @@ export default function JobCardDetailPage() {
       </div>
 
       <ApprovalModal
-        isOpen={showApprovalModal}
-        onClose={() => setShowApprovalModal(false)}
-        onApprove={handleApprove}
-        onReject={handleReject}
+        isOpen={actions.showApprovalModal}
+        onClose={() => actions.setShowApprovalModal(false)}
+        onApprove={actions.handleApprove}
+        onReject={actions.handleReject}
         jobNumber={jobCard.jobNumber}
-        stepName={currentApprovalStep.replace(/_/g, " ")}
+        stepName={actions.currentApprovalStep.replace(/_/g, " ")}
         stepOutcomes={(() => {
           const activeStep = workflowStatus?.foregroundSteps?.find(
-            (s) => s.key === currentApprovalStep,
+            (s) => s.key === actions.currentApprovalStep,
           );
           const outcomes = activeStep?.stepOutcomes;
           return outcomes ? outcomes : null;
         })()}
       />
 
-      {showSourceFileModal &&
-        sourceFileUrl &&
-        (() => {
-          const sourceFileName = jobCard.sourceFileName;
-          const sourceFileTitle = sourceFileName || "Source File";
-          const sourceFileDownloadName = sourceFileName || "source-file";
-          const sourceFileExtension = (sourceFileName || "").toLowerCase();
-          return (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-md">
-              <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl mx-4 max-h-[90vh] flex flex-col">
-                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    Original Job Card — {sourceFileTitle}
-                  </h3>
-                  <div className="flex items-center gap-3">
-                    <a
-                      href={sourceFileUrl}
-                      download={sourceFileDownloadName}
-                      className="px-3 py-1.5 text-sm font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700"
-                    >
-                      Download
-                    </a>
-                    <button
-                      onClick={() => {
-                        setShowSourceFileModal(false);
-                        setSourceFileUrl(null);
-                      }}
-                      className="text-gray-400 hover:text-gray-600"
-                    >
-                      <svg
-                        className="w-5 h-5"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M6 18L18 6M6 6l12 12"
-                        />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-                <div className="flex-1 overflow-auto p-2">
-                  {sourceFileExtension.endsWith(".pdf") ? (
-                    <iframe
-                      src={sourceFileUrl}
-                      className="w-full h-[75vh] border-0 rounded"
-                      title="Original Job Card"
-                    />
-                  ) : (
-                    <div className="flex flex-col items-center justify-center py-16 text-gray-500">
-                      <svg
-                        className="w-16 h-16 mb-4 text-gray-300"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={1.5}
-                          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                        />
-                      </svg>
-                      <p className="text-sm mb-4">Preview not available for this file type</p>
-                      <a
-                        href={sourceFileUrl}
-                        download={sourceFileDownloadName}
-                        className="px-4 py-2 text-sm font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700"
-                      >
-                        Download File
-                      </a>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          );
-        })()}
-      {pdfPreviewUrl &&
+      {actions.pdfPreviewUrl &&
         createPortal(
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50">
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-[90vw] h-[90vh] flex flex-col">
               <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
                 <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
@@ -2687,8 +1186,8 @@ export default function JobCardDetailPage() {
                 </h3>
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={handleExportPdf}
-                    disabled={isDownloadingQr}
+                    onClick={actions.handleExportPdf}
+                    disabled={actions.isDownloadingQr}
                     className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 disabled:bg-gray-400 transition-colors"
                   >
                     <svg
@@ -2704,12 +1203,12 @@ export default function JobCardDetailPage() {
                         d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                       />
                     </svg>
-                    {isDownloadingQr ? "Exporting..." : "Export PDF"}
+                    {actions.isDownloadingQr ? "Exporting..." : "Export PDF"}
                   </button>
                   <button
                     onClick={() => {
-                      URL.revokeObjectURL(pdfPreviewUrl);
-                      setPdfPreviewUrl(null);
+                      URL.revokeObjectURL(actions.pdfPreviewUrl!);
+                      actions.setPdfPreviewUrl(null);
                     }}
                     className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"
                   >
@@ -2726,7 +1225,7 @@ export default function JobCardDetailPage() {
               </div>
               <div className="flex-1 overflow-hidden">
                 <iframe
-                  src={pdfPreviewUrl}
+                  src={actions.pdfPreviewUrl}
                   className="w-full h-full border-0"
                   title="Job Card PDF Preview"
                 />
@@ -2735,7 +1234,7 @@ export default function JobCardDetailPage() {
           </div>,
           document.body,
         )}
-      <PdfPreviewModal state={pdfPreview.state} onClose={pdfPreview.close} />
+      <PdfPreviewModal state={actions.pdfPreview.state} onClose={actions.pdfPreview.close} />
     </div>
   );
 }
