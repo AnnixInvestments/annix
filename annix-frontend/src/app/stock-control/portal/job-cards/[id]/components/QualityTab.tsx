@@ -154,6 +154,35 @@ export function QualityTab(props: QualityTabProps) {
     }
   };
 
+  const handlePrint = async () => {
+    try {
+      setError(null);
+      const blob = await stockControlApiClient.downloadDataBook(jobCardId);
+      const url = URL.createObjectURL(blob);
+      const printWindow = window.open(url);
+      if (printWindow) {
+        printWindow.addEventListener("load", () => printWindow.print());
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to print data book");
+    }
+  };
+
+  const handleSaveAs = async () => {
+    try {
+      setError(null);
+      const blob = await stockControlApiClient.downloadDataBook(jobCardId);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `DataBook-JC${jobCardId}.pdf`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save data book");
+    }
+  };
+
   const handleViewCertificate = async (id: number) => {
     try {
       const cert = await stockControlApiClient.certificateById(id);
@@ -582,6 +611,8 @@ export function QualityTab(props: QualityTabProps) {
               isCompiling={isCompiling}
               onCompile={handleCompile}
               onDownload={handleDownload}
+              onPrint={handlePrint}
+              onSaveAs={handleSaveAs}
             />
           </div>
 

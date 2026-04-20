@@ -14,6 +14,8 @@ interface DataBookCompletenessPanelProps {
   isCompiling: boolean;
   onCompile: (force?: boolean) => void;
   onDownload: () => void;
+  onPrint: () => void;
+  onSaveAs: () => void;
 }
 
 const STATUS_COLORS: Record<SectionStatus["status"], { bg: string; text: string; dot: string }> = {
@@ -128,6 +130,8 @@ export function DataBookCompletenessPanel({
   isCompiling,
   onCompile,
   onDownload,
+  onPrint,
+  onSaveAs,
 }: DataBookCompletenessPanelProps) {
   if (!completeness) {
     return null;
@@ -206,14 +210,27 @@ export function DataBookCompletenessPanel({
               {isCompiling ? "Compiling..." : "Force Compile"}
             </button>
           )}
-          {dataBookStatus?.exists && (
-            <button
-              onClick={onDownload}
-              className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-            >
-              View PDF
-            </button>
-          )}
+          <button
+            onClick={onDownload}
+            disabled={!dataBookStatus?.exists}
+            className="rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            PDF
+          </button>
+          <button
+            onClick={onPrint}
+            disabled={!dataBookStatus?.exists}
+            className="rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Print
+          </button>
+          <button
+            onClick={onSaveAs}
+            disabled={!dataBookStatus?.exists}
+            className="rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Download
+          </button>
         </div>
       </div>
 
