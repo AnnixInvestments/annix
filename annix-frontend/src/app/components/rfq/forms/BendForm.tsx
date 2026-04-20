@@ -549,6 +549,7 @@ function BendFormComponent(props: BendFormProps) {
   const rawNominalBoreMm3 = specs.nominalBoreMm;
   const rawClosureLengthMm = specs.closureLengthMm;
   const rawWallThicknessMm6 = specs.wallThicknessMm;
+  const calcWallThicknessMm = entry.calculation?.wallThicknessMm;
   const rawNumberOfTangents = specs.numberOfTangents;
   const rawTangentLengths2 = specs.tangentLengths;
   const rawNumberOfStubs3 = specs.numberOfStubs;
@@ -1398,7 +1399,6 @@ function BendFormComponent(props: BendFormProps) {
                             specs: {
                               ...entry.specs,
                               bendType: bendType || undefined,
-                              nominalBoreMm: undefined,
                               bendDegrees: isFixed90 ? 90 : undefined,
                               centerToFaceMm: undefined,
                               bendRadiusMm: undefined,
@@ -1459,6 +1459,9 @@ function BendFormComponent(props: BendFormProps) {
                               centerToFaceMm: undefined,
                               bendRadiusMm: undefined,
                               bendDegrees: isSweepTee ? 90 : undefined,
+                              nominalBoreMm: specs.nominalBoreMm,
+                              scheduleNumber: specs.scheduleNumber,
+                              wallThicknessMm: specs.wallThicknessMm,
                               sweepTeePipeALengthMm: isSweepTee
                                 ? undefined
                                 : specs.sweepTeePipeALengthMm,
@@ -2067,9 +2070,12 @@ function BendFormComponent(props: BendFormProps) {
                     {/* Dropdown row - 4 columns */}
                     {(() => {
                       const rawWorkingPressureBar6 = specs.workingPressureBar;
+                      const globalWorkingPressureBar = globalSpecs?.workingPressureBar;
                       const workingPressureBar =
-                        rawWorkingPressureBar6 || globalSpecs?.workingPressureBar || 0;
+                        rawWorkingPressureBar6 || globalWorkingPressureBar || 0;
                       const rawBendEndConfiguration3 = specs.bendEndConfiguration;
+                      const rawFlangeStandards = masterData.flangeStandards;
+                      const rawPressureClasses = masterData.pressureClasses;
 
                       return (
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 items-end">
@@ -2080,8 +2086,8 @@ function BendFormComponent(props: BendFormProps) {
                             globalFlangeStandardId={globalSpecs?.flangeStandardId}
                             globalFlangePressureClassId={globalSpecs?.flangePressureClassId}
                             globalFlangeTypeCode={globalSpecs?.flangeTypeCode}
-                            flangeStandards={masterData.flangeStandards || []}
-                            pressureClasses={masterData.pressureClasses || []}
+                            flangeStandards={rawFlangeStandards || []}
+                            pressureClasses={rawPressureClasses || []}
                             pressureClassesByStandard={pressureClassesByStandard}
                             allFlangeTypes={allFlangeTypes}
                             workingPressureBar={workingPressureBar}
@@ -2166,7 +2172,7 @@ function BendFormComponent(props: BendFormProps) {
                 <ClosureLengthSelector
                   nominalBore={rawNominalBoreMm3 || 100}
                   currentValue={rawClosureLengthMm || null}
-                  wallThickness={rawWallThicknessMm6 || entry.calculation?.wallThicknessMm || 5}
+                  wallThickness={rawWallThicknessMm6 || calcWallThicknessMm || 5}
                   onUpdate={(closureLength) => {
                     const updatedEntry = {
                       ...entry,
@@ -2225,6 +2231,12 @@ function BendFormComponent(props: BendFormProps) {
                   const rawDuckfootGussetPointDDegrees = specs.duckfootGussetPointDDegrees;
                   const rawDuckfootGussetPointCDegrees = specs.duckfootGussetPointCDegrees;
 
+                  const defaultX = defaults?.x;
+                  const defaultY = defaults?.y;
+                  const defaultInletH = defaults?.inletH;
+                  const defaultT1 = defaults?.t1;
+                  const defaultT2 = defaults?.t2;
+
                   return (
                     <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
                       <div>
@@ -2239,7 +2251,7 @@ function BendFormComponent(props: BendFormProps) {
                         </label>
                         <input
                           type="number"
-                          value={rawDuckfootBasePlateXMm || defaults?.x || ""}
+                          value={rawDuckfootBasePlateXMm || defaultX || ""}
                           onChange={(e) => {
                             const value = e.target.value ? parseFloat(e.target.value) : undefined;
                             const updatedEntry = {
@@ -2266,7 +2278,7 @@ function BendFormComponent(props: BendFormProps) {
                         </label>
                         <input
                           type="number"
-                          value={rawDuckfootBasePlateYMm || defaults?.y || ""}
+                          value={rawDuckfootBasePlateYMm || defaultY || ""}
                           onChange={(e) => {
                             const value = e.target.value ? parseFloat(e.target.value) : undefined;
                             const updatedEntry = {
@@ -2293,7 +2305,7 @@ function BendFormComponent(props: BendFormProps) {
                         </label>
                         <input
                           type="number"
-                          value={rawDuckfootInletCentreHeightMm || defaults?.inletH || ""}
+                          value={rawDuckfootInletCentreHeightMm || defaultInletH || ""}
                           onChange={(e) => {
                             const value = e.target.value ? parseFloat(e.target.value) : undefined;
                             const updatedEntry = {
@@ -2320,7 +2332,7 @@ function BendFormComponent(props: BendFormProps) {
                         </label>
                         <input
                           type="number"
-                          value={rawDuckfootPlateThicknessT1Mm || defaults?.t1 || ""}
+                          value={rawDuckfootPlateThicknessT1Mm || defaultT1 || ""}
                           onChange={(e) => {
                             const value = e.target.value ? parseFloat(e.target.value) : undefined;
                             const updatedEntry = {
@@ -2347,7 +2359,7 @@ function BendFormComponent(props: BendFormProps) {
                         </label>
                         <input
                           type="number"
-                          value={rawDuckfootRibThicknessT2Mm || defaults?.t2 || ""}
+                          value={rawDuckfootRibThicknessT2Mm || defaultT2 || ""}
                           onChange={(e) => {
                             const value = e.target.value ? parseFloat(e.target.value) : undefined;
                             const updatedEntry = {
@@ -3131,6 +3143,11 @@ function BendFormComponent(props: BendFormProps) {
                     {(() => {
                       const rawHasBlankFlange = stub0.hasBlankFlange;
                       const rawNominalBoreMm6 = stub0.nominalBoreMm;
+                      const rawFlangeStandards2 = masterData.flangeStandards;
+                      const rawPressureClasses2 = masterData.pressureClasses;
+                      const rawWpb2 = specs.workingPressureBar;
+                      const rawGlobalWpb2 = globalSpecs?.workingPressureBar;
+                      const stub1WorkingPressure = rawWpb2 || rawGlobalWpb2 || 0;
                       return (
                         <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 items-end">
                           {/* Title as first column */}
@@ -3147,15 +3164,14 @@ function BendFormComponent(props: BendFormProps) {
                             globalFlangeStandardId={globalSpecs?.flangeStandardId}
                             globalFlangePressureClassId={globalSpecs?.flangePressureClassId}
                             globalFlangeTypeCode={globalSpecs?.flangeTypeCode}
-                            flangeStandards={masterData.flangeStandards || []}
-                            pressureClasses={masterData.pressureClasses || []}
+                            flangeStandards={rawFlangeStandards2 || []}
+                            pressureClasses={rawPressureClasses2 || []}
                             pressureClassesByStandard={pressureClassesByStandard}
                             allFlangeTypes={allFlangeTypes}
-                            workingPressureBar={
-                              specs.workingPressureBar || globalSpecs?.workingPressureBar || 0
-                            }
+                            workingPressureBar={stub1WorkingPressure}
                             onStandardChange={(standardId) => {
-                              const stubs = [...(specs.stubs || [])];
+                              const rawStubs15 = specs.stubs;
+                              const stubs = [...(rawStubs15 || [])];
                               stubs[0] = {
                                 ...stubs[0],
                                 flangeStandardId: standardId,
@@ -3165,12 +3181,14 @@ function BendFormComponent(props: BendFormProps) {
                               onUpdateEntry(entry.id, { specs: { ...entry.specs, stubs } });
                             }}
                             onPressureClassChange={(classId) => {
-                              const stubs = [...(specs.stubs || [])];
+                              const rawStubs16 = specs.stubs;
+                              const stubs = [...(rawStubs16 || [])];
                               stubs[0] = { ...stubs[0], flangePressureClassId: classId };
                               onUpdateEntry(entry.id, { specs: { ...entry.specs, stubs } });
                             }}
                             onFlangeTypeChange={(typeCode) => {
-                              const stubs = [...(specs.stubs || [])];
+                              const rawStubs17 = specs.stubs;
+                              const stubs = [...(rawStubs17 || [])];
                               stubs[0] = { ...stubs[0], flangeTypeCode: typeCode };
                               onUpdateEntry(entry.id, { specs: { ...entry.specs, stubs } });
                             }}
@@ -3562,6 +3580,11 @@ function BendFormComponent(props: BendFormProps) {
                       {(() => {
                         const rawHasBlankFlange2 = stub1.hasBlankFlange;
                         const rawNominalBoreMm8 = stub1.nominalBoreMm;
+                        const rawWpb = specs.workingPressureBar;
+                        const rawGlobalWpb = globalSpecs?.workingPressureBar;
+                        const stub2WorkingPressure = rawWpb || rawGlobalWpb || 0;
+                        const rawFlangeStandards3 = masterData.flangeStandards;
+                        const rawPressureClasses3 = masterData.pressureClasses;
                         return (
                           <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 items-end">
                             {/* Title as first column */}
@@ -3577,32 +3600,42 @@ function BendFormComponent(props: BendFormProps) {
                               globalFlangeStandardId={globalSpecs?.flangeStandardId}
                               globalFlangePressureClassId={globalSpecs?.flangePressureClassId}
                               globalFlangeTypeCode={globalSpecs?.flangeTypeCode}
-                              flangeStandards={masterData.flangeStandards || []}
-                              pressureClasses={masterData.pressureClasses || []}
+                              flangeStandards={rawFlangeStandards3 || []}
+                              pressureClasses={rawPressureClasses3 || []}
                               pressureClassesByStandard={pressureClassesByStandard}
                               allFlangeTypes={allFlangeTypes}
-                              workingPressureBar={
-                                specs.workingPressureBar || globalSpecs?.workingPressureBar || 0
-                              }
+                              workingPressureBar={stub2WorkingPressure}
                               onStandardChange={(standardId) => {
-                                const stubs = [...(specs.stubs || [])];
-                                stubs[1] = {
-                                  ...stubs[1],
+                                const rawStubs = specs.stubs;
+                                const currentStubs = [...(rawStubs || [])];
+                                currentStubs[1] = {
+                                  ...currentStubs[1],
                                   flangeStandardId: standardId,
                                   flangePressureClassId: undefined,
                                   flangeTypeCode: undefined,
                                 };
-                                onUpdateEntry(entry.id, { specs: { ...entry.specs, stubs } });
+                                onUpdateEntry(entry.id, {
+                                  specs: { ...entry.specs, stubs: currentStubs },
+                                });
                               }}
                               onPressureClassChange={(classId) => {
-                                const stubs = [...(specs.stubs || [])];
-                                stubs[1] = { ...stubs[1], flangePressureClassId: classId };
-                                onUpdateEntry(entry.id, { specs: { ...entry.specs, stubs } });
+                                const rawStubs2 = specs.stubs;
+                                const currentStubs = [...(rawStubs2 || [])];
+                                currentStubs[1] = {
+                                  ...currentStubs[1],
+                                  flangePressureClassId: classId,
+                                };
+                                onUpdateEntry(entry.id, {
+                                  specs: { ...entry.specs, stubs: currentStubs },
+                                });
                               }}
                               onFlangeTypeChange={(typeCode) => {
-                                const stubs = [...(specs.stubs || [])];
-                                stubs[1] = { ...stubs[1], flangeTypeCode: typeCode };
-                                onUpdateEntry(entry.id, { specs: { ...entry.specs, stubs } });
+                                const rawStubs3 = specs.stubs;
+                                const currentStubs = [...(rawStubs3 || [])];
+                                currentStubs[1] = { ...currentStubs[1], flangeTypeCode: typeCode };
+                                onUpdateEntry(entry.id, {
+                                  specs: { ...entry.specs, stubs: currentStubs },
+                                });
                               }}
                               onLoadPressureClasses={getFilteredPressureClasses}
                             />
@@ -3820,16 +3853,16 @@ function BendFormComponent(props: BendFormProps) {
                 const rawNumberOfStubs11 = specs.numberOfStubs;
                 const rawBendEndConfiguration5 = specs.bendEndConfiguration;
                 const rawClosureLengthMm2 = specs.closureLengthMm;
+                const nbOdLookup = nbToOdMap[entry.specs.nominalBoreMm];
+                const calcWallThickness2 = entry.calculation?.wallThicknessMm;
                 return (
                   <div data-nix-target="bend-3d-preview" className="h-full">
                     <Bend3DPreview
                       nominalBore={entry.specs.nominalBoreMm}
                       outerDiameter={
-                        rawOutsideDiameterMm ||
-                        nbToOdMap[entry.specs.nominalBoreMm] ||
-                        entry.specs.nominalBoreMm * 1.05
+                        rawOutsideDiameterMm || nbOdLookup || entry.specs.nominalBoreMm * 1.05
                       }
-                      wallThickness={rawWallThicknessMm7 || entry.calculation?.wallThicknessMm || 5}
+                      wallThickness={rawWallThicknessMm7 || calcWallThickness2 || 5}
                       bendAngle={entry.specs.bendDegrees}
                       bendType={rawBendType2 || "1.5D"}
                       tangent1={rawItem04 || 0}
@@ -3986,9 +4019,11 @@ function BendFormComponent(props: BendFormProps) {
                   const stub1NB = stubs[0]?.nominalBoreMm;
                   const stub2NB = stubs[1]?.nominalBoreMm;
                   const rawLengthMm = stubs[0]?.lengthMm;
-                  const stub1Length = rawLengthMm || stubs[0]?.length || 0;
+                  const stub0LegacyLength = stubs[0]?.length;
+                  const stub1Length = rawLengthMm || stub0LegacyLength || 0;
                   const rawLengthMm2 = stubs[1]?.lengthMm;
-                  const stub2Length = rawLengthMm2 || stubs[1]?.length || 0;
+                  const stub1LegacyLength = stubs[1]?.length;
+                  const stub2Length = rawLengthMm2 || stub1LegacyLength || 0;
                   const dn = specs.nominalBoreMm;
                   const rawScheduleNumber2 = specs.scheduleNumber;
                   const schedule = rawScheduleNumber2 || "";
