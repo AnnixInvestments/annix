@@ -868,6 +868,93 @@ export const fallbackEnvironmentalData = (province: string) => {
   return rawProvince || fallbackEnvironmentalByProvince["Gauteng"];
 };
 
+export const FALLBACK_ENVIRONMENTAL_AUTO_FILLED_FIELDS = [
+  "tempMin",
+  "tempMax",
+  "tempMean",
+  "humidityMin",
+  "humidityMax",
+  "humidityMean",
+  "annualRainfall",
+  "ecpMarineInfluence",
+  "ecpIso12944Category",
+  "ecpIndustrialPollution",
+  "soilType",
+  "soilTexture",
+  "soilMoisture",
+  "soilMoistureClass",
+  "soilDrainage",
+  "distanceToCoast",
+  "distanceToCoastFormatted",
+  "detailedMarineInfluence",
+  "uvExposure",
+  "windSpeed",
+  "floodRisk",
+  "airSaltContent",
+  "timeOfWetness",
+] as const;
+
+export const buildFallbackEnvironmentalSpecs = (fallbackMine: SaMine, existingSpecs: any): any => {
+  const slurryProfile = fallbackMine.commodityName
+    ? fallbackSlurryProfiles[fallbackMine.commodityName]
+    : null;
+  const rawProvince = fallbackMine.province;
+  const province = rawProvince || "Gauteng";
+  const envData = fallbackEnvironmentalData(province);
+  const liningRec = slurryProfile
+    ? fallbackLiningRecommendation(slurryProfile.abrasionRisk, slurryProfile.corrosionRisk)
+    : null;
+
+  const specs: any = {
+    ...existingSpecs,
+    mineSelected: fallbackMine.mineName,
+    mineCommodity: fallbackMine.commodityName,
+    tempMin: envData.tempMin,
+    tempMax: envData.tempMax,
+    tempMean: envData.tempMean,
+    humidityMin: envData.humidityMin,
+    humidityMax: envData.humidityMax,
+    humidityMean: envData.humidityMean,
+    annualRainfall: envData.annualRainfall,
+    ecpMarineInfluence: envData.ecpMarineInfluence,
+    ecpIso12944Category: envData.ecpIso12944Category,
+    ecpIndustrialPollution: envData.ecpIndustrialPollution,
+    soilType: envData.soilType,
+    soilTexture: envData.soilTexture,
+    soilMoisture: envData.soilMoisture,
+    soilMoistureClass: envData.soilMoistureClass,
+    soilDrainage: envData.soilDrainage,
+    distanceToCoastFormatted: envData.distanceToCoastFormatted,
+    detailedMarineInfluence: envData.detailedMarineInfluence,
+    floodRisk: envData.floodRisk,
+    uvExposure: envData.uvExposure,
+    windSpeed: envData.windSpeed,
+    airSaltContent: envData.airSaltContent,
+    timeOfWetness: envData.timeOfWetness,
+  };
+
+  if (slurryProfile) {
+    specs.slurryPHMin = slurryProfile.phMin;
+    specs.slurryPHMax = slurryProfile.phMax;
+    specs.slurrySGMin = slurryProfile.typicalSgMin;
+    specs.slurrySGMax = slurryProfile.typicalSgMax;
+    specs.slurrySolidsMin = slurryProfile.solidsConcentrationMin;
+    specs.slurrySolidsMax = slurryProfile.solidsConcentrationMax;
+    specs.slurryTempMin = slurryProfile.tempMin;
+    specs.slurryTempMax = slurryProfile.tempMax;
+    specs.abrasionRisk = slurryProfile.abrasionRisk;
+    specs.corrosionRisk = slurryProfile.corrosionRisk;
+    specs.primaryFailureMode = slurryProfile.primaryFailureMode;
+  }
+
+  if (liningRec) {
+    specs.recommendedLining = liningRec.recommendedLining;
+    specs.recommendedCoating = liningRec.recommendedCoating;
+  }
+
+  return specs;
+};
+
 export const fallbackLiningRecommendation = (abrasionRisk: string, corrosionRisk: string) => {
   if (abrasionRisk === "Very High" && corrosionRisk === "Low")
     return { recommendedLining: "Ceramic Tile (95% Al2O3)", recommendedCoating: "None" };
