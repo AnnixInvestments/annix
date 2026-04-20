@@ -67,11 +67,17 @@ Shared workspace package (pnpm workspace). Both `annix-backend` and `annix-front
 | Notifications dispatcher | `notifications/` | Multi-channel dispatch (email, in-app, SMS). |
 | Inbound email routing | `inbound-email/` | `EmailAppAdapter` + classification — routes inbound emails to the correct app module. |
 | Sage One SA | `sage-export/sage-api.service.ts` | Sage One SA REST client (rate-limited). |
+| Sage adapter registry | `sage-export/sage-adapter-registry.service.ts` | Unified registry for Sage invoice export adapters. Apps self-register via `OnModuleInit`. Unified controller at `GET /sage-export/:moduleCode/:adapterKey/preview\|csv`. |
 | Sage Cloud | `comply-sa/comply-integrations/sage/sage.service.ts` | Sage Cloud OAuth client (rate-limited). |
 | Company profile (Annix SoT) | `admin/admin-company-profile.service.ts` | ANY Annix legal/contact info. Never hardcode legal name, reg number, emails, addresses. |
 | Reference data API | `reference-data/` | Public `GET /public/reference/pipe-specs`, `POST /public/reference/b16-rating`, `/public/reference/currencies`. |
 | RBAC | `rbac/rbac.service.ts` | Permissions, role names, portal user access. `STOCK_CONTROL_ROLE_NAMES` is exported from here. |
 | Website pages CMS | `rubber-lining/website-pages.service.ts` | CRUD for AU Industries website pages. Public routes via `public-au-industries.controller.ts`. Admin routes via `website-pages.controller.ts`. |
+| Platform Company | `platform/company.service.ts` | Unified company entity with module subscriptions. Replaces `StockControlCompany` and `RubberCompany`. |
+| Platform Contact | `platform/contact.service.ts` | Unified supplier/customer contacts. Replaces `StockControlSupplier` and `RubberCompany` (type=SUPPLIER/CUSTOMER). CRUD + search + fuzzy matching. |
+| Platform Delivery Notes | `platform/delivery-note.service.ts` | Unified delivery note model with `source_module` discriminator. Supports GENERAL, COMPOUND, ROLL types. |
+| Platform Invoices | `platform/invoice.service.ts` | Unified invoice model for both supplier and customer invoices. Supports SC clarification workflow and AR simple flow. |
+| Platform Certificates | `platform/certificate.service.ts` | Unified certificate/CoC model. Categories: COA, COC, COMPOUNDER, CALENDARER, CALENDER_ROLL, CALIBRATION. |
 | Platform base entities | `platform/entities/base-portal-profile.ts` | Extend this for any portal-profile-shaped entity (customer, supplier). |
 | TanStack-compatible query helpers | `shared/validators/` | Shared NestJS validators (e.g. `rfq-compliance.validator.ts`). |
 

@@ -34,7 +34,9 @@ import {
 
 export const STOCK_CONTROL_ROLE_NAMES: Record<string, string> = {
   storeman: "Storeman",
+  "receiving-clerk": "Receiving Clerk",
   accounts: "Accounts",
+  quality: "Quality Inspector",
   manager: "Manager",
   admin: "Administrator",
 };

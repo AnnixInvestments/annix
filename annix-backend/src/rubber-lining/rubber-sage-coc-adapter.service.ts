@@ -1,20 +1,61 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, type OnModuleInit } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { In, Repository } from "typeorm";
 import { now } from "../lib/datetime";
 import type { SageExportFilterDto } from "../sage-export/dto/sage-export.dto";
 import type { SageExportInvoice, SageExportLineItem } from "../sage-export/interfaces/sage-invoice";
+import type {
+  SageAdapterContext,
+  SageExportPreview,
+  SageExportResult,
+  SageInvoiceAdapter,
+} from "../sage-export/interfaces/sage-invoice-adapter.interface";
+import { SageAdapterRegistry } from "../sage-export/sage-adapter-registry.service";
 import { CocProcessingStatus, RubberSupplierCoc } from "./entities/rubber-supplier-coc.entity";
 
 const DEFAULT_VAT_RATE = 15;
 const DEFAULT_ACCOUNT_CODE = "5000";
 
 @Injectable()
-export class RubberSageCocAdapterService {
+export class RubberSageCocAdapterService implements SageInvoiceAdapter, OnModuleInit {
   constructor(
     @InjectRepository(RubberSupplierCoc)
     private readonly cocRepo: Repository<RubberSupplierCoc>,
+    private readonly sageAdapterRegistry: SageAdapterRegistry,
   ) {}
+
+  onModuleInit() {
+    this.sageAdapterRegistry.registerAdapter({
+      moduleCode: "au-rubber",
+      adapterKey: "cocs",
+      label: "AU Rubber Supplier CoCs",
+      adapter: this,
+    });
+  }
+
+  async exportableInvoices(
+    filters: SageExportFilterDto,
+    _context: SageAdapterContext,
+  ): Promise<SageExportResult> {
+    const { invoices, cocIds } = await this.exportableCocs(filters);
+    return { invoices, entityIds: cocIds };
+  }
+
+  async markExported(entityIds: number[], _context: SageAdapterContext): Promise<void> {
+    return this.markCocExported(entityIds);
+  }
+
+  async previewCount(
+    filters: SageExportFilterDto,
+    _context: SageAdapterContext,
+  ): Promise<SageExportPreview> {
+    const { invoices } = await this.exportableCocs(filters);
+    return {
+      count: invoices.length,
+      lineItemCount: invoices.reduce((sum, inv) => sum + inv.lineItems.length, 0),
+      totalAmount: invoices.reduce((sum, inv) => sum + (inv.totalAmount ?? 0), 0),
+    };
+  }
 
   async exportableCocs(
     filters: SageExportFilterDto,
@@ -48,7 +89,7 @@ export class RubberSageCocAdapterService {
     return { invoices, cocIds };
   }
 
-  async markExported(cocIds: number[]): Promise<void> {
+  async markCocExported(cocIds: number[]): Promise<void> {
     if (cocIds.length === 0) {
       return;
     }
@@ -61,7 +102,7 @@ export class RubberSageCocAdapterService {
       .execute();
   }
 
-  async previewCount(filters: SageExportFilterDto): Promise<{
+  async cocPreviewCount(filters: SageExportFilterDto): Promise<{
     cocCount: number;
     batchCount: number;
     totalBatches: number;

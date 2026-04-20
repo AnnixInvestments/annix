@@ -1,7 +1,10 @@
 import { Global, Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
+import { CertificateService } from "./certificate.service";
 import { CompanyService } from "./company.service";
+import { ContactController } from "./contact.controller";
 import { ContactService } from "./contact.service";
+import { DeliveryNoteService } from "./delivery-note.service";
 import { PlatformCertificate } from "./entities/certificate.entity";
 import { Company } from "./entities/company.entity";
 import { CompanyModuleSubscription } from "./entities/company-module-subscription.entity";
@@ -9,6 +12,7 @@ import { Contact } from "./entities/contact.entity";
 import { PlatformDeliveryNote } from "./entities/delivery-note.entity";
 import { DeliveryNoteItem } from "./entities/delivery-note-item.entity";
 import { PlatformInvoice } from "./entities/invoice.entity";
+import { InvoiceService as PlatformInvoiceService } from "./invoice.service";
 import { ReportRegistryService } from "./report-registry.service";
 
 @Global()
@@ -24,7 +28,23 @@ import { ReportRegistryService } from "./report-registry.service";
       PlatformCertificate,
     ]),
   ],
-  providers: [CompanyService, ContactService, ReportRegistryService],
-  exports: [CompanyService, ContactService, ReportRegistryService, TypeOrmModule],
+  controllers: [ContactController],
+  providers: [
+    CertificateService,
+    CompanyService,
+    ContactService,
+    DeliveryNoteService,
+    PlatformInvoiceService,
+    ReportRegistryService,
+  ],
+  exports: [
+    CertificateService,
+    CompanyService,
+    ContactService,
+    DeliveryNoteService,
+    PlatformInvoiceService,
+    ReportRegistryService,
+    TypeOrmModule,
+  ],
 })
 export class PlatformModule {}

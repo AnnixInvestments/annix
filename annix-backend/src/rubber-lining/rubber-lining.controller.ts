@@ -1086,7 +1086,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     @Query("dateTo") dateTo?: string,
     @Query("excludeExported") excludeExported?: string,
   ): Promise<{ cocCount: number; batchCount: number; totalBatches: number }> {
-    return this.rubberSageCocAdapterService.previewCount({
+    return this.rubberSageCocAdapterService.cocPreviewCount({
       dateFrom: dateFrom || undefined,
       dateTo: dateTo || undefined,
       excludeExported: excludeExported !== "false",
@@ -1115,7 +1115,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     const { invoices, cocIds } = await this.rubberSageCocAdapterService.exportableCocs(filters);
     const csvBuffer = this.sageExportService.generateCsv(invoices);
 
-    await this.rubberSageCocAdapterService.markExported(cocIds);
+    await this.rubberSageCocAdapterService.markCocExported(cocIds);
 
     res!.set({
       "Content-Type": "text/csv",

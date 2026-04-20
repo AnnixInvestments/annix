@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, type OnModuleInit } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { In, Repository } from "typeorm";
 import { now } from "../../lib/datetime";
@@ -10,17 +10,28 @@ import type {
   SageExportResult,
   SageInvoiceAdapter,
 } from "../../sage-export/interfaces/sage-invoice-adapter.interface";
+import { SageAdapterRegistry } from "../../sage-export/sage-adapter-registry.service";
 import { InvoiceExtractionStatus, SupplierInvoice } from "../entities/supplier-invoice.entity";
 
 const DEFAULT_VAT_RATE = 15;
 const DEFAULT_ACCOUNT_CODE = "5000";
 
 @Injectable()
-export class SageInvoiceAdapterService implements SageInvoiceAdapter {
+export class SageInvoiceAdapterService implements SageInvoiceAdapter, OnModuleInit {
   constructor(
     @InjectRepository(SupplierInvoice)
     private readonly invoiceRepo: Repository<SupplierInvoice>,
+    private readonly sageAdapterRegistry: SageAdapterRegistry,
   ) {}
+
+  onModuleInit() {
+    this.sageAdapterRegistry.registerAdapter({
+      moduleCode: "stock-control",
+      adapterKey: "invoices",
+      label: "Stock Control Supplier Invoices",
+      adapter: this,
+    });
+  }
 
   async exportableInvoices(
     filters: SageExportFilterDto,

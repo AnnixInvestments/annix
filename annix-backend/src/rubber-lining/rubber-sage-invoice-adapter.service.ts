@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, type OnModuleInit } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { In, Repository } from "typeorm";
 import { now } from "../lib/datetime";
@@ -10,6 +10,7 @@ import type {
   SageExportResult,
   SageInvoiceAdapter,
 } from "../sage-export/interfaces/sage-invoice-adapter.interface";
+import { SageAdapterRegistry } from "../sage-export/sage-adapter-registry.service";
 import {
   RubberTaxInvoice,
   TaxInvoiceStatus,
@@ -20,11 +21,21 @@ const DEFAULT_VAT_RATE = 15;
 const DEFAULT_ACCOUNT_CODE = "5000";
 
 @Injectable()
-export class RubberSageInvoiceAdapterService implements SageInvoiceAdapter {
+export class RubberSageInvoiceAdapterService implements SageInvoiceAdapter, OnModuleInit {
   constructor(
     @InjectRepository(RubberTaxInvoice)
     private readonly invoiceRepo: Repository<RubberTaxInvoice>,
+    private readonly sageAdapterRegistry: SageAdapterRegistry,
   ) {}
+
+  onModuleInit() {
+    this.sageAdapterRegistry.registerAdapter({
+      moduleCode: "au-rubber",
+      adapterKey: "invoices",
+      label: "AU Rubber Tax Invoices (Supplier)",
+      adapter: this,
+    });
+  }
 
   async exportableInvoices(
     filters: SageExportFilterDto,
