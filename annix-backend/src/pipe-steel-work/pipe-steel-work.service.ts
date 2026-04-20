@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { STEEL_DENSITY_KG_M3 as STEEL_DENSITY } from "../lib/steel-constants";
+import { BracketCompatibilityService } from "./bracket-compatibility.service";
 import {
   BatchCalculationDto,
   BatchCalculationResponseDto,
@@ -38,14 +39,11 @@ import {
   PlateSizeCategory,
   ReinforcementPadResponseDto,
   ReinforcementPadWithDeratingResponseDto,
-  StandardComparisonDto,
   StandardPlateSizeDto,
   StressAnalysisResponseDto,
   SupportSpacingResponseDto,
-  SupportStandardDto,
   ThermalExpansionResponseDto,
   ValidateBracketCompatibilityDto,
-  ValidationIssue,
   VibrationAnalysisResponseDto,
 } from "./dto/pipe-steel-work.dto";
 import { BracketDimensionBySizeEntity } from "./entities/bracket-dimension-by-size.entity";
@@ -53,73 +51,22 @@ import { BracketTypeEntity } from "./entities/bracket-type.entity";
 import { PipeSteelWorkConfigEntity } from "./entities/pipe-steel-work-config.entity";
 import { PipeSupportSpacing } from "./entities/pipe-support-spacing.entity";
 import { ReinforcementPadStandardEntity } from "./entities/reinforcement-pad-standard.entity";
+import {
+  estimatePipeWeightPerMeter,
+  estimateWallThickness,
+  findClosestNb,
+  interpolateSpacing,
+  interpolateTemperatureDerating,
+  NB_TO_OD_MAP,
+  SUPPORT_SPACING_TABLE,
+  THERMAL_EXPANSION_COEFFICIENTS,
+  WELD_STRENGTH_FACTORS,
+} from "./pipe-steel-work-data";
+import { SupportSpacingService } from "./support-spacing.service";
 
 @Injectable()
 export class PipeSteelWorkService {
   private readonly STEEL_DENSITY_KG_M3 = STEEL_DENSITY;
-
-  private readonly thermalExpansionCoefficients: Record<PipeMaterialDto, number> = {
-    [PipeMaterialDto.CARBON_STEEL]: 0.012,
-    [PipeMaterialDto.STAINLESS_304]: 0.017,
-    [PipeMaterialDto.STAINLESS_316]: 0.016,
-    [PipeMaterialDto.COPPER]: 0.017,
-    [PipeMaterialDto.ALUMINUM]: 0.023,
-    [PipeMaterialDto.CHROME_MOLY]: 0.0125,
-    [PipeMaterialDto.CAST_IRON]: 0.01,
-    [PipeMaterialDto.PVC]: 0.07,
-    [PipeMaterialDto.HDPE]: 0.2,
-  };
-
-  private readonly supportSpacingTable: Record<
-    number,
-    { water: number; vapor: number; rod: number }
-  > = {
-    15: { water: 2.1, vapor: 2.7, rod: 10 },
-    20: { water: 2.4, vapor: 3.0, rod: 10 },
-    25: { water: 2.7, vapor: 3.4, rod: 10 },
-    32: { water: 3.0, vapor: 3.7, rod: 10 },
-    40: { water: 3.0, vapor: 3.7, rod: 10 },
-    50: { water: 3.4, vapor: 4.3, rod: 10 },
-    65: { water: 3.7, vapor: 4.6, rod: 10 },
-    80: { water: 3.7, vapor: 4.6, rod: 10 },
-    100: { water: 4.3, vapor: 5.2, rod: 12 },
-    125: { water: 4.6, vapor: 5.5, rod: 12 },
-    150: { water: 4.9, vapor: 5.8, rod: 16 },
-    200: { water: 5.2, vapor: 6.4, rod: 16 },
-    250: { water: 5.8, vapor: 7.0, rod: 20 },
-    300: { water: 6.4, vapor: 7.6, rod: 20 },
-    350: { water: 6.7, vapor: 7.9, rod: 24 },
-    400: { water: 7.0, vapor: 8.2, rod: 24 },
-    450: { water: 7.3, vapor: 8.5, rod: 24 },
-    500: { water: 7.6, vapor: 8.8, rod: 30 },
-    600: { water: 7.9, vapor: 9.1, rod: 30 },
-    750: { water: 8.5, vapor: 9.8, rod: 36 },
-    900: { water: 9.1, vapor: 10.4, rod: 36 },
-  };
-
-  private readonly nbToOdMap: Record<number, number> = {
-    15: 21.3,
-    20: 26.7,
-    25: 33.4,
-    32: 42.2,
-    40: 48.3,
-    50: 60.3,
-    65: 73.0,
-    80: 88.9,
-    100: 114.3,
-    125: 141.3,
-    150: 168.3,
-    200: 219.1,
-    250: 273.1,
-    300: 323.9,
-    350: 355.6,
-    400: 406.4,
-    450: 457.0,
-    500: 508.0,
-    600: 610.0,
-    750: 762.0,
-    900: 914.0,
-  };
 
   private configCache: Map<string, string> = new Map();
 
@@ -134,6 +81,8 @@ export class PipeSteelWorkService {
     private readonly bracketDimensionRepo: Repository<BracketDimensionBySizeEntity>,
     @InjectRepository(PipeSteelWorkConfigEntity)
     private readonly configRepo: Repository<PipeSteelWorkConfigEntity>,
+    private readonly bracketCompatibilityService: BracketCompatibilityService,
+    private readonly supportSpacingService: SupportSpacingService,
   ) {}
 
   async configValue(key: string, defaultValue?: string): Promise<string | null> {
@@ -189,24 +138,19 @@ export class PipeSteelWorkService {
     bracketTypeCode: string,
     nbMm: number,
   ): Promise<BracketDimensionBySizeEntity | null> {
-    return this.bracketDimensionRepo.findOne({
-      where: { bracketTypeCode, nbMm },
-    });
+    return this.bracketCompatibilityService.dimension(bracketTypeCode, nbMm);
   }
 
   async bracketDimensionsForType(bracketTypeCode: string): Promise<BracketDimensionBySizeEntity[]> {
-    return this.bracketDimensionRepo.find({
-      where: { bracketTypeCode },
-      order: { nbMm: "ASC" },
-    });
+    return this.bracketCompatibilityService.dimensionsForType(bracketTypeCode);
   }
 
   supportSpacing(dto: CalculateSupportSpacingDto): SupportSpacingResponseDto {
-    const nbMm = this.findClosestNb(dto.nominalDiameterMm);
-    const spacing = this.supportSpacingTable[nbMm];
+    const nbMm = findClosestNb(dto.nominalDiameterMm);
+    const spacing = SUPPORT_SPACING_TABLE[nbMm];
 
     if (!spacing) {
-      const defaultSpacing = this.interpolateSpacing(dto.nominalDiameterMm);
+      const defaultSpacing = interpolateSpacing(dto.nominalDiameterMm);
       return {
         nominalDiameterMm: dto.nominalDiameterMm,
         waterFilledSpacingM: defaultSpacing.water,
@@ -325,73 +269,7 @@ export class PipeSteelWorkService {
   }
 
   async bracketTypes(nominalDiameterMm?: number): Promise<BracketTypeResponseDto[]> {
-    const defaultBrackets: BracketTypeResponseDto[] = [
-      {
-        typeCode: "CLEVIS_HANGER",
-        displayName: "Clevis Hanger",
-        description: "For suspended pipelines, allows slight movement",
-        isSuitable: true,
-        baseCostPerUnit: 150,
-        allowsExpansion: true,
-        isAnchorType: false,
-      },
-      {
-        typeCode: "THREE_BOLT_CLAMP",
-        displayName: "Three-Bolt Pipe Clamp",
-        description: "Heavy-duty support for larger pipes",
-        isSuitable: nominalDiameterMm ? nominalDiameterMm >= 100 : true,
-        baseCostPerUnit: 250,
-        allowsExpansion: false,
-        isAnchorType: false,
-      },
-      {
-        typeCode: "WELDED_BRACKET",
-        displayName: "Welded Bracket",
-        description: "Fixed support welded to structure",
-        isSuitable: true,
-        baseCostPerUnit: 180,
-        allowsExpansion: false,
-        isAnchorType: true,
-      },
-      {
-        typeCode: "PIPE_SADDLE",
-        displayName: "Pipe Saddle",
-        description: "Base-mounted support with curved cradle",
-        isSuitable: nominalDiameterMm ? nominalDiameterMm >= 150 : true,
-        baseCostPerUnit: 280,
-        allowsExpansion: true,
-        isAnchorType: false,
-      },
-      {
-        typeCode: "U_BOLT",
-        displayName: "U-Bolt Clamp",
-        description: "Simple, economical support for smaller pipes",
-        isSuitable: nominalDiameterMm ? nominalDiameterMm <= 150 : true,
-        baseCostPerUnit: 80,
-        allowsExpansion: false,
-        isAnchorType: false,
-      },
-      {
-        typeCode: "ROLLER_SUPPORT",
-        displayName: "Roller Support",
-        description: "Allows axial thermal expansion movement",
-        isSuitable: true,
-        baseCostPerUnit: 450,
-        allowsExpansion: true,
-        isAnchorType: false,
-      },
-      {
-        typeCode: "SLIDE_PLATE",
-        displayName: "Slide Plate",
-        description: "Low-friction support for thermal expansion",
-        isSuitable: nominalDiameterMm ? nominalDiameterMm >= 200 : true,
-        baseCostPerUnit: 350,
-        allowsExpansion: true,
-        isAnchorType: false,
-      },
-    ];
-
-    return defaultBrackets;
+    return this.bracketCompatibilityService.types(nominalDiameterMm);
   }
 
   calculate(dto: PipeSteelWorkCalculationDto): PipeSteelWorkCalculationResponseDto {
@@ -414,11 +292,14 @@ export class PipeSteelWorkService {
           supportSpacingM: spacing.waterFilledSpacingM,
         });
 
-        const bracketWeight = this.estimateBracketWeight(dto.nominalDiameterMm, dto.bracketType);
+        const bracketWeight = this.bracketCompatibilityService.estimateWeight(
+          dto.nominalDiameterMm,
+          dto.bracketType,
+        );
         response.weightPerUnitKg = bracketWeight;
         response.totalWeightKg = Math.round(bracketWeight * response.numberOfSupports * 100) / 100;
 
-        const baseCost = this.estimateBracketCost(dto.bracketType);
+        const baseCost = this.bracketCompatibilityService.estimateCost(dto.bracketType);
         response.unitCost = baseCost;
         response.totalCost = baseCost * response.numberOfSupports;
       }
@@ -427,12 +308,12 @@ export class PipeSteelWorkService {
     }
 
     if (dto.workType === PipeSteelWorkTypeDto.REINFORCEMENT_PAD) {
-      const od = this.nbToOdMap[dto.nominalDiameterMm] || dto.nominalDiameterMm;
-      const wallThickness = this.estimateWallThickness(dto.nominalDiameterMm, dto.scheduleNumber);
+      const od = NB_TO_OD_MAP[dto.nominalDiameterMm] || dto.nominalDiameterMm;
+      const wallThickness = estimateWallThickness(dto.nominalDiameterMm, dto.scheduleNumber);
       const branchOd = dto.branchDiameterMm
-        ? this.nbToOdMap[dto.branchDiameterMm] || dto.branchDiameterMm
+        ? NB_TO_OD_MAP[dto.branchDiameterMm] || dto.branchDiameterMm
         : od / 2;
-      const branchWall = this.estimateWallThickness(
+      const branchWall = estimateWallThickness(
         dto.branchDiameterMm || dto.nominalDiameterMm / 2,
         dto.scheduleNumber,
       );
@@ -471,7 +352,7 @@ export class PipeSteelWorkService {
 
     const selectedMaterial = material || PipeMaterialDto.CARBON_STEEL;
     const coefficient =
-      customCoefficientMmPerMPerC || this.thermalExpansionCoefficients[selectedMaterial];
+      customCoefficientMmPerMPerC || THERMAL_EXPANSION_COEFFICIENTS[selectedMaterial];
 
     const temperatureChange = operatingTempC - installationTempC;
     const isExpansion = temperatureChange > 0;
@@ -553,529 +434,14 @@ export class PipeSteelWorkService {
   async validateBracketCompatibility(
     dto: ValidateBracketCompatibilityDto,
   ): Promise<BracketCompatibilityResponseDto> {
-    const issues: ValidationIssue[] = [];
-    const {
-      bracketTypeCode,
-      nominalDiameterMm,
-      pipelineLengthM,
-      schedule,
-      isWaterFilled,
-      expectedExpansionMm,
-    } = dto;
-
-    const bracketSizeRanges: Record<string, { min: number; max: number }> = {
-      CLEVIS_HANGER: { min: 15, max: 600 },
-      THREE_BOLT_CLAMP: { min: 100, max: 600 },
-      WELDED_BRACKET: { min: 15, max: 600 },
-      PIPE_SADDLE: { min: 150, max: 900 },
-      U_BOLT: { min: 15, max: 150 },
-      ROLLER_SUPPORT: { min: 15, max: 600 },
-      SLIDE_PLATE: { min: 200, max: 600 },
-      BAND_HANGER: { min: 15, max: 100 },
-      SPRING_HANGER: { min: 50, max: 600 },
-      RISER_CLAMP: { min: 25, max: 350 },
-      CONSTANT_SUPPORT: { min: 50, max: 600 },
-    };
-
-    const expansionBrackets = [
-      "ROLLER_SUPPORT",
-      "SLIDE_PLATE",
-      "SPRING_HANGER",
-      "CLEVIS_HANGER",
-      "PIPE_SADDLE",
-    ];
-    const anchorBrackets = ["WELDED_BRACKET", "THREE_BOLT_CLAMP", "RISER_CLAMP"];
-
-    const range = bracketSizeRanges[bracketTypeCode.toUpperCase()];
-    if (!range) {
-      issues.push({
-        severity: "error",
-        code: "UNKNOWN_BRACKET_TYPE",
-        message: `Unknown bracket type: ${bracketTypeCode}`,
-      });
-    } else {
-      if (nominalDiameterMm < range.min) {
-        issues.push({
-          severity: "error",
-          code: "PIPE_TOO_SMALL",
-          message: `Pipe size ${nominalDiameterMm}mm is below minimum ${range.min}mm for ${bracketTypeCode}`,
-        });
-      }
-      if (nominalDiameterMm > range.max) {
-        issues.push({
-          severity: "error",
-          code: "PIPE_TOO_LARGE",
-          message: `Pipe size ${nominalDiameterMm}mm exceeds maximum ${range.max}mm for ${bracketTypeCode}`,
-        });
-      }
-    }
-
-    let estimatedLoadKg: number | undefined;
-    let bracketMaxLoadKg: number | undefined;
-    let loadUtilizationPercent: number | undefined;
-
-    if (pipelineLengthM) {
-      const spacing = this.supportSpacing({
-        nominalDiameterMm,
-        scheduleNumber: schedule,
-        isWaterFilled,
-      });
-      const spacingM =
-        isWaterFilled !== false ? spacing.waterFilledSpacingM : spacing.vaporGasSpacingM;
-
-      const pipeWeight = this.estimatePipeWeightPerMeter(
-        nominalDiameterMm,
-        schedule,
-        isWaterFilled !== false,
-      );
-      estimatedLoadKg = Math.round(pipeWeight * spacingM * 1.25 * 100) / 100;
-
-      const bracketDimension = await this.bracketDimension(
-        bracketTypeCode.toUpperCase(),
-        nominalDiameterMm,
-      );
-      if (bracketDimension) {
-        bracketMaxLoadKg = bracketDimension.maxLoadKg;
-        loadUtilizationPercent = Math.round((estimatedLoadKg / bracketMaxLoadKg) * 100);
-
-        if (loadUtilizationPercent > 100) {
-          issues.push({
-            severity: "error",
-            code: "LOAD_EXCEEDS_CAPACITY",
-            message: `Estimated load ${estimatedLoadKg}kg exceeds bracket capacity ${bracketMaxLoadKg}kg (${loadUtilizationPercent}% utilization)`,
-          });
-        } else if (loadUtilizationPercent > 80) {
-          issues.push({
-            severity: "warning",
-            code: "HIGH_LOAD_UTILIZATION",
-            message: `High load utilization at ${loadUtilizationPercent}%. Consider a higher-capacity bracket.`,
-          });
-        }
-      }
-    }
-
-    if (expectedExpansionMm && expectedExpansionMm > 10) {
-      const isExpansionBracket = expansionBrackets.includes(bracketTypeCode.toUpperCase());
-      if (!isExpansionBracket) {
-        issues.push({
-          severity: "warning",
-          code: "EXPANSION_NOT_ACCOMMODATED",
-          message: `${bracketTypeCode} does not allow thermal movement. Expected expansion: ${expectedExpansionMm}mm. Consider roller or slide plate supports.`,
-        });
-      }
-    }
-
-    if (expectedExpansionMm === 0 || expectedExpansionMm === undefined) {
-      const isAnchor = anchorBrackets.includes(bracketTypeCode.toUpperCase());
-      if (!isAnchor) {
-        issues.push({
-          severity: "info",
-          code: "NOT_ANCHOR_TYPE",
-          message: `${bracketTypeCode} allows movement. If this is an anchor point, consider welded bracket or three-bolt clamp.`,
-        });
-      }
-    }
-
-    const hasErrors = issues.some((i) => i.severity === "error");
-    const hasWarnings = issues.some((i) => i.severity === "warning");
-
-    let recommendation: string;
-    if (hasErrors) {
-      recommendation = "Not recommended. Please address the errors above.";
-    } else if (hasWarnings) {
-      recommendation = "Acceptable with caution. Review warnings above.";
-    } else if (issues.length === 0) {
-      recommendation = "Excellent choice. Bracket is well-suited for this application.";
-    } else {
-      recommendation = "Acceptable. Review informational notes above.";
-    }
-
-    return {
-      isCompatible: !hasErrors,
-      bracketTypeCode,
-      nominalDiameterMm,
-      issues,
-      estimatedLoadKg,
-      bracketMaxLoadKg,
-      loadUtilizationPercent,
-      recommendation,
-    };
+    return this.bracketCompatibilityService.validateCompatibility(dto);
   }
-
-  private estimatePipeWeightPerMeter(nbMm: number, schedule?: string, waterFilled = true): number {
-    const od = this.nbToOdMap[nbMm] || nbMm * 1.1;
-    const wall = this.estimateWallThickness(nbMm, schedule);
-    const id = od - 2 * wall;
-
-    const steelArea = (Math.PI / 4) * (od ** 2 - id ** 2);
-    const steelWeight = (steelArea / 1e6) * this.STEEL_DENSITY_KG_M3;
-
-    let waterWeight = 0;
-    if (waterFilled) {
-      const waterArea = (Math.PI / 4) * id ** 2;
-      waterWeight = (waterArea / 1e6) * 1000;
-    }
-
-    return steelWeight + waterWeight;
-  }
-
-  private findClosestNb(diameterMm: number): number {
-    const nbSizes = Object.keys(this.supportSpacingTable).map(Number);
-    let closest = nbSizes[0];
-    let minDiff = Math.abs(diameterMm - closest);
-
-    for (const nb of nbSizes) {
-      const diff = Math.abs(diameterMm - nb);
-      if (diff < minDiff) {
-        minDiff = diff;
-        closest = nb;
-      }
-    }
-
-    return closest;
-  }
-
-  private interpolateSpacing(diameterMm: number): {
-    water: number;
-    vapor: number;
-    rod: number;
-  } {
-    const nbSizes = Object.keys(this.supportSpacingTable)
-      .map(Number)
-      .sort((a, b) => a - b);
-
-    if (diameterMm <= nbSizes[0]) {
-      return this.supportSpacingTable[nbSizes[0]];
-    }
-    if (diameterMm >= nbSizes[nbSizes.length - 1]) {
-      return this.supportSpacingTable[nbSizes[nbSizes.length - 1]];
-    }
-
-    let lowerNb = nbSizes[0];
-    let upperNb = nbSizes[nbSizes.length - 1];
-
-    for (let i = 0; i < nbSizes.length - 1; i++) {
-      if (diameterMm >= nbSizes[i] && diameterMm <= nbSizes[i + 1]) {
-        lowerNb = nbSizes[i];
-        upperNb = nbSizes[i + 1];
-        break;
-      }
-    }
-
-    const lowerSpacing = this.supportSpacingTable[lowerNb];
-    const upperSpacing = this.supportSpacingTable[upperNb];
-
-    const ratio = (diameterMm - lowerNb) / (upperNb - lowerNb);
-
-    return {
-      water:
-        Math.round((lowerSpacing.water + ratio * (upperSpacing.water - lowerSpacing.water)) * 10) /
-        10,
-      vapor:
-        Math.round((lowerSpacing.vapor + ratio * (upperSpacing.vapor - lowerSpacing.vapor)) * 10) /
-        10,
-      rod: lowerSpacing.rod,
-    };
-  }
-
-  private estimateBracketWeight(nominalDiameterMm: number, bracketType?: string): number {
-    const baseWeight = 0.5 + (nominalDiameterMm / 100) * 1.5;
-
-    const multipliers: Record<string, number> = {
-      clevis_hanger: 0.8,
-      three_bolt_clamp: 1.5,
-      welded_bracket: 2.0,
-      pipe_saddle: 2.5,
-      u_bolt: 0.5,
-      roller_support: 3.0,
-      slide_plate: 2.5,
-    };
-
-    const multiplier = bracketType ? multipliers[bracketType] || 1.0 : 1.0;
-    return Math.round(baseWeight * multiplier * 100) / 100;
-  }
-
-  private estimateBracketCost(bracketType?: string): number {
-    const costs: Record<string, number> = {
-      clevis_hanger: 150,
-      three_bolt_clamp: 250,
-      welded_bracket: 180,
-      pipe_saddle: 280,
-      u_bolt: 80,
-      band_hanger: 120,
-      roller_support: 450,
-      slide_plate: 350,
-    };
-
-    return bracketType ? costs[bracketType] || 200 : 200;
-  }
-
-  private estimateWallThickness(nominalDiameterMm: number, schedule?: string): number {
-    const scheduleWalls: Record<string, Record<number, number>> = {
-      Std: {
-        50: 3.91,
-        80: 5.49,
-        100: 6.02,
-        150: 7.11,
-        200: 8.18,
-        250: 9.27,
-        300: 9.53,
-        350: 9.53,
-        400: 9.53,
-        500: 9.53,
-        600: 9.53,
-      },
-      Sch40: {
-        50: 3.91,
-        80: 5.49,
-        100: 6.02,
-        150: 7.11,
-        200: 8.18,
-        250: 9.27,
-        300: 10.31,
-        350: 11.13,
-        400: 12.7,
-        500: 12.7,
-        600: 14.27,
-      },
-    };
-
-    const closestNb = this.findClosestNb(nominalDiameterMm);
-    const scheduleData = scheduleWalls[schedule || "Std"] || scheduleWalls["Std"];
-
-    return scheduleData[closestNb] || 6.0;
-  }
-
-  batchCalculate(dto: BatchCalculationDto): BatchCalculationResponseDto {
-    const results: BatchCalculationResultDto[] = dto.items.map((item) => {
-      try {
-        const result = this.calculate({
-          workType: item.workType,
-          nominalDiameterMm: item.nominalDiameterMm,
-          scheduleNumber: item.scheduleNumber,
-          bracketType: item.bracketType,
-          pipelineLengthM: item.pipelineLengthM,
-          workingPressureBar: item.workingPressureBar,
-          branchDiameterMm: item.branchDiameterMm,
-          quantity: item.quantity,
-        });
-        return { itemId: item.itemId, success: true, result };
-      } catch (error) {
-        return {
-          itemId: item.itemId,
-          success: false,
-          error: error instanceof Error ? error.message : "Unknown error",
-        };
-      }
-    });
-
-    const successResults = results.filter((r) => r.success && r.result);
-
-    return {
-      totalItems: dto.items.length,
-      successCount: successResults.length,
-      failureCount: dto.items.length - successResults.length,
-      results,
-      summary: {
-        totalWeightKg: successResults.reduce((sum, r) => sum + (r.result?.totalWeightKg || 0), 0),
-        totalCost: successResults.reduce((sum, r) => sum + (r.result?.totalCost || 0), 0),
-        totalSupports: successResults.reduce(
-          (sum, r) => sum + (r.result?.numberOfSupports || 0),
-          0,
-        ),
-      },
-    };
-  }
-
-  private readonly standardSpacingTables: Record<
-    SupportStandardDto,
-    Record<number, { water: number; vapor: number; rod?: number }>
-  > = {
-    [SupportStandardDto.MSS_SP_58]: this.supportSpacingTable,
-    [SupportStandardDto.DIN_2509]: {
-      15: { water: 1.8, vapor: 2.3 },
-      20: { water: 2.0, vapor: 2.5 },
-      25: { water: 2.3, vapor: 2.8 },
-      32: { water: 2.5, vapor: 3.0 },
-      40: { water: 2.5, vapor: 3.0 },
-      50: { water: 2.8, vapor: 3.5 },
-      65: { water: 3.0, vapor: 3.8 },
-      80: { water: 3.0, vapor: 3.8 },
-      100: { water: 3.5, vapor: 4.3 },
-      125: { water: 3.8, vapor: 4.5 },
-      150: { water: 4.0, vapor: 4.8 },
-      200: { water: 4.3, vapor: 5.3 },
-      250: { water: 4.8, vapor: 5.8 },
-      300: { water: 5.3, vapor: 6.3 },
-      350: { water: 5.5, vapor: 6.5 },
-      400: { water: 5.8, vapor: 6.8 },
-      450: { water: 6.0, vapor: 7.0 },
-      500: { water: 6.3, vapor: 7.3 },
-      600: { water: 6.5, vapor: 7.5 },
-    },
-    [SupportStandardDto.EN_13480]: {
-      15: { water: 2.0, vapor: 2.5 },
-      20: { water: 2.2, vapor: 2.8 },
-      25: { water: 2.5, vapor: 3.2 },
-      32: { water: 2.8, vapor: 3.5 },
-      40: { water: 2.8, vapor: 3.5 },
-      50: { water: 3.2, vapor: 4.0 },
-      65: { water: 3.5, vapor: 4.3 },
-      80: { water: 3.5, vapor: 4.3 },
-      100: { water: 4.0, vapor: 4.8 },
-      125: { water: 4.3, vapor: 5.2 },
-      150: { water: 4.5, vapor: 5.5 },
-      200: { water: 4.8, vapor: 6.0 },
-      250: { water: 5.5, vapor: 6.5 },
-      300: { water: 6.0, vapor: 7.0 },
-      350: { water: 6.3, vapor: 7.3 },
-      400: { water: 6.5, vapor: 7.5 },
-      450: { water: 6.8, vapor: 7.8 },
-      500: { water: 7.0, vapor: 8.0 },
-      600: { water: 7.3, vapor: 8.5 },
-    },
-    [SupportStandardDto.ASME_B31_1]: {
-      15: { water: 2.1, vapor: 2.7 },
-      20: { water: 2.4, vapor: 3.0 },
-      25: { water: 2.7, vapor: 3.4 },
-      32: { water: 3.0, vapor: 3.7 },
-      40: { water: 3.0, vapor: 3.7 },
-      50: { water: 3.4, vapor: 4.3 },
-      65: { water: 3.7, vapor: 4.6 },
-      80: { water: 3.7, vapor: 4.6 },
-      100: { water: 4.0, vapor: 4.9 },
-      125: { water: 4.3, vapor: 5.2 },
-      150: { water: 4.6, vapor: 5.5 },
-      200: { water: 4.9, vapor: 6.1 },
-      250: { water: 5.5, vapor: 6.7 },
-      300: { water: 6.1, vapor: 7.3 },
-      350: { water: 6.4, vapor: 7.6 },
-      400: { water: 6.7, vapor: 7.9 },
-      450: { water: 7.0, vapor: 8.2 },
-      500: { water: 7.3, vapor: 8.5 },
-      600: { water: 7.6, vapor: 8.8 },
-    },
-    [SupportStandardDto.ASME_B31_3]: {
-      15: { water: 2.1, vapor: 2.7 },
-      20: { water: 2.4, vapor: 3.0 },
-      25: { water: 2.7, vapor: 3.4 },
-      32: { water: 3.0, vapor: 3.7 },
-      40: { water: 3.0, vapor: 3.7 },
-      50: { water: 3.4, vapor: 4.3 },
-      65: { water: 3.7, vapor: 4.6 },
-      80: { water: 3.7, vapor: 4.6 },
-      100: { water: 4.3, vapor: 5.2 },
-      125: { water: 4.6, vapor: 5.5 },
-      150: { water: 4.9, vapor: 5.8 },
-      200: { water: 5.2, vapor: 6.4 },
-      250: { water: 5.8, vapor: 7.0 },
-      300: { water: 6.4, vapor: 7.6 },
-      350: { water: 6.7, vapor: 7.9 },
-      400: { water: 7.0, vapor: 8.2 },
-      450: { water: 7.3, vapor: 8.5 },
-      500: { water: 7.6, vapor: 8.8 },
-      600: { water: 7.9, vapor: 9.1 },
-    },
-  };
-
-  private readonly standardFullNames: Record<SupportStandardDto, string> = {
-    [SupportStandardDto.MSS_SP_58]: "Manufacturers Standardization Society SP-58",
-    [SupportStandardDto.DIN_2509]: "Deutsches Institut für Normung 2509",
-    [SupportStandardDto.EN_13480]: "European Standard EN 13480 - Metallic Industrial Piping",
-    [SupportStandardDto.ASME_B31_1]: "ASME B31.1 - Power Piping",
-    [SupportStandardDto.ASME_B31_3]: "ASME B31.3 - Process Piping",
-  };
-
-  supportSpacingMultiStandard(
-    dto: CalculateSupportSpacingMultiStandardDto,
-  ): MultiStandardSpacingResponseDto {
-    const standards = dto.standards?.length ? dto.standards : Object.values(SupportStandardDto);
-    const nbMm = this.findClosestNb(dto.nominalDiameterMm);
-
-    const comparisons: StandardComparisonDto[] = standards.map((standard) => {
-      const table = this.standardSpacingTables[standard];
-      const spacing = table[nbMm] || this.interpolateSpacingFromTable(dto.nominalDiameterMm, table);
-
-      return {
-        standard,
-        standardFullName: this.standardFullNames[standard],
-        waterFilledSpacingM: spacing.water,
-        vaporGasSpacingM: spacing.vapor,
-        rodSizeMm: spacing.rod,
-        notes:
-          standard === SupportStandardDto.DIN_2509
-            ? "More conservative European approach"
-            : undefined,
-      };
-    });
-
-    const conservativeRecommendation = comparisons.reduce((min, curr) =>
-      curr.waterFilledSpacingM < min.waterFilledSpacingM ? curr : min,
-    );
-
-    return {
-      nominalDiameterMm: dto.nominalDiameterMm,
-      comparisons,
-      conservativeRecommendation,
-    };
-  }
-
-  private interpolateSpacingFromTable(
-    diameterMm: number,
-    table: Record<number, { water: number; vapor: number; rod?: number }>,
-  ): { water: number; vapor: number; rod?: number } {
-    const sizes = Object.keys(table)
-      .map(Number)
-      .sort((a, b) => a - b);
-
-    if (diameterMm <= sizes[0]) return table[sizes[0]];
-    if (diameterMm >= sizes[sizes.length - 1]) return table[sizes[sizes.length - 1]];
-
-    let lower = sizes[0];
-    let upper = sizes[sizes.length - 1];
-
-    for (let i = 0; i < sizes.length - 1; i++) {
-      if (diameterMm >= sizes[i] && diameterMm <= sizes[i + 1]) {
-        lower = sizes[i];
-        upper = sizes[i + 1];
-        break;
-      }
-    }
-
-    const ratio = (diameterMm - lower) / (upper - lower);
-    const lowerVal = table[lower];
-    const upperVal = table[upper];
-
-    return {
-      water: Math.round((lowerVal.water + ratio * (upperVal.water - lowerVal.water)) * 10) / 10,
-      vapor: Math.round((lowerVal.vapor + ratio * (upperVal.vapor - lowerVal.vapor)) * 10) / 10,
-      rod: lowerVal.rod,
-    };
-  }
-
-  private readonly temperatureDeratingFactors: Record<number, number> = {
-    20: 1.0,
-    100: 1.0,
-    150: 0.98,
-    200: 0.95,
-    250: 0.91,
-    300: 0.86,
-    350: 0.8,
-    400: 0.73,
-    450: 0.65,
-    500: 0.55,
-  };
-
-  private readonly weldStrengthFactors: Record<string, number> = {
-    full_penetration: 1.0,
-    fillet: 0.55,
-  };
 
   reinforcementPadWithDerating(
     dto: CalculateReinforcementPadWithDeratingDto,
   ): ReinforcementPadWithDeratingResponseDto {
-    const tempDeratingFactor = this.interpolateTemperatureDerating(dto.operatingTempC || 20);
-    const weldFactor = this.weldStrengthFactors[dto.jointType || "full_penetration"];
+    const tempDeratingFactor = interpolateTemperatureDerating(dto.operatingTempC || 20);
+    const weldFactor = WELD_STRENGTH_FACTORS[dto.jointType || "full_penetration"];
     const pressureDeratingFactor =
       dto.workingPressureBar && dto.workingPressureBar > 100 ? 0.9 : 1.0;
 
@@ -1123,44 +489,18 @@ export class PipeSteelWorkService {
     };
   }
 
-  private interpolateTemperatureDerating(tempC: number): number {
-    const temps = Object.keys(this.temperatureDeratingFactors)
-      .map(Number)
-      .sort((a, b) => a - b);
-
-    if (tempC <= temps[0]) return this.temperatureDeratingFactors[temps[0]];
-    if (tempC >= temps[temps.length - 1])
-      return this.temperatureDeratingFactors[temps[temps.length - 1]];
-
-    let lower = temps[0];
-    let upper = temps[temps.length - 1];
-
-    for (let i = 0; i < temps.length - 1; i++) {
-      if (tempC >= temps[i] && tempC <= temps[i + 1]) {
-        lower = temps[i];
-        upper = temps[i + 1];
-        break;
-      }
-    }
-
-    const ratio = (tempC - lower) / (upper - lower);
-    return (
-      this.temperatureDeratingFactors[lower] +
-      ratio * (this.temperatureDeratingFactors[upper] - this.temperatureDeratingFactors[lower])
-    );
-  }
-
   vibrationAnalysis(dto: CalculateVibrationAnalysisDto): VibrationAnalysisResponseDto {
-    const od = this.nbToOdMap[dto.nominalDiameterMm] || dto.nominalDiameterMm * 1.1;
-    const wall = this.estimateWallThickness(dto.nominalDiameterMm, dto.scheduleNumber);
+    const od = NB_TO_OD_MAP[dto.nominalDiameterMm] || dto.nominalDiameterMm * 1.1;
+    const wall = estimateWallThickness(dto.nominalDiameterMm, dto.scheduleNumber);
     const id = od - 2 * wall;
 
     const I = ((Math.PI / 64) * (od ** 4 - id ** 4)) / 1e12;
     const E = 200e9;
-    const pipeWeight = this.estimatePipeWeightPerMeter(
+    const pipeWeight = estimatePipeWeightPerMeter(
       dto.nominalDiameterMm,
       dto.scheduleNumber,
       dto.isWaterFilled !== false,
+      this.STEEL_DENSITY_KG_M3,
     );
 
     const insulationWeight = dto.insulationThicknessMm
@@ -1244,7 +584,7 @@ export class PipeSteelWorkService {
     const rodTensileStress = dynamicLoad / rodArea / 1e6;
 
     const yieldStrength = dto.yieldStrengthMpa || 250;
-    const tempFactor = this.interpolateTemperatureDerating(dto.operatingTempC || 20);
+    const tempFactor = interpolateTemperatureDerating(dto.operatingTempC || 20);
     const effectiveYield = yieldStrength * tempFactor;
 
     const allowableStress = effectiveYield / 1.5;
@@ -2573,5 +1913,52 @@ export class PipeSteelWorkService {
             "Carbon equivalent ≤ 0.50%",
           ],
     };
+  }
+
+  batchCalculate(dto: BatchCalculationDto): BatchCalculationResponseDto {
+    const results: BatchCalculationResultDto[] = dto.items.map((item) => {
+      try {
+        const result = this.calculate({
+          workType: item.workType,
+          nominalDiameterMm: item.nominalDiameterMm,
+          scheduleNumber: item.scheduleNumber,
+          bracketType: item.bracketType,
+          pipelineLengthM: item.pipelineLengthM,
+          workingPressureBar: item.workingPressureBar,
+          branchDiameterMm: item.branchDiameterMm,
+          quantity: item.quantity,
+        });
+        return { itemId: item.itemId, success: true, result };
+      } catch (error) {
+        return {
+          itemId: item.itemId,
+          success: false,
+          error: error instanceof Error ? error.message : "Unknown error",
+        };
+      }
+    });
+
+    const successResults = results.filter((r) => r.success && r.result);
+
+    return {
+      totalItems: dto.items.length,
+      successCount: successResults.length,
+      failureCount: dto.items.length - successResults.length,
+      results,
+      summary: {
+        totalWeightKg: successResults.reduce((sum, r) => sum + (r.result?.totalWeightKg || 0), 0),
+        totalCost: successResults.reduce((sum, r) => sum + (r.result?.totalCost || 0), 0),
+        totalSupports: successResults.reduce(
+          (sum, r) => sum + (r.result?.numberOfSupports || 0),
+          0,
+        ),
+      },
+    };
+  }
+
+  supportSpacingMultiStandard(
+    dto: CalculateSupportSpacingMultiStandardDto,
+  ): MultiStandardSpacingResponseDto {
+    return this.supportSpacingService.multiStandard(dto);
   }
 }
