@@ -102,20 +102,6 @@ export class CompanyService {
     return this.companyRepo.save(company);
   }
 
-  async findByLegacyScCompanyId(scCompanyId: number): Promise<Company | null> {
-    return this.companyRepo.findOne({
-      where: { legacyScCompanyId: scCompanyId },
-      relations: ["moduleSubscriptions"],
-    });
-  }
-
-  async findByLegacyRubberCompanyId(rubberCompanyId: number): Promise<Company | null> {
-    return this.companyRepo.findOne({
-      where: { legacyRubberCompanyId: rubberCompanyId },
-      relations: ["moduleSubscriptions"],
-    });
-  }
-
   async activeModules(companyId: number): Promise<string[]> {
     const subscriptions = await this.subscriptionRepo.find({
       where: { companyId, disabledAt: IsNull() },

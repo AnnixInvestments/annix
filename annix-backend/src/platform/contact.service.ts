@@ -101,18 +101,6 @@ export class ContactService {
     return { data, total, page, limit };
   }
 
-  async findByLegacyScSupplierId(scSupplierId: number): Promise<Contact | null> {
-    return this.contactRepo.findOne({
-      where: { legacyScSupplierId: scSupplierId },
-    });
-  }
-
-  async findByLegacyRubberCompanyId(rubberCompanyId: number): Promise<Contact | null> {
-    return this.contactRepo.findOne({
-      where: { legacyRubberCompanyId: rubberCompanyId },
-    });
-  }
-
   async findByName(
     companyId: number,
     name: string,

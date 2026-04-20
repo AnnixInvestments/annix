@@ -8,6 +8,12 @@ export enum StorageArea {
   STOCK_MANAGEMENT = "stock-management",
   COMPLY_SA = "comply-sa",
   AU_INDUSTRIES = "au-industries",
+  PLATFORM = "platform",
+}
+
+export function companyStoragePath(companyId: number, category: string, subPath?: string): string {
+  const base = `${StorageArea.PLATFORM}/companies/${companyId}/${category}`;
+  return subPath ? `${base}/${subPath}` : base;
 }
 
 export interface StorageResult {
