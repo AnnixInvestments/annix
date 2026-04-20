@@ -89,6 +89,7 @@ function isNoteRow(li: LineItemImportRow): boolean {
 function mergeNoteRowsIntoItems(items: LineItemImportRow[]): LineItemImportRow[] {
   const result: LineItemImportRow[] = [];
   const pendingNotes: string[] = [];
+  let activeSpec: string | null = null;
   let sectionStartIdx = 0;
 
   items.forEach((item) => {
@@ -101,20 +102,26 @@ function mergeNoteRowsIntoItems(items: LineItemImportRow[]): LineItemImportRow[]
       return;
     }
 
-    if (pendingNotes.length > 0 && result.length > 0) {
+    if (pendingNotes.length > 0) {
       const specText = pendingNotes.join("\n");
-      result.slice(sectionStartIdx).forEach((_sectionItem, i) => {
-        const idx = sectionStartIdx + i;
-        result[idx] = {
-          ...result[idx],
-          notes: result[idx].notes ? `${result[idx].notes}\n${specText}` : specText,
-        };
-      });
+      activeSpec = specText;
+
+      if (result.length > 0) {
+        result.slice(sectionStartIdx).forEach((_sectionItem, i) => {
+          const idx = sectionStartIdx + i;
+          result[idx] = {
+            ...result[idx],
+            notes: result[idx].notes ? `${result[idx].notes}\n${specText}` : specText,
+          };
+        });
+      }
+
       pendingNotes.length = 0;
       sectionStartIdx = result.length;
     }
 
-    result.push({ ...item });
+    const itemWithNotes = activeSpec && !item.notes ? { ...item, notes: activeSpec } : { ...item };
+    result.push(itemWithNotes);
   });
 
   if (pendingNotes.length > 0 && result.length > 0) {

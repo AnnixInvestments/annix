@@ -1,7 +1,5 @@
 "use client";
-
-import { FLANGE_OD } from "@annix/product-data/pipe";
-import { isString, keys } from "es-toolkit/compat";
+import { keys } from "es-toolkit/compat";
 import { useRouter, useSearchParams } from "next/navigation";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { GuidedHighlight } from "@/app/components/rfq/shared/GuidedHighlight";
@@ -44,7 +42,6 @@ import {
   nixApi,
 } from "@/app/lib/nix";
 import {
-  buildFlangeLookups,
   type FlangeTypeWeightRecord,
   flangeWeight as flangeWeightLookup,
   useAllBnwSetWeights,
@@ -53,7 +50,6 @@ import {
   useNbToOdMap,
 } from "@/app/lib/query/hooks";
 import { useRfqWizardStore } from "@/app/lib/store/rfqWizardStore";
-import { consolidateBoqData } from "@/app/lib/utils/boqConsolidation";
 import { generateClientItemNumber } from "@/app/lib/utils/systemUtils";
 import {
   validatePage1RequiredFields,
@@ -66,6 +62,16 @@ import ItemUploadStep from "./steps/ItemUploadStep";
 import ProjectDetailsStep from "./steps/ProjectDetailsStep";
 import ReviewSubmitStep from "./steps/ReviewSubmitStep";
 import SpecificationsStep from "./steps/SpecificationsStep";
+import {
+  buildBoqConsolidation,
+  buildCustomerProjectInfo,
+  buildRfqPayload,
+  extractErrorMessage,
+  mapItemToUnified,
+  resolveGlobalSpecsOverrides,
+  submitBoqForRfq,
+  validateItemsForSubmission,
+} from "./utils/rfqSubmissionHelpers";
 
 const normalizeFittingTypeForApi = (type?: string | null) => {
   if (!type) return type;
@@ -2933,350 +2939,61 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
   const handleSubmit = async () => {
     setIsSubmitting(true);
     setValidationErrors({});
-
-    const submitGlobalSpecs = rfqData.globalSpecs;
-    const submitGlobalWorkingPressureBar = submitGlobalSpecs?.workingPressureBar;
-    const submitGlobalWorkingTemperatureC = submitGlobalSpecs?.workingTemperatureC;
-    const submitGlobalSteelSpecificationId = submitGlobalSpecs?.steelSpecificationId;
-    const submitGlobalFlangeStandardId = submitGlobalSpecs?.flangeStandardId;
-    const submitGlobalFlangePressureClassId = submitGlobalSpecs?.flangePressureClassId;
+    const g = resolveGlobalSpecsOverrides(rfqData.globalSpecs);
 
     try {
       const rawItems2 = rfqData.items;
       const allItems = rawItems2 || rfqData.straightPipeEntries || [];
-
-      if (allItems.length === 0) {
-        setValidationErrors({ submit: "Please add at least one item before submitting." });
-        setIsSubmitting(false);
-        return;
-      }
-
-      const straightPipeItems = allItems.filter(
-        (item: any) => item.itemType !== "bend" && item.itemType !== "fitting",
-      );
-      const bendItems = allItems.filter((item: any) => item.itemType === "bend");
-      const fittingItems = allItems.filter((item: any) => item.itemType === "fitting");
-
-      log.debug(
-        `📊 Submitting unified RFQ: ${straightPipeItems.length} pipe(s), ${bendItems.length} bend(s), ${fittingItems.length} fitting(s)`,
-      );
-
-      const itemsRequiringCalculation = ["straight_pipe", "bend", "fitting"];
-      const uncalculatedIndex = allItems.findIndex(
-        (entry: any) => itemsRequiringCalculation.includes(entry.itemType) && !entry.calculation,
-      );
-      if (uncalculatedIndex !== -1) {
-        const entry = allItems[uncalculatedIndex];
-        const itemType =
-          entry.itemType === "bend" ? "Bend" : entry.itemType === "fitting" ? "Fitting" : "Pipe";
-        setValidationErrors({
-          submit: `${itemType} #${uncalculatedIndex + 1} (${entry.description}) has not been calculated. Please calculate all items before submitting.`,
-        });
+      const validationError = validateItemsForSubmission(allItems, "submitting");
+      if (validationError) {
+        setValidationErrors({ submit: validationError });
         setIsSubmitting(false);
         return;
       }
 
       const { unifiedRfqApi } = await import("@/app/lib/api/client");
+      const unifiedItems = allItems.map((entry: any) =>
+        mapItemToUnified(entry, g, rfqData.globalSpecs),
+      );
+      const unifiedPayload = buildRfqPayload(rfqData, unifiedItems);
 
-      const unifiedItems = allItems.map((entry: any) => {
-        const rawSpecs2 = entry.specs;
-        const specs = rawSpecs2 || {};
-        const rawCalculation = entry.calculation;
-        const calculation = rawCalculation || {};
-
-        if (entry.itemType === "bend") {
-          const rawStubs = specs.stubs;
-          const stubLengths = (rawStubs || [])
-            .map((stub: any) => {
-              const rawLength2 = stub?.length;
-              const rawLength3 = stub?.length;
-              return rawLength3 || 0;
-            })
-            .filter((l: number) => l > 0);
-          const rawDescription2 = entry.description;
-          const rawTotalWeight = calculation.totalWeight;
-          const rawNumberOfTangents2 = specs.numberOfTangents;
-          const rawTangentLengths2 = specs.tangentLengths;
-          const rawStubs2 = specs.stubs;
-          const rawTangentLengths3 = specs.tangentLengths;
-          const rawQuantityType4 = specs.quantityType;
-          const rawQuantityValue6 = specs.quantityValue;
-          const rawWorkingPressureBar5 = specs.workingPressureBar;
-          const rawWorkingTemperatureC5 = specs.workingTemperatureC;
-          const rawSteelSpecificationId7 = specs.steelSpecificationId;
-          const rawUseGlobalFlangeSpecs = specs.useGlobalFlangeSpecs;
-          const rawFlangeStandardId7 = specs.flangeStandardId;
-          const rawFlangePressureClassId8 = specs.flangePressureClassId;
-          return {
-            itemType: "bend" as const,
-            description: rawDescription2 || "Bend Item",
-            notes: entry.notes,
-            totalWeightKg: rawTotalWeight || calculation.bendWeight,
-            bend: {
-              nominalBoreMm: specs.nominalBoreMm,
-              scheduleNumber: specs.scheduleNumber,
-              wallThicknessMm: specs.wallThicknessMm,
-              bendType: specs.bendType,
-              bendRadiusType: specs.bendRadiusType,
-              bendDegrees: specs.bendDegrees,
-              bendEndConfiguration: specs.bendEndConfiguration,
-              numberOfTangents: rawNumberOfTangents2 || 0,
-              tangentLengths: rawTangentLengths2 || [],
-              numberOfSegments: specs.numberOfSegments,
-              centerToFaceMm: specs.centerToFaceMm,
-              calculationData: {
-                ...(calculation || {}),
-                bendRadiusType: specs.bendRadiusType,
-                stubs: rawStubs2 || [],
-                stubLengths,
-                numberOfSegments: specs.numberOfSegments,
-                tangentLengths: rawTangentLengths3 || [],
-              },
-              quantityType: rawQuantityType4 || "number_of_items",
-              quantityValue: rawQuantityValue6 || 1,
-              workingPressureBar: rawWorkingPressureBar5 || submitGlobalWorkingPressureBar || 10,
-              workingTemperatureC: rawWorkingTemperatureC5 || submitGlobalWorkingTemperatureC || 20,
-              steelSpecificationId:
-                rawSteelSpecificationId7 || submitGlobalSteelSpecificationId || 2,
-              useGlobalFlangeSpecs: rawUseGlobalFlangeSpecs || true,
-              flangeStandardId: rawFlangeStandardId7 || submitGlobalFlangeStandardId,
-              flangePressureClassId: rawFlangePressureClassId8 || submitGlobalFlangePressureClassId,
-            },
-          };
-        } else if (entry.itemType === "fitting") {
-          const rawDescription3 = entry.description;
-          const rawTotalWeight2 = calculation.totalWeight;
-          const rawAddBlankFlange = specs.addBlankFlange;
-          const rawQuantityType5 = specs.quantityType;
-          const rawQuantityValue7 = specs.quantityValue;
-          const rawWorkingPressureBar6 = specs.workingPressureBar;
-          const rawWorkingTemperatureC6 = specs.workingTemperatureC;
-          return {
-            itemType: "fitting" as const,
-            description: rawDescription3 || "Fitting Item",
-            notes: entry.notes,
-            totalWeightKg: rawTotalWeight2 || calculation.pipeWeight,
-            fitting: {
-              nominalDiameterMm: specs.nominalDiameterMm,
-              scheduleNumber: specs.scheduleNumber,
-              wallThicknessMm: specs.wallThicknessMm,
-              fittingType: specs.fittingType,
-              fittingStandard: specs.fittingStandard,
-              pipeLengthAMm: specs.pipeLengthAMm,
-              pipeLengthBMm: specs.pipeLengthBMm,
-              pipeEndConfiguration: specs.pipeEndConfiguration,
-              addBlankFlange: rawAddBlankFlange || false,
-              blankFlangeCount: specs.blankFlangeCount,
-              blankFlangePositions: specs.blankFlangePositions,
-              quantityType: rawQuantityType5 || "number_of_items",
-              quantityValue: rawQuantityValue7 || 1,
-              workingPressureBar: rawWorkingPressureBar6 || rfqData.globalSpecs?.workingPressureBar,
-              workingTemperatureC:
-                rawWorkingTemperatureC6 || rfqData.globalSpecs?.workingTemperatureC,
-              calculationData: calculation,
-            },
-          };
-        } else if (entry.itemType === "tank_chute") {
-          const rawDescription4 = entry.description;
-          const rawAssemblyType = specs.assemblyType;
-          const rawQuantityValue8 = specs.quantityValue;
-          const rawLiningRequired = specs.liningRequired;
-          const rawCoatingRequired = specs.coatingRequired;
-          return {
-            itemType: "tank_chute" as const,
-            description: rawDescription4 || "Tank/Chute Item",
-            notes: entry.notes,
-            totalWeightKg: specs.totalSteelWeightKg,
-            tankChute: {
-              assemblyType: rawAssemblyType || "custom",
-              drawingReference: specs.drawingReference,
-              materialGrade: specs.materialGrade,
-              overallLengthMm: specs.overallLengthMm,
-              overallWidthMm: specs.overallWidthMm,
-              overallHeightMm: specs.overallHeightMm,
-              totalSteelWeightKg: specs.totalSteelWeightKg,
-              weightSource: specs.weightSource,
-              quantityValue: rawQuantityValue8 || 1,
-              liningRequired: rawLiningRequired || false,
-              liningType: specs.liningType,
-              liningThicknessMm: specs.liningThicknessMm,
-              liningAreaM2: specs.liningAreaM2,
-              liningWastagePercent: specs.liningWastagePercent,
-              rubberGrade: specs.rubberGrade,
-              rubberHardnessShore: specs.rubberHardnessShore,
-              coatingRequired: rawCoatingRequired || false,
-              coatingSystem: specs.coatingSystem,
-              coatingAreaM2: specs.coatingAreaM2,
-              coatingWastagePercent: specs.coatingWastagePercent,
-              surfacePrepStandard: specs.surfacePrepStandard,
-              plateBom: specs.plateBom,
-              bomTotalWeightKg: specs.bomTotalWeightKg,
-              bomTotalAreaM2: specs.bomTotalAreaM2,
-              steelPricePerKg: specs.steelPricePerKg,
-              liningPricePerM2: specs.liningPricePerM2,
-              coatingPricePerM2: specs.coatingPricePerM2,
-              fabricationCost: specs.fabricationCost,
-              totalCost: specs.totalCost,
-            },
-          };
-        } else if (entry.itemType === "fastener") {
-          const rawDescription5 = entry.description;
-          const rawFastenerCategory = specs.fastenerCategory;
-          const rawSpecificType = specs.specificType;
-          const rawSize2 = specs.size;
-          const rawQuantityValue9 = specs.quantityValue;
-          return {
-            itemType: "fastener" as const,
-            description: rawDescription5 || "Fastener Item",
-            notes: entry.notes,
-            totalWeightKg: undefined,
-            fastener: {
-              fastenerCategory: rawFastenerCategory || "bolt",
-              specificType: rawSpecificType || "",
-              size: rawSize2 || "",
-              grade: specs.grade,
-              material: specs.material,
-              finish: specs.finish,
-              threadType: specs.threadType,
-              standard: specs.standard,
-              lengthMm: specs.lengthMm,
-              quantityValue: rawQuantityValue9 || 1,
-            },
-          };
-        } else {
-          const rawDescription6 = entry.description;
-          const rawTotalSystemWeight = calculation.totalSystemWeight;
-          const rawWorkingPressureBar7 = specs.workingPressureBar;
-          const rawWorkingTemperatureC7 = specs.workingTemperatureC;
-          const rawSteelSpecificationId8 = specs.steelSpecificationId;
-          const rawFlangeStandardId8 = specs.flangeStandardId;
-          const rawFlangePressureClassId9 = specs.flangePressureClassId;
-          return {
-            itemType: "straight_pipe" as const,
-            description: rawDescription6 || "Pipe Item",
-            notes: entry.notes,
-            totalWeightKg: rawTotalSystemWeight || calculation.totalPipeWeight,
-            straightPipe: {
-              nominalBoreMm: specs.nominalBoreMm,
-              scheduleType: specs.scheduleType,
-              scheduleNumber: specs.scheduleNumber,
-              wallThicknessMm: specs.wallThicknessMm,
-              pipeEndConfiguration: specs.pipeEndConfiguration,
-              individualPipeLength: specs.individualPipeLength,
-              lengthUnit: specs.lengthUnit,
-              quantityType: specs.quantityType,
-              quantityValue: specs.quantityValue,
-              workingPressureBar: rawWorkingPressureBar7 || submitGlobalWorkingPressureBar || 10,
-              workingTemperatureC: rawWorkingTemperatureC7 || submitGlobalWorkingTemperatureC,
-              steelSpecificationId: rawSteelSpecificationId8 || submitGlobalSteelSpecificationId,
-              flangeStandardId: rawFlangeStandardId8 || submitGlobalFlangeStandardId,
-              flangePressureClassId: rawFlangePressureClassId9 || submitGlobalFlangePressureClassId,
-            },
-          };
-        }
-      });
-
-      const unifiedPayload = {
-        rfq: {
-          projectName: rfqData.projectName,
-          description: rfqData.description,
-          customerName: rfqData.customerName,
-          customerEmail: rfqData.customerEmail,
-          customerPhone: rfqData.customerPhone,
-          requiredDate: rfqData.requiredDate,
-          status: "submitted" as const,
-          notes: rfqData.notes,
-        },
-        items: unifiedItems,
-      };
-
-      log.debug("📦 Submitting unified RFQ payload:", unifiedPayload);
-
+      log.debug("Submitting unified RFQ payload:", unifiedPayload);
       const result = await unifiedRfqApi.create(unifiedPayload);
-      log.debug("✅ Unified RFQ created successfully:", result);
+      log.debug("Unified RFQ created:", result);
 
       if ((pendingDocuments.length > 0 || pendingTenderDocuments.length > 0) && result.rfq?.id) {
         const rfqId = result.rfq.id;
         const allDocuments = [...pendingDocuments, ...pendingTenderDocuments];
-        log.debug(`📎 Uploading ${allDocuments.length} document(s) to RFQ #${rfqId}...`);
-
-        let uploadedCount = 0;
         let failedCount = 0;
-
         for (const doc of allDocuments) {
           try {
             await rfqDocumentApi.upload(rfqId, doc.file);
-            uploadedCount++;
-            log.debug(`✅ Uploaded: ${doc.file.name}`);
           } catch (uploadError) {
             failedCount++;
-            log.error(`❌ Failed to upload ${doc.file.name}:`, uploadError);
+            log.error(`Failed to upload ${doc.file.name}:`, uploadError);
           }
         }
-
         if (failedCount > 0) {
-          log.warn(`⚠️ ${failedCount} document(s) failed to upload`);
           showToast(
             `${failedCount} of ${allDocuments.length} document(s) failed to upload. Please re-upload from the RFQ detail page.`,
             "error",
           );
         }
-
         setPendingDocuments([]);
         setPendingTenderDocuments([]);
       }
 
       if (result.rfq?.id) {
         try {
-          log.debug(`📦 Creating BOQ for RFQ ${result.rfq.id}...`);
-          const rawProjectName = rfqData.projectName;
-          const boq = await boqApi.create({
-            title: `BOQ for ${rawProjectName || "Untitled Project"}`,
-            description: rfqData.description,
-            rfqId: result.rfq.id,
-          });
-          log.debug(`✅ BOQ ${boq.boqNumber} created with ID ${boq.id}`);
-
-          const consolidatedData = consolidateBoqData({
-            lookups: buildFlangeLookups(allWeights, allBnw, allGaskets, FLANGE_OD),
-            entries: allItems,
-            globalSpecs: {
-              gasketType: rfqData.globalSpecs?.gasketType,
-              pressureClassDesignation: masterData?.pressureClasses?.find(
-                (p: any) => p.id === rfqData.globalSpecs?.flangePressureClassId,
-              )?.designation,
-              flangeStandardId: rfqData.globalSpecs?.flangeStandardId,
-              flangePressureClassId: rfqData.globalSpecs?.flangePressureClassId,
-            },
-            masterData: {
-              flangeStandards: masterData?.flangeStandards,
-              pressureClasses: masterData?.pressureClasses,
-              steelSpecs: masterData?.steelSpecs,
-            },
-          });
-
-          log.debug("📊 Consolidated data:", consolidatedData);
-
-          const rawCustomerName = rfqData.customerName;
-          const rawCustomerEmail2 = rfqData.customerEmail;
-          const rawProjectName2 = rfqData.projectName;
-
-          const submitResult = await boqApi.submitForQuotation(boq.id, {
-            boqData: consolidatedData,
-            customerInfo: {
-              name: rawCustomerName || "Unknown",
-              email: rawCustomerEmail2 || "",
-              phone: rfqData.customerPhone,
-            },
-            projectInfo: {
-              name: rawProjectName2 || "Untitled Project",
-              description: rfqData.description,
-              requiredDate: rfqData.requiredDate,
-            },
-          });
-
-          log.debug(
-            `✅ BOQ submitted for quotation: ${submitResult.sectionsCreated} sections created, ${submitResult.suppliersNotified} suppliers notified`,
+          await submitBoqForRfq(
+            result.rfq.id,
+            allItems,
+            rfqData,
+            masterData,
+            allWeights,
+            allBnw,
+            allGaskets,
+            boqApi,
           );
         } catch (boqError) {
           log.error("Failed to create/submit BOQ:", boqError);
@@ -3286,33 +3003,23 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
       if (currentDraftId && result.rfq?.id) {
         try {
           await draftsApi.markAsConverted(currentDraftId, result.rfq.id);
-          log.debug(`✅ Draft ${currentDraftId} marked as converted to RFQ ${result.rfq.id}`);
         } catch (convertError) {
           log.error("Failed to mark draft as converted:", convertError);
         }
       }
 
+      const rfqNumber = result.rfq?.rfqNumber;
       showToast(
-        `Success! RFQ ${result.rfq?.rfqNumber} created with ${result.itemsCreated} item(s).`,
+        `Success! RFQ ${rfqNumber} created with ${result.itemsCreated} item(s).`,
         "success",
       );
       const rawId = result.rfq?.id;
       onSuccess(rawId || "success");
     } catch (error: any) {
       log.error("Submission error:", error);
-
-      let errorMessage = "Failed to submit RFQ. Please try again.";
-      if (error.message) {
-        errorMessage = error.message;
-      } else if (isString(error)) {
-        errorMessage = error;
-      }
-
+      const errorMessage = extractErrorMessage(error, "Failed to submit RFQ. Please try again.");
       setValidationErrors({ submit: errorMessage });
-      showToast(
-        `Submission failed: ${errorMessage}. Please check the console for more details.`,
-        "error",
-      );
+      showToast(`Submission failed: ${errorMessage}`, "error");
     } finally {
       setIsSubmitting(false);
     }
@@ -3327,350 +3034,57 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
     setIsSubmitting(true);
     setValidationErrors({});
 
-    const resubmitGlobalSpecs = rfqData.globalSpecs;
-    const resubmitGlobalWorkingPressureBar = resubmitGlobalSpecs?.workingPressureBar;
-    const resubmitGlobalWorkingTemperatureC = resubmitGlobalSpecs?.workingTemperatureC;
-    const resubmitGlobalSteelSpecificationId = resubmitGlobalSpecs?.steelSpecificationId;
-    const resubmitGlobalFlangeStandardId = resubmitGlobalSpecs?.flangeStandardId;
-    const resubmitGlobalFlangePressureClassId = resubmitGlobalSpecs?.flangePressureClassId;
+    const g = resolveGlobalSpecsOverrides(rfqData.globalSpecs);
 
     try {
       const rawItems3 = rfqData.items;
       const allItems = rawItems3 || rfqData.straightPipeEntries || [];
-
-      if (allItems.length === 0) {
-        setValidationErrors({ submit: "Please add at least one item before re-submitting." });
-        setIsSubmitting(false);
-        return;
-      }
-
-      const missingCalcIndex = allItems.findIndex((entry: any) => !entry.calculation);
-      if (missingCalcIndex !== -1) {
-        const entry = allItems[missingCalcIndex];
-        const itemType =
-          entry.itemType === "bend" ? "Bend" : entry.itemType === "fitting" ? "Fitting" : "Pipe";
-        setValidationErrors({
-          submit: `${itemType} #${missingCalcIndex + 1} (${entry.description}) has not been calculated. Please calculate all items before re-submitting.`,
-        });
+      const validationError = validateItemsForSubmission(allItems, "re-submitting");
+      if (validationError) {
+        setValidationErrors({ submit: validationError });
         setIsSubmitting(false);
         return;
       }
 
       const { unifiedRfqApi } = await import("@/app/lib/api/client");
 
-      const unifiedItems = allItems.map((entry: any) => {
-        const rawSpecs3 = entry.specs;
-        const specs = rawSpecs3 || {};
-        const rawCalculation2 = entry.calculation;
-        const calculation = rawCalculation2 || {};
+      const unifiedItems = allItems.map((entry: any) =>
+        mapItemToUnified(entry, g, rfqData.globalSpecs),
+      );
 
-        if (entry.itemType === "bend") {
-          const rawStubs3 = specs.stubs;
-          const stubLengths = (rawStubs3 || [])
-            .map((stub: any) => {
-              const rawLength4 = stub?.length;
-              const rawLength5 = stub?.length;
-              return rawLength5 || 0;
-            })
-            .filter((l: number) => l > 0);
-          const rawDescription7 = entry.description;
-          const rawTotalWeight3 = calculation.totalWeight;
-          const rawNumberOfTangents3 = specs.numberOfTangents;
-          const rawTangentLengths4 = specs.tangentLengths;
-          const rawStubs4 = specs.stubs;
-          const rawTangentLengths5 = specs.tangentLengths;
-          const rawQuantityType6 = specs.quantityType;
-          const rawQuantityValue10 = specs.quantityValue;
-          const rawWorkingPressureBar8 = specs.workingPressureBar;
-          const rawWorkingTemperatureC8 = specs.workingTemperatureC;
-          const rawSteelSpecificationId9 = specs.steelSpecificationId;
-          const rawUseGlobalFlangeSpecs2 = specs.useGlobalFlangeSpecs;
-          const rawFlangeStandardId9 = specs.flangeStandardId;
-          const rawFlangePressureClassId10 = specs.flangePressureClassId;
-          return {
-            itemType: "bend" as const,
-            description: rawDescription7 || "Bend Item",
-            notes: entry.notes,
-            totalWeightKg: rawTotalWeight3 || calculation.bendWeight,
-            bend: {
-              nominalBoreMm: specs.nominalBoreMm,
-              scheduleNumber: specs.scheduleNumber,
-              wallThicknessMm: specs.wallThicknessMm,
-              bendType: specs.bendType,
-              bendRadiusType: specs.bendRadiusType,
-              bendDegrees: specs.bendDegrees,
-              bendEndConfiguration: specs.bendEndConfiguration,
-              numberOfTangents: rawNumberOfTangents3 || 0,
-              tangentLengths: rawTangentLengths4 || [],
-              numberOfSegments: specs.numberOfSegments,
-              centerToFaceMm: specs.centerToFaceMm,
-              calculationData: {
-                ...(calculation || {}),
-                bendRadiusType: specs.bendRadiusType,
-                stubs: rawStubs4 || [],
-                stubLengths,
-                numberOfSegments: specs.numberOfSegments,
-                tangentLengths: rawTangentLengths5 || [],
-              },
-              quantityType: rawQuantityType6 || "number_of_items",
-              quantityValue: rawQuantityValue10 || 1,
-              workingPressureBar: rawWorkingPressureBar8 || resubmitGlobalWorkingPressureBar || 10,
-              workingTemperatureC:
-                rawWorkingTemperatureC8 || resubmitGlobalWorkingTemperatureC || 20,
-              steelSpecificationId:
-                rawSteelSpecificationId9 || resubmitGlobalSteelSpecificationId || 2,
-              useGlobalFlangeSpecs: rawUseGlobalFlangeSpecs2 || true,
-              flangeStandardId: rawFlangeStandardId9 || resubmitGlobalFlangeStandardId,
-              flangePressureClassId:
-                rawFlangePressureClassId10 || resubmitGlobalFlangePressureClassId,
-            },
-          };
-        } else if (entry.itemType === "fitting") {
-          const rawDescription8 = entry.description;
-          const rawTotalWeight4 = calculation.totalWeight;
-          const rawAddBlankFlange2 = specs.addBlankFlange;
-          const rawQuantityType7 = specs.quantityType;
-          const rawQuantityValue11 = specs.quantityValue;
-          const rawWorkingPressureBar9 = specs.workingPressureBar;
-          const rawWorkingTemperatureC9 = specs.workingTemperatureC;
-          return {
-            itemType: "fitting" as const,
-            description: rawDescription8 || "Fitting Item",
-            notes: entry.notes,
-            totalWeightKg: rawTotalWeight4 || calculation.pipeWeight,
-            fitting: {
-              nominalDiameterMm: specs.nominalDiameterMm,
-              scheduleNumber: specs.scheduleNumber,
-              wallThicknessMm: specs.wallThicknessMm,
-              fittingType: specs.fittingType,
-              fittingStandard: specs.fittingStandard,
-              pipeLengthAMm: specs.pipeLengthAMm,
-              pipeLengthBMm: specs.pipeLengthBMm,
-              pipeEndConfiguration: specs.pipeEndConfiguration,
-              addBlankFlange: rawAddBlankFlange2 || false,
-              blankFlangeCount: specs.blankFlangeCount,
-              blankFlangePositions: specs.blankFlangePositions,
-              quantityType: rawQuantityType7 || "number_of_items",
-              quantityValue: rawQuantityValue11 || 1,
-              workingPressureBar: rawWorkingPressureBar9 || rfqData.globalSpecs?.workingPressureBar,
-              workingTemperatureC:
-                rawWorkingTemperatureC9 || rfqData.globalSpecs?.workingTemperatureC,
-              calculationData: calculation,
-            },
-          };
-        } else if (entry.itemType === "tank_chute") {
-          const rawDescription9 = entry.description;
-          const rawAssemblyType2 = specs.assemblyType;
-          const rawQuantityValue12 = specs.quantityValue;
-          const rawLiningRequired2 = specs.liningRequired;
-          const rawCoatingRequired2 = specs.coatingRequired;
-          return {
-            itemType: "tank_chute" as const,
-            description: rawDescription9 || "Tank/Chute Item",
-            notes: entry.notes,
-            totalWeightKg: specs.totalSteelWeightKg,
-            tankChute: {
-              assemblyType: rawAssemblyType2 || "custom",
-              drawingReference: specs.drawingReference,
-              materialGrade: specs.materialGrade,
-              overallLengthMm: specs.overallLengthMm,
-              overallWidthMm: specs.overallWidthMm,
-              overallHeightMm: specs.overallHeightMm,
-              totalSteelWeightKg: specs.totalSteelWeightKg,
-              weightSource: specs.weightSource,
-              quantityValue: rawQuantityValue12 || 1,
-              liningRequired: rawLiningRequired2 || false,
-              liningType: specs.liningType,
-              liningThicknessMm: specs.liningThicknessMm,
-              liningAreaM2: specs.liningAreaM2,
-              liningWastagePercent: specs.liningWastagePercent,
-              rubberGrade: specs.rubberGrade,
-              rubberHardnessShore: specs.rubberHardnessShore,
-              coatingRequired: rawCoatingRequired2 || false,
-              coatingSystem: specs.coatingSystem,
-              coatingAreaM2: specs.coatingAreaM2,
-              coatingWastagePercent: specs.coatingWastagePercent,
-              surfacePrepStandard: specs.surfacePrepStandard,
-              plateBom: specs.plateBom,
-              bomTotalWeightKg: specs.bomTotalWeightKg,
-              bomTotalAreaM2: specs.bomTotalAreaM2,
-              steelPricePerKg: specs.steelPricePerKg,
-              liningPricePerM2: specs.liningPricePerM2,
-              coatingPricePerM2: specs.coatingPricePerM2,
-              fabricationCost: specs.fabricationCost,
-              totalCost: specs.totalCost,
-            },
-          };
-        } else if (entry.itemType === "fastener") {
-          const rawDescription10 = entry.description;
-          const rawFastenerCategory2 = specs.fastenerCategory;
-          const rawSpecificType2 = specs.specificType;
-          const rawSize3 = specs.size;
-          const rawQuantityValue13 = specs.quantityValue;
-          return {
-            itemType: "fastener" as const,
-            description: rawDescription10 || "Fastener Item",
-            notes: entry.notes,
-            totalWeightKg: undefined,
-            fastener: {
-              fastenerCategory: rawFastenerCategory2 || "bolt",
-              specificType: rawSpecificType2 || "",
-              size: rawSize3 || "",
-              grade: specs.grade,
-              material: specs.material,
-              finish: specs.finish,
-              threadType: specs.threadType,
-              standard: specs.standard,
-              lengthMm: specs.lengthMm,
-              quantityValue: rawQuantityValue13 || 1,
-            },
-          };
-        } else {
-          const rawDescription11 = entry.description;
-          const rawTotalSystemWeight2 = calculation.totalSystemWeight;
-          const rawWorkingPressureBar10 = specs.workingPressureBar;
-          const rawWorkingTemperatureC10 = specs.workingTemperatureC;
-          const rawSteelSpecificationId10 = specs.steelSpecificationId;
-          const rawFlangeStandardId10 = specs.flangeStandardId;
-          const rawFlangePressureClassId11 = specs.flangePressureClassId;
-          return {
-            itemType: "straight_pipe" as const,
-            description: rawDescription11 || "Pipe Item",
-            notes: entry.notes,
-            totalWeightKg: rawTotalSystemWeight2 || calculation.totalPipeWeight,
-            straightPipe: {
-              nominalBoreMm: specs.nominalBoreMm,
-              scheduleType: specs.scheduleType,
-              scheduleNumber: specs.scheduleNumber,
-              wallThicknessMm: specs.wallThicknessMm,
-              pipeEndConfiguration: specs.pipeEndConfiguration,
-              individualPipeLength: specs.individualPipeLength,
-              lengthUnit: specs.lengthUnit,
-              quantityType: specs.quantityType,
-              quantityValue: specs.quantityValue,
-              workingPressureBar: rawWorkingPressureBar10 || resubmitGlobalWorkingPressureBar || 10,
-              workingTemperatureC: rawWorkingTemperatureC10 || resubmitGlobalWorkingTemperatureC,
-              steelSpecificationId: rawSteelSpecificationId10 || resubmitGlobalSteelSpecificationId,
-              flangeStandardId: rawFlangeStandardId10 || resubmitGlobalFlangeStandardId,
-              flangePressureClassId:
-                rawFlangePressureClassId11 || resubmitGlobalFlangePressureClassId,
-            },
-          };
-        }
-      });
+      const unifiedPayload = buildRfqPayload(rfqData, unifiedItems);
 
-      const unifiedPayload = {
-        rfq: {
-          projectName: rfqData.projectName,
-          description: rfqData.description,
-          customerName: rfqData.customerName,
-          customerEmail: rfqData.customerEmail,
-          customerPhone: rfqData.customerPhone,
-          requiredDate: rfqData.requiredDate,
-          status: "submitted" as const,
-          notes: rfqData.notes,
-        },
-        items: unifiedItems,
-      };
-
-      log.debug("📦 Re-submitting unified RFQ payload via admin API:", unifiedPayload);
+      log.debug("Re-submitting unified RFQ payload via admin API:", unifiedPayload);
 
       const result = await adminApiClient.updateRfq(editRfqId, unifiedPayload);
       log.debug("✅ Unified RFQ updated successfully via admin API:", result);
 
       const existingBoq = await boqApi.getByRfqId(editRfqId);
       if (existingBoq) {
-        log.debug(`📦 Updating BOQ ${existingBoq.boqNumber} for RFQ ${editRfqId}...`);
-
-        const consolidatedData = consolidateBoqData({
-          lookups: buildFlangeLookups(allWeights, allBnw, allGaskets, FLANGE_OD),
-          entries: allItems,
-          globalSpecs: {
-            gasketType: rfqData.globalSpecs?.gasketType,
-            pressureClassDesignation: masterData?.pressureClasses?.find(
-              (p: any) => p.id === rfqData.globalSpecs?.flangePressureClassId,
-            )?.designation,
-            flangeStandardId: rfqData.globalSpecs?.flangeStandardId,
-            flangePressureClassId: rfqData.globalSpecs?.flangePressureClassId,
-          },
-          masterData: {
-            flangeStandards: masterData?.flangeStandards,
-            pressureClasses: masterData?.pressureClasses,
-            steelSpecs: masterData?.steelSpecs,
-          },
-        });
-
-        log.debug("📊 Consolidated data for update:", consolidatedData);
-
-        const rawCustomerName2 = rfqData.customerName;
-        const rawCustomerEmail3 = rfqData.customerEmail;
-        const rawProjectName3 = rfqData.projectName;
-
-        const updateResult = await boqApi.updateSubmittedBoq(existingBoq.id, {
-          boqData: consolidatedData,
-          customerInfo: {
-            name: rawCustomerName2 || "Unknown",
-            email: rawCustomerEmail3 || "",
-            phone: rfqData.customerPhone,
-          },
-          projectInfo: {
-            name: rawProjectName3 || "Untitled Project",
-            description: rfqData.description,
-            requiredDate: rfqData.requiredDate,
-          },
-        });
-
-        log.debug(
-          `✅ BOQ updated and suppliers re-notified: ${updateResult.sectionsCreated} sections updated, ${updateResult.suppliersNotified} suppliers notified`,
+        const consolidatedData = buildBoqConsolidation(
+          allItems,
+          rfqData,
+          masterData,
+          allWeights,
+          allBnw,
+          allGaskets,
         );
-      } else {
-        log.debug(`📦 No existing BOQ found, creating new BOQ for RFQ ${editRfqId}...`);
-        const rawProjectName4 = rfqData.projectName;
-        const boq = await boqApi.create({
-          title: `BOQ for ${rawProjectName4 || "Untitled Project"}`,
-          description: rfqData.description,
-          rfqId: editRfqId,
-        });
-        log.debug(`✅ BOQ ${boq.boqNumber} created with ID ${boq.id}`);
-
-        const consolidatedData = consolidateBoqData({
-          lookups: buildFlangeLookups(allWeights, allBnw, allGaskets, FLANGE_OD),
-          entries: allItems,
-          globalSpecs: {
-            gasketType: rfqData.globalSpecs?.gasketType,
-            pressureClassDesignation: masterData?.pressureClasses?.find(
-              (p: any) => p.id === rfqData.globalSpecs?.flangePressureClassId,
-            )?.designation,
-            flangeStandardId: rfqData.globalSpecs?.flangeStandardId,
-            flangePressureClassId: rfqData.globalSpecs?.flangePressureClassId,
-          },
-          masterData: {
-            flangeStandards: masterData?.flangeStandards,
-            pressureClasses: masterData?.pressureClasses,
-            steelSpecs: masterData?.steelSpecs,
-          },
-        });
-
-        const rawCustomerName3 = rfqData.customerName;
-        const rawCustomerEmail4 = rfqData.customerEmail;
-        const rawProjectName5 = rfqData.projectName;
-
-        const submitResult = await boqApi.submitForQuotation(boq.id, {
+        const { customerInfo, projectInfo } = buildCustomerProjectInfo(rfqData);
+        await boqApi.updateSubmittedBoq(existingBoq.id, {
           boqData: consolidatedData,
-          customerInfo: {
-            name: rawCustomerName3 || "Unknown",
-            email: rawCustomerEmail4 || "",
-            phone: rfqData.customerPhone,
-          },
-          projectInfo: {
-            name: rawProjectName5 || "Untitled Project",
-            description: rfqData.description,
-            requiredDate: rfqData.requiredDate,
-          },
+          customerInfo,
+          projectInfo,
         });
-
-        log.debug(
-          `✅ BOQ submitted for quotation: ${submitResult.sectionsCreated} sections created, ${submitResult.suppliersNotified} suppliers notified`,
+      } else {
+        await submitBoqForRfq(
+          editRfqId,
+          allItems,
+          rfqData,
+          masterData,
+          allWeights,
+          allBnw,
+          allGaskets,
+          boqApi,
         );
       }
 
@@ -3681,19 +3095,9 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
       onSuccess(result.rfq?.id?.toString() || "success");
     } catch (error: any) {
       log.error("Re-submission error:", error);
-
-      let errorMessage = "Failed to re-submit RFQ. Please try again.";
-      if (error.message) {
-        errorMessage = error.message;
-      } else if (isString(error)) {
-        errorMessage = error;
-      }
-
+      const errorMessage = extractErrorMessage(error, "Failed to re-submit RFQ. Please try again.");
       setValidationErrors({ submit: errorMessage });
-      showToast(
-        `Re-submission failed: ${errorMessage}. Please check the console for more details.`,
-        "error",
-      );
+      showToast(`Re-submission failed: ${errorMessage}`, "error");
     } finally {
       setIsSubmitting(false);
     }
