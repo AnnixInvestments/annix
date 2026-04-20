@@ -25,11 +25,11 @@ import {
   useNbToOdMap,
 } from "@/app/lib/query/hooks";
 import { useRfqWizardStore } from "@/app/lib/store/rfqWizardStore";
+import { itemDescription } from "@/app/lib/utils/rfq/itemDescriptionGenerator";
 import {
-  calculateInsideDiameter,
-  calculateTotalSurfaceArea,
-} from "@/app/lib/utils/pipeCalculations";
-import { roundToWeldIncrement } from "@/app/lib/utils/weldThicknessLookup";
+  perUnitSurfaceAreas,
+  weldThicknessForEntry,
+} from "@/app/lib/utils/rfq/itemSummaryCalculations";
 
 const Pipe3DPreview = dynamic(() => import("@/app/components/rfq/previews/Pipe3DPreview"), {
   ssr: false,
@@ -71,10 +71,8 @@ import {
   TankChuteForm,
   ValveForm,
 } from "@/app/components/rfq/forms";
-import {
-  FirstItemMaterialSelector,
-  MaterialTypeSelector,
-} from "@/app/components/rfq/selectors/MaterialTypeSelector";
+import { FirstItemMaterialSelector } from "@/app/components/rfq/selectors/MaterialTypeSelector";
+import { AddItemButtonsBar } from "@/app/components/rfq/steps/AddItemButtonsBar";
 import type { PipeMaterialType } from "@/app/lib/hooks/useRfqForm";
 
 interface ItemWrapperProps {
@@ -760,7 +758,8 @@ export default function ItemUploadStep(props: {
 
     return entries.reduce((total: number, entry: any) => {
       const rawCalculatedPipeCount = entry.calculation?.calculatedPipeCount;
-      const qty = rawCalculatedPipeCount || entry.specs?.quantityValue || 0;
+      const rawQuantityValue = entry.specs?.quantityValue;
+      const qty = rawCalculatedPipeCount || rawQuantityValue || 0;
 
       // Calculate item weight based on type
       let entryTotal = 0;
@@ -848,604 +847,7 @@ export default function ItemUploadStep(props: {
   };
 
   const generateItemDescription = useCallback(
-    (entry: any) => {
-      // Handle bend items
-      if (entry.itemType === "bend") {
-        const rawNominalBoreMm2 = entry.specs?.nominalBoreMm;
-        const nb = rawNominalBoreMm2 || "XX";
-        const rawScheduleNumber = entry.specs?.scheduleNumber;
-        // Clean schedule to avoid "SchSch" - remove any existing "Sch" prefix
-        let schedule = rawScheduleNumber || "XX";
-        if (schedule.toString().toLowerCase().startsWith("sch")) {
-          schedule = schedule.substring(3);
-        }
-        const rawBendRadiusType = entry.specs?.bendRadiusType;
-        const bendTypeRaw = rawBendRadiusType || entry.specs?.bendType || "X.XD";
-        const rawBendDegrees = entry.specs?.bendDegrees;
-        const bendAngle = rawBendDegrees || "XX";
-        const centerToFace = entry.specs?.centerToFaceMm;
-        const rawBendEndConfiguration2 = entry.specs?.bendEndConfiguration;
-        const bendEndConfig = rawBendEndConfiguration2 || "PE";
-
-        // Format bend type for description - add "Radius" where needed
-        const bendType =
-          bendTypeRaw === "elbow"
-            ? "Short Radius"
-            : bendTypeRaw === "medium"
-              ? "Medium Radius"
-              : bendTypeRaw === "long"
-                ? "Long Radius"
-                : bendTypeRaw === "1.5D"
-                  ? "1.5D (Short Radius)"
-                  : bendTypeRaw === "3D"
-                    ? "3D (Long Radius)"
-                    : bendTypeRaw === "5D"
-                      ? "5D (Extra Long Radius)"
-                      : bendTypeRaw;
-
-        const rawSteelSpecificationId4 = entry.specs?.steelSpecificationId;
-
-        // Get steel spec name and ID for format determination
-        const steelSpecId = rawSteelSpecificationId4 || globalSpecs?.steelSpecificationId;
-        const steelSpec = steelSpecId
-          ? masterData.steelSpecs.find((s: any) => s.id === steelSpecId)?.steelSpecName
-          : undefined;
-
-        // Check if SABS 719 (ERW steel - id 8) - uses W/T format instead of Schedule
-        const isSABS719Bend = steelSpecId === 8;
-        const rawWallThicknessMm = entry.specs?.wallThicknessMm;
-        const rawWallThicknessMm2 = entry.calculation?.wallThicknessMm;
-        // For SABS 719, prioritize user-selected W/T; for others, use calculation (schedule-derived) first
-        const wallThicknessBend = isSABS719Bend
-          ? rawWallThicknessMm || entry.calculation?.wallThicknessMm
-          : rawWallThicknessMm2 || entry.specs?.wallThicknessMm;
-
-        const rawFlangeStandardId = entry.specs?.flangeStandardId;
-
-        // Get flange specs
-        const flangeStandardId = rawFlangeStandardId || globalSpecs?.flangeStandardId;
-        const rawFlangePressureClassId2 = entry.specs?.flangePressureClassId;
-        const flangePressureClassId =
-          rawFlangePressureClassId2 || globalSpecs?.flangePressureClassId;
-        const flangeStandard = flangeStandardId
-          ? masterData.flangeStandards?.find((s: any) => s.id === flangeStandardId)?.code
-          : "";
-        const pressureClass = flangePressureClassId
-          ? masterData.pressureClasses?.find((p: any) => p.id === flangePressureClassId)
-              ?.designation
-          : "";
-
-        // Build description with different format based on steel spec:
-        // SABS 719: "80NB W/T 6mm SABS 719 ERW 45° 3D Bend"
-        // SABS 62/ASTM: "80NB Sch 40 (6.02mm) ASTM A106 45° 3D Bend"
-        let description = `${nb}NB`;
-
-        if (isSABS719Bend) {
-          // SABS 719: Show W/T only, no schedule
-          if (wallThicknessBend) {
-            description += ` W/T ${wallThicknessBend}mm`;
-          }
-          if (steelSpec) {
-            description += ` ${steelSpec}`;
-          }
-        } else {
-          // SABS 62/ASTM: Show Sch with WT in brackets
-          description += ` Sch ${schedule}`;
-          if (wallThicknessBend) {
-            description += ` (${wallThicknessBend}mm)`;
-          }
-          if (steelSpec) {
-            description += ` ${steelSpec}`;
-          }
-        }
-
-        const rawNumberOfSegments = entry.specs?.numberOfSegments;
-
-        // Add segment count for SABS 719 segmented bends
-        const numSegments = rawNumberOfSegments || 0;
-        if (numSegments > 1) {
-          description += ` ${bendAngle}° ${bendType} ${numSegments} Seg Bend`;
-        } else {
-          description += ` ${bendAngle}° ${bendType} Bend`;
-        }
-
-        const rawTangentLengths = entry.specs?.tangentLengths;
-
-        // Add C/F - if tangents are present, show C/F + tangent for each end
-        const tangentLengths = rawTangentLengths || [];
-        const rawItem0 = tangentLengths[0];
-        const tangent1 = rawItem0 || 0;
-        const rawItem1 = tangentLengths[1];
-        const tangent2 = rawItem1 || 0;
-        const rawNumberOfTangents = entry.specs?.numberOfTangents;
-        const numTangents = rawNumberOfTangents || 0;
-
-        if (centerToFace) {
-          const cf = Number(centerToFace);
-          if (numTangents > 0 && (tangent1 > 0 || tangent2 > 0)) {
-            // Show C/F + tangent lengths: "455x555 C/F" or "455 C/F" for single tangent
-            const end1 = cf + tangent1;
-            const end2 = cf + tangent2;
-            if (numTangents === 2 && tangent1 > 0 && tangent2 > 0) {
-              description += ` ${end1.toFixed(0)}x${end2.toFixed(0)} C/F`;
-            } else if (tangent1 > 0) {
-              description += ` ${end1.toFixed(0)}x${cf.toFixed(0)} C/F`;
-            } else if (tangent2 > 0) {
-              description += ` ${cf.toFixed(0)}x${end2.toFixed(0)} C/F`;
-            } else {
-              description += ` C/F ${cf.toFixed(0)}mm`;
-            }
-          } else {
-            description += ` C/F ${cf.toFixed(0)}mm`;
-          }
-        }
-
-        const rawNumberOfStubs = entry.specs?.numberOfStubs;
-
-        // Add stub info if present (before flange config so config label can account for stubs)
-        const numStubs = rawNumberOfStubs || 0;
-        const rawStubs = entry.specs?.stubs;
-        const stubs = rawStubs || [];
-        const stub1NB = stubs[0]?.nominalBoreMm;
-        const stub1Length = stubs[0]?.length;
-        const stub2NB = stubs[1]?.nominalBoreMm;
-        const stub2Length = stubs[1]?.length;
-        const rawHasFlangeOverride = stubs[0]?.hasFlangeOverride;
-        const stub1HasFlange =
-          rawHasFlangeOverride || (stubs[0]?.flangeStandardId && stubs[0]?.flangePressureClassId);
-        const rawHasFlangeOverride2 = stubs[1]?.hasFlangeOverride;
-        const stub2HasFlange =
-          rawHasFlangeOverride2 || (stubs[1]?.flangeStandardId && stubs[1]?.flangePressureClassId);
-
-        if (numStubs > 0) {
-          if (numStubs === 1 && stub1NB && stub1Length) {
-            description += ` + ${stub1NB}NB x ${stub1Length}mm Stub`;
-          } else if (numStubs === 2 && stub1NB && stub1Length && stub2NB && stub2Length) {
-            if (stub1NB === stub2NB && stub1Length === stub2Length) {
-              description += ` + 2x${stub1NB}NB x ${stub1Length}mm Stubs`;
-            } else {
-              description += ` + ${stub1NB}NB x ${stub1Length}mm Stub + ${stub2NB}NB x ${stub2Length}mm Stub`;
-            }
-          }
-        }
-
-        // Add flange config and specs if not plain ended
-        // Format: F2E+R/F when stub has rotating flange, F2E+L/F for loose flange, etc.
-        if (bendEndConfig && bendEndConfig !== "PE") {
-          let configLabel =
-            bendEndConfig === "FBE"
-              ? "FBE"
-              : bendEndConfig === "FOE"
-                ? "FOE"
-                : bendEndConfig === "FOE_LF"
-                  ? "FOE+L/F"
-                  : bendEndConfig === "FOE_RF"
-                    ? "FOE+R/F"
-                    : bendEndConfig === "2xLF"
-                      ? "2xL/F"
-                      : bendEndConfig === "2X_RF"
-                        ? "2xR/F"
-                        : bendEndConfig;
-
-          // If stubs have flanges, add the stub flange type to the config label
-          if (numStubs > 0 && (stub1HasFlange || stub2HasFlange)) {
-            const rawFlangeType = stubs[0]?.flangeType;
-            const stub1FlangeType = rawFlangeType || "S/O";
-            const rawFlangeType2 = stubs[1]?.flangeType;
-            const stub2FlangeType = rawFlangeType2 || "S/O";
-
-            // Build stub flange suffix
-            const stubFlangeLabels: string[] = [];
-            if (stub1HasFlange && stubs[0]?.nominalBoreMm) {
-              stubFlangeLabels.push(stub1FlangeType);
-            }
-            if (stub2HasFlange && stubs[1]?.nominalBoreMm) {
-              stubFlangeLabels.push(stub2FlangeType);
-            }
-
-            if (stubFlangeLabels.length > 0) {
-              // Convert main config to F2E format if FBE
-              const mainConfigLabel =
-                bendEndConfig === "FBE"
-                  ? "F2E"
-                  : bendEndConfig === "FOE"
-                    ? "FOE"
-                    : bendEndConfig === "FOE_LF"
-                      ? "FOE+L/F"
-                      : bendEndConfig === "FOE_RF"
-                        ? "FOE+R/F"
-                        : bendEndConfig === "2xLF"
-                          ? "2xL/F"
-                          : bendEndConfig === "2X_RF"
-                            ? "2xR/F"
-                            : bendEndConfig;
-              configLabel = `${mainConfigLabel}+${stubFlangeLabels.join("+")}`;
-            }
-          } else if (numStubs > 0) {
-            // Stubs without flanges: F2E+OE
-            configLabel = bendEndConfig === "FBE" ? "F2E+OE" : configLabel;
-          }
-
-          description += ` ${configLabel}`;
-          if (flangeStandard && pressureClass) {
-            description += ` ${flangeStandard} ${pressureClass}`;
-          }
-        }
-
-        return description;
-      }
-
-      // Handle fitting items
-      if (entry.itemType === "fitting") {
-        const rawNominalDiameterMm = entry.specs?.nominalDiameterMm;
-        const fittingNb = rawNominalDiameterMm || entry.specs?.nominalBoreMm || "XX";
-        const rawFittingType = entry.specs?.fittingType;
-        const fittingTypeRaw = rawFittingType || "Fitting";
-        const rawFittingStandard2 = entry.specs?.fittingStandard;
-        const fittingStandard = rawFittingStandard2 || "";
-        const rawScheduleNumber2 = entry.specs?.scheduleNumber;
-        const fittingSchedule = rawScheduleNumber2 || "";
-        const fittingWallThickness = entry.specs?.wallThicknessMm;
-        const rawPipeEndConfiguration2 = entry.specs?.pipeEndConfiguration;
-        const fittingEndConfig = rawPipeEndConfiguration2 || "PE";
-        const pipeLengthA = entry.specs?.pipeLengthAMm;
-        const pipeLengthB = entry.specs?.pipeLengthBMm;
-
-        const rawSteelSpecificationId5 = entry.specs?.steelSpecificationId;
-
-        // Get steel spec name if available
-        const fittingSteelSpecId = rawSteelSpecificationId5 || globalSpecs?.steelSpecificationId;
-        const fittingSteelSpec = fittingSteelSpecId
-          ? masterData.steelSpecs.find((s: any) => s.id === fittingSteelSpecId)?.steelSpecName
-          : undefined;
-
-        // Format fitting type: remove underscores, proper case, add "Equal" for equal Tees
-        // e.g., "SHORT_TEE" → "Short Equal Tee", "GUSSET_TEE" → "Gusset Equal Tee"
-        let fittingType = fittingTypeRaw
-          .replace(/_/g, " ")
-          .toLowerCase()
-          .split(" ")
-          .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
-          .join(" ");
-
-        // Add "Equal" before "Tee" for equal tees (SHORT_TEE, GUSSET_TEE, EQUAL_TEE)
-        // But NOT for UNEQUAL_TEE, UNEQUAL_SHORT_TEE, etc.
-        const isEqualTeeType = ["SHORT_TEE", "GUSSET_TEE", "EQUAL_TEE"].includes(fittingTypeRaw);
-        if (isEqualTeeType && !fittingType.includes("Equal")) {
-          fittingType = fittingType.replace(/\bTee\b/i, "Equal Tee");
-        }
-
-        let fittingDesc = `${fittingNb}NB ${fittingType}`;
-
-        // Check if SABS 719 (ERW steel - id 8) - uses W/T format instead of Schedule
-        const isSABS719Fitting = fittingSteelSpecId === 8;
-
-        // Add schedule/WT with different format based on steel spec:
-        // SABS 719: "100NB Short Equal Tee W/T 6mm SABS 719 ERW"
-        // SABS 62/ASTM: "100NB Short Equal Tee Sch40 (6.02mm) ASTM A106"
-        if (isSABS719Fitting) {
-          // SABS 719: Show W/T only, no schedule
-          if (fittingWallThickness) {
-            fittingDesc += ` W/T ${fittingWallThickness}mm`;
-          }
-          if (fittingSteelSpec) {
-            fittingDesc += ` ${fittingSteelSpec}`;
-          } else if (fittingStandard) {
-            fittingDesc += ` ${fittingStandard}`;
-          }
-        } else {
-          // SABS 62/ASTM: Show Sch with WT in brackets
-          if (fittingSchedule) {
-            const cleanSchedule = fittingSchedule.replace("Sch", "").replace("sch", "");
-            fittingDesc += ` Sch${cleanSchedule}`;
-            if (fittingWallThickness) {
-              fittingDesc += ` (${fittingWallThickness}mm)`;
-            }
-          }
-          // Add steel spec (only once)
-          if (fittingStandard) {
-            fittingDesc += ` ${fittingStandard}`;
-          } else if (fittingSteelSpec) {
-            fittingDesc += ` ${fittingSteelSpec}`;
-          }
-        }
-
-        // Add C/F dimensions (pipe lengths A x B)
-        if (pipeLengthA || pipeLengthB) {
-          const lenA = pipeLengthA ? Math.round(pipeLengthA) : 0;
-          const lenB = pipeLengthB ? Math.round(pipeLengthB) : 0;
-          if (lenA > 0 && lenB > 0) {
-            fittingDesc += ` (${lenA}x${lenB})`;
-          } else if (lenA > 0) {
-            fittingDesc += ` (${lenA}mm)`;
-          } else if (lenB > 0) {
-            fittingDesc += ` (${lenB}mm)`;
-          }
-        }
-
-        // Add flange config (replacing 2nd SABS 719 reference)
-        if (fittingEndConfig && fittingEndConfig !== "PE") {
-          const configLabel =
-            fittingEndConfig === "F2E"
-              ? "F2E"
-              : fittingEndConfig === "F2E_LF"
-                ? "F2E+L/F"
-                : fittingEndConfig === "F2E_RF"
-                  ? "F2E+R/F"
-                  : fittingEndConfig === "3X_RF"
-                    ? "3xR/F"
-                    : fittingEndConfig === "2X_RF_FOE"
-                      ? "2xR/F+FOE"
-                      : fittingEndConfig;
-          fittingDesc += ` ${configLabel}`;
-
-          const rawFlangeStandardId2 = entry.specs?.flangeStandardId;
-
-          // Add flange standard and pressure class if not PE
-          const flangeStandardId = rawFlangeStandardId2 || globalSpecs?.flangeStandardId;
-          const rawFlangePressureClassId3 = entry.specs?.flangePressureClassId;
-          const flangePressureClassId =
-            rawFlangePressureClassId3 || globalSpecs?.flangePressureClassId;
-          const flangeStandard = flangeStandardId
-            ? masterData.flangeStandards?.find((s: any) => s.id === flangeStandardId)?.code
-            : "";
-          const pressureClass = flangePressureClassId
-            ? masterData.pressureClasses?.find((p: any) => p.id === flangePressureClassId)
-                ?.designation
-            : "";
-
-          if (flangeStandard && pressureClass) {
-            fittingDesc += ` ${flangeStandard} ${pressureClass}`;
-          }
-        }
-
-        return fittingDesc;
-      }
-
-      // Handle valve items
-      if (entry.itemType === "valve") {
-        const rawValveType = entry.specs?.valveType;
-        const valveType = rawValveType || "Valve";
-        const rawSize = entry.specs?.size;
-        const valveSize = rawSize || entry.specs?.nominalBoreMm || "";
-        const rawPressureClass = entry.specs?.pressureClass;
-        const pressureClass = rawPressureClass || "";
-        const rawBodyMaterial = entry.specs?.bodyMaterial;
-        const bodyMaterial = rawBodyMaterial || "";
-        const rawActuatorType = entry.specs?.actuatorType;
-        const actuatorType = rawActuatorType || "";
-
-        let valveDesc = valveSize ? `${valveSize}NB ` : "";
-        valveDesc += valveType
-          .replace(/_/g, " ")
-          .split(" ")
-          .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
-          .join(" ");
-
-        if (pressureClass) {
-          valveDesc += ` ${pressureClass}`;
-        }
-        if (bodyMaterial) {
-          valveDesc += ` ${bodyMaterial}`;
-        }
-        if (actuatorType && actuatorType !== "manual" && actuatorType !== "none") {
-          valveDesc += ` ${actuatorType.charAt(0).toUpperCase() + actuatorType.slice(1)} Actuated`;
-        }
-
-        return valveDesc;
-      }
-
-      // Handle instrument items
-      if (entry.itemType === "instrument") {
-        const rawInstrumentType = entry.specs?.instrumentType;
-        const instrumentType = rawInstrumentType || "Instrument";
-        const rawCategory = entry.specs?.category;
-        const instrumentCategory = rawCategory || "";
-        const rawSize2 = entry.specs?.size;
-        const size = rawSize2 || entry.specs?.nominalBoreMm || "";
-        const rawOutputSignal = entry.specs?.outputSignal;
-        const outputSignal = rawOutputSignal || "";
-        const rawProcessConnection = entry.specs?.processConnection;
-        const processConnection = rawProcessConnection || "";
-
-        let instrumentDesc = "";
-        if (instrumentCategory) {
-          instrumentDesc += `${instrumentCategory.charAt(0).toUpperCase() + instrumentCategory.slice(1).toLowerCase()} `;
-        }
-        instrumentDesc += instrumentType
-          .replace(/_/g, " ")
-          .split(" ")
-          .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
-          .join(" ");
-
-        if (size) {
-          instrumentDesc += ` ${size}NB`;
-        }
-        if (processConnection) {
-          instrumentDesc += ` ${processConnection}`;
-        }
-        if (outputSignal) {
-          instrumentDesc += ` ${outputSignal}`;
-        }
-
-        return instrumentDesc;
-      }
-
-      // Handle pump items
-      if (entry.itemType === "pump") {
-        const rawPumpType = entry.specs?.pumpType;
-        const pumpType = rawPumpType || "Pump";
-        const rawFlowRate = entry.specs?.flowRate;
-        const flowRate = rawFlowRate || "";
-        const rawTotalHead = entry.specs?.totalHead;
-        const head = rawTotalHead || "";
-        const rawMotorPower = entry.specs?.motorPower;
-        const motorPower = rawMotorPower || "";
-        const rawCasingMaterial = entry.specs?.casingMaterial;
-        const casingMaterial = rawCasingMaterial || "";
-
-        let pumpDesc = pumpType
-          .replace(/_/g, " ")
-          .split(" ")
-          .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
-          .join(" ");
-
-        if (flowRate) {
-          pumpDesc += ` ${flowRate}m³/h`;
-        }
-        if (head) {
-          pumpDesc += ` ${head}m Head`;
-        }
-        if (motorPower) {
-          pumpDesc += ` ${motorPower}kW`;
-        }
-        if (casingMaterial) {
-          pumpDesc += ` ${casingMaterial}`;
-        }
-
-        return pumpDesc;
-      }
-
-      if (entry.itemType === "tank_chute") {
-        const rawAssemblyType = entry.specs?.assemblyType;
-        const assemblyType = rawAssemblyType || "Assembly";
-        const typeLabel = assemblyType.charAt(0).toUpperCase() + assemblyType.slice(1);
-        const rawMaterialGrade = entry.specs?.materialGrade;
-        const grade = rawMaterialGrade || "";
-        const rawDrawingReference = entry.specs?.drawingReference;
-        const drawing = rawDrawingReference || "";
-        const weight = entry.specs?.totalSteelWeightKg;
-        const rawQuantityValue = entry.specs?.quantityValue;
-        const qty = rawQuantityValue || 1;
-
-        const parts = [typeLabel];
-        if (drawing) parts.push(drawing);
-        if (grade) parts.push(grade);
-        if (weight) parts.push(`${weight}kg`);
-        if (qty > 1) parts.push(`x${qty}`);
-        return parts.join(" - ");
-      }
-
-      if (entry.itemType === "fastener") {
-        const rawFastenerCategory = entry.specs?.fastenerCategory;
-        const cat = rawFastenerCategory || "fastener";
-        const rawSpecificType = entry.specs?.specificType;
-        const type = rawSpecificType || "";
-        const rawSize3 = entry.specs?.size;
-        const size = rawSize3 || "";
-        const rawGrade = entry.specs?.grade;
-        const grade = rawGrade || "";
-        const rawQuantityValue2 = entry.specs?.quantityValue;
-        const qty = rawQuantityValue2 || 1;
-        const parts = [cat.replace(/_/g, " "), type.replace(/_/g, " "), size];
-        if (grade) parts.push(grade);
-        if (qty > 1) parts.push(`x${qty}`);
-        return parts.filter(Boolean).join(" - ");
-      }
-
-      const rawNominalBoreMm3 = entry.specs.nominalBoreMm;
-
-      // Handle straight pipe items
-      const nb = rawNominalBoreMm3 || "XX";
-      const rawScheduleNumber3 = entry.specs.scheduleNumber;
-      let schedule =
-        rawScheduleNumber3 ||
-        (entry.specs.wallThicknessMm ? `${entry.specs.wallThicknessMm}WT` : "XX");
-      const wallThickness = entry.specs.wallThicknessMm;
-      const pipeLength = entry.specs.individualPipeLength;
-      const rawPipeEndConfiguration3 = entry.specs.pipeEndConfiguration;
-      const pipeEndConfig = rawPipeEndConfiguration3 || "PE";
-
-      if (schedule.startsWith("Sch")) {
-        schedule = schedule.substring(3);
-      }
-
-      // Convert pipe end config to flange display format
-      const getFlangeDisplay = (config: string): string => {
-        switch (config) {
-          case "FOE":
-            return "1X R/F";
-          case "FBE":
-            return "2X R/F";
-          case "FOE_LF":
-            return "1X R/F, 1X L/F";
-          case "FOE_RF":
-            return "2X R/F";
-          case "2X_RF":
-            return "2X R/F";
-          default:
-            return "";
-        }
-      };
-
-      const rawFlangeStandardId3 = entry.specs?.flangeStandardId;
-
-      // Get flange standard and pressure class
-      const flangeStandardId = rawFlangeStandardId3 || globalSpecs?.flangeStandardId;
-      const rawFlangePressureClassId4 = entry.specs?.flangePressureClassId;
-      const flangePressureClassId = rawFlangePressureClassId4 || globalSpecs?.flangePressureClassId;
-      const flangeStandard = flangeStandardId
-        ? masterData.flangeStandards?.find((s: any) => s.id === flangeStandardId)?.code
-        : "";
-      const pressureClass = flangePressureClassId
-        ? masterData.pressureClasses?.find((p: any) => p.id === flangePressureClassId)?.designation
-        : "";
-
-      const rawSteelSpecificationId6 = entry.specs?.steelSpecificationId;
-
-      // Get steel spec name for pipes (moved up to include in description early)
-      const pipesteelSpecId = rawSteelSpecificationId6 || globalSpecs?.steelSpecificationId;
-      const pipeSteelSpec = pipesteelSpecId
-        ? masterData.steelSpecs.find((s: any) => s.id === pipesteelSpecId)?.steelSpecName
-        : undefined;
-
-      // Check if SABS 719 (ERW steel - id 8) - uses W/T format instead of Schedule
-      const isSABS719 = pipesteelSpecId === 8;
-
-      // Build description with different format based on steel spec:
-      // SABS 719: "500NB W/T 6mm SABS 719 ERW Pipe"
-      // SABS 62/ASTM: "500NB Sch 40 (6.02mm) ASTM A106 Gr B Pipe"
-      let description = `${nb}NB`;
-
-      if (isSABS719) {
-        // SABS 719: Show W/T only, no schedule
-        if (wallThickness) {
-          description += ` W/T ${wallThickness}mm`;
-        }
-        if (pipeSteelSpec) {
-          description += ` ${pipeSteelSpec}`;
-        }
-      } else {
-        // SABS 62/ASTM: Show Sch with WT in brackets
-        description += ` Sch ${schedule}`;
-        if (wallThickness) {
-          description += ` (${wallThickness}mm)`;
-        }
-        if (pipeSteelSpec) {
-          description += ` ${pipeSteelSpec}`;
-        }
-      }
-
-      description += " Pipe";
-
-      // Add pipe length if available
-      if (pipeLength) {
-        description += `, ${pipeLength}Lg`;
-      }
-
-      // Add flange configuration if not plain ended
-      const flangeDisplay = getFlangeDisplay(pipeEndConfig);
-      if (flangeDisplay) {
-        description += `, ${flangeDisplay}`;
-      }
-
-      // Add flange spec and class if available and has flanges
-      if (flangeDisplay && flangeStandard && pressureClass) {
-        description += `, ${flangeStandard} ${pressureClass}`;
-      }
-
-      return description;
-    },
+    (entry: any) => itemDescription(entry, globalSpecs, masterData),
     [globalSpecs, masterData.steelSpecs, masterData.flangeStandards, masterData.pressureClasses],
   );
 
@@ -1490,7 +892,8 @@ export default function ItemUploadStep(props: {
 
         const rawSteelSpecificationId7 = entry.specs?.steelSpecificationId;
 
-        const steelSpecId = rawSteelSpecificationId7 || globalSpecs?.steelSpecificationId || 2;
+        const rawGlobalSteelSpecId = globalSpecs?.steelSpecificationId;
+        const steelSpecId = rawSteelSpecificationId7 || rawGlobalSteelSpecId || 2;
         await fetchAvailableSchedules(entry.id, steelSpecId, nominalBore);
       }
     };
@@ -1537,248 +940,6 @@ export default function ItemUploadStep(props: {
       );
     };
     tryFocus(0);
-  };
-
-  const addItemButtons = (insertAtStart?: boolean) => {
-    const hasPipeMaterials = selectedPipeMaterials.length > 0;
-
-    return (
-      <div
-        className="flex gap-2 items-center flex-wrap"
-        data-nix-target={insertAtStart ? "add-item-section-top" : undefined}
-      >
-        {hasPipeMaterials && (
-          <MaterialTypeSelector
-            selectedMaterials={requiredProducts}
-            onSelectMaterial={() => {}}
-            onAddItem={(material, itemType) => {
-              if (!canAddMoreItems) {
-                showRestrictionPopup("itemLimit")({} as React.MouseEvent);
-                return;
-              }
-              if (itemType === "pipe") {
-                handleAddPipe(material, insertAtStart);
-              } else if (itemType === "bend") {
-                onAddBendEntry(undefined, insertAtStart, material);
-              } else if (itemType === "fitting") {
-                onAddFittingEntry(undefined, insertAtStart, material);
-              }
-            }}
-            disabled={!canAddMoreItems}
-          />
-        )}
-        {requiredProducts.includes("pipe_steel_work") && onAddPipeSteelWorkEntry && (
-          <button
-            onClick={() => onAddPipeSteelWorkEntry(undefined, insertAtStart)}
-            className="flex items-center gap-1 px-3 py-1.5 bg-orange-100 hover:bg-orange-200 rounded-md border border-orange-300 transition-colors"
-          >
-            <svg
-              className="w-4 h-4 text-orange-600"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 4v16m8-8H4"
-              />
-            </svg>
-            <span className="text-xs font-semibold text-orange-700">Steel Work</span>
-          </button>
-        )}
-        {requiredProducts.includes("expansion_joint") && onAddExpansionJointEntry && (
-          <button
-            onClick={() => onAddExpansionJointEntry(undefined, insertAtStart)}
-            className="flex items-center gap-1 px-3 py-1.5 bg-purple-100 hover:bg-purple-200 rounded-md border border-purple-300 transition-colors"
-          >
-            <svg
-              className="w-4 h-4 text-purple-600"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 4v16m8-8H4"
-              />
-            </svg>
-            <span className="text-xs font-semibold text-purple-700">Expansion Joint</span>
-          </button>
-        )}
-        {requiredProducts.includes("valves_meters_instruments") && onAddValveEntry && (
-          <button
-            onClick={
-              !canAddMoreItems
-                ? showRestrictionPopup("itemLimit")
-                : () => onAddValveEntry(undefined, insertAtStart)
-            }
-            className={`flex items-center gap-1 px-3 py-1.5 rounded-md border transition-colors ${
-              !canAddMoreItems
-                ? "bg-gray-100 border-gray-300 cursor-not-allowed"
-                : "bg-teal-100 hover:bg-teal-200 border-teal-300"
-            }`}
-          >
-            {!canAddMoreItems && (
-              <svg className="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                <path
-                  fillRule="evenodd"
-                  d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            )}
-            <svg
-              className={`w-4 h-4 ${!canAddMoreItems ? "text-gray-400" : "text-teal-600"}`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 4v16m8-8H4"
-              />
-            </svg>
-            <span
-              className={`text-xs font-semibold ${!canAddMoreItems ? "text-gray-500" : "text-teal-700"}`}
-            >
-              Valve
-            </span>
-          </button>
-        )}
-        {requiredProducts.includes("valves_meters_instruments") && onAddInstrumentEntry && (
-          <button
-            onClick={
-              !canAddMoreItems
-                ? showRestrictionPopup("itemLimit")
-                : () => onAddInstrumentEntry(undefined, insertAtStart)
-            }
-            className={`flex items-center gap-1 px-3 py-1.5 rounded-md border transition-colors ${
-              !canAddMoreItems
-                ? "bg-gray-100 border-gray-300 cursor-not-allowed"
-                : "bg-cyan-100 hover:bg-cyan-200 border-cyan-300"
-            }`}
-          >
-            {!canAddMoreItems && (
-              <svg className="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                <path
-                  fillRule="evenodd"
-                  d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            )}
-            <svg
-              className={`w-4 h-4 ${!canAddMoreItems ? "text-gray-400" : "text-cyan-600"}`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 4v16m8-8H4"
-              />
-            </svg>
-            <span
-              className={`text-xs font-semibold ${!canAddMoreItems ? "text-gray-500" : "text-cyan-700"}`}
-            >
-              Instrument
-            </span>
-          </button>
-        )}
-        {requiredProducts.includes("pumps") && onAddPumpEntry && (
-          <button
-            onClick={
-              !canAddMoreItems
-                ? showRestrictionPopup("itemLimit")
-                : () => onAddPumpEntry(undefined, insertAtStart)
-            }
-            className={`flex items-center gap-1 px-3 py-1.5 rounded-md border transition-colors ${
-              !canAddMoreItems
-                ? "bg-gray-100 border-gray-300 cursor-not-allowed"
-                : "bg-indigo-100 hover:bg-indigo-200 border-indigo-300"
-            }`}
-          >
-            {!canAddMoreItems && (
-              <svg className="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                <path
-                  fillRule="evenodd"
-                  d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            )}
-            <svg
-              className={`w-4 h-4 ${!canAddMoreItems ? "text-gray-400" : "text-indigo-600"}`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 4v16m8-8H4"
-              />
-            </svg>
-            <span
-              className={`text-xs font-semibold ${!canAddMoreItems ? "text-gray-500" : "text-indigo-700"}`}
-            >
-              Pump
-            </span>
-          </button>
-        )}
-        {requiredProducts.includes("fasteners_gaskets") && onAddFastenerEntry && (
-          <button
-            onClick={() => onAddFastenerEntry(undefined, insertAtStart)}
-            className="flex items-center gap-1 px-3 py-1.5 bg-lime-100 hover:bg-lime-200 rounded-md border border-lime-300 transition-colors"
-          >
-            <svg
-              className="w-4 h-4 text-lime-600"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={1.5}
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 004.486-6.336l-3.276 3.277a3.004 3.004 0 01-2.25-2.25l3.276-3.276a4.5 4.5 0 00-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085"
-              />
-            </svg>
-            <span className="text-xs font-medium text-lime-800">Fastener</span>
-          </button>
-        )}
-        {requiredProducts.includes("tanks_chutes") && onAddTankChuteEntry && (
-          <button
-            onClick={() => onAddTankChuteEntry(undefined, insertAtStart)}
-            className="flex items-center gap-1 px-3 py-1.5 bg-amber-100 hover:bg-amber-200 rounded-md border border-amber-300 transition-colors"
-          >
-            <svg
-              className="w-4 h-4 text-amber-600"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 4v16m8-8H4"
-              />
-            </svg>
-            <span className="text-xs font-semibold text-amber-700">Tank/Chute</span>
-          </button>
-        )}
-      </div>
-    );
   };
 
   return (
@@ -1980,7 +1141,23 @@ export default function ItemUploadStep(props: {
                 <span className="text-green-700 font-semibold">Auto-calculating</span>
                 <span className="text-xs text-green-600">Results update automatically</span>
               </div>
-              {addItemButtons(true)}
+              <AddItemButtonsBar
+                insertAtStart
+                hasPipeMaterials={selectedPipeMaterials.length > 0}
+                requiredProducts={requiredProducts}
+                canAddMoreItems={canAddMoreItems}
+                showRestrictionPopup={showRestrictionPopup}
+                onAddPipe={handleAddPipe}
+                onAddBendEntry={onAddBendEntry}
+                onAddFittingEntry={onAddFittingEntry}
+                onAddPipeSteelWorkEntry={onAddPipeSteelWorkEntry}
+                onAddExpansionJointEntry={onAddExpansionJointEntry}
+                onAddValveEntry={onAddValveEntry}
+                onAddInstrumentEntry={onAddInstrumentEntry}
+                onAddPumpEntry={onAddPumpEntry}
+                onAddFastenerEntry={onAddFastenerEntry}
+                onAddTankChuteEntry={onAddTankChuteEntry}
+              />
             </div>
           </div>
 
@@ -2394,7 +1571,8 @@ export default function ItemUploadStep(props: {
                     const rawClientItemNumber4 = entry.clientItemNumber;
                     const itemNumber = rawClientItemNumber4 || `#${index + 1}`;
                     const rawCalculatedPipeCount2 = entry.calculation?.calculatedPipeCount;
-                    const qty = rawCalculatedPipeCount2 || entry.specs?.quantityValue || 0;
+                    const rawQuantityValue2 = entry.specs?.quantityValue;
+                    const qty = rawCalculatedPipeCount2 || rawQuantityValue2 || 0;
 
                     // Calculate weights differently for bends vs straight pipes
                     let totalWeight = 0;
@@ -2517,308 +1695,13 @@ export default function ItemUploadStep(props: {
                     const bnwInfo = bnwSetInfo(allBnwSets, nbMm, pressureClass || "PN16");
                     const bnwWeightPerSet = bnwInfo.weightPerHole * bnwInfo.holesPerFlange;
 
-                    // Calculate weld thickness for flange welds
-                    const getWeldThickness = () => {
-                      // For fittings (tees/laterals), use wall thickness from specs
-                      if (entry.itemType === "fitting") {
-                        const rawWallThicknessMm3 = entry.specs?.wallThicknessMm;
-                        const fittingWt = rawWallThicknessMm3 || entry.calculation?.wallThicknessMm;
-                        if (fittingWt) {
-                          return { thickness: fittingWt, label: "Fitting WT" };
-                        }
-                        return null;
-                      }
-
-                      const dn = entry.specs?.nominalBoreMm;
-                      const rawScheduleNumber4 = entry.specs?.scheduleNumber;
-                      const schedule = rawScheduleNumber4 || "";
-                      const rawWallThicknessMm4 = entry.calculation?.wallThicknessMm;
-                      const pipeWallThickness = rawWallThicknessMm4 || entry.specs?.wallThicknessMm;
-                      if (!dn && !pipeWallThickness) return null;
-
-                      const rawSteelSpecificationId8 = entry.specs?.steelSpecificationId;
-
-                      // Check for SABS 719 - use pattern matching on spec name
-                      const steelSpecId =
-                        rawSteelSpecificationId8 || globalSpecs?.steelSpecificationId;
-                      const steelSpec = masterData?.steelSpecs?.find(
-                        (s: any) => s.id === steelSpecId,
-                      );
-                      const rawSteelSpecName2 = steelSpec?.steelSpecName;
-                      const steelSpecName = rawSteelSpecName2 || "";
-                      const isSABS719 =
-                        steelSpecName.includes("SABS 719") || steelSpecName.includes("SANS 719");
-
-                      // For SABS 719: use pipe WT rounded to 1.5mm increments (min 6mm)
-                      if (isSABS719) {
-                        const roundedWt = pipeWallThickness
-                          ? roundToWeldIncrement(pipeWallThickness)
-                          : null;
-                        return { thickness: roundedWt, label: "SABS 719 WT" };
-                      }
-
-                      const scheduleUpper = schedule.toUpperCase();
-                      const fittingClass =
-                        scheduleUpper.includes("160") ||
-                        scheduleUpper.includes("XXS") ||
-                        scheduleUpper.includes("XXH")
-                          ? "XXH"
-                          : scheduleUpper.includes("80") ||
-                              scheduleUpper.includes("XS") ||
-                              scheduleUpper.includes("XH")
-                            ? "XH"
-                            : "STD";
-
-                      const FITTING_WT: Record<string, Record<number, number>> = {
-                        STD: {
-                          15: 2.77,
-                          20: 2.87,
-                          25: 3.38,
-                          32: 3.56,
-                          40: 3.68,
-                          50: 3.91,
-                          65: 5.16,
-                          80: 5.49,
-                          90: 5.74,
-                          100: 6.02,
-                          125: 6.55,
-                          150: 7.11,
-                          200: 8.18,
-                          250: 9.27,
-                          300: 9.53,
-                          350: 9.53,
-                          400: 9.53,
-                          450: 9.53,
-                          500: 9.53,
-                          600: 9.53,
-                          700: 9.53,
-                          750: 9.53,
-                          800: 9.53,
-                          900: 9.53,
-                          1000: 9.53,
-                          1050: 9.53,
-                          1200: 9.53,
-                        },
-                        XH: {
-                          15: 3.73,
-                          20: 3.91,
-                          25: 4.55,
-                          32: 4.85,
-                          40: 5.08,
-                          50: 5.54,
-                          65: 7.01,
-                          80: 7.62,
-                          100: 8.56,
-                          125: 9.53,
-                          150: 10.97,
-                          200: 12.7,
-                          250: 12.7,
-                          300: 12.7,
-                          350: 12.7,
-                          400: 12.7,
-                          450: 12.7,
-                          500: 12.7,
-                          600: 12.7,
-                          700: 12.7,
-                          750: 12.7,
-                          800: 12.7,
-                          900: 12.7,
-                          1000: 12.7,
-                          1050: 12.7,
-                          1200: 12.7,
-                        },
-                        XXH: {
-                          15: 7.47,
-                          20: 7.82,
-                          25: 9.09,
-                          32: 9.7,
-                          40: 10.16,
-                          50: 11.07,
-                          65: 14.02,
-                          80: 15.24,
-                          100: 17.12,
-                          125: 19.05,
-                          150: 22.23,
-                          200: 22.23,
-                          250: 25.4,
-                          300: 25.4,
-                        },
-                      };
-
-                      const fittingWt = dn ? FITTING_WT[fittingClass]?.[dn] : null;
-                      const effectiveWt = fittingWt || pipeWallThickness;
-                      const label = fittingWt ? fittingClass : "Pipe WT";
-                      return { thickness: effectiveWt, label };
-                    };
-
-                    // Calculate per-unit surface areas
-                    const getPerUnitSurfaceAreas = () => {
-                      // Handle bends - calculate surface area for arc + tangents + stubs
-                      if (entry.itemType === "bend") {
-                        const rawOutsideDiameterMm = entry.calculation?.outsideDiameterMm;
-                        const odMm = rawOutsideDiameterMm || entry.specs?.outsideDiameterMm;
-                        const rawWallThicknessMm5 = entry.calculation?.wallThicknessMm;
-                        const wtMm = rawWallThicknessMm5 || entry.specs?.wallThicknessMm;
-                        if (!odMm || !wtMm) return { external: null, internal: null };
-
-                        const idMm = odMm - 2 * wtMm;
-                        const odM = odMm / 1000;
-                        const idM = idMm / 1000;
-
-                        const rawBendRadiusMm = entry.specs?.bendRadiusMm;
-                        const rawNominalBoreMm5 = entry.specs?.nominalBoreMm;
-
-                        // Get bend radius and angle
-                        const bendRadiusMm =
-                          rawBendRadiusMm ||
-                          entry.calculation?.bendRadiusMm ||
-                          (entry.specs?.centerToFaceMm
-                            ? entry.specs.centerToFaceMm
-                            : (rawNominalBoreMm5 || 100) * 1.5);
-                        const rawBendDegrees2 = entry.specs?.bendDegrees;
-                        const bendAngleDeg = rawBendDegrees2 || 90;
-                        const bendAngleRad = (bendAngleDeg * Math.PI) / 180;
-
-                        // Arc length in meters
-                        const arcLengthM = (bendRadiusMm / 1000) * bendAngleRad;
-
-                        // Bend arc surface areas
-                        let externalArea = odM * Math.PI * arcLengthM;
-                        let internalArea = idM * Math.PI * arcLengthM;
-
-                        const rawTangentLengths2 = entry.specs?.tangentLengths;
-
-                        // Add tangent surface areas
-                        const tangentLengths = rawTangentLengths2 || [];
-                        const rawItem02 = tangentLengths[0];
-                        const tangent1Mm = rawItem02 || 0;
-                        const rawItem12 = tangentLengths[1];
-                        const tangent2Mm = rawItem12 || 0;
-
-                        if (tangent1Mm > 0) {
-                          const t1LengthM = tangent1Mm / 1000;
-                          externalArea += odM * Math.PI * t1LengthM;
-                          internalArea += idM * Math.PI * t1LengthM;
-                        }
-                        if (tangent2Mm > 0) {
-                          const t2LengthM = tangent2Mm / 1000;
-                          externalArea += odM * Math.PI * t2LengthM;
-                          internalArea += idM * Math.PI * t2LengthM;
-                        }
-
-                        // Add stub surface areas
-                        if (entry.specs?.stubs?.length > 0) {
-                          entry.specs.stubs.forEach((stub: any) => {
-                            if (stub?.nominalBoreMm && stub?.length) {
-                              const rawOutsideDiameterMm2 = stub.outsideDiameterMm;
-                              // Get stub OD from nominal bore (approximate)
-                              const stubOdMm = rawOutsideDiameterMm2 || stub.nominalBoreMm * 1.1;
-                              const rawWallThicknessMm6 = stub.wallThicknessMm;
-                              const stubWtMm = rawWallThicknessMm6 || stubOdMm * 0.08;
-                              const stubIdMm = stubOdMm - 2 * stubWtMm;
-                              const stubLengthM = stub.length / 1000;
-
-                              externalArea += (stubOdMm / 1000) * Math.PI * stubLengthM;
-                              internalArea += (stubIdMm / 1000) * Math.PI * stubLengthM;
-                            }
-                          });
-                        }
-
-                        return { external: externalArea, internal: internalArea };
-                      }
-
-                      // Handle fittings (tees/laterals)
-                      if (entry.itemType === "fitting") {
-                        const nb = entry.specs?.nominalDiameterMm;
-                        const rawBranchNominalDiameterMm = entry.specs?.branchNominalDiameterMm;
-                        // Equal tee if no branch NB
-                        const branchNb = rawBranchNominalDiameterMm || nb;
-                        const rawWallThicknessMm7 = entry.specs?.wallThicknessMm;
-                        const wt = rawWallThicknessMm7 || 10;
-                        const rawPipeLengthAMm = entry.specs?.pipeLengthAMm;
-                        const lengthA = rawPipeLengthAMm || 0;
-                        const rawPipeLengthBMm = entry.specs?.pipeLengthBMm;
-                        const lengthB = rawPipeLengthBMm || 0;
-
-                        if (!nb || (!lengthA && !lengthB))
-                          return { external: null, internal: null };
-
-                        const rawNb = nbToOdMap[nb];
-
-                        // Get OD from NB using lookup
-                        const mainOd = rawNb || nb * 1.05;
-                        const rawBranchNb = nbToOdMap[branchNb];
-                        const branchOd = rawBranchNb || branchNb * 1.05;
-                        const mainId = mainOd - 2 * wt;
-                        const branchId = branchOd - 2 * wt;
-
-                        // Calculate lengths in meters
-                        const runLengthM = (lengthA + lengthB) / 1000;
-                        // Branch length = C/F value or estimate as 2× branch OD
-                        const branchLengthM = (branchOd * 2) / 1000;
-
-                        // External surface area (m²)
-                        // Run pipe: π × OD × length
-                        const runExternalArea = (mainOd / 1000) * Math.PI * runLengthM;
-                        // Branch pipe: π × OD × length
-                        const branchExternalArea = (branchOd / 1000) * Math.PI * branchLengthM;
-                        // Subtract overlap at intersection (approximation: branch OD × wt)
-                        const overlapExternal = (branchOd / 1000) * (wt / 1000) * Math.PI;
-                        const externalArea = runExternalArea + branchExternalArea - overlapExternal;
-
-                        // Internal surface area (m²)
-                        // Run pipe: π × ID × length
-                        const runInternalArea = (mainId / 1000) * Math.PI * runLengthM;
-                        // Branch pipe: π × ID × length
-                        const branchInternalArea = (branchId / 1000) * Math.PI * branchLengthM;
-                        // Subtract hole cut for branch (circular area): π × r²
-                        const holeCutArea = Math.PI * (branchId / 1000 / 2) ** 2;
-                        const internalArea = runInternalArea + branchInternalArea - holeCutArea;
-
-                        return { external: externalArea, internal: internalArea };
-                      }
-
-                      // Handle straight pipes
-                      if (!entry.calculation?.outsideDiameterMm || !entry.specs?.wallThicknessMm)
-                        return { external: null, internal: null };
-
-                      const rawFlangePressureClassId6 = entry.specs?.flangePressureClassId;
-
-                      // Get pressure class - use entry override if available, otherwise global
-                      const pcId = rawFlangePressureClassId6 || globalSpecs?.flangePressureClassId;
-                      const pcDesignation = pcId
-                        ? masterData.pressureClasses?.find((p: any) => p.id === pcId)?.designation
-                        : undefined;
-
-                      const rawIndividualPipeLength = entry.specs.individualPipeLength;
-                      const rawPipeEndConfiguration6 = entry.specs.pipeEndConfiguration;
-                      const rawPipeEndConfiguration7 = entry.specs.pipeEndConfiguration;
-
-                      const surfaceArea = calculateTotalSurfaceArea({
-                        outsideDiameterMm: entry.calculation.outsideDiameterMm,
-                        insideDiameterMm: calculateInsideDiameter(
-                          entry.calculation.outsideDiameterMm,
-                          entry.specs.wallThicknessMm,
-                        ),
-                        individualPipeLengthM: rawIndividualPipeLength || 0,
-                        // Per unit
-                        numberOfPipes: 1,
-                        hasFlangeEnd1: (rawPipeEndConfiguration6 || "PE") !== "PE",
-                        hasFlangeEnd2: ["FBE", "FOE_RF", "2X_RF"].includes(
-                          rawPipeEndConfiguration7 || "PE",
-                        ),
-                        dn: entry.specs.nominalBoreMm,
-                        pressureClass: pcDesignation,
-                      });
-
-                      return {
-                        external: surfaceArea.perPipe.totalExternalAreaM2,
-                        internal: surfaceArea.perPipe.totalInternalAreaM2,
-                      };
-                    };
-
-                    const weldThickness = getWeldThickness();
-                    const surfaceAreas = getPerUnitSurfaceAreas();
+                    const weldThickness = weldThicknessForEntry(entry, globalSpecs, masterData);
+                    const surfaceAreas = perUnitSurfaceAreas(
+                      entry,
+                      globalSpecs,
+                      masterData,
+                      nbToOdMap,
+                    );
 
                     const rawDescription = entry.description;
 
@@ -2940,14 +1823,13 @@ export default function ItemUploadStep(props: {
                           entry.itemType === "fitting" &&
                           (() => {
                             const rawNominalDiameterMm2 = entry.specs?.nominalDiameterMm;
-                            const mainNb =
-                              rawNominalDiameterMm2 || entry.specs?.nominalBoreMm || 100;
+                            const rawNominalBoreMm2 = entry.specs?.nominalBoreMm;
+                            const mainNb = rawNominalDiameterMm2 || rawNominalBoreMm2 || 100;
                             const rawBranchNominalDiameterMm2 =
                               entry.specs?.branchNominalDiameterMm;
+                            const rawBranchNominalBoreMm2 = entry.specs?.branchNominalBoreMm;
                             const branchNb =
-                              rawBranchNominalDiameterMm2 ||
-                              entry.specs?.branchNominalBoreMm ||
-                              mainNb;
+                              rawBranchNominalDiameterMm2 || rawBranchNominalBoreMm2 || mainNb;
                             const isEqualTee = mainNb === branchNb;
                             const rawPipeEndConfiguration8 = entry.specs?.pipeEndConfiguration;
                             const fittingEndConfig = rawPipeEndConfiguration8 || "PE";
@@ -3206,9 +2088,10 @@ export default function ItemUploadStep(props: {
                             const rawNominalDiameterMm3 = entry.specs?.nominalDiameterMm;
                             const rawNominalBoreMm8 = entry.specs?.nominalBoreMm;
                             // Get nominal bore based on item type
+                            const rawNominalBoreMmForBlank = entry.specs?.nominalBoreMm;
                             const blankNb =
                               entry.itemType === "fitting"
-                                ? rawNominalDiameterMm3 || entry.specs?.nominalBoreMm || 100
+                                ? rawNominalDiameterMm3 || rawNominalBoreMmForBlank || 100
                                 : rawNominalBoreMm8 || 100;
                             const rawBlankFlangeCount = entry.specs?.blankFlangeCount;
                             const blankFlangeCount = rawBlankFlangeCount || 1;
@@ -3276,7 +2159,8 @@ export default function ItemUploadStep(props: {
 
                         entries.forEach((entry: any) => {
                           const rawCalculatedPipeCount3 = entry.calculation?.calculatedPipeCount;
-                          const qty = rawCalculatedPipeCount3 || entry.specs?.quantityValue || 0;
+                          const rawQuantityValue3 = entry.specs?.quantityValue;
+                          const qty = rawCalculatedPipeCount3 || rawQuantityValue3 || 0;
                           // Add base item quantity
                           totalQty += qty;
 

@@ -171,6 +171,8 @@ Host-app-agnostic React module. Consumed by Stock Control (via `app/stock-contro
 | Auth / token storage | `lib/auth/PortalTokenStore` | Shared across all portals — customer, supplier, stock-control, AU, CV. |
 | SA validators | `lib/validators/` | ID numbers, VAT numbers, phone numbers, email, company registration numbers. |
 | Config | `lib/config/rfq/` | RFQ config — **thin re-export shims over `@annix/product-data/pipe`**. Do not add new local data here. |
+| RFQ item description | `lib/utils/rfq/itemDescriptionGenerator.ts` | Pure function `itemDescription(entry, globalSpecs, masterData)` that generates human-readable descriptions for all RFQ item types (pipe, bend, fitting, valve, instrument, pump, tank/chute, fastener). |
+| RFQ item summary calcs | `lib/utils/rfq/itemSummaryCalculations.ts` | `weldThicknessForEntry(entry, globalSpecs, masterData)` and `perUnitSurfaceAreas(entry, globalSpecs, masterData, nbToOdMap)` for BOQ summary table. Uses shared `FITTING_CLASS_WALL_THICKNESS` from `@annix/product-data/pipe`. |
 | Query hooks | `lib/query/hooks/<subject>/use<Subject>.ts` | ALL page-level data fetching must use these. Subjects: `admin`, `au-rubber`, `boq`, `customer`, `drawing`, `rfq`, `supplier`, `reference`. |
 | Query keys | `lib/query/keys/<subject>Keys.ts` | Query key factories with shape `{ all, list, detail }`. |
 | corpId (static branding) | `lib/config/corpId.ts` | Colors, fonts, logos. **Never legal data** — use the company profile hook for that. |
