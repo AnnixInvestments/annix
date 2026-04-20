@@ -36,6 +36,7 @@ import { RfqController } from "./rfq.controller";
 import { RfqService } from "./rfq.service";
 import { RfqDraftService } from "./rfq-draft.service";
 import { ReferenceDataCacheService } from "./services/reference-data-cache.service";
+import { RfqCalculationService } from "./services/rfq-calculation.service";
 import { RfqDocumentService } from "./services/rfq-document.service";
 
 @Module({
@@ -82,6 +83,7 @@ import { RfqDocumentService } from "./services/rfq-document.service";
     RfqService,
     RfqDraftService,
     RfqDocumentService,
+    RfqCalculationService,
     AnonymousDraftService,
     ReferenceDataCacheService,
   ],

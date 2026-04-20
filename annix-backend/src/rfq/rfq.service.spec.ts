@@ -30,6 +30,7 @@ import { TankChuteRfq } from "./entities/tank-chute-rfq.entity";
 import { ValveRfq } from "./entities/valve-rfq.entity";
 import { RfqService } from "./rfq.service";
 import { ReferenceDataCacheService } from "./services/reference-data-cache.service";
+import { RfqCalculationService } from "./services/rfq-calculation.service";
 
 describe("RfqService", () => {
   let service: RfqService;
@@ -323,6 +324,14 @@ describe("RfqService", () => {
             flangeDimension: jest.fn(),
             refreshCache: jest.fn(),
             cacheStats: jest.fn(),
+          },
+        },
+        {
+          provide: RfqCalculationService,
+          useValue: {
+            calculateStraightPipeRequirements: jest.fn(),
+            calculateBendRequirements: jest.fn(),
+            calculatePumpRequirements: jest.fn(),
           },
         },
         {
