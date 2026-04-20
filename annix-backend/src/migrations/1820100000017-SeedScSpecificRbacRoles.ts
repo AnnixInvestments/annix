@@ -140,7 +140,7 @@ export class SeedScSpecificRbacRoles1820100000017 implements MigrationInterface 
         const permId = permResult[0].id;
 
         await queryRunner.query(
-          `INSERT INTO "app_role_permissions" ("role_id", "permission_id")
+          `INSERT INTO "app_role_permissions" ("app_role_id", "app_permission_id")
            VALUES ($1, $2)
            ON CONFLICT DO NOTHING`,
           [roleId, permId],
