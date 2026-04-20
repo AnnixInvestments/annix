@@ -1,7 +1,10 @@
 export { EndConfigurationSelector } from "./EndConfigurationSelector";
 export { FittingCalcResults } from "./FittingCalcResults";
+export { FittingTypeSelector } from "./FittingTypeSelector";
 export { FlangeDropdownTriplet } from "./FlangeDropdownTriplet";
 export { MaterialSpecificationSection } from "./MaterialSpecificationSection";
+export { NominalDiameterSelector } from "./NominalDiameterSelector";
 export { PressureClassField } from "./PressureClassField";
 export { PslCvnNaceSection } from "./PslCvnNaceSection";
+export { ScheduleWallThicknessSelector } from "./ScheduleWallThicknessSelector";
 export { WeldSummarySection } from "./WeldSummarySection";
