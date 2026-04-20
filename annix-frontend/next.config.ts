@@ -13,6 +13,21 @@ const nextConfig: NextConfig = {
     "@annix/feedback-web",
   ],
 
+  async redirects() {
+    return [
+      {
+        source: "/stock-control/portal/:path*",
+        destination: "/ops/portal/:path*",
+        permanent: false,
+      },
+      {
+        source: "/au-rubber/portal/:path*",
+        destination: "/ops/portal/:path*",
+        permanent: false,
+      },
+    ];
+  },
+
   async rewrites() {
     return [
       {
