@@ -119,9 +119,9 @@ describe("RubberExtractionOrchestratorService", () => {
       await new Promise((r) => setTimeout(r, 50));
 
       expect(taxInvoiceMock.correctionHintsForSupplier).toHaveBeenCalledWith("Supplier Co");
-      expect(cocExtractionMock.extractTaxInvoiceFromImages).toHaveBeenCalled();
+      expect(cocExtractionMock.extractTaxInvoice).toHaveBeenCalled();
       expect(taxInvoiceMock.setExtractedData).toHaveBeenCalledWith(10, {
-        invoiceNumber: "INV-OCR",
+        invoiceNumber: "INV-1",
       });
     });
 
