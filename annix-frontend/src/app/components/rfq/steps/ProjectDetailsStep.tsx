@@ -524,6 +524,24 @@ export default function ProjectDetailsStep() {
     }
   };
 
+  useEffect(() => {
+    const loadMines = async () => {
+      setIsLoadingMines(true);
+      try {
+        const activeMines = await minesApi.getActiveMines();
+        setMines(activeMines);
+      } catch (error) {
+        if (error instanceof Error && error.message !== "Backend unavailable") {
+          log.error("Failed to fetch mines:", error);
+        }
+        setMines(fallbackMines);
+      } finally {
+        setIsLoadingMines(false);
+      }
+    };
+    loadMines();
+  }, []);
+
   // Auto-generate RFQ number if field is empty (but not when loading a draft)
   useEffect(() => {
     // Skip auto-generation if we're loading a draft - the draft will provide the projectName
