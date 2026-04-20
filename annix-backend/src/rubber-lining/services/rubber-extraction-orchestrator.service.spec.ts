@@ -119,8 +119,10 @@ describe("RubberExtractionOrchestratorService", () => {
       await new Promise((r) => setTimeout(r, 50));
 
       expect(taxInvoiceMock.correctionHintsForSupplier).toHaveBeenCalledWith("Supplier Co");
-      expect(cocExtractionMock.extractTaxInvoice).toHaveBeenCalled();
-      expect(taxInvoiceMock.setExtractedData).toHaveBeenCalledWith(10, { invoiceNumber: "INV-1" });
+      expect(cocExtractionMock.extractTaxInvoiceFromImages).toHaveBeenCalled();
+      expect(taxInvoiceMock.setExtractedData).toHaveBeenCalledWith(10, {
+        invoiceNumber: "INV-OCR",
+      });
     });
 
     it("skips correction hints when companyName is null", async () => {
