@@ -210,6 +210,12 @@ export class RecreateDroppedLegacyTables1820100000023 implements MigrationInterf
     }
 
     // stock_control_profiles: one row per user (critical for login)
+    // Ensure columns exist (migration 22 may have dropped them on staging)
+    await queryRunner.query(`
+      ALTER TABLE stock_control_profiles ADD COLUMN IF NOT EXISTS legacy_sc_user_id INT;
+      ALTER TABLE stock_control_profiles ADD COLUMN IF NOT EXISTS unified_company_id INT;
+    `);
+
     const profileCount = await queryRunner.query(
       "SELECT COUNT(*) as cnt FROM stock_control_profiles",
     );
