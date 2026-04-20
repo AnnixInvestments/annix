@@ -1,46 +1,43 @@
-import { MigrationInterface, QueryRunner } from "typeorm";
+import type { MigrationInterface, QueryRunner } from "typeorm";
 
 export class DropLegacyPointerColumns1820100000022 implements MigrationInterface {
-  public async up(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`
-      ALTER TABLE "companies" DROP COLUMN IF EXISTS "legacy_sc_company_id";
-      ALTER TABLE "companies" DROP COLUMN IF EXISTS "legacy_rubber_company_id";
-      ALTER TABLE "companies" DROP COLUMN IF EXISTS "legacy_comply_company_id";
-      ALTER TABLE "companies" DROP COLUMN IF EXISTS "legacy_cv_company_id";
-
-      ALTER TABLE "contacts" DROP COLUMN IF EXISTS "legacy_sc_supplier_id";
-      ALTER TABLE "contacts" DROP COLUMN IF EXISTS "legacy_rubber_company_id";
-
-      ALTER TABLE "stock_control_profiles" DROP COLUMN IF EXISTS "legacy_sc_user_id";
-      ALTER TABLE "cv_assistant_profiles" DROP COLUMN IF EXISTS "legacy_cv_user_id";
-      ALTER TABLE "comply_sa_profiles" DROP COLUMN IF EXISTS "legacy_comply_user_id";
-
-      ALTER TABLE "user" DROP COLUMN IF EXISTS "password";
-      ALTER TABLE "user" DROP COLUMN IF EXISTS "salt";
-
-      DROP INDEX IF EXISTS "idx_companies_legacy_sc_company_id";
-      DROP INDEX IF EXISTS "idx_companies_legacy_rubber_company_id";
-      DROP INDEX IF EXISTS "idx_companies_legacy_comply_company_id";
-      DROP INDEX IF EXISTS "idx_companies_legacy_cv_company_id";
-    `);
+  private async dropColumnIfTableExists(
+    queryRunner: QueryRunner,
+    table: string,
+    column: string,
+  ): Promise<void> {
+    const tableExists = await queryRunner.query(
+      `SELECT COUNT(*) as cnt FROM information_schema.tables WHERE table_schema = 'public' AND table_name = '${table}'`,
+    );
+    if (Number(tableExists[0]?.cnt) === 0) {
+      return;
+    }
+    await queryRunner.query(`ALTER TABLE "${table}" DROP COLUMN IF EXISTS "${column}"`);
   }
 
-  public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`
-      ALTER TABLE "companies" ADD COLUMN IF NOT EXISTS "legacy_sc_company_id" integer;
-      ALTER TABLE "companies" ADD COLUMN IF NOT EXISTS "legacy_rubber_company_id" integer;
-      ALTER TABLE "companies" ADD COLUMN IF NOT EXISTS "legacy_comply_company_id" integer;
-      ALTER TABLE "companies" ADD COLUMN IF NOT EXISTS "legacy_cv_company_id" integer;
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    await this.dropColumnIfTableExists(queryRunner, "companies", "legacy_sc_company_id");
+    await this.dropColumnIfTableExists(queryRunner, "companies", "legacy_rubber_company_id");
+    await this.dropColumnIfTableExists(queryRunner, "companies", "legacy_comply_company_id");
+    await this.dropColumnIfTableExists(queryRunner, "companies", "legacy_cv_company_id");
 
-      ALTER TABLE "contacts" ADD COLUMN IF NOT EXISTS "legacy_sc_supplier_id" integer;
-      ALTER TABLE "contacts" ADD COLUMN IF NOT EXISTS "legacy_rubber_company_id" integer;
+    await this.dropColumnIfTableExists(queryRunner, "contacts", "legacy_sc_supplier_id");
+    await this.dropColumnIfTableExists(queryRunner, "contacts", "legacy_rubber_company_id");
 
-      ALTER TABLE "stock_control_profiles" ADD COLUMN IF NOT EXISTS "legacy_sc_user_id" integer;
-      ALTER TABLE "cv_assistant_profiles" ADD COLUMN IF NOT EXISTS "legacy_cv_user_id" integer;
-      ALTER TABLE "comply_sa_profiles" ADD COLUMN IF NOT EXISTS "legacy_comply_user_id" integer;
+    await this.dropColumnIfTableExists(queryRunner, "stock_control_profiles", "legacy_sc_user_id");
+    await this.dropColumnIfTableExists(queryRunner, "cv_assistant_profiles", "legacy_cv_user_id");
+    await this.dropColumnIfTableExists(queryRunner, "comply_sa_profiles", "legacy_comply_user_id");
 
-      ALTER TABLE "user" ADD COLUMN IF NOT EXISTS "password" varchar;
-      ALTER TABLE "user" ADD COLUMN IF NOT EXISTS "salt" varchar;
-    `);
+    await this.dropColumnIfTableExists(queryRunner, "user", "password");
+    await this.dropColumnIfTableExists(queryRunner, "user", "salt");
+
+    await queryRunner.query(`DROP INDEX IF EXISTS "idx_companies_legacy_sc_company_id"`);
+    await queryRunner.query(`DROP INDEX IF EXISTS "idx_companies_legacy_rubber_company_id"`);
+    await queryRunner.query(`DROP INDEX IF EXISTS "idx_companies_legacy_comply_company_id"`);
+    await queryRunner.query(`DROP INDEX IF EXISTS "idx_companies_legacy_cv_company_id"`);
+  }
+
+  public async down(_queryRunner: QueryRunner): Promise<void> {
+    // Column restoration not supported — restore from backup if needed
   }
 }
