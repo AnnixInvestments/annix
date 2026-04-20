@@ -18,6 +18,7 @@ import {
   StubPipe,
   WeldRing,
 } from "@/app/components/rfq/3d";
+import { SimpleLine as Line } from "@/app/components/rfq/3d/geometries/bend";
 import { type StubData } from "@/app/hooks/use3DSceneSetup";
 import { resolveFlangeData } from "@/app/lib/3d";
 import {
@@ -31,44 +32,6 @@ import { FlangeSpecData } from "@/app/lib/hooks/useFlangeSpecs";
 import { log } from "@/app/lib/logger";
 import { useNbToOdLookup } from "@/app/lib/query/hooks";
 import { CameraTracker, SceneShell } from "./hooks";
-
-interface SimpleLineProps {
-  points: Array<[number, number, number]>;
-  color?: string;
-  lineWidth?: number;
-  dashed?: boolean;
-  dashSize?: number;
-  gapSize?: number;
-}
-
-const Line = ({
-  points,
-  color = "#000000",
-  lineWidth = 1,
-  dashed = false,
-  dashSize = 0.1,
-  gapSize = 0.1,
-}: SimpleLineProps) => {
-  const tubeGeo = useMemo(() => {
-    if (points.length < 2) return null;
-    const curve = new THREE.CatmullRomCurve3(
-      points.map((p) => new THREE.Vector3(p[0], p[1], p[2])),
-      false,
-      "catmullrom",
-      0,
-    );
-    const tubeRadius = lineWidth * 0.01;
-    return new THREE.TubeGeometry(curve, Math.max(points.length * 4, 8), tubeRadius, 6, false);
-  }, [points, lineWidth]);
-
-  if (!tubeGeo) return null;
-
-  return (
-    <mesh geometry={tubeGeo} renderOrder={999}>
-      <meshBasicMaterial color={color} depthTest={false} />
-    </mesh>
-  );
-};
 
 interface Props {
   nominalBore: number;
