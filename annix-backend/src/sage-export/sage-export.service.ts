@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import type { SageExportInvoice } from "./interfaces/sage-invoice";
+import type { SageExportInvoice, SageExportLineItem } from "./interfaces/sage-invoice";
 
 const COLUMNS = [
   "InvoiceNumber",
@@ -15,24 +15,30 @@ const COLUMNS = [
   "AccountCode",
 ];
 
+const DEFAULT_PAYMENT_DAYS = 30;
+
 @Injectable()
 export class SageExportService {
   generateCsv(invoices: SageExportInvoice[]): Buffer {
-    const rows = invoices.flatMap((invoice) =>
-      invoice.lineItems.map((item) => [
+    const rows = invoices.flatMap((invoice) => {
+      const dueDate = invoice.dueDate ?? addDays(invoice.invoiceDate, DEFAULT_PAYMENT_DAYS);
+      const reference = invoice.reference ?? invoice.invoiceNumber;
+      const lines = consolidateLineItems(invoice);
+
+      return lines.map((item) => [
         invoice.invoiceNumber,
         invoice.supplierName,
         formatDate(invoice.invoiceDate),
-        formatDate(invoice.dueDate),
-        invoice.reference ?? "",
+        formatDate(dueDate),
+        reference,
         item.description,
         String(item.quantity),
         formatAmount(item.unitPrice),
         String(item.vatRate),
         formatAmount(lineTotal(item)),
         item.accountCode,
-      ]),
-    );
+      ]);
+    });
 
     const header = COLUMNS.join(",");
     const body = rows.map((row) => row.map(escapeCsvField).join(",")).join("\r\n");
@@ -47,6 +53,46 @@ function escapeCsvField(value: string): string {
     return `"${value.replace(/"/g, '""')}"`;
   }
   return value;
+}
+
+function consolidateLineItems(invoice: SageExportInvoice): SageExportLineItem[] {
+  const pricedLines = invoice.lineItems.filter(
+    (item) => item.unitPrice !== null && item.unitPrice > 0,
+  );
+
+  if (pricedLines.length > 0) {
+    return pricedLines;
+  }
+
+  if (invoice.totalAmount !== null && invoice.totalAmount > 0) {
+    const vatRate = invoice.lineItems[0]?.vatRate ?? 15;
+    const accountCode = invoice.lineItems[0]?.accountCode ?? "5000";
+    const exclusiveAmount =
+      invoice.vatAmount !== null
+        ? invoice.totalAmount - invoice.vatAmount
+        : invoice.totalAmount / (1 + vatRate / 100);
+
+    return [
+      {
+        description: `Invoice ${invoice.invoiceNumber} - consolidated`,
+        quantity: 1,
+        unitPrice: Math.round(exclusiveAmount * 100) / 100,
+        vatRate,
+        accountCode,
+      },
+    ];
+  }
+
+  return invoice.lineItems;
+}
+
+function addDays(date: Date | null, days: number): Date | null {
+  if (date === null) {
+    return null;
+  }
+  const result = new Date(date);
+  result.setDate(result.getDate() + days);
+  return result;
 }
 
 function formatDate(date: Date | null): string {
