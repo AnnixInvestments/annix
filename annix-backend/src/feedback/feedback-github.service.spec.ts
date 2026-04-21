@@ -58,6 +58,42 @@ describe("FeedbackGithubService", () => {
       expect(result).toBe(true);
     });
 
+    it("triggers Claude for bug/ui-issue/data-issue regardless of fixScope or riskFlags", () => {
+      const result = (
+        service as unknown as {
+          shouldTriggerClaude: (
+            translation: {
+              classification: "bug" | "ui-issue" | "data-issue";
+              confidence: number;
+              likelyLocation: string | null;
+              reproductionSteps: string[];
+              likelyCause: string | null;
+              affectedSurface: string | null;
+              riskFlags: string[];
+              fixScope: string | null;
+              autoFixable: boolean;
+            },
+            claudeOverride: "force" | "skip" | null,
+          ) => boolean;
+        }
+      ).shouldTriggerClaude(
+        {
+          classification: "ui-issue",
+          confidence: 0.4,
+          likelyLocation: "Admin dashboard nav",
+          reproductionSteps: [],
+          likelyCause: null,
+          affectedSurface: "Admin dashboard nav",
+          riskFlags: ["backend", "mixed-surface"],
+          fixScope: "frontend",
+          autoFixable: false,
+        },
+        null,
+      );
+
+      expect(result).toBe(true);
+    });
+
     it("does not trigger Claude for ordinary support questions", () => {
       const result = (
         service as unknown as {

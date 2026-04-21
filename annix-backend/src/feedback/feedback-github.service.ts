@@ -49,13 +49,11 @@ Rules:
 - reproductionSteps must be an array of concise strings
 - riskFlags must be an array of concise lowercase strings
 - likelyLocation, likelyCause, affectedSurface, and fixScope must be strings or null
-- autoFixable must be true only for narrow frontend-local issues with strong context
 - distinguish ordinary user questions from engineering investigation requests
 - when a question is really asking for code inspection, consistency review, DRYness, reuse, architecture, or implementation verification, classify it as question and set fixScope to investigation
-- for investigation requests with enough codebase context, set autoFixable true so they can be routed to Claude for autonomous investigation
+- autoFixable is informational metadata shown to reviewers; routing is decided by classification, not by this flag
 - do not suggest code changes
-- do not invent evidence
-- if the report is weak or risky, lower confidence and set autoFixable false`;
+- do not invent evidence`;
 
 const VALID_CLASSIFICATIONS: FeedbackClassification[] = [
   "bug",
@@ -66,25 +64,6 @@ const VALID_CLASSIFICATIONS: FeedbackClassification[] = [
 ];
 
 const CLAUDE_AUTO_FIX_CLASSIFICATIONS: FeedbackClassification[] = ["bug", "ui-issue", "data-issue"];
-const BLOCKED_RISK_FLAGS = new Set([
-  "auth",
-  "billing",
-  "permissions",
-  "backend",
-  "data-integrity",
-  "compliance",
-  "mixed-surface",
-  "unclear",
-]);
-const APPROVED_FIX_SCOPES = new Set([
-  "copy",
-  "frontend-local",
-  "frontend-ui",
-  "frontend-render",
-  "frontend-event-handler",
-  "conditional-rendering",
-  "label",
-]);
 const INVESTIGATION_FIX_SCOPES = new Set([
   "investigation",
   "implementation-review",
@@ -489,25 +468,13 @@ export class FeedbackGithubService {
     if (claudeOverride === "force") {
       return this.isInvestigationRequest(translation) ? "investigation" : "autofix";
     }
-    if (!translation.autoFixable) {
-      return "skip";
-    }
     if (this.isInvestigationRequest(translation)) {
-      if (translation.confidence < 0.7) {
-        return "skip";
-      }
       return "investigation";
     }
-    if (!CLAUDE_AUTO_FIX_CLASSIFICATIONS.includes(translation.classification)) {
-      return "skip";
+    if (CLAUDE_AUTO_FIX_CLASSIFICATIONS.includes(translation.classification)) {
+      return "autofix";
     }
-    if (translation.confidence < 0.7) {
-      return "skip";
-    }
-    if (translation.fixScope && !APPROVED_FIX_SCOPES.has(translation.fixScope)) {
-      return "skip";
-    }
-    return translation.riskFlags.some((flag) => BLOCKED_RISK_FLAGS.has(flag)) ? "skip" : "autofix";
+    return "skip";
   }
 
   private shouldTriggerClaude(
