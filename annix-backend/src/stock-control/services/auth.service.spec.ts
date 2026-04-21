@@ -121,6 +121,9 @@ describe("StockControlAuthService", () => {
     create: jest.fn().mockImplementation((data: any) => ({ ...data })),
     save: jest.fn().mockImplementation((entity: any) => Promise.resolve(entity)),
     update: jest.fn().mockResolvedValue({ affected: 1 }),
+    manager: {
+      query: jest.fn().mockResolvedValue([{ unified_company_id: 1 }]),
+    },
   };
 
   const baseUnifiedUser = {
