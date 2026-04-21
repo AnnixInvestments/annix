@@ -219,7 +219,7 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          github_token: ${{ github.token }}
+          github_token: ${{ secrets.PROJECT_TOKEN }}
           claude_args: "--allowedTools Bash,Read,Edit,MultiEdit,Write,Glob,Grep,LS,WebFetch,WebSearch,TodoRead,TodoWrite,Task"
           prompt: |
             You are operating autonomously on a feedback issue auto-created from user submissions.
@@ -288,7 +288,7 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          github_token: ${{ github.token }}
+          github_token: ${{ secrets.PROJECT_TOKEN }}
           claude_args: "--allowedTools Bash,Read,Edit,MultiEdit,Write,Glob,Grep,LS,WebFetch,WebSearch,TodoRead,TodoWrite,Task"
           prompt: |
             Read the CLAUDE.md and agents.md files for project conventions. Follow all existing patterns.
@@ -340,7 +340,7 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          github_token: ${{ github.token }}
+          github_token: ${{ secrets.PROJECT_TOKEN }}
           claude_args: "--allowedTools Bash,Read,Edit,MultiEdit,Write,Glob,Grep,LS,WebFetch,WebSearch,TodoRead,TodoWrite,Task"
           prompt: |
             You are operating autonomously. Do NOT ask questions or request clarification. Make all implementation decisions yourself based on the codebase, existing patterns, and the issue description. If something is ambiguous, pick the most reasonable approach and proceed.
