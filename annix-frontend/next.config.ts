@@ -14,18 +14,7 @@ const nextConfig: NextConfig = {
   ],
 
   async redirects() {
-    return [
-      {
-        source: "/stock-control/portal/:path*",
-        destination: "/ops/portal/:path*",
-        permanent: false,
-      },
-      {
-        source: "/au-rubber/portal/:path*",
-        destination: "/ops/portal/:path*",
-        permanent: false,
-      },
-    ];
+    return [];
   },
 
   async rewrites() {
