@@ -618,32 +618,33 @@ export default function IntegrationsSettingsPage() {
               Active Sessions
             </h3>
             <div className="space-y-2">
-              {activeBotSessions.map((session) => (
-                <Link
-                  key={session.id}
-                  href={`/annix-rep/meetings/${session.meetingId}/transcript`}
-                  className="block bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-4 hover:border-purple-300 dark:hover:border-purple-700 transition-colors"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                      <div>
-                        <p className="text-sm font-medium text-gray-900 dark:text-white">
-                          Meeting #{session.meetingId}
-                        </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
-                          {session.participantCount} participants
-                        </p>
+              {activeBotSessions.map((session) => {
+                const statusInfo = botStatusLabels[session.status];
+                return (
+                  <Link
+                    key={session.id}
+                    href={`/annix-rep/meetings/${session.meetingId}/transcript`}
+                    className="block bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-4 hover:border-purple-300 dark:hover:border-purple-700 transition-colors"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                        <div>
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">
+                            Meeting #{session.meetingId}
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            {session.participantCount} participants
+                          </p>
+                        </div>
                       </div>
+                      <span className={`px-2 py-0.5 text-xs rounded-full ${statusInfo.color}`}>
+                        {statusInfo.label}
+                      </span>
                     </div>
-                    <span
-                      className={`px-2 py-0.5 text-xs rounded-full ${botStatusLabels[session.status].color}`}
-                    >
-                      {botStatusLabels[session.status].label}
-                    </span>
-                  </div>
-                </Link>
-              ))}
+                  </Link>
+                );
+              })}
             </div>
           </div>
         )}
@@ -656,6 +657,7 @@ export default function IntegrationsSettingsPage() {
             <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 divide-y divide-gray-100 dark:divide-slate-700">
               {botSessionHistory.map((session) => {
                 const sessionMeetingId = session.meetingId;
+                const statusInfo = botStatusLabels[session.status];
                 return (
                   <div key={session.id} className="p-3 flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -670,10 +672,8 @@ export default function IntegrationsSettingsPage() {
                         </p>
                       </div>
                     </div>
-                    <span
-                      className={`px-2 py-0.5 text-xs rounded-full ${botStatusLabels[session.status].color}`}
-                    >
-                      {botStatusLabels[session.status].label}
+                    <span className={`px-2 py-0.5 text-xs rounded-full ${statusInfo.color}`}>
+                      {statusInfo.label}
                     </span>
                   </div>
                 );
