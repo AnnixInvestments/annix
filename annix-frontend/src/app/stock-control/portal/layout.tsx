@@ -166,8 +166,20 @@ function StockControlFeedbackWidget() {
   );
 }
 
+function useCompanyTitle() {
+  const { profile } = useStockControlAuth();
+  const pathname = usePathname();
+
+  useEffect(() => {
+    const companyName = profile?.companyName;
+    const base = companyName ? `${companyName} Stock Control` : "Annix Stock Control";
+    document.title = base;
+  }, [profile?.companyName, pathname]);
+}
+
 function PortalContent({ children }: { children: React.ReactNode }) {
   useHideOuterScrollbar();
+  useCompanyTitle();
 
   return (
     <StockControlBrandingProvider>
