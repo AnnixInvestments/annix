@@ -331,30 +331,36 @@ describe("PumpOrderService", () => {
 
   describe("summary", () => {
     it("should return order summary", async () => {
-      const mockOrders = [
-        {
-          ...mockOrder,
-          status: PumpOrderStatus.DRAFT,
-          orderType: PumpOrderType.NEW_PUMP,
-          totalAmount: 100000,
-        },
-        {
-          ...mockOrder,
-          id: 2,
-          status: PumpOrderStatus.SUBMITTED,
-          orderType: PumpOrderType.NEW_PUMP,
-          totalAmount: 50000,
-        },
-        {
-          ...mockOrder,
-          id: 3,
-          status: PumpOrderStatus.CONFIRMED,
-          orderType: PumpOrderType.SPARE_PARTS,
-          totalAmount: 25000,
-        },
-      ];
+      const summaryQueryBuilder = {
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn(),
+        getRawOne: jest.fn(),
+      };
 
-      mockPumpOrderRepo.find.mockResolvedValue(mockOrders);
+      let callCount = 0;
+      mockPumpOrderRepo.createQueryBuilder.mockImplementation(() => {
+        callCount++;
+        if (callCount === 1) {
+          summaryQueryBuilder.getRawMany.mockResolvedValueOnce([
+            { status: PumpOrderStatus.DRAFT, count: "1" },
+            { status: PumpOrderStatus.SUBMITTED, count: "1" },
+            { status: PumpOrderStatus.CONFIRMED, count: "1" },
+          ]);
+        } else if (callCount === 2) {
+          summaryQueryBuilder.getRawMany.mockResolvedValueOnce([
+            { orderType: PumpOrderType.NEW_PUMP, count: "2" },
+            { orderType: PumpOrderType.SPARE_PARTS, count: "1" },
+          ]);
+        } else if (callCount === 3) {
+          summaryQueryBuilder.getRawOne.mockResolvedValueOnce({
+            total: "3",
+            revenue: "175000",
+          });
+        }
+        return summaryQueryBuilder;
+      });
 
       const result = await service.summary();
 
@@ -367,11 +373,19 @@ describe("PumpOrderService", () => {
       expect(result.byType[PumpOrderType.SPARE_PARTS]).toBe(1);
       expect(result.totalRevenue).toBe(175000);
       expect(result.averageOrderValue).toBeCloseTo(58333.33, 0);
-      expect(mockPumpOrderRepo.find).toHaveBeenCalled();
+      expect(mockPumpOrderRepo.createQueryBuilder).toHaveBeenCalledTimes(3);
     });
 
     it("should handle empty orders", async () => {
-      mockPumpOrderRepo.find.mockResolvedValue([]);
+      const summaryQueryBuilder = {
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue([]),
+        getRawOne: jest.fn().mockResolvedValue({ total: "0", revenue: "0" }),
+      };
+
+      mockPumpOrderRepo.createQueryBuilder.mockReturnValue(summaryQueryBuilder);
 
       const result = await service.summary();
 

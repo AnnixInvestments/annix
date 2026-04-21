@@ -242,10 +242,92 @@ export class BrandingScraperService {
   private async scrapeCandidatesWithPuppeteer(
     websiteUrl: string,
   ): Promise<ScrapedBrandingCandidates> {
+    // Discover internal page links from the homepage first
+    const internalUrls = await this.discoverInternalLinks(websiteUrl);
+    const allUrls = [websiteUrl, ...internalUrls];
+    this.logger.log(
+      `Discovered ${internalUrls.length} internal pages to scrape: ${internalUrls.join(", ")}`,
+    );
+
+    const allLogoCandidates: CandidateImage[] = [];
+    const allHeroCandidates: CandidateImage[] = [];
+    const seenUrls = new Set<string>();
+    let primaryColor: string | null = null;
+
+    for (const pageUrl of allUrls) {
+      if (allHeroCandidates.length >= 30) break;
+
+      const result = await this.scrapeOnePage(pageUrl);
+      result.logoCandidates.forEach((c) => {
+        if (!seenUrls.has(c.url) && allLogoCandidates.length < 12) {
+          seenUrls.add(c.url);
+          allLogoCandidates.push(c);
+        }
+      });
+      result.heroCandidates.forEach((c) => {
+        if (!seenUrls.has(c.url) && allHeroCandidates.length < 30) {
+          seenUrls.add(c.url);
+          allHeroCandidates.push(c);
+        }
+      });
+      if (!primaryColor && result.primaryColor) {
+        primaryColor = result.primaryColor;
+      }
+    }
+
+    this.logger.log(
+      `Total across ${allUrls.length} pages: ${allLogoCandidates.length} logos, ${allHeroCandidates.length} hero images`,
+    );
+
+    return {
+      logoCandidates: allLogoCandidates,
+      heroCandidates: allHeroCandidates,
+      primaryColor,
+    };
+  }
+
+  private async discoverInternalLinks(websiteUrl: string): Promise<string[]> {
+    try {
+      const baseOrigin = new URL(websiteUrl).origin;
+      const discovered = await this.puppeteerPool.executeWithPage({
+        url: websiteUrl,
+        waitUntil: "domcontentloaded",
+        timeout: 15000,
+        execute: async (page) => {
+          return page.evaluate((origin) => {
+            const links = Array.from(document.querySelectorAll<HTMLAnchorElement>("a[href]"));
+            const internal = new Set<string>();
+            links.forEach((a) => {
+              try {
+                const url = new URL(a.href, origin);
+                if (
+                  url.origin === origin &&
+                  !url.hash &&
+                  !url.pathname.match(/\.(pdf|zip|jpg|png|gif|svg|css|js)$/i)
+                ) {
+                  internal.add(url.origin + url.pathname.replace(/\/$/, ""));
+                }
+              } catch {
+                // ignore invalid URLs
+              }
+            });
+            return Array.from(internal);
+          }, baseOrigin);
+        },
+      });
+      // Return up to 6 internal pages (excluding the homepage itself)
+      const homepage = new URL(websiteUrl).origin + new URL(websiteUrl).pathname.replace(/\/$/, "");
+      return discovered.filter((u) => u !== homepage && u !== baseOrigin).slice(0, 6);
+    } catch {
+      return [];
+    }
+  }
+
+  private async scrapeOnePage(pageUrl: string): Promise<ScrapedBrandingCandidates> {
     const extracted = await this.puppeteerPool.executeWithPage({
-      url: websiteUrl,
+      url: pageUrl,
       waitUntil: "networkidle2",
-      timeout: 30000,
+      timeout: 20000,
       execute: async (page) => {
         return page.evaluate(() => {
           const seen = new Set<string>();
@@ -257,7 +339,7 @@ export class BrandingScraperService {
             width: number | null = null,
             height: number | null = null,
           ) => {
-            if (!url || url.startsWith("data:") || seen.has(url) || list.length >= 20) {
+            if (!url || url.startsWith("data:") || seen.has(url) || list.length >= 30) {
               return;
             }
             seen.add(url);
@@ -383,8 +465,9 @@ export class BrandingScraperService {
           });
 
           Array.from(document.querySelectorAll<HTMLImageElement>("img"))
-            .filter((img) => img.naturalWidth >= 600 && img.naturalHeight >= 300)
+            .filter((img) => img.naturalWidth >= 300 && img.naturalHeight >= 150)
             .filter((img) => !(img.src || "").toLowerCase().includes("logo"))
+            .filter((img) => !(img.src || "").toLowerCase().includes("icon"))
             .forEach((img) => addHero(img.src, "large-img", img.naturalWidth, img.naturalHeight));
 
           let primaryColor: string | null = null;
@@ -392,6 +475,7 @@ export class BrandingScraperService {
           if (themeColor?.content) {
             primaryColor = themeColor.content;
           } else {
+            // Try header/nav background
             const header = document.querySelector("header") || document.querySelector("nav");
             if (header) {
               const computed = window.getComputedStyle(header);
@@ -403,6 +487,59 @@ export class BrandingScraperService {
                 bg !== "rgb(255, 255, 255)"
               ) {
                 primaryColor = bg;
+              }
+            }
+
+            // Try CSS custom properties on :root
+            if (!primaryColor) {
+              const rootStyle = window.getComputedStyle(document.documentElement);
+              const cssVarNames = [
+                "--primary",
+                "--brand",
+                "--accent",
+                "--main-color",
+                "--color-primary",
+              ];
+              for (const varName of cssVarNames) {
+                const val = rootStyle.getPropertyValue(varName).trim();
+                if (val && val !== "transparent") {
+                  primaryColor = val;
+                  break;
+                }
+              }
+            }
+
+            // Try prominent link/heading colors
+            if (!primaryColor) {
+              const links = Array.from(document.querySelectorAll("nav a, header a")).slice(0, 5);
+              for (const link of links) {
+                const color = window.getComputedStyle(link).color;
+                if (
+                  color &&
+                  color !== "rgb(0, 0, 0)" &&
+                  color !== "rgb(255, 255, 255)" &&
+                  color !== "rgba(0, 0, 0, 0)"
+                ) {
+                  primaryColor = color;
+                  break;
+                }
+              }
+            }
+
+            // Try footer background as accent
+            if (!primaryColor) {
+              const footer = document.querySelector("footer");
+              if (footer) {
+                const bg = window.getComputedStyle(footer).backgroundColor;
+                if (
+                  bg &&
+                  bg !== "rgba(0, 0, 0, 0)" &&
+                  bg !== "transparent" &&
+                  bg !== "rgb(255, 255, 255)" &&
+                  bg !== "rgb(0, 0, 0)"
+                ) {
+                  primaryColor = bg;
+                }
               }
             }
           }

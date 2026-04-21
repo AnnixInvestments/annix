@@ -11,6 +11,7 @@ const mockUserRepo = {
   create: jest.fn(),
   save: jest.fn(),
   find: jest.fn(),
+  findOne: jest.fn(),
   findOneBy: jest.fn(),
   delete: jest.fn(),
 };
@@ -104,16 +105,16 @@ describe("UserService", () => {
   describe("findOne", () => {
     it("should return a user by ID", async () => {
       const user = { id: 1, username: "john" } as User;
-      userRepo.findOneBy.mockResolvedValue(user);
+      userRepo.findOne.mockResolvedValue(user);
 
       const result = await service.findOne(1);
 
       expect(result).toEqual(user);
-      expect(userRepo.findOneBy).toHaveBeenCalledWith({ id: 1 });
+      expect(userRepo.findOne).toHaveBeenCalledWith({ where: { id: 1 }, relations: ["roles"] });
     });
 
     it("should throw NotFoundException if user does not exist", async () => {
-      userRepo.findOneBy.mockResolvedValue(null);
+      userRepo.findOne.mockResolvedValue(null);
 
       await expect(service.findOne(1)).rejects.toThrow(NotFoundException);
     });
