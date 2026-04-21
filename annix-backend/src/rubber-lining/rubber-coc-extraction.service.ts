@@ -940,12 +940,12 @@ export class RubberCocExtractionService {
         this.logger.error(`Gemini Vision API error: ${response.status} - ${errorText}`);
         if (response.status === 429) {
           throw new HttpException(
-            "AI service is temporarily busy. Please wait a moment and try again.",
+            "Please try again. If the problem persists, wait a few minutes before retrying.",
             HttpStatus.TOO_MANY_REQUESTS,
           );
         }
         throw new HttpException(
-          "Document analysis failed. Please try again.",
+          "Document analysis failed. Please try again, or wait a few minutes if the problem persists.",
           HttpStatus.BAD_GATEWAY,
         );
       }
