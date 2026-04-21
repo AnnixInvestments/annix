@@ -12,6 +12,7 @@ interface NavPage {
   slug: string;
   title: string;
   isHomePage: boolean;
+  showInNav?: boolean;
 }
 
 interface CompanyProfile {
@@ -135,7 +136,7 @@ export function AuIndustriesLayoutClient(props: { children: React.ReactNode }) {
           strategy="afterInteractive"
         />
 
-        <AuIndustriesNav pages={pages} />
+        <AuIndustriesNav pages={pages.filter((p) => p.showInNav !== false)} />
 
         <main className="flex-1">{props.children}</main>
 

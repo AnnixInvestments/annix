@@ -3680,6 +3680,7 @@ export interface WebsitePageDto {
   sortOrder: number;
   isPublished: boolean;
   isHomePage: boolean;
+  showInNav: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -3694,6 +3695,7 @@ export interface CreateWebsitePageDto {
   sortOrder?: number;
   isPublished?: boolean;
   isHomePage?: boolean;
+  showInNav?: boolean;
 }
 
 export interface UpdateWebsitePageDto {
@@ -3706,6 +3708,7 @@ export interface UpdateWebsitePageDto {
   sortOrder?: number;
   isPublished?: boolean;
   isHomePage?: boolean;
+  showInNav?: boolean;
 }
 
 export const auRubberApiClient = new AuRubberApiClient();

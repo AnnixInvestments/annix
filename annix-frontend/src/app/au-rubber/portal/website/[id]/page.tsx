@@ -46,6 +46,7 @@ export default function WebsitePageEditorPage() {
   const [sortOrder, setSortOrder] = useState(0);
   const [isPublished, setIsPublished] = useState(false);
   const [isHomePage, setIsHomePage] = useState(false);
+  const [showInNav, setShowInNav] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -69,6 +70,7 @@ export default function WebsitePageEditorPage() {
       setSortOrder(p.sortOrder);
       setIsPublished(p.isPublished);
       setIsHomePage(p.isHomePage);
+      setShowInNav(p.showInNav !== false);
       setLoaded(true);
     }
   }, [pageQuery.data, loaded]);
@@ -122,6 +124,7 @@ export default function WebsitePageEditorPage() {
         sortOrder,
         isPublished,
         isHomePage,
+        showInNav,
       };
 
       if (isNew) {
@@ -234,6 +237,15 @@ export default function WebsitePageEditorPage() {
                     className="w-4 h-4 text-yellow-500 border-gray-300 rounded focus:ring-yellow-500"
                   />
                   <span className="text-sm font-medium text-gray-700">Home Page</span>
+                </label>
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={showInNav}
+                    onChange={(e) => setShowInNav(e.target.checked)}
+                    className="w-4 h-4 text-yellow-500 border-gray-300 rounded focus:ring-yellow-500"
+                  />
+                  <span className="text-sm font-medium text-gray-700">Show in Nav</span>
                 </label>
               </div>
             </div>

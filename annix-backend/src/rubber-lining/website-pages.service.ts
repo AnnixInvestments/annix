@@ -13,6 +13,7 @@ export interface CreateWebsitePageDto {
   sortOrder?: number;
   isPublished?: boolean;
   isHomePage?: boolean;
+  showInNav?: boolean;
 }
 
 export interface UpdateWebsitePageDto {
@@ -25,6 +26,7 @@ export interface UpdateWebsitePageDto {
   sortOrder?: number;
   isPublished?: boolean;
   isHomePage?: boolean;
+  showInNav?: boolean;
 }
 
 @Injectable()

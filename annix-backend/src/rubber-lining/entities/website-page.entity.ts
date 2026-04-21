@@ -38,6 +38,9 @@ export class WebsitePage {
   @Column({ name: "is_home_page", type: "boolean", default: false })
   isHomePage: boolean;
 
+  @Column({ name: "show_in_nav", type: "boolean", default: true })
+  showInNav: boolean;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 
