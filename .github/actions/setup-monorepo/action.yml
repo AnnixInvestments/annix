@@ -1,0 +1,32 @@
+name: Setup Annix monorepo
+description: >
+  Setup pnpm from package.json's packageManager field, setup Node.js with
+  pnpm cache, and install dependencies. Assumes the caller has already done
+  actions/checkout (required so this composite file is on disk). One
+  composite action used by every workflow that runs biome / tsc / tests —
+  keeps deploy.yml and deploy-staging.yml from drifting on pnpm / Node
+  versions.
+inputs:
+  node-version:
+    description: Node.js version
+    required: false
+    default: "22"
+runs:
+  using: composite
+  steps:
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v5
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v6
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: pnpm
+
+    - name: Configure git line endings
+      shell: bash
+      run: git config --global core.autocrlf false
+
+    - name: Install dependencies
+      shell: bash
+      run: pnpm install --frozen-lockfile
