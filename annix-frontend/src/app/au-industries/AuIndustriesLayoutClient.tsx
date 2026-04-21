@@ -69,7 +69,7 @@ export function AuIndustriesLayoutClient(props: { children: React.ReactNode }) {
       "BEE Level 4 certified supplier of rubber lining, rubber sheeting, HDPE lining, and industrial rubber solutions for mining, chemical processing, and water treatment in South Africa.",
     url: "https://auind.co.za",
     logo: "https://auind.co.za/au-industries/logo.jpg",
-    image: "https://auind.co.za/au-industries/hero-excavator.jpg",
+    image: "https://auind.co.za/au-industries/gallery/gallery29.jpg",
     telephone: phone,
     email: email,
     address: profile

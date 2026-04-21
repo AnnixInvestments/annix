@@ -2,13 +2,32 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { browserBaseUrl } from "@/lib/api-config";
 
-export default function AuIndustriesHomePage() {
+const DEFAULT_HERO_IMAGE = "/au-industries/gallery/gallery29.jpg";
+
+export default function AuIndustriesHomePage(): React.JSX.Element {
+  const [heroImage, setHeroImage] = useState(DEFAULT_HERO_IMAGE);
+
+  useEffect(() => {
+    const base = browserBaseUrl();
+    fetch(`${base}/public/au-industries/home`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        const url = data?.heroImageUrl;
+        if (url) {
+          setHeroImage(url);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   return (
     <div>
       <section
         className="relative h-[550px] md:h-[650px] bg-cover bg-center"
-        style={{ backgroundImage: "url(/au-industries/hero-excavator.jpg)" }}
+        style={{ backgroundImage: `url(${heroImage})` }}
       >
         <div className="absolute inset-0 bg-black/40" />
         <div className="relative max-w-4xl mx-auto px-4 h-full flex flex-col items-center justify-center text-center">
