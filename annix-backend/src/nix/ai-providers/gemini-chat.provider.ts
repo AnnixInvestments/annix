@@ -20,7 +20,7 @@ export class GeminiChatProvider {
 
   constructor(config?: ChatProviderConfig) {
     this.apiKey = config?.apiKey || process.env.GEMINI_API_KEY || "";
-    this.model = config?.model || process.env.GEMINI_CHAT_MODEL || "gemini-2.0-flash";
+    this.model = config?.model || process.env.GEMINI_CHAT_MODEL || "gemini-2.5-flash";
     this.temperature = config?.temperature ?? 0.7;
     this.maxTokens = config?.maxTokens ?? 4096;
   }

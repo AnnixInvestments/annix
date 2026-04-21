@@ -2724,20 +2724,7 @@ Formula: totalPrice = totalKg × salePricePerKg
         }
         return extractText(excelText);
       } else {
-        const pdfText = await (async () => {
-          try {
-            const pdfData = await pdfParse(docBuffer);
-            return pdfData.text || "";
-          } catch {
-            return "";
-          }
-        })();
-
-        if (pdfText.length >= 50) {
-          return extractText(pdfText);
-        } else {
-          return extractImages(docBuffer);
-        }
+        return extractImages(docBuffer);
       }
     })();
 

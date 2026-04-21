@@ -76,7 +76,7 @@ export interface ReconciliationListDto {
 export class RubberStatementReconciliationService {
   private readonly logger = new Logger(RubberStatementReconciliationService.name);
   private readonly geminiBaseUrl = "https://generativelanguage.googleapis.com/v1beta";
-  private readonly geminiModel = "gemini-2.0-flash";
+  private readonly geminiModel = "gemini-2.5-flash";
   private readonly apiKey: string;
 
   constructor(
