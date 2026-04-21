@@ -74,7 +74,7 @@ export class SecureDocument {
   attachmentPath: string | null;
 
   @ApiProperty({ description: "User who created the document" })
-  @ManyToOne(() => User, { eager: true })
+  @ManyToOne(() => User)
   @JoinColumn({ name: "created_by_id" })
   createdBy: User;
 

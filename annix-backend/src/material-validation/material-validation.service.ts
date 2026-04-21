@@ -27,18 +27,32 @@ export interface MaterialLimitsInfo {
 
 @Injectable()
 export class MaterialValidationService {
+  private cachedLimits: MaterialLimit[] | null = null;
+  private cacheLoadedAt = 0;
+  private static readonly CACHE_TTL_MS = 60 * 60 * 1000;
+
   constructor(
     @InjectRepository(MaterialLimit)
     private materialLimitRepository: Repository<MaterialLimit>,
   ) {}
 
+  private async loadLimits(): Promise<MaterialLimit[]> {
+    const now = Date.now();
+    if (this.cachedLimits && now - this.cacheLoadedAt < MaterialValidationService.CACHE_TTL_MS) {
+      return this.cachedLimits;
+    }
+    this.cachedLimits = await this.materialLimitRepository.find();
+    this.cacheLoadedAt = now;
+    return this.cachedLimits;
+  }
+
   async findAll(): Promise<MaterialLimitResponseDto[]> {
-    const entities = await this.materialLimitRepository.find();
+    const entities = await this.loadLimits();
     return MaterialLimitResponseDto.fromEntities(entities);
   }
 
   async findBySpecName(steelSpecName: string): Promise<MaterialLimit | null> {
-    const allLimits = await this.materialLimitRepository.find();
+    const allLimits = await this.loadLimits();
 
     const specNameLower = steelSpecName.toLowerCase();
 
@@ -131,7 +145,7 @@ export class MaterialValidationService {
     temperatureC: number | undefined,
     pressureBar: number | undefined,
   ): Promise<string[]> {
-    const allLimits = await this.materialLimitRepository.find();
+    const allLimits = await this.loadLimits();
     const suitable: string[] = [];
 
     for (const limits of allLimits) {

@@ -158,7 +158,7 @@ export class MessagingService {
 
     const otherParticipants = await this.participantRepo.find({
       where: { conversationId, isActive: true, userId: Not(senderId) },
-      relations: ["user"],
+      relations: ["user", "user.roles"],
     });
 
     await this.notificationService.notifyNewMessage(

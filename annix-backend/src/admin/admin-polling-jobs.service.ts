@@ -107,6 +107,11 @@ export const POLLING_JOB_METADATA: Record<
     module: "Annix Rep",
     defaultIntervalMs: SIX_HOURS,
   },
+  "stock-control:notification-count": {
+    description: "Stock Control — notification badge count",
+    module: "Stock Control",
+    defaultIntervalMs: SIX_HOURS,
+  },
 };
 
 const NIGHT_SUSPENSION_WINDOWS: Record<number, { start: number; end: number }> = {

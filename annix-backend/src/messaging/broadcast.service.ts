@@ -247,6 +247,7 @@ export class BroadcastService {
   private async sendBroadcastEmails(broadcast: Broadcast, userIds: number[]): Promise<void> {
     const users = await this.userRepo.find({
       where: { id: In(userIds) },
+      relations: ["roles"],
     });
 
     await this.notificationService.notifyBroadcast(broadcast, users);

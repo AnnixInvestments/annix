@@ -86,7 +86,6 @@ export class User {
   @ManyToMany(
     () => UserRole,
     (role) => role.users,
-    { eager: true },
   )
   @JoinTable()
   roles: UserRole[];

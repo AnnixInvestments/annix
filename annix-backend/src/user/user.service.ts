@@ -41,11 +41,13 @@ export class UserService {
   }
 
   findAll() {
-    return this.userRepo.find().then((users) => users.map((user) => plainToInstance(User, user)));
+    return this.userRepo
+      .find({ relations: ["roles"] })
+      .then((users) => users.map((user) => plainToInstance(User, user)));
   }
 
   async findOne(id: number) {
-    const user = await this.userRepo.findOneBy({ id });
+    const user = await this.userRepo.findOne({ where: { id }, relations: ["roles"] });
     if (!user) throw new NotFoundException(`User #${id} not found`);
     return plainToInstance(User, user);
   }

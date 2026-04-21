@@ -148,7 +148,7 @@ export function useChatState() {
     if (!messagingEnabled) return;
 
     fetchGeneralMessages();
-    const interval = setInterval(fetchGeneralMessages, 3000);
+    const interval = setInterval(fetchGeneralMessages, 15000);
     return () => clearInterval(interval);
   }, [fetchGeneralMessages, messagingEnabled]);
 
@@ -156,7 +156,7 @@ export function useChatState() {
     if (!messagingEnabled || !state.activeConversation) return;
 
     fetchConvMessages();
-    const interval = setInterval(fetchConvMessages, 3000);
+    const interval = setInterval(fetchConvMessages, 15000);
     return () => clearInterval(interval);
   }, [fetchConvMessages, messagingEnabled, state.activeConversation]);
 
@@ -173,7 +173,7 @@ export function useChatState() {
     };
 
     fetchConversations();
-    const interval = setInterval(fetchConversations, 5000);
+    const interval = setInterval(fetchConversations, 30000);
     return () => clearInterval(interval);
   }, [messagingEnabled, state.isOpen, updateState]);
 
@@ -190,7 +190,7 @@ export function useChatState() {
     };
 
     fetchUnread();
-    const interval = setInterval(fetchUnread, 5000);
+    const interval = setInterval(fetchUnread, 30000);
     return () => clearInterval(interval);
   }, [messagingEnabled, state.isOpen, updateState]);
 

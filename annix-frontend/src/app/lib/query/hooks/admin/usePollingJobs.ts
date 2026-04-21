@@ -9,13 +9,14 @@ import { adminKeys } from "@/app/lib/query/keys";
 import { API_BASE_URL } from "@/lib/api-config";
 
 const FIVE_MINUTES = 5 * 60 * 1000;
+const SIX_HOURS = 6 * 60 * 60 * 1000;
 
 export function usePollingJobs() {
   return useQuery({
     queryKey: adminKeys.pollingJobs.list(),
     queryFn: () => adminApiClient.pollingJobs(),
-    // eslint-disable-next-line no-restricted-syntax -- this is the admin page that configures polling itself
-    refetchInterval: 2 * 60 * 1000,
+    // eslint-disable-next-line no-restricted-syntax -- admin page, low traffic
+    refetchInterval: SIX_HOURS,
   });
 }
 
@@ -65,8 +66,8 @@ export function usePollingJobsGlobalSettings() {
   return useQuery({
     queryKey: adminKeys.pollingJobs.globalSettings(),
     queryFn: () => adminApiClient.pollingJobsGlobalSettings(),
-    // eslint-disable-next-line no-restricted-syntax -- this is the admin page that configures polling itself
-    refetchInterval: 2 * 60 * 1000,
+    // eslint-disable-next-line no-restricted-syntax -- admin page, low traffic
+    refetchInterval: SIX_HOURS,
   });
 }
 
@@ -89,13 +90,15 @@ async function fetchPollingConfig(): Promise<PollingJobRuntimeConfigDto> {
   return response.json();
 }
 
+const THIRTY_MINUTES = 30 * 60 * 1000;
+
 export function usePollingConfig() {
   return useQuery({
     queryKey: adminKeys.pollingJobs.config(),
     queryFn: fetchPollingConfig,
-    staleTime: FIVE_MINUTES,
+    staleTime: THIRTY_MINUTES,
     // eslint-disable-next-line no-restricted-syntax -- source of truth for usePollingInterval; must poll itself
-    refetchInterval: FIVE_MINUTES,
+    refetchInterval: THIRTY_MINUTES,
     refetchOnWindowFocus: false,
   });
 }

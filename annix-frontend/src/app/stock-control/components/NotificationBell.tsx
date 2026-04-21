@@ -1,37 +1,25 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { Bell, Check, CheckCheck, ClipboardCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { stockControlApiClient, WorkflowNotification } from "@/app/lib/api/stockControlApi";
+import type { WorkflowNotification } from "@/app/lib/api/stockControlApi";
+import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateTimeZA } from "@/app/lib/datetime";
 import { useDisclosure } from "@/app/lib/hooks/useDisclosure";
-import { log } from "@/app/lib/logger";
+import { useWorkflowNotifications } from "@/app/lib/query/hooks";
+import { stockControlKeys } from "@/app/lib/query/keys";
 import { useNotificationCount } from "../hooks/useNotificationCount";
 
 export function NotificationBell() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { isOpen, close, toggle } = useDisclosure();
-  const [notifications, setNotifications] = useState<WorkflowNotification[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { count: unreadCount, refetch: refetchCount } = useNotificationCount();
-
-  const fetchNotifications = useCallback(async () => {
-    try {
-      const notifs = await stockControlApiClient.unreadNotifications();
-      setNotifications(notifs);
-    } catch (error) {
-      log.debug("Failed to fetch notifications:", error);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchNotifications();
-
-    const interval = setInterval(fetchNotifications, 30000);
-    return () => clearInterval(interval);
-  }, [fetchNotifications]);
+  const { data: notifications = [] } = useWorkflowNotifications("unread");
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -44,32 +32,35 @@ export function NotificationBell() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [close]);
 
+  const invalidateNotifications = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: stockControlKeys.notifications.all });
+    refetchCount();
+  }, [queryClient, refetchCount]);
+
   const handleMarkAsRead = useCallback(
     async (notificationId: number, e: React.MouseEvent) => {
       e.stopPropagation();
       try {
         await stockControlApiClient.markNotificationAsRead(notificationId);
-        setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
-        refetchCount();
+        invalidateNotifications();
       } catch (error) {
         console.error("Failed to mark notification as read:", error);
       }
     },
-    [refetchCount],
+    [invalidateNotifications],
   );
 
   const handleMarkAllAsRead = useCallback(async () => {
     setIsLoading(true);
     try {
       await stockControlApiClient.markAllNotificationsAsRead();
-      setNotifications([]);
-      refetchCount();
+      invalidateNotifications();
     } catch (error) {
       console.error("Failed to mark all as read:", error);
     } finally {
       setIsLoading(false);
     }
-  }, [refetchCount]);
+  }, [invalidateNotifications]);
 
   const handleNotificationClick = useCallback(
     (notification: WorkflowNotification) => {
@@ -102,8 +93,7 @@ export function NotificationBell() {
           bgNotes || undefined,
         );
         await stockControlApiClient.markNotificationAsRead(notification.id);
-        setNotifications((prev) => prev.filter((n) => n.id !== notification.id));
-        refetchCount();
+        invalidateNotifications();
         setCompletingBgStep(null);
         setBgNotes("");
       } catch (error) {
@@ -112,7 +102,7 @@ export function NotificationBell() {
         setBgSaving(false);
       }
     },
-    [bgNotes, refetchCount],
+    [bgNotes, invalidateNotifications],
   );
 
   const actionTypeLabel = (actionType: string): string => {

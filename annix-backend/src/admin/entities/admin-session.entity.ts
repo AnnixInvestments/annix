@@ -14,7 +14,7 @@ export class AdminSession {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne(() => User, { eager: true })
+  @ManyToOne(() => User)
   @JoinColumn({ name: "user_id" })
   user: User;
 

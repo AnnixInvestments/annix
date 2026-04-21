@@ -388,29 +388,48 @@ export class PumpOrderService {
   }
 
   async summary(): Promise<PumpOrderSummaryDto> {
-    const orders = await this.orderRepository.find();
+    const statusCounts = await this.orderRepository
+      .createQueryBuilder("o")
+      .select("o.status", "status")
+      .addSelect("COUNT(*)", "count")
+      .groupBy("o.status")
+      .getRawMany<{ status: PumpOrderStatus; count: string }>();
 
-    const byStatus = orders.reduce(
-      (acc, order) => {
-        acc[order.status] = (acc[order.status] ?? 0) + 1;
+    const typeCounts = await this.orderRepository
+      .createQueryBuilder("o")
+      .select("o.order_type", "orderType")
+      .addSelect("COUNT(*)", "count")
+      .groupBy("o.order_type")
+      .getRawMany<{ orderType: PumpOrderType; count: string }>();
+
+    const revenueResult = await this.orderRepository
+      .createQueryBuilder("o")
+      .select("COUNT(*)", "total")
+      .addSelect("COALESCE(SUM(o.total_amount), 0)", "revenue")
+      .getRawOne<{ total: string; revenue: string }>();
+
+    const byStatus = statusCounts.reduce(
+      (acc, row) => {
+        acc[row.status] = Number(row.count);
         return acc;
       },
       {} as Record<PumpOrderStatus, number>,
     );
 
-    const byType = orders.reduce(
-      (acc, order) => {
-        acc[order.orderType] = (acc[order.orderType] ?? 0) + 1;
+    const byType = typeCounts.reduce(
+      (acc, row) => {
+        acc[row.orderType] = Number(row.count);
         return acc;
       },
       {} as Record<PumpOrderType, number>,
     );
 
-    const totalRevenue = orders.reduce((sum, order) => sum + Number(order.totalAmount), 0);
-    const averageOrderValue = orders.length > 0 ? totalRevenue / orders.length : 0;
+    const totalOrders = Number(revenueResult?.total || 0);
+    const totalRevenue = Number(revenueResult?.revenue || 0);
+    const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
     return {
-      totalOrders: orders.length,
+      totalOrders,
       byStatus,
       byType,
       totalRevenue,
