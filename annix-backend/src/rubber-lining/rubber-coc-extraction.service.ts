@@ -1,4 +1,4 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { HttpException, HttpStatus, Injectable, Logger } from "@nestjs/common";
 import { pdfToPng } from "pdf-to-png-converter";
 import { AiUsageService } from "../ai-usage/ai-usage.service";
 import { AiApp, AiProvider } from "../ai-usage/entities/ai-usage-log.entity";
@@ -938,7 +938,16 @@ export class RubberCocExtractionService {
       if (!response.ok) {
         const errorText = await response.text();
         this.logger.error(`Gemini Vision API error: ${response.status} - ${errorText}`);
-        throw new Error(`Gemini Vision API error: ${response.status}`);
+        if (response.status === 429) {
+          throw new HttpException(
+            "AI service is temporarily busy. Please wait a moment and try again.",
+            HttpStatus.TOO_MANY_REQUESTS,
+          );
+        }
+        throw new HttpException(
+          "Document analysis failed. Please try again.",
+          HttpStatus.BAD_GATEWAY,
+        );
       }
 
       const data: GeminiResponse = await response.json();
@@ -982,9 +991,19 @@ export class RubberCocExtractionService {
       clearTimeout(timeoutId);
       if (error.name === "AbortError") {
         this.logger.error("Gemini Vision API request timed out after 180 seconds");
-        throw new Error("Gemini Vision API request timed out");
+        throw new HttpException(
+          "Document analysis timed out. Please try again with a smaller image.",
+          HttpStatus.GATEWAY_TIMEOUT,
+        );
       }
-      throw error;
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      this.logger.error(`Unexpected Gemini Vision error: ${error.message}`);
+      throw new HttpException(
+        "Document analysis failed. Please try again.",
+        HttpStatus.BAD_GATEWAY,
+      );
     }
   }
 
