@@ -8,11 +8,17 @@ interface ExportParams {
   dateFrom: string | undefined;
   dateTo: string | undefined;
   excludeExported: boolean;
+  invoiceId?: number;
 }
 
 interface PreviewColumn {
   label: string;
   value: string;
+}
+
+interface InvoiceOption {
+  id: number;
+  label: string;
 }
 
 interface SageExportModalProps {
@@ -28,6 +34,7 @@ interface SageExportModalProps {
   exportCsv: (params: ExportParams) => Promise<Blob>;
   formatPreview: (data: unknown) => PreviewColumn[];
   extractCount: (data: unknown) => number;
+  invoiceOptions?: InvoiceOption[];
 }
 
 const ACCENT_CLASSES = {
@@ -59,6 +66,7 @@ export default function SageExportModal(props: SageExportModalProps) {
     formatPreview,
     extractCount,
   } = props;
+  const invoiceOptions = props.invoiceOptions;
   const rawAccentColor = props.accentColor;
   const accent = ACCENT_CLASSES[rawAccentColor || "orange"];
   const defaultDateTo = now().toISODate() || "";
@@ -67,6 +75,7 @@ export default function SageExportModal(props: SageExportModalProps) {
   const [dateFrom, setDateFrom] = useState(defaultDateFrom);
   const [dateTo, setDateTo] = useState(defaultDateTo);
   const [excludeExported, setExcludeExported] = useState(true);
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState<number | undefined>(undefined);
   const [preview, setPreview] = useState<unknown>(null);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -83,6 +92,7 @@ export default function SageExportModal(props: SageExportModalProps) {
         dateFrom: dateFrom || undefined,
         dateTo: dateTo || undefined,
         excludeExported,
+        invoiceId: selectedInvoiceId,
       });
       setPreview(result);
     } catch (err) {
@@ -90,7 +100,7 @@ export default function SageExportModal(props: SageExportModalProps) {
     } finally {
       setIsLoadingPreview(false);
     }
-  }, [dateFrom, dateTo, excludeExported, fetchPreviewFn]);
+  }, [dateFrom, dateTo, excludeExported, selectedInvoiceId, fetchPreviewFn]);
 
   useEffect(() => {
     fetchPreview();
@@ -104,6 +114,7 @@ export default function SageExportModal(props: SageExportModalProps) {
         dateFrom: dateFrom || undefined,
         dateTo: dateTo || undefined,
         excludeExported,
+        invoiceId: selectedInvoiceId,
       });
 
       const url = URL.createObjectURL(blob);
@@ -246,6 +257,27 @@ export default function SageExportModal(props: SageExportModalProps) {
                   {excludeLabel}
                 </label>
               </div>
+
+              {invoiceOptions && invoiceOptions.length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Invoice</label>
+                  <select
+                    value={selectedInvoiceId || ""}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setSelectedInvoiceId(val ? Number(val) : undefined);
+                    }}
+                    className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm ${accent.focusBorder} sm:text-sm`}
+                  >
+                    <option value="">All invoices</option>
+                    {invoiceOptions.map((inv) => (
+                      <option key={inv.id} value={inv.id}>
+                        {inv.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               {isLoadingPreview ? (
                 <div className="text-center py-4">

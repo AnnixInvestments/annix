@@ -62,6 +62,10 @@ export class RubberSageInvoiceAdapterService implements SageInvoiceAdapter, OnMo
       qb.andWhere("invoice.exported_to_sage_at IS NULL");
     }
 
+    if (filters.invoiceId) {
+      qb.andWhere("invoice.id = :invoiceId", { invoiceId: filters.invoiceId });
+    }
+
     qb.orderBy("invoice.invoice_date", "ASC");
 
     const entities = await qb.getMany();

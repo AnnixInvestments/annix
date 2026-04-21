@@ -18,4 +18,7 @@ export class SageExportFilterDto {
   @IsOptional()
   @IsString()
   invoiceType?: string;
+
+  @IsOptional()
+  invoiceId?: number;
 }

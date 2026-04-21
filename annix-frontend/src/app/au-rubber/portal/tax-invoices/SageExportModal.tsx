@@ -6,6 +6,7 @@ import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
 interface SupplierSageExportModalProps {
   onClose: () => void;
   onSuccess: () => void;
+  invoiceOptions?: Array<{ id: number; label: string }>;
 }
 
 export default function SupplierSageExportModal(props: SupplierSageExportModalProps) {
@@ -13,6 +14,7 @@ export default function SupplierSageExportModal(props: SupplierSageExportModalPr
     <SageExportModal
       onClose={props.onClose}
       onSuccess={props.onSuccess}
+      invoiceOptions={props.invoiceOptions}
       title="Export to Sage"
       description="Export approved supplier invoices as CSV for Sage Business Cloud import"
       csvFilename="sage-export.csv"

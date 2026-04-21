@@ -2606,10 +2606,12 @@ Formula: totalPrice = totalKg × salePricePerKg
   @ApiQuery({ name: "dateFrom", required: false })
   @ApiQuery({ name: "dateTo", required: false })
   @ApiQuery({ name: "excludeExported", required: false })
+  @ApiQuery({ name: "invoiceId", required: false })
   async sageExportPreview(
     @Query("dateFrom") dateFrom?: string,
     @Query("dateTo") dateTo?: string,
     @Query("excludeExported") excludeExported?: string,
+    @Query("invoiceId") invoiceId?: string,
   ): Promise<{ invoiceCount: number; lineItemCount: number; totalAmount: number }> {
     const context = { companyId: null, appKey: "au-rubber" };
     const preview = await this.rubberSageAdapterService.previewCount(
@@ -2617,6 +2619,7 @@ Formula: totalPrice = totalKg × salePricePerKg
         dateFrom: dateFrom || undefined,
         dateTo: dateTo || undefined,
         excludeExported: excludeExported !== "false",
+        invoiceId: invoiceId ? Number(invoiceId) : undefined,
       },
       context,
     );
@@ -2634,10 +2637,12 @@ Formula: totalPrice = totalKg × salePricePerKg
   @ApiQuery({ name: "dateFrom", required: false })
   @ApiQuery({ name: "dateTo", required: false })
   @ApiQuery({ name: "excludeExported", required: false })
+  @ApiQuery({ name: "invoiceId", required: false })
   async sageExportCsv(
     @Query("dateFrom") dateFrom?: string,
     @Query("dateTo") dateTo?: string,
     @Query("excludeExported") excludeExported?: string,
+    @Query("invoiceId") invoiceId?: string,
     @Res() res?: Response,
   ): Promise<void> {
     const context = { companyId: null, appKey: "au-rubber" };
@@ -2645,6 +2650,7 @@ Formula: totalPrice = totalKg × salePricePerKg
       dateFrom: dateFrom || undefined,
       dateTo: dateTo || undefined,
       excludeExported: excludeExported !== "false",
+      invoiceId: invoiceId ? Number(invoiceId) : undefined,
     };
 
     const { invoices, entityIds } = await this.rubberSageAdapterService.exportableInvoices(

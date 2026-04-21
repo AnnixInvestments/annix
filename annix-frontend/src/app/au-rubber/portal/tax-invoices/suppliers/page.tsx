@@ -1176,6 +1176,13 @@ export default function SupplierTaxInvoicesPage() {
           <SageExportModal
             onClose={() => setShowSageExportModal(false)}
             onSuccess={() => fetchData()}
+            invoiceOptions={invoices
+              .filter((inv) => inv.status === "APPROVED")
+              .map((inv) => {
+                const companyName = inv.companyName;
+                const company = companyName || "Unknown";
+                return { id: inv.id, label: `${inv.invoiceNumber} — ${company}` };
+              })}
           />
         </Suspense>
       )}

@@ -3187,6 +3187,7 @@ class AuRubberApiClient {
     dateFrom?: string;
     dateTo?: string;
     excludeExported?: boolean;
+    invoiceId?: number;
   }): Promise<{ invoiceCount: number; lineItemCount: number; totalAmount: number }> {
     const query = new URLSearchParams();
     if (params.dateFrom) query.set("dateFrom", params.dateFrom);
@@ -3194,6 +3195,7 @@ class AuRubberApiClient {
     if (params.excludeExported !== undefined) {
       query.set("excludeExported", String(params.excludeExported));
     }
+    if (params.invoiceId) query.set("invoiceId", String(params.invoiceId));
     return this.request(
       `/rubber-lining/portal/tax-invoices/export/sage-preview?${query.toString()}`,
     );
@@ -3203,6 +3205,7 @@ class AuRubberApiClient {
     dateFrom?: string;
     dateTo?: string;
     excludeExported?: boolean;
+    invoiceId?: number;
   }): Promise<Blob> {
     const query = new URLSearchParams();
     if (params.dateFrom) query.set("dateFrom", params.dateFrom);
@@ -3210,6 +3213,7 @@ class AuRubberApiClient {
     if (params.excludeExported !== undefined) {
       query.set("excludeExported", String(params.excludeExported));
     }
+    if (params.invoiceId) query.set("invoiceId", String(params.invoiceId));
     const url = `${this.baseURL}/rubber-lining/portal/tax-invoices/export/sage-csv?${query.toString()}`;
     const headers = this.authHeaders();
     const response = await fetch(url, { headers });
