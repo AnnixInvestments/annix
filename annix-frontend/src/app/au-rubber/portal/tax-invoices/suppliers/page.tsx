@@ -5,6 +5,7 @@ import {
   CheckCircle,
   Download,
   FileText,
+  RefreshCw,
   Send,
   ShieldCheck,
   ShieldX,
@@ -70,6 +71,7 @@ export default function SupplierTaxInvoicesPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadIsCreditNote, setUploadIsCreditNote] = useState(false);
   const [showSageExportModal, setShowSageExportModal] = useState(false);
+  const [isReExtracting, setIsReExtracting] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [selectedForApproval, setSelectedForApproval] = useState<Set<number>>(new Set());
   const [isBulkApproving, setIsBulkApproving] = useState(false);
@@ -478,6 +480,28 @@ export default function SupplierTaxInvoicesPage() {
           >
             <Download className="w-4 h-4 mr-2" />
             Export to Sage
+          </button>
+          <button
+            onClick={async () => {
+              setIsReExtracting(true);
+              try {
+                const result = await auRubberApiClient.reExtractAllTaxInvoices();
+                showToast(
+                  `Re-extraction triggered for ${result.triggered} invoices. This may take a few minutes.`,
+                  "success",
+                );
+                setTimeout(() => fetchData(), 30000);
+              } catch (err) {
+                showToast(err instanceof Error ? err.message : "Re-extraction failed", "error");
+              } finally {
+                setIsReExtracting(false);
+              }
+            }}
+            disabled={isReExtracting}
+            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+          >
+            <RefreshCw className={`w-4 h-4 mr-2 ${isReExtracting ? "animate-spin" : ""}`} />
+            {isReExtracting ? "Re-extracting..." : "Re-extract All"}
           </button>
           <button
             onClick={() => setShowUploadModal(true)}

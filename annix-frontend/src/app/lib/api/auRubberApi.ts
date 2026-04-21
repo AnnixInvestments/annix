@@ -3221,6 +3221,12 @@ class AuRubberApiClient {
     return response.blob();
   }
 
+  async reExtractAllTaxInvoices(): Promise<{ triggered: number }> {
+    return this.request("/rubber-lining/portal/tax-invoices/re-extract-all", {
+      method: "POST",
+    });
+  }
+
   async customerSageExportPreview(params: {
     dateFrom?: string;
     dateTo?: string;

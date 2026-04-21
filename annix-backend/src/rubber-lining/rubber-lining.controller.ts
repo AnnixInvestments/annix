@@ -218,6 +218,7 @@ import {
   RubberTaxInvoiceService,
   UpdateTaxInvoiceDto,
 } from "./rubber-tax-invoice.service";
+import { RubberExtractionOrchestratorService } from "./services/rubber-extraction-orchestrator.service";
 import { RubberOrderConfirmationService } from "./services/rubber-order-confirmation.service";
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -263,6 +264,7 @@ export class RubberLiningController {
     private readonly rubberStatementReconciliationService: RubberStatementReconciliationService,
     private readonly rubberRollIssuanceService: RubberRollIssuanceService,
     private readonly rubberOrderConfirmationService: RubberOrderConfirmationService,
+    private readonly extractionOrchestratorService: RubberExtractionOrchestratorService,
     @InjectRepository(RubberAppProfile)
     private readonly appProfileRepository: Repository<RubberAppProfile>,
   ) {}
@@ -2741,6 +2743,45 @@ Formula: totalPrice = totalKg × salePricePerKg
     if (!updated) throw new NotFoundException("Failed to update tax invoice");
 
     return updated;
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Post("portal/tax-invoices/re-extract-all")
+  @ApiOperation({ summary: "Re-extract all tax invoices with documents using Vision AI" })
+  async reExtractAllTaxInvoices(): Promise<{ triggered: number }> {
+    const allInvoices = await this.rubberTaxInvoiceService.allTaxInvoices({
+      invoiceType: TaxInvoiceType.SUPPLIER,
+      isCreditNote: false,
+    });
+
+    const withDocuments = allInvoices.filter((inv) => inv.documentPath);
+    const logger = this.logger;
+    const storageService = this.storageService;
+    const orchestrator = this.extractionOrchestratorService;
+
+    (async () => {
+      for (const inv of withDocuments) {
+        try {
+          const docBuffer = await storageService.download(inv.documentPath!);
+          orchestrator.triggerTaxInvoiceExtraction(
+            inv.id,
+            docBuffer,
+            inv.documentPath!,
+            inv.companyName,
+          );
+          logger.log(`Triggered re-extraction for tax invoice ${inv.id} (${inv.invoiceNumber})`);
+          await new Promise((resolve) => setTimeout(resolve, 3000));
+        } catch (err) {
+          logger.error(
+            `Failed to trigger re-extraction for invoice ${inv.id}: ${err instanceof Error ? err.message : String(err)}`,
+          );
+        }
+      }
+      logger.log(`Bulk re-extraction complete: ${withDocuments.length} invoices processed`);
+    })();
+
+    return { triggered: withDocuments.length };
   }
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
