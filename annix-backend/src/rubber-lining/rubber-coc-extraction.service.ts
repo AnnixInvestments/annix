@@ -906,105 +906,119 @@ export class RubberCocExtractionService {
       },
     }));
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 180000);
-
-    try {
-      const response = await fetch(
-        `${this.baseUrl}/models/${this.model}:generateContent?key=${this.apiKey}`,
+    const body = JSON.stringify({
+      contents: [
         {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [{ text: systemPrompt }, { text: userPrompt }, ...imageParts],
-              },
-            ],
-            generationConfig: {
-              temperature: 0.1,
-              maxOutputTokens: 32768,
-              responseMimeType: "application/json",
-            },
-          }),
-          signal: controller.signal,
+          parts: [{ text: systemPrompt }, { text: userPrompt }, ...imageParts],
         },
-      );
+      ],
+      generationConfig: {
+        temperature: 0.1,
+        maxOutputTokens: 32768,
+        responseMimeType: "application/json",
+      },
+    });
 
-      clearTimeout(timeoutId);
+    const maxRetries = 3;
+    const retryDelays = [2000, 5000, 10000];
+    let lastError: Error | null = null;
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        this.logger.error(`Gemini Vision API error: ${response.status} - ${errorText}`);
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 180000);
+
+      try {
+        const response = await fetch(
+          `${this.baseUrl}/models/${this.model}:generateContent?key=${this.apiKey}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body,
+            signal: controller.signal,
+          },
+        );
+
+        clearTimeout(timeoutId);
+
         if (response.status === 429) {
+          const errorText = await response.text();
+          this.logger.warn(`Gemini 429 on attempt ${attempt + 1}/${maxRetries} - ${errorText}`);
+          if (attempt < maxRetries - 1) {
+            const delay = retryDelays[attempt];
+            this.logger.log(`Retrying in ${delay}ms...`);
+            await new Promise((resolve) => setTimeout(resolve, delay));
+            continue;
+          }
           throw new HttpException(
             "Please try again. If the problem persists, wait a few minutes before retrying.",
             HttpStatus.TOO_MANY_REQUESTS,
           );
         }
-        throw new HttpException(
-          "Document analysis failed. Please try again, or wait a few minutes if the problem persists.",
-          HttpStatus.BAD_GATEWAY,
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          this.logger.error(`Gemini Vision API error: ${response.status} - ${errorText}`);
+          throw new HttpException(
+            "Document analysis failed. Please try again, or wait a few minutes if the problem persists.",
+            HttpStatus.BAD_GATEWAY,
+          );
+        }
+
+        const data: GeminiResponse = await response.json();
+        const finishReason = data.candidates?.[0]?.finishReason;
+        const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+        if (finishReason === "MAX_TOKENS") {
+          this.logger.warn(
+            `Gemini Vision response was truncated (MAX_TOKENS). Output may be incomplete. Tokens used: ${data.usageMetadata?.totalTokenCount}`,
+          );
+        }
+
+        if (!content) {
+          this.logger.warn("No content in Gemini Vision response");
+          return { data: {}, tokensUsed: data.usageMetadata?.totalTokenCount };
+        }
+
+        this.logger.log(
+          `Gemini Vision response: finishReason=${finishReason}, contentLength=${content.length}, tokens=${data.usageMetadata?.totalTokenCount}`,
         );
+
+        const parsed = this.parseJsonResponse(content);
+        const tokensUsed = data.usageMetadata?.totalTokenCount;
+
+        if (actionType) {
+          this.aiUsageService.log({
+            app: AiApp.AU_RUBBER,
+            actionType,
+            provider: AiProvider.GEMINI,
+            model: this.model,
+            tokensUsed,
+            pageCount: images.length,
+          });
+        }
+
+        return { data: parsed, tokensUsed };
+      } catch (error) {
+        clearTimeout(timeoutId);
+        if (error.name === "AbortError") {
+          this.logger.error("Gemini Vision API request timed out after 180 seconds");
+          throw new HttpException(
+            "Document analysis timed out. Please try again with a smaller image.",
+            HttpStatus.GATEWAY_TIMEOUT,
+          );
+        }
+        if (error instanceof HttpException) {
+          throw error;
+        }
+        lastError = error;
+        this.logger.error(`Unexpected Gemini Vision error: ${error.message}`);
       }
-
-      const data: GeminiResponse = await response.json();
-      const finishReason = data.candidates?.[0]?.finishReason;
-      const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-      if (finishReason === "MAX_TOKENS") {
-        this.logger.warn(
-          `Gemini Vision response was truncated (MAX_TOKENS). Output may be incomplete. Tokens used: ${data.usageMetadata?.totalTokenCount}`,
-        );
-      }
-
-      if (!content) {
-        this.logger.warn("No content in Gemini Vision response");
-        return { data: {}, tokensUsed: data.usageMetadata?.totalTokenCount };
-      }
-
-      this.logger.log(
-        `Gemini Vision response: finishReason=${finishReason}, contentLength=${content.length}, tokens=${data.usageMetadata?.totalTokenCount}`,
-      );
-
-      const parsed = this.parseJsonResponse(content);
-      const tokensUsed = data.usageMetadata?.totalTokenCount;
-
-      if (actionType) {
-        this.aiUsageService.log({
-          app: AiApp.AU_RUBBER,
-          actionType,
-          provider: AiProvider.GEMINI,
-          model: this.model,
-          tokensUsed,
-          pageCount: images.length,
-        });
-      }
-
-      return {
-        data: parsed,
-        tokensUsed,
-      };
-    } catch (error) {
-      clearTimeout(timeoutId);
-      if (error.name === "AbortError") {
-        this.logger.error("Gemini Vision API request timed out after 180 seconds");
-        throw new HttpException(
-          "Document analysis timed out. Please try again with a smaller image.",
-          HttpStatus.GATEWAY_TIMEOUT,
-        );
-      }
-      if (error instanceof HttpException) {
-        throw error;
-      }
-      this.logger.error(`Unexpected Gemini Vision error: ${error.message}`);
-      throw new HttpException(
-        "Document analysis failed. Please try again.",
-        HttpStatus.BAD_GATEWAY,
-      );
     }
+
+    throw new HttpException(
+      lastError?.message || "Document analysis failed. Please try again.",
+      HttpStatus.BAD_GATEWAY,
+    );
   }
 
   async extractDeliveryNoteFromImages(pdfBuffer: Buffer): Promise<{
