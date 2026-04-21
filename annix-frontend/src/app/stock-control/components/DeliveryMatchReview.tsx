@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { createPortal } from "react-dom";
+import { extractErrorMessage } from "@/app/lib/api/apiError";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 
 interface ProposedMatch {
@@ -65,7 +66,7 @@ export function DeliveryMatchReview(props: Props) {
         setIsLoading(false);
       })
       .catch((err) => {
-        setError(err instanceof Error ? err.message : "Failed to load match preview");
+        setError(extractErrorMessage(err, "Failed to load match preview"));
         setIsLoading(false);
       });
   });

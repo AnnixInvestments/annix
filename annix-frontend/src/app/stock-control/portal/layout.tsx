@@ -8,6 +8,7 @@ import { ChatPanel } from "../components/ChatPanel";
 import { HubBreadcrumb } from "../components/HubBreadcrumb";
 import { StockControlHeader } from "../components/StockControlHeader";
 import { ALL_NAV_ITEMS, isNavItemAllowedForRole } from "../config/navItems";
+import { ErrorModalProvider } from "../context/ErrorModalContext";
 import { GlossaryProvider } from "../context/GlossaryContext";
 import {
   StockControlBrandingProvider,
@@ -170,24 +171,26 @@ function PortalContent({ children }: { children: React.ReactNode }) {
 
   return (
     <StockControlBrandingProvider>
-      <StockControlRbacProvider>
-        <ViewAsProvider>
-          <GlossaryProvider>
-            <div className="flex flex-col h-screen bg-gray-50 print:h-auto print:bg-white">
-              <div className="print:hidden">
-                <StockControlHeader />
+      <ErrorModalProvider>
+        <StockControlRbacProvider>
+          <ViewAsProvider>
+            <GlossaryProvider>
+              <div className="flex flex-col h-screen bg-gray-50 print:h-auto print:bg-white">
+                <div className="print:hidden">
+                  <StockControlHeader />
+                </div>
+                <PageAccessGuard>
+                  <MainContent>{children}</MainContent>
+                </PageAccessGuard>
+                <div className="print:hidden">
+                  <ChatPanel />
+                </div>
+                <StockControlFeedbackWidget />
               </div>
-              <PageAccessGuard>
-                <MainContent>{children}</MainContent>
-              </PageAccessGuard>
-              <div className="print:hidden">
-                <ChatPanel />
-              </div>
-              <StockControlFeedbackWidget />
-            </div>
-          </GlossaryProvider>
-        </ViewAsProvider>
-      </StockControlRbacProvider>
+            </GlossaryProvider>
+          </ViewAsProvider>
+        </StockControlRbacProvider>
+      </ErrorModalProvider>
     </StockControlBrandingProvider>
   );
 }

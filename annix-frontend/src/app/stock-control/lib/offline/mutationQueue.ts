@@ -1,4 +1,18 @@
+import { isArray, isString } from "es-toolkit/compat";
 import { offlinePendingActions, type PendingAction } from "./stores";
+
+function parseResponseMessage(text: string, status: number): string {
+  try {
+    const parsed = JSON.parse(text) as Record<string, unknown>;
+    const msg = parsed.message;
+    if (isString(msg)) return msg;
+    if (isArray(msg)) return (msg as string[]).join(", ");
+  } catch {
+    // not JSON
+  }
+  if (text.length > 0) return text;
+  return `HTTP ${status}`;
+}
 
 export interface QueuedMutation {
   id: string;
@@ -112,19 +126,17 @@ export async function processMutation(action: PendingAction): Promise<boolean> {
       return true;
     }
 
+    const errorText = await response.text().catch(() => "");
+    const errorMsg = parseResponseMessage(errorText, response.status);
+
     if (response.status >= 400 && response.status < 500) {
       await removeMutation(action.id);
-      notifyListeners(
-        "onMutationProcessed",
-        action.id,
-        "failed",
-        `HTTP ${response.status} (client error)`,
-      );
+      notifyListeners("onMutationProcessed", action.id, "failed", errorMsg);
       return false;
     }
 
     await retryMutation(action.id);
-    notifyListeners("onMutationProcessed", action.id, "failed", `HTTP ${response.status}`);
+    notifyListeners("onMutationProcessed", action.id, "failed", errorMsg);
     return false;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Network error";

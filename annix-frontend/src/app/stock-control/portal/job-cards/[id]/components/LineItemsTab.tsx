@@ -3,6 +3,7 @@
 import { Plus, Trash2 } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
+import { extractErrorMessage } from "@/app/lib/api/apiError";
 import type { JobCard, JobCardAttachment } from "@/app/lib/api/stockControlApi";
 import { useAddLineItem, useDeleteLineItem, useReExtractLineItems } from "@/app/lib/query/hooks";
 import { isValidLineItem } from "../lib/helpers";
@@ -85,7 +86,7 @@ export function LineItemsTab(props: LineItemsTabProps) {
         onRefresh();
       },
       onError: (err) => {
-        setReExtractResult(`Error: ${err instanceof Error ? err.message : "Re-extraction failed"}`);
+        setReExtractResult(`Error: ${extractErrorMessage(err, "Re-extraction failed")}`);
       },
     });
   };

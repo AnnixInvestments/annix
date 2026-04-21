@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import React, { useState } from "react";
+import { extractErrorMessage } from "@/app/lib/api/apiError";
 // eslint-disable-next-line no-restricted-imports -- Auth flow page (forgot-password); requires new auth hooks for unauthenticated operations. Tracked as tech debt per Phase 9 of annix/annix#191.
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 
@@ -20,7 +21,7 @@ export default function ForgotPasswordPage() {
       await stockControlApiClient.forgotPassword(email);
       setSubmitted(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      setError(extractErrorMessage(err, "Something went wrong. Please try again."));
     } finally {
       setIsSubmitting(false);
     }

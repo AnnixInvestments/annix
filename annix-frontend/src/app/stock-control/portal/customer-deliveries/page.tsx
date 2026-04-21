@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useState } from "react";
 import { useToast } from "@/app/components/Toast";
+import { extractErrorMessage } from "@/app/lib/api/apiError";
 import type { AnalyzedDeliveryNoteData, DeliveryNote } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
 import {
@@ -10,6 +11,7 @@ import {
   useAnalyzeDeliveryNotePhoto,
   useCustomerDeliveries,
 } from "@/app/lib/query/hooks";
+import { useErrorModal } from "@/app/stock-control/context/ErrorModalContext";
 
 function itemsCount(delivery: DeliveryNote): { count: number; isExtracted: boolean } {
   const linkedCount = delivery.items ? delivery.items.length : 0;
@@ -23,6 +25,7 @@ function itemsCount(delivery: DeliveryNote): { count: number; isExtracted: boole
 
 export default function CustomerDeliveriesPage() {
   const { showToast } = useToast();
+  const { showError } = useErrorModal();
   const { data: deliveries = [], isLoading, error } = useCustomerDeliveries();
   const [isDragOver, setIsDragOver] = useState(false);
   const analyzeMutation = useAnalyzeDeliveryNotePhoto();
@@ -99,20 +102,20 @@ export default function CustomerDeliveriesPage() {
                 );
               },
               onError: (err) => {
-                showToast(
-                  err instanceof Error ? err.message : "Failed to create delivery note",
-                  "error",
+                showError(
+                  "Create Failed",
+                  extractErrorMessage(err, "Failed to create delivery note"),
                 );
               },
             },
           );
         },
         onError: (err) => {
-          showToast(err instanceof Error ? err.message : "Failed to analyze document", "error");
+          showError("Analysis Failed", extractErrorMessage(err, "Failed to analyze document"));
         },
       });
     },
-    [showToast, analyzeMutation, acceptMutation],
+    [showToast, showError, analyzeMutation, acceptMutation],
   );
 
   if (isLoading && deliveries.length === 0) {

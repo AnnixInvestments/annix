@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
+import { extractErrorMessage } from "@/app/lib/api/apiError";
 import type { AdminTransferPending } from "@/app/lib/api/stock-control-api/types";
 import type { CandidateImage } from "@/app/lib/api/stockControlApi";
 import { fromISO } from "@/app/lib/datetime";
@@ -292,7 +293,7 @@ export default function CompanyProfilePage() {
       setDetailsSuccess(true);
       await refreshProfile();
     } catch (e) {
-      setDetailsError(e instanceof Error ? e.message : "Failed to update company details.");
+      setDetailsError(extractErrorMessage(e, "Failed to update company details."));
     } finally {
       setDetailsSaving(false);
     }
@@ -314,7 +315,7 @@ export default function CompanyProfilePage() {
       setFeaturesSuccess(true);
       await refreshProfile();
     } catch (e) {
-      setFeaturesError(e instanceof Error ? e.message : "Failed to update features.");
+      setFeaturesError(extractErrorMessage(e, "Failed to update features."));
     } finally {
       setFeaturesSaving(false);
     }
@@ -374,7 +375,7 @@ export default function CompanyProfilePage() {
         }
       }
     } catch (e) {
-      setBrandingError(e instanceof Error ? e.message : "Failed to extract branding from website.");
+      setBrandingError(extractErrorMessage(e, "Failed to extract branding from website."));
     } finally {
       setScraping(false);
     }
@@ -453,7 +454,7 @@ export default function CompanyProfilePage() {
       setBrandingSuccess(true);
       await refreshProfile();
     } catch (e) {
-      setBrandingError(e instanceof Error ? e.message : "Failed to save branding preference.");
+      setBrandingError(extractErrorMessage(e, "Failed to save branding preference."));
     } finally {
       setBrandingSaving(false);
       setProcessing(false);
@@ -1304,7 +1305,7 @@ function AdminTransferSection() {
       setSelectedNewRole(null);
       await loadPendingTransfer();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to initiate transfer");
+      setError(extractErrorMessage(e, "Failed to initiate transfer"));
     } finally {
       setInitiating(false);
     }
@@ -1318,7 +1319,7 @@ function AdminTransferSection() {
       const result = await resendTransferMutation.mutateAsync();
       setSuccess(result.message);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to resend email");
+      setError(extractErrorMessage(e, "Failed to resend email"));
     } finally {
       setResending(false);
     }
@@ -1352,7 +1353,7 @@ function AdminTransferSection() {
       setPendingTransfer(null);
       setSuccess("Admin transfer cancelled.");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to cancel transfer");
+      setError(extractErrorMessage(e, "Failed to cancel transfer"));
     } finally {
       setCancelling(false);
     }

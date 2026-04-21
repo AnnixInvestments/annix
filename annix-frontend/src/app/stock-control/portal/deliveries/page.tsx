@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useToast } from "@/app/components/Toast";
+import { extractErrorMessage } from "@/app/lib/api/apiError";
 import type { AnalyzedDeliveryNoteData, DeliveryNote } from "@/app/lib/api/stockControlApi";
 // eslint-disable-next-line no-restricted-imports -- SdnStatus is an enum value (not type) used in runtime checks; enum is colocated with API types. Tracked as tech debt per Phase 9 of annix/annix#191.
 import { SdnStatus } from "@/app/lib/api/stockControlApi";
@@ -16,6 +17,7 @@ import {
   useReportStockItems,
 } from "@/app/lib/query/hooks";
 import { DeliveryNoteConfirmationModal } from "@/app/stock-control/components/DeliveryNoteConfirmationModal";
+import { useErrorModal } from "@/app/stock-control/context/ErrorModalContext";
 
 function itemsCount(delivery: DeliveryNote): { count: number; isExtracted: boolean } {
   const linkedCount = delivery.items ? delivery.items.length : 0;
@@ -66,6 +68,7 @@ interface DeliveryFormItem {
 
 export default function DeliveriesPage() {
   const { showToast } = useToast();
+  const { showError } = useErrorModal();
   const { data: deliveries = [], isLoading, error } = useDeliveryNotes();
   const createMutation = useCreateDeliveryNote();
   const deleteMutation = useDeleteDeliveryNote();
@@ -134,7 +137,8 @@ export default function DeliveriesPage() {
       },
       {
         onSuccess: () => setShowModal(false),
-        onError: () => showToast("Failed to create delivery note", "error"),
+        onError: (err) =>
+          showError("Create Failed", extractErrorMessage(err, "Failed to create delivery note")),
       },
     );
   };
@@ -172,7 +176,7 @@ export default function DeliveriesPage() {
       showToast(`${successCount} delivery note(s) added to stock`, "success");
     }
     if (failCount > 0) {
-      showToast(`${failCount} delivery note(s) failed to add to stock`, "error");
+      showError("Add to Stock Failed", `${failCount} delivery note(s) failed to add to stock`);
     }
 
     setSelectedIds(new Set());
@@ -183,7 +187,8 @@ export default function DeliveriesPage() {
     if (!deleteTarget) return;
     deleteMutation.mutate(deleteTarget.id, {
       onSuccess: () => setDeleteTarget(null),
-      onError: () => showToast("Failed to delete delivery note", "error"),
+      onError: (err) =>
+        showError("Delete Failed", extractErrorMessage(err, "Failed to delete delivery note")),
     });
   };
 
@@ -202,7 +207,7 @@ export default function DeliveriesPage() {
       );
       setReviewTarget(null);
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to confirm delivery note", "error");
+      showError("Confirm Failed", extractErrorMessage(err, "Failed to confirm delivery note"));
     } finally {
       setIsReviewSubmitting(false);
     }
@@ -219,7 +224,7 @@ export default function DeliveriesPage() {
       showToast(`Delivery note ${reviewTarget.deliveryNumber} confirmed`, "success");
       setReviewTarget(null);
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to confirm delivery note", "error");
+      showError("Confirm Failed", extractErrorMessage(err, "Failed to confirm delivery note"));
     } finally {
       setIsReviewSubmitting(false);
     }
@@ -230,7 +235,8 @@ export default function DeliveriesPage() {
       { id: delivery.id },
       {
         onSuccess: () => showToast(`${delivery.deliveryNumber} added to stock`, "success"),
-        onError: () => showToast("Failed to add to stock", "error"),
+        onError: (err) =>
+          showError("Add to Stock Failed", extractErrorMessage(err, "Failed to add to stock")),
       },
     );
   };

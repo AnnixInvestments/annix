@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { extractErrorMessage } from "@/app/lib/api/apiError";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { PhotoCapture } from "./PhotoCapture";
 
@@ -48,8 +49,7 @@ export function ItemIdentifier(props: ItemIdentifierProps) {
       const response = await stockControlApiClient.identifyFromPhoto(file);
       setResult(response);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to identify item";
-      setError(message);
+      setError(extractErrorMessage(err, "Failed to identify item"));
     } finally {
       setIsAnalyzing(false);
     }

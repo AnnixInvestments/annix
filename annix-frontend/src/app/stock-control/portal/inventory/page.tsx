@@ -1,6 +1,7 @@
 "use client";
 
 import { isObject } from "es-toolkit/compat";
+import { useEffect } from "react";
 import { ConfirmModal } from "@/app/components/modals/ConfirmModal";
 import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
 import type { StockItem } from "@/app/lib/api/stockControlApi";
@@ -15,11 +16,13 @@ import { InventoryLocationTabs } from "../../components/inventory/InventoryLocat
 import { InventoryPendingChanges } from "../../components/inventory/InventoryPendingChanges";
 import { InventoryToolbar } from "../../components/inventory/InventoryToolbar";
 import { RollNumberCell } from "../../components/inventory/RollNumberCell";
+import { useErrorModal } from "../../context/ErrorModalContext";
 import { formatZAR } from "../../lib/currency";
 import { useInventoryPageState } from "../../lib/useInventoryPageState";
 
 export default function InventoryPage() {
   const pdfPreview = usePdfPreview();
+  const { showError } = useErrorModal();
   const inv = useInventoryPageState(pdfPreview);
   const {
     canEditPrices,
@@ -82,6 +85,13 @@ export default function InventoryPage() {
     toggleListGroupByCategory,
     invalidateInventory,
   } = inv;
+
+  useEffect(() => {
+    if (actionError) {
+      showError("Inventory Error", actionError.message);
+      clearActionError();
+    }
+  }, [actionError, showError, clearActionError]);
 
   if (isLoading && items.length === 0 && groupedData.length === 0) {
     return (
@@ -149,19 +159,6 @@ export default function InventoryPage() {
         onOpenCreateModal={openCreateModal}
         onRefresh={invalidateInventory}
       />
-
-      {actionError && (
-        <div className="bg-red-50 border border-red-200 rounded-md px-4 py-3 flex items-center justify-between">
-          <p className="text-sm text-red-700">{actionError.message}</p>
-          <button
-            type="button"
-            onClick={clearActionError}
-            className="ml-4 text-red-400 hover:text-red-600 text-lg font-bold leading-none"
-          >
-            &times;
-          </button>
-        </div>
-      )}
 
       <InventoryLocationTabs
         locations={locations}

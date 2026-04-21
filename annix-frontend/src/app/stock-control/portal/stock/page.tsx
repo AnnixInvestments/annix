@@ -1,5 +1,6 @@
 "use client";
 
+import { isArray, isString } from "es-toolkit/compat";
 import { useState } from "react";
 import { stockControlTokenStore } from "@/app/lib/api/portalTokenStores";
 import { HubPage } from "../../components/HubPage";
@@ -38,7 +39,16 @@ export default function StockHubPage() {
       });
       if (!response.ok) {
         const text = await response.text().catch(() => "");
-        throw new Error(`${response.status} ${text}`);
+        let errMsg = `HTTP ${response.status}`;
+        try {
+          const parsed = JSON.parse(text) as Record<string, unknown>;
+          const msg = parsed.message;
+          if (isString(msg)) errMsg = msg;
+          else if (isArray(msg)) errMsg = (msg as string[]).join(", ");
+        } catch {
+          if (text.length > 0) errMsg = text;
+        }
+        throw new Error(errMsg);
       }
       const data = await response.json();
       setSyncResult(data);

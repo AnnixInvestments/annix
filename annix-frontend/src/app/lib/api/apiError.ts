@@ -51,6 +51,20 @@ export class ApiError extends Error {
 export const isApiError = (error: unknown): error is ApiError =>
   error instanceof ApiError || (error instanceof Error && error.name === "ApiError");
 
+export function extractErrorMessage(error: unknown, fallback: string): string {
+  if (isApiError(error)) {
+    const detail = error.detail;
+    return detail ? `${error.message} — ${detail}` : error.message;
+  }
+  if (error instanceof Error) {
+    return error.message;
+  }
+  if (isString(error) && error.length > 0) {
+    return error;
+  }
+  return fallback;
+}
+
 export async function throwIfNotOk(response: Response): Promise<void> {
   if (response.ok) return;
 

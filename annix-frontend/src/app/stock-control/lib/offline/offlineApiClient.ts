@@ -1,4 +1,5 @@
 import { isArray } from "es-toolkit/compat";
+import { throwIfNotOk } from "@/app/lib/api/apiError";
 import {
   type DeliveryNote,
   type JobCard,
@@ -35,9 +36,7 @@ export function createOfflineApiClient(options: ApiClientOptions) {
         headers: authHeaders(),
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
+      await throwIfNotOk(response);
 
       const data = await response.json();
       await cacheSetter(data);
@@ -66,9 +65,7 @@ export function createOfflineApiClient(options: ApiClientOptions) {
         headers: authHeaders(),
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
+      await throwIfNotOk(response);
 
       const responseData = await response.json();
       const rawItems = responseData.items;
@@ -106,9 +103,7 @@ export function createOfflineApiClient(options: ApiClientOptions) {
         body: body ? JSON.stringify(body) : undefined,
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
+      await throwIfNotOk(response);
 
       const data = await response.json();
       return { data, fromCache: false };

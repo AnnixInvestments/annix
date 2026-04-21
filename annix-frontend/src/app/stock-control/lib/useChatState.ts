@@ -3,6 +3,7 @@
 import { values } from "es-toolkit/compat";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
+import { extractErrorMessage } from "@/app/lib/api/apiError";
 import type {
   ChatConversationResponse,
   ChatMessageResponse,
@@ -67,10 +68,6 @@ function mergeNewMessages(prev: ChatMsg[], incoming: ChatMsg[]): ChatMsg[] {
   return [...prev, ...fresh];
 }
 
-function errorMessage(e: unknown, fallback: string): string {
-  return e instanceof Error ? e.message : fallback;
-}
-
 export function useChatState() {
   const { user, profile } = useStockControlAuth();
   const rawMessagingEnabled = profile?.messagingEnabled;
@@ -118,7 +115,7 @@ export function useChatState() {
             };
       });
     } catch (e) {
-      log.debug("Chat poll failed:", errorMessage(e, "Unknown error"));
+      log.debug("Chat poll failed:", extractErrorMessage(e, "Unknown error"));
     }
   }, [messagingEnabled]);
 
@@ -140,7 +137,7 @@ export function useChatState() {
           : { ...prev, convMessages: merged, convLastMessageId: lastNew.id };
       });
     } catch (e) {
-      log.debug("Conversation poll failed:", errorMessage(e, "Unknown error"));
+      log.debug("Conversation poll failed:", extractErrorMessage(e, "Unknown error"));
     }
   }, [messagingEnabled]);
 
@@ -168,7 +165,7 @@ export function useChatState() {
         const convs = await stockControlApiClient.chatConversations();
         updateState({ conversations: convs });
       } catch (e) {
-        log.debug("Fetch conversations failed:", errorMessage(e, "Unknown error"));
+        log.debug("Fetch conversations failed:", extractErrorMessage(e, "Unknown error"));
       }
     };
 
@@ -185,7 +182,7 @@ export function useChatState() {
         const counts = await stockControlApiClient.chatUnreadCounts();
         updateState({ convUnreadCounts: counts });
       } catch (e) {
-        log.debug("Fetch unread counts failed:", errorMessage(e, "Unknown error"));
+        log.debug("Fetch unread counts failed:", extractErrorMessage(e, "Unknown error"));
       }
     };
 
@@ -209,7 +206,7 @@ export function useChatState() {
         stockControlApiClient
           .markConversationRead(state.activeConversation.id)
           .catch((e) =>
-            log.debug("Failed to mark conversation read:", errorMessage(e, "Unknown error")),
+            log.debug("Failed to mark conversation read:", extractErrorMessage(e, "Unknown error")),
           );
       }
       setTimeout(() => inputRef.current?.focus(), 100);
@@ -303,7 +300,7 @@ export function useChatState() {
           );
         }
       } catch (e) {
-        updateState({ chatError: errorMessage(e, "Failed to edit message") });
+        updateState({ chatError: extractErrorMessage(e, "Failed to edit message") });
       }
       updateState({ editingId: null, text: "" });
       return;
@@ -338,7 +335,7 @@ export function useChatState() {
       }
       updateState({ text: "", sending: false });
     } catch (e) {
-      updateState({ chatError: errorMessage(e, "Failed to send message"), sending: false });
+      updateState({ chatError: extractErrorMessage(e, "Failed to send message"), sending: false });
     }
   }, [
     state.text,
@@ -379,7 +376,10 @@ export function useChatState() {
         }
         updateState({ uploading: false });
       } catch (e) {
-        updateState({ chatError: errorMessage(e, "Failed to upload photo"), uploading: false });
+        updateState({
+          chatError: extractErrorMessage(e, "Failed to upload photo"),
+          uploading: false,
+        });
       }
     },
     [state.view, state.activeConversation, updateState],
@@ -438,7 +438,7 @@ export function useChatState() {
         view: "new-conversation",
       });
     } catch (e) {
-      updateState({ chatError: errorMessage(e, "Failed to load team members") });
+      updateState({ chatError: extractErrorMessage(e, "Failed to load team members") });
     }
   }, [user?.id, updateState]);
 
@@ -459,7 +459,7 @@ export function useChatState() {
         text: "",
       }));
     } catch (e) {
-      updateState({ chatError: errorMessage(e, "Failed to create conversation") });
+      updateState({ chatError: extractErrorMessage(e, "Failed to create conversation") });
     }
   }, [state.selectedUserIds, state.groupName, updateState]);
 

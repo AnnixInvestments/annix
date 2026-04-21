@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { createPortal } from "react-dom";
+import { extractErrorMessage } from "@/app/lib/api/apiError";
 import type { StockItem } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 
@@ -42,8 +43,7 @@ export function InventoryDuplicatesPanel(props: Props) {
       setGroups(result);
       setIsOpen(true);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to detect duplicates";
-      setError(message);
+      setError(extractErrorMessage(err, "Failed to detect duplicates"));
     } finally {
       setIsLoading(false);
     }
@@ -64,8 +64,7 @@ export function InventoryDuplicatesPanel(props: Props) {
       setMergeConfirm(null);
       props.onMergeComplete();
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Merge failed";
-      setError(message);
+      setError(extractErrorMessage(err, "Merge failed"));
     } finally {
       setIsMerging(false);
     }

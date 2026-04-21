@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { useToast } from "@/app/components/Toast";
+import { extractErrorMessage } from "@/app/lib/api/apiError";
 import type {
   AnalyzedDeliveryNoteData,
   AnalyzedDeliveryNoteResult,
@@ -15,6 +16,7 @@ import {
   useSavePendingDeliveryNote,
 } from "@/app/lib/query/hooks";
 import { DeliveryNoteConfirmationModal } from "@/app/stock-control/components/DeliveryNoteConfirmationModal";
+import { useErrorModal } from "@/app/stock-control/context/ErrorModalContext";
 
 const isInvoiceDocument = (docType: AnalyzedDeliveryNoteData["documentType"]): boolean =>
   docType === "SUPPLIER_INVOICE" || docType === "TAX_INVOICE";
@@ -22,6 +24,7 @@ const isInvoiceDocument = (docType: AnalyzedDeliveryNoteData["documentType"]): b
 export default function ScanDeliveryNotePage() {
   const router = useRouter();
   const { showToast } = useToast();
+  const { showError } = useErrorModal();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
@@ -111,7 +114,10 @@ export default function ScanDeliveryNotePage() {
                 router.push("/stock-control/portal/invoices");
               },
               onError: (err) => {
-                showToast(err instanceof Error ? err.message : "Failed to create invoice", "error");
+                showError(
+                  "Invoice Creation Failed",
+                  extractErrorMessage(err, "Failed to create invoice"),
+                );
               },
             },
           );
@@ -121,7 +127,7 @@ export default function ScanDeliveryNotePage() {
         }
       },
       onError: (err) => {
-        showToast(err instanceof Error ? err.message : "Failed to analyze delivery note", "error");
+        showError("Analysis Failed", extractErrorMessage(err, "Failed to analyze delivery note"));
       },
     });
   };
@@ -146,7 +152,7 @@ export default function ScanDeliveryNotePage() {
           router.push("/stock-control/portal/deliveries");
         },
         onError: (err) => {
-          showToast(err instanceof Error ? err.message : "Failed to create record", "error");
+          showError("Create Failed", extractErrorMessage(err, "Failed to create delivery record"));
         },
       },
     );
@@ -163,7 +169,7 @@ export default function ScanDeliveryNotePage() {
           router.push("/stock-control/portal/deliveries");
         },
         onError: (err) => {
-          showToast(err instanceof Error ? err.message : "Failed to save delivery note", "error");
+          showError("Save Failed", extractErrorMessage(err, "Failed to save delivery note"));
         },
       },
     );

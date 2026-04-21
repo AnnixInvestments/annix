@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { extractErrorMessage } from "@/app/lib/api/apiError";
 import { fromISO, now } from "@/app/lib/datetime";
 import {
   useCalibrationCertificates,
@@ -9,6 +10,7 @@ import {
   useDeleteCalibrationCertificate,
   useUploadCalibrationCertificate,
 } from "@/app/lib/query/hooks";
+import { useErrorModal } from "@/app/stock-control/context/ErrorModalContext";
 
 function expiryStatus(expiryDate: string): { label: string; className: string } {
   const expiry = fromISO(expiryDate);
@@ -27,6 +29,7 @@ function expiryStatus(expiryDate: string): { label: string; className: string } 
 }
 
 export default function CalibrationPage() {
+  const { showError } = useErrorModal();
   const [error, setError] = useState<string | null>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [filterActive, setFilterActive] = useState("true");
@@ -45,7 +48,7 @@ export default function CalibrationPage() {
         }
       },
       onError: (err) => {
-        setError(err instanceof Error ? err.message : "Failed to get download URL");
+        showError("Download Failed", extractErrorMessage(err, "Failed to get download URL"));
       },
     });
   };
@@ -53,7 +56,10 @@ export default function CalibrationPage() {
   const handleDeactivate = (id: number) => {
     deactivateCert.mutate(id, {
       onError: (err) => {
-        setError(err instanceof Error ? err.message : "Failed to deactivate certificate");
+        showError(
+          "Deactivation Failed",
+          extractErrorMessage(err, "Failed to deactivate certificate"),
+        );
       },
     });
   };
@@ -61,7 +67,7 @@ export default function CalibrationPage() {
   const handleDelete = (id: number) => {
     deleteCert.mutate(id, {
       onError: (err) => {
-        setError(err instanceof Error ? err.message : "Failed to delete certificate");
+        showError("Delete Failed", extractErrorMessage(err, "Failed to delete certificate"));
       },
     });
   };

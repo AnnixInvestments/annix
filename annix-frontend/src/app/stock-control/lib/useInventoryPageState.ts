@@ -4,6 +4,7 @@ import { toPairs as entries, isArray, isNumber, isObject, values } from "es-tool
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { usePdfPreview } from "@/app/components/PdfPreviewModal";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
+import { extractErrorMessage } from "@/app/lib/api/apiError";
 import type {
   ImportResult,
   ImportUploadResponse,
@@ -454,8 +455,7 @@ export function useInventoryPageState(pdfPreview?: ReturnType<typeof usePdfPrevi
       updateState({ showModal: false, photoFile: null, photoPreview: null, modalError: null });
       invalidateInventory();
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to save item";
-      updateState({ modalError: message });
+      updateState({ modalError: extractErrorMessage(err, "Failed to save item") });
     } finally {
       updateState({ isSaving: false });
     }
@@ -468,7 +468,7 @@ export function useInventoryPageState(pdfPreview?: ReturnType<typeof usePdfPrevi
         invalidateInventory();
       } catch (err) {
         updateState({
-          actionError: err instanceof Error ? err : new Error("Failed to delete item"),
+          actionError: new Error(extractErrorMessage(err, "Failed to delete item")),
         });
       } finally {
         updateState({ confirmDeleteId: null });
@@ -540,7 +540,7 @@ export function useInventoryPageState(pdfPreview?: ReturnType<typeof usePdfPrevi
       }
     } catch (err) {
       updateState({
-        actionError: err instanceof Error ? err : new Error("Failed to download labels"),
+        actionError: new Error(extractErrorMessage(err, "Failed to download labels")),
       });
     } finally {
       updateState({ isPrintingLabels: false });
@@ -566,7 +566,7 @@ export function useInventoryPageState(pdfPreview?: ReturnType<typeof usePdfPrevi
       }
     } catch (err) {
       updateState({
-        actionError: err instanceof Error ? err : new Error("Failed to download labels"),
+        actionError: new Error(extractErrorMessage(err, "Failed to download labels")),
       });
     } finally {
       updateState({ isPrintingLabels: false });
@@ -606,7 +606,7 @@ export function useInventoryPageState(pdfPreview?: ReturnType<typeof usePdfPrevi
       invalidateInventory();
     } catch (err) {
       updateState({
-        actionError: err instanceof Error ? err : new Error("Failed to update min stock levels"),
+        actionError: new Error(extractErrorMessage(err, "Failed to update min stock levels")),
       });
     } finally {
       updateState({ isSavingMinLevels: false });
@@ -677,7 +677,7 @@ export function useInventoryPageState(pdfPreview?: ReturnType<typeof usePdfPrevi
       invalidateInventory();
     } catch (err) {
       updateState({
-        actionError: err instanceof Error ? err : new Error("Failed to update prices"),
+        actionError: new Error(extractErrorMessage(err, "Failed to update prices")),
       });
     } finally {
       updateState({ isSavingPrices: false });
@@ -697,7 +697,7 @@ export function useInventoryPageState(pdfPreview?: ReturnType<typeof usePdfPrevi
       invalidateInventory();
     } catch (err) {
       updateState({
-        actionError: err instanceof Error ? err : new Error("Failed to update locations"),
+        actionError: new Error(extractErrorMessage(err, "Failed to update locations")),
       });
     } finally {
       updateState({ isSavingLocations: false });
@@ -772,7 +772,7 @@ export function useInventoryPageState(pdfPreview?: ReturnType<typeof usePdfPrevi
         }
       } catch (err) {
         updateState({
-          importError: err instanceof Error ? err.message : "Failed to parse file",
+          importError: extractErrorMessage(err, "Failed to parse file"),
           importStep: "idle",
         });
       }
@@ -874,7 +874,7 @@ export function useInventoryPageState(pdfPreview?: ReturnType<typeof usePdfPrevi
       updateState({ importResult: result, importStep: "result", isStockTakeMode: false });
     } catch (err) {
       updateState({
-        importError: err instanceof Error ? err.message : "Failed to import data",
+        importError: extractErrorMessage(err, "Failed to import data"),
         importStep: "preview",
       });
     }
@@ -910,7 +910,7 @@ export function useInventoryPageState(pdfPreview?: ReturnType<typeof usePdfPrevi
         invalidateInventory();
       } catch (err) {
         updateState({
-          actionError: err instanceof Error ? err : new Error("Failed to update category"),
+          actionError: new Error(extractErrorMessage(err, "Failed to update category")),
         });
       }
     },
@@ -939,7 +939,7 @@ export function useInventoryPageState(pdfPreview?: ReturnType<typeof usePdfPrevi
       return result;
     } catch (err) {
       updateState({
-        actionError: err instanceof Error ? err : new Error("Failed to normalize rubber items"),
+        actionError: new Error(extractErrorMessage(err, "Failed to normalize rubber items")),
       });
       return null;
     }

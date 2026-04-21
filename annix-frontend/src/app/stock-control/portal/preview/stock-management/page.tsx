@@ -1,8 +1,22 @@
 "use client";
 
+import { isArray, isString } from "es-toolkit/compat";
 import Link from "next/link";
 import { useState } from "react";
 import { stockControlTokenStore } from "@/app/lib/api/portalTokenStores";
+
+function parseErrorResponse(text: string, status: number): string {
+  try {
+    const parsed = JSON.parse(text) as Record<string, unknown>;
+    const msg = parsed.message;
+    if (isString(msg)) return msg;
+    if (isArray(msg)) return (msg as string[]).join(", ");
+  } catch {
+    // not JSON
+  }
+  if (text.length > 0) return text;
+  return `HTTP ${status}`;
+}
 
 interface SeedResult {
   productsCreated: number;
@@ -127,7 +141,8 @@ export default function StockManagementPreviewIndexPage() {
       });
       if (!response.ok) {
         const text = await response.text().catch(() => "");
-        throw new Error(`${response.status} ${text}`);
+        const parsed = parseErrorResponse(text, response.status);
+        throw new Error(parsed);
       }
       const data = (await response.json()) as SeedResult;
       setSeedResult(data);
@@ -153,7 +168,8 @@ export default function StockManagementPreviewIndexPage() {
       });
       if (!response.ok) {
         const text = await response.text().catch(() => "");
-        throw new Error(`${response.status} ${text}`);
+        const parsed = parseErrorResponse(text, response.status);
+        throw new Error(parsed);
       }
       const data = await response.json();
       setSyncResult(data);
