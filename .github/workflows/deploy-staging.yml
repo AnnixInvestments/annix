@@ -76,6 +76,13 @@ jobs:
     name: Deploy to Staging
     runs-on: ubuntu-latest
     needs: build-image
+    # Serialise deploys against the single annix-app-staging Fly app.
+    # Without this, two PRs deploying at once race for Fly VM leases and
+    # the loser fails with 'Unrecoverable error: failed to get lease'.
+    # Queue rather than cancel so every PR's fix lands on staging.
+    concurrency:
+      group: deploy-staging-annix-app
+      cancel-in-progress: false
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
