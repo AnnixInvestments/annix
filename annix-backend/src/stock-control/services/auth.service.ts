@@ -353,7 +353,11 @@ export class StockControlAuthService {
       throw new UnauthorizedException("No Stock Control profile found");
     }
 
-    const role = StockControlRole.STOREMAN;
+    // Resolve role from legacy SC user (until roles migrate to RBAC)
+    const scUser = profile.legacyScUserId
+      ? await this.userRepo.findOne({ where: { id: profile.legacyScUserId } })
+      : null;
+    const role = scUser?.role || StockControlRole.STOREMAN;
 
     if (!unifiedUser.emailVerified) {
       unifiedUser.emailVerified = true;
@@ -386,7 +390,11 @@ export class StockControlAuthService {
     const unifiedUser = profile.user;
     const company = profile.company;
 
-    const role = StockControlRole.STOREMAN;
+    // Resolve role from legacy SC user (until roles migrate to RBAC)
+    const scUser = profile.legacyScUserId
+      ? await this.userRepo.findOne({ where: { id: profile.legacyScUserId } })
+      : null;
+    const role = scUser?.role || StockControlRole.STOREMAN;
 
     const [logoUrl, heroImageUrl] = await Promise.all([
       this.resolveStorageUrl(company?.logoUrl ?? null),

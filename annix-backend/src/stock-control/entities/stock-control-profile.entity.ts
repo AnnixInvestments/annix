@@ -48,6 +48,9 @@ export class StockControlProfile {
   @Column({ name: "linked_staff_id", nullable: true })
   linkedStaffId: number | null;
 
+  @Column({ name: "legacy_sc_user_id", type: "int", nullable: true })
+  legacyScUserId: number | null;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 
