@@ -190,6 +190,7 @@ describe("StockControlAuthService", () => {
     passwordHash: "hashed-password",
     name: "Test User",
     role: StockControlRole.ADMIN,
+    unifiedUserId: null,
     emailVerified: true,
     emailVerificationToken: null,
     emailVerificationExpires: null,

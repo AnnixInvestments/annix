@@ -1,20 +1,26 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { ConfirmModal } from "@/app/components/modals/ConfirmModal";
 import type {
   CompanyRole,
   StockControlInvitation,
+  StockControlLocation,
   StockControlTeamMember,
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { fromISO } from "@/app/lib/datetime";
+import { useUpdateUserLocations, useUserLocationAssignments } from "@/app/lib/query/hooks";
 import { isValidEmail } from "../../lib/validation";
 
 interface TeamManagementSectionProps {
   companyRoles: CompanyRole[];
+  locations: StockControlLocation[];
 }
 
-export function TeamManagementSection({ companyRoles }: TeamManagementSectionProps) {
+const LOCATION_ELIGIBLE_ROLES = ["storeman", "manager", "admin"];
+
+export function TeamManagementSection({ companyRoles, locations }: TeamManagementSectionProps) {
   const [teamMembers, setTeamMembers] = useState<StockControlTeamMember[]>([]);
   const [invitations, setInvitations] = useState<StockControlInvitation[]>([]);
   const [teamLoading, setTeamLoading] = useState(true);
@@ -26,13 +32,15 @@ export function TeamManagementSection({ companyRoles }: TeamManagementSectionPro
   const [inviteError, setInviteError] = useState("");
   const [inviteSending, setInviteSending] = useState(false);
   const [sendingAppLinkId, setSendingAppLinkId] = useState<number | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<StockControlTeamMember | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [locationSavingKey, setLocationSavingKey] = useState<string | null>(null);
+
+  const { data: userLocations = [] } = useUserLocationAssignments();
+  const updateLocationsMutation = useUpdateUserLocations();
 
   const assignableRoles = companyRoles.filter((r) => r.key !== "viewer");
-
-  const localRoleLabel = (roleKey: string) => {
-    const match = companyRoles.find((r) => r.key === roleKey);
-    return match ? match.label : roleKey;
-  };
+  const activeLocations = locations.filter((l) => l.active);
 
   const loadTeamData = useCallback(async () => {
     setTeamLoading(true);
@@ -77,6 +85,43 @@ export function TeamManagementSection({ companyRoles }: TeamManagementSectionPro
       alert(msg);
     } finally {
       setSendingAppLinkId(null);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    const target = deleteTarget;
+    if (!target) return;
+    setDeleting(true);
+    try {
+      await stockControlApiClient.deleteMember(target.id);
+      setDeleteTarget(null);
+      await loadTeamData();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Failed to delete team member";
+      // eslint-disable-next-line no-restricted-globals -- legacy sync alert pending modal migration (issue #175)
+      alert(msg);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleToggleLocation = async (userId: number, locationId: number) => {
+    const userLoc = userLocations.find((ul) => ul.userId === userId);
+    const currentIds = userLoc ? userLoc.locationIds : [];
+    const newIds = currentIds.includes(locationId)
+      ? currentIds.filter((id) => id !== locationId)
+      : [...currentIds, locationId];
+
+    const key = `${userId}:${locationId}`;
+    setLocationSavingKey(key);
+    try {
+      await updateLocationsMutation.mutateAsync({ userId, locationIds: newIds });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Failed to update location assignment";
+      // eslint-disable-next-line no-restricted-globals -- legacy sync alert pending modal migration (issue #175)
+      alert(msg);
+    } finally {
+      setLocationSavingKey(null);
     }
   };
 
@@ -127,6 +172,11 @@ export function TeamManagementSection({ companyRoles }: TeamManagementSectionPro
       // eslint-disable-next-line no-restricted-globals -- legacy sync alert pending modal migration (issue #175)
       alert(msg);
     }
+  };
+
+  const localRoleLabel = (roleKey: string) => {
+    const match = companyRoles.find((r) => r.key === roleKey);
+    return match ? match.label : roleKey;
   };
 
   return (
@@ -214,6 +264,15 @@ export function TeamManagementSection({ companyRoles }: TeamManagementSectionPro
                       <th className="py-1.5 px-2 text-left text-[10px] font-medium uppercase text-gray-500">
                         Role
                       </th>
+                      {activeLocations.map((loc) => (
+                        <th
+                          key={loc.id}
+                          className="py-1.5 px-1 text-center text-[10px] font-medium uppercase text-gray-500"
+                          title={loc.name}
+                        >
+                          {loc.name}
+                        </th>
+                      ))}
                       <th className="hidden py-1.5 px-2 text-left text-[10px] font-medium uppercase text-gray-500 md:table-cell">
                         Joined
                       </th>
@@ -223,40 +282,108 @@ export function TeamManagementSection({ companyRoles }: TeamManagementSectionPro
                     </tr>
                   </thead>
                   <tbody>
-                    {teamMembers.map((member) => (
-                      <tr key={member.id} className="border-b border-gray-100">
-                        <td className="py-1 px-2 text-xs text-gray-900">{member.name}</td>
-                        <td className="hidden py-1 px-2 text-xs text-gray-500 sm:table-cell">
-                          {member.email}
-                        </td>
-                        <td className="py-1 px-2">
-                          <select
-                            value={member.role}
-                            onChange={(e) => handleRoleChange(member.id, e.target.value)}
-                            className="rounded border border-gray-200 px-1 py-0.5 text-xs bg-transparent focus:border-teal-500 focus:outline-none focus:ring-teal-500"
-                          >
-                            {assignableRoles.map((r) => (
-                              <option key={r.key} value={r.key}>
-                                {r.label}
-                              </option>
-                            ))}
-                          </select>
-                        </td>
-                        <td className="hidden py-1 px-2 text-xs text-gray-500 md:table-cell">
-                          {fromISO(member.createdAt).toJSDate().toLocaleDateString("en-ZA")}
-                        </td>
-                        <td className="py-1 px-2 text-right">
-                          <button
-                            type="button"
-                            onClick={() => handleSendAppLink(member.id)}
-                            disabled={sendingAppLinkId === member.id}
-                            className="text-[10px] font-medium text-teal-600 hover:text-teal-800 disabled:opacity-50"
-                          >
-                            {sendingAppLinkId === member.id ? "..." : "Send Link"}
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                    {teamMembers.map((member) => {
+                      const locationEligible = LOCATION_ELIGIBLE_ROLES.includes(member.role);
+                      const userLoc = userLocations.find((ul) => ul.userId === member.id);
+                      const assignedIds = userLoc ? userLoc.locationIds : [];
+                      const hasAny = assignedIds.length > 0;
+
+                      return (
+                        <tr key={member.id} className="border-b border-gray-100">
+                          <td className="py-1 px-2 text-xs text-gray-900">
+                            {member.name}
+                            {locationEligible && !hasAny && (
+                              <span
+                                className="ml-1 text-[10px] text-amber-500"
+                                title="No locations assigned — user sees all locations"
+                              >
+                                (all)
+                              </span>
+                            )}
+                          </td>
+                          <td className="hidden py-1 px-2 text-xs text-gray-500 sm:table-cell">
+                            {member.email}
+                          </td>
+                          <td className="py-1 px-2">
+                            <select
+                              value={member.role}
+                              onChange={(e) => handleRoleChange(member.id, e.target.value)}
+                              className="rounded border border-gray-200 px-1 py-0.5 text-xs bg-transparent focus:border-teal-500 focus:outline-none focus:ring-teal-500"
+                            >
+                              {assignableRoles.map((r) => (
+                                <option key={r.key} value={r.key}>
+                                  {r.label}
+                                </option>
+                              ))}
+                            </select>
+                          </td>
+                          {activeLocations.map((loc) => {
+                            const assigned = assignedIds.includes(loc.id);
+                            const key = `${member.id}:${loc.id}`;
+                            const isSaving = locationSavingKey === key;
+                            return (
+                              <td key={loc.id} className="py-1 px-1 text-center">
+                                {locationEligible ? (
+                                  <button
+                                    type="button"
+                                    disabled={isSaving}
+                                    onClick={() => handleToggleLocation(member.id, loc.id)}
+                                    className={`w-5 h-5 rounded border transition-all inline-flex items-center justify-center ${
+                                      assigned
+                                        ? "bg-emerald-100 border-emerald-300 text-emerald-700"
+                                        : "bg-white border-gray-200 text-gray-300 hover:border-gray-300"
+                                    } ${isSaving ? "opacity-50 cursor-wait" : "cursor-pointer"}`}
+                                    title={
+                                      assigned
+                                        ? `${member.name} can access ${loc.name}`
+                                        : `Grant ${member.name} access to ${loc.name}`
+                                    }
+                                  >
+                                    {assigned && (
+                                      <svg
+                                        className="w-3 h-3"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        stroke="currentColor"
+                                        strokeWidth={3}
+                                      >
+                                        <path
+                                          strokeLinecap="round"
+                                          strokeLinejoin="round"
+                                          d="M4.5 12.75l6 6 9-13.5"
+                                        />
+                                      </svg>
+                                    )}
+                                  </button>
+                                ) : (
+                                  <span className="text-gray-300 text-xs">—</span>
+                                )}
+                              </td>
+                            );
+                          })}
+                          <td className="hidden py-1 px-2 text-xs text-gray-500 md:table-cell">
+                            {fromISO(member.createdAt).toJSDate().toLocaleDateString("en-ZA")}
+                          </td>
+                          <td className="py-1 px-2 text-right whitespace-nowrap">
+                            <button
+                              type="button"
+                              onClick={() => handleSendAppLink(member.id)}
+                              disabled={sendingAppLinkId === member.id}
+                              className="text-[10px] font-medium text-teal-600 hover:text-teal-800 disabled:opacity-50"
+                            >
+                              {sendingAppLinkId === member.id ? "..." : "Send Link"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setDeleteTarget(member)}
+                              className="ml-2 text-[10px] font-medium text-red-600 hover:text-red-800"
+                            >
+                              Delete
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -303,6 +430,21 @@ export function TeamManagementSection({ companyRoles }: TeamManagementSectionPro
           )}
         </>
       )}
+
+      <ConfirmModal
+        isOpen={deleteTarget !== null}
+        title="Delete team member?"
+        message={
+          deleteTarget
+            ? `This will permanently remove ${deleteTarget.name} (${deleteTarget.email}) from Stock Control. They will lose access immediately. This cannot be undone.`
+            : ""
+        }
+        confirmLabel="Delete"
+        variant="danger"
+        loading={deleting}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => (deleting ? undefined : setDeleteTarget(null))}
+      />
     </div>
   );
 }

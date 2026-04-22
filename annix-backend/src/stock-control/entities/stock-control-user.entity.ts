@@ -80,6 +80,9 @@ export class StockControlUser {
   @Column({ name: "unified_company_id", nullable: true })
   unifiedCompanyId?: number | null;
 
+  @Column({ name: "unified_user_id", type: "int", nullable: true })
+  unifiedUserId: number | null;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

@@ -62,6 +62,7 @@ declare module "./base" {
     teamMembers(): Promise<StockControlTeamMember[]>;
     updateMemberRole(userId: number, role: string): Promise<{ message: string }>;
     sendAppLink(userId: number): Promise<{ message: string }>;
+    deleteMember(userId: number): Promise<{ message: string }>;
     departments(): Promise<StockControlDepartment[]>;
     createDepartment(name: string, displayOrder?: number): Promise<StockControlDepartment>;
     updateDepartment(
@@ -254,6 +255,10 @@ proto.updateMemberRole = async function (userId, role) {
 
 proto.sendAppLink = async function (userId) {
   return this.request(`/stock-control/auth/team/${userId}/send-app-link`, { method: "POST" });
+};
+
+proto.deleteMember = async function (userId) {
+  return this.request(`/stock-control/auth/team/${userId}`, { method: "DELETE" });
 };
 
 proto.departments = async function () {

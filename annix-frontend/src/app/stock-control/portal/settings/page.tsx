@@ -4,11 +4,7 @@ import { toPairs as entries, keys } from "es-toolkit/compat";
 import { useRouter } from "next/navigation";
 import { Fragment, useCallback, useEffect, useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
-import type {
-  CompanyRole,
-  StockControlLocation,
-  StockControlTeamMember,
-} from "@/app/lib/api/stockControlApi";
+import type { CompanyRole, StockControlLocation } from "@/app/lib/api/stockControlApi";
 import {
   useActionPermissions,
   useCompanyRoles,
@@ -20,12 +16,9 @@ import {
   useUpdateActionPermissions,
   useUpdateCompanyRole,
   useUpdateNavRbacConfig,
-  useUpdateUserLocations,
-  useUserLocationAssignments,
 } from "@/app/lib/query/hooks";
 import { ALL_NAV_ITEMS, NAV_GROUP_ORDER, resolveNavItemRoles } from "../../config/navItems";
 import { useStockControlRbac } from "../../context/StockControlRbacContext";
-import { roleLabel } from "../../lib/roleLabels";
 import { DepartmentsLocationsSection } from "./DepartmentsLocationsSection";
 import { InboundEmailConfigSection } from "./InboundEmailConfigSection";
 import { SupplierMappingsSection } from "./SupplierMappingsSection";
@@ -64,7 +57,7 @@ export default function StockControlSettingsPage() {
       />
       <ActionPermissionsSection roles={companyRoles} rolesLoading={companyRolesLoading} />
 
-      <TeamManagementSection companyRoles={companyRoles} />
+      <TeamManagementSection companyRoles={companyRoles} locations={locations} />
 
       <DepartmentsLocationsSection onLocationsLoaded={setLocations} />
 
@@ -74,7 +67,6 @@ export default function StockControlSettingsPage() {
           <WorkflowPreviewSection />
         </div>
       )}
-      <UserLocationAssignmentsSection locations={locations} teamMembers={teamMembers} />
       <InboundEmailConfigSection />
       <SupplierMappingsSection />
     </div>
@@ -558,175 +550,6 @@ function MenuVisibilitySection({
             <p className="mt-1 text-[10px] text-red-600">{roleError}</p>
           )}
         </div>
-      )}
-    </div>
-  );
-}
-
-function UserLocationAssignmentsSection({
-  locations,
-  teamMembers,
-}: {
-  locations: StockControlLocation[];
-  teamMembers: StockControlTeamMember[];
-}) {
-  const {
-    data: userLocations = [],
-    isLoading: loading,
-    error: loadError,
-  } = useUserLocationAssignments();
-  const updateLocationsMutation = useUpdateUserLocations();
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState(false);
-  const [collapsed, setCollapsed] = useState(false);
-
-  const activeLocations = locations.filter((l) => l.active);
-  const eligibleMembers = teamMembers.filter(
-    (m) => m.role === "storeman" || m.role === "manager" || m.role === "admin",
-  );
-
-  useEffect(() => {
-    if (loadError) {
-      setError("Failed to load user location assignments");
-    }
-  }, [loadError]);
-
-  const isLocationAssigned = (userId: number, locationId: number): boolean => {
-    const userLoc = userLocations.find((ul) => ul.userId === userId);
-    const locIds = userLoc ? userLoc.locationIds : null;
-    return locIds ? locIds.includes(locationId) : false;
-  };
-
-  const handleToggleLocation = async (userId: number, locationId: number) => {
-    const userLoc = userLocations.find((ul) => ul.userId === userId);
-    const currentLocIds = userLoc ? userLoc.locationIds : null;
-    const currentIds = currentLocIds ? currentLocIds : [];
-    const newIds = currentIds.includes(locationId)
-      ? currentIds.filter((id) => id !== locationId)
-      : [...currentIds, locationId];
-
-    setSaving(true);
-    setError("");
-    setSuccess(false);
-
-    try {
-      await updateLocationsMutation.mutateAsync({ userId, locationIds: newIds });
-      setSuccess(true);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to update location assignment");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-      <button
-        type="button"
-        onClick={() => setCollapsed((prev) => !prev)}
-        className="flex items-center gap-2 text-lg font-semibold text-gray-900 hover:text-gray-700 transition-colors"
-      >
-        <svg
-          className={`w-5 h-5 text-gray-400 transition-transform ${collapsed ? "" : "rotate-90"}`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-        </svg>
-        Store Location Assignments
-      </button>
-      {collapsed ? null : (
-        <>
-          {error && <p className="text-xs text-red-600 mt-1">{error}</p>}
-
-          {activeLocations.length === 0 ? (
-            <p className="text-xs text-gray-500 italic mt-2">
-              No store locations configured. Add locations above first.
-            </p>
-          ) : loading ? (
-            <div className="text-center py-2 text-xs text-gray-500">Loading...</div>
-          ) : (
-            <div className="overflow-x-auto -mx-4 px-4 mt-2">
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr>
-                    <th className="text-left py-1 pr-3 pl-1 text-[10px] font-medium text-gray-500 uppercase tracking-wide sticky left-0 bg-white min-w-[90px] sm:min-w-[120px]">
-                      Team Member
-                    </th>
-                    {activeLocations.map((loc) => (
-                      <th
-                        key={loc.id}
-                        className="py-1 px-0.5 text-[10px] font-medium text-gray-500 text-center min-w-[56px] uppercase tracking-wide"
-                      >
-                        {loc.name}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {eligibleMembers.map((member) => {
-                    const userLoc = userLocations.find((ul) => ul.userId === member.id);
-                    const ulLocIds = userLoc ? userLoc.locationIds : null;
-                    const ulLocLen = ulLocIds ? ulLocIds.length : 0;
-                    const hasAny = ulLocLen > 0;
-
-                    return (
-                      <tr key={member.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="py-1 pr-3 pl-1 sticky left-0 bg-inherit">
-                          <span className="font-medium text-xs text-gray-900">{member.name}</span>
-                          <span className="text-[10px] text-gray-400 ml-1">
-                            {roleLabel(member.role)}
-                            {!hasAny && <span className="ml-0.5 text-amber-500">(all)</span>}
-                          </span>
-                        </td>
-                        {activeLocations.map((loc) => {
-                          const assigned = isLocationAssigned(member.id, loc.id);
-                          return (
-                            <td key={loc.id} className="py-1 px-0.5 text-center">
-                              <button
-                                type="button"
-                                disabled={saving}
-                                onClick={() => handleToggleLocation(member.id, loc.id)}
-                                className={`w-6 h-6 rounded border transition-all inline-flex items-center justify-center ${
-                                  assigned
-                                    ? "bg-emerald-100 border-emerald-300 text-emerald-700"
-                                    : "bg-white border-gray-200 text-gray-300 hover:border-gray-300"
-                                } ${saving ? "opacity-50 cursor-wait" : "cursor-pointer"}`}
-                                title={
-                                  assigned
-                                    ? `${member.name} can access ${loc.name}`
-                                    : `Grant ${member.name} access to ${loc.name}`
-                                }
-                              >
-                                {assigned && (
-                                  <svg
-                                    className="w-3 h-3"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                    strokeWidth={3}
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      d="M4.5 12.75l6 6 9-13.5"
-                                    />
-                                  </svg>
-                                )}
-                              </button>
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </>
       )}
     </div>
   );

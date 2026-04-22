@@ -3,6 +3,7 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
   UnauthorizedException,
 } from "@nestjs/common";
@@ -37,6 +38,7 @@ const VERIFICATION_EXPIRY_HOURS = 24;
 
 @Injectable()
 export class StockControlAuthService {
+  private readonly logger = new Logger(StockControlAuthService.name);
   private readonly storageType: string;
 
   constructor(
@@ -695,6 +697,46 @@ export class StockControlAuthService {
     await this.userRepo.save(user);
 
     return { message: "Role updated successfully." };
+  }
+
+  async deleteMember(
+    companyId: number,
+    userId: number,
+    requesterUnifiedUserId: number,
+  ): Promise<{ message: string }> {
+    const user = await this.userRepo.findOne({ where: { id: userId, companyId } });
+    if (!user) {
+      throw new NotFoundException("Team member not found");
+    }
+
+    if (user.unifiedUserId === requesterUnifiedUserId) {
+      throw new ForbiddenException("You cannot delete your own account");
+    }
+
+    if (user.role === StockControlRole.ADMIN) {
+      const admins = await this.userRepo.count({
+        where: { companyId, role: StockControlRole.ADMIN },
+      });
+      if (admins <= 1) {
+        throw new ForbiddenException("Cannot delete the only admin");
+      }
+    }
+
+    await this.userRepo.manager.transaction(async (manager) => {
+      if (user.unifiedUserId !== null && user.unifiedUserId !== undefined) {
+        await manager.query(
+          `DELETE FROM user_app_access
+           WHERE user_id = $1
+             AND app_id IN (SELECT id FROM apps WHERE code = 'stock-control')`,
+          [user.unifiedUserId],
+        );
+        await manager.delete(StockControlProfile, { userId: user.unifiedUserId });
+      }
+      await manager.delete(StockControlUser, { id: user.id });
+    });
+
+    this.logger.log(`Deleted team member ${user.email} (id=${user.id}) from company ${companyId}`);
+    return { message: "Team member deleted successfully." };
   }
 
   async sendAppLink(companyId: number, userId: number): Promise<{ message: string }> {

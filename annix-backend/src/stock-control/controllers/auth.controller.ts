@@ -241,6 +241,14 @@ export class StockControlAuthController {
     return this.authService.sendAppLink(req.user.companyId, id);
   }
 
+  @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
+  @StockControlRoles("admin")
+  @Delete("team/:id")
+  @ApiOperation({ summary: "Delete a team member" })
+  async deleteMember(@Req() req: any, @Param("id") id: number) {
+    return this.authService.deleteMember(req.user.companyId, id, req.user.unifiedUserId);
+  }
+
   @UseGuards(StockControlAuthGuard)
   @Post("logout")
   @ApiOperation({ summary: "Logout" })
