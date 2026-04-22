@@ -505,7 +505,10 @@ export class StockControlAuthService {
         throw new UnauthorizedException("No Stock Control profile found");
       }
 
-      const role = StockControlRole.STOREMAN;
+      const scUser = profile.legacyScUserId
+        ? await this.userRepo.findOne({ where: { id: profile.legacyScUserId } })
+        : null;
+      const role = scUser?.role || StockControlRole.STOREMAN;
       const name =
         [unifiedUser.firstName, unifiedUser.lastName].filter(Boolean).join(" ") ||
         unifiedUser.email;

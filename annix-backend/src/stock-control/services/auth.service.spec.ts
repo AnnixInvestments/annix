@@ -147,6 +147,7 @@ describe("StockControlAuthService", () => {
     pushNotificationsEnabled: true,
     linkedStaffId: null,
     linkedStaff: null,
+    legacyScUserId: 1,
     user: null as any,
     company: null as any,
     createdAt: now().toJSDate(),
@@ -685,13 +686,26 @@ describe("StockControlAuthService", () => {
       await expect(service.currentUser(999)).rejects.toThrow(UnauthorizedException);
     });
 
-    it("always returns storeman role from currentUser", async () => {
+    it("resolves role from legacy SC user record", async () => {
       mockProfileRepo.findOne.mockResolvedValue({
         ...baseProfile,
         user: { ...baseUnifiedUser },
         company: { ...baseCompany },
       });
       mockUserRepo.findOne.mockResolvedValue({ ...baseUser });
+
+      const result = await service.currentUser(100);
+
+      expect(result.role).toBe(StockControlRole.ADMIN);
+    });
+
+    it("falls back to storeman when legacy SC user is missing", async () => {
+      mockProfileRepo.findOne.mockResolvedValue({
+        ...baseProfile,
+        legacyScUserId: null,
+        user: { ...baseUnifiedUser },
+        company: { ...baseCompany },
+      });
 
       const result = await service.currentUser(100);
 
