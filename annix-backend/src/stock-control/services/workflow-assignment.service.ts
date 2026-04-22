@@ -253,6 +253,7 @@ export class WorkflowAssignmentService {
 
     const grouped = assignments.reduce(
       (acc, a) => {
+        if (!a.user) return acc;
         if (!acc[a.userId]) {
           acc[a.userId] = {
             userId: a.userId,

@@ -732,6 +732,9 @@ export class StockControlAuthService {
         );
         await manager.delete(StockControlProfile, { userId: user.unifiedUserId });
       }
+      await manager.query("DELETE FROM user_location_assignments WHERE user_id = $1", [user.id]);
+      await manager.query("DELETE FROM workflow_step_assignments WHERE user_id = $1", [user.id]);
+      await manager.query("DELETE FROM workflow_notifications WHERE user_id = $1", [user.id]);
       await manager.delete(StockControlUser, { id: user.id });
     });
 
