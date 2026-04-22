@@ -218,11 +218,12 @@ export function DefelskoBatchSection(props: DefelskoBatchSectionProps) {
         const entry = batchValues[f.fieldKey];
         const entryBatch = entry ? entry.batchNumber : null;
         const entryNA = entry ? entry.notApplicable : false;
+        const trimmed = entryBatch ? entryBatch.trim() : null;
         return {
           fieldKey: f.fieldKey,
           category: f.category,
           label: f.label,
-          batchNumber: entryBatch || null,
+          batchNumber: trimmed || null,
           notApplicable: entryNA || false,
         };
       });
@@ -262,11 +263,12 @@ export function DefelskoBatchSection(props: DefelskoBatchSectionProps) {
         const entry = batchValues[f.fieldKey];
         const entryBatch = entry ? entry.batchNumber : null;
         const entryNA = entry ? entry.notApplicable : false;
+        const trimmed = entryBatch ? entryBatch.trim() : null;
         return {
           fieldKey: f.fieldKey,
           category: f.category,
           label: f.label,
-          batchNumber: entryBatch || null,
+          batchNumber: trimmed || null,
           notApplicable: entryNA || false,
         };
       });

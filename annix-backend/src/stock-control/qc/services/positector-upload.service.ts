@@ -174,7 +174,7 @@ export class PositectorUploadService implements OnModuleInit {
       companyId,
       originalFilename: file.originalname,
       s3FilePath: storageResult.path,
-      batchName: batch.header.batchName || null,
+      batchName: batch.header.batchName ? batch.header.batchName.trim() : null,
       probeType: batch.header.probeType || null,
       entityType,
       detectedFormat,
@@ -349,7 +349,9 @@ export class PositectorUploadService implements OnModuleInit {
       .set({ positectorUploadId: upload.id })
       .where("companyId = :companyId", { companyId })
       .andWhere("jobCardId = :jobCardId", { jobCardId: upload.linkedJobCardId })
-      .andWhere("LOWER(batchNumber) = LOWER(:batchNumber)", { batchNumber: upload.batchName })
+      .andWhere("LOWER(TRIM(batchNumber)) = LOWER(TRIM(:batchNumber))", {
+        batchNumber: upload.batchName.trim(),
+      })
       .andWhere("positectorUploadId IS NULL")
       .execute();
   }
@@ -365,7 +367,9 @@ export class PositectorUploadService implements OnModuleInit {
       .createQueryBuilder("u")
       .where("u.companyId = :companyId", { companyId })
       .andWhere("u.linkedJobCardId IS NULL")
-      .andWhere("LOWER(u.batchName) = LOWER(:batchNumber)", { batchNumber })
+      .andWhere("LOWER(TRIM(u.batchName)) = LOWER(TRIM(:batchNumber))", {
+        batchNumber: batchNumber.trim(),
+      })
       .getMany();
 
     if (unlinked.length === 0) return [];

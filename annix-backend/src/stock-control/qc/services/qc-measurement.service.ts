@@ -15,6 +15,7 @@ import { JobCardLineItem } from "../../entities/job-card-line-item.entity";
 import { StockControlCompany } from "../../entities/stock-control-company.entity";
 import { INVALID_LINE_ITEM_PATTERNS, stripJunkSuffixes } from "../../lib/line-item-validation";
 import { CertificateService } from "../../services/certificate.service";
+import { sanitizeNotes } from "../../services/job-card-import.service";
 import { QcBlastProfile } from "../entities/qc-blast-profile.entity";
 import {
   InterventionType,
@@ -452,10 +453,17 @@ export class QcMeasurementService {
     });
 
     const coats = Array.isArray(coating?.coats) ? coating.coats : [];
-    const hasRubber = coating?.hasInternalLining === true;
-    const hasPaint = coats.length > 0;
-    const hasExternalPaint = coats.some((c: any) => c.area === "external");
-    const hasInternalPaint = coats.some((c: any) => c.area === "internal");
+    const effectiveRawNotes = coating?.rawNotes || sanitizeNotes(jobCard.notes) || null;
+    const notesHasExt = effectiveRawNotes ? /\bEXT\s*:/i.test(effectiveRawNotes) : false;
+    const notesHasInt = effectiveRawNotes ? /\bINT\s*:/i.test(effectiveRawNotes) : false;
+    const notesHasRubber = effectiveRawNotes
+      ? /\bR\/L\b|\brubber\b|\blining\b|\blagging\b|\bROT\b/i.test(effectiveRawNotes)
+      : false;
+    const hasRubber = coating?.hasInternalLining === true || notesHasRubber;
+    const hasPaint = coats.length > 0 || notesHasExt || notesHasInt;
+    const hasExternalPaint = coats.some((c: any) => c.area === "external") || notesHasExt;
+    const hasInternalPaint =
+      coats.some((c: any) => c.area === "internal") || (notesHasInt && !notesHasRubber);
 
     const planTypes: QcpPlanType[] = [];
     if (hasExternalPaint) planTypes.push(QcpPlanType.PAINT_EXTERNAL);
@@ -548,7 +556,7 @@ export class QcMeasurementService {
     };
 
     const rubberActivities = (): QcpActivity[] => {
-      const rubberSpec = extractSpecByArea(coating?.rawNotes, "INT");
+      const rubberSpec = extractSpecByArea(effectiveRawNotes, "INT");
       const intSurfPrep = coating?.intSurfacePrep || coating?.surfacePrep || "sa3_blast";
       return [
         buildActivity(1, "Obtain Approval of QCP", null, "QC Document"),
@@ -649,12 +657,12 @@ export class QcMeasurementService {
 
     const specificationForType = (planType: QcpPlanType): string | null => {
       if (planType === QcpPlanType.RUBBER) {
-        return extractSpecByArea(coating?.rawNotes, "INT") || coating?.rawNotes || null;
+        return extractSpecByArea(effectiveRawNotes, "INT") || effectiveRawNotes || null;
       }
       if (planType === QcpPlanType.PAINT_EXTERNAL || planType === QcpPlanType.PAINT_INTERNAL) {
-        return extractSpecByArea(coating?.rawNotes, "EXT") || coating?.rawNotes || null;
+        return extractSpecByArea(effectiveRawNotes, "EXT") || effectiveRawNotes || null;
       }
-      return coating?.rawNotes || null;
+      return effectiveRawNotes || null;
     };
 
     const nextRevision = (current: string | null): string => {
@@ -1210,7 +1218,9 @@ export class QcMeasurementService {
       .addSelect("jc.jobNumber", "jobNumber")
       .addSelect("jc.jcNumber", "jcNumber")
       .where("db.companyId = :companyId", { companyId })
-      .andWhere("LOWER(db.batchNumber) = LOWER(:batchName)", { batchName: batchName.trim() })
+      .andWhere("LOWER(TRIM(db.batchNumber)) = LOWER(TRIM(:batchName))", {
+        batchName: batchName.trim(),
+      })
       .andWhere("db.notApplicable = false")
       .getRawAndEntities();
 
@@ -1540,10 +1550,21 @@ export class QcMeasurementService {
     });
 
     const coats = Array.isArray(coating?.coats) ? coating.coats : [];
-    const hasRubber = coating?.hasInternalLining === true;
-    const hasPaint = coats.length > 0;
-    const hasExternalPaint = coats.some((c: any) => c.area === "external");
-    const hasInternalPaint = coats.some((c: any) => c.area === "internal");
+    const effectiveRawNotes =
+      coating?.rawNotes ||
+      sanitizeNotes(cpo.coatingSpecs) ||
+      sanitizeNotes(childJobCards[0]?.notes) ||
+      null;
+    const notesHasExt = effectiveRawNotes ? /\bEXT\s*:/i.test(effectiveRawNotes) : false;
+    const notesHasInt = effectiveRawNotes ? /\bINT\s*:/i.test(effectiveRawNotes) : false;
+    const notesHasRubber = effectiveRawNotes
+      ? /\bR\/L\b|\brubber\b|\blining\b|\blagging\b|\bROT\b/i.test(effectiveRawNotes)
+      : false;
+    const hasRubber = coating?.hasInternalLining === true || notesHasRubber;
+    const hasPaint = coats.length > 0 || notesHasExt || notesHasInt;
+    const hasExternalPaint = coats.some((c: any) => c.area === "external") || notesHasExt;
+    const hasInternalPaint =
+      coats.some((c: any) => c.area === "internal") || (notesHasInt && !notesHasRubber);
 
     const planTypes: QcpPlanType[] = [];
     if (hasExternalPaint) planTypes.push(QcpPlanType.PAINT_EXTERNAL);
@@ -1635,7 +1656,7 @@ export class QcMeasurementService {
     };
 
     const rubberActivities = (): QcpActivity[] => {
-      const rubberSpec = extractSpecByArea(coating?.rawNotes, "INT");
+      const rubberSpec = extractSpecByArea(effectiveRawNotes, "INT");
       const intSurfPrep = coating?.intSurfacePrep || coating?.surfacePrep || "sa3_blast";
       return [
         buildActivity(1, "Obtain Approval of QCP", null, "QC Document"),
@@ -1736,12 +1757,12 @@ export class QcMeasurementService {
 
     const specificationForType = (planType: QcpPlanType): string | null => {
       if (planType === QcpPlanType.RUBBER) {
-        return extractSpecByArea(coating?.rawNotes, "INT") || coating?.rawNotes || null;
+        return extractSpecByArea(effectiveRawNotes, "INT") || effectiveRawNotes || null;
       }
       if (planType === QcpPlanType.PAINT_EXTERNAL || planType === QcpPlanType.PAINT_INTERNAL) {
-        return extractSpecByArea(coating?.rawNotes, "EXT") || coating?.rawNotes || null;
+        return extractSpecByArea(effectiveRawNotes, "EXT") || effectiveRawNotes || null;
       }
-      return coating?.rawNotes || null;
+      return effectiveRawNotes || null;
     };
 
     const nextRevision = (current: string | null): string => {
