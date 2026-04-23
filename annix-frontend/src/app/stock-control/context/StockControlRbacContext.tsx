@@ -1,8 +1,11 @@
 "use client";
 
-import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
+import type React from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
+import { deriveNavRbacConfig } from "../config/deriveNavRbac";
 import { ALL_NAV_ITEMS } from "../config/navItems";
+import { isDerivedNavMode } from "../config/rbacMode";
 
 type RbacConfig = Record<string, string[]>;
 
@@ -24,6 +27,17 @@ const StockControlRbacContext = createContext<StockControlRbacContextValue>({
   reloadRbacConfig: async () => {},
 });
 
+async function loadDerivedConfig(): Promise<RbacConfig> {
+  const [actions, roles] = await Promise.all([
+    stockControlApiClient.actionPermissions(),
+    stockControlApiClient.companyRoles(),
+  ]);
+  const rawActionConfig = actions.config;
+  const actionConfig = rawActionConfig || {};
+  const roleKeys = roles.map((r) => r.key);
+  return deriveNavRbacConfig(ALL_NAV_ITEMS, actionConfig, roleKeys);
+}
+
 export function StockControlRbacProvider(props: { children: React.ReactNode }) {
   const { children } = props;
   const [rbacConfig, setRbacConfig] = useState<RbacConfig>(defaultConfig);
@@ -31,8 +45,13 @@ export function StockControlRbacProvider(props: { children: React.ReactNode }) {
 
   const reloadRbacConfig = useCallback(async () => {
     try {
-      const config = await stockControlApiClient.navRbacConfig();
-      setRbacConfig(config);
+      if (isDerivedNavMode()) {
+        const derived = await loadDerivedConfig();
+        setRbacConfig(derived);
+      } else {
+        const config = await stockControlApiClient.navRbacConfig();
+        setRbacConfig(config);
+      }
     } catch {
       setRbacConfig(defaultConfig());
     } finally {

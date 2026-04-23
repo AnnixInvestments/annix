@@ -12,9 +12,11 @@ import {
   useUpdateNavRbacConfig,
 } from "@/app/lib/query/hooks";
 import { ALL_NAV_ITEMS, NAV_GROUP_ORDER, resolveNavItemRoles } from "../../config/navItems";
+import { isDerivedNavMode } from "../../config/rbacMode";
 import { useStockControlRbac } from "../../context/StockControlRbacContext";
 
 const SYSTEM_ROLE_KEYS = new Set(["admin", "manager", "quality", "storeman", "accounts", "viewer"]);
+const DERIVED_NAV = isDerivedNavMode();
 
 interface PermissionsSectionProps {
   roles: CompanyRole[];
@@ -38,7 +40,7 @@ export function PermissionsSection({
   const deleteRoleMutation = useDeleteCompanyRole();
 
   const [selectedRole, setSelectedRole] = useState<string>("");
-  const [activeTab, setActiveTab] = useState<Tab>("pages");
+  const [activeTab, setActiveTab] = useState<Tab>(DERIVED_NAV ? "actions" : "pages");
   const [navConfig, setNavConfig] = useState<Record<string, string[]>>({});
   const [actionConfig, setActionConfig] = useState<Record<string, string[]>>({});
   const [actionLabels, setActionLabels] = useState<
@@ -229,7 +231,9 @@ export function PermissionsSection({
     setSaving(true);
     setSuccess(false);
     try {
-      await updateNavMutation.mutateAsync(navConfig);
+      if (!DERIVED_NAV) {
+        await updateNavMutation.mutateAsync(navConfig);
+      }
       const data = await updateActionsMutation.mutateAsync(actionConfig);
       setActionConfig(data.config);
       await reloadRbacConfig();
@@ -498,30 +502,37 @@ export function PermissionsSection({
           </div>
           {roleError && <p className="text-[10px] text-red-600 mb-2">{roleError}</p>}
 
-          <div className="flex items-center gap-4 text-xs font-medium border-b border-gray-200 mb-3">
-            <button
-              type="button"
-              onClick={() => setActiveTab("pages")}
-              className={`pb-2 border-b-2 transition-colors ${
-                activeTab === "pages"
-                  ? "border-teal-600 text-teal-700"
-                  : "border-transparent text-gray-500 hover:text-gray-700"
-              }`}
-            >
-              Pages
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab("actions")}
-              className={`pb-2 border-b-2 transition-colors ${
-                activeTab === "actions"
-                  ? "border-teal-600 text-teal-700"
-                  : "border-transparent text-gray-500 hover:text-gray-700"
-              }`}
-            >
-              Actions
-            </button>
-          </div>
+          {DERIVED_NAV ? (
+            <div className="mb-3 text-[11px] text-gray-600 bg-blue-50 border border-blue-200 rounded px-3 py-2">
+              Page visibility is automatically derived from the actions below. Grant a role an
+              action and the matching menu page appears for them.
+            </div>
+          ) : (
+            <div className="flex items-center gap-4 text-xs font-medium border-b border-gray-200 mb-3">
+              <button
+                type="button"
+                onClick={() => setActiveTab("pages")}
+                className={`pb-2 border-b-2 transition-colors ${
+                  activeTab === "pages"
+                    ? "border-teal-600 text-teal-700"
+                    : "border-transparent text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                Pages
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("actions")}
+                className={`pb-2 border-b-2 transition-colors ${
+                  activeTab === "actions"
+                    ? "border-teal-600 text-teal-700"
+                    : "border-transparent text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                Actions
+              </button>
+            </div>
+          )}
 
           {activeTab === "pages" && (
             <div className="space-y-1">
