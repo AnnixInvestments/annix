@@ -51,6 +51,7 @@ export class WorkflowAssignmentService {
 
     const stepGroups = assignments.reduce(
       (acc, assignment) => {
+        if (!assignment.user) return acc;
         const step = assignment.workflowStep;
         if (!acc[step]) {
           acc[step] = { userIds: [], primaryUserId: null, secondaryUserId: null, users: [] };
