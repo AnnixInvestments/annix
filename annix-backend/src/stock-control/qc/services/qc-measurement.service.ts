@@ -339,10 +339,62 @@ export class QcMeasurementService {
   // ── Control Plans ──────────────────────────────────────────────────
 
   async controlPlansForJobCard(companyId: number, jobCardId: number): Promise<QcControlPlan[]> {
-    return this.controlPlanRepo.find({
+    const plans = await this.controlPlanRepo.find({
       where: { companyId, jobCardId },
       order: { createdAt: "DESC" },
     });
+
+    const missingSpec = plans.filter(
+      (p) => !p.specification || p.specification.trim().length === 0,
+    );
+    if (missingSpec.length === 0) {
+      return plans;
+    }
+
+    const [jobCard, coating] = await Promise.all([
+      this.jobCardRepo.findOne({ where: { id: jobCardId, companyId } }),
+      this.coatingRepo.findOne({ where: { jobCardId, companyId } }),
+    ]);
+
+    const effectiveRawNotes = coating?.rawNotes || sanitizeNotes(jobCard?.notes) || null;
+    if (!effectiveRawNotes) {
+      return plans;
+    }
+
+    const backfilled = await Promise.all(
+      missingSpec.map(async (plan) => {
+        const spec = this.specForPlanType(plan.planType, effectiveRawNotes);
+        if (!spec) return plan;
+        plan.specification = spec;
+        return this.controlPlanRepo.save(plan);
+      }),
+    );
+
+    const backfilledById = backfilled.reduce<Record<number, QcControlPlan>>(
+      (acc, plan) => ({ ...acc, [plan.id]: plan }),
+      {},
+    );
+
+    return plans.map((p) => backfilledById[p.id] || p);
+  }
+
+  private specForPlanType(planType: QcpPlanType, rawNotes: string | null): string | null {
+    if (!rawNotes) return null;
+    const extract = (area: "INT" | "EXT"): string => {
+      const parts = rawNotes
+        .split(/(?=\bINT\s*:|EXT\s*:)/i)
+        .filter((p) => p.trim().toUpperCase().startsWith(area))
+        .map((p) => stripJunkSuffixes(p.trim()));
+      return parts.length > 0 ? [...new Set(parts)].join(" ") : "";
+    };
+
+    if (planType === QcpPlanType.RUBBER) {
+      return extract("INT") || rawNotes;
+    }
+    if (planType === QcpPlanType.PAINT_EXTERNAL || planType === QcpPlanType.PAINT_INTERNAL) {
+      return extract("EXT") || rawNotes;
+    }
+    return rawNotes;
   }
 
   async allControlPlans(companyId: number, search: string | null): Promise<QcControlPlan[]> {
