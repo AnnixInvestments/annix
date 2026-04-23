@@ -104,8 +104,13 @@ export class WorkflowAssignmentService {
     primaryUserId?: number,
     secondaryUserId?: number | null,
   ): Promise<void> {
+    const candidateIds = [
+      ...userIds,
+      ...(primaryUserId !== undefined ? [primaryUserId] : []),
+      ...(secondaryUserId !== null && secondaryUserId !== undefined ? [secondaryUserId] : []),
+    ];
     const validUsers = await this.userRepo.find({
-      where: { id: In(userIds.length > 0 ? userIds : [0]), companyId },
+      where: { id: In(candidateIds.length > 0 ? candidateIds : [0]), companyId },
       select: ["id"],
     });
     const validIds = new Set(validUsers.map((u) => u.id));

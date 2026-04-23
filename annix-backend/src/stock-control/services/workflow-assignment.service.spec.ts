@@ -58,6 +58,12 @@ const createLocationAssignment = (
 describe("WorkflowAssignmentService", () => {
   let service: WorkflowAssignmentService;
 
+  const mockManager = {
+    delete: jest.fn(),
+    create: jest.fn().mockImplementation((_entity, data) => data),
+    save: jest.fn(),
+  };
+
   const mockAssignmentRepo = {
     find: jest.fn(),
     findOne: jest.fn(),
@@ -65,6 +71,9 @@ describe("WorkflowAssignmentService", () => {
     delete: jest.fn(),
     create: jest.fn().mockImplementation((data) => data),
     save: jest.fn(),
+    manager: {
+      transaction: jest.fn().mockImplementation(async (cb) => cb(mockManager)),
+    },
   };
 
   const mockUserRepo = {
@@ -208,53 +217,56 @@ describe("WorkflowAssignmentService", () => {
 
   describe("updateAssignments", () => {
     it("should delete existing and create new assignments", async () => {
-      mockAssignmentRepo.delete.mockResolvedValue({ affected: 1 });
-      mockAssignmentRepo.save.mockResolvedValue([]);
+      mockUserRepo.find.mockResolvedValue([{ id: 10 }, { id: 20 }]);
+      mockManager.delete.mockResolvedValue({ affected: 1 });
+      mockManager.save.mockResolvedValue([]);
 
       await service.updateAssignments(COMPANY_ID, "reception", [10, 20], 10, 20);
 
-      expect(mockAssignmentRepo.delete).toHaveBeenCalledWith({
+      expect(mockManager.delete).toHaveBeenCalledWith(WorkflowStepAssignment, {
         companyId: COMPANY_ID,
         workflowStep: "reception",
       });
-      expect(mockAssignmentRepo.create).toHaveBeenCalledTimes(2);
-      expect(mockAssignmentRepo.create).toHaveBeenCalledWith({
+      expect(mockManager.create).toHaveBeenCalledTimes(2);
+      expect(mockManager.create).toHaveBeenCalledWith(WorkflowStepAssignment, {
         companyId: COMPANY_ID,
         workflowStep: "reception",
         userId: 10,
         isPrimary: true,
         secondaryUserId: 20,
       });
-      expect(mockAssignmentRepo.create).toHaveBeenCalledWith({
+      expect(mockManager.create).toHaveBeenCalledWith(WorkflowStepAssignment, {
         companyId: COMPANY_ID,
         workflowStep: "reception",
         userId: 20,
         isPrimary: false,
         secondaryUserId: null,
       });
-      expect(mockAssignmentRepo.save).toHaveBeenCalledTimes(1);
+      expect(mockManager.save).toHaveBeenCalledTimes(1);
     });
 
     it("should only delete when userIds is empty", async () => {
-      mockAssignmentRepo.delete.mockResolvedValue({ affected: 1 });
+      mockUserRepo.find.mockResolvedValue([]);
+      mockManager.delete.mockResolvedValue({ affected: 1 });
 
       await service.updateAssignments(COMPANY_ID, "reception", []);
 
-      expect(mockAssignmentRepo.delete).toHaveBeenCalledWith({
+      expect(mockManager.delete).toHaveBeenCalledWith(WorkflowStepAssignment, {
         companyId: COMPANY_ID,
         workflowStep: "reception",
       });
-      expect(mockAssignmentRepo.create).not.toHaveBeenCalled();
-      expect(mockAssignmentRepo.save).not.toHaveBeenCalled();
+      expect(mockManager.create).not.toHaveBeenCalled();
+      expect(mockManager.save).not.toHaveBeenCalled();
     });
 
     it("should set isPrimary false for non-primary users", async () => {
-      mockAssignmentRepo.delete.mockResolvedValue({ affected: 0 });
-      mockAssignmentRepo.save.mockResolvedValue([]);
+      mockUserRepo.find.mockResolvedValue([{ id: 10 }]);
+      mockManager.delete.mockResolvedValue({ affected: 0 });
+      mockManager.save.mockResolvedValue([]);
 
       await service.updateAssignments(COMPANY_ID, "reception", [10], 99);
 
-      expect(mockAssignmentRepo.create).toHaveBeenCalledWith({
+      expect(mockManager.create).toHaveBeenCalledWith(WorkflowStepAssignment, {
         companyId: COMPANY_ID,
         workflowStep: "reception",
         userId: 10,
@@ -264,12 +276,13 @@ describe("WorkflowAssignmentService", () => {
     });
 
     it("should set secondaryUserId to null when not provided", async () => {
-      mockAssignmentRepo.delete.mockResolvedValue({ affected: 0 });
-      mockAssignmentRepo.save.mockResolvedValue([]);
+      mockUserRepo.find.mockResolvedValue([{ id: 10 }]);
+      mockManager.delete.mockResolvedValue({ affected: 0 });
+      mockManager.save.mockResolvedValue([]);
 
       await service.updateAssignments(COMPANY_ID, "reception", [10], 10);
 
-      expect(mockAssignmentRepo.create).toHaveBeenCalledWith({
+      expect(mockManager.create).toHaveBeenCalledWith(WorkflowStepAssignment, {
         companyId: COMPANY_ID,
         workflowStep: "reception",
         userId: 10,
