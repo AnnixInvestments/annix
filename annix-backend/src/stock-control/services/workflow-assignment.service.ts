@@ -104,24 +104,41 @@ export class WorkflowAssignmentService {
     primaryUserId?: number,
     secondaryUserId?: number | null,
   ): Promise<void> {
-    await this.assignmentRepo.delete({ companyId, workflowStep: step });
+    const validUsers = await this.userRepo.find({
+      where: { id: In(userIds.length > 0 ? userIds : [0]), companyId },
+      select: ["id"],
+    });
+    const validIds = new Set(validUsers.map((u) => u.id));
+    const cleanedIds = userIds.filter((id) => validIds.has(id));
+    const cleanedPrimary =
+      primaryUserId !== undefined && validIds.has(primaryUserId) ? primaryUserId : undefined;
+    const cleanedSecondary =
+      secondaryUserId !== null && secondaryUserId !== undefined && validIds.has(secondaryUserId)
+        ? secondaryUserId
+        : null;
 
-    if (userIds.length === 0) {
-      return;
-    }
+    await this.assignmentRepo.manager.transaction(async (manager) => {
+      await manager.delete(WorkflowStepAssignment, { companyId, workflowStep: step });
 
-    const assignments = userIds.map((userId) =>
-      this.assignmentRepo.create({
-        companyId,
-        workflowStep: step,
-        userId,
-        isPrimary: primaryUserId === userId,
-        secondaryUserId: primaryUserId === userId ? (secondaryUserId ?? null) : null,
-      }),
+      if (cleanedIds.length === 0) {
+        return;
+      }
+
+      const assignments = cleanedIds.map((userId) =>
+        manager.create(WorkflowStepAssignment, {
+          companyId,
+          workflowStep: step,
+          userId,
+          isPrimary: cleanedPrimary === userId,
+          secondaryUserId: cleanedPrimary === userId ? cleanedSecondary : null,
+        }),
+      );
+      await manager.save(assignments);
+    });
+
+    this.logger.log(
+      `Updated ${step} assignments for company ${companyId}: ${cleanedIds.join(", ")}`,
     );
-
-    await this.assignmentRepo.save(assignments);
-    this.logger.log(`Updated ${step} assignments for company ${companyId}: ${userIds.join(", ")}`);
   }
 
   async secondaryUserForStep(companyId: number, step: string): Promise<StockControlUser | null> {
