@@ -35,7 +35,7 @@ export default function AuIndustriesHomePage(): React.JSX.Element {
             Rubber Products, Linings and Mining Solutions in Boksburg
           </h1>
           <Link
-            href="/au-industries/products-and-services"
+            href="/products-and-services"
             className="inline-block px-12 py-4 bg-[#B8860B] text-white text-lg font-semibold uppercase tracking-wider hover:bg-[#9A7209] transition-colors"
           >
             Our Services
@@ -156,7 +156,7 @@ export default function AuIndustriesHomePage(): React.JSX.Element {
               </li>
             </ul>
             <Link
-              href="/au-industries/products-and-services"
+              href="/products-and-services"
               className="inline-block self-start px-8 py-3 bg-[#B8860B] text-white font-semibold uppercase tracking-wider hover:bg-[#9A7209] transition-colors"
             >
               View All Services
@@ -226,7 +226,7 @@ export default function AuIndustriesHomePage(): React.JSX.Element {
           </div>
 
           <Link
-            href="/au-industries/gallery"
+            href="/gallery"
             className="inline-block px-10 py-4 bg-[#B8860B] text-white text-lg font-semibold uppercase tracking-wider hover:bg-[#9A7209] transition-colors"
           >
             View More Projects
@@ -337,7 +337,7 @@ export default function AuIndustriesHomePage(): React.JSX.Element {
             Get in touch for a free consultation and competitive quote.
           </p>
           <Link
-            href="/au-industries/contact"
+            href="/contact"
             className="inline-block px-10 py-4 bg-[#B8860B] text-white text-lg font-semibold uppercase tracking-wider hover:bg-[#9A7209] transition-colors"
           >
             Contact Us

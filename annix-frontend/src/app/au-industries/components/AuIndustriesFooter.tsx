@@ -55,25 +55,25 @@ export function AuIndustriesFooter(props: FooterProps) {
             </h3>
             <div className="space-y-2 text-sm">
               <Link
-                href="/au-industries"
+                href="/"
                 className="block text-gray-800 hover:text-gray-900 underline-offset-2 hover:underline transition-colors"
               >
                 Home
               </Link>
               <Link
-                href="/au-industries/products-and-services"
+                href="/products-and-services"
                 className="block text-gray-800 hover:text-gray-900 underline-offset-2 hover:underline transition-colors"
               >
                 Products & Services
               </Link>
               <Link
-                href="/au-industries/gallery"
+                href="/gallery"
                 className="block text-gray-800 hover:text-gray-900 underline-offset-2 hover:underline transition-colors"
               >
                 Gallery
               </Link>
               <Link
-                href="/au-industries/contact"
+                href="/contact"
                 className="block text-gray-800 hover:text-gray-900 underline-offset-2 hover:underline transition-colors"
               >
                 Contact Us

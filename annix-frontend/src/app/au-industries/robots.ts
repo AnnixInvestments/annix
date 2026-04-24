@@ -5,10 +5,10 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: "*",
-        allow: "/au-industries/",
+        allow: "/",
         disallow: ["/au-rubber/", "/admin/", "/api/"],
       },
     ],
-    sitemap: "https://auind.co.za/au-industries/sitemap.xml",
+    sitemap: "https://auind.co.za/sitemap.xml",
   };
 }

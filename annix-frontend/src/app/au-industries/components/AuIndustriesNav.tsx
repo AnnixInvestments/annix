@@ -18,14 +18,14 @@ export function AuIndustriesNav(props: { pages: NavPage[] }) {
   const { editMode, setEditMode, isAdmin } = useEditMode();
 
   const isActive = (slug: string) => {
-    return pathname === `/au-industries/${slug}` || (slug === "" && pathname === "/au-industries");
+    return pathname === `/${slug}`;
   };
 
   return (
     <nav className="bg-white border-b border-gray-200 sticky top-0 z-50 border-t-4 border-t-[#333]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-24">
-          <Link href="/au-industries" className="flex-shrink-0">
+          <Link href="/" className="flex-shrink-0">
             <Image
               src="/au-industries/logo.jpg"
               alt="AU Industries"
@@ -38,8 +38,8 @@ export function AuIndustriesNav(props: { pages: NavPage[] }) {
 
           <div className="hidden md:flex items-center space-x-1">
             {props.pages.map((page) => {
-              const href = page.isHomePage ? "/au-industries" : `/au-industries/${page.slug}`;
-              const active = page.isHomePage ? pathname === "/au-industries" : isActive(page.slug);
+              const href = page.isHomePage ? "/" : `/${page.slug}`;
+              const active = page.isHomePage ? pathname === "/" : isActive(page.slug);
               const label = page.isHomePage ? "Home" : page.title;
               return (
                 <Link
@@ -56,9 +56,9 @@ export function AuIndustriesNav(props: { pages: NavPage[] }) {
               );
             })}
             <Link
-              href="/au-industries/quote"
+              href="/quote"
               className={`px-4 py-2 text-sm font-semibold uppercase tracking-wide transition-colors ${
-                pathname === "/au-industries/quote"
+                pathname === "/quote"
                   ? "text-[#B8860B] border-b-2 border-[#B8860B]"
                   : "text-gray-700 hover:text-[#B8860B]"
               }`}
@@ -66,9 +66,9 @@ export function AuIndustriesNav(props: { pages: NavPage[] }) {
               Quote
             </Link>
             <Link
-              href="/au-industries/contact"
+              href="/contact"
               className={`ml-2 px-5 py-2 text-sm font-semibold uppercase tracking-wide border-2 border-[#B8860B] transition-colors ${
-                pathname === "/au-industries/contact"
+                pathname === "/contact"
                   ? "bg-[#B8860B] text-white"
                   : "text-[#B8860B] hover:bg-[#B8860B] hover:text-white"
               }`}
@@ -131,8 +131,8 @@ export function AuIndustriesNav(props: { pages: NavPage[] }) {
         {menuOpen && (
           <div className="md:hidden pb-4 space-y-1 border-t border-gray-200 pt-2">
             {props.pages.map((page) => {
-              const href = page.isHomePage ? "/au-industries" : `/au-industries/${page.slug}`;
-              const active = page.isHomePage ? pathname === "/au-industries" : isActive(page.slug);
+              const href = page.isHomePage ? "/" : `/${page.slug}`;
+              const active = page.isHomePage ? pathname === "/" : isActive(page.slug);
               const label = page.isHomePage ? "Home" : page.title;
               return (
                 <Link
@@ -148,23 +148,19 @@ export function AuIndustriesNav(props: { pages: NavPage[] }) {
               );
             })}
             <Link
-              href="/au-industries/quote"
+              href="/quote"
               onClick={() => setMenuOpen(false)}
               className={`block px-3 py-2 text-base font-semibold uppercase ${
-                pathname === "/au-industries/quote"
-                  ? "text-[#B8860B]"
-                  : "text-gray-700 hover:text-[#B8860B]"
+                pathname === "/quote" ? "text-[#B8860B]" : "text-gray-700 hover:text-[#B8860B]"
               }`}
             >
               Quote
             </Link>
             <Link
-              href="/au-industries/contact"
+              href="/contact"
               onClick={() => setMenuOpen(false)}
               className={`block px-3 py-2 text-base font-semibold uppercase ${
-                pathname === "/au-industries/contact"
-                  ? "text-[#B8860B]"
-                  : "text-gray-700 hover:text-[#B8860B]"
+                pathname === "/contact" ? "text-[#B8860B]" : "text-gray-700 hover:text-[#B8860B]"
               }`}
             >
               Contact Us
