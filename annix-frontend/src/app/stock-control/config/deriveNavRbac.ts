@@ -36,19 +36,7 @@ const NAV_VISIBILITY_RULES: Record<string, NavVisibilityRule> = {
   },
 
   "purchase-orders": { alwaysVisible: true },
-  "job-cards": {
-    actionKeys: [
-      "job-cards.create",
-      "job-cards.update",
-      "job-cards.delete",
-      "job-cards.print",
-      "job-cards.import",
-      "job-cards.attachments",
-      "job-cards.amendment",
-      "job-cards.allocations",
-      "job-cards.line-items.manage",
-    ],
-  },
+  "job-cards": { alwaysVisible: true },
   "customer-deliveries": { alwaysVisible: true },
   quotations: { alwaysVisible: true },
   "customer-invoices": {
