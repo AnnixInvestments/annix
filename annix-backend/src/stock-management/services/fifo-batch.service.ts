@@ -165,9 +165,17 @@ export class FifoBatchService {
     }
 
     if (remainingToConsume > 0) {
+      const product = await manager.getRepository(IssuableProduct).findOne({
+        where: { id: input.productId, companyId },
+        select: ["name", "sku"],
+      });
+      const productLabel = product
+        ? `${product.name} (${product.sku})`
+        : `product ${input.productId}`;
+      const available = input.quantity - remainingToConsume;
       throw new BadRequestException(
-        `Insufficient FIFO stock for product ${input.productId} — requested ${input.quantity}, ` +
-          `available ${input.quantity - remainingToConsume}`,
+        `${productLabel} is out of stock — requested ${input.quantity}, available ${available}. ` +
+          "Record a delivery for this item (Supplier → Deliveries) or adjust the stock level before issuing.",
       );
     }
 
