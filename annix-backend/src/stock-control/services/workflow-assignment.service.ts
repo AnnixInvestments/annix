@@ -11,7 +11,13 @@ export interface StepAssignment {
   userIds: number[];
   primaryUserId: number | null;
   secondaryUserId: number | null;
-  users: { id: number; name: string; email: string; role: string }[];
+  users: {
+    id: number;
+    unifiedUserId: number | null;
+    name: string;
+    email: string;
+    role: string;
+  }[];
 }
 
 export interface StepNotificationRecipients {
@@ -59,6 +65,7 @@ export class WorkflowAssignmentService {
         acc[step].userIds.push(assignment.userId);
         acc[step].users.push({
           id: assignment.user.id,
+          unifiedUserId: assignment.user.unifiedUserId ?? null,
           name: assignment.user.name,
           email: assignment.user.email,
           role: assignment.user.role,
@@ -75,7 +82,13 @@ export class WorkflowAssignmentService {
           userIds: number[];
           primaryUserId: number | null;
           secondaryUserId: number | null;
-          users: { id: number; name: string; email: string; role: string }[];
+          users: {
+            id: number;
+            unifiedUserId: number | null;
+            name: string;
+            email: string;
+            role: string;
+          }[];
         }
       >,
     );
@@ -178,6 +191,16 @@ export class WorkflowAssignmentService {
       select: ["userId"],
     });
     return assignments.map((a) => a.userId);
+  }
+
+  async assignedUnifiedUserIdsForStep(companyId: number, step: string): Promise<number[]> {
+    const assignments = await this.assignmentRepo.find({
+      where: { companyId, workflowStep: step },
+      relations: ["user"],
+    });
+    return assignments
+      .map((a) => a.user?.unifiedUserId ?? null)
+      .filter((id): id is number => id !== null);
   }
 
   async hasExplicitAssignments(companyId: number, step: string): Promise<boolean> {

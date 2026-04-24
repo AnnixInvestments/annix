@@ -152,8 +152,20 @@ describe("WorkflowAssignmentService", () => {
         primaryUserId: 10,
         secondaryUserId: 20,
         users: [
-          { id: 10, name: "Alice", email: "alice@example.com", role: StockControlRole.MANAGER },
-          { id: 20, name: "Bob", email: "bob@example.com", role: StockControlRole.MANAGER },
+          {
+            id: 10,
+            unifiedUserId: null,
+            name: "Alice",
+            email: "alice@example.com",
+            role: StockControlRole.MANAGER,
+          },
+          {
+            id: 20,
+            unifiedUserId: null,
+            name: "Bob",
+            email: "bob@example.com",
+            role: StockControlRole.MANAGER,
+          },
         ],
       });
       expect(result[1]).toEqual({
@@ -162,7 +174,13 @@ describe("WorkflowAssignmentService", () => {
         primaryUserId: 10,
         secondaryUserId: null,
         users: [
-          { id: 10, name: "Alice", email: "alice@example.com", role: StockControlRole.MANAGER },
+          {
+            id: 10,
+            unifiedUserId: null,
+            name: "Alice",
+            email: "alice@example.com",
+            role: StockControlRole.MANAGER,
+          },
         ],
       });
     });

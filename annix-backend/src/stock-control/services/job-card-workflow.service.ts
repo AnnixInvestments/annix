@@ -670,7 +670,7 @@ export class JobCardWorkflowService {
         ? (() => {
             const assigned = allAssignments.find((sa) => sa.step === currentStep.key);
             if (!assigned || assigned.users.length === 0) return false;
-            return assigned.users.some((u) => u.id === requestingUserId);
+            return assigned.users.some((u) => u.unifiedUserId === requestingUserId);
           })()
         : true;
 
@@ -875,12 +875,12 @@ export class JobCardWorkflowService {
       return;
     }
 
-    const assignedIds = await this.assignmentService.assignedUserIdsForStep(
+    const assignedUnifiedIds = await this.assignmentService.assignedUnifiedUserIdsForStep(
       user.companyId,
       stepKey,
     );
 
-    if (!assignedIds.includes(user.id)) {
+    if (!assignedUnifiedIds.includes(user.id)) {
       throw new ForbiddenException(
         "You are not assigned to this workflow step. Only the assigned person can approve.",
       );
