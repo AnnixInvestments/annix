@@ -17,6 +17,7 @@ import { useRouter } from "next/navigation";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import { FileDropZone } from "@/app/au-rubber/components/FileDropZone";
+import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import {
   Pagination,
   SortDirection,
@@ -53,6 +54,7 @@ type SortColumn =
 export default function SupplierTaxInvoicesPage() {
   const router = useRouter();
   const { showToast } = useToast();
+  const { showExtraction, hideExtraction } = useExtractionProgress();
   const { confirm, ConfirmDialog } = useConfirm();
   const [invoices, setInvoices] = useState<RubberTaxInvoiceDto[]>([]);
   const [creditNotes, setCreditNotes] = useState<RubberTaxInvoiceDto[]>([]);
@@ -486,6 +488,14 @@ export default function SupplierTaxInvoicesPage() {
           <button
             onClick={async () => {
               setIsReExtracting(true);
+              const queueDepth = filteredInvoices.length;
+              const estMs = Math.max(15000, queueDepth * 18000);
+              showExtraction({
+                brand: "au-rubber",
+                label: `Re-extracting ${queueDepth} supplier invoices (background)…`,
+                estimatedDurationMs: estMs,
+                itemCount: queueDepth,
+              });
               try {
                 const result = await auRubberApiClient.reExtractAllTaxInvoices();
                 showToast(
@@ -496,6 +506,7 @@ export default function SupplierTaxInvoicesPage() {
               } catch (err) {
                 showToast(err instanceof Error ? err.message : "Re-extraction failed", "error");
               } finally {
+                hideExtraction();
                 setIsReExtracting(false);
               }
             }}

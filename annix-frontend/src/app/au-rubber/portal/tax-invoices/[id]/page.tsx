@@ -4,6 +4,7 @@ import { CheckCircle, Download, FileText, Pencil, RefreshCw, Save, X } from "luc
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
+import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { useToast } from "@/app/components/Toast";
 import {
   auRubberApiClient,
@@ -19,6 +20,7 @@ export default function TaxInvoiceDetailPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { showToast } = useToast();
+  const { showExtraction, hideExtraction } = useExtractionProgress();
   const [invoice, setInvoice] = useState<RubberTaxInvoiceDto | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isExtracting, setIsExtracting] = useState(false);
@@ -107,6 +109,11 @@ export default function TaxInvoiceDetailPage() {
   const handleExtract = async () => {
     try {
       setIsExtracting(true);
+      showExtraction({
+        brand: "au-rubber",
+        label: "Extracting tax invoice…",
+        estimatedDurationMs: 15000,
+      });
       const updated = await auRubberApiClient.extractTaxInvoice(invoiceId);
       setInvoice(updated);
       showToast("Data extracted successfully", "success");
@@ -114,6 +121,7 @@ export default function TaxInvoiceDetailPage() {
       const message = err instanceof Error ? err.message : "Extraction failed";
       showToast(message, "error");
     } finally {
+      hideExtraction();
       setIsExtracting(false);
     }
   };
