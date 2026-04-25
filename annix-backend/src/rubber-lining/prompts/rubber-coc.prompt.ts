@@ -786,13 +786,29 @@ Steps for EACH section:
 2. Collect every "Roll # <num>   <kg> kg" detail line that follows (under TOLLCALENDERROLLS). The number of these lines is the roll count for the section.
 3. Read the trailing free-text dimensions line under the TOLLRAWMATA... row (e.g. "1 rolls Steam cure 38 Black 6x1250x12.5"). This applies to ALL rolls in the section.
 4. Compute perRollCost = sectionExcl / rollCount, rounded to 2 decimals.
-5. Emit ONE line item per roll with:
-   - description: "Calendered Roll #<rollNum> — <kg>kg — <cure> <hardness> <colour> <thickness>x<width>x<length>"
-     (e.g. "Calendered Roll #42300 — 99kg — Steam cure 38 Black 6x1250x12.5")
+5. Build a product code from the dimensions line using this rule:
+   <colourLetter><cureCode>A<shore>
+   where:
+     colourLetter: B=Black, R=Red, Y=Yellow, P=Pink, W=White, G=Green, O=Orange
+     cureCode:     SC=Steam cured, PC=Pre-cured
+     A:            literal "A" (AU compound brand)
+     shore:        the 2-digit Shore hardness number from the dimensions line
+   Examples:
+     "Steam cure 38 Black 6x1250x12.5"   → BSCA38
+     "Steam cure 40 Black 6x1200x12"     → BSCA40
+     "Pre-cured 40 Red 6x1200x12"        → RPCA40
+     "Pre-cured 38 Pink 10x1200x9.5"     → PPCA38
+     "Steam cure 40 Yellow 6x1200x12"    → YSCA40
+   If the dimensions line uses an unrecognised cure or colour (e.g. "Autoclave cure", "Rotocure", "Grey", "Natural"), DO NOT invent a code — fall back to the generic line-item extraction for that section instead.
+
+   This per-roll rule applies ONLY to roll-form rubber (the dimensions line clearly states "<n> rolls <cure> <shore> <colour> <thickness>x<width>x<length>"). Moulded products such as Throatbushes (TBR-…/TRB-…), Frame Plate Liners (FPL-…) and Cover Plate Liners (CPL-…) are imported as complete items with no conversion — leave their line items as-is.
+6. Emit ONE line item per roll with:
+   - description: "<productCode> <thickness>x<width>x<length>"
+     (e.g. "BSCA38 6x1250x12.5")
    - quantity: 1
    - unitPrice: perRollCost
    - amount: perRollCost
-6. If the invoice has multiple sections (more than one TOLLCALENDERKG row, e.g. different roll sizes), repeat for each section. The combined per-roll lines should sum back to the invoice's overall subtotal.
+7. If the invoice has multiple sections (more than one TOLLCALENDERKG row, e.g. different roll sizes), repeat for each section. The combined per-roll lines should sum back to the invoice's overall subtotal.
 
 Do NOT also include the raw TOLLCALENDERKG / TOLLCALENDERROLLS / TOLLRAWMATA... rows in lineItems — they are replaced by the per-roll lines. The invoice-level subtotal/vatAmount/totalAmount stay the same.
 
