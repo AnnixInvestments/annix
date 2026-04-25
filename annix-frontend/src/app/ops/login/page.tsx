@@ -3,6 +3,9 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import React, { Suspense, useEffect, useState } from "react";
+import { PasskeyLoginButton } from "@/app/components/PasskeyLoginButton";
+import { stockControlTokenStore } from "@/app/lib/api/portalTokenStores";
+import { redirectAfterPasskeyLogin, storePasskeyJwt } from "@/app/lib/passkey";
 import { OpsAuthProvider, useOpsAuth } from "@/app/ops/context/OpsAuthContext";
 
 function OpsLoginContent() {
@@ -234,8 +237,18 @@ function OpsLoginContent() {
                 <div className="w-full border-t border-gray-300" />
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">Annix Operations Portal</span>
+                <span className="px-2 bg-white text-gray-500">or</span>
               </div>
+            </div>
+            <div className="mt-4">
+              <PasskeyLoginButton
+                email={email}
+                onSuccess={(response) => {
+                  storePasskeyJwt(stockControlTokenStore, response, rememberMe);
+                  redirectAfterPasskeyLogin(returnUrl || "/ops/portal/dashboard");
+                }}
+                onError={(message) => setError(message)}
+              />
             </div>
           </div>
         </div>

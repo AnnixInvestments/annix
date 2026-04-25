@@ -16,6 +16,7 @@ export { materialValidationKeys } from "./materialValidationKeys";
 export { messagingKeys } from "./messagingKeys";
 export type { NixSessionQueryParams } from "./nixKeys";
 export { nixKeys } from "./nixKeys";
+export { passkeyKeys } from "./passkeyKeys";
 export { publicKeys } from "./publicKeys";
 export { rbacKeys } from "./rbacKeys";
 export { referenceDataKeys } from "./referenceDataKeys";

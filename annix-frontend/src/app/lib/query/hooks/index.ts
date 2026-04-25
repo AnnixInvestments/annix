@@ -619,6 +619,12 @@ export {
   useValidateNixItem,
   useValidateNixRfq,
 } from "./nix/useNix";
+export {
+  useDeletePasskey,
+  usePasskeys,
+  useRegisterPasskey,
+  useRenamePasskey,
+} from "./passkey/usePasskeys";
 export type { PublicStats, UpcomingRfq } from "./public/usePublicStats";
 export { usePublicStats } from "./public/usePublicStats";
 export type { B16RatingResponse } from "./reference/useB16Rating";

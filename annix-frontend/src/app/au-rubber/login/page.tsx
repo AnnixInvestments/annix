@@ -3,7 +3,10 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import React, { Suspense, useEffect, useState } from "react";
+import { PasskeyLoginButton } from "@/app/components/PasskeyLoginButton";
 import { useAuRubberAuth } from "@/app/context/AuRubberAuthContext";
+import { auRubberTokenStore } from "@/app/lib/api/portalTokenStores";
+import { redirectAfterPasskeyLogin, storePasskeyJwt } from "@/app/lib/passkey";
 
 function AuRubberLoginContent() {
   const router = useRouter();
@@ -222,11 +225,22 @@ function AuRubberLoginContent() {
                 <div className="w-full border-t border-gray-300" />
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">AU Projects</span>
+                <span className="px-2 bg-white text-gray-500">or</span>
               </div>
             </div>
 
-            <div className="mt-4 text-center">
+            <div className="mt-4">
+              <PasskeyLoginButton
+                email={email}
+                onSuccess={(response) => {
+                  storePasskeyJwt(auRubberTokenStore, response, rememberMe);
+                  redirectAfterPasskeyLogin(returnUrl || "/au-rubber/portal/dashboard");
+                }}
+                onError={(message) => setError(message)}
+              />
+            </div>
+
+            <div className="mt-6 text-center">
               <p className="text-xs text-gray-500">
                 Access to this application is restricted to authorized personnel only.
               </p>

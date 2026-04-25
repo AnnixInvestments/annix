@@ -3,7 +3,10 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import React, { Suspense, useEffect, useState } from "react";
+import { PasskeyLoginButton } from "@/app/components/PasskeyLoginButton";
 import { useAdminAuth } from "@/app/context/AdminAuthContext";
+import { adminTokenStore } from "@/app/lib/api/portalTokenStores";
+import { redirectAfterPasskeyLogin, storePasskeyJwt } from "@/app/lib/passkey";
 
 function AdminLoginContent() {
   const router = useRouter();
@@ -236,15 +239,24 @@ function AdminLoginContent() {
                 <div className="w-full border-t border-gray-300" />
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">Security Notice</span>
+                <span className="px-2 bg-white text-gray-500">or</span>
               </div>
             </div>
 
-            <div className="mt-4 text-center">
+            <div className="mt-4">
+              <PasskeyLoginButton
+                email={email}
+                onSuccess={(response) => {
+                  storePasskeyJwt(adminTokenStore, response, rememberMe);
+                  redirectAfterPasskeyLogin(returnUrl || "/admin/portal/dashboard");
+                }}
+                onError={(message) => setError(message)}
+              />
+            </div>
+
+            <div className="mt-6 text-center">
               <p className="text-xs text-gray-500">
                 All admin actions are logged and monitored for security purposes.
-                <br />
-                Only authorized personnel should access this portal.
               </p>
             </div>
           </div>

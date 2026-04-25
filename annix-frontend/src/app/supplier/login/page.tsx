@@ -3,8 +3,11 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
+import { PasskeyLoginButton } from "@/app/components/PasskeyLoginButton";
 import { useSupplierAuth } from "@/app/context/SupplierAuthContext";
 import { useDeviceFingerprint } from "@/app/hooks/useDeviceFingerprint";
+import { supplierTokenStore } from "@/app/lib/api/portalTokenStores";
+import { redirectAfterPasskeyLogin, storePasskeyJwt } from "@/app/lib/passkey";
 
 function SupplierLoginContent() {
   const router = useRouter();
@@ -180,6 +183,27 @@ function SupplierLoginContent() {
                   : "Sign In"}
             </button>
           </form>
+
+          <div className="mt-6">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-300" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-white text-gray-500">or</span>
+              </div>
+            </div>
+            <div className="mt-4">
+              <PasskeyLoginButton
+                email={email}
+                onSuccess={(response) => {
+                  storePasskeyJwt(supplierTokenStore, response, rememberMe);
+                  redirectAfterPasskeyLogin(returnUrl || "/supplier/portal/dashboard");
+                }}
+                onError={(message) => setError(message)}
+              />
+            </div>
+          </div>
 
           <div className="mt-6 text-center space-y-2">
             <p className="text-sm text-gray-600">

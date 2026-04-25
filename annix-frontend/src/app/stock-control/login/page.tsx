@@ -3,9 +3,12 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import React, { Suspense, useEffect, useRef, useState } from "react";
+import { PasskeyLoginButton } from "@/app/components/PasskeyLoginButton";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
+import { stockControlTokenStore } from "@/app/lib/api/portalTokenStores";
 // eslint-disable-next-line no-restricted-imports -- Auth flow page (login); requires new auth hooks for unauthenticated operations. Tracked as tech debt per Phase 9 of annix/annix#191.
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
+import { redirectAfterPasskeyLogin, storePasskeyJwt } from "@/app/lib/passkey";
 
 function StockControlLoginContent() {
   const router = useRouter();
@@ -281,11 +284,21 @@ function StockControlLoginContent() {
                 <div className="w-full border-t border-gray-300" />
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">Annix Stock Control</span>
+                <span className="px-2 bg-white text-gray-500">or</span>
               </div>
             </div>
+            <div className="mt-4">
+              <PasskeyLoginButton
+                email={email}
+                onSuccess={(response) => {
+                  storePasskeyJwt(stockControlTokenStore, response, rememberMe);
+                  redirectAfterPasskeyLogin(returnUrl || "/stock-control/portal/dashboard");
+                }}
+                onError={(message) => setError(message)}
+              />
+            </div>
 
-            <div className="mt-4 text-center space-y-2">
+            <div className="mt-6 text-center space-y-2">
               <p className="text-sm text-gray-600">
                 <Link
                   href="/stock-control/forgot-password"

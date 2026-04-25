@@ -3,7 +3,10 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
+import { PasskeyLoginButton } from "@/app/components/PasskeyLoginButton";
 import { useAnnixRepAuth } from "@/app/context/AnnixRepAuthContext";
+import { annixRepTokenStore } from "@/app/lib/api/portalTokenStores";
+import { redirectAfterPasskeyLogin, storePasskeyJwt } from "@/app/lib/passkey";
 import { useRepProfileStatus } from "@/app/lib/query/hooks";
 
 interface LoginFormData {
@@ -180,6 +183,27 @@ function LoginPageContent() {
                 {isSubmitting ? "Signing in..." : "Sign In"}
               </button>
             </form>
+
+            <div className="mt-6">
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-300 dark:border-slate-600" />
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-2 bg-white dark:bg-slate-800 text-gray-500">or</span>
+                </div>
+              </div>
+              <div className="mt-4">
+                <PasskeyLoginButton
+                  email={formData.email}
+                  onSuccess={(response) => {
+                    storePasskeyJwt(annixRepTokenStore, response, rememberMe);
+                    redirectAfterPasskeyLogin(redirectPath || "/annix-rep");
+                  }}
+                  onError={(message) => setError(message)}
+                />
+              </div>
+            </div>
 
             <div className="mt-6 text-center">
               <Link

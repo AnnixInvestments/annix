@@ -3,7 +3,10 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
+import { PasskeyLoginButton } from "@/app/components/PasskeyLoginButton";
 import { useCvAssistantAuth } from "@/app/context/CvAssistantAuthContext";
+import { cvAssistantTokenStore } from "@/app/lib/api/portalTokenStores";
+import { redirectAfterPasskeyLogin, storePasskeyJwt } from "@/app/lib/passkey";
 
 function CvAssistantLoginContent() {
   const router = useRouter();
@@ -114,6 +117,27 @@ function CvAssistantLoginContent() {
               {isLoading ? "Signing in..." : "Sign in"}
             </button>
           </form>
+
+          <div className="mt-6">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-300" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-white text-gray-500">or</span>
+              </div>
+            </div>
+            <div className="mt-4">
+              <PasskeyLoginButton
+                email={email}
+                onSuccess={(response) => {
+                  storePasskeyJwt(cvAssistantTokenStore, response, rememberMe);
+                  redirectAfterPasskeyLogin(returnUrl || "/cv-assistant/portal/dashboard");
+                }}
+                onError={(message) => setError(message)}
+              />
+            </div>
+          </div>
 
           <div className="mt-6 text-center">
             <p className="text-gray-600">
