@@ -3,6 +3,7 @@
 import Script from "next/script";
 import { useEffect, useState } from "react";
 import { browserBaseUrl } from "@/lib/api-config";
+import { AU_INDUSTRIES_CONTACT } from "./auIndustriesContact";
 import { AuIndustriesFooter } from "./components/AuIndustriesFooter";
 import { AuIndustriesNav } from "./components/AuIndustriesNav";
 import { WhatsAppButton } from "./components/WhatsAppButton";
@@ -13,15 +14,6 @@ interface NavPage {
   title: string;
   isHomePage: boolean;
   showInNav?: boolean;
-}
-
-interface CompanyProfile {
-  tradingName: string;
-  phone: string;
-  generalEmail: string;
-  streetAddress: string;
-  city: string;
-  province: string;
 }
 
 const GA_MEASUREMENT_ID = "G-SSG705PB3R";
@@ -36,7 +28,6 @@ function hasAuRubberToken(): boolean {
 
 export function AuIndustriesLayoutClient(props: { children: React.ReactNode }) {
   const [pages, setPages] = useState<NavPage[]>([]);
-  const [profile, setProfile] = useState<CompanyProfile | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
@@ -47,20 +38,12 @@ export function AuIndustriesLayoutClient(props: { children: React.ReactNode }) {
       .then((res) => res.json())
       .then((data) => setPages(data))
       .catch(() => {});
-
-    fetch(`${base}/public/company-profile`)
-      .then((res) => res.json())
-      .then((data) => setProfile(data))
-      .catch(() => {});
   }, []);
 
-  const rawTradingName = profile?.tradingName;
-  const companyName = rawTradingName || "AU Industries";
-  const rawPhoneValue = profile?.phone;
-  const phone = rawPhoneValue || "+27 11 000 0000";
-  const rawGeneralEmail = profile?.generalEmail;
-  const email = rawGeneralEmail || "info@example.com";
-  const address = profile ? `${profile.streetAddress}, ${profile.city}, ${profile.province}` : "";
+  const companyName = AU_INDUSTRIES_CONTACT.companyName;
+  const phone = AU_INDUSTRIES_CONTACT.phone;
+  const email = AU_INDUSTRIES_CONTACT.email;
+  const address = AU_INDUSTRIES_CONTACT.address;
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -73,15 +56,13 @@ export function AuIndustriesLayoutClient(props: { children: React.ReactNode }) {
     image: "https://auind.co.za/au-industries/gallery/gallery29.jpg",
     telephone: phone,
     email: email,
-    address: profile
-      ? {
-          "@type": "PostalAddress",
-          streetAddress: profile.streetAddress,
-          addressLocality: profile.city,
-          addressRegion: profile.province,
-          addressCountry: "ZA",
-        }
-      : undefined,
+    address: {
+      "@type": "PostalAddress",
+      streetAddress: AU_INDUSTRIES_CONTACT.streetAddress,
+      addressLocality: AU_INDUSTRIES_CONTACT.city,
+      addressRegion: AU_INDUSTRIES_CONTACT.province,
+      addressCountry: "ZA",
+    },
     geo: {
       "@type": "GeoCoordinates",
       latitude: -26.2125,

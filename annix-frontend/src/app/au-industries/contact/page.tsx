@@ -1,21 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-// eslint-disable-next-line no-restricted-imports -- AU Industries public contact form; requires new public company-profile + contact-submission hooks. Tracked as tech debt.
+// eslint-disable-next-line no-restricted-imports -- AU Industries public contact form; requires new public contact-submission hook. Tracked as tech debt.
 import { browserBaseUrl } from "@/lib/api-config";
-
-interface CompanyProfile {
-  tradingName: string;
-  phone: string;
-  generalEmail: string;
-  streetAddress: string;
-  city: string;
-  province: string;
-  postalCode: string;
-}
+import { AU_INDUSTRIES_CONTACT } from "../auIndustriesContact";
 
 export default function AuIndustriesContactPage() {
-  const [profile, setProfile] = useState<CompanyProfile | null>(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -34,11 +24,6 @@ export default function AuIndustriesContactPage() {
         "Contact AU Industries in Boksburg for rubber lining, rubber sheeting, HDPE piping and mining solutions. Call 072 039 8429 or send us an enquiry.",
       );
     }
-    const base = browserBaseUrl();
-    fetch(`${base}/public/au-industries/contact`)
-      .then((res) => res.json())
-      .then((data) => setProfile(data))
-      .catch(() => {});
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -213,76 +198,72 @@ export default function AuIndustriesContactPage() {
                 <h2 className="text-2xl font-bold text-[#B8860B] uppercase tracking-wide mb-6">
                   Contact Details
                 </h2>
-                {profile && (
-                  <div className="space-y-4 text-gray-600">
-                    <div className="flex items-start space-x-3">
-                      <svg
-                        className="w-5 h-5 text-[#B8860B] mt-0.5 flex-shrink-0"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                        />
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                        />
-                      </svg>
-                      <p>
-                        {profile.streetAddress}, {profile.city}, {profile.province}
-                      </p>
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      <svg
-                        className="w-5 h-5 text-[#B8860B] flex-shrink-0"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
-                        />
-                      </svg>
-                      <a
-                        href={`tel:${profile.phone}`}
-                        className="hover:text-[#B8860B] transition-colors"
-                      >
-                        {profile.phone}
-                      </a>
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      <svg
-                        className="w-5 h-5 text-[#B8860B] flex-shrink-0"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                        />
-                      </svg>
-                      <a
-                        href={`mailto:${profile.generalEmail}`}
-                        className="hover:text-[#B8860B] transition-colors"
-                      >
-                        {profile.generalEmail}
-                      </a>
-                    </div>
+                <div className="space-y-4 text-gray-600">
+                  <div className="flex items-start space-x-3">
+                    <svg
+                      className="w-5 h-5 text-[#B8860B] mt-0.5 flex-shrink-0"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                      />
+                    </svg>
+                    <p>{AU_INDUSTRIES_CONTACT.address}</p>
                   </div>
-                )}
+                  <div className="flex items-center space-x-3">
+                    <svg
+                      className="w-5 h-5 text-[#B8860B] flex-shrink-0"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
+                      />
+                    </svg>
+                    <a
+                      href={`tel:${AU_INDUSTRIES_CONTACT.phone}`}
+                      className="hover:text-[#B8860B] transition-colors"
+                    >
+                      {AU_INDUSTRIES_CONTACT.phone}
+                    </a>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <svg
+                      className="w-5 h-5 text-[#B8860B] flex-shrink-0"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                      />
+                    </svg>
+                    <a
+                      href={`mailto:${AU_INDUSTRIES_CONTACT.email}`}
+                      className="hover:text-[#B8860B] transition-colors"
+                    >
+                      {AU_INDUSTRIES_CONTACT.email}
+                    </a>
+                  </div>
+                </div>
               </div>
 
               <div>

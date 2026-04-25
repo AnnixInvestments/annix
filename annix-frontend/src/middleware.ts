@@ -25,6 +25,11 @@ export function middleware(request: NextRequest) {
 
   const pathname = url.pathname;
 
+  if (pathname.endsWith(".html")) {
+    url.pathname = pathname.slice(0, -".html".length) || "/";
+    return NextResponse.redirect(url, 301);
+  }
+
   if (STATIC_FILE_REGEX.test(pathname) || ROOT_METADATA_PATHS.has(pathname)) {
     return NextResponse.next();
   }
