@@ -79,7 +79,7 @@ check_pattern \
   "Fake .co.za email addresses — use @example.com instead (RFC 2606)" \
   "error" \
   '"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.co\.za"' \
-  "\.env\|check-legal\|placeholder\|annix\.co\.za\|sahrc\.org\.za"
+  "\.env\|check-legal\|placeholder\|annix\.co\.za\|auind\.co\.za\|sahrc\.org\.za"
 
 check_pattern \
   "Realistic South African phone numbers in test/example data — use +27 11 000 xxxx" \
