@@ -53,6 +53,8 @@
     "@nestjs/throttler": "^6.5.0",
     "@nestjs/typeorm": "^11.0.0",
     "@octokit/rest": "^22.0.1",
+    "@simplewebauthn/server": "^11.0.0",
+    "@simplewebauthn/types": "^11.0.0",
     "@types/pdf-parse": "^1.1.5",
     "bcrypt": "^6.0.0",
     "class-transformer": "^0.5.1",

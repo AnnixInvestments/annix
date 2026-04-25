@@ -168,6 +168,11 @@ const JOB_METADATA: Record<string, { description: string; module: string; defaul
     module: "Stock Management",
     defaultCron: "0 0 1 * *",
   },
+  "passkey-purge-expired-challenges": {
+    description: "Purge expired WebAuthn challenges (5 minute TTL each)",
+    module: "Auth",
+    defaultCron: "0 */6 * * *",
+  },
 };
 
 const NIGHT_SUSPENSION_WINDOWS: Record<number, { start: number; end: number }> = {

@@ -24,6 +24,7 @@ import { InboundEmailModule } from "./inbound-email/inbound-email.module";
 import { MessagingModule } from "./messaging/messaging.module";
 import { NominalOutsideDiameterMmModule } from "./nominal-outside-diameter-mm/nominal-outside-diameter-mm.module";
 import { NotificationsModule } from "./notifications/notifications.module";
+import { PasskeyModule } from "./passkey/passkey.module";
 import { PipeSteelWorkModule } from "./pipe-steel-work/pipe-steel-work.module";
 import { PlatformModule } from "./platform/platform.module";
 import { PublicModule } from "./public/public.module";
@@ -73,6 +74,7 @@ import { WorkflowModule } from "./workflow/workflow.module";
     SharedModule,
     AuthSharedModule,
     AuthModule,
+    PasskeyModule,
     UserModule,
     UserRolesModule,
     RbacModule,
