@@ -246,6 +246,7 @@ function AdminLoginContent() {
             <div className="mt-4">
               <PasskeyLoginButton
                 email={email}
+                appCode="admin"
                 onSuccess={(response) => {
                   storePasskeyJwt(adminTokenStore, response, rememberMe);
                   redirectAfterPasskeyLogin(returnUrl || "/admin/portal/dashboard");

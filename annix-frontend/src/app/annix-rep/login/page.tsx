@@ -196,6 +196,7 @@ function LoginPageContent() {
               <div className="mt-4">
                 <PasskeyLoginButton
                   email={formData.email}
+                  appCode="annix-rep"
                   onSuccess={(response) => {
                     storePasskeyJwt(annixRepTokenStore, response, rememberMe);
                     redirectAfterPasskeyLogin(redirectPath || "/annix-rep");

@@ -168,7 +168,7 @@ export class PasskeyService {
       throw new UnauthorizedException("Unknown credential");
     }
 
-    const challenge = await this.consumeChallenge(passkey.userId, "authentication");
+    const challenge = await this.consumeAuthenticationChallenge(passkey.userId);
 
     const verification = await verifyAuthenticationResponse({
       response,
@@ -295,6 +295,28 @@ export class PasskeyService {
     const where = userId !== null ? { userId, type } : { userId: IsNull(), type };
     const challenge = await this.challengeRepo.findOne({
       where,
+      order: { createdAt: "DESC" },
+    });
+
+    if (!challenge) {
+      throw new UnauthorizedException("No active challenge — restart the flow");
+    }
+
+    if (challenge.expiresAt.getTime() < Date.now()) {
+      await this.challengeRepo.delete({ id: challenge.id });
+      throw new UnauthorizedException("Challenge expired");
+    }
+
+    await this.challengeRepo.delete({ id: challenge.id });
+    return challenge.challenge;
+  }
+
+  private async consumeAuthenticationChallenge(userId: number): Promise<string> {
+    const challenge = await this.challengeRepo.findOne({
+      where: [
+        { userId, type: "authentication" },
+        { userId: IsNull(), type: "authentication" },
+      ],
       order: { createdAt: "DESC" },
     });
 

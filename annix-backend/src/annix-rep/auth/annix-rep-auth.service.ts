@@ -180,6 +180,46 @@ export class AnnixRepAuthService {
     };
   }
 
+  async issueTokensForAuthenticatedUser(
+    user: User,
+    clientIp: string,
+    userAgent: string,
+  ): Promise<{ accessToken: string; refreshToken: string }> {
+    const hasAnnixRepRole = user.roles?.some((role) => role.name === "annixRep");
+    if (!hasAnnixRepRole) {
+      throw new UnauthorizedException(
+        "This account is not registered for Annix Rep. Please register first.",
+      );
+    }
+
+    await this.invalidateAllUserSessions(user.id, SessionInvalidationReason.NEW_LOGIN);
+
+    const sessionToken = uuidv4();
+    const expiresAt = now().plus({ hours: AUTH_CONSTANTS.SESSION_EXPIRY_HOURS }).toJSDate();
+
+    const session = this.sessionRepo.create({
+      userId: user.id,
+      sessionToken,
+      ipAddress: clientIp,
+      userAgent,
+      isActive: true,
+      expiresAt,
+      lastActivity: now().toJSDate(),
+    });
+    await this.sessionRepo.save(session);
+
+    const payload: AnnixRepJwtPayload = {
+      sub: user.id,
+      email: user.email,
+      type: "annixRep",
+      sessionToken,
+      annixRepUserId: user.id,
+    };
+
+    const { accessToken, refreshToken } = await this.tokenService.generateTokenPair(payload);
+    return { accessToken, refreshToken };
+  }
+
   async logout(sessionToken: string): Promise<void> {
     const session = await this.sessionRepo.findOne({
       where: { sessionToken, isActive: true },

@@ -900,6 +900,58 @@ export class SupplierAuthService {
     };
   }
 
+  async issueTokensForAuthenticatedUser(
+    user: User,
+    clientIp: string,
+    userAgent: string,
+  ): Promise<{ accessToken: string; refreshToken: string; supplierId: number }> {
+    const profile = await this.profileRepo.findOne({
+      where: { userId: user.id },
+      relations: ["company"],
+    });
+
+    if (!profile) {
+      throw new UnauthorizedException("Supplier profile not found. Please register first.");
+    }
+
+    if (!this.authConfigService.isAccountStatusCheckDisabled()) {
+      if (profile.accountStatus === SupplierAccountStatus.SUSPENDED) {
+        throw new ForbiddenException("Account has been suspended. Please contact support.");
+      }
+      if (profile.accountStatus === SupplierAccountStatus.DEACTIVATED) {
+        throw new ForbiddenException("Account has been deactivated");
+      }
+    }
+
+    await this.sessionService.invalidateAllSessions(
+      this.sessionRepo,
+      profile.id,
+      "supplierProfileId",
+      SupplierSessionInvalidationReason.NEW_LOGIN,
+    );
+
+    const { session, sessionToken } = this.sessionService.createSession(this.sessionRepo, {
+      profileId: profile.id,
+      profileIdField: "supplierProfileId",
+      deviceFingerprint: "passkey",
+      ipAddress: clientIp,
+      userAgent,
+    });
+    await this.sessionRepo.save(session);
+
+    const payload: JwtTokenPayload = {
+      sub: user.id,
+      supplierId: profile.id,
+      email: user.email,
+      type: "supplier",
+      sessionToken,
+    };
+
+    const { accessToken, refreshToken } = await this.tokenService.generateTokenPair(payload);
+
+    return { accessToken, refreshToken, supplierId: profile.id };
+  }
+
   async logout(sessionToken: string, clientIp: string): Promise<void> {
     const session = await this.sessionService.invalidateSession(
       this.sessionRepo,

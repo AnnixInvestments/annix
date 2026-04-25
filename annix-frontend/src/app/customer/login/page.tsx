@@ -386,6 +386,7 @@ function CustomerLoginContent() {
             <div className="mt-4">
               <PasskeyLoginButton
                 email={email}
+                appCode="customer"
                 onSuccess={(response) => {
                   storePasskeyJwt(customerTokenStore, response, rememberMe);
                   redirectAfterPasskeyLogin(returnUrl || "/customer/portal/dashboard");

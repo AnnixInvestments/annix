@@ -11,6 +11,7 @@ interface PasskeyLoginButtonProps {
   className?: string;
   label?: string;
   conditional?: boolean;
+  appCode?: string;
 }
 
 export function PasskeyLoginButton(props: PasskeyLoginButtonProps) {
@@ -21,6 +22,7 @@ export function PasskeyLoginButton(props: PasskeyLoginButtonProps) {
     className,
     label = "Sign in with passkey",
     conditional = false,
+    appCode,
   } = props;
 
   const [supported, setSupported] = useState(false);
@@ -36,7 +38,10 @@ export function PasskeyLoginButton(props: PasskeyLoginButtonProps) {
     let cancelled = false;
     const trigger = async () => {
       try {
-        const response = await authenticateWithPasskey(email ?? null, { conditional: true });
+        const response = await authenticateWithPasskey(email ?? null, {
+          conditional: true,
+          appCode,
+        });
         if (cancelled) return;
         await onSuccess(response);
       } catch {
@@ -48,14 +53,15 @@ export function PasskeyLoginButton(props: PasskeyLoginButtonProps) {
     return () => {
       cancelled = true;
     };
-  }, [supported, conditional, email, onSuccess]);
+  }, [supported, conditional, email, onSuccess, appCode]);
 
   if (!supported) return null;
 
   const handleClick = async () => {
     setIsPending(true);
     try {
-      const response = await authenticateWithPasskey(email?.trim() || null);
+      const trimmedEmail = email?.trim();
+      const response = await authenticateWithPasskey(trimmedEmail || null, { appCode });
       await onSuccess(response);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Passkey sign-in failed";

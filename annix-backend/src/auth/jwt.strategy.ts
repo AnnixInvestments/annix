@@ -24,12 +24,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: JwtPayload): Promise<any> {
-    // Validate payload structure
-    if (!payload.sub || !payload.username) {
+    if (!payload.sub) {
       throw new UnauthorizedException("Invalid token payload");
     }
 
-    // Return user object that will be attached to request
     return {
       id: payload.sub,
       userId: payload.sub,

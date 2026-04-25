@@ -5,7 +5,7 @@ import type { PasskeyLoginResponse } from "./types";
 
 export async function authenticateWithPasskey(
   email: string | null,
-  options: { conditional?: boolean } = {},
+  options: { conditional?: boolean; appCode?: string } = {},
 ): Promise<PasskeyLoginResponse> {
   try {
     const optionsResponse = await fetch(`${browserBaseUrl()}/auth/passkey/login/options`, {
@@ -29,10 +29,13 @@ export async function authenticateWithPasskey(
       useBrowserAutofill: options.conditional === true,
     });
 
+    const verifyBody: Record<string, unknown> = { response: assertion };
+    if (options.appCode) verifyBody.appCode = options.appCode;
+
     const verifyResponse = await fetch(`${browserBaseUrl()}/auth/passkey/login/verify`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ response: assertion }),
+      body: JSON.stringify(verifyBody),
     });
 
     if (verifyResponse.status === 429) {

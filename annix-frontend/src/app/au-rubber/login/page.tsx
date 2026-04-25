@@ -232,6 +232,7 @@ function AuRubberLoginContent() {
             <div className="mt-4">
               <PasskeyLoginButton
                 email={email}
+                appCode="au-rubber"
                 onSuccess={(response) => {
                   storePasskeyJwt(auRubberTokenStore, response, rememberMe);
                   redirectAfterPasskeyLogin(returnUrl || "/au-rubber/portal/dashboard");

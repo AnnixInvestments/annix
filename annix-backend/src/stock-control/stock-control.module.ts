@@ -378,5 +378,6 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
     StockAllocationService,
     SageJcDumpService,
   ],
+  exports: [StockControlAuthService],
 })
 export class StockControlModule {}

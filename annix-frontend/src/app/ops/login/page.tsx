@@ -243,6 +243,7 @@ function OpsLoginContent() {
             <div className="mt-4">
               <PasskeyLoginButton
                 email={email}
+                appCode="stock-control"
                 onSuccess={(response) => {
                   storePasskeyJwt(stockControlTokenStore, response, rememberMe);
                   redirectAfterPasskeyLogin(returnUrl || "/ops/portal/dashboard");

@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Ip,
   Param,
   ParseIntPipe,
   Patch,
@@ -14,8 +15,14 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { Throttle } from "@nestjs/throttler";
 import type { AuthenticationResponseJSON, RegistrationResponseJSON } from "@simplewebauthn/types";
+import { AdminAuthService } from "../admin/admin-auth.service";
+import { AnnixRepAuthService } from "../annix-rep/auth/annix-rep-auth.service";
 import { AuthService } from "../auth/auth.service";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { CustomerAuthService } from "../customer/customer-auth.service";
+import { CvAssistantAuthService } from "../cv-assistant/services/auth.service";
+import { StockControlAuthService } from "../stock-control/services/auth.service";
+import { SupplierAuthService } from "../supplier/supplier-auth.service";
 import {
   PasskeyAuthOptionsRequestDto,
   PasskeyAuthVerifyRequestDto,
@@ -31,6 +38,12 @@ export class PasskeyController {
   constructor(
     private readonly passkeyService: PasskeyService,
     private readonly authService: AuthService,
+    private readonly adminAuthService: AdminAuthService,
+    private readonly customerAuthService: CustomerAuthService,
+    private readonly supplierAuthService: SupplierAuthService,
+    private readonly stockControlAuthService: StockControlAuthService,
+    private readonly annixRepAuthService: AnnixRepAuthService,
+    private readonly cvAssistantAuthService: CvAssistantAuthService,
   ) {}
 
   @Post("register/options")
@@ -70,10 +83,103 @@ export class PasskeyController {
   @Post("login/verify")
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @ApiOperation({ summary: "Verify an authentication assertion and issue JWTs" })
-  async loginVerify(@Body() body: PasskeyAuthVerifyRequestDto) {
+  async loginVerify(
+    @Body() body: PasskeyAuthVerifyRequestDto,
+    @Req() req: { headers: Record<string, string | string[] | undefined> },
+    @Ip() clientIp: string,
+  ) {
     const result = await this.passkeyService.verifyAuthentication(
       body.response as unknown as AuthenticationResponseJSON,
     );
+
+    const userAgentHeader = req.headers["user-agent"];
+    const userAgent = (typeof userAgentHeader === "string" ? userAgentHeader : null) || "unknown";
+
+    if (body.appCode === "admin") {
+      const adminResponse = await this.adminAuthService.issueTokensForAuthenticatedUser(
+        result.user,
+        body.appCode,
+        clientIp,
+        userAgent,
+      );
+      return {
+        access_token: adminResponse.accessToken,
+        refresh_token: adminResponse.refreshToken,
+        token_type: "Bearer" as const,
+        expires_in: 4 * 60 * 60,
+      };
+    }
+
+    if (body.appCode === "customer") {
+      const customerResponse = await this.customerAuthService.issueTokensForAuthenticatedUser(
+        result.user,
+        clientIp,
+        userAgent,
+      );
+      return {
+        access_token: customerResponse.accessToken,
+        refresh_token: customerResponse.refreshToken,
+        token_type: "Bearer" as const,
+        expires_in: 3600,
+      };
+    }
+
+    if (body.appCode === "supplier") {
+      const supplierResponse = await this.supplierAuthService.issueTokensForAuthenticatedUser(
+        result.user,
+        clientIp,
+        userAgent,
+      );
+      return {
+        access_token: supplierResponse.accessToken,
+        refresh_token: supplierResponse.refreshToken,
+        token_type: "Bearer" as const,
+        expires_in: 3600,
+      };
+    }
+
+    if (
+      body.appCode === "stock-control" ||
+      body.appCode === "ops" ||
+      body.appCode === "au-rubber"
+    ) {
+      const scResponse = await this.stockControlAuthService.issueTokensForAuthenticatedUser(
+        result.user,
+      );
+      return {
+        access_token: scResponse.accessToken,
+        refresh_token: scResponse.refreshToken,
+        token_type: "Bearer" as const,
+        expires_in: 3600,
+      };
+    }
+
+    if (body.appCode === "annix-rep") {
+      const repResponse = await this.annixRepAuthService.issueTokensForAuthenticatedUser(
+        result.user,
+        clientIp,
+        userAgent,
+      );
+      return {
+        access_token: repResponse.accessToken,
+        refresh_token: repResponse.refreshToken,
+        token_type: "Bearer" as const,
+        expires_in: 3600,
+      };
+    }
+
+    if (body.appCode === "cv-assistant") {
+      const cvResponse = await this.cvAssistantAuthService.issueTokensForAuthenticatedUser(
+        result.user,
+      );
+      return {
+        access_token: cvResponse.accessToken,
+        refresh_token: cvResponse.refreshToken,
+        token_type: "Bearer" as const,
+        expires_in: 3600,
+      };
+    }
+
     return this.authService.login(result.user);
   }
 
@@ -117,12 +223,15 @@ export class PasskeyController {
     return { ok: true };
   }
 
-  private requireUserId(req: { user?: { id?: number; userId?: number } }): number {
-    const id = req.user?.id ?? req.user?.userId;
-    if (typeof id !== "number") {
+  private requireUserId(req: {
+    user?: { id?: number | string; userId?: number | string };
+  }): number {
+    const raw = req.user?.id ?? req.user?.userId;
+    const numeric = typeof raw === "string" ? Number.parseInt(raw, 10) : raw;
+    if (typeof numeric !== "number" || Number.isNaN(numeric)) {
       throw new UnauthorizedException("Authenticated user not found on request");
     }
-    return id;
+    return numeric;
   }
 
   private toSummary(passkey: {

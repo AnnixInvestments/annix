@@ -174,6 +174,67 @@ export class AdminAuthService {
     };
   }
 
+  async issueTokensForAuthenticatedUser(
+    user: User,
+    appCode: string,
+    clientIp: string,
+    userAgent: string,
+  ): Promise<AdminLoginResponseDto> {
+    const roleNames = user.roles?.map((r) => r.name) || [];
+
+    const hasAccess = await this.checkAppAccess(user.id, roleNames, appCode);
+    if (!hasAccess.allowed) {
+      throw new ForbiddenException(hasAccess.message);
+    }
+
+    if (!this.authConfigService.isAccountStatusCheckDisabled() && user.status !== "active") {
+      throw new ForbiddenException(
+        `Your account is ${user.status}. Please contact your administrator.`,
+      );
+    }
+
+    const sessionToken = uuidv4();
+    const expiresAt = now().plus({ days: AUTH_CONSTANTS.ADMIN_SESSION_EXPIRY_DAYS }).toJSDate();
+
+    const session = this.adminSessionRepo.create({
+      userId: user.id,
+      sessionToken,
+      clientIp,
+      userAgent,
+      expiresAt,
+      isRevoked: false,
+    });
+    await this.adminSessionRepo.save(session);
+
+    const payload: JwtTokenPayload = {
+      sub: user.id,
+      email: user.email,
+      roles: roleNames,
+      type: "admin",
+      sessionToken,
+    };
+
+    const { accessToken, refreshToken } = await this.tokenService.generateTokenPair(payload, {
+      accessTokenExpiry: AUTH_CONSTANTS.ADMIN_ACCESS_TOKEN_EXPIRY,
+      refreshTokenExpiry: AUTH_CONSTANTS.REFRESH_TOKEN_EXPIRY,
+    });
+
+    user.lastLoginAt = now().toJSDate();
+    await this.userRepo.save(user);
+
+    return {
+      accessToken,
+      refreshToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName || "",
+        lastName: user.lastName || "",
+        roles: roleNames,
+      },
+    };
+  }
+
   async logout(
     userId: number,
     sessionToken: string,

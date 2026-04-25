@@ -120,5 +120,6 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     AnalyticsService,
     CvNotificationService,
   ],
+  exports: [CvAssistantAuthService],
 })
 export class CvAssistantModule {}

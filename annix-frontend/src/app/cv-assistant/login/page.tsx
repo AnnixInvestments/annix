@@ -130,6 +130,7 @@ function CvAssistantLoginContent() {
             <div className="mt-4">
               <PasskeyLoginButton
                 email={email}
+                appCode="cv-assistant"
                 onSuccess={(response) => {
                   storePasskeyJwt(cvAssistantTokenStore, response, rememberMe);
                   redirectAfterPasskeyLogin(returnUrl || "/cv-assistant/portal/dashboard");

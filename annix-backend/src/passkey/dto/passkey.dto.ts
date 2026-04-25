@@ -12,6 +12,16 @@ export class PasskeyAuthVerifyRequestDto {
   @ApiProperty({ description: "AuthenticationResponseJSON from @simplewebauthn/browser" })
   @IsObject()
   response: Record<string, unknown>;
+
+  @ApiProperty({
+    example: "admin",
+    required: false,
+    description: "Portal app code — when set, issue portal-specific tokens instead of generic JWT",
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  appCode?: string;
 }
 
 export class PasskeyRegisterVerifyRequestDto {

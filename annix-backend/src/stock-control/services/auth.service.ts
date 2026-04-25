@@ -1028,6 +1028,27 @@ export class StockControlAuthService {
     }
   }
 
+  async issueTokensForAuthenticatedUser(
+    unifiedUser: User,
+  ): Promise<{ accessToken: string; refreshToken: string }> {
+    const profile = await this.profileRepo.findOne({
+      where: { userId: unifiedUser.id },
+    });
+
+    if (!profile) {
+      throw new UnauthorizedException(
+        "Stock Control profile not found. Please complete registration first.",
+      );
+    }
+
+    const scUser = profile.legacyScUserId
+      ? await this.userRepo.findOne({ where: { id: profile.legacyScUserId } })
+      : null;
+    const role = scUser?.role || StockControlRole.STOREMAN;
+
+    return this.generateTokens(unifiedUser, profile, role);
+  }
+
   private generateTokens(unifiedUser: User, profile: StockControlProfile, role: string) {
     const name =
       [unifiedUser.firstName, unifiedUser.lastName].filter(Boolean).join(" ") || unifiedUser.email;

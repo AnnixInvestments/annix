@@ -366,6 +366,14 @@ export class CvAssistantAuthService {
     }
   }
 
+  async issueTokensForAuthenticatedUser(
+    user: User,
+  ): Promise<{ accessToken: string; refreshToken: string }> {
+    const profile = await this.profileRepo.findOne({ where: { userId: user.id } });
+    const role = await this.resolveRole(user.id);
+    return this.generateTokens(user, profile, role);
+  }
+
   private generateTokens(user: User, profile: CvAssistantProfile | null, role: string) {
     const userName = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email;
 
