@@ -19,6 +19,7 @@ import type {
   RegistrationResponseJSON,
 } from "@simplewebauthn/types";
 import { IsNull, LessThan, Repository } from "typeorm";
+import { AuditService } from "../audit/audit.service";
 import { User } from "../user/entities/user.entity";
 import { Passkey } from "./entities/passkey.entity";
 import { PasskeyChallenge } from "./entities/passkey-challenge.entity";
@@ -39,7 +40,27 @@ export class PasskeyService {
     private readonly challengeRepo: Repository<PasskeyChallenge>,
     @InjectRepository(User) private readonly userRepo: Repository<User>,
     private readonly config: PasskeyConfig,
+    private readonly auditService: AuditService,
   ) {}
+
+  private async audit(
+    userId: number,
+    subAction: "passkey-registered" | "passkey-revoked" | "passkey-login" | "passkey-login-failed",
+    details: Record<string, unknown>,
+  ): Promise<void> {
+    try {
+      await this.auditService.logApp({
+        appName: "auth",
+        subAction,
+        userId,
+        details,
+      });
+    } catch (error) {
+      this.logger.warn(
+        `Failed to audit ${subAction} for user ${userId}: ${error instanceof Error ? error.message : "unknown"}`,
+      );
+    }
+  }
 
   async registrationOptions(userId: number): Promise<PublicKeyCredentialCreationOptionsJSON> {
     const user = await this.userRepo.findOne({ where: { id: userId } });
@@ -104,7 +125,13 @@ export class PasskeyService {
       backupState: info.credentialBackedUp,
     });
 
-    return this.passkeyRepo.save(passkey);
+    const saved = await this.passkeyRepo.save(passkey);
+    await this.audit(userId, "passkey-registered", {
+      passkeyId: saved.id,
+      deviceName: saved.deviceName,
+      backupEligible: saved.backupEligible,
+    });
+    return saved;
   }
 
   async authenticationOptions(
@@ -168,6 +195,10 @@ export class PasskeyService {
       this.logger.warn(
         `Counter regression on passkey ${passkey.id} for user ${passkey.userId} — possible cloned authenticator`,
       );
+      await this.audit(passkey.userId, "passkey-login-failed", {
+        passkeyId: passkey.id,
+        reason: "counter-regression",
+      });
       throw new UnauthorizedException("Authenticator counter regression detected");
     }
 
@@ -184,6 +215,11 @@ export class PasskeyService {
     if (!user) {
       throw new UnauthorizedException("User no longer exists");
     }
+
+    await this.audit(user.id, "passkey-login", {
+      passkeyId: passkey.id,
+      deviceName: passkey.deviceName,
+    });
 
     return { user, passkey };
   }
@@ -228,6 +264,10 @@ export class PasskeyService {
     }
 
     await this.passkeyRepo.delete({ id: passkeyId, userId });
+    await this.audit(userId, "passkey-revoked", {
+      passkeyId,
+      deviceName: passkey.deviceName,
+    });
   }
 
   async purgeExpiredChallenges(): Promise<number> {

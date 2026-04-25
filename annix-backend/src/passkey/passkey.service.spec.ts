@@ -2,6 +2,7 @@ import { BadRequestException, NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
+import { AuditService } from "../audit/audit.service";
 import { User } from "../user/entities/user.entity";
 import { Passkey } from "./entities/passkey.entity";
 import { PasskeyChallenge } from "./entities/passkey-challenge.entity";
@@ -41,6 +42,11 @@ describe("PasskeyService", () => {
     }),
   };
 
+  const mockAuditService = {
+    logApp: jest.fn().mockResolvedValue(undefined),
+    log: jest.fn().mockResolvedValue(undefined),
+  };
+
   beforeEach(async () => {
     jest.clearAllMocks();
     const module: TestingModule = await Test.createTestingModule({
@@ -51,6 +57,7 @@ describe("PasskeyService", () => {
         { provide: getRepositoryToken(PasskeyChallenge), useValue: mockChallengeRepo },
         { provide: getRepositoryToken(User), useValue: mockUserRepo },
         { provide: ConfigService, useValue: mockConfigService },
+        { provide: AuditService, useValue: mockAuditService },
       ],
     }).compile();
 
