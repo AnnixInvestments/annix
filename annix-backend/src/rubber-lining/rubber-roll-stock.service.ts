@@ -28,6 +28,7 @@ import {
   RubberSupplierCoc,
   SupplierCocType,
 } from "./entities/rubber-supplier-coc.entity";
+import { RubberTaxInvoice, TaxInvoiceType } from "./entities/rubber-tax-invoice.entity";
 
 const ROLL_STATUS_LABELS: Record<RollStockStatus, string> = {
   [RollStockStatus.IN_STOCK]: "In Stock",
@@ -72,6 +73,8 @@ export class RubberRollStockService {
     private productCodingRepository: Repository<RubberProductCoding>,
     @InjectRepository(RubberStockLocation)
     private stockLocationRepository: Repository<RubberStockLocation>,
+    @InjectRepository(RubberTaxInvoice)
+    private taxInvoiceRepository: Repository<RubberTaxInvoice>,
   ) {}
 
   async allRollStock(filters?: {
@@ -770,5 +773,151 @@ export class RubberRollStockService {
       order: { rollNumber: "ASC" },
     });
     return rolls.map((r) => this.mapRollStockToDto(r));
+  }
+
+  private async impiloCocForInvoice(invoice: RubberTaxInvoice): Promise<RubberSupplierCoc | null> {
+    const orderNumber = invoice.extractedData?.orderNumber;
+    if (!orderNumber) return null;
+    const cocs = await this.supplierCocRepository
+      .createQueryBuilder("coc")
+      .where("coc.coc_type = :type", { type: SupplierCocType.CALENDARER })
+      .andWhere("coc.supplier_company_id = :companyId", { companyId: invoice.companyId })
+      .andWhere("coc.extracted_data->>'orderNumber' = :order", { order: orderNumber })
+      .orderBy("coc.created_at", "DESC")
+      .limit(1)
+      .getMany();
+    return cocs.length > 0 ? cocs[0] : null;
+  }
+
+  private async sNCocByBatchOverlap(batchNumbers: string[]): Promise<RubberSupplierCoc | null> {
+    if (batchNumbers.length === 0) return null;
+    const cocs = await this.supplierCocRepository
+      .createQueryBuilder("coc")
+      .where("coc.coc_type = :type", { type: SupplierCocType.COMPOUNDER })
+      .andWhere("coc.extracted_data->'batchNumbers' ?| :batches", { batches: batchNumbers })
+      .orderBy("coc.created_at", "DESC")
+      .limit(1)
+      .getMany();
+    return cocs.length > 0 ? cocs[0] : null;
+  }
+
+  private async sNInvoiceForCompound(
+    snCompanyId: number,
+    compoundCode: string | null,
+    productionDate: Date | null,
+  ): Promise<{ invoice: RubberTaxInvoice; lineUnitPrice: number } | null> {
+    const candidates = await this.taxInvoiceRepository
+      .createQueryBuilder("inv")
+      .where("inv.company_id = :companyId", { companyId: snCompanyId })
+      .andWhere("inv.invoice_type = :type", { type: TaxInvoiceType.SUPPLIER })
+      .andWhere("inv.is_credit_note = false")
+      .orderBy("inv.invoice_date", "DESC")
+      .limit(50)
+      .getMany();
+    const shoreMatch = compoundCode ? compoundCode.match(/(\d{2})/) : null;
+    const shore = shoreMatch ? shoreMatch[1] : null;
+    const colourMatch = compoundCode ? compoundCode.match(/^([A-Z])/) : null;
+    const colourCode = colourMatch ? colourMatch[1] : null;
+    const colourMap: Record<string, string[]> = {
+      R: ["red"],
+      B: ["black"],
+      G: ["green"],
+      Y: ["yellow"],
+      P: ["pink"],
+      W: ["white"],
+      O: ["orange"],
+    };
+    const colourTokens = colourCode ? (colourMap[colourCode] ?? []) : [];
+
+    const productionMs = productionDate ? productionDate.getTime() : null;
+    const scoreCandidate = (inv: RubberTaxInvoice): number | null => {
+      const lineItems = inv.extractedData?.lineItems ?? [];
+      const matchLine = lineItems.find((li) => {
+        const desc = (li.description ?? "").toLowerCase();
+        if (shore && !desc.includes(shore)) return false;
+        if (colourTokens.length > 0 && !colourTokens.some((t) => desc.includes(t))) return false;
+        return true;
+      });
+      if (!matchLine || matchLine.unitPrice == null) return null;
+      let score = 1000;
+      if (productionMs && inv.invoiceDate) {
+        const diffDays = (inv.invoiceDate.getTime() - productionMs) / (1000 * 60 * 60 * 24);
+        if (diffDays < -1) return null;
+        if (diffDays > 14) score -= 100;
+        else score += 50 - Math.abs(diffDays);
+      }
+      return score;
+    };
+
+    const ranked = candidates
+      .map((inv) => ({ inv, score: scoreCandidate(inv) }))
+      .filter((c): c is { inv: RubberTaxInvoice; score: number } => c.score !== null)
+      .sort((a, b) => b.score - a.score);
+    if (ranked.length === 0) return null;
+    const winner = ranked[0].inv;
+    const lineItems = winner.extractedData?.lineItems ?? [];
+    const matchedLine = lineItems.find((li) => {
+      const desc = (li.description ?? "").toLowerCase();
+      if (shore && !desc.includes(shore)) return false;
+      if (colourTokens.length > 0 && !colourTokens.some((t) => desc.includes(t))) return false;
+      return true;
+    });
+    if (!matchedLine || matchedLine.unitPrice == null) return null;
+    return { invoice: winner, lineUnitPrice: matchedLine.unitPrice };
+  }
+
+  async resolveCompoundCostPerKgForImpiloInvoice(
+    impiloInvoiceId: number,
+  ): Promise<{ unitPrice: number; sourceInvoiceId: number; sourceCocId: number | null } | null> {
+    const invoice = await this.taxInvoiceRepository.findOne({
+      where: { id: impiloInvoiceId },
+      relations: ["company"],
+    });
+    if (!invoice) return null;
+    const impiloCoc = await this.impiloCocForInvoice(invoice);
+    if (!impiloCoc) return null;
+    const batchNumbers = (impiloCoc.extractedData?.batchNumbers as string[] | undefined) ?? [];
+    if (batchNumbers.length === 0) return null;
+    const snCoc = await this.sNCocByBatchOverlap(batchNumbers);
+    if (!snCoc) return null;
+    const snCompoundCode =
+      (snCoc.extractedData?.compoundCode as string | undefined) ??
+      (impiloCoc.extractedData?.compoundCode as string | undefined) ??
+      null;
+    const result = await this.sNInvoiceForCompound(
+      snCoc.supplierCompanyId,
+      snCompoundCode,
+      snCoc.productionDate,
+    );
+    if (!result) return null;
+    return {
+      unitPrice: result.lineUnitPrice,
+      sourceInvoiceId: result.invoice.id,
+      sourceCocId: snCoc.id,
+    };
+  }
+
+  async propagateCompoundCostsForImpiloInvoice(
+    impiloInvoiceId: number,
+  ): Promise<{ updated: number; unitPrice: number | null }> {
+    const resolved = await this.resolveCompoundCostPerKgForImpiloInvoice(impiloInvoiceId);
+    if (!resolved) return { updated: 0, unitPrice: null };
+    const rolls = await this.rollStockRepository.find({
+      where: { supplierTaxInvoiceId: impiloInvoiceId },
+    });
+    const updates = rolls.map((r) => {
+      const weight = Number(r.weightKg ?? 0);
+      const compoundCost = Math.round(weight * resolved.unitPrice * 100) / 100;
+      const tollCost = r.tollCostR ?? 0;
+      const total = Math.round((Number(tollCost) + compoundCost) * 100) / 100;
+      return {
+        ...r,
+        compoundCostR: compoundCost,
+        totalCostR: total,
+        costZar: total,
+      };
+    });
+    if (updates.length > 0) await this.rollStockRepository.save(updates);
+    return { updated: updates.length, unitPrice: resolved.unitPrice };
   }
 }

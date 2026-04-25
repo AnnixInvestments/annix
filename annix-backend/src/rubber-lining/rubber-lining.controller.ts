@@ -2863,6 +2863,20 @@ Formula: totalPrice = totalKg × salePricePerKg
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
+  @Post("portal/tax-invoices/:id/recompute-compound-costs")
+  @ApiOperation({
+    summary:
+      "Recompute compound (S&N) cost for every roll on this Impilo supplier tax invoice — useful when the matching S&N invoice arrived after this one was approved",
+  })
+  @ApiParam({ name: "id", description: "Impilo supplier tax invoice ID" })
+  async recomputeCompoundCosts(
+    @Param("id") id: string,
+  ): Promise<{ updated: number; unitPrice: number | null }> {
+    return this.rubberRollStockService.propagateCompoundCostsForImpiloInvoice(Number(id));
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
   @Put("portal/tax-invoices/:id/reprocess-stock")
   @ApiOperation({ summary: "Reprocess compound stock for an approved tax invoice" })
   @ApiParam({ name: "id", description: "Tax invoice ID" })

@@ -556,6 +556,18 @@ export class RubberTaxInvoiceService {
     this.logger.log(
       `Supplier tax invoice ${invoice.invoiceNumber}: created ${result.created} per-roll stock records (${result.skipped} skipped — already existed)`,
     );
+    const propagated = await this.rollStockService.propagateCompoundCostsForImpiloInvoice(
+      invoice.id,
+    );
+    if (propagated.updated > 0 && propagated.unitPrice != null) {
+      this.logger.log(
+        `Supplier tax invoice ${invoice.invoiceNumber}: applied compound cost R${propagated.unitPrice}/kg to ${propagated.updated} rolls`,
+      );
+    } else {
+      this.logger.warn(
+        `Supplier tax invoice ${invoice.invoiceNumber}: no S&N compound cost matched — rolls saved with toll cost only (compound_cost_r=null)`,
+      );
+    }
   }
 
   private async processCustomerPerRollShipment(invoice: RubberTaxInvoice): Promise<void> {
