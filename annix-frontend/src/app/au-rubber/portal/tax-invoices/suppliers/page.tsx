@@ -13,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import { FileDropZone } from "@/app/au-rubber/components/FileDropZone";
@@ -50,6 +51,7 @@ type SortColumn =
   | "unit";
 
 export default function SupplierTaxInvoicesPage() {
+  const router = useRouter();
   const { showToast } = useToast();
   const { confirm, ConfirmDialog } = useConfirm();
   const [invoices, setInvoices] = useState<RubberTaxInvoiceDto[]>([]);
@@ -750,10 +752,11 @@ export default function SupplierTaxInvoicesPage() {
                   return (
                     <tr
                       key={inv.id}
-                      className={`hover:bg-gray-50 ${inv.versionStatus === "SUPERSEDED" || inv.versionStatus === "REJECTED" ? "opacity-40" : ""}`}
+                      onClick={() => router.push(`/au-rubber/portal/tax-invoices/${inv.id}`)}
+                      className={`hover:bg-gray-50 cursor-pointer ${inv.versionStatus === "SUPERSEDED" || inv.versionStatus === "REJECTED" ? "opacity-40" : ""}`}
                     >
                       {hasApprovable && (
-                        <td className="px-2 py-3 w-8">
+                        <td className="px-2 py-3 w-8" onClick={(e) => e.stopPropagation()}>
                           {inv.status === "EXTRACTED" && (
                             <input
                               type="checkbox"
