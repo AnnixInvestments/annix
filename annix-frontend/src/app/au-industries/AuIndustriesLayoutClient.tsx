@@ -61,6 +61,7 @@ export function AuIndustriesLayoutClient(props: { children: React.ReactNode }) {
       streetAddress: AU_INDUSTRIES_CONTACT.streetAddress,
       addressLocality: AU_INDUSTRIES_CONTACT.city,
       addressRegion: AU_INDUSTRIES_CONTACT.province,
+      postalCode: AU_INDUSTRIES_CONTACT.postalCode,
       addressCountry: "ZA",
     },
     geo: {

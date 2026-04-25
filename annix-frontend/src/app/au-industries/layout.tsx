@@ -31,6 +31,9 @@ export const metadata: Metadata = {
   alternates: {
     canonical: SITE_URL,
   },
+  verification: {
+    google: "sp2KS-iFxp5dRSfkuMv7xDR6FHve0O4hMfyApm269xk",
+  },
 };
 
 export default function AuIndustriesLayout(props: { children: React.ReactNode }) {
