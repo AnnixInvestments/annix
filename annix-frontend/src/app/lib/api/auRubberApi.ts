@@ -200,11 +200,17 @@ export type QualityStatus = "normal" | "warning" | "critical";
 export type TaxInvoiceType = "SUPPLIER" | "CUSTOMER";
 export type TaxInvoiceStatus = "PENDING" | "EXTRACTED" | "APPROVED";
 
+export interface ExtractedTaxInvoiceRoll {
+  rollNumber: string;
+  weightKg: number | null;
+}
+
 export interface ExtractedTaxInvoiceLineItem {
   description: string;
   quantity: number | null;
   unitPrice: number | null;
   amount: number | null;
+  rolls?: ExtractedTaxInvoiceRoll[] | null;
 }
 
 export interface ExtractedTaxInvoiceData {
@@ -3115,6 +3121,32 @@ class AuRubberApiClient {
     return this.request(`/rubber-lining/portal/tax-invoices/${id}/approve`, {
       method: "PUT",
     });
+  }
+
+  async updateTaxInvoiceLineItemRolls(
+    id: number,
+    lineIdx: number,
+    rolls: Array<{ rollNumber: string; weightKg: number | null }>,
+  ): Promise<RubberTaxInvoiceDto> {
+    return this.request(`/rubber-lining/portal/tax-invoices/${id}/line-items/${lineIdx}/rolls`, {
+      method: "PUT",
+      body: JSON.stringify({ rolls }),
+    });
+  }
+
+  async availableRollsForProductCode(productCode: string): Promise<
+    Array<{
+      id: number;
+      rollNumber: string;
+      weightKg: number;
+      compoundCode: string | null;
+      thicknessMm: number | null;
+      widthMm: number | null;
+      lengthM: number | null;
+    }>
+  > {
+    const params = new URLSearchParams({ productCode });
+    return this.request(`/rubber-lining/portal/roll-stock/available?${params.toString()}`);
   }
 
   async deleteTaxInvoice(id: number): Promise<void> {

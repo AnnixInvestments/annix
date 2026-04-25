@@ -2,7 +2,7 @@
 
 import { CheckCircle, Download, FileText, Pencil, RefreshCw, Save, X } from "lucide-react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import { useToast } from "@/app/components/Toast";
 import {
@@ -12,6 +12,7 @@ import {
   type TaxInvoiceType,
 } from "@/app/lib/api/auRubberApi";
 import { formatDateTimeZA, formatDateZA } from "@/app/lib/datetime";
+import { LineItemRollsPanel } from "./LineItemRollsPanel";
 
 export default function TaxInvoiceDetailPage() {
   const params = useParams();
@@ -590,21 +591,42 @@ export default function TaxInvoiceDetailPage() {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-100">
-                        {invoice.extractedData.lineItems.map((item, idx) => (
-                          <tr key={idx}>
-                            <td className="px-3 py-2 text-xs text-gray-400">{idx + 1}</td>
-                            <td className="px-3 py-2 text-sm text-gray-900">{item.description}</td>
-                            <td className="px-3 py-2 text-sm text-gray-900 text-right">
-                              {item.quantity != null ? item.quantity : "-"}
-                            </td>
-                            <td className="px-3 py-2 text-sm text-gray-900 text-right">
-                              {formatCurrency(item.unitPrice)}
-                            </td>
-                            <td className="px-3 py-2 text-sm font-medium text-gray-900 text-right">
-                              {formatCurrency(item.amount)}
-                            </td>
-                          </tr>
-                        ))}
+                        {invoice.extractedData.lineItems.map((item, idx) => {
+                          const itemRolls = item.rolls;
+                          const itemDescription = item.description;
+                          return (
+                            <Fragment key={idx}>
+                              <tr>
+                                <td className="px-3 py-2 text-xs text-gray-400">{idx + 1}</td>
+                                <td className="px-3 py-2 text-sm text-gray-900">
+                                  {itemDescription}
+                                </td>
+                                <td className="px-3 py-2 text-sm text-gray-900 text-right">
+                                  {item.quantity != null ? item.quantity : "-"}
+                                </td>
+                                <td className="px-3 py-2 text-sm text-gray-900 text-right">
+                                  {formatCurrency(item.unitPrice)}
+                                </td>
+                                <td className="px-3 py-2 text-sm font-medium text-gray-900 text-right">
+                                  {formatCurrency(item.amount)}
+                                </td>
+                              </tr>
+                              <tr>
+                                <td colSpan={5} className="p-0">
+                                  <LineItemRollsPanel
+                                    invoiceId={invoice.id}
+                                    invoiceType={invoice.invoiceType}
+                                    lineIdx={idx}
+                                    description={itemDescription}
+                                    rolls={itemRolls || null}
+                                    isApproved={invoice.status === "APPROVED"}
+                                    onSaved={fetchData}
+                                  />
+                                </td>
+                              </tr>
+                            </Fragment>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </dd>
