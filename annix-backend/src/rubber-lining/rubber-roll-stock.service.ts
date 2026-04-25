@@ -712,6 +712,7 @@ export class RubberRollStockService {
           skipped += 1;
           continue;
         }
+        const tollCost = line.unitPrice ?? null;
         const entity = this.rollStockRepository.create({
           firebaseUid: `pg_${generateUniqueId()}`,
           rollNumber: roll.rollNumber,
@@ -722,7 +723,10 @@ export class RubberRollStockService {
           lengthM: dims.lengthM,
           status: RollStockStatus.IN_STOCK,
           linkedBatchIds: [],
-          costZar: line.unitPrice ?? null,
+          costZar: tollCost,
+          tollCostR: tollCost,
+          compoundCostR: null,
+          totalCostR: tollCost,
           supplierTaxInvoiceId: invoiceId,
           supplierTaxInvoiceLineIdx: idx,
         });

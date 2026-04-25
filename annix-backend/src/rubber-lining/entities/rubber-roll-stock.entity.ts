@@ -131,6 +131,33 @@ export class RubberRollStock {
   costZar: number | null;
 
   @Column({
+    name: "toll_cost_r",
+    type: "decimal",
+    precision: 12,
+    scale: 2,
+    nullable: true,
+  })
+  tollCostR: number | null;
+
+  @Column({
+    name: "compound_cost_r",
+    type: "decimal",
+    precision: 12,
+    scale: 2,
+    nullable: true,
+  })
+  compoundCostR: number | null;
+
+  @Column({
+    name: "total_cost_r",
+    type: "decimal",
+    precision: 12,
+    scale: 2,
+    nullable: true,
+  })
+  totalCostR: number | null;
+
+  @Column({
     name: "price_zar",
     type: "decimal",
     precision: 12,
