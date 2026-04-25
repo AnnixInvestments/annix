@@ -5,6 +5,7 @@ const CANONICAL_HOST = "auind.co.za";
 const AU_INDUSTRIES_PREFIX = "/au-industries";
 const STATIC_FILE_REGEX =
   /\.(jpg|jpeg|png|gif|svg|webp|ico|css|js|woff|woff2|ttf|eot|map|mp4|webm|pdf)$/i;
+const ROOT_METADATA_PATHS = new Set(["/robots.txt", "/sitemap.xml"]);
 
 export function middleware(request: NextRequest) {
   const hostHeader = request.headers.get("host") ?? "";
@@ -18,12 +19,13 @@ export function middleware(request: NextRequest) {
 
   if (host === "www.auind.co.za") {
     url.host = CANONICAL_HOST;
+    url.port = "";
     return NextResponse.redirect(url, 301);
   }
 
   const pathname = url.pathname;
 
-  if (STATIC_FILE_REGEX.test(pathname)) {
+  if (STATIC_FILE_REGEX.test(pathname) || ROOT_METADATA_PATHS.has(pathname)) {
     return NextResponse.next();
   }
 
