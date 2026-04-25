@@ -67,6 +67,31 @@ Screenshots show the exact state of the page when the user submitted feedback. L
 6. Implement the fix if it is contained, safe, and testable in automation
 7. Open a PR targeting `main`, include `Ref #<tracker issue>` in the PR body, and comment on the issue with the outcome
 
+## Scope Discipline (mandatory)
+
+The PR for a feedback item must contain only the fix for that feedback item. Two specific rules — both came from real production-breaking incidents:
+
+### Do not modify `packages/*/package.json` `exports` fields
+
+The shared workspace packages (`@annix/product-data`, `@annix/feedback-sdk`, `@annix/feedback-web`) have `exports` fields tuned for a dual-target build:
+
+- The frontend (`annix-frontend`) resolves the TypeScript source via Next.js `transpilePackages`
+- The backend (`annix-backend`) runs plain Node.js in production and resolves the compiled `dist/*.js` output produced by the `product-data-builder` Docker stage
+
+Changing `default` to point at `.ts` source — for example because Turbopack reports "module not found" during local dev when `dist/` hasn't been built — fixes the frontend symptom but **crashes the production backend on startup with `ERR_MODULE_NOT_FOUND`** (Node cannot load `.ts`). The Fly machine boots, the app process exits 1, healthchecks time out at 5 minutes, the deploy fails. This has happened twice. Do not change these `exports` fields without explicit instruction.
+
+If local dev is broken because `dist/` is missing, the right fix is to run `pnpm --filter @annix/product-data build` once, not to redirect runtime resolution.
+
+### Pre-existing build errors are not in scope
+
+If during the fix you encounter an unrelated build error — a SWC landmine in another file, a missing import elsewhere, a deprecated API in a sibling module — do **not** bundle a fix for it into the feedback PR. Instead:
+
+1. Comment on the tracker issue describing what you found, where, and what would fix it
+2. Ask whether it should be a separate PR
+3. Continue with only the in-scope fix
+
+A feedback PR with three commits — "fix the actual feedback", "fix this other thing I noticed", "fix that other thing too" — is harder to review, harder to revert if any one piece is wrong, and statistically more likely to introduce a regression than a focused single-purpose PR. The two-PR feedback batch on 2026-04-21 (#223 and #224) was blocked for four days because each had bundled an unrelated `packages/product-data/package.json` change that was correct for the frontend but broke the backend.
+
 ## What to Include in Your Issue Comment
 
 If you create a PR, include:
