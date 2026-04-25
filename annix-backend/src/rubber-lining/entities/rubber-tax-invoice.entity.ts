@@ -21,11 +21,17 @@ export enum TaxInvoiceStatus {
   APPROVED = "APPROVED",
 }
 
+export interface ExtractedRollDetail {
+  rollNumber: string;
+  weightKg: number | null;
+}
+
 export interface ExtractedTaxInvoiceLineItem {
   description: string;
   quantity: number | null;
   unitPrice: number | null;
   amount: number | null;
+  rolls?: ExtractedRollDetail[] | null;
 }
 
 export interface ExtractedTaxInvoiceData {

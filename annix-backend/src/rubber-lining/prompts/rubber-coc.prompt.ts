@@ -783,7 +783,7 @@ The Impilo tolling pattern repeats once per roll size on the invoice. A single "
 
 Steps for EACH section:
 1. Read the "TOLLCALENDERKG" row's Excl Value (= section's calendering charge before VAT, e.g. R1,262.25). Call this "sectionExcl".
-2. Collect every "Roll # <num>   <kg> kg" detail line that follows (under TOLLCALENDERROLLS). The number of these lines is the roll count for the section.
+2. Collect every "Roll # <num>   <kg> kg" detail line that follows (under TOLLCALENDERROLLS) into an array of {rollNumber, weightKg} objects. The number of these entries is the roll count for the section.
 3. Read the trailing free-text dimensions line under the TOLLRAWMATA... row (e.g. "1 rolls Steam cure 38 Black 6x1250x12.5"). This applies to ALL rolls in the section.
 4. Compute perRollCost = sectionExcl / rollCount, rounded to 2 decimals.
 5. Build a product code from the dimensions line using this rule:
@@ -802,13 +802,20 @@ Steps for EACH section:
    If the dimensions line uses an unrecognised cure or colour (e.g. "Autoclave cure", "Rotocure", "Grey", "Natural"), DO NOT invent a code — fall back to the generic line-item extraction for that section instead.
 
    This per-roll rule applies ONLY to roll-form rubber (the dimensions line clearly states "<n> rolls <cure> <shore> <colour> <thickness>x<width>x<length>"). Moulded products such as Throatbushes (TBR-…/TRB-…), Frame Plate Liners (FPL-…) and Cover Plate Liners (CPL-…) are imported as complete items with no conversion — leave their line items as-is.
-6. Emit ONE line item per roll with:
-   - description: "<productCode> <thickness>x<width>x<length>"
-     (e.g. "BSCA38 6x1250x12.5")
-   - quantity: 1
-   - unitPrice: perRollCost
-   - amount: perRollCost
-7. If the invoice has multiple sections (more than one TOLLCALENDERKG row, e.g. different roll sizes), repeat for each section. The combined per-roll lines should sum back to the invoice's overall subtotal.
+6. Emit ONE line item per section (NOT one per roll — every roll in the same section shares the product code, dimensions and per-roll cost, so they collapse into a single line):
+   - description: "<productCode> <thickness>x<width>x<length>" (e.g. "BSCA38 6x1250x12.5")
+   - quantity: rollCount (e.g. 4)
+   - unitPrice: perRollCost (e.g. 1259.06)
+   - amount: sectionExcl (e.g. 5036.25)
+   - rolls: array of every roll in the section, each as {rollNumber: "<num>", weightKg: <kg>}
+       e.g. [
+         { "rollNumber": "42393", "weightKg": 100 },
+         { "rollNumber": "42392", "weightKg": 97 },
+         { "rollNumber": "42394", "weightKg": 99 },
+         { "rollNumber": "42395", "weightKg": 99 }
+       ]
+   The rolls array preserves traceability — each roll keeps its own roll number and weight so it can later be picked individually when invoicing out.
+7. If the invoice has multiple sections (more than one TOLLCALENDERKG row, e.g. different roll sizes), repeat for each section and emit one line item per section. The line items' amounts should sum back to the invoice's overall subtotal.
 
 Do NOT also include the raw TOLLCALENDERKG / TOLLCALENDERROLLS / TOLLRAWMATA... rows in lineItems — they are replaced by the per-roll lines. The invoice-level subtotal/vatAmount/totalAmount stay the same.
 
@@ -845,7 +852,8 @@ Return a JSON object with this structure:
       "description": string,
       "quantity": number or null,
       "unitPrice": number or null,
-      "amount": number or null
+      "amount": number or null,
+      "rolls": (optional) array of { "rollNumber": string, "weightKg": number or null } — only set for Impilo per-roll grouped lines, otherwise omit or null
     }
   ],
   "subtotal": number or null (total excl VAT),
