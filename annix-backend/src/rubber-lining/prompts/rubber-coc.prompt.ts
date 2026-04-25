@@ -769,6 +769,35 @@ LINE ITEMS:
 - Some invoices have a single line item; others have many
 - Look for columns labeled "Description", "Qty", "Unit Price", "Amount", "Total"
 
+LINE ITEMS — SPECIAL HANDLING FOR IMPILO INDUSTRIES TOLL CALENDERING INVOICES:
+Impilo Industries bills toll calendering by KG but the rubber team needs ONE line item per finished roll so each roll can be brought into stock and invoiced out individually. When the invoice clearly comes from Impilo Industries (look at the letterhead / supplier company), do NOT extract the raw KG / N/C / compound rows verbatim. Instead recognise the tolling pattern below and emit one line item per roll.
+
+The Impilo tolling pattern repeats once per roll size on the invoice. A single "section" looks like:
+
+  TOLLCALENDERKG        Toll Calendered Customer Material per KG     <kg>   <R/kg>   <excl>   <vat>   <incl>
+  TOLLCALENDERROLLS     Toll Calendered Rolls Customer Supplied Compound N/C   <rollCount>   0.00   0.00   ...
+                        Roll # <rollNum>   <kg> kg              <-- one of these detail lines per roll, may repeat
+                        Roll # <rollNum>   <kg> kg
+  TOLLRAWMATAUSC<...>   Toll Raw Compound AU SC<grade> <colour> per KG   <kg>   0.00   ...
+                        <rollCount> rolls <cure> <hardness> <colour> <thickness>x<width>x<length>
+
+Steps for EACH section:
+1. Read the "TOLLCALENDERKG" row's Excl Value (= section's calendering charge before VAT, e.g. R1,262.25). Call this "sectionExcl".
+2. Collect every "Roll # <num>   <kg> kg" detail line that follows (under TOLLCALENDERROLLS). The number of these lines is the roll count for the section.
+3. Read the trailing free-text dimensions line under the TOLLRAWMATA... row (e.g. "1 rolls Steam cure 38 Black 6x1250x12.5"). This applies to ALL rolls in the section.
+4. Compute perRollCost = sectionExcl / rollCount, rounded to 2 decimals.
+5. Emit ONE line item per roll with:
+   - description: "Calendered Roll #<rollNum> — <kg>kg — <cure> <hardness> <colour> <thickness>x<width>x<length>"
+     (e.g. "Calendered Roll #42300 — 99kg — Steam cure 38 Black 6x1250x12.5")
+   - quantity: 1
+   - unitPrice: perRollCost
+   - amount: perRollCost
+6. If the invoice has multiple sections (more than one TOLLCALENDERKG row, e.g. different roll sizes), repeat for each section. The combined per-roll lines should sum back to the invoice's overall subtotal.
+
+Do NOT also include the raw TOLLCALENDERKG / TOLLCALENDERROLLS / TOLLRAWMATA... rows in lineItems — they are replaced by the per-roll lines. The invoice-level subtotal/vatAmount/totalAmount stay the same.
+
+If the invoice is from Impilo Industries but doesn't follow this tolling pattern (no TOLLCALENDER rows), fall back to the generic line-item extraction above.
+
 PRODUCT SUMMARY (CRITICAL for Impilo Industries invoices):
 - Below or after the line items table, there is often a free-text summary line describing the actual product
 - Examples: "2 rolls Steam cure 40 Black 6x1200x12", "3 rolls Autoclave cure 38 Red 8x1200x12.5"
