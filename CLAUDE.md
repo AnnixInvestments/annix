@@ -157,7 +157,7 @@ Update `docs/shared-registry.md` in the same commit. Reviewers / pre-push hook w
 - **Environment variable**: `GEMINI_API_KEY` must be set; `ANTHROPIC_API_KEY` is optional fallback only
 
 ### Sage Accounting API — DLA Compliance (Developer License Agreement)
-All Sage API integration code across ALL Annix apps (Stock Control, AU Rubber, Comply SA, and any future apps) must comply with the Sage DLA signed March 2026. Violations can result in API key revocation and permanent loss of API access. These rules apply to any new module or service that touches Sage — no exceptions.
+All Sage API integration code across ALL Annix apps (Stock Control, AU Rubber, Comply SA, and any future apps) must comply with the Sage Developer License Agreement. **DLA status as of 2026-04-25:** enrolment form + DLA received from Sage on 2026-03-16, NOT yet signed/returned. No sandbox or live API key has been issued — all Sage integration code is currently dormant in production. The rules below apply pre-emptively to anything that touches Sage. Violations once we hold a key can result in revocation and permanent loss of API access. No exceptions.
 
 #### Rate Limits (STRICTLY ENFORCED)
 - **100 requests per minute per company** — exceeding this blocks the IP for 1 hour (HTTP 429)

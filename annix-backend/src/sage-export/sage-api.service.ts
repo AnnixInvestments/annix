@@ -3,7 +3,7 @@ import { ConfigService } from "@nestjs/config";
 import { sageRateLimiter } from "../lib/sage-rate-limiter";
 
 // eslint-disable-next-line no-restricted-syntax -- canonical Sage One SA REST client per CLAUDE.md DLA compliance
-const SAGE_BASE_URL = "https://accounting.sageone.co.za/api/2.0.0";
+const SAGE_BASE_URL_PRODUCTION = "https://accounting.sageone.co.za/api/2.0.0";
 
 export interface SageCompany {
   ID: number;
@@ -82,6 +82,10 @@ export class SageApiService {
     return this.configService.get<string>("SAGE_API_KEY") ?? null;
   }
 
+  private baseUrl(): string {
+    return this.configService.get<string>("SAGE_BASE_URL") ?? SAGE_BASE_URL_PRODUCTION;
+  }
+
   private authHeader(username: string, password: string): string {
     return `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`;
   }
@@ -104,7 +108,7 @@ export class SageApiService {
 
     const method = options?.method ?? "GET";
     const separator = path.includes("?") ? "&" : "?";
-    const url = `${SAGE_BASE_URL}/${path}${separator}apikey=${encodeURIComponent(key)}`;
+    const url = `${this.baseUrl()}/${path}${separator}apikey=${encodeURIComponent(key)}`;
 
     const headers: Record<string, string> = {
       Authorization: this.authHeader(username, password),

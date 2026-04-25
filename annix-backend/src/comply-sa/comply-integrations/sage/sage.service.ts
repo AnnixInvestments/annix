@@ -259,6 +259,8 @@ export class SageService {
 
     const refreshToken = this.decrypt(connection.refreshTokenEncrypted);
 
+    await sageRateLimiter.waitForSlot(`comply-sa-oauth:${connection.companyId}`);
+
     const response = await fetch(SAGE_TOKEN_URL, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -287,6 +289,8 @@ export class SageService {
   }
 
   private async exchangeCodeForTokens(code: string): Promise<SageTokenResponse> {
+    await sageRateLimiter.waitForSlot("comply-sa-oauth:exchange");
+
     const response = await fetch(SAGE_TOKEN_URL, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },

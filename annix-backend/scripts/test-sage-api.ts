@@ -8,17 +8,27 @@
  *   SAGE_USERNAME    - Your Sage login email
  *   SAGE_PASSWORD    - Your Sage login password
  *   SAGE_API_KEY     - The API key from the developer portal (Client ID)
+ *   SAGE_BASE_URL    - REQUIRED. Sandbox or production base URL issued by Sage.
+ *                      No default — script refuses to run without it to prevent
+ *                      accidental hits against production while DLA evaluation
+ *                      is in progress (issue #117).
  */
-
-const SAGE_BASE_URL = "https://accounting.sageone.co.za/api/2.0.0";
 
 const username = process.env.SAGE_USERNAME;
 const password = process.env.SAGE_PASSWORD;
 const apiKey = process.env.SAGE_API_KEY;
+const SAGE_BASE_URL = process.env.SAGE_BASE_URL;
 
 if (!username || !password || !apiKey) {
   console.error(
     "Missing environment variables. Set SAGE_USERNAME, SAGE_PASSWORD, and SAGE_API_KEY.",
+  );
+  process.exit(1);
+}
+
+if (!SAGE_BASE_URL) {
+  console.error(
+    "Missing SAGE_BASE_URL. Set it to the sandbox URL issued by Sage (or production once approved).",
   );
   process.exit(1);
 }
