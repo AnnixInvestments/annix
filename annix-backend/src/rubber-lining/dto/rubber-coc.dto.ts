@@ -485,6 +485,9 @@ export class RubberRollStockDto {
   location: string | null;
   notes: string | null;
   costZar: number | null;
+  tollCostR: number | null;
+  compoundCostR: number | null;
+  totalCostR: number | null;
   priceZar: number | null;
   productionDate: string | null;
   createdAt: string;

@@ -25,6 +25,7 @@ export default function TaxInvoiceDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isExtracting, setIsExtracting] = useState(false);
   const [isApproving, setIsApproving] = useState(false);
+  const [isRecomputingCosts, setIsRecomputingCosts] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [documentUrl, setDocumentUrl] = useState<string | null>(null);
   const [isEditingSummary, setIsEditingSummary] = useState(false);
@@ -123,6 +124,27 @@ export default function TaxInvoiceDetailPage() {
     } finally {
       hideExtraction();
       setIsExtracting(false);
+    }
+  };
+
+  const handleRecomputeCompoundCosts = async () => {
+    if (!invoice) return;
+    try {
+      setIsRecomputingCosts(true);
+      const result = await auRubberApiClient.recomputeCompoundCosts(invoice.id);
+      if (result.unitPrice == null) {
+        showToast("No matching S&N invoice found yet — rolls keep toll cost only.", "warning");
+      } else {
+        showToast(
+          `Updated compound cost on ${result.updated} rolls at R${result.unitPrice.toFixed(2)}/kg.`,
+          "success",
+        );
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Recompute failed";
+      showToast(message, "error");
+    } finally {
+      setIsRecomputingCosts(false);
     }
   };
 
@@ -318,6 +340,19 @@ export default function TaxInvoiceDetailPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {invoice.status === "APPROVED" &&
+            invoice.invoiceType === "SUPPLIER" &&
+            !invoice.isCreditNote && (
+              <button
+                onClick={handleRecomputeCompoundCosts}
+                disabled={isRecomputingCosts}
+                className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Re-run S&N compound cost lookup for the rolls on this invoice"
+              >
+                <RefreshCw className={`w-4 h-4 mr-2 ${isRecomputingCosts ? "animate-spin" : ""}`} />
+                {isRecomputingCosts ? "Recomputing..." : "Recompute compound costs"}
+              </button>
+            )}
           {invoice.status === "EXTRACTED" && (
             <button
               onClick={handleApprove}

@@ -2854,6 +2854,19 @@ Formula: totalPrice = totalKg × salePricePerKg
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
+  @Get("portal/roll-stock/by-numbers")
+  @ApiOperation({ summary: "Lookup rolls by their roll numbers (cost-breakdown display)" })
+  async rollsByNumbers(@Query("rollNumbers") rollNumbers: string) {
+    if (!rollNumbers) return [];
+    const numbers = rollNumbers
+      .split(",")
+      .map((n) => n.trim())
+      .filter((n) => n.length > 0);
+    return this.rubberRollStockService.rollsByNumbers(numbers);
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
   @Get("portal/roll-stock/available")
   @ApiOperation({ summary: "List in-stock rolls for a given product code (CTI roll picker)" })
   async availableRolls(@Query("productCode") productCode: string) {

@@ -3149,6 +3149,31 @@ class AuRubberApiClient {
     return this.request(`/rubber-lining/portal/roll-stock/available?${params.toString()}`);
   }
 
+  async recomputeCompoundCosts(
+    invoiceId: number,
+  ): Promise<{ updated: number; unitPrice: number | null }> {
+    return this.request(
+      `/rubber-lining/portal/tax-invoices/${invoiceId}/recompute-compound-costs`,
+      { method: "POST" },
+    );
+  }
+
+  async rollsByNumbers(rollNumbers: string[]): Promise<
+    Array<{
+      id: number;
+      rollNumber: string;
+      weightKg: number;
+      tollCostR: number | null;
+      compoundCostR: number | null;
+      totalCostR: number | null;
+      status: string;
+    }>
+  > {
+    if (rollNumbers.length === 0) return [];
+    const params = new URLSearchParams({ rollNumbers: rollNumbers.join(",") });
+    return this.request(`/rubber-lining/portal/roll-stock/by-numbers?${params.toString()}`);
+  }
+
   async deleteTaxInvoice(id: number): Promise<void> {
     return this.request(`/rubber-lining/portal/tax-invoices/${id}`, {
       method: "DELETE",

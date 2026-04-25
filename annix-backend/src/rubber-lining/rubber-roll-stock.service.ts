@@ -579,6 +579,9 @@ export class RubberRollStockService {
       location: roll.location,
       notes: roll.notes,
       costZar: roll.costZar ? Number(roll.costZar) : null,
+      tollCostR: roll.tollCostR ? Number(roll.tollCostR) : null,
+      compoundCostR: roll.compoundCostR ? Number(roll.compoundCostR) : null,
+      totalCostR: roll.totalCostR ? Number(roll.totalCostR) : null,
       priceZar: roll.priceZar ? Number(roll.priceZar) : null,
       productionDate: roll.productionDate
         ? roll.productionDate instanceof Date
@@ -760,6 +763,15 @@ export class RubberRollStockService {
     }));
     await this.rollStockRepository.save(updates);
     return { marked: rolls.length, missing };
+  }
+
+  async rollsByNumbers(rollNumbers: string[]): Promise<RubberRollStockDto[]> {
+    if (rollNumbers.length === 0) return [];
+    const rolls = await this.rollStockRepository.find({
+      where: { rollNumber: In(rollNumbers) },
+      relations: ["compoundCoding", "soldToCompany"],
+    });
+    return rolls.map((r) => this.mapRollStockToDto(r));
   }
 
   async availableRollsForProductCode(productCode: string): Promise<RubberRollStockDto[]> {

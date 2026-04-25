@@ -1,10 +1,17 @@
 "use client";
 
 import { Plus, Save, Trash2, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useToast } from "@/app/components/Toast";
 import { auRubberApiClient, type TaxInvoiceType } from "@/app/lib/api/auRubberApi";
+
+interface RollCostBreakdown {
+  rollNumber: string;
+  tollCostR: number | null;
+  compoundCostR: number | null;
+  totalCostR: number | null;
+}
 
 export interface LineItemRoll {
   rollNumber: string;
@@ -39,10 +46,37 @@ export function LineItemRollsPanel(props: LineItemRollsPanelProps) {
     Array<{ id: number; rollNumber: string; weightKg: number }>
   >([]);
   const [pickedIds, setPickedIds] = useState<Set<number>>(new Set());
+  const [costs, setCosts] = useState<Record<string, RollCostBreakdown>>({});
 
   useEffect(() => {
     setDraft(rolls ? rolls.map((r) => ({ ...r })) : []);
   }, [rolls]);
+
+  const fetchCosts = useCallback(async () => {
+    if (!rolls || rolls.length === 0 || !isApproved) {
+      setCosts({});
+      return;
+    }
+    try {
+      const stockRolls = await auRubberApiClient.rollsByNumbers(rolls.map((r) => r.rollNumber));
+      const next: Record<string, RollCostBreakdown> = {};
+      stockRolls.forEach((sr) => {
+        next[sr.rollNumber] = {
+          rollNumber: sr.rollNumber,
+          tollCostR: sr.tollCostR,
+          compoundCostR: sr.compoundCostR,
+          totalCostR: sr.totalCostR,
+        };
+      });
+      setCosts(next);
+    } catch {
+      setCosts({});
+    }
+  }, [rolls, isApproved]);
+
+  useEffect(() => {
+    if (expanded) fetchCosts();
+  }, [expanded, fetchCosts]);
 
   const productCode = productCodeFromDescription(description);
   const rollCount = rolls ? rolls.length : 0;
@@ -207,6 +241,13 @@ export function LineItemRollsPanel(props: LineItemRollsPanelProps) {
             <tr className="text-gray-500">
               <th className="text-left font-normal py-1 pr-2 w-24">Roll #</th>
               <th className="text-right font-normal py-1 px-2 w-20">Weight kg</th>
+              {!editing && isApproved && (
+                <>
+                  <th className="text-right font-normal py-1 px-2 w-20">Toll</th>
+                  <th className="text-right font-normal py-1 px-2 w-20">Compound</th>
+                  <th className="text-right font-normal py-1 px-2 w-20">Total</th>
+                </>
+              )}
               {editing && <th className="w-8" />}
             </tr>
           </thead>
@@ -242,6 +283,7 @@ export function LineItemRollsPanel(props: LineItemRollsPanelProps) {
                       weightDisplay
                     )}
                   </td>
+                  {!editing && isApproved && <CostBreakdownCells cost={costs[rollNumber]} />}
                   {editing && (
                     <td className="text-right">
                       <button
@@ -401,5 +443,26 @@ function RollPickerModal(props: RollPickerModalProps) {
       </div>
     </div>,
     docRef.body,
+  );
+}
+
+function formatCurrencyShort(value: number | null | undefined): string {
+  if (value === null || value === undefined) return "—";
+  return `R ${value.toFixed(2)}`;
+}
+
+function CostBreakdownCells(props: { cost: RollCostBreakdown | undefined }) {
+  const cost = props.cost;
+  const tollCost = cost?.tollCostR;
+  const compoundCost = cost?.compoundCostR;
+  const totalCost = cost?.totalCostR;
+  return (
+    <>
+      <td className="py-1 px-2 text-right text-gray-600">{formatCurrencyShort(tollCost)}</td>
+      <td className="py-1 px-2 text-right text-gray-600">{formatCurrencyShort(compoundCost)}</td>
+      <td className="py-1 px-2 text-right font-medium text-gray-900">
+        {formatCurrencyShort(totalCost)}
+      </td>
+    </>
   );
 }
