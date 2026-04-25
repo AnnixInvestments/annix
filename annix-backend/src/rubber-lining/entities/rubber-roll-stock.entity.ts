@@ -142,6 +142,17 @@ export class RubberRollStock {
   @Column({ name: "production_date", type: "date", nullable: true })
   productionDate: Date | null;
 
+  @Index()
+  @Column({ name: "supplier_tax_invoice_id", type: "int", nullable: true })
+  supplierTaxInvoiceId: number | null;
+
+  @Column({ name: "supplier_tax_invoice_line_idx", type: "int", nullable: true })
+  supplierTaxInvoiceLineIdx: number | null;
+
+  @Index()
+  @Column({ name: "customer_tax_invoice_id", type: "int", nullable: true })
+  customerTaxInvoiceId: number | null;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

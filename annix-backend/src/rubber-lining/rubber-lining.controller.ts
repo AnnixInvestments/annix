@@ -2834,6 +2834,35 @@ Formula: totalPrice = totalKg × salePricePerKg
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
+  @Put("portal/tax-invoices/:id/line-items/:idx/rolls")
+  @ApiOperation({ summary: "Replace the rolls array on a tax invoice line item" })
+  @ApiParam({ name: "id", description: "Tax invoice ID" })
+  @ApiParam({ name: "idx", description: "Zero-based line-item index" })
+  async updateTaxInvoiceLineItemRolls(
+    @Param("id") id: string,
+    @Param("idx") idx: string,
+    @Body() body: { rolls: Array<{ rollNumber: string; weightKg: number | null }> },
+  ): Promise<RubberTaxInvoiceDto> {
+    const invoice = await this.rubberTaxInvoiceService.updateLineItemRolls(
+      Number(id),
+      Number(idx),
+      body.rolls ?? [],
+    );
+    if (!invoice) throw new NotFoundException("Tax invoice not found");
+    return invoice;
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/roll-stock/available")
+  @ApiOperation({ summary: "List in-stock rolls for a given product code (CTI roll picker)" })
+  async availableRolls(@Query("productCode") productCode: string) {
+    if (!productCode) return [];
+    return this.rubberRollStockService.availableRollsForProductCode(productCode);
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
   @Put("portal/tax-invoices/:id/reprocess-stock")
   @ApiOperation({ summary: "Reprocess compound stock for an approved tax invoice" })
   @ApiParam({ name: "id", description: "Tax invoice ID" })

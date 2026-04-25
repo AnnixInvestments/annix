@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { PasskeyManagementSection } from "@/app/components/PasskeyManagementSection";
 import { useSupplierAuth } from "@/app/context/SupplierAuthContext";
+import { supplierTokenStore } from "@/app/lib/api/portalTokenStores";
 import { SupplierProfileDto, supplierPortalApi } from "@/app/lib/api/supplierApi";
 import { useSupplierProfile } from "@/app/lib/query/hooks";
 
@@ -86,8 +88,11 @@ export default function SupplierProfilePage() {
             <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 text-2xl font-bold">
               {(() => {
                 const rawFirstName = profile?.firstName?.[0];
-                return rawFirstName || supplier?.email?.[0] || "S";
-              })().toUpperCase()}
+                const supplierEmail = supplier?.email;
+                const supplierInitial = supplierEmail ? supplierEmail[0] : null;
+                const initial = rawFirstName || supplierInitial || "S";
+                return initial.toUpperCase();
+              })()}
             </div>
             <div className="ml-4">
               <h1 className="text-2xl font-bold text-gray-900">
@@ -311,6 +316,8 @@ export default function SupplierProfilePage() {
           </button>
         </div>
       )}
+
+      <PasskeyManagementSection authHeaders={supplierTokenStore.authHeaders()} />
     </div>
   );
 }

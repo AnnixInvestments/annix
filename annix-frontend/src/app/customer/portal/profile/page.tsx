@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { PasskeyManagementSection } from "@/app/components/PasskeyManagementSection";
 import { useCustomerAuth } from "@/app/context/CustomerAuthContext";
 import { customerPortalApi } from "@/app/lib/api/customerApi";
+import { customerTokenStore } from "@/app/lib/api/portalTokenStores";
 import { formatDateTimeZA } from "@/app/lib/datetime";
 import { useCustomerProfile } from "@/app/lib/query/hooks";
 
@@ -455,6 +457,8 @@ export default function CustomerProfilePage() {
             </div>
           )}
         </div>
+
+        <PasskeyManagementSection authHeaders={customerTokenStore.authHeaders()} />
       </div>
     </div>
   );

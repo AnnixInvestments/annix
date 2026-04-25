@@ -1,7 +1,9 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
+import { PasskeyManagementSection } from "@/app/components/PasskeyManagementSection";
 import { useToast } from "@/app/components/Toast";
+import { adminTokenStore } from "@/app/lib/api/portalTokenStores";
 import { PRODUCTS_AND_SERVICES, PROJECT_TYPES } from "@/app/lib/config/productsServices";
 import { useFeatureFlags, useToggleFeatureFlag } from "@/app/lib/query/hooks";
 
@@ -338,6 +340,8 @@ export default function SettingsPage() {
           </p>
         </div>
       </div>
+
+      <PasskeyManagementSection authHeaders={adminTokenStore.authHeaders()} title="Your passkeys" />
 
       {flagsQuery.isLoading ? (
         <div className="bg-white dark:bg-slate-800 shadow rounded-lg px-6 py-12 text-center">

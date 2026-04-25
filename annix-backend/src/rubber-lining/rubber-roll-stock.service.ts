@@ -652,4 +652,119 @@ export class RubberRollStockService {
       rejectedRollNumbers: [],
     };
   }
+
+  private parseDimensionsFromDescription(description: string): {
+    productCode: string | null;
+    thicknessMm: number | null;
+    widthMm: number | null;
+    lengthM: number | null;
+  } {
+    const match = description.match(
+      /^([A-Z]{2,5}\d{2})\s+(\d+(?:\.\d+)?)x(\d+(?:\.\d+)?)x(\d+(?:\.\d+)?)/,
+    );
+    if (!match) {
+      return { productCode: null, thicknessMm: null, widthMm: null, lengthM: null };
+    }
+    return {
+      productCode: match[1],
+      thicknessMm: Number.parseFloat(match[2]),
+      widthMm: Number.parseFloat(match[3]),
+      lengthM: Number.parseFloat(match[4]),
+    };
+  }
+
+  private async findOrCreateProductCoding(code: string): Promise<RubberProductCoding> {
+    const existing = await this.productCodingRepository.findOne({
+      where: { code, codingType: ProductCodingType.COMPOUND },
+    });
+    if (existing) return existing;
+    const coding = this.productCodingRepository.create({
+      firebaseUid: `pg_${generateUniqueId()}`,
+      codingType: ProductCodingType.COMPOUND,
+      code,
+      name: code,
+    });
+    return this.productCodingRepository.save(coding);
+  }
+
+  async createRollsFromSupplierTaxInvoice(
+    invoiceId: number,
+    lineItems: Array<{
+      description: string;
+      unitPrice: number | null;
+      rolls?: Array<{ rollNumber: string; weightKg: number | null }> | null;
+    }>,
+  ): Promise<{ created: number; skipped: number }> {
+    let created = 0;
+    let skipped = 0;
+    for (let idx = 0; idx < lineItems.length; idx += 1) {
+      const line = lineItems[idx];
+      const lineRolls = line.rolls;
+      if (!lineRolls || lineRolls.length === 0) continue;
+      const dims = this.parseDimensionsFromDescription(line.description);
+      const productCode = dims.productCode;
+      const coding = productCode ? await this.findOrCreateProductCoding(productCode) : null;
+      for (const roll of lineRolls) {
+        const existing = await this.rollStockRepository.findOne({
+          where: { rollNumber: roll.rollNumber },
+        });
+        if (existing) {
+          skipped += 1;
+          continue;
+        }
+        const entity = this.rollStockRepository.create({
+          firebaseUid: `pg_${generateUniqueId()}`,
+          rollNumber: roll.rollNumber,
+          compoundCodingId: coding ? coding.id : null,
+          weightKg: roll.weightKg ?? 0,
+          widthMm: dims.widthMm,
+          thicknessMm: dims.thicknessMm,
+          lengthM: dims.lengthM,
+          status: RollStockStatus.IN_STOCK,
+          linkedBatchIds: [],
+          costZar: line.unitPrice ?? null,
+          supplierTaxInvoiceId: invoiceId,
+          supplierTaxInvoiceLineIdx: idx,
+        });
+        await this.rollStockRepository.save(entity);
+        created += 1;
+      }
+    }
+    return { created, skipped };
+  }
+
+  async markRollsSoldByNumbers(
+    rollNumbers: string[],
+    soldToCompanyId: number | null,
+    customerTaxInvoiceId: number,
+  ): Promise<{ marked: number; missing: string[] }> {
+    if (rollNumbers.length === 0) return { marked: 0, missing: [] };
+    const rolls = await this.rollStockRepository.find({
+      where: { rollNumber: In(rollNumbers) },
+    });
+    const found = new Set(rolls.map((r) => r.rollNumber));
+    const missing = rollNumbers.filter((n) => !found.has(n));
+    const updates = rolls.map((r) => ({
+      ...r,
+      status: RollStockStatus.SOLD,
+      soldToCompanyId,
+      customerTaxInvoiceId,
+      soldAt: now().toJSDate(),
+    }));
+    await this.rollStockRepository.save(updates);
+    return { marked: rolls.length, missing };
+  }
+
+  async availableRollsForProductCode(productCode: string): Promise<RubberRollStockDto[]> {
+    const coding = await this.productCodingRepository.findOne({
+      where: { code: productCode, codingType: ProductCodingType.COMPOUND },
+    });
+    if (!coding) return [];
+    const rolls = await this.rollStockRepository.find({
+      where: { compoundCodingId: coding.id, status: RollStockStatus.IN_STOCK },
+      relations: ["compoundCoding", "soldToCompany"],
+      order: { rollNumber: "ASC" },
+    });
+    return rolls.map((r) => this.mapRollStockToDto(r));
+  }
 }

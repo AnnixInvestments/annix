@@ -2,7 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { PasskeyManagementSection } from "@/app/components/PasskeyManagementSection";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
+import { stockControlTokenStore } from "@/app/lib/api/portalTokenStores";
 import type { StockControlLocation } from "@/app/lib/api/stockControlApi";
 import {
   useCompanyRoles,
@@ -40,6 +42,13 @@ export default function StockControlSettingsPage() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <h1 className="text-2xl font-bold text-gray-900 lg:col-span-2">Settings</h1>
+
+      <div className="lg:col-span-2">
+        <PasskeyManagementSection
+          authHeaders={stockControlTokenStore.authHeaders()}
+          title="Your passkeys"
+        />
+      </div>
 
       <PermissionsSection
         roles={companyRoles}

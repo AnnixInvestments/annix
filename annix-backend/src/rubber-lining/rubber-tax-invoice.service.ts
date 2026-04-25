@@ -20,6 +20,7 @@ import {
 } from "./entities/rubber-tax-invoice.entity";
 import { RubberTaxInvoiceCorrection } from "./entities/rubber-tax-invoice-correction.entity";
 import { RubberDocumentVersioningService } from "./rubber-document-versioning.service";
+import { RubberRollStockService } from "./rubber-roll-stock.service";
 import { RubberStockService } from "./rubber-stock.service";
 
 const TAX_INVOICE_STATUS_LABELS: Record<TaxInvoiceStatus, string> = {
@@ -116,6 +117,7 @@ export class RubberTaxInvoiceService {
     private rollStockRepository: Repository<RubberRollStock>,
     private rubberStockService: RubberStockService,
     private versioningService: RubberDocumentVersioningService,
+    private rollStockService: RubberRollStockService,
   ) {}
 
   async allTaxInvoices(filters?: {
@@ -379,6 +381,9 @@ export class RubberTaxInvoiceService {
       } else {
         await this.processCompoundStockIn(invoice);
       }
+      await this.processSupplierPerRollIntake(invoice);
+    } else if (invoice.invoiceType === TaxInvoiceType.CUSTOMER) {
+      await this.processCustomerPerRollShipment(invoice);
     }
 
     const result = await this.taxInvoiceRepository.findOne({
@@ -511,6 +516,66 @@ export class RubberTaxInvoiceService {
     const company = await this.companyRepository.findOne({ where: { id: companyId } });
     if (!company) return false;
     return company.name?.toLowerCase().includes("impilo") || false;
+  }
+
+  async updateLineItemRolls(
+    invoiceId: number,
+    lineIdx: number,
+    rolls: Array<{ rollNumber: string; weightKg: number | null }>,
+  ): Promise<RubberTaxInvoiceDto | null> {
+    const invoice = await this.taxInvoiceRepository.findOne({
+      where: { id: invoiceId },
+      relations: ["company"],
+    });
+    if (!invoice) return null;
+    const data = invoice.extractedData;
+    if (!data?.lineItems || lineIdx < 0 || lineIdx >= data.lineItems.length) {
+      throw new BadRequestException("Line item not found");
+    }
+    const updated = data.lineItems.map((li, idx) =>
+      idx === lineIdx ? { ...li, rolls, quantity: rolls.length } : li,
+    );
+    invoice.extractedData = { ...data, lineItems: updated };
+    await this.taxInvoiceRepository.save(invoice);
+    return this.mapToDto(invoice);
+  }
+
+  private async processSupplierPerRollIntake(invoice: RubberTaxInvoice): Promise<void> {
+    const lineItems = invoice.extractedData?.lineItems;
+    if (!lineItems || lineItems.length === 0) return;
+    const hasRolls = lineItems.some((li) => li.rolls && li.rolls.length > 0);
+    if (!hasRolls) return;
+    const result = await this.rollStockService.createRollsFromSupplierTaxInvoice(
+      invoice.id,
+      lineItems.map((li) => ({
+        description: li.description,
+        unitPrice: li.unitPrice,
+        rolls: li.rolls ?? null,
+      })),
+    );
+    this.logger.log(
+      `Supplier tax invoice ${invoice.invoiceNumber}: created ${result.created} per-roll stock records (${result.skipped} skipped — already existed)`,
+    );
+  }
+
+  private async processCustomerPerRollShipment(invoice: RubberTaxInvoice): Promise<void> {
+    const lineItems = invoice.extractedData?.lineItems;
+    if (!lineItems || lineItems.length === 0) return;
+    const allRollNumbers = lineItems.flatMap((li) => (li.rolls ?? []).map((r) => r.rollNumber));
+    if (allRollNumbers.length === 0) return;
+    const result = await this.rollStockService.markRollsSoldByNumbers(
+      allRollNumbers,
+      invoice.companyId,
+      invoice.id,
+    );
+    if (result.missing.length > 0) {
+      this.logger.warn(
+        `Customer tax invoice ${invoice.invoiceNumber}: ${result.missing.length} rolls not found in stock — ${result.missing.join(", ")}`,
+      );
+    }
+    this.logger.log(
+      `Customer tax invoice ${invoice.invoiceNumber}: marked ${result.marked} rolls as sold to company ${invoice.companyId}`,
+    );
   }
 
   private async processCalendarerRollDeduction(invoice: RubberTaxInvoice): Promise<void> {

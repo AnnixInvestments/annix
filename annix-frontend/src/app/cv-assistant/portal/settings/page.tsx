@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { PasskeyManagementSection } from "@/app/components/PasskeyManagementSection";
 import { cvAssistantApiClient } from "@/app/lib/api/cvAssistantApi";
+import { cvAssistantTokenStore } from "@/app/lib/api/portalTokenStores";
 import {
   useCvNotificationPreferences,
   useCvPopiaStats,
@@ -169,6 +171,11 @@ export default function SettingsPage() {
         <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
         <p className="text-gray-600 mt-1">Configure your CV Assistant settings</p>
       </div>
+
+      <PasskeyManagementSection
+        authHeaders={cvAssistantTokenStore.authHeaders()}
+        title="Your passkeys"
+      />
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Company Information</h2>

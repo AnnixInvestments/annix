@@ -3,6 +3,7 @@
 import { toPairs as entries } from "es-toolkit/compat";
 import { useMemo, useState } from "react";
 import { useConfirm } from "@/app/au-rubber/hooks/useConfirm";
+import { PasskeyManagementSection } from "@/app/components/PasskeyManagementSection";
 import { useToast } from "@/app/components/Toast";
 import { useAuRubberAuth } from "@/app/context/AuRubberAuthContext";
 import { useAuRubberBranding } from "@/app/context/AuRubberBrandingContext";
@@ -12,6 +13,7 @@ import type {
   AuRubberUserAccessDto,
   CandidateImage,
 } from "@/app/lib/api/auRubberApi";
+import { auRubberTokenStore } from "@/app/lib/api/portalTokenStores";
 import {
   useAuRubberAccessPermissions,
   useAuRubberAccessRoles,
@@ -634,6 +636,10 @@ function AccessControlTab() {
   return (
     <div className="space-y-6">
       {ConfirmDialog}
+      <PasskeyManagementSection
+        authHeaders={auRubberTokenStore.authHeaders()}
+        title="Your passkeys"
+      />
       <div className="bg-white shadow rounded-lg p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-medium text-gray-900">Users</h2>
