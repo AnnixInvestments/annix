@@ -36,20 +36,33 @@ jobs:
       - id: set-matrix
         env:
           GH_TOKEN: ${{ github.token }}
+          INPUT_ENVS: ${{ inputs.environments }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
-          if [ "${{ github.event_name }}" = "push" ] || [ "${{ inputs.environments }}" = "all" ]; then
-            echo 'matrix=["prod"]' >> "$GITHUB_OUTPUT"
-          elif [ "${{ inputs.environments }}" = "staging" ]; then
-            HOLDER=$(gh pr list --repo "${{ github.repository }}" --label on-staging --state open --json number --jq '.[0].number')
-            if [ -n "$HOLDER" ] && [ "$HOLDER" != "null" ]; then
-              echo "::warning title=Staging claim held::PR #${HOLDER} holds the \`on-staging\` claim. Skipping main → staging deploy. Production deploys are unaffected."
-              echo 'matrix=[]' >> "$GITHUB_OUTPUT"
-            else
-              echo 'matrix=["staging"]' >> "$GITHUB_OUTPUT"
-            fi
+          PROD='{"environment":"prod","app_name":"annix-app"}'
+          TEST='{"environment":"test","app_name":"annix-app-test"}'
+          STAGING='{"environment":"staging","app_name":"annix-app-staging"}'
+
+          if [ "$EVENT_NAME" = "push" ] || [ "$INPUT_ENVS" = "all" ]; then
+            ENVS="[${PROD},${TEST},${STAGING}]"
+          elif [ "$INPUT_ENVS" = "staging" ]; then
+            ENVS="[${STAGING}]"
+          elif [ "$INPUT_ENVS" = "prod" ]; then
+            ENVS="[${PROD}]"
+          elif [ "$INPUT_ENVS" = "test" ]; then
+            ENVS="[${TEST}]"
           else
-            echo 'matrix=["${{ inputs.environments }}"]' >> "$GITHUB_OUTPUT"
+            ENVS="[${PROD}]"
           fi
+
+          HOLDER=$(gh pr list --repo "${{ github.repository }}" --label on-staging --state open --json number --jq '.[0].number')
+          if [ -n "$HOLDER" ] && [ "$HOLDER" != "null" ]; then
+            echo "::warning title=Staging claim held::PR #${HOLDER} holds the \`on-staging\` claim. Staging deploys will be skipped. Production and test deploys are unaffected."
+            ENVS=$(echo "$ENVS" | jq -c '[.[] | select(.environment != "staging")]')
+          fi
+
+          echo "matrix=$ENVS" >> "$GITHUB_OUTPUT"
+          echo "Resolved deploy matrix: $ENVS"
 
   test:
     name: Run Tests
@@ -117,14 +130,7 @@ jobs:
       fail-fast: true
       max-parallel: 3
       matrix:
-        environment: ${{ fromJson(needs.set-environments.outputs.matrix) }}
-        include:
-          - environment: prod
-            app_name: annix-app
-          - environment: test
-            app_name: annix-app-test
-          - environment: staging
-            app_name: annix-app-staging
+        include: ${{ fromJson(needs.set-environments.outputs.matrix) }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
