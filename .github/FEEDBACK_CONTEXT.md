@@ -65,7 +65,9 @@ Screenshots show the exact state of the page when the user submitted feedback. L
 4. Identify the root cause — pinpoint exact files and line numbers
 5. If the feedback asks whether an implementation is DRY, consistent, reused correctly, or follows the same pattern across modules, treat it as an investigation request and inspect the broader code path before deciding whether a safe change is warranted
 6. Implement the fix if it is contained, safe, and testable in automation
-7. Open a PR targeting `main`, include `Ref #<tracker issue>` in the PR body, and comment on the issue with the outcome
+7. **Rebase your branch on `origin/main` before pushing.** The staging deploy workflow refuses PRs whose head is not rebased on the current `main` — it will comment "Rebase on `main` to deploy to staging" and skip the deploy. Always start the branch from a fresh `git fetch origin main && git checkout -b <branch> origin/main` and rebase again before each push if `main` has moved.
+8. Open a PR targeting `main`, include `Ref #<tracker issue>` in the PR body, and comment on the issue with the outcome
+9. Wait for the staging deploy to claim `on-staging` before declaring the PR ready. If staging is held by another open PR, the comment will say so and your PR will be queued — that is normal, not a failure.
 
 ## Scope Discipline (mandatory)
 

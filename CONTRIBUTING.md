@@ -20,6 +20,19 @@ automatically.
 5. **Merge or close to release staging** — the next queued PR is woken
    automatically.
 
+## Process rules
+
+Three rules keep the queue moving without a release-manager rota:
+
+- **48h review SLA.** A PR must receive review feedback (or be moved to
+  `draft`) within 48 hours of being marked ready. After that it counts
+  against the "ready" cap below.
+- **Max 2 PRs in `ready for review` at once.** Beyond that, finish or draft
+  one before opening another. This prevents the staging queue from growing
+  faster than humans can review it.
+- **One PR on staging at a time.** The PR holding `on-staging` is the one
+  being reviewed. Others wait.
+
 ## Label vocabulary
 
 The PR-management automation in `.github/workflows/` reads and writes these
