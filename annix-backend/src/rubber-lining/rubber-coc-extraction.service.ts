@@ -537,11 +537,51 @@ export class RubberCocExtractionService {
     const processingTimeMs = nowMillis() - startTime;
     this.logger.log(`Tax invoice extracted via OCR in ${processingTimeMs}ms`);
 
+    const data = response.data as unknown as ExtractedTaxInvoiceData;
+    this.warnOnSuspiciousRollNumbers(data);
+
     return {
-      data: response.data as unknown as ExtractedTaxInvoiceData,
+      data,
       tokensUsed: response.tokensUsed,
       processingTimeMs,
     };
+  }
+
+  private warnOnSuspiciousRollNumbers(data: ExtractedTaxInvoiceData): void {
+    const lineItems = data.lineItems ?? [];
+    lineItems.forEach((item, idx) => {
+      const rolls = item.rolls;
+      if (!rolls || rolls.length < 2) return;
+
+      const numericRolls = rolls
+        .map((r) => ({ raw: r.rollNumber, num: parseInt(r.rollNumber, 10) }))
+        .filter((r) => Number.isFinite(r.num));
+
+      if (numericRolls.length < 2) return;
+
+      const sorted = numericRolls.map((r) => r.num).sort((a, b) => a - b);
+      const span = sorted[sorted.length - 1] - sorted[0];
+      const expectedSpan = sorted.length - 1;
+      if (span > expectedSpan + 10) {
+        this.logger.warn(
+          `Suspicious roll numbers on line ${idx} (${item.description}): ${rolls.map((r) => r.rollNumber).join(", ")}. Span=${span} but expected ~${expectedSpan} for ${rolls.length} sequential rolls. This is a strong signal of OCR error — please verify against the source PDF before approving.`,
+        );
+      }
+
+      const out = numericRolls.filter((r) => r.num < 40000 || r.num > 60000);
+      if (out.length > 0) {
+        this.logger.warn(
+          `Roll numbers outside the typical Impilo range (40000-60000) on line ${idx} (${item.description}): ${out.map((r) => r.raw).join(", ")}. Verify against the source PDF.`,
+        );
+      }
+
+      const unreadable = rolls.filter((r) => r.rollNumber === "UNREADABLE");
+      if (unreadable.length > 0) {
+        this.logger.warn(
+          `${unreadable.length} unreadable roll number(s) on line ${idx} (${item.description}). Manual entry required before approval.`,
+        );
+      }
+    });
   }
 
   async extractCreditNote(

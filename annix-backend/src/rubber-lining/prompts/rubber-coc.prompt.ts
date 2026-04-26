@@ -807,6 +807,15 @@ Impilo Industries bills toll calendering by KG but the rubber team needs ONE col
 ABSOLUTE RULE — NO RAW LEAKAGE:
 A row whose Stock Code starts with "TOLLCALENDERKG", "TOLLCALENDERROLLS", or "TOLLRAWMATA" MUST NEVER appear verbatim in the lineItems output. Every such row is part of a logical section and must be collapsed (or merged into a sibling row's group). Emitting a raw TOLL... row is a hard error. If you cannot find the right group for one of these rows, emit ONE collapsed line for that single row using whatever data is available (description, qty, dimensions if any) — but NEVER copy the verbatim "Toll Calendered Customer Material per KG" / "Toll Raw Compound AU SC38 RED per KG" / "Toll Calendered Rolls Customer Supplied Compound N/C" descriptions into output.
 
+SKIP EMPTY TEMPLATE ROWS:
+Impilo invoices often contain trailing TOLL* rows that are pure template padding — qty=0, all monetary columns =0.00, no Roll # detail lines beneath, and no dimensions text. These rows MUST be omitted from lineItems entirely (not collapsed, not emitted as orphans, not anything — just dropped).
+A TOLL* row qualifies as "empty template padding" when ALL of these are true:
+  - qty (the Qty column) is 0
+  - Excl Value, VAT, and Incl Value are all 0.00
+  - For TOLLCALENDERROLLS: there are NO "Roll # <num> <kg> kg" detail lines beneath it
+  - For TOLLRAWMATA: there is NO "<N> rolls <cure> ... <thickness>x<width>x<length>" dimensions text beneath it
+If even one of those conditions is false, the row carries data and must be processed via the normal grouping algorithm. The skip rule applies only when the row is entirely zero/empty.
+
 THE THREE BUILDING-BLOCK ROWS:
 - TOLLCALENDERKG        Toll Calendered Customer Material per KG     <kg>   <R/kg>   <excl>   <vat>   <incl>
 - TOLLCALENDERROLLS     Toll Calendered Rolls Customer Supplied Compound N/C   <rollCount>   0.00   0.00   ...
@@ -845,6 +854,15 @@ OCR INTEGRITY (CRITICAL — common failure modes to actively guard against):
   - Dimensions strings like "5x1100x12.5" contain runs of repeated digits. NEVER drop a digit — read the width carefully. "5x1100x12.5" must NOT become "5x100x12.5". If a dimensions value is unusually small (width < 200) double-check the source.
   - Roll counts in dimensions lines: "13 roll" or "13 rolls" must be read as 13, not 1. Be wary when a small rollCount (1, 2, 3) seems implausibly small for a kg total — re-read the digits.
   - When parsing "<N> roll(s) <cure> <shore> <colour> <thickness>x<width>x<length>", the FIRST integer token is the roll count and the dimensions are always three numbers separated by 'x'. Width values for these rolls are typically 800–1300mm; treat 100mm as a likely OCR slip.
+  - ROLL NUMBERS — TRACEABILITY-CRITICAL (the most important field on the invoice):
+    Each "Roll # <number>   <kg> kg" detail line under TOLLCALENDERROLLS contains exactly ONE roll number and ONE weight. The roll number is the customer's serial-number identifier for that physical roll and is used downstream for stock control and customer invoicing. A wrong roll number is a real-world traceability defect — it cannot be tolerated.
+    Mandatory rules:
+    1. Read roll numbers DIGIT BY DIGIT, left to right, exactly as printed. Do not pattern-match against "what looks like a typical roll number." Each digit must be transcribed individually.
+    2. NEVER substitute a roll number from one section into another section. Roll numbers belong only to the TOLLCALENDERROLLS row directly above them; they end at the next non-"Roll #" row.
+    3. Roll numbers within a single TOLLCALENDERROLLS section are TYPICALLY sequential or near-sequential (e.g. 41635, 41636, 41637 or 42272, 42273, 42274, 42275). If your transcribed numbers are not sequential AND not within ~10 of each other, you have likely mis-read at least one — re-read every digit before continuing.
+    4. The pairing of rollNumber to weightKg is left-to-right on the same Roll # line. The weight that appears immediately to the right of a roll number belongs to THAT roll number, not the next one. Do not shift the alignment.
+    5. If you cannot read a roll number with full confidence, set rollNumber to the literal string "UNREADABLE" rather than guessing. A blocked extraction is recoverable; a wrong roll number is a downstream data-corruption bug.
+    6. Roll numbers on Impilo invoices are typically 5-digit integers (40000–60000 range). A roll number outside that range is suspicious — re-read.
 Step B. After grouping, every group falls into exactly one of these three TYPES:
 
   TYPE 1 — FULL TOLLING GROUP (calendering of customer-supplied compound):
