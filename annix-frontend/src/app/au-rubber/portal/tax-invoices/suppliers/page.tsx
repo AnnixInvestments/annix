@@ -40,6 +40,25 @@ import { formatDateZA } from "@/app/lib/datetime";
 
 const SageExportModal = lazy(() => import("../SageExportModal"));
 
+const MOULDED_PRODUCT_PREFIX_RE = /^(CPL|FPL|TBR|TRB)-/i;
+
+function invoiceNeedsRollDetails(inv: RubberTaxInvoiceDto): boolean {
+  const rawInvUnit = inv.unit;
+  const unitForCheck = rawInvUnit ? rawInvUnit : "";
+  const unitLower = unitForCheck.toLowerCase();
+  const isRollUnit = unitLower === "roll" || unitLower === "rolls";
+  if (!isRollUnit) return false;
+  const extractedData = inv.extractedData;
+  const lineItems = extractedData ? extractedData.lineItems : [];
+  if (lineItems.length === 0) return false;
+  const hasAnyRolls = lineItems.some((li) => li.rolls && li.rolls.length > 0);
+  if (hasAnyRolls) return false;
+  const rollFormLineItems = lineItems.filter(
+    (li) => !MOULDED_PRODUCT_PREFIX_RE.test(li.description.trim()),
+  );
+  return rollFormLineItems.length > 0;
+}
+
 type SortColumn =
   | "invoiceNumber"
   | "companyName"
@@ -86,6 +105,13 @@ export default function SupplierTaxInvoicesPage() {
   const [rejectingId, setRejectingId] = useState<number | null>(null);
 
   const handlePostToSage = async (inv: RubberTaxInvoiceDto) => {
+    if (invoiceNeedsRollDetails(inv)) {
+      showToast(
+        `Cannot post ${inv.invoiceNumber} to Sage — roll numbers and weights have not been added yet.`,
+        "error",
+      );
+      return;
+    }
     try {
       setPostingToSageId(inv.id);
       await auRubberApiClient.postInvoiceToSage(inv.id);
@@ -99,12 +125,24 @@ export default function SupplierTaxInvoicesPage() {
   };
 
   const handleBulkPostToSage = async () => {
-    const approvedIds = filteredInvoices
-      .filter((inv) => inv.status === "APPROVED" && inv.sageInvoiceId === null)
+    const eligible = filteredInvoices.filter(
+      (inv) => inv.status === "APPROVED" && inv.sageInvoiceId === null,
+    );
+    const skipped = eligible.filter((inv) => invoiceNeedsRollDetails(inv));
+    const approvedIds = eligible
+      .filter((inv) => !invoiceNeedsRollDetails(inv))
       .map((inv) => inv.id);
     if (approvedIds.length === 0) {
-      showToast("No approved invoices to post", "error");
+      const skippedSuffix =
+        skipped.length > 0 ? ` (${skipped.length} skipped — missing rolls)` : "";
+      showToast(`No approved invoices to post${skippedSuffix}`, "error");
       return;
+    }
+    if (skipped.length > 0) {
+      showToast(
+        `Skipping ${skipped.length} invoice${skipped.length > 1 ? "s" : ""} that still need roll numbers added.`,
+        "warning",
+      );
     }
     try {
       setIsBulkPostingToSage(true);
@@ -760,6 +798,7 @@ export default function SupplierTaxInvoicesPage() {
                   const rawInvCompanyName = inv.companyName;
                   const rawInvProductDescription = inv.productDescription;
                   const rawInvUnit = inv.unit;
+                  const needsRollDetails = invoiceNeedsRollDetails(inv);
                   return (
                     <tr
                       key={inv.id}
@@ -822,6 +861,19 @@ export default function SupplierTaxInvoicesPage() {
                               Awaiting Authorization
                             </span>
                           )}
+                          {needsRollDetails && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                router.push(`/au-rubber/portal/tax-invoices/${inv.id}#rolls`);
+                              }}
+                              className="px-1.5 inline-flex text-xs leading-5 font-semibold rounded-full bg-amber-100 text-amber-800 hover:bg-amber-200"
+                              title="Roll numbers and weights need to be added manually"
+                            >
+                              Add rolls
+                            </button>
+                          )}
                           {inv.postedToSageAt ? (
                             <span className="px-1.5 inline-flex text-xs leading-5 font-semibold rounded-full bg-indigo-100 text-indigo-800">
                               Posted
@@ -863,20 +915,30 @@ export default function SupplierTaxInvoicesPage() {
                               </button>
                             </>
                           )}
-                          {inv.status === "APPROVED" && inv.sageInvoiceId === null && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handlePostToSage(inv);
-                              }}
-                              disabled={postingToSageId === inv.id}
-                              className="text-gray-400 hover:text-indigo-600 disabled:opacity-50"
-                              title="Post to Sage"
-                            >
-                              <Send className="w-4 h-4" />
-                            </button>
-                          )}
+                          {(() => {
+                            if (inv.status !== "APPROVED" || inv.sageInvoiceId !== null) {
+                              return null;
+                            }
+                            const isPosting = postingToSageId === inv.id;
+                            const sageDisabled = isPosting || needsRollDetails;
+                            const sageTitle = needsRollDetails
+                              ? "Cannot post to Sage — add roll numbers and weights first"
+                              : "Post to Sage";
+                            return (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handlePostToSage(inv);
+                                }}
+                                disabled={sageDisabled}
+                                className="text-gray-400 hover:text-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                                title={sageTitle}
+                              >
+                                <Send className="w-4 h-4" />
+                              </button>
+                            );
+                          })()}
                           <button
                             type="button"
                             onClick={(e) => {

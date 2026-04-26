@@ -720,12 +720,16 @@ export default function TaxInvoiceDetailPage() {
                   </div>
                   {(() => {
                     const singleLine = invoice.extractedData.lineItems[0];
-                    const singleRolls = singleLine?.rolls;
-                    if (!singleLine || !singleRolls || singleRolls.length === 0) return null;
+                    if (!singleLine) return null;
+                    const singleRolls = singleLine.rolls;
+                    const unitLower = (rawInvoiceUnit2 || "").toLowerCase();
+                    const isRollUnit = unitLower === "roll" || unitLower === "rolls";
+                    const hasRolls = singleRolls && singleRolls.length > 0;
+                    if (!hasRolls && !isRollUnit) return null;
                     return (
                       <div className="pt-2 border-t border-gray-100">
                         <dt className="text-sm font-medium text-gray-500 mb-2">
-                          Rolls ({singleRolls.length})
+                          Rolls {hasRolls ? `(${singleRolls.length})` : ""}
                         </dt>
                         <dd>
                           <LineItemRollsPanel
@@ -733,7 +737,7 @@ export default function TaxInvoiceDetailPage() {
                             invoiceType={invoice.invoiceType}
                             lineIdx={0}
                             description={singleLine.description}
-                            rolls={singleRolls}
+                            rolls={singleRolls || null}
                             isApproved={invoice.status === "APPROVED"}
                             onSaved={fetchData}
                           />

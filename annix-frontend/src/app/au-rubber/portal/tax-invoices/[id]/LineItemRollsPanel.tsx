@@ -33,6 +33,10 @@ function productCodeFromDescription(description: string): string | null {
   return match ? match[1] : null;
 }
 
+function isMouldedProductDescription(description: string): boolean {
+  return /^(CPL|FPL|TBR|TRB)-/i.test(description.trim());
+}
+
 export function LineItemRollsPanel(props: LineItemRollsPanelProps) {
   const { invoiceId, invoiceType, lineIdx, description, rolls, isApproved, onSaved } = props;
   const { showToast } = useToast();
@@ -194,6 +198,27 @@ export function LineItemRollsPanel(props: LineItemRollsPanelProps) {
               onCancel={() => setPickerOpen(false)}
             />
           )}
+        </div>
+      );
+    }
+    if (invoiceType === "SUPPLIER" && !isApproved && !isMouldedProductDescription(description)) {
+      return (
+        <div className="px-3 py-2 bg-amber-50 text-xs text-amber-900 border-t border-amber-200 flex items-center justify-between gap-3">
+          <span>
+            No roll numbers extracted from the invoice. S&amp;N hand-written delivery notes carry
+            them — enter manually.
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              setDraft([{ rollNumber: "", weightKg: null }]);
+              setEditing(true);
+              setExpanded(true);
+            }}
+            className="shrink-0 px-3 py-1 text-[11px] font-medium text-white bg-amber-600 rounded hover:bg-amber-700"
+          >
+            Add roll numbers
+          </button>
         </div>
       );
     }
