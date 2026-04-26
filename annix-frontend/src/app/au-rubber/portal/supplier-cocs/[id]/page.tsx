@@ -7,6 +7,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import { RollRejectionsPanel } from "@/app/au-rubber/components/RollRejectionsPanel";
+import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { useToast } from "@/app/components/Toast";
 import {
   auRubberApiClient,
@@ -51,6 +52,7 @@ export default function SupplierCocDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { showToast } = useToast();
+  const { showExtraction, hideExtraction } = useExtractionProgress();
   const [coc, setCoc] = useState<RubberSupplierCocDto | null>(null);
   const [batches, setBatches] = useState<RubberCompoundBatchDto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -153,12 +155,18 @@ export default function SupplierCocDetailPage() {
   const handleExtract = async () => {
     try {
       setIsExtracting(true);
+      showExtraction({
+        brand: "au-rubber",
+        label: "Extracting supplier CoC…",
+        estimatedDurationMs: 60000,
+      });
       await auRubberApiClient.extractSupplierCoc(cocId);
       showToast("Data extracted successfully", "success");
       fetchData();
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to extract data", "error");
     } finally {
+      hideExtraction();
       setIsExtracting(false);
     }
   };
@@ -278,10 +286,14 @@ export default function SupplierCocDetailPage() {
     const rawExtractedProductionDate = extracted?.productionDate;
     const rawExtractedOrderNumber = extracted?.orderNumber;
     const rawExtractedTicketNumber = extracted?.ticketNumber;
+    const rawExtractedCompoundDescription = extracted?.compoundDescription;
     const rawBatches = (rawExtractedBatches || []) as ExtractedBatch[];
     setEditedBatches(rawBatches.map((b) => ({ ...b })));
+    const compoundCodeValue = rawExtractedCompoundCode
+      ? rawExtractedCompoundCode
+      : rawExtractedCompoundDescription || "";
     setEditedExtractedFields({
-      compoundCode: String(rawExtractedCompoundCode || extracted?.compoundDescription || ""),
+      compoundCode: String(compoundCodeValue),
       cocNumber: String(rawExtractedCocNumber || ""),
       productionDate: String(rawExtractedProductionDate || ""),
       orderNumber: String(rawExtractedOrderNumber || ""),
