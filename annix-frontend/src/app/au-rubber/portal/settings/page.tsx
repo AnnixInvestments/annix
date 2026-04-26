@@ -124,6 +124,7 @@ function BrandingTab() {
 
   const [logoCandidates, setLogoCandidates] = useState<CandidateImage[]>([]);
   const [heroCandidates, setHeroCandidates] = useState<CandidateImage[]>([]);
+  const [colorCandidates, setColorCandidates] = useState<string[]>([]);
   const [selectedLogoUrl, setSelectedLogoUrl] = useState<string | null>(branding.logoUrl);
   const [selectedHeroUrl, setSelectedHeroUrl] = useState<string | null>(branding.heroUrl);
 
@@ -184,6 +185,7 @@ function BrandingTab() {
       setError(null);
       setLogoCandidates([]);
       setHeroCandidates([]);
+      setColorCandidates([]);
       setSelectedLogoUrl(null);
       setSelectedHeroUrl(null);
 
@@ -193,10 +195,16 @@ function BrandingTab() {
 
       const result = await scrapeBrandingMutation.mutateAsync(normalizedUrl);
 
+      const colorCandidatesData = result.colorCandidates ? result.colorCandidates : [];
+      const normalizedColorCandidates = colorCandidatesData
+        .map((c) => normalizeToHex(c))
+        .filter((c): c is string => c !== null);
+
       if (
         result.logoCandidates.length === 0 &&
         result.heroCandidates.length === 0 &&
-        !result.primaryColor
+        !result.primaryColor &&
+        normalizedColorCandidates.length === 0
       ) {
         setError(
           "Could not extract branding from this website. You can set colors manually below.",
@@ -204,6 +212,7 @@ function BrandingTab() {
       } else {
         setLogoCandidates(result.logoCandidates);
         setHeroCandidates(result.heroCandidates);
+        setColorCandidates(normalizedColorCandidates);
 
         if (result.logoCandidates.length > 0) {
           setSelectedLogoUrl(result.logoCandidates[0].url);
@@ -357,6 +366,54 @@ function BrandingTab() {
                 size="large"
               />
             ))}
+          </div>
+        </div>
+      )}
+
+      {colorCandidates.length > 0 && (
+        <div className="bg-white shadow rounded-lg p-6">
+          <h2 className="text-lg font-medium text-gray-900 mb-1">
+            Color Candidates ({colorCandidates.length})
+          </h2>
+          <p className="text-sm text-gray-500 mb-4">
+            Click a swatch to set as Primary. Accent will auto-lighten. Click again with Shift to
+            set as Accent instead.
+          </p>
+          <div className="grid grid-cols-4 sm:grid-cols-8 gap-3">
+            {colorCandidates.map((color) => {
+              const isPrimary = color.toLowerCase() === primaryColor.toLowerCase();
+              const isAccent = color.toLowerCase() === accentColor.toLowerCase();
+              return (
+                <button
+                  type="button"
+                  key={color}
+                  onClick={(e) => {
+                    if (e.shiftKey) {
+                      setAccentColor(color);
+                    } else {
+                      setPrimaryColor(color);
+                      setAccentColor(lightenColor(color));
+                    }
+                  }}
+                  className={`flex flex-col items-center rounded-lg border-2 p-1.5 transition-all hover:shadow-md ${
+                    isPrimary
+                      ? "border-yellow-500 ring-2 ring-yellow-500"
+                      : isAccent
+                        ? "border-yellow-300 ring-1 ring-yellow-300"
+                        : "border-gray-200 hover:border-yellow-300"
+                  }`}
+                  title={`${color}${isPrimary ? " (Primary)" : isAccent ? " (Accent)" : ""}`}
+                >
+                  <div
+                    className="w-full h-12 rounded border border-gray-300"
+                    style={{ backgroundColor: color }}
+                  />
+                  <span className="mt-1 text-[10px] text-gray-500 font-mono truncate w-full text-center">
+                    {color}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
       )}

@@ -12,6 +12,7 @@ export interface ScrapedBrandingCandidates {
   logoCandidates: CandidateImage[];
   heroCandidates: CandidateImage[];
   primaryColor: string | null;
+  colorCandidates: string[];
 }
 
 @Injectable()
@@ -50,7 +51,7 @@ export class RubberBrandingService {
 
       if (!response.ok) {
         this.logger.warn(`Fetch scraping failed: HTTP ${response.status}`);
-        return { logoCandidates: [], heroCandidates: [], primaryColor: null };
+        return { logoCandidates: [], heroCandidates: [], primaryColor: null, colorCandidates: [] };
       }
 
       const html = await response.text();
@@ -201,324 +202,452 @@ export class RubberBrandingService {
         }
       });
 
-      let primaryColor: string | null = null;
-
       const isValidColorValue = (color: string): boolean => {
         const invalid = ["transparent", "#fff", "#ffffff", "#000", "#000000", "white", "black"];
         return !invalid.includes(color.toLowerCase().trim());
       };
 
+      const colorBag: string[] = [];
+      const seenColors = new Set<string>();
+      const addColor = (raw: string | null | undefined) => {
+        if (!raw || colorBag.length >= 24) return;
+        const normalized = this.normalizeToHex(raw)?.toLowerCase();
+        if (!normalized || !isValidColorValue(normalized) || seenColors.has(normalized)) return;
+        seenColors.add(normalized);
+        colorBag.push(normalized);
+      };
+
       const themeColorPattern = /<meta[^>]*name=["']theme-color["'][^>]*content=["']([^"']+)["']/i;
       const themeColorAlt = /<meta[^>]*content=["']([^"']+)["'][^>]*name=["']theme-color["']/i;
       const themeMatch = html.match(themeColorPattern) ?? html.match(themeColorAlt);
-      if (themeMatch?.[1] && isValidColorValue(themeMatch[1])) {
-        primaryColor = themeMatch[1];
+      if (themeMatch?.[1]) {
+        addColor(themeMatch[1]);
       }
 
-      if (!primaryColor) {
-        const colorPatterns = [
-          /\.(?:btn|button)[^{]*\{[^}]*background(?:-color)?:\s*([#][0-9a-fA-F]{3,6}|rgb[a]?\([^)]+\))/gi,
-          /\.(?:primary|accent|brand)[^{]*\{[^}]*(?:background-)?color:\s*([#][0-9a-fA-F]{3,6}|rgb[a]?\([^)]+\))/gi,
-          /--(?:primary|brand|accent|main)(?:-color)?:\s*([#][0-9a-fA-F]{3,6}|rgb[a]?\([^)]+\))/gi,
-          /header[^{]*\{[^}]*background(?:-color)?:\s*([#][0-9a-fA-F]{3,6}|rgb[a]?\([^)]+\))/gi,
-          /nav[^{]*\{[^}]*background(?:-color)?:\s*([#][0-9a-fA-F]{3,6}|rgb[a]?\([^)]+\))/gi,
-        ];
+      const colorPatterns = [
+        /\.(?:btn|button)[^{]*\{[^}]*background(?:-color)?:\s*([#][0-9a-fA-F]{3,6}|rgb[a]?\([^)]+\))/gi,
+        /\.(?:primary|accent|brand)[^{]*\{[^}]*(?:background-)?color:\s*([#][0-9a-fA-F]{3,6}|rgb[a]?\([^)]+\))/gi,
+        /--(?:primary|brand|accent|main|secondary|tertiary|highlight)(?:-color)?:\s*([#][0-9a-fA-F]{3,6}|rgb[a]?\([^)]+\))/gi,
+        /header[^{]*\{[^}]*background(?:-color)?:\s*([#][0-9a-fA-F]{3,6}|rgb[a]?\([^)]+\))/gi,
+        /nav[^{]*\{[^}]*background(?:-color)?:\s*([#][0-9a-fA-F]{3,6}|rgb[a]?\([^)]+\))/gi,
+        /footer[^{]*\{[^}]*background(?:-color)?:\s*([#][0-9a-fA-F]{3,6}|rgb[a]?\([^)]+\))/gi,
+      ];
+      colorPatterns.forEach((pattern) => {
+        Array.from(html.matchAll(pattern)).forEach((match) => addColor(match[1]));
+      });
 
-        const matchedColor = colorPatterns.reduce<string | null>((found, pattern) => {
-          if (found) return found;
-          const match = pattern.exec(html);
-          return match?.[1] && isValidColorValue(match[1]) ? match[1] : null;
-        }, null);
-        if (matchedColor) {
-          primaryColor = matchedColor;
+      const hexColors = html.match(/#[0-9a-fA-F]{6}\b/g) ?? [];
+      const hexCounts: Record<string, number> = {};
+      hexColors.forEach((c) => {
+        const lower = c.toLowerCase();
+        if (
+          isValidColorValue(lower) &&
+          !["#f0f0f0", "#e0e0e0", "#cccccc", "#333333"].includes(lower)
+        ) {
+          hexCounts[lower] = (hexCounts[lower] || 0) + 1;
         }
-      }
+      });
+      Object.entries(hexCounts)
+        .sort((a, b) => b[1] - a[1])
+        .filter(([, count]) => count >= 2)
+        .slice(0, 12)
+        .forEach(([c]) => addColor(c));
 
-      if (!primaryColor) {
-        const hexColors = html.match(/#[0-9a-fA-F]{6}\b/g) ?? [];
-        const colorCounts: Record<string, number> = {};
-        hexColors.forEach((c) => {
-          const lower = c.toLowerCase();
-          if (isValidColorValue(lower)) {
-            colorCounts[lower] = (colorCounts[lower] || 0) + 1;
-          }
-        });
-        const sorted = Object.entries(colorCounts)
-          .filter(([c]) => !["#f0f0f0", "#e0e0e0", "#cccccc", "#333333"].includes(c))
-          .sort((a, b) => b[1] - a[1]);
-        if (sorted.length > 0 && sorted[0][1] >= 3) {
-          primaryColor = sorted[0][0];
-        }
-      }
+      const primaryColor = colorBag.length > 0 ? colorBag[0] : null;
 
-      this.logger.log(`Fetch-based scrape found primaryColor: ${primaryColor}`);
+      this.logger.log(
+        `Fetch-based scrape found ${colorBag.length} color candidates, primary: ${primaryColor}`,
+      );
       this.logger.log(
         `Fetch-based scrape found ${logoCandidates.length} logo candidates, ${heroCandidates.length} hero candidates`,
       );
 
-      return { logoCandidates, heroCandidates, primaryColor };
+      return { logoCandidates, heroCandidates, primaryColor, colorCandidates: colorBag };
     } catch (error) {
       this.logger.error(
         `Fetch-based scraping also failed for ${websiteUrl}: ${error instanceof Error ? error.message : String(error)}`,
       );
-      return { logoCandidates: [], heroCandidates: [], primaryColor: null };
+      return { logoCandidates: [], heroCandidates: [], primaryColor: null, colorCandidates: [] };
     }
   }
 
   private async scrapeCandidatesWithPuppeteer(
     websiteUrl: string,
   ): Promise<ScrapedBrandingCandidates> {
-    const extracted = await this.puppeteerPool.executeWithPage({
-      url: websiteUrl,
-      waitUntil: "networkidle2",
-      timeout: 30000,
-      execute: async (page) => {
-        return page.evaluate(() => {
-          const seen = new Set<string>();
+    const allLogoCandidates: CandidateImage[] = [];
+    const allHeroCandidates: CandidateImage[] = [];
+    const allColors: string[] = [];
+    const seenLogoUrls = new Set<string>();
+    const seenHeroUrls = new Set<string>();
+    const seenColors = new Set<string>();
 
-          const addCandidate = (
-            list: { url: string; source: string; width: number | null; height: number | null }[],
-            url: string | null | undefined,
-            source: string,
-            width: number | null = null,
-            height: number | null = null,
-          ) => {
-            if (!url || url.startsWith("data:") || seen.has(url) || list.length >= 20) {
-              return;
-            }
-            seen.add(url);
-            list.push({ url, source, width, height });
-          };
+    const isValidColorValue = (color: string): boolean => {
+      const invalid = ["transparent", "#fff", "#ffffff", "#000", "#000000"];
+      return !invalid.includes(color.toLowerCase().trim());
+    };
 
-          const logoCandidates: {
-            url: string;
-            source: string;
-            width: number | null;
-            height: number | null;
-          }[] = [];
+    const mergeResult = (result: ScrapedBrandingCandidates) => {
+      result.logoCandidates.forEach((c) => {
+        if (!seenLogoUrls.has(c.url) && allLogoCandidates.length < 16) {
+          seenLogoUrls.add(c.url);
+          allLogoCandidates.push(c);
+        }
+      });
+      result.heroCandidates.forEach((c) => {
+        if (!seenHeroUrls.has(c.url) && allHeroCandidates.length < 40) {
+          seenHeroUrls.add(c.url);
+          allHeroCandidates.push(c);
+        }
+      });
+      result.colorCandidates.forEach((c) => {
+        const normalized = this.normalizeToHex(c)?.toLowerCase();
+        if (
+          normalized &&
+          isValidColorValue(normalized) &&
+          !seenColors.has(normalized) &&
+          allColors.length < 16
+        ) {
+          seenColors.add(normalized);
+          allColors.push(normalized);
+        }
+      });
+    };
 
-          const allImgs = Array.from(document.querySelectorAll<HTMLImageElement>("img"));
-          allImgs
-            .filter((img) => {
-              const src = (img.src || "").toLowerCase();
-              const alt = (img.alt || "").toLowerCase();
-              const className = (img.className || "").toLowerCase();
-              const id = (img.id || "").toLowerCase();
-              return (
-                src.includes("logo") ||
-                alt.includes("logo") ||
-                className.includes("logo") ||
-                id.includes("logo")
-              );
-            })
-            .forEach((img) =>
-              addCandidate(
-                logoCandidates,
-                img.src,
-                "logo-attr",
-                img.naturalWidth,
-                img.naturalHeight,
-              ),
-            );
+    let internalUrls: string[] = [];
+    try {
+      const homepage = await this.scrapeOnePageWithDiscovery(websiteUrl);
+      mergeResult(homepage.candidates);
+      internalUrls = homepage.internalUrls;
+      this.logger.log(
+        `Discovered ${internalUrls.length} internal pages: ${internalUrls.join(", ")}`,
+      );
+    } catch (error) {
+      this.logger.warn(
+        `Homepage scrape failed for ${websiteUrl}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
 
-          Array.from(
-            document.querySelectorAll<HTMLImageElement>(
-              "header img, nav img, .header img, .nav img",
-            ),
-          ).forEach((img) =>
-            addCandidate(
-              logoCandidates,
-              img.src,
-              "header-img",
-              img.naturalWidth,
-              img.naturalHeight,
-            ),
-          );
+    for (const pageUrl of internalUrls) {
+      if (allHeroCandidates.length >= 40 && allColors.length >= 16) break;
 
-          const ogImage = document.querySelector<HTMLMetaElement>('meta[property="og:image"]');
-          if (ogImage?.content) {
-            addCandidate(logoCandidates, ogImage.content, "og-image");
-          }
+      try {
+        const result = await this.scrapeOnePage(pageUrl, "domcontentloaded");
+        mergeResult(result);
+      } catch (error) {
+        this.logger.warn(
+          `Failed to scrape ${pageUrl}: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    }
 
-          Array.from(
-            document.querySelectorAll<HTMLLinkElement>(
-              'link[rel="icon"], link[rel="shortcut icon"], link[rel="apple-touch-icon"]',
-            ),
-          ).forEach((link) => addCandidate(logoCandidates, link.href, "favicon"));
-
-          const faviconUrl = new URL("/favicon.ico", window.location.origin).href;
-          addCandidate(logoCandidates, faviconUrl, "favicon");
-
-          const heroCandidates: {
-            url: string;
-            source: string;
-            width: number | null;
-            height: number | null;
-          }[] = [];
-          const heroSeen = new Set<string>();
-
-          const addHero = (
-            url: string | null | undefined,
-            source: string,
-            width: number | null = null,
-            height: number | null = null,
-          ) => {
-            if (
-              !url ||
-              url.startsWith("data:") ||
-              heroSeen.has(url) ||
-              heroCandidates.length >= 20
-            ) {
-              return;
-            }
-            heroSeen.add(url);
-            heroCandidates.push({ url, source, width, height });
-          };
-
-          if (ogImage?.content) {
-            addHero(ogImage.content, "og-image");
-          }
-
-          const heroSelectors = [
-            ".hero img",
-            ".banner img",
-            "[class*='hero'] img",
-            "[class*='banner'] img",
-            "[class*='slider'] img",
-            "[class*='carousel'] img",
-            "section:first-of-type img",
-          ];
-          heroSelectors.forEach((sel) => {
-            Array.from(document.querySelectorAll<HTMLImageElement>(sel)).forEach((img) => {
-              if (img.naturalWidth >= 400) {
-                addHero(img.src, "hero-selector", img.naturalWidth, img.naturalHeight);
-              }
-            });
-          });
-
-          const bgElements = document.querySelectorAll("section, div, header");
-          Array.from(bgElements).forEach((el) => {
-            const style = window.getComputedStyle(el);
-            const bgImg = style.backgroundImage;
-            if (bgImg && bgImg !== "none") {
-              const urlMatch = bgImg.match(/url\(["']?(.*?)["']?\)/);
-              if (urlMatch?.[1] && !urlMatch[1].startsWith("data:")) {
-                addHero(urlMatch[1], "bg-image");
-              }
-            }
-          });
-
-          Array.from(document.querySelectorAll<HTMLImageElement>("img"))
-            .filter((img) => img.naturalWidth >= 600 && img.naturalHeight >= 300)
-            .filter((img) => !(img.src || "").toLowerCase().includes("logo"))
-            .forEach((img) => addHero(img.src, "large-img", img.naturalWidth, img.naturalHeight));
-
-          let primaryColor: string | null = null;
-
-          const isValidColor = (color: string | null): boolean => {
-            if (!color) return false;
-            const invalid = [
-              "rgba(0, 0, 0, 0)",
-              "transparent",
-              "rgb(255, 255, 255)",
-              "rgb(0, 0, 0)",
-              "#ffffff",
-              "#fff",
-              "#000000",
-              "#000",
-            ];
-            return !invalid.includes(color.toLowerCase());
-          };
-
-          const themeColor = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
-          if (themeColor?.content && isValidColor(themeColor.content)) {
-            primaryColor = themeColor.content;
-          }
-
-          if (!primaryColor) {
-            const header = document.querySelector("header") || document.querySelector("nav");
-            if (header) {
-              const computed = window.getComputedStyle(header);
-              if (isValidColor(computed.backgroundColor)) {
-                primaryColor = computed.backgroundColor;
-              }
-            }
-          }
-
-          if (!primaryColor) {
-            const buttons = Array.from(
-              document.querySelectorAll<HTMLElement>(
-                'button, .btn, [class*="button"], a[class*="btn"], input[type="submit"]',
-              ),
-            );
-            const matchedBtn = buttons.slice(0, 10).find((btn) => {
-              const computed = window.getComputedStyle(btn);
-              return isValidColor(computed.backgroundColor);
-            });
-            if (matchedBtn) {
-              primaryColor = window.getComputedStyle(matchedBtn).backgroundColor;
-            }
-          }
-
-          if (!primaryColor) {
-            const links = Array.from(document.querySelectorAll<HTMLAnchorElement>("a")).slice(
-              0,
-              20,
-            );
-            const colorCounts: Record<string, number> = {};
-            links.forEach((link) => {
-              const color = window.getComputedStyle(link).color;
-              if (isValidColor(color) && color !== "rgb(0, 0, 238)") {
-                colorCounts[color] = (colorCounts[color] || 0) + 1;
-              }
-            });
-            const sortedColors = Object.entries(colorCounts).sort((a, b) => b[1] - a[1]);
-            if (sortedColors.length > 0) {
-              primaryColor = sortedColors[0][0];
-            }
-          }
-
-          if (!primaryColor) {
-            const accentSelectors = [
-              "[class*='primary']",
-              "[class*='accent']",
-              "[class*='brand']",
-              "[class*='highlight']",
-              ".active",
-              ".selected",
-            ];
-            primaryColor = accentSelectors.reduce<string | null>((found, sel) => {
-              if (found) return found;
-              return Array.from(document.querySelectorAll<HTMLElement>(sel))
-                .slice(0, 5)
-                .reduce<string | null>((innerFound, el) => {
-                  if (innerFound) return innerFound;
-                  const computed = window.getComputedStyle(el);
-                  if (isValidColor(computed.backgroundColor)) {
-                    return computed.backgroundColor;
-                  }
-                  if (isValidColor(computed.color)) {
-                    return computed.color;
-                  }
-                  return null;
-                }, null);
-            }, null);
-          }
-
-          return { logoCandidates, heroCandidates, primaryColor };
-        });
-      },
-    });
+    const primaryColor = allColors.length > 0 ? allColors[0] : null;
 
     this.logger.log(
-      `Found ${extracted.logoCandidates.length} logo candidates, ${extracted.heroCandidates.length} hero candidates`,
+      `Total across ${1 + internalUrls.length} pages: ${allLogoCandidates.length} logos, ${allHeroCandidates.length} hero images, ${allColors.length} colors`,
     );
 
     return {
-      logoCandidates: extracted.logoCandidates,
-      heroCandidates: extracted.heroCandidates,
-      primaryColor: extracted.primaryColor,
+      logoCandidates: allLogoCandidates,
+      heroCandidates: allHeroCandidates,
+      primaryColor,
+      colorCandidates: allColors,
     };
+  }
+
+  private async scrapeOnePageWithDiscovery(
+    websiteUrl: string,
+  ): Promise<{ candidates: ScrapedBrandingCandidates; internalUrls: string[] }> {
+    const baseOrigin = new URL(websiteUrl).origin;
+    const homepagePath =
+      new URL(websiteUrl).origin + new URL(websiteUrl).pathname.replace(/\/$/, "");
+
+    const extracted = await this.puppeteerPool.executeWithPage({
+      url: websiteUrl,
+      waitUntil: "domcontentloaded",
+      timeout: 25000,
+      execute: async (page) => {
+        const candidates = await this.runPageEvaluate(page);
+        const internalUrls = await page.evaluate((origin) => {
+          const links = Array.from(document.querySelectorAll<HTMLAnchorElement>("a[href]"));
+          const internal = new Set<string>();
+          links.forEach((a) => {
+            try {
+              const url = new URL(a.href, origin);
+              if (
+                url.origin === origin &&
+                !url.hash &&
+                !url.pathname.match(/\.(pdf|zip|jpg|png|gif|svg|css|js|webp|ico)$/i)
+              ) {
+                internal.add(url.origin + url.pathname.replace(/\/$/, ""));
+              }
+            } catch {
+              // ignore invalid URLs
+            }
+          });
+          return Array.from(internal);
+        }, baseOrigin);
+        return { candidates, internalUrls };
+      },
+    });
+
+    const filtered = extracted.internalUrls
+      .filter((u) => u !== homepagePath && u !== baseOrigin)
+      .slice(0, 6);
+
+    this.logger.log(
+      `[${websiteUrl}] Found ${extracted.candidates.logoCandidates.length} logo, ${extracted.candidates.heroCandidates.length} hero, ${extracted.candidates.colorCandidates.length} colors (homepage)`,
+    );
+
+    return { candidates: extracted.candidates, internalUrls: filtered };
+  }
+
+  private async scrapeOnePage(
+    pageUrl: string,
+    waitUntil: "domcontentloaded" | "networkidle2" = "networkidle2",
+  ): Promise<ScrapedBrandingCandidates> {
+    const extracted = await this.puppeteerPool.executeWithPage({
+      url: pageUrl,
+      waitUntil,
+      timeout: 20000,
+      execute: async (page) => this.runPageEvaluate(page),
+    });
+
+    this.logger.log(
+      `[${pageUrl}] Found ${extracted.logoCandidates.length} logo, ${extracted.heroCandidates.length} hero, ${extracted.colorCandidates.length} colors`,
+    );
+
+    return extracted;
+  }
+
+  private async runPageEvaluate(
+    page: import("puppeteer").Page,
+  ): Promise<ScrapedBrandingCandidates> {
+    return page.evaluate(() => {
+      const seen = new Set<string>();
+
+      const addCandidate = (
+        list: { url: string; source: string; width: number | null; height: number | null }[],
+        url: string | null | undefined,
+        source: string,
+        width: number | null = null,
+        height: number | null = null,
+      ) => {
+        if (!url || url.startsWith("data:") || seen.has(url) || list.length >= 30) {
+          return;
+        }
+        seen.add(url);
+        list.push({ url, source, width, height });
+      };
+
+      const logoCandidates: {
+        url: string;
+        source: string;
+        width: number | null;
+        height: number | null;
+      }[] = [];
+
+      const allImgs = Array.from(document.querySelectorAll<HTMLImageElement>("img"));
+      allImgs
+        .filter((img) => {
+          const src = (img.src || "").toLowerCase();
+          const alt = (img.alt || "").toLowerCase();
+          const className = (img.className || "").toLowerCase();
+          const id = (img.id || "").toLowerCase();
+          return (
+            src.includes("logo") ||
+            alt.includes("logo") ||
+            className.includes("logo") ||
+            id.includes("logo")
+          );
+        })
+        .forEach((img) =>
+          addCandidate(logoCandidates, img.src, "logo-attr", img.naturalWidth, img.naturalHeight),
+        );
+
+      Array.from(
+        document.querySelectorAll<HTMLImageElement>("header img, nav img, .header img, .nav img"),
+      ).forEach((img) =>
+        addCandidate(logoCandidates, img.src, "header-img", img.naturalWidth, img.naturalHeight),
+      );
+
+      const ogImage = document.querySelector<HTMLMetaElement>('meta[property="og:image"]');
+      if (ogImage?.content) {
+        addCandidate(logoCandidates, ogImage.content, "og-image");
+      }
+
+      Array.from(
+        document.querySelectorAll<HTMLLinkElement>(
+          'link[rel="icon"], link[rel="shortcut icon"], link[rel="apple-touch-icon"]',
+        ),
+      ).forEach((link) => addCandidate(logoCandidates, link.href, "favicon"));
+
+      const faviconUrl = new URL("/favicon.ico", window.location.origin).href;
+      addCandidate(logoCandidates, faviconUrl, "favicon");
+
+      const heroCandidates: {
+        url: string;
+        source: string;
+        width: number | null;
+        height: number | null;
+      }[] = [];
+      const heroSeen = new Set<string>();
+
+      const addHero = (
+        url: string | null | undefined,
+        source: string,
+        width: number | null = null,
+        height: number | null = null,
+      ) => {
+        if (!url || url.startsWith("data:") || heroSeen.has(url) || heroCandidates.length >= 30) {
+          return;
+        }
+        heroSeen.add(url);
+        heroCandidates.push({ url, source, width, height });
+      };
+
+      if (ogImage?.content) {
+        addHero(ogImage.content, "og-image");
+      }
+
+      const heroSelectors = [
+        ".hero img",
+        ".banner img",
+        "[class*='hero'] img",
+        "[class*='banner'] img",
+        "[class*='slider'] img",
+        "[class*='carousel'] img",
+        "section:first-of-type img",
+      ];
+      heroSelectors.forEach((sel) => {
+        Array.from(document.querySelectorAll<HTMLImageElement>(sel)).forEach((img) => {
+          if (img.naturalWidth >= 400) {
+            addHero(img.src, "hero-selector", img.naturalWidth, img.naturalHeight);
+          }
+        });
+      });
+
+      const bgElements = document.querySelectorAll("section, div, header");
+      Array.from(bgElements).forEach((el) => {
+        const style = window.getComputedStyle(el);
+        const bgImg = style.backgroundImage;
+        if (bgImg && bgImg !== "none") {
+          const urlMatch = bgImg.match(/url\(["']?(.*?)["']?\)/);
+          if (urlMatch?.[1] && !urlMatch[1].startsWith("data:")) {
+            addHero(urlMatch[1], "bg-image");
+          }
+        }
+      });
+
+      Array.from(document.querySelectorAll<HTMLImageElement>("img"))
+        .filter((img) => img.naturalWidth >= 600 && img.naturalHeight >= 300)
+        .filter((img) => !(img.src || "").toLowerCase().includes("logo"))
+        .forEach((img) => addHero(img.src, "large-img", img.naturalWidth, img.naturalHeight));
+
+      const isValidColor = (color: string | null): boolean => {
+        if (!color) return false;
+        const invalid = [
+          "rgba(0, 0, 0, 0)",
+          "transparent",
+          "rgb(255, 255, 255)",
+          "rgb(0, 0, 0)",
+          "#ffffff",
+          "#fff",
+          "#000000",
+          "#000",
+        ];
+        return !invalid.includes(color.toLowerCase());
+      };
+
+      const colorCandidates: string[] = [];
+      const colorSeen = new Set<string>();
+      const addColor = (color: string | null | undefined) => {
+        if (!color || !isValidColor(color) || colorCandidates.length >= 16) return;
+        const lower = color.toLowerCase();
+        if (colorSeen.has(lower)) return;
+        colorSeen.add(lower);
+        colorCandidates.push(color);
+      };
+
+      const themeColor = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+      if (themeColor?.content) addColor(themeColor.content);
+
+      ["header", "nav", "footer"].forEach((tag) => {
+        const el = document.querySelector(tag);
+        if (el) {
+          const computed = window.getComputedStyle(el);
+          addColor(computed.backgroundColor);
+          addColor(computed.color);
+        }
+      });
+
+      const buttons = Array.from(
+        document.querySelectorAll<HTMLElement>(
+          'button, .btn, [class*="button"], a[class*="btn"], input[type="submit"]',
+        ),
+      ).slice(0, 20);
+      const buttonBgCounts: Record<string, number> = {};
+      buttons.forEach((btn) => {
+        const computed = window.getComputedStyle(btn);
+        const bg = computed.backgroundColor;
+        if (isValidColor(bg)) {
+          buttonBgCounts[bg] = (buttonBgCounts[bg] || 0) + 1;
+        }
+      });
+      Object.entries(buttonBgCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 4)
+        .forEach(([c]) => addColor(c));
+
+      const linkColorCounts: Record<string, number> = {};
+      Array.from(document.querySelectorAll<HTMLAnchorElement>("a"))
+        .slice(0, 30)
+        .forEach((link) => {
+          const color = window.getComputedStyle(link).color;
+          if (isValidColor(color) && color !== "rgb(0, 0, 238)") {
+            linkColorCounts[color] = (linkColorCounts[color] || 0) + 1;
+          }
+        });
+      Object.entries(linkColorCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .forEach(([c]) => addColor(c));
+
+      const accentSelectors = [
+        "[class*='primary']",
+        "[class*='accent']",
+        "[class*='brand']",
+        "[class*='highlight']",
+        ".active",
+        ".selected",
+      ];
+      accentSelectors.forEach((sel) => {
+        Array.from(document.querySelectorAll<HTMLElement>(sel))
+          .slice(0, 4)
+          .forEach((el) => {
+            const computed = window.getComputedStyle(el);
+            addColor(computed.backgroundColor);
+            addColor(computed.color);
+          });
+      });
+
+      const cssVarRoot = window.getComputedStyle(document.documentElement);
+      [
+        "--primary",
+        "--brand",
+        "--accent",
+        "--main-color",
+        "--color-primary",
+        "--secondary",
+        "--tertiary",
+      ].forEach((name) => {
+        const val = cssVarRoot.getPropertyValue(name).trim();
+        if (val) addColor(val);
+      });
+
+      const primaryColor = colorCandidates.length > 0 ? colorCandidates[0] : null;
+
+      return { logoCandidates, heroCandidates, primaryColor, colorCandidates };
+    });
   }
 
   async proxyImage(url: string): Promise<{ buffer: Buffer; contentType: string } | null> {

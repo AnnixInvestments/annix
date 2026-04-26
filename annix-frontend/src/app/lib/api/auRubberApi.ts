@@ -1156,6 +1156,7 @@ export interface ScrapedBrandingCandidates {
   logoCandidates: CandidateImage[];
   heroCandidates: CandidateImage[];
   primaryColor: string | null;
+  colorCandidates: string[];
 }
 
 export interface AuRubberLoginDto {
