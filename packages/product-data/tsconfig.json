@@ -9,7 +9,9 @@
     "strict": false,
     "outDir": "./dist",
     "rootDir": "./",
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "incremental": true,
+    "tsBuildInfoFile": "./dist/.tsbuildinfo"
   },
   "include": ["**/*.ts"],
   "exclude": ["dist", "node_modules", "**/*.spec.ts"]

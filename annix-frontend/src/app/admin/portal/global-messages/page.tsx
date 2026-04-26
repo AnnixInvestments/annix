@@ -89,7 +89,7 @@ function ConversationCard({
 
   return (
     <Link
-      href={`/admin/portal/messages/conversations/${conversation.id}`}
+      href={`/admin/portal/messages/${conversation.id}`}
       className="block bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 p-4 hover:border-[#323288] hover:shadow-md transition-all"
     >
       {cardContent}
@@ -100,7 +100,7 @@ function ConversationCard({
 function BroadcastCard({ broadcast }: { broadcast: BroadcastDetailDto }) {
   return (
     <Link
-      href={`/admin/portal/messages/broadcasts/${broadcast.id}`}
+      href="/admin/portal/broadcasts"
       className="block bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 p-4 hover:border-purple-500 hover:shadow-md transition-all"
     >
       <div className="flex items-start justify-between gap-4">
