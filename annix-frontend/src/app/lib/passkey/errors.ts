@@ -25,6 +25,9 @@ const LOGIN_NOT_ALLOWED_MESSAGE =
 
 const REGISTER_NOT_ALLOWED_MESSAGE = "Passkey prompt was cancelled or timed out. Please try again.";
 
+const RP_ID_MISMATCH_MESSAGE =
+  "Passkey configuration mismatch on this hostname. Reload the page; if the problem persists, contact support.";
+
 function underlyingDomExceptionName(error: Error): string | null {
   if (!("cause" in error)) return null;
   const cause = (error as Error & { cause?: unknown }).cause;
@@ -55,6 +58,9 @@ export function classifyPasskeyError(
     if (error.name === "NotSupportedError") {
       return new PasskeyError("This device does not support passkeys", "unsupported");
     }
+    if (error.name === "SecurityError") {
+      return new PasskeyError(RP_ID_MISMATCH_MESSAGE, "server");
+    }
   }
 
   if (error instanceof Error) {
@@ -70,6 +76,12 @@ export function classifyPasskeyError(
     }
     if (wrappedName === "NotSupportedError") {
       return new PasskeyError("This device does not support passkeys", "unsupported");
+    }
+    if (error.name === "SecurityError" || wrappedName === "SecurityError") {
+      return new PasskeyError(RP_ID_MISMATCH_MESSAGE, "server");
+    }
+    if (error.message.toLowerCase().includes("rp id")) {
+      return new PasskeyError(RP_ID_MISMATCH_MESSAGE, "server");
     }
     if (error.message.includes("rate")) {
       return new PasskeyError("Too many attempts — please wait a minute", "rate-limited");

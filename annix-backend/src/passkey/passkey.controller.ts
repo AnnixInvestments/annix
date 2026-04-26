@@ -114,7 +114,7 @@ export class PasskeyController {
 
     const appCode = this.resolveAppCode(requestHost, body.appCode);
 
-    if (appCode === "admin") {
+    if (appCode === "admin" || appCode === "au-rubber") {
       const adminResponse = await this.adminAuthService.issueTokensForAuthenticatedUser(
         result.user,
         appCode,
@@ -157,7 +157,7 @@ export class PasskeyController {
       };
     }
 
-    if (appCode === "stock-control" || appCode === "ops" || appCode === "au-rubber") {
+    if (appCode === "stock-control" || appCode === "ops") {
       const scResponse = await this.stockControlAuthService.issueTokensForAuthenticatedUser(
         result.user,
       );
@@ -252,7 +252,20 @@ export class PasskeyController {
   private requestHost(req: {
     headers: Record<string, string | string[] | undefined>;
   }): string | null {
-    const raw = req.headers.host;
+    const forwarded = this.headerValue(req.headers["x-forwarded-host"]);
+    if (forwarded) return forwarded;
+    const origin = this.headerValue(req.headers.origin);
+    if (origin) {
+      try {
+        return new URL(origin).host;
+      } catch {
+        // Malformed Origin — fall through to Host header
+      }
+    }
+    return this.headerValue(req.headers.host);
+  }
+
+  private headerValue(raw: string | string[] | undefined): string | null {
     if (typeof raw === "string") return raw;
     if (Array.isArray(raw) && raw.length > 0) return raw[0] ?? null;
     return null;

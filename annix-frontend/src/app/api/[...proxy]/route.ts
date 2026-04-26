@@ -24,6 +24,14 @@ async function proxyRequest(request: NextRequest) {
   if (cookie) {
     forwardHeaders["cookie"] = cookie;
   }
+  const incomingHost = request.headers.get("host");
+  if (incomingHost) {
+    forwardHeaders["x-forwarded-host"] = incomingHost;
+  }
+  const incomingOrigin = request.headers.get("origin");
+  if (incomingOrigin) {
+    forwardHeaders["origin"] = incomingOrigin;
+  }
 
   const body =
     request.method !== "GET" && request.method !== "HEAD" ? await request.arrayBuffer() : undefined;
