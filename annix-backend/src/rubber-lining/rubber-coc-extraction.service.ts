@@ -534,10 +534,16 @@ export class RubberCocExtractionService {
       "tax-invoice-ocr-extraction",
     );
 
+    const data = response.data as unknown as ExtractedTaxInvoiceData;
+
+    const totalRolls = (data.lineItems ?? []).reduce((sum, li) => sum + (li.rolls?.length ?? 0), 0);
+    if (totalRolls > 0) {
+      await this.verifyAndCorrectRollPairings(data, images);
+    }
+
     const processingTimeMs = nowMillis() - startTime;
     this.logger.log(`Tax invoice extracted via OCR in ${processingTimeMs}ms`);
 
-    const data = response.data as unknown as ExtractedTaxInvoiceData;
     this.warnOnSuspiciousRollNumbers(data);
 
     return {
@@ -545,6 +551,80 @@ export class RubberCocExtractionService {
       tokensUsed: response.tokensUsed,
       processingTimeMs,
     };
+  }
+
+  private async verifyAndCorrectRollPairings(
+    data: ExtractedTaxInvoiceData,
+    images: Buffer[],
+  ): Promise<void> {
+    try {
+      const verificationPrompt = `You are a verification pass for an invoice extraction. The PDF you are looking at is an Impilo Industries tax invoice.
+
+Read ONLY the "Roll # <number>   <kg> kg" detail lines under TOLLCALENDERROLLS sections. Output them in the exact order they appear in the document.
+
+CRITICAL RULES:
+1. Each line has EXACTLY ONE roll number followed by EXACTLY ONE weight in kg, in that order, on the SAME line.
+2. The weight on a line ALWAYS belongs to the roll number on that same line — never the next or previous line.
+3. Read each digit individually. Roll numbers on Impilo invoices are 5-digit integers in the 40000–60000 range.
+4. If you cannot read a roll number or weight with full confidence, use null for that value.
+5. List rolls from EVERY TOLLCALENDERROLLS section across the whole document, in document order.
+
+Return ONLY a valid JSON object of this exact shape (no extra fields, no commentary):
+{ "rolls": [{ "rollNumber": "41635", "weightKg": 50 }, { "rollNumber": "41636", "weightKg": 48 }] }`;
+
+      const response = await this.callGeminiWithImages(
+        verificationPrompt,
+        "Verify the roll number / weight pairs from this Impilo tax invoice. Return ONLY the JSON.",
+        images,
+        "tax-invoice-rolls-verification",
+      );
+
+      const verification = response.data as {
+        rolls?: Array<{ rollNumber: string; weightKg: number | null }>;
+      };
+      const verifiedRolls = verification.rolls ?? [];
+
+      const firstPassRolls = (data.lineItems ?? []).flatMap((li) => li.rolls ?? []);
+
+      const sameLength = verifiedRolls.length === firstPassRolls.length;
+      const allMatch =
+        sameLength &&
+        verifiedRolls.every((vr, i) => {
+          const fp = firstPassRolls[i];
+          return fp && fp.rollNumber === vr.rollNumber && fp.weightKg === vr.weightKg;
+        });
+
+      if (allMatch) {
+        this.logger.log(
+          `Roll verification confirmed ${verifiedRolls.length} pairings on first read.`,
+        );
+        return;
+      }
+
+      this.logger.warn(
+        `Roll verification DISAGREED with first pass — using verified values. First: ${JSON.stringify(firstPassRolls)} | Verified: ${JSON.stringify(verifiedRolls)}`,
+      );
+
+      const verifiedById = new Map<string, number | null>();
+      verifiedRolls.forEach((vr) => {
+        if (vr.rollNumber) verifiedById.set(vr.rollNumber, vr.weightKg);
+      });
+
+      (data.lineItems ?? []).forEach((li) => {
+        if (!li.rolls || li.rolls.length === 0) return;
+        li.rolls = li.rolls.map((roll) => {
+          const verifiedWeight = verifiedById.get(roll.rollNumber);
+          if (verifiedWeight !== undefined && verifiedWeight !== roll.weightKg) {
+            return { rollNumber: roll.rollNumber, weightKg: verifiedWeight };
+          }
+          return roll;
+        });
+      });
+    } catch (error) {
+      this.logger.warn(
+        `Roll verification pass failed: ${error instanceof Error ? error.message : String(error)}. Keeping first-pass values.`,
+      );
+    }
   }
 
   private warnOnSuspiciousRollNumbers(data: ExtractedTaxInvoiceData): void {
