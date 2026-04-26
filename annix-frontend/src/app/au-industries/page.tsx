@@ -328,12 +328,12 @@ export default function AuIndustriesHomePage(): React.JSX.Element {
         </div>
       </section>
 
-      <section className="bg-[#efcc54] py-16">
+      <section className="bg-gray-900 py-16">
         <div className="max-w-4xl mx-auto px-4 text-center">
-          <h2 className="text-2xl md:text-3xl font-bold text-black mb-4">
+          <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">
             Ready to discuss your project?
           </h2>
-          <p className="text-black mb-8">
+          <p className="text-gray-300 mb-8">
             Get in touch for a free consultation and competitive quote.
           </p>
           <Link
