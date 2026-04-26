@@ -22,7 +22,7 @@ export function AuIndustriesNav(props: { pages: NavPage[] }) {
   };
 
   return (
-    <nav className="bg-white border-b border-gray-200 sticky top-0 z-50 border-t-4 border-t-[#333]">
+    <nav className="bg-[#efcc54] border-b border-[#B8860B]/40 sticky top-0 z-50 border-t-4 border-t-[#B8860B]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-24">
           <Link href="/" className="flex-shrink-0 rounded-xl overflow-hidden">
@@ -47,8 +47,8 @@ export function AuIndustriesNav(props: { pages: NavPage[] }) {
                   href={href}
                   className={`px-4 py-2 text-sm font-semibold uppercase tracking-wide transition-colors ${
                     active
-                      ? "text-[#B8860B] border-b-2 border-[#B8860B]"
-                      : "text-gray-700 hover:text-[#B8860B]"
+                      ? "text-gray-900 border-b-2 border-gray-900"
+                      : "text-gray-800 hover:text-gray-900"
                   }`}
                 >
                   {label}
@@ -59,18 +59,18 @@ export function AuIndustriesNav(props: { pages: NavPage[] }) {
               href="/quote"
               className={`px-4 py-2 text-sm font-semibold uppercase tracking-wide transition-colors ${
                 pathname === "/quote"
-                  ? "text-[#B8860B] border-b-2 border-[#B8860B]"
-                  : "text-gray-700 hover:text-[#B8860B]"
+                  ? "text-gray-900 border-b-2 border-gray-900"
+                  : "text-gray-800 hover:text-gray-900"
               }`}
             >
               Quote
             </Link>
             <Link
               href="/contact"
-              className={`ml-2 px-5 py-2 text-sm font-semibold uppercase tracking-wide border-2 border-[#B8860B] transition-colors ${
+              className={`ml-2 px-5 py-2 text-sm font-semibold uppercase tracking-wide border-2 border-gray-900 transition-colors ${
                 pathname === "/contact"
-                  ? "bg-[#B8860B] text-white"
-                  : "text-[#B8860B] hover:bg-[#B8860B] hover:text-white"
+                  ? "bg-gray-900 text-[#efcc54]"
+                  : "text-gray-900 hover:bg-gray-900 hover:text-[#efcc54]"
               }`}
             >
               Contact Us
@@ -105,7 +105,7 @@ export function AuIndustriesNav(props: { pages: NavPage[] }) {
 
           <button
             onClick={() => setMenuOpen(!menuOpen)}
-            className="md:hidden text-gray-700 hover:text-[#B8860B] p-2"
+            className="md:hidden text-gray-900 hover:text-gray-700 p-2"
             aria-label="Toggle menu"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -129,7 +129,7 @@ export function AuIndustriesNav(props: { pages: NavPage[] }) {
         </div>
 
         {menuOpen && (
-          <div className="md:hidden pb-4 space-y-1 border-t border-gray-200 pt-2">
+          <div className="md:hidden pb-4 space-y-1 border-t border-[#B8860B]/40 pt-2">
             {props.pages.map((page) => {
               const href = page.isHomePage ? "/" : `/${page.slug}`;
               const active = page.isHomePage ? pathname === "/" : isActive(page.slug);
@@ -140,7 +140,7 @@ export function AuIndustriesNav(props: { pages: NavPage[] }) {
                   href={href}
                   onClick={() => setMenuOpen(false)}
                   className={`block px-3 py-2 text-base font-semibold uppercase ${
-                    active ? "text-[#B8860B]" : "text-gray-700 hover:text-[#B8860B]"
+                    active ? "text-gray-900" : "text-gray-800 hover:text-gray-900"
                   }`}
                 >
                   {label}
@@ -151,7 +151,7 @@ export function AuIndustriesNav(props: { pages: NavPage[] }) {
               href="/quote"
               onClick={() => setMenuOpen(false)}
               className={`block px-3 py-2 text-base font-semibold uppercase ${
-                pathname === "/quote" ? "text-[#B8860B]" : "text-gray-700 hover:text-[#B8860B]"
+                pathname === "/quote" ? "text-gray-900" : "text-gray-800 hover:text-gray-900"
               }`}
             >
               Quote
@@ -160,7 +160,7 @@ export function AuIndustriesNav(props: { pages: NavPage[] }) {
               href="/contact"
               onClick={() => setMenuOpen(false)}
               className={`block px-3 py-2 text-base font-semibold uppercase ${
-                pathname === "/contact" ? "text-[#B8860B]" : "text-gray-700 hover:text-[#B8860B]"
+                pathname === "/contact" ? "text-gray-900" : "text-gray-800 hover:text-gray-900"
               }`}
             >
               Contact Us
@@ -172,7 +172,7 @@ export function AuIndustriesNav(props: { pages: NavPage[] }) {
                   setMenuOpen(false);
                 }}
                 className={`block w-full text-left px-3 py-2 text-base font-semibold uppercase ${
-                  editMode ? "text-[#B8860B]" : "text-gray-700 hover:text-[#B8860B]"
+                  editMode ? "text-gray-900" : "text-gray-800 hover:text-gray-900"
                 }`}
               >
                 {editMode ? "Exit Edit Mode" : "Edit Page"}
