@@ -4,6 +4,7 @@ import { DollarSign, Edit2, Plus, Save, Trash2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Pagination, TableLoadingState } from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
+import { usePersistedState } from "@/app/hooks/usePersistedState";
 import type { CostRateType } from "@/app/lib/api/rubberPortalApi";
 import { formatDateZA } from "@/app/lib/datetime";
 import {
@@ -100,7 +101,10 @@ export default function CostOfSalePage() {
   const [isEditingCalenderer, setIsEditingCalenderer] = useState(false);
 
   const [rollPage, setRollPage] = useState(0);
-  const [rollPageSize, setRollPageSize] = useState(ITEMS_PER_PAGE);
+  const [rollPageSize, setRollPageSize] = usePersistedState<number>(
+    "auRubber.costOfSale.rollPageSize",
+    ITEMS_PER_PAGE,
+  );
   const [rollFilter, setRollFilter] = useState<"ALL" | "IN_STOCK" | "SOLD">("ALL");
 
   const rollCosStatus = rollFilter === "ALL" ? undefined : rollFilter;

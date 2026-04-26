@@ -10,6 +10,7 @@ import {
   TableLoadingState,
 } from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
+import { usePersistedState } from "@/app/hooks/usePersistedState";
 import {
   auRubberApiClient,
   type CompoundQualitySummaryDto,
@@ -46,7 +47,10 @@ export default function QualityTrackingPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<QualityStatus | "">("");
   const [currentPage, setCurrentPage] = useState(0);
-  const [pageSize, setPageSize] = useState(ITEMS_PER_PAGE);
+  const [pageSize, setPageSize] = usePersistedState<number>(
+    "auRubber.qualityTracking.pageSize",
+    ITEMS_PER_PAGE,
+  );
   const [sortColumn, setSortColumn] = useState<SortColumn>("lastBatchDate");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
 

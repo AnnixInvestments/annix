@@ -11,6 +11,7 @@ import {
   TableLoadingState,
 } from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
+import { usePersistedState } from "@/app/hooks/usePersistedState";
 import {
   auRubberApiClient,
   type CreateOtherStockDto,
@@ -50,7 +51,10 @@ export default function OtherItemsPage() {
   const [showLowStockOnly, setShowLowStockOnly] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState("");
   const [currentPage, setCurrentPage] = useState(0);
-  const [pageSize, setPageSize] = useState(ITEMS_PER_PAGE);
+  const [pageSize, setPageSize] = usePersistedState<number>(
+    "auRubber.otherItems.pageSize",
+    ITEMS_PER_PAGE,
+  );
   const [sortColumn, setSortColumn] = useState<SortColumn>("itemName");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [deleteItemId, setDeleteItemId] = useState<number | null>(null);

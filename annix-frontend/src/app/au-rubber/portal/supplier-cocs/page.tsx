@@ -12,6 +12,7 @@ import {
 import { useToast } from "@/app/components/Toast";
 import { useAuRubberAuth } from "@/app/context/AuRubberAuthContext";
 import { useAuRubberBranding } from "@/app/context/AuRubberBrandingContext";
+import { usePersistedState } from "@/app/hooks/usePersistedState";
 import type {
   CocProcessingStatus,
   RubberSupplierCocDto,
@@ -94,11 +95,20 @@ export default function SupplierCocsPage() {
   const isLoading = cocsQuery.isLoading;
   const error = cocsQuery.error;
   const [compounderPage, setCompounderPage] = useState(0);
-  const [compounderPageSize, setCompounderPageSize] = useState(ITEMS_PER_PAGE);
+  const [compounderPageSize, setCompounderPageSize] = usePersistedState<number>(
+    "auRubber.supplierCocs.compounderPageSize",
+    ITEMS_PER_PAGE,
+  );
   const [calendererPage, setCalendererPage] = useState(0);
-  const [calendererPageSize, setCalendererPageSize] = useState(ITEMS_PER_PAGE);
+  const [calendererPageSize, setCalendererPageSize] = usePersistedState<number>(
+    "auRubber.supplierCocs.calendererPageSize",
+    ITEMS_PER_PAGE,
+  );
   const [calenderRollPage, setCalenderRollPage] = useState(0);
-  const [calenderRollPageSize, setCalenderRollPageSize] = useState(ITEMS_PER_PAGE);
+  const [calenderRollPageSize, setCalenderRollPageSize] = usePersistedState<number>(
+    "auRubber.supplierCocs.calenderRollPageSize",
+    ITEMS_PER_PAGE,
+  );
   const [compounderSort, setCompounderSort] = useState<{
     column: SortColumn;
     direction: SortDirection;

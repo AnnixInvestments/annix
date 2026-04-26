@@ -12,6 +12,7 @@ import {
   TableLoadingState,
 } from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
+import { usePersistedState } from "@/app/hooks/usePersistedState";
 import {
   auRubberApiClient,
   type RequisitionDto,
@@ -60,7 +61,10 @@ export default function PurchaseRequisitionsPage() {
   const [statusFilter, setStatusFilter] = useState<RequisitionStatus | "">("");
   const [sourceFilter, setSourceFilter] = useState<RequisitionSourceType | "">("");
   const [currentPage, setCurrentPage] = useState(0);
-  const [pageSize, setPageSize] = useState(ITEMS_PER_PAGE);
+  const [pageSize, setPageSize] = usePersistedState<number>(
+    "auRubber.purchaseRequisitions.pageSize",
+    ITEMS_PER_PAGE,
+  );
   const [sortColumn, setSortColumn] = useState<SortColumn>("createdAt");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [cancelReqId, setCancelReqId] = useState<number | null>(null);

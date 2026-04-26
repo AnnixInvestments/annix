@@ -11,6 +11,7 @@ import {
   TableLoadingState,
 } from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
+import { usePersistedState } from "@/app/hooks/usePersistedState";
 import { auRubberApiClient, type StockLocationDto } from "@/app/lib/api/auRubberApi";
 import { Breadcrumb } from "../../components/Breadcrumb";
 import { ConfirmModal } from "../../components/ConfirmModal";
@@ -27,7 +28,10 @@ export default function StockLocationsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showInactive, setShowInactive] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
-  const [pageSize, setPageSize] = useState(ITEMS_PER_PAGE);
+  const [pageSize, setPageSize] = usePersistedState<number>(
+    "auRubber.stockLocations.pageSize",
+    ITEMS_PER_PAGE,
+  );
   const [sortColumn, setSortColumn] = useState<SortColumn>("displayOrder");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [deleteLocationId, setDeleteLocationId] = useState<number | null>(null);

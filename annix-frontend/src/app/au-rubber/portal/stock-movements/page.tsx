@@ -11,6 +11,7 @@ import {
   TableLoadingState,
 } from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
+import { usePersistedState } from "@/app/hooks/usePersistedState";
 import {
   auRubberApiClient,
   type CompoundMovementReferenceType,
@@ -78,7 +79,10 @@ export default function StockMovementsPage() {
   const [typeFilter, setTypeFilter] = useState<CompoundMovementType | "">("");
   const [referenceFilter, setReferenceFilter] = useState<CompoundMovementReferenceType | "">("");
   const [currentPage, setCurrentPage] = useState(0);
-  const [pageSize, setPageSize] = useState(ITEMS_PER_PAGE);
+  const [pageSize, setPageSize] = usePersistedState<number>(
+    "auRubber.stockMovements.pageSize",
+    ITEMS_PER_PAGE,
+  );
   const [sortColumn, setSortColumn] = useState<SortColumn>("createdAt");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
 

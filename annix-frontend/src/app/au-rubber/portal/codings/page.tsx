@@ -5,6 +5,7 @@ import { toPairs as entries } from "es-toolkit/compat";
 import { useEffect, useState } from "react";
 import { Pagination, TableLoadingState } from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
+import { usePersistedState } from "@/app/hooks/usePersistedState";
 import { auRubberApiClient, type RubberSpecificationDto } from "@/app/lib/api/auRubberApi";
 import type { RubberProductCodingDto } from "@/app/lib/api/rubberPortalApi";
 import { Breadcrumb } from "../../components/Breadcrumb";
@@ -135,7 +136,10 @@ export default function AuRubberCodingsPage() {
     name: "",
   });
   const [currentPage, setCurrentPage] = useState(0);
-  const [pageSize, setPageSize] = useState(ITEMS_PER_PAGE);
+  const [pageSize, setPageSize] = usePersistedState<number>(
+    "auRubber.codings.pageSize",
+    ITEMS_PER_PAGE,
+  );
 
   const fetchCodings = async (type: CodingType) => {
     try {
