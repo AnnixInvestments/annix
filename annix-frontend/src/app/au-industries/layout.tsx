@@ -31,6 +31,11 @@ export const metadata: Metadata = {
   alternates: {
     canonical: SITE_URL,
   },
+  icons: {
+    icon: [{ url: "/au-industries/logo.jpg", type: "image/jpeg" }],
+    shortcut: "/au-industries/logo.jpg",
+    apple: "/au-industries/logo.jpg",
+  },
   verification: {
     google: "sp2KS-iFxp5dRSfkuMv7xDR6FHve0O4hMfyApm269xk",
   },

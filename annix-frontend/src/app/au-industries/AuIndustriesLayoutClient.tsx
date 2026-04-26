@@ -40,6 +40,15 @@ export function AuIndustriesLayoutClient(props: { children: React.ReactNode }) {
       .catch(() => {});
   }, []);
 
+  useEffect(() => {
+    const html = document.documentElement;
+    const wasDark = html.classList.contains("dark");
+    html.classList.remove("dark");
+    return () => {
+      if (wasDark) html.classList.add("dark");
+    };
+  }, []);
+
   const companyName = AU_INDUSTRIES_CONTACT.companyName;
   const phone = AU_INDUSTRIES_CONTACT.phone;
   const email = AU_INDUSTRIES_CONTACT.email;
