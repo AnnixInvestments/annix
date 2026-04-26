@@ -44,7 +44,14 @@ export function AuIndustriesLayoutClient(props: { children: React.ReactNode }) {
     const html = document.documentElement;
     const wasDark = html.classList.contains("dark");
     html.classList.remove("dark");
+    const observer = new MutationObserver(() => {
+      if (html.classList.contains("dark")) {
+        html.classList.remove("dark");
+      }
+    });
+    observer.observe(html, { attributes: true, attributeFilter: ["class"] });
     return () => {
+      observer.disconnect();
       if (wasDark) html.classList.add("dark");
     };
   }, []);

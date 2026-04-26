@@ -52,9 +52,9 @@ export default function AuIndustriesHomePage(): React.JSX.Element {
 
           <h3 className="text-2xl text-[#B8860B] mb-8">Who we are</h3>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6 text-gray-700 text-base leading-relaxed text-justify">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6 text-black text-base leading-relaxed text-justify">
             <p>
-              <strong className="text-gray-900">AU Industries</strong> was established to deliver
+              <strong className="text-black">AU Industries</strong> was established to deliver
               high-quality rubber products, linings, and mining solutions at competitive prices with
               fast turnaround times. With over 40 years of combined experience, we aim to be a
               trusted one-stop partner for the mining industry, supplying equipment, spare parts,
