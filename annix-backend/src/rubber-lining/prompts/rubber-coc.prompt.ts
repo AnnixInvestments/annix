@@ -770,23 +770,55 @@ LINE ITEMS:
 - Look for columns labeled "Description", "Qty", "Unit Price", "Amount", "Total"
 
 LINE ITEMS — SPECIAL HANDLING FOR IMPILO INDUSTRIES TOLL CALENDERING INVOICES:
-Impilo Industries bills toll calendering by KG but the rubber team needs ONE line item per finished roll so each roll can be brought into stock and invoiced out individually. When the invoice clearly comes from Impilo Industries (look at the letterhead / supplier company), do NOT extract the raw KG / N/C / compound rows verbatim. Instead recognise the tolling pattern below and emit one line item per roll.
+Impilo Industries bills toll calendering by KG but the rubber team needs ONE collapsed line item per roll-size group so each roll can be brought into stock and invoiced out individually. When the invoice clearly comes from Impilo Industries (look at the letterhead / supplier company), do NOT extract the raw KG / N/C / compound rows verbatim. Instead recognise the tolling pattern below and emit one collapsed line item per group.
 
-The Impilo tolling pattern repeats once per roll size on the invoice. A single "section" looks like:
+ABSOLUTE RULE — NO RAW LEAKAGE:
+A row whose Stock Code starts with "TOLLCALENDERKG", "TOLLCALENDERROLLS", or "TOLLRAWMATA" MUST NEVER appear verbatim in the lineItems output. Every such row is part of a logical section and must be collapsed (or merged into a sibling row's group). Emitting a raw TOLL... row is a hard error. If you cannot find the right group for one of these rows, emit ONE collapsed line for that single row using whatever data is available (description, qty, dimensions if any) — but NEVER copy the verbatim "Toll Calendered Customer Material per KG" / "Toll Raw Compound AU SC38 RED per KG" / "Toll Calendered Rolls Customer Supplied Compound N/C" descriptions into output.
 
-  TOLLCALENDERKG        Toll Calendered Customer Material per KG     <kg>   <R/kg>   <excl>   <vat>   <incl>
-  TOLLCALENDERROLLS     Toll Calendered Rolls Customer Supplied Compound N/C   <rollCount>   0.00   0.00   ...
+THE THREE BUILDING-BLOCK ROWS:
+- TOLLCALENDERKG        Toll Calendered Customer Material per KG     <kg>   <R/kg>   <excl>   <vat>   <incl>
+- TOLLCALENDERROLLS     Toll Calendered Rolls Customer Supplied Compound N/C   <rollCount>   0.00   0.00   ...
                         Roll # <rollNum>   <kg> kg              <-- one of these detail lines per roll, may repeat
-                        Roll # <rollNum>   <kg> kg
-  TOLLRAWMATAUSC<...>   Toll Raw Compound AU SC<grade> <colour> per KG   <kg>   0.00   ...
-                        <rollCount> rolls <cure> <hardness> <colour> <thickness>x<width>x<length>
+                        Roll # <rollNum>   <kg> kg              (the rolls list MAY span a page break — keep collecting on the next page)
+- TOLLRAWMATAUSC<...>   Toll Raw Compound AU SC<grade> <colour> per KG   <kg>   0.00   ...
+                        <rollCount> rolls <cure> <hardness> <colour> <thickness>x<width>x<length>     <-- the "dimensions line"
 
-Steps for EACH section:
-1. Read the "TOLLCALENDERKG" row's Excl Value (= section's calendering charge before VAT, e.g. R1,262.25). Call this "sectionExcl".
-2. Collect every "Roll # <num>   <kg> kg" detail line that follows (under TOLLCALENDERROLLS) into an array of {rollNumber, weightKg} objects. The number of these entries is the roll count for the section.
-3. Read the trailing free-text dimensions line under the TOLLRAWMATA... row (e.g. "1 rolls Steam cure 38 Black 6x1250x12.5"). This applies to ALL rolls in the section.
-4. Compute perRollCost = sectionExcl / rollCount, rounded to 2 decimals.
-5. Build a product code from the dimensions line using this rule:
+These three rows can appear in ANY ORDER within a logical section, and any subset may be present. Common orderings:
+  (a) TOLLCALENDERKG → TOLLCALENDERROLLS+rolls → TOLLRAWMATA+dimensions
+  (b) TOLLRAWMATA+dimensions → TOLLCALENDERKG → TOLLCALENDERROLLS+rolls
+  (c) TOLLCALENDERROLLS+rolls → TOLLCALENDERKG → TOLLRAWMATA+dimensions
+A section may also span a page break — the rolls list, dimensions line, or sibling rows may continue on the next page. Treat the document as one stream when grouping.
+
+GROUPING ALGORITHM (do this BEFORE emitting any line items):
+Step A. Walk all TOLL* rows in document order and tentatively pair them into groups. Two rows belong to the same group when (any of these are true):
+  - They appear consecutively with no unrelated row between them
+  - A TOLLCALENDERKG and a TOLLCALENDERROLLS share roughly the same kg/rollCount pairing (the calendering kg ≈ sum of roll weights)
+  - A TOLLRAWMATA's dimensions line says "<N> rolls" matching a nearby TOLLCALENDERROLLS rollCount, OR matches the kg of a nearby TOLLCALENDERKG
+  - The whole triplet appears together (any of the orderings (a), (b), (c) above)
+Step B. After grouping, every group falls into exactly one of these three TYPES:
+
+  TYPE 1 — FULL TOLLING GROUP (calendering of customer-supplied compound):
+    Has BOTH a TOLLCALENDERKG row AND a TOLLCALENDERROLLS row with at least one Roll # line.
+    May or may not have a matching TOLLRAWMATA + dimensions line.
+    sectionExcl = TOLLCALENDERKG.Excl Value
+    rolls = every Roll # line under TOLLCALENDERROLLS (carry across pages)
+    rollCount = rolls.length
+    perRollCost = sectionExcl / rollCount, rounded to 2 decimals
+    dimensions = if a TOLLRAWMATA dimensions line is present in this group AND it matches the rollCount, use it; otherwise leave description generic.
+
+  TYPE 2 — RAW COMPOUND GROUP (AU-supplied compound billed by KG, no per-roll detail):
+    A TOLLRAWMATA row with a dimensions line ("<N> rolls <cure> <shore> <colour> <thickness>x<width>x<length>") but NO TOLLCALENDERROLLS Roll # listing for those rolls.
+    quantity = the N from the dimensions line ("13 roll" → 13)
+    sectionExcl = TOLLRAWMATA.Excl Value (often R0.00 if N/C — keep it as-is, even if zero)
+    unitPrice = sectionExcl / quantity (or 0 if sectionExcl is 0)
+    rolls = NULL (no per-roll detail to record)
+    dimensions = from the TOLLRAWMATA dimensions line.
+
+  TYPE 3 — ORPHAN: a TOLLCALENDERKG without TOLLCALENDERROLLS, or a TOLLCALENDERROLLS without TOLLCALENDERKG, or any other unmatched fragment.
+    Emit ONE collapsed line for the orphan with whatever data you have. Quantity from the kg or rollCount, amount from Excl Value. Description should be a sensible generic ("Calendering charge <kg>kg" or "Toll rolls <count>"). Never copy the literal stock-code description.
+
+DESCRIPTION + PRODUCT CODE:
+Build a product code from the dimensions line using this rule:
    <colourLetter><cureCode>A<shore>
    where:
      colourLetter: B=Black, R=Red, Y=Yellow, P=Pink, W=White, G=Green, O=Orange
@@ -799,15 +831,18 @@ Steps for EACH section:
      "Pre-cured 40 Red 6x1200x12"        → RPCA40
      "Pre-cured 38 Pink 10x1200x9.5"     → PPCA38
      "Steam cure 40 Yellow 6x1200x12"    → YSCA40
-   If the dimensions line uses an unrecognised cure or colour (e.g. "Autoclave cure", "Rotocure", "Grey", "Natural"), DO NOT invent a code — fall back to the generic line-item extraction for that section instead.
+   If the dimensions line uses an unrecognised cure or colour (e.g. "Autoclave cure", "Rotocure", "Grey", "Natural"), DO NOT invent a code — use the dimensions line as-is for the description.
+
+   Final description format: "<productCode> <thickness>x<width>x<length>" when productCode is derivable (e.g. "BSCA38 6x1250x12.5"). When the productCode can't be derived OR no dimensions line exists, fall back to a sensible generic ("Calendering <kg>kg" or "Toll rolls x<count>"). NEVER use the literal "Toll Calendered Customer Material per KG", "Toll Calendered Rolls Customer Supplied Compound N/C", or "Toll Raw Compound AU SC..." text.
 
    This per-roll rule applies ONLY to roll-form rubber (the dimensions line clearly states "<n> rolls <cure> <shore> <colour> <thickness>x<width>x<length>"). Moulded products such as Throatbushes (TBR-…/TRB-…), Frame Plate Liners (FPL-…) and Cover Plate Liners (CPL-…) are imported as complete items with no conversion — leave their line items as-is.
-6. Emit ONE line item per section (NOT one per roll — every roll in the same section shares the product code, dimensions and per-roll cost, so they collapse into a single line):
-   - description: "<productCode> <thickness>x<width>x<length>" (e.g. "BSCA38 6x1250x12.5")
-   - quantity: rollCount (e.g. 4)
-   - unitPrice: perRollCost (e.g. 1259.06)
-   - amount: sectionExcl (e.g. 5036.25)
-   - rolls: array of every roll in the section, each as {rollNumber: "<num>", weightKg: <kg>}
+
+EMIT EXACTLY ONE LINE ITEM PER GROUP:
+  - description: as above
+  - quantity: rollCount (TYPE 1) or rolls-from-dimensions (TYPE 2) or qty-from-source (TYPE 3)
+  - unitPrice: perRollCost (TYPE 1) or per-unit derived (TYPE 2/3); 0 if the underlying Excl is 0
+  - amount: sectionExcl (the Excl Value from the source TOLL* row)
+  - rolls: array of every roll in the section, each as {rollNumber: "<num>", weightKg: <kg>}, ONLY for TYPE 1 groups. Set to null/omit for TYPE 2 and TYPE 3.
        e.g. [
          { "rollNumber": "42393", "weightKg": 100 },
          { "rollNumber": "42392", "weightKg": 97 },
@@ -815,11 +850,13 @@ Steps for EACH section:
          { "rollNumber": "42395", "weightKg": 99 }
        ]
    The rolls array preserves traceability — each roll keeps its own roll number and weight so it can later be picked individually when invoicing out.
-7. If the invoice has multiple sections (more than one TOLLCALENDERKG row, e.g. different roll sizes), repeat for each section and emit one line item per section. The line items' amounts should sum back to the invoice's overall subtotal.
 
-Do NOT also include the raw TOLLCALENDERKG / TOLLCALENDERROLLS / TOLLRAWMATA... rows in lineItems — they are replaced by the per-roll lines. The invoice-level subtotal/vatAmount/totalAmount stay the same.
+DEDUPLICATION (CRITICAL):
+Each TOLL* row in the source must contribute to EXACTLY ONE output line item. If a TOLLRAWMATA's dimensions line is used to enrich a TYPE 1 group, that same TOLLRAWMATA row must NOT also be emitted as a separate TYPE 2 line. Walk the source rows once, track which have been consumed, and never double-count.
 
-If the invoice is from Impilo Industries but doesn't follow this tolling pattern (no TOLLCALENDER rows), fall back to the generic line-item extraction above.
+The line items' amounts should sum back to the invoice's overall subtotal. The invoice-level subtotal/vatAmount/totalAmount stay the same regardless of grouping.
+
+If the invoice is from Impilo Industries but doesn't follow this tolling pattern (no TOLLCALENDER/TOLLRAWMATA rows at all), fall back to the generic line-item extraction above.
 
 PRODUCT SUMMARY (CRITICAL for Impilo Industries invoices):
 - Below or after the line items table, there is often a free-text summary line describing the actual product
