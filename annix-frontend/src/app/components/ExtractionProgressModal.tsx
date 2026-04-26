@@ -18,6 +18,7 @@ interface BrandStyle {
   bar: string;
   bg: string;
   text: string;
+  logo: string | null;
 }
 
 const BRAND_STYLES: Record<ExtractionBrand, BrandStyle> = {
@@ -26,42 +27,49 @@ const BRAND_STYLES: Record<ExtractionBrand, BrandStyle> = {
     bar: "bg-orange-500",
     bg: "bg-orange-50",
     text: "text-orange-700",
+    logo: "/au-industries/logo.jpg",
   },
   "stock-control": {
     label: "Stock Control",
     bar: "bg-red-700",
     bg: "bg-red-50",
     text: "text-red-700",
+    logo: null,
   },
   rfq: {
     label: "RFQ",
     bar: "bg-blue-600",
     bg: "bg-blue-50",
     text: "text-blue-700",
+    logo: null,
   },
   "comply-sa": {
     label: "Comply SA",
     bar: "bg-emerald-600",
     bg: "bg-emerald-50",
     text: "text-emerald-700",
+    logo: null,
   },
   fieldflow: {
     label: "FieldFlow",
     bar: "bg-cyan-600",
     bg: "bg-cyan-50",
     text: "text-cyan-700",
+    logo: null,
   },
   "annix-rep": {
     label: "Annix Rep",
     bar: "bg-violet-600",
     bg: "bg-violet-50",
     text: "text-violet-700",
+    logo: null,
   },
   "cv-assistant": {
     label: "CV Assistant",
     bar: "bg-pink-600",
     bg: "bg-pink-50",
     text: "text-pink-700",
+    logo: null,
   },
 };
 
@@ -182,7 +190,16 @@ function ExtractionProgressModal(props: { state: ExtractionState | null }) {
       <div className="fixed inset-0 bg-black/30 backdrop-blur-sm" aria-hidden="true" />
       <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full overflow-hidden">
         <div className={`px-4 py-2 ${styles.bg} ${styles.text} flex items-center justify-between`}>
-          <span className="text-xs font-semibold uppercase tracking-wide">{styles.label}</span>
+          <span className="flex items-center gap-2">
+            {styles.logo ? (
+              <img
+                src={styles.logo}
+                alt={`${styles.label} logo`}
+                className="h-5 w-5 rounded-sm object-contain"
+              />
+            ) : null}
+            <span className="text-xs font-semibold uppercase tracking-wide">{styles.label}</span>
+          </span>
           <span className="text-[10px]">
             {elapsedSeconds}s elapsed
             {!overran && remainingSeconds > 0 ? ` · ~${remainingSeconds}s left` : ""}

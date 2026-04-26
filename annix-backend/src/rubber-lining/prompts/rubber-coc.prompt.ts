@@ -790,11 +790,25 @@ These three rows can appear in ANY ORDER within a logical section, and any subse
 A section may also span a page break — the rolls list, dimensions line, or sibling rows may continue on the next page. Treat the document as one stream when grouping.
 
 GROUPING ALGORITHM (do this BEFORE emitting any line items):
-Step A. Walk all TOLL* rows in document order and tentatively pair them into groups. Two rows belong to the same group when (any of these are true):
-  - They appear consecutively with no unrelated row between them
-  - A TOLLCALENDERKG and a TOLLCALENDERROLLS share roughly the same kg/rollCount pairing (the calendering kg ≈ sum of roll weights)
-  - A TOLLRAWMATA's dimensions line says "<N> rolls" matching a nearby TOLLCALENDERROLLS rollCount, OR matches the kg of a nearby TOLLCALENDERKG
-  - The whole triplet appears together (any of the orderings (a), (b), (c) above)
+Step A. Walk all TOLL* rows in document order and tentatively pair them into groups. Strong grouping signals (in order of priority — apply the first one that fires for each row):
+
+  (1) STRONGEST — TOLLRAWMATA "<N> rolls" matches TOLLCALENDERROLLS rollCount=N:
+      If a TOLLRAWMATA dimensions line says "<N> roll" or "<N> rolls" AND there is a TOLLCALENDERROLLS row in the SAME PAGE NEIGHBOURHOOD whose rollCount equals exactly N, those two rows belong to the SAME GROUP regardless of document order. The TOLLCALENDERKG row that sits next to that TOLLCALENDERROLLS also joins. This rule overrides "they appear consecutively" — even if other TOLL rows sit between them, the rollCount match wins.
+      Example: TOLLCALENDERROLLS qty 1 with one Roll # listed, then later TOLLRAWMATA "1 roll Steam 40 Red 5x950x12.5" → SAME GROUP. The "1" matches.
+      Counter-example: TOLLCALENDERROLLS qty 7 with seven Roll # lines, and a NEARBY TOLLRAWMATA saying "3 rolls Steam 40 Red 5x800x12.5" → DIFFERENT GROUPS. The "3" does not match "7".
+
+  (2) Calendering kg / roll-weight totals match:
+      A TOLLCALENDERKG row's kg roughly equals the SUM of weights in an adjacent TOLLCALENDERROLLS rolls list → same group.
+
+  (3) Last resort — adjacency:
+      A TOLL* row with no stronger signal joins the nearest unconsumed TOLL* neighbour, but only if that doesn't violate (1) or (2).
+
+  Once a row is consumed by a group, it cannot join another group. After running (1) through (3) over the whole document, any TOLL* row still without a group is treated as its own ORPHAN/STANDALONE group (TYPE 2 or TYPE 3).
+
+OCR INTEGRITY (CRITICAL — common failure modes to actively guard against):
+  - Dimensions strings like "5x1100x12.5" contain runs of repeated digits. NEVER drop a digit — read the width carefully. "5x1100x12.5" must NOT become "5x100x12.5". If a dimensions value is unusually small (width < 200) double-check the source.
+  - Roll counts in dimensions lines: "13 roll" or "13 rolls" must be read as 13, not 1. Be wary when a small rollCount (1, 2, 3) seems implausibly small for a kg total — re-read the digits.
+  - When parsing "<N> roll(s) <cure> <shore> <colour> <thickness>x<width>x<length>", the FIRST integer token is the roll count and the dimensions are always three numbers separated by 'x'. Width values for these rolls are typically 800–1300mm; treat 100mm as a likely OCR slip.
 Step B. After grouping, every group falls into exactly one of these three TYPES:
 
   TYPE 1 — FULL TOLLING GROUP (calendering of customer-supplied compound):
