@@ -790,20 +790,24 @@ These three rows can appear in ANY ORDER within a logical section, and any subse
 A section may also span a page break — the rolls list, dimensions line, or sibling rows may continue on the next page. Treat the document as one stream when grouping.
 
 GROUPING ALGORITHM (do this BEFORE emitting any line items):
-Step A. Walk all TOLL* rows in document order and tentatively pair them into groups. Strong grouping signals (in order of priority — apply the first one that fires for each row):
+Step A. Walk all TOLL* rows and pair them into groups using KG-TOTAL MATCHING as the primary signal. Strong grouping signals (in order of priority — apply the first one that fires for each row):
 
-  (1) STRONGEST — TOLLRAWMATA "<N> rolls" matches TOLLCALENDERROLLS rollCount=N:
-      If a TOLLRAWMATA dimensions line says "<N> roll" or "<N> rolls" AND there is a TOLLCALENDERROLLS row in the SAME PAGE NEIGHBOURHOOD whose rollCount equals exactly N, those two rows belong to the SAME GROUP regardless of document order. The TOLLCALENDERKG row that sits next to that TOLLCALENDERROLLS also joins. This rule overrides "they appear consecutively" — even if other TOLL rows sit between them, the rollCount match wins.
-      Example: TOLLCALENDERROLLS qty 1 with one Roll # listed, then later TOLLRAWMATA "1 roll Steam 40 Red 5x950x12.5" → SAME GROUP. The "1" matches.
-      Counter-example: TOLLCALENDERROLLS qty 7 with seven Roll # lines, and a NEARBY TOLLRAWMATA saying "3 rolls Steam 40 Red 5x800x12.5" → DIFFERENT GROUPS. The "3" does not match "7".
+  (1) STRONGEST — KG-TOTAL MATCH between TOLLRAWMATA and TOLLCALENDERKG:
+      If a TOLLRAWMATA row's qty (kg) is within ±10% of a TOLLCALENDERKG row's qty (kg), they belong to the SAME GROUP. The associated TOLLCALENDERROLLS (with rolls list) and the TOLLRAWMATA's dimensions line also belong to that group.
+      Calendering adds a small percentage of material (typically 3–7%), so TOLLCALENDERKG.kg is usually a few percent HIGHER than TOLLRAWMATA.kg. The match is the most reliable signal because it follows the actual material flow.
+      Examples:
+        - TOLLCALENDERKG qty 533 + TOLLCALENDERROLLS qty 7 + TOLLRAWMATA qty 505 "13 roll Steam 40 Red 5x1100x12.5" → SAME GROUP. 505 is within 10% of 533. The "13 roll" text in the TOLLRAWMATA dimensions line is a known invoice typo / OCR slip — IGNORE the "13" and use the rollCount from TOLLCALENDERROLLS (7) instead. The dimensions "Steam 40 Red 5x1100x12.5" are still correct and apply to the 7 rolls.
+        - TOLLCALENDERKG qty 63 + TOLLCALENDERROLLS qty 1 + TOLLRAWMATA qty 59 "1 roll Steam 40 Red 5x950x12.5" → SAME GROUP. 59 is within 10% of 63.
 
-  (2) Calendering kg / roll-weight totals match:
-      A TOLLCALENDERKG row's kg roughly equals the SUM of weights in an adjacent TOLLCALENDERROLLS rolls list → same group.
+  (2) Rollcount match (only when no kg match exists):
+      If a TOLLRAWMATA dimensions line says "<N> rolls" AND a TOLLCALENDERROLLS rollCount equals N AND no other TOLLRAWMATA has a kg-match for the same TOLLCALENDERKG, group them.
 
   (3) Last resort — adjacency:
       A TOLL* row with no stronger signal joins the nearest unconsumed TOLL* neighbour, but only if that doesn't violate (1) or (2).
 
   Once a row is consumed by a group, it cannot join another group. After running (1) through (3) over the whole document, any TOLL* row still without a group is treated as its own ORPHAN/STANDALONE group (TYPE 2 or TYPE 3).
+
+  CRITICAL: The "<N>" in "<N> rolls" on a TOLLRAWMATA dimensions line is UNRELIABLE — treat it as advisory only. The authoritative roll count for a group is ALWAYS the qty on TOLLCALENDERROLLS (and the number of "Roll #" detail lines beneath it).
 
 OCR INTEGRITY (CRITICAL — common failure modes to actively guard against):
   - Dimensions strings like "5x1100x12.5" contain runs of repeated digits. NEVER drop a digit — read the width carefully. "5x1100x12.5" must NOT become "5x100x12.5". If a dimensions value is unusually small (width < 200) double-check the source.
@@ -847,7 +851,7 @@ Build a product code from the dimensions line using this rule:
      "Steam cure 40 Yellow 6x1200x12"    → YSCA40
    If the dimensions line uses an unrecognised cure or colour (e.g. "Autoclave cure", "Rotocure", "Grey", "Natural"), DO NOT invent a code — use the dimensions line as-is for the description.
 
-   Final description format: "<productCode> <thickness>x<width>x<length>" when productCode is derivable (e.g. "BSCA38 6x1250x12.5"). When the productCode can't be derived OR no dimensions line exists, fall back to a sensible generic ("Calendering <kg>kg" or "Toll rolls x<count>"). NEVER use the literal "Toll Calendered Customer Material per KG", "Toll Calendered Rolls Customer Supplied Compound N/C", or "Toll Raw Compound AU SC..." text.
+   Final description format: "<productCode> <thickness>x<width>x<length>" when productCode is derivable (e.g. "BSCA38 6x1250x12.5"). When the productCode can't be derived but a dimensions line exists, use the dimensions verbatim ("Steam 40 Red 5x1100x12.5"). When NO dimensions line can be matched at all, fall back to "<kgTotal>kg / <rollCount> rolls" so the user can still identify the section. NEVER use the literal "Toll Calendered Customer Material per KG", "Toll Calendered Rolls Customer Supplied Compound N/C", or "Toll Raw Compound AU SC..." text.
 
    This per-roll rule applies ONLY to roll-form rubber (the dimensions line clearly states "<n> rolls <cure> <shore> <colour> <thickness>x<width>x<length>"). Moulded products such as Throatbushes (TBR-…/TRB-…), Frame Plate Liners (FPL-…) and Cover Plate Liners (CPL-…) are imported as complete items with no conversion — leave their line items as-is.
 
