@@ -30,6 +30,7 @@ const ITEMS_PER_PAGE = 25;
 
 import { useConfirm } from "@/app/au-rubber/hooks/useConfirm";
 import { useToast } from "@/app/components/Toast";
+import { usePersistedState } from "@/app/hooks/usePersistedState";
 import {
   auRubberApiClient,
   type RubberTaxInvoiceDto,
@@ -83,7 +84,10 @@ export default function SupplierTaxInvoicesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<TaxInvoiceStatus | "">("");
   const [currentPage, setCurrentPage] = useState(0);
-  const [pageSize, setPageSize] = useState(ITEMS_PER_PAGE);
+  const [pageSize, setPageSize] = usePersistedState<number>(
+    "auRubber.supplierTaxInvoices.pageSize",
+    ITEMS_PER_PAGE,
+  );
   const [sortColumn, setSortColumn] = useState<SortColumn>("invoiceDate");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [showUploadModal, setShowUploadModal] = useState(false);
