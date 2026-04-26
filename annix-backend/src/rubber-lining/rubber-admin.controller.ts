@@ -13,6 +13,7 @@ import {
 } from "@nestjs/common";
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { AdminAuthGuard } from "../admin/guards/admin-auth.guard";
+import { FeatureFlagsService } from "../feature-flags/feature-flags.service";
 import { RequirePermission } from "../rbac/decorators/require-permission.decorator";
 import {
   AssignUserAccessDto,
@@ -46,7 +47,10 @@ const APP_CODE = "au-rubber";
 @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
 @ApiBearerAuth()
 export class RubberAdminController {
-  constructor(private readonly rbacService: RbacService) {}
+  constructor(
+    private readonly rbacService: RbacService,
+    private readonly featureFlagsService: FeatureFlagsService,
+  ) {}
 
   @Get("access/me")
   @ApiOperation({ summary: "Get current user's access details" })
@@ -255,5 +259,41 @@ export class RubberAdminController {
   ): Promise<{ id: number; email: string; firstName: string | null; lastName: string | null }[]> {
     const query = req.query.q || "";
     return this.rbacService.searchUsers(query);
+  }
+
+  @Get("feature-flags/detailed")
+  @UseGuards(AppPermissionGuard)
+  @RequirePermission(APP_CODE, "settings:manage")
+  @ApiOperation({ summary: "List all feature flags with details (AU Rubber portal)" })
+  @ApiResponse({ status: 200, description: "Feature flags with metadata" })
+  async featureFlagsDetailed(): Promise<{
+    flags: Array<{
+      flagKey: string;
+      enabled: boolean;
+      description: string | null;
+      category: string;
+    }>;
+  }> {
+    const flags = await this.featureFlagsService.allFlagsDetailed();
+    return { flags };
+  }
+
+  @Put("feature-flags")
+  @UseGuards(AppPermissionGuard)
+  @RequirePermission(APP_CODE, "settings:manage")
+  @ApiOperation({ summary: "Toggle a feature flag (AU Rubber portal)" })
+  @ApiResponse({ status: 200, description: "Feature flag updated" })
+  async updateFeatureFlag(
+    @Body() dto: { flagKey: string; enabled: boolean },
+  ): Promise<{ flagKey: string; enabled: boolean; description: string | null; category: string }> {
+    const updated = await this.featureFlagsService.updateFlag(dto.flagKey, dto.enabled);
+    const detailed = await this.featureFlagsService.allFlagsDetailed();
+    const enriched = detailed.find((f) => f.flagKey === updated.flagKey);
+    return {
+      flagKey: updated.flagKey,
+      enabled: updated.enabled,
+      description: updated.description,
+      category: enriched?.category ?? "system",
+    };
   }
 }

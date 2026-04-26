@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { AdminModule } from "../admin/admin.module";
 import { EmailModule } from "../email/email.module";
+import { FeatureFlagsModule } from "../feature-flags/feature-flags.module";
 import { NixModule } from "../nix/nix.module";
 import { App } from "../rbac/entities/app.entity";
 import { UserAppAccess } from "../rbac/entities/user-app-access.entity";
@@ -107,6 +108,7 @@ import { WebsitePagesService } from "./website-pages.service";
   imports: [
     AdminModule,
     EmailModule,
+    FeatureFlagsModule,
     NixModule,
     RbacModule,
     SageExportModule,

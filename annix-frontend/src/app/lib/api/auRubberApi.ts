@@ -3637,14 +3637,14 @@ class AuRubberApiClient {
       category: string;
     }>;
   }> {
-    return this.request("/feature-flags/detailed");
+    return this.request("/rubber-lining/admin/feature-flags/detailed");
   }
 
   async updateFeatureFlag(
     flagKey: string,
     enabled: boolean,
   ): Promise<{ flagKey: string; enabled: boolean; description: string | null; category: string }> {
-    return this.request("/feature-flags", {
+    return this.request("/rubber-lining/admin/feature-flags", {
       method: "PUT",
       body: JSON.stringify({ flagKey, enabled }),
     });

@@ -21,7 +21,7 @@ export class AppPermissionGuard implements CanActivate {
     }
 
     const request = context.switchToHttp().getRequest();
-    const userId = request.user?.sub || request.user?.userId;
+    const userId = request.user?.sub || request.user?.userId || request.user?.id;
 
     if (!userId) {
       throw new ForbiddenException("User not authenticated");
