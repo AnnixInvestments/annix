@@ -101,6 +101,7 @@ describe("RubberExtractionOrchestratorService", () => {
         SupplierCocType.COMPOUNDER,
         "sample pdf text",
         null,
+        undefined,
       );
       expect(cocServiceMock.setExtractedData).toHaveBeenCalledWith(42, { batchNumber: "B100" });
     });
