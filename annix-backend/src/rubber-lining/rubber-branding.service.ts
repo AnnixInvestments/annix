@@ -22,15 +22,32 @@ export class RubberBrandingService {
   constructor(private readonly puppeteerPool: PuppeteerPoolService) {}
 
   async scrapeCandidates(websiteUrl: string): Promise<ScrapedBrandingCandidates> {
+    let puppeteerResult: ScrapedBrandingCandidates | null = null;
     try {
       this.logger.log(`Starting candidate scrape for ${websiteUrl}`);
-      return await this.scrapeCandidatesWithPuppeteer(websiteUrl);
+      puppeteerResult = await this.scrapeCandidatesWithPuppeteer(websiteUrl);
     } catch (error) {
       this.logger.warn(
-        `Puppeteer scraping failed, falling back to fetch-based extraction: ${error instanceof Error ? error.message : String(error)}`,
+        `Puppeteer scraping threw, falling back to fetch-based extraction: ${error instanceof Error ? error.message : String(error)}`,
       );
-      return this.scrapeCandidatesWithFetch(websiteUrl);
     }
+
+    const isEmpty = (r: ScrapedBrandingCandidates | null): boolean =>
+      !r ||
+      (r.logoCandidates.length === 0 &&
+        r.heroCandidates.length === 0 &&
+        !r.primaryColor &&
+        r.colorCandidates.length === 0);
+
+    if (!isEmpty(puppeteerResult)) {
+      return puppeteerResult as ScrapedBrandingCandidates;
+    }
+
+    this.logger.warn(
+      `Puppeteer returned no candidates for ${websiteUrl}, trying fetch-based extraction`,
+    );
+    const fetchResult = await this.scrapeCandidatesWithFetch(websiteUrl);
+    return fetchResult;
   }
 
   private async scrapeCandidatesWithFetch(websiteUrl: string): Promise<ScrapedBrandingCandidates> {
