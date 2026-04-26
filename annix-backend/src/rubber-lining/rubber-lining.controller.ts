@@ -1235,6 +1235,7 @@ Formula: totalPrice = totalKg × salePricePerKg
       coc.cocType,
       pdfText,
       correctionHints,
+      pdfBuffer,
     );
 
     const updatedCoc = await this.rubberCocService.reextractAndUpdateCoc(

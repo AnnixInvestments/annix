@@ -309,7 +309,12 @@ export class RubberInboundEmailService {
           result.cocIds = [...result.cocIds, coc.id];
           this.logger.log(`Created Supplier CoC ${coc.id} from email attachment`);
 
-          this.autoExtractCoc(coc.id, cert.supplierMapping.cocType, cert.pdfText);
+          this.autoExtractCoc(
+            coc.id,
+            cert.supplierMapping.cocType,
+            cert.pdfText,
+            cert.attachment.content,
+          );
 
           return [
             ...acc,
@@ -914,7 +919,7 @@ ${truncatedText}`;
             createdBy,
           );
 
-          this.autoExtractCoc(coc.id, detectedCocType, pdfText);
+          this.autoExtractCoc(coc.id, detectedCocType, pdfText, file.buffer);
           return [...acc, coc.id];
         },
         Promise.resolve([] as number[]),
@@ -1044,7 +1049,12 @@ ${truncatedText}`;
 
         const extractedData: Record<string, unknown> | null = await (async () => {
           try {
-            const extraction = await this.cocExtractionService.extractByType(cocType, pdfText);
+            const extraction = await this.cocExtractionService.extractByType(
+              cocType,
+              pdfText,
+              undefined,
+              file.buffer,
+            );
             const data = extraction.data as Record<string, unknown>;
             this.logger.log(
               `Extracted data for ${file.originalname}: ${JSON.stringify(data).substring(0, 200)}`,
@@ -1747,8 +1757,13 @@ ${truncatedText}`;
     this.extractionOrchestrator.triggerReadinessCheckForDeliveryNote(deliveryNoteId);
   }
 
-  private autoExtractCoc(cocId: number, cocType: SupplierCocType, pdfText: string): void {
-    this.extractionOrchestrator.triggerCocExtraction(cocId, cocType, pdfText);
+  private autoExtractCoc(
+    cocId: number,
+    cocType: SupplierCocType,
+    pdfText: string,
+    pdfBuffer?: Buffer,
+  ): void {
+    this.extractionOrchestrator.triggerCocExtraction(cocId, cocType, pdfText, pdfBuffer);
   }
 
   parseSnCompoundCode(code: string): ParsedCompoundCode | null {

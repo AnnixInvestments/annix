@@ -20,10 +20,15 @@ export class RubberExtractionOrchestratorService {
     private readonly auCocReadinessService: RubberAuCocReadinessService,
   ) {}
 
-  triggerCocExtraction(cocId: number, cocType: SupplierCocType, pdfText: string): void {
+  triggerCocExtraction(
+    cocId: number,
+    cocType: SupplierCocType,
+    pdfText: string,
+    pdfBuffer?: Buffer,
+  ): void {
     this.cocService
       .correctionHintsForCoc(cocId)
-      .then((hints) => this.cocExtractionService.extractByType(cocType, pdfText, hints))
+      .then((hints) => this.cocExtractionService.extractByType(cocType, pdfText, hints, pdfBuffer))
       .then(async (result) => {
         if (result?.data) {
           await this.cocService.setExtractedData(cocId, result.data);

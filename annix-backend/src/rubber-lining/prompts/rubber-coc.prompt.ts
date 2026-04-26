@@ -32,6 +32,27 @@ CRITICAL - SPARSE ROWS AND COLUMN ALIGNMENT:
 - Example: If headers are [Shore A, SG, Rebound, Tear, Tensile, Elongation, S'min, S'max, TS2, TC90] and a row has values at positions 1, 7, 8, 9, 10 only, then shoreA=val1, SG=null, rebound=null, tear=null, tensile=null, elongation=null, S'min=val7, S'max=val8, TS2=val9, TC90=val10
 - NEVER shift values left to fill gaps - blank cells MUST remain null
 
+CRITICAL - USE THE "COUNT" ROW AS A HARD CONSTRAINT:
+SCARABAEUS-style and similar Compounder CoCs include a summary row at the bottom of the batch table labeled "Count" that shows EXACTLY how many batches have a non-null value in each column. Example:
+  Count | 18 | 2 | 2 | 2 | 2 | 2 | 18 | 18 | 18 | 18
+  (Shore A, SG, Rebound, Tear, Tensile, Elongation, S'min, S'max, TS2, TC90)
+This is a hard constraint, not a hint. If "Count" for SG is 2, then EXACTLY 2 batches in your output must have a non-null specificGravity, and the other 16 MUST be null. Same rule for every column.
+
+Procedure:
+1. Read the Count row first. Note the per-column counts.
+2. Read the Mean / Median / Min / Max rows if present — these confirm which columns have summary statistics (i.e. populated batches).
+3. As you transcribe each batch row, identify visually which cells are populated for THAT batch. Do NOT extrapolate from neighbouring batches.
+4. After transcribing all batches, verify per-column non-null counts match the Count row. If they don't match, RE-READ the source — your column alignment is wrong.
+
+If the document does not have a Count row, fall back to the per-row alignment rules above.
+
+CRITICAL - NEVER COPY VALUES BETWEEN BATCHES:
+Each batch's row contains its own measurements only. Never:
+- Copy a value from batch N's row into batch N+1's row to fill a gap
+- "Carry forward" a value from a previous batch when the current row is blank for that column
+- Use a Mean/Median/Min/Max value as a per-batch value
+If a batch row has a blank cell, the field MUST be null for that batch — even if other batches have values in the same column. Each row is read independently.
+
 CRITICAL - SHARED vs PER-BATCH VALUES:
 - Some documents show physical properties (SG, Tensile, Elongation, etc.) only once for the entire group, not per-batch
 - When a value appears in only ONE batch row but the column header exists, check if it is a SHARED value for all batches

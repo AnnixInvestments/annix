@@ -239,6 +239,119 @@ export class RubberCocExtractionService {
     };
   }
 
+  async extractCompounderCocFromImages(
+    pdfBuffer: Buffer,
+    correctionHints?: string | null,
+  ): Promise<{
+    data: ExtractedCocData;
+    tokensUsed?: number;
+    processingTimeMs: number;
+  }> {
+    const startTime = nowMillis();
+    this.logger.log("Extracting compounder CoC data via Vision OCR...");
+
+    if (!this.apiKey) {
+      throw new Error("GEMINI_API_KEY not configured");
+    }
+
+    const systemPrompt = correctionHints
+      ? `${COMPOUNDER_COC_SYSTEM_PROMPT}\n\n${correctionHints}`
+      : COMPOUNDER_COC_SYSTEM_PROMPT;
+
+    const images = await this.convertPdfToImages(pdfBuffer);
+    this.logger.log(`Converted compounder CoC PDF to ${images.length} image(s) for OCR extraction`);
+
+    const response = await this.callGeminiWithImages(
+      systemPrompt,
+      "Please extract structured data from this Compounder Certificate of Conformance image. The batch table is the most important element — read column headers first, then each batch row preserving column alignment (blanks must remain null). Return ONLY a valid JSON object with the extracted data.",
+      images,
+      "compounder-coc-ocr-extraction",
+    );
+
+    const processingTimeMs = nowMillis() - startTime;
+    this.logger.log(`Compounder CoC extracted via Vision in ${processingTimeMs}ms`);
+
+    const extractedData = response.data as ExtractedCocData;
+
+    const cocNumber = this.generateCompounderCocNumber(extractedData.batchNumbers ?? null);
+    if (cocNumber) {
+      extractedData.cocNumber = cocNumber;
+      this.logger.log(`Generated Compounder CoC number from batches: ${cocNumber}`);
+    }
+
+    if (extractedData.compoundCode) {
+      extractedData.compoundCode = this.cleanCompounderCompoundCode(extractedData.compoundCode);
+      this.logger.log(`Cleaned compound code: ${extractedData.compoundCode}`);
+    }
+
+    this.validateBatchData(extractedData);
+    this.warnOnSuspiciousBatchColumnCounts(extractedData);
+
+    return {
+      data: extractedData,
+      tokensUsed: response.tokensUsed,
+      processingTimeMs,
+    };
+  }
+
+  private warnOnSuspiciousBatchColumnCounts(data: ExtractedCocData): void {
+    const batches = data.batches;
+    if (!batches || batches.length < 3) return;
+
+    type ColumnKey =
+      | "shoreA"
+      | "specificGravity"
+      | "reboundPercent"
+      | "tearStrengthKnM"
+      | "tensileStrengthMpa"
+      | "elongationPercent"
+      | "rheometerSMin"
+      | "rheometerSMax"
+      | "rheometerTs2"
+      | "rheometerTc90";
+
+    const cols: ColumnKey[] = [
+      "shoreA",
+      "specificGravity",
+      "reboundPercent",
+      "tearStrengthKnM",
+      "tensileStrengthMpa",
+      "elongationPercent",
+      "rheometerSMin",
+      "rheometerSMax",
+      "rheometerTs2",
+      "rheometerTc90",
+    ];
+
+    const counts = cols.map((col) => ({
+      col,
+      filled: batches.filter((b) => b[col] !== null && b[col] !== undefined).length,
+    }));
+
+    const physicalCols = counts.filter((c) =>
+      [
+        "specificGravity",
+        "reboundPercent",
+        "tearStrengthKnM",
+        "tensileStrengthMpa",
+        "elongationPercent",
+      ].includes(c.col),
+    );
+
+    const allFilled = physicalCols.every((c) => c.filled === batches.length);
+    const someFilled = physicalCols.some((c) => c.filled > 0 && c.filled < batches.length);
+
+    if (allFilled && batches.length >= 8) {
+      this.logger.warn(
+        `Compounder CoC: every batch (${batches.length}) has values for SG/Rebound/Tear/Tensile/Elongation. This is unusual — most CoCs only test a sample (e.g. 2 of 18 batches). Possible column-shift hallucination — verify against source PDF before approving. Counts: ${counts.map((c) => `${c.col}=${c.filled}`).join(", ")}`,
+      );
+    } else if (someFilled) {
+      this.logger.log(
+        `Compounder CoC sparse-row pattern OK. Counts: ${counts.map((c) => `${c.col}=${c.filled}`).join(", ")}`,
+      );
+    }
+  }
+
   async extractCalendererCoc(
     pdfText: string,
     correctionHints?: string | null,
@@ -798,12 +911,16 @@ Return ONLY a valid JSON object of this exact shape (no extra fields, no comment
     cocType: SupplierCocType,
     pdfText: string,
     correctionHints?: string | null,
+    pdfBuffer?: Buffer,
   ): Promise<{
     data: ExtractedCocData;
     tokensUsed?: number;
     processingTimeMs: number;
   }> {
     if (cocType === SupplierCocType.COMPOUNDER) {
+      if (pdfBuffer) {
+        return this.extractCompounderCocFromImages(pdfBuffer, correctionHints);
+      }
       return this.extractCompounderCoc(pdfText, correctionHints);
     } else if (cocType === SupplierCocType.CALENDER_ROLL) {
       return this.extractCalenderRollCoc(pdfText, correctionHints);
