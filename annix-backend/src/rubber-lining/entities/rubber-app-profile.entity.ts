@@ -47,6 +47,15 @@ export class RubberAppProfile {
   @Column({ name: "logo_url", type: "varchar", length: 500, nullable: true })
   logoUrl: string | null;
 
+  @Column({ name: "hero_url", type: "varchar", length: 500, nullable: true })
+  heroUrl: string | null;
+
+  @Column({ name: "primary_color", type: "varchar", length: 16, nullable: true })
+  primaryColor: string | null;
+
+  @Column({ name: "accent_color", type: "varchar", length: 16, nullable: true })
+  accentColor: string | null;
+
   @UpdateDateColumn({ name: "updated_at" })
   updatedAt: Date;
 }

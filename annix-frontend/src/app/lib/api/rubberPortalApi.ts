@@ -20,6 +20,9 @@ export interface RubberAppProfileDto {
   email: string | null;
   websiteUrl: string | null;
   logoUrl: string | null;
+  heroUrl: string | null;
+  primaryColor: string | null;
+  accentColor: string | null;
 }
 
 export interface RubberProductCodingDto {

@@ -9,6 +9,8 @@ import {
   useMemo,
   useState,
 } from "react";
+import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
+import { auRubberTokenStore } from "@/app/lib/api/portalTokenStores";
 import { corpId } from "@/app/lib/corpId";
 import { nowMillis } from "@/app/lib/datetime";
 
@@ -95,6 +97,28 @@ export function AuRubberBrandingProvider(props: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    if (!isLoaded || !auRubberTokenStore.isAuthenticated()) return;
+    const controller = new AbortController();
+    auRubberApiClient
+      .appProfile()
+      .then((profile) => {
+        if (controller.signal.aborted) return;
+        const serverBranding: AuRubberBranding = {
+          primaryColor: profile.primaryColor?.trim() || defaultBranding.primaryColor,
+          accentColor: profile.accentColor?.trim() || defaultBranding.accentColor,
+          logoUrl: profile.logoUrl,
+          heroUrl: profile.heroUrl,
+          updatedAt: nowMillis(),
+        };
+        setBrandingState(serverBranding);
+      })
+      .catch(() => {
+        // Server fetch failed — keep localStorage cache
+      });
+    return () => controller.abort();
+  }, [isLoaded]);
+
+  useEffect(() => {
     // eslint-disable-next-line no-restricted-syntax -- SSR guard
     if (isLoaded && typeof window !== "undefined") {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(branding));
@@ -102,11 +126,38 @@ export function AuRubberBrandingProvider(props: { children: ReactNode }) {
   }, [branding, isLoaded]);
 
   const setBranding = useCallback((updates: Partial<AuRubberBranding>) => {
-    setBrandingState((prev) => ({ ...prev, ...updates, updatedAt: nowMillis() }));
+    setBrandingState((prev) => {
+      const next = { ...prev, ...updates, updatedAt: nowMillis() };
+      if (auRubberTokenStore.isAuthenticated()) {
+        auRubberApiClient
+          .updateAppProfile({
+            primaryColor: next.primaryColor,
+            accentColor: next.accentColor,
+            logoUrl: next.logoUrl,
+            heroUrl: next.heroUrl,
+          })
+          .catch(() => {
+            // Best-effort persist — localStorage still holds the latest
+          });
+      }
+      return next;
+    });
   }, []);
 
   const resetBranding = useCallback(() => {
     setBrandingState(defaultBranding);
+    if (auRubberTokenStore.isAuthenticated()) {
+      auRubberApiClient
+        .updateAppProfile({
+          primaryColor: null,
+          accentColor: null,
+          logoUrl: null,
+          heroUrl: null,
+        })
+        .catch(() => {
+          // Best-effort
+        });
+    }
   }, []);
 
   const colors = useMemo(

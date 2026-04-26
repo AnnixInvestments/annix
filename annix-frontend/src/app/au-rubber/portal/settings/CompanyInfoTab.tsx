@@ -23,6 +23,9 @@ const EMPTY_PROFILE: RubberAppProfileDto = {
   email: null,
   websiteUrl: null,
   logoUrl: null,
+  heroUrl: null,
+  primaryColor: null,
+  accentColor: null,
 };
 
 function TextField(props: {
