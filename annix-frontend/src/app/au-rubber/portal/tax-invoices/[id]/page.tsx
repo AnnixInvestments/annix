@@ -697,26 +697,51 @@ export default function TaxInvoiceDetailPage() {
                 </div>
               </div>
               {invoice.extractedData.lineItems && invoice.extractedData.lineItems.length <= 1 ? (
-                <div className="grid grid-cols-3 gap-4 pt-2 border-t border-gray-100">
-                  <div>
-                    <dt className="text-sm font-medium text-gray-500">Quantity</dt>
-                    <dd className="mt-1 text-lg font-semibold text-gray-900">
-                      {invoice.numberOfRolls != null ? invoice.numberOfRolls : "-"}
-                    </dd>
+                <>
+                  <div className="grid grid-cols-3 gap-4 pt-2 border-t border-gray-100">
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500">Quantity</dt>
+                      <dd className="mt-1 text-lg font-semibold text-gray-900">
+                        {invoice.numberOfRolls != null ? invoice.numberOfRolls : "-"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500">Unit</dt>
+                      <dd className="mt-1 text-lg font-semibold text-gray-900">
+                        {rawInvoiceUnit2 || "-"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500">Cost per Unit</dt>
+                      <dd className="mt-1 text-lg font-semibold text-gray-900">
+                        {formatCurrency(invoice.costPerUnit)}
+                      </dd>
+                    </div>
                   </div>
-                  <div>
-                    <dt className="text-sm font-medium text-gray-500">Unit</dt>
-                    <dd className="mt-1 text-lg font-semibold text-gray-900">
-                      {rawInvoiceUnit2 || "-"}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-sm font-medium text-gray-500">Cost per Unit</dt>
-                    <dd className="mt-1 text-lg font-semibold text-gray-900">
-                      {formatCurrency(invoice.costPerUnit)}
-                    </dd>
-                  </div>
-                </div>
+                  {(() => {
+                    const singleLine = invoice.extractedData.lineItems[0];
+                    const singleRolls = singleLine?.rolls;
+                    if (!singleLine || !singleRolls || singleRolls.length === 0) return null;
+                    return (
+                      <div className="pt-2 border-t border-gray-100">
+                        <dt className="text-sm font-medium text-gray-500 mb-2">
+                          Rolls ({singleRolls.length})
+                        </dt>
+                        <dd>
+                          <LineItemRollsPanel
+                            invoiceId={invoice.id}
+                            invoiceType={invoice.invoiceType}
+                            lineIdx={0}
+                            description={singleLine.description}
+                            rolls={singleRolls}
+                            isApproved={invoice.status === "APPROVED"}
+                            onSaved={fetchData}
+                          />
+                        </dd>
+                      </div>
+                    );
+                  })()}
+                </>
               ) : null}
               <div className="grid grid-cols-3 gap-4 pt-2 border-t border-gray-100">
                 <div>

@@ -816,7 +816,7 @@ export class RubberRollStockService {
   private async sNInvoiceForCompound(
     snCompanyId: number,
     compoundCode: string | null,
-    productionDate: Date | null,
+    productionDate: Date | string | null,
   ): Promise<{ invoice: RubberTaxInvoice; lineUnitPrice: number } | null> {
     const candidates = await this.taxInvoiceRepository
       .createQueryBuilder("inv")
@@ -841,7 +841,14 @@ export class RubberRollStockService {
     };
     const colourTokens = colourCode ? (colourMap[colourCode] ?? []) : [];
 
-    const productionMs = productionDate ? productionDate.getTime() : null;
+    const toMillis = (value: Date | string | null | undefined): number | null => {
+      if (!value) return null;
+      if (value instanceof Date) return value.getTime();
+      const parsed = fromISO(value);
+      return parsed.isValid ? parsed.toMillis() : null;
+    };
+
+    const productionMs = toMillis(productionDate);
     const scoreCandidate = (inv: RubberTaxInvoice): number | null => {
       const lineItems = inv.extractedData?.lineItems ?? [];
       const matchLine = lineItems.find((li) => {
@@ -852,8 +859,9 @@ export class RubberRollStockService {
       });
       if (!matchLine || matchLine.unitPrice == null) return null;
       let score = 1000;
-      if (productionMs && inv.invoiceDate) {
-        const diffDays = (inv.invoiceDate.getTime() - productionMs) / (1000 * 60 * 60 * 24);
+      const invoiceMs = toMillis(inv.invoiceDate);
+      if (productionMs && invoiceMs) {
+        const diffDays = (invoiceMs - productionMs) / (1000 * 60 * 60 * 24);
         if (diffDays < -1) return null;
         if (diffDays > 14) score -= 100;
         else score += 50 - Math.abs(diffDays);
