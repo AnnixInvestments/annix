@@ -953,8 +953,13 @@ export class RubberTaxInvoiceService {
     }
 
     const subtotalExVat = data.subtotal;
+    const onlyLineItem = data.lineItems && data.lineItems.length === 1 ? data.lineItems[0] : null;
 
-    const extractedQuantity = data.productQuantity || null;
+    const extractedQuantity =
+      data.productQuantity ||
+      (onlyLineItem && onlyLineItem.quantity != null && onlyLineItem.quantity > 0
+        ? onlyLineItem.quantity
+        : null);
     const extractedUnit = data.productUnit || null;
 
     const textToSearch =
@@ -970,10 +975,12 @@ export class RubberTaxInvoiceService {
       data.productSummary ||
       (data.lineItems && data.lineItems.length > 0 ? data.lineItems[0].description : null);
 
-    const costPerUnit =
-      subtotalExVat != null && quantity != null && quantity > 0
-        ? Math.round((subtotalExVat / quantity) * 100) / 100
-        : subtotalExVat;
+    let costPerUnit: number | null = null;
+    if (onlyLineItem && onlyLineItem.unitPrice != null && onlyLineItem.unitPrice > 0) {
+      costPerUnit = onlyLineItem.unitPrice;
+    } else if (subtotalExVat != null && quantity != null && quantity > 0) {
+      costPerUnit = Math.round((subtotalExVat / quantity) * 100) / 100;
+    }
 
     return {
       productDescription,
@@ -1000,6 +1007,10 @@ export class RubberTaxInvoiceService {
     const kgMatch = text.match(/(\d[\d,.]*)\s*kg/i);
     if (kgMatch) {
       return { quantity: Number(kgMatch[1].replace(/,/g, "")), unit: "kg" };
+    }
+
+    if (aiQuantity != null) {
+      return { quantity: aiQuantity, unit: aiUnit ? aiUnit.toLowerCase() : "kg" };
     }
 
     return { quantity: aiQuantity, unit: aiUnit };
