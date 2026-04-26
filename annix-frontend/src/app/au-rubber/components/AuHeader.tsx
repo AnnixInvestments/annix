@@ -452,8 +452,10 @@ export function AuHeader(props: AuHeaderProps) {
     user?.firstName && user?.lastName
       ? `${user.firstName} ${user.lastName}`
       : rawEmailSplitAt0 || "AU Rubber";
-  const firstInitial = rawFirstNameAt0 || user?.email?.[0] || "A";
-  const lastInitial = rawLastNameAt0 || user?.email?.[1] || "U";
+  const emailChar0 = rawUserEmail == null ? null : rawUserEmail[0];
+  const emailChar1 = rawUserEmail == null ? null : rawUserEmail[1];
+  const firstInitial = rawFirstNameAt0 || emailChar0 || "A";
+  const lastInitial = rawLastNameAt0 || emailChar1 || "U";
   const userInitials = `${firstInitial}${lastInitial}`.toUpperCase();
 
   return (
@@ -469,8 +471,8 @@ export function AuHeader(props: AuHeaderProps) {
             AU
           </div>
         )}
-        <span className="ml-2 text-black text-base font-medium hidden sm:inline">Rubber App</span>
-        <span className="ml-1.5 text-black/50 text-xs font-mono hidden sm:inline">
+        <span className="ml-2 text-white text-base font-medium hidden sm:inline">Rubber App</span>
+        <span className="ml-1.5 text-white/50 text-xs font-mono hidden sm:inline">
           v{AU_RUBBER_VERSION}
         </span>
       </div>
@@ -482,8 +484,8 @@ export function AuHeader(props: AuHeaderProps) {
             href={item.href}
             className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 text-sm font-medium whitespace-nowrap rounded-md transition-colors ${
               isActive(item.href)
-                ? "bg-black/20 text-black"
-                : "text-black/70 hover:bg-black/10 hover:text-black"
+                ? "bg-white/20 text-white"
+                : "text-white/70 hover:bg-white/10 hover:text-white"
             }`}
           >
             <span className="[&>svg]:w-4 [&>svg]:h-4">{item.icon}</span>
@@ -502,8 +504,8 @@ export function AuHeader(props: AuHeaderProps) {
               onClick={() => handleSectionClick(section.label)}
               className={`w-full flex items-center justify-center gap-1.5 px-2 py-1.5 text-sm font-medium whitespace-nowrap rounded-md transition-colors ${
                 isSectionActive(section) || hoveredSection === section.label
-                  ? "bg-black/20 text-black"
-                  : "text-black/70 hover:bg-black/10 hover:text-black"
+                  ? "bg-white/20 text-white"
+                  : "text-white/70 hover:bg-white/10 hover:text-white"
               }`}
             >
               <span className="[&>svg]:w-4 [&>svg]:h-4">{section.icon}</span>
@@ -546,7 +548,7 @@ export function AuHeader(props: AuHeaderProps) {
         <div className="hidden sm:block">
           <div className="relative">
             <svg
-              className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400"
+              className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-white/60"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -568,8 +570,8 @@ export function AuHeader(props: AuHeaderProps) {
           </div>
         </div>
         <ThemeToggle
-          className="p-2 text-black hover:bg-black hover:bg-opacity-10 rounded-lg transition-colors"
-          iconClassName="w-5 h-5 text-black"
+          className="p-2 text-white hover:bg-white hover:bg-opacity-10 rounded-lg transition-colors"
+          iconClassName="w-5 h-5 text-white"
         />
         <div className="relative" ref={userMenuRef}>
           <button
