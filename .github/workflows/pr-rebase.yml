@@ -1,0 +1,273 @@
+name: PR Rebase (Claude-assisted)
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request:
+    types: [labeled]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "PR number to rebase"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  resolve-target:
+    name: Resolve PR target
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' && github.event.label.name == 'needs-rebase') ||
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request != null && startsWith(github.event.comment.body, '/rebase'))
+    outputs:
+      pr_number: ${{ steps.resolve.outputs.pr_number }}
+      head_ref: ${{ steps.resolve.outputs.head_ref }}
+      head_repo: ${{ steps.resolve.outputs.head_repo }}
+    steps:
+      - id: resolve
+        env:
+          GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            PR_NUM="${{ inputs.pr_number }}"
+          elif [ "${{ github.event_name }}" = "pull_request" ]; then
+            PR_NUM="${{ github.event.pull_request.number }}"
+          else
+            PR_NUM="${{ github.event.issue.number }}"
+          fi
+
+          PR_JSON=$(gh pr view "$PR_NUM" --repo "${{ github.repository }}" --json headRefName,headRepositoryOwner,headRepository)
+          HEAD_REF=$(echo "$PR_JSON" | jq -r '.headRefName')
+          HEAD_REPO_OWNER=$(echo "$PR_JSON" | jq -r '.headRepositoryOwner.login')
+          HEAD_REPO_NAME=$(echo "$PR_JSON" | jq -r '.headRepository.name')
+
+          echo "pr_number=$PR_NUM" >> "$GITHUB_OUTPUT"
+          echo "head_ref=$HEAD_REF" >> "$GITHUB_OUTPUT"
+          echo "head_repo=${HEAD_REPO_OWNER}/${HEAD_REPO_NAME}" >> "$GITHUB_OUTPUT"
+
+  attempt-rebase:
+    name: Attempt clean rebase
+    runs-on: ubuntu-latest
+    needs: resolve-target
+    outputs:
+      result: ${{ steps.rebase.outputs.result }}
+      conflict_files: ${{ steps.rebase.outputs.conflict_files }}
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ needs.resolve-target.outputs.head_repo }}
+          ref: ${{ needs.resolve-target.outputs.head_ref }}
+          token: ${{ secrets.PROJECT_TOKEN }}
+          fetch-depth: 0
+
+      - name: Configure git identity
+        run: |
+          git config user.name "annix-bot"
+          git config user.email "bot@annix.co.za"
+
+      - name: Add upstream and fetch main
+        run: |
+          git remote add upstream "https://x-access-token:${{ secrets.PROJECT_TOKEN }}@github.com/${{ github.repository }}.git" 2>/dev/null || true
+          git fetch upstream main
+
+      - name: Attempt rebase
+        id: rebase
+        run: |
+          if git rebase upstream/main; then
+            echo "result=clean" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          CONFLICTED=$(git diff --name-only --diff-filter=U | tr '\n' ' ' | sed 's/ $//')
+          echo "result=conflict" >> "$GITHUB_OUTPUT"
+          echo "conflict_files=${CONFLICTED}" >> "$GITHUB_OUTPUT"
+          echo "Conflicts in: ${CONFLICTED}"
+
+      - name: Push rebased branch
+        if: steps.rebase.outputs.result == 'clean'
+        run: |
+          git push --force-with-lease origin HEAD:"${{ needs.resolve-target.outputs.head_ref }}"
+
+      - name: Comment success
+        if: steps.rebase.outputs.result == 'clean'
+        env:
+          GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+          PR_NUM: ${{ needs.resolve-target.outputs.pr_number }}
+        run: |
+          gh pr edit "$PR_NUM" --repo "${{ github.repository }}" --remove-label needs-rebase 2>/dev/null || true
+          gh pr edit "$PR_NUM" --repo "${{ github.repository }}" --remove-label behind-main 2>/dev/null || true
+          gh pr comment "$PR_NUM" --repo "${{ github.repository }}" --body "$(cat <<'EOF'
+          <!-- pr-rebase-success -->
+          ## Rebased onto current `main`
+
+          The branch had no conflicts. Pushed with `--force-with-lease`. Staging redeploy will trigger automatically.
+          EOF
+          )"
+
+      - name: Save conflict context
+        if: steps.rebase.outputs.result == 'conflict'
+        run: |
+          mkdir -p /tmp/conflict-context
+          git diff > /tmp/conflict-context/conflict-diff.patch || true
+          for f in $(git diff --name-only --diff-filter=U); do
+            mkdir -p "/tmp/conflict-context/files/$(dirname "$f")"
+            cp "$f" "/tmp/conflict-context/files/$f"
+          done
+          git rebase --abort 2>/dev/null || true
+
+      - name: Upload conflict context
+        if: steps.rebase.outputs.result == 'conflict'
+        uses: actions/upload-artifact@v4
+        with:
+          name: conflict-context
+          path: /tmp/conflict-context
+
+  claude-resolve:
+    name: Claude conflict resolution
+    runs-on: ubuntu-latest
+    needs: [resolve-target, attempt-rebase]
+    if: needs.attempt-rebase.outputs.result == 'conflict'
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ needs.resolve-target.outputs.head_repo }}
+          ref: ${{ needs.resolve-target.outputs.head_ref }}
+          token: ${{ secrets.PROJECT_TOKEN }}
+          fetch-depth: 0
+
+      - name: Configure git identity
+        run: |
+          git config user.name "annix-bot"
+          git config user.email "bot@annix.co.za"
+
+      - name: Add upstream
+        run: |
+          git remote add upstream "https://x-access-token:${{ secrets.PROJECT_TOKEN }}@github.com/${{ github.repository }}.git" 2>/dev/null || true
+          git fetch upstream main
+
+      - uses: ./.github/actions/setup-monorepo
+
+      - name: Fetch PR description
+        id: pr-desc
+        env:
+          GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+          PR_NUM: ${{ needs.resolve-target.outputs.pr_number }}
+        run: |
+          PR_BODY=$(gh pr view "$PR_NUM" --repo "${{ github.repository }}" --json title,body --jq '"## " + .title + "\n\n" + .body')
+          {
+            echo "body<<PR_BODY_EOF"
+            echo "$PR_BODY"
+            echo "PR_BODY_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Run Claude to resolve conflicts
+        id: claude
+        continue-on-error: true
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ secrets.PROJECT_TOKEN }}
+          claude_args: "--allowedTools Bash,Read,Edit,MultiEdit,Write,Glob,Grep,LS,TodoRead,TodoWrite"
+          prompt: |
+            You are operating on a PR rebase that hit conflicts. Your job: resolve the conflicts honestly, preserving the PR's stated intent, and obeying CLAUDE.md and FEEDBACK_CONTEXT.md.
+
+            Read these files first:
+            - `CLAUDE.md` (project conventions)
+            - `.github/FEEDBACK_CONTEXT.md` (especially the "Scope Discipline" section — do NOT bundle infra changes, do NOT modify `packages/*/package.json` `exports` fields)
+
+            ## PR description (the stated intent)
+            ${{ steps.pr-desc.outputs.body }}
+
+            ## Steps you must run
+
+            1. `git rebase upstream/main`
+            2. For each conflicted file:
+               - Read both sides of the conflict markers
+               - Decide which side, or what merge, preserves the PR's stated intent without violating Scope Discipline
+               - Resolve by editing the file (remove all conflict markers)
+               - `git add <file>`
+            3. `git rebase --continue` — repeat until rebase completes
+            4. Run validation: `npx biome check --write --unsafe .`
+            5. Run validation: `pnpm --filter annix-backend exec tsc --noEmit`
+            6. Run validation: `pnpm --filter annix-frontend type-check`
+            7. Run validation: `pnpm --filter annix-backend test`
+            8. If any validation fails, attempt one round of fixes. If still failing, exit 1.
+            9. `git push --force-with-lease origin HEAD:${{ needs.resolve-target.outputs.head_ref }}`
+
+            ## Hard rules
+
+            - Do NOT modify `packages/*/package.json` `exports` fields — that change has crashed prod twice.
+            - Do NOT introduce changes that aren't strictly required to resolve the conflict. No "while I'm here" cleanups.
+            - If a conflict is genuinely subjective (business logic, not just a SWC hoist or import order), bias toward keeping the PR's side, since the PR's intent is the load-bearing input.
+            - If you cannot resolve safely, exit 1 with a brief explanation written to `/tmp/claude-rebase-failure.md`.
+
+      - name: Comment conflict-resolved success
+        if: steps.claude.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+          PR_NUM: ${{ needs.resolve-target.outputs.pr_number }}
+          CONFLICT_FILES: ${{ needs.attempt-rebase.outputs.conflict_files }}
+        run: |
+          gh pr edit "$PR_NUM" --repo "${{ github.repository }}" --remove-label needs-rebase 2>/dev/null || true
+          gh pr edit "$PR_NUM" --repo "${{ github.repository }}" --remove-label rebase-needs-human 2>/dev/null || true
+          gh pr edit "$PR_NUM" --repo "${{ github.repository }}" --remove-label behind-main 2>/dev/null || true
+
+          gh pr comment "$PR_NUM" --repo "${{ github.repository }}" --body "$(cat <<EOF
+          <!-- pr-rebase-claude-resolved -->
+          ## Rebased — Conflicts Resolved by Claude
+
+          The branch had conflicts in:
+          \`\`\`
+          ${CONFLICT_FILES}
+          \`\`\`
+
+          Claude resolved them per CLAUDE.md and FEEDBACK_CONTEXT.md guidance, ran biome + tsc + tests, and force-pushed. **Please review the resolution diff before merging** — Claude resolution is best-effort.
+
+          Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          EOF
+          )"
+
+      - name: Mark needs-human on Claude failure
+        if: steps.claude.outcome != 'success'
+        env:
+          GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+          PR_NUM: ${{ needs.resolve-target.outputs.pr_number }}
+          CONFLICT_FILES: ${{ needs.attempt-rebase.outputs.conflict_files }}
+        run: |
+          gh label create rebase-needs-human --repo "${{ github.repository }}" --color B60205 --description "Claude could not resolve rebase conflicts — needs human" 2>/dev/null || true
+          gh pr edit "$PR_NUM" --repo "${{ github.repository }}" --add-label rebase-needs-human || true
+
+          gh pr comment "$PR_NUM" --repo "${{ github.repository }}" --body "$(cat <<EOF
+          <!-- pr-rebase-claude-failed -->
+          ## Rebase Needs Human
+
+          Conflicts in:
+          \`\`\`
+          ${CONFLICT_FILES}
+          \`\`\`
+
+          Claude attempted resolution but could not produce a passing rebase. Possible reasons: subjective business-logic conflict, validation failures (biome/tsc/tests) it could not fix, or scope-discipline rule blocked the change.
+
+          Label \`rebase-needs-human\` applied. Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+          Resolve manually:
+          \`\`\`
+          git fetch origin
+          git rebase origin/main
+          # resolve conflicts
+          git push --force-with-lease
+          \`\`\`
+          EOF
+          )"

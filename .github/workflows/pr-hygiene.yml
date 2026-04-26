@@ -1,0 +1,110 @@
+name: PR Hygiene Sweep
+
+on:
+  schedule:
+    # Cluster at 08:00 UTC with the morning Neon-friendly batch (Annix CLAUDE.md
+    # cron policy). Daily — never increase frequency without checking the Neon
+    # compute budget.
+    - cron: "0 8 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  sweep:
+    name: Sweep open PRs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Ensure hygiene labels exist
+        env:
+          GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+        run: |
+          gh label create behind-main --repo "${{ github.repository }}" --color BFD4F2 --description "PR branch is behind origin/main and needs rebase" 2>/dev/null || true
+          gh label create stale-7d --repo "${{ github.repository }}" --color FBCA04 --description "PR has been idle for 7 days" 2>/dev/null || true
+          gh label create stale-14d --repo "${{ github.repository }}" --color D93F0B --description "PR has been idle for 14 days" 2>/dev/null || true
+          gh label create stale-21d --repo "${{ github.repository }}" --color B60205 --description "PR has been idle for 21 days — auto-close pending" 2>/dev/null || true
+          gh label create keep --repo "${{ github.repository }}" --color 0E8A16 --description "Exempt this PR from auto-close" 2>/dev/null || true
+          gh label create needs-rebase --repo "${{ github.repository }}" --color D93F0B --description "Trigger pr-rebase workflow on next sweep" 2>/dev/null || true
+
+      - name: Sweep PRs
+        env:
+          GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+        run: |
+          NOW=$(date -u +%s)
+          DAY=86400
+
+          gh pr list --repo "${{ github.repository }}" --state open --limit 200 \
+            --json number,headRefOid,updatedAt,labels,title,author > prs.json
+
+          jq -c '.[]' prs.json | while read -r PR; do
+            PR_NUM=$(echo "$PR" | jq -r '.number')
+            HEAD_SHA=$(echo "$PR" | jq -r '.headRefOid')
+            UPDATED_AT=$(echo "$PR" | jq -r '.updatedAt')
+            LABELS=$(echo "$PR" | jq -r '.labels[].name' | tr '\n' ',')
+            TITLE=$(echo "$PR" | jq -r '.title')
+
+            UPDATED_TS=$(date -u -d "$UPDATED_AT" +%s 2>/dev/null || python3 -c "from datetime import datetime; import sys; print(int(datetime.fromisoformat('$UPDATED_AT'.replace('Z', '+00:00')).timestamp()))")
+            AGE_DAYS=$(( (NOW - UPDATED_TS) / DAY ))
+
+            echo "PR #${PR_NUM} (${TITLE}) — age ${AGE_DAYS}d, labels: ${LABELS}"
+
+            git fetch origin "pull/${PR_NUM}/head" --quiet 2>/dev/null || true
+            MERGE_BASE=$(git merge-base "$HEAD_SHA" origin/main 2>/dev/null || echo "")
+            MAIN_SHA=$(git rev-parse origin/main)
+
+            if [ -n "$MERGE_BASE" ] && [ "$MERGE_BASE" != "$MAIN_SHA" ]; then
+              if ! echo ",$LABELS," | grep -q ',behind-main,'; then
+                gh pr edit "$PR_NUM" --repo "${{ github.repository }}" --add-label behind-main || true
+                echo "  → applied behind-main"
+              fi
+            else
+              if echo ",$LABELS," | grep -q ',behind-main,'; then
+                gh pr edit "$PR_NUM" --repo "${{ github.repository }}" --remove-label behind-main 2>/dev/null || true
+                echo "  → removed behind-main (now up-to-date)"
+              fi
+            fi
+
+            HAS_KEEP=$(echo ",$LABELS," | grep -q ',keep,' && echo "yes" || echo "no")
+
+            if [ "$AGE_DAYS" -ge 21 ] && [ "$HAS_KEEP" = "no" ]; then
+              gh pr close "$PR_NUM" --repo "${{ github.repository }}" --comment "Auto-closing after 21 days of inactivity (no \`keep\` label). Reopen if still wanted — see CONTRIBUTING.md for the PR hygiene policy." || true
+              echo "  → auto-closed (stale-21d, no keep)"
+              continue
+            fi
+
+            if [ "$AGE_DAYS" -ge 14 ]; then
+              if ! echo ",$LABELS," | grep -q ',stale-14d,'; then
+                gh pr edit "$PR_NUM" --repo "${{ github.repository }}" --add-label stale-14d --remove-label stale-7d 2>/dev/null || true
+                echo "  → applied stale-14d"
+              fi
+            elif [ "$AGE_DAYS" -ge 7 ]; then
+              if ! echo ",$LABELS," | grep -q ',stale-7d,' && ! echo ",$LABELS," | grep -q ',stale-14d,'; then
+                gh pr edit "$PR_NUM" --repo "${{ github.repository }}" --add-label stale-7d || true
+                gh pr comment "$PR_NUM" --repo "${{ github.repository }}" --body "$(cat <<EOF
+          <!-- pr-hygiene-stale-7d -->
+          ## Still wanted?
+
+          This PR has been idle for 7 days. To keep it open past 21 days, add the \`keep\` label or push an update.
+
+          - **Add \`keep\`** if you intend to land this and just need more time
+          - **Comment \`/rebase\`** to bring the branch up to current \`main\`
+          - **Close the PR** if it's no longer needed
+
+          Without action, the PR will be auto-closed at 21 days idle.
+          EOF
+          )" || true
+                echo "  → applied stale-7d (with comment)"
+              fi
+            fi
+          done
