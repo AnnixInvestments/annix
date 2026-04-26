@@ -36,6 +36,6 @@ export async function registerPasskey(
 
     return (await verifyResponse.json()) as PasskeySummary;
   } catch (error) {
-    throw classifyPasskeyError(error);
+    throw classifyPasskeyError(error, "register");
   }
 }

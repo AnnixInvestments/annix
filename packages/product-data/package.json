@@ -88,6 +88,14 @@
     "./rfq/*": {
       "types": "./rfq/*.ts",
       "default": "./dist/rfq/*.js"
+    },
+    "./portals": {
+      "types": "./portals/index.ts",
+      "default": "./dist/portals/index.js"
+    },
+    "./portals/*": {
+      "types": "./portals/*.ts",
+      "default": "./dist/portals/*.js"
     }
   }
 }

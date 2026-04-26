@@ -17,12 +17,34 @@ export type PasskeyErrorCode =
   | "network"
   | "unknown";
 
-export function classifyPasskeyError(error: unknown): PasskeyError {
+export type PasskeyIntent = "login" | "register";
+
+const LOGIN_NOT_ALLOWED_MESSAGE =
+  "No passkey is registered for this account on this device. " +
+  "Sign in with your password first, then register a passkey from your account settings.";
+
+const REGISTER_NOT_ALLOWED_MESSAGE = "Passkey prompt was cancelled or timed out. Please try again.";
+
+function underlyingDomExceptionName(error: Error): string | null {
+  if (!("cause" in error)) return null;
+  const cause = (error as Error & { cause?: unknown }).cause;
+  if (cause instanceof DOMException) return cause.name;
+  return null;
+}
+
+export function classifyPasskeyError(
+  error: unknown,
+  intent: PasskeyIntent = "login",
+): PasskeyError {
   if (error instanceof PasskeyError) return error;
+
+  const notAllowedMessage =
+    intent === "login" ? LOGIN_NOT_ALLOWED_MESSAGE : REGISTER_NOT_ALLOWED_MESSAGE;
+  const notAllowedCode: PasskeyErrorCode = intent === "login" ? "no-credential" : "cancelled";
 
   if (error instanceof DOMException) {
     if (error.name === "NotAllowedError") {
-      return new PasskeyError("Passkey prompt was cancelled or timed out", "cancelled");
+      return new PasskeyError(notAllowedMessage, notAllowedCode);
     }
     if (error.name === "InvalidStateError") {
       return new PasskeyError(
@@ -36,6 +58,19 @@ export function classifyPasskeyError(error: unknown): PasskeyError {
   }
 
   if (error instanceof Error) {
+    const wrappedName = underlyingDomExceptionName(error);
+    if (error.name === "NotAllowedError" || wrappedName === "NotAllowedError") {
+      return new PasskeyError(notAllowedMessage, notAllowedCode);
+    }
+    if (wrappedName === "InvalidStateError") {
+      return new PasskeyError(
+        "This passkey is already registered for your account",
+        "no-credential",
+      );
+    }
+    if (wrappedName === "NotSupportedError") {
+      return new PasskeyError("This device does not support passkeys", "unsupported");
+    }
     if (error.message.includes("rate")) {
       return new PasskeyError("Too many attempts — please wait a minute", "rate-limited");
     }

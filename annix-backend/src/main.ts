@@ -1,4 +1,5 @@
 import * as path from "node:path";
+import { corsOriginsFor } from "@annix/product-data/portals";
 import { RequestMethod, ValidationPipe } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import { NestExpressApplication } from "@nestjs/platform-express";
@@ -27,8 +28,10 @@ async function bootstrap() {
     app.useStaticAssets(uploadDir, { prefix: "/api/files/" });
   }
 
+  const portalOrigins = isProduction ? corsOriginsFor("prod") : corsOriginsFor("dev");
   const corsOrigins = [
-    ...(isProduction ? [] : ["http://localhost:3000", "http://localhost:3001"]),
+    ...portalOrigins,
+    ...(isProduction ? [] : ["http://localhost:3001"]),
     ...(process.env.CORS_ORIGINS?.split(",").map((o) => o.trim()) ?? []),
   ].filter((o): o is string => typeof o === "string" && o.startsWith("http"));
 

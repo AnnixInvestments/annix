@@ -24,6 +24,7 @@ Shared workspace package (pnpm workspace). Both `annix-backend` and `annix-front
 | HDPE | `hdpe/` | grades, SDR ratings, dimensions, temperature derating, welding, welding standards, standards, fittings, pricing |
 | PVC | `pvc/` | PVC-specific data |
 | RFQ shared types | `rfq/` | straight pipe, bend, tank-chute, flange, pipe dimension, weld, material, boq, coating, pt-rating, pump |
+| Portal hosts | `portals/` | `PORTAL_HOSTS`, `PortalCode`, `PortalHost`, `portalForHost`, `portalForCode`, `canonicalHostFor`, `corsOriginsFor`, `normaliseHost`, `isAliasHost`, `DEFAULT_DEV_PORT`. Single source of truth for production + dev hostnames per portal — drives middleware host routing, backend CORS, WebAuthn RP ID resolution, and email/PDF link generation. **Adding a new portal? Add it here first; everything else derives from this.** |
 
 **When to put new data here:** anything that is factual, static, cross-app, and not user-owned (standards data, product catalogues, engineering constants, enumerations). Tests live alongside source (`*.spec.ts`).
 
