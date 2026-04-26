@@ -4,6 +4,12 @@ on:
   pull_request:
     branches: [main]
     types: [opened, synchronize, reopened]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "PR number to deploy (used by staging-release workflow when waking the next queued PR)"
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -17,9 +23,101 @@ env:
   APP_IMAGE: ghcr.io/annixinvestments/annix/app
 
 jobs:
+  resolve-pr:
+    name: Resolve PR context
+    runs-on: ubuntu-latest
+    outputs:
+      pr_number: ${{ steps.resolve.outputs.pr_number }}
+      head_sha: ${{ steps.resolve.outputs.head_sha }}
+      head_ref: ${{ steps.resolve.outputs.head_ref }}
+    steps:
+      - id: resolve
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_PR: ${{ inputs.pr_number }}
+          PR_NUMBER_EVENT: ${{ github.event.pull_request.number }}
+          HEAD_SHA_EVENT: ${{ github.event.pull_request.head.sha }}
+          HEAD_REF_EVENT: ${{ github.event.pull_request.head.ref }}
+        run: |
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            PR_NUM="$INPUT_PR"
+            PR_JSON=$(gh pr view "$PR_NUM" --repo "${{ github.repository }}" --json headRefOid,headRefName)
+            HEAD_SHA=$(echo "$PR_JSON" | jq -r '.headRefOid')
+            HEAD_REF=$(echo "$PR_JSON" | jq -r '.headRefName')
+          else
+            PR_NUM="$PR_NUMBER_EVENT"
+            HEAD_SHA="$HEAD_SHA_EVENT"
+            HEAD_REF="$HEAD_REF_EVENT"
+          fi
+          echo "pr_number=$PR_NUM" >> "$GITHUB_OUTPUT"
+          echo "head_sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
+          echo "head_ref=$HEAD_REF" >> "$GITHUB_OUTPUT"
+
+  rebase-check:
+    name: Check PR is rebased on main
+    runs-on: ubuntu-latest
+    needs: resolve-pr
+    outputs:
+      rebased: ${{ steps.check.outputs.rebased }}
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.resolve-pr.outputs.head_sha }}
+          fetch-depth: 0
+
+      - name: Compare merge-base with origin/main
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUM: ${{ needs.resolve-pr.outputs.pr_number }}
+        run: |
+          MAIN_SHA=$(git rev-parse origin/main)
+          MERGE_BASE=$(git merge-base HEAD origin/main)
+          echo "main: $MAIN_SHA"
+          echo "merge-base: $MERGE_BASE"
+
+          if [ "$MAIN_SHA" = "$MERGE_BASE" ]; then
+            echo "rebased=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "rebased=false" >> "$GITHUB_OUTPUT"
+
+          COMMENT_TAG="<!-- staging-rebase-required -->"
+          BODY="${COMMENT_TAG}
+          ## Staging Deploy Skipped — Rebase Required
+
+          This PR is not rebased on the latest \`main\`. Staging deploys only run from PRs whose head branch is fully rebased on \`origin/main\` (no merge commits, no missing commits).
+
+          **Why:** stale branches deploying to the shared staging app silently overwrote each other. The rebase gate keeps staging reflecting code that's actually based on current \`main\`.
+
+          **What to do:**
+          \`\`\`
+          git fetch origin
+          git rebase origin/main
+          git push --force-with-lease
+          \`\`\`
+
+          Or comment \`/rebase\` to have the rebase workflow attempt it for you."
+
+          EXISTING=$(gh pr view "$PR_NUM" --repo "${{ github.repository }}" --json comments \
+            --jq ".comments[] | select(.body | contains(\"${COMMENT_TAG}\")) | .id" | head -1)
+
+          if [ -n "$EXISTING" ]; then
+            DB_ID=$(gh api graphql -f query="query { node(id: \"${EXISTING}\") { ... on IssueComment { databaseId } } }" \
+              --jq '.data.node.databaseId')
+            gh api repos/${{ github.repository }}/issues/comments/${DB_ID} -X PATCH -f body="${BODY}"
+          else
+            gh pr comment "$PR_NUM" --repo "${{ github.repository }}" --body "${BODY}"
+          fi
+
   test:
     name: Run Tests
     runs-on: ubuntu-latest
+    needs: rebase-check
+    if: needs.rebase-check.outputs.rebased == 'true'
     steps:
       - uses: actions/checkout@v6
       - uses: ./.github/actions/setup-monorepo
@@ -39,10 +137,13 @@ jobs:
   build-image:
     name: Build App Image
     runs-on: ubuntu-latest
-    needs: test
+    needs: [resolve-pr, rebase-check]
+    if: needs.rebase-check.outputs.rebased == 'true'
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Checkout PR head
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.resolve-pr.outputs.head_sha }}
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
@@ -60,7 +161,7 @@ jobs:
         with:
           images: ${{ env.APP_IMAGE }}
           tags: |
-            type=raw,value=pr-${{ github.event.pull_request.number }}-${{ github.sha }}
+            type=raw,value=pr-${{ needs.resolve-pr.outputs.pr_number }}-${{ needs.resolve-pr.outputs.head_sha }}
 
       - name: Build and push
         uses: docker/build-push-action@v6
@@ -70,13 +171,14 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha,scope=pr-${{ github.event.pull_request.number }}
-          cache-to: type=gha,mode=max,scope=pr-${{ github.event.pull_request.number }}
+          cache-from: type=gha,scope=pr-${{ needs.resolve-pr.outputs.pr_number }}
+          cache-to: type=gha,mode=max,scope=pr-${{ needs.resolve-pr.outputs.pr_number }}
 
   deploy:
     name: Deploy to Staging
     runs-on: ubuntu-latest
-    needs: build-image
+    needs: [resolve-pr, rebase-check, test, build-image]
+    if: needs.rebase-check.outputs.rebased == 'true'
     # Serialise deploys against the single annix-app-staging Fly app.
     # Without this, two PRs deploying at once race for Fly VM leases and
     # the loser fails with 'Unrecoverable error: failed to get lease'.
@@ -85,10 +187,50 @@ jobs:
       group: deploy-staging-annix-app
       cancel-in-progress: false
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Check staging claim
+        id: claim
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUM: ${{ needs.resolve-pr.outputs.pr_number }}
+        run: |
+          HOLDERS=$(gh pr list --repo "${{ github.repository }}" --label on-staging --state open --json number --jq ".[] | select(.number != ${PR_NUM}) | .number")
+
+          if [ -z "$HOLDERS" ]; then
+            echo "claim_held=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          HOLDER=$(echo "$HOLDERS" | head -1)
+          echo "claim_held=true" >> "$GITHUB_OUTPUT"
+          echo "holder=$HOLDER" >> "$GITHUB_OUTPUT"
+
+          gh label create staging-queued --repo "${{ github.repository }}" --color FBCA04 --description "PR is waiting for staging to be released" 2>/dev/null || true
+          gh pr edit "$PR_NUM" --repo "${{ github.repository }}" --add-label staging-queued || true
+
+          COMMENT_TAG="<!-- staging-claim-queued -->"
+          BODY="${COMMENT_TAG}
+          ## Staging Deploy Queued
+
+          Staging is currently held by #${HOLDER}. Your deploy will run automatically when that PR is merged or closed.
+
+          **Status:** queued (label: \`staging-queued\`)
+          **Holder:** #${HOLDER}
+
+          To take staging now, ask the holder to merge or close their PR. Production deploys are unaffected."
+
+          EXISTING=$(gh pr view "$PR_NUM" --repo "${{ github.repository }}" --json comments \
+            --jq ".comments[] | select(.body | contains(\"${COMMENT_TAG}\")) | .id" | head -1)
+
+          if [ -n "$EXISTING" ]; then
+            DB_ID=$(gh api graphql -f query="query { node(id: \"${EXISTING}\") { ... on IssueComment { databaseId } } }" \
+              --jq '.data.node.databaseId')
+            gh api repos/${{ github.repository }}/issues/comments/${DB_ID} -X PATCH -f body="${BODY}"
+          else
+            gh pr comment "$PR_NUM" --repo "${{ github.repository }}" --body "${BODY}"
+          fi
 
       - name: Log in to GitHub Container Registry
+        if: steps.claim.outputs.claim_held != 'true'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -96,16 +238,19 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Pull app image
-        run: docker pull ${{ env.APP_IMAGE }}:pr-${{ github.event.pull_request.number }}-${{ github.sha }}
+        if: steps.claim.outputs.claim_held != 'true'
+        run: docker pull ${{ env.APP_IMAGE }}:pr-${{ needs.resolve-pr.outputs.pr_number }}-${{ needs.resolve-pr.outputs.head_sha }}
 
       - name: Setup Fly.io CLI
+        if: steps.claim.outputs.claim_held != 'true'
         uses: superfly/flyctl-actions/setup-flyctl@master
 
       - name: Deploy to Fly.io (staging)
+        if: steps.claim.outputs.claim_held != 'true'
         run: |
           for i in 1 2 3; do
             if flyctl deploy -a annix-app-staging \
-              --image ${{ env.APP_IMAGE }}:pr-${{ github.event.pull_request.number }}-${{ github.sha }} \
+              --image ${{ env.APP_IMAGE }}:pr-${{ needs.resolve-pr.outputs.pr_number }}-${{ needs.resolve-pr.outputs.head_sha }} \
               --local-only; then
               exit 0
             fi
@@ -116,28 +261,39 @@ jobs:
           exit 1
 
       - name: Get Logs on Failure
-        if: failure()
+        if: failure() && steps.claim.outputs.claim_held != 'true'
         run: flyctl logs -a annix-app-staging --no-tail 2>&1 | tail -100 || echo "Could not fetch logs"
 
-      - name: Comment on PR with staging URL
-        if: success()
+      - name: Apply on-staging label
+        if: success() && steps.claim.outputs.claim_held != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
+          PR_NUM: ${{ needs.resolve-pr.outputs.pr_number }}
         run: |
-          PR_NUM=${{ github.event.pull_request.number }}
+          gh label create on-staging --repo "${{ github.repository }}" --color 0E8A16 --description "PR is currently deployed to annix-app-staging" 2>/dev/null || true
+          gh pr edit "$PR_NUM" --repo "${{ github.repository }}" --add-label on-staging || true
+          gh pr edit "$PR_NUM" --repo "${{ github.repository }}" --remove-label staging-queued 2>/dev/null || true
+
+      - name: Comment on PR with staging URL
+        if: success() && steps.claim.outputs.claim_held != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUM: ${{ needs.resolve-pr.outputs.pr_number }}
+          HEAD_SHA: ${{ needs.resolve-pr.outputs.head_sha }}
+        run: |
           STAGING_URL="https://annix-app-staging.fly.dev"
           COMMENT_TAG="<!-- staging-deploy-comment -->"
-          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          SHORT_SHA=$(echo "$HEAD_SHA" | cut -c1-7)
 
           BODY="${COMMENT_TAG}
           ## Staging Deployment
 
-          **Status:** Deployed
+          **Status:** Deployed (this PR holds staging — label \`on-staging\`)
           **URL:** ${STAGING_URL}
           **Commit:** \`${SHORT_SHA}\`
-          **Image:** \`pr-${PR_NUM}-${{ github.sha }}\`
+          **Image:** \`pr-${PR_NUM}-${HEAD_SHA}\`
 
-          Test this PR on staging before merging to main."
+          Test this PR on staging before merging to main. Staging is released for the next queued PR when this one is merged or closed."
 
           EXISTING=$(gh pr view "$PR_NUM" --repo "${{ github.repository }}" --json comments \
             --jq ".comments[] | select(.body | contains(\"${COMMENT_TAG}\")) | .id" | head -1)
@@ -151,11 +307,11 @@ jobs:
           fi
 
       - name: Comment on linked feedback issues with staging URL
-        if: success()
+        if: success() && steps.claim.outputs.claim_held != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
+          PR_NUM: ${{ needs.resolve-pr.outputs.pr_number }}
         run: |
-          PR_NUM=${{ github.event.pull_request.number }}
           PR_JSON=$(gh pr view "$PR_NUM" --repo "${{ github.repository }}" --json title,body,url)
           PR_TITLE=$(echo "$PR_JSON" | jq -r '.title')
           PR_BODY=$(echo "$PR_JSON" | jq -r '.body')

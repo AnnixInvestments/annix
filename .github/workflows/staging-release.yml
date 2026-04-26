@@ -1,0 +1,65 @@
+name: Release Staging Claim
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: read
+  pull-requests: write
+  actions: write
+  issues: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  release-claim:
+    name: Release on-staging and wake next queued PR
+    runs-on: ubuntu-latest
+    if: contains(github.event.pull_request.labels.*.name, 'on-staging') || contains(github.event.pull_request.labels.*.name, 'staging-queued')
+    steps:
+      - name: Remove staging labels from closing PR
+        env:
+          GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+          PR_NUM: ${{ github.event.pull_request.number }}
+        run: |
+          gh pr edit "$PR_NUM" --repo "${{ github.repository }}" --remove-label on-staging 2>/dev/null || true
+          gh pr edit "$PR_NUM" --repo "${{ github.repository }}" --remove-label staging-queued 2>/dev/null || true
+
+      - name: Find next queued PR
+        id: next
+        env:
+          GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+        run: |
+          NEXT=$(gh pr list --repo "${{ github.repository }}" --label staging-queued --state open --json number,createdAt --jq 'sort_by(.createdAt) | .[0].number')
+
+          if [ -z "$NEXT" ] || [ "$NEXT" = "null" ]; then
+            echo "next_pr=" >> "$GITHUB_OUTPUT"
+            echo "No queued PRs waiting for staging."
+            exit 0
+          fi
+
+          echo "next_pr=$NEXT" >> "$GITHUB_OUTPUT"
+
+      - name: Wake next queued PR
+        if: steps.next.outputs.next_pr != ''
+        env:
+          GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+          NEXT_PR: ${{ steps.next.outputs.next_pr }}
+          CLOSED_PR: ${{ github.event.pull_request.number }}
+        run: |
+          gh workflow run deploy-staging.yml \
+            --repo "${{ github.repository }}" \
+            --ref main \
+            -f pr_number="$NEXT_PR"
+
+          COMMENT_TAG="<!-- staging-claim-released -->"
+          BODY="${COMMENT_TAG}
+          ## Staging Released — Your Deploy is Starting
+
+          PR #${CLOSED_PR} has closed and released the \`on-staging\` claim. Your queued deploy has been triggered automatically.
+
+          Watch the [Actions tab](${{ github.server_url }}/${{ github.repository }}/actions/workflows/deploy-staging.yml) for progress."
+
+          gh pr comment "$NEXT_PR" --repo "${{ github.repository }}" --body "${BODY}"
