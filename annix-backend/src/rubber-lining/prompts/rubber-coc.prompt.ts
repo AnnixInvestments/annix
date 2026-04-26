@@ -752,11 +752,13 @@ INVOICE NUMBER:
 - This is distinct from any PO, Order No, or reference number
 
 ORDER NUMBER:
-- Impilo Industries invoices have a document header table with columns: "Document No | Order No. | Date | Delivery Details"
-- The "Order No." value in this table is the order number (e.g., "190") - it is typically a short number
-- CRITICAL: Do NOT confuse the order number with customer PO numbers, account numbers, or long reference numbers found elsewhere on the invoice
-- The order number is specifically from the header table row, NOT from "Order Confirmation" or other fields on the invoice
-- If there is an "Order Confirmation" field (e.g., "SO185359"), that is NOT the order number - ignore it
+- The orderNumber is the customer's purchase order / job number that triggered this invoice — typically a short number (3–5 digits) used to match the invoice back to an order in our system.
+- Per-supplier locations:
+    - Impilo Industries: a document header table with columns "Document No | Order No. | Date | Delivery Details" — orderNumber = the "Order No." cell (e.g. "190").
+    - S&N Rubber: a labelled field near the addresses titled "Your Reference / PO Number:" — orderNumber = the value next to that label (e.g. "197"). Do NOT confuse with the "Tax Reference" line directly below it.
+    - Other suppliers: look for "Order No.", "Your Order", "Your Reference", "PO Number", "Customer PO", "Job No." fields — pick the SHORT (3–5 digit) one if multiple are present.
+- CRITICAL: Do NOT confuse the order number with VAT registration numbers, account numbers, postal codes, or long reference numbers (e.g. "4650300389" is a VAT reg, not an order number).
+- If there is an "Order Confirmation" field (e.g., "SO185359"), that is NOT the order number — ignore it.
 
 COMPANY NAME:
 - Extract the supplier/vendor company name from the letterhead or "FROM:" section
@@ -768,6 +770,36 @@ LINE ITEMS:
 - Descriptions may include compound codes (e.g., "RSCA40-20.950.125"), roll numbers, or batch numbers
 - Some invoices have a single line item; others have many
 - Look for columns labeled "Description", "Qty", "Unit Price", "Amount", "Total"
+
+LINE ITEMS — SPECIAL HANDLING FOR S&N RUBBER INVOICES:
+S&N Rubber tax invoices ship raw uncalendered compound by the kg. The Description column on each line embeds three pieces of metadata after the readable compound name:
+  P/D: <DD/MM/YYYY>     production date
+  DCB: <number>         daily compound batch number
+  D/N: <number>         delivery note number
+Example raw line description:
+  "Compound 40 Shore Red Stream Cured P/D: 08/04/2026 DCB: 000140455 D/N: 14390"
+
+For each S&N line item:
+1. STRIP the inline "P/D: ...", "DCB: ...", "D/N: ..." tokens from the description. Everything from the first "P/D:" onwards is metadata and must NOT appear in the output description. The clean compound name is everything before "P/D:" — e.g. "Compound 40 Shore Red Stream Cured".
+2. If the invoice's top-level deliveryNoteRef is null AND a "D/N: <number>" appears in any line description, set deliveryNoteRef = that number (e.g. "14390").
+3. DERIVE a compound product code from the cleaned compound name using the same rule as Impilo:
+     <colourLetter><cureCode>A<shore>
+   where:
+     colourLetter: B=Black, R=Red, Y=Yellow, P=Pink, W=White, G=Green, O=Orange
+     cureCode:     SC=Steam cured (S&N often writes this as "Stream cured" — treat as SC)
+                   PC=Pre-cured
+     A:            literal "A" (AU compound brand — S&N supplies these compounds to AU)
+     shore:        the 2-digit Shore hardness number from the description
+   Examples:
+     "Compound 40 Shore Red Stream Cured"   → RSCA40
+     "Compound 38 Shore Black Steam Cured"  → BSCA38
+     "Compound 40 Shore Red Pre-Cured"      → RPCA40
+     "Compound 50 Shore Yellow Stream Cured" → YSCA50
+   If the colour or cure can't be confidently mapped (e.g. "Autoclave cured", "Natural", "Grey"), DO NOT invent a code — leave the description as the cleaned compound name and skip the code prefix.
+4. EMIT the line item with:
+   - description: "<productCode> — <cleaned compound name>" when productCode is derivable (e.g. "RSCA40 — Compound 40 Shore Red Stream Cured"). When no productCode, use the cleaned compound name only. NEVER include the P/D/DCB/D/N tokens.
+   - quantity, unitPrice, amount: as on the line, unchanged
+   - rolls: null/omit (S&N invoices are kg-based, no per-roll detail)
 
 LINE ITEMS — SPECIAL HANDLING FOR IMPILO INDUSTRIES TOLL CALENDERING INVOICES:
 Impilo Industries bills toll calendering by KG but the rubber team needs ONE collapsed line item per roll-size group so each roll can be brought into stock and invoiced out individually. When the invoice clearly comes from Impilo Industries (look at the letterhead / supplier company), do NOT extract the raw KG / N/C / compound rows verbatim. Instead recognise the tolling pattern below and emit one collapsed line item per group.
