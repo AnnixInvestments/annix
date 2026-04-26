@@ -1,3 +1,4 @@
+import { portalForHost } from "@annix/product-data/portals";
 import {
   Body,
   Controller,
@@ -50,9 +51,15 @@ export class PasskeyController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: "Generate WebAuthn registration options for the current user" })
-  async registerOptions(@Req() req: { user?: { id?: number; userId?: number } }) {
+  async registerOptions(
+    @Req()
+    req: {
+      user?: { id?: number; userId?: number };
+      headers: Record<string, string | string[] | undefined>;
+    },
+  ) {
     const userId = this.requireUserId(req);
-    return this.passkeyService.registrationOptions(userId);
+    return this.passkeyService.registrationOptions(userId, this.requestHost(req));
   }
 
   @Post("register/verify")
@@ -61,7 +68,11 @@ export class PasskeyController {
   @ApiOperation({ summary: "Verify a registration response and store the credential" })
   @ApiResponse({ status: 201, description: "Passkey registered" })
   async registerVerify(
-    @Req() req: { user?: { id?: number; userId?: number } },
+    @Req()
+    req: {
+      user?: { id?: number; userId?: number };
+      headers: Record<string, string | string[] | undefined>;
+    },
     @Body() body: PasskeyRegisterVerifyRequestDto,
   ): Promise<PasskeySummaryDto> {
     const userId = this.requireUserId(req);
@@ -69,6 +80,7 @@ export class PasskeyController {
       userId,
       body.response as unknown as RegistrationResponseJSON,
       body.deviceName ?? null,
+      this.requestHost(req),
     );
     return this.toSummary(passkey);
   }
@@ -76,8 +88,11 @@ export class PasskeyController {
   @Post("login/options")
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @ApiOperation({ summary: "Generate WebAuthn authentication options" })
-  async loginOptions(@Body() body: PasskeyAuthOptionsRequestDto) {
-    return this.passkeyService.authenticationOptions(body.email);
+  async loginOptions(
+    @Body() body: PasskeyAuthOptionsRequestDto,
+    @Req() req: { headers: Record<string, string | string[] | undefined> },
+  ) {
+    return this.passkeyService.authenticationOptions(body.email, this.requestHost(req));
   }
 
   @Post("login/verify")
@@ -88,17 +103,21 @@ export class PasskeyController {
     @Req() req: { headers: Record<string, string | string[] | undefined> },
     @Ip() clientIp: string,
   ) {
+    const requestHost = this.requestHost(req);
     const result = await this.passkeyService.verifyAuthentication(
       body.response as unknown as AuthenticationResponseJSON,
+      requestHost,
     );
 
     const userAgentHeader = req.headers["user-agent"];
     const userAgent = (typeof userAgentHeader === "string" ? userAgentHeader : null) || "unknown";
 
-    if (body.appCode === "admin") {
+    const appCode = this.resolveAppCode(requestHost, body.appCode);
+
+    if (appCode === "admin") {
       const adminResponse = await this.adminAuthService.issueTokensForAuthenticatedUser(
         result.user,
-        body.appCode,
+        appCode,
         clientIp,
         userAgent,
       );
@@ -110,7 +129,7 @@ export class PasskeyController {
       };
     }
 
-    if (body.appCode === "customer") {
+    if (appCode === "customer") {
       const customerResponse = await this.customerAuthService.issueTokensForAuthenticatedUser(
         result.user,
         clientIp,
@@ -124,7 +143,7 @@ export class PasskeyController {
       };
     }
 
-    if (body.appCode === "supplier") {
+    if (appCode === "supplier") {
       const supplierResponse = await this.supplierAuthService.issueTokensForAuthenticatedUser(
         result.user,
         clientIp,
@@ -138,11 +157,7 @@ export class PasskeyController {
       };
     }
 
-    if (
-      body.appCode === "stock-control" ||
-      body.appCode === "ops" ||
-      body.appCode === "au-rubber"
-    ) {
+    if (appCode === "stock-control" || appCode === "ops" || appCode === "au-rubber") {
       const scResponse = await this.stockControlAuthService.issueTokensForAuthenticatedUser(
         result.user,
       );
@@ -154,7 +169,7 @@ export class PasskeyController {
       };
     }
 
-    if (body.appCode === "annix-rep") {
+    if (appCode === "annix-rep") {
       const repResponse = await this.annixRepAuthService.issueTokensForAuthenticatedUser(
         result.user,
         clientIp,
@@ -168,7 +183,7 @@ export class PasskeyController {
       };
     }
 
-    if (body.appCode === "cv-assistant") {
+    if (appCode === "cv-assistant") {
       const cvResponse = await this.cvAssistantAuthService.issueTokensForAuthenticatedUser(
         result.user,
       );
@@ -232,6 +247,24 @@ export class PasskeyController {
       throw new UnauthorizedException("Authenticated user not found on request");
     }
     return numeric;
+  }
+
+  private requestHost(req: {
+    headers: Record<string, string | string[] | undefined>;
+  }): string | null {
+    const raw = req.headers.host;
+    if (typeof raw === "string") return raw;
+    if (Array.isArray(raw) && raw.length > 0) return raw[0] ?? null;
+    return null;
+  }
+
+  private resolveAppCode(
+    requestHost: string | null,
+    bodyAppCode: string | null | undefined,
+  ): string | null {
+    if (bodyAppCode) return bodyAppCode;
+    const portal = portalForHost(requestHost);
+    return portal ? portal.code : null;
   }
 
   private toSummary(passkey: {

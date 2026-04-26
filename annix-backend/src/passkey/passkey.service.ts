@@ -62,7 +62,10 @@ export class PasskeyService {
     }
   }
 
-  async registrationOptions(userId: number): Promise<PublicKeyCredentialCreationOptionsJSON> {
+  async registrationOptions(
+    userId: number,
+    requestHost?: string | null,
+  ): Promise<PublicKeyCredentialCreationOptionsJSON> {
     const user = await this.userRepo.findOne({ where: { id: userId } });
 
     if (!user) {
@@ -73,7 +76,7 @@ export class PasskeyService {
 
     const options = await generateRegistrationOptions({
       rpName: this.config.rpName(),
-      rpID: this.config.rpId(),
+      rpID: this.config.rpId(requestHost),
       userID: this.userIdBytes(userId),
       userName: user.email || user.username || `user-${userId}`,
       userDisplayName: this.displayName(user),
@@ -97,14 +100,15 @@ export class PasskeyService {
     userId: number,
     response: RegistrationResponseJSON,
     deviceName: string | null,
+    requestHost?: string | null,
   ): Promise<Passkey> {
     const challenge = await this.consumeChallenge(userId, "registration");
 
     const verification = await verifyRegistrationResponse({
       response,
       expectedChallenge: challenge,
-      expectedOrigin: this.config.origins(),
-      expectedRPID: this.config.rpId(),
+      expectedOrigin: this.config.origins(requestHost),
+      expectedRPID: this.config.rpId(requestHost),
     });
 
     if (!verification.verified || !verification.registrationInfo) {
@@ -136,6 +140,7 @@ export class PasskeyService {
 
   async authenticationOptions(
     email: string | undefined,
+    requestHost?: string | null,
   ): Promise<PublicKeyCredentialRequestOptionsJSON> {
     const user = email ? await this.userRepo.findOne({ where: { email } }) : null;
 
@@ -147,7 +152,7 @@ export class PasskeyService {
       : [];
 
     const options = await generateAuthenticationOptions({
-      rpID: this.config.rpId(),
+      rpID: this.config.rpId(requestHost),
       userVerification: "preferred",
       allowCredentials,
     });
@@ -159,6 +164,7 @@ export class PasskeyService {
 
   async verifyAuthentication(
     response: AuthenticationResponseJSON,
+    requestHost?: string | null,
   ): Promise<PasskeyAuthenticationResult> {
     const passkey = await this.passkeyRepo.findOne({
       where: { credentialId: response.id },
@@ -173,8 +179,8 @@ export class PasskeyService {
     const verification = await verifyAuthenticationResponse({
       response,
       expectedChallenge: challenge,
-      expectedOrigin: this.config.origins(),
-      expectedRPID: this.config.rpId(),
+      expectedOrigin: this.config.origins(requestHost),
+      expectedRPID: this.config.rpId(requestHost),
       credential: {
         id: passkey.credentialId,
         publicKey: new Uint8Array(Buffer.from(passkey.publicKey, "base64url")),
