@@ -560,29 +560,50 @@ export class RubberCocExtractionService {
     try {
       const verificationPrompt = `You are a verification pass for an invoice extraction. The PDF you are looking at is an Impilo Industries tax invoice.
 
-Read ONLY the "Roll # <number>   <kg> kg" detail lines under TOLLCALENDERROLLS sections. Output them in the exact order they appear in the document.
+For each TOLLCALENDERROLLS section in the document, output:
+  (a) the section's TOLLCALENDERKG qty (the kg total for the calendering charge — e.g. 126, 533, 98)
+  (b) every "Roll # <number>   <kg> kg" detail line beneath that TOLLCALENDERROLLS, in document order
 
 CRITICAL RULES:
-1. Each line has EXACTLY ONE roll number followed by EXACTLY ONE weight in kg, in that order, on the SAME line.
-2. The weight on a line ALWAYS belongs to the roll number on that same line — never the next or previous line.
-3. Read each digit individually. Roll numbers on Impilo invoices are 5-digit integers in the 40000–60000 range.
-4. If you cannot read a roll number or weight with full confidence, use null for that value.
-5. List rolls from EVERY TOLLCALENDERROLLS section across the whole document, in document order.
+1. Each "Roll #" line has EXACTLY ONE roll number followed by EXACTLY ONE weight in kg, on the SAME line. The weight on a line belongs to the roll number on that same line — never the next or previous line.
+2. Read each digit individually. Roll numbers on Impilo invoices are 5-digit integers in the 40000–60000 range. Roll weights are typically 40–110kg per roll.
+3. The TOLLCALENDERKG qty for a section MUST roughly equal the SUM of that section's roll weights (calendering adds <5% material). If the numbers you've transcribed don't sum correctly, RE-READ each digit before answering — this is the strongest signal of an OCR misread.
+4. Distinguish carefully between adjacent digits — 5 vs 6 vs 8, 0 vs 6 vs 8 — these are the most common digit-confusion errors. Read at maximum care.
+5. If you cannot read a value with full confidence, use null for that field.
+6. List ALL TOLLCALENDERROLLS sections across the whole document, in document order.
 
 Return ONLY a valid JSON object of this exact shape (no extra fields, no commentary):
-{ "rolls": [{ "rollNumber": "41635", "weightKg": 50 }, { "rollNumber": "41636", "weightKg": 48 }] }`;
+{
+  "sections": [
+    {
+      "sectionTotalKg": 126,
+      "rolls": [{ "rollNumber": "41772", "weightKg": 126 }]
+    },
+    {
+      "sectionTotalKg": 98,
+      "rolls": [
+        { "rollNumber": "41635", "weightKg": 50 },
+        { "rollNumber": "41636", "weightKg": 48 }
+      ]
+    }
+  ]
+}`;
 
       const response = await this.callGeminiWithImages(
         verificationPrompt,
-        "Verify the roll number / weight pairs from this Impilo tax invoice. Return ONLY the JSON.",
+        "Verify the roll number / weight pairs and section totals from this Impilo tax invoice. Return ONLY the JSON.",
         images,
         "tax-invoice-rolls-verification",
       );
 
       const verification = response.data as {
-        rolls?: Array<{ rollNumber: string; weightKg: number | null }>;
+        sections?: Array<{
+          sectionTotalKg: number | null;
+          rolls: Array<{ rollNumber: string; weightKg: number | null }>;
+        }>;
       };
-      const verifiedRolls = verification.rolls ?? [];
+      const verifiedSections = verification.sections ?? [];
+      const verifiedRolls = verifiedSections.flatMap((s) => s.rolls);
 
       const firstPassRolls = (data.lineItems ?? []).flatMap((li) => li.rolls ?? []);
 
@@ -594,37 +615,72 @@ Return ONLY a valid JSON object of this exact shape (no extra fields, no comment
           return fp && fp.rollNumber === vr.rollNumber && fp.weightKg === vr.weightKg;
         });
 
-      if (allMatch) {
+      if (!allMatch) {
+        this.logger.warn(
+          `Roll verification DISAGREED with first pass — using verified values. First: ${JSON.stringify(firstPassRolls)} | Verified: ${JSON.stringify(verifiedRolls)}`,
+        );
+
+        const verifiedById = new Map<string, number | null>();
+        verifiedRolls.forEach((vr) => {
+          if (vr.rollNumber) verifiedById.set(vr.rollNumber, vr.weightKg);
+        });
+
+        (data.lineItems ?? []).forEach((li) => {
+          if (!li.rolls || li.rolls.length === 0) return;
+          li.rolls = li.rolls.map((roll) => {
+            const verifiedWeight = verifiedById.get(roll.rollNumber);
+            if (verifiedWeight !== undefined && verifiedWeight !== roll.weightKg) {
+              return { rollNumber: roll.rollNumber, weightKg: verifiedWeight };
+            }
+            return roll;
+          });
+        });
+      } else {
         this.logger.log(
           `Roll verification confirmed ${verifiedRolls.length} pairings on first read.`,
         );
-        return;
       }
 
-      this.logger.warn(
-        `Roll verification DISAGREED with first pass — using verified values. First: ${JSON.stringify(firstPassRolls)} | Verified: ${JSON.stringify(verifiedRolls)}`,
-      );
-
-      const verifiedById = new Map<string, number | null>();
-      verifiedRolls.forEach((vr) => {
-        if (vr.rollNumber) verifiedById.set(vr.rollNumber, vr.weightKg);
-      });
-
-      (data.lineItems ?? []).forEach((li) => {
-        if (!li.rolls || li.rolls.length === 0) return;
-        li.rolls = li.rolls.map((roll) => {
-          const verifiedWeight = verifiedById.get(roll.rollNumber);
-          if (verifiedWeight !== undefined && verifiedWeight !== roll.weightKg) {
-            return { rollNumber: roll.rollNumber, weightKg: verifiedWeight };
-          }
-          return roll;
-        });
-      });
+      this.crossCheckRollWeightsAgainstSectionTotal(data, verifiedSections);
     } catch (error) {
       this.logger.warn(
         `Roll verification pass failed: ${error instanceof Error ? error.message : String(error)}. Keeping first-pass values.`,
       );
     }
+  }
+
+  private crossCheckRollWeightsAgainstSectionTotal(
+    data: ExtractedTaxInvoiceData,
+    verifiedSections: Array<{
+      sectionTotalKg: number | null;
+      rolls: Array<{ rollNumber: string; weightKg: number | null }>;
+    }>,
+  ): void {
+    const lineItemsWithRolls = (data.lineItems ?? []).filter(
+      (li) => li.rolls && li.rolls.length > 0,
+    );
+
+    lineItemsWithRolls.forEach((li, idx) => {
+      const section = verifiedSections[idx];
+      const sectionTotalKg = section?.sectionTotalKg ?? null;
+      if (!li.rolls || sectionTotalKg == null) return;
+
+      const sumOfRollWeights = li.rolls.reduce((sum, r) => sum + (r.weightKg ?? 0), 0);
+      const diff = Math.abs(sumOfRollWeights - sectionTotalKg);
+
+      if (diff <= 1) return;
+
+      if (li.rolls.length === 1 && diff <= 10) {
+        this.logger.warn(
+          `Sum-check correction on ${li.description}: roll ${li.rolls[0].rollNumber} weight ${li.rolls[0].weightKg}kg differed from sectionTotalKg ${sectionTotalKg}kg by ${diff}kg (single-roll section). Using sectionTotalKg as source of truth.`,
+        );
+        li.rolls[0] = { rollNumber: li.rolls[0].rollNumber, weightKg: sectionTotalKg };
+      } else {
+        this.logger.warn(
+          `Sum-check FAILED on ${li.description}: sum of roll weights = ${sumOfRollWeights}kg but sectionTotalKg = ${sectionTotalKg}kg (diff ${diff}kg). Roll weights left as-is — manual review recommended before approval.`,
+        );
+      }
+    });
   }
 
   private warnOnSuspiciousRollNumbers(data: ExtractedTaxInvoiceData): void {

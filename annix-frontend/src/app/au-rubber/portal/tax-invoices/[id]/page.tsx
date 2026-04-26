@@ -113,7 +113,7 @@ export default function TaxInvoiceDetailPage() {
       showExtraction({
         brand: "au-rubber",
         label: "Extracting tax invoice…",
-        estimatedDurationMs: 15000,
+        estimatedDurationMs: 60000,
       });
       const updated = await auRubberApiClient.extractTaxInvoice(invoiceId);
       setInvoice(updated);
