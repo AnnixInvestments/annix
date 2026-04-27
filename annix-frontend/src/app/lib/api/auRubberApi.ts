@@ -3735,6 +3735,34 @@ class AuRubberApiClient {
   async uploadWebsiteImage(file: File): Promise<{ url: string }> {
     return this.requestWithFiles("/rubber-lining/website-pages/upload-image", [file], {}, "file");
   }
+
+  async testimonials(): Promise<TestimonialDto[]> {
+    return this.request("/rubber-lining/testimonials");
+  }
+
+  async testimonial(id: string): Promise<TestimonialDto> {
+    return this.request(`/rubber-lining/testimonials/${id}`);
+  }
+
+  async createTestimonial(data: CreateTestimonialDto): Promise<TestimonialDto> {
+    return this.request("/rubber-lining/testimonials", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateTestimonial(id: string, data: UpdateTestimonialDto): Promise<TestimonialDto> {
+    return this.request(`/rubber-lining/testimonials/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteTestimonial(id: string): Promise<void> {
+    return this.request(`/rubber-lining/testimonials/${id}`, {
+      method: "DELETE",
+    });
+  }
 }
 
 export interface WebsitePageDto {
@@ -3777,6 +3805,50 @@ export interface UpdateWebsitePageDto {
   isPublished?: boolean;
   isHomePage?: boolean;
   showInNav?: boolean;
+}
+
+export type TestimonialSource = "google" | "manual" | "email" | "whatsapp";
+
+export interface TestimonialDto {
+  id: string;
+  authorName: string;
+  authorRole: string | null;
+  authorCompany: string | null;
+  rating: number;
+  body: string;
+  datePublished: string;
+  source: TestimonialSource;
+  highlight: boolean;
+  isPublished: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateTestimonialDto {
+  authorName: string;
+  authorRole?: string | null;
+  authorCompany?: string | null;
+  rating: number;
+  body: string;
+  datePublished: string;
+  source?: TestimonialSource;
+  highlight?: boolean;
+  isPublished?: boolean;
+  sortOrder?: number;
+}
+
+export interface UpdateTestimonialDto {
+  authorName?: string;
+  authorRole?: string | null;
+  authorCompany?: string | null;
+  rating?: number;
+  body?: string;
+  datePublished?: string;
+  source?: TestimonialSource;
+  highlight?: boolean;
+  isPublished?: boolean;
+  sortOrder?: number;
 }
 
 export const auRubberApiClient = new AuRubberApiClient();

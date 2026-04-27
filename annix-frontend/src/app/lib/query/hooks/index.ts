@@ -393,6 +393,8 @@ export {
   useAuRubberSetRolePermissions,
   useAuRubberSpecifications,
   useAuRubberSupplierCocs,
+  useAuRubberTestimonial,
+  useAuRubberTestimonials,
   useAuRubberUpdateFeatureFlag,
   useAuRubberUpdateUserAccess,
   useAuRubberUploadSupplierCoc,

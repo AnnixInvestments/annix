@@ -4,7 +4,9 @@ import { AdminCompanyProfileService } from "../admin/admin-company-profile.servi
 import { CompanyProfile } from "../admin/entities/company-profile.entity";
 import { EmailService } from "../email/email.service";
 import { ApiMessageResponse, messageResponse } from "../shared/dto";
+import { Testimonial } from "./entities/testimonial.entity";
 import { WebsitePage } from "./entities/website-page.entity";
+import { TestimonialsService } from "./testimonials.service";
 import { WebsitePagesService } from "./website-pages.service";
 
 interface ContactFormDto {
@@ -21,6 +23,7 @@ export class PublicAuIndustriesController {
 
   constructor(
     private readonly websitePagesService: WebsitePagesService,
+    private readonly testimonialsService: TestimonialsService,
     private readonly companyProfileService: AdminCompanyProfileService,
     private readonly emailService: EmailService,
   ) {}
@@ -45,6 +48,13 @@ export class PublicAuIndustriesController {
   @ApiResponse({ status: 200, type: WebsitePage })
   async homePage(): Promise<WebsitePage | null> {
     return this.websitePagesService.homePage();
+  }
+
+  @Get("testimonials")
+  @ApiOperation({ summary: "List published customer testimonials" })
+  @ApiResponse({ status: 200, type: [Testimonial] })
+  async publishedTestimonials(): Promise<Testimonial[]> {
+    return this.testimonialsService.publishedTestimonials();
   }
 
   @Get("contact")

@@ -61,6 +61,7 @@ import { RubberSupplierCoc } from "./entities/rubber-supplier-coc.entity";
 import { RubberTaxInvoice } from "./entities/rubber-tax-invoice.entity";
 import { RubberTaxInvoiceCorrection } from "./entities/rubber-tax-invoice-correction.entity";
 import { RubberType } from "./entities/rubber-type.entity";
+import { Testimonial } from "./entities/testimonial.entity";
 import { WebsitePage } from "./entities/website-page.entity";
 import { AuRubberAccessGuard } from "./guards/au-rubber-access.guard";
 import { PublicAuIndustriesController } from "./public-au-industries.controller";
@@ -101,6 +102,8 @@ import { RubberTaxInvoiceService } from "./rubber-tax-invoice.service";
 import { ArEmailAdapterService } from "./services/ar-email-adapter.service";
 import { RubberExtractionOrchestratorService } from "./services/rubber-extraction-orchestrator.service";
 import { RubberOrderConfirmationService } from "./services/rubber-order-confirmation.service";
+import { TestimonialsController } from "./testimonials.controller";
+import { TestimonialsService } from "./testimonials.service";
 import { WebsitePagesController } from "./website-pages.controller";
 import { WebsitePagesService } from "./website-pages.service";
 
@@ -161,6 +164,7 @@ import { WebsitePagesService } from "./website-pages.service";
       RubberRollIssuanceLineItem,
       RubberAppProfile,
       WebsitePage,
+      Testimonial,
       JobCard,
       JobCardLineItem,
     ]),
@@ -171,6 +175,7 @@ import { WebsitePagesService } from "./website-pages.service";
     RubberAdminController,
     RubberInboundEmailController,
     WebsitePagesController,
+    TestimonialsController,
     PublicAuIndustriesController,
   ],
   providers: [
@@ -203,6 +208,7 @@ import { WebsitePagesService } from "./website-pages.service";
     RubberCostService,
     AuRubberAccessGuard,
     WebsitePagesService,
+    TestimonialsService,
     ArEmailAdapterService,
     RubberExtractionOrchestratorService,
     RubberCompanyDirectorService,

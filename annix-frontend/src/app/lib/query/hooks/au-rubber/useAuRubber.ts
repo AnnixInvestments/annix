@@ -19,6 +19,7 @@ import {
   type RubberSupplierCocDto,
   type ScrapedBrandingCandidates,
   type SupplierCocType,
+  type TestimonialDto,
   type WebsitePageDto,
 } from "@/app/lib/api/auRubberApi";
 import type {
@@ -135,6 +136,21 @@ export function useAuRubberWebsitePage(id: string) {
   return useQuery<WebsitePageDto>({
     queryKey: rubberKeys.websitePages.detail(id),
     queryFn: () => auRubberApiClient.websitePage(id),
+    enabled: !!id,
+  });
+}
+
+export function useAuRubberTestimonials() {
+  return useQuery<TestimonialDto[]>({
+    queryKey: rubberKeys.testimonials.list(),
+    queryFn: () => auRubberApiClient.testimonials(),
+  });
+}
+
+export function useAuRubberTestimonial(id: string) {
+  return useQuery<TestimonialDto>({
+    queryKey: rubberKeys.testimonials.detail(id),
+    queryFn: () => auRubberApiClient.testimonial(id),
     enabled: !!id,
   });
 }

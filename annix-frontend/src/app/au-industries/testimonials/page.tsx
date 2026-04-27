@@ -1,10 +1,22 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import Link from "next/link";
-import { aggregateRating, TESTIMONIALS, type Testimonial } from "../testimonials";
 
 const SITE_URL = "https://auind.co.za";
 const GOOGLE_REVIEW_URL = "https://www.google.com/maps?cid=7279509968095619778";
 const ELFSIGHT_WIDGET_CLASS = "elfsight-app-4c13c174-7edd-4de9-b428-dc35d38ec263";
+
+interface PublicTestimonial {
+  id: string;
+  authorName: string;
+  authorRole: string | null;
+  authorCompany: string | null;
+  rating: number;
+  body: string;
+  datePublished: string;
+  source: string;
+  highlight: boolean;
+}
 
 export const metadata: Metadata = {
   title: "Testimonials & Customer Reviews",
@@ -20,11 +32,41 @@ export const metadata: Metadata = {
   },
 };
 
-function buildReviewJsonLd() {
-  if (TESTIMONIALS.length === 0) {
+async function fetchTestimonials(): Promise<PublicTestimonial[]> {
+  const headersList = await headers();
+  const host = (headersList.get("host") ?? "").toLowerCase().split(":")[0];
+  if (host.length === 0) {
+    return [];
+  }
+  const protocol = headersList.get("x-forwarded-proto") ?? "https";
+  const apiBase = `${protocol}://${host}/api`;
+  try {
+    const res = await fetch(`${apiBase}/public/au-industries/testimonials`, {
+      next: { revalidate: 60 },
+    });
+    if (!res.ok) {
+      return [];
+    }
+    return res.json();
+  } catch {
+    return [];
+  }
+}
+
+function aggregateRating(entries: PublicTestimonial[]): { value: number; count: number } | null {
+  if (entries.length === 0) {
     return null;
   }
-  const aggregate = aggregateRating();
+  const total = entries.reduce((sum, entry) => sum + entry.rating, 0);
+  const value = Math.round((total / entries.length) * 10) / 10;
+  return { value, count: entries.length };
+}
+
+function buildReviewJsonLd(entries: PublicTestimonial[]) {
+  if (entries.length === 0) {
+    return null;
+  }
+  const aggregate = aggregateRating(entries);
   return {
     "@context": "https://schema.org",
     "@type": "LocalBusiness",
@@ -40,7 +82,7 @@ function buildReviewJsonLd() {
           worstRating: 1,
         }
       : undefined,
-    review: TESTIMONIALS.map((entry) => ({
+    review: entries.map((entry) => ({
       "@type": "Review",
       author: { "@type": "Person", name: entry.authorName },
       reviewBody: entry.body,
@@ -55,10 +97,11 @@ function buildReviewJsonLd() {
   };
 }
 
-export default function TestimonialsPage() {
-  const jsonLd = buildReviewJsonLd();
-  const hasTestimonials = TESTIMONIALS.length > 0;
-  const aggregate = aggregateRating();
+export default async function TestimonialsPage() {
+  const testimonials = await fetchTestimonials();
+  const jsonLd = buildReviewJsonLd(testimonials);
+  const aggregate = aggregateRating(testimonials);
+  const hasTestimonials = testimonials.length > 0;
 
   return (
     <div>
@@ -102,7 +145,7 @@ export default function TestimonialsPage() {
             </h2>
             <div className="w-20 h-[3px] bg-[#B8860B] mb-8" />
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {TESTIMONIALS.map((entry) => (
+              {testimonials.map((entry) => (
                 <TestimonialCard key={entry.id} entry={entry} />
               ))}
             </div>
@@ -154,7 +197,7 @@ export default function TestimonialsPage() {
   );
 }
 
-function TestimonialCard(props: { entry: Testimonial }) {
+function TestimonialCard(props: { entry: PublicTestimonial }) {
   const role = props.entry.authorRole;
   const company = props.entry.authorCompany;
   const subtitleParts = [role, company].filter((part) => part !== null);
