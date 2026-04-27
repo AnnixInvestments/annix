@@ -67,7 +67,6 @@ export function FlangeDropdownTriplet(props: FlangeDropdownTripletProps) {
   } = props;
 
   const effectiveStandardId = flangeStandardId || globalFlangeStandardId;
-  const effectiveClassId = flangePressureClassId || globalFlangePressureClassId;
   const effectiveTypeCode = flangeTypeCode || globalFlangeTypeCode;
 
   const selectedStandard = useMemo(
@@ -85,6 +84,20 @@ export function FlangeDropdownTriplet(props: FlangeDropdownTripletProps) {
     if (!effectiveTypeCode) return "";
     return effectiveTypeCode.replace(/^\//, "");
   }, [effectiveTypeCode]);
+
+  const effectiveClassId = useMemo(() => {
+    if (flangePressureClassId) return flangePressureClassId;
+    if (!globalFlangePressureClassId || !allPressureClasses?.length)
+      return globalFlangePressureClassId;
+    if (!normalizedTypeCode) return globalFlangePressureClassId;
+    const globalRec = allPressureClasses.find((p) => p.id === globalFlangePressureClassId);
+    const baseDesignation = globalRec?.designation?.replace(/\/\d+$/, "") || "";
+    if (!baseDesignation) return globalFlangePressureClassId;
+    const targetDesignation = `${baseDesignation}/${normalizedTypeCode}`;
+    const matchingForType = allPressureClasses.find((p) => p.designation === targetDesignation);
+    const matchingId = matchingForType?.id;
+    return matchingId || globalFlangePressureClassId;
+  }, [flangePressureClassId, globalFlangePressureClassId, allPressureClasses, normalizedTypeCode]);
 
   const isStandardFromGlobal = !flangeStandardId && !!globalFlangeStandardId;
   const isStandardOverride =
@@ -111,11 +124,13 @@ export function FlangeDropdownTriplet(props: FlangeDropdownTripletProps) {
   const isTypeOverride = !!globalFlangeTypeCode && effectiveTypeCode !== globalFlangeTypeCode;
 
   const isPressureClassUnsuitable = useMemo(() => {
-    if (!selectedStandard?.code || !selectedClass?.designation || workingPressureBar <= 0)
-      return false;
-    const code = selectedStandard.code.toUpperCase();
-    const designation = selectedClass.designation.toUpperCase();
-    const classValue = parseInt(designation.match(/\d+/)?.[0] || "0", 10);
+    const standardCode = selectedStandard?.code;
+    const classDesignation = selectedClass?.designation;
+    if (!standardCode || !classDesignation || workingPressureBar <= 0) return false;
+    const code = standardCode.toUpperCase();
+    const designation = classDesignation.toUpperCase();
+    const designationMatch = designation.match(/\d+/)?.[0];
+    const classValue = parseInt(designationMatch || "0", 10);
     if (classValue === 0) return false;
     if ((code.includes("SABS") || code.includes("SANS")) && code.includes("1123")) {
       return classValue / 100 < workingPressureBar;

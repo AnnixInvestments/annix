@@ -1095,14 +1095,22 @@ function BendFormComponent(props: BendFormProps) {
                         onChange={(bendType) => {
                           const isSweepTee = specs.bendItemType === "SWEEP_TEE";
                           const isFixed90 = isSweepTee || specs.bendItemType === "DUCKFOOT_BEND";
+                          const nb = specs.nominalBoreMm;
+                          let newCenterToFace: number | undefined;
+                          let newBendRadius: number | undefined;
+                          if (isFixed90 && bendType && nb) {
+                            const bt = bendType as SABS62BendType;
+                            newCenterToFace = sabs62CFInterpolated(bt, 90, nb);
+                            newBendRadius = SABS62_BEND_RADIUS[bt]?.[nb];
+                          }
                           const updatedEntry: any = {
                             ...entry,
                             specs: {
                               ...entry.specs,
                               bendType: bendType || undefined,
                               bendDegrees: isFixed90 ? 90 : undefined,
-                              centerToFaceMm: undefined,
-                              bendRadiusMm: undefined,
+                              centerToFaceMm: newCenterToFace,
+                              bendRadiusMm: newBendRadius,
                               sweepTeePipeALengthMm: isSweepTee
                                 ? undefined
                                 : specs.sweepTeePipeALengthMm,
@@ -1114,6 +1122,9 @@ function BendFormComponent(props: BendFormProps) {
                           }
                           updatedEntry.description = generateItemDescription(updatedEntry);
                           onUpdateEntry(entry.id, updatedEntry);
+                          if (isFixed90 && bendType && nb && specs.scheduleNumber) {
+                            debouncedCalculate();
+                          }
                         }}
                         options={options}
                         placeholder="Select Bend Type"
