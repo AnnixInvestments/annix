@@ -2,6 +2,7 @@
 import { DateTime } from "luxon";
 import type { MetadataRoute } from "next";
 import { headers } from "next/headers";
+import { CASE_STUDIES } from "./au-industries/caseStudies";
 
 const AU_INDUSTRIES_HOSTS = new Set(["auind.co.za", "www.auind.co.za"]);
 const AUIND_SITE_URL = "https://auind.co.za";
@@ -35,6 +36,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.8,
     },
     {
+      url: `${AUIND_SITE_URL}/projects`,
+      lastModified: currentDate,
+      changeFrequency: "weekly",
+      priority: 0.8,
+    },
+    ...CASE_STUDIES.map((study) => ({
+      url: `${AUIND_SITE_URL}/projects/${study.slug}`,
+      lastModified: DateTime.fromISO(study.dateISO).toJSDate(),
+      changeFrequency: "yearly" as const,
+      priority: 0.6,
+    })),
+    {
       url: `${AUIND_SITE_URL}/quote`,
       lastModified: currentDate,
       changeFrequency: "monthly",
@@ -54,7 +67,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
-  const hardcodedSlugs = new Set(["products-and-services", "gallery", "quote", "faq", "contact"]);
+  const hardcodedSlugs = new Set([
+    "products-and-services",
+    "gallery",
+    "projects",
+    "quote",
+    "faq",
+    "contact",
+  ]);
 
   try {
     const protocol = headersList.get("x-forwarded-proto") ?? "https";

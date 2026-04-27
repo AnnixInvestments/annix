@@ -274,10 +274,10 @@ export default function AuIndustriesHomePage(): React.JSX.Element {
           </div>
 
           <Link
-            href="/gallery"
+            href="/projects"
             className="inline-block px-10 py-4 bg-[#B8860B] text-white text-lg font-semibold uppercase tracking-wider hover:bg-[#9A7209] transition-colors"
           >
-            View More Projects
+            View Project Case Studies
           </Link>
         </div>
       </section>

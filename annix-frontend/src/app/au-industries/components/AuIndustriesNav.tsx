@@ -56,6 +56,16 @@ export function AuIndustriesNav(props: { pages: NavPage[] }) {
               );
             })}
             <Link
+              href="/projects"
+              className={`px-4 py-2 text-sm font-semibold uppercase tracking-wide transition-colors ${
+                pathname === "/projects" || pathname.startsWith("/projects/")
+                  ? "text-gray-900 border-b-2 border-gray-900"
+                  : "text-gray-800 hover:text-gray-900"
+              }`}
+            >
+              Projects
+            </Link>
+            <Link
               href="/quote"
               className={`px-4 py-2 text-sm font-semibold uppercase tracking-wide transition-colors ${
                 pathname === "/quote"
@@ -157,6 +167,17 @@ export function AuIndustriesNav(props: { pages: NavPage[] }) {
                 </Link>
               );
             })}
+            <Link
+              href="/projects"
+              onClick={() => setMenuOpen(false)}
+              className={`block px-3 py-2 text-base font-semibold uppercase ${
+                pathname === "/projects" || pathname.startsWith("/projects/")
+                  ? "text-gray-900"
+                  : "text-gray-800 hover:text-gray-900"
+              }`}
+            >
+              Projects
+            </Link>
             <Link
               href="/quote"
               onClick={() => setMenuOpen(false)}

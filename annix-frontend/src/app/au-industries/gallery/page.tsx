@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect } from "react";
 
 interface GalleryImage {
@@ -10,12 +11,14 @@ interface GalleryImage {
 
 interface GallerySection {
   title: string;
+  slug: string;
   images: GalleryImage[];
 }
 
 const gallerySections: GallerySection[] = [
   {
     title: "Fittings lined with AU 40 Black for a mine in Namibia — July 2025",
+    slug: "au40-black-fittings-namibia-mine",
     images: [
       { src: "gallery52.jpg", alt: "AU 40 Black rubber lined flanged fitting for Namibian mine" },
       { src: "gallery53.jpg", alt: "Interior view of AU 40 Black rubber lined pipe fitting" },
@@ -27,6 +30,7 @@ const gallerySections: GallerySection[] = [
   },
   {
     title: "Fittings lined with AU premium 60 Shore for a mine in Mozambique — July 2025",
+    slug: "au-60-shore-fittings-mozambique-mine",
     images: [
       { src: "gallery50.jpg", alt: "AU premium 60 Shore rubber lined fitting for Mozambique mine" },
       { src: "gallery51.jpg", alt: "Finished 60 Shore rubber lined pipe fittings" },
@@ -34,6 +38,7 @@ const gallerySections: GallerySection[] = [
   },
   {
     title: "Ceramic Embedded Rubber hoses for a mine in Mozambique — July 2025",
+    slug: "ceramic-rubber-hoses-mozambique-mine",
     images: [
       { src: "gallery47.jpg", alt: "Ceramic embedded rubber hose section showing embedded tiles" },
       { src: "gallery48.jpg", alt: "Ceramic rubber hose assembly for Mozambique mining operation" },
@@ -42,6 +47,7 @@ const gallerySections: GallerySection[] = [
   },
   {
     title: "Pipes lined with 12mm AU 40 Red for a mine in Limpopo — July 2025",
+    slug: "au40-red-pipes-limpopo-mine",
     images: [
       { src: "gallery44.jpg", alt: "12mm AU 40 Red rubber lined pipe interior view" },
       { src: "gallery45.jpg", alt: "Red rubber lined steel pipe for Limpopo mine project" },
@@ -50,6 +56,7 @@ const gallerySections: GallerySection[] = [
   },
   {
     title: "Pipes and fittings lined with AU 40 Black for a uranium mine in Namibia — June 2025",
+    slug: "au40-black-pipes-namibia-uranium",
     images: [
       { src: "gallery41.jpg", alt: "AU 40 Black lined pipe for uranium mine in Namibia" },
       { src: "gallery42.jpg", alt: "Rubber lined fitting showing black natural rubber interior" },
@@ -62,6 +69,7 @@ const gallerySections: GallerySection[] = [
   {
     title:
       "Pipes lined with a custom compound developed by AU for their process in West Africa — June 2025",
+    slug: "custom-compound-pipes-west-africa",
     images: [
       { src: "gallery38.jpg", alt: "Custom compound rubber lined pipe for West Africa project" },
       { src: "gallery39.jpg", alt: "AU custom rubber compound lining applied to steel pipe" },
@@ -70,6 +78,7 @@ const gallerySections: GallerySection[] = [
   },
   {
     title: "HDPE project for a customer in Mozambique — June 2025",
+    slug: "hdpe-piping-mozambique",
     images: [
       { src: "gallery35.jpg", alt: "HDPE pipe sections fabricated for Mozambique project" },
       { src: "gallery36.jpg", alt: "HDPE piping installation components for mining operation" },
@@ -78,6 +87,7 @@ const gallerySections: GallerySection[] = [
   },
   {
     title: "Various rolls of AU rubber delivered — June 2025",
+    slug: "au-rubber-rolls-delivery",
     images: [
       { src: "gallery32.jpg", alt: "Rolls of AU natural rubber sheeting on delivery truck" },
       { src: "gallery33.jpg", alt: "Stacked rubber sheeting rolls in AU Industries warehouse" },
@@ -86,6 +96,7 @@ const gallerySections: GallerySection[] = [
   },
   {
     title: "AU A38 Pink Rubber rolls being manufactured — May 2025",
+    slug: "au-a38-pink-rubber-rolls-manufacturing",
     images: [
       { src: "gallery29.jpg", alt: "AU A38 Pink rubber sheeting on manufacturing calender" },
       { src: "gallery30.jpg", alt: "Pink rubber compound being processed through rolling mill" },
@@ -94,6 +105,7 @@ const gallerySections: GallerySection[] = [
   },
   {
     title: "AU's premium A38 pink rubber compound — May 2025",
+    slug: "au-a38-pink-compound",
     images: [
       { src: "gallery26.jpg", alt: "AU premium A38 pink rubber compound block" },
       { src: "gallery27.jpg", alt: "A38 pink rubber compound showing colour and texture" },
@@ -102,6 +114,7 @@ const gallerySections: GallerySection[] = [
   },
   {
     title: "New ceramic embedded rubber wear panels — May 2025",
+    slug: "ceramic-embedded-rubber-wear-panels",
     images: [
       { src: "gallery22.jpg", alt: "Ceramic embedded rubber wear panel showing tile pattern" },
       { src: "gallery23.jpg", alt: "Close-up of ceramic tiles bonded into rubber wear panel" },
@@ -110,6 +123,7 @@ const gallerySections: GallerySection[] = [
   },
   {
     title: "AU 40 shore black natural rubber compound — April 2025",
+    slug: "au-40-black-compound",
     images: [
       { src: "gallery12.jpg", alt: "AU 40 shore black natural rubber compound sample" },
       { src: "gallery13.jpg", alt: "Black rubber compound block showing consistency" },
@@ -118,6 +132,7 @@ const gallerySections: GallerySection[] = [
   },
   {
     title: "AU 40 shore black rubber sheet manufacturing — April 2025",
+    slug: "au-40-black-rubber-sheeting-manufacturing",
     images: [
       { src: "gallery14.jpg", alt: "Black rubber sheeting on calender during manufacturing" },
       { src: "gallery16.jpg", alt: "40 shore black rubber sheet being rolled after calendering" },
@@ -126,6 +141,7 @@ const gallerySections: GallerySection[] = [
   },
   {
     title: "Red 40 shore pipe for a platinum mine in Mpumalanga — Oct 2024",
+    slug: "au40-red-pipes-mpumalanga-platinum",
     images: [
       { src: "gallery02.jpg", alt: "AU Red 40 shore rubber lined pipe for platinum mine" },
       { src: "gallery04.jpg", alt: "Interior red rubber lining of steel pipe for Mpumalanga mine" },
@@ -134,6 +150,7 @@ const gallerySections: GallerySection[] = [
   },
   {
     title: "AU red rubber lined fittings for a titanium mine in Mozambique — Sept 2024",
+    slug: "au-red-fittings-mozambique-titanium-sep-2024",
     images: [
       { src: "projectgallery17.jpg", alt: "Red rubber lined elbow fitting for titanium mine" },
       {
@@ -148,6 +165,7 @@ const gallerySections: GallerySection[] = [
   },
   {
     title: "AU red rubber lined fittings for a titanium mine in Mozambique — July 2024",
+    slug: "au-red-fittings-mozambique-titanium-jul-2024",
     images: [
       { src: "gallery19.jpg", alt: "Red rubber lined reducer for titanium mine piping system" },
       {
@@ -162,6 +180,7 @@ const gallerySections: GallerySection[] = [
   },
   {
     title: "Rubber Lined Pipes and Chutes for a Titanium Mine in Mozambique — June 2022",
+    slug: "rubber-lined-pipes-chutes-mozambique-titanium",
     images: [
       {
         src: "projectgallery01.jpg",
@@ -179,6 +198,7 @@ const gallerySections: GallerySection[] = [
   },
   {
     title: "Rubber lined and HDPE pipes for copper mine in Limpopo — Sept 2021",
+    slug: "rubber-lined-hdpe-pipes-limpopo-copper",
     images: [
       { src: "gallery05.jpg", alt: "Rubber lined steel pipe for Limpopo copper mine" },
       { src: "gallery08.jpg", alt: "HDPE pipe sections prepared for copper mine installation" },
@@ -193,27 +213,30 @@ const gallerySections: GallerySection[] = [
 function GalleryCard(props: { section: GallerySection }) {
   const imageCount = props.section.images.length;
   return (
-    <div className="rounded-xl overflow-hidden border-2 border-white shadow-md">
-      <div className="bg-[#efcc54] text-gray-900 text-center py-4 px-4 uppercase font-bold text-sm tracking-wide leading-snug">
+    <Link
+      href={`/projects/${props.section.slug}`}
+      className="block rounded-xl overflow-hidden border-2 border-white shadow-md hover:shadow-xl transition-shadow group"
+    >
+      <div className="bg-[#efcc54] text-gray-900 text-center py-4 px-4 uppercase font-bold text-sm tracking-wide leading-snug group-hover:bg-[#e5be3a] transition-colors">
         {props.section.title}
       </div>
       <div
         className={`grid ${imageCount === 2 ? "grid-cols-2" : "grid-cols-3"} gap-[2px] bg-white`}
       >
         {props.section.images.map((img) => (
-          <div key={img.src} className="relative h-32 sm:h-36 md:h-40">
+          <div key={img.src} className="relative h-32 sm:h-36 md:h-40 overflow-hidden">
             <Image
               src={`/au-industries/gallery/${img.src}`}
               alt={img.alt}
               fill
-              className="object-cover"
+              className="object-cover group-hover:scale-105 transition-transform duration-300"
               sizes="(max-width: 768px) 33vw, 250px"
               unoptimized
             />
           </div>
         ))}
       </div>
-    </div>
+    </Link>
   );
 }
 
