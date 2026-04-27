@@ -3763,6 +3763,34 @@ class AuRubberApiClient {
       method: "DELETE",
     });
   }
+
+  async blogPosts(): Promise<BlogPostDto[]> {
+    return this.request("/rubber-lining/blog-posts");
+  }
+
+  async blogPost(id: string): Promise<BlogPostDto> {
+    return this.request(`/rubber-lining/blog-posts/${id}`);
+  }
+
+  async createBlogPost(data: CreateBlogPostDto): Promise<BlogPostDto> {
+    return this.request("/rubber-lining/blog-posts", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateBlogPost(id: string, data: UpdateBlogPostDto): Promise<BlogPostDto> {
+    return this.request(`/rubber-lining/blog-posts/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteBlogPost(id: string): Promise<void> {
+    return this.request(`/rubber-lining/blog-posts/${id}`, {
+      method: "DELETE",
+    });
+  }
 }
 
 export interface WebsitePageDto {
@@ -3849,6 +3877,48 @@ export interface UpdateTestimonialDto {
   highlight?: boolean;
   isPublished?: boolean;
   sortOrder?: number;
+}
+
+export interface BlogPostDto {
+  id: string;
+  slug: string;
+  title: string;
+  metaTitle: string | null;
+  metaDescription: string | null;
+  excerpt: string;
+  content: string;
+  heroImageUrl: string | null;
+  author: string;
+  publishedAt: string | null;
+  isPublished: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateBlogPostDto {
+  slug: string;
+  title: string;
+  metaTitle?: string | null;
+  metaDescription?: string | null;
+  excerpt?: string;
+  content?: string;
+  heroImageUrl?: string | null;
+  author?: string;
+  publishedAt?: string | null;
+  isPublished?: boolean;
+}
+
+export interface UpdateBlogPostDto {
+  slug?: string;
+  title?: string;
+  metaTitle?: string | null;
+  metaDescription?: string | null;
+  excerpt?: string;
+  content?: string;
+  heroImageUrl?: string | null;
+  author?: string;
+  publishedAt?: string | null;
+  isPublished?: boolean;
 }
 
 export const auRubberApiClient = new AuRubberApiClient();

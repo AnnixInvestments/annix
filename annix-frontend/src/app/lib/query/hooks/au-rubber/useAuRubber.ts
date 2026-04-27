@@ -6,6 +6,7 @@ import {
   type AuRubberRoleDto,
   type AuRubberUserAccessDto,
   auRubberApiClient,
+  type BlogPostDto,
   type CocProcessingStatus,
   type CompoundQualityDetailDto,
   type CompoundQualitySummaryDto,
@@ -151,6 +152,21 @@ export function useAuRubberTestimonial(id: string) {
   return useQuery<TestimonialDto>({
     queryKey: rubberKeys.testimonials.detail(id),
     queryFn: () => auRubberApiClient.testimonial(id),
+    enabled: !!id,
+  });
+}
+
+export function useAuRubberBlogPosts() {
+  return useQuery<BlogPostDto[]>({
+    queryKey: rubberKeys.blogPosts.list(),
+    queryFn: () => auRubberApiClient.blogPosts(),
+  });
+}
+
+export function useAuRubberBlogPost(id: string) {
+  return useQuery<BlogPostDto>({
+    queryKey: rubberKeys.blogPosts.detail(id),
+    queryFn: () => auRubberApiClient.blogPost(id),
     enabled: !!id,
   });
 }

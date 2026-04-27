@@ -11,6 +11,9 @@ import { SageExportModule } from "../sage-export/sage-export.module";
 import { SharedModule } from "../shared/shared.module";
 import { JobCard } from "../stock-control/entities/job-card.entity";
 import { JobCardLineItem } from "../stock-control/entities/job-card-line-item.entity";
+import { BlogPostsController } from "./blog-posts.controller";
+import { BlogPostsService } from "./blog-posts.service";
+import { BlogPost } from "./entities/blog-post.entity";
 import { RubberAccountSignOff } from "./entities/rubber-account-sign-off.entity";
 import { RubberAppProfile } from "./entities/rubber-app-profile.entity";
 import {
@@ -165,6 +168,7 @@ import { WebsitePagesService } from "./website-pages.service";
       RubberAppProfile,
       WebsitePage,
       Testimonial,
+      BlogPost,
       JobCard,
       JobCardLineItem,
     ]),
@@ -176,6 +180,7 @@ import { WebsitePagesService } from "./website-pages.service";
     RubberInboundEmailController,
     WebsitePagesController,
     TestimonialsController,
+    BlogPostsController,
     PublicAuIndustriesController,
   ],
   providers: [
@@ -209,6 +214,7 @@ import { WebsitePagesService } from "./website-pages.service";
     AuRubberAccessGuard,
     WebsitePagesService,
     TestimonialsService,
+    BlogPostsService,
     ArEmailAdapterService,
     RubberExtractionOrchestratorService,
     RubberCompanyDirectorService,

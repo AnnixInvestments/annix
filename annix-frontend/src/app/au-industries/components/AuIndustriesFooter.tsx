@@ -15,7 +15,7 @@ export function AuIndustriesFooter(props: FooterProps) {
   return (
     <footer className="bg-white text-gray-900 border-t-4 border-[#B8860B]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div>
             <Image
               src="/au-industries/logo.jpg"
@@ -67,6 +67,18 @@ export function AuIndustriesFooter(props: FooterProps) {
                 Products & Services
               </Link>
               <Link
+                href="/projects"
+                className="block text-gray-700 hover:text-[#B8860B] underline-offset-2 hover:underline transition-colors"
+              >
+                Projects
+              </Link>
+              <Link
+                href="/testimonials"
+                className="block text-gray-700 hover:text-[#B8860B] underline-offset-2 hover:underline transition-colors"
+              >
+                Testimonials
+              </Link>
+              <Link
                 href="/gallery"
                 className="block text-gray-700 hover:text-[#B8860B] underline-offset-2 hover:underline transition-colors"
               >
@@ -77,6 +89,31 @@ export function AuIndustriesFooter(props: FooterProps) {
                 className="block text-gray-700 hover:text-[#B8860B] underline-offset-2 hover:underline transition-colors"
               >
                 Contact Us
+              </Link>
+            </div>
+          </div>
+          <div>
+            <h3 className="text-gray-900 text-lg font-semibold mb-4 uppercase tracking-wide">
+              Service Areas
+            </h3>
+            <div className="space-y-2 text-sm">
+              <Link
+                href="/rubber-lining-boksburg"
+                className="block text-gray-700 hover:text-[#B8860B] underline-offset-2 hover:underline transition-colors"
+              >
+                Rubber Lining Boksburg
+              </Link>
+              <Link
+                href="/rubber-lining-johannesburg"
+                className="block text-gray-700 hover:text-[#B8860B] underline-offset-2 hover:underline transition-colors"
+              >
+                Rubber Lining Johannesburg
+              </Link>
+              <Link
+                href="/rubber-lining-witbank"
+                className="block text-gray-700 hover:text-[#B8860B] underline-offset-2 hover:underline transition-colors"
+              >
+                Rubber Lining Witbank
               </Link>
             </div>
           </div>

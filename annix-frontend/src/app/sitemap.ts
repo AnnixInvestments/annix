@@ -54,6 +54,30 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.7,
     },
     {
+      url: `${AUIND_SITE_URL}/rubber-lining-boksburg`,
+      lastModified: currentDate,
+      changeFrequency: "monthly",
+      priority: 0.85,
+    },
+    {
+      url: `${AUIND_SITE_URL}/rubber-lining-johannesburg`,
+      lastModified: currentDate,
+      changeFrequency: "monthly",
+      priority: 0.85,
+    },
+    {
+      url: `${AUIND_SITE_URL}/rubber-lining-witbank`,
+      lastModified: currentDate,
+      changeFrequency: "monthly",
+      priority: 0.85,
+    },
+    {
+      url: `${AUIND_SITE_URL}/blog`,
+      lastModified: currentDate,
+      changeFrequency: "weekly",
+      priority: 0.7,
+    },
+    {
       url: `${AUIND_SITE_URL}/quote`,
       lastModified: currentDate,
       changeFrequency: "monthly",
@@ -78,20 +102,25 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "gallery",
     "projects",
     "testimonials",
+    "rubber-lining-boksburg",
+    "rubber-lining-johannesburg",
+    "rubber-lining-witbank",
+    "blog",
     "quote",
     "faq",
     "contact",
   ]);
 
+  const protocol = headersList.get("x-forwarded-proto") ?? "https";
+  const apiBase = `${protocol}://${host}/api`;
+  const dynamicEntries: MetadataRoute.Sitemap = [];
+
   try {
-    const protocol = headersList.get("x-forwarded-proto") ?? "https";
-    const apiBase = `${protocol}://${host}/api`;
-    const res = await fetch(`${apiBase}/public/au-industries/pages`, {
+    const pagesRes = await fetch(`${apiBase}/public/au-industries/pages`, {
       next: { revalidate: 3600 },
     });
-
-    if (res.ok) {
-      const pages = await res.json();
+    if (pagesRes.ok) {
+      const pages = await pagesRes.json();
       const pageEntries = pages
         .filter(
           (page: { isHomePage: boolean; slug: string }) =>
@@ -103,12 +132,35 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           changeFrequency: "weekly" as const,
           priority: 0.7,
         }));
-
-      return [...hardcodedEntries, ...pageEntries];
+      dynamicEntries.push(...pageEntries);
     }
   } catch {
-    return hardcodedEntries;
+    // Ignore — fall through with what we have
   }
 
-  return hardcodedEntries;
+  try {
+    const blogRes = await fetch(`${apiBase}/public/au-industries/blog`, {
+      next: { revalidate: 600 },
+    });
+    if (blogRes.ok) {
+      const posts = await blogRes.json();
+      const blogEntries = posts.map(
+        (post: { slug: string; publishedAt: string | null; updatedAt: string }) => {
+          const rawPublished = post.publishedAt;
+          const isoForDate = rawPublished || post.updatedAt;
+          return {
+            url: `${AUIND_SITE_URL}/blog/${post.slug}`,
+            lastModified: DateTime.fromISO(isoForDate).toJSDate(),
+            changeFrequency: "monthly" as const,
+            priority: 0.7,
+          };
+        },
+      );
+      dynamicEntries.push(...blogEntries);
+    }
+  } catch {
+    // Ignore — fall through with what we have
+  }
+
+  return [...hardcodedEntries, ...dynamicEntries];
 }

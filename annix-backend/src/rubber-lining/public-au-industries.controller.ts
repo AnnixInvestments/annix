@@ -4,6 +4,8 @@ import { AdminCompanyProfileService } from "../admin/admin-company-profile.servi
 import { CompanyProfile } from "../admin/entities/company-profile.entity";
 import { EmailService } from "../email/email.service";
 import { ApiMessageResponse, messageResponse } from "../shared/dto";
+import { BlogPostsService } from "./blog-posts.service";
+import { BlogPost } from "./entities/blog-post.entity";
 import { Testimonial } from "./entities/testimonial.entity";
 import { WebsitePage } from "./entities/website-page.entity";
 import { TestimonialsService } from "./testimonials.service";
@@ -24,6 +26,7 @@ export class PublicAuIndustriesController {
   constructor(
     private readonly websitePagesService: WebsitePagesService,
     private readonly testimonialsService: TestimonialsService,
+    private readonly blogPostsService: BlogPostsService,
     private readonly companyProfileService: AdminCompanyProfileService,
     private readonly emailService: EmailService,
   ) {}
@@ -55,6 +58,21 @@ export class PublicAuIndustriesController {
   @ApiResponse({ status: 200, type: [Testimonial] })
   async publishedTestimonials(): Promise<Testimonial[]> {
     return this.testimonialsService.publishedTestimonials();
+  }
+
+  @Get("blog")
+  @ApiOperation({ summary: "List published blog posts" })
+  @ApiResponse({ status: 200, type: [BlogPost] })
+  async publishedBlogPosts(): Promise<BlogPost[]> {
+    return this.blogPostsService.publishedPosts();
+  }
+
+  @Get("blog/:slug")
+  @ApiOperation({ summary: "Get a published blog post by slug" })
+  @ApiParam({ name: "slug", type: "string" })
+  @ApiResponse({ status: 200, type: BlogPost })
+  async publishedBlogPostBySlug(@Param("slug") slug: string): Promise<BlogPost> {
+    return this.blogPostsService.publishedPostBySlug(slug);
   }
 
   @Get("contact")

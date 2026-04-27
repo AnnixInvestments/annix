@@ -86,6 +86,11 @@ export const rubberKeys = {
     list: () => [...rubberKeys.testimonials.all, "list"] as const,
     detail: (id: string) => [...rubberKeys.testimonials.all, "detail", id] as const,
   },
+  blogPosts: {
+    all: ["rubber", "blogPosts"] as const,
+    list: () => [...rubberKeys.blogPosts.all, "list"] as const,
+    detail: (id: string) => [...rubberKeys.blogPosts.all, "detail", id] as const,
+  },
   costRates: {
     all: ["rubber", "costRates"] as const,
     list: (rateType?: CostRateType) =>

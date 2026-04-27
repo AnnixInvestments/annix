@@ -361,6 +361,8 @@ export {
   useAuRubberApproveSupplierCoc,
   useAuRubberAuCocs,
   useAuRubberAuthorizeVersion,
+  useAuRubberBlogPost,
+  useAuRubberBlogPosts,
   useAuRubberCodings,
   useAuRubberCompanies,
   useAuRubberCreateCocsFromAnalysis,
