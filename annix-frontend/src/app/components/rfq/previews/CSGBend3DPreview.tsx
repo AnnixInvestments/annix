@@ -1067,32 +1067,25 @@ const Scene = (props: Props) => {
             );
           })()}
 
+        {isDuckfoot && (
+          <DuckfootSteelwork
+            nominalBore={nominalBore}
+            bendR={bendR}
+            outerR={outerR}
+            t1={t1}
+            duckfootBasePlateXMm={duckfootBasePlateXMm}
+            duckfootBasePlateYMm={duckfootBasePlateYMm}
+            duckfootPlateThicknessT1Mm={duckfootPlateThicknessT1Mm}
+            duckfootRibThicknessT2Mm={duckfootRibThicknessT2Mm}
+            duckfootInletCentreHeightMm={duckfootInletCentreHeightMm}
+            duckfootGussetPointCDegrees={duckfootGussetPointCDegrees}
+            duckfootGussetPointDDegrees={duckfootGussetPointDDegrees}
+            duckfootGussetThicknessMm={duckfootGussetThicknessMm}
+          />
+        )}
+
         <axesHelper args={[1]} />
       </group>
-      {/* Duckfoot Base Plate and Gusset Ribs - OUTSIDE rotation group to stay horizontal */}
-      {isDuckfoot && (
-        <DuckfootSteelwork
-          nominalBore={nominalBore}
-          bendR={bendR}
-          outerR={outerR}
-          wtMm={wtMm}
-          duckfootXOffset={duckfootXOffset}
-          duckfootYOffset={duckfootYOffset}
-          bendPositionAdjustY={bendPositionAdjustY}
-          bendPositionAdjustZ={bendPositionAdjustZ}
-          duckfootBasePlateXMm={duckfootBasePlateXMm}
-          duckfootBasePlateYMm={duckfootBasePlateYMm}
-          duckfootPlateThicknessT1Mm={duckfootPlateThicknessT1Mm}
-          duckfootRibThicknessT2Mm={duckfootRibThicknessT2Mm}
-          duckfootInletCentreHeightMm={duckfootInletCentreHeightMm}
-          duckfootGussetPointDDegrees={duckfootGussetPointDDegrees}
-          duckfootGussetPointCDegrees={duckfootGussetPointCDegrees}
-          duckfootGussetCount={duckfootGussetCount}
-          duckfootGussetPlacement={duckfootGussetPlacement}
-          duckfootGussetThicknessMm={duckfootGussetThicknessMm}
-          nbToOd={nbToOd}
-        />
-      )}
     </Center>
   );
 };
