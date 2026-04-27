@@ -61,61 +61,9 @@ export function AuIndustriesLayoutClient(props: { children: React.ReactNode }) {
   const email = AU_INDUSTRIES_CONTACT.email;
   const address = AU_INDUSTRIES_CONTACT.address;
 
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "LocalBusiness",
-    name: companyName,
-    description:
-      "BEE Level 4 certified supplier of rubber lining, rubber sheeting, HDPE lining, and industrial rubber solutions for mining, chemical processing, and water treatment in South Africa.",
-    url: "https://auind.co.za",
-    logo: "https://auind.co.za/au-industries/logo.jpg",
-    image: "https://auind.co.za/au-industries/gallery/gallery29.jpg",
-    telephone: phone,
-    email: email,
-    address: {
-      "@type": "PostalAddress",
-      streetAddress: AU_INDUSTRIES_CONTACT.streetAddress,
-      addressLocality: AU_INDUSTRIES_CONTACT.city,
-      addressRegion: AU_INDUSTRIES_CONTACT.province,
-      postalCode: AU_INDUSTRIES_CONTACT.postalCode,
-      addressCountry: "ZA",
-    },
-    geo: {
-      "@type": "GeoCoordinates",
-      latitude: -26.2125,
-      longitude: 28.2536,
-    },
-    openingHoursSpecification: {
-      "@type": "OpeningHoursSpecification",
-      dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
-      opens: "08:00",
-      closes: "17:00",
-    },
-    areaServed: [
-      { "@type": "Country", name: "South Africa" },
-      { "@type": "Country", name: "Mozambique" },
-      { "@type": "Country", name: "Namibia" },
-      { "@type": "Country", name: "Zambia" },
-      { "@type": "Country", name: "Botswana" },
-      { "@type": "Country", name: "Zimbabwe" },
-    ],
-    award: "B-BBEE Level 4 Certified — 100% Procurement Recognition",
-    additionalProperty: {
-      "@type": "PropertyValue",
-      name: "B-BBEE Status",
-      value: "Level 4",
-    },
-    priceRange: "$$",
-    sameAs: [],
-  };
-
   return (
     <EditModeProvider isAdmin={isAdmin}>
       <div className="min-h-screen flex flex-col bg-white text-gray-900">
-        <Script id="au-industries-jsonld" type="application/ld+json" strategy="afterInteractive">
-          {JSON.stringify(jsonLd)}
-        </Script>
-
         <Script
           src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
           strategy="afterInteractive"
