@@ -2,7 +2,6 @@
 import { DateTime } from "luxon";
 import type { MetadataRoute } from "next";
 import { headers } from "next/headers";
-import { resolveBaseUrl } from "@/lib/api-config";
 
 const AU_INDUSTRIES_HOSTS = new Set(["auind.co.za", "www.auind.co.za"]);
 const AUIND_SITE_URL = "https://auind.co.za";
@@ -50,8 +49,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ];
 
   try {
-    const base = resolveBaseUrl();
-    const res = await fetch(`${base}/public/au-industries/pages`, {
+    const protocol = headersList.get("x-forwarded-proto") ?? "https";
+    const apiBase = `${protocol}://${host}/api`;
+    const res = await fetch(`${apiBase}/public/au-industries/pages`, {
       next: { revalidate: 3600 },
     });
 
