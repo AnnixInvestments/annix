@@ -129,30 +129,78 @@ export default function AuIndustriesHomePage(): React.JSX.Element {
               with fast turnaround times. Whatever your mining project requires, we source quality
               materials, provide expert options, and deliver reliable solutions.
             </p>
-            <ul className="space-y-2 text-gray-300 mb-8">
-              <li className="flex items-center">
-                <span className="w-2 h-2 bg-[#B8860B] rounded-full mr-3 flex-shrink-0" />
-                Full Mining Projects
+            <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-gray-300 mb-8">
+              <li>
+                <Link
+                  href="/rubber-lining"
+                  className="flex items-center hover:text-[#efcc54] transition-colors"
+                >
+                  <span className="w-2 h-2 bg-[#B8860B] rounded-full mr-3 flex-shrink-0" />
+                  Rubber Lining
+                </Link>
               </li>
-              <li className="flex items-center">
-                <span className="w-2 h-2 bg-[#B8860B] rounded-full mr-3 flex-shrink-0" />
-                Small Projects and Spares
+              <li>
+                <Link
+                  href="/rubber-sheeting"
+                  className="flex items-center hover:text-[#efcc54] transition-colors"
+                >
+                  <span className="w-2 h-2 bg-[#B8860B] rounded-full mr-3 flex-shrink-0" />
+                  Rubber Sheeting
+                </Link>
               </li>
-              <li className="flex items-center">
-                <span className="w-2 h-2 bg-[#B8860B] rounded-full mr-3 flex-shrink-0" />
-                Rubber Compound &amp; Sheeting
+              <li>
+                <Link
+                  href="/rubber-compound"
+                  className="flex items-center hover:text-[#efcc54] transition-colors"
+                >
+                  <span className="w-2 h-2 bg-[#B8860B] rounded-full mr-3 flex-shrink-0" />
+                  Rubber Compound
+                </Link>
               </li>
-              <li className="flex items-center">
-                <span className="w-2 h-2 bg-[#B8860B] rounded-full mr-3 flex-shrink-0" />
-                Rubber Linings &amp; Mouldings
+              <li>
+                <Link
+                  href="/hdpe-piping"
+                  className="flex items-center hover:text-[#efcc54] transition-colors"
+                >
+                  <span className="w-2 h-2 bg-[#B8860B] rounded-full mr-3 flex-shrink-0" />
+                  HDPE Piping
+                </Link>
               </li>
-              <li className="flex items-center">
-                <span className="w-2 h-2 bg-[#B8860B] rounded-full mr-3 flex-shrink-0" />
-                Pipe, Tank &amp; Chute Fabrication
+              <li>
+                <Link
+                  href="/mining-solutions"
+                  className="flex items-center hover:text-[#efcc54] transition-colors"
+                >
+                  <span className="w-2 h-2 bg-[#B8860B] rounded-full mr-3 flex-shrink-0" />
+                  Mining Solutions
+                </Link>
               </li>
-              <li className="flex items-center">
-                <span className="w-2 h-2 bg-[#B8860B] rounded-full mr-3 flex-shrink-0" />
-                Other Mining Consumables
+              <li>
+                <Link
+                  href="/conveyor-components"
+                  className="flex items-center hover:text-[#efcc54] transition-colors"
+                >
+                  <span className="w-2 h-2 bg-[#B8860B] rounded-full mr-3 flex-shrink-0" />
+                  Conveyor Components
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/site-maintenance"
+                  className="flex items-center hover:text-[#efcc54] transition-colors"
+                >
+                  <span className="w-2 h-2 bg-[#B8860B] rounded-full mr-3 flex-shrink-0" />
+                  Site Maintenance
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/rubber-rolls"
+                  className="flex items-center hover:text-[#efcc54] transition-colors"
+                >
+                  <span className="w-2 h-2 bg-[#B8860B] rounded-full mr-3 flex-shrink-0" />
+                  Rubber Rolls
+                </Link>
               </li>
             </ul>
             <Link
