@@ -164,4 +164,27 @@ export const SERVICE_FAQS: Record<string, ServiceFaq[]> = {
         "Yes. Sheeting rolls are produced in our Boksburg mill with full control over both width and thickness. Standard rolls are 1200mm wide × 12m long; custom widths from 800mm up to 1450mm can be produced. Standard thicknesses are 3mm to 25mm; dimensions outside these ranges can be produced on request.",
     },
   ],
+
+  "hdpe-piping": [
+    {
+      question: "What HDPE pipe sizes do you supply?",
+      answer:
+        "We supply HDPE pipes in diameters from 20mm to 1000mm in pressure ratings from PN6.3 to PN25, in PE100 grade. PE100 is preferred over PE80 for higher pressures and longer service life.",
+    },
+    {
+      question: "Do you fabricate HDPE fittings and spools?",
+      answer:
+        "Yes. We fabricate custom HDPE pipe spools and manifolds including multi-outlet headers, Y-pieces, and complex branch configurations. We also stock a complete range of butt-weld and electro-fusion fittings — elbows, tees, reducers, flanges, and stub ends — manufactured to SANS 1533 / ISO 4427.",
+    },
+    {
+      question: "How long does HDPE pipe last?",
+      answer:
+        "HDPE has a 50+ year design life under normal operating conditions. Joints are butt-welded and are typically as strong as the parent pipe, so unlike steel piping there are no corrosion or rust failure modes that progress over time.",
+    },
+    {
+      question: "Can HDPE be used for slurry transport in mining?",
+      answer:
+        "Yes. HDPE is widely used for tailings lines, process water, and slurry transport because it is corrosion resistant and has lower wall friction than steel, which reduces pumping energy. For high-abrasion slurry applications we can also supply rubber-lined HDPE or steel pipe as alternatives.",
+    },
+  ],
 };
