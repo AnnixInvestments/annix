@@ -22,7 +22,7 @@ import {
   wallThicknessFromNB,
 } from "@/app/lib/config/rfq/rendering3DStandards";
 import { useNbToOdLookup } from "@/app/lib/query/hooks";
-import { SceneShell } from "./hooks";
+import { CameraTracker, SceneShell } from "./hooks";
 
 const SCALE_FACTOR = GEOMETRY_CONSTANTS.SCALE;
 const PREVIEW_SCALE = SCENE_CONSTANTS.PREVIEW_SCALE;
@@ -57,6 +57,9 @@ interface Reducer3DPreviewProps {
   stubLocationMm?: number;
   stubAngleDegrees?: number;
   closureLengthMm?: number;
+  savedCameraPosition?: [number, number, number];
+  savedCameraTarget?: [number, number, number];
+  onCameraChange?: (position: [number, number, number], target: [number, number, number]) => void;
 }
 
 function PreviewBadge({
@@ -874,6 +877,12 @@ export default function Reducer3DPreview(props: Reducer3DPreviewProps) {
           </group>
         </Center>
       </SceneShell>
+      <CameraTracker
+        label="Reducer"
+        onCameraChange={props.onCameraChange}
+        savedPosition={props.savedCameraPosition}
+        savedTarget={props.savedCameraTarget}
+      />
     </Canvas>
   );
 

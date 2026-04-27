@@ -20,7 +20,7 @@ import {
   getLateralDimensionsForAngle,
   LateralAngleRange,
 } from "@/app/lib/utils/sabs719LateralData";
-import { SceneShell } from "./hooks";
+import { CameraTracker, SceneShell } from "./hooks";
 
 const SCALE_FACTOR = GEOMETRY_CONSTANTS.SCALE;
 const PREVIEW_SCALE = SCENE_CONSTANTS.PREVIEW_SCALE;
@@ -85,6 +85,9 @@ interface Lateral3DPreviewProps {
   hasBlankBranch?: boolean;
   closureLengthMm?: number;
   stubs?: StubConfig[];
+  savedCameraPosition?: [number, number, number];
+  savedCameraTarget?: [number, number, number];
+  onCameraChange?: (position: [number, number, number], target: [number, number, number]) => void;
 }
 
 function StubComponent({
@@ -1392,6 +1395,12 @@ export default function Lateral3DPreview(props: Lateral3DPreviewProps) {
           >
             <LateralScene {...props} />
           </SceneShell>
+          <CameraTracker
+            label="Lateral"
+            onCameraChange={props.onCameraChange}
+            savedPosition={props.savedCameraPosition}
+            savedTarget={props.savedCameraTarget}
+          />
         </Canvas>
 
         <div className="absolute top-2 left-2 text-[10px] bg-white/90 px-2 py-1 rounded">
@@ -1592,6 +1601,12 @@ export default function Lateral3DPreview(props: Lateral3DPreviewProps) {
               >
                 <LateralScene {...props} />
               </SceneShell>
+              <CameraTracker
+                label="Lateral"
+                onCameraChange={props.onCameraChange}
+                savedPosition={props.savedCameraPosition}
+                savedTarget={props.savedCameraTarget}
+              />
             </Canvas>
           </div>
         </div>

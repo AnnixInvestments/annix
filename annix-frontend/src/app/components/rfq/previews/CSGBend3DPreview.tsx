@@ -1529,7 +1529,7 @@ export default function CSGBend3DPreview(props: Props) {
             setCurrentZoom(zoom);
           }}
           savedPosition={props.savedCameraPosition}
-          savedTarget={cameraTarget}
+          savedTarget={props.savedCameraTarget}
         />
       </Canvas>
       <div className="absolute top-2 left-2 text-[10px] bg-white/90 px-2 py-1 rounded">
@@ -1950,7 +1950,7 @@ export default function CSGBend3DPreview(props: Props) {
                   setCurrentZoom(zoom);
                 }}
                 savedPosition={props.savedCameraPosition}
-                savedTarget={cameraTarget}
+                savedTarget={props.savedCameraTarget}
               />
             </Canvas>
 

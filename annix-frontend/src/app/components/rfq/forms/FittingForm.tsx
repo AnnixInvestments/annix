@@ -3341,6 +3341,20 @@ function FittingFormComponent({
                 hasBlankBranch={blankPositions.includes("branch")}
                 closureLengthMm={rawClosureLengthMm3 || 150}
                 stubs={stubsForPreview}
+                savedCameraPosition={specs.savedCameraPosition}
+                savedCameraTarget={specs.savedCameraTarget}
+                onCameraChange={(
+                  position: [number, number, number],
+                  target: [number, number, number],
+                ) => {
+                  onUpdateEntry(entry.id, {
+                    specs: {
+                      ...entry.specs,
+                      savedCameraPosition: position,
+                      savedCameraTarget: target,
+                    },
+                  });
+                }}
               />
             );
           }
@@ -3412,6 +3426,20 @@ function FittingFormComponent({
                 stubLocationMm={stubLocation}
                 stubAngleDegrees={rawReducerStubAngleDegrees2 || 0}
                 closureLengthMm={rawClosureLengthMm4 || 150}
+                savedCameraPosition={specs.savedCameraPosition}
+                savedCameraTarget={specs.savedCameraTarget}
+                onCameraChange={(
+                  position: [number, number, number],
+                  target: [number, number, number],
+                ) => {
+                  onUpdateEntry(entry.id, {
+                    specs: {
+                      ...entry.specs,
+                      savedCameraPosition: position,
+                      savedCameraTarget: target,
+                    },
+                  });
+                }}
               />
             );
           }
@@ -3459,6 +3487,20 @@ function FittingFormComponent({
                 startFlangeType={offsetStartFlangeType}
                 endFlangeType={offsetEndFlangeType}
                 closureLengthMm={rawClosureLengthMm5 || 150}
+                savedCameraPosition={specs.savedCameraPosition}
+                savedCameraTarget={specs.savedCameraTarget}
+                onCameraChange={(
+                  position: [number, number, number],
+                  target: [number, number, number],
+                ) => {
+                  onUpdateEntry(entry.id, {
+                    specs: {
+                      ...entry.specs,
+                      savedCameraPosition: position,
+                      savedCameraTarget: target,
+                    },
+                  });
+                }}
               />
             );
           }
