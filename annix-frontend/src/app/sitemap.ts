@@ -48,6 +48,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.6,
     })),
     {
+      url: `${AUIND_SITE_URL}/testimonials`,
+      lastModified: currentDate,
+      changeFrequency: "weekly",
+      priority: 0.7,
+    },
+    {
       url: `${AUIND_SITE_URL}/quote`,
       lastModified: currentDate,
       changeFrequency: "monthly",
@@ -71,6 +77,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "products-and-services",
     "gallery",
     "projects",
+    "testimonials",
     "quote",
     "faq",
     "contact",

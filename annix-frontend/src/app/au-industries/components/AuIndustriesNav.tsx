@@ -66,6 +66,16 @@ export function AuIndustriesNav(props: { pages: NavPage[] }) {
               Projects
             </Link>
             <Link
+              href="/testimonials"
+              className={`px-4 py-2 text-sm font-semibold uppercase tracking-wide transition-colors ${
+                pathname === "/testimonials"
+                  ? "text-gray-900 border-b-2 border-gray-900"
+                  : "text-gray-800 hover:text-gray-900"
+              }`}
+            >
+              Testimonials
+            </Link>
+            <Link
               href="/quote"
               className={`px-4 py-2 text-sm font-semibold uppercase tracking-wide transition-colors ${
                 pathname === "/quote"
@@ -177,6 +187,15 @@ export function AuIndustriesNav(props: { pages: NavPage[] }) {
               }`}
             >
               Projects
+            </Link>
+            <Link
+              href="/testimonials"
+              onClick={() => setMenuOpen(false)}
+              className={`block px-3 py-2 text-base font-semibold uppercase ${
+                pathname === "/testimonials" ? "text-gray-900" : "text-gray-800 hover:text-gray-900"
+              }`}
+            >
+              Testimonials
             </Link>
             <Link
               href="/quote"
