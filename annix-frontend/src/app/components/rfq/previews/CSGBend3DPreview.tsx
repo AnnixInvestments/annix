@@ -5,16 +5,12 @@ import { Canvas } from "@react-three/fiber";
 import { useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import {
-  AngularDimension,
   BlankFlange,
-  DimensionLine,
   Flange,
   HollowBendPipe,
   HollowStraightPipe,
   RetainingRing,
   RotatingFlange,
-  SaddleWeld,
-  SegmentedBendPipe,
   StubPipe,
   WeldRing,
 } from "@/app/components/rfq/3d";
@@ -23,6 +19,7 @@ import {
   DuckfootSteelwork,
   SimpleLine as Line,
   SBendGeometry,
+  SweepTeeGeometry,
 } from "@/app/components/rfq/3d/geometries/bend";
 import { type StubData } from "@/app/hooks/use3DSceneSetup";
 import { resolveFlangeData } from "@/app/lib/3d";
@@ -401,328 +398,34 @@ const Scene = (props: Props) => {
           />
         )}
 
-        {/* ========== SWEEP TEE GEOMETRY ==========
-            Based on MPS Technical Manual page 32:
-            - Pipe A is the HORIZONTAL main run with FLANGES ON BOTH ENDS
-            - The sweep/bend emerges from the TOP of Pipe A (saddle connection)
-            - The EXTRADOS (outside of bend curve) connects to Pipe A for smooth material flow
-            - The bend curves from horizontal (parallel to Pipe A) to vertical (pointing up)
-            - The outlet flange is at the top, pointing straight up */}
-        {isSweepTee &&
-          (() => {
-            const pipeAHalfLength = pipeALength / 2;
-            const pipeALeftEnd = new THREE.Vector3(0, 0, -pipeAHalfLength);
-            const pipeARightEnd = new THREE.Vector3(0, 0, pipeAHalfLength);
-
-            // Bend geometry calculation:
-            // HollowBendPipe creates bends in the XZ plane by default.
-            // At angle 0: centerline at (bendR, 0, 0) from center, tangent +Z
-            // At angle 90: centerline at (0, 0, bendR) from center, tangent -X
-            //
-            // We need a bend in the YZ plane: tangent +Z at start, tangent +Y at end
-            // Rotating -90° around Z transforms: (x, y, z) → (y, -x, z)
-            //
-            // For a proper saddle connection where the bend MERGES into Pipe A:
-            // - The extrados (outer curve) merges into the top of Pipe A
-            // - The bend curves TOWARD the viewer (-Z direction)
-            // - Adding 180° Y rotation flips the bend to curve in -Z direction
-            //
-            // Position the bend at the right end of Pipe A, against the flange
-            const bendZOffset = pipeAHalfLength;
-            //
-            // For -90° Z rotation: local (x, y, z) → world (y, -x, z)
-            const localBendCenter = new THREE.Vector3(-bendR, 0, 0);
-
-            // End of bend position in world coordinates:
-            // With 180° Y rotation, the bend curves toward -Z, so end is at z = bendZOffset - bendR
-            const sweepEndPos = new THREE.Vector3(0, bendR, bendZOffset - bendR);
-            const sweepEndDir = new THREE.Vector3(0, 1, 0);
-
-            return (
-              <>
-                {/* Pipe A - horizontal main run along Z axis */}
-                <HollowStraightPipe
-                  start={pipeALeftEnd}
-                  end={pipeARightEnd}
-                  outerR={outerR}
-                  innerR={innerR}
-                  capStart={!fittingHasInletFlange}
-                  capEnd={!fittingHasOutletFlange}
-                />
-
-                {/* Left flange on Pipe A (inlet) */}
-                {fittingHasInletFlange &&
-                  (fittingHasLooseInletFlange ? (
-                    <>
-                      {/* Black closure piece connected directly to pipe end */}
-                      <mesh
-                        position={[0, 0, -pipeAHalfLength - closureLength / 2]}
-                        rotation={[Math.PI / 2, 0, 0]}
-                      >
-                        <cylinderGeometry args={[outerR, outerR, closureLength, 32, 1, true]} />
-                        <meshStandardMaterial
-                          color="#2a2a2a"
-                          metalness={0.6}
-                          roughness={0.6}
-                          envMapIntensity={0.5}
-                          side={THREE.DoubleSide}
-                        />
-                      </mesh>
-                      <mesh
-                        position={[0, 0, -pipeAHalfLength - closureLength / 2]}
-                        rotation={[Math.PI / 2, 0, 0]}
-                      >
-                        <cylinderGeometry
-                          args={[innerR, innerR, closureLength + 0.01, 32, 1, true]}
-                        />
-                        <meshStandardMaterial color="#333333" side={THREE.BackSide} />
-                      </mesh>
-                      <Flange
-                        center={
-                          new THREE.Vector3(0, 0, -pipeAHalfLength - closureLength - gapLength)
-                        }
-                        normal={new THREE.Vector3(0, 0, -1)}
-                        pipeR={outerR}
-                        innerR={innerR}
-                        nb={nominalBore}
-                      />
-                    </>
-                  ) : fittingHasRotatingInletFlange ? (
-                    <>
-                      <RetainingRing
-                        center={pipeALeftEnd}
-                        normal={new THREE.Vector3(0, 0, -1)}
-                        pipeR={outerR}
-                        innerR={innerR}
-                        wallThickness={wtScaled}
-                      />
-                      <RotatingFlange
-                        center={pipeALeftEnd
-                          .clone()
-                          .add(new THREE.Vector3(0, 0, rotatingFlangeOffset))}
-                        normal={new THREE.Vector3(0, 0, -1)}
-                        pipeR={outerR}
-                        innerR={innerR}
-                        nb={nominalBore}
-                      />
-                    </>
-                  ) : (
-                    <Flange
-                      center={pipeALeftEnd.clone().add(new THREE.Vector3(0, 0, -flangeOffset))}
-                      normal={new THREE.Vector3(0, 0, -1)}
-                      pipeR={outerR}
-                      innerR={innerR}
-                      nb={nominalBore}
-                    />
-                  ))}
-
-                {/* Right flange on Pipe A (outlet) */}
-                {fittingHasOutletFlange &&
-                  (fittingHasLooseOutletFlange ? (
-                    <>
-                      {/* Black closure piece connected directly to pipe end */}
-                      <mesh
-                        position={[0, 0, pipeAHalfLength + closureLength / 2]}
-                        rotation={[Math.PI / 2, 0, 0]}
-                      >
-                        <cylinderGeometry args={[outerR, outerR, closureLength, 32, 1, true]} />
-                        <meshStandardMaterial
-                          color="#2a2a2a"
-                          metalness={0.6}
-                          roughness={0.6}
-                          envMapIntensity={0.5}
-                          side={THREE.DoubleSide}
-                        />
-                      </mesh>
-                      <mesh
-                        position={[0, 0, pipeAHalfLength + closureLength / 2]}
-                        rotation={[Math.PI / 2, 0, 0]}
-                      >
-                        <cylinderGeometry
-                          args={[innerR, innerR, closureLength + 0.01, 32, 1, true]}
-                        />
-                        <meshStandardMaterial color="#333333" side={THREE.BackSide} />
-                      </mesh>
-                      <Flange
-                        center={
-                          new THREE.Vector3(0, 0, pipeAHalfLength + closureLength + gapLength)
-                        }
-                        normal={new THREE.Vector3(0, 0, 1)}
-                        pipeR={outerR}
-                        innerR={innerR}
-                        nb={nominalBore}
-                      />
-                    </>
-                  ) : fittingHasRotatingOutletFlange ? (
-                    <>
-                      <RetainingRing
-                        center={pipeARightEnd}
-                        normal={new THREE.Vector3(0, 0, 1)}
-                        pipeR={outerR}
-                        innerR={innerR}
-                        wallThickness={wtScaled}
-                      />
-                      <RotatingFlange
-                        center={pipeARightEnd
-                          .clone()
-                          .add(new THREE.Vector3(0, 0, -rotatingFlangeOffset))}
-                        normal={new THREE.Vector3(0, 0, 1)}
-                        pipeR={outerR}
-                        innerR={innerR}
-                        nb={nominalBore}
-                      />
-                    </>
-                  ) : (
-                    <Flange
-                      center={pipeARightEnd.clone().add(new THREE.Vector3(0, 0, flangeOffset))}
-                      normal={new THREE.Vector3(0, 0, 1)}
-                      pipeR={outerR}
-                      innerR={innerR}
-                      nb={nominalBore}
-                    />
-                  ))}
-
-                {/* Sweep branch - 90° bend with extrados connecting to top of Pipe A */}
-                {/* Position shifts bend right, 180° Y flips to curve toward viewer, -90° Z puts in YZ plane */}
-                <group position={[0, 0, bendZOffset]} rotation={[0, Math.PI, -Math.PI / 2]}>
-                  {isSegmented && numberOfSegments && numberOfSegments > 1 ? (
-                    <SegmentedBendPipe
-                      bendCenter={localBendCenter}
-                      bendRadius={bendR}
-                      startAngle={0}
-                      endAngle={Math.PI / 2}
-                      outerR={outerR}
-                      innerR={innerR}
-                      numberOfSegments={numberOfSegments}
-                    />
-                  ) : (
-                    <HollowBendPipe
-                      bendCenter={localBendCenter}
-                      bendRadius={bendR}
-                      startAngle={0}
-                      endAngle={Math.PI / 2}
-                      outerR={outerR}
-                      innerR={innerR}
-                    />
-                  )}
-                </group>
-
-                {/* Branch flange at top of sweep - pointing straight up */}
-                {fittingHasBranchFlange &&
-                  (fittingHasRotatingBranchFlange ? (
-                    <>
-                      <RetainingRing
-                        center={sweepEndPos}
-                        normal={sweepEndDir}
-                        pipeR={outerR}
-                        innerR={innerR}
-                        wallThickness={wtScaled}
-                      />
-                      <RotatingFlange
-                        center={sweepEndPos
-                          .clone()
-                          .sub(sweepEndDir.clone().multiplyScalar(rotatingFlangeOffset))}
-                        normal={sweepEndDir}
-                        pipeR={outerR}
-                        innerR={innerR}
-                        nb={nominalBore}
-                      />
-                    </>
-                  ) : (
-                    <Flange
-                      center={sweepEndPos
-                        .clone()
-                        .add(sweepEndDir.clone().multiplyScalar(flangeOffset))}
-                      normal={sweepEndDir}
-                      pipeR={outerR}
-                      innerR={innerR}
-                      nb={nominalBore}
-                    />
-                  ))}
-
-                {/* Saddle weld at junction where sweep bend meets Pipe A
-                  The Steinmetz curve weld wraps around the intersection where the bend
-                  emerges from the top of Pipe A. Position at z=bendZOffset where the
-                  bend joins, rotate 90° around Y so the curve wraps around Pipe A (Z axis). */}
-                <group position={[0, outerR, bendZOffset]} rotation={[-Math.PI / 2, 0, 0]}>
-                  <SaddleWeld
-                    stubRadius={outerR}
-                    mainPipeRadius={outerR}
-                    useXAxis={false}
-                    tube={weldTube}
-                  />
-                </group>
-
-                {/* Dimension line for Pipe A length (B dimension in MPS table) */}
-                <DimensionLine
-                  start={pipeALeftEnd}
-                  end={pipeARightEnd}
-                  label={`B: ${effectivePipeALengthMm}mm`}
-                  offset={outerR * 2.5}
-                  color="#009900"
-                />
-
-                {/* Dimension lines - L-shape with horizontal at top and vertical on right */}
-                {(() => {
-                  const cfValue = centerToFaceMm || Math.round(bendR * SCALE);
-                  const cfScaled = cfValue / SCALE;
-                  const aLineZ = pipeAHalfLength + outerR * 1.2;
-                  const aLineBottom = 0;
-                  const aLineTop = cfScaled;
-                  const cornerPos: [number, number, number] = [0, aLineBottom, aLineZ];
-                  const arcRadius = 30;
-                  const sweepAngleRad = Math.PI / 2;
-
-                  return (
-                    <>
-                      {/* Horizontal line at top (from left flange to corner) */}
-                      <Line
-                        points={[
-                          [0, aLineTop, -pipeAHalfLength],
-                          [0, aLineTop, aLineZ],
-                        ]}
-                        color="#cc6600"
-                        lineWidth={3}
-                      />
-                      {/* Vertical line on right (from corner to top) */}
-                      <Line
-                        points={[
-                          [0, aLineBottom, aLineZ],
-                          [0, aLineTop, aLineZ],
-                        ]}
-                        color="#cc6600"
-                        lineWidth={3}
-                      />
-                      {/* C/F label on horizontal line */}
-                      <Text
-                        position={[outerR * 0.3, aLineTop, 0]}
-                        fontSize={outerR * 0.35}
-                        color="#cc6600"
-                        anchorX="center"
-                        anchorY="middle"
-                        fontWeight="bold"
-                        rotation={[0, -Math.PI / 2, 0]}
-                      >
-                        {`C/F: ${cfValue}mm`}
-                      </Text>
-                      {/* 3D 90° angle arc at corner */}
-                      <AngularDimension
-                        center={new THREE.Vector3(0, 0, aLineZ)}
-                        radius={outerR * 0.8}
-                        startAngle={0}
-                        endAngle={Math.PI / 2}
-                        plane="yz"
-                        color="#cc6600"
-                        fontSize={outerR * 0.4}
-                        showArrows={false}
-                        textRotation={[0, -Math.PI / 2, 0]}
-                      />
-                    </>
-                  );
-                })()}
-              </>
-            );
-          })()}
+        {/* Sweep tee — MPS page 32: horizontal Pipe A with sweep branch from extrados saddle */}
+        {isSweepTee && (
+          <SweepTeeGeometry
+            pipeALength={pipeALength}
+            outerR={outerR}
+            innerR={innerR}
+            bendR={bendR}
+            closureLength={closureLength}
+            gapLength={gapLength}
+            flangeOffset={flangeOffset}
+            wtScaled={wtScaled}
+            rotatingFlangeOffset={rotatingFlangeOffset}
+            nominalBore={nominalBore}
+            isSegmented={isSegmented}
+            numberOfSegments={numberOfSegments}
+            weldTube={weldTube}
+            fittingHasInletFlange={fittingHasInletFlange}
+            fittingHasOutletFlange={fittingHasOutletFlange}
+            fittingHasBranchFlange={fittingHasBranchFlange}
+            fittingHasLooseInletFlange={fittingHasLooseInletFlange}
+            fittingHasLooseOutletFlange={fittingHasLooseOutletFlange}
+            fittingHasRotatingInletFlange={fittingHasRotatingInletFlange}
+            fittingHasRotatingOutletFlange={fittingHasRotatingOutletFlange}
+            fittingHasRotatingBranchFlange={fittingHasRotatingBranchFlange}
+            centerToFaceMm={centerToFaceMm}
+            effectivePipeALengthMm={effectivePipeALengthMm}
+          />
+        )}
 
         {/* S-Bend: two 90° butt-welded bends, dimensioned with R/2R triangle */}
         {isSBend && (
