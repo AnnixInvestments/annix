@@ -1,1 +1,18 @@
-export * from "@annix/product-data/hdpe/welding";
+export {
+  BUTT_FUSION_PARAMETERS,
+  type ButtFusionParameters,
+  buttFusionParametersForDn,
+  ELECTROFUSION_PARAMETERS,
+  type ElectrofusionParameters,
+  EXTRUSION_WELD_PARAMETERS,
+  type ExtrusionWeldParameters,
+  estimateCoolingTime,
+  estimateHeatingTime,
+  HDPE_WELDING_METHODS,
+  type HdpeWeldingMethod,
+  maxChangeoverTime,
+  recommendedWeldingMethod,
+  suitableWeldingMethods,
+  type WeldingMethodInfo,
+  type WeldingMethodSuitability,
+} from "@annix/product-data/hdpe/welding";
