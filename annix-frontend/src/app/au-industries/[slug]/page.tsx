@@ -7,6 +7,7 @@ import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
 // eslint-disable-next-line no-restricted-imports -- AU Industries CMS uses dynamic slug routing with editable content; TanStack Query hook would require new public CMS content hook infrastructure. Tracked as tech debt.
 import { browserBaseUrl } from "@/lib/api-config";
 import { useEditMode } from "../context/EditModeContext";
+import { SERVICE_FAQS } from "../serviceFaqs";
 
 const MDEditor = dynamic(() => import("@uiw/react-md-editor"), { ssr: false });
 const MarkdownPreview = dynamic(
@@ -184,6 +185,53 @@ export default function AuIndustriesSlugPage() {
           )}
         </div>
       </section>
+
+      {SERVICE_FAQS[slug] && SERVICE_FAQS[slug].length > 0 && (
+        <section className="bg-[#fdf8e8] py-16 border-t border-[#B8860B]/20">
+          <div className="max-w-4xl mx-auto px-4">
+            <h2 className="text-3xl font-bold text-[#B8860B] uppercase tracking-wide mb-2">
+              Frequently Asked Questions
+            </h2>
+            <div className="w-24 h-[3px] bg-[#B8860B] mt-3 mb-10" />
+            <div className="space-y-6">
+              {SERVICE_FAQS[slug].map((faq) => (
+                <details
+                  key={faq.question}
+                  className="group bg-white rounded-lg border border-[#B8860B]/20 shadow-sm overflow-hidden"
+                >
+                  <summary className="cursor-pointer px-6 py-4 font-semibold text-gray-900 flex items-center justify-between hover:bg-[#fdf8e8] transition-colors">
+                    <span>{faq.question}</span>
+                    <span className="text-[#B8860B] text-2xl ml-4 flex-shrink-0 group-open:rotate-45 transition-transform">
+                      +
+                    </span>
+                  </summary>
+                  <div className="px-6 pb-5 pt-2 text-gray-700 leading-relaxed border-t border-gray-100">
+                    {faq.answer}
+                  </div>
+                </details>
+              ))}
+            </div>
+          </div>
+          <script
+            type="application/ld+json"
+            // biome-ignore lint/security/noDangerouslySetInnerHtml: FAQPage JSON-LD must be inline JSON for Google to parse
+            dangerouslySetInnerHTML={{
+              __html: JSON.stringify({
+                "@context": "https://schema.org",
+                "@type": "FAQPage",
+                mainEntity: SERVICE_FAQS[slug].map((faq) => ({
+                  "@type": "Question",
+                  name: faq.question,
+                  acceptedAnswer: {
+                    "@type": "Answer",
+                    text: faq.answer,
+                  },
+                })),
+              }),
+            }}
+          />
+        </section>
+      )}
     </div>
   );
 }
