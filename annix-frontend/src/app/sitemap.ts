@@ -15,7 +15,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }
 
   const currentDate = DateTime.now().toJSDate();
-  const entries: MetadataRoute.Sitemap = [
+  const hardcodedEntries: MetadataRoute.Sitemap = [
     {
       url: AUIND_SITE_URL,
       lastModified: currentDate,
@@ -48,6 +48,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
+  const hardcodedSlugs = new Set(["products-and-services", "gallery", "quote", "contact"]);
+
   try {
     const protocol = headersList.get("x-forwarded-proto") ?? "https";
     const apiBase = `${protocol}://${host}/api`;
@@ -58,7 +60,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     if (res.ok) {
       const pages = await res.json();
       const pageEntries = pages
-        .filter((page: { isHomePage: boolean }) => !page.isHomePage)
+        .filter(
+          (page: { isHomePage: boolean; slug: string }) =>
+            !page.isHomePage && !hardcodedSlugs.has(page.slug),
+        )
         .map((page: { slug: string; updatedAt: string }) => ({
           url: `${AUIND_SITE_URL}/${page.slug}`,
           lastModified: DateTime.fromISO(page.updatedAt).toJSDate(),
@@ -66,11 +71,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           priority: 0.7,
         }));
 
-      entries.push(...pageEntries);
+      return [...hardcodedEntries, ...pageEntries];
     }
   } catch {
-    return entries;
+    return hardcodedEntries;
   }
 
-  return entries;
+  return hardcodedEntries;
 }
