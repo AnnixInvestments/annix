@@ -41,6 +41,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.8,
     },
     {
+      url: `${AUIND_SITE_URL}/faq`,
+      lastModified: currentDate,
+      changeFrequency: "monthly",
+      priority: 0.7,
+    },
+    {
       url: `${AUIND_SITE_URL}/contact`,
       lastModified: currentDate,
       changeFrequency: "monthly",
@@ -48,7 +54,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
-  const hardcodedSlugs = new Set(["products-and-services", "gallery", "quote", "contact"]);
+  const hardcodedSlugs = new Set(["products-and-services", "gallery", "quote", "faq", "contact"]);
 
   try {
     const protocol = headersList.get("x-forwarded-proto") ?? "https";

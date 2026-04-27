@@ -66,6 +66,16 @@ export function AuIndustriesNav(props: { pages: NavPage[] }) {
               Quote
             </Link>
             <Link
+              href="/faq"
+              className={`px-4 py-2 text-sm font-semibold uppercase tracking-wide transition-colors ${
+                pathname === "/faq"
+                  ? "text-gray-900 border-b-2 border-gray-900"
+                  : "text-gray-800 hover:text-gray-900"
+              }`}
+            >
+              FAQ
+            </Link>
+            <Link
               href="/contact"
               className={`ml-2 px-5 py-2 text-sm font-semibold uppercase tracking-wide border-2 border-gray-900 transition-colors ${
                 pathname === "/contact"
@@ -155,6 +165,15 @@ export function AuIndustriesNav(props: { pages: NavPage[] }) {
               }`}
             >
               Quote
+            </Link>
+            <Link
+              href="/faq"
+              onClick={() => setMenuOpen(false)}
+              className={`block px-3 py-2 text-base font-semibold uppercase ${
+                pathname === "/faq" ? "text-gray-900" : "text-gray-800 hover:text-gray-900"
+              }`}
+            >
+              FAQ
             </Link>
             <Link
               href="/contact"

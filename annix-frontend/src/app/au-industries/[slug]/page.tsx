@@ -187,7 +187,10 @@ export default function AuIndustriesSlugPage() {
       </section>
 
       {SERVICE_FAQS[slug] && SERVICE_FAQS[slug].length > 0 && (
-        <section className="bg-[#fdf8e8] py-16 border-t border-[#B8860B]/20">
+        <section
+          id="frequently-asked-questions"
+          className="bg-[#fdf8e8] py-16 border-t border-[#B8860B]/20"
+        >
           <div className="max-w-4xl mx-auto px-4">
             <h2 className="text-3xl font-bold text-[#B8860B] uppercase tracking-wide mb-2">
               Frequently Asked Questions
