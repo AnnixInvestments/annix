@@ -128,6 +128,18 @@ Shared scene setup and camera state for all 6 Three.js/R3F 3D preview components
 | `SceneShell` | Standard Canvas children wrapper: ambient + key + fill + rim lights, environment, contact shadows, orbit controls. Replaces ~20 LOC of inline boilerplate per Canvas instance. |
 | `CameraTracker` | Debounced camera position/target persistence via `useFrame`. Replaces ~120 LOC of inline CameraTracker per preview. |
 
+#### RFQ 3D bend geometries (`components/rfq/3d/geometries/bend/`)
+
+Geometry sub-components extracted from `CSGBend3DPreview` (ref #197 Phase B1):
+
+| Component | Use for |
+|---|---|
+| `SimpleLine` | Tube-based line primitive used by all extracted geometries (re-exported as `Line`). |
+| `BendDimensions` | T1 / T2 dimension lines + C/F leader + arc-degrees label. Renders for all non-sweep-tee, non-S-bend bends. |
+| `DuckfootSteelwork` | Base plate, ribs, blue/yellow gussets, mm tick markers, weld lines. Renders outside the bend rotation group, only when `bendItemType === "DUCKFOOT_BEND"`. |
+| `SBendGeometry` | Two 90° bends butt-welded with R/2R triangle dimension lines. Renders when `bendItemType === "S_BEND"`. |
+| `SweepTeeGeometry` | **Currently orphaned** — extraction caused saddle-weld and dimension-line positioning issues; sweep tee geometry remains inline in `CSGBend3DPreview` until root cause is found. |
+
 #### RFQ form hooks (`components/rfq/forms/hooks/`)
 
 Shared hooks extracted from BendForm, FittingForm, and StraightPipeForm (ref #196):
