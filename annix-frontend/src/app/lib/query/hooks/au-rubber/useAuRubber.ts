@@ -29,6 +29,7 @@ import type {
   RubberProductCodingDto,
   RubberProductDto,
 } from "@/app/lib/api/rubberPortalApi";
+import { cacheConfig } from "../../cacheConfig";
 import { rubberKeys } from "../../keys";
 
 export function useAuRubberOrders(status?: number) {
@@ -42,6 +43,7 @@ export function useAuRubberCompanies() {
   return useQuery<RubberCompanyDto[]>({
     queryKey: rubberKeys.companies.list(),
     queryFn: () => auRubberApiClient.companies(),
+    ...cacheConfig.static,
   });
 }
 
@@ -49,6 +51,7 @@ export function useAuRubberProducts() {
   return useQuery<RubberProductDto[]>({
     queryKey: rubberKeys.products.list(),
     queryFn: () => auRubberApiClient.products(),
+    ...cacheConfig.static,
   });
 }
 
@@ -109,6 +112,7 @@ export function useAuRubberCodings(codingType?: string) {
   return useQuery<RubberProductCodingDto[]>({
     queryKey: rubberKeys.codings.list(codingType),
     queryFn: () => auRubberApiClient.productCodings(codingType),
+    ...cacheConfig.static,
   });
 }
 
@@ -116,6 +120,7 @@ export function useAuRubberSpecifications() {
   return useQuery<RubberSpecificationDto[]>({
     queryKey: rubberKeys.specifications.list(),
     queryFn: () => auRubberApiClient.rubberSpecifications(),
+    ...cacheConfig.static,
   });
 }
 

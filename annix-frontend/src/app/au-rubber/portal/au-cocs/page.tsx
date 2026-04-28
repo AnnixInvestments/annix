@@ -46,7 +46,7 @@ export default function AuCocsPage() {
   const isLoading = cocsQuery.isLoading;
   const error = cocsQuery.error;
   const [currentPage, setCurrentPage] = useState(0);
-  const [pageSize, setPageSize] = useState<number | "all">("all");
+  const [pageSize, setPageSize] = useState<number | "all">(25);
   const [sortColumn, setSortColumn] = useState<SortColumn>("createdAt");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [sendingId, setSendingId] = useState<number | null>(null);
