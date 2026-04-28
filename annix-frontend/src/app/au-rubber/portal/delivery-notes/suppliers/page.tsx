@@ -3,6 +3,7 @@
 import { isArray } from "es-toolkit/compat";
 import { Link2, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import { FileDropZone } from "@/app/au-rubber/components/FileDropZone";
@@ -37,6 +38,7 @@ type SortColumn =
   | "linkedCoc";
 
 export default function SupplierDeliveryNotesPage() {
+  const router = useRouter();
   const { showToast } = useToast();
   const { branding } = useAuRubberBranding();
   const [searchQuery, setSearchQuery] = useState("");
@@ -632,12 +634,14 @@ export default function SupplierDeliveryNotesPage() {
                 return (
                   <tr
                     key={note.id}
-                    className={`hover:bg-gray-50 ${isInactive ? "opacity-40" : ""}`}
+                    onClick={() => router.push(`/au-rubber/portal/delivery-notes/${note.id}`)}
+                    className={`hover:bg-gray-50 cursor-pointer ${isInactive ? "opacity-40" : ""}`}
                   >
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center space-x-2">
                         <Link
                           href={`/au-rubber/portal/delivery-notes/${note.id}`}
+                          onClick={(e) => e.stopPropagation()}
                           className="text-orange-600 hover:text-orange-800 font-medium"
                         >
                           {rawNoteDeliveryNoteNumber || `DN-${note.id}`}
@@ -674,6 +678,7 @@ export default function SupplierDeliveryNotesPage() {
                       {note.linkedCocId ? (
                         <Link
                           href={`/au-rubber/portal/supplier-cocs/${note.linkedCocId}`}
+                          onClick={(e) => e.stopPropagation()}
                           className="text-blue-600 hover:text-blue-800"
                         >
                           View CoC
@@ -682,7 +687,10 @@ export default function SupplierDeliveryNotesPage() {
                         <span className="text-gray-400">Not linked</span>
                       )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
+                    <td
+                      className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       {isPendingAuth && (
                         <>
                           <button

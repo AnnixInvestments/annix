@@ -51,6 +51,7 @@ describe("RubberExtractionOrchestratorService", () => {
     correctionHintsForSupplier: jest.fn().mockResolvedValue(null),
     setExtractedData: jest.fn().mockResolvedValue(undefined),
     splitTaxInvoiceExtraction: jest.fn().mockResolvedValue({ taxInvoiceIds: [10] }),
+    taxInvoiceById: jest.fn().mockResolvedValue({ invoiceType: "SUPPLIER" }),
   };
 
   const deliveryNoteMock = {

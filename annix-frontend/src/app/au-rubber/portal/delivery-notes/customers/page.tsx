@@ -684,10 +684,15 @@ export default function CustomerDeliveryNotesPage() {
                 const rawNoteCustomerReference = note.customerReference;
                 const rawNoteAuCocNumber = note.auCocNumber;
                 return (
-                  <tr key={note.id} className="hover:bg-gray-50">
+                  <tr
+                    key={note.id}
+                    onClick={() => router.push(`/au-rubber/portal/delivery-notes/${note.id}`)}
+                    className="hover:bg-gray-50 cursor-pointer"
+                  >
                     <td className="px-6 py-4 whitespace-nowrap">
                       <Link
                         href={`/au-rubber/portal/delivery-notes/${note.id}`}
+                        onClick={(e) => e.stopPropagation()}
                         className="text-blue-600 hover:text-blue-800 font-medium"
                       >
                         {rawNoteDeliveryNoteNumber || `DN-${note.id}`}
@@ -713,6 +718,7 @@ export default function CustomerDeliveryNotesPage() {
                       {note.auCocId ? (
                         <Link
                           href={`/au-rubber/portal/au-cocs/${note.auCocId}`}
+                          onClick={(e) => e.stopPropagation()}
                           className="text-yellow-600 hover:text-yellow-800"
                         >
                           {rawNoteAuCocNumber || "View AU CoC"}
@@ -723,7 +729,10 @@ export default function CustomerDeliveryNotesPage() {
                         <span className="text-gray-400">Not linked</span>
                       )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                    <td
+                      className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <button
                         onClick={() => handleReanalyze(note.id)}
                         disabled={reanalyzingId === note.id}
