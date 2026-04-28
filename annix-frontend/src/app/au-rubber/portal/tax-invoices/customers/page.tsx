@@ -1,6 +1,6 @@
 "use client";
 
-import { isArray } from "es-toolkit/compat";
+import { useQueryClient } from "@tanstack/react-query";
 import { CheckCircle, Download, FileText, RefreshCw, Send, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -27,9 +27,10 @@ import {
   type RubberTaxInvoiceDto,
   type TaxInvoiceStatus,
 } from "@/app/lib/api/auRubberApi";
-import type { RubberCompanyDto } from "@/app/lib/api/rubberPortalApi";
 import { formatDateZA } from "@/app/lib/datetime";
 import NixProcessingPopup from "@/app/lib/nix/components/NixProcessingPopup";
+import { useAuRubberCompanies, useAuRubberTaxInvoices } from "@/app/lib/query/hooks";
+import { rubberKeys } from "@/app/lib/query/keys";
 
 const CustomerSageExportModal = lazy(() => import("../CustomerSageExportModal"));
 
@@ -47,12 +48,29 @@ export default function CustomerTaxInvoicesPage() {
   const { branding } = useAuRubberBranding();
   const { showExtraction, hideExtraction } = useExtractionProgress();
   const { confirm, ConfirmDialog } = useConfirm();
-  const [invoices, setInvoices] = useState<RubberTaxInvoiceDto[]>([]);
-  const [customers, setCustomers] = useState<RubberCompanyDto[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+  const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<TaxInvoiceStatus | "">("");
+  const taxInvoicesQuery = useAuRubberTaxInvoices({
+    invoiceType: "CUSTOMER",
+    status: filterStatus || undefined,
+  });
+  const companiesQuery = useAuRubberCompanies();
+  const rawTaxInvoicesData = taxInvoicesQuery.data;
+  const rawCompaniesData = companiesQuery.data;
+  const taxInvoicesQueryIsLoading = taxInvoicesQuery.isLoading;
+  const companiesQueryIsLoading = companiesQuery.isLoading;
+  const taxInvoicesQueryError = taxInvoicesQuery.error;
+  const companiesQueryError = companiesQuery.error;
+  const invoices = rawTaxInvoicesData || [];
+  const allCompanies = rawCompaniesData || [];
+  const customers = allCompanies.filter((c) => c.companyType === "CUSTOMER");
+  const isLoading = taxInvoicesQueryIsLoading || companiesQueryIsLoading;
+  const error = taxInvoicesQueryError || companiesQueryError;
+  const refresh = () => {
+    queryClient.invalidateQueries({ queryKey: rubberKeys.taxInvoices.all });
+    queryClient.invalidateQueries({ queryKey: rubberKeys.companies.all });
+  };
   const [currentPage, setCurrentPage] = useState(0);
   const [pageSize, setPageSize] = usePersistedState<number>(
     "auRubber.customerTaxInvoices.pageSize",
@@ -83,7 +101,7 @@ export default function CustomerTaxInvoicesPage() {
       setPostingToSageId(inv.id);
       await auRubberApiClient.postInvoiceToSage(inv.id);
       showToast(`Invoice ${inv.invoiceNumber} posted to Sage`, "success");
-      fetchData();
+      refresh();
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to post to Sage", "error");
     } finally {
@@ -115,7 +133,7 @@ export default function CustomerTaxInvoicesPage() {
           failCount === approvedIds.length ? "error" : "warning",
         );
       }
-      fetchData();
+      refresh();
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to post to Sage", "error");
     } finally {
@@ -135,7 +153,7 @@ export default function CustomerTaxInvoicesPage() {
       setDeletingId(id);
       await auRubberApiClient.deleteTaxInvoice(id);
       showToast(`Tax invoice ${invoiceNumber} deleted`, "success");
-      fetchData();
+      refresh();
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to delete tax invoice", "error");
     } finally {
@@ -188,41 +206,13 @@ export default function CustomerTaxInvoicesPage() {
         "success",
       );
       setSelectedForApproval(new Set());
-      fetchData();
+      refresh();
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to approve invoices", "error");
     } finally {
       setIsBulkApproving(false);
     }
   };
-
-  const fetchData = async () => {
-    try {
-      setIsLoading(true);
-      const [invoiceData, companiesData] = await Promise.all([
-        auRubberApiClient.taxInvoices({
-          invoiceType: "CUSTOMER",
-          status: filterStatus || undefined,
-        }),
-        auRubberApiClient.companies(),
-      ]);
-
-      const allCompanies = isArray(companiesData) ? companiesData : [];
-      const customerCompanies = allCompanies.filter((c) => c.companyType === "CUSTOMER");
-
-      setInvoices(isArray(invoiceData) ? invoiceData : []);
-      setCustomers(customerCompanies);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to load data"));
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchData();
-  }, [filterStatus]);
 
   const handleSort = (column: SortColumn) => {
     if (sortColumn === column) {
@@ -349,9 +339,9 @@ export default function CustomerTaxInvoicesPage() {
         `${files.length} file${files.length !== 1 ? "s" : ""} uploaded — NIX is extracting data in the background`,
         "success",
       );
-      fetchData();
-      setTimeout(() => fetchData(), 5000);
-      setTimeout(() => fetchData(), 20000);
+      refresh();
+      setTimeout(() => refresh(), 5000);
+      setTimeout(() => refresh(), 20000);
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to upload tax invoices", "error");
     } finally {
@@ -398,7 +388,7 @@ export default function CustomerTaxInvoicesPage() {
       setUploadInvoiceNumber("");
       setUploadInvoiceDate("");
       setUploadFiles([]);
-      fetchData();
+      refresh();
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to create tax invoice", "error");
     } finally {
@@ -438,7 +428,7 @@ export default function CustomerTaxInvoicesPage() {
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Data</div>
           <p className="text-gray-600">{error.message}</p>
           <button
-            onClick={fetchData}
+            onClick={refresh}
             className="mt-4 px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700"
           >
             Retry
@@ -489,7 +479,7 @@ export default function CustomerTaxInvoicesPage() {
                   `Removed ${result.deleted} duplicate(s) across ${result.groups} invoice group(s); kept ${result.kept}.`,
                   "success",
                 );
-                fetchData();
+                refresh();
               } catch (err) {
                 showToast(err instanceof Error ? err.message : "Dedupe failed", "error");
               }
@@ -522,7 +512,7 @@ export default function CustomerTaxInvoicesPage() {
                   `Re-extraction triggered for ${result.triggered} invoices. This may take a few minutes.`,
                   "success",
                 );
-                setTimeout(() => fetchData(), 30000);
+                setTimeout(() => refresh(), 30000);
               } catch (err) {
                 showToast(err instanceof Error ? err.message : "Re-extraction failed", "error");
               } finally {
@@ -963,7 +953,7 @@ export default function CustomerTaxInvoicesPage() {
         <Suspense fallback={null}>
           <CustomerSageExportModal
             onClose={() => setShowSageExportModal(false)}
-            onSuccess={() => fetchData()}
+            onSuccess={() => refresh()}
           />
         </Suspense>
       )}
