@@ -696,29 +696,47 @@ For PART items:
 - rollNumber will typically be null
 - quantity and actualWeightKg should still be extracted if available
 
-COMPOUND CODE — PROPAGATE FROM HEADER TO EVERY ROLL (CRITICAL for compound stock tracking):
+COMPOUND CODE — PROPAGATE FROM HEADER TO EVERY ROLL, FORMATTED AS AU INTERNAL CODE (CRITICAL for compound stock tracking):
 On Impilo Industries delivery notes (and similar formats), the compound spec is typically printed ONCE in a header / summary line at the top of the DN — e.g. "Steam cure 40 Red 5x1100x12.5" or "1 roll Red 40 Steam Cured 6mm x 800mm x 12.5m" — and then the individual Roll # rows below it list only the roll number + dimensions + weight, with NO compound text per row. You MUST derive a compound code from that header line and apply it to EVERY line item beneath it. Do NOT leave compoundCode null on the per-roll line items just because the row itself doesn't restate the compound — the header IS the compound spec for those rows.
 
-Derivation rule (same as the supplier-invoice prompt):
+OUTPUT FORMAT — ABSOLUTE RULE:
+The compoundCode value you return MUST be the AU internal code, formatted as a SINGLE concatenated alphanumeric token of the form:
    <colourLetter><cureCode>A<shore>
-   colourLetter:  B=Black, R=Red, Y=Yellow, P=Pink, W=White, G=Green, O=Orange
-   cureCode:      SC=Steam cured (also written "Stream cured"), PC=Pre-cured, AC=Autoclave cured
-   A:             literal "A" (AU compound brand)
-   shore:         the 2-digit Shore hardness from the description
-   Examples:
-     "Steam cure 40 Red 5x1100x12.5"        → RSCA40
-     "Steam cure 38 Black 6x1250x12.5"      → BSCA38
-     "Pre-cured 40 Red 6x1200x12"           → RPCA40
-     "1 roll Steam cure 40 Red 5x1100x12.5" → RSCA40
-     "Autoclave cure 38 Pink 10x1200x9.5"   → PACA38
+For example: "RSCA38", "BSCA40", "RPCA40", "PACA38", "YSCA50".
+
+NEVER return the raw text from the document. Specifically:
+  - "SC38 RED" is WRONG — must be "RSCA38"
+  - "Steam 40 Red" is WRONG — must be "RSCA40"
+  - "Stream Cured 38 Black" is WRONG — must be "BSCA38"
+  - "RED-SC-38" is WRONG — must be "RSCA38"
+  - "AU SC38 R" is WRONG — must be "RSCA38"
+The output token has NO spaces, NO hyphens, NO colour words, NO cure words — just the 6-character (or 7-character for 3-digit shore) AU code.
+
+Mapping table (reference these EXACTLY):
+   colourLetter:  B=Black, R=Red, Y=Yellow, P=Pink, W=White, G=Green, O=Orange (single uppercase letter only — no other forms)
+   cureCode:      SC=Steam cured (also written "Stream cured" — treat as SC), PC=Pre-cured, AC=Autoclave cured (also "Rotocure" — treat as AC)
+   A:             literal uppercase "A" (AU compound brand)
+   shore:         the 2-digit Shore hardness number from the description (no decimals, no "shore" / "shr" suffix)
+
+Worked examples — ALWAYS produce the right column:
+   Source text                                 → compoundCode
+   "Steam cure 40 Red 5x1100x12.5"             → "RSCA40"
+   "Steam cure 38 Black 6x1250x12.5"           → "BSCA38"
+   "1 roll Steam cure 40 Red 5x1100x12.5"      → "RSCA40"
+   "Pre-cured 40 Red 6x1200x12"                → "RPCA40"
+   "Autoclave cure 38 Pink 10x1200x9.5"        → "PACA38"
+   "Compound 40 Shore Red Stream Cured"        → "RSCA40"
+   "Steam Cured 38 Red"                        → "RSCA38"
+   "SC 40 Black"                               → "BSCA40"
 
 Rules:
-1. If the DN has ONE compound description that applies to all rolls, populate compoundCode on EVERY line item with the derived code (NOT null).
-2. If the DN mixes multiple compound types in different sections, use whichever compound description applies to that specific roll.
-3. For S&N Rubber DNs: the compound is often spelled out per-line in a "Stock Code" or "Description" column — extract from there if present, else from the header.
-4. For AU Industries CDNs: compound code may appear embedded in the product code field (e.g. "AUA60B" from "CPL-4E-AUA60B"). Derive from there.
-5. If the colour or cure can't be confidently mapped (e.g. "Natural", "Grey", or just dimensions with no compound text anywhere), leave compoundCode as null — but this should be rare.
+1. If the DN has ONE compound description that applies to all rolls, populate compoundCode on EVERY line item with the SAME derived AU-format code (NOT null, NOT raw text).
+2. If the DN mixes multiple compound types in different sections, use whichever compound description applies to that specific roll — but always emit AU-format.
+3. For S&N Rubber DNs: the compound is often spelled out per-line in a "Stock Code" or "Description" column — derive from there if present, else from the header. ALWAYS reformat to AU-format.
+4. For AU Industries CDNs: compound code may already appear in AU format embedded in the product code field (e.g. "AUA60B" from "CPL-4E-AUA60B"). Use it directly.
+5. If the colour or cure can't be confidently mapped (e.g. "Natural", "Grey", or just dimensions with no compound text anywhere), leave compoundCode as null — but this should be rare. NEVER fall back to raw document text just because you can't fully derive the AU code; null is correct in that case.
 6. NEVER leave compoundCode null on a roll line just because that specific row doesn't restate the compound. ALWAYS check the DN header / summary line first and propagate.
+7. NEVER output the cure-then-shore-then-colour ordering ("SC38 RED") — that is the order you'll see in the document but NOT the order of the AU code. The AU code is colour-first, cure-second, A, shore. Re-order before emitting.
 
 Return a JSON object with this structure:
 {
