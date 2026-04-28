@@ -601,6 +601,31 @@ export default function SupplierTaxInvoicesPage() {
           </button>
           <button
             onClick={async () => {
+              const confirmed = await confirm({
+                title: "Clean up duplicate tax invoices?",
+                message:
+                  "Finds tax invoices with the same invoice number, company, and type, keeps the oldest, and deletes the rest.",
+                confirmLabel: "Clean Up Duplicates",
+                variant: "danger",
+              });
+              if (!confirmed) return;
+              try {
+                const result = await auRubberApiClient.dedupeTaxInvoices();
+                showToast(
+                  `Removed ${result.deleted} duplicate(s) across ${result.groups} invoice group(s); kept ${result.kept}.`,
+                  "success",
+                );
+                fetchData();
+              } catch (err) {
+                showToast(err instanceof Error ? err.message : "Dedupe failed", "error");
+              }
+            }}
+            className="inline-flex items-center px-4 py-2 border border-red-300 rounded-md shadow-sm text-sm font-medium text-red-700 bg-white hover:bg-red-50"
+          >
+            Clean Up Duplicates
+          </button>
+          <button
+            onClick={async () => {
               setIsReExtracting(true);
               const queueDepth = filteredInvoices.length;
               const estMs = Math.max(15000, queueDepth * 18000);

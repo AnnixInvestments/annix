@@ -476,6 +476,31 @@ export default function CustomerTaxInvoicesPage() {
           <button
             onClick={async () => {
               const confirmed = await confirm({
+                title: "Clean up duplicate tax invoices?",
+                message:
+                  "Finds tax invoices with the same invoice number, customer, and type, keeps the oldest, and deletes the rest.",
+                confirmLabel: "Clean Up Duplicates",
+                variant: "danger",
+              });
+              if (!confirmed) return;
+              try {
+                const result = await auRubberApiClient.dedupeTaxInvoices();
+                showToast(
+                  `Removed ${result.deleted} duplicate(s) across ${result.groups} invoice group(s); kept ${result.kept}.`,
+                  "success",
+                );
+                fetchData();
+              } catch (err) {
+                showToast(err instanceof Error ? err.message : "Dedupe failed", "error");
+              }
+            }}
+            className="inline-flex items-center px-4 py-2 border border-red-300 rounded-md shadow-sm text-sm font-medium text-red-700 bg-white hover:bg-red-50"
+          >
+            Clean Up Duplicates
+          </button>
+          <button
+            onClick={async () => {
+              const confirmed = await confirm({
                 title: "Re-extract all customer tax invoices?",
                 message:
                   "This re-runs Vision AI on every customer tax invoice with a document attached. Existing extracted data will be overwritten. The job runs in the background and can take several minutes.",

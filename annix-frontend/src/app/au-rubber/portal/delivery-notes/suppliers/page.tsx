@@ -404,6 +404,31 @@ export default function SupplierDeliveryNotesPage() {
           <button
             onClick={async () => {
               const confirmed = await confirmDialog({
+                title: "Clean up duplicate delivery notes?",
+                message:
+                  "Finds delivery notes with the same DN number and supplier, keeps the oldest, and deletes the rest. Use this to clean up duplicates created before the re-extract bug fix.",
+                confirmLabel: "Clean Up Duplicates",
+                variant: "danger",
+              });
+              if (!confirmed) return;
+              try {
+                const result = await auRubberApiClient.dedupeDeliveryNotes();
+                showToast(
+                  `Removed ${result.deleted} duplicate(s) across ${result.groups} DN group(s); kept ${result.kept}.`,
+                  "success",
+                );
+                await notesQuery.refetch();
+              } catch (err) {
+                showToast(err instanceof Error ? err.message : "Dedupe failed", "error");
+              }
+            }}
+            className="inline-flex items-center px-4 py-2 border border-red-300 rounded-md shadow-sm text-sm font-medium text-red-700 bg-white hover:bg-red-50"
+          >
+            Clean Up Duplicates
+          </button>
+          <button
+            onClick={async () => {
+              const confirmed = await confirmDialog({
                 title: "Re-extract all supplier delivery notes?",
                 message:
                   "This re-runs Vision AI on every supplier DN with a document attached. Existing extracted data will be overwritten. The job runs in the background and can take several minutes.",

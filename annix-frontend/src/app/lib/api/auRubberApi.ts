@@ -3299,6 +3299,18 @@ class AuRubberApiClient {
     );
   }
 
+  async dedupeDeliveryNotes(): Promise<{ deleted: number; kept: number; groups: number }> {
+    return this.request("/rubber-lining/portal/delivery-notes/dedupe", {
+      method: "POST",
+    });
+  }
+
+  async dedupeTaxInvoices(): Promise<{ deleted: number; kept: number; groups: number }> {
+    return this.request("/rubber-lining/portal/tax-invoices/dedupe", {
+      method: "POST",
+    });
+  }
+
   async customerSageExportPreview(params: {
     dateFrom?: string;
     dateTo?: string;

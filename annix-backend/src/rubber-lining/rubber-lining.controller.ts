@@ -2820,6 +2820,92 @@ Formula: totalPrice = totalKg × salePricePerKg
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
+  @Post("portal/delivery-notes/dedupe")
+  @ApiOperation({
+    summary: "Delete duplicate delivery notes (same DN number + supplier), keeping the oldest",
+  })
+  async dedupeDeliveryNotes(): Promise<{ deleted: number; kept: number; groups: number }> {
+    const allNotes = await this.rubberDeliveryNoteService.allDeliveryNotes();
+    const activeNotes = allNotes.filter((n) => n.versionStatus === "ACTIVE");
+
+    const groups = activeNotes.reduce((map, note) => {
+      const dnNumber = note.deliveryNoteNumber;
+      if (!dnNumber || /^DN-\d+$/.test(dnNumber)) return map;
+      const key = `${dnNumber}|${note.supplierCompanyId}`;
+      const list = map.get(key) ?? [];
+      return new Map(map).set(key, [...list, note]);
+    }, new Map<string, typeof activeNotes>());
+
+    const dedupeResult = await Array.from(groups.values()).reduce(
+      async (accPromise, group) => {
+        const acc = await accPromise;
+        if (group.length <= 1) {
+          return { ...acc, kept: acc.kept + group.length };
+        }
+        const sorted = [...group].sort((a, b) => a.id - b.id);
+        const dupIds = sorted.slice(1).map((n) => n.id);
+        await dupIds.reduce(
+          (chain, dupId) =>
+            chain.then(async () => {
+              await this.rubberDeliveryNoteService.deleteDeliveryNote(dupId);
+              this.logger.log(`Deduped delivery note ${dupId} (kept #${sorted[0].id})`);
+            }),
+          Promise.resolve(),
+        );
+        return { kept: acc.kept + 1, deleted: acc.deleted + dupIds.length };
+      },
+      Promise.resolve({ deleted: 0, kept: 0 }),
+    );
+
+    return { ...dedupeResult, groups: groups.size };
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Post("portal/tax-invoices/dedupe")
+  @ApiOperation({
+    summary:
+      "Delete duplicate tax invoices (same invoice number + company + type), keeping the oldest",
+  })
+  async dedupeTaxInvoices(): Promise<{ deleted: number; kept: number; groups: number }> {
+    const allInvoices = await this.rubberTaxInvoiceService.allTaxInvoices({
+      includeAllVersions: false,
+    });
+
+    const groups = allInvoices.reduce((map, inv) => {
+      const invNumber = inv.invoiceNumber;
+      if (!invNumber || /^SCAN_/i.test(invNumber)) return map;
+      const key = `${invNumber}|${inv.companyId}|${inv.invoiceType}`;
+      const list = map.get(key) ?? [];
+      return new Map(map).set(key, [...list, inv]);
+    }, new Map<string, typeof allInvoices>());
+
+    const dedupeResult = await Array.from(groups.values()).reduce(
+      async (accPromise, group) => {
+        const acc = await accPromise;
+        if (group.length <= 1) {
+          return { ...acc, kept: acc.kept + group.length };
+        }
+        const sorted = [...group].sort((a, b) => a.id - b.id);
+        const dupIds = sorted.slice(1).map((n) => n.id);
+        await dupIds.reduce(
+          (chain, dupId) =>
+            chain.then(async () => {
+              await this.rubberTaxInvoiceService.deleteTaxInvoice(dupId);
+              this.logger.log(`Deduped tax invoice ${dupId} (kept #${sorted[0].id})`);
+            }),
+          Promise.resolve(),
+        );
+        return { kept: acc.kept + 1, deleted: acc.deleted + dupIds.length };
+      },
+      Promise.resolve({ deleted: 0, kept: 0 }),
+    );
+
+    return { ...dedupeResult, groups: groups.size };
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
   @Post("portal/delivery-notes/re-extract-all")
   @ApiOperation({ summary: "Re-extract all delivery notes with documents using Vision AI" })
   @ApiQuery({ name: "partyType", enum: ["SUPPLIER", "CUSTOMER"], required: false })
