@@ -753,6 +753,17 @@ ${pdfText}
 Return ONLY a valid JSON object with the extracted data.`;
 }
 
+export const TAX_INVOICE_CUSTOMER_OVERRIDE_PROMPT = `INVOICE TYPE OVERRIDE — CUSTOMER INVOICE (read this BEFORE the COMPANY NAME rules below):
+This is a CUSTOMER tax invoice issued BY AU Industries (Pty) Ltd / AU Industrial Holdings TO one of its customers. The letterhead / "FROM" entity is AU Industries — that is the supplier (us), NOT the customer. The customer you must extract is the bill-to entity, typically in a "TO:" / "Bill To:" / "Sold To:" / "Customer:" / "Invoice To:" address block placed under or beside the AU Industries letterhead near the top of the page.
+
+For every invoice in this PDF (top-level fields AND every element of the invoices[] array):
+- companyName MUST be the bill-to / customer name (e.g. "Polymer Lining Systems (Pty) Ltd", "Multotec", "FLSmidth"). NEVER return "AU Industries", "AU Industries (Pty) Ltd", "AU Industrial Holdings", or any AU entity as the companyName on a customer invoice — that is a hard error.
+- If the bill-to block is missing, return null for companyName rather than falling back to AU Industries.
+- The orderNumber (PO / Reference) is the customer's purchase-order / project reference printed on each invoice. Look for labels like "PO No", "P/O No", "Order No", "Your Order", "Customer PO", "Customer Order No", "Reference", "Ref", "Cust Ref", "Project", or a header field that simply contains an alphanumeric reference string near the customer block.
+- Extract the orderNumber VERBATIM — the COMPLETE string exactly as printed, including ALL parts of a compound / multi-segment reference. Many AU customer invoices print a project code AND a PO number separated by a slash, dash, hyphen, or space (e.g. "PL8007/PO6873", "PROJ-123/PO-9988", "MS-44 PO-6875"). You MUST capture the WHOLE string, not just one segment. If the reference contains "/" or "-" or whitespace, keep those characters and the surrounding tokens — do NOT split, truncate to the second half, or drop a prefix because it "looks like a project code". The 3–5 digit short-number rule from the supplier prompt does NOT apply on customer invoices — customer references can be 4–25 characters long and may include letters, digits, slashes, dashes, and dots.
+- Apply this verbatim rule INDEPENDENTLY to every invoice in the invoices[] array. If invoice 1 has "PL8007/PO6873" and invoice 2 has "PL8009/PO6884", BOTH must keep the full "PLxxxx/POxxxx" form — do NOT truncate the prefix on later invoices just because the layout looks similar.
+`;
+
 export const TAX_INVOICE_SYSTEM_PROMPT = `You are an expert at extracting structured data from tax invoices for rubber compound and rubber roll suppliers.
 
 These invoices are typically from suppliers like AU Industries, Impilo Industries, S&N Rubber, or similar rubber/industrial suppliers.

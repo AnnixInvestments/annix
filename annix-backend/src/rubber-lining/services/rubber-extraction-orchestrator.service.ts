@@ -2,6 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { extractTextFromPdf, extractTextFromWord } from "../../lib/document-extraction";
 import { DeliveryNoteType } from "../entities/rubber-delivery-note.entity";
 import { SupplierCocType } from "../entities/rubber-supplier-coc.entity";
+import { TaxInvoiceType } from "../entities/rubber-tax-invoice.entity";
 import { RubberAuCocReadinessService } from "../rubber-au-coc-readiness.service";
 import { RubberCocService } from "../rubber-coc.service";
 import { RubberCocExtractionService } from "../rubber-coc-extraction.service";
@@ -51,6 +52,8 @@ export class RubberExtractionOrchestratorService {
 
     (async () => {
       try {
+        const invoiceMeta = await this.taxInvoiceService.taxInvoiceById(invoiceId);
+        const invoiceType = invoiceMeta?.invoiceType ?? TaxInvoiceType.SUPPLIER;
         const correctionHints = companyName
           ? await this.taxInvoiceService.correctionHintsForSupplier(companyName)
           : null;
@@ -59,6 +62,7 @@ export class RubberExtractionOrchestratorService {
           const extractionResult = await this.cocExtractionService.extractTaxInvoiceFromImages(
             fileBuffer,
             correctionHints,
+            invoiceType,
           );
           const invoices = extractionResult.invoices ?? [extractionResult.data];
           if (invoices.length > 1) {
@@ -81,6 +85,7 @@ export class RubberExtractionOrchestratorService {
             const extractionResult = await this.cocExtractionService.extractTaxInvoice(
               docText,
               correctionHints,
+              invoiceType,
             );
             await this.taxInvoiceService.setExtractedData(invoiceId, extractionResult.data);
             this.logger.log(

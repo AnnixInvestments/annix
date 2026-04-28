@@ -10,7 +10,7 @@ import {
   ExtractedDeliveryNoteData,
 } from "./entities/rubber-delivery-note.entity";
 import { ExtractedCocData, SupplierCocType } from "./entities/rubber-supplier-coc.entity";
-import { ExtractedTaxInvoiceData } from "./entities/rubber-tax-invoice.entity";
+import { ExtractedTaxInvoiceData, TaxInvoiceType } from "./entities/rubber-tax-invoice.entity";
 import {
   CALENDARER_COC_SYSTEM_PROMPT,
   CALENDER_ROLL_COC_SYSTEM_PROMPT,
@@ -23,6 +23,7 @@ import {
   creditNoteExtractionPrompt,
   DELIVERY_NOTE_SYSTEM_PROMPT,
   deliveryNoteExtractionPrompt,
+  TAX_INVOICE_CUSTOMER_OVERRIDE_PROMPT,
   TAX_INVOICE_SYSTEM_PROMPT,
   taxInvoiceExtractionPrompt,
   UNIVERSAL_DELIVERY_NOTE_SYSTEM_PROMPT,
@@ -586,6 +587,7 @@ export class RubberCocExtractionService {
   async extractTaxInvoice(
     pdfText: string,
     correctionHints?: string | null,
+    invoiceType: TaxInvoiceType = TaxInvoiceType.SUPPLIER,
   ): Promise<{
     data: ExtractedTaxInvoiceData;
     tokensUsed?: number;
@@ -598,9 +600,7 @@ export class RubberCocExtractionService {
       throw new Error("GEMINI_API_KEY not configured");
     }
 
-    const systemPrompt = correctionHints
-      ? `${TAX_INVOICE_SYSTEM_PROMPT}\n\n${correctionHints}`
-      : TAX_INVOICE_SYSTEM_PROMPT;
+    const systemPrompt = this.buildTaxInvoiceSystemPrompt(invoiceType, correctionHints);
 
     const response = await this.callGemini(
       systemPrompt,
@@ -621,6 +621,7 @@ export class RubberCocExtractionService {
   async extractTaxInvoiceFromImages(
     pdfBuffer: Buffer,
     correctionHints?: string | null,
+    invoiceType: TaxInvoiceType = TaxInvoiceType.SUPPLIER,
   ): Promise<{
     data: ExtractedTaxInvoiceData;
     invoices: ExtractedTaxInvoiceData[];
@@ -634,9 +635,7 @@ export class RubberCocExtractionService {
       throw new Error("GEMINI_API_KEY not configured");
     }
 
-    const systemPrompt = correctionHints
-      ? `${TAX_INVOICE_SYSTEM_PROMPT}\n\n${correctionHints}`
-      : TAX_INVOICE_SYSTEM_PROMPT;
+    const systemPrompt = this.buildTaxInvoiceSystemPrompt(invoiceType, correctionHints);
 
     const images = await this.convertPdfToImages(pdfBuffer);
     this.logger.log(`Converted tax invoice PDF to ${images.length} image(s) for OCR extraction`);
@@ -672,6 +671,20 @@ export class RubberCocExtractionService {
       tokensUsed: response.tokensUsed,
       processingTimeMs,
     };
+  }
+
+  private buildTaxInvoiceSystemPrompt(
+    invoiceType: TaxInvoiceType,
+    correctionHints?: string | null,
+  ): string {
+    const parts = [TAX_INVOICE_SYSTEM_PROMPT];
+    if (invoiceType === TaxInvoiceType.CUSTOMER) {
+      parts.push(TAX_INVOICE_CUSTOMER_OVERRIDE_PROMPT);
+    }
+    if (correctionHints) {
+      parts.push(correctionHints);
+    }
+    return parts.join("\n\n");
   }
 
   private resolveTaxInvoiceArray(

@@ -3,6 +3,7 @@
 import { isArray } from "es-toolkit/compat";
 import { CheckCircle, Download, FileText, Send, Trash2, X } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import { FileDropZone } from "@/app/au-rubber/components/FileDropZone";
@@ -40,6 +41,7 @@ type SortColumn =
   | "vatAmount";
 
 export default function CustomerTaxInvoicesPage() {
+  const router = useRouter();
   const { showToast } = useToast();
   const { branding } = useAuRubberBranding();
   const { confirm, ConfirmDialog } = useConfirm();
@@ -631,6 +633,12 @@ export default function CustomerTaxInvoicesPage() {
                 </th>
                 <th
                   scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  PO / Reference
+                </th>
+                <th
+                  scope="col"
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                   onClick={() => handleSort("invoiceDate")}
                 >
@@ -670,10 +678,16 @@ export default function CustomerTaxInvoicesPage() {
             <tbody className="bg-white divide-y divide-gray-200">
               {paginatedInvoices.map((inv) => {
                 const rawInvCompanyName = inv.companyName;
+                const extractedData = inv.extractedData;
+                const orderNumber = extractedData ? extractedData.orderNumber : null;
                 return (
-                  <tr key={inv.id} className="hover:bg-gray-50">
+                  <tr
+                    key={inv.id}
+                    className="hover:bg-gray-50 cursor-pointer"
+                    onClick={() => router.push(`/au-rubber/portal/tax-invoices/${inv.id}`)}
+                  >
                     {hasApprovable && (
-                      <td className="px-4 py-4 w-10">
+                      <td className="px-4 py-4 w-10" onClick={(e) => e.stopPropagation()}>
                         {inv.status === "EXTRACTED" && (
                           <input
                             type="checkbox"
@@ -687,6 +701,7 @@ export default function CustomerTaxInvoicesPage() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <Link
                         href={`/au-rubber/portal/tax-invoices/${inv.id}`}
+                        onClick={(e) => e.stopPropagation()}
                         className="text-orange-600 font-medium hover:text-orange-800 hover:underline"
                       >
                         {inv.invoiceNumber}
@@ -694,6 +709,9 @@ export default function CustomerTaxInvoicesPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {rawInvCompanyName || "-"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {orderNumber || "-"}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {inv.invoiceDate ? formatDateZA(inv.invoiceDate) : "-"}

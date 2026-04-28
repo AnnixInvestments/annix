@@ -806,6 +806,12 @@ export default function SupplierTaxInvoicesPage() {
                   </th>
                   <th
                     scope="col"
+                    className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    PO / Reference
+                  </th>
+                  <th
+                    scope="col"
                     className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                     onClick={() => handleSort("invoiceDate")}
                   >
@@ -874,6 +880,8 @@ export default function SupplierTaxInvoicesPage() {
                   const rawInvCompanyName = inv.companyName;
                   const rawInvProductDescription = inv.productDescription;
                   const rawInvUnit = inv.unit;
+                  const extractedData = inv.extractedData;
+                  const orderNumber = extractedData ? extractedData.orderNumber : null;
                   const needsRollDetails = invoiceNeedsRollDetails(inv);
                   return (
                     <tr
@@ -910,6 +918,9 @@ export default function SupplierTaxInvoicesPage() {
                       </td>
                       <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-900">
                         {rawInvCompanyName || "-"}
+                      </td>
+                      <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-500">
+                        {orderNumber || "-"}
                       </td>
                       <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-500">
                         {inv.invoiceDate ? formatDateZA(inv.invoiceDate) : "-"}

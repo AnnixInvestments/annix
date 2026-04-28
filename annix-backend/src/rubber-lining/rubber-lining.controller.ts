@@ -2700,14 +2700,19 @@ Formula: totalPrice = totalKg × salePricePerKg
     );
 
     const isCreditNote = invoice.isCreditNote;
+    const invoiceType = invoice.invoiceType;
     const extractText = (text: string) =>
       isCreditNote
         ? this.rubberCocExtractionService.extractCreditNote(text, correctionHints)
-        : this.rubberCocExtractionService.extractTaxInvoice(text, correctionHints);
+        : this.rubberCocExtractionService.extractTaxInvoice(text, correctionHints, invoiceType);
     const extractImages = (buffer: Buffer) =>
       isCreditNote
         ? this.rubberCocExtractionService.extractCreditNoteFromImages(buffer, correctionHints)
-        : this.rubberCocExtractionService.extractTaxInvoiceFromImages(buffer, correctionHints);
+        : this.rubberCocExtractionService.extractTaxInvoiceFromImages(
+            buffer,
+            correctionHints,
+            invoiceType,
+          );
 
     const extractionResult: {
       data: import("./entities/rubber-tax-invoice.entity").ExtractedTaxInvoiceData;
