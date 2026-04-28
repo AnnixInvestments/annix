@@ -1,7 +1,7 @@
 "use client";
 
 import { isArray } from "es-toolkit/compat";
-import { CheckCircle, Download, FileText, Send, Trash2, X } from "lucide-react";
+import { CheckCircle, Download, FileText, RefreshCw, Send, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { lazy, Suspense, useEffect, useState } from "react";
@@ -18,6 +18,7 @@ import {
 const ITEMS_PER_PAGE = 25;
 
 import { useConfirm } from "@/app/au-rubber/hooks/useConfirm";
+import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { useToast } from "@/app/components/Toast";
 import { useAuRubberBranding } from "@/app/context/AuRubberBrandingContext";
 import { usePersistedState } from "@/app/hooks/usePersistedState";
@@ -44,6 +45,7 @@ export default function CustomerTaxInvoicesPage() {
   const router = useRouter();
   const { showToast } = useToast();
   const { branding } = useAuRubberBranding();
+  const { showExtraction, hideExtraction } = useExtractionProgress();
   const { confirm, ConfirmDialog } = useConfirm();
   const [invoices, setInvoices] = useState<RubberTaxInvoiceDto[]>([]);
   const [customers, setCustomers] = useState<RubberCompanyDto[]>([]);
@@ -74,6 +76,7 @@ export default function CustomerTaxInvoicesPage() {
   const [showSageExportModal, setShowSageExportModal] = useState(false);
   const [postingToSageId, setPostingToSageId] = useState<number | null>(null);
   const [isBulkPostingToSage, setIsBulkPostingToSage] = useState(false);
+  const [isReExtracting, setIsReExtracting] = useState(false);
 
   const handlePostToSage = async (inv: RubberTaxInvoiceDto) => {
     try {
@@ -470,6 +473,44 @@ export default function CustomerTaxInvoicesPage() {
                 : `Approve ${selectedForApproval.size} invoice${selectedForApproval.size > 1 ? "s" : ""}`}
             </button>
           )}
+          <button
+            onClick={async () => {
+              const confirmed = await confirm({
+                title: "Re-extract all customer tax invoices?",
+                message:
+                  "This re-runs Vision AI on every customer tax invoice with a document attached. Existing extracted data will be overwritten. The job runs in the background and can take several minutes.",
+                confirmLabel: "Re-extract All",
+              });
+              if (!confirmed) return;
+              setIsReExtracting(true);
+              const queueDepth = filteredInvoices.length;
+              const estMs = Math.max(15000, queueDepth * 18000);
+              showExtraction({
+                brand: "au-rubber",
+                label: `Re-extracting ${queueDepth} customer invoices (background)…`,
+                estimatedDurationMs: estMs,
+                itemCount: queueDepth,
+              });
+              try {
+                const result = await auRubberApiClient.reExtractAllTaxInvoices("CUSTOMER");
+                showToast(
+                  `Re-extraction triggered for ${result.triggered} invoices. This may take a few minutes.`,
+                  "success",
+                );
+                setTimeout(() => fetchData(), 30000);
+              } catch (err) {
+                showToast(err instanceof Error ? err.message : "Re-extraction failed", "error");
+              } finally {
+                hideExtraction();
+                setIsReExtracting(false);
+              }
+            }}
+            disabled={isReExtracting}
+            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+          >
+            <RefreshCw className={`w-4 h-4 mr-2 ${isReExtracting ? "animate-spin" : ""}`} />
+            {isReExtracting ? "Re-extracting..." : "Re-extract All"}
+          </button>
           <button
             onClick={handleBulkPostToSage}
             disabled={isBulkPostingToSage}

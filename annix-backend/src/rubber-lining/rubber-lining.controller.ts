@@ -2771,9 +2771,17 @@ Formula: totalPrice = totalKg × salePricePerKg
   @ApiBearerAuth()
   @Post("portal/tax-invoices/re-extract-all")
   @ApiOperation({ summary: "Re-extract all tax invoices with documents using Vision AI" })
-  async reExtractAllTaxInvoices(): Promise<{ triggered: number }> {
+  @ApiQuery({ name: "invoiceType", enum: TaxInvoiceType, required: false })
+  async reExtractAllTaxInvoices(
+    @Query("invoiceType") invoiceTypeQuery?: string,
+  ): Promise<{ triggered: number }> {
+    const invoiceType =
+      invoiceTypeQuery === TaxInvoiceType.CUSTOMER
+        ? TaxInvoiceType.CUSTOMER
+        : TaxInvoiceType.SUPPLIER;
+
     const allInvoices = await this.rubberTaxInvoiceService.allTaxInvoices({
-      invoiceType: TaxInvoiceType.SUPPLIER,
+      invoiceType,
       isCreditNote: false,
     });
 
@@ -2792,7 +2800,9 @@ Formula: totalPrice = totalKg × salePricePerKg
             inv.documentPath!,
             inv.companyName,
           );
-          logger.log(`Triggered re-extraction for tax invoice ${inv.id} (${inv.invoiceNumber})`);
+          logger.log(
+            `Triggered re-extraction for ${invoiceType} tax invoice ${inv.id} (${inv.invoiceNumber})`,
+          );
           await new Promise((resolve) => setTimeout(resolve, 3000));
         } catch (err) {
           logger.error(
@@ -2800,7 +2810,55 @@ Formula: totalPrice = totalKg × salePricePerKg
           );
         }
       }
-      logger.log(`Bulk re-extraction complete: ${withDocuments.length} invoices processed`);
+      logger.log(
+        `Bulk re-extraction complete (${invoiceType}): ${withDocuments.length} invoices processed`,
+      );
+    })();
+
+    return { triggered: withDocuments.length };
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Post("portal/delivery-notes/re-extract-all")
+  @ApiOperation({ summary: "Re-extract all delivery notes with documents using Vision AI" })
+  @ApiQuery({ name: "partyType", enum: ["SUPPLIER", "CUSTOMER"], required: false })
+  async reExtractAllDeliveryNotes(
+    @Query("partyType") partyTypeQuery?: string,
+  ): Promise<{ triggered: number }> {
+    const partyType = partyTypeQuery === "CUSTOMER" ? "CUSTOMER" : "SUPPLIER";
+
+    const allNotes = await this.rubberDeliveryNoteService.allDeliveryNotes();
+    const allCompanies = await this.rubberLiningService.allCompanies();
+    const matchingCompanyIds = new Set(
+      allCompanies.filter((c) => c.companyType === partyType).map((c) => c.id),
+    );
+
+    const withDocuments = allNotes.filter(
+      (note) => note.documentPath && matchingCompanyIds.has(note.supplierCompanyId),
+    );
+    const logger = this.logger;
+    const storageService = this.storageService;
+    const orchestrator = this.extractionOrchestratorService;
+
+    (async () => {
+      for (const note of withDocuments) {
+        try {
+          const docBuffer = await storageService.download(note.documentPath!);
+          orchestrator.triggerDeliveryNoteExtraction(note.id, docBuffer, note.deliveryNoteType);
+          logger.log(
+            `Triggered re-extraction for ${partyType} delivery note ${note.id} (${note.deliveryNoteNumber})`,
+          );
+          await new Promise((resolve) => setTimeout(resolve, 3000));
+        } catch (err) {
+          logger.error(
+            `Failed to trigger re-extraction for delivery note ${note.id}: ${err instanceof Error ? err.message : String(err)}`,
+          );
+        }
+      }
+      logger.log(
+        `Bulk delivery-note re-extraction complete (${partyType}): ${withDocuments.length} notes processed`,
+      );
     })();
 
     return { triggered: withDocuments.length };

@@ -1,13 +1,15 @@
 "use client";
 
 import { isArray } from "es-toolkit/compat";
-import { Link2, Loader2 } from "lucide-react";
+import { Link2, Loader2, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import { FileDropZone } from "@/app/au-rubber/components/FileDropZone";
+import { useConfirm } from "@/app/au-rubber/hooks/useConfirm";
 import { useTablePreferences } from "@/app/au-rubber/hooks/useTablePreferences";
+import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import {
   Pagination,
   SortIcon,
@@ -41,6 +43,9 @@ export default function SupplierDeliveryNotesPage() {
   const router = useRouter();
   const { showToast } = useToast();
   const { branding } = useAuRubberBranding();
+  const { showExtraction, hideExtraction } = useExtractionProgress();
+  const { confirm: confirmDialog, ConfirmDialog } = useConfirm();
+  const [isReExtracting, setIsReExtracting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<DeliveryNoteType | "">("");
   const [filterStatus, setFilterStatus] = useState<DeliveryNoteStatus | "">("");
@@ -395,6 +400,44 @@ export default function SupplierDeliveryNotesPage() {
               <Link2 className="w-4 h-4 mr-2" />
             )}
             {isAutoLinking ? "Linking..." : "Auto-Link All"}
+          </button>
+          <button
+            onClick={async () => {
+              const confirmed = await confirmDialog({
+                title: "Re-extract all supplier delivery notes?",
+                message:
+                  "This re-runs Vision AI on every supplier DN with a document attached. Existing extracted data will be overwritten. The job runs in the background and can take several minutes.",
+                confirmLabel: "Re-extract All",
+              });
+              if (!confirmed) return;
+              setIsReExtracting(true);
+              const queueDepth = filteredNotes.length;
+              const estMs = Math.max(15000, queueDepth * 18000);
+              showExtraction({
+                brand: "au-rubber",
+                label: `Re-extracting ${queueDepth} supplier DNs (background)…`,
+                estimatedDurationMs: estMs,
+                itemCount: queueDepth,
+              });
+              try {
+                const result = await auRubberApiClient.reExtractAllDeliveryNotes("SUPPLIER");
+                showToast(
+                  `Re-extraction triggered for ${result.triggered} delivery notes. This may take a few minutes.`,
+                  "success",
+                );
+                setTimeout(() => notesQuery.refetch(), 30000);
+              } catch (err) {
+                showToast(err instanceof Error ? err.message : "Re-extraction failed", "error");
+              } finally {
+                hideExtraction();
+                setIsReExtracting(false);
+              }
+            }}
+            disabled={isReExtracting}
+            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+          >
+            <RefreshCw className={`w-4 h-4 mr-2 ${isReExtracting ? "animate-spin" : ""}`} />
+            {isReExtracting ? "Re-extracting..." : "Re-extract All"}
           </button>
           <button
             onClick={() => fileInputRef.current?.click()}
@@ -768,6 +811,7 @@ export default function SupplierDeliveryNotesPage() {
           )
         }
       />
+      {ConfirmDialog}
     </div>
   );
 }

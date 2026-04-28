@@ -3281,10 +3281,22 @@ class AuRubberApiClient {
     return response.blob();
   }
 
-  async reExtractAllTaxInvoices(): Promise<{ triggered: number }> {
-    return this.request("/rubber-lining/portal/tax-invoices/re-extract-all", {
+  async reExtractAllTaxInvoices(invoiceType?: TaxInvoiceType): Promise<{ triggered: number }> {
+    const query = invoiceType ? `?invoiceType=${invoiceType}` : "";
+    return this.request(`/rubber-lining/portal/tax-invoices/re-extract-all${query}`, {
       method: "POST",
     });
+  }
+
+  async reExtractAllDeliveryNotes(
+    partyType: "SUPPLIER" | "CUSTOMER",
+  ): Promise<{ triggered: number }> {
+    return this.request(
+      `/rubber-lining/portal/delivery-notes/re-extract-all?partyType=${partyType}`,
+      {
+        method: "POST",
+      },
+    );
   }
 
   async customerSageExportPreview(params: {

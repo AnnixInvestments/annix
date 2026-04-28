@@ -611,7 +611,7 @@ export default function SupplierTaxInvoicesPage() {
                 itemCount: queueDepth,
               });
               try {
-                const result = await auRubberApiClient.reExtractAllTaxInvoices();
+                const result = await auRubberApiClient.reExtractAllTaxInvoices("SUPPLIER");
                 showToast(
                   `Re-extraction triggered for ${result.triggered} invoices. This may take a few minutes.`,
                   "success",
