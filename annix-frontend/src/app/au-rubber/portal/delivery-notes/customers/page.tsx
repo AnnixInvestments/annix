@@ -59,13 +59,14 @@ export default function CustomerDeliveryNotesPage() {
   const notesQuery = useAuRubberDeliveryNotes({
     deliveryNoteType: filterType || undefined,
     status: filterStatus || undefined,
+    companyType: "CUSTOMER",
   });
   const companiesQuery = useAuRubberCompanies();
   const rawCompaniesQueryData = companiesQuery.data;
   const rawNotesQueryData = notesQuery.data;
-  const customers = (rawCompaniesQueryData || []).filter((c) => c.companyType === "CUSTOMER");
-  const customerIds = new Set(customers.map((c) => c.id));
-  const notes = (rawNotesQueryData || []).filter((n) => customerIds.has(n.supplierCompanyId));
+  const allCompanies = rawCompaniesQueryData || [];
+  const customers = allCompanies.filter((c) => c.companyType === "CUSTOMER");
+  const notes = rawNotesQueryData || [];
   const isLoading = notesQuery.isLoading;
   const error = notesQuery.error;
   const [currentPage, setCurrentPage] = useState(0);

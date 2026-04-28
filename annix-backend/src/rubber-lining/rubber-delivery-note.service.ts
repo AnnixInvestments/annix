@@ -86,6 +86,7 @@ export class RubberDeliveryNoteService {
     deliveryNoteType?: DeliveryNoteType;
     status?: DeliveryNoteStatus;
     supplierCompanyId?: number;
+    companyType?: CompanyType;
     includeAllVersions?: boolean;
   }): Promise<RubberDeliveryNoteDto[]> {
     const query = this.deliveryNoteRepository
@@ -109,6 +110,11 @@ export class RubberDeliveryNoteService {
     if (filters?.supplierCompanyId) {
       query.andWhere("dn.supplier_company_id = :companyId", {
         companyId: filters.supplierCompanyId,
+      });
+    }
+    if (filters?.companyType) {
+      query.andWhere("company.company_type = :companyType", {
+        companyType: filters.companyType,
       });
     }
 

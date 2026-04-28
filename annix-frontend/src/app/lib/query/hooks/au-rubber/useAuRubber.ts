@@ -74,6 +74,7 @@ export function useAuRubberDeliveryNotes(filters?: {
   deliveryNoteType?: DeliveryNoteType;
   status?: DeliveryNoteStatus;
   supplierId?: number;
+  companyType?: "SUPPLIER" | "CUSTOMER";
   includeAllVersions?: boolean;
 }) {
   return useQuery<RubberDeliveryNoteDto[]>({

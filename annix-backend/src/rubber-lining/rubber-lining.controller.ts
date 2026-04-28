@@ -127,6 +127,7 @@ import {
 } from "./dto/rubber-roll-issuance.dto";
 import { RubberAppProfile } from "./entities/rubber-app-profile.entity";
 import { AuCocStatus } from "./entities/rubber-au-coc.entity";
+import { CompanyType } from "./entities/rubber-company.entity";
 import {
   CompoundMovementReferenceType,
   CompoundMovementType,
@@ -1339,17 +1340,20 @@ Formula: totalPrice = totalKg × salePricePerKg
   @ApiQuery({ name: "deliveryNoteType", required: false, enum: DeliveryNoteType })
   @ApiQuery({ name: "status", required: false, enum: DeliveryNoteStatus })
   @ApiQuery({ name: "supplierCompanyId", required: false })
+  @ApiQuery({ name: "companyType", required: false, enum: CompanyType })
   @ApiQuery({ name: "includeAllVersions", required: false })
   async deliveryNotes(
     @Query("deliveryNoteType") deliveryNoteType?: DeliveryNoteType,
     @Query("status") status?: DeliveryNoteStatus,
     @Query("supplierCompanyId") supplierCompanyId?: string,
+    @Query("companyType") companyType?: CompanyType,
     @Query("includeAllVersions") includeAllVersions?: string,
   ): Promise<RubberDeliveryNoteDto[]> {
     return this.rubberDeliveryNoteService.allDeliveryNotes({
       deliveryNoteType,
       status,
       supplierCompanyId: supplierCompanyId ? Number(supplierCompanyId) : undefined,
+      companyType,
       includeAllVersions: includeAllVersions === "true",
     });
   }

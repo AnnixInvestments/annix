@@ -2238,12 +2238,14 @@ class AuRubberApiClient {
     deliveryNoteType?: DeliveryNoteType;
     status?: DeliveryNoteStatus;
     supplierId?: number;
+    companyType?: "SUPPLIER" | "CUSTOMER";
     includeAllVersions?: boolean;
   }): Promise<RubberDeliveryNoteDto[]> {
     const params = new URLSearchParams();
     if (filters?.deliveryNoteType) params.set("deliveryNoteType", filters.deliveryNoteType);
     if (filters?.status) params.set("status", filters.status);
     if (filters?.supplierId) params.set("supplierId", String(filters.supplierId));
+    if (filters?.companyType) params.set("companyType", filters.companyType);
     if (filters?.includeAllVersions) params.set("includeAllVersions", "true");
     const query = params.toString() ? `?${params.toString()}` : "";
     return this.request(`/rubber-lining/portal/delivery-notes${query}`);

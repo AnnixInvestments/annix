@@ -51,6 +51,8 @@ export const rubberKeys = {
       deliveryNoteType?: DeliveryNoteType;
       status?: DeliveryNoteStatus;
       supplierId?: number;
+      companyType?: "SUPPLIER" | "CUSTOMER";
+      includeAllVersions?: boolean;
     }) => [...rubberKeys.deliveryNotes.all, "list", filters ?? {}] as const,
     detail: (id: number) => [...rubberKeys.deliveryNotes.all, "detail", id] as const,
   },
