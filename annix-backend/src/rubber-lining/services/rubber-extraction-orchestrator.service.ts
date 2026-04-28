@@ -133,6 +133,7 @@ export class RubberExtractionOrchestratorService {
                 .filter((item) => item != null && typeof item === "object")
                 .map((item) => ({
                   rollNumber: item.rollNumber ?? null,
+                  compoundCode: item.compoundCode ?? null,
                   thicknessMm: item.thicknessMm ?? null,
                   widthMm: item.widthMm ?? null,
                   lengthM: item.lengthM ?? null,

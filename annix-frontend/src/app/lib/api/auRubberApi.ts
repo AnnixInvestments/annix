@@ -207,6 +207,7 @@ export interface ExtractedTaxInvoiceRoll {
 
 export interface ExtractedTaxInvoiceLineItem {
   description: string;
+  compoundCode?: string | null;
   quantity: number | null;
   unitPrice: number | null;
   amount: number | null;
@@ -570,6 +571,7 @@ export interface RubberCompoundBatchDto {
 
 export interface ExtractedDeliveryNoteRoll {
   rollNumber: string;
+  compoundCode?: string | null;
   thicknessMm?: number;
   widthMm?: number;
   lengthM?: number;

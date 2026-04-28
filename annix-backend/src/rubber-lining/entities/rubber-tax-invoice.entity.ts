@@ -28,6 +28,7 @@ export interface ExtractedRollDetail {
 
 export interface ExtractedTaxInvoiceLineItem {
   description: string;
+  compoundCode?: string | null;
   quantity: number | null;
   unitPrice: number | null;
   amount: number | null;

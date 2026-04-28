@@ -26,6 +26,7 @@ export enum DeliveryNoteStatus {
 
 export interface ExtractedDeliveryNoteRoll {
   rollNumber: string | null;
+  compoundCode?: string | null;
   thicknessMm?: number | null;
   widthMm?: number | null;
   lengthM?: number | null;

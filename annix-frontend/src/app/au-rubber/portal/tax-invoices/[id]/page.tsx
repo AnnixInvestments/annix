@@ -330,6 +330,9 @@ export default function TaxInvoiceDetailPage() {
   const rawExtractedDataDeliveryNoteRef2 = invoice.extractedData?.deliveryNoteRef;
   const rawExtractedDataOrderNumber2 = invoice.extractedData?.orderNumber;
   const rawInvoiceUnit2 = invoice.unit;
+  const extractedLineItems = invoice.extractedData ? invoice.extractedData.lineItems : null;
+  const firstLineItem = extractedLineItems ? extractedLineItems[0] : null;
+  const firstCompoundCode = firstLineItem ? firstLineItem.compoundCode : null;
 
   return (
     <div className="space-y-6">
@@ -636,6 +639,9 @@ export default function TaxInvoiceDetailPage() {
                             #
                           </th>
                           <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                            Compound
+                          </th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
                             Description
                           </th>
                           <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">
@@ -653,10 +659,14 @@ export default function TaxInvoiceDetailPage() {
                         {invoice.extractedData.lineItems.map((item, idx) => {
                           const itemRolls = item.rolls;
                           const itemDescription = item.description;
+                          const itemCompoundCode = item.compoundCode;
                           return (
                             <Fragment key={idx}>
                               <tr>
                                 <td className="px-3 py-2 text-xs text-gray-400">{idx + 1}</td>
+                                <td className="px-3 py-2 text-sm font-mono text-gray-900">
+                                  {itemCompoundCode || "-"}
+                                </td>
                                 <td className="px-3 py-2 text-sm text-gray-900">
                                   {itemDescription}
                                 </td>
@@ -671,7 +681,7 @@ export default function TaxInvoiceDetailPage() {
                                 </td>
                               </tr>
                               <tr>
-                                <td colSpan={5} className="p-0">
+                                <td colSpan={6} className="p-0">
                                   <LineItemRollsPanel
                                     invoiceId={invoice.id}
                                     invoiceType={invoice.invoiceType}
@@ -714,7 +724,13 @@ export default function TaxInvoiceDetailPage() {
               </div>
               {invoice.extractedData.lineItems && invoice.extractedData.lineItems.length <= 1 ? (
                 <>
-                  <div className="grid grid-cols-3 gap-4 pt-2 border-t border-gray-100">
+                  <div className="grid grid-cols-4 gap-4 pt-2 border-t border-gray-100">
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500">Compound Code</dt>
+                      <dd className="mt-1 text-lg font-semibold text-gray-900 font-mono">
+                        {firstCompoundCode || "-"}
+                      </dd>
+                    </div>
                     <div>
                       <dt className="text-sm font-medium text-gray-500">Quantity</dt>
                       <dd className="mt-1 text-lg font-semibold text-gray-900">

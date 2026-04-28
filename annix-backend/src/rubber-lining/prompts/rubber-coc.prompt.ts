@@ -1015,6 +1015,7 @@ Return a JSON object with this structure:
   "lineItems": [
     {
       "description": string,
+      "compoundCode": string or null (the rubber compound product code derived per the rules above — e.g. "RSCA40", "BSCA38", "BPCA40", "AUA60B". Populate on EVERY line item where a compound is identifiable, INCLUDING when the description already starts with it. This is a critical field for compound stock tracking — never omit it when derivable. Use null only when the line is truly non-compound (e.g. transport, calendering charge with no compound spec, moulded products like CPL/FPL/TBR).),
       "quantity": number or null,
       "unitPrice": number or null,
       "amount": number or null,
@@ -1034,7 +1035,7 @@ Return a JSON object with this structure:
       "productUnit": string or null,
       "deliveryNoteRef": string or null,
       "orderNumber": string or null,
-      "lineItems": [ /* same shape as above, but only for this invoice */ ],
+      "lineItems": [ /* same shape as above (description, compoundCode, quantity, unitPrice, amount, rolls), but only for this invoice */ ],
       "subtotal": number or null,
       "vatAmount": number or null,
       "totalAmount": number or null

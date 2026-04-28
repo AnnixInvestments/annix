@@ -180,6 +180,7 @@ export default function DeliveryNoteDetailPage() {
 
     const stringFields: (keyof EditableRoll)[] = [
       "rollNumber",
+      "compoundCode",
       "deliveryNoteNumber",
       "deliveryDate",
       "customerName",
@@ -883,6 +884,9 @@ export default function DeliveryNoteDetailPage() {
                     Roll Number
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Compound Code
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Thickness (mm)
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -929,6 +933,7 @@ export default function DeliveryNoteDetailPage() {
                         .map((roll, rollIdx) => {
                           const rawRollRollNumber = roll.rollNumber;
                           const rawRollRollNumber2 = roll.rollNumber;
+                          const rawRollCompoundCode = roll.compoundCode;
                           const rawRollDeliveryNoteNumber = roll.deliveryNoteNumber;
                           const rawRollDeliveryNoteNumber2 = roll.deliveryNoteNumber;
                           const rawRollDeliveryDate = roll.deliveryDate;
@@ -965,6 +970,25 @@ export default function DeliveryNoteDetailPage() {
                                   <span className="font-medium text-gray-900">
                                     {rawRollRollNumber2 || "-"}
                                   </span>
+                                )}
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                                {isEditing ? (
+                                  <input
+                                    type="text"
+                                    value={rawRollCompoundCode || ""}
+                                    onChange={(e) =>
+                                      handleRollFieldChange(
+                                        dnIdx,
+                                        rollIdx,
+                                        "compoundCode",
+                                        e.target.value,
+                                      )
+                                    }
+                                    className="w-28 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
+                                  />
+                                ) : (
+                                  <span className="font-mono">{rawRollCompoundCode || "-"}</span>
                                 )}
                               </td>
                               <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
