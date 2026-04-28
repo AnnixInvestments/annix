@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import AmixLogo from "@/app/components/AmixLogo";
 
 interface NixProcessingPopupProps {
@@ -37,6 +38,8 @@ export default function NixProcessingPopup(props: NixProcessingPopupProps) {
   }, [isVisible]);
 
   if (!isVisible) return null;
+  const docRef = globalThis.document;
+  if (!docRef) return null;
 
   const formatTime = (seconds: number): string => {
     if (seconds < 60) {
@@ -47,11 +50,17 @@ export default function NixProcessingPopup(props: NixProcessingPopupProps) {
     return secs > 0 ? `${mins}m ${secs}s` : `${mins} minute${mins > 1 ? "s" : ""}`;
   };
 
-  return (
-    <div className="fixed inset-x-0 top-16 bottom-16 z-[9999] flex items-center justify-center px-4">
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center px-4"
+      role="dialog"
+      aria-modal="true"
+      aria-live="polite"
+    >
       <div
-        className="absolute inset-0 bg-black/10 backdrop-blur-md"
+        className="fixed inset-0 bg-black/10 backdrop-blur-md"
         onClick={(e) => e.stopPropagation()}
+        aria-hidden="true"
       />
 
       <div className="relative bg-white rounded-xl shadow-2xl max-w-xl w-full overflow-hidden animate-in fade-in zoom-in duration-300">
@@ -148,6 +157,7 @@ export default function NixProcessingPopup(props: NixProcessingPopupProps) {
           }
         }
       `}</style>
-    </div>
+    </div>,
+    docRef.body,
   );
 }

@@ -805,16 +805,17 @@ export class RubberInboundEmailController {
       throw new BadRequestException("No files uploaded");
     }
 
-    const companyId = parseInt(body.companyId, 10);
-    if (Number.isNaN(companyId)) {
-      throw new BadRequestException("Invalid companyId");
-    }
+    const parsedCompanyId = body.companyId ? parseInt(body.companyId, 10) : null;
+    const companyId =
+      parsedCompanyId !== null && !Number.isNaN(parsedCompanyId) ? parsedCompanyId : undefined;
 
     const invoiceType = (body.invoiceType as TaxInvoiceType) || TaxInvoiceType.SUPPLIER;
     const user = req.user;
     const createdBy = user?.email || "upload";
 
-    this.logger.log(`Uploading ${files.length} tax invoice files for company ${companyId}`);
+    this.logger.log(
+      `Uploading ${files.length} tax invoice files (${invoiceType}, company=${companyId ?? "auto-detect"})`,
+    );
 
     const result = await this.inboundEmailService.uploadFiles(
       files,

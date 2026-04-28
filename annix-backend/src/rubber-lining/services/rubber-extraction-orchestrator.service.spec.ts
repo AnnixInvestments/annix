@@ -30,9 +30,11 @@ describe("RubberExtractionOrchestratorService", () => {
     extractTaxInvoice: jest
       .fn()
       .mockResolvedValue({ data: { invoiceNumber: "INV-1" }, processingTimeMs: 200 }),
-    extractTaxInvoiceFromImages: jest
-      .fn()
-      .mockResolvedValue({ data: { invoiceNumber: "INV-OCR" }, processingTimeMs: 300 }),
+    extractTaxInvoiceFromImages: jest.fn().mockResolvedValue({
+      data: { invoiceNumber: "INV-OCR" },
+      invoices: [{ invoiceNumber: "INV-OCR" }],
+      processingTimeMs: 300,
+    }),
     extractDeliveryNote: jest
       .fn()
       .mockResolvedValue({ data: { rolls: [] }, processingTimeMs: 100 }),
@@ -48,6 +50,7 @@ describe("RubberExtractionOrchestratorService", () => {
   const taxInvoiceMock = {
     correctionHintsForSupplier: jest.fn().mockResolvedValue(null),
     setExtractedData: jest.fn().mockResolvedValue(undefined),
+    splitTaxInvoiceExtraction: jest.fn().mockResolvedValue({ taxInvoiceIds: [10] }),
   };
 
   const deliveryNoteMock = {

@@ -3194,7 +3194,7 @@ class AuRubberApiClient {
     files: File[],
     data: {
       invoiceType: TaxInvoiceType;
-      companyId: number;
+      companyId?: number;
       invoiceNumber?: string;
       invoiceDate?: string;
     },

@@ -26,6 +26,7 @@ import {
 } from "@/app/lib/api/auRubberApi";
 import type { RubberCompanyDto } from "@/app/lib/api/rubberPortalApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import NixProcessingPopup from "@/app/lib/nix/components/NixProcessingPopup";
 
 const CustomerSageExportModal = lazy(() => import("../CustomerSageExportModal"));
 
@@ -59,6 +60,10 @@ export default function CustomerTaxInvoicesPage() {
   const [uploadInvoiceDate, setUploadInvoiceDate] = useState("");
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [bulkUploadProgress, setBulkUploadProgress] = useState(0);
+  const [bulkUploadStatus, setBulkUploadStatus] = useState("");
+  const [bulkUploadDetail, setBulkUploadDetail] = useState("");
+  const [isBulkUploading, setIsBulkUploading] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [selectedForApproval, setSelectedForApproval] = useState<Set<number>>(new Set());
   const [isBulkApproving, setIsBulkApproving] = useState(false);
@@ -278,10 +283,75 @@ export default function CustomerTaxInvoicesPage() {
     setCurrentPage(0);
   }, [searchQuery, filterStatus, pageSize]);
 
-  const handleFilesSelected = (files: File[]) => {
-    setUploadFiles((prev) => [...prev, ...files]);
-    if (!showUploadModal) {
-      setShowUploadModal(true);
+  const handleFilesSelected = async (files: File[]) => {
+    if (files.length === 0 || isBulkUploading) return;
+    try {
+      setIsBulkUploading(true);
+      setBulkUploadProgress(5);
+      setBulkUploadStatus(`Uploading ${files.length} file${files.length !== 1 ? "s" : ""}...`);
+      setBulkUploadDetail("Preparing files for analysis...");
+
+      const progressSteps = [
+        {
+          pct: 15,
+          status: "NIX is reading your tax invoices...",
+          detail: "Detecting customers from document content...",
+        },
+        {
+          pct: 30,
+          status: "Identifying customers...",
+          detail: "Matching documents to known customer formats...",
+        },
+        {
+          pct: 45,
+          status: "Extracting invoice data...",
+          detail: "Reading invoice numbers, dates, and line items...",
+        },
+        { pct: 60, status: "Processing pages...", detail: "Extracting data from each page..." },
+        { pct: 75, status: "Almost done...", detail: "Finalising extraction results..." },
+      ];
+
+      let stepIndex = 0;
+      const progressInterval = setInterval(() => {
+        if (stepIndex < progressSteps.length) {
+          const step = progressSteps[stepIndex];
+          setBulkUploadProgress(step.pct);
+          setBulkUploadStatus(step.status);
+          setBulkUploadDetail(step.detail);
+          stepIndex += 1;
+        }
+      }, 3000);
+
+      await auRubberApiClient.uploadTaxInvoiceWithFiles(files, {
+        invoiceType: "CUSTOMER",
+      });
+
+      clearInterval(progressInterval);
+
+      setBulkUploadProgress(90);
+      setBulkUploadStatus("Upload complete!");
+      setBulkUploadDetail("NIX is extracting data in the background...");
+
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      setBulkUploadProgress(100);
+      setBulkUploadStatus("Complete!");
+      setBulkUploadDetail("All files processed successfully.");
+
+      await new Promise((resolve) => setTimeout(resolve, 600));
+      showToast(
+        `${files.length} file${files.length !== 1 ? "s" : ""} uploaded — NIX is extracting data in the background`,
+        "success",
+      );
+      fetchData();
+      setTimeout(() => fetchData(), 5000);
+      setTimeout(() => fetchData(), 20000);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Failed to upload tax invoices", "error");
+    } finally {
+      setIsBulkUploading(false);
+      setBulkUploadProgress(0);
+      setBulkUploadStatus("");
+      setBulkUploadDetail("");
     }
   };
 
@@ -811,6 +881,13 @@ export default function CustomerTaxInvoicesPage() {
           />
         </Suspense>
       )}
+
+      <NixProcessingPopup
+        isVisible={isBulkUploading}
+        progress={bulkUploadProgress}
+        statusMessage={bulkUploadStatus}
+        detailMessage={bulkUploadDetail}
+      />
     </div>
   );
 }

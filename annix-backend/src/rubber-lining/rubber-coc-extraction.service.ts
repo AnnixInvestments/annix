@@ -623,6 +623,7 @@ export class RubberCocExtractionService {
     correctionHints?: string | null,
   ): Promise<{
     data: ExtractedTaxInvoiceData;
+    invoices: ExtractedTaxInvoiceData[];
     tokensUsed?: number;
     processingTimeMs: number;
   }> {
@@ -642,12 +643,16 @@ export class RubberCocExtractionService {
 
     const response = await this.callGeminiWithImages(
       systemPrompt,
-      "Please extract structured data from this tax invoice image. Return ONLY a valid JSON object with the extracted data.",
+      "Please extract structured data from this tax invoice image. If multiple distinct tax invoices appear in the PDF, return all of them in the 'invoices' array. Return ONLY a valid JSON object with the extracted data.",
       images,
       "tax-invoice-ocr-extraction",
     );
 
-    const data = response.data as unknown as ExtractedTaxInvoiceData;
+    const raw = response.data as unknown as ExtractedTaxInvoiceData & {
+      invoices?: ExtractedTaxInvoiceData[];
+    };
+    const invoices = this.resolveTaxInvoiceArray(raw);
+    const data = invoices[0];
 
     const totalRolls = (data.lineItems ?? []).reduce((sum, li) => sum + (li.rolls?.length ?? 0), 0);
     if (totalRolls > 0) {
@@ -655,15 +660,39 @@ export class RubberCocExtractionService {
     }
 
     const processingTimeMs = nowMillis() - startTime;
-    this.logger.log(`Tax invoice extracted via OCR in ${processingTimeMs}ms`);
+    this.logger.log(
+      `Tax invoice extracted via OCR in ${processingTimeMs}ms — ${invoices.length} invoice(s) detected`,
+    );
 
     this.warnOnSuspiciousRollNumbers(data);
 
     return {
       data,
+      invoices,
       tokensUsed: response.tokensUsed,
       processingTimeMs,
     };
+  }
+
+  private resolveTaxInvoiceArray(
+    raw: ExtractedTaxInvoiceData & { invoices?: ExtractedTaxInvoiceData[] },
+  ): ExtractedTaxInvoiceData[] {
+    const candidate = Array.isArray(raw?.invoices) ? raw.invoices.filter(Boolean) : [];
+    if (candidate.length === 0) {
+      const { invoices: _ignored, ...single } = raw ?? {};
+      return [single as ExtractedTaxInvoiceData];
+    }
+    const byNumber = candidate.reduce((map, inv) => {
+      const key = (inv.invoiceNumber ?? "").trim();
+      if (!key) {
+        return new Map(map).set(`__unkeyed_${map.size}`, inv);
+      }
+      if (map.has(key)) {
+        return map;
+      }
+      return new Map(map).set(key, inv);
+    }, new Map<string, ExtractedTaxInvoiceData>());
+    return Array.from(byNumber.values());
   }
 
   private async verifyAndCorrectRollPairings(

@@ -876,6 +876,21 @@ export class RubberTaxInvoiceService {
     }
     invoice.status = TaxInvoiceStatus.EXTRACTED;
 
+    if (data.companyName) {
+      const targetType = invoice.invoiceType === TaxInvoiceType.CUSTOMER ? "CUSTOMER" : "SUPPLIER";
+      const matched = await this.companyRepository
+        .createQueryBuilder("c")
+        .where("LOWER(TRIM(c.name)) = LOWER(TRIM(:name))", { name: data.companyName })
+        .andWhere("c.company_type = :type", { type: targetType })
+        .getOne();
+      if (matched && matched.id !== invoice.companyId) {
+        this.logger.log(
+          `Reassigning tax invoice ${invoice.id} from company ${invoice.companyId} to ${matched.id} (${matched.name}) based on extracted companyName`,
+        );
+        invoice.companyId = matched.id;
+      }
+    }
+
     if (
       data.invoiceNumber &&
       invoice.versionStatus === DocumentVersionStatus.ACTIVE &&
@@ -927,6 +942,67 @@ export class RubberTaxInvoiceService {
 
     await this.taxInvoiceRepository.save(invoice);
     return this.mapToDto(invoice);
+  }
+
+  async splitTaxInvoiceExtraction(
+    parentId: number,
+    invoices: ExtractedTaxInvoiceData[],
+  ): Promise<{ taxInvoiceIds: number[] }> {
+    const parent = await this.taxInvoiceRepository.findOne({
+      where: { id: parentId },
+      relations: ["company"],
+    });
+    if (!parent) {
+      throw new BadRequestException("Tax invoice not found");
+    }
+
+    if (!invoices || invoices.length === 0) {
+      return { taxInvoiceIds: [parentId] };
+    }
+
+    const distinct = invoices.reduce((map, inv) => {
+      const key = (inv?.invoiceNumber ?? "").trim() || `__unkeyed_${map.size}`;
+      if (map.has(key)) return map;
+      return new Map(map).set(key, inv);
+    }, new Map<string, ExtractedTaxInvoiceData>());
+
+    const ordered = Array.from(distinct.values());
+
+    if (ordered.length <= 1) {
+      await this.setExtractedData(parentId, ordered[0]);
+      return { taxInvoiceIds: [parentId] };
+    }
+
+    await this.setExtractedData(parentId, ordered[0]);
+
+    const additionalIds = await ordered.slice(1).reduce(
+      async (accPromise, invoiceData) => {
+        const acc = await accPromise;
+        const placeholderNumber =
+          invoiceData.invoiceNumber?.trim() || `${parent.invoiceNumber}-${acc.length + 2}`;
+        const created = await this.createTaxInvoice(
+          {
+            invoiceNumber: placeholderNumber,
+            invoiceDate: invoiceData.invoiceDate ?? undefined,
+            invoiceType: parent.invoiceType,
+            companyId: parent.companyId,
+            documentPath: parent.documentPath ?? undefined,
+            totalAmount: invoiceData.totalAmount ?? undefined,
+            vatAmount: invoiceData.vatAmount ?? undefined,
+          },
+          parent.createdBy ?? undefined,
+        );
+        await this.setExtractedData(created.id, invoiceData);
+        return [...acc, created.id];
+      },
+      Promise.resolve([] as number[]),
+    );
+
+    this.logger.log(
+      `Split tax invoice ${parentId} into ${ordered.length} records (parent + ${additionalIds.join(", ")})`,
+    );
+
+    return { taxInvoiceIds: [parentId, ...additionalIds] };
   }
 
   private extractProductSummary(data: ExtractedTaxInvoiceData | null): {

@@ -60,10 +60,21 @@ export class RubberExtractionOrchestratorService {
             fileBuffer,
             correctionHints,
           );
-          await this.taxInvoiceService.setExtractedData(invoiceId, extractionResult.data);
-          this.logger.log(
-            `Auto-extracted Tax Invoice ${invoiceId} via Vision in ${extractionResult.processingTimeMs}ms`,
-          );
+          const invoices = extractionResult.invoices ?? [extractionResult.data];
+          if (invoices.length > 1) {
+            const splitResult = await this.taxInvoiceService.splitTaxInvoiceExtraction(
+              invoiceId,
+              invoices,
+            );
+            this.logger.log(
+              `Auto-extracted Tax Invoice ${invoiceId} via Vision in ${extractionResult.processingTimeMs}ms — split into ${splitResult.taxInvoiceIds.length} invoices: ${splitResult.taxInvoiceIds.join(", ")}`,
+            );
+          } else {
+            await this.taxInvoiceService.setExtractedData(invoiceId, extractionResult.data);
+            this.logger.log(
+              `Auto-extracted Tax Invoice ${invoiceId} via Vision in ${extractionResult.processingTimeMs}ms`,
+            );
+          }
         } else {
           const docText = await extractTextFromWord(fileBuffer);
           if (docText.length >= 20) {

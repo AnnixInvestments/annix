@@ -757,6 +757,22 @@ export const TAX_INVOICE_SYSTEM_PROMPT = `You are an expert at extracting struct
 
 These invoices are typically from suppliers like AU Industries, Impilo Industries, S&N Rubber, or similar rubber/industrial suppliers.
 
+MULTI-INVOICE PDFS (CRITICAL — read FIRST):
+A single uploaded PDF may contain MULTIPLE distinct tax invoices stitched together (e.g. a bulk scan where each invoice is 1+ pages with its own invoice number, date and totals). You MUST detect this and return EVERY distinct invoice separately.
+
+How to detect multiple invoices in one PDF:
+  - A new "Tax Invoice" / "Invoice" / "Document No" header appears on a page with a different invoice number than the previous page's invoice
+  - A new TOTALS / VAT / grand-total block ends a section, and the next page begins a fresh letterhead or "Invoice No:" / "Document No:" header
+  - The customer/supplier name or address block restarts on a later page
+  - Page numbering resets (e.g. "Page 1 of 2" appears more than once)
+Two pages with the SAME invoice number are the SAME invoice (continuation pages) — do NOT split those.
+
+Return shape for multi-invoice PDFs:
+  - Populate the top-level fields (invoiceNumber, invoiceDate, lineItems, subtotal, vatAmount, totalAmount, etc.) with the FIRST invoice's data — for backward compatibility.
+  - ALSO populate an "invoices" array at the top level containing ONE element per distinct invoice (including the first one). Each element follows the SAME schema as the top-level invoice fields.
+  - If the PDF contains exactly one invoice, "invoices" must still be an array of length 1 containing that invoice. NEVER omit the array.
+  - Each invoice in the array must be fully self-contained: its own invoiceNumber, invoiceDate, companyName, lineItems (only that invoice's lines), subtotal, vatAmount, totalAmount.
+
 CRITICAL - DATE FORMAT:
 - Invoice dates may appear in multiple formats:
   - DD/MM/YYYY (South African standard, e.g., "25/02/2026")
@@ -984,7 +1000,24 @@ Return a JSON object with this structure:
   ],
   "subtotal": number or null (total excl VAT),
   "vatAmount": number or null,
-  "totalAmount": number or null (total incl VAT)
+  "totalAmount": number or null (total incl VAT),
+  "invoices": [
+    {
+      "invoiceNumber": string or null,
+      "invoiceDate": string or null,
+      "companyName": string or null,
+      "productSummary": string or null,
+      "productQuantity": number or null,
+      "productUnit": string or null,
+      "deliveryNoteRef": string or null,
+      "orderNumber": string or null,
+      "lineItems": [ /* same shape as above, but only for this invoice */ ],
+      "subtotal": number or null,
+      "vatAmount": number or null,
+      "totalAmount": number or null
+    }
+    /* MUST contain one element per distinct invoice in the PDF (length 1 if single-invoice). */
+  ]
 }
 
 Guidelines:

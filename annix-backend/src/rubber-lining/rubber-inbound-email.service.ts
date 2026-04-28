@@ -925,15 +925,21 @@ ${truncatedText}`;
         Promise.resolve([] as number[]),
       );
     } else if (documentType === SharedDocumentType.TAX_INVOICE) {
-      const companyId = metadata.companyId as number;
-      const company = companyId
-        ? await this.companyRepository.findOne({ where: { id: companyId } })
-        : null;
-      const subPath = `au-rubber/tax-invoices/${companyId}`;
+      const invoiceType = metadata.invoiceType || TaxInvoiceType.SUPPLIER;
+      const explicitCompanyId = metadata.companyId;
 
       result.taxInvoiceIds = await files.reduce(
         async (accPromise, file) => {
           const acc = await accPromise;
+
+          const resolvedCompanyId =
+            explicitCompanyId ??
+            (await this.detectCompanyFromPdf(file.buffer, file.originalname, invoiceType));
+
+          const company = await this.companyRepository.findOne({
+            where: { id: resolvedCompanyId },
+          });
+          const subPath = `au-rubber/tax-invoices/${resolvedCompanyId}`;
           const storageResult = await this.storageService.upload(file, subPath);
 
           const invoiceNumber = metadata.invoiceNumber || file.originalname.replace(/\.\w+$/i, "");
@@ -941,8 +947,8 @@ ${truncatedText}`;
             {
               invoiceNumber,
               invoiceDate: metadata.invoiceDate,
-              invoiceType: metadata.invoiceType || TaxInvoiceType.SUPPLIER,
-              companyId,
+              invoiceType,
+              companyId: resolvedCompanyId,
               documentPath: storageResult.path,
             },
             createdBy,
@@ -1269,6 +1275,42 @@ ${truncatedText}`;
     );
 
     return { cocIds: [...dataResult.cocIds, ...graphCocIds] };
+  }
+
+  private async detectCompanyFromPdf(
+    pdfBuffer: Buffer,
+    filename: string,
+    invoiceType: TaxInvoiceType,
+  ): Promise<number> {
+    const targetType =
+      invoiceType === TaxInvoiceType.CUSTOMER ? CompanyType.CUSTOMER : CompanyType.SUPPLIER;
+
+    const pdfText = await extractTextFromPdf(pdfBuffer).catch(() => "");
+    const pdfTextLower = pdfText.toLowerCase();
+    const filenameLower = filename.toLowerCase();
+
+    const companies = await this.companyRepository.find();
+    const candidates = companies.filter((c) => String(c.companyType) === String(targetType));
+
+    const named = candidates.find((c) => {
+      const name = c.name?.toLowerCase().trim();
+      if (!name) return false;
+      return pdfTextLower.includes(name) || filenameLower.includes(name);
+    });
+    if (named) {
+      this.logger.log(`Auto-detected ${targetType} ${named.name} for ${filename} (name match)`);
+      return named.id;
+    }
+
+    const fallback = candidates[0];
+    if (fallback) {
+      this.logger.warn(
+        `Could not detect ${targetType} for ${filename}, defaulting to ${fallback.name}`,
+      );
+      return fallback.id;
+    }
+
+    throw new Error(`Cannot determine ${targetType} for file ${filename} — none exist`);
   }
 
   private async detectSupplierFromPdf(pdfBuffer: Buffer, filename: string): Promise<number> {
