@@ -107,13 +107,29 @@ export default function TaxInvoiceDetailPage() {
     }
   }, [invoiceId]);
 
+  const estimateExtractionDurationMs = async (): Promise<number> => {
+    if (!documentUrl) return 120000;
+    try {
+      const head = await fetch(documentUrl, { method: "HEAD" });
+      const contentLength = Number(head.headers.get("content-length") || 0);
+      if (contentLength <= 0) return 120000;
+      const estimatedPages = Math.max(1, Math.round(contentLength / 150000));
+      const perPageMs = 12000;
+      const ms = estimatedPages * perPageMs;
+      return Math.min(600000, Math.max(60000, ms));
+    } catch {
+      return 120000;
+    }
+  };
+
   const handleExtract = async () => {
     try {
       setIsExtracting(true);
+      const estimatedDurationMs = await estimateExtractionDurationMs();
       showExtraction({
         brand: "au-rubber",
         label: "Extracting tax invoice…",
-        estimatedDurationMs: 60000,
+        estimatedDurationMs,
       });
       const updated = await auRubberApiClient.extractTaxInvoice(invoiceId);
       setInvoice(updated);

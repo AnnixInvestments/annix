@@ -2711,6 +2711,7 @@ Formula: totalPrice = totalKg × salePricePerKg
 
     const extractionResult: {
       data: import("./entities/rubber-tax-invoice.entity").ExtractedTaxInvoiceData;
+      invoices?: import("./entities/rubber-tax-invoice.entity").ExtractedTaxInvoiceData[];
       tokensUsed?: number;
       processingTimeMs: number;
     } = await (async () => {
@@ -2736,6 +2737,20 @@ Formula: totalPrice = totalKg × salePricePerKg
         return extractImages(docBuffer);
       }
     })();
+
+    const detectedInvoices = extractionResult.invoices ?? [extractionResult.data];
+    if (!isCreditNote && detectedInvoices.length > 1) {
+      const splitResult = await this.rubberTaxInvoiceService.splitTaxInvoiceExtraction(
+        Number(id),
+        detectedInvoices,
+      );
+      this.logger.log(
+        `Manual re-extract split tax invoice ${id} into ${splitResult.taxInvoiceIds.length} invoices: ${splitResult.taxInvoiceIds.join(", ")}`,
+      );
+      const updated = await this.rubberTaxInvoiceService.taxInvoiceById(Number(id));
+      if (!updated) throw new NotFoundException("Failed to update tax invoice");
+      return updated;
+    }
 
     const updated = await this.rubberTaxInvoiceService.setExtractedData(
       Number(id),

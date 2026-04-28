@@ -757,21 +757,33 @@ export const TAX_INVOICE_SYSTEM_PROMPT = `You are an expert at extracting struct
 
 These invoices are typically from suppliers like AU Industries, Impilo Industries, S&N Rubber, or similar rubber/industrial suppliers.
 
-MULTI-INVOICE PDFS (CRITICAL — read FIRST):
-A single uploaded PDF may contain MULTIPLE distinct tax invoices stitched together (e.g. a bulk scan where each invoice is 1+ pages with its own invoice number, date and totals). You MUST detect this and return EVERY distinct invoice separately.
+MULTI-INVOICE PDFS (HARD REQUIREMENT — DO THIS BEFORE ANYTHING ELSE):
+A single uploaded PDF very often contains MULTIPLE distinct tax invoices stitched together — a bulk scan from a multi-feed scanner, an emailed batch, a saved PDF dump from accounting software. ASSUME multi-invoice unless proven otherwise. Failing to split is a hard error.
 
-How to detect multiple invoices in one PDF:
-  - A new "Tax Invoice" / "Invoice" / "Document No" header appears on a page with a different invoice number than the previous page's invoice
-  - A new TOTALS / VAT / grand-total block ends a section, and the next page begins a fresh letterhead or "Invoice No:" / "Document No:" header
-  - The customer/supplier name or address block restarts on a later page
-  - Page numbering resets (e.g. "Page 1 of 2" appears more than once)
-Two pages with the SAME invoice number are the SAME invoice (continuation pages) — do NOT split those.
+PROCEDURE — run this FIRST, before extracting any line items:
+  1. Walk EVERY page of the PDF in order. For each page, find the invoice number (look for "Tax Invoice No:", "Invoice No:", "Document No:", "Invoice Number:", "Number:" labels — the value is the page's invoice number).
+  2. Group consecutive pages by invoice number. Pages with the SAME invoice number = same invoice (continuation). Pages with a DIFFERENT invoice number = new invoice.
+  3. Count distinct invoice numbers across the whole PDF. If the count is greater than 1, this is a MULTI-INVOICE PDF and you MUST return every one of them in the "invoices" array.
 
-Return shape for multi-invoice PDFs:
-  - Populate the top-level fields (invoiceNumber, invoiceDate, lineItems, subtotal, vatAmount, totalAmount, etc.) with the FIRST invoice's data — for backward compatibility.
-  - ALSO populate an "invoices" array at the top level containing ONE element per distinct invoice (including the first one). Each element follows the SAME schema as the top-level invoice fields.
-  - If the PDF contains exactly one invoice, "invoices" must still be an array of length 1 containing that invoice. NEVER omit the array.
-  - Each invoice in the array must be fully self-contained: its own invoiceNumber, invoiceDate, companyName, lineItems (only that invoice's lines), subtotal, vatAmount, totalAmount.
+EXTRA SIGNALS that you're starting a NEW invoice on a later page (any one is sufficient — be aggressive):
+  - The invoice number changes
+  - A new "TAX INVOICE" / "INVOICE" letterhead header appears at the top of a page (typical when each invoice is page-1 of its own)
+  - A grand-total / "Balance Due" / "Total Incl VAT" block ends a section and the next page begins with fresh address/letterhead content
+  - The bill-to / customer name changes
+  - The invoice date changes
+  - Page numbering resets ("Page 1 of N" appears more than once across the PDF)
+  - The PO / Order number changes
+  - The line-item table restarts with a fresh header row (Description / Qty / Unit Price / Amount)
+The "Bank Account Details" line / SWIFT line being repeated on every page is NOT a continuation signal — most rubber suppliers print bank details on every page.
+
+WHEN IN DOUBT, SPLIT. False positives (over-splitting) are recoverable; false negatives (collapsing 10 invoices into 1) are NOT — they corrupt the customer's accounting.
+
+Return shape:
+  - Populate the top-level fields (invoiceNumber, invoiceDate, lineItems, subtotal, vatAmount, totalAmount, etc.) with the FIRST invoice's data — for backward compatibility with single-invoice consumers.
+  - You MUST ALSO populate an "invoices" array at the top level containing ONE element per distinct invoice number found (including the first one). Each element follows the SAME schema as the top-level invoice fields.
+  - "invoices" is REQUIRED on every response. If there is genuinely only one invoice in the PDF, "invoices" must still be an array of length 1. NEVER omit the array. NEVER return an empty array.
+  - Each element in "invoices" must be fully self-contained: its own invoiceNumber, invoiceDate, companyName, lineItems (only that invoice's lines), subtotal, vatAmount, totalAmount, deliveryNoteRef, orderNumber. Do NOT share line items between elements.
+  - The number of elements in "invoices" must equal the number of distinct invoice numbers you found in step 3 above. If you found 10 different invoice numbers, the array must have 10 elements.
 
 CRITICAL - DATE FORMAT:
 - Invoice dates may appear in multiple formats:

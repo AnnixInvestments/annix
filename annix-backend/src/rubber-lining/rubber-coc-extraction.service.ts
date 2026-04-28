@@ -643,7 +643,7 @@ export class RubberCocExtractionService {
 
     const response = await this.callGeminiWithImages(
       systemPrompt,
-      "Please extract structured data from this tax invoice image. If multiple distinct tax invoices appear in the PDF, return all of them in the 'invoices' array. Return ONLY a valid JSON object with the extracted data.",
+      `Extract structured data from this ${images.length}-page PDF. CRITICAL: walk EVERY page and group by invoice number. If the PDF contains multiple distinct invoice numbers, you MUST return one element per invoice in the 'invoices' array — collapsing them into one is a hard error. The top-level fields hold the first invoice's data; the 'invoices' array holds all of them (even if there is only one). Return ONLY a valid JSON object.`,
       images,
       "tax-invoice-ocr-extraction",
     );
