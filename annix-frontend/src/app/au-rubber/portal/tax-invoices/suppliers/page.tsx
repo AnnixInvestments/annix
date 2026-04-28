@@ -31,6 +31,7 @@ const ITEMS_PER_PAGE = 25;
 
 import { useConfirm } from "@/app/au-rubber/hooks/useConfirm";
 import { useToast } from "@/app/components/Toast";
+import { useAuRubberBranding } from "@/app/context/AuRubberBrandingContext";
 import { usePersistedState } from "@/app/hooks/usePersistedState";
 import {
   auRubberApiClient,
@@ -75,6 +76,7 @@ type SortColumn =
 export default function SupplierTaxInvoicesPage() {
   const router = useRouter();
   const { showToast } = useToast();
+  const { branding } = useAuRubberBranding();
   const { showExtraction, hideExtraction } = useExtractionProgress();
   const { confirm, ConfirmDialog } = useConfirm();
   const [invoices, setInvoices] = useState<RubberTaxInvoiceDto[]>([]);
@@ -1366,6 +1368,14 @@ export default function SupplierTaxInvoicesPage() {
         progress={bulkUploadProgress}
         statusMessage={bulkUploadStatus}
         detailMessage={bulkUploadDetail}
+        headerColor={branding.primaryColor}
+        headerContent={
+          branding.logoUrl ? (
+            <img src={branding.logoUrl} alt="Company logo" className="h-8 object-contain" />
+          ) : (
+            <img src="/au-industries/logo.jpg" alt="AU Industries" className="h-8 object-contain" />
+          )
+        }
       />
     </div>
   );

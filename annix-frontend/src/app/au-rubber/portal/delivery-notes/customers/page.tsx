@@ -913,7 +913,13 @@ export default function CustomerDeliveryNotesPage() {
         headerContent={
           branding?.logoUrl ? (
             <img src={branding.logoUrl} alt="Company Logo" className="h-10 object-contain" />
-          ) : undefined
+          ) : (
+            <img
+              src="/au-industries/logo.jpg"
+              alt="AU Industries"
+              className="h-10 object-contain"
+            />
+          )
         }
       />
 

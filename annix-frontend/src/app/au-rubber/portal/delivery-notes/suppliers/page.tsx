@@ -755,7 +755,9 @@ export default function SupplierDeliveryNotesPage() {
         headerContent={
           branding.logoUrl ? (
             <img src={branding.logoUrl} alt="Company logo" className="h-8 object-contain" />
-          ) : null
+          ) : (
+            <img src="/au-industries/logo.jpg" alt="AU Industries" className="h-8 object-contain" />
+          )
         }
       />
     </div>
