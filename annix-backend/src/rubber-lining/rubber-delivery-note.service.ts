@@ -689,6 +689,29 @@ export class RubberDeliveryNoteService {
       where: { companyType: CompanyType.SUPPLIER },
     });
 
+    const noteDnNumber = note.deliveryNoteNumber;
+    const isPlaceholderDn = !noteDnNumber || /^DN-\d+$/.test(noteDnNumber);
+    const isReExtract = !isPlaceholderDn && rollsByDnNumber.has(noteDnNumber);
+    if (isReExtract) {
+      const ownRolls = rollsByDnNumber.get(noteDnNumber) ?? [];
+      note.extractedData = {
+        ...extractedData,
+        deliveryNoteNumber: noteDnNumber,
+        rolls: ownRolls,
+      };
+      note.supplierCompanyId = this.resolveSupplierFromRolls(
+        ownRolls,
+        suppliers,
+        note.supplierCompanyId,
+      );
+      note.status = DeliveryNoteStatus.EXTRACTED;
+      await this.deliveryNoteRepository.save(note);
+      this.logger.log(
+        `Re-extract on existing DN ${noteDnNumber} (#${note.id}) — kept own rolls (${ownRolls.length}), skipped splitting against ${rollsByDnNumber.size - 1} sibling DN(s) already in the system`,
+      );
+      return { deliveryNoteIds: [note.id] };
+    }
+
     if (rollsByDnNumber.size <= 1) {
       const extractedDnNumber =
         extractedData.deliveryNoteNumber || Array.from(rollsByDnNumber.keys())[0];
