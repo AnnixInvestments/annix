@@ -22,6 +22,7 @@ import {
   ExtractedDeliveryNoteData,
   RubberDeliveryNote,
 } from "./entities/rubber-delivery-note.entity";
+import { RubberDeliveryNoteCorrection } from "./entities/rubber-delivery-note-correction.entity";
 import { RubberDeliveryNoteItem } from "./entities/rubber-delivery-note-item.entity";
 import { RubberProduct } from "./entities/rubber-product.entity";
 import { ProductCodingType, RubberProductCoding } from "./entities/rubber-product-coding.entity";
@@ -64,6 +65,8 @@ export class RubberDeliveryNoteService {
     private deliveryNoteRepository: Repository<RubberDeliveryNote>,
     @InjectRepository(RubberDeliveryNoteItem)
     private deliveryNoteItemRepository: Repository<RubberDeliveryNoteItem>,
+    @InjectRepository(RubberDeliveryNoteCorrection)
+    private correctionRepository: Repository<RubberDeliveryNoteCorrection>,
     @InjectRepository(RubberCompany)
     private companyRepository: Repository<RubberCompany>,
     @InjectRepository(RubberSupplierCoc)
@@ -256,6 +259,10 @@ export class RubberDeliveryNoteService {
     });
     if (!note) return null;
 
+    const previousData = note.extractedData ?? null;
+    const supplierName = note.supplierCompany?.name ?? null;
+    const corrections = this.diffDeliveryNoteForCorrections(previousData, correctedData);
+
     const enrichedData: ExtractedDeliveryNoteData = {
       ...correctedData,
       userCorrected: true,
@@ -277,7 +284,118 @@ export class RubberDeliveryNoteService {
     }
 
     await this.deliveryNoteRepository.save(note);
+
+    if (corrections.length > 0 && supplierName) {
+      const correctionEntities = corrections.map((c) =>
+        this.correctionRepository.create({
+          deliveryNoteId: id,
+          supplierName,
+          fieldName: c.field,
+          originalValue: c.original,
+          correctedValue: c.corrected,
+          correctedBy: null,
+        }),
+      );
+      await this.correctionRepository.save(correctionEntities);
+      this.logger.log(
+        `Saved ${correctionEntities.length} delivery-note correction(s) for ${supplierName} on note #${id}`,
+      );
+    }
+
     return this.mapDeliveryNoteToDto(note);
+  }
+
+  private diffDeliveryNoteForCorrections(
+    previous: ExtractedDeliveryNoteData | null,
+    next: ExtractedDeliveryNoteData,
+  ): { field: string; original: string; corrected: string }[] {
+    const corrections: { field: string; original: string; corrected: string }[] = [];
+
+    const dnLevelFields: (keyof ExtractedDeliveryNoteData)[] = [
+      "deliveryNoteNumber",
+      "deliveryDate",
+      "customerReference",
+      "customerName",
+      "supplierName",
+      "batchRange",
+    ];
+    dnLevelFields.forEach((field) => {
+      const prevValue = previous ? previous[field] : null;
+      const nextValue = next[field];
+      if (nextValue !== undefined && nextValue !== prevValue) {
+        const original = prevValue == null ? "" : String(prevValue);
+        const corrected = nextValue == null ? "" : String(nextValue);
+        if (original !== corrected) {
+          corrections.push({ field: String(field), original, corrected });
+        }
+      }
+    });
+
+    const previousRollsByNumber = new Map<
+      string,
+      NonNullable<ExtractedDeliveryNoteData["rolls"]>[number]
+    >();
+    (previous?.rolls ?? []).forEach((roll) => {
+      if (roll?.rollNumber) previousRollsByNumber.set(roll.rollNumber, roll);
+    });
+
+    const rollFields: (keyof NonNullable<ExtractedDeliveryNoteData["rolls"]>[number])[] = [
+      "compoundCode",
+      "thicknessMm",
+      "widthMm",
+      "lengthM",
+      "weightKg",
+    ];
+    (next.rolls ?? []).forEach((roll) => {
+      if (!roll?.rollNumber) return;
+      const prevRoll = previousRollsByNumber.get(roll.rollNumber);
+      rollFields.forEach((field) => {
+        const prevValue = prevRoll ? prevRoll[field] : null;
+        const nextValue = roll[field];
+        if (nextValue !== undefined && nextValue !== prevValue) {
+          const original = prevValue == null ? "" : String(prevValue);
+          const corrected = nextValue == null ? "" : String(nextValue);
+          if (original !== corrected) {
+            corrections.push({
+              field: `roll[${roll.rollNumber}].${String(field)}`,
+              original,
+              corrected,
+            });
+          }
+        }
+      });
+    });
+
+    return corrections;
+  }
+
+  async correctionHintsForDnSupplier(supplierName: string | null): Promise<string | null> {
+    if (!supplierName) return null;
+
+    const recentCorrections = await this.correctionRepository.find({
+      where: { supplierName },
+      order: { createdAt: "DESC" },
+      take: 40,
+    });
+
+    if (recentCorrections.length === 0) return null;
+
+    const fieldGroups = recentCorrections.reduce((map, c) => {
+      const baseField = c.fieldName.startsWith("roll[")
+        ? c.fieldName.replace(/^roll\[[^\]]+\]\./, "roll.")
+        : c.fieldName;
+      const list = map.get(baseField) ?? [];
+      return new Map(map).set(baseField, [...list, c]);
+    }, new Map<string, RubberDeliveryNoteCorrection[]>());
+
+    const lines = Array.from(fieldGroups.entries()).flatMap(([field, group]) => {
+      const samples = group
+        .slice(0, 5)
+        .map((c) => `  • "${c.originalValue ?? ""}" → "${c.correctedValue}"`);
+      return [`- Field "${field}" was corrected ${group.length} time(s) recently:`, ...samples];
+    });
+
+    return `PREVIOUS CORRECTIONS FOR THIS SUPPLIER (learn from these patterns and apply them on this DN):\n${lines.join("\n")}\n\nWhen you encounter the same source pattern, prefer the corrected output over your default extraction. Pay particular attention to repeated compoundCode reformatting (e.g. raw "SC38 RED" → "RSCA38") — apply the AU-format rule to every roll.`;
   }
 
   async linkToCoc(deliveryNoteId: number, cocId: number): Promise<RubberDeliveryNoteDto | null> {

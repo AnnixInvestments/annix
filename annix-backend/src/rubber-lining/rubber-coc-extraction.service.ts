@@ -503,7 +503,10 @@ export class RubberCocExtractionService {
     };
   }
 
-  async extractDeliveryNote(pdfText: string): Promise<{
+  async extractDeliveryNote(
+    pdfText: string,
+    correctionHints?: string | null,
+  ): Promise<{
     data: ExtractedDeliveryNoteData;
     tokensUsed?: number;
     processingTimeMs: number;
@@ -515,8 +518,11 @@ export class RubberCocExtractionService {
       throw new Error("GEMINI_API_KEY not configured");
     }
 
+    const systemPrompt = correctionHints
+      ? `${DELIVERY_NOTE_SYSTEM_PROMPT}\n\n${correctionHints}`
+      : DELIVERY_NOTE_SYSTEM_PROMPT;
     const response = await this.callGemini(
-      DELIVERY_NOTE_SYSTEM_PROMPT,
+      systemPrompt,
       deliveryNoteExtractionPrompt(pdfText),
       "delivery-note-extraction",
     );
@@ -531,7 +537,10 @@ export class RubberCocExtractionService {
     };
   }
 
-  async extractCustomerDeliveryNoteFromImages(pdfBuffer: Buffer): Promise<{
+  async extractCustomerDeliveryNoteFromImages(
+    pdfBuffer: Buffer,
+    correctionHints?: string | null,
+  ): Promise<{
     data: ExtractedCustomerDeliveryNoteData;
     deliveryNotes: ExtractedCustomerDeliveryNoteData[];
     podPages: ExtractedCustomerDeliveryNotePodPage[];
@@ -548,8 +557,11 @@ export class RubberCocExtractionService {
     const images = await this.convertPdfToImages(pdfBuffer);
     this.logger.log(`Converted PDF to ${images.length} image(s) for OCR extraction`);
 
+    const systemPrompt = correctionHints
+      ? `${CUSTOMER_DELIVERY_NOTE_OCR_PROMPT}\n\n${correctionHints}`
+      : CUSTOMER_DELIVERY_NOTE_OCR_PROMPT;
     const response = await this.callGeminiWithImages(
-      CUSTOMER_DELIVERY_NOTE_OCR_PROMPT,
+      systemPrompt,
       "Analyze these delivery note images. In the header box at the top, find the REFERENCE: field (between NUMBER: and DATE:) and extract the PO/reference number. This is CRITICAL. Return ONLY valid JSON.",
       images,
       "customer-dn-ocr-extraction",
@@ -1356,7 +1368,10 @@ Return ONLY a valid JSON object of this exact shape (no extra fields, no comment
     );
   }
 
-  async extractDeliveryNoteFromImages(pdfBuffer: Buffer): Promise<{
+  async extractDeliveryNoteFromImages(
+    pdfBuffer: Buffer,
+    correctionHints?: string | null,
+  ): Promise<{
     data: ExtractedDeliveryNoteData;
     tokensUsed?: number;
     processingTimeMs: number;
@@ -1370,8 +1385,11 @@ Return ONLY a valid JSON object of this exact shape (no extra fields, no comment
 
     const images = await this.convertPdfToImages(pdfBuffer);
 
+    const systemPrompt = correctionHints
+      ? `${DELIVERY_NOTE_SYSTEM_PROMPT}\n\n${correctionHints}`
+      : DELIVERY_NOTE_SYSTEM_PROMPT;
     const response = await this.callGeminiWithImages(
-      DELIVERY_NOTE_SYSTEM_PROMPT,
+      systemPrompt,
       "Please extract structured data from this scanned delivery note image. Return ONLY a valid JSON object with the extracted data.",
       images,
       "delivery-note-ocr-extraction",

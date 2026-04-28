@@ -1436,6 +1436,10 @@ Formula: totalPrice = totalKg × salePricePerKg
 
     const isRollDeliveryNote = note.deliveryNoteType === "ROLL";
 
+    const correctionHints = await this.rubberDeliveryNoteService.correctionHintsForDnSupplier(
+      note.supplierCompanyName,
+    );
+
     const extractedData = await (async () => {
       if (isRollDeliveryNote) {
         let customerResult: Awaited<
@@ -1443,7 +1447,10 @@ Formula: totalPrice = totalKg × salePricePerKg
         >;
         try {
           customerResult =
-            await this.rubberCocExtractionService.extractCustomerDeliveryNoteFromImages(pdfBuffer);
+            await this.rubberCocExtractionService.extractCustomerDeliveryNoteFromImages(
+              pdfBuffer,
+              correctionHints,
+            );
         } catch (pdfErr: unknown) {
           const msg = pdfErr instanceof Error ? pdfErr.message : "Unknown error";
           throw new BadRequestException(
@@ -1504,8 +1511,11 @@ Formula: totalPrice = totalKg × salePricePerKg
 
         const useOcr = pdfText.length < 50;
         const extractionResult = useOcr
-          ? await this.rubberCocExtractionService.extractDeliveryNoteFromImages(pdfBuffer)
-          : await this.rubberCocExtractionService.extractDeliveryNote(pdfText);
+          ? await this.rubberCocExtractionService.extractDeliveryNoteFromImages(
+              pdfBuffer,
+              correctionHints,
+            )
+          : await this.rubberCocExtractionService.extractDeliveryNote(pdfText, correctionHints);
         return extractionResult.data;
       }
     })();

@@ -110,10 +110,19 @@ export class RubberExtractionOrchestratorService {
       try {
         const isRoll = dnType === DeliveryNoteType.ROLL;
 
+        const noteForHints = await this.deliveryNoteService.deliveryNoteById(deliveryNoteId);
+        const supplierName = noteForHints?.supplierCompanyName ?? null;
+        const correctionHints = supplierName
+          ? await this.deliveryNoteService.correctionHintsForDnSupplier(supplierName)
+          : null;
+
         const extractedData = await (async () => {
           if (isRoll) {
             const customerResult =
-              await this.cocExtractionService.extractCustomerDeliveryNoteFromImages(pdfBuffer);
+              await this.cocExtractionService.extractCustomerDeliveryNoteFromImages(
+                pdfBuffer,
+                correctionHints,
+              );
 
             const supplierDns = customerResult.deliveryNotes.filter((dn) => {
               const supplier = (dn.supplierName || "").toLowerCase();
@@ -174,8 +183,11 @@ export class RubberExtractionOrchestratorService {
             const pdfText = await extractTextFromPdf(pdfBuffer);
             const useOcr = pdfText.length < 50;
             const extractionResult = useOcr
-              ? await this.cocExtractionService.extractDeliveryNoteFromImages(pdfBuffer)
-              : await this.cocExtractionService.extractDeliveryNote(pdfText);
+              ? await this.cocExtractionService.extractDeliveryNoteFromImages(
+                  pdfBuffer,
+                  correctionHints,
+                )
+              : await this.cocExtractionService.extractDeliveryNote(pdfText, correctionHints);
             return extractionResult.data;
           }
         })();

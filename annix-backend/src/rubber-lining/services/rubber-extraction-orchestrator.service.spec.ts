@@ -58,6 +58,8 @@ describe("RubberExtractionOrchestratorService", () => {
     setExtractedData: jest.fn().mockResolvedValue(undefined),
     setPodPageNumbers: jest.fn().mockResolvedValue(undefined),
     acceptExtractAndSplit: jest.fn().mockResolvedValue({ deliveryNoteIds: [1] }),
+    deliveryNoteById: jest.fn().mockResolvedValue({ supplierCompanyName: "Test Supplier" }),
+    correctionHintsForDnSupplier: jest.fn().mockResolvedValue(null),
   };
 
   const readinessMock = {

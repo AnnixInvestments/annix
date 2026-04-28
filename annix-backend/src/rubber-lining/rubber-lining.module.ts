@@ -33,6 +33,7 @@ import { RubberCompoundQualityConfig } from "./entities/rubber-compound-quality-
 import { RubberCompoundStock } from "./entities/rubber-compound-stock.entity";
 import { RubberCostRate } from "./entities/rubber-cost-rate.entity";
 import { RubberDeliveryNote } from "./entities/rubber-delivery-note.entity";
+import { RubberDeliveryNoteCorrection } from "./entities/rubber-delivery-note-correction.entity";
 import { RubberDeliveryNoteItem } from "./entities/rubber-delivery-note-item.entity";
 import { RubberMonthlyAccount } from "./entities/rubber-monthly-account.entity";
 import { RubberOrder } from "./entities/rubber-order.entity";
@@ -140,6 +141,7 @@ import { WebsitePagesService } from "./website-pages.service";
       RubberSupplierCoc,
       RubberCompoundBatch,
       RubberDeliveryNote,
+      RubberDeliveryNoteCorrection,
       RubberDeliveryNoteItem,
       RubberRollStock,
       RubberAuCoc,
