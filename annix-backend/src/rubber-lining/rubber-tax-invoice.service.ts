@@ -1,7 +1,9 @@
-import { BadRequestException, Injectable, Logger } from "@nestjs/common";
+import { BadRequestException, Inject, Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import { PDFDocument } from "pdf-lib";
 import { In, Repository } from "typeorm";
 import { formatISODate, fromISO, generateUniqueId } from "../lib/datetime";
+import { IStorageService, STORAGE_SERVICE } from "../storage/storage.interface";
 import {
   DOCUMENT_VERSION_STATUS_LABELS,
   DocumentVersionStatus,
@@ -118,6 +120,8 @@ export class RubberTaxInvoiceService {
     private rubberStockService: RubberStockService,
     private versioningService: RubberDocumentVersioningService,
     private rollStockService: RubberRollStockService,
+    @Inject(STORAGE_SERVICE)
+    private storageService: IStorageService,
   ) {}
 
   async allTaxInvoices(filters?: {
@@ -973,10 +977,16 @@ export class RubberTaxInvoiceService {
       return { taxInvoiceIds: [parentId] };
     }
 
+    const perInvoicePaths = await this.slicePdfPerInvoice(parent, ordered);
+
+    if (perInvoicePaths[0]) {
+      parent.documentPath = perInvoicePaths[0];
+      await this.taxInvoiceRepository.save(parent);
+    }
     await this.setExtractedData(parentId, ordered[0]);
 
     const additionalIds = await ordered.slice(1).reduce(
-      async (accPromise, invoiceData) => {
+      async (accPromise, invoiceData, idx) => {
         const acc = await accPromise;
         const placeholderNumber =
           invoiceData.invoiceNumber?.trim() || `${parent.invoiceNumber}-${acc.length + 2}`;
@@ -986,7 +996,7 @@ export class RubberTaxInvoiceService {
             invoiceDate: invoiceData.invoiceDate ?? undefined,
             invoiceType: parent.invoiceType,
             companyId: parent.companyId,
-            documentPath: parent.documentPath ?? undefined,
+            documentPath: perInvoicePaths[idx + 1] ?? parent.documentPath ?? undefined,
             totalAmount: invoiceData.totalAmount ?? undefined,
             vatAmount: invoiceData.vatAmount ?? undefined,
           },
@@ -1003,6 +1013,74 @@ export class RubberTaxInvoiceService {
     );
 
     return { taxInvoiceIds: [parentId, ...additionalIds] };
+  }
+
+  private async slicePdfPerInvoice(
+    parent: RubberTaxInvoice,
+    invoices: ExtractedTaxInvoiceData[],
+  ): Promise<(string | null)[]> {
+    const sourcePath = parent.documentPath;
+    if (!sourcePath?.toLowerCase().endsWith(".pdf")) {
+      return invoices.map(() => null);
+    }
+    const allHavePages = invoices.every(
+      (inv) => Array.isArray(inv.sourcePages) && inv.sourcePages.length > 0,
+    );
+    if (!allHavePages) {
+      this.logger.warn(
+        `Tax invoice ${parent.id} split skipped per-invoice PDF slicing — at least one invoice has no sourcePages from extraction`,
+      );
+      return invoices.map(() => null);
+    }
+
+    try {
+      const sourceBuffer = await this.storageService.download(sourcePath);
+      const sourcePdf = await PDFDocument.load(sourceBuffer);
+      const totalPages = sourcePdf.getPageCount();
+      const subdir =
+        sourcePath.substring(0, sourcePath.lastIndexOf("/")) || "au-rubber/tax-invoices";
+
+      return await invoices.reduce(
+        async (accPromise, inv, idx) => {
+          const acc = await accPromise;
+          const requestedPages = (inv.sourcePages ?? [])
+            .map((p) => Math.round(p))
+            .filter((p) => p >= 1 && p <= totalPages)
+            .map((p) => p - 1);
+          const uniquePages = Array.from(new Set(requestedPages)).sort((a, b) => a - b);
+          if (uniquePages.length === 0) {
+            return [...acc, null];
+          }
+          const sliced = await PDFDocument.create();
+          const copied = await sliced.copyPages(sourcePdf, uniquePages);
+          copied.forEach((page) => sliced.addPage(page));
+          const slicedBytes = await sliced.save();
+          const slicedBuffer = Buffer.from(slicedBytes);
+          const safeNumber = (inv.invoiceNumber ?? `inv-${idx + 1}`).replace(
+            /[^A-Za-z0-9-_]/g,
+            "_",
+          );
+          const file: Express.Multer.File = {
+            fieldname: "file",
+            originalname: `${safeNumber}.pdf`,
+            mimetype: "application/pdf",
+            buffer: slicedBuffer,
+            size: slicedBuffer.length,
+          } as Express.Multer.File;
+          const upload = await this.storageService.upload(file, subdir);
+          this.logger.log(
+            `Sliced ${uniquePages.length} page(s) for tax invoice ${inv.invoiceNumber ?? `(idx ${idx})`} → ${upload.path}`,
+          );
+          return [...acc, upload.path];
+        },
+        Promise.resolve([] as (string | null)[]),
+      );
+    } catch (err) {
+      this.logger.error(
+        `Failed to slice PDF for tax invoice ${parent.id}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      return invoices.map(() => null);
+    }
   }
 
   private extractProductSummary(data: ExtractedTaxInvoiceData | null): {

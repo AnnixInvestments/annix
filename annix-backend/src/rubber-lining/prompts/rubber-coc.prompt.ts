@@ -1080,7 +1080,12 @@ Return a JSON object with this structure:
       "lineItems": [ /* same shape as above (description, compoundCode, quantity, unitPrice, amount, rolls), but only for this invoice */ ],
       "subtotal": number or null,
       "vatAmount": number or null,
-      "totalAmount": number or null
+      "totalAmount": number or null,
+      "sourcePages": [number]
+      /* REQUIRED on every invoice element. The 1-indexed page number(s) of the source PDF that contain THIS invoice's content (header, line items, totals).
+         Single-page invoice: [3] means it's on PDF page 3.
+         Multi-page invoice: [4, 5] means pages 4 and 5 belong to this invoice (continuation pages with the same invoice number).
+         The union of sourcePages across ALL invoices in the array MUST cover every relevant page in the PDF without overlap — each PDF page belongs to EXACTLY ONE invoice. */
     }
     /* MUST contain one element per distinct invoice in the PDF (length 1 if single-invoice). */
   ]

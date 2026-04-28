@@ -50,6 +50,7 @@ export interface ExtractedTaxInvoiceData {
   totalAmount: number | null;
   originalInvoiceRef?: string | null;
   rollNumbers?: string[] | null;
+  sourcePages?: number[] | null;
 }
 
 @Entity("rubber_tax_invoices")
