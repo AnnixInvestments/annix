@@ -18,8 +18,11 @@ import {
   type RubberDeliveryNoteItemDto,
   type RubberSpecificationDto,
   type RubberSupplierCocDto,
+  type RubberTaxInvoiceDto,
   type ScrapedBrandingCandidates,
   type SupplierCocType,
+  type TaxInvoiceStatus,
+  type TaxInvoiceType,
   type TestimonialDto,
   type WebsitePageDto,
 } from "@/app/lib/api/auRubberApi";
@@ -83,6 +86,19 @@ export function useAuRubberAuCocs(filters?: { status?: AuCocStatus; customerId?:
   return useQuery<RubberAuCocDto[]>({
     queryKey: rubberKeys.auCocs.list(filters),
     queryFn: () => auRubberApiClient.auCocs(filters),
+  });
+}
+
+export function useAuRubberTaxInvoices(filters?: {
+  invoiceType?: TaxInvoiceType;
+  status?: TaxInvoiceStatus;
+  companyId?: number;
+  includeAllVersions?: boolean;
+  isCreditNote?: boolean;
+}) {
+  return useQuery<RubberTaxInvoiceDto[]>({
+    queryKey: rubberKeys.taxInvoices.list(filters),
+    queryFn: () => auRubberApiClient.taxInvoices(filters),
   });
 }
 

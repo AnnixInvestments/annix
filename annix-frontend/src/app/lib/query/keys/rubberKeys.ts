@@ -4,6 +4,8 @@ import type {
   DeliveryNoteStatus,
   DeliveryNoteType,
   SupplierCocType,
+  TaxInvoiceStatus,
+  TaxInvoiceType,
 } from "@/app/lib/api/auRubberApi";
 import type { CostRateType } from "@/app/lib/api/rubberPortalApi";
 
@@ -57,6 +59,17 @@ export const rubberKeys = {
     list: (filters?: { status?: AuCocStatus; customerId?: number }) =>
       [...rubberKeys.auCocs.all, "list", filters ?? {}] as const,
     detail: (id: number) => [...rubberKeys.auCocs.all, "detail", id] as const,
+  },
+  taxInvoices: {
+    all: ["rubber", "taxInvoices"] as const,
+    list: (filters?: {
+      invoiceType?: TaxInvoiceType;
+      status?: TaxInvoiceStatus;
+      companyId?: number;
+      includeAllVersions?: boolean;
+      isCreditNote?: boolean;
+    }) => [...rubberKeys.taxInvoices.all, "list", filters ?? {}] as const,
+    detail: (id: number) => [...rubberKeys.taxInvoices.all, "detail", id] as const,
   },
   qualityTracking: {
     all: ["rubber", "qualityTracking"] as const,

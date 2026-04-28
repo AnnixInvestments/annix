@@ -1,6 +1,6 @@
 "use client";
 
-import { isArray } from "es-toolkit/compat";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   CheckCircle,
   Download,
@@ -38,8 +38,9 @@ import {
   type RubberTaxInvoiceDto,
   type TaxInvoiceStatus,
 } from "@/app/lib/api/auRubberApi";
-import type { RubberCompanyDto } from "@/app/lib/api/rubberPortalApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import { useAuRubberCompanies, useAuRubberTaxInvoices } from "@/app/lib/query/hooks";
+import { rubberKeys } from "@/app/lib/query/keys";
 
 const SageExportModal = lazy(() => import("../SageExportModal"));
 
@@ -79,13 +80,33 @@ export default function SupplierTaxInvoicesPage() {
   const { branding } = useAuRubberBranding();
   const { showExtraction, hideExtraction } = useExtractionProgress();
   const { confirm, ConfirmDialog } = useConfirm();
-  const [invoices, setInvoices] = useState<RubberTaxInvoiceDto[]>([]);
-  const [creditNotes, setCreditNotes] = useState<RubberTaxInvoiceDto[]>([]);
-  const [suppliers, setSuppliers] = useState<RubberCompanyDto[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+  const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<TaxInvoiceStatus | "">("");
+  const [includeAllVersions, setIncludeAllVersions] = useState(false);
+  const taxInvoicesQuery = useAuRubberTaxInvoices({
+    invoiceType: "SUPPLIER",
+    status: filterStatus || undefined,
+    includeAllVersions: includeAllVersions || undefined,
+  });
+  const companiesQuery = useAuRubberCompanies();
+  const rawTaxInvoicesData = taxInvoicesQuery.data;
+  const rawCompaniesData = companiesQuery.data;
+  const taxInvoicesQueryIsLoading = taxInvoicesQuery.isLoading;
+  const companiesQueryIsLoading = companiesQuery.isLoading;
+  const taxInvoicesQueryError = taxInvoicesQuery.error;
+  const companiesQueryError = companiesQuery.error;
+  const allInvoices = rawTaxInvoicesData || [];
+  const allCompanies = rawCompaniesData || [];
+  const invoices = allInvoices.filter((inv) => !inv.isCreditNote);
+  const creditNotes = allInvoices.filter((inv) => inv.isCreditNote);
+  const suppliers = allCompanies.filter((c) => c.companyType === "SUPPLIER");
+  const isLoading = taxInvoicesQueryIsLoading || companiesQueryIsLoading;
+  const error = taxInvoicesQueryError || companiesQueryError;
+  const refresh = () => {
+    queryClient.invalidateQueries({ queryKey: rubberKeys.taxInvoices.all });
+    queryClient.invalidateQueries({ queryKey: rubberKeys.companies.all });
+  };
   const [currentPage, setCurrentPage] = useState(0);
   const [pageSize, setPageSize] = usePersistedState<number>(
     "auRubber.supplierTaxInvoices.pageSize",
@@ -111,7 +132,6 @@ export default function SupplierTaxInvoicesPage() {
   const [isBulkApproving, setIsBulkApproving] = useState(false);
   const [postingToSageId, setPostingToSageId] = useState<number | null>(null);
   const [isBulkPostingToSage, setIsBulkPostingToSage] = useState(false);
-  const [includeAllVersions, setIncludeAllVersions] = useState(false);
   const [authorizingId, setAuthorizingId] = useState<number | null>(null);
   const [rejectingId, setRejectingId] = useState<number | null>(null);
 
@@ -127,7 +147,7 @@ export default function SupplierTaxInvoicesPage() {
       setPostingToSageId(inv.id);
       await auRubberApiClient.postInvoiceToSage(inv.id);
       showToast(`Invoice ${inv.invoiceNumber} posted to Sage`, "success");
-      fetchData();
+      refresh();
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to post to Sage", "error");
     } finally {
@@ -171,7 +191,7 @@ export default function SupplierTaxInvoicesPage() {
           failCount === approvedIds.length ? "error" : "warning",
         );
       }
-      fetchData();
+      refresh();
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to post to Sage", "error");
     } finally {
@@ -191,7 +211,7 @@ export default function SupplierTaxInvoicesPage() {
       setDeletingId(id);
       await auRubberApiClient.deleteTaxInvoice(id);
       showToast(`Tax invoice ${invoiceNumber} deleted`, "success");
-      fetchData();
+      refresh();
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to delete tax invoice", "error");
     } finally {
@@ -244,7 +264,7 @@ export default function SupplierTaxInvoicesPage() {
         "success",
       );
       setSelectedForApproval(new Set());
-      fetchData();
+      refresh();
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to approve invoices", "error");
     } finally {
@@ -257,7 +277,7 @@ export default function SupplierTaxInvoicesPage() {
       setAuthorizingId(inv.id);
       await auRubberApiClient.authorizeVersion("tax-invoices", inv.id);
       showToast(`Invoice ${inv.invoiceNumber} version authorized`, "success");
-      fetchData();
+      refresh();
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to authorize version", "error");
     } finally {
@@ -277,44 +297,13 @@ export default function SupplierTaxInvoicesPage() {
       setRejectingId(inv.id);
       await auRubberApiClient.rejectVersion("tax-invoices", inv.id);
       showToast(`Invoice ${inv.invoiceNumber} version rejected`, "success");
-      fetchData();
+      refresh();
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to reject version", "error");
     } finally {
       setRejectingId(null);
     }
   };
-
-  const fetchData = async () => {
-    try {
-      setIsLoading(true);
-      const [invoiceData, companiesData] = await Promise.all([
-        auRubberApiClient.taxInvoices({
-          invoiceType: "SUPPLIER",
-          status: filterStatus || undefined,
-          includeAllVersions: includeAllVersions || undefined,
-        }),
-        auRubberApiClient.companies(),
-      ]);
-
-      const allCompanies = isArray(companiesData) ? companiesData : [];
-      const supplierCompanies = allCompanies.filter((c) => c.companyType === "SUPPLIER");
-
-      const allInvoices = isArray(invoiceData) ? invoiceData : [];
-      setInvoices(allInvoices.filter((inv) => !inv.isCreditNote));
-      setCreditNotes(allInvoices.filter((inv) => inv.isCreditNote));
-      setSuppliers(supplierCompanies);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to load data"));
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchData();
-  }, [filterStatus, includeAllVersions]);
 
   const handleSort = (column: SortColumn) => {
     if (sortColumn === column) {
@@ -458,9 +447,9 @@ export default function SupplierTaxInvoicesPage() {
         `${files.length} file${files.length !== 1 ? "s" : ""} uploaded — NIX is extracting data in the background`,
         "success",
       );
-      fetchData();
-      setTimeout(() => fetchData(), 5000);
-      setTimeout(() => fetchData(), 20000);
+      refresh();
+      setTimeout(() => refresh(), 5000);
+      setTimeout(() => refresh(), 20000);
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to upload tax invoices", "error");
     } finally {
@@ -509,7 +498,7 @@ export default function SupplierTaxInvoicesPage() {
       setUploadInvoiceDate("");
       setUploadFiles([]);
       setUploadIsCreditNote(false);
-      fetchData();
+      refresh();
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to create tax invoice", "error");
     } finally {
@@ -549,7 +538,7 @@ export default function SupplierTaxInvoicesPage() {
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Data</div>
           <p className="text-gray-600">{error.message}</p>
           <button
-            onClick={fetchData}
+            onClick={refresh}
             className="mt-4 px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700"
           >
             Retry
@@ -615,7 +604,7 @@ export default function SupplierTaxInvoicesPage() {
                   `Removed ${result.deleted} duplicate(s) across ${result.groups} invoice group(s); kept ${result.kept}.`,
                   "success",
                 );
-                fetchData();
+                refresh();
               } catch (err) {
                 showToast(err instanceof Error ? err.message : "Dedupe failed", "error");
               }
@@ -641,7 +630,7 @@ export default function SupplierTaxInvoicesPage() {
                   `Re-extraction triggered for ${result.triggered} invoices. This may take a few minutes.`,
                   "success",
                 );
-                setTimeout(() => fetchData(), 30000);
+                setTimeout(() => refresh(), 30000);
               } catch (err) {
                 showToast(err instanceof Error ? err.message : "Re-extraction failed", "error");
               } finally {
@@ -1186,7 +1175,7 @@ export default function SupplierTaxInvoicesPage() {
                                 try {
                                   await auRubberApiClient.extractTaxInvoice(cn.id);
                                   showToast("Credit note extracted", "success");
-                                  fetchData();
+                                  refresh();
                                 } catch (err) {
                                   showToast(
                                     err instanceof Error ? err.message : "Extraction failed",
@@ -1219,7 +1208,7 @@ export default function SupplierTaxInvoicesPage() {
                                     "Credit note approved — rolls marked as rejected",
                                     "success",
                                   );
-                                  fetchData();
+                                  refresh();
                                 } catch (err) {
                                   showToast(
                                     err instanceof Error ? err.message : "Approval failed",
@@ -1243,7 +1232,7 @@ export default function SupplierTaxInvoicesPage() {
                               try {
                                 await auRubberApiClient.deleteTaxInvoice(cn.id);
                                 showToast("Credit note deleted", "success");
-                                fetchData();
+                                refresh();
                               } catch (err) {
                                 showToast(
                                   err instanceof Error ? err.message : "Failed to delete",
@@ -1387,7 +1376,7 @@ export default function SupplierTaxInvoicesPage() {
         <Suspense fallback={null}>
           <SageExportModal
             onClose={() => setShowSageExportModal(false)}
-            onSuccess={() => fetchData()}
+            onSuccess={() => refresh()}
             invoiceOptions={invoices
               .filter((inv) => inv.status === "APPROVED")
               .map((inv) => {
