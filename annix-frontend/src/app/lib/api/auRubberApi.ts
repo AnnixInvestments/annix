@@ -3332,7 +3332,9 @@ class AuRubberApiClient {
     return response.blob();
   }
 
-  async reExtractAllTaxInvoices(invoiceType?: TaxInvoiceType): Promise<{ triggered: number }> {
+  async reExtractAllTaxInvoices(
+    invoiceType?: TaxInvoiceType,
+  ): Promise<{ triggered: number; invoiceIds: number[]; startedAt: string }> {
     const query = invoiceType ? `?invoiceType=${invoiceType}` : "";
     return this.request(`/rubber-lining/portal/tax-invoices/re-extract-all${query}`, {
       method: "POST",
@@ -3341,7 +3343,7 @@ class AuRubberApiClient {
 
   async reExtractAllDeliveryNotes(
     partyType: "SUPPLIER" | "CUSTOMER",
-  ): Promise<{ triggered: number }> {
+  ): Promise<{ triggered: number; deliveryNoteIds: number[]; startedAt: string }> {
     return this.request(
       `/rubber-lining/portal/delivery-notes/re-extract-all?partyType=${partyType}`,
       {

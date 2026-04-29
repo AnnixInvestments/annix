@@ -9,6 +9,7 @@ import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import { FileDropZone } from "@/app/au-rubber/components/FileDropZone";
 import { useConfirm } from "@/app/au-rubber/hooks/useConfirm";
 import { useTablePreferences } from "@/app/au-rubber/hooks/useTablePreferences";
+import { waitForReExtractionComplete } from "@/app/au-rubber/lib/waitForReExtractionComplete";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import {
   Pagination,
@@ -51,7 +52,7 @@ export default function SupplierDeliveryNotesPage() {
   const router = useRouter();
   const { showToast } = useToast();
   const { branding } = useAuRubberBranding();
-  const { showExtraction, hideExtraction } = useExtractionProgress();
+  const { showExtraction, hideExtraction, updateExtraction } = useExtractionProgress();
   const { confirm: confirmDialog, ConfirmDialog } = useConfirm();
   const [isReExtracting, setIsReExtracting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -401,10 +402,26 @@ export default function SupplierDeliveryNotesPage() {
               });
               try {
                 const result = await auRubberApiClient.reExtractAllDeliveryNotes("SUPPLIER");
-                showToast(
-                  `Re-extraction triggered for ${result.triggered} delivery notes. This may take a few minutes.`,
-                  "success",
-                );
+                await waitForReExtractionComplete({
+                  ids: new Set(result.deliveryNoteIds),
+                  startedAtIso: result.startedAt,
+                  total: result.triggered,
+                  fetcher: () =>
+                    auRubberApiClient.deliveryNotes({
+                      companyType: "SUPPLIER",
+                      pageSize: 10000,
+                    }),
+                  toItems: (res) =>
+                    res.items.map((n) => ({
+                      id: n.id,
+                      updatedAtIso: n.updatedAt,
+                    })),
+                  onProgress: (done) => {
+                    updateExtraction({
+                      label: `Re-extracted ${done} of ${result.triggered} supplier DNs…`,
+                    });
+                  },
+                });
                 notesQuery.refetch();
               } catch (err) {
                 showToast(err instanceof Error ? err.message : "Re-extraction failed", "error");

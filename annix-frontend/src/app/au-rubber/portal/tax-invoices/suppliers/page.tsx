@@ -17,6 +17,7 @@ import { useRouter } from "next/navigation";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import { FileDropZone } from "@/app/au-rubber/components/FileDropZone";
+import { waitForReExtractionComplete } from "@/app/au-rubber/lib/waitForReExtractionComplete";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import {
   Pagination,
@@ -86,7 +87,7 @@ export default function SupplierTaxInvoicesPage() {
   const router = useRouter();
   const { showToast } = useToast();
   const { branding } = useAuRubberBranding();
-  const { showExtraction, hideExtraction } = useExtractionProgress();
+  const { showExtraction, hideExtraction, updateExtraction } = useExtractionProgress();
   const { confirm, ConfirmDialog } = useConfirm();
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
@@ -570,10 +571,26 @@ export default function SupplierTaxInvoicesPage() {
               });
               try {
                 const result = await auRubberApiClient.reExtractAllTaxInvoices("SUPPLIER");
-                showToast(
-                  `Re-extraction triggered for ${result.triggered} invoices. This may take a few minutes.`,
-                  "success",
-                );
+                await waitForReExtractionComplete({
+                  ids: new Set(result.invoiceIds),
+                  startedAtIso: result.startedAt,
+                  total: result.triggered,
+                  fetcher: () =>
+                    auRubberApiClient.taxInvoices({
+                      invoiceType: "SUPPLIER",
+                      pageSize: 10000,
+                    }),
+                  toItems: (res) =>
+                    res.items.map((inv) => ({
+                      id: inv.id,
+                      updatedAtIso: inv.updatedAt,
+                    })),
+                  onProgress: (done) => {
+                    updateExtraction({
+                      label: `Re-extracted ${done} of ${result.triggered} supplier invoices…`,
+                    });
+                  },
+                });
                 refresh();
               } catch (err) {
                 showToast(err instanceof Error ? err.message : "Re-extraction failed", "error");

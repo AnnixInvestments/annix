@@ -18,6 +18,7 @@ import {
 const ITEMS_PER_PAGE = 25;
 
 import { useConfirm } from "@/app/au-rubber/hooks/useConfirm";
+import { waitForReExtractionComplete } from "@/app/au-rubber/lib/waitForReExtractionComplete";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { useToast } from "@/app/components/Toast";
 import { useAuRubberBranding } from "@/app/context/AuRubberBrandingContext";
@@ -55,7 +56,7 @@ export default function CustomerTaxInvoicesPage() {
   const router = useRouter();
   const { showToast } = useToast();
   const { branding } = useAuRubberBranding();
-  const { showExtraction, hideExtraction } = useExtractionProgress();
+  const { showExtraction, hideExtraction, updateExtraction } = useExtractionProgress();
   const { confirm, ConfirmDialog } = useConfirm();
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
@@ -474,10 +475,26 @@ export default function CustomerTaxInvoicesPage() {
               });
               try {
                 const result = await auRubberApiClient.reExtractAllTaxInvoices("CUSTOMER");
-                showToast(
-                  `Re-extraction triggered for ${result.triggered} invoices. This may take a few minutes.`,
-                  "success",
-                );
+                await waitForReExtractionComplete({
+                  ids: new Set(result.invoiceIds),
+                  startedAtIso: result.startedAt,
+                  total: result.triggered,
+                  fetcher: () =>
+                    auRubberApiClient.taxInvoices({
+                      invoiceType: "CUSTOMER",
+                      pageSize: 10000,
+                    }),
+                  toItems: (res) =>
+                    res.items.map((inv) => ({
+                      id: inv.id,
+                      updatedAtIso: inv.updatedAt,
+                    })),
+                  onProgress: (done) => {
+                    updateExtraction({
+                      label: `Re-extracted ${done} of ${result.triggered} customer invoices…`,
+                    });
+                  },
+                });
                 refresh();
               } catch (err) {
                 showToast(err instanceof Error ? err.message : "Re-extraction failed", "error");

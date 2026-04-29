@@ -36,7 +36,7 @@ import { Response } from "express";
 import { Repository } from "typeorm";
 import { AdminAuthGuard, AdminRequest } from "../admin/guards/admin-auth.guard";
 import { Public } from "../auth/public.decorator";
-import { nowMillis } from "../lib/datetime";
+import { nowISO, nowMillis } from "../lib/datetime";
 import { PaginatedResult } from "../lib/dto/pagination-query.dto";
 import { SageExportFilterDto } from "../sage-export/dto/sage-export.dto";
 import { type SageConfigDto, SageConnectionService } from "../sage-export/sage-connection.service";
@@ -2836,7 +2836,7 @@ Formula: totalPrice = totalKg × salePricePerKg
   @ApiQuery({ name: "invoiceType", enum: TaxInvoiceType, required: false })
   async reExtractAllTaxInvoices(
     @Query("invoiceType") invoiceTypeQuery?: string,
-  ): Promise<{ triggered: number }> {
+  ): Promise<{ triggered: number; invoiceIds: number[]; startedAt: string }> {
     const invoiceType =
       invoiceTypeQuery === TaxInvoiceType.CUSTOMER
         ? TaxInvoiceType.CUSTOMER
@@ -2848,6 +2848,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     });
 
     const withDocuments = allInvoices.filter((inv) => inv.documentPath);
+    const startedAt = nowISO();
     const logger = this.logger;
     const storageService = this.storageService;
     const orchestrator = this.extractionOrchestratorService;
@@ -2909,7 +2910,11 @@ Formula: totalPrice = totalKg × salePricePerKg
       );
     })();
 
-    return { triggered: withDocuments.length };
+    return {
+      triggered: withDocuments.length,
+      invoiceIds: withDocuments.map((inv) => inv.id),
+      startedAt,
+    };
   }
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
@@ -3005,7 +3010,7 @@ Formula: totalPrice = totalKg × salePricePerKg
   @ApiQuery({ name: "partyType", enum: ["SUPPLIER", "CUSTOMER"], required: false })
   async reExtractAllDeliveryNotes(
     @Query("partyType") partyTypeQuery?: string,
-  ): Promise<{ triggered: number }> {
+  ): Promise<{ triggered: number; deliveryNoteIds: number[]; startedAt: string }> {
     const partyType = partyTypeQuery === "CUSTOMER" ? "CUSTOMER" : "SUPPLIER";
 
     const allNotes = await this.rubberDeliveryNoteService.allDeliveryNotes();
@@ -3017,31 +3022,44 @@ Formula: totalPrice = totalKg × salePricePerKg
     const withDocuments = allNotes.filter(
       (note) => note.documentPath && matchingCompanyIds.has(note.supplierCompanyId),
     );
+    const startedAt = nowISO();
     const logger = this.logger;
     const storageService = this.storageService;
     const orchestrator = this.extractionOrchestratorService;
 
     (async () => {
-      for (const note of withDocuments) {
-        try {
-          const docBuffer = await storageService.download(note.documentPath!);
-          orchestrator.triggerDeliveryNoteExtraction(note.id, docBuffer, note.deliveryNoteType);
-          logger.log(
-            `Triggered re-extraction for ${partyType} delivery note ${note.id} (${note.deliveryNoteNumber})`,
-          );
-          await new Promise((resolve) => setTimeout(resolve, 3000));
-        } catch (err) {
-          logger.error(
-            `Failed to trigger re-extraction for delivery note ${note.id}: ${err instanceof Error ? err.message : String(err)}`,
-          );
+      const concurrency = 3;
+      let cursor = 0;
+      const worker = async (): Promise<void> => {
+        while (true) {
+          const idx = cursor;
+          cursor += 1;
+          if (idx >= withDocuments.length) return;
+          const note = withDocuments[idx];
+          try {
+            const docBuffer = await storageService.download(note.documentPath!);
+            orchestrator.triggerDeliveryNoteExtraction(note.id, docBuffer, note.deliveryNoteType);
+            logger.log(
+              `Triggered re-extraction for ${partyType} delivery note ${note.id} (${note.deliveryNoteNumber})`,
+            );
+          } catch (err) {
+            logger.error(
+              `Failed to trigger re-extraction for delivery note ${note.id}: ${err instanceof Error ? err.message : String(err)}`,
+            );
+          }
         }
-      }
+      };
+      await Promise.all(Array.from({ length: concurrency }, () => worker()));
       logger.log(
         `Bulk delivery-note re-extraction complete (${partyType}): ${withDocuments.length} notes processed`,
       );
     })();
 
-    return { triggered: withDocuments.length };
+    return {
+      triggered: withDocuments.length,
+      deliveryNoteIds: withDocuments.map((n) => n.id),
+      startedAt,
+    };
   }
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
