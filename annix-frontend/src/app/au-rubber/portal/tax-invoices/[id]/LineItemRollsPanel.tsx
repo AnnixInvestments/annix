@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, Save, Trash2, X } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Plus, Save, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useToast } from "@/app/components/Toast";
@@ -11,6 +11,11 @@ interface RollCostBreakdown {
   tollCostR: number | null;
   compoundCostR: number | null;
   totalCostR: number | null;
+}
+
+interface RollMatchInfo {
+  status: "matched" | "sold" | "missing";
+  message: string;
 }
 
 export interface LineItemRoll {
@@ -51,39 +56,73 @@ export function LineItemRollsPanel(props: LineItemRollsPanelProps) {
   >([]);
   const [pickedIds, setPickedIds] = useState<Set<number>>(new Set());
   const [costs, setCosts] = useState<Record<string, RollCostBreakdown>>({});
+  const [stockMatches, setStockMatches] = useState<Record<string, RollMatchInfo>>({});
 
   useEffect(() => {
     setDraft(rolls ? rolls.map((r) => ({ ...r })) : []);
   }, [rolls]);
 
   const fetchCosts = useCallback(async () => {
-    if (!rolls || rolls.length === 0 || !isApproved) {
+    if (!rolls || rolls.length === 0) {
       setCosts({});
+      setStockMatches({});
       return;
     }
     try {
       const stockRolls = await auRubberApiClient.rollsByNumbers(rolls.map((r) => r.rollNumber));
-      const next: Record<string, RollCostBreakdown> = {};
-      stockRolls.forEach((sr) => {
-        next[sr.rollNumber] = {
-          rollNumber: sr.rollNumber,
-          tollCostR: sr.tollCostR,
-          compoundCostR: sr.compoundCostR,
-          totalCostR: sr.totalCostR,
-        };
+      const stockByNumber = new Map(stockRolls.map((sr) => [sr.rollNumber, sr]));
+      const nextCosts: Record<string, RollCostBreakdown> = {};
+      const nextMatches: Record<string, RollMatchInfo> = {};
+      rolls.forEach((roll) => {
+        const stock = stockByNumber.get(roll.rollNumber);
+        if (!stock) {
+          nextMatches[roll.rollNumber] = {
+            status: "missing",
+            message: "Not found in stock — pick manually or correct the roll number",
+          };
+          return;
+        }
+        if (isApproved) {
+          nextCosts[stock.rollNumber] = {
+            rollNumber: stock.rollNumber,
+            tollCostR: stock.tollCostR,
+            compoundCostR: stock.compoundCostR,
+            totalCostR: stock.totalCostR,
+          };
+        }
+        if (stock.status === "IN_STOCK") {
+          nextMatches[roll.rollNumber] = {
+            status: "matched",
+            message: "Matched in stock — auto-linked",
+          };
+        } else if (stock.status === "SOLD" && isApproved) {
+          nextMatches[roll.rollNumber] = {
+            status: "matched",
+            message: "Sold (this invoice's allocation)",
+          };
+        } else {
+          nextMatches[roll.rollNumber] = {
+            status: "sold",
+            message: `Already ${stock.statusLabel.toLowerCase()}${stock.soldToCompanyName ? ` to ${stock.soldToCompanyName}` : ""} — verify before approving`,
+          };
+        }
       });
-      setCosts(next);
+      setCosts(nextCosts);
+      setStockMatches(nextMatches);
     } catch {
       setCosts({});
+      setStockMatches({});
     }
   }, [rolls, isApproved]);
 
   useEffect(() => {
-    if (expanded) fetchCosts();
-  }, [expanded, fetchCosts]);
+    fetchCosts();
+  }, [fetchCosts]);
 
   const productCode = productCodeFromDescription(description);
   const rollCount = rolls ? rolls.length : 0;
+  const allRollsMatchedToStock =
+    rollCount > 0 && (rolls ?? []).every((r) => stockMatches[r.rollNumber]?.status === "matched");
 
   const startEdit = () => {
     setDraft(rolls ? rolls.map((r) => ({ ...r })) : []);
@@ -240,7 +279,13 @@ export function LineItemRollsPanel(props: LineItemRollsPanelProps) {
         </button>
         {!isApproved && !editing && (
           <div className="flex items-center gap-2">
-            {invoiceType === "CUSTOMER" && (
+            {invoiceType === "CUSTOMER" && allRollsMatchedToStock && (
+              <span className="text-[10px] text-green-700 font-medium inline-flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3" />
+                Auto-linked to stock
+              </span>
+            )}
+            {invoiceType === "CUSTOMER" && !allRollsMatchedToStock && (
               <button
                 type="button"
                 onClick={openPicker}
@@ -282,6 +327,7 @@ export function LineItemRollsPanel(props: LineItemRollsPanelProps) {
               const rawWeight = row.weightKg;
               const weightDisplay = rawWeight === null || rawWeight === undefined ? "-" : rawWeight;
               const weightInput = rawWeight === null || rawWeight === undefined ? "" : rawWeight;
+              const rollMatch = !editing ? stockMatches[rollNumber] : undefined;
               return (
                 <tr key={`${rollNumber}:${idx}`} className="border-t border-gray-100">
                   <td className="py-1 pr-2">
@@ -292,7 +338,24 @@ export function LineItemRollsPanel(props: LineItemRollsPanelProps) {
                         className="w-full px-1 py-0.5 border border-gray-300 rounded"
                       />
                     ) : (
-                      rollNumber
+                      <span className="inline-flex items-center gap-1.5">
+                        {rollNumber}
+                        {invoiceType === "CUSTOMER" && rollMatch?.status === "matched" && (
+                          <span title={rollMatch.message} className="inline-flex">
+                            <CheckCircle2 className="w-3 h-3 text-green-600 shrink-0" />
+                          </span>
+                        )}
+                        {invoiceType === "CUSTOMER" && rollMatch?.status === "missing" && (
+                          <span title={rollMatch.message} className="inline-flex">
+                            <AlertTriangle className="w-3 h-3 text-amber-600 shrink-0" />
+                          </span>
+                        )}
+                        {invoiceType === "CUSTOMER" && rollMatch?.status === "sold" && (
+                          <span title={rollMatch.message} className="inline-flex">
+                            <AlertTriangle className="w-3 h-3 text-red-600 shrink-0" />
+                          </span>
+                        )}
+                      </span>
                     )}
                   </td>
                   <td className="py-1 px-2 text-right">
