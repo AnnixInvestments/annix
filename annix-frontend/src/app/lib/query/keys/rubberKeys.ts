@@ -82,6 +82,8 @@ export const rubberKeys = {
       pageSize?: number;
     }) => [...rubberKeys.taxInvoices.all, "list", filters ?? {}] as const,
     detail: (id: number) => [...rubberKeys.taxInvoices.all, "detail", id] as const,
+    statements: (invoiceType: TaxInvoiceType) =>
+      [...rubberKeys.taxInvoices.all, "statements", invoiceType] as const,
   },
   qualityTracking: {
     all: ["rubber", "qualityTracking"] as const,

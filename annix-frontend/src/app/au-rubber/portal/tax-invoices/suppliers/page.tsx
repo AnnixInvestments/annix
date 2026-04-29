@@ -112,6 +112,7 @@ export default function SupplierTaxInvoicesPage() {
     sortDirection,
     page: currentPage + 1,
     pageSize: pageSize === 0 ? 10000 : pageSize,
+    pollWhilePending: true,
   });
   const creditNotesQuery = useAuRubberTaxInvoices({
     invoiceType: "SUPPLIER",
@@ -180,37 +181,18 @@ export default function SupplierTaxInvoicesPage() {
   };
 
   const handleBulkPostToSage = async () => {
-    const allApproved = await auRubberApiClient.taxInvoices({
-      invoiceType: "SUPPLIER",
-      status: "APPROVED",
-      includeAllVersions: includeAllVersions || undefined,
-      isCreditNote: false,
-      search: searchQuery || undefined,
-      pageSize: 10000,
-    });
-    const eligible = allApproved.items.filter((inv) => inv.sageInvoiceId === null);
-    const skipped = eligible.filter((inv) => invoiceNeedsRollDetails(inv));
-    const approvedIds = eligible
-      .filter((inv) => !invoiceNeedsRollDetails(inv))
-      .map((inv) => inv.id);
-    if (approvedIds.length === 0) {
-      const skippedSuffix =
-        skipped.length > 0 ? ` (${skipped.length} skipped — missing rolls)` : "";
-      showToast(`No approved invoices to post${skippedSuffix}`, "error");
-      return;
-    }
-    if (skipped.length > 0) {
-      showToast(
-        `Skipping ${skipped.length} invoice${skipped.length > 1 ? "s" : ""} that still need roll numbers added.`,
-        "warning",
-      );
-    }
     try {
       setIsBulkPostingToSage(true);
-      const result = await auRubberApiClient.postInvoicesToSageBulk(approvedIds);
+      const result = await auRubberApiClient.postInvoicesToSageBulkByFilter({
+        invoiceType: "SUPPLIER",
+        search: searchQuery || undefined,
+        includeAllVersions: includeAllVersions || undefined,
+      });
       const successCount = result.successful.length;
       const failCount = result.failed.length;
-      if (failCount === 0) {
+      if (successCount === 0 && failCount === 0) {
+        showToast("No approved invoices to post", "error");
+      } else if (failCount === 0) {
         showToast(
           `${successCount} invoice${successCount > 1 ? "s" : ""} posted to Sage`,
           "success",
@@ -218,7 +200,7 @@ export default function SupplierTaxInvoicesPage() {
       } else {
         showToast(
           `${successCount} posted, ${failCount} failed: ${result.failed[0].error}`,
-          failCount === approvedIds.length ? "error" : "warning",
+          successCount === 0 ? "error" : "warning",
         );
       }
       refresh();
@@ -412,8 +394,6 @@ export default function SupplierTaxInvoicesPage() {
         "success",
       );
       refresh();
-      setTimeout(() => refresh(), 5000);
-      setTimeout(() => refresh(), 20000);
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to upload tax invoices", "error");
     } finally {
@@ -594,7 +574,7 @@ export default function SupplierTaxInvoicesPage() {
                   `Re-extraction triggered for ${result.triggered} invoices. This may take a few minutes.`,
                   "success",
                 );
-                setTimeout(() => refresh(), 30000);
+                refresh();
               } catch (err) {
                 showToast(err instanceof Error ? err.message : "Re-extraction failed", "error");
               } finally {

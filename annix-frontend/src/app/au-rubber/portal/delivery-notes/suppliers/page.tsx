@@ -78,6 +78,7 @@ export default function SupplierDeliveryNotesPage() {
     sortDirection,
     page: currentPage + 1,
     pageSize: pageSize === 0 ? 10000 : pageSize,
+    pollWhilePending: true,
   });
   const companiesQuery = useAuRubberCompanies();
   const rawCompaniesQueryData = companiesQuery.data;
@@ -404,7 +405,7 @@ export default function SupplierDeliveryNotesPage() {
                   `Re-extraction triggered for ${result.triggered} delivery notes. This may take a few minutes.`,
                   "success",
                 );
-                setTimeout(() => notesQuery.refetch(), 30000);
+                notesQuery.refetch();
               } catch (err) {
                 showToast(err instanceof Error ? err.message : "Re-extraction failed", "error");
               } finally {

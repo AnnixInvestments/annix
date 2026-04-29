@@ -395,6 +395,7 @@ export {
   useAuRubberSetRolePermissions,
   useAuRubberSpecifications,
   useAuRubberSupplierCocs,
+  useAuRubberTaxInvoiceStatements,
   useAuRubberTaxInvoices,
   useAuRubberTestimonial,
   useAuRubberTestimonials,

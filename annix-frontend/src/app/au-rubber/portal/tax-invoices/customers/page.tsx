@@ -78,6 +78,7 @@ export default function CustomerTaxInvoicesPage() {
     sortDirection,
     page: currentPage + 1,
     pageSize: pageSize === 0 ? 10000 : pageSize,
+    pollWhilePending: true,
   });
   const companiesQuery = useAuRubberCompanies();
   const rawTaxInvoicesData = taxInvoicesQuery.data;
@@ -128,25 +129,17 @@ export default function CustomerTaxInvoicesPage() {
   };
 
   const handleBulkPostToSage = async () => {
-    const allApproved = await auRubberApiClient.taxInvoices({
-      invoiceType: "CUSTOMER",
-      status: "APPROVED",
-      search: searchQuery || undefined,
-      pageSize: 10000,
-    });
-    const approvedIds = allApproved.items
-      .filter((inv) => inv.sageInvoiceId === null)
-      .map((inv) => inv.id);
-    if (approvedIds.length === 0) {
-      showToast("No approved invoices to post", "error");
-      return;
-    }
     try {
       setIsBulkPostingToSage(true);
-      const result = await auRubberApiClient.postInvoicesToSageBulk(approvedIds);
+      const result = await auRubberApiClient.postInvoicesToSageBulkByFilter({
+        invoiceType: "CUSTOMER",
+        search: searchQuery || undefined,
+      });
       const successCount = result.successful.length;
       const failCount = result.failed.length;
-      if (failCount === 0) {
+      if (successCount === 0 && failCount === 0) {
+        showToast("No approved invoices to post", "error");
+      } else if (failCount === 0) {
         showToast(
           `${successCount} invoice${successCount > 1 ? "s" : ""} posted to Sage`,
           "success",
@@ -154,7 +147,7 @@ export default function CustomerTaxInvoicesPage() {
       } else {
         showToast(
           `${successCount} posted, ${failCount} failed: ${result.failed[0].error}`,
-          failCount === approvedIds.length ? "error" : "warning",
+          successCount === 0 ? "error" : "warning",
         );
       }
       refresh();
@@ -315,8 +308,6 @@ export default function CustomerTaxInvoicesPage() {
         "success",
       );
       refresh();
-      setTimeout(() => refresh(), 5000);
-      setTimeout(() => refresh(), 20000);
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to upload tax invoices", "error");
     } finally {
@@ -487,7 +478,7 @@ export default function CustomerTaxInvoicesPage() {
                   `Re-extraction triggered for ${result.triggered} invoices. This may take a few minutes.`,
                   "success",
                 );
-                setTimeout(() => refresh(), 30000);
+                refresh();
               } catch (err) {
                 showToast(err instanceof Error ? err.message : "Re-extraction failed", "error");
               } finally {

@@ -1,69 +1,132 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { TableLoadingState } from "@/app/components/shared/TableComponents";
-import type { RubberTaxInvoiceDto } from "@/app/lib/api/auRubberApi";
-import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
-import type { RubberCompanyDto } from "@/app/lib/api/rubberPortalApi";
+import { useAuRubberTaxInvoiceStatements, useAuRubberTaxInvoices } from "@/app/lib/query/hooks";
 import { Breadcrumb } from "../../../../components/Breadcrumb";
 
-interface CompanyStatement {
-  company: RubberCompanyDto;
-  invoices: RubberTaxInvoiceDto[];
-  total: number;
+const formatCurrency = (amount: number) =>
+  `R ${amount.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+function CompanyInvoicesTable({
+  companyId,
+  vatTotal,
+  total,
+}: {
+  companyId: number;
   vatTotal: number;
+  total: number;
+}) {
+  const query = useAuRubberTaxInvoices({
+    invoiceType: "CUSTOMER",
+    companyId,
+    sortColumn: "invoiceDate",
+    sortDirection: "desc",
+    pageSize: 1000,
+  });
+  const data = query.data;
+  const invoices = data ? data.items : [];
+  const isLoading = query.isLoading;
+
+  if (isLoading) {
+    return (
+      <TableLoadingState
+        message="Loading invoices..."
+        spinnerClassName="border-b-2 border-yellow-600"
+      />
+    );
+  }
+
+  return (
+    <table className="min-w-full divide-y divide-gray-200">
+      <thead className="bg-gray-50">
+        <tr>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Invoice #
+          </th>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Date
+          </th>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Status
+          </th>
+          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+            VAT
+          </th>
+          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Total
+          </th>
+        </tr>
+      </thead>
+      <tbody className="bg-white divide-y divide-gray-200">
+        {invoices.map((invoice) => {
+          const rawInvoiceDate = invoice.invoiceDate;
+          const rawVatAmount = invoice.vatAmount;
+          const rawTotalAmount = invoice.totalAmount;
+          return (
+            <tr key={invoice.id} className="hover:bg-gray-50">
+              <td className="px-6 py-3 whitespace-nowrap">
+                <Link
+                  href={`/au-rubber/portal/tax-invoices/${invoice.id}`}
+                  className="text-sm font-medium text-orange-600 hover:text-orange-900"
+                >
+                  {invoice.invoiceNumber}
+                </Link>
+              </td>
+              <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-500">
+                {rawInvoiceDate || "-"}
+              </td>
+              <td className="px-6 py-3 whitespace-nowrap">
+                <span
+                  className={`px-2 text-xs font-semibold rounded-full ${
+                    invoice.status === "APPROVED"
+                      ? "bg-green-100 text-green-800"
+                      : invoice.status === "EXTRACTED"
+                        ? "bg-blue-100 text-blue-800"
+                        : "bg-yellow-100 text-yellow-800"
+                  }`}
+                >
+                  {invoice.statusLabel}
+                </span>
+              </td>
+              <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-500 text-right">
+                {rawVatAmount !== null ? formatCurrency(Number(rawVatAmount)) : "-"}
+              </td>
+              <td className="px-6 py-3 whitespace-nowrap text-sm font-medium text-gray-900 text-right">
+                {rawTotalAmount !== null ? formatCurrency(Number(rawTotalAmount)) : "-"}
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+      <tfoot className="bg-gray-50">
+        <tr>
+          <td colSpan={3} className="px-6 py-3 text-sm font-semibold text-gray-900">
+            Total
+          </td>
+          <td className="px-6 py-3 text-sm font-semibold text-gray-900 text-right">
+            {formatCurrency(vatTotal)}
+          </td>
+          <td className="px-6 py-3 text-sm font-bold text-gray-900 text-right">
+            {formatCurrency(total)}
+          </td>
+        </tr>
+      </tfoot>
+    </table>
+  );
 }
 
 export default function CustomerStatementsPage() {
-  const [statements, setStatements] = useState<CompanyStatement[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+  const statementsQuery = useAuRubberTaxInvoiceStatements("CUSTOMER");
+  const rawStatementsData = statementsQuery.data;
+  const statements = rawStatementsData || [];
+  const isLoading = statementsQuery.isLoading;
+  const error = statementsQuery.error;
   const [expandedCompanyId, setExpandedCompanyId] = useState<number | null>(null);
-
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        setIsLoading(true);
-        const [companies, invoiceResult] = await Promise.all([
-          auRubberApiClient.companies(),
-          auRubberApiClient.taxInvoices({ invoiceType: "CUSTOMER", pageSize: 10000 }),
-        ]);
-        const allInvoices = invoiceResult.items;
-
-        const customers = companies.filter((c) => c.companyType === "CUSTOMER");
-        const companyStatements = customers
-          .map((company) => {
-            const companyInvoices = allInvoices.filter((inv) => inv.companyId === company.id);
-            const total = companyInvoices.reduce(
-              (sum, inv) => sum + (inv.totalAmount ? Number(inv.totalAmount) : 0),
-              0,
-            );
-            const vatTotal = companyInvoices.reduce(
-              (sum, inv) => sum + (inv.vatAmount ? Number(inv.vatAmount) : 0),
-              0,
-            );
-            return { company, invoices: companyInvoices, total, vatTotal };
-          })
-          .filter((s) => s.invoices.length > 0)
-          .sort((a, b) => b.total - a.total);
-
-        setStatements(companyStatements);
-        setError(null);
-      } catch (err) {
-        setError(err instanceof Error ? err : new Error("Failed to load statements"));
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    loadData();
-  }, []);
 
   const grandTotal = statements.reduce((sum, s) => sum + s.total, 0);
   const grandVatTotal = statements.reduce((sum, s) => sum + s.vatTotal, 0);
-
-  const formatCurrency = (amount: number) =>
-    `R ${amount.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   if (error) {
     return (
@@ -97,7 +160,7 @@ export default function CustomerStatementsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center">
-            <span className="w-3 h-3 bg-blue-500 rounded-full mr-3" />
+            <span className="w-3 h-3 bg-orange-500 rounded-full mr-3" />
             Customer Statements
           </h1>
           <p className="mt-1 text-sm text-gray-600">
@@ -120,17 +183,17 @@ export default function CustomerStatementsPage() {
       ) : (
         <>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-white shadow rounded-lg p-5 border-l-4 border-blue-500">
+            <div className="bg-white shadow rounded-lg p-5 border-l-4 border-orange-500">
               <p className="text-sm font-medium text-gray-500">Total Customers</p>
               <p className="text-2xl font-bold text-gray-900 mt-1">{statements.length}</p>
             </div>
-            <div className="bg-white shadow rounded-lg p-5 border-l-4 border-blue-500">
+            <div className="bg-white shadow rounded-lg p-5 border-l-4 border-orange-500">
               <p className="text-sm font-medium text-gray-500">Total Excl. VAT</p>
               <p className="text-2xl font-bold text-gray-900 mt-1">
                 {formatCurrency(grandTotal - grandVatTotal)}
               </p>
             </div>
-            <div className="bg-white shadow rounded-lg p-5 border-l-4 border-blue-500">
+            <div className="bg-white shadow rounded-lg p-5 border-l-4 border-orange-500">
               <p className="text-sm font-medium text-gray-500">Total Incl. VAT</p>
               <p className="text-2xl font-bold text-gray-900 mt-1">{formatCurrency(grandTotal)}</p>
             </div>
@@ -138,18 +201,19 @@ export default function CustomerStatementsPage() {
 
           <div className="space-y-4">
             {statements.map((statement) => {
-              const rawEmailConfigOutgoingStatementEmail =
-                statement.company.emailConfig?.outgoingStatementEmail;
-              const isExpanded = expandedCompanyId === statement.company.id;
-              const statementEmail = rawEmailConfigOutgoingStatementEmail || null;
+              const emailConfig = statement.emailConfig;
+              const rawStatementEmail = emailConfig ? emailConfig.statementEmail : null;
+              const statementEmail = rawStatementEmail || null;
+              const isExpanded = expandedCompanyId === statement.companyId;
 
               return (
                 <div
-                  key={statement.company.id}
+                  key={statement.companyId}
                   className="bg-white shadow rounded-lg overflow-hidden"
                 >
                   <button
-                    onClick={() => setExpandedCompanyId(isExpanded ? null : statement.company.id)}
+                    type="button"
+                    onClick={() => setExpandedCompanyId(isExpanded ? null : statement.companyId)}
                     className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
                   >
                     <div className="flex items-center space-x-4">
@@ -168,11 +232,11 @@ export default function CustomerStatementsPage() {
                       </svg>
                       <div className="text-left">
                         <span className="text-sm font-semibold text-gray-900">
-                          {statement.company.name}
+                          {statement.companyName}
                         </span>
-                        {statement.company.code && (
+                        {statement.companyCode && (
                           <span className="ml-2 text-xs text-gray-500">
-                            ({statement.company.code})
+                            ({statement.companyCode})
                           </span>
                         )}
                         {statementEmail && (
@@ -183,7 +247,7 @@ export default function CustomerStatementsPage() {
                     <div className="flex items-center space-x-6">
                       <div className="text-right">
                         <span className="text-xs text-gray-500">
-                          {statement.invoices.length} invoices
+                          {statement.invoiceCount} invoices
                         </span>
                       </div>
                       <div className="text-right">
@@ -196,101 +260,11 @@ export default function CustomerStatementsPage() {
 
                   {isExpanded && (
                     <div className="border-t border-gray-200">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th
-                              scope="col"
-                              className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                            >
-                              Invoice #
-                            </th>
-                            <th
-                              scope="col"
-                              className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                            >
-                              Date
-                            </th>
-                            <th
-                              scope="col"
-                              className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                            >
-                              Status
-                            </th>
-                            <th
-                              scope="col"
-                              className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
-                            >
-                              VAT
-                            </th>
-                            <th
-                              scope="col"
-                              className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
-                            >
-                              Total
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {statement.invoices.map((invoice) => {
-                            const rawInvoiceInvoiceDate = invoice.invoiceDate;
-                            return (
-                              <tr key={invoice.id} className="hover:bg-gray-50">
-                                <td className="px-6 py-3 whitespace-nowrap">
-                                  <Link
-                                    href={`/au-rubber/portal/tax-invoices/${invoice.id}`}
-                                    className="text-sm font-medium text-blue-600 hover:text-blue-900"
-                                  >
-                                    {invoice.invoiceNumber}
-                                  </Link>
-                                </td>
-                                <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-500">
-                                  {rawInvoiceInvoiceDate || "-"}
-                                </td>
-                                <td className="px-6 py-3 whitespace-nowrap">
-                                  <span
-                                    className={`px-2 text-xs font-semibold rounded-full ${
-                                      invoice.status === "APPROVED"
-                                        ? "bg-green-100 text-green-800"
-                                        : invoice.status === "EXTRACTED"
-                                          ? "bg-blue-100 text-blue-800"
-                                          : "bg-yellow-100 text-yellow-800"
-                                    }`}
-                                  >
-                                    {invoice.statusLabel}
-                                  </span>
-                                </td>
-                                <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-500 text-right">
-                                  {invoice.vatAmount !== null
-                                    ? formatCurrency(Number(invoice.vatAmount))
-                                    : "-"}
-                                </td>
-                                <td className="px-6 py-3 whitespace-nowrap text-sm font-medium text-gray-900 text-right">
-                                  {invoice.totalAmount !== null
-                                    ? formatCurrency(Number(invoice.totalAmount))
-                                    : "-"}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                        <tfoot className="bg-gray-50">
-                          <tr>
-                            <td
-                              colSpan={3}
-                              className="px-6 py-3 text-sm font-semibold text-gray-900"
-                            >
-                              Total
-                            </td>
-                            <td className="px-6 py-3 text-sm font-semibold text-gray-900 text-right">
-                              {formatCurrency(statement.vatTotal)}
-                            </td>
-                            <td className="px-6 py-3 text-sm font-bold text-gray-900 text-right">
-                              {formatCurrency(statement.total)}
-                            </td>
-                          </tr>
-                        </tfoot>
-                      </table>
+                      <CompanyInvoicesTable
+                        companyId={statement.companyId}
+                        vatTotal={statement.vatTotal}
+                        total={statement.total}
+                      />
                     </div>
                   )}
                 </div>

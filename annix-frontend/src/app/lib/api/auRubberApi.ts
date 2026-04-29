@@ -272,6 +272,16 @@ export interface RubberTaxInvoiceDto {
   creditNoteRollNumbers: string[];
 }
 
+export interface RubberTaxInvoiceStatementDto {
+  companyId: number;
+  companyName: string;
+  companyCode: string | null;
+  emailConfig: Record<string, string> | null;
+  invoiceCount: number;
+  total: number;
+  vatTotal: number;
+}
+
 export interface MetricStats {
   mean: number;
   stdDev: number;
@@ -3106,6 +3116,14 @@ class AuRubberApiClient {
     return this.request(`/rubber-lining/portal/tax-invoices/${id}`);
   }
 
+  async taxInvoiceStatements(filters: {
+    invoiceType: TaxInvoiceType;
+  }): Promise<RubberTaxInvoiceStatementDto[]> {
+    const params = new URLSearchParams();
+    params.set("invoiceType", filters.invoiceType);
+    return this.request(`/rubber-lining/portal/tax-invoices/statements?${params.toString()}`);
+  }
+
   async extractTaxInvoice(id: number): Promise<RubberTaxInvoiceDto> {
     return this.request(`/rubber-lining/portal/tax-invoices/${id}/extract`, {
       method: "POST",
@@ -3200,6 +3218,9 @@ class AuRubberApiClient {
       compoundCostR: number | null;
       totalCostR: number | null;
       status: string;
+      statusLabel: string;
+      soldToCompanyId: number | null;
+      soldToCompanyName: string | null;
     }>
   > {
     if (rollNumbers.length === 0) return [];
@@ -3460,6 +3481,20 @@ class AuRubberApiClient {
     return this.request("/rubber-lining/portal/tax-invoices/post-to-sage/bulk", {
       method: "POST",
       body: JSON.stringify({ invoiceIds }),
+    });
+  }
+
+  async postInvoicesToSageBulkByFilter(filter: {
+    invoiceType: TaxInvoiceType;
+    search?: string;
+    includeAllVersions?: boolean;
+  }): Promise<{
+    successful: Array<{ sageInvoiceId: number; invoiceId: number; invoiceNumber: string }>;
+    failed: Array<{ invoiceId: number; invoiceNumber: string; error: string }>;
+  }> {
+    return this.request("/rubber-lining/portal/tax-invoices/post-to-sage/bulk-by-filter", {
+      method: "POST",
+      body: JSON.stringify(filter),
     });
   }
 

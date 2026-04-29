@@ -239,6 +239,79 @@ export class RubberTaxInvoiceService {
     };
   }
 
+  async companyStatements(filters: { invoiceType: TaxInvoiceType }): Promise<
+    {
+      companyId: number;
+      companyName: string;
+      companyCode: string | null;
+      emailConfig: Record<string, string> | null;
+      invoiceCount: number;
+      total: number;
+      vatTotal: number;
+    }[]
+  > {
+    const rows = await this.taxInvoiceRepository
+      .createQueryBuilder("ti")
+      .leftJoin("ti.company", "company")
+      .select("ti.company_id", "companyId")
+      .addSelect("company.name", "companyName")
+      .addSelect("company.code", "companyCode")
+      .addSelect("company.email_config", "emailConfig")
+      .addSelect("COUNT(*)", "invoiceCount")
+      .addSelect("COALESCE(SUM(ti.total_amount), 0)", "total")
+      .addSelect("COALESCE(SUM(ti.vat_amount), 0)", "vatTotal")
+      .where("ti.invoice_type = :type", { type: filters.invoiceType })
+      .andWhere("ti.version_status = :versionStatus", {
+        versionStatus: DocumentVersionStatus.ACTIVE,
+      })
+      .andWhere("ti.is_credit_note = false")
+      .groupBy("ti.company_id")
+      .addGroupBy("company.name")
+      .addGroupBy("company.code")
+      .addGroupBy("company.email_config")
+      .orderBy('"total"', "DESC")
+      .getRawMany();
+
+    return rows.map((r) => ({
+      companyId: Number(r.companyId),
+      companyName: r.companyName,
+      companyCode: r.companyCode,
+      emailConfig: r.emailConfig,
+      invoiceCount: Number(r.invoiceCount),
+      total: Number(r.total),
+      vatTotal: Number(r.vatTotal),
+    }));
+  }
+
+  async eligibleSageInvoiceIds(filters: {
+    invoiceType: TaxInvoiceType;
+    search?: string;
+    includeAllVersions?: boolean;
+  }): Promise<number[]> {
+    const query = this.taxInvoiceRepository
+      .createQueryBuilder("ti")
+      .leftJoin("ti.company", "company")
+      .select("ti.id", "id")
+      .where("ti.invoice_type = :type", { type: filters.invoiceType })
+      .andWhere("ti.status = 'APPROVED'")
+      .andWhere("ti.sage_invoice_id IS NULL")
+      .andWhere("ti.is_credit_note = false");
+
+    if (!filters.includeAllVersions) {
+      query.andWhere("ti.version_status = :versionStatus", {
+        versionStatus: DocumentVersionStatus.ACTIVE,
+      });
+    }
+    if (filters.search) {
+      query.andWhere("(ti.invoice_number ILIKE :search OR company.name ILIKE :search)", {
+        search: `%${filters.search}%`,
+      });
+    }
+
+    const rows = await query.getRawMany();
+    return rows.map((r) => Number(r.id));
+  }
+
   async taxInvoiceById(id: number): Promise<RubberTaxInvoiceDto | null> {
     const invoice = await this.taxInvoiceRepository.findOne({
       where: { id },

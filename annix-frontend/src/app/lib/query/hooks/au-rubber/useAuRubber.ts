@@ -20,6 +20,7 @@ import {
   type RubberSpecificationDto,
   type RubberSupplierCocDto,
   type RubberTaxInvoiceDto,
+  type RubberTaxInvoiceStatementDto,
   type ScrapedBrandingCandidates,
   type SupplierCocType,
   type TaxInvoiceStatus,
@@ -83,10 +84,22 @@ export function useAuRubberDeliveryNotes(filters?: {
   sortDirection?: "asc" | "desc";
   page?: number;
   pageSize?: number;
+  pollWhilePending?: boolean;
 }) {
+  const pollWhilePending = filters?.pollWhilePending;
   return useQuery<PaginatedResult<RubberDeliveryNoteDto>>({
     queryKey: rubberKeys.deliveryNotes.list(filters),
     queryFn: () => auRubberApiClient.deliveryNotes(filters),
+    // eslint-disable-next-line no-restricted-syntax -- short polling justified: only fires while PENDING items exist (post-upload extraction window), auto-stops when all are EXTRACTED. Replaces manual setTimeout(refresh, 5000/20000/30000) cascade.
+    refetchInterval: pollWhilePending
+      ? (query) => {
+          const data = query.state.data;
+          if (!data) return false;
+          const items = data.items;
+          const hasPending = items.some((inv) => inv.status === "PENDING");
+          return hasPending ? 3000 : false;
+        }
+      : false,
   });
 }
 
@@ -94,6 +107,14 @@ export function useAuRubberAuCocs(filters?: { status?: AuCocStatus; customerId?:
   return useQuery<RubberAuCocDto[]>({
     queryKey: rubberKeys.auCocs.list(filters),
     queryFn: () => auRubberApiClient.auCocs(filters),
+  });
+}
+
+export function useAuRubberTaxInvoiceStatements(invoiceType: TaxInvoiceType) {
+  return useQuery<RubberTaxInvoiceStatementDto[]>({
+    queryKey: rubberKeys.taxInvoices.statements(invoiceType),
+    queryFn: () => auRubberApiClient.taxInvoiceStatements({ invoiceType }),
+    ...cacheConfig.list,
   });
 }
 
@@ -108,10 +129,22 @@ export function useAuRubberTaxInvoices(filters?: {
   sortDirection?: "asc" | "desc";
   page?: number;
   pageSize?: number;
+  pollWhilePending?: boolean;
 }) {
+  const pollWhilePending = filters?.pollWhilePending;
   return useQuery<PaginatedResult<RubberTaxInvoiceDto>>({
     queryKey: rubberKeys.taxInvoices.list(filters),
     queryFn: () => auRubberApiClient.taxInvoices(filters),
+    // eslint-disable-next-line no-restricted-syntax -- short polling justified: only fires while PENDING items exist (post-upload extraction window), auto-stops when all are EXTRACTED. Replaces manual setTimeout(refresh, 5000/20000/30000) cascade.
+    refetchInterval: pollWhilePending
+      ? (query) => {
+          const data = query.state.data;
+          if (!data) return false;
+          const items = data.items;
+          const hasPending = items.some((inv) => inv.status === "PENDING");
+          return hasPending ? 3000 : false;
+        }
+      : false,
   });
 }
 

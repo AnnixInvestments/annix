@@ -1048,6 +1048,7 @@ Formula: totalPrice = totalKg × salePricePerKg
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
   @Get("portal/documents/url")
+  @Header("Cache-Control", "private, max-age=3000")
   @ApiOperation({ summary: "Get presigned URL for a document" })
   @ApiQuery({ name: "path", description: "Document path in storage" })
   @ApiResponse({ status: 200, description: "Presigned URL for the document" })
@@ -3320,6 +3321,22 @@ Formula: totalPrice = totalKg × salePricePerKg
   @ApiOperation({ summary: "Post multiple invoices to Sage" })
   async postInvoicesToSageBulk(@Body() body: { invoiceIds: number[] }): Promise<BulkPostResult> {
     return this.rubberSageInvoicePostService.postBulk(body.invoiceIds, "au-rubber");
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Post("portal/tax-invoices/post-to-sage/bulk-by-filter")
+  @ApiOperation({
+    summary: "Post all matching invoices to Sage",
+    description:
+      "Resolves eligible (APPROVED + not yet posted to Sage) invoices that match the filter, then posts them. Replaces the inline pageSize:10000 fetch on the bulk-post button.",
+  })
+  async postInvoicesToSageBulkByFilter(
+    @Body()
+    body: { invoiceType: TaxInvoiceType; search?: string; includeAllVersions?: boolean },
+  ): Promise<BulkPostResult> {
+    const ids = await this.rubberTaxInvoiceService.eligibleSageInvoiceIds(body);
+    return this.rubberSageInvoicePostService.postBulk(ids, "au-rubber");
   }
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
