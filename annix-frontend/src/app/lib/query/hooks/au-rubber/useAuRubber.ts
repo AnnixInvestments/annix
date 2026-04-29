@@ -40,6 +40,7 @@ export function useAuRubberOrders(status?: number) {
   return useQuery<RubberOrderDto[]>({
     queryKey: rubberKeys.orders.list(status),
     queryFn: () => auRubberApiClient.orders(status),
+    ...cacheConfig.list,
   });
 }
 
@@ -133,6 +134,7 @@ export function useAuRubberPendingAuCocs() {
   return useQuery<RubberAuCocDto[]>({
     queryKey: rubberKeys.pendingAuCocs.list(),
     queryFn: () => auRubberApiClient.pendingAuCocs(),
+    ...cacheConfig.list,
   });
 }
 

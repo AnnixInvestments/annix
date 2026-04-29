@@ -2,6 +2,10 @@
 
 import { createContext, ReactNode, useCallback, useContext, useEffect, useState } from "react";
 import { AuRubberUser, AuRubberUserProfile, auRubberApiClient } from "@/app/lib/api/auRubberApi";
+import { nowMillis } from "@/app/lib/datetime";
+
+const AUTH_CACHE_KEY = "auRubberAuthCache";
+const AUTH_CACHE_FRESH_MS = 60 * 1000;
 
 interface AuRubberAuthState {
   isAuthenticated: boolean;
@@ -11,6 +15,39 @@ interface AuRubberAuthState {
   permissions: string[];
   roleCode: string | null;
   isAdmin: boolean;
+}
+
+interface CachedAuthSnapshot {
+  cachedAt: number;
+  user: AuRubberUser | null;
+  profile: AuRubberUserProfile | null;
+  permissions: string[];
+  roleCode: string | null;
+  isAdmin: boolean;
+}
+
+function loadCachedAuth(): CachedAuthSnapshot | null {
+  // eslint-disable-next-line no-restricted-syntax -- SSR guard
+  if (typeof window === "undefined") return null;
+  const raw = localStorage.getItem(AUTH_CACHE_KEY);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as CachedAuthSnapshot;
+    const cachedAt = parsed.cachedAt;
+    if (!cachedAt || nowMillis() - cachedAt > AUTH_CACHE_FRESH_MS) {
+      return null;
+    }
+    return parsed;
+  } catch {
+    localStorage.removeItem(AUTH_CACHE_KEY);
+    return null;
+  }
+}
+
+function clearCachedAuth() {
+  // eslint-disable-next-line no-restricted-syntax -- SSR guard
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(AUTH_CACHE_KEY);
 }
 
 interface AuRubberAuthContextType extends AuRubberAuthState {
@@ -24,18 +61,33 @@ const AuRubberAuthContext = createContext<AuRubberAuthContextType | undefined>(u
 
 export function AuRubberAuthProvider(props: { children: ReactNode }) {
   const { children } = props;
-  const [state, setState] = useState<AuRubberAuthState>({
-    isAuthenticated: false,
-    isLoading: true,
-    user: null,
-    profile: null,
-    permissions: [],
-    roleCode: null,
-    isAdmin: false,
+  const [state, setState] = useState<AuRubberAuthState>(() => {
+    const cached = loadCachedAuth();
+    if (cached) {
+      return {
+        isAuthenticated: true,
+        isLoading: false,
+        user: cached.user,
+        profile: cached.profile,
+        permissions: cached.permissions,
+        roleCode: cached.roleCode,
+        isAdmin: cached.isAdmin,
+      };
+    }
+    return {
+      isAuthenticated: false,
+      isLoading: true,
+      user: null,
+      profile: null,
+      permissions: [],
+      roleCode: null,
+      isAdmin: false,
+    };
   });
 
   const checkAuth = useCallback(async () => {
     if (!auRubberApiClient.isAuthenticated()) {
+      clearCachedAuth();
       setState({
         isAuthenticated: false,
         isLoading: false,
@@ -53,16 +105,29 @@ export function AuRubberAuthProvider(props: { children: ReactNode }) {
         auRubberApiClient.currentUser(),
         auRubberApiClient.myAccess(),
       ]);
+      const nextUser = {
+        id: profile.id,
+        email: profile.email,
+        firstName: profile.firstName,
+        lastName: profile.lastName,
+        roles: profile.roles,
+      };
+      // eslint-disable-next-line no-restricted-syntax -- SSR guard
+      if (typeof window !== "undefined") {
+        const snapshot: CachedAuthSnapshot = {
+          cachedAt: nowMillis(),
+          user: nextUser,
+          profile,
+          permissions: accessInfo.permissions,
+          roleCode: accessInfo.roleCode,
+          isAdmin: accessInfo.isAdmin,
+        };
+        localStorage.setItem(AUTH_CACHE_KEY, JSON.stringify(snapshot));
+      }
       setState({
         isAuthenticated: true,
         isLoading: false,
-        user: {
-          id: profile.id,
-          email: profile.email,
-          firstName: profile.firstName,
-          lastName: profile.lastName,
-          roles: profile.roles,
-        },
+        user: nextUser,
         profile,
         permissions: accessInfo.permissions,
         roleCode: accessInfo.roleCode,
@@ -70,6 +135,7 @@ export function AuRubberAuthProvider(props: { children: ReactNode }) {
       });
     } catch {
       auRubberApiClient.clearTokens();
+      clearCachedAuth();
       setState({
         isAuthenticated: false,
         isLoading: false,
@@ -119,6 +185,7 @@ export function AuRubberAuthProvider(props: { children: ReactNode }) {
     try {
       await auRubberApiClient.logout();
     } finally {
+      clearCachedAuth();
       setState({
         isAuthenticated: false,
         isLoading: false,

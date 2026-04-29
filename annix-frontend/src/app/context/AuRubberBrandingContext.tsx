@@ -15,6 +15,7 @@ import { corpId } from "@/app/lib/corpId";
 import { nowMillis } from "@/app/lib/datetime";
 
 const STORAGE_KEY = "auRubberBranding";
+const BRANDING_FRESH_MS = 10 * 60 * 1000;
 
 export interface AuRubberBranding {
   primaryColor: string;
@@ -98,6 +99,8 @@ export function AuRubberBrandingProvider(props: { children: ReactNode }) {
 
   useEffect(() => {
     if (!isLoaded || !auRubberTokenStore.isAuthenticated()) return;
+    const cachedAt = branding.updatedAt;
+    if (cachedAt && nowMillis() - cachedAt < BRANDING_FRESH_MS) return;
     const controller = new AbortController();
     auRubberApiClient
       .appProfile()
@@ -116,6 +119,7 @@ export function AuRubberBrandingProvider(props: { children: ReactNode }) {
         // Server fetch failed — keep localStorage cache
       });
     return () => controller.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally only re-run when isLoaded flips; freshness check uses current branding.updatedAt at fire time
   }, [isLoaded]);
 
   useEffect(() => {
