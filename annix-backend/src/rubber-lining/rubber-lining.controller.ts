@@ -2653,6 +2653,19 @@ Formula: totalPrice = totalKg × salePricePerKg
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
+  @Get("portal/tax-invoices/statements")
+  @ApiOperation({
+    summary: "Aggregated tax invoice statements grouped by company",
+    description:
+      "Returns one row per company with invoice count + total + VAT totals. Used by the Companies > Statements page so the frontend doesn't have to fetch every invoice and aggregate client-side.",
+  })
+  @ApiQuery({ name: "invoiceType", required: true, enum: TaxInvoiceType })
+  async taxInvoiceStatements(@Query("invoiceType") invoiceType: TaxInvoiceType) {
+    return this.rubberTaxInvoiceService.companyStatements({ invoiceType });
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
   @Get("portal/tax-invoices/export/sage-preview")
   @ApiOperation({ summary: "Preview Sage CSV export" })
   @ApiQuery({ name: "dateFrom", required: false })
@@ -2837,29 +2850,61 @@ Formula: totalPrice = totalKg × salePricePerKg
     const logger = this.logger;
     const storageService = this.storageService;
     const orchestrator = this.extractionOrchestratorService;
+    const taxInvoiceService = this.rubberTaxInvoiceService;
+    const cocExtractionService = this.rubberCocExtractionService;
+
+    const byDocPath = withDocuments.reduce((map, inv) => {
+      const list = map.get(inv.documentPath!) ?? [];
+      return new Map(map).set(inv.documentPath!, [...list, inv]);
+    }, new Map<string, typeof withDocuments>());
 
     (async () => {
-      for (const inv of withDocuments) {
-        try {
-          const docBuffer = await storageService.download(inv.documentPath!);
-          orchestrator.triggerTaxInvoiceExtraction(
-            inv.id,
-            docBuffer,
-            inv.documentPath!,
-            inv.companyName,
-          );
-          logger.log(
-            `Triggered re-extraction for ${invoiceType} tax invoice ${inv.id} (${inv.invoiceNumber})`,
-          );
-          await new Promise((resolve) => setTimeout(resolve, 3000));
-        } catch (err) {
-          logger.error(
-            `Failed to trigger re-extraction for invoice ${inv.id}: ${err instanceof Error ? err.message : String(err)}`,
-          );
+      const groups = Array.from(byDocPath.entries());
+      const concurrency = 3;
+      let cursor = 0;
+      const worker = async (): Promise<void> => {
+        while (true) {
+          const idx = cursor;
+          cursor += 1;
+          if (idx >= groups.length) return;
+          const [path, invoicesAtPath] = groups[idx];
+          try {
+            if (invoicesAtPath.length === 1) {
+              const inv = invoicesAtPath[0];
+              const docBuffer = await storageService.download(path);
+              orchestrator.triggerTaxInvoiceExtraction(inv.id, docBuffer, path, inv.companyName);
+              logger.log(
+                `Triggered re-extraction for ${invoiceType} tax invoice ${inv.id} (${inv.invoiceNumber}) — single-PDF`,
+              );
+              return;
+            }
+            const docBuffer = await storageService.download(path);
+            const correctionHints = invoicesAtPath[0].companyName
+              ? await taxInvoiceService.correctionHintsForSupplier(invoicesAtPath[0].companyName)
+              : null;
+            const extractionResult = await cocExtractionService.extractTaxInvoiceFromImages(
+              docBuffer,
+              correctionHints,
+              invoiceType,
+            );
+            const invoices = extractionResult.invoices ?? [extractionResult.data];
+            await invoicesAtPath.reduce<Promise<void>>(async (chain, inv) => {
+              await chain;
+              await taxInvoiceService.splitTaxInvoiceExtraction(inv.id, invoices);
+            }, Promise.resolve());
+            logger.log(
+              `Batched re-extract: ${invoicesAtPath.length} ${invoiceType} invoices sharing ${path} processed via 1 Gemini call (${extractionResult.processingTimeMs}ms)`,
+            );
+          } catch (err) {
+            logger.error(
+              `Failed batched re-extract for ${path}: ${err instanceof Error ? err.message : String(err)}`,
+            );
+          }
         }
-      }
+      };
+      await Promise.all(Array.from({ length: concurrency }, () => worker()));
       logger.log(
-        `Bulk re-extraction complete (${invoiceType}): ${withDocuments.length} invoices processed`,
+        `Bulk re-extraction complete (${invoiceType}): ${withDocuments.length} invoices across ${byDocPath.size} unique PDF(s)`,
       );
     })();
 
