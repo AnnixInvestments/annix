@@ -2890,12 +2890,13 @@ Formula: totalPrice = totalKg × salePricePerKg
               invoiceType,
             );
             const invoices = extractionResult.invoices ?? [extractionResult.data];
-            await invoicesAtPath.reduce<Promise<void>>(async (chain, inv) => {
-              await chain;
-              await taxInvoiceService.splitTaxInvoiceExtraction(inv.id, invoices);
-            }, Promise.resolve());
+            await Promise.all(
+              invoicesAtPath.map((inv) =>
+                taxInvoiceService.splitTaxInvoiceExtraction(inv.id, invoices, docBuffer),
+              ),
+            );
             logger.log(
-              `Batched re-extract: ${invoicesAtPath.length} ${invoiceType} invoices sharing ${path} processed via 1 Gemini call (${extractionResult.processingTimeMs}ms)`,
+              `Batched re-extract: ${invoicesAtPath.length} ${invoiceType} invoices sharing ${path} processed via 1 Gemini call (${extractionResult.processingTimeMs}ms) + parallel per-invoice slicing`,
             );
           } catch (err) {
             logger.error(

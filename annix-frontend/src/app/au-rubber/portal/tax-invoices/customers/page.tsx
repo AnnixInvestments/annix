@@ -474,10 +474,21 @@ export default function CustomerTaxInvoicesPage() {
                 itemCount: queueDepth,
               });
               try {
+                const baselineSnapshot = await auRubberApiClient.taxInvoices({
+                  invoiceType: "CUSTOMER",
+                  pageSize: 10000,
+                });
+                const baselineByIdString = baselineSnapshot.items.reduce<Record<string, string>>(
+                  (acc, inv) => {
+                    acc[String(inv.id)] = inv.updatedAt;
+                    return acc;
+                  },
+                  {},
+                );
                 const result = await auRubberApiClient.reExtractAllTaxInvoices("CUSTOMER");
                 await waitForReExtractionComplete({
                   ids: new Set(result.invoiceIds),
-                  startedAtIso: result.startedAt,
+                  baselineByIdString,
                   total: result.triggered,
                   fetcher: () =>
                     auRubberApiClient.taxInvoices({

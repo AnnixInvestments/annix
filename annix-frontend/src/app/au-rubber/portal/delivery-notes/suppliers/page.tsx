@@ -401,10 +401,21 @@ export default function SupplierDeliveryNotesPage() {
                 itemCount: queueDepth,
               });
               try {
+                const baselineSnapshot = await auRubberApiClient.deliveryNotes({
+                  companyType: "SUPPLIER",
+                  pageSize: 10000,
+                });
+                const baselineByIdString = baselineSnapshot.items.reduce<Record<string, string>>(
+                  (acc, n) => {
+                    acc[String(n.id)] = n.updatedAt;
+                    return acc;
+                  },
+                  {},
+                );
                 const result = await auRubberApiClient.reExtractAllDeliveryNotes("SUPPLIER");
                 await waitForReExtractionComplete({
                   ids: new Set(result.deliveryNoteIds),
-                  startedAtIso: result.startedAt,
+                  baselineByIdString,
                   total: result.triggered,
                   fetcher: () =>
                     auRubberApiClient.deliveryNotes({

@@ -1101,6 +1101,7 @@ export class RubberTaxInvoiceService {
   async splitTaxInvoiceExtraction(
     parentId: number,
     invoices: ExtractedTaxInvoiceData[],
+    sourceBuffer?: Buffer,
   ): Promise<{ taxInvoiceIds: number[] }> {
     const parent = await this.taxInvoiceRepository.findOne({
       where: { id: parentId },
@@ -1134,7 +1135,7 @@ export class RubberTaxInvoiceService {
       ? ordered.find((inv) => (inv.invoiceNumber ?? "").trim() === parentInvoiceNumber)
       : null;
     if (matchingForParent) {
-      const slicedPaths = await this.slicePdfPerInvoice(parent, [matchingForParent]);
+      const slicedPaths = await this.slicePdfPerInvoice(parent, [matchingForParent], sourceBuffer);
       if (slicedPaths[0]) {
         parent.documentPath = slicedPaths[0];
         await this.taxInvoiceRepository.save(parent);
@@ -1146,7 +1147,7 @@ export class RubberTaxInvoiceService {
       return { taxInvoiceIds: [parentId] };
     }
 
-    const perInvoicePaths = await this.slicePdfPerInvoice(parent, ordered);
+    const perInvoicePaths = await this.slicePdfPerInvoice(parent, ordered, sourceBuffer);
 
     if (perInvoicePaths[0]) {
       parent.documentPath = perInvoicePaths[0];
@@ -1187,6 +1188,7 @@ export class RubberTaxInvoiceService {
   private async slicePdfPerInvoice(
     parent: RubberTaxInvoice,
     invoices: ExtractedTaxInvoiceData[],
+    providedBuffer?: Buffer,
   ): Promise<(string | null)[]> {
     const sourcePath = parent.documentPath;
     if (!sourcePath?.toLowerCase().endsWith(".pdf")) {
@@ -1203,22 +1205,21 @@ export class RubberTaxInvoiceService {
     }
 
     try {
-      const sourceBuffer = await this.storageService.download(sourcePath);
+      const sourceBuffer = providedBuffer ?? (await this.storageService.download(sourcePath));
       const sourcePdf = await PDFDocument.load(sourceBuffer);
       const totalPages = sourcePdf.getPageCount();
       const subdir =
         sourcePath.substring(0, sourcePath.lastIndexOf("/")) || "au-rubber/tax-invoices";
 
-      return await invoices.reduce(
-        async (accPromise, inv, idx) => {
-          const acc = await accPromise;
+      return await Promise.all(
+        invoices.map(async (inv, idx) => {
           const requestedPages = (inv.sourcePages ?? [])
             .map((p) => Math.round(p))
             .filter((p) => p >= 1 && p <= totalPages)
             .map((p) => p - 1);
           const uniquePages = Array.from(new Set(requestedPages)).sort((a, b) => a - b);
           if (uniquePages.length === 0) {
-            return [...acc, null];
+            return null;
           }
           const sliced = await PDFDocument.create();
           const copied = await sliced.copyPages(sourcePdf, uniquePages);
@@ -1240,9 +1241,8 @@ export class RubberTaxInvoiceService {
           this.logger.log(
             `Sliced ${uniquePages.length} page(s) for tax invoice ${inv.invoiceNumber ?? `(idx ${idx})`} → ${upload.path}`,
           );
-          return [...acc, upload.path];
-        },
-        Promise.resolve([] as (string | null)[]),
+          return upload.path;
+        }),
       );
     } catch (err) {
       this.logger.error(

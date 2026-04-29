@@ -1,8 +1,8 @@
-import { fromISO, nowMillis } from "@/app/lib/datetime";
+import { nowMillis } from "@/app/lib/datetime";
 
 interface WaitOptions<T> {
   ids: Set<number>;
-  startedAtIso: string;
+  baselineByIdString: Record<string, string>;
   total: number;
   fetcher: () => Promise<T>;
   toItems: (response: T) => Array<{ id: number; updatedAtIso: string }>;
@@ -14,7 +14,7 @@ interface WaitOptions<T> {
 export async function waitForReExtractionComplete<T>(opts: WaitOptions<T>): Promise<void> {
   const {
     ids,
-    startedAtIso,
+    baselineByIdString,
     total,
     fetcher,
     toItems,
@@ -24,7 +24,6 @@ export async function waitForReExtractionComplete<T>(opts: WaitOptions<T>): Prom
   } = opts;
   if (total === 0) return;
 
-  const startedAtMs = fromISO(startedAtIso).toMillis();
   const deadlineMs = nowMillis() + timeoutMs;
   const completedIds = new Set<number>();
   const maxIterations = Math.ceil(timeoutMs / pollIntervalMs) + 1;
@@ -42,8 +41,9 @@ export async function waitForReExtractionComplete<T>(opts: WaitOptions<T>): Prom
         const items = toItems(response);
         items.forEach((item) => {
           if (!ids.has(item.id) || completedIds.has(item.id)) return;
-          const itemMs = fromISO(item.updatedAtIso).toMillis();
-          if (itemMs >= startedAtMs) {
+          const baseline = baselineByIdString[String(item.id)];
+          if (baseline === undefined) return;
+          if (item.updatedAtIso !== baseline) {
             completedIds.add(item.id);
           }
         });
