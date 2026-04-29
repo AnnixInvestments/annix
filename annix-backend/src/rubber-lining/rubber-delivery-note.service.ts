@@ -192,9 +192,10 @@ export class RubberDeliveryNoteService {
     query.orderBy(sortColumn, sortDirection, "NULLS LAST");
     query.addOrderBy("dn.id", "DESC");
 
-    query.skip(skip).take(pageSize);
+    const total = await query.clone().getCount();
 
-    const [notes, total] = await query.getManyAndCount();
+    query.offset(skip).limit(pageSize);
+    const notes = await query.getMany();
     const noteIds = notes.map((n) => n.id);
     const auCocMap = noteIds.length > 0 ? await this.auCocMapByDeliveryNoteIds(noteIds) : new Map();
     return {
