@@ -225,9 +225,11 @@ export class RubberTaxInvoiceService {
     query.orderBy(sortColumn, sortDirection, "NULLS LAST");
     query.addOrderBy("ti.id", "DESC");
 
-    query.skip(skip).take(pageSize);
+    const total = await query.clone().getCount();
 
-    const [invoices, total] = await query.getManyAndCount();
+    query.offset(skip).limit(pageSize);
+    const invoices = await query.getMany();
+
     return {
       items: invoices.map((inv) => this.mapToDto(inv)),
       total,
