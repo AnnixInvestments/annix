@@ -789,8 +789,13 @@ export interface RubberRollStockDto {
   location: string | null;
   notes: string | null;
   costZar: number | null;
+  tollCostR: number | null;
+  compoundCostR: number | null;
+  totalCostR: number | null;
   priceZar: number | null;
   productionDate: string | null;
+  customerTaxInvoiceId: number | null;
+  supplierTaxInvoiceId: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -3221,6 +3226,8 @@ class AuRubberApiClient {
       statusLabel: string;
       soldToCompanyId: number | null;
       soldToCompanyName: string | null;
+      customerTaxInvoiceId: number | null;
+      supplierTaxInvoiceId: number | null;
     }>
   > {
     if (rollNumbers.length === 0) return [];

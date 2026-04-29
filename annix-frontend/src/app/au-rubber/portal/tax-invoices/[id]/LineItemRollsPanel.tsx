@@ -90,10 +90,16 @@ export function LineItemRollsPanel(props: LineItemRollsPanelProps) {
             totalCostR: stock.totalCostR,
           };
         }
+        const linkedToThisInvoice = stock.customerTaxInvoiceId === invoiceId;
         if (stock.status === "IN_STOCK") {
           nextMatches[roll.rollNumber] = {
             status: "matched",
             message: "Matched in stock — auto-linked",
+          };
+        } else if (linkedToThisInvoice) {
+          nextMatches[roll.rollNumber] = {
+            status: "matched",
+            message: "Dispatched on this invoice",
           };
         } else if (stock.status === "SOLD" && isApproved) {
           nextMatches[roll.rollNumber] = {
@@ -113,7 +119,7 @@ export function LineItemRollsPanel(props: LineItemRollsPanelProps) {
       setCosts({});
       setStockMatches({});
     }
-  }, [rolls, isApproved]);
+  }, [rolls, isApproved, invoiceId]);
 
   useEffect(() => {
     fetchCosts();

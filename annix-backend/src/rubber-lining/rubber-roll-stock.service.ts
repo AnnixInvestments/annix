@@ -588,6 +588,8 @@ export class RubberRollStockService {
           ? roll.productionDate.toISOString()
           : String(roll.productionDate)
         : null,
+      customerTaxInvoiceId: roll.customerTaxInvoiceId,
+      supplierTaxInvoiceId: roll.supplierTaxInvoiceId,
       createdAt: roll.createdAt.toISOString(),
       updatedAt: roll.updatedAt.toISOString(),
     };
@@ -700,9 +702,10 @@ export class RubberRollStockService {
       unitPrice: number | null;
       rolls?: Array<{ rollNumber: string; weightKg: number | null }> | null;
     }>,
-  ): Promise<{ created: number; skipped: number }> {
+  ): Promise<{ created: number; skipped: number; reconciled: number }> {
     let created = 0;
     let skipped = 0;
+    let reconciled = 0;
     for (let idx = 0; idx < lineItems.length; idx += 1) {
       const line = lineItems[idx];
       const lineRolls = line.rolls;
@@ -710,15 +713,39 @@ export class RubberRollStockService {
       const dims = this.parseDimensionsFromDescription(line.description);
       const productCode = dims.productCode;
       const coding = productCode ? await this.findOrCreateProductCoding(productCode) : null;
+      const tollCost = line.unitPrice ?? null;
       for (const roll of lineRolls) {
         const existing = await this.rollStockRepository.findOne({
           where: { rollNumber: roll.rollNumber },
         });
         if (existing) {
+          const placeholderHasNoCosts =
+            existing.tollCostR == null && existing.compoundCostR == null;
+          const notYetLinkedToSti = existing.supplierTaxInvoiceId == null;
+          if (placeholderHasNoCosts && notYetLinkedToSti) {
+            // CTI created this row before the STI arrived — fill in supplier-side
+            // metadata + cost data, but keep the SOLD status and customer linkage.
+            existing.supplierTaxInvoiceId = invoiceId;
+            existing.supplierTaxInvoiceLineIdx = idx;
+            existing.tollCostR = tollCost;
+            existing.totalCostR = tollCost;
+            existing.costZar = tollCost;
+            if (coding && existing.compoundCodingId == null) {
+              existing.compoundCodingId = coding.id;
+            }
+            if (existing.weightKg == null || Number(existing.weightKg) === 0) {
+              existing.weightKg = roll.weightKg ?? 0;
+            }
+            if (existing.widthMm == null) existing.widthMm = dims.widthMm;
+            if (existing.thicknessMm == null) existing.thicknessMm = dims.thicknessMm;
+            if (existing.lengthM == null) existing.lengthM = dims.lengthM;
+            await this.rollStockRepository.save(existing);
+            reconciled += 1;
+            continue;
+          }
           skipped += 1;
           continue;
         }
-        const tollCost = line.unitPrice ?? null;
         const entity = this.rollStockRepository.create({
           firebaseUid: `pg_${generateUniqueId()}`,
           rollNumber: roll.rollNumber,
@@ -740,7 +767,131 @@ export class RubberRollStockService {
         created += 1;
       }
     }
-    return { created, skipped };
+    return { created, skipped, reconciled };
+  }
+
+  async upsertCustomerRollDispatch(
+    customerTaxInvoiceId: number,
+    soldToCompanyId: number,
+    lineItems: Array<{
+      description: string;
+      compoundCode?: string | null;
+      rolls?: Array<{ rollNumber: string; weightKg: number | null }> | null;
+    }>,
+  ): Promise<{ linked: number; created: number; unlinked: number; skippedNoCompound: number }> {
+    const rollInfo: Array<{
+      rollNumber: string;
+      weightKg: number | null;
+      compoundCode: string | null;
+    }> = [];
+    for (const li of lineItems) {
+      const rawCompound = li.compoundCode;
+      const explicitCompound = rawCompound ? rawCompound.trim() : null;
+      const dims = this.parseDimensionsFromDescription(li.description);
+      const fallbackCompound = dims.productCode;
+      const compoundCode = explicitCompound || fallbackCompound;
+      const rolls = li.rolls ?? [];
+      for (const roll of rolls) {
+        const rawRollNumber = roll.rollNumber;
+        const rollNumber = rawRollNumber ? rawRollNumber.trim() : "";
+        if (!rollNumber) continue;
+        rollInfo.push({
+          rollNumber,
+          weightKg: roll.weightKg,
+          compoundCode,
+        });
+      }
+    }
+
+    const currentNumbers = new Set(rollInfo.map((r) => r.rollNumber));
+
+    const existing =
+      currentNumbers.size > 0
+        ? await this.rollStockRepository.find({
+            where: { rollNumber: In([...currentNumbers]) },
+          })
+        : [];
+    const existingByNumber = new Map(existing.map((r) => [r.rollNumber, r]));
+
+    const compoundCodes = [
+      ...new Set(rollInfo.map((r) => r.compoundCode).filter((c): c is string => !!c)),
+    ];
+    const codings =
+      compoundCodes.length > 0
+        ? await this.productCodingRepository.find({
+            where: { code: In(compoundCodes), codingType: ProductCodingType.COMPOUND },
+          })
+        : [];
+    const codingByCode = new Map(codings.map((c) => [c.code, c]));
+
+    const toSave: RubberRollStock[] = [];
+    const soldAt = now().toJSDate();
+    let linked = 0;
+    let created = 0;
+    let skippedNoCompound = 0;
+
+    for (const info of rollInfo) {
+      const existingRoll = existingByNumber.get(info.rollNumber);
+      if (existingRoll) {
+        existingRoll.status = RollStockStatus.SOLD;
+        existingRoll.soldToCompanyId = soldToCompanyId;
+        existingRoll.customerTaxInvoiceId = customerTaxInvoiceId;
+        existingRoll.soldAt = soldAt;
+        const incomingWeight = info.weightKg;
+        const currentWeight = existingRoll.weightKg;
+        const currentWeightNumeric = currentWeight == null ? 0 : Number(currentWeight);
+        if (incomingWeight != null && currentWeightNumeric === 0) {
+          existingRoll.weightKg = incomingWeight;
+        }
+        toSave.push(existingRoll);
+        linked += 1;
+      } else {
+        const compoundCode = info.compoundCode;
+        if (!compoundCode) {
+          skippedNoCompound += 1;
+          continue;
+        }
+        const coding = codingByCode.get(compoundCode);
+        if (!coding) {
+          skippedNoCompound += 1;
+          continue;
+        }
+        const newRoll = this.rollStockRepository.create({
+          firebaseUid: `pg_${generateUniqueId()}`,
+          rollNumber: info.rollNumber,
+          compoundCodingId: coding.id,
+          weightKg: info.weightKg ?? 0,
+          status: RollStockStatus.SOLD,
+          soldToCompanyId,
+          customerTaxInvoiceId,
+          soldAt,
+          linkedBatchIds: [],
+        });
+        toSave.push(newRoll);
+        created += 1;
+      }
+    }
+
+    const previouslyLinked = await this.rollStockRepository.find({
+      where: { customerTaxInvoiceId },
+    });
+    let unlinked = 0;
+    for (const orphan of previouslyLinked) {
+      if (!currentNumbers.has(orphan.rollNumber)) {
+        orphan.customerTaxInvoiceId = null;
+        orphan.soldToCompanyId = null;
+        orphan.soldAt = null;
+        orphan.status = RollStockStatus.IN_STOCK;
+        toSave.push(orphan);
+        unlinked += 1;
+      }
+    }
+
+    if (toSave.length > 0) {
+      await this.rollStockRepository.save(toSave);
+    }
+
+    return { linked, created, unlinked, skippedNoCompound };
   }
 
   async markRollsSoldByNumbers(

@@ -691,6 +691,11 @@ export class RubberTaxInvoiceService {
     );
     invoice.extractedData = { ...data, lineItems: updated };
     await this.taxInvoiceRepository.save(invoice);
+
+    if (invoice.invoiceType === TaxInvoiceType.CUSTOMER && !invoice.isCreditNote) {
+      await this.dispatchCustomerRollsToStock(invoice);
+    }
+
     return this.mapToDto(invoice);
   }
 
@@ -708,7 +713,7 @@ export class RubberTaxInvoiceService {
       })),
     );
     this.logger.log(
-      `Supplier tax invoice ${invoice.invoiceNumber}: created ${result.created} per-roll stock records (${result.skipped} skipped — already existed)`,
+      `Supplier tax invoice ${invoice.invoiceNumber}: created ${result.created} per-roll stock records, reconciled ${result.reconciled} CTI placeholders, ${result.skipped} skipped (already linked to another STI)`,
     );
     const propagated = await this.rollStockService.propagateCompoundCostsForImpiloInvoice(
       invoice.id,
@@ -1095,7 +1100,30 @@ export class RubberTaxInvoiceService {
     }
 
     await this.taxInvoiceRepository.save(invoice);
+
+    if (invoice.invoiceType === TaxInvoiceType.CUSTOMER && !invoice.isCreditNote) {
+      await this.dispatchCustomerRollsToStock(invoice);
+    }
+
     return this.mapToDto(invoice);
+  }
+
+  private async dispatchCustomerRollsToStock(invoice: RubberTaxInvoice): Promise<void> {
+    const data = invoice.extractedData;
+    const lineItems = data ? data.lineItems : null;
+    if (!lineItems || lineItems.length === 0) return;
+    const result = await this.rollStockService.upsertCustomerRollDispatch(
+      invoice.id,
+      invoice.companyId,
+      lineItems.map((li) => ({
+        description: li.description,
+        compoundCode: li.compoundCode ?? null,
+        rolls: li.rolls ?? null,
+      })),
+    );
+    this.logger.log(
+      `CTI ${invoice.invoiceNumber}: linked ${result.linked} existing rolls, created ${result.created} placeholder rolls, unlinked ${result.unlinked} orphans${result.skippedNoCompound > 0 ? `, skipped ${result.skippedNoCompound} (no compound coding)` : ""}`,
+    );
   }
 
   async splitTaxInvoiceExtraction(

@@ -490,6 +490,8 @@ export class RubberRollStockDto {
   totalCostR: number | null;
   priceZar: number | null;
   productionDate: string | null;
+  customerTaxInvoiceId: number | null;
+  supplierTaxInvoiceId: number | null;
   createdAt: string;
   updatedAt: string;
 }
