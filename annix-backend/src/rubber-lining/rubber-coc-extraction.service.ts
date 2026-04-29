@@ -666,7 +666,7 @@ export class RubberCocExtractionService {
     const data = invoices[0];
 
     const totalRolls = (data.lineItems ?? []).reduce((sum, li) => sum + (li.rolls?.length ?? 0), 0);
-    if (totalRolls > 0) {
+    if (totalRolls > 0 && invoiceType !== TaxInvoiceType.CUSTOMER) {
       await this.verifyAndCorrectRollPairings(data, images);
     }
 

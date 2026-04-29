@@ -1858,11 +1858,35 @@ Formula: totalPrice = totalKg × salePricePerKg
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
+  @Get("portal/roll-stock/by-numbers")
+  @ApiOperation({ summary: "Lookup rolls by their roll numbers (cost-breakdown display)" })
+  async rollsByNumbers(@Query("rollNumbers") rollNumbers: string) {
+    if (!rollNumbers) return [];
+    const numbers = rollNumbers
+      .split(",")
+      .map((n) => n.trim())
+      .filter((n) => n.length > 0);
+    return this.rubberRollStockService.rollsByNumbers(numbers);
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/roll-stock/available")
+  @ApiOperation({ summary: "List in-stock rolls for a given product code (CTI roll picker)" })
+  async availableRolls(@Query("productCode") productCode: string) {
+    if (!productCode) return [];
+    return this.rubberRollStockService.availableRollsForProductCode(productCode);
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
   @Get("portal/roll-stock/:id")
   @ApiOperation({ summary: "Get roll stock by ID" })
   @ApiParam({ name: "id", description: "Roll stock ID" })
   async rollStockById(@Param("id") id: string): Promise<RubberRollStockDto> {
-    const roll = await this.rubberRollStockService.rollById(Number(id));
+    const numericId = Number(id);
+    if (!Number.isInteger(numericId)) throw new NotFoundException("Roll stock not found");
+    const roll = await this.rubberRollStockService.rollById(numericId);
     if (!roll) throw new NotFoundException("Roll stock not found");
     return roll;
   }
@@ -3184,28 +3208,6 @@ Formula: totalPrice = totalKg × salePricePerKg
     );
     if (!invoice) throw new NotFoundException("Tax invoice not found");
     return invoice;
-  }
-
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
-  @ApiBearerAuth()
-  @Get("portal/roll-stock/by-numbers")
-  @ApiOperation({ summary: "Lookup rolls by their roll numbers (cost-breakdown display)" })
-  async rollsByNumbers(@Query("rollNumbers") rollNumbers: string) {
-    if (!rollNumbers) return [];
-    const numbers = rollNumbers
-      .split(",")
-      .map((n) => n.trim())
-      .filter((n) => n.length > 0);
-    return this.rubberRollStockService.rollsByNumbers(numbers);
-  }
-
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
-  @ApiBearerAuth()
-  @Get("portal/roll-stock/available")
-  @ApiOperation({ summary: "List in-stock rolls for a given product code (CTI roll picker)" })
-  async availableRolls(@Query("productCode") productCode: string) {
-    if (!productCode) return [];
-    return this.rubberRollStockService.availableRollsForProductCode(productCode);
   }
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
