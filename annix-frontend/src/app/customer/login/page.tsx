@@ -17,27 +17,27 @@ function CustomerLoginContent() {
   const { fingerprint, browserInfo, isLoading: fingerprintLoading } = useDeviceFingerprint();
   const returnUrl = searchParams?.get("returnUrl");
 
-  const [email, setEmail] = useState(() => {
-    // eslint-disable-next-line no-restricted-syntax -- SSR guard
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("customerRememberedEmail") || "";
-    }
-    return "";
-  });
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(() => {
-    // eslint-disable-next-line no-restricted-syntax -- SSR guard
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("customerRememberMe") === "true";
-    }
-    return false;
-  });
+  const [rememberMe, setRememberMe] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isEmailNotVerified, setIsEmailNotVerified] = useState(false);
   const [isResendingEmail, setIsResendingEmail] = useState(false);
   const [resendSuccess, setResendSuccess] = useState(false);
+
+  useEffect(() => {
+    const localGlobal = globalThis.localStorage;
+    if (!localGlobal) return;
+    const remembered = localGlobal.getItem("customerRememberedEmail");
+    const flag = localGlobal.getItem("customerRememberMe") === "true";
+    setRememberMe(flag);
+    setEmail((current) => {
+      if (current.trim() !== "") return current;
+      return remembered || "";
+    });
+  }, []);
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -161,7 +161,14 @@ function CustomerLoginContent() {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 shadow rounded-lg sm:px-10">
-          <form className="space-y-6" onSubmit={handleSubmit}>
+          <form
+            className="space-y-6"
+            onSubmit={handleSubmit}
+            name="login"
+            data-form-type="login"
+            method="post"
+            action="#"
+          >
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700">
                 Email address

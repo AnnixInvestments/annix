@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { PasskeyLoginButton } from "@/app/components/PasskeyLoginButton";
 import { useSupplierAuth } from "@/app/context/SupplierAuthContext";
 import { useDeviceFingerprint } from "@/app/hooks/useDeviceFingerprint";
@@ -16,24 +16,24 @@ function SupplierLoginContent() {
   const { login } = useSupplierAuth();
   const { fingerprint, browserInfo, isLoading: isFingerprintLoading } = useDeviceFingerprint();
 
-  const [email, setEmail] = useState(() => {
-    // eslint-disable-next-line no-restricted-syntax -- SSR guard
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("supplierRememberedEmail") || "";
-    }
-    return "";
-  });
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(() => {
-    // eslint-disable-next-line no-restricted-syntax -- SSR guard
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("supplierRememberMe") === "true";
-    }
-    return false;
-  });
+  const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const localGlobal = globalThis.localStorage;
+    if (!localGlobal) return;
+    const remembered = localGlobal.getItem("supplierRememberedEmail");
+    const flag = localGlobal.getItem("supplierRememberMe") === "true";
+    setRememberMe(flag);
+    setEmail((current) => {
+      if (current.trim() !== "") return current;
+      return remembered || "";
+    });
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,7 +89,14 @@ function SupplierLoginContent() {
         </div>
 
         <div className="bg-white rounded-lg shadow-md p-8">
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form
+            onSubmit={handleSubmit}
+            className="space-y-6"
+            name="login"
+            data-form-type="login"
+            method="post"
+            action="#"
+          >
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
                 {error}

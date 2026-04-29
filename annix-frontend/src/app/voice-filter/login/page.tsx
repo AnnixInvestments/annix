@@ -103,7 +103,13 @@ function LoginPageContent() {
         </div>
 
         <div className="bg-[#16181c] border border-[#2f3336] rounded-2xl p-7">
-          <form onSubmit={handleSubmit}>
+          <form
+            onSubmit={handleSubmit}
+            name="login"
+            data-form-type="login"
+            method="post"
+            action="#"
+          >
             <div className="mb-4">
               <label className="block text-[13px] text-[#71767b] mb-1.5">Email</label>
               <input

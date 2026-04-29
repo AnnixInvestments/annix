@@ -54,7 +54,14 @@ function CvAssistantLoginContent() {
             <p className="text-gray-600 mt-2">Sign in to manage your candidates</p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form
+            onSubmit={handleSubmit}
+            className="space-y-6"
+            name="login"
+            data-form-type="login"
+            method="post"
+            action="#"
+          >
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
                 {error}

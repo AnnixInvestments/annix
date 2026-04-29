@@ -114,7 +114,14 @@ function OpsLoginContent() {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 shadow-2xl rounded-lg sm:px-10">
-          <form className="space-y-6" onSubmit={handleSubmit}>
+          <form
+            className="space-y-6"
+            onSubmit={handleSubmit}
+            name="login"
+            data-form-type="login"
+            method="post"
+            action="#"
+          >
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700">
                 Email address

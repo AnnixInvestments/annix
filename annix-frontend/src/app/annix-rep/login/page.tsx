@@ -21,21 +21,22 @@ function LoginPageContent() {
   const { isAuthenticated, isLoading: authLoading, login } = useAnnixRepAuth();
   const { data: profileStatus, isLoading: profileLoading } = useRepProfileStatus();
 
-  const [formData, setFormData] = useState<LoginFormData>(() => ({
-    email:
-      // eslint-disable-next-line no-restricted-syntax -- SSR guard
-      typeof window !== "undefined" ? localStorage.getItem("annixRepRememberedEmail") || "" : "",
-    password: "",
-  }));
-  const [rememberMe, setRememberMe] = useState(() => {
-    // eslint-disable-next-line no-restricted-syntax -- SSR guard
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("annixRepRememberMe") === "true";
-    }
-    return false;
-  });
+  const [formData, setFormData] = useState<LoginFormData>({ email: "", password: "" });
+  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    const localGlobal = globalThis.localStorage;
+    if (!localGlobal) return;
+    const remembered = localGlobal.getItem("annixRepRememberedEmail");
+    const flag = localGlobal.getItem("annixRepRememberMe") === "true";
+    setRememberMe(flag);
+    setFormData((current) => {
+      if (current.email.trim() !== "") return current;
+      return { ...current, email: remembered || "" };
+    });
+  }, []);
 
   useEffect(() => {
     if (authLoading || (isAuthenticated && profileLoading)) {
@@ -122,7 +123,13 @@ function LoginPageContent() {
           </div>
 
           <div className="p-8">
-            <form onSubmit={handleSubmit}>
+            <form
+              onSubmit={handleSubmit}
+              name="login"
+              data-form-type="login"
+              method="post"
+              action="#"
+            >
               {error && (
                 <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
                   <p className="text-sm text-red-600 dark:text-red-400">{error}</p>

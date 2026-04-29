@@ -14,24 +14,24 @@ function AdminLoginContent() {
   const returnUrl = searchParams.get("returnUrl");
   const { login, isAuthenticated, isLoading: authLoading } = useAdminAuth();
 
-  const [email, setEmail] = useState(() => {
-    // eslint-disable-next-line no-restricted-syntax -- SSR guard
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("adminRememberedEmail") || "";
-    }
-    return "";
-  });
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(() => {
-    // eslint-disable-next-line no-restricted-syntax -- SSR guard
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("adminRememberMe") === "true";
-    }
-    return false;
-  });
+  const [rememberMe, setRememberMe] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const localGlobal = globalThis.localStorage;
+    if (!localGlobal) return;
+    const remembered = localGlobal.getItem("adminRememberedEmail");
+    const flag = localGlobal.getItem("adminRememberMe") === "true";
+    setRememberMe(flag);
+    setEmail((current) => {
+      if (current.trim() !== "") return current;
+      return remembered || "";
+    });
+  }, []);
 
   useEffect(() => {
     if (isAuthenticated && !authLoading) {
@@ -116,7 +116,14 @@ function AdminLoginContent() {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 shadow-2xl rounded-lg sm:px-10">
-          <form className="space-y-6" onSubmit={handleSubmit}>
+          <form
+            className="space-y-6"
+            onSubmit={handleSubmit}
+            name="login"
+            data-form-type="login"
+            method="post"
+            action="#"
+          >
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700">
                 Email address
