@@ -465,6 +465,7 @@ export default function CustomerDeliveryNotesPage() {
                 const baselineSnapshot = await auRubberApiClient.deliveryNotes({
                   companyType: "CUSTOMER",
                   pageSize: 10000,
+                  includeAllVersions: true,
                 });
                 const baselineByIdString = baselineSnapshot.items.reduce<Record<string, string>>(
                   (acc, n) => {
@@ -482,6 +483,7 @@ export default function CustomerDeliveryNotesPage() {
                     auRubberApiClient.deliveryNotes({
                       companyType: "CUSTOMER",
                       pageSize: 10000,
+                      includeAllVersions: true,
                     }),
                   toItems: (res) =>
                     res.items.map((n) => ({

@@ -573,6 +573,7 @@ export default function SupplierTaxInvoicesPage() {
                 const baselineSnapshot = await auRubberApiClient.taxInvoices({
                   invoiceType: "SUPPLIER",
                   pageSize: 10000,
+                  includeAllVersions: true,
                 });
                 const baselineByIdString = baselineSnapshot.items.reduce<Record<string, string>>(
                   (acc, inv) => {
@@ -590,6 +591,7 @@ export default function SupplierTaxInvoicesPage() {
                     auRubberApiClient.taxInvoices({
                       invoiceType: "SUPPLIER",
                       pageSize: 10000,
+                      includeAllVersions: true,
                     }),
                   toItems: (res) =>
                     res.items.map((inv) => ({

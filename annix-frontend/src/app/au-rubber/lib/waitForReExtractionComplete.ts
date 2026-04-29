@@ -9,6 +9,7 @@ interface WaitOptions<T> {
   onProgress?: (done: number, total: number) => void;
   pollIntervalMs?: number;
   timeoutMs?: number;
+  animationStepMs?: number;
 }
 
 export async function waitForReExtractionComplete<T>(opts: WaitOptions<T>): Promise<void> {
@@ -21,12 +22,25 @@ export async function waitForReExtractionComplete<T>(opts: WaitOptions<T>): Prom
     onProgress,
     pollIntervalMs = 5000,
     timeoutMs = 600000,
+    animationStepMs = 400,
   } = opts;
   if (total === 0) return;
 
   const deadlineMs = nowMillis() + timeoutMs;
   const completedIds = new Set<number>();
   const maxIterations = Math.ceil(timeoutMs / pollIntervalMs) + 1;
+  let displayedDone = 0;
+  onProgress?.(0, total);
+
+  const animateDisplayedTo = async (target: number) => {
+    const steps = Math.max(0, target - displayedDone);
+    await Array.from({ length: steps }).reduce<Promise<void>>(async (chain) => {
+      await chain;
+      await new Promise((resolve) => setTimeout(resolve, animationStepMs));
+      displayedDone += 1;
+      onProgress?.(displayedDone, total);
+    }, Promise.resolve());
+  };
 
   await Array.from({ length: maxIterations }).reduce<Promise<boolean>>(
     async (chain, _unused, idx) => {
@@ -47,7 +61,7 @@ export async function waitForReExtractionComplete<T>(opts: WaitOptions<T>): Prom
             completedIds.add(item.id);
           }
         });
-        onProgress?.(completedIds.size, total);
+        await animateDisplayedTo(completedIds.size);
         if (completedIds.size >= total) return true;
       } catch {
         // Ignore polling errors and try again — extraction is still running on the backend.
@@ -56,4 +70,15 @@ export async function waitForReExtractionComplete<T>(opts: WaitOptions<T>): Prom
     },
     Promise.resolve(false),
   );
+
+  if (completedIds.size < total) {
+    const remaining = total - completedIds.size;
+    const missingIds = Array.from(ids)
+      .filter((id) => !completedIds.has(id))
+      .sort((a, b) => a - b);
+    throw new Error(
+      `Re-extraction completed ${completedIds.size} of ${total} document(s). ${remaining} did not finish — IDs: ${missingIds.join(", ")}. Check the backend logs for failures or try Re-extract All again.`,
+    );
+  }
+  await animateDisplayedTo(total);
 }
