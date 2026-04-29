@@ -2878,7 +2878,7 @@ Formula: totalPrice = totalKg × salePricePerKg
               logger.log(
                 `Triggered re-extraction for ${invoiceType} tax invoice ${inv.id} (${inv.invoiceNumber}) — single-PDF`,
               );
-              return;
+              continue;
             }
             const docBuffer = await storageService.download(path);
             const correctionHints = invoicesAtPath[0].companyName
