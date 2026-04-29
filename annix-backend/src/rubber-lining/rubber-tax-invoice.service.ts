@@ -3,6 +3,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { PDFDocument } from "pdf-lib";
 import { In, Repository } from "typeorm";
 import { formatISODate, fromISO, generateUniqueId } from "../lib/datetime";
+import { PaginatedResult } from "../lib/dto/pagination-query.dto";
 import { IStorageService, STORAGE_SERVICE } from "../storage/storage.interface";
 import {
   DOCUMENT_VERSION_STATUS_LABELS,
@@ -34,6 +35,16 @@ const TAX_INVOICE_STATUS_LABELS: Record<TaxInvoiceStatus, string> = {
 const TAX_INVOICE_TYPE_LABELS: Record<TaxInvoiceType, string> = {
   [TaxInvoiceType.SUPPLIER]: "Supplier",
   [TaxInvoiceType.CUSTOMER]: "Customer",
+};
+
+const TAX_INVOICE_SORT_MAP: Record<string, string> = {
+  invoiceNumber: "ti.invoice_number",
+  invoiceDate: "ti.invoice_date",
+  totalAmount: "ti.total_amount",
+  vatAmount: "ti.vat_amount",
+  status: "ti.status",
+  companyName: "company.name",
+  createdAt: "ti.created_at",
 };
 
 export interface RubberTaxInvoiceDto {
@@ -160,6 +171,70 @@ export class RubberTaxInvoiceService {
 
     const invoices = await query.getMany();
     return invoices.map((inv) => this.mapToDto(inv));
+  }
+
+  async paginatedTaxInvoices(filters?: {
+    invoiceType?: TaxInvoiceType;
+    status?: TaxInvoiceStatus;
+    companyId?: number;
+    includeAllVersions?: boolean;
+    isCreditNote?: boolean;
+    search?: string;
+    sortColumn?: string;
+    sortDirection?: "asc" | "desc";
+    page?: number;
+    pageSize?: number;
+  }): Promise<PaginatedResult<RubberTaxInvoiceDto>> {
+    const page = Math.max(1, filters?.page ?? 1);
+    const pageSize = Math.max(1, Math.min(10000, filters?.pageSize ?? 25));
+    const skip = (page - 1) * pageSize;
+
+    const query = this.taxInvoiceRepository
+      .createQueryBuilder("ti")
+      .leftJoinAndSelect("ti.company", "company")
+      .leftJoinAndSelect("ti.originalInvoice", "originalInvoice");
+
+    if (!filters?.includeAllVersions) {
+      query.andWhere("ti.version_status = :versionStatus", {
+        versionStatus: DocumentVersionStatus.ACTIVE,
+      });
+    }
+    if (filters?.invoiceType) {
+      query.andWhere("ti.invoice_type = :type", { type: filters.invoiceType });
+    }
+    if (filters?.status) {
+      query.andWhere("ti.status = :status", { status: filters.status });
+    }
+    if (filters?.companyId) {
+      query.andWhere("ti.company_id = :companyId", { companyId: filters.companyId });
+    }
+    if (filters?.isCreditNote !== undefined) {
+      query.andWhere("ti.is_credit_note = :isCreditNote", {
+        isCreditNote: filters.isCreditNote,
+      });
+    }
+    if (filters?.search) {
+      query.andWhere("(ti.invoice_number ILIKE :search OR company.name ILIKE :search)", {
+        search: `%${filters.search}%`,
+      });
+    }
+
+    const sortKey = filters?.sortColumn ?? "createdAt";
+    const sortColumn = TAX_INVOICE_SORT_MAP[sortKey] ?? "ti.created_at";
+    const sortDirection = filters?.sortDirection === "asc" ? "ASC" : "DESC";
+    query.orderBy(sortColumn, sortDirection, "NULLS LAST");
+    query.addOrderBy("ti.id", "DESC");
+
+    query.skip(skip).take(pageSize);
+
+    const [invoices, total] = await query.getManyAndCount();
+    return {
+      items: invoices.map((inv) => this.mapToDto(inv)),
+      total,
+      page,
+      limit: pageSize,
+      totalPages: Math.max(1, Math.ceil(total / pageSize)),
+    };
   }
 
   async taxInvoiceById(id: number): Promise<RubberTaxInvoiceDto | null> {

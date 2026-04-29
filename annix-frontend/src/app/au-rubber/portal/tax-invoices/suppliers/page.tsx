@@ -74,6 +74,14 @@ type SortColumn =
   | "costPerUnit"
   | "unit";
 
+const SERVER_SORTABLE_TI_SUPPLIER_COLUMNS = new Set<SortColumn>([
+  "invoiceNumber",
+  "companyName",
+  "status",
+  "invoiceDate",
+  "totalAmount",
+]);
+
 export default function SupplierTaxInvoicesPage() {
   const router = useRouter();
   const { showToast } = useToast();
@@ -84,29 +92,6 @@ export default function SupplierTaxInvoicesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<TaxInvoiceStatus | "">("");
   const [includeAllVersions, setIncludeAllVersions] = useState(false);
-  const taxInvoicesQuery = useAuRubberTaxInvoices({
-    invoiceType: "SUPPLIER",
-    status: filterStatus || undefined,
-    includeAllVersions: includeAllVersions || undefined,
-  });
-  const companiesQuery = useAuRubberCompanies();
-  const rawTaxInvoicesData = taxInvoicesQuery.data;
-  const rawCompaniesData = companiesQuery.data;
-  const taxInvoicesQueryIsLoading = taxInvoicesQuery.isLoading;
-  const companiesQueryIsLoading = companiesQuery.isLoading;
-  const taxInvoicesQueryError = taxInvoicesQuery.error;
-  const companiesQueryError = companiesQuery.error;
-  const allInvoices = rawTaxInvoicesData || [];
-  const allCompanies = rawCompaniesData || [];
-  const invoices = allInvoices.filter((inv) => !inv.isCreditNote);
-  const creditNotes = allInvoices.filter((inv) => inv.isCreditNote);
-  const suppliers = allCompanies.filter((c) => c.companyType === "SUPPLIER");
-  const isLoading = taxInvoicesQueryIsLoading || companiesQueryIsLoading;
-  const error = taxInvoicesQueryError || companiesQueryError;
-  const refresh = () => {
-    queryClient.invalidateQueries({ queryKey: rubberKeys.taxInvoices.all });
-    queryClient.invalidateQueries({ queryKey: rubberKeys.companies.all });
-  };
   const [currentPage, setCurrentPage] = useState(0);
   const [pageSize, setPageSize] = usePersistedState<number>(
     "auRubber.supplierTaxInvoices.pageSize",
@@ -114,6 +99,45 @@ export default function SupplierTaxInvoicesPage() {
   );
   const [sortColumn, setSortColumn] = useState<SortColumn>("invoiceDate");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+  const serverSortColumn = SERVER_SORTABLE_TI_SUPPLIER_COLUMNS.has(sortColumn)
+    ? sortColumn
+    : undefined;
+  const taxInvoicesQuery = useAuRubberTaxInvoices({
+    invoiceType: "SUPPLIER",
+    status: filterStatus || undefined,
+    includeAllVersions: includeAllVersions || undefined,
+    isCreditNote: false,
+    search: searchQuery || undefined,
+    sortColumn: serverSortColumn,
+    sortDirection,
+    page: currentPage + 1,
+    pageSize: pageSize === 0 ? 10000 : pageSize,
+  });
+  const creditNotesQuery = useAuRubberTaxInvoices({
+    invoiceType: "SUPPLIER",
+    includeAllVersions: includeAllVersions || undefined,
+    isCreditNote: true,
+    pageSize: 1000,
+  });
+  const companiesQuery = useAuRubberCompanies();
+  const rawTaxInvoicesData = taxInvoicesQuery.data;
+  const rawCreditNotesData = creditNotesQuery.data;
+  const rawCompaniesData = companiesQuery.data;
+  const taxInvoicesQueryIsLoading = taxInvoicesQuery.isLoading;
+  const companiesQueryIsLoading = companiesQuery.isLoading;
+  const taxInvoicesQueryError = taxInvoicesQuery.error;
+  const companiesQueryError = companiesQuery.error;
+  const allCompanies = rawCompaniesData || [];
+  const invoices = rawTaxInvoicesData ? rawTaxInvoicesData.items : [];
+  const totalInvoices = rawTaxInvoicesData ? rawTaxInvoicesData.total : 0;
+  const creditNotes = rawCreditNotesData ? rawCreditNotesData.items : [];
+  const suppliers = allCompanies.filter((c) => c.companyType === "SUPPLIER");
+  const isLoading = taxInvoicesQueryIsLoading || companiesQueryIsLoading;
+  const error = taxInvoicesQueryError || companiesQueryError;
+  const refresh = () => {
+    queryClient.invalidateQueries({ queryKey: rubberKeys.taxInvoices.all });
+    queryClient.invalidateQueries({ queryKey: rubberKeys.companies.all });
+  };
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploadSupplierId, setUploadSupplierId] = useState<number | null>(null);
   const [uploadInvoiceNumber, setUploadInvoiceNumber] = useState("");
@@ -156,9 +180,15 @@ export default function SupplierTaxInvoicesPage() {
   };
 
   const handleBulkPostToSage = async () => {
-    const eligible = filteredInvoices.filter(
-      (inv) => inv.status === "APPROVED" && inv.sageInvoiceId === null,
-    );
+    const allApproved = await auRubberApiClient.taxInvoices({
+      invoiceType: "SUPPLIER",
+      status: "APPROVED",
+      includeAllVersions: includeAllVersions || undefined,
+      isCreditNote: false,
+      search: searchQuery || undefined,
+      pageSize: 10000,
+    });
+    const eligible = allApproved.items.filter((inv) => inv.sageInvoiceId === null);
     const skipped = eligible.filter((inv) => invoiceNeedsRollDetails(inv));
     const approvedIds = eligible
       .filter((inv) => !invoiceNeedsRollDetails(inv))
@@ -306,6 +336,7 @@ export default function SupplierTaxInvoicesPage() {
   };
 
   const handleSort = (column: SortColumn) => {
+    if (!SERVER_SORTABLE_TI_SUPPLIER_COLUMNS.has(column)) return;
     if (sortColumn === column) {
       setSortDirection(sortDirection === "asc" ? "desc" : "asc");
     } else {
@@ -314,79 +345,12 @@ export default function SupplierTaxInvoicesPage() {
     }
   };
 
-  const sortInvoices = (items: RubberTaxInvoiceDto[]): RubberTaxInvoiceDto[] => {
-    return [...items].sort((a, b) => {
-      const direction = sortDirection === "asc" ? 1 : -1;
-      if (sortColumn === "invoiceNumber") {
-        const rawAInvoiceNumber = a.invoiceNumber;
-        const rawBInvoiceNumber = b.invoiceNumber;
-        return direction * (rawAInvoiceNumber || "").localeCompare(rawBInvoiceNumber || "");
-      }
-      if (sortColumn === "companyName") {
-        const rawACompanyName = a.companyName;
-        const rawBCompanyName = b.companyName;
-        return direction * (rawACompanyName || "").localeCompare(rawBCompanyName || "");
-      }
-      if (sortColumn === "status") {
-        return direction * a.status.localeCompare(b.status);
-      }
-      if (sortColumn === "invoiceDate") {
-        const rawAInvoiceDate = a.invoiceDate;
-        const rawBInvoiceDate = b.invoiceDate;
-        return direction * (rawAInvoiceDate || "").localeCompare(rawBInvoiceDate || "");
-      }
-      if (sortColumn === "totalAmount") {
-        const rawATotalAmount = a.totalAmount;
-        const rawBTotalAmount = b.totalAmount;
-        return direction * ((rawATotalAmount || 0) - (rawBTotalAmount || 0));
-      }
-      if (sortColumn === "productDescription") {
-        const rawAProductDescription = a.productDescription;
-        const rawBProductDescription = b.productDescription;
-        return (
-          direction * (rawAProductDescription || "").localeCompare(rawBProductDescription || "")
-        );
-      }
-      if (sortColumn === "numberOfRolls") {
-        const rawANumberOfRolls = a.numberOfRolls;
-        const rawBNumberOfRolls = b.numberOfRolls;
-        return direction * ((rawANumberOfRolls || 0) - (rawBNumberOfRolls || 0));
-      }
-      if (sortColumn === "costPerUnit") {
-        const rawACostPerUnit = a.costPerUnit;
-        const rawBCostPerUnit = b.costPerUnit;
-        return direction * ((rawACostPerUnit || 0) - (rawBCostPerUnit || 0));
-      }
-      if (sortColumn === "unit") {
-        const rawAUnit = a.unit;
-        const rawBUnit = b.unit;
-        return direction * (rawAUnit || "").localeCompare(rawBUnit || "");
-      }
-      return 0;
-    });
-  };
-
-  const filteredInvoices = sortInvoices(
-    invoices.filter((inv) => {
-      const matchesSearch =
-        searchQuery === "" ||
-        inv.invoiceNumber?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        inv.companyName?.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchesSearch;
-    }),
-  );
-
-  const effectivePageSize = pageSize === 0 ? filteredInvoices.length : pageSize;
-  const paginatedInvoices = filteredInvoices.slice(
-    currentPage * effectivePageSize,
-    (currentPage + 1) * effectivePageSize,
-  );
-
+  const paginatedInvoices = invoices;
   const hasApprovable = paginatedInvoices.some((inv) => inv.status === "EXTRACTED");
 
   useEffect(() => {
     setCurrentPage(0);
-  }, [searchQuery, filterStatus, pageSize]);
+  }, [searchQuery, filterStatus, pageSize, sortColumn, sortDirection, includeAllVersions]);
 
   const handleFilesSelected = async (files: File[]) => {
     if (files.length === 0 || isBulkUploading) return;
@@ -616,7 +580,7 @@ export default function SupplierTaxInvoicesPage() {
           <button
             onClick={async () => {
               setIsReExtracting(true);
-              const queueDepth = filteredInvoices.length;
+              const queueDepth = totalInvoices;
               const estMs = Math.max(15000, queueDepth * 18000);
               showExtraction({
                 brand: "au-rubber",
@@ -746,7 +710,7 @@ export default function SupplierTaxInvoicesPage() {
             message="Loading supplier tax invoices..."
             spinnerClassName="border-b-2 border-yellow-600"
           />
-        ) : filteredInvoices.length === 0 ? (
+        ) : totalInvoices === 0 ? (
           <div className="p-8">
             <div className="flex flex-col items-center justify-center py-12">
               <TableIcons.document className="w-12 h-12 text-gray-400 mb-4" />
@@ -1063,7 +1027,7 @@ export default function SupplierTaxInvoicesPage() {
         )}
         <Pagination
           currentPage={currentPage}
-          totalItems={filteredInvoices.length}
+          totalItems={totalInvoices}
           itemsPerPage={pageSize}
           itemName="invoices"
           onPageChange={setCurrentPage}

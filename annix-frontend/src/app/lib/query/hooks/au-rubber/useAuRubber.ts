@@ -12,6 +12,7 @@ import {
   type CompoundQualitySummaryDto,
   type DeliveryNoteStatus,
   type DeliveryNoteType,
+  type PaginatedResult,
   type QualityAlertDto,
   type RubberAuCocDto,
   type RubberDeliveryNoteDto,
@@ -76,8 +77,13 @@ export function useAuRubberDeliveryNotes(filters?: {
   supplierId?: number;
   companyType?: "SUPPLIER" | "CUSTOMER";
   includeAllVersions?: boolean;
+  search?: string;
+  sortColumn?: string;
+  sortDirection?: "asc" | "desc";
+  page?: number;
+  pageSize?: number;
 }) {
-  return useQuery<RubberDeliveryNoteDto[]>({
+  return useQuery<PaginatedResult<RubberDeliveryNoteDto>>({
     queryKey: rubberKeys.deliveryNotes.list(filters),
     queryFn: () => auRubberApiClient.deliveryNotes(filters),
   });
@@ -96,8 +102,13 @@ export function useAuRubberTaxInvoices(filters?: {
   companyId?: number;
   includeAllVersions?: boolean;
   isCreditNote?: boolean;
+  search?: string;
+  sortColumn?: string;
+  sortDirection?: "asc" | "desc";
+  page?: number;
+  pageSize?: number;
 }) {
-  return useQuery<RubberTaxInvoiceDto[]>({
+  return useQuery<PaginatedResult<RubberTaxInvoiceDto>>({
     queryKey: rubberKeys.taxInvoices.list(filters),
     queryFn: () => auRubberApiClient.taxInvoices(filters),
   });

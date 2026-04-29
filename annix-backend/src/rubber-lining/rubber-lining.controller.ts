@@ -36,6 +36,7 @@ import { Repository } from "typeorm";
 import { AdminAuthGuard, AdminRequest } from "../admin/guards/admin-auth.guard";
 import { Public } from "../auth/public.decorator";
 import { nowMillis } from "../lib/datetime";
+import { PaginatedResult } from "../lib/dto/pagination-query.dto";
 import { SageExportFilterDto } from "../sage-export/dto/sage-export.dto";
 import { type SageConfigDto, SageConnectionService } from "../sage-export/sage-connection.service";
 import { SageExportService } from "../sage-export/sage-export.service";
@@ -1336,25 +1337,40 @@ Formula: totalPrice = totalKg × salePricePerKg
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
   @Get("portal/delivery-notes")
-  @ApiOperation({ summary: "List delivery notes" })
+  @ApiOperation({ summary: "List delivery notes (paginated)" })
   @ApiQuery({ name: "deliveryNoteType", required: false, enum: DeliveryNoteType })
   @ApiQuery({ name: "status", required: false, enum: DeliveryNoteStatus })
   @ApiQuery({ name: "supplierCompanyId", required: false })
   @ApiQuery({ name: "companyType", required: false, enum: CompanyType })
   @ApiQuery({ name: "includeAllVersions", required: false })
+  @ApiQuery({ name: "search", required: false })
+  @ApiQuery({ name: "sortColumn", required: false })
+  @ApiQuery({ name: "sortDirection", required: false, enum: ["asc", "desc"] })
+  @ApiQuery({ name: "page", required: false })
+  @ApiQuery({ name: "pageSize", required: false })
   async deliveryNotes(
     @Query("deliveryNoteType") deliveryNoteType?: DeliveryNoteType,
     @Query("status") status?: DeliveryNoteStatus,
     @Query("supplierCompanyId") supplierCompanyId?: string,
     @Query("companyType") companyType?: CompanyType,
     @Query("includeAllVersions") includeAllVersions?: string,
-  ): Promise<RubberDeliveryNoteDto[]> {
-    return this.rubberDeliveryNoteService.allDeliveryNotes({
+    @Query("search") search?: string,
+    @Query("sortColumn") sortColumn?: string,
+    @Query("sortDirection") sortDirection?: "asc" | "desc",
+    @Query("page") page?: string,
+    @Query("pageSize") pageSize?: string,
+  ): Promise<PaginatedResult<RubberDeliveryNoteDto>> {
+    return this.rubberDeliveryNoteService.paginatedDeliveryNotes({
       deliveryNoteType,
       status,
       supplierCompanyId: supplierCompanyId ? Number(supplierCompanyId) : undefined,
       companyType,
       includeAllVersions: includeAllVersions === "true",
+      search,
+      sortColumn,
+      sortDirection,
+      page: page ? Number(page) : undefined,
+      pageSize: pageSize ? Number(pageSize) : undefined,
     });
   }
 
@@ -2595,25 +2611,40 @@ Formula: totalPrice = totalKg × salePricePerKg
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
   @Get("portal/tax-invoices")
-  @ApiOperation({ summary: "List tax invoices" })
+  @ApiOperation({ summary: "List tax invoices (paginated)" })
   @ApiQuery({ name: "invoiceType", required: false })
   @ApiQuery({ name: "status", required: false })
   @ApiQuery({ name: "companyId", required: false })
   @ApiQuery({ name: "includeAllVersions", required: false })
   @ApiQuery({ name: "isCreditNote", required: false })
+  @ApiQuery({ name: "search", required: false })
+  @ApiQuery({ name: "sortColumn", required: false })
+  @ApiQuery({ name: "sortDirection", required: false, enum: ["asc", "desc"] })
+  @ApiQuery({ name: "page", required: false })
+  @ApiQuery({ name: "pageSize", required: false })
   async taxInvoices(
     @Query("invoiceType") invoiceType?: TaxInvoiceType,
     @Query("status") status?: TaxInvoiceStatus,
     @Query("companyId") companyId?: string,
     @Query("includeAllVersions") includeAllVersions?: string,
     @Query("isCreditNote") isCreditNote?: string,
-  ): Promise<RubberTaxInvoiceDto[]> {
-    return this.rubberTaxInvoiceService.allTaxInvoices({
+    @Query("search") search?: string,
+    @Query("sortColumn") sortColumn?: string,
+    @Query("sortDirection") sortDirection?: "asc" | "desc",
+    @Query("page") page?: string,
+    @Query("pageSize") pageSize?: string,
+  ): Promise<PaginatedResult<RubberTaxInvoiceDto>> {
+    return this.rubberTaxInvoiceService.paginatedTaxInvoices({
       invoiceType,
       status,
       companyId: companyId ? Number(companyId) : undefined,
       includeAllVersions: includeAllVersions === "true",
       isCreditNote: isCreditNote != null ? isCreditNote === "true" : undefined,
+      search,
+      sortColumn,
+      sortDirection,
+      page: page ? Number(page) : undefined,
+      pageSize: pageSize ? Number(pageSize) : undefined,
     });
   }
 

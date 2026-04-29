@@ -42,6 +42,16 @@ type SortColumn =
   | "deliveryDate"
   | "auCocNumber";
 
+const SERVER_SORTABLE_CDN_COLUMNS = new Set<SortColumn>([
+  "deliveryNoteNumber",
+  "supplierCompanyName",
+  "customerReference",
+  "deliveryNoteType",
+  "status",
+  "deliveryDate",
+  "auCocNumber",
+]);
+
 export default function CustomerDeliveryNotesPage() {
   const router = useRouter();
   const { showToast } = useToast();
@@ -56,28 +66,35 @@ export default function CustomerDeliveryNotesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<DeliveryNoteType | "">("");
   const [filterStatus, setFilterStatus] = useState<DeliveryNoteStatus | "">("");
-  const notesQuery = useAuRubberDeliveryNotes({
-    deliveryNoteType: filterType || undefined,
-    status: filterStatus || undefined,
-    companyType: "CUSTOMER",
-  });
-  const companiesQuery = useAuRubberCompanies();
-  const rawCompaniesQueryData = companiesQuery.data;
-  const rawNotesQueryData = notesQuery.data;
-  const allCompanies = rawCompaniesQueryData || [];
-  const customers = allCompanies.filter((c) => c.companyType === "CUSTOMER");
-  const notes = rawNotesQueryData || [];
-  const isLoading = notesQuery.isLoading;
-  const error = notesQuery.error;
   const [currentPage, setCurrentPage] = useState(0);
   const tablePrefs = useTablePreferences("customerDeliveryNotes", {
-    pageSize: 0,
+    pageSize: 25,
     sortColumn: "deliveryNoteNumber",
     sortDirection: "desc",
   });
   const pageSize = tablePrefs.pageSize;
   const sortColumn = tablePrefs.sortColumn as SortColumn;
   const sortDirection = tablePrefs.sortDirection;
+  const serverSortColumn = SERVER_SORTABLE_CDN_COLUMNS.has(sortColumn) ? sortColumn : undefined;
+  const notesQuery = useAuRubberDeliveryNotes({
+    deliveryNoteType: filterType || undefined,
+    status: filterStatus || undefined,
+    companyType: "CUSTOMER",
+    search: searchQuery || undefined,
+    sortColumn: serverSortColumn,
+    sortDirection,
+    page: currentPage + 1,
+    pageSize: pageSize === 0 ? 10000 : pageSize,
+  });
+  const companiesQuery = useAuRubberCompanies();
+  const rawCompaniesQueryData = companiesQuery.data;
+  const rawNotesQueryData = notesQuery.data;
+  const allCompanies = rawCompaniesQueryData || [];
+  const customers = allCompanies.filter((c) => c.companyType === "CUSTOMER");
+  const notes = rawNotesQueryData ? rawNotesQueryData.items : [];
+  const totalNotes = rawNotesQueryData ? rawNotesQueryData.total : 0;
+  const isLoading = notesQuery.isLoading;
+  const error = notesQuery.error;
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploadType, setUploadType] = useState<DeliveryNoteType>("COMPOUND");
   const [uploadCustomerId, setUploadCustomerId] = useState<number | null>(null);
@@ -126,6 +143,7 @@ export default function CustomerDeliveryNotesPage() {
   };
 
   const handleSort = (column: SortColumn) => {
+    if (!SERVER_SORTABLE_CDN_COLUMNS.has(column)) return;
     if (sortColumn === column) {
       tablePrefs.setSortDirection(sortDirection === "asc" ? "desc" : "asc");
     } else {
@@ -134,73 +152,11 @@ export default function CustomerDeliveryNotesPage() {
     }
   };
 
-  const sortNotes = (notesToSort: RubberDeliveryNoteDto[]): RubberDeliveryNoteDto[] => {
-    return [...notesToSort].sort((a, b) => {
-      const direction = sortDirection === "asc" ? 1 : -1;
-      if (sortColumn === "deliveryNoteNumber") {
-        const rawADeliveryNoteNumber = a.deliveryNoteNumber;
-        const rawBDeliveryNoteNumber = b.deliveryNoteNumber;
-        return (
-          direction * (rawADeliveryNoteNumber || "").localeCompare(rawBDeliveryNoteNumber || "")
-        );
-      }
-      if (sortColumn === "supplierCompanyName") {
-        const rawASupplierCompanyName = a.supplierCompanyName;
-        const rawBSupplierCompanyName = b.supplierCompanyName;
-        return (
-          direction * (rawASupplierCompanyName || "").localeCompare(rawBSupplierCompanyName || "")
-        );
-      }
-      if (sortColumn === "customerReference") {
-        const rawACustomerReference = a.customerReference;
-        const rawBCustomerReference = b.customerReference;
-        return direction * (rawACustomerReference || "").localeCompare(rawBCustomerReference || "");
-      }
-      if (sortColumn === "rollNumbers") {
-        const aRolls = noteRollNumbers(a).join(", ");
-        const bRolls = noteRollNumbers(b).join(", ");
-        return direction * aRolls.localeCompare(bRolls);
-      }
-      if (sortColumn === "deliveryNoteType") {
-        return direction * a.deliveryNoteType.localeCompare(b.deliveryNoteType);
-      }
-      if (sortColumn === "status") {
-        return direction * a.status.localeCompare(b.status);
-      }
-      if (sortColumn === "deliveryDate") {
-        const rawADeliveryDate = a.deliveryDate;
-        const rawBDeliveryDate = b.deliveryDate;
-        return direction * (rawADeliveryDate || "").localeCompare(rawBDeliveryDate || "");
-      }
-      if (sortColumn === "auCocNumber") {
-        const rawAAuCocNumber = a.auCocNumber;
-        const rawBAuCocNumber = b.auCocNumber;
-        return direction * (rawAAuCocNumber || "").localeCompare(rawBAuCocNumber || "");
-      }
-      return 0;
-    });
-  };
-
-  const filteredNotes = sortNotes(
-    notes.filter((note) => {
-      const matchesSearch =
-        searchQuery === "" ||
-        note.deliveryNoteNumber?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        note.supplierCompanyName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        note.customerReference?.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchesSearch;
-    }),
-  );
-
-  const effectivePageSize = pageSize === 0 ? filteredNotes.length : pageSize;
-  const paginatedNotes = filteredNotes.slice(
-    currentPage * effectivePageSize,
-    (currentPage + 1) * effectivePageSize,
-  );
+  const paginatedNotes = notes;
 
   useEffect(() => {
     setCurrentPage(0);
-  }, [searchQuery, filterType, filterStatus, pageSize]);
+  }, [searchQuery, filterType, filterStatus, pageSize, sortColumn, sortDirection]);
 
   const handleFilesSelected = async (files: File[]) => {
     if (files.length === 0) return;
@@ -495,7 +451,7 @@ export default function CustomerDeliveryNotesPage() {
               });
               if (!confirmed) return;
               setIsReExtracting(true);
-              const queueDepth = filteredNotes.length;
+              const queueDepth = totalNotes;
               const estMs = Math.max(15000, queueDepth * 18000);
               showExtraction({
                 brand: "au-rubber",
@@ -632,7 +588,7 @@ export default function CustomerDeliveryNotesPage() {
             message="Loading customer delivery notes..."
             spinnerClassName="border-b-2 border-yellow-600"
           />
-        ) : filteredNotes.length === 0 ? (
+        ) : totalNotes === 0 ? (
           <div className="p-8">
             <div className="flex flex-col items-center justify-center py-12">
               <TableIcons.document className="w-12 h-12 text-gray-400 mb-4" />
@@ -853,7 +809,7 @@ export default function CustomerDeliveryNotesPage() {
         )}
         <Pagination
           currentPage={currentPage}
-          totalItems={filteredNotes.length}
+          totalItems={totalNotes}
           itemsPerPage={pageSize}
           itemName="notes"
           onPageChange={setCurrentPage}

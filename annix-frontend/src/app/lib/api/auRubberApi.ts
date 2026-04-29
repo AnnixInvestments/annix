@@ -200,6 +200,14 @@ export type QualityStatus = "normal" | "warning" | "critical";
 export type TaxInvoiceType = "SUPPLIER" | "CUSTOMER";
 export type TaxInvoiceStatus = "PENDING" | "EXTRACTED" | "APPROVED";
 
+export interface PaginatedResult<T> {
+  items: T[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 export interface ExtractedTaxInvoiceRoll {
   rollNumber: string;
   weightKg: number | null;
@@ -2240,13 +2248,23 @@ class AuRubberApiClient {
     supplierId?: number;
     companyType?: "SUPPLIER" | "CUSTOMER";
     includeAllVersions?: boolean;
-  }): Promise<RubberDeliveryNoteDto[]> {
+    search?: string;
+    sortColumn?: string;
+    sortDirection?: "asc" | "desc";
+    page?: number;
+    pageSize?: number;
+  }): Promise<PaginatedResult<RubberDeliveryNoteDto>> {
     const params = new URLSearchParams();
     if (filters?.deliveryNoteType) params.set("deliveryNoteType", filters.deliveryNoteType);
     if (filters?.status) params.set("status", filters.status);
     if (filters?.supplierId) params.set("supplierId", String(filters.supplierId));
     if (filters?.companyType) params.set("companyType", filters.companyType);
     if (filters?.includeAllVersions) params.set("includeAllVersions", "true");
+    if (filters?.search) params.set("search", filters.search);
+    if (filters?.sortColumn) params.set("sortColumn", filters.sortColumn);
+    if (filters?.sortDirection) params.set("sortDirection", filters.sortDirection);
+    if (filters?.page) params.set("page", String(filters.page));
+    if (filters?.pageSize) params.set("pageSize", String(filters.pageSize));
     const query = params.toString() ? `?${params.toString()}` : "";
     return this.request(`/rubber-lining/portal/delivery-notes${query}`);
   }
@@ -3062,7 +3080,12 @@ class AuRubberApiClient {
     companyId?: number;
     includeAllVersions?: boolean;
     isCreditNote?: boolean;
-  }): Promise<RubberTaxInvoiceDto[]> {
+    search?: string;
+    sortColumn?: string;
+    sortDirection?: "asc" | "desc";
+    page?: number;
+    pageSize?: number;
+  }): Promise<PaginatedResult<RubberTaxInvoiceDto>> {
     const params = new URLSearchParams();
     if (filters?.invoiceType) params.set("invoiceType", filters.invoiceType);
     if (filters?.status) params.set("status", filters.status);
@@ -3070,6 +3093,11 @@ class AuRubberApiClient {
     if (filters?.includeAllVersions) params.set("includeAllVersions", "true");
     if (filters?.isCreditNote !== undefined)
       params.set("isCreditNote", String(filters.isCreditNote));
+    if (filters?.search) params.set("search", filters.search);
+    if (filters?.sortColumn) params.set("sortColumn", filters.sortColumn);
+    if (filters?.sortDirection) params.set("sortDirection", filters.sortDirection);
+    if (filters?.page) params.set("page", String(filters.page));
+    if (filters?.pageSize) params.set("pageSize", String(filters.pageSize));
     const qs = params.toString();
     return this.request(`/rubber-lining/portal/tax-invoices${qs ? `?${qs}` : ""}`);
   }

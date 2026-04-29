@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { IsNull, Not, Repository } from "typeorm";
 import { formatISODate, generateUniqueId } from "../lib/datetime";
+import { PaginatedResult } from "../lib/dto/pagination-query.dto";
 import {
   CreateDeliveryNoteDto,
   CreateDeliveryNoteItemDto,
@@ -34,6 +35,18 @@ import { RubberStockService } from "./rubber-stock.service";
 const DELIVERY_NOTE_TYPE_LABELS: Record<DeliveryNoteType, string> = {
   [DeliveryNoteType.COMPOUND]: "Compound",
   [DeliveryNoteType.ROLL]: "Roll",
+};
+
+const DELIVERY_NOTE_SORT_MAP: Record<string, string> = {
+  deliveryNoteNumber: "dn.delivery_note_number",
+  deliveryDate: "dn.delivery_date",
+  deliveryNoteType: "dn.delivery_note_type",
+  status: "dn.status",
+  supplierCompanyName: "company.name",
+  customerCompanyName: "company.name",
+  customerReference: "dn.customer_reference",
+  auCocNumber: "coc.coc_number",
+  createdAt: "dn.created_at",
 };
 
 const DELIVERY_NOTE_STATUS_LABELS: Record<DeliveryNoteStatus, string> = {
@@ -122,6 +135,75 @@ export class RubberDeliveryNoteService {
     const noteIds = notes.map((n) => n.id);
     const auCocMap = noteIds.length > 0 ? await this.auCocMapByDeliveryNoteIds(noteIds) : new Map();
     return notes.map((dn) => this.mapDeliveryNoteToDto(dn, auCocMap.get(dn.id) ?? null));
+  }
+
+  async paginatedDeliveryNotes(filters?: {
+    deliveryNoteType?: DeliveryNoteType;
+    status?: DeliveryNoteStatus;
+    supplierCompanyId?: number;
+    companyType?: CompanyType;
+    includeAllVersions?: boolean;
+    search?: string;
+    sortColumn?: string;
+    sortDirection?: "asc" | "desc";
+    page?: number;
+    pageSize?: number;
+  }): Promise<PaginatedResult<RubberDeliveryNoteDto>> {
+    const page = Math.max(1, filters?.page ?? 1);
+    const pageSize = Math.max(1, Math.min(10000, filters?.pageSize ?? 25));
+    const skip = (page - 1) * pageSize;
+
+    const query = this.deliveryNoteRepository
+      .createQueryBuilder("dn")
+      .leftJoinAndSelect("dn.supplierCompany", "company")
+      .leftJoinAndSelect("dn.linkedCoc", "coc");
+
+    if (!filters?.includeAllVersions) {
+      query.andWhere("dn.version_status = :versionStatus", {
+        versionStatus: DocumentVersionStatus.ACTIVE,
+      });
+    }
+    if (filters?.deliveryNoteType) {
+      query.andWhere("dn.delivery_note_type = :type", { type: filters.deliveryNoteType });
+    }
+    if (filters?.status) {
+      query.andWhere("dn.status = :status", { status: filters.status });
+    }
+    if (filters?.supplierCompanyId) {
+      query.andWhere("dn.supplier_company_id = :companyId", {
+        companyId: filters.supplierCompanyId,
+      });
+    }
+    if (filters?.companyType) {
+      query.andWhere("company.company_type = :companyType", {
+        companyType: filters.companyType,
+      });
+    }
+    if (filters?.search) {
+      query.andWhere(
+        "(dn.delivery_note_number ILIKE :search OR dn.customer_reference ILIKE :search OR company.name ILIKE :search)",
+        { search: `%${filters.search}%` },
+      );
+    }
+
+    const sortKey = filters?.sortColumn ?? "createdAt";
+    const sortColumn = DELIVERY_NOTE_SORT_MAP[sortKey] ?? "dn.created_at";
+    const sortDirection = filters?.sortDirection === "asc" ? "ASC" : "DESC";
+    query.orderBy(sortColumn, sortDirection, "NULLS LAST");
+    query.addOrderBy("dn.id", "DESC");
+
+    query.skip(skip).take(pageSize);
+
+    const [notes, total] = await query.getManyAndCount();
+    const noteIds = notes.map((n) => n.id);
+    const auCocMap = noteIds.length > 0 ? await this.auCocMapByDeliveryNoteIds(noteIds) : new Map();
+    return {
+      items: notes.map((dn) => this.mapDeliveryNoteToDto(dn, auCocMap.get(dn.id) ?? null)),
+      total,
+      page,
+      limit: pageSize,
+      totalPages: Math.max(1, Math.ceil(total / pageSize)),
+    };
   }
 
   async deliveryNoteById(id: number): Promise<RubberDeliveryNoteDto | null> {

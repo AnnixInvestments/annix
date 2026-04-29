@@ -53,6 +53,11 @@ export const rubberKeys = {
       supplierId?: number;
       companyType?: "SUPPLIER" | "CUSTOMER";
       includeAllVersions?: boolean;
+      search?: string;
+      sortColumn?: string;
+      sortDirection?: "asc" | "desc";
+      page?: number;
+      pageSize?: number;
     }) => [...rubberKeys.deliveryNotes.all, "list", filters ?? {}] as const,
     detail: (id: number) => [...rubberKeys.deliveryNotes.all, "detail", id] as const,
   },
@@ -70,6 +75,11 @@ export const rubberKeys = {
       companyId?: number;
       includeAllVersions?: boolean;
       isCreditNote?: boolean;
+      search?: string;
+      sortColumn?: string;
+      sortDirection?: "asc" | "desc";
+      page?: number;
+      pageSize?: number;
     }) => [...rubberKeys.taxInvoices.all, "list", filters ?? {}] as const,
     detail: (id: number) => [...rubberKeys.taxInvoices.all, "detail", id] as const,
   },

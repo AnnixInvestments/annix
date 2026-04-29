@@ -25,15 +25,16 @@ export default function CustomerStatementsPage() {
     const loadData = async () => {
       try {
         setIsLoading(true);
-        const [companies, invoices] = await Promise.all([
+        const [companies, invoiceResult] = await Promise.all([
           auRubberApiClient.companies(),
-          auRubberApiClient.taxInvoices({ invoiceType: "CUSTOMER" }),
+          auRubberApiClient.taxInvoices({ invoiceType: "CUSTOMER", pageSize: 10000 }),
         ]);
+        const allInvoices = invoiceResult.items;
 
         const customers = companies.filter((c) => c.companyType === "CUSTOMER");
         const companyStatements = customers
           .map((company) => {
-            const companyInvoices = invoices.filter((inv) => inv.companyId === company.id);
+            const companyInvoices = allInvoices.filter((inv) => inv.companyId === company.id);
             const total = companyInvoices.reduce(
               (sum, inv) => sum + (inv.totalAmount ? Number(inv.totalAmount) : 0),
               0,

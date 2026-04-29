@@ -444,10 +444,14 @@ function CompanyActivity(props: { companyId: number }) {
         setIsLoading(true);
         const [ordersData, tiData] = await Promise.all([
           auRubberApiClient.orders(),
-          auRubberApiClient.taxInvoices({ companyId, invoiceType: "CUSTOMER" }),
+          auRubberApiClient.taxInvoices({
+            companyId,
+            invoiceType: "CUSTOMER",
+            pageSize: 10000,
+          }),
         ]);
         setOrders(ordersData.filter((o) => o.companyId === companyId));
-        setTaxInvoices(tiData);
+        setTaxInvoices(tiData.items);
       } catch {
         // Activity is supplementary
       } finally {

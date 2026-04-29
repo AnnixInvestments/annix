@@ -406,11 +406,15 @@ function CompanyActivity(props: { companyId: number }) {
       try {
         setIsLoading(true);
         const [tiData, dnData] = await Promise.all([
-          auRubberApiClient.taxInvoices({ companyId, invoiceType: "SUPPLIER" }),
-          auRubberApiClient.deliveryNotes({ supplierId: companyId }),
+          auRubberApiClient.taxInvoices({
+            companyId,
+            invoiceType: "SUPPLIER",
+            pageSize: 10000,
+          }),
+          auRubberApiClient.deliveryNotes({ supplierId: companyId, pageSize: 10000 }),
         ]);
-        setTaxInvoices(tiData);
-        setDeliveryNotes(dnData);
+        setTaxInvoices(tiData.items);
+        setDeliveryNotes(dnData.items);
       } catch {
         setTaxInvoices([]);
         setDeliveryNotes([]);
