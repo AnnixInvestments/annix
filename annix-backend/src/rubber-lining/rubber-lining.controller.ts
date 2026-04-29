@@ -2871,7 +2871,9 @@ Formula: totalPrice = totalKg × salePricePerKg
       isCreditNote: false,
     });
 
-    const withDocuments = allInvoices.filter((inv) => inv.documentPath);
+    const withDocuments = allInvoices.filter(
+      (inv) => inv.documentPath && inv.status !== TaxInvoiceStatus.APPROVED,
+    );
     const startedAt = nowISO();
     const logger = this.logger;
     const storageService = this.storageService;

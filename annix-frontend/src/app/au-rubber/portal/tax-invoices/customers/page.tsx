@@ -460,7 +460,7 @@ export default function CustomerTaxInvoicesPage() {
               const confirmed = await confirm({
                 title: "Re-extract all customer tax invoices?",
                 message:
-                  "This re-runs Vision AI on every customer tax invoice with a document attached. Existing extracted data will be overwritten. The job runs in the background and can take several minutes.",
+                  "Re-runs Vision AI on every NOT-yet-approved customer tax invoice with a document attached. Approved invoices are skipped — un-approve them first if you need them re-extracted. Existing extracted data on non-approved invoices will be overwritten. Runs in the background and can take several minutes.",
                 confirmLabel: "Re-extract All",
               });
               if (!confirmed) return;
