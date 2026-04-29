@@ -1054,6 +1054,25 @@ export class RubberTaxInvoiceService {
       return { taxInvoiceIds: [parentId] };
     }
 
+    const parentInvoiceNumber = (parent.invoiceNumber ?? "").trim();
+    const looksLikeRealInvoiceNumber =
+      parentInvoiceNumber.length > 0 && !/^SCAN_/i.test(parentInvoiceNumber);
+    const matchingForParent = looksLikeRealInvoiceNumber
+      ? ordered.find((inv) => (inv.invoiceNumber ?? "").trim() === parentInvoiceNumber)
+      : null;
+    if (matchingForParent) {
+      const slicedPaths = await this.slicePdfPerInvoice(parent, [matchingForParent]);
+      if (slicedPaths[0]) {
+        parent.documentPath = slicedPaths[0];
+        await this.taxInvoiceRepository.save(parent);
+      }
+      await this.setExtractedData(parentId, matchingForParent);
+      this.logger.log(
+        `Re-extract on existing tax invoice ${parentInvoiceNumber} (#${parentId}) — kept own data, sliced PDF to its own page(s), skipped splitting against ${ordered.length - 1} sibling invoice(s) already in the system`,
+      );
+      return { taxInvoiceIds: [parentId] };
+    }
+
     const perInvoicePaths = await this.slicePdfPerInvoice(parent, ordered);
 
     if (perInvoicePaths[0]) {
