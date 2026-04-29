@@ -822,6 +822,14 @@ Rules (apply to EVERY AU customer-invoice line item that contains a "Roll No & W
 5. If a "Roll No & Weight" sub-block is genuinely absent (no roll-number lines printed under the description at all), set rolls to null/omit — do NOT synthesise rolls from the spec weight.
 6. The "1.05 S.G's" / "S.G 1.04" / "@ 1.05 S.G" tail in the description is the specific gravity used to derive the spec weight — also forbidden as a weight source. Ignore it for weightKg purposes.
 7. This per-roll extraction rule applies INDEPENDENTLY to every line item AND every invoice in the invoices[] array.
+
+PRODUCT QUANTITY / UNIT ON AU CUSTOMER INVOICES (CRITICAL):
+AU customer invoices ship physical rubber rolls billed by the roll, NOT by the kg. The line-item Quantity column is ALWAYS a roll count (e.g. "1.00" = 1 roll, "2.00" = 2 rolls).
+- productQuantity = the line-item Quantity column verbatim (or the sum of Quantity values if the invoice has multiple roll line items). For the example line "Qty 1.00 RSCA40-6.800.125 ... 63kg per Roll", productQuantity is 1, NOT 63.
+- productUnit = "rolls" (always — never "kg" on an AU customer invoice).
+- Cost per Unit / unitPrice = the Excl. Price column (price per roll), unchanged.
+- The "<n>kg per Roll" / "<n>Kg per Roll" tokens embedded in the description are PER-ROLL SPEC WEIGHTS — they describe what one roll theoretically weighs, NOT how much product is on the line. Reading "63kg per Roll" as productQuantity=63 / productUnit="kg" is a hard error and corrupts the customer's accounting (the row would invoice out as 63 units instead of 1).
+- Even if the description text mentions kg multiple times (spec weight, S.G., density, length × width × thickness), the productUnit on a customer invoice MUST stay "rolls" — those are descriptive metadata, not units of sale.
 `;
 
 export const TAX_INVOICE_SYSTEM_PROMPT = `You are an expert at extracting structured data from tax invoices for rubber compound and rubber roll suppliers.
