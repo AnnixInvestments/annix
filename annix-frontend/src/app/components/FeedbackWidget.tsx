@@ -8,7 +8,8 @@ import {
   feedbackStepState,
 } from "@annix/feedback-sdk";
 import { isUndefined } from "es-toolkit/compat";
-import { toBlob } from "html-to-image";
+// html-to-image is loaded on demand inside the screenshot capture path
+// to keep the ~150KB library out of every portal page's initial bundle.
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useFeatureGate } from "@/app/hooks/useFeatureGate";
@@ -424,6 +425,8 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
         fetchRequestInit: { credentials: "include" as RequestCredentials },
         imagePlaceholder: TRANSPARENT_PIXEL,
       };
+
+      const { toBlob } = await import("html-to-image");
 
       const fullPageBlob = await Promise.race([
         toBlob(contentRoot, {

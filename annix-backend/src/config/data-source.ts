@@ -20,9 +20,9 @@ export const AppDataSource = new DataSource({
   logging: process.env.TYPEORM_LOGGING === "true",
   ssl: process.env.DATABASE_SSL === "true" ? { rejectUnauthorized: false } : false,
   extra: {
-    max: 5,
-    min: 0,
-    idleTimeoutMillis: 10000,
+    max: Number(process.env.DATABASE_POOL_MAX ?? 15),
+    min: Number(process.env.DATABASE_POOL_MIN ?? 2),
+    idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 30000,
     acquireTimeoutMillis: 60000,
   },
