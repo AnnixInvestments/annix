@@ -4,19 +4,19 @@ import React, { createContext, useCallback, useContext, useEffect, useState } fr
 
 export type ToastType = "success" | "error" | "warning" | "info";
 
-interface Toast {
+export interface Toast {
   id: string;
   message: string;
   type: ToastType;
   duration?: number;
 }
 
-interface ToastContextType {
+export interface ToastContextType {
   showToast: (message: string, type?: ToastType, duration?: number) => void;
   hideToast: (id: string) => void;
 }
 
-const ToastContext = createContext<ToastContextType | undefined>(undefined);
+export const ToastContext = createContext<ToastContextType | undefined>(undefined);
 
 export function useToast() {
   const context = useContext(ToastContext);
