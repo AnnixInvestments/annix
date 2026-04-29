@@ -20,9 +20,9 @@ export async function waitForReExtractionComplete<T>(opts: WaitOptions<T>): Prom
     fetcher,
     toItems,
     onProgress,
-    pollIntervalMs = 5000,
+    pollIntervalMs = 3000,
     timeoutMs = 600000,
-    animationStepMs = 400,
+    animationStepMs = 300,
   } = opts;
   if (total === 0) return;
 

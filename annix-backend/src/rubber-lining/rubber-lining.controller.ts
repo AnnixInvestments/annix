@@ -3027,32 +3027,87 @@ Formula: totalPrice = totalKg × salePricePerKg
     const logger = this.logger;
     const storageService = this.storageService;
     const orchestrator = this.extractionOrchestratorService;
+    const cocExtractionService = this.rubberCocExtractionService;
+    const deliveryNoteService = this.rubberDeliveryNoteService;
+
+    const byDocPath = withDocuments.reduce((map, note) => {
+      const list = map.get(note.documentPath!) ?? [];
+      return new Map(map).set(note.documentPath!, [...list, note]);
+    }, new Map<string, typeof withDocuments>());
 
     (async () => {
+      const groups = Array.from(byDocPath.entries());
       const concurrency = 3;
       let cursor = 0;
       const worker = async (): Promise<void> => {
         while (true) {
           const idx = cursor;
           cursor += 1;
-          if (idx >= withDocuments.length) return;
-          const note = withDocuments[idx];
+          if (idx >= groups.length) return;
+          const [path, notesAtPath] = groups[idx];
           try {
-            const docBuffer = await storageService.download(note.documentPath!);
-            orchestrator.triggerDeliveryNoteExtraction(note.id, docBuffer, note.deliveryNoteType);
+            if (notesAtPath.length === 1) {
+              const note = notesAtPath[0];
+              const docBuffer = await storageService.download(path);
+              orchestrator.triggerDeliveryNoteExtraction(note.id, docBuffer, note.deliveryNoteType);
+              logger.log(
+                `Triggered re-extraction for ${partyType} delivery note ${note.id} (${note.deliveryNoteNumber}) — single-PDF`,
+              );
+              continue;
+            }
+            const docBuffer = await storageService.download(path);
+            const isRoll = notesAtPath.every((n) => n.deliveryNoteType === "ROLL");
+            if (!isRoll) {
+              await Promise.all(
+                notesAtPath.map((note) =>
+                  Promise.resolve().then(() =>
+                    orchestrator.triggerDeliveryNoteExtraction(
+                      note.id,
+                      docBuffer,
+                      note.deliveryNoteType,
+                    ),
+                  ),
+                ),
+              );
+              logger.log(
+                `Triggered re-extraction for ${notesAtPath.length} ${partyType} compound DNs sharing ${path}`,
+              );
+              continue;
+            }
+            const correctionHints = notesAtPath[0].supplierCompanyName
+              ? await deliveryNoteService.correctionHintsForDnSupplier(
+                  notesAtPath[0].supplierCompanyName,
+                )
+              : null;
+            const customerResult = await cocExtractionService.extractCustomerDeliveryNoteFromImages(
+              docBuffer,
+              correctionHints,
+            );
+            await Promise.all(
+              notesAtPath.map((note) =>
+                Promise.resolve().then(() =>
+                  orchestrator.triggerDeliveryNoteExtraction(
+                    note.id,
+                    docBuffer,
+                    note.deliveryNoteType,
+                    customerResult,
+                  ),
+                ),
+              ),
+            );
             logger.log(
-              `Triggered re-extraction for ${partyType} delivery note ${note.id} (${note.deliveryNoteNumber})`,
+              `Batched re-extract: ${notesAtPath.length} ${partyType} roll DNs sharing ${path} processed via 1 Gemini call (${customerResult.processingTimeMs}ms)`,
             );
           } catch (err) {
             logger.error(
-              `Failed to trigger re-extraction for delivery note ${note.id}: ${err instanceof Error ? err.message : String(err)}`,
+              `Failed batched re-extract for ${path}: ${err instanceof Error ? err.message : String(err)}`,
             );
           }
         }
       };
       await Promise.all(Array.from({ length: concurrency }, () => worker()));
       logger.log(
-        `Bulk delivery-note re-extraction complete (${partyType}): ${withDocuments.length} notes processed`,
+        `Bulk delivery-note re-extraction complete (${partyType}): ${withDocuments.length} notes across ${byDocPath.size} unique PDF(s)`,
       );
     })();
 

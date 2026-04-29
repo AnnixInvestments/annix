@@ -105,6 +105,9 @@ export class RubberExtractionOrchestratorService {
     deliveryNoteId: number,
     pdfBuffer: Buffer,
     dnType: DeliveryNoteType,
+    preExtractedCustomerResult?: Awaited<
+      ReturnType<RubberCocExtractionService["extractCustomerDeliveryNoteFromImages"]>
+    >,
   ): void {
     (async () => {
       try {
@@ -119,10 +122,11 @@ export class RubberExtractionOrchestratorService {
         const extractedData = await (async () => {
           if (isRoll) {
             const customerResult =
-              await this.cocExtractionService.extractCustomerDeliveryNoteFromImages(
+              preExtractedCustomerResult ??
+              (await this.cocExtractionService.extractCustomerDeliveryNoteFromImages(
                 pdfBuffer,
                 correctionHints,
-              );
+              ));
 
             const supplierDns = customerResult.deliveryNotes.filter((dn) => {
               const supplier = (dn.supplierName || "").toLowerCase();
