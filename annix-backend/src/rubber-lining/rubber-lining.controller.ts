@@ -4,6 +4,7 @@ import {
   Controller,
   Delete,
   Get,
+  Header,
   HttpStatus,
   Inject,
   Logger,
@@ -405,6 +406,7 @@ export class RubberLiningController {
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
   @Get("portal/companies")
+  @Header("Cache-Control", "private, max-age=600")
   @ApiOperation({
     summary: "List companies",
     description: "Retrieve all rubber lining companies with their pricing tier information",
@@ -466,6 +468,7 @@ export class RubberLiningController {
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
   @Get("portal/products")
+  @Header("Cache-Control", "private, max-age=600")
   @ApiOperation({
     summary: "List products",
     description: "Retrieve all rubber products with resolved coding names and calculated prices",
@@ -1036,7 +1039,7 @@ Formula: totalPrice = totalKg × salePricePerKg
 
     res.set({
       "Content-Type": result.contentType,
-      "Cache-Control": "public, max-age=300",
+      "Cache-Control": "public, max-age=86400, immutable",
       "Content-Length": result.buffer.length.toString(),
     });
     res.send(result.buffer);

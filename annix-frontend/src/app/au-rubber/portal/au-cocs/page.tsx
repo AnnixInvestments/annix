@@ -1,5 +1,6 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { Eye, Loader2, Mail, RefreshCw, Zap } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -21,6 +22,7 @@ import {
 } from "@/app/lib/api/auRubberApi";
 import { formatDateZA } from "@/app/lib/datetime";
 import { useAuRubberAuCocs } from "@/app/lib/query/hooks";
+import { rubberKeys } from "@/app/lib/query/keys";
 import { Breadcrumb } from "../../components/Breadcrumb";
 import { CocEmailModal, type CocEmailMode } from "../../components/CocEmailModal";
 
@@ -36,11 +38,13 @@ type SortColumn =
 export default function AuCocsPage() {
   const { showToast } = useToast();
   const { isAdmin } = useAuRubberAuth();
+  const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<AuCocStatus | "">("");
   const cocsQuery = useAuRubberAuCocs({
     status: filterStatus || undefined,
   });
+  const refresh = () => queryClient.invalidateQueries({ queryKey: rubberKeys.auCocs.all });
   const rawCocsQueryData = cocsQuery.data;
   const cocs = rawCocsQueryData || [];
   const isLoading = cocsQuery.isLoading;
@@ -123,7 +127,7 @@ export default function AuCocsPage() {
         status: failures.length > 0 && generated === 0 ? "error" : "done",
         message: summary,
       });
-      await cocsQuery.refetch();
+      await refresh();
     } catch (err) {
       setProgressModal({
         visible: true,
@@ -155,7 +159,7 @@ export default function AuCocsPage() {
         status: result.failed > 0 ? "error" : "done",
         message: summary,
       });
-      await cocsQuery.refetch();
+      await refresh();
     } catch (err) {
       setProgressModal({
         visible: true,
@@ -217,7 +221,7 @@ export default function AuCocsPage() {
         status: failures.length > 0 && sent === 0 ? "error" : "done",
         message: `${doneLabel === "Send" ? "Sent" : "Resent"} ${sent} of ${cocsToSend.length} CoC(s) for ${params.customerName} to ${params.email}: ${sentNumbers.join(", ")}${failedInfo}`,
       });
-      await cocsQuery.refetch();
+      await refresh();
     } catch (err) {
       setProgressModal({
         visible: true,
@@ -302,7 +306,7 @@ export default function AuCocsPage() {
     try {
       await auRubberApiClient.generateAuCocPdf(id);
       showToast("PDF generated successfully", "success");
-      cocsQuery.refetch();
+      refresh();
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to generate PDF", "error");
     }
@@ -356,7 +360,7 @@ export default function AuCocsPage() {
       setSendEmail("");
       setSendCc("");
       setSendBcc("");
-      cocsQuery.refetch();
+      refresh();
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to send CoC", "error");
     } finally {
@@ -372,7 +376,7 @@ export default function AuCocsPage() {
       showToast("Certificate deleted successfully", "success");
       setShowDeleteModal(false);
       setDeletingId(null);
-      cocsQuery.refetch();
+      refresh();
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to delete certificate", "error");
     } finally {
@@ -450,7 +454,7 @@ export default function AuCocsPage() {
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Data</div>
           <p className="text-gray-600">{error.message}</p>
           <button
-            onClick={() => cocsQuery.refetch()}
+            onClick={() => refresh()}
             className="mt-4 px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700"
           >
             Retry
