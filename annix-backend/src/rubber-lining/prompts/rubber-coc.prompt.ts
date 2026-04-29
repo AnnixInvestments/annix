@@ -804,6 +804,24 @@ For every invoice in this PDF (top-level fields AND every element of the invoice
 - The orderNumber (PO / Reference) is the customer's purchase-order / project reference printed on each invoice. Look for labels like "PO No", "P/O No", "Order No", "Your Order", "Customer PO", "Customer Order No", "Reference", "Ref", "Cust Ref", "Project", or a header field that simply contains an alphanumeric reference string near the customer block.
 - Extract the orderNumber VERBATIM — the COMPLETE string exactly as printed, including ALL parts of a compound / multi-segment reference. Many AU customer invoices print a project code AND a PO number separated by a slash, dash, hyphen, or space (e.g. "PL8007/PO6873", "PROJ-123/PO-9988", "MS-44 PO-6875"). You MUST capture the WHOLE string, not just one segment. If the reference contains "/" or "-" or whitespace, keep those characters and the surrounding tokens — do NOT split, truncate to the second half, or drop a prefix because it "looks like a project code". The 3–5 digit short-number rule from the supplier prompt does NOT apply on customer invoices — customer references can be 4–25 characters long and may include letters, digits, slashes, dashes, and dots.
 - Apply this verbatim rule INDEPENDENTLY to every invoice in the invoices[] array. If invoice 1 has "PL8007/PO6873" and invoice 2 has "PL8009/PO6884", BOTH must keep the full "PLxxxx/POxxxx" form — do NOT truncate the prefix on later invoices just because the layout looks similar.
+
+PER-ROLL EXTRACTION ON AU CUSTOMER INVOICES (CRITICAL — TRACEABILITY):
+AU customer tax invoices print roll detail directly inside the line-item description block in this exact pattern:
+
+  "RSCA40-6.800.125 - Red A40 SC - 6mm x 800mm x 12.5m, 63kg per Roll @ 1.05 S.G's
+   Roll No & Weight:-
+   200-42377 - 62Kg"
+
+You MUST emit the rolls[] array on each line item using the per-roll detail listed BELOW the description, NEVER from the spec weight inside the description.
+
+Rules (apply to EVERY AU customer-invoice line item that contains a "Roll No & Weight" / "Roll No & Weights" / "Roll No's & Weights" / "Roll Nos & Weights" sub-block — accept any of these label variants and any colon/dash/hyphen punctuation after the label):
+1. The "<number>kg per Roll" / "<number>Kg per Roll" value embedded in the description (e.g. "63kg per Roll", "249.37kg per Roll", "62.40Kg per Roll") is a THEORETICAL specification weight derived from dimensions × specific gravity. It is NEVER the actual roll weight. NEVER use it as weightKg on a roll. Treat it as forbidden source data for the rolls[] array.
+2. Each line beneath the "Roll No & Weight" label has the form "<rollNumber> - <weight>Kg" (e.g. "200-42377 - 62Kg", "154-41210 - 258Kg", "187-41525 - 67KG"). The roll number is the token to the left of the dash; the weight is the integer/decimal followed by "Kg" / "KG" / "kg" to the right of the dash. Read these digit-by-digit.
+3. Emit ONE entry in the rolls[] array per "<rollNumber> - <weight>Kg" line — even if the line item's qty is 1. rollNumber is the verbatim token (keep the "<order>-<ticket>" hyphen, e.g. "200-42377"). weightKg is the actual per-line weight (e.g. 62), NOT the description's "per Roll" spec figure (e.g. 63).
+4. If the qty column says 2 (or higher) and the description has 2 (or N) "<rollNumber> - <weight>Kg" lines beneath it, the rolls[] array MUST contain N entries — one per physical roll, each with its own number and actual weight. Never collapse them.
+5. If a "Roll No & Weight" sub-block is genuinely absent (no roll-number lines printed under the description at all), set rolls to null/omit — do NOT synthesise rolls from the spec weight.
+6. The "1.05 S.G's" / "S.G 1.04" / "@ 1.05 S.G" tail in the description is the specific gravity used to derive the spec weight — also forbidden as a weight source. Ignore it for weightKg purposes.
+7. This per-roll extraction rule applies INDEPENDENTLY to every line item AND every invoice in the invoices[] array.
 `;
 
 export const TAX_INVOICE_SYSTEM_PROMPT = `You are an expert at extracting structured data from tax invoices for rubber compound and rubber roll suppliers.
