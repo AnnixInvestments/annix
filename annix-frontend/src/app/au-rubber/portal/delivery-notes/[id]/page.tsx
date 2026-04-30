@@ -293,6 +293,7 @@ export default function DeliveryNoteDetailPage() {
           dn.rolls.forEach((roll) => {
             allRolls.push({
               rollNumber: roll.rollNumber,
+              compoundCode: roll.compoundCode,
               thicknessMm: roll.thicknessMm,
               widthMm: roll.widthMm,
               lengthM: roll.lengthM,
