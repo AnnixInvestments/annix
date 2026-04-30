@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
+import { useConfirm } from "@/app/au-rubber/hooks/useConfirm";
 import {
   ImageViewerToolbar,
   imageViewerTransform,
@@ -81,6 +82,7 @@ export default function DeliveryNoteDetailPage() {
   const finalizeDeliveryNoteMutation = useAuRubberFinalizeDeliveryNote();
   const approveDeliveryNoteMutation = useAuRubberApproveDeliveryNote();
   const refileDeliveryNoteStockMutation = useAuRubberRefileDeliveryNoteStock();
+  const { confirm: confirmDialog, ConfirmDialog } = useConfirm();
 
   const noteData = noteQuery.data;
   const note = noteData ? noteData : null;
@@ -465,9 +467,13 @@ export default function DeliveryNoteDetailPage() {
   };
 
   const handleRefileStock = async () => {
-    const confirmed = window.confirm(
-      "Refile stock will void the existing stock movement for this delivery note and recreate it from your saved corrections. Continue?",
-    );
+    const confirmed = await confirmDialog({
+      title: "Re-approve & Refile Stock?",
+      message:
+        "This voids the existing stock movement for this delivery note and recreates it from your saved corrections. The change is immediate and irreversible.",
+      confirmLabel: "Refile Stock",
+      variant: "danger",
+    });
     if (!confirmed) return;
     try {
       setIsRefiling(true);
@@ -1717,6 +1723,7 @@ export default function DeliveryNoteDetailPage() {
           </div>
         </div>
       )}
+      {ConfirmDialog}
     </div>
   );
 }

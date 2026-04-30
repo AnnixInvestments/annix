@@ -4,6 +4,7 @@ import { CheckCircle, Download, FileText, Pencil, RefreshCw, Save, X } from "luc
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
+import { useConfirm } from "@/app/au-rubber/hooks/useConfirm";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { useToast } from "@/app/components/Toast";
 import {
@@ -21,6 +22,7 @@ export default function TaxInvoiceDetailPage() {
   const searchParams = useSearchParams();
   const { showToast } = useToast();
   const { showExtraction, hideExtraction } = useExtractionProgress();
+  const { confirm: confirmDialog, ConfirmDialog } = useConfirm();
   const [invoice, setInvoice] = useState<RubberTaxInvoiceDto | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isExtracting, setIsExtracting] = useState(false);
@@ -184,9 +186,13 @@ export default function TaxInvoiceDetailPage() {
   };
 
   const handleRefileStock = async () => {
-    const confirmed = window.confirm(
-      "Refile stock will void the existing stock movement for this tax invoice and recreate it from your saved corrections. Continue?",
-    );
+    const confirmed = await confirmDialog({
+      title: "Re-approve & Refile Stock?",
+      message:
+        "This voids the existing stock movement for this tax invoice and recreates it from your saved corrections. The change is immediate and irreversible.",
+      confirmLabel: "Refile Stock",
+      variant: "danger",
+    });
     if (!confirmed) return;
     try {
       setIsRefiling(true);
@@ -835,6 +841,7 @@ export default function TaxInvoiceDetailPage() {
           )}
         </div>
       </div>
+      {ConfirmDialog}
     </div>
   );
 }
