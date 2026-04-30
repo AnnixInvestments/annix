@@ -34,7 +34,7 @@ describe("createEndpoint", () => {
     const data = [{ id: 1 }];
     const request = vi.fn().mockResolvedValue(data);
     const client = stubClient(request);
-    const list = createEndpoint<void, typeof data>(client, "GET", { path: "/items" });
+    const list = createEndpoint<[], typeof data>(client, "GET", { path: "/items" });
 
     const result = await list();
 
@@ -45,11 +45,11 @@ describe("createEndpoint", () => {
   it("substitutes path params via builder", async () => {
     const request = vi.fn().mockResolvedValue({ id: 7 });
     const client = stubClient(request);
-    const detail = createEndpoint<{ id: number }, { id: number }>(client, "GET", {
-      path: ({ id }) => `/items/${id}`,
+    const detail = createEndpoint<[id: number], { id: number }>(client, "GET", {
+      path: (id) => `/items/${id}`,
     });
 
-    await detail({ id: 7 });
+    await detail(7);
 
     expect(request).toHaveBeenCalledWith("/items/7", { method: "GET" });
   });
@@ -57,12 +57,12 @@ describe("createEndpoint", () => {
   it("appends a query string built from args, skipping null and undefined", async () => {
     const request = vi.fn().mockResolvedValue([]);
     const client = stubClient(request);
-    const search = createEndpoint<{ q?: string; status?: string | null }, unknown>(client, "GET", {
+    const search = createEndpoint<[q?: string, status?: string | null], unknown>(client, "GET", {
       path: "/items",
-      query: ({ q, status }) => ({ q, status, archived: false }),
+      query: (q, status) => ({ q, status, archived: false }),
     });
 
-    await search({ q: "foo", status: null });
+    await search("foo", null);
 
     expect(request).toHaveBeenCalledWith("/items?q=foo&archived=false", { method: "GET" });
   });
@@ -70,12 +70,12 @@ describe("createEndpoint", () => {
   it("repeats a query key for array values", async () => {
     const request = vi.fn().mockResolvedValue([]);
     const client = stubClient(request);
-    const tagged = createEndpoint<{ tag: string[] }, unknown>(client, "GET", {
+    const tagged = createEndpoint<[tags: string[]], unknown>(client, "GET", {
       path: "/items",
-      query: ({ tag }) => ({ tag }),
+      query: (tag) => ({ tag }),
     });
 
-    await tagged({ tag: ["a", "b"] });
+    await tagged(["a", "b"]);
 
     expect(request).toHaveBeenCalledWith("/items?tag=a&tag=b", { method: "GET" });
   });
@@ -83,9 +83,9 @@ describe("createEndpoint", () => {
   it("serialises JSON body for POST and sets Content-Type", async () => {
     const request = vi.fn().mockResolvedValue({ id: 9 });
     const client = stubClient(request);
-    const create = createEndpoint<{ name: string }, { id: number }>(client, "POST", {
+    const create = createEndpoint<[data: { name: string }], { id: number }>(client, "POST", {
       path: "/items",
-      body: (args) => args,
+      body: (data) => data,
     });
 
     await create({ name: "widget" });
@@ -100,16 +100,16 @@ describe("createEndpoint", () => {
   it("combines path builder + body for PUT with id + payload", async () => {
     const request = vi.fn().mockResolvedValue({ id: 3, name: "renamed" });
     const client = stubClient(request);
-    const update = createEndpoint<{ id: number; data: { name: string } }, { id: number }>(
+    const update = createEndpoint<[id: number, data: { name: string }], { id: number }>(
       client,
       "PUT",
       {
-        path: ({ id }) => `/items/${id}`,
-        body: ({ data }) => data,
+        path: (id) => `/items/${id}`,
+        body: (_id, data) => data,
       },
     );
 
-    await update({ id: 3, data: { name: "renamed" } });
+    await update(3, { name: "renamed" });
 
     expect(request).toHaveBeenCalledWith("/items/3", {
       method: "PUT",
@@ -121,11 +121,11 @@ describe("createEndpoint", () => {
   it("sends DELETE with no body", async () => {
     const request = vi.fn().mockResolvedValue({});
     const client = stubClient(request);
-    const remove = createEndpoint<{ id: number }, void>(client, "DELETE", {
-      path: ({ id }) => `/items/${id}`,
+    const remove = createEndpoint<[id: number], void>(client, "DELETE", {
+      path: (id) => `/items/${id}`,
     });
 
-    await remove({ id: 4 });
+    await remove(4);
 
     expect(request).toHaveBeenCalledWith("/items/4", { method: "DELETE" });
   });
@@ -133,9 +133,9 @@ describe("createEndpoint", () => {
   it("sends FormData without setting Content-Type so fetch can set the boundary", async () => {
     const request = vi.fn().mockResolvedValue({ uploaded: true });
     const client = stubClient(request);
-    const upload = createEndpoint<{ file: File }, { uploaded: boolean }>(client, "POST", {
+    const upload = createEndpoint<[file: File], { uploaded: boolean }>(client, "POST", {
       path: "/uploads",
-      formData: ({ file }) => {
+      formData: (file) => {
         const fd = new FormData();
         fd.append("file", file);
         return fd;
@@ -143,7 +143,7 @@ describe("createEndpoint", () => {
     });
 
     const file = new File(["abc"], "a.txt", { type: "text/plain" });
-    await upload({ file });
+    await upload(file);
 
     const call = request.mock.calls[0];
     expect(call[0]).toBe("/uploads");
@@ -155,7 +155,7 @@ describe("createEndpoint", () => {
   it("applies transform to the raw response", async () => {
     const request = vi.fn().mockResolvedValue({ items: [1, 2, 3] });
     const client = stubClient(request);
-    const count = createEndpoint<void, number>(client, "GET", {
+    const count = createEndpoint<[], number>(client, "GET", {
       path: "/items",
       transform: (raw) => (raw as { items: unknown[] }).items.length,
     });
@@ -166,11 +166,11 @@ describe("createEndpoint", () => {
   it("propagates 4xx ApiError from the underlying client", async () => {
     const request = vi.fn().mockRejectedValue(new ApiError({ status: 404, message: "Not found" }));
     const client = stubClient(request);
-    const detail = createEndpoint<{ id: number }, unknown>(client, "GET", {
-      path: ({ id }) => `/items/${id}`,
+    const detail = createEndpoint<[id: number], unknown>(client, "GET", {
+      path: (id) => `/items/${id}`,
     });
 
-    await expect(detail({ id: 99 })).rejects.toMatchObject({
+    await expect(detail(99)).rejects.toMatchObject({
       name: "ApiError",
       status: 404,
       message: "Not found",
@@ -182,7 +182,7 @@ describe("createEndpoint", () => {
       .fn()
       .mockRejectedValue(new ApiError({ status: 502, message: "Bad gateway" }));
     const client = stubClient(request);
-    const list = createEndpoint<void, unknown>(client, "GET", { path: "/items" });
+    const list = createEndpoint<[], unknown>(client, "GET", { path: "/items" });
 
     await expect(list()).rejects.toMatchObject({
       name: "ApiError",
@@ -193,7 +193,7 @@ describe("createEndpoint", () => {
   it("does not send a body when the body builder returns null", async () => {
     const request = vi.fn().mockResolvedValue({});
     const client = stubClient(request);
-    const noop = createEndpoint<void, unknown>(client, "POST", {
+    const noop = createEndpoint<[], unknown>(client, "POST", {
       path: "/items/refresh",
       body: () => null,
     });
