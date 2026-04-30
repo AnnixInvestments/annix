@@ -176,6 +176,9 @@ export class RubberDeliveryNote {
   @Column({ name: "source_page_numbers", type: "jsonb", nullable: true })
   sourcePageNumbers: number[] | null;
 
+  @Column({ name: "siblings_backfilled_at", type: "timestamp", nullable: true })
+  siblingsBackfilledAt: Date | null;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

@@ -747,13 +747,23 @@ export default function CustomerDeliveryNotesPage() {
                     className="hover:bg-gray-50 cursor-pointer"
                   >
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <Link
-                        href={`/au-rubber/portal/delivery-notes/${note.id}`}
-                        onClick={(e) => e.stopPropagation()}
-                        className="text-blue-600 hover:text-blue-800 font-medium"
-                      >
-                        {rawNoteDeliveryNoteNumber || `DN-${note.id}`}
-                      </Link>
+                      <div className="flex items-center space-x-2">
+                        <Link
+                          href={`/au-rubber/portal/delivery-notes/${note.id}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-blue-600 hover:text-blue-800 font-medium"
+                        >
+                          {rawNoteDeliveryNoteNumber || `DN-${note.id}`}
+                        </Link>
+                        {note.documentPathSiblingCount > 1 && (
+                          <span
+                            className="px-1.5 py-0.5 text-xs font-semibold rounded-full bg-indigo-100 text-indigo-700"
+                            title={`This DN shares its source PDF with ${note.documentPathSiblingCount - 1} other DN${note.documentPathSiblingCount > 2 ? "s" : ""}`}
+                          >
+                            🔗 Multi-DN PDF ({note.documentPathSiblingCount})
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {rawNoteSupplierCompanyName || "-"}

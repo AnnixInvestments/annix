@@ -743,6 +743,9 @@ export interface RubberDeliveryNoteDto {
   previousVersionId: number | null;
   podPageNumbers: number[] | null;
   sourcePageNumbers: number[] | null;
+  siblingsBackfilledAt: string | null;
+  documentPathSiblingCount: number;
+  createdBy: string | null;
 }
 
 export interface RubberDeliveryNoteItemDto {

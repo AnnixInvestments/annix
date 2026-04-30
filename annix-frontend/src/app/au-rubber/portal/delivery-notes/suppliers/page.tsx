@@ -710,6 +710,26 @@ export default function SupplierDeliveryNotesPage() {
                             Awaiting Authorization
                           </span>
                         )}
+                        {note.documentPathSiblingCount > 1 && (
+                          <span
+                            className="px-1.5 py-0.5 text-xs font-semibold rounded-full bg-indigo-100 text-indigo-700"
+                            title={`This SDN shares its source PDF with ${note.documentPathSiblingCount - 1} other SDN${note.documentPathSiblingCount > 2 ? "s" : ""}`}
+                          >
+                            🔗 Multi-DN PDF ({note.documentPathSiblingCount})
+                          </span>
+                        )}
+                        {note.deliveryNoteType === "ROLL" &&
+                          note.documentPath &&
+                          !note.siblingsBackfilledAt &&
+                          note.createdBy !== "backfill-siblings" &&
+                          note.documentPathSiblingCount === 1 && (
+                            <span
+                              className="px-1.5 py-0.5 text-xs font-semibold rounded-full bg-purple-100 text-purple-700"
+                              title="Source PDF hasn't been checked for sibling DNs — open the SDN and click Backfill if you suspect it's a multi-DN PDF"
+                            >
+                              ⚠ Backfill not checked
+                            </span>
+                          )}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">

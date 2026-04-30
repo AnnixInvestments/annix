@@ -138,7 +138,10 @@ export class RubberDeliveryNoteService {
     const notes = await query.getMany();
     const noteIds = notes.map((n) => n.id);
     const auCocMap = noteIds.length > 0 ? await this.auCocMapByDeliveryNoteIds(noteIds) : new Map();
-    return notes.map((dn) => this.mapDeliveryNoteToDto(dn, auCocMap.get(dn.id) ?? null));
+    const siblingCounts = await this.documentPathSiblingCounts(notes);
+    return notes.map((dn) =>
+      this.mapDeliveryNoteToDto(dn, auCocMap.get(dn.id) ?? null, siblingCounts.get(dn.id) ?? 1),
+    );
   }
 
   async paginatedDeliveryNotes(filters?: {
@@ -202,8 +205,11 @@ export class RubberDeliveryNoteService {
     const notes = await query.getMany();
     const noteIds = notes.map((n) => n.id);
     const auCocMap = noteIds.length > 0 ? await this.auCocMapByDeliveryNoteIds(noteIds) : new Map();
+    const siblingCounts = await this.documentPathSiblingCounts(notes);
     return {
-      items: notes.map((dn) => this.mapDeliveryNoteToDto(dn, auCocMap.get(dn.id) ?? null)),
+      items: notes.map((dn) =>
+        this.mapDeliveryNoteToDto(dn, auCocMap.get(dn.id) ?? null, siblingCounts.get(dn.id) ?? 1),
+      ),
       total,
       page,
       limit: pageSize,
@@ -216,7 +222,33 @@ export class RubberDeliveryNoteService {
       where: { id },
       relations: ["supplierCompany", "linkedCoc"],
     });
-    return note ? this.mapDeliveryNoteToDto(note) : null;
+    if (!note) return null;
+    const siblingCounts = await this.documentPathSiblingCounts([note]);
+    return this.mapDeliveryNoteToDto(note, null, siblingCounts.get(note.id) ?? 1);
+  }
+
+  private async documentPathSiblingCounts(
+    notes: RubberDeliveryNote[],
+  ): Promise<Map<number, number>> {
+    const docPaths = Array.from(
+      new Set(notes.map((n) => n.documentPath).filter((p): p is string => !!p)),
+    );
+    if (docPaths.length === 0) return new Map();
+
+    const counts = await this.deliveryNoteRepository
+      .createQueryBuilder("dn")
+      .select("dn.document_path", "documentPath")
+      .addSelect("COUNT(*)", "count")
+      .where("dn.document_path IN (:...docPaths)", { docPaths })
+      .andWhere("dn.version_status = :status", { status: DocumentVersionStatus.ACTIVE })
+      .groupBy("dn.document_path")
+      .getRawMany<{ documentPath: string; count: string }>();
+
+    const countByPath = new Map(counts.map((c) => [c.documentPath, parseInt(c.count, 10)]));
+
+    return new Map(
+      notes.map((n) => [n.id, n.documentPath ? (countByPath.get(n.documentPath) ?? 1) : 1]),
+    );
   }
 
   async createDeliveryNote(
@@ -1270,6 +1302,9 @@ export class RubberDeliveryNoteService {
       }),
     );
 
+    parent.siblingsBackfilledAt = new Date();
+    await this.deliveryNoteRepository.save(parent);
+
     return {
       created: result.created.length,
       deliveryNoteIds: result.created,
@@ -1357,6 +1392,7 @@ export class RubberDeliveryNoteService {
   private mapDeliveryNoteToDto(
     note: RubberDeliveryNote,
     auCoc?: { id: number; cocNumber: string } | null,
+    documentPathSiblingCount: number = 1,
   ): RubberDeliveryNoteDto {
     return {
       id: note.id,
@@ -1386,6 +1422,10 @@ export class RubberDeliveryNoteService {
       stockCategory: note.stockCategory || null,
       podPageNumbers: note.podPageNumbers || null,
       sourcePageNumbers: note.sourcePageNumbers || null,
+      siblingsBackfilledAt: note.siblingsBackfilledAt
+        ? note.siblingsBackfilledAt.toISOString()
+        : null,
+      documentPathSiblingCount,
     };
   }
 

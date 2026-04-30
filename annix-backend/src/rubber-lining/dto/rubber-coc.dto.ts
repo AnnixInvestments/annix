@@ -288,6 +288,8 @@ export class RubberDeliveryNoteDto {
   stockCategory: string | null;
   podPageNumbers: number[] | null;
   sourcePageNumbers: number[] | null;
+  siblingsBackfilledAt: string | null;
+  documentPathSiblingCount: number;
 }
 
 export class CreateDeliveryNoteDto {
