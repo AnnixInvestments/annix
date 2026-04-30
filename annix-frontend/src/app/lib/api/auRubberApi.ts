@@ -17,6 +17,34 @@ import type {
   RubberProductDto,
 } from "./rubberPortalApi";
 
+export interface RubberOrderItemInput {
+  productId?: number;
+  thickness?: number;
+  width?: number;
+  length?: number;
+  quantity?: number;
+  callOffs?: CallOff[];
+}
+
+export interface CreateRubberOrderInput {
+  orderNumber?: string;
+  companyOrderNumber?: string;
+  companyId?: number;
+  items?: RubberOrderItemInput[];
+}
+
+export interface UpdateRubberOrderItemInput extends RubberOrderItemInput {
+  cpoUnitPrice?: number | null;
+  pricePerKg?: number | null;
+}
+
+export interface UpdateRubberOrderInput {
+  companyOrderNumber?: string;
+  status?: number;
+  companyId?: number;
+  items?: UpdateRubberOrderItemInput[];
+}
+
 export interface CreateRubberCompanyInput {
   name: string;
   companyType?: string;
@@ -1557,107 +1585,65 @@ class AuRubberApiClient {
     path: (id) => `/rubber-lining/portal/products/${id}`,
   });
 
-  async orders(status?: number): Promise<RubberOrderDto[]> {
-    const query = status !== undefined ? `?status=${status}` : "";
-    return this.request(`/rubber-lining/portal/orders${query}`);
-  }
+  orders = createEndpoint<[status?: number], RubberOrderDto[]>(apiClient, "GET", {
+    path: "/rubber-lining/portal/orders",
+    query: (status) => ({ status }),
+  });
 
-  async orderById(id: number): Promise<RubberOrderDto> {
-    return this.request(`/rubber-lining/portal/orders/${id}`);
-  }
+  orderById = createEndpoint<[id: number], RubberOrderDto>(apiClient, "GET", {
+    path: (id) => `/rubber-lining/portal/orders/${id}`,
+  });
 
-  async createOrder(data: {
-    orderNumber?: string;
-    companyOrderNumber?: string;
-    companyId?: number;
-    items?: {
-      productId?: number;
-      thickness?: number;
-      width?: number;
-      length?: number;
-      quantity?: number;
-      callOffs?: CallOff[];
-    }[];
-  }): Promise<RubberOrderDto> {
-    return this.request("/rubber-lining/portal/orders", {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-  }
+  createOrder = createEndpoint<[data: CreateRubberOrderInput], RubberOrderDto>(apiClient, "POST", {
+    path: "/rubber-lining/portal/orders",
+    body: (data) => data,
+  });
 
-  async updateOrder(
-    id: number,
-    data: {
-      companyOrderNumber?: string;
-      status?: number;
-      companyId?: number;
-      items?: {
-        productId?: number;
-        thickness?: number;
-        width?: number;
-        length?: number;
-        quantity?: number;
-        cpoUnitPrice?: number | null;
-        pricePerKg?: number | null;
-        callOffs?: CallOff[];
-      }[];
+  updateOrder = createEndpoint<[id: number, data: UpdateRubberOrderInput], RubberOrderDto>(
+    apiClient,
+    "PUT",
+    {
+      path: (id) => `/rubber-lining/portal/orders/${id}`,
+      body: (_id, data) => data,
     },
-  ): Promise<RubberOrderDto> {
-    return this.request(`/rubber-lining/portal/orders/${id}`, {
-      method: "PUT",
-      body: JSON.stringify(data),
-    });
+  );
+
+  deleteOrder = createEndpoint<[id: number], void>(apiClient, "DELETE", {
+    path: (id) => `/rubber-lining/portal/orders/${id}`,
+  });
+
+  orderConfirmationPdfBlob(orderId: number): Promise<Blob> {
+    return apiClient.requestBlob(`/rubber-lining/portal/orders/${orderId}/confirmation-pdf`);
   }
 
-  async deleteOrder(id: number): Promise<void> {
-    return this.request(`/rubber-lining/portal/orders/${id}`, {
-      method: "DELETE",
-    });
-  }
+  sendOrderConfirmation = createEndpoint<
+    [orderId: number, email: string, cc?: string, bcc?: string],
+    { success: boolean }
+  >(apiClient, "POST", {
+    path: (orderId) => `/rubber-lining/portal/orders/${orderId}/send-confirmation`,
+    body: (_orderId, email, cc, bcc) => ({ email, cc, bcc }),
+  });
 
-  async orderConfirmationPdfBlob(orderId: number): Promise<Blob> {
-    const url = `${this.baseURL}/rubber-lining/portal/orders/${orderId}/confirmation-pdf`;
-    const headers: Record<string, string> = {};
-    if (this.accessToken) {
-      headers["Authorization"] = `Bearer ${this.accessToken}`;
-    }
-    const response = await fetch(url, { headers });
-    if (!response.ok) {
-      throw new Error(`Failed to generate confirmation PDF: ${response.statusText}`);
-    }
-    return response.blob();
-  }
+  appProfile = createEndpoint<[], RubberAppProfileDto>(apiClient, "GET", {
+    path: "/rubber-lining/portal/app-profile",
+  });
 
-  async sendOrderConfirmation(
-    orderId: number,
-    email: string,
-    cc?: string,
-    bcc?: string,
-  ): Promise<{ success: boolean }> {
-    return this.request(`/rubber-lining/portal/orders/${orderId}/send-confirmation`, {
-      method: "POST",
-      body: JSON.stringify({ email, cc, bcc }),
-    });
-  }
+  updateAppProfile = createEndpoint<[data: Partial<RubberAppProfileDto>], RubberAppProfileDto>(
+    apiClient,
+    "PUT",
+    {
+      path: "/rubber-lining/portal/app-profile",
+      body: (data) => data,
+    },
+  );
 
-  async appProfile(): Promise<RubberAppProfileDto> {
-    return this.request("/rubber-lining/portal/app-profile");
-  }
+  orderStatuses = createEndpoint<[], { value: number; label: string }[]>(apiClient, "GET", {
+    path: "/rubber-lining/portal/order-statuses",
+  });
 
-  async updateAppProfile(data: Partial<RubberAppProfileDto>): Promise<RubberAppProfileDto> {
-    return this.request("/rubber-lining/portal/app-profile", {
-      method: "PUT",
-      body: JSON.stringify(data),
-    });
-  }
-
-  async orderStatuses(): Promise<{ value: number; label: string }[]> {
-    return this.request("/rubber-lining/portal/order-statuses");
-  }
-
-  async codingTypes(): Promise<{ value: string; label: string }[]> {
-    return this.request("/rubber-lining/portal/coding-types");
-  }
+  codingTypes = createEndpoint<[], { value: string; label: string }[]>(apiClient, "GET", {
+    path: "/rubber-lining/portal/coding-types",
+  });
 
   async calculatePrice(data: {
     productId: number;
