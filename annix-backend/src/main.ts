@@ -88,7 +88,7 @@ async function bootstrap() {
 
   if (isProduction) {
     const next = require("next");
-    const frontendDir = path.resolve(__dirname, "..", "..", "..", "annix-frontend");
+    const frontendDir = path.resolve(__dirname, "..", "..", "annix-frontend");
     const nextApp = next({ dev: false, dir: frontendDir });
 
     // Register the Next.js catch-all BEFORE listening so it's in the
