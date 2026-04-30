@@ -7,4 +7,4 @@ find /app/annix-frontend/.next -type f -name "*.js" -exec sed -i \
 
 # Start the unified server
 cd /app/annix-backend
-exec node --max-old-space-size=384 dist/src/main
+exec node --max-old-space-size=384 dist/main

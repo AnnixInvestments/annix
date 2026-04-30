@@ -1462,9 +1462,9 @@ class AuRubberApiClient {
     }
   }
 
-  async currentUser(): Promise<AuRubberUserProfile> {
-    return this.request<AuRubberUserProfile>("/admin/auth/me");
-  }
+  currentUser = createEndpoint<[], AuRubberUserProfile>(apiClient, "GET", {
+    path: "/admin/auth/me",
+  });
 
   productCodings = createEndpoint<[codingType?: string], RubberProductCodingDto[]>(
     apiClient,
@@ -1645,102 +1645,108 @@ class AuRubberApiClient {
     path: "/rubber-lining/portal/coding-types",
   });
 
-  async calculatePrice(data: {
-    productId: number;
-    companyId: number;
-    thickness: number;
-    width: number;
-    length: number;
-    quantity: number;
-  }): Promise<RubberPriceCalculationDto> {
-    return this.request("/rubber-lining/portal/calculate-price", {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-  }
+  calculatePrice = createEndpoint<
+    [
+      data: {
+        productId: number;
+        companyId: number;
+        thickness: number;
+        width: number;
+        length: number;
+        quantity: number;
+      },
+    ],
+    RubberPriceCalculationDto
+  >(apiClient, "POST", {
+    path: "/rubber-lining/portal/calculate-price",
+    body: (data) => data,
+  });
 
-  async importProducts(data: {
-    rows: ImportProductRowDto[];
-    updateExisting?: boolean;
-  }): Promise<ImportProductsResultDto> {
-    return this.request("/rubber-lining/portal/products/import", {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-  }
+  importProducts = createEndpoint<
+    [
+      data: {
+        rows: ImportProductRowDto[];
+        updateExisting?: boolean;
+      },
+    ],
+    ImportProductsResultDto
+  >(apiClient, "POST", {
+    path: "/rubber-lining/portal/products/import",
+    body: (data) => data,
+  });
 
   async analyzeProductFiles(files: File[]): Promise<AnalyzeProductFilesResult> {
     return this.requestWithFiles("/rubber-lining/portal/products/analyze", files);
   }
 
-  async compoundStocks(): Promise<RubberCompoundStockDto[]> {
-    return this.request("/rubber-lining/portal/compound-stocks");
-  }
+  compoundStocks = createEndpoint<[], RubberCompoundStockDto[]>(apiClient, "GET", {
+    path: "/rubber-lining/portal/compound-stocks",
+  });
 
-  async lowStockCompounds(): Promise<RubberCompoundStockDto[]> {
-    return this.request("/rubber-lining/portal/compound-stocks/low-stock");
-  }
+  lowStockCompounds = createEndpoint<[], RubberCompoundStockDto[]>(apiClient, "GET", {
+    path: "/rubber-lining/portal/compound-stocks/low-stock",
+  });
 
-  async compoundStockById(id: number): Promise<RubberCompoundStockDto> {
-    return this.request(`/rubber-lining/portal/compound-stocks/${id}`);
-  }
+  compoundStockById = createEndpoint<[id: number], RubberCompoundStockDto>(apiClient, "GET", {
+    path: (id) => `/rubber-lining/portal/compound-stocks/${id}`,
+  });
 
-  async createCompoundStock(data: {
-    compoundCodingId: number;
-    quantityKg?: number;
-    minStockLevelKg?: number;
-    reorderPointKg?: number;
-    costPerKg?: number;
-    location?: string;
-    batchNumber?: string;
-  }): Promise<RubberCompoundStockDto> {
-    return this.request("/rubber-lining/portal/compound-stocks", {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-  }
+  createCompoundStock = createEndpoint<
+    [
+      data: {
+        compoundCodingId: number;
+        quantityKg?: number;
+        minStockLevelKg?: number;
+        reorderPointKg?: number;
+        costPerKg?: number;
+        location?: string;
+        batchNumber?: string;
+      },
+    ],
+    RubberCompoundStockDto
+  >(apiClient, "POST", {
+    path: "/rubber-lining/portal/compound-stocks",
+    body: (data) => data,
+  });
 
-  async createCompoundOpeningStock(
-    data: CreateCompoundOpeningStockDto,
-  ): Promise<RubberCompoundStockDto> {
-    return this.request("/rubber-lining/portal/compound-stocks/opening", {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-  }
+  createCompoundOpeningStock = createEndpoint<
+    [data: CreateCompoundOpeningStockDto],
+    RubberCompoundStockDto
+  >(apiClient, "POST", {
+    path: "/rubber-lining/portal/compound-stocks/opening",
+    body: (data) => data,
+  });
 
-  async importCompoundOpeningStock(
-    rows: ImportCompoundOpeningStockRowDto[],
-  ): Promise<ImportCompoundOpeningStockResultDto> {
-    return this.request("/rubber-lining/portal/compound-stocks/import-opening", {
-      method: "POST",
-      body: JSON.stringify(rows),
-    });
-  }
+  importCompoundOpeningStock = createEndpoint<
+    [rows: ImportCompoundOpeningStockRowDto[]],
+    ImportCompoundOpeningStockResultDto
+  >(apiClient, "POST", {
+    path: "/rubber-lining/portal/compound-stocks/import-opening",
+    body: (rows) => rows,
+  });
 
-  async updateCompoundStock(
-    id: number,
-    data: {
-      compoundCodingId?: number;
-      quantityKg?: number;
-      minStockLevelKg?: number;
-      reorderPointKg?: number;
-      costPerKg?: number;
-      location?: string;
-      batchNumber?: string;
-    },
-  ): Promise<RubberCompoundStockDto> {
-    return this.request(`/rubber-lining/portal/compound-stocks/${id}`, {
-      method: "PUT",
-      body: JSON.stringify(data),
-    });
-  }
+  updateCompoundStock = createEndpoint<
+    [
+      id: number,
+      data: {
+        compoundCodingId?: number;
+        quantityKg?: number;
+        minStockLevelKg?: number;
+        reorderPointKg?: number;
+        costPerKg?: number;
+        location?: string;
+        batchNumber?: string;
+      },
+    ],
+    RubberCompoundStockDto
+  >(apiClient, "PUT", {
+    path: (id) => `/rubber-lining/portal/compound-stocks/${id}`,
+    body: (_id, data) => data,
+  });
 
-  async deleteCompoundStock(id: number): Promise<void> {
-    return this.request(`/rubber-lining/portal/compound-stocks/${id}`, {
-      method: "DELETE",
-    });
-  }
+  deleteCompoundStock = createEndpoint<[id: number], void>(apiClient, "DELETE", {
+    path: (id) => `/rubber-lining/portal/compound-stocks/${id}`,
+  });
 
   async compoundMovements(filters?: {
     compoundStockId?: number;
@@ -1755,84 +1761,94 @@ class AuRubberApiClient {
     return this.request(`/rubber-lining/portal/compound-movements${query}`);
   }
 
-  async receiveCompound(data: {
-    compoundStockId: number;
-    quantityKg: number;
-    batchNumber?: string;
-    notes?: string;
-  }): Promise<RubberCompoundMovementDto> {
-    return this.request("/rubber-lining/portal/compound-movements/receive", {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-  }
+  receiveCompound = createEndpoint<
+    [
+      data: {
+        compoundStockId: number;
+        quantityKg: number;
+        batchNumber?: string;
+        notes?: string;
+      },
+    ],
+    RubberCompoundMovementDto
+  >(apiClient, "POST", {
+    path: "/rubber-lining/portal/compound-movements/receive",
+    body: (data) => data,
+  });
 
-  async adjustCompound(data: {
-    compoundStockId: number;
-    quantityKg: number;
-    notes?: string;
-  }): Promise<RubberCompoundMovementDto> {
-    return this.request("/rubber-lining/portal/compound-movements/adjust", {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-  }
+  adjustCompound = createEndpoint<
+    [
+      data: {
+        compoundStockId: number;
+        quantityKg: number;
+        notes?: string;
+      },
+    ],
+    RubberCompoundMovementDto
+  >(apiClient, "POST", {
+    path: "/rubber-lining/portal/compound-movements/adjust",
+    body: (data) => data,
+  });
 
-  async productions(status?: RubberProductionStatus): Promise<RubberProductionDto[]> {
-    const query = status ? `?status=${status}` : "";
-    return this.request(`/rubber-lining/portal/productions${query}`);
-  }
+  productions = createEndpoint<[status?: RubberProductionStatus], RubberProductionDto[]>(
+    apiClient,
+    "GET",
+    {
+      path: "/rubber-lining/portal/productions",
+      query: (status) => ({ status: status }),
+    },
+  );
 
-  async productionById(id: number): Promise<RubberProductionDto> {
-    return this.request(`/rubber-lining/portal/productions/${id}`);
-  }
+  productionById = createEndpoint<[id: number], RubberProductionDto>(apiClient, "GET", {
+    path: (id) => `/rubber-lining/portal/productions/${id}`,
+  });
 
-  async createProduction(data: {
-    productId: number;
-    compoundStockId: number;
-    thicknessMm: number;
-    widthMm: number;
-    lengthM: number;
-    quantity: number;
-    orderId?: number;
-    notes?: string;
-  }): Promise<RubberProductionDto> {
-    return this.request("/rubber-lining/portal/productions", {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-  }
+  createProduction = createEndpoint<
+    [
+      data: {
+        productId: number;
+        compoundStockId: number;
+        thicknessMm: number;
+        widthMm: number;
+        lengthM: number;
+        quantity: number;
+        orderId?: number;
+        notes?: string;
+      },
+    ],
+    RubberProductionDto
+  >(apiClient, "POST", {
+    path: "/rubber-lining/portal/productions",
+    body: (data) => data,
+  });
 
-  async startProduction(id: number): Promise<RubberProductionDto> {
-    return this.request(`/rubber-lining/portal/productions/${id}/start`, {
-      method: "PUT",
-    });
-  }
+  startProduction = createEndpoint<[id: number], RubberProductionDto>(apiClient, "PUT", {
+    path: (id) => `/rubber-lining/portal/productions/${id}/start`,
+  });
 
-  async completeProduction(id: number): Promise<RubberProductionDto> {
-    return this.request(`/rubber-lining/portal/productions/${id}/complete`, {
-      method: "PUT",
-    });
-  }
+  completeProduction = createEndpoint<[id: number], RubberProductionDto>(apiClient, "PUT", {
+    path: (id) => `/rubber-lining/portal/productions/${id}/complete`,
+  });
 
-  async cancelProduction(id: number): Promise<RubberProductionDto> {
-    return this.request(`/rubber-lining/portal/productions/${id}/cancel`, {
-      method: "PUT",
-    });
-  }
+  cancelProduction = createEndpoint<[id: number], RubberProductionDto>(apiClient, "PUT", {
+    path: (id) => `/rubber-lining/portal/productions/${id}/cancel`,
+  });
 
-  async calculateCompoundRequired(data: {
-    productId: number;
-    thicknessMm: number;
-    widthMm: number;
-    lengthM: number;
-    quantity: number;
-  }): Promise<CompoundCalculationResultDto> {
-    return this.request("/rubber-lining/portal/productions/calculate-compound", {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-  }
+  calculateCompoundRequired = createEndpoint<
+    [
+      data: {
+        productId: number;
+        thicknessMm: number;
+        widthMm: number;
+        lengthM: number;
+        quantity: number;
+      },
+    ],
+    CompoundCalculationResultDto
+  >(apiClient, "POST", {
+    path: "/rubber-lining/portal/productions/calculate-compound",
+    body: (data) => data,
+  });
 
   async compoundOrders(
     status?: RubberCompoundOrderStatus | null,
@@ -1841,61 +1857,65 @@ class AuRubberApiClient {
     return this.request(`/rubber-lining/portal/compound-orders${query}`);
   }
 
-  async compoundOrderById(id: number): Promise<RubberCompoundOrderDto> {
-    return this.request(`/rubber-lining/portal/compound-orders/${id}`);
-  }
+  compoundOrderById = createEndpoint<[id: number], RubberCompoundOrderDto>(apiClient, "GET", {
+    path: (id) => `/rubber-lining/portal/compound-orders/${id}`,
+  });
 
-  async createCompoundOrder(data: {
-    compoundStockId: number;
-    quantityKg: number;
-    supplierName?: string | null;
-    expectedDelivery?: string | null;
-    notes?: string | null;
-  }): Promise<RubberCompoundOrderDto> {
-    return this.request("/rubber-lining/portal/compound-orders", {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-  }
+  createCompoundOrder = createEndpoint<
+    [
+      data: {
+        compoundStockId: number;
+        quantityKg: number;
+        supplierName?: string | null;
+        expectedDelivery?: string | null;
+        notes?: string | null;
+      },
+    ],
+    RubberCompoundOrderDto
+  >(apiClient, "POST", {
+    path: "/rubber-lining/portal/compound-orders",
+    body: (data) => data,
+  });
 
-  async updateCompoundOrderStatus(
-    id: number,
-    status: RubberCompoundOrderStatus,
-  ): Promise<RubberCompoundOrderDto> {
-    return this.request(`/rubber-lining/portal/compound-orders/${id}/status`, {
-      method: "PUT",
-      body: JSON.stringify({ status }),
-    });
-  }
+  updateCompoundOrderStatus = createEndpoint<
+    [id: number, status: RubberCompoundOrderStatus],
+    RubberCompoundOrderDto
+  >(apiClient, "PUT", {
+    path: (id, _status) => `/rubber-lining/portal/compound-orders/${id}/status`,
+    body: (_id, status) => ({ status }),
+  });
 
-  async receiveCompoundOrder(
-    id: number,
-    data: {
-      actualQuantityKg: number;
-      batchNumber?: string | null;
-      notes?: string | null;
+  receiveCompoundOrder = createEndpoint<
+    [
+      id: number,
+      data: {
+        actualQuantityKg: number;
+        batchNumber?: string | null;
+        notes?: string | null;
+      },
+    ],
+    RubberCompoundOrderDto
+  >(apiClient, "PUT", {
+    path: (id) => `/rubber-lining/portal/compound-orders/${id}/receive`,
+    body: (_id, data) => data,
+  });
+
+  productionStatuses = createEndpoint<[], { value: string; label: string }[]>(apiClient, "GET", {
+    path: "/rubber-lining/portal/production-statuses",
+  });
+
+  compoundOrderStatuses = createEndpoint<[], { value: string; label: string }[]>(apiClient, "GET", {
+    path: "/rubber-lining/portal/compound-order-statuses",
+  });
+
+  scrapeBranding = createEndpoint<[websiteUrl: string], ScrapedBrandingCandidates>(
+    apiClient,
+    "POST",
+    {
+      path: "/rubber-lining/portal/scrape-branding",
+      body: (websiteUrl) => ({ websiteUrl }),
     },
-  ): Promise<RubberCompoundOrderDto> {
-    return this.request(`/rubber-lining/portal/compound-orders/${id}/receive`, {
-      method: "PUT",
-      body: JSON.stringify(data),
-    });
-  }
-
-  async productionStatuses(): Promise<{ value: string; label: string }[]> {
-    return this.request("/rubber-lining/portal/production-statuses");
-  }
-
-  async compoundOrderStatuses(): Promise<{ value: string; label: string }[]> {
-    return this.request("/rubber-lining/portal/compound-order-statuses");
-  }
-
-  async scrapeBranding(websiteUrl: string): Promise<ScrapedBrandingCandidates> {
-    return this.request("/rubber-lining/portal/scrape-branding", {
-      method: "POST",
-      body: JSON.stringify({ websiteUrl }),
-    });
-  }
+  );
 
   proxyImageUrl(url: string): string {
     return `${this.baseURL}/rubber-lining/portal/proxy-image?url=${encodeURIComponent(url)}`;
@@ -1905,89 +1925,99 @@ class AuRubberApiClient {
     return this.headers();
   }
 
-  async myAccess(): Promise<AuRubberAccessInfo> {
-    return this.request("/rubber-lining/admin/access/me");
-  }
+  myAccess = createEndpoint<[], AuRubberAccessInfo>(apiClient, "GET", {
+    path: "/rubber-lining/admin/access/me",
+  });
 
-  async accessUsers(): Promise<AuRubberUserAccessDto[]> {
-    return this.request("/rubber-lining/admin/access/users");
-  }
+  accessUsers = createEndpoint<[], AuRubberUserAccessDto[]>(apiClient, "GET", {
+    path: "/rubber-lining/admin/access/users",
+  });
 
-  async accessRoles(): Promise<AuRubberRoleDto[]> {
-    return this.request("/rubber-lining/admin/access/roles");
-  }
+  accessRoles = createEndpoint<[], AuRubberRoleDto[]>(apiClient, "GET", {
+    path: "/rubber-lining/admin/access/roles",
+  });
 
-  async accessPermissions(): Promise<AuRubberPermissionDto[]> {
-    return this.request("/rubber-lining/admin/access/permissions");
-  }
+  accessPermissions = createEndpoint<[], AuRubberPermissionDto[]>(apiClient, "GET", {
+    path: "/rubber-lining/admin/access/permissions",
+  });
 
-  async createRole(data: {
-    code: string;
-    name: string;
-    description?: string;
-    isDefault?: boolean;
-    targetType?: RoleTargetType | null;
-  }): Promise<AuRubberRoleDto> {
-    return this.request("/rubber-lining/admin/access/roles", {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-  }
+  createRole = createEndpoint<
+    [
+      data: {
+        code: string;
+        name: string;
+        description?: string;
+        isDefault?: boolean;
+        targetType?: RoleTargetType | null;
+      },
+    ],
+    AuRubberRoleDto
+  >(apiClient, "POST", {
+    path: "/rubber-lining/admin/access/roles",
+    body: (data) => data,
+  });
 
-  async updateRole(
-    roleId: number,
-    data: { name?: string; description?: string; isDefault?: boolean },
-  ): Promise<AuRubberRoleDto> {
-    return this.request(`/rubber-lining/admin/access/roles/${roleId}`, {
-      method: "PATCH",
-      body: JSON.stringify(data),
-    });
-  }
+  updateRole = createEndpoint<
+    [roleId: number, data: { name?: string; description?: string; isDefault?: boolean }],
+    AuRubberRoleDto
+  >(apiClient, "PATCH", {
+    path: (roleId) => `/rubber-lining/admin/access/roles/${roleId}`,
+    body: (_roleId, data) => data,
+  });
 
-  async setRolePermissions(roleId: number, permissionCodes: string[]): Promise<void> {
-    return this.request(`/rubber-lining/admin/access/roles/${roleId}/permissions`, {
-      method: "PUT",
-      body: JSON.stringify({ permissionCodes }),
-    });
-  }
+  setRolePermissions = createEndpoint<[roleId: number, permissionCodes: string[]], void>(
+    apiClient,
+    "PUT",
+    {
+      path: (roleId, _permissionCodes) => `/rubber-lining/admin/access/roles/${roleId}/permissions`,
+      body: (_roleId, permissionCodes) => ({ permissionCodes }),
+    },
+  );
 
-  async deleteRole(roleId: number): Promise<{ message: string; reassignedUsers: number }> {
-    return this.request(`/rubber-lining/admin/access/roles/${roleId}`, {
-      method: "DELETE",
-    });
-  }
+  deleteRole = createEndpoint<[roleId: number], { message: string; reassignedUsers: number }>(
+    apiClient,
+    "DELETE",
+    {
+      path: (roleId) => `/rubber-lining/admin/access/roles/${roleId}`,
+    },
+  );
 
-  async grantUserAccess(userId: number, roleCode: string): Promise<AuRubberUserAccessDto> {
-    return this.request(`/rubber-lining/admin/access/users/${userId}`, {
-      method: "POST",
-      body: JSON.stringify({ roleCode }),
-    });
-  }
+  grantUserAccess = createEndpoint<[userId: number, roleCode: string], AuRubberUserAccessDto>(
+    apiClient,
+    "POST",
+    {
+      path: (userId, _roleCode) => `/rubber-lining/admin/access/users/${userId}`,
+      body: (_userId, roleCode) => ({ roleCode }),
+    },
+  );
 
-  async updateUserAccess(accessId: number, roleCode: string): Promise<AuRubberUserAccessDto> {
-    return this.request(`/rubber-lining/admin/access/users/${accessId}`, {
-      method: "PATCH",
-      body: JSON.stringify({ roleCode }),
-    });
-  }
+  updateUserAccess = createEndpoint<[accessId: number, roleCode: string], AuRubberUserAccessDto>(
+    apiClient,
+    "PATCH",
+    {
+      path: (accessId, _roleCode) => `/rubber-lining/admin/access/users/${accessId}`,
+      body: (_accessId, roleCode) => ({ roleCode }),
+    },
+  );
 
-  async revokeUserAccess(accessId: number): Promise<void> {
-    return this.request(`/rubber-lining/admin/access/users/${accessId}`, {
-      method: "DELETE",
-    });
-  }
+  revokeUserAccess = createEndpoint<[accessId: number], void>(apiClient, "DELETE", {
+    path: (accessId) => `/rubber-lining/admin/access/users/${accessId}`,
+  });
 
-  async inviteUser(data: {
-    email: string;
-    firstName?: string;
-    lastName?: string;
-    roleCode: string;
-  }): Promise<AuRubberInviteUserResponse> {
-    return this.request("/rubber-lining/admin/access/invite", {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-  }
+  inviteUser = createEndpoint<
+    [
+      data: {
+        email: string;
+        firstName?: string;
+        lastName?: string;
+        roleCode: string;
+      },
+    ],
+    AuRubberInviteUserResponse
+  >(apiClient, "POST", {
+    path: "/rubber-lining/admin/access/invite",
+    body: (data) => data,
+  });
 
   async searchUsers(
     query: string,
@@ -2010,24 +2040,27 @@ class AuRubberApiClient {
     return this.request(`/rubber-lining/portal/supplier-cocs${query}`);
   }
 
-  async supplierCocById(id: number): Promise<RubberSupplierCocDto> {
-    return this.request(`/rubber-lining/portal/supplier-cocs/${id}`);
-  }
+  supplierCocById = createEndpoint<[id: number], RubberSupplierCocDto>(apiClient, "GET", {
+    path: (id) => `/rubber-lining/portal/supplier-cocs/${id}`,
+  });
 
-  async uploadSupplierCoc(data: {
-    cocType: SupplierCocType;
-    supplierCompanyId?: number;
-    cocNumber?: string;
-    productionDate?: string;
-    compoundCode?: string;
-    orderNumber?: string;
-    ticketNumber?: string;
-  }): Promise<RubberSupplierCocDto> {
-    return this.request("/rubber-lining/portal/supplier-cocs", {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-  }
+  uploadSupplierCoc = createEndpoint<
+    [
+      data: {
+        cocType: SupplierCocType;
+        supplierCompanyId?: number;
+        cocNumber?: string;
+        productionDate?: string;
+        compoundCode?: string;
+        orderNumber?: string;
+        ticketNumber?: string;
+      },
+    ],
+    RubberSupplierCocDto
+  >(apiClient, "POST", {
+    path: "/rubber-lining/portal/supplier-cocs",
+    body: (data) => data,
+  });
 
   async uploadSupplierCocWithFiles(
     files: File[],
@@ -2113,116 +2146,113 @@ class AuRubberApiClient {
     return response.json();
   }
 
-  async updateSupplierCoc(
-    id: number,
-    data: {
-      cocType?: SupplierCocType;
-      cocNumber?: string | null;
-      compoundCode?: string | null;
-      productionDate?: string | null;
-      orderNumber?: string | null;
-      ticketNumber?: string | null;
-      createdAt?: string | null;
+  updateSupplierCoc = createEndpoint<
+    [
+      id: number,
+      data: {
+        cocType?: SupplierCocType;
+        cocNumber?: string | null;
+        compoundCode?: string | null;
+        productionDate?: string | null;
+        orderNumber?: string | null;
+        ticketNumber?: string | null;
+        createdAt?: string | null;
+      },
+    ],
+    RubberSupplierCocDto
+  >(apiClient, "PUT", {
+    path: (id) => `/rubber-lining/portal/supplier-cocs/${id}`,
+    body: (_id, data) => data,
+  });
+
+  extractSupplierCoc = createEndpoint<[id: number], RubberSupplierCocDto>(apiClient, "POST", {
+    path: (id) => `/rubber-lining/portal/supplier-cocs/${id}/extract`,
+  });
+
+  reviewSupplierCoc = createEndpoint<
+    [id: number, data: { extractedData?: Record<string, unknown>; reviewNotes?: string }],
+    RubberSupplierCocDto
+  >(apiClient, "PUT", {
+    path: (id) => `/rubber-lining/portal/supplier-cocs/${id}/review`,
+    body: (_id, data) => data,
+  });
+
+  approveSupplierCoc = createEndpoint<[id: number], RubberSupplierCocDto>(apiClient, "PUT", {
+    path: (id) => `/rubber-lining/portal/supplier-cocs/${id}/approve`,
+  });
+
+  deleteSupplierCoc = createEndpoint<[id: number], void>(apiClient, "DELETE", {
+    path: (id) => `/rubber-lining/portal/supplier-cocs/${id}`,
+  });
+
+  linkCocToDeliveryNote = createEndpoint<
+    [cocId: number, deliveryNoteId: number],
+    RubberSupplierCocDto
+  >(apiClient, "PUT", {
+    path: (cocId, _deliveryNoteId) => `/rubber-lining/portal/supplier-cocs/${cocId}/link-dn`,
+    body: (_cocId, deliveryNoteId) => ({ deliveryNoteId }),
+  });
+
+  compoundBatchesByCocId = createEndpoint<[cocId: number], RubberCompoundBatchDto[]>(
+    apiClient,
+    "GET",
+    {
+      path: (cocId) => `/rubber-lining/portal/supplier-cocs/${cocId}/batches`,
     },
-  ): Promise<RubberSupplierCocDto> {
-    return this.request(`/rubber-lining/portal/supplier-cocs/${id}`, {
-      method: "PUT",
-      body: JSON.stringify(data),
-    });
-  }
+  );
 
-  async extractSupplierCoc(id: number): Promise<RubberSupplierCocDto> {
-    return this.request(`/rubber-lining/portal/supplier-cocs/${id}/extract`, {
-      method: "POST",
-    });
-  }
+  createCompoundBatch = createEndpoint<
+    [
+      data: {
+        supplierCocId: number;
+        batchNumber: string;
+        compoundStockId?: number;
+        shoreAHardness?: number;
+        specificGravity?: number;
+        reboundPercent?: number;
+        tearStrengthKnM?: number;
+        tensileStrengthMpa?: number;
+        elongationPercent?: number;
+        rheometerSMin?: number;
+        rheometerSMax?: number;
+        rheometerTs2?: number;
+        rheometerTc90?: number;
+        passFailStatus?: string;
+      },
+    ],
+    RubberCompoundBatchDto
+  >(apiClient, "POST", {
+    path: "/rubber-lining/portal/compound-batches",
+    body: (data) => data,
+  });
 
-  async reviewSupplierCoc(
-    id: number,
-    data: { extractedData?: Record<string, unknown>; reviewNotes?: string },
-  ): Promise<RubberSupplierCocDto> {
-    return this.request(`/rubber-lining/portal/supplier-cocs/${id}/review`, {
-      method: "PUT",
-      body: JSON.stringify(data),
-    });
-  }
+  updateCompoundBatch = createEndpoint<
+    [
+      id: number,
+      data: {
+        batchNumber?: string;
+        shoreAHardness?: number | null;
+        specificGravity?: number | null;
+        reboundPercent?: number | null;
+        tearStrengthKnM?: number | null;
+        tensileStrengthMpa?: number | null;
+        elongationPercent?: number | null;
+        rheometerSMin?: number | null;
+        rheometerSMax?: number | null;
+        rheometerTs2?: number | null;
+        rheometerTc90?: number | null;
+        passFailStatus?: string | null;
+      },
+    ],
+    RubberCompoundBatchDto
+  >(apiClient, "PUT", {
+    path: (id) => `/rubber-lining/portal/compound-batches/${id}`,
+    body: (_id, data) => data,
+  });
 
-  async approveSupplierCoc(id: number): Promise<RubberSupplierCocDto> {
-    return this.request(`/rubber-lining/portal/supplier-cocs/${id}/approve`, {
-      method: "PUT",
-    });
-  }
-
-  async deleteSupplierCoc(id: number): Promise<void> {
-    return this.request(`/rubber-lining/portal/supplier-cocs/${id}`, {
-      method: "DELETE",
-    });
-  }
-
-  async linkCocToDeliveryNote(
-    cocId: number,
-    deliveryNoteId: number,
-  ): Promise<RubberSupplierCocDto> {
-    return this.request(`/rubber-lining/portal/supplier-cocs/${cocId}/link-dn`, {
-      method: "PUT",
-      body: JSON.stringify({ deliveryNoteId }),
-    });
-  }
-
-  async compoundBatchesByCocId(cocId: number): Promise<RubberCompoundBatchDto[]> {
-    return this.request(`/rubber-lining/portal/supplier-cocs/${cocId}/batches`);
-  }
-
-  async createCompoundBatch(data: {
-    supplierCocId: number;
-    batchNumber: string;
-    compoundStockId?: number;
-    shoreAHardness?: number;
-    specificGravity?: number;
-    reboundPercent?: number;
-    tearStrengthKnM?: number;
-    tensileStrengthMpa?: number;
-    elongationPercent?: number;
-    rheometerSMin?: number;
-    rheometerSMax?: number;
-    rheometerTs2?: number;
-    rheometerTc90?: number;
-    passFailStatus?: string;
-  }): Promise<RubberCompoundBatchDto> {
-    return this.request("/rubber-lining/portal/compound-batches", {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-  }
-
-  async updateCompoundBatch(
-    id: number,
-    data: {
-      batchNumber?: string;
-      shoreAHardness?: number | null;
-      specificGravity?: number | null;
-      reboundPercent?: number | null;
-      tearStrengthKnM?: number | null;
-      tensileStrengthMpa?: number | null;
-      elongationPercent?: number | null;
-      rheometerSMin?: number | null;
-      rheometerSMax?: number | null;
-      rheometerTs2?: number | null;
-      rheometerTc90?: number | null;
-      passFailStatus?: string | null;
-    },
-  ): Promise<RubberCompoundBatchDto> {
-    return this.request(`/rubber-lining/portal/compound-batches/${id}`, {
-      method: "PUT",
-      body: JSON.stringify(data),
-    });
-  }
-
-  async deleteCompoundBatch(id: number): Promise<void> {
-    return this.request(`/rubber-lining/portal/compound-batches/${id}`, {
-      method: "DELETE",
-    });
-  }
+  deleteCompoundBatch = createEndpoint<[id: number], void>(apiClient, "DELETE", {
+    path: (id) => `/rubber-lining/portal/compound-batches/${id}`,
+  });
 
   async deliveryNotes(filters?: {
     deliveryNoteType?: DeliveryNoteType;
@@ -2251,27 +2281,28 @@ class AuRubberApiClient {
     return this.request(`/rubber-lining/portal/delivery-notes${query}`);
   }
 
-  async deliveryNoteById(id: number): Promise<RubberDeliveryNoteDto> {
-    return this.request(`/rubber-lining/portal/delivery-notes/${id}`);
-  }
+  deliveryNoteById = createEndpoint<[id: number], RubberDeliveryNoteDto>(apiClient, "GET", {
+    path: (id) => `/rubber-lining/portal/delivery-notes/${id}`,
+  });
 
-  async deleteDeliveryNote(id: number): Promise<void> {
-    return this.request(`/rubber-lining/portal/delivery-notes/${id}`, {
-      method: "DELETE",
-    });
-  }
+  deleteDeliveryNote = createEndpoint<[id: number], void>(apiClient, "DELETE", {
+    path: (id) => `/rubber-lining/portal/delivery-notes/${id}`,
+  });
 
-  async uploadDeliveryNote(data: {
-    deliveryNoteType: DeliveryNoteType;
-    supplierCompanyId: number;
-    deliveryNoteNumber?: string;
-    deliveryDate?: string;
-  }): Promise<RubberDeliveryNoteDto> {
-    return this.request("/rubber-lining/portal/delivery-notes", {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-  }
+  uploadDeliveryNote = createEndpoint<
+    [
+      data: {
+        deliveryNoteType: DeliveryNoteType;
+        supplierCompanyId: number;
+        deliveryNoteNumber?: string;
+        deliveryDate?: string;
+      },
+    ],
+    RubberDeliveryNoteDto
+  >(apiClient, "POST", {
+    path: "/rubber-lining/portal/delivery-notes",
+    body: (data) => data,
+  });
 
   async uploadDeliveryNoteWithFiles(
     files: File[],
@@ -2323,21 +2354,17 @@ class AuRubberApiClient {
     });
   }
 
-  async extractDeliveryNote(id: number): Promise<RubberDeliveryNoteDto> {
-    return this.request(`/rubber-lining/portal/delivery-notes/${id}/extract`, {
-      method: "POST",
-    });
-  }
+  extractDeliveryNote = createEndpoint<[id: number], RubberDeliveryNoteDto>(apiClient, "POST", {
+    path: (id) => `/rubber-lining/portal/delivery-notes/${id}/extract`,
+  });
 
-  async saveExtractedDataCorrections(
-    id: number,
-    corrections: ExtractedDeliveryNoteData,
-  ): Promise<RubberDeliveryNoteDto> {
-    return this.request(`/rubber-lining/portal/delivery-notes/${id}/extracted-data`, {
-      method: "PUT",
-      body: JSON.stringify(corrections),
-    });
-  }
+  saveExtractedDataCorrections = createEndpoint<
+    [id: number, corrections: ExtractedDeliveryNoteData],
+    RubberDeliveryNoteDto
+  >(apiClient, "PUT", {
+    path: (id) => `/rubber-lining/portal/delivery-notes/${id}/extracted-data`,
+    body: (_id, corrections) => corrections,
+  });
 
   async analyzeDeliveryNotePhoto(file: File): Promise<AnalyzedDeliveryNoteResult> {
     const formData = new FormData();
@@ -2386,43 +2413,42 @@ class AuRubberApiClient {
     return response.json();
   }
 
-  async linkDeliveryNoteToCoc(
-    deliveryNoteId: number,
-    cocId: number,
-  ): Promise<RubberDeliveryNoteDto> {
-    return this.request(`/rubber-lining/portal/delivery-notes/${deliveryNoteId}/link-coc`, {
-      method: "PUT",
-      body: JSON.stringify({ cocId }),
-    });
-  }
+  linkDeliveryNoteToCoc = createEndpoint<
+    [deliveryNoteId: number, cocId: number],
+    RubberDeliveryNoteDto
+  >(apiClient, "PUT", {
+    path: (deliveryNoteId, _cocId) =>
+      `/rubber-lining/portal/delivery-notes/${deliveryNoteId}/link-coc`,
+    body: (_deliveryNoteId, cocId) => ({ cocId }),
+  });
 
-  async finalizeDeliveryNote(id: number): Promise<RubberDeliveryNoteDto> {
-    return this.request(`/rubber-lining/portal/delivery-notes/${id}/finalize`, {
-      method: "PUT",
-    });
-  }
+  finalizeDeliveryNote = createEndpoint<[id: number], RubberDeliveryNoteDto>(apiClient, "PUT", {
+    path: (id) => `/rubber-lining/portal/delivery-notes/${id}/finalize`,
+  });
 
-  async approveDeliveryNote(id: number): Promise<RubberDeliveryNoteDto> {
-    return this.request(`/rubber-lining/portal/delivery-notes/${id}/approve`, {
-      method: "PUT",
-    });
-  }
+  approveDeliveryNote = createEndpoint<[id: number], RubberDeliveryNoteDto>(apiClient, "PUT", {
+    path: (id) => `/rubber-lining/portal/delivery-notes/${id}/approve`,
+  });
 
-  async refileDeliveryNoteStock(id: number): Promise<RubberDeliveryNoteDto> {
-    return this.request(`/rubber-lining/portal/delivery-notes/${id}/refile-stock`, {
-      method: "PUT",
-    });
-  }
+  refileDeliveryNoteStock = createEndpoint<[id: number], RubberDeliveryNoteDto>(apiClient, "PUT", {
+    path: (id) => `/rubber-lining/portal/delivery-notes/${id}/refile-stock`,
+  });
 
-  async deliveryNoteItems(deliveryNoteId: number): Promise<RubberDeliveryNoteItemDto[]> {
-    return this.request(`/rubber-lining/portal/delivery-notes/${deliveryNoteId}/items`);
-  }
+  deliveryNoteItems = createEndpoint<[deliveryNoteId: number], RubberDeliveryNoteItemDto[]>(
+    apiClient,
+    "GET",
+    {
+      path: (deliveryNoteId) => `/rubber-lining/portal/delivery-notes/${deliveryNoteId}/items`,
+    },
+  );
 
-  async acceptDeliveryNoteExtract(id: number): Promise<{ deliveryNoteIds: number[] }> {
-    return this.request(`/rubber-lining/portal/delivery-notes/${id}/accept-extract`, {
-      method: "PUT",
-    });
-  }
+  acceptDeliveryNoteExtract = createEndpoint<[id: number], { deliveryNoteIds: number[] }>(
+    apiClient,
+    "PUT",
+    {
+      path: (id) => `/rubber-lining/portal/delivery-notes/${id}/accept-extract`,
+    },
+  );
 
   async deliveryNotePageUrl(
     id: number,
@@ -2502,79 +2528,90 @@ class AuRubberApiClient {
     return this.request(`/rubber-lining/portal/roll-stock${query}`);
   }
 
-  async rollStockById(id: number): Promise<RubberRollStockDto> {
-    return this.request(`/rubber-lining/portal/roll-stock/${id}`);
-  }
+  rollStockById = createEndpoint<[id: number], RubberRollStockDto>(apiClient, "GET", {
+    path: (id) => `/rubber-lining/portal/roll-stock/${id}`,
+  });
 
-  async rollTraceability(id: number): Promise<RollTraceabilityDto> {
-    return this.request(`/rubber-lining/portal/roll-stock/${id}/traceability`);
-  }
+  rollTraceability = createEndpoint<[id: number], RollTraceabilityDto>(apiClient, "GET", {
+    path: (id) => `/rubber-lining/portal/roll-stock/${id}/traceability`,
+  });
 
-  async reserveRoll(id: number, customerId: number): Promise<RubberRollStockDto> {
-    return this.request(`/rubber-lining/portal/roll-stock/${id}/reserve`, {
-      method: "PUT",
-      body: JSON.stringify({ customerId }),
-    });
-  }
+  reserveRoll = createEndpoint<[id: number, customerId: number], RubberRollStockDto>(
+    apiClient,
+    "PUT",
+    {
+      path: (id, _customerId) => `/rubber-lining/portal/roll-stock/${id}/reserve`,
+      body: (_id, customerId) => ({ customerId }),
+    },
+  );
 
-  async unreserveRoll(id: number): Promise<RubberRollStockDto> {
-    return this.request(`/rubber-lining/portal/roll-stock/${id}/unreserve`, {
-      method: "PUT",
-    });
-  }
+  unreserveRoll = createEndpoint<[id: number], RubberRollStockDto>(apiClient, "PUT", {
+    path: (id) => `/rubber-lining/portal/roll-stock/${id}/unreserve`,
+  });
 
-  async sellRoll(
-    id: number,
-    data: { customerId: number; poNumber?: string; auCocId?: number },
-  ): Promise<RubberRollStockDto> {
-    return this.request(`/rubber-lining/portal/roll-stock/${id}/sell`, {
-      method: "PUT",
-      body: JSON.stringify(data),
-    });
-  }
+  sellRoll = createEndpoint<
+    [id: number, data: { customerId: number; poNumber?: string; auCocId?: number }],
+    RubberRollStockDto
+  >(apiClient, "PUT", {
+    path: (id) => `/rubber-lining/portal/roll-stock/${id}/sell`,
+    body: (_id, data) => data,
+  });
 
-  async scrapRoll(id: number, reason?: string): Promise<RubberRollStockDto> {
-    return this.request(`/rubber-lining/portal/roll-stock/${id}/scrap`, {
-      method: "PUT",
-      body: JSON.stringify({ reason }),
-    });
-  }
+  scrapRoll = createEndpoint<[id: number, reason?: string], RubberRollStockDto>(apiClient, "PUT", {
+    path: (id, _reason) => `/rubber-lining/portal/roll-stock/${id}/scrap`,
+    body: (_id, reason) => ({ reason }),
+  });
 
-  async createOpeningStock(data: CreateOpeningStockDto): Promise<RubberRollStockDto> {
-    return this.request("/rubber-lining/portal/roll-stock/opening-stock", {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-  }
+  createOpeningStock = createEndpoint<[data: CreateOpeningStockDto], RubberRollStockDto>(
+    apiClient,
+    "POST",
+    {
+      path: "/rubber-lining/portal/roll-stock/opening-stock",
+      body: (data) => data,
+    },
+  );
 
-  async importOpeningStock(rows: ImportOpeningStockRowDto[]): Promise<ImportOpeningStockResultDto> {
-    return this.request("/rubber-lining/portal/roll-stock/import-opening", {
-      method: "POST",
-      body: JSON.stringify({ rows }),
-    });
-  }
+  importOpeningStock = createEndpoint<
+    [rows: ImportOpeningStockRowDto[]],
+    ImportOpeningStockResultDto
+  >(apiClient, "POST", {
+    path: "/rubber-lining/portal/roll-stock/import-opening",
+    body: (rows) => ({ rows }),
+  });
 
-  async rollRejectionsBySupplierCoc(supplierCocId: number): Promise<RollRejectionDto[]> {
-    return this.request(`/rubber-lining/portal/supplier-cocs/${supplierCocId}/roll-rejections`);
-  }
+  rollRejectionsBySupplierCoc = createEndpoint<[supplierCocId: number], RollRejectionDto[]>(
+    apiClient,
+    "GET",
+    {
+      path: (supplierCocId) =>
+        `/rubber-lining/portal/supplier-cocs/${supplierCocId}/roll-rejections`,
+    },
+  );
 
-  async allRollRejections(statusFilter?: RollRejectionStatus): Promise<RollRejectionDto[]> {
-    const query = statusFilter ? `?status=${statusFilter}` : "";
-    return this.request(`/rubber-lining/portal/roll-rejections${query}`);
-  }
+  allRollRejections = createEndpoint<[statusFilter?: RollRejectionStatus], RollRejectionDto[]>(
+    apiClient,
+    "GET",
+    {
+      path: "/rubber-lining/portal/roll-rejections",
+      query: (statusFilter) => ({ status: statusFilter }),
+    },
+  );
 
-  async createRollRejection(data: {
-    originalSupplierCocId: number;
-    rollNumber: string;
-    rejectionReason: string;
-    rejectedBy: string;
-    notes?: string | null;
-  }): Promise<RollRejectionDto> {
-    return this.request("/rubber-lining/portal/roll-rejections", {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-  }
+  createRollRejection = createEndpoint<
+    [
+      data: {
+        originalSupplierCocId: number;
+        rollNumber: string;
+        rejectionReason: string;
+        rejectedBy: string;
+        notes?: string | null;
+      },
+    ],
+    RollRejectionDto
+  >(apiClient, "POST", {
+    path: "/rubber-lining/portal/roll-rejections",
+    body: (data) => data,
+  });
 
   async uploadRollRejectionReturnDocument(
     rejectionId: number,
@@ -2588,25 +2625,26 @@ class AuRubberApiClient {
     );
   }
 
-  async linkReplacementCoc(
-    rejectionId: number,
-    data: { replacementCocId: number; replacementRollNumber?: string },
-  ): Promise<RollRejectionDto> {
-    return this.request(`/rubber-lining/portal/roll-rejections/${rejectionId}/link-replacement`, {
-      method: "PUT",
-      body: JSON.stringify(data),
-    });
-  }
+  linkReplacementCoc = createEndpoint<
+    [rejectionId: number, data: { replacementCocId: number; replacementRollNumber?: string }],
+    RollRejectionDto
+  >(apiClient, "PUT", {
+    path: (rejectionId) => `/rubber-lining/portal/roll-rejections/${rejectionId}/link-replacement`,
+    body: (_rejectionId, data) => data,
+  });
 
-  async closeRollRejection(rejectionId: number): Promise<RollRejectionDto> {
-    return this.request(`/rubber-lining/portal/roll-rejections/${rejectionId}/close`, {
-      method: "PUT",
-    });
-  }
+  closeRollRejection = createEndpoint<[rejectionId: number], RollRejectionDto>(apiClient, "PUT", {
+    path: (rejectionId) => `/rubber-lining/portal/roll-rejections/${rejectionId}/close`,
+  });
 
-  async rollRejectionReturnDocumentUrl(rejectionId: number): Promise<{ url: string | null }> {
-    return this.request(`/rubber-lining/portal/roll-rejections/${rejectionId}/return-document-url`);
-  }
+  rollRejectionReturnDocumentUrl = createEndpoint<[rejectionId: number], { url: string | null }>(
+    apiClient,
+    "GET",
+    {
+      path: (rejectionId) =>
+        `/rubber-lining/portal/roll-rejections/${rejectionId}/return-document-url`,
+    },
+  );
 
   async auCocs(filters?: { status?: AuCocStatus; customerId?: number }): Promise<RubberAuCocDto[]> {
     const params = new URLSearchParams();
@@ -2616,48 +2654,44 @@ class AuRubberApiClient {
     return this.request(`/rubber-lining/portal/au-cocs${query}`);
   }
 
-  async auCocById(id: number): Promise<RubberAuCocDto> {
-    return this.request(`/rubber-lining/portal/au-cocs/${id}`);
-  }
+  auCocById = createEndpoint<[id: number], RubberAuCocDto>(apiClient, "GET", {
+    path: (id) => `/rubber-lining/portal/au-cocs/${id}`,
+  });
 
-  async createAuCoc(data: {
-    customerCompanyId: number;
-    rollIds: number[];
-    poNumber?: string;
-    deliveryNoteRef?: string;
-  }): Promise<RubberAuCocDto> {
-    return this.request("/rubber-lining/portal/au-cocs", {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-  }
+  createAuCoc = createEndpoint<
+    [
+      data: {
+        customerCompanyId: number;
+        rollIds: number[];
+        poNumber?: string;
+        deliveryNoteRef?: string;
+      },
+    ],
+    RubberAuCocDto
+  >(apiClient, "POST", {
+    path: "/rubber-lining/portal/au-cocs",
+    body: (data) => data,
+  });
 
-  async generateAuCocPdf(id: number): Promise<RubberAuCocDto> {
-    return this.request(`/rubber-lining/portal/au-cocs/${id}/generate-pdf`, {
-      method: "POST",
-    });
-  }
+  generateAuCocPdf = createEndpoint<[id: number], RubberAuCocDto>(apiClient, "POST", {
+    path: (id) => `/rubber-lining/portal/au-cocs/${id}/generate-pdf`,
+  });
 
-  async sendAuCoc(
-    id: number,
-    email: string,
-    options?: { cc?: string; bcc?: string },
-  ): Promise<RubberAuCocDto> {
-    return this.request(`/rubber-lining/portal/au-cocs/${id}/send`, {
-      method: "POST",
-      body: JSON.stringify({ email, cc: options?.cc, bcc: options?.bcc }),
-    });
-  }
+  sendAuCoc = createEndpoint<
+    [id: number, email: string, options?: { cc?: string; bcc?: string }],
+    RubberAuCocDto
+  >(apiClient, "POST", {
+    path: (id, _email, _options) => `/rubber-lining/portal/au-cocs/${id}/send`,
+    body: (_id, email, options) => ({ email, cc: options?.cc, bcc: options?.bcc }),
+  });
 
-  async bulkSendAuCocs(
-    email: string,
-    options?: { cc?: string; bcc?: string },
-  ): Promise<{ sent: number; total: number; cocNumbers: string[] }> {
-    return this.request("/rubber-lining/portal/au-cocs/bulk-send", {
-      method: "POST",
-      body: JSON.stringify({ email, cc: options?.cc, bcc: options?.bcc }),
-    });
-  }
+  bulkSendAuCocs = createEndpoint<
+    [email: string, options?: { cc?: string; bcc?: string }],
+    { sent: number; total: number; cocNumbers: string[] }
+  >(apiClient, "POST", {
+    path: "/rubber-lining/portal/au-cocs/bulk-send",
+    body: (email, options) => ({ email, cc: options?.cc, bcc: options?.bcc }),
+  });
 
   async createAuCocFromDeliveryNote(deliveryNoteId: number): Promise<RubberAuCocDto> {
     return this.request(
@@ -2680,25 +2714,21 @@ class AuRubberApiClient {
     return this.requestBlob(`/rubber-lining/portal/au-cocs/${id}/pdf`);
   }
 
-  async deleteAuCoc(id: number): Promise<void> {
-    return this.request(`/rubber-lining/portal/au-cocs/${id}`, {
-      method: "DELETE",
-    });
-  }
+  deleteAuCoc = createEndpoint<[id: number], void>(apiClient, "DELETE", {
+    path: (id) => `/rubber-lining/portal/au-cocs/${id}`,
+  });
 
-  async autoCreateAuCocFromDeliveryNote(
-    deliveryNoteId: number,
-    customerCompanyId: number,
-  ): Promise<{
-    auCoc: RubberAuCocDto | null;
-    matchedSupplierCocs: { id: number; cocNumber: string | null; orderNumber: string | null }[];
-    message: string;
-  }> {
-    return this.request("/rubber-lining/portal/au-cocs/auto-create-from-dn", {
-      method: "POST",
-      body: JSON.stringify({ deliveryNoteId, customerCompanyId }),
-    });
-  }
+  autoCreateAuCocFromDeliveryNote = createEndpoint<
+    [deliveryNoteId: number, customerCompanyId: number],
+    {
+      auCoc: RubberAuCocDto | null;
+      matchedSupplierCocs: { id: number; cocNumber: string | null; orderNumber: string | null }[];
+      message: string;
+    }
+  >(apiClient, "POST", {
+    path: "/rubber-lining/portal/au-cocs/auto-create-from-dn",
+    body: (deliveryNoteId, customerCompanyId) => ({ deliveryNoteId, customerCompanyId }),
+  });
 
   auCocPdfWithGraphUrl(id: number, supplierCocId: number): string {
     return `${this.baseURL}/rubber-lining/portal/au-cocs/${id}/pdf-with-graph/${supplierCocId}`;
@@ -2753,36 +2783,38 @@ class AuRubberApiClient {
     return this.request(`/rubber-lining/portal/stock-locations${query}`);
   }
 
-  async stockLocationById(id: number): Promise<StockLocationDto> {
-    return this.request(`/rubber-lining/portal/stock-locations/${id}`);
-  }
+  stockLocationById = createEndpoint<[id: number], StockLocationDto>(apiClient, "GET", {
+    path: (id) => `/rubber-lining/portal/stock-locations/${id}`,
+  });
 
-  async createStockLocation(data: {
-    name: string;
-    description?: string;
-    displayOrder?: number;
-  }): Promise<StockLocationDto> {
-    return this.request("/rubber-lining/portal/stock-locations", {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-  }
+  createStockLocation = createEndpoint<
+    [
+      data: {
+        name: string;
+        description?: string;
+        displayOrder?: number;
+      },
+    ],
+    StockLocationDto
+  >(apiClient, "POST", {
+    path: "/rubber-lining/portal/stock-locations",
+    body: (data) => data,
+  });
 
-  async updateStockLocation(
-    id: number,
-    data: { name?: string; description?: string; displayOrder?: number; active?: boolean },
-  ): Promise<StockLocationDto> {
-    return this.request(`/rubber-lining/portal/stock-locations/${id}`, {
-      method: "PUT",
-      body: JSON.stringify(data),
-    });
-  }
+  updateStockLocation = createEndpoint<
+    [
+      id: number,
+      data: { name?: string; description?: string; displayOrder?: number; active?: boolean },
+    ],
+    StockLocationDto
+  >(apiClient, "PUT", {
+    path: (id) => `/rubber-lining/portal/stock-locations/${id}`,
+    body: (_id, data) => data,
+  });
 
-  async deleteStockLocation(id: number): Promise<void> {
-    return this.request(`/rubber-lining/portal/stock-locations/${id}`, {
-      method: "DELETE",
-    });
-  }
+  deleteStockLocation = createEndpoint<[id: number], void>(apiClient, "DELETE", {
+    path: (id) => `/rubber-lining/portal/stock-locations/${id}`,
+  });
 
   async purchaseRequisitions(filters?: {
     status?: RequisitionStatus;
@@ -2795,58 +2827,64 @@ class AuRubberApiClient {
     return this.request(`/rubber-lining/portal/purchase-requisitions${query}`);
   }
 
-  async purchaseRequisitionById(id: number): Promise<RequisitionDto> {
-    return this.request(`/rubber-lining/portal/purchase-requisitions/${id}`);
-  }
+  purchaseRequisitionById = createEndpoint<[id: number], RequisitionDto>(apiClient, "GET", {
+    path: (id) => `/rubber-lining/portal/purchase-requisitions/${id}`,
+  });
 
-  async pendingRequisitions(): Promise<RequisitionDto[]> {
-    return this.request("/rubber-lining/portal/purchase-requisitions/pending");
-  }
+  pendingRequisitions = createEndpoint<[], RequisitionDto[]>(apiClient, "GET", {
+    path: "/rubber-lining/portal/purchase-requisitions/pending",
+  });
 
-  async createManualRequisition(data: {
-    supplierCompanyId?: number;
-    externalPoNumber?: string;
-    expectedDeliveryDate?: string;
-    notes?: string;
-    createdBy?: string;
-    items: {
-      itemType: RequisitionItemType;
-      compoundStockId?: number;
-      compoundCodingId?: number;
-      compoundName?: string;
-      quantityKg: number;
-      unitPrice?: number;
-      notes?: string;
-    }[];
-  }): Promise<RequisitionDto> {
-    return this.request("/rubber-lining/portal/purchase-requisitions", {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-  }
+  createManualRequisition = createEndpoint<
+    [
+      data: {
+        supplierCompanyId?: number;
+        externalPoNumber?: string;
+        expectedDeliveryDate?: string;
+        notes?: string;
+        createdBy?: string;
+        items: {
+          itemType: RequisitionItemType;
+          compoundStockId?: number;
+          compoundCodingId?: number;
+          compoundName?: string;
+          quantityKg: number;
+          unitPrice?: number;
+          notes?: string;
+        }[];
+      },
+    ],
+    RequisitionDto
+  >(apiClient, "POST", {
+    path: "/rubber-lining/portal/purchase-requisitions",
+    body: (data) => data,
+  });
 
-  async createExternalPoRequisition(data: {
-    supplierCompanyId?: number;
-    externalPoNumber: string;
-    externalPoDocumentPath?: string;
-    expectedDeliveryDate?: string;
-    notes?: string;
-    createdBy?: string;
-    items: {
-      itemType: RequisitionItemType;
-      compoundStockId?: number;
-      compoundCodingId?: number;
-      compoundName?: string;
-      quantityKg: number;
-      unitPrice?: number;
-      notes?: string;
-    }[];
-  }): Promise<RequisitionDto> {
-    return this.request("/rubber-lining/portal/purchase-requisitions/external-po", {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-  }
+  createExternalPoRequisition = createEndpoint<
+    [
+      data: {
+        supplierCompanyId?: number;
+        externalPoNumber: string;
+        externalPoDocumentPath?: string;
+        expectedDeliveryDate?: string;
+        notes?: string;
+        createdBy?: string;
+        items: {
+          itemType: RequisitionItemType;
+          compoundStockId?: number;
+          compoundCodingId?: number;
+          compoundName?: string;
+          quantityKg: number;
+          unitPrice?: number;
+          notes?: string;
+        }[];
+      },
+    ],
+    RequisitionDto
+  >(apiClient, "POST", {
+    path: "/rubber-lining/portal/purchase-requisitions/external-po",
+    body: (data) => data,
+  });
 
   async checkLowStockRequisitions(): Promise<RequisitionDto[]> {
     return this.request("/rubber-lining/portal/purchase-requisitions/check-low-stock", {
@@ -2854,19 +2892,22 @@ class AuRubberApiClient {
     });
   }
 
-  async approveRequisition(id: number, approvedBy: string): Promise<RequisitionDto> {
-    return this.request(`/rubber-lining/portal/purchase-requisitions/${id}/approve`, {
-      method: "PUT",
-      body: JSON.stringify({ approvedBy }),
-    });
-  }
+  approveRequisition = createEndpoint<[id: number, approvedBy: string], RequisitionDto>(
+    apiClient,
+    "PUT",
+    {
+      path: (id, _approvedBy) => `/rubber-lining/portal/purchase-requisitions/${id}/approve`,
+      body: (_id, approvedBy) => ({ approvedBy }),
+    },
+  );
 
-  async rejectRequisition(id: number, rejectedBy: string, reason: string): Promise<RequisitionDto> {
-    return this.request(`/rubber-lining/portal/purchase-requisitions/${id}/reject`, {
-      method: "PUT",
-      body: JSON.stringify({ rejectedBy, reason }),
-    });
-  }
+  rejectRequisition = createEndpoint<
+    [id: number, rejectedBy: string, reason: string],
+    RequisitionDto
+  >(apiClient, "PUT", {
+    path: (id, _rejectedBy, _reason) => `/rubber-lining/portal/purchase-requisitions/${id}/reject`,
+    body: (_id, rejectedBy, reason) => ({ rejectedBy, reason }),
+  });
 
   async markRequisitionOrdered(
     id: number,
@@ -2878,21 +2919,17 @@ class AuRubberApiClient {
     });
   }
 
-  async receiveRequisitionItems(
-    id: number,
-    itemReceipts: { itemId: number; quantityReceivedKg: number }[],
-  ): Promise<RequisitionDto> {
-    return this.request(`/rubber-lining/portal/purchase-requisitions/${id}/receive`, {
-      method: "PUT",
-      body: JSON.stringify({ itemReceipts }),
-    });
-  }
+  receiveRequisitionItems = createEndpoint<
+    [id: number, itemReceipts: { itemId: number; quantityReceivedKg: number }[]],
+    RequisitionDto
+  >(apiClient, "PUT", {
+    path: (id, _itemReceipts) => `/rubber-lining/portal/purchase-requisitions/${id}/receive`,
+    body: (_id, itemReceipts) => ({ itemReceipts }),
+  });
 
-  async cancelRequisition(id: number): Promise<RequisitionDto> {
-    return this.request(`/rubber-lining/portal/purchase-requisitions/${id}/cancel`, {
-      method: "PUT",
-    });
-  }
+  cancelRequisition = createEndpoint<[id: number], RequisitionDto>(apiClient, "PUT", {
+    path: (id) => `/rubber-lining/portal/purchase-requisitions/${id}/cancel`,
+  });
 
   requisitionStatuses(): Promise<{ value: string; label: string }[]> {
     return this.request("/rubber-lining/portal/requisition-statuses");
@@ -2902,9 +2939,9 @@ class AuRubberApiClient {
     return this.request("/rubber-lining/portal/requisition-source-types");
   }
 
-  async qualityTrackingSummary(): Promise<CompoundQualitySummaryDto[]> {
-    return this.request("/rubber-lining/portal/quality-tracking");
-  }
+  qualityTrackingSummary = createEndpoint<[], CompoundQualitySummaryDto[]>(apiClient, "GET", {
+    path: "/rubber-lining/portal/quality-tracking",
+  });
 
   async qualityTrackingDetail(compoundCode: string): Promise<CompoundQualityDetailDto> {
     return this.request(
@@ -2912,20 +2949,22 @@ class AuRubberApiClient {
     );
   }
 
-  async qualityAlerts(): Promise<QualityAlertDto[]> {
-    return this.request("/rubber-lining/portal/quality-alerts");
-  }
+  qualityAlerts = createEndpoint<[], QualityAlertDto[]>(apiClient, "GET", {
+    path: "/rubber-lining/portal/quality-alerts",
+  });
 
-  async acknowledgeQualityAlert(id: number, acknowledgedBy: string): Promise<QualityAlertDto> {
-    return this.request(`/rubber-lining/portal/quality-alerts/${id}/acknowledge`, {
-      method: "PUT",
-      body: JSON.stringify({ acknowledgedBy }),
-    });
-  }
+  acknowledgeQualityAlert = createEndpoint<[id: number, acknowledgedBy: string], QualityAlertDto>(
+    apiClient,
+    "PUT",
+    {
+      path: (id, _acknowledgedBy) => `/rubber-lining/portal/quality-alerts/${id}/acknowledge`,
+      body: (_id, acknowledgedBy) => ({ acknowledgedBy }),
+    },
+  );
 
-  async qualityConfigs(): Promise<QualityConfigDto[]> {
-    return this.request("/rubber-lining/portal/quality-configs");
-  }
+  qualityConfigs = createEndpoint<[], QualityConfigDto[]>(apiClient, "GET", {
+    path: "/rubber-lining/portal/quality-configs",
+  });
 
   async updateQualityConfig(
     compoundCode: string,
@@ -2944,14 +2983,13 @@ class AuRubberApiClient {
     return this.requestWithFiles("/rubber-lining/portal/orders/analyze", files);
   }
 
-  async createOrderFromAnalysis(
-    data: CreateOrderFromAnalysisDto,
-  ): Promise<{ orderId: number; orderNumber: string }> {
-    return this.request("/rubber-lining/portal/orders/from-analysis", {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-  }
+  createOrderFromAnalysis = createEndpoint<
+    [data: CreateOrderFromAnalysisDto],
+    { orderId: number; orderNumber: string }
+  >(apiClient, "POST", {
+    path: "/rubber-lining/portal/orders/from-analysis",
+    body: (data) => data,
+  });
 
   async orderDocumentPages(file: File): Promise<{ pages: PdfPageImage[] }> {
     return this.requestWithFiles("/rubber-lining/portal/orders/document-pages", [file], {}, "file");
@@ -2984,22 +3022,30 @@ class AuRubberApiClient {
     return response.json();
   }
 
-  async savePoTemplate(dto: CreateTemplateDto): Promise<{ templateId: number }> {
-    return this.request("/rubber-lining/portal/orders/templates", {
-      method: "POST",
-      body: JSON.stringify(dto),
-    });
-  }
+  savePoTemplate = createEndpoint<[dto: CreateTemplateDto], { templateId: number }>(
+    apiClient,
+    "POST",
+    {
+      path: "/rubber-lining/portal/orders/templates",
+      body: (dto) => dto,
+    },
+  );
 
-  async companyPoTemplates(companyId: number): Promise<{ templates: PoTemplateDto[] }> {
-    return this.request(`/rubber-lining/portal/orders/templates/${companyId}`);
-  }
+  companyPoTemplates = createEndpoint<[companyId: number], { templates: PoTemplateDto[] }>(
+    apiClient,
+    "GET",
+    {
+      path: (companyId) => `/rubber-lining/portal/orders/templates/${companyId}`,
+    },
+  );
 
-  async deletePoTemplate(templateId: number): Promise<{ success: boolean }> {
-    return this.request(`/rubber-lining/portal/orders/templates/${templateId}`, {
-      method: "DELETE",
-    });
-  }
+  deletePoTemplate = createEndpoint<[templateId: number], { success: boolean }>(
+    apiClient,
+    "DELETE",
+    {
+      path: (templateId) => `/rubber-lining/portal/orders/templates/${templateId}`,
+    },
+  );
 
   async computeOrderFormatHash(file: File): Promise<{ formatHash: string }> {
     return this.requestWithFiles(
@@ -3015,58 +3061,66 @@ class AuRubberApiClient {
     return this.request(`/rubber-lining/portal/other-stocks${params}`);
   }
 
-  async lowStockItems(): Promise<RubberOtherStockDto[]> {
-    return this.request("/rubber-lining/portal/other-stocks/low");
-  }
+  lowStockItems = createEndpoint<[], RubberOtherStockDto[]>(apiClient, "GET", {
+    path: "/rubber-lining/portal/other-stocks/low",
+  });
 
-  async otherStockById(id: number): Promise<RubberOtherStockDto> {
-    return this.request(`/rubber-lining/portal/other-stocks/${id}`);
-  }
+  otherStockById = createEndpoint<[id: number], RubberOtherStockDto>(apiClient, "GET", {
+    path: (id) => `/rubber-lining/portal/other-stocks/${id}`,
+  });
 
-  async createOtherStock(data: CreateOtherStockDto): Promise<RubberOtherStockDto> {
-    return this.request("/rubber-lining/portal/other-stocks", {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-  }
+  createOtherStock = createEndpoint<[data: CreateOtherStockDto], RubberOtherStockDto>(
+    apiClient,
+    "POST",
+    {
+      path: "/rubber-lining/portal/other-stocks",
+      body: (data) => data,
+    },
+  );
 
-  async updateOtherStock(id: number, data: UpdateOtherStockDto): Promise<RubberOtherStockDto> {
-    return this.request(`/rubber-lining/portal/other-stocks/${id}`, {
-      method: "PUT",
-      body: JSON.stringify(data),
-    });
-  }
+  updateOtherStock = createEndpoint<[id: number, data: UpdateOtherStockDto], RubberOtherStockDto>(
+    apiClient,
+    "PUT",
+    {
+      path: (id) => `/rubber-lining/portal/other-stocks/${id}`,
+      body: (_id, data) => data,
+    },
+  );
 
-  async deleteOtherStock(id: number): Promise<void> {
-    return this.request(`/rubber-lining/portal/other-stocks/${id}`, {
-      method: "DELETE",
-    });
-  }
+  deleteOtherStock = createEndpoint<[id: number], void>(apiClient, "DELETE", {
+    path: (id) => `/rubber-lining/portal/other-stocks/${id}`,
+  });
 
-  async receiveOtherStock(data: ReceiveOtherStockDto): Promise<RubberOtherStockDto> {
-    return this.request("/rubber-lining/portal/other-stocks/receive", {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-  }
+  receiveOtherStock = createEndpoint<[data: ReceiveOtherStockDto], RubberOtherStockDto>(
+    apiClient,
+    "POST",
+    {
+      path: "/rubber-lining/portal/other-stocks/receive",
+      body: (data) => data,
+    },
+  );
 
-  async adjustOtherStock(data: AdjustOtherStockDto): Promise<RubberOtherStockDto> {
-    return this.request("/rubber-lining/portal/other-stocks/adjust", {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-  }
+  adjustOtherStock = createEndpoint<[data: AdjustOtherStockDto], RubberOtherStockDto>(
+    apiClient,
+    "POST",
+    {
+      path: "/rubber-lining/portal/other-stocks/adjust",
+      body: (data) => data,
+    },
+  );
 
-  async importOtherStock(rows: ImportOtherStockRowDto[]): Promise<ImportOtherStockResultDto> {
-    return this.request("/rubber-lining/portal/other-stocks/import", {
-      method: "POST",
-      body: JSON.stringify(rows),
-    });
-  }
+  importOtherStock = createEndpoint<[rows: ImportOtherStockRowDto[]], ImportOtherStockResultDto>(
+    apiClient,
+    "POST",
+    {
+      path: "/rubber-lining/portal/other-stocks/import",
+      body: (rows) => rows,
+    },
+  );
 
-  async rubberSpecifications(): Promise<RubberSpecificationDto[]> {
-    return this.request("/rubber-lining/specifications");
-  }
+  rubberSpecifications = createEndpoint<[], RubberSpecificationDto[]>(apiClient, "GET", {
+    path: "/rubber-lining/specifications",
+  });
 
   async taxInvoices(filters?: {
     invoiceType?: TaxInvoiceType;
@@ -3096,9 +3150,9 @@ class AuRubberApiClient {
     return this.request(`/rubber-lining/portal/tax-invoices${qs ? `?${qs}` : ""}`);
   }
 
-  async taxInvoiceById(id: number): Promise<RubberTaxInvoiceDto> {
-    return this.request(`/rubber-lining/portal/tax-invoices/${id}`);
-  }
+  taxInvoiceById = createEndpoint<[id: number], RubberTaxInvoiceDto>(apiClient, "GET", {
+    path: (id) => `/rubber-lining/portal/tax-invoices/${id}`,
+  });
 
   async taxInvoiceStatements(filters: {
     invoiceType: TaxInvoiceType;
@@ -3108,72 +3162,68 @@ class AuRubberApiClient {
     return this.request(`/rubber-lining/portal/tax-invoices/statements?${params.toString()}`);
   }
 
-  async extractTaxInvoice(id: number): Promise<RubberTaxInvoiceDto> {
-    return this.request(`/rubber-lining/portal/tax-invoices/${id}/extract`, {
-      method: "POST",
-    });
-  }
+  extractTaxInvoice = createEndpoint<[id: number], RubberTaxInvoiceDto>(apiClient, "POST", {
+    path: (id) => `/rubber-lining/portal/tax-invoices/${id}/extract`,
+  });
 
-  async createTaxInvoice(data: {
-    invoiceNumber: string;
-    invoiceDate?: string;
-    invoiceType: TaxInvoiceType;
-    companyId: number;
-    totalAmount?: number;
-    vatAmount?: number;
-    isCreditNote?: boolean;
-  }): Promise<RubberTaxInvoiceDto> {
-    return this.request("/rubber-lining/portal/tax-invoices", {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-  }
+  createTaxInvoice = createEndpoint<
+    [
+      data: {
+        invoiceNumber: string;
+        invoiceDate?: string;
+        invoiceType: TaxInvoiceType;
+        companyId: number;
+        totalAmount?: number;
+        vatAmount?: number;
+        isCreditNote?: boolean;
+      },
+    ],
+    RubberTaxInvoiceDto
+  >(apiClient, "POST", {
+    path: "/rubber-lining/portal/tax-invoices",
+    body: (data) => data,
+  });
 
-  async updateTaxInvoice(
-    id: number,
-    data: {
-      invoiceNumber?: string;
-      invoiceDate?: string;
-      status?: TaxInvoiceStatus;
-      totalAmount?: number;
-      vatAmount?: number;
-      productDescription?: string;
-      orderNumber?: string;
-      deliveryNoteRef?: string;
-      quantity?: number;
-      unit?: string;
-      costPerUnit?: number;
-      subtotal?: number;
-    },
-  ): Promise<RubberTaxInvoiceDto> {
-    return this.request(`/rubber-lining/portal/tax-invoices/${id}`, {
-      method: "PUT",
-      body: JSON.stringify(data),
-    });
-  }
+  updateTaxInvoice = createEndpoint<
+    [
+      id: number,
+      data: {
+        invoiceNumber?: string;
+        invoiceDate?: string;
+        status?: TaxInvoiceStatus;
+        totalAmount?: number;
+        vatAmount?: number;
+        productDescription?: string;
+        orderNumber?: string;
+        deliveryNoteRef?: string;
+        quantity?: number;
+        unit?: string;
+        costPerUnit?: number;
+        subtotal?: number;
+      },
+    ],
+    RubberTaxInvoiceDto
+  >(apiClient, "PUT", {
+    path: (id) => `/rubber-lining/portal/tax-invoices/${id}`,
+    body: (_id, data) => data,
+  });
 
-  async approveTaxInvoice(id: number): Promise<RubberTaxInvoiceDto> {
-    return this.request(`/rubber-lining/portal/tax-invoices/${id}/approve`, {
-      method: "PUT",
-    });
-  }
+  approveTaxInvoice = createEndpoint<[id: number], RubberTaxInvoiceDto>(apiClient, "PUT", {
+    path: (id) => `/rubber-lining/portal/tax-invoices/${id}/approve`,
+  });
 
-  async refileTaxInvoiceStock(id: number): Promise<RubberTaxInvoiceDto> {
-    return this.request(`/rubber-lining/portal/tax-invoices/${id}/refile-stock`, {
-      method: "PUT",
-    });
-  }
+  refileTaxInvoiceStock = createEndpoint<[id: number], RubberTaxInvoiceDto>(apiClient, "PUT", {
+    path: (id) => `/rubber-lining/portal/tax-invoices/${id}/refile-stock`,
+  });
 
-  async updateTaxInvoiceLineItemRolls(
-    id: number,
-    lineIdx: number,
-    rolls: Array<{ rollNumber: string; weightKg: number | null }>,
-  ): Promise<RubberTaxInvoiceDto> {
-    return this.request(`/rubber-lining/portal/tax-invoices/${id}/line-items/${lineIdx}/rolls`, {
-      method: "PUT",
-      body: JSON.stringify({ rolls }),
-    });
-  }
+  updateTaxInvoiceLineItemRolls = createEndpoint<
+    [id: number, lineIdx: number, rolls: Array<{ rollNumber: string; weightKg: number | null }>],
+    RubberTaxInvoiceDto
+  >(apiClient, "PUT", {
+    path: (id, lineIdx, _rolls) =>
+      `/rubber-lining/portal/tax-invoices/${id}/line-items/${lineIdx}/rolls`,
+    body: (_id, _lineIdx, rolls) => ({ rolls }),
+  });
 
   async availableRollsForProductCode(productCode: string): Promise<
     Array<{
@@ -3220,11 +3270,9 @@ class AuRubberApiClient {
     return this.request(`/rubber-lining/portal/roll-stock/by-numbers?${params.toString()}`);
   }
 
-  async deleteTaxInvoice(id: number): Promise<void> {
-    return this.request(`/rubber-lining/portal/tax-invoices/${id}`, {
-      method: "DELETE",
-    });
-  }
+  deleteTaxInvoice = createEndpoint<[id: number], void>(apiClient, "DELETE", {
+    path: (id) => `/rubber-lining/portal/tax-invoices/${id}`,
+  });
 
   async uploadTaxInvoiceDocument(id: number, file: File): Promise<RubberTaxInvoiceDto> {
     return this.requestWithFiles(
@@ -3390,29 +3438,35 @@ class AuRubberApiClient {
     return response.blob();
   }
 
-  async sageConnectionStatus(): Promise<{
-    connected: boolean;
-    enabled: boolean;
-    sageUsername: string | null;
-    sagePasswordSet: boolean;
-    sageCompanyId: number | null;
-    sageCompanyName: string | null;
-    connectedAt: string | null;
-  }> {
-    return this.request("/rubber-lining/portal/sage/status");
-  }
+  sageConnectionStatus = createEndpoint<
+    [],
+    {
+      connected: boolean;
+      enabled: boolean;
+      sageUsername: string | null;
+      sagePasswordSet: boolean;
+      sageCompanyId: number | null;
+      sageCompanyName: string | null;
+      connectedAt: string | null;
+    }
+  >(apiClient, "GET", {
+    path: "/rubber-lining/portal/sage/status",
+  });
 
-  async updateSageConfig(dto: {
-    sageUsername: string | null;
-    sagePassword: string | null;
-    sageCompanyId: number | null;
-    sageCompanyName: string | null;
-  }): Promise<{ message: string }> {
-    return this.request("/rubber-lining/portal/sage/config", {
-      method: "PATCH",
-      body: JSON.stringify(dto),
-    });
-  }
+  updateSageConfig = createEndpoint<
+    [
+      dto: {
+        sageUsername: string | null;
+        sagePassword: string | null;
+        sageCompanyId: number | null;
+        sageCompanyName: string | null;
+      },
+    ],
+    { message: string }
+  >(apiClient, "PATCH", {
+    path: "/rubber-lining/portal/sage/config",
+    body: (dto) => dto,
+  });
 
   async disconnectSage(): Promise<{ message: string }> {
     return this.request("/rubber-lining/portal/sage/config", {
@@ -3420,18 +3474,16 @@ class AuRubberApiClient {
     });
   }
 
-  async testSageConnection(
-    username?: string,
-    password?: string,
-  ): Promise<{
-    success: boolean;
-    companies: Array<{ ID: number; Name: string; TaxNumber: string }>;
-  }> {
-    return this.request("/rubber-lining/portal/sage/test", {
-      method: "POST",
-      body: JSON.stringify({ username, password }),
-    });
-  }
+  testSageConnection = createEndpoint<
+    [username?: string, password?: string],
+    {
+      success: boolean;
+      companies: Array<{ ID: number; Name: string; TaxNumber: string }>;
+    }
+  >(apiClient, "POST", {
+    path: "/rubber-lining/portal/sage/test",
+    body: (username, password) => ({ username, password }),
+  });
 
   async sageContactSync(): Promise<SageContactSyncResult> {
     return this.request("/rubber-lining/portal/sage/contact-sync", {
@@ -3439,26 +3491,22 @@ class AuRubberApiClient {
     });
   }
 
-  async sageContactMappings(): Promise<SageContactMappingStatus> {
-    return this.request("/rubber-lining/portal/sage/contact-mappings");
-  }
+  sageContactMappings = createEndpoint<[], SageContactMappingStatus>(apiClient, "GET", {
+    path: "/rubber-lining/portal/sage/contact-mappings",
+  });
 
-  async mapSageContact(
-    companyId: number,
-    sageContactId: number,
-    sageContactType: string,
-  ): Promise<unknown> {
-    return this.request(`/rubber-lining/portal/sage/contact-mappings/${companyId}`, {
-      method: "PATCH",
-      body: JSON.stringify({ sageContactId, sageContactType }),
-    });
-  }
+  mapSageContact = createEndpoint<
+    [companyId: number, sageContactId: number, sageContactType: string],
+    unknown
+  >(apiClient, "PATCH", {
+    path: (companyId, _sageContactId, _sageContactType) =>
+      `/rubber-lining/portal/sage/contact-mappings/${companyId}`,
+    body: (_companyId, sageContactId, sageContactType) => ({ sageContactId, sageContactType }),
+  });
 
-  async unmapSageContact(companyId: number): Promise<unknown> {
-    return this.request(`/rubber-lining/portal/sage/contact-mappings/${companyId}`, {
-      method: "DELETE",
-    });
-  }
+  unmapSageContact = createEndpoint<[companyId: number], unknown>(apiClient, "DELETE", {
+    path: (companyId) => `/rubber-lining/portal/sage/contact-mappings/${companyId}`,
+  });
 
   async postInvoiceToSage(
     invoiceId: number,
@@ -3468,29 +3516,33 @@ class AuRubberApiClient {
     });
   }
 
-  async postInvoicesToSageBulk(invoiceIds: number[]): Promise<{
-    successful: Array<{ sageInvoiceId: number; invoiceId: number; invoiceNumber: string }>;
-    failed: Array<{ invoiceId: number; invoiceNumber: string; error: string }>;
-  }> {
-    return this.request("/rubber-lining/portal/tax-invoices/post-to-sage/bulk", {
-      method: "POST",
-      body: JSON.stringify({ invoiceIds }),
-    });
-  }
+  postInvoicesToSageBulk = createEndpoint<
+    [invoiceIds: number[]],
+    {
+      successful: Array<{ sageInvoiceId: number; invoiceId: number; invoiceNumber: string }>;
+      failed: Array<{ invoiceId: number; invoiceNumber: string; error: string }>;
+    }
+  >(apiClient, "POST", {
+    path: "/rubber-lining/portal/tax-invoices/post-to-sage/bulk",
+    body: (invoiceIds) => ({ invoiceIds }),
+  });
 
-  async postInvoicesToSageBulkByFilter(filter: {
-    invoiceType: TaxInvoiceType;
-    search?: string;
-    includeAllVersions?: boolean;
-  }): Promise<{
-    successful: Array<{ sageInvoiceId: number; invoiceId: number; invoiceNumber: string }>;
-    failed: Array<{ invoiceId: number; invoiceNumber: string; error: string }>;
-  }> {
-    return this.request("/rubber-lining/portal/tax-invoices/post-to-sage/bulk-by-filter", {
-      method: "POST",
-      body: JSON.stringify(filter),
-    });
-  }
+  postInvoicesToSageBulkByFilter = createEndpoint<
+    [
+      filter: {
+        invoiceType: TaxInvoiceType;
+        search?: string;
+        includeAllVersions?: boolean;
+      },
+    ],
+    {
+      successful: Array<{ sageInvoiceId: number; invoiceId: number; invoiceNumber: string }>;
+      failed: Array<{ invoiceId: number; invoiceNumber: string; error: string }>;
+    }
+  >(apiClient, "POST", {
+    path: "/rubber-lining/portal/tax-invoices/post-to-sage/bulk-by-filter",
+    body: (filter) => filter,
+  });
 
   async authorizeVersion(
     entityType: "tax-invoices" | "delivery-notes" | "supplier-cocs",
@@ -3526,7 +3578,8 @@ class AuRubberApiClient {
     return this.request(`/rubber-lining/portal/${entityType}/${id}/version-history`);
   }
 
-  async accountingDirectors(): Promise<
+  accountingDirectors = createEndpoint<
+    [],
     Array<{
       id: number;
       name: string;
@@ -3535,36 +3588,35 @@ class AuRubberApiClient {
       isActive: boolean;
       createdAt: string;
     }>
-  > {
-    return this.request("/rubber-lining/portal/accounting/directors");
-  }
+  >(apiClient, "GET", {
+    path: "/rubber-lining/portal/accounting/directors",
+  });
 
-  async createAccountingDirector(data: {
-    name: string;
-    title: string;
-    email: string;
-  }): Promise<{ id: number; name: string; title: string; email: string }> {
-    return this.request("/rubber-lining/portal/accounting/directors", {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-  }
+  createAccountingDirector = createEndpoint<
+    [
+      data: {
+        name: string;
+        title: string;
+        email: string;
+      },
+    ],
+    { id: number; name: string; title: string; email: string }
+  >(apiClient, "POST", {
+    path: "/rubber-lining/portal/accounting/directors",
+    body: (data) => data,
+  });
 
-  async updateAccountingDirector(
-    id: number,
-    data: { name?: string; title?: string; email?: string; isActive?: boolean },
-  ): Promise<{ id: number; name: string; title: string; email: string }> {
-    return this.request(`/rubber-lining/portal/accounting/directors/${id}`, {
-      method: "PUT",
-      body: JSON.stringify(data),
-    });
-  }
+  updateAccountingDirector = createEndpoint<
+    [id: number, data: { name?: string; title?: string; email?: string; isActive?: boolean }],
+    { id: number; name: string; title: string; email: string }
+  >(apiClient, "PUT", {
+    path: (id) => `/rubber-lining/portal/accounting/directors/${id}`,
+    body: (_id, data) => data,
+  });
 
-  async deleteAccountingDirector(id: number): Promise<void> {
-    return this.request(`/rubber-lining/portal/accounting/directors/${id}`, {
-      method: "DELETE",
-    });
-  }
+  deleteAccountingDirector = createEndpoint<[id: number], void>(apiClient, "DELETE", {
+    path: (id) => `/rubber-lining/portal/accounting/directors/${id}`,
+  });
 
   async accountingPayable(
     year: number,
@@ -3621,16 +3673,13 @@ class AuRubberApiClient {
     return this.request(`/rubber-lining/portal/accounting${qs ? `?${qs}` : ""}`);
   }
 
-  async accountingGenerate(
-    year: number,
-    month: number,
-    accountType: string,
-  ): Promise<Record<string, unknown>> {
-    return this.request("/rubber-lining/portal/accounting/generate", {
-      method: "POST",
-      body: JSON.stringify({ year, month, accountType }),
-    });
-  }
+  accountingGenerate = createEndpoint<
+    [year: number, month: number, accountType: string],
+    Record<string, unknown>
+  >(apiClient, "POST", {
+    path: "/rubber-lining/portal/accounting/generate",
+    body: (year, month, accountType) => ({ year, month, accountType }),
+  });
 
   async accountingDownloadPdf(id: number): Promise<void> {
     const response = await fetch(`${this.baseURL}/rubber-lining/portal/accounting/${id}/pdf`, {
@@ -3648,11 +3697,13 @@ class AuRubberApiClient {
     URL.revokeObjectURL(url);
   }
 
-  async accountingRequestSignOff(id: number): Promise<Record<string, unknown>> {
-    return this.request(`/rubber-lining/portal/accounting/${id}/request-signoff`, {
-      method: "POST",
-    });
-  }
+  accountingRequestSignOff = createEndpoint<[id: number], Record<string, unknown>>(
+    apiClient,
+    "POST",
+    {
+      path: (id) => `/rubber-lining/portal/accounting/${id}/request-signoff`,
+    },
+  );
 
   async accountingReconciliations(filters?: {
     companyId?: number;
@@ -3669,9 +3720,9 @@ class AuRubberApiClient {
     return this.request(`/rubber-lining/portal/accounting/reconciliation${qs ? `?${qs}` : ""}`);
   }
 
-  async accountingReconciliationById(id: number): Promise<unknown> {
-    return this.request(`/rubber-lining/portal/accounting/reconciliation/${id}`);
-  }
+  accountingReconciliationById = createEndpoint<[id: number], unknown>(apiClient, "GET", {
+    path: (id) => `/rubber-lining/portal/accounting/reconciliation/${id}`,
+  });
 
   async accountingUploadStatement(
     companyId: number,
@@ -3691,66 +3742,61 @@ class AuRubberApiClient {
     );
   }
 
-  async accountingExtractStatement(id: number): Promise<unknown> {
-    return this.request(`/rubber-lining/portal/accounting/reconciliation/${id}/extract`, {
-      method: "POST",
-    });
-  }
+  accountingExtractStatement = createEndpoint<[id: number], unknown>(apiClient, "POST", {
+    path: (id) => `/rubber-lining/portal/accounting/reconciliation/${id}/extract`,
+  });
 
-  async accountingReconcileStatement(id: number): Promise<unknown> {
-    return this.request(`/rubber-lining/portal/accounting/reconciliation/${id}/reconcile`, {
-      method: "POST",
-    });
-  }
+  accountingReconcileStatement = createEndpoint<[id: number], unknown>(apiClient, "POST", {
+    path: (id) => `/rubber-lining/portal/accounting/reconciliation/${id}/reconcile`,
+  });
 
-  async accountingResolveDiscrepancy(
-    id: number,
-    resolvedBy: string,
-    notes: string,
-  ): Promise<unknown> {
-    return this.request(`/rubber-lining/portal/accounting/reconciliation/${id}/resolve`, {
-      method: "PUT",
-      body: JSON.stringify({ resolvedBy, notes }),
-    });
-  }
+  accountingResolveDiscrepancy = createEndpoint<
+    [id: number, resolvedBy: string, notes: string],
+    unknown
+  >(apiClient, "PUT", {
+    path: (id, _resolvedBy, _notes) =>
+      `/rubber-lining/portal/accounting/reconciliation/${id}/resolve`,
+    body: (_id, resolvedBy, notes) => ({ resolvedBy, notes }),
+  });
 
-  async featureFlagsDetailed(): Promise<{
-    flags: Array<{
-      flagKey: string;
-      enabled: boolean;
-      description: string | null;
-      category: string;
-    }>;
-  }> {
-    return this.request("/rubber-lining/admin/feature-flags/detailed");
-  }
+  featureFlagsDetailed = createEndpoint<
+    [],
+    {
+      flags: Array<{
+        flagKey: string;
+        enabled: boolean;
+        description: string | null;
+        category: string;
+      }>;
+    }
+  >(apiClient, "GET", {
+    path: "/rubber-lining/admin/feature-flags/detailed",
+  });
 
-  async updateFeatureFlag(
-    flagKey: string,
-    enabled: boolean,
-  ): Promise<{ flagKey: string; enabled: boolean; description: string | null; category: string }> {
-    return this.request("/rubber-lining/admin/feature-flags", {
-      method: "PUT",
-      body: JSON.stringify({ flagKey, enabled }),
-    });
-  }
+  updateFeatureFlag = createEndpoint<
+    [flagKey: string, enabled: boolean],
+    { flagKey: string; enabled: boolean; description: string | null; category: string }
+  >(apiClient, "PUT", {
+    path: "/rubber-lining/admin/feature-flags",
+    body: (flagKey, enabled) => ({ flagKey, enabled }),
+  });
 
-  async identifyRollPhoto(
-    imageBase64: string,
-    mediaType: "image/jpeg" | "image/png" | "image/webp",
-  ): Promise<RollPhotoIdentifyResponse> {
-    return this.request("/rubber-lining/portal/roll-issuances/identify-photo", {
-      method: "POST",
-      body: JSON.stringify({ imageBase64, mediaType }),
-    });
-  }
+  identifyRollPhoto = createEndpoint<
+    [imageBase64: string, mediaType: "image/jpeg" | "image/png" | "image/webp"],
+    RollPhotoIdentifyResponse
+  >(apiClient, "POST", {
+    path: "/rubber-lining/portal/roll-issuances/identify-photo",
+    body: (imageBase64, mediaType) => ({ imageBase64, mediaType }),
+  });
 
-  async createRollFromPhoto(dto: CreateRollFromPhotoDto): Promise<RollIssuanceRollDto> {
-    return this.request("/rubber-lining/portal/roll-issuances/create-from-photo", {
-      method: "POST",
-      body: JSON.stringify(dto),
-    });
-  }
+  createRollFromPhoto = createEndpoint<[dto: CreateRollFromPhotoDto], RollIssuanceRollDto>(
+    apiClient,
+    "POST",
+    {
+      path: "/rubber-lining/portal/roll-issuances/create-from-photo",
+      body: (dto) => dto,
+    },
+  );
 
   async searchJobCardsForIssuing(query: string): Promise<JcSearchResultDto[]> {
     return this.request(
@@ -3758,51 +3804,55 @@ class AuRubberApiClient {
     );
   }
 
-  async jobCardLineItems(jobCardId: number): Promise<JcLineItemDto[]> {
-    return this.request(`/rubber-lining/portal/roll-issuances/jc/${jobCardId}/line-items`);
-  }
+  jobCardLineItems = createEndpoint<[jobCardId: number], JcLineItemDto[]>(apiClient, "GET", {
+    path: (jobCardId) => `/rubber-lining/portal/roll-issuances/jc/${jobCardId}/line-items`,
+  });
 
-  async createRollIssuance(dto: CreateRollIssuanceDto): Promise<RollIssuanceDto> {
-    return this.request("/rubber-lining/portal/roll-issuances", {
-      method: "POST",
-      body: JSON.stringify(dto),
-    });
-  }
+  createRollIssuance = createEndpoint<[dto: CreateRollIssuanceDto], RollIssuanceDto>(
+    apiClient,
+    "POST",
+    {
+      path: "/rubber-lining/portal/roll-issuances",
+      body: (dto) => dto,
+    },
+  );
 
-  async rollIssuances(): Promise<RollIssuanceDto[]> {
-    return this.request("/rubber-lining/portal/roll-issuances");
-  }
+  rollIssuances = createEndpoint<[], RollIssuanceDto[]>(apiClient, "GET", {
+    path: "/rubber-lining/portal/roll-issuances",
+  });
 
-  async rollIssuanceById(id: number): Promise<RollIssuanceDto> {
-    return this.request(`/rubber-lining/portal/roll-issuances/${id}`);
-  }
+  rollIssuanceById = createEndpoint<[id: number], RollIssuanceDto>(apiClient, "GET", {
+    path: (id) => `/rubber-lining/portal/roll-issuances/${id}`,
+  });
 
-  async cancelRollIssuance(id: number): Promise<RollIssuanceDto> {
-    return this.request(`/rubber-lining/portal/roll-issuances/${id}/cancel`, {
-      method: "POST",
-    });
-  }
-  async websitePages(): Promise<WebsitePageDto[]> {
-    return this.request("/rubber-lining/website-pages");
-  }
+  cancelRollIssuance = createEndpoint<[id: number], RollIssuanceDto>(apiClient, "POST", {
+    path: (id) => `/rubber-lining/portal/roll-issuances/${id}/cancel`,
+  });
+  websitePages = createEndpoint<[], WebsitePageDto[]>(apiClient, "GET", {
+    path: "/rubber-lining/website-pages",
+  });
 
-  async websitePage(id: string): Promise<WebsitePageDto> {
-    return this.request(`/rubber-lining/website-pages/${id}`);
-  }
+  websitePage = createEndpoint<[id: string], WebsitePageDto>(apiClient, "GET", {
+    path: (id) => `/rubber-lining/website-pages/${id}`,
+  });
 
-  async createWebsitePage(data: CreateWebsitePageDto): Promise<WebsitePageDto> {
-    return this.request("/rubber-lining/website-pages", {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-  }
+  createWebsitePage = createEndpoint<[data: CreateWebsitePageDto], WebsitePageDto>(
+    apiClient,
+    "POST",
+    {
+      path: "/rubber-lining/website-pages",
+      body: (data) => data,
+    },
+  );
 
-  async updateWebsitePage(id: string, data: UpdateWebsitePageDto): Promise<WebsitePageDto> {
-    return this.request(`/rubber-lining/website-pages/${id}`, {
-      method: "PATCH",
-      body: JSON.stringify(data),
-    });
-  }
+  updateWebsitePage = createEndpoint<[id: string, data: UpdateWebsitePageDto], WebsitePageDto>(
+    apiClient,
+    "PATCH",
+    {
+      path: (id, _data) => `/rubber-lining/website-pages/${id}`,
+      body: (_id, data) => data,
+    },
+  );
 
   async deleteWebsitePage(id: string): Promise<void> {
     return this.request(`/rubber-lining/website-pages/${id}`, {
@@ -3810,38 +3860,44 @@ class AuRubberApiClient {
     });
   }
 
-  async reorderWebsitePage(id: string, sortOrder: number): Promise<WebsitePageDto> {
-    return this.request(`/rubber-lining/website-pages/${id}/reorder`, {
-      method: "PATCH",
-      body: JSON.stringify({ sortOrder }),
-    });
-  }
+  reorderWebsitePage = createEndpoint<[id: string, sortOrder: number], WebsitePageDto>(
+    apiClient,
+    "PATCH",
+    {
+      path: (id, _sortOrder) => `/rubber-lining/website-pages/${id}/reorder`,
+      body: (_id, sortOrder) => ({ sortOrder }),
+    },
+  );
 
   async uploadWebsiteImage(file: File): Promise<{ url: string }> {
     return this.requestWithFiles("/rubber-lining/website-pages/upload-image", [file], {}, "file");
   }
 
-  async testimonials(): Promise<TestimonialDto[]> {
-    return this.request("/rubber-lining/testimonials");
-  }
+  testimonials = createEndpoint<[], TestimonialDto[]>(apiClient, "GET", {
+    path: "/rubber-lining/testimonials",
+  });
 
-  async testimonial(id: string): Promise<TestimonialDto> {
-    return this.request(`/rubber-lining/testimonials/${id}`);
-  }
+  testimonial = createEndpoint<[id: string], TestimonialDto>(apiClient, "GET", {
+    path: (id) => `/rubber-lining/testimonials/${id}`,
+  });
 
-  async createTestimonial(data: CreateTestimonialDto): Promise<TestimonialDto> {
-    return this.request("/rubber-lining/testimonials", {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-  }
+  createTestimonial = createEndpoint<[data: CreateTestimonialDto], TestimonialDto>(
+    apiClient,
+    "POST",
+    {
+      path: "/rubber-lining/testimonials",
+      body: (data) => data,
+    },
+  );
 
-  async updateTestimonial(id: string, data: UpdateTestimonialDto): Promise<TestimonialDto> {
-    return this.request(`/rubber-lining/testimonials/${id}`, {
-      method: "PATCH",
-      body: JSON.stringify(data),
-    });
-  }
+  updateTestimonial = createEndpoint<[id: string, data: UpdateTestimonialDto], TestimonialDto>(
+    apiClient,
+    "PATCH",
+    {
+      path: (id, _data) => `/rubber-lining/testimonials/${id}`,
+      body: (_id, data) => data,
+    },
+  );
 
   async deleteTestimonial(id: string): Promise<void> {
     return this.request(`/rubber-lining/testimonials/${id}`, {
@@ -3849,27 +3905,27 @@ class AuRubberApiClient {
     });
   }
 
-  async blogPosts(): Promise<BlogPostDto[]> {
-    return this.request("/rubber-lining/blog-posts");
-  }
+  blogPosts = createEndpoint<[], BlogPostDto[]>(apiClient, "GET", {
+    path: "/rubber-lining/blog-posts",
+  });
 
-  async blogPost(id: string): Promise<BlogPostDto> {
-    return this.request(`/rubber-lining/blog-posts/${id}`);
-  }
+  blogPost = createEndpoint<[id: string], BlogPostDto>(apiClient, "GET", {
+    path: (id) => `/rubber-lining/blog-posts/${id}`,
+  });
 
-  async createBlogPost(data: CreateBlogPostDto): Promise<BlogPostDto> {
-    return this.request("/rubber-lining/blog-posts", {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-  }
+  createBlogPost = createEndpoint<[data: CreateBlogPostDto], BlogPostDto>(apiClient, "POST", {
+    path: "/rubber-lining/blog-posts",
+    body: (data) => data,
+  });
 
-  async updateBlogPost(id: string, data: UpdateBlogPostDto): Promise<BlogPostDto> {
-    return this.request(`/rubber-lining/blog-posts/${id}`, {
-      method: "PATCH",
-      body: JSON.stringify(data),
-    });
-  }
+  updateBlogPost = createEndpoint<[id: string, data: UpdateBlogPostDto], BlogPostDto>(
+    apiClient,
+    "PATCH",
+    {
+      path: (id, _data) => `/rubber-lining/blog-posts/${id}`,
+      body: (_id, data) => data,
+    },
+  );
 
   async deleteBlogPost(id: string): Promise<void> {
     return this.request(`/rubber-lining/blog-posts/${id}`, {
