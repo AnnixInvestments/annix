@@ -119,7 +119,6 @@ export default function DeliveryNoteDetailPage() {
   const [selectedCocId, setSelectedCocId] = useState<number | null>(null);
   const [isLinking, setIsLinking] = useState(false);
   const [isFinalizing, setIsFinalizing] = useState(false);
-  const [isApproving, setIsApproving] = useState(false);
   const [isExtracting, setIsExtracting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [editedData, setEditedData] = useState<EditableExtractedData[] | null>(null);
@@ -440,37 +439,23 @@ export default function DeliveryNoteDetailPage() {
     }
   };
 
-  const handleFinalize = async () => {
+  const handleApproveAndCreateStock = async () => {
     try {
       setIsFinalizing(true);
+      if (note?.status === "EXTRACTED") {
+        await approveDeliveryNoteMutation.mutateAsync(noteId);
+      }
       await finalizeDeliveryNoteMutation.mutateAsync(noteId);
-      showToast("Delivery note finalized and stock created", "success");
+      showToast("Approved & stock created", "success");
       router.push(
         isCustomerDn
           ? "/au-rubber/portal/delivery-notes/customers"
           : "/au-rubber/portal/delivery-notes/suppliers",
       );
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to finalize", "error");
+      showToast(err instanceof Error ? err.message : "Failed to approve and create stock", "error");
     } finally {
       setIsFinalizing(false);
-    }
-  };
-
-  const handleApprove = async () => {
-    try {
-      setIsApproving(true);
-      await approveDeliveryNoteMutation.mutateAsync(noteId);
-      showToast("Extraction approved", "success");
-      router.push(
-        isCustomerDn
-          ? "/au-rubber/portal/delivery-notes/customers"
-          : "/au-rubber/portal/delivery-notes/suppliers",
-      );
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to approve", "error");
-    } finally {
-      setIsApproving(false);
     }
   };
 
@@ -659,32 +644,30 @@ export default function DeliveryNoteDetailPage() {
                   : "Extract Data"}
             </button>
           )}
-          {note.status === "EXTRACTED" && hasExtractedData && (
-            <button
-              onClick={handleApprove}
-              disabled={isApproving}
-              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 disabled:opacity-50"
-            >
-              {isApproving ? "Approving..." : "Approve Extraction"}
-            </button>
-          )}
-          {note.status === "APPROVED" && !note.linkedCocId && unlinkedCocs.length > 0 && (
-            <button
-              onClick={() => setShowLinkModal(true)}
-              className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-            >
-              Link to CoC
-            </button>
-          )}
-          {note.status === "LINKED" && (
-            <button
-              onClick={handleFinalize}
-              disabled={isFinalizing}
-              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:opacity-50"
-            >
-              {isFinalizing ? "Finalizing..." : "Finalize & Create Stock"}
-            </button>
-          )}
+          {(note.status === "EXTRACTED" ||
+            note.status === "APPROVED" ||
+            note.status === "LINKED") &&
+            !note.linkedCocId &&
+            unlinkedCocs.length > 0 && (
+              <button
+                onClick={() => setShowLinkModal(true)}
+                className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+              >
+                Link to CoC
+              </button>
+            )}
+          {(note.status === "EXTRACTED" ||
+            note.status === "APPROVED" ||
+            note.status === "LINKED") &&
+            hasExtractedData && (
+              <button
+                onClick={handleApproveAndCreateStock}
+                disabled={isFinalizing}
+                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:opacity-50"
+              >
+                {isFinalizing ? "Authorizing..." : "Approve & Create Stock"}
+              </button>
+            )}
           {note.status !== "STOCK_CREATED" && (
             <button
               onClick={() => setShowDeleteConfirm(true)}
