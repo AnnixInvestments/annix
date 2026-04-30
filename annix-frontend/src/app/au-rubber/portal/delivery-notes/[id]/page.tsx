@@ -445,7 +445,11 @@ export default function DeliveryNoteDetailPage() {
       setIsFinalizing(true);
       await finalizeDeliveryNoteMutation.mutateAsync(noteId);
       showToast("Delivery note finalized and stock created", "success");
-      fetchData();
+      router.push(
+        isCustomerDn
+          ? "/au-rubber/portal/delivery-notes/customers"
+          : "/au-rubber/portal/delivery-notes/suppliers",
+      );
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to finalize", "error");
     } finally {
