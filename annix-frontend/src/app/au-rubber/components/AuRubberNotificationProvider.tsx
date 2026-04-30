@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { type Toast, ToastContext, type ToastType } from "@/app/components/Toast";
 import { useAuRubberBranding } from "@/app/context/AuRubberBrandingContext";
+import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
 
 const DEFAULT_DURATION_MS: Record<ToastType, number> = {
   success: 4000,
@@ -129,6 +130,33 @@ export function AuRubberNotificationProvider(props: { children: React.ReactNode 
   const { children } = props;
   const { branding } = useAuRubberBranding();
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [logoObjectUrl, setLogoObjectUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    let createdUrl: string | null = null;
+    if (branding.logoUrl) {
+      const proxyUrl = auRubberApiClient.proxyImageUrl(branding.logoUrl);
+      const headers = auRubberApiClient.authHeaders();
+      fetch(proxyUrl, { headers, signal: controller.signal })
+        .then((res) => (res.ok ? res.blob() : null))
+        .then((blob) => {
+          if (!controller.signal.aborted && blob) {
+            createdUrl = URL.createObjectURL(blob);
+            setLogoObjectUrl(createdUrl);
+          }
+        })
+        .catch(() => {
+          if (!controller.signal.aborted) setLogoObjectUrl(null);
+        });
+    } else {
+      setLogoObjectUrl(null);
+    }
+    return () => {
+      controller.abort();
+      if (createdUrl) URL.revokeObjectURL(createdUrl);
+    };
+  }, [branding.logoUrl]);
 
   const showToast = useCallback((message: string, type: ToastType = "info", duration?: number) => {
     const id = Math.random().toString(36).substring(2, 9);
@@ -153,7 +181,7 @@ export function AuRubberNotificationProvider(props: { children: React.ReactNode 
                     toast={toast}
                     onClose={() => hideToast(toast.id)}
                     brandColor={branding.primaryColor}
-                    brandLogoUrl={branding.logoUrl}
+                    brandLogoUrl={logoObjectUrl}
                   />
                 </div>
               ))}
