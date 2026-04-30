@@ -22,6 +22,12 @@ import {
   TaxInvoiceType,
 } from "./entities/rubber-tax-invoice.entity";
 import { RubberTaxInvoiceCorrection } from "./entities/rubber-tax-invoice-correction.entity";
+import {
+  AuRubberDocumentType,
+  AuRubberPartyType,
+  auRubberDocumentPath,
+  sanitizeAuRubberDocNumber,
+} from "./lib/au-rubber-document-paths";
 import { RubberDocumentVersioningService } from "./rubber-document-versioning.service";
 import { RubberRollStockService } from "./rubber-roll-stock.service";
 import { RubberStockService } from "./rubber-stock.service";
@@ -1236,8 +1242,8 @@ export class RubberTaxInvoiceService {
       const sourceBuffer = providedBuffer ?? (await this.storageService.download(sourcePath));
       const sourcePdf = await PDFDocument.load(sourceBuffer);
       const totalPages = sourcePdf.getPageCount();
-      const subdir =
-        sourcePath.substring(0, sourcePath.lastIndexOf("/")) || "au-rubber/tax-invoices";
+      const party: AuRubberPartyType =
+        parent.invoiceType === TaxInvoiceType.CUSTOMER ? "customers" : "suppliers";
 
       return await Promise.all(
         invoices.map(async (inv, idx) => {
@@ -1254,13 +1260,18 @@ export class RubberTaxInvoiceService {
           copied.forEach((page) => sliced.addPage(page));
           const slicedBytes = await sliced.save();
           const slicedBuffer = Buffer.from(slicedBytes);
-          const safeNumber = (inv.invoiceNumber ?? `inv-${idx + 1}`).replace(
-            /[^A-Za-z0-9-_]/g,
-            "_",
+          const safeNumber = sanitizeAuRubberDocNumber(inv.invoiceNumber ?? `inv-${idx + 1}`);
+          const filename = `${safeNumber}.pdf`;
+          const targetPath = auRubberDocumentPath(
+            party,
+            AuRubberDocumentType.TAX_INVOICE,
+            inv.invoiceNumber ?? `inv-${idx + 1}`,
+            filename,
           );
+          const subdir = targetPath.substring(0, targetPath.lastIndexOf("/"));
           const file: Express.Multer.File = {
             fieldname: "file",
-            originalname: `${safeNumber}.pdf`,
+            originalname: filename,
             mimetype: "application/pdf",
             buffer: slicedBuffer,
             size: slicedBuffer.length,

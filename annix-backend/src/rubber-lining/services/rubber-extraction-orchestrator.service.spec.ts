@@ -6,6 +6,7 @@ import { RubberCocService } from "../rubber-coc.service";
 import { RubberCocExtractionService } from "../rubber-coc-extraction.service";
 import { RubberDeliveryNoteService } from "../rubber-delivery-note.service";
 import { RubberTaxInvoiceService } from "../rubber-tax-invoice.service";
+import { AuRubberDocumentFilerService } from "./au-rubber-document-filer.service";
 import { RubberExtractionOrchestratorService } from "./rubber-extraction-orchestrator.service";
 
 jest.mock("../../lib/document-extraction", () => ({
@@ -67,6 +68,11 @@ describe("RubberExtractionOrchestratorService", () => {
     checkAndAutoGenerateForDeliveryNote: jest.fn().mockResolvedValue(undefined),
   };
 
+  const documentFilerMock = {
+    fileDeliveryNoteSlices: jest.fn().mockResolvedValue(undefined),
+    isInboxPath: jest.fn().mockReturnValue(false),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -76,6 +82,7 @@ describe("RubberExtractionOrchestratorService", () => {
         { provide: RubberTaxInvoiceService, useValue: taxInvoiceMock },
         { provide: RubberDeliveryNoteService, useValue: deliveryNoteMock },
         { provide: RubberAuCocReadinessService, useValue: readinessMock },
+        { provide: AuRubberDocumentFilerService, useValue: documentFilerMock },
       ],
     }).compile();
 

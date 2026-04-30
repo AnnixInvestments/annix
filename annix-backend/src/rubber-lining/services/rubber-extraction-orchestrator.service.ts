@@ -8,6 +8,7 @@ import { RubberCocService } from "../rubber-coc.service";
 import { RubberCocExtractionService } from "../rubber-coc-extraction.service";
 import { RubberDeliveryNoteService } from "../rubber-delivery-note.service";
 import { RubberTaxInvoiceService } from "../rubber-tax-invoice.service";
+import { AuRubberDocumentFilerService } from "./au-rubber-document-filer.service";
 
 @Injectable()
 export class RubberExtractionOrchestratorService {
@@ -19,6 +20,7 @@ export class RubberExtractionOrchestratorService {
     private readonly taxInvoiceService: RubberTaxInvoiceService,
     private readonly deliveryNoteService: RubberDeliveryNoteService,
     private readonly auCocReadinessService: RubberAuCocReadinessService,
+    private readonly documentFilerService: AuRubberDocumentFilerService,
   ) {}
 
   triggerCocExtraction(
@@ -205,6 +207,14 @@ export class RubberExtractionOrchestratorService {
           this.logger.log(
             `Auto-split delivery note ${deliveryNoteId} into ${splitResult.deliveryNoteIds.length} notes: ${splitResult.deliveryNoteIds.join(", ")}`,
           );
+        }
+
+        const parentNote = await this.deliveryNoteService.deliveryNoteById(deliveryNoteId);
+        if (parentNote?.documentPath) {
+          await this.documentFilerService.fileDeliveryNoteSlices({
+            parentDocumentPath: parentNote.documentPath,
+            deliveryNoteIds: splitResult.deliveryNoteIds,
+          });
         }
       } catch (error) {
         this.logger.error(

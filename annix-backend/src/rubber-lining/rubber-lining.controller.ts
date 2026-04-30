@@ -41,7 +41,7 @@ import { PaginatedResult } from "../lib/dto/pagination-query.dto";
 import { SageExportFilterDto } from "../sage-export/dto/sage-export.dto";
 import { type SageConfigDto, SageConnectionService } from "../sage-export/sage-connection.service";
 import { SageExportService } from "../sage-export/sage-export.service";
-import { IStorageService, STORAGE_SERVICE, StorageArea } from "../storage/storage.interface";
+import { IStorageService, STORAGE_SERVICE } from "../storage/storage.interface";
 import {
   CreateAuCocDto,
   CreateDeliveryNoteDto,
@@ -157,6 +157,11 @@ import { ReconciliationStatus } from "./entities/rubber-statement-reconciliation
 import { CocProcessingStatus, SupplierCocType } from "./entities/rubber-supplier-coc.entity";
 import { TaxInvoiceStatus, TaxInvoiceType } from "./entities/rubber-tax-invoice.entity";
 import { AuRubberAccessGuard } from "./guards/au-rubber-access.guard";
+import {
+  AuRubberDocumentType,
+  AuRubberPartyType,
+  auRubberDocumentPath,
+} from "./lib/au-rubber-document-paths";
 import {
   type MonthlyAccountDataDto,
   type MonthlyAccountDto,
@@ -1673,15 +1678,25 @@ Formula: totalPrice = totalKg × salePricePerKg
     const note = await this.rubberDeliveryNoteService.deliveryNoteById(Number(id));
     if (!note) throw new NotFoundException("Delivery note not found");
 
-    const filePath = `au-rubber/delivery-notes/${note.id}/${file.originalname}`;
-    await this.storageService.upload(
+    const noteCompany = await this.rubberLiningService.companyById(note.supplierCompanyId);
+    const party: AuRubberPartyType =
+      noteCompany?.companyType === CompanyType.CUSTOMER ? "customers" : "suppliers";
+    const targetPath = auRubberDocumentPath(
+      party,
+      AuRubberDocumentType.DELIVERY_NOTE,
+      note.deliveryNoteNumber,
+      file.originalname,
+    );
+    const subdir = targetPath.substring(0, targetPath.lastIndexOf("/"));
+    const upload = await this.storageService.upload(
       {
         buffer: file.buffer,
         originalname: file.originalname,
         mimetype: file.mimetype,
       } as Express.Multer.File,
-      filePath,
+      subdir,
     );
+    const filePath = upload.path;
 
     const updated = await this.rubberDeliveryNoteService.updateDocumentPath(Number(id), filePath);
     if (!updated) throw new NotFoundException("Failed to update delivery note");
@@ -1801,16 +1816,24 @@ Formula: totalPrice = totalKg × salePricePerKg
 
     const extIndex = file.originalname.lastIndexOf(".");
     const ext = extIndex >= 0 ? file.originalname.substring(extIndex) : ".pdf";
-    const fileName = `dn_${analyzedData.deliveryNoteNumber || "unknown"}_${nowMillis()}${ext}`;
-    const filePath = `${StorageArea.AU_RUBBER}/delivery-notes/${fileName}`;
-    await this.storageService.upload(
+    const dnNumber = analyzedData.deliveryNoteNumber ?? `SCAN_${nowMillis()}`;
+    const fileName = `${dnNumber}${ext}`;
+    const targetPath = auRubberDocumentPath(
+      "suppliers",
+      AuRubberDocumentType.DELIVERY_NOTE,
+      dnNumber,
+      fileName,
+    );
+    const subdir = targetPath.substring(0, targetPath.lastIndexOf("/"));
+    const upload = await this.storageService.upload(
       {
         buffer: file.buffer,
         originalname: fileName,
         mimetype: file.mimetype,
       } as Express.Multer.File,
-      filePath,
+      subdir,
     );
+    const filePath = upload.path;
 
     const deliveryNote = await this.rubberDeliveryNoteService.createDeliveryNote(
       {
@@ -3287,15 +3310,24 @@ Formula: totalPrice = totalKg × salePricePerKg
     const invoice = await this.rubberTaxInvoiceService.taxInvoiceById(Number(id));
     if (!invoice) throw new NotFoundException("Tax invoice not found");
 
-    const filePath = `au-rubber/tax-invoices/${invoice.id}/${file.originalname}`;
-    await this.storageService.upload(
+    const party: AuRubberPartyType =
+      invoice.invoiceType === TaxInvoiceType.CUSTOMER ? "customers" : "suppliers";
+    const targetPath = auRubberDocumentPath(
+      party,
+      AuRubberDocumentType.TAX_INVOICE,
+      invoice.invoiceNumber,
+      file.originalname,
+    );
+    const subdir = targetPath.substring(0, targetPath.lastIndexOf("/"));
+    const upload = await this.storageService.upload(
       {
         buffer: file.buffer,
         originalname: file.originalname,
         mimetype: file.mimetype,
       } as Express.Multer.File,
-      filePath,
+      subdir,
     );
+    const filePath = upload.path;
 
     const updated = await this.rubberTaxInvoiceService.updateDocumentPath(Number(id), filePath);
     if (!updated) throw new NotFoundException("Failed to update tax invoice");
