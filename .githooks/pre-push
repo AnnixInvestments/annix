@@ -36,6 +36,14 @@ biome_check() {
   fi
 }
 
+product_data_build() {
+  if ! pnpm --filter @annix/product-data build; then
+    echo ""
+    echo "@annix/product-data build failed. Fix the TypeScript errors above and re-push."
+    return 1
+  fi
+}
+
 run_tests() {
   rm -rf "$ROOT_DIR/annix-frontend/.next/dev"
   pnpm test:all
@@ -73,6 +81,7 @@ timed_step "duplication check" duplication_check
 timed_step "how-to freshness" how_to_freshness_check
 timed_step "git pull --rebase" pull_rebase
 timed_step "biome check" biome_check
+timed_step "product-data build" product_data_build
 
 # Run tests and builds in parallel (they are independent)
 TEST_LOG=$(mktemp)
