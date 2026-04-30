@@ -1456,6 +1456,19 @@ Formula: totalPrice = totalKg × salePricePerKg
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
+  @Put("portal/delivery-notes/:id/refile-stock")
+  @ApiOperation({
+    summary: "Re-approve and overwrite stock movement using corrected extracted data",
+  })
+  @ApiParam({ name: "id", description: "Delivery note ID" })
+  async refileDeliveryNoteStock(@Param("id") id: string): Promise<RubberDeliveryNoteDto> {
+    const note = await this.rubberDeliveryNoteService.refileStock(Number(id));
+    if (!note) throw new NotFoundException("Delivery note not found");
+    return note;
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
   @Post("portal/delivery-notes/:id/extract")
   @ApiOperation({ summary: "Extract data from delivery note PDF using AI" })
   @ApiParam({ name: "id", description: "Delivery note ID" })
@@ -3278,6 +3291,19 @@ Formula: totalPrice = totalKg × salePricePerKg
   @ApiParam({ name: "id", description: "Tax invoice ID" })
   async reprocessCompoundStock(@Param("id") id: string): Promise<RubberTaxInvoiceDto> {
     const invoice = await this.rubberTaxInvoiceService.reprocessCompoundStock(Number(id));
+    if (!invoice) throw new NotFoundException("Tax invoice not found");
+    return invoice;
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Put("portal/tax-invoices/:id/refile-stock")
+  @ApiOperation({
+    summary: "Re-approve and overwrite stock for an approved tax invoice using corrected data",
+  })
+  @ApiParam({ name: "id", description: "Tax invoice ID" })
+  async refileTaxInvoiceStock(@Param("id") id: string): Promise<RubberTaxInvoiceDto> {
+    const invoice = await this.rubberTaxInvoiceService.refileStock(Number(id));
     if (!invoice) throw new NotFoundException("Tax invoice not found");
     return invoice;
   }

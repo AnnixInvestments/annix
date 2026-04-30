@@ -2442,6 +2442,12 @@ class AuRubberApiClient {
     });
   }
 
+  async refileDeliveryNoteStock(id: number): Promise<RubberDeliveryNoteDto> {
+    return this.request(`/rubber-lining/portal/delivery-notes/${id}/refile-stock`, {
+      method: "PUT",
+    });
+  }
+
   async deliveryNoteItems(deliveryNoteId: number): Promise<RubberDeliveryNoteItemDto[]> {
     return this.request(`/rubber-lining/portal/delivery-notes/${deliveryNoteId}/items`);
   }
@@ -3182,6 +3188,12 @@ class AuRubberApiClient {
 
   async approveTaxInvoice(id: number): Promise<RubberTaxInvoiceDto> {
     return this.request(`/rubber-lining/portal/tax-invoices/${id}/approve`, {
+      method: "PUT",
+    });
+  }
+
+  async refileTaxInvoiceStock(id: number): Promise<RubberTaxInvoiceDto> {
+    return this.request(`/rubber-lining/portal/tax-invoices/${id}/refile-stock`, {
       method: "PUT",
     });
   }

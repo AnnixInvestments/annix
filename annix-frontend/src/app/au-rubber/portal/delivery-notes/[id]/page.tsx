@@ -30,6 +30,7 @@ import {
   useAuRubberExtractDeliveryNote,
   useAuRubberFinalizeDeliveryNote,
   useAuRubberLinkDeliveryNoteToCoc,
+  useAuRubberRefileDeliveryNoteStock,
   useAuRubberSaveDeliveryNoteCorrections,
   useAuRubberSupplierCocs,
 } from "@/app/lib/query/hooks";
@@ -79,6 +80,7 @@ export default function DeliveryNoteDetailPage() {
   const linkDeliveryNoteToCocMutation = useAuRubberLinkDeliveryNoteToCoc();
   const finalizeDeliveryNoteMutation = useAuRubberFinalizeDeliveryNote();
   const approveDeliveryNoteMutation = useAuRubberApproveDeliveryNote();
+  const refileDeliveryNoteStockMutation = useAuRubberRefileDeliveryNoteStock();
 
   const noteData = noteQuery.data;
   const note = noteData ? noteData : null;
@@ -120,6 +122,7 @@ export default function DeliveryNoteDetailPage() {
   const [selectedCocId, setSelectedCocId] = useState<number | null>(null);
   const [isLinking, setIsLinking] = useState(false);
   const [isFinalizing, setIsFinalizing] = useState(false);
+  const [isRefiling, setIsRefiling] = useState(false);
   const [isExtracting, setIsExtracting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [editedData, setEditedData] = useState<EditableExtractedData[] | null>(null);
@@ -460,6 +463,23 @@ export default function DeliveryNoteDetailPage() {
     }
   };
 
+  const handleRefileStock = async () => {
+    const confirmed = window.confirm(
+      "Refile stock will void the existing stock movement for this delivery note and recreate it from your saved corrections. Continue?",
+    );
+    if (!confirmed) return;
+    try {
+      setIsRefiling(true);
+      await refileDeliveryNoteStockMutation.mutateAsync(noteId);
+      showToast("Stock refiled from corrected data", "success");
+      fetchData();
+    } catch (err) {
+      toastError(showToast, err, "Failed to refile stock");
+    } finally {
+      setIsRefiling(false);
+    }
+  };
+
   const statusBadge = (status: DeliveryNoteStatus) => {
     const colors: Record<DeliveryNoteStatus, string> = {
       PENDING: "bg-gray-100 text-gray-800",
@@ -669,6 +689,15 @@ export default function DeliveryNoteDetailPage() {
                 {isFinalizing ? "Authorizing..." : "Approve & Create Stock"}
               </button>
             )}
+          {note.status === "STOCK_CREATED" && hasExtractedData && (
+            <button
+              onClick={handleRefileStock}
+              disabled={isRefiling}
+              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 disabled:opacity-50"
+            >
+              {isRefiling ? "Refiling..." : "Re-approve & Refile Stock"}
+            </button>
+          )}
           {note.status !== "STOCK_CREATED" && (
             <button
               onClick={() => setShowDeleteConfirm(true)}

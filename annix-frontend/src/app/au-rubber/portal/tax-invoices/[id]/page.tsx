@@ -26,6 +26,7 @@ export default function TaxInvoiceDetailPage() {
   const [isExtracting, setIsExtracting] = useState(false);
   const [isApproving, setIsApproving] = useState(false);
   const [isRecomputingCosts, setIsRecomputingCosts] = useState(false);
+  const [isRefiling, setIsRefiling] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [documentUrl, setDocumentUrl] = useState<string | null>(null);
   const [isEditingSummary, setIsEditingSummary] = useState(false);
@@ -179,6 +180,24 @@ export default function TaxInvoiceDetailPage() {
       showToast(message, "error");
     } finally {
       setIsApproving(false);
+    }
+  };
+
+  const handleRefileStock = async () => {
+    const confirmed = window.confirm(
+      "Refile stock will void the existing stock movement for this tax invoice and recreate it from your saved corrections. Continue?",
+    );
+    if (!confirmed) return;
+    try {
+      setIsRefiling(true);
+      await auRubberApiClient.refileTaxInvoiceStock(invoiceId);
+      showToast("Stock refiled from corrected data", "success");
+      fetchData();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Refile failed";
+      showToast(message, "error");
+    } finally {
+      setIsRefiling(false);
     }
   };
 
@@ -380,6 +399,17 @@ export default function TaxInvoiceDetailPage() {
             >
               <CheckCircle className={`w-4 h-4 mr-2 ${isApproving ? "animate-pulse" : ""}`} />
               {isApproving ? "Approving..." : "Approve"}
+            </button>
+          )}
+          {invoice.status === "APPROVED" && (
+            <button
+              onClick={handleRefileStock}
+              disabled={isRefiling}
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-amber-600 hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Re-approve and overwrite stock with corrected data"
+            >
+              <RefreshCw className={`w-4 h-4 mr-2 ${isRefiling ? "animate-spin" : ""}`} />
+              {isRefiling ? "Refiling..." : "Re-approve & Refile Stock"}
             </button>
           )}
           <button

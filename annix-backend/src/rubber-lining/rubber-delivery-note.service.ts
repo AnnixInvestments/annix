@@ -31,6 +31,7 @@ import { ProductCodingType, RubberProductCoding } from "./entities/rubber-produc
 import { ExtractedCocData, RubberSupplierCoc } from "./entities/rubber-supplier-coc.entity";
 import { RubberAuCocReadinessService } from "./rubber-au-coc-readiness.service";
 import { RubberDocumentVersioningService } from "./rubber-document-versioning.service";
+import { RubberRollStockService } from "./rubber-roll-stock.service";
 import { RubberStockService } from "./rubber-stock.service";
 
 const DELIVERY_NOTE_TYPE_LABELS: Record<DeliveryNoteType, string> = {
@@ -92,6 +93,7 @@ export class RubberDeliveryNoteService {
     @InjectRepository(RubberAuCoc)
     private auCocRepository: Repository<RubberAuCoc>,
     private rubberStockService: RubberStockService,
+    private rubberRollStockService: RubberRollStockService,
     private auCocReadinessService: RubberAuCocReadinessService,
     private versioningService: RubberDocumentVersioningService,
   ) {}
@@ -681,6 +683,62 @@ export class RubberDeliveryNoteService {
 
     note.status = DeliveryNoteStatus.APPROVED;
     await this.deliveryNoteRepository.save(note);
+
+    return this.mapDeliveryNoteToDto(note);
+  }
+
+  async refileStock(id: number): Promise<RubberDeliveryNoteDto | null> {
+    const note = await this.deliveryNoteRepository.findOne({
+      where: { id },
+      relations: ["supplierCompany", "linkedCoc"],
+    });
+    if (!note) return null;
+
+    if (note.status !== DeliveryNoteStatus.STOCK_CREATED) {
+      throw new BadRequestException(
+        `Refile-stock requires status STOCK_CREATED (current: ${note.status})`,
+      );
+    }
+
+    await this.rubberStockService.deleteMovementsForReference(
+      CompoundMovementReferenceType.DELIVERY_DEDUCTION,
+      note.id,
+    );
+    this.logger.log(
+      `Refile DN ${note.deliveryNoteNumber} (#${note.id}): voided existing DELIVERY_DEDUCTION movements`,
+    );
+
+    const rolls = note.extractedData?.rolls ?? [];
+    await this.replaceItemsFromRolls(note.id, rolls);
+
+    if (note.deliveryNoteType === DeliveryNoteType.ROLL && rolls.length > 0) {
+      const isCustomerSide = note.supplierCompany?.companyType === CompanyType.CUSTOMER;
+      if (isCustomerSide) {
+        await this.rubberRollStockService.upsertCustomerRollDispatchFromCdn(
+          note.id,
+          note.supplierCompanyId,
+          rolls.map((r) => ({
+            rollNumber: r.rollNumber ?? null,
+            compoundCode: r.compoundCode ?? null,
+            weightKg: r.weightKg ?? null,
+          })),
+        );
+      } else {
+        await this.rubberRollStockService.reconcileRollsFromSupplierDeliveryNote(
+          note.id,
+          rolls.map((r) => ({
+            rollNumber: r.rollNumber ?? null,
+            compoundCode: r.compoundCode ?? null,
+            weightKg: r.weightKg ?? null,
+            widthMm: r.widthMm ?? null,
+            thicknessMm: r.thicknessMm ?? null,
+            lengthM: r.lengthM ?? null,
+          })),
+        );
+      }
+    }
+
+    await this.processCompoundStockOut(note);
 
     return this.mapDeliveryNoteToDto(note);
   }

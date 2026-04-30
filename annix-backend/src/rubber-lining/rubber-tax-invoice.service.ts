@@ -585,6 +585,22 @@ export class RubberTaxInvoiceService {
     return this.mapToDto(result!);
   }
 
+  async refileStock(id: number): Promise<RubberTaxInvoiceDto | null> {
+    const invoice = await this.taxInvoiceRepository.findOne({
+      where: { id },
+      relations: ["company"],
+    });
+    if (!invoice) return null;
+
+    if (invoice.invoiceType === TaxInvoiceType.SUPPLIER) {
+      return this.reprocessCompoundStock(id);
+    }
+    if (!invoice.isCreditNote) {
+      await this.dispatchCustomerRollsToStock(invoice);
+    }
+    return this.mapToDto(invoice);
+  }
+
   private async processCompoundStockIn(invoice: RubberTaxInvoice): Promise<void> {
     const alreadyProcessed = await this.rubberStockService.movementExistsForReference(
       CompoundMovementReferenceType.INVOICE_RECEIPT,

@@ -372,6 +372,28 @@ export function useAuRubberApproveDeliveryNote() {
   });
 }
 
+export function useAuRubberRefileDeliveryNoteStock() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => auRubberApiClient.refileDeliveryNoteStock(id),
+    onSuccess: (_result, id) => {
+      queryClient.invalidateQueries({ queryKey: rubberKeys.deliveryNotes.detail(id) });
+      queryClient.invalidateQueries({ queryKey: rubberKeys.deliveryNotes.all });
+    },
+  });
+}
+
+export function useAuRubberRefileTaxInvoiceStock() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => auRubberApiClient.refileTaxInvoiceStock(id),
+    onSuccess: (_result, id) => {
+      queryClient.invalidateQueries({ queryKey: rubberKeys.taxInvoices.detail(id) });
+      queryClient.invalidateQueries({ queryKey: rubberKeys.taxInvoices.all });
+    },
+  });
+}
+
 export function useAuRubberAnalyzeSupplierCocs() {
   return useMutation({
     mutationFn: (files: File[]) => auRubberApiClient.analyzeSupplierCocs(files),

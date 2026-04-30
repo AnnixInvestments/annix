@@ -389,6 +389,8 @@ export {
   useAuRubberQualityAlerts,
   useAuRubberQualityTrackingDetail,
   useAuRubberQualityTrackingSummary,
+  useAuRubberRefileDeliveryNoteStock,
+  useAuRubberRefileTaxInvoiceStock,
   useAuRubberRejectVersion,
   useAuRubberRevokeUserAccess,
   useAuRubberSaveDeliveryNoteCorrections,
