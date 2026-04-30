@@ -964,7 +964,7 @@ export default function DeliveryNoteDetailPage() {
                         onChange={(e) =>
                           handleDnFieldChange(0, "customerReference", e.target.value)
                         }
-                        className="ml-2 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
+                        className="ml-2 px-1.5 py-0.5 text-xs border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
                         placeholder="e.g. PL7894/PO6797"
                       />
                     ) : (
@@ -992,7 +992,7 @@ export default function DeliveryNoteDetailPage() {
                       type="text"
                       value={firstCustomerRefValue}
                       onChange={(e) => handleDnFieldChange(0, "customerReference", e.target.value)}
-                      className="ml-2 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
+                      className="ml-2 px-1.5 py-0.5 text-xs border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
                       placeholder="e.g. PL7894/PO6797"
                     />
                   </div>
@@ -1005,40 +1005,40 @@ export default function DeliveryNoteDetailPage() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-2 py-1.5 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider">
                     Roll Number
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-2 py-1.5 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider">
                     Compound Code
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-2 py-1.5 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider">
                     Thickness (mm)
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-2 py-1.5 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider">
                     Width (mm)
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-2 py-1.5 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider">
                     Length (m)
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-2 py-1.5 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider">
                     Area (m²)
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-2 py-1.5 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider">
                     Weight (kg)
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-2 py-1.5 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider">
                     DN Number
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-2 py-1.5 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider">
                     Delivery Date
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-2 py-1.5 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider">
                     Customer
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-2 py-1.5 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider">
                     PO/Ref
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-2 py-1.5 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider">
                     Page
                   </th>
                   {isEditing && (
@@ -1076,7 +1076,7 @@ export default function DeliveryNoteDetailPage() {
                               key={`${dnIdx}-${rollIdx}`}
                               className={`hover:bg-gray-50 ${roll.isEdited ? "bg-yellow-50" : ""}`}
                             >
-                              <td className="px-4 py-3 whitespace-nowrap text-sm">
+                              <td className="px-2 py-1 whitespace-nowrap text-xs">
                                 {isEditing ? (
                                   <input
                                     type="text"
@@ -1089,7 +1089,7 @@ export default function DeliveryNoteDetailPage() {
                                         e.target.value,
                                       )
                                     }
-                                    className="w-28 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
+                                    className="w-20 px-1.5 py-0.5 text-xs border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
                                   />
                                 ) : (
                                   <span className="font-medium text-gray-900">
@@ -1097,7 +1097,7 @@ export default function DeliveryNoteDetailPage() {
                                   </span>
                                 )}
                               </td>
-                              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                              <td className="px-2 py-1 whitespace-nowrap text-xs text-gray-600">
                                 {isEditing ? (
                                   <input
                                     type="text"
@@ -1110,13 +1110,13 @@ export default function DeliveryNoteDetailPage() {
                                         e.target.value,
                                       )
                                     }
-                                    className="w-28 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
+                                    className="w-20 px-1.5 py-0.5 text-xs border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
                                   />
                                 ) : (
                                   <span className="font-mono">{rawRollCompoundCode || "-"}</span>
                                 )}
                               </td>
-                              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                              <td className="px-2 py-1 whitespace-nowrap text-xs text-gray-600">
                                 {isEditing ? (
                                   <input
                                     type="number"
@@ -1129,7 +1129,7 @@ export default function DeliveryNoteDetailPage() {
                                         e.target.value,
                                       )
                                     }
-                                    className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
+                                    className="w-14 px-1.5 py-0.5 text-xs border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
                                   />
                                 ) : roll.thicknessMm != null ? (
                                   roll.thicknessMm
@@ -1137,7 +1137,7 @@ export default function DeliveryNoteDetailPage() {
                                   "-"
                                 )}
                               </td>
-                              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                              <td className="px-2 py-1 whitespace-nowrap text-xs text-gray-600">
                                 {isEditing ? (
                                   <input
                                     type="number"
@@ -1150,7 +1150,7 @@ export default function DeliveryNoteDetailPage() {
                                         e.target.value,
                                       )
                                     }
-                                    className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
+                                    className="w-16 px-1.5 py-0.5 text-xs border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
                                   />
                                 ) : roll.widthMm != null ? (
                                   roll.widthMm
@@ -1158,7 +1158,7 @@ export default function DeliveryNoteDetailPage() {
                                   "-"
                                 )}
                               </td>
-                              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                              <td className="px-2 py-1 whitespace-nowrap text-xs text-gray-600">
                                 {isEditing ? (
                                   <input
                                     type="number"
@@ -1172,7 +1172,7 @@ export default function DeliveryNoteDetailPage() {
                                         e.target.value,
                                       )
                                     }
-                                    className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
+                                    className="w-14 px-1.5 py-0.5 text-xs border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
                                   />
                                 ) : roll.lengthM != null ? (
                                   roll.lengthM
@@ -1180,10 +1180,10 @@ export default function DeliveryNoteDetailPage() {
                                   "-"
                                 )}
                               </td>
-                              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                              <td className="px-2 py-1 whitespace-nowrap text-xs text-gray-600">
                                 {areaSqM ? areaSqM.toFixed(2) : "-"}
                               </td>
-                              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                              <td className="px-2 py-1 whitespace-nowrap text-xs text-gray-600">
                                 {isEditing ? (
                                   <input
                                     type="number"
@@ -1197,7 +1197,7 @@ export default function DeliveryNoteDetailPage() {
                                         e.target.value,
                                       )
                                     }
-                                    className="w-24 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
+                                    className="w-16 px-1.5 py-0.5 text-xs border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
                                   />
                                 ) : safeFixed(roll.weightKg, 2) != null ? (
                                   safeFixed(roll.weightKg, 2)
@@ -1205,7 +1205,7 @@ export default function DeliveryNoteDetailPage() {
                                   "-"
                                 )}
                               </td>
-                              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                              <td className="px-2 py-1 whitespace-nowrap text-xs text-gray-600">
                                 {isEditing ? (
                                   <input
                                     type="text"
@@ -1220,13 +1220,13 @@ export default function DeliveryNoteDetailPage() {
                                         e.target.value,
                                       )
                                     }
-                                    className="w-24 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
+                                    className="w-20 px-1.5 py-0.5 text-xs border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
                                   />
                                 ) : (
                                   rawRollDeliveryNoteNumber2 || note.deliveryNoteNumber || "-"
                                 )}
                               </td>
-                              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                              <td className="px-2 py-1 whitespace-nowrap text-xs text-gray-600">
                                 {isEditing ? (
                                   <input
                                     type="date"
@@ -1239,13 +1239,13 @@ export default function DeliveryNoteDetailPage() {
                                         e.target.value,
                                       )
                                     }
-                                    className="px-2 py-1 text-sm border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
+                                    className="px-1.5 py-0.5 text-xs border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
                                   />
                                 ) : (
                                   rawNoteDeliveryDate || "-"
                                 )}
                               </td>
-                              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                              <td className="px-2 py-1 whitespace-nowrap text-xs text-gray-600">
                                 {isEditing ? (
                                   <input
                                     type="text"
@@ -1258,13 +1258,13 @@ export default function DeliveryNoteDetailPage() {
                                         e.target.value,
                                       )
                                     }
-                                    className="w-40 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
+                                    className="w-32 px-1.5 py-0.5 text-xs border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
                                   />
                                 ) : (
                                   rawRollCustomerName2 || dn.customerName || "-"
                                 )}
                               </td>
-                              <td className="px-4 py-3 whitespace-nowrap text-sm text-blue-600 font-medium">
+                              <td className="px-2 py-1 whitespace-nowrap text-xs text-blue-600 font-medium">
                                 {isEditing ? (
                                   <input
                                     type="text"
@@ -1282,7 +1282,7 @@ export default function DeliveryNoteDetailPage() {
                                         e.target.value,
                                       )
                                     }
-                                    className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
+                                    className="w-14 px-1.5 py-0.5 text-xs border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
                                   />
                                 ) : (
                                   rawRollCustomerReference2 ||
@@ -1291,7 +1291,7 @@ export default function DeliveryNoteDetailPage() {
                                   "-"
                                 )}
                               </td>
-                              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                              <td className="px-2 py-1 whitespace-nowrap text-xs text-gray-600">
                                 {rawRollPageNumber || "-"}
                               </td>
                               {isEditing && (
@@ -1326,19 +1326,19 @@ export default function DeliveryNoteDetailPage() {
                           <td colSpan={6} className="px-4 py-3 text-sm text-gray-500 text-center">
                             No rolls data
                           </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                          <td className="px-2 py-1 whitespace-nowrap text-xs text-gray-600">
                             {rawDnDeliveryNoteNumber || "-"}
                           </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                          <td className="px-2 py-1 whitespace-nowrap text-xs text-gray-600">
                             {rawDnDeliveryDate || "-"}
                           </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                          <td className="px-2 py-1 whitespace-nowrap text-xs text-gray-600">
                             {rawDnCustomerName || "-"}
                           </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-blue-600 font-medium">
+                          <td className="px-2 py-1 whitespace-nowrap text-xs text-blue-600 font-medium">
                             {rawDnCustomerReference || note.customerReference || "-"}
                           </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">-</td>
+                          <td className="px-2 py-1 whitespace-nowrap text-xs text-gray-600">-</td>
                         </tr>,
                       ];
                 })}
