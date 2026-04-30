@@ -404,6 +404,7 @@ export {
   useAuRubberTestimonial,
   useAuRubberTestimonials,
   useAuRubberUpdateFeatureFlag,
+  useAuRubberUpdateSupplierCoc,
   useAuRubberUpdateUserAccess,
   useAuRubberUploadSupplierCoc,
   useAuRubberUploadSupplierCocWithFiles,

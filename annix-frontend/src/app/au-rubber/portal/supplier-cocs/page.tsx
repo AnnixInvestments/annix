@@ -1,6 +1,15 @@
 "use client";
 
-import { CheckCircle, Eye, FileText, LineChart, RefreshCw, Trash2, X } from "lucide-react";
+import {
+  ArrowLeftRight,
+  CheckCircle,
+  Eye,
+  FileText,
+  LineChart,
+  RefreshCw,
+  Trash2,
+  X,
+} from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
@@ -32,6 +41,7 @@ import {
   useAuRubberProxyImageBlob,
   useAuRubberRejectVersion,
   useAuRubberSupplierCocs,
+  useAuRubberUpdateSupplierCoc,
   useAuRubberUploadSupplierCoc,
   useAuRubberUploadSupplierCocWithFiles,
 } from "@/app/lib/query/hooks";
@@ -88,6 +98,7 @@ export default function SupplierCocsPage() {
   const deleteSupplierCocMutation = useAuRubberDeleteSupplierCoc();
   const extractSupplierCocMutation = useAuRubberExtractSupplierCoc();
   const approveSupplierCocMutation = useAuRubberApproveSupplierCoc();
+  const updateSupplierCocMutation = useAuRubberUpdateSupplierCoc();
   const authorizeVersionMutation = useAuRubberAuthorizeVersion();
   const rejectVersionMutation = useAuRubberRejectVersion();
   const documentUrlMutation = useAuRubberDocumentUrl();
@@ -137,6 +148,12 @@ export default function SupplierCocsPage() {
   const [analysisDots, setAnalysisDots] = useState("");
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [reclassifyTarget, setReclassifyTarget] = useState<{
+    id: number;
+    cocNumber: string | null;
+    currentType: SupplierCocType;
+  } | null>(null);
+  const [isReclassifying, setIsReclassifying] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [reextractingId, setReextractingId] = useState<number | null>(null);
   const [selectedForApproval, setSelectedForApproval] = useState<Set<number>>(new Set());
@@ -407,6 +424,12 @@ export default function SupplierCocsPage() {
     );
   };
 
+  const COC_TYPE_LABELS: Record<SupplierCocType, string> = {
+    COMPOUNDER: "Compounder",
+    CALENDARER: "Calenderer",
+    CALENDER_ROLL: "Calender Roll",
+  };
+
   const typeBadge = (type: SupplierCocType) => {
     const colors: Record<SupplierCocType, string> = {
       COMPOUNDER: "bg-purple-100 text-purple-800",
@@ -501,6 +524,29 @@ export default function SupplierCocsPage() {
       toastError(showToast, err, "Failed to approve CoCs");
     } finally {
       setIsBulkApproving(false);
+    }
+  };
+
+  const handleReclassify = async (newType: SupplierCocType) => {
+    const target = reclassifyTarget;
+    if (!target) return;
+    if (target.currentType === newType) return;
+    const newTypeLabel = COC_TYPE_LABELS[newType];
+    const targetCocNumber = target.cocNumber;
+    const targetLabel = targetCocNumber ? targetCocNumber : `CoC #${target.id}`;
+    try {
+      setIsReclassifying(true);
+      await updateSupplierCocMutation.mutateAsync({
+        id: target.id,
+        data: { cocType: newType },
+      });
+      showToast(`Reclassified ${targetLabel} to ${newTypeLabel}`, "success");
+      setReclassifyTarget(null);
+      cocsQuery.refetch();
+    } catch (err) {
+      toastError(showToast, err, "Failed to reclassify CoC");
+    } finally {
+      setIsReclassifying(false);
     }
   };
 
@@ -900,6 +946,19 @@ export default function SupplierCocsPage() {
                                 className={`w-4 h-4 ${reextractingId === coc.id ? "animate-spin" : ""}`}
                               />
                             </button>
+                            <button
+                              onClick={() =>
+                                setReclassifyTarget({
+                                  id: coc.id,
+                                  cocNumber: coc.cocNumber,
+                                  currentType: coc.cocType,
+                                })
+                              }
+                              className="text-purple-600 hover:text-purple-800 inline-flex items-center"
+                              title="Reclassify CoC type"
+                            >
+                              <ArrowLeftRight className="w-4 h-4" />
+                            </button>
                             {isAdmin && (
                               <button
                                 onClick={() => {
@@ -1276,6 +1335,63 @@ export default function SupplierCocsPage() {
           `}</style>
         </div>
       )}
+
+      {(() => {
+        if (!reclassifyTarget) return null;
+        const targetCocNumber = reclassifyTarget.cocNumber;
+        const targetId = reclassifyTarget.id;
+        const targetCurrentType = reclassifyTarget.currentType;
+        const targetLabel = targetCocNumber ? targetCocNumber : `CoC #${targetId}`;
+        const currentTypeLabel = COC_TYPE_LABELS[targetCurrentType];
+        return (
+          <div className="fixed inset-0 z-50 overflow-y-auto">
+            <div className="flex min-h-screen items-center justify-center p-4">
+              <div
+                className="fixed inset-0 bg-black/10 backdrop-blur-md"
+                onClick={() => !isReclassifying && setReclassifyTarget(null)}
+              />
+              <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Reclassify CoC</h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  {targetLabel} is currently classified as <strong>{currentTypeLabel}</strong>.
+                  Choose the correct type — the CoC will move to the matching section.
+                </p>
+                <div className="space-y-2">
+                  {(["COMPOUNDER", "CALENDARER", "CALENDER_ROLL"] as SupplierCocType[]).map(
+                    (type) => {
+                      const isCurrent = type === targetCurrentType;
+                      const label = COC_TYPE_LABELS[type];
+                      return (
+                        <button
+                          key={type}
+                          onClick={() => handleReclassify(type)}
+                          disabled={isCurrent || isReclassifying}
+                          className={`w-full text-left px-4 py-3 rounded-md border text-sm font-medium transition-colors ${
+                            isCurrent
+                              ? "border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed"
+                              : "border-purple-300 text-purple-700 bg-white hover:bg-purple-50 disabled:opacity-50"
+                          }`}
+                        >
+                          {isCurrent ? `${label} (current)` : `Move to ${label}`}
+                        </button>
+                      );
+                    },
+                  )}
+                </div>
+                <div className="mt-6 flex justify-end">
+                  <button
+                    onClick={() => setReclassifyTarget(null)}
+                    disabled={isReclassifying}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {showDeleteModal && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
