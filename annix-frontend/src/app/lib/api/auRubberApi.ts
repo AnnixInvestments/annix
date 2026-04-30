@@ -17,6 +17,22 @@ import type {
   RubberProductDto,
 } from "./rubberPortalApi";
 
+export interface CreateRubberCompanyInput {
+  name: string;
+  companyType?: string;
+  code?: string;
+  pricingTierId?: number;
+  availableProducts?: string[];
+  isCompoundOwner?: boolean;
+  vatNumber?: string;
+  registrationNumber?: string;
+  address?: Record<string, string>;
+  notes?: string;
+  phone?: string;
+  contactPerson?: string;
+  emailConfig?: Record<string, string>;
+}
+
 export interface RubberSpecificationDto {
   id: number;
   rubberTypeId: number;
@@ -1483,95 +1499,63 @@ class AuRubberApiClient {
     path: (id) => `/rubber-lining/portal/pricing-tiers/${id}`,
   });
 
-  async companies(): Promise<RubberCompanyDto[]> {
-    return this.request("/rubber-lining/portal/companies");
-  }
+  companies = createEndpoint<[], RubberCompanyDto[]>(apiClient, "GET", {
+    path: "/rubber-lining/portal/companies",
+  });
 
-  async companyById(id: number): Promise<RubberCompanyDto> {
-    return this.request(`/rubber-lining/portal/companies/${id}`);
-  }
+  companyById = createEndpoint<[id: number], RubberCompanyDto>(apiClient, "GET", {
+    path: (id) => `/rubber-lining/portal/companies/${id}`,
+  });
 
-  async createCompany(data: {
-    name: string;
-    companyType?: string;
-    code?: string;
-    pricingTierId?: number;
-    availableProducts?: string[];
-    isCompoundOwner?: boolean;
-    vatNumber?: string;
-    registrationNumber?: string;
-    address?: Record<string, string>;
-    notes?: string;
-    phone?: string;
-    contactPerson?: string;
-    emailConfig?: Record<string, string>;
-  }): Promise<RubberCompanyDto> {
-    return this.request("/rubber-lining/portal/companies", {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-  }
+  createCompany = createEndpoint<[data: CreateRubberCompanyInput], RubberCompanyDto>(
+    apiClient,
+    "POST",
+    {
+      path: "/rubber-lining/portal/companies",
+      body: (data) => data,
+    },
+  );
 
-  async updateCompany(
-    id: number,
-    data: Partial<{
-      name: string;
-      companyType?: string;
-      code?: string;
-      pricingTierId?: number;
-      availableProducts?: string[];
-      isCompoundOwner?: boolean;
-      vatNumber?: string;
-      registrationNumber?: string;
-      address?: Record<string, string>;
-      notes?: string;
-      phone?: string;
-      contactPerson?: string;
-      emailConfig?: Record<string, string>;
-    }>,
-  ): Promise<RubberCompanyDto> {
-    return this.request(`/rubber-lining/portal/companies/${id}`, {
-      method: "PUT",
-      body: JSON.stringify(data),
-    });
-  }
+  updateCompany = createEndpoint<
+    [id: number, data: Partial<CreateRubberCompanyInput>],
+    RubberCompanyDto
+  >(apiClient, "PUT", {
+    path: (id) => `/rubber-lining/portal/companies/${id}`,
+    body: (_id, data) => data,
+  });
 
-  async deleteCompany(id: number): Promise<void> {
-    return this.request(`/rubber-lining/portal/companies/${id}`, {
-      method: "DELETE",
-    });
-  }
+  deleteCompany = createEndpoint<[id: number], void>(apiClient, "DELETE", {
+    path: (id) => `/rubber-lining/portal/companies/${id}`,
+  });
 
-  async products(): Promise<RubberProductDto[]> {
-    return this.request("/rubber-lining/portal/products");
-  }
+  products = createEndpoint<[], RubberProductDto[]>(apiClient, "GET", {
+    path: "/rubber-lining/portal/products",
+  });
 
-  async productById(id: number): Promise<RubberProductDto> {
-    return this.request(`/rubber-lining/portal/products/${id}`);
-  }
+  productById = createEndpoint<[id: number], RubberProductDto>(apiClient, "GET", {
+    path: (id) => `/rubber-lining/portal/products/${id}`,
+  });
 
-  async createProduct(data: CreateRubberProductDto): Promise<RubberProductDto> {
-    return this.request("/rubber-lining/portal/products", {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-  }
+  createProduct = createEndpoint<[data: CreateRubberProductDto], RubberProductDto>(
+    apiClient,
+    "POST",
+    {
+      path: "/rubber-lining/portal/products",
+      body: (data) => data,
+    },
+  );
 
-  async updateProduct(
-    id: number,
-    data: Partial<CreateRubberProductDto>,
-  ): Promise<RubberProductDto> {
-    return this.request(`/rubber-lining/portal/products/${id}`, {
-      method: "PUT",
-      body: JSON.stringify(data),
-    });
-  }
+  updateProduct = createEndpoint<
+    [id: number, data: Partial<CreateRubberProductDto>],
+    RubberProductDto
+  >(apiClient, "PUT", {
+    path: (id) => `/rubber-lining/portal/products/${id}`,
+    body: (_id, data) => data,
+  });
 
-  async deleteProduct(id: number): Promise<void> {
-    return this.request(`/rubber-lining/portal/products/${id}`, {
-      method: "DELETE",
-    });
-  }
+  deleteProduct = createEndpoint<[id: number], void>(apiClient, "DELETE", {
+    path: (id) => `/rubber-lining/portal/products/${id}`,
+  });
 
   async orders(status?: number): Promise<RubberOrderDto[]> {
     const query = status !== undefined ? `?status=${status}` : "";
