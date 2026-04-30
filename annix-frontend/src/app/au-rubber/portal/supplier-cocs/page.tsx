@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   Pagination,
   SortDirection,
@@ -771,6 +772,17 @@ export default function SupplierCocsPage() {
                       <th
                         scope="col"
                         className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                        onClick={() => handleSort(group.section, "processingStatus")}
+                      >
+                        Status
+                        <SortIcon
+                          active={group.sort.column === "processingStatus"}
+                          direction={group.sort.direction}
+                        />
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                         onClick={() => handleSort(group.section, "cocNumber")}
                       >
                         CoC Number
@@ -795,17 +807,6 @@ export default function SupplierCocsPage() {
                         className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                       >
                         Supplier
-                      </th>
-                      <th
-                        scope="col"
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                        onClick={() => handleSort(group.section, "processingStatus")}
-                      >
-                        Status
-                        <SortIcon
-                          active={group.sort.column === "processingStatus"}
-                          direction={group.sort.direction}
-                        />
                       </th>
                       <th
                         scope="col"
@@ -852,6 +853,9 @@ export default function SupplierCocsPage() {
                             {coc.productionDate ? formatDateZA(coc.productionDate) : "-"}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
+                            {statusBadge(coc.processingStatus)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center space-x-2">
                               <Link
                                 href={`/au-rubber/portal/supplier-cocs/${coc.id}`}
@@ -889,9 +893,6 @@ export default function SupplierCocsPage() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {rawCocSupplierCompanyName || "-"}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            {statusBadge(coc.processingStatus)}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {formatDateZA(coc.createdAt)}
@@ -1338,67 +1339,79 @@ export default function SupplierCocsPage() {
 
       {(() => {
         if (!reclassifyTarget) return null;
+        const docRef = globalThis.document;
+        if (!docRef) return null;
         const targetCocNumber = reclassifyTarget.cocNumber;
         const targetId = reclassifyTarget.id;
         const targetCurrentType = reclassifyTarget.currentType;
         const targetLabel = targetCocNumber ? targetCocNumber : `CoC #${targetId}`;
         const currentTypeLabel = COC_TYPE_LABELS[targetCurrentType];
-        return (
-          <div className="fixed inset-0 z-50 overflow-y-auto">
-            <div className="flex min-h-screen items-center justify-center p-4">
-              <div
-                className="fixed inset-0 bg-black/10 backdrop-blur-md"
-                onClick={() => !isReclassifying && setReclassifyTarget(null)}
-              />
-              <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Reclassify CoC</h3>
-                <p className="text-sm text-gray-600 mb-4">
-                  {targetLabel} is currently classified as <strong>{currentTypeLabel}</strong>.
-                  Choose the correct type — the CoC will move to the matching section.
-                </p>
-                <div className="space-y-2">
-                  {(["COMPOUNDER", "CALENDARER", "CALENDER_ROLL"] as SupplierCocType[]).map(
-                    (type) => {
-                      const isCurrent = type === targetCurrentType;
-                      const label = COC_TYPE_LABELS[type];
-                      return (
-                        <button
-                          key={type}
-                          onClick={() => handleReclassify(type)}
-                          disabled={isCurrent || isReclassifying}
-                          className={`w-full text-left px-4 py-3 rounded-md border text-sm font-medium transition-colors ${
-                            isCurrent
-                              ? "border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed"
-                              : "border-purple-300 text-purple-700 bg-white hover:bg-purple-50 disabled:opacity-50"
-                          }`}
-                        >
-                          {isCurrent ? `${label} (current)` : `Move to ${label}`}
-                        </button>
-                      );
-                    },
-                  )}
-                </div>
-                <div className="mt-6 flex justify-end">
-                  <button
-                    onClick={() => setReclassifyTarget(null)}
-                    disabled={isReclassifying}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
-                  >
-                    Cancel
-                  </button>
-                </div>
+        return createPortal(
+          <div
+            className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+            role="dialog"
+            aria-modal="true"
+          >
+            <div
+              className="fixed inset-0 bg-black/10 backdrop-blur-md"
+              onClick={() => !isReclassifying && setReclassifyTarget(null)}
+              aria-hidden="true"
+            />
+            <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Reclassify CoC</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                {targetLabel} is currently classified as <strong>{currentTypeLabel}</strong>. Choose
+                the correct type — the CoC will move to the matching section.
+              </p>
+              <div className="space-y-2">
+                {(["COMPOUNDER", "CALENDARER", "CALENDER_ROLL"] as SupplierCocType[]).map(
+                  (type) => {
+                    const isCurrent = type === targetCurrentType;
+                    const label = COC_TYPE_LABELS[type];
+                    return (
+                      <button
+                        key={type}
+                        onClick={() => handleReclassify(type)}
+                        disabled={isCurrent || isReclassifying}
+                        className={`w-full text-left px-4 py-3 rounded-md border text-sm font-medium transition-colors ${
+                          isCurrent
+                            ? "border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed"
+                            : "border-purple-300 text-purple-700 bg-white hover:bg-purple-50 disabled:opacity-50"
+                        }`}
+                      >
+                        {isCurrent ? `${label} (current)` : `Move to ${label}`}
+                      </button>
+                    );
+                  },
+                )}
+              </div>
+              <div className="mt-6 flex justify-end">
+                <button
+                  onClick={() => setReclassifyTarget(null)}
+                  disabled={isReclassifying}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
               </div>
             </div>
-          </div>
+          </div>,
+          docRef.body,
         );
       })()}
 
-      {showDeleteModal && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex min-h-screen items-center justify-center p-4">
+      {showDeleteModal &&
+        globalThis.document &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+            role="dialog"
+            aria-modal="true"
+          >
             <div
               className="fixed inset-0 bg-black/10 backdrop-blur-md"
               onClick={() => setShowDeleteModal(false)}
+              aria-hidden="true"
             />
             <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Delete Supplier CoC</h3>
@@ -1424,9 +1437,9 @@ export default function SupplierCocsPage() {
                 </button>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          globalThis.document.body,
+        )}
     </div>
   );
 }
