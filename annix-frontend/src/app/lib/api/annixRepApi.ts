@@ -1,6 +1,14 @@
 import { throwIfNotOk } from "@/app/lib/api/apiError";
+import { type ApiClient, createApiClient, createEndpoint } from "@/app/lib/api/createApiClient";
+import { annixRepTokenStore } from "@/app/lib/api/portalTokenStores";
 import { fromJSDate } from "@/app/lib/datetime";
-import { annixRepAuthHeaders, browserBaseUrl } from "@/lib/api-config";
+import { API_BASE_URL, annixRepAuthHeaders, browserBaseUrl } from "@/lib/api-config";
+
+const apiClient: ApiClient = createApiClient({
+  baseURL: API_BASE_URL,
+  tokenStore: annixRepTokenStore,
+  refreshUrl: `${API_BASE_URL}/annix-rep/auth/refresh`,
+});
 
 export interface TargetCustomerProfile {
   businessTypes?: string[];
@@ -1213,103 +1221,56 @@ export const annixRepApi = {
   },
 
   prospects: {
-    list: async (): Promise<Prospect[]> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/prospects`, {
-        headers: annixRepAuthHeaders(),
-      });
-      return handleResponse<Prospect[]>(response);
-    },
+    list: createEndpoint<[], Prospect[]>(apiClient, "GET", {
+      path: "/annix-rep/prospects",
+    }),
 
-    listByStatus: async (status: ProspectStatus): Promise<Prospect[]> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/prospects/status/${status}`, {
-        headers: annixRepAuthHeaders(),
-      });
-      return handleResponse<Prospect[]>(response);
-    },
+    listByStatus: createEndpoint<[status: ProspectStatus], Prospect[]>(apiClient, "GET", {
+      path: (status) => `/annix-rep/prospects/status/${status}`,
+    }),
 
-    detail: async (id: number): Promise<Prospect> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/prospects/${id}`, {
-        headers: annixRepAuthHeaders(),
-      });
-      return handleResponse<Prospect>(response);
-    },
+    detail: createEndpoint<[id: number], Prospect>(apiClient, "GET", {
+      path: (id) => `/annix-rep/prospects/${id}`,
+    }),
 
-    create: async (dto: CreateProspectDto): Promise<Prospect> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/prospects`, {
-        method: "POST",
-        headers: {
-          ...annixRepAuthHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(dto),
-      });
-      return handleResponse<Prospect>(response);
-    },
+    create: createEndpoint<[dto: CreateProspectDto], Prospect>(apiClient, "POST", {
+      path: "/annix-rep/prospects",
+      body: (dto) => dto,
+    }),
 
-    update: async (id: number, dto: Partial<CreateProspectDto>): Promise<Prospect> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/prospects/${id}`, {
-        method: "PATCH",
-        headers: {
-          ...annixRepAuthHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(dto),
-      });
-      return handleResponse<Prospect>(response);
-    },
+    update: createEndpoint<[id: number, dto: Partial<CreateProspectDto>], Prospect>(
+      apiClient,
+      "PATCH",
+      {
+        path: (id, _dto) => `/annix-rep/prospects/${id}`,
+        body: (_id, dto) => dto,
+      },
+    ),
 
-    updateStatus: async (id: number, status: ProspectStatus): Promise<Prospect> => {
-      const response = await fetch(
-        `${browserBaseUrl()}/annix-rep/prospects/${id}/status/${status}`,
-        {
-          method: "PATCH",
-          headers: annixRepAuthHeaders(),
-        },
-      );
-      return handleResponse<Prospect>(response);
-    },
+    updateStatus: createEndpoint<[id: number, status: ProspectStatus], Prospect>(
+      apiClient,
+      "PATCH",
+      {
+        path: (id, status) => `/annix-rep/prospects/${id}/status/${status}`,
+      },
+    ),
 
-    markContacted: async (id: number): Promise<Prospect> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/prospects/${id}/contacted`, {
-        method: "POST",
-        headers: annixRepAuthHeaders(),
-      });
-      return handleResponse<Prospect>(response);
-    },
+    markContacted: createEndpoint<[id: number], Prospect>(apiClient, "POST", {
+      path: (id) => `/annix-rep/prospects/${id}/contacted`,
+    }),
 
-    completeFollowUp: async (id: number): Promise<Prospect> => {
-      const response = await fetch(
-        `${browserBaseUrl()}/annix-rep/prospects/${id}/complete-followup`,
-        {
-          method: "POST",
-          headers: annixRepAuthHeaders(),
-        },
-      );
-      return handleResponse<Prospect>(response);
-    },
+    completeFollowUp: createEndpoint<[id: number], Prospect>(apiClient, "POST", {
+      path: (id) => `/annix-rep/prospects/${id}/complete-followup`,
+    }),
 
-    snoozeFollowUp: async (id: number, days: number): Promise<Prospect> => {
-      const response = await fetch(
-        `${browserBaseUrl()}/annix-rep/prospects/${id}/snooze-followup`,
-        {
-          method: "POST",
-          headers: {
-            ...annixRepAuthHeaders(),
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ days }),
-        },
-      );
-      return handleResponse<Prospect>(response);
-    },
+    snoozeFollowUp: createEndpoint<[id: number, days: number], Prospect>(apiClient, "POST", {
+      path: (id, _days) => `/annix-rep/prospects/${id}/snooze-followup`,
+      body: (_id, days) => ({ days }),
+    }),
 
-    delete: async (id: number): Promise<void> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/prospects/${id}`, {
-        method: "DELETE",
-        headers: annixRepAuthHeaders(),
-      });
-      await throwIfNotOk(response);
-    },
+    delete: createEndpoint<[id: number], void>(apiClient, "DELETE", {
+      path: (id) => `/annix-rep/prospects/${id}`,
+    }),
 
     nearby: async (
       lat: number,
@@ -1337,27 +1298,17 @@ export const annixRepApi = {
       return handleResponse<Record<ProspectStatus, number>>(response);
     },
 
-    followUpsDue: async (): Promise<Prospect[]> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/prospects/follow-ups`, {
-        headers: annixRepAuthHeaders(),
-      });
-      return handleResponse<Prospect[]>(response);
-    },
+    followUpsDue: createEndpoint<[], Prospect[]>(apiClient, "GET", {
+      path: "/annix-rep/prospects/follow-ups",
+    }),
 
-    bulkUpdateStatus: async (
-      ids: number[],
-      status: ProspectStatus,
-    ): Promise<BulkUpdateStatusResponse> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/prospects/bulk/status`, {
-        method: "PATCH",
-        headers: {
-          ...annixRepAuthHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ ids, status }),
-      });
-      return handleResponse<BulkUpdateStatusResponse>(response);
-    },
+    bulkUpdateStatus: createEndpoint<
+      [ids: number[], status: ProspectStatus],
+      BulkUpdateStatusResponse
+    >(apiClient, "PATCH", {
+      path: "/annix-rep/prospects/bulk/status",
+      body: (ids, status) => ({ ids, status }),
+    }),
 
     bulkDelete: async (ids: number[]): Promise<BulkDeleteResponse> => {
       const response = await fetch(`${browserBaseUrl()}/annix-rep/prospects/bulk`, {
@@ -1371,20 +1322,14 @@ export const annixRepApi = {
       return handleResponse<BulkDeleteResponse>(response);
     },
 
-    exportCsv: async (): Promise<Blob> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/prospects/export/csv`, {
-        headers: annixRepAuthHeaders(),
-      });
-      await throwIfNotOk(response);
-      return response.blob();
-    },
+    exportCsv: createEndpoint<[], Blob>(apiClient, "GET", {
+      path: "/annix-rep/prospects/export/csv",
+      responseType: "blob",
+    }),
 
-    duplicates: async (): Promise<DuplicateProspects[]> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/prospects/duplicates`, {
-        headers: annixRepAuthHeaders(),
-      });
-      return handleResponse<DuplicateProspects[]>(response);
-    },
+    duplicates: createEndpoint<[], DuplicateProspects[]>(apiClient, "GET", {
+      path: "/annix-rep/prospects/duplicates",
+    }),
 
     import: async (
       rows: ImportProspectRow[],
@@ -1401,52 +1346,31 @@ export const annixRepApi = {
       return handleResponse<ImportProspectsResult>(response);
     },
 
-    merge: async (dto: MergeProspectsDto): Promise<Prospect> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/prospects/merge`, {
-        method: "POST",
-        headers: {
-          ...annixRepAuthHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(dto),
-      });
-      return handleResponse<Prospect>(response);
-    },
+    merge: createEndpoint<[dto: MergeProspectsDto], Prospect>(apiClient, "POST", {
+      path: "/annix-rep/prospects/merge",
+      body: (dto) => dto,
+    }),
 
-    bulkTagOperation: async (dto: BulkTagOperationDto): Promise<BulkTagOperationResponse> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/prospects/bulk/tags`, {
-        method: "PATCH",
-        headers: {
-          ...annixRepAuthHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(dto),
-      });
-      return handleResponse<BulkTagOperationResponse>(response);
-    },
+    bulkTagOperation: createEndpoint<[dto: BulkTagOperationDto], BulkTagOperationResponse>(
+      apiClient,
+      "PATCH",
+      {
+        path: "/annix-rep/prospects/bulk/tags",
+        body: (dto) => dto,
+      },
+    ),
 
-    bulkAssign: async (
-      ids: number[],
-      assignedToId: number | null,
-    ): Promise<{ updated: number; updatedIds: number[] }> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/prospects/bulk/assign`, {
-        method: "PATCH",
-        headers: {
-          ...annixRepAuthHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ ids, assignedToId }),
-      });
-      return handleResponse<{ updated: number; updatedIds: number[] }>(response);
-    },
+    bulkAssign: createEndpoint<
+      [ids: number[], assignedToId: number | null],
+      { updated: number; updatedIds: number[] }
+    >(apiClient, "PATCH", {
+      path: "/annix-rep/prospects/bulk/assign",
+      body: (ids, assignedToId) => ({ ids, assignedToId }),
+    }),
 
-    recalculateScores: async (): Promise<{ updated: number }> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/prospects/recalculate-scores`, {
-        method: "POST",
-        headers: annixRepAuthHeaders(),
-      });
-      return handleResponse<{ updated: number }>(response);
-    },
+    recalculateScores: createEndpoint<[], { updated: number }>(apiClient, "POST", {
+      path: "/annix-rep/prospects/recalculate-scores",
+    }),
 
     activities: async (id: number, limit?: number): Promise<ProspectActivity[]> => {
       const params = limit ? `?limit=${limit}` : "";
@@ -1469,72 +1393,42 @@ export const annixRepApi = {
       return handleResponse<CustomFieldDefinition[]>(response);
     },
 
-    detail: async (id: number): Promise<CustomFieldDefinition> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/custom-fields/${id}`, {
-        headers: annixRepAuthHeaders(),
-      });
-      return handleResponse<CustomFieldDefinition>(response);
-    },
+    detail: createEndpoint<[id: number], CustomFieldDefinition>(apiClient, "GET", {
+      path: (id) => `/annix-rep/custom-fields/${id}`,
+    }),
 
-    create: async (dto: CreateCustomFieldDto): Promise<CustomFieldDefinition> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/custom-fields`, {
-        method: "POST",
-        headers: {
-          ...annixRepAuthHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(dto),
-      });
-      return handleResponse<CustomFieldDefinition>(response);
-    },
+    create: createEndpoint<[dto: CreateCustomFieldDto], CustomFieldDefinition>(apiClient, "POST", {
+      path: "/annix-rep/custom-fields",
+      body: (dto) => dto,
+    }),
 
-    update: async (id: number, dto: UpdateCustomFieldDto): Promise<CustomFieldDefinition> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/custom-fields/${id}`, {
-        method: "PATCH",
-        headers: {
-          ...annixRepAuthHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(dto),
-      });
-      return handleResponse<CustomFieldDefinition>(response);
-    },
+    update: createEndpoint<[id: number, dto: UpdateCustomFieldDto], CustomFieldDefinition>(
+      apiClient,
+      "PATCH",
+      {
+        path: (id, _dto) => `/annix-rep/custom-fields/${id}`,
+        body: (_id, dto) => dto,
+      },
+    ),
 
-    delete: async (id: number): Promise<void> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/custom-fields/${id}`, {
-        method: "DELETE",
-        headers: annixRepAuthHeaders(),
-      });
-      await throwIfNotOk(response);
-    },
+    delete: createEndpoint<[id: number], void>(apiClient, "DELETE", {
+      path: (id) => `/annix-rep/custom-fields/${id}`,
+    }),
 
-    reorder: async (orderedIds: number[]): Promise<CustomFieldDefinition[]> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/custom-fields/reorder`, {
-        method: "POST",
-        headers: {
-          ...annixRepAuthHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ orderedIds }),
-      });
-      return handleResponse<CustomFieldDefinition[]>(response);
-    },
+    reorder: createEndpoint<[orderedIds: number[]], CustomFieldDefinition[]>(apiClient, "POST", {
+      path: "/annix-rep/custom-fields/reorder",
+      body: (orderedIds) => ({ orderedIds }),
+    }),
   },
 
   meetings: {
-    list: async (): Promise<Meeting[]> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/meetings`, {
-        headers: annixRepAuthHeaders(),
-      });
-      return handleResponse<Meeting[]>(response);
-    },
+    list: createEndpoint<[], Meeting[]>(apiClient, "GET", {
+      path: "/annix-rep/meetings",
+    }),
 
-    today: async (): Promise<Meeting[]> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/meetings/today`, {
-        headers: annixRepAuthHeaders(),
-      });
-      return handleResponse<Meeting[]>(response);
-    },
+    today: createEndpoint<[], Meeting[]>(apiClient, "GET", {
+      path: "/annix-rep/meetings/today",
+    }),
 
     upcoming: async (days?: number): Promise<Meeting[]> => {
       const params = days ? `?days=${days}` : "";
@@ -1544,100 +1438,59 @@ export const annixRepApi = {
       return handleResponse<Meeting[]>(response);
     },
 
-    detail: async (id: number): Promise<Meeting> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/meetings/${id}`, {
-        headers: annixRepAuthHeaders(),
-      });
-      return handleResponse<Meeting>(response);
-    },
+    detail: createEndpoint<[id: number], Meeting>(apiClient, "GET", {
+      path: (id) => `/annix-rep/meetings/${id}`,
+    }),
 
-    create: async (dto: CreateMeetingDto): Promise<Meeting> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/meetings`, {
-        method: "POST",
-        headers: {
-          ...annixRepAuthHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(dto),
-      });
-      return handleResponse<Meeting>(response);
-    },
+    create: createEndpoint<[dto: CreateMeetingDto], Meeting>(apiClient, "POST", {
+      path: "/annix-rep/meetings",
+      body: (dto) => dto,
+    }),
 
-    update: async (id: number, dto: Partial<CreateMeetingDto>): Promise<Meeting> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/meetings/${id}`, {
-        method: "PATCH",
-        headers: {
-          ...annixRepAuthHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(dto),
-      });
-      return handleResponse<Meeting>(response);
-    },
+    update: createEndpoint<[id: number, dto: Partial<CreateMeetingDto>], Meeting>(
+      apiClient,
+      "PATCH",
+      {
+        path: (id, _dto) => `/annix-rep/meetings/${id}`,
+        body: (_id, dto) => dto,
+      },
+    ),
 
-    start: async (id: number): Promise<Meeting> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/meetings/${id}/start`, {
-        method: "POST",
-        headers: {
-          ...annixRepAuthHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({}),
-      });
-      return handleResponse<Meeting>(response);
-    },
+    start: createEndpoint<[id: number], Meeting>(apiClient, "POST", {
+      path: (id) => `/annix-rep/meetings/${id}/start`,
+      body: (_id) => ({}),
+    }),
 
-    end: async (id: number, notes?: string, outcomes?: string): Promise<Meeting> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/meetings/${id}/end`, {
-        method: "POST",
-        headers: {
-          ...annixRepAuthHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ notes, outcomes }),
-      });
-      return handleResponse<Meeting>(response);
-    },
+    end: createEndpoint<[id: number, notes?: string, outcomes?: string], Meeting>(
+      apiClient,
+      "POST",
+      {
+        path: (id, _notes, _outcomes) => `/annix-rep/meetings/${id}/end`,
+        body: (_id, notes, outcomes) => ({ notes, outcomes }),
+      },
+    ),
 
-    cancel: async (id: number): Promise<Meeting> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/meetings/${id}/cancel`, {
-        method: "POST",
-        headers: annixRepAuthHeaders(),
-      });
-      return handleResponse<Meeting>(response);
-    },
+    cancel: createEndpoint<[id: number], Meeting>(apiClient, "POST", {
+      path: (id) => `/annix-rep/meetings/${id}/cancel`,
+    }),
 
-    reschedule: async (id: number, dto: RescheduleMeetingDto): Promise<Meeting> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/meetings/${id}/reschedule`, {
-        method: "PATCH",
-        headers: {
-          ...annixRepAuthHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(dto),
-      });
-      return handleResponse<Meeting>(response);
-    },
+    reschedule: createEndpoint<[id: number, dto: RescheduleMeetingDto], Meeting>(
+      apiClient,
+      "PATCH",
+      {
+        path: (id, _dto) => `/annix-rep/meetings/${id}/reschedule`,
+        body: (_id, dto) => dto,
+      },
+    ),
 
-    delete: async (id: number): Promise<void> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/meetings/${id}`, {
-        method: "DELETE",
-        headers: annixRepAuthHeaders(),
-      });
-      await throwIfNotOk(response);
-    },
+    delete: createEndpoint<[id: number], void>(apiClient, "DELETE", {
+      path: (id) => `/annix-rep/meetings/${id}`,
+    }),
 
-    createRecurring: async (dto: CreateRecurringMeetingDto): Promise<Meeting> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/meetings/recurring`, {
-        method: "POST",
-        headers: {
-          ...annixRepAuthHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(dto),
-      });
-      return handleResponse<Meeting>(response);
-    },
+    createRecurring: createEndpoint<[dto: CreateRecurringMeetingDto], Meeting>(apiClient, "POST", {
+      path: "/annix-rep/meetings/recurring",
+      body: (dto) => dto,
+    }),
 
     expandedRecurring: async (startDate: string, endDate: string): Promise<Meeting[]> => {
       const params = new URLSearchParams({ startDate, endDate });
@@ -1650,27 +1503,18 @@ export const annixRepApi = {
       return handleResponse<Meeting[]>(response);
     },
 
-    seriesInstances: async (parentId: number): Promise<Meeting[]> => {
-      const response = await fetch(
-        `${browserBaseUrl()}/annix-rep/meetings/recurring/${parentId}/instances`,
-        {
-          headers: annixRepAuthHeaders(),
-        },
-      );
-      return handleResponse<Meeting[]>(response);
-    },
+    seriesInstances: createEndpoint<[parentId: number], Meeting[]>(apiClient, "GET", {
+      path: (parentId) => `/annix-rep/meetings/recurring/${parentId}/instances`,
+    }),
 
-    updateRecurring: async (id: number, dto: UpdateRecurringMeetingDto): Promise<Meeting> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/meetings/recurring/${id}`, {
-        method: "PATCH",
-        headers: {
-          ...annixRepAuthHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(dto),
-      });
-      return handleResponse<Meeting>(response);
-    },
+    updateRecurring: createEndpoint<[id: number, dto: UpdateRecurringMeetingDto], Meeting>(
+      apiClient,
+      "PATCH",
+      {
+        path: (id, _dto) => `/annix-rep/meetings/recurring/${id}`,
+        body: (_id, dto) => dto,
+      },
+    ),
 
     deleteRecurring: async (id: number, dto: DeleteRecurringMeetingDto): Promise<void> => {
       const response = await fetch(`${browserBaseUrl()}/annix-rep/meetings/recurring/${id}`, {
@@ -1686,68 +1530,39 @@ export const annixRepApi = {
   },
 
   visits: {
-    list: async (): Promise<Visit[]> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/visits`, {
-        headers: annixRepAuthHeaders(),
-      });
-      return handleResponse<Visit[]>(response);
-    },
+    list: createEndpoint<[], Visit[]>(apiClient, "GET", {
+      path: "/annix-rep/visits",
+    }),
 
-    today: async (): Promise<Visit[]> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/visits/today`, {
-        headers: annixRepAuthHeaders(),
-      });
-      return handleResponse<Visit[]>(response);
-    },
+    today: createEndpoint<[], Visit[]>(apiClient, "GET", {
+      path: "/annix-rep/visits/today",
+    }),
 
-    byProspect: async (prospectId: number): Promise<Visit[]> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/visits/prospect/${prospectId}`, {
-        headers: annixRepAuthHeaders(),
-      });
-      return handleResponse<Visit[]>(response);
-    },
+    byProspect: createEndpoint<[prospectId: number], Visit[]>(apiClient, "GET", {
+      path: (prospectId) => `/annix-rep/visits/prospect/${prospectId}`,
+    }),
 
-    create: async (dto: CreateVisitDto): Promise<Visit> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/visits`, {
-        method: "POST",
-        headers: {
-          ...annixRepAuthHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(dto),
-      });
-      return handleResponse<Visit>(response);
-    },
+    create: createEndpoint<[dto: CreateVisitDto], Visit>(apiClient, "POST", {
+      path: "/annix-rep/visits",
+      body: (dto) => dto,
+    }),
 
-    checkIn: async (id: number, latitude: number, longitude: number): Promise<Visit> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/visits/${id}/check-in`, {
-        method: "POST",
-        headers: {
-          ...annixRepAuthHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ latitude, longitude }),
-      });
-      return handleResponse<Visit>(response);
-    },
+    checkIn: createEndpoint<[id: number, latitude: number, longitude: number], Visit>(
+      apiClient,
+      "POST",
+      {
+        path: (id, _latitude, _longitude) => `/annix-rep/visits/${id}/check-in`,
+        body: (_id, latitude, longitude) => ({ latitude, longitude }),
+      },
+    ),
 
-    checkOut: async (
-      id: number,
-      latitude: number,
-      longitude: number,
-      outcome?: VisitOutcome,
-      notes?: string,
-    ): Promise<Visit> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/visits/${id}/check-out`, {
-        method: "POST",
-        headers: {
-          ...annixRepAuthHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ latitude, longitude, outcome, notes }),
-      });
-      return handleResponse<Visit>(response);
-    },
+    checkOut: createEndpoint<
+      [id: number, latitude: number, longitude: number, outcome?: VisitOutcome, notes?: string],
+      Visit
+    >(apiClient, "POST", {
+      path: (id, _latitude, _longitude, _outcome, _notes) => `/annix-rep/visits/${id}/check-out`,
+      body: (_id, latitude, longitude, outcome, notes) => ({ latitude, longitude, outcome, notes }),
+    }),
   },
 
   calendars: {
@@ -1760,74 +1575,48 @@ export const annixRepApi = {
       return handleResponse<{ url: string }>(response);
     },
 
-    connect: async (dto: ConnectCalendarDto): Promise<CalendarConnection> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/calendars/connect`, {
-        method: "POST",
-        headers: {
-          ...annixRepAuthHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(dto),
-      });
-      return handleResponse<CalendarConnection>(response);
-    },
+    connect: createEndpoint<[dto: ConnectCalendarDto], CalendarConnection>(apiClient, "POST", {
+      path: "/annix-rep/calendars/connect",
+      body: (dto) => dto,
+    }),
 
-    connections: async (): Promise<CalendarConnection[]> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/calendars/connections`, {
-        headers: annixRepAuthHeaders(),
-      });
-      return handleResponse<CalendarConnection[]>(response);
-    },
+    connections: createEndpoint<[], CalendarConnection[]>(apiClient, "GET", {
+      path: "/annix-rep/calendars/connections",
+    }),
 
-    connection: async (id: number): Promise<CalendarConnection> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/calendars/connections/${id}`, {
-        headers: annixRepAuthHeaders(),
-      });
-      return handleResponse<CalendarConnection>(response);
-    },
+    connection: createEndpoint<[id: number], CalendarConnection>(apiClient, "GET", {
+      path: (id) => `/annix-rep/calendars/connections/${id}`,
+    }),
 
-    update: async (id: number, dto: UpdateCalendarConnectionDto): Promise<CalendarConnection> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/calendars/connections/${id}`, {
-        method: "PATCH",
-        headers: {
-          ...annixRepAuthHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(dto),
-      });
-      return handleResponse<CalendarConnection>(response);
-    },
+    update: createEndpoint<[id: number, dto: UpdateCalendarConnectionDto], CalendarConnection>(
+      apiClient,
+      "PATCH",
+      {
+        path: (id, _dto) => `/annix-rep/calendars/connections/${id}`,
+        body: (_id, dto) => dto,
+      },
+    ),
 
-    disconnect: async (id: number): Promise<void> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/calendars/connections/${id}`, {
-        method: "DELETE",
-        headers: annixRepAuthHeaders(),
-      });
-      await throwIfNotOk(response);
-    },
+    disconnect: createEndpoint<[id: number], void>(apiClient, "DELETE", {
+      path: (id) => `/annix-rep/calendars/connections/${id}`,
+    }),
 
-    availableCalendars: async (connectionId: number): Promise<CalendarListItem[]> => {
-      const response = await fetch(
-        `${browserBaseUrl()}/annix-rep/calendars/connections/${connectionId}/calendars`,
-        { headers: annixRepAuthHeaders() },
-      );
-      return handleResponse<CalendarListItem[]>(response);
-    },
+    availableCalendars: createEndpoint<[connectionId: number], CalendarListItem[]>(
+      apiClient,
+      "GET",
+      {
+        path: (connectionId) => `/annix-rep/calendars/connections/${connectionId}/calendars`,
+      },
+    ),
 
-    sync: async (connectionId: number, fullSync?: boolean): Promise<SyncResult> => {
-      const response = await fetch(
-        `${browserBaseUrl()}/annix-rep/calendars/connections/${connectionId}/sync`,
-        {
-          method: "POST",
-          headers: {
-            ...annixRepAuthHeaders(),
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ fullSync: fullSync ?? false }),
-        },
-      );
-      return handleResponse<SyncResult>(response);
-    },
+    sync: createEndpoint<[connectionId: number, fullSync?: boolean], SyncResult>(
+      apiClient,
+      "POST",
+      {
+        path: (connectionId, _fullSync) => `/annix-rep/calendars/connections/${connectionId}/sync`,
+        body: (_connectionId, fullSync) => ({ fullSync: fullSync ?? false }),
+      },
+    ),
 
     events: async (startDate: string, endDate: string): Promise<CalendarEvent[]> => {
       const params = new URLSearchParams({ startDate, endDate });
@@ -1837,45 +1626,26 @@ export const annixRepApi = {
       return handleResponse<CalendarEvent[]>(response);
     },
 
-    colors: async (): Promise<CalendarColorScheme> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/calendars/colors`, {
-        headers: annixRepAuthHeaders(),
-      });
-      return handleResponse<CalendarColorScheme>(response);
-    },
+    colors: createEndpoint<[], CalendarColorScheme>(apiClient, "GET", {
+      path: "/annix-rep/calendars/colors",
+    }),
 
-    setColors: async (
-      colors: Array<{ colorType: CalendarColorType; colorKey: string; colorValue: string }>,
-    ): Promise<{ success: boolean }> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/calendars/colors`, {
-        method: "POST",
-        headers: {
-          ...annixRepAuthHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ colors }),
-      });
-      return handleResponse<{ success: boolean }>(response);
-    },
+    setColors: createEndpoint<
+      [colors: Array<{ colorType: CalendarColorType; colorKey: string; colorValue: string }>],
+      { success: boolean }
+    >(apiClient, "POST", {
+      path: "/annix-rep/calendars/colors",
+      body: (colors) => ({ colors }),
+    }),
 
-    setColor: async (
-      colorType: CalendarColorType,
-      colorKey: string,
-      colorValue: string,
-    ): Promise<void> => {
-      const response = await fetch(
-        `${browserBaseUrl()}/annix-rep/calendars/colors/${colorType}/${colorKey}`,
-        {
-          method: "PATCH",
-          headers: {
-            ...annixRepAuthHeaders(),
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ colorValue }),
-        },
-      );
-      await throwIfNotOk(response);
-    },
+    setColor: createEndpoint<
+      [colorType: CalendarColorType, colorKey: string, colorValue: string],
+      void
+    >(apiClient, "PATCH", {
+      path: (colorType, colorKey, _colorValue) =>
+        `/annix-rep/calendars/colors/${colorType}/${colorKey}`,
+      body: (_colorType, _colorKey, colorValue) => ({ colorValue }),
+    }),
 
     resetColors: async (colorType?: CalendarColorType): Promise<{ success: boolean }> => {
       const params = colorType ? `?colorType=${colorType}` : "";
@@ -1889,66 +1659,36 @@ export const annixRepApi = {
       return handleResponse<{ success: boolean }>(response);
     },
 
-    conflicts: async (): Promise<SyncConflict[]> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/calendars/conflicts`, {
-        headers: annixRepAuthHeaders(),
-      });
-      return handleResponse<SyncConflict[]>(response);
-    },
+    conflicts: createEndpoint<[], SyncConflict[]>(apiClient, "GET", {
+      path: "/annix-rep/calendars/conflicts",
+    }),
 
-    conflictCount: async (): Promise<{ count: number }> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/calendars/conflicts/count`, {
-        headers: annixRepAuthHeaders(),
-      });
-      return handleResponse<{ count: number }>(response);
-    },
+    conflictCount: createEndpoint<[], { count: number }>(apiClient, "GET", {
+      path: "/annix-rep/calendars/conflicts/count",
+    }),
 
-    conflict: async (id: number): Promise<SyncConflict> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/calendars/conflicts/${id}`, {
-        headers: annixRepAuthHeaders(),
-      });
-      return handleResponse<SyncConflict>(response);
-    },
+    conflict: createEndpoint<[id: number], SyncConflict>(apiClient, "GET", {
+      path: (id) => `/annix-rep/calendars/conflicts/${id}`,
+    }),
 
-    resolveConflict: async (
-      id: number,
-      resolution: "keep_local" | "keep_remote" | "dismissed",
-    ): Promise<SyncConflict> => {
-      const response = await fetch(
-        `${browserBaseUrl()}/annix-rep/calendars/conflicts/${id}/resolve`,
-        {
-          method: "POST",
-          headers: {
-            ...annixRepAuthHeaders(),
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ resolution }),
-        },
-      );
-      return handleResponse<SyncConflict>(response);
-    },
+    resolveConflict: createEndpoint<
+      [id: number, resolution: "keep_local" | "keep_remote" | "dismissed"],
+      SyncConflict
+    >(apiClient, "POST", {
+      path: (id, _resolution) => `/annix-rep/calendars/conflicts/${id}/resolve`,
+      body: (_id, resolution) => ({ resolution }),
+    }),
 
-    detectConflicts: async (): Promise<{ detected: number }> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/calendars/conflicts/detect`, {
-        method: "POST",
-        headers: annixRepAuthHeaders(),
-      });
-      return handleResponse<{ detected: number }>(response);
-    },
+    detectConflicts: createEndpoint<[], { detected: number }>(apiClient, "POST", {
+      path: "/annix-rep/calendars/conflicts/detect",
+    }),
   },
 
   recordings: {
-    initiate: async (dto: InitiateUploadDto): Promise<InitiateUploadResponse> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/recordings/initiate`, {
-        method: "POST",
-        headers: {
-          ...annixRepAuthHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(dto),
-      });
-      return handleResponse<InitiateUploadResponse>(response);
-    },
+    initiate: createEndpoint<[dto: InitiateUploadDto], InitiateUploadResponse>(apiClient, "POST", {
+      path: "/annix-rep/recordings/initiate",
+      body: (dto) => dto,
+    }),
 
     uploadChunk: async (
       recordingId: number,
@@ -1969,27 +1709,18 @@ export const annixRepApi = {
       return handleResponse<{ chunkIndex: number; bytesReceived: number }>(response);
     },
 
-    complete: async (recordingId: number, dto: CompleteUploadDto): Promise<Recording> => {
-      const response = await fetch(
-        `${browserBaseUrl()}/annix-rep/recordings/${recordingId}/complete`,
-        {
-          method: "POST",
-          headers: {
-            ...annixRepAuthHeaders(),
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(dto),
-        },
-      );
-      return handleResponse<Recording>(response);
-    },
+    complete: createEndpoint<[recordingId: number, dto: CompleteUploadDto], Recording>(
+      apiClient,
+      "POST",
+      {
+        path: (recordingId, _dto) => `/annix-rep/recordings/${recordingId}/complete`,
+        body: (_recordingId, dto) => dto,
+      },
+    ),
 
-    detail: async (recordingId: number): Promise<Recording> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/recordings/${recordingId}`, {
-        headers: annixRepAuthHeaders(),
-      });
-      return handleResponse<Recording>(response);
-    },
+    detail: createEndpoint<[recordingId: number], Recording>(apiClient, "GET", {
+      path: (recordingId) => `/annix-rep/recordings/${recordingId}`,
+    }),
 
     byMeeting: async (meetingId: number): Promise<Recording | null> => {
       const response = await fetch(
@@ -2002,31 +1733,17 @@ export const annixRepApi = {
       return handleResponse<Recording>(response);
     },
 
-    updateSpeakerLabels: async (
-      recordingId: number,
-      speakerLabels: Record<string, string>,
-    ): Promise<Recording> => {
-      const response = await fetch(
-        `${browserBaseUrl()}/annix-rep/recordings/${recordingId}/speaker-labels`,
-        {
-          method: "PATCH",
-          headers: {
-            ...annixRepAuthHeaders(),
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ speakerLabels }),
-        },
-      );
-      return handleResponse<Recording>(response);
-    },
+    updateSpeakerLabels: createEndpoint<
+      [recordingId: number, speakerLabels: Record<string, string>],
+      Recording
+    >(apiClient, "PATCH", {
+      path: (recordingId, _speakerLabels) => `/annix-rep/recordings/${recordingId}/speaker-labels`,
+      body: (_recordingId, speakerLabels) => ({ speakerLabels }),
+    }),
 
-    delete: async (recordingId: number): Promise<void> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/recordings/${recordingId}`, {
-        method: "DELETE",
-        headers: annixRepAuthHeaders(),
-      });
-      await throwIfNotOk(response);
-    },
+    delete: createEndpoint<[recordingId: number], void>(apiClient, "DELETE", {
+      path: (recordingId) => `/annix-rep/recordings/${recordingId}`,
+    }),
 
     streamUrl: (recordingId: number): string | null => {
       // eslint-disable-next-line no-restricted-syntax -- SSR guard; isUndefined(window) would throw
@@ -2060,180 +1777,107 @@ export const annixRepApi = {
       return handleResponse<Transcript>(response);
     },
 
-    transcribe: async (recordingId: number): Promise<Transcript> => {
-      const response = await fetch(
-        `${browserBaseUrl()}/annix-rep/transcripts/recording/${recordingId}/transcribe`,
-        {
-          method: "POST",
-          headers: annixRepAuthHeaders(),
-        },
-      );
-      return handleResponse<Transcript>(response);
-    },
+    transcribe: createEndpoint<[recordingId: number], Transcript>(apiClient, "POST", {
+      path: (recordingId) => `/annix-rep/transcripts/recording/${recordingId}/transcribe`,
+    }),
 
-    retranscribe: async (recordingId: number): Promise<Transcript> => {
-      const response = await fetch(
-        `${browserBaseUrl()}/annix-rep/transcripts/recording/${recordingId}/retranscribe`,
-        {
-          method: "POST",
-          headers: annixRepAuthHeaders(),
-        },
-      );
-      return handleResponse<Transcript>(response);
-    },
+    retranscribe: createEndpoint<[recordingId: number], Transcript>(apiClient, "POST", {
+      path: (recordingId) => `/annix-rep/transcripts/recording/${recordingId}/retranscribe`,
+    }),
 
-    update: async (transcriptId: number, dto: UpdateTranscriptDto): Promise<Transcript> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/transcripts/${transcriptId}`, {
-        method: "PATCH",
-        headers: {
-          ...annixRepAuthHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(dto),
-      });
-      return handleResponse<Transcript>(response);
-    },
+    update: createEndpoint<[transcriptId: number, dto: UpdateTranscriptDto], Transcript>(
+      apiClient,
+      "PATCH",
+      {
+        path: (transcriptId, _dto) => `/annix-rep/transcripts/${transcriptId}`,
+        body: (_transcriptId, dto) => dto,
+      },
+    ),
 
-    delete: async (recordingId: number): Promise<void> => {
-      const response = await fetch(
-        `${browserBaseUrl()}/annix-rep/transcripts/recording/${recordingId}`,
-        {
-          method: "DELETE",
-          headers: annixRepAuthHeaders(),
-        },
-      );
-      await throwIfNotOk(response);
-    },
+    delete: createEndpoint<[recordingId: number], void>(apiClient, "DELETE", {
+      path: (recordingId) => `/annix-rep/transcripts/recording/${recordingId}`,
+    }),
   },
 
   summaries: {
-    preview: async (meetingId: number): Promise<SummaryPreview> => {
-      const response = await fetch(
-        `${browserBaseUrl()}/annix-rep/summaries/meeting/${meetingId}/preview`,
-        {
-          headers: annixRepAuthHeaders(),
-        },
-      );
-      return handleResponse<SummaryPreview>(response);
-    },
+    preview: createEndpoint<[meetingId: number], SummaryPreview>(apiClient, "GET", {
+      path: (meetingId) => `/annix-rep/summaries/meeting/${meetingId}/preview`,
+    }),
 
-    generate: async (meetingId: number): Promise<MeetingSummary> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/summaries/meeting/${meetingId}`, {
-        headers: annixRepAuthHeaders(),
-      });
-      return handleResponse<MeetingSummary>(response);
-    },
+    generate: createEndpoint<[meetingId: number], MeetingSummary>(apiClient, "GET", {
+      path: (meetingId) => `/annix-rep/summaries/meeting/${meetingId}`,
+    }),
 
-    send: async (meetingId: number, dto: SendSummaryDto): Promise<SendSummaryResult> => {
-      const response = await fetch(
-        `${browserBaseUrl()}/annix-rep/summaries/meeting/${meetingId}/send`,
-        {
-          method: "POST",
-          headers: {
-            ...annixRepAuthHeaders(),
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(dto),
-        },
-      );
-      return handleResponse<SendSummaryResult>(response);
-    },
+    send: createEndpoint<[meetingId: number, dto: SendSummaryDto], SendSummaryResult>(
+      apiClient,
+      "POST",
+      {
+        path: (meetingId, _dto) => `/annix-rep/summaries/meeting/${meetingId}/send`,
+        body: (_meetingId, dto) => dto,
+      },
+    ),
   },
 
   crm: {
-    configs: async (): Promise<CrmConfig[]> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/crm/configs`, {
-        headers: annixRepAuthHeaders(),
-      });
-      return handleResponse<CrmConfig[]>(response);
-    },
+    configs: createEndpoint<[], CrmConfig[]>(apiClient, "GET", {
+      path: "/annix-rep/crm/configs",
+    }),
 
-    config: async (id: number): Promise<CrmConfig> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/crm/configs/${id}`, {
-        headers: annixRepAuthHeaders(),
-      });
-      return handleResponse<CrmConfig>(response);
-    },
+    config: createEndpoint<[id: number], CrmConfig>(apiClient, "GET", {
+      path: (id) => `/annix-rep/crm/configs/${id}`,
+    }),
 
-    create: async (dto: CreateCrmConfigDto): Promise<CrmConfig> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/crm/configs`, {
-        method: "POST",
-        headers: {
-          ...annixRepAuthHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(dto),
-      });
-      return handleResponse<CrmConfig>(response);
-    },
+    create: createEndpoint<[dto: CreateCrmConfigDto], CrmConfig>(apiClient, "POST", {
+      path: "/annix-rep/crm/configs",
+      body: (dto) => dto,
+    }),
 
-    update: async (id: number, dto: UpdateCrmConfigDto): Promise<CrmConfig> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/crm/configs/${id}`, {
-        method: "PATCH",
-        headers: {
-          ...annixRepAuthHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(dto),
-      });
-      return handleResponse<CrmConfig>(response);
-    },
+    update: createEndpoint<[id: number, dto: UpdateCrmConfigDto], CrmConfig>(apiClient, "PATCH", {
+      path: (id, _dto) => `/annix-rep/crm/configs/${id}`,
+      body: (_id, dto) => dto,
+    }),
 
-    delete: async (id: number): Promise<void> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/crm/configs/${id}`, {
-        method: "DELETE",
-        headers: annixRepAuthHeaders(),
-      });
-      await throwIfNotOk(response);
-    },
+    delete: createEndpoint<[id: number], void>(apiClient, "DELETE", {
+      path: (id) => `/annix-rep/crm/configs/${id}`,
+    }),
 
-    testConnection: async (id: number): Promise<{ success: boolean; message: string }> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/crm/configs/${id}/test`, {
-        method: "POST",
-        headers: annixRepAuthHeaders(),
-      });
-      return handleResponse<{ success: boolean; message: string }>(response);
-    },
+    testConnection: createEndpoint<[id: number], { success: boolean; message: string }>(
+      apiClient,
+      "POST",
+      {
+        path: (id) => `/annix-rep/crm/configs/${id}/test`,
+      },
+    ),
 
-    syncProspect: async (configId: number, prospectId: number): Promise<CrmSyncResult> => {
-      const response = await fetch(
-        `${browserBaseUrl()}/annix-rep/crm/configs/${configId}/sync/prospect/${prospectId}`,
-        {
-          method: "POST",
-          headers: annixRepAuthHeaders(),
-        },
-      );
-      return handleResponse<CrmSyncResult>(response);
-    },
+    syncProspect: createEndpoint<[configId: number, prospectId: number], CrmSyncResult>(
+      apiClient,
+      "POST",
+      {
+        path: (configId, prospectId) =>
+          `/annix-rep/crm/configs/${configId}/sync/prospect/${prospectId}`,
+      },
+    ),
 
-    syncMeeting: async (configId: number, meetingId: number): Promise<CrmSyncResult> => {
-      const response = await fetch(
-        `${browserBaseUrl()}/annix-rep/crm/configs/${configId}/sync/meeting/${meetingId}`,
-        {
-          method: "POST",
-          headers: annixRepAuthHeaders(),
-        },
-      );
-      return handleResponse<CrmSyncResult>(response);
-    },
+    syncMeeting: createEndpoint<[configId: number, meetingId: number], CrmSyncResult>(
+      apiClient,
+      "POST",
+      {
+        path: (configId, meetingId) =>
+          `/annix-rep/crm/configs/${configId}/sync/meeting/${meetingId}`,
+      },
+    ),
 
-    syncAllProspects: async (configId: number): Promise<{ synced: number; failed: number }> => {
-      const response = await fetch(
-        `${browserBaseUrl()}/annix-rep/crm/configs/${configId}/sync/all-prospects`,
-        {
-          method: "POST",
-          headers: annixRepAuthHeaders(),
-        },
-      );
-      return handleResponse<{ synced: number; failed: number }>(response);
-    },
+    syncAllProspects: createEndpoint<[configId: number], { synced: number; failed: number }>(
+      apiClient,
+      "POST",
+      {
+        path: (configId) => `/annix-rep/crm/configs/${configId}/sync/all-prospects`,
+      },
+    ),
 
-    syncStatus: async (configId: number): Promise<CrmSyncStatus> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/crm/configs/${configId}/status`, {
-        headers: annixRepAuthHeaders(),
-      });
-      return handleResponse<CrmSyncStatus>(response);
-    },
+    syncStatus: createEndpoint<[configId: number], CrmSyncStatus>(apiClient, "GET", {
+      path: (configId) => `/annix-rep/crm/configs/${configId}/status`,
+    }),
 
     exportProspectsCsv: async (configId?: number): Promise<Blob> => {
       const params = configId ? `?configId=${configId}` : "";
@@ -2280,38 +1924,17 @@ export const annixRepApi = {
       return handleResponse<CrmConfig>(response);
     },
 
-    disconnect: async (configId: number): Promise<{ success: boolean }> => {
-      const response = await fetch(
-        `${browserBaseUrl()}/annix-rep/crm/configs/${configId}/disconnect`,
-        {
-          method: "POST",
-          headers: annixRepAuthHeaders(),
-        },
-      );
-      return handleResponse<{ success: boolean }>(response);
-    },
+    disconnect: createEndpoint<[configId: number], { success: boolean }>(apiClient, "POST", {
+      path: (configId) => `/annix-rep/crm/configs/${configId}/disconnect`,
+    }),
 
-    syncNow: async (configId: number): Promise<CrmSyncLog> => {
-      const response = await fetch(
-        `${browserBaseUrl()}/annix-rep/crm/configs/${configId}/sync-now`,
-        {
-          method: "POST",
-          headers: annixRepAuthHeaders(),
-        },
-      );
-      return handleResponse<CrmSyncLog>(response);
-    },
+    syncNow: createEndpoint<[configId: number], CrmSyncLog>(apiClient, "POST", {
+      path: (configId) => `/annix-rep/crm/configs/${configId}/sync-now`,
+    }),
 
-    pullAll: async (configId: number): Promise<CrmSyncLog> => {
-      const response = await fetch(
-        `${browserBaseUrl()}/annix-rep/crm/configs/${configId}/pull-all`,
-        {
-          method: "POST",
-          headers: annixRepAuthHeaders(),
-        },
-      );
-      return handleResponse<CrmSyncLog>(response);
-    },
+    pullAll: createEndpoint<[configId: number], CrmSyncLog>(apiClient, "POST", {
+      path: (configId) => `/annix-rep/crm/configs/${configId}/pull-all`,
+    }),
 
     syncLogs: async (
       configId: number,
@@ -2329,16 +1952,9 @@ export const annixRepApi = {
       return handleResponse<{ logs: CrmSyncLog[]; total: number }>(response);
     },
 
-    refreshToken: async (configId: number): Promise<{ success: boolean }> => {
-      const response = await fetch(
-        `${browserBaseUrl()}/annix-rep/crm/configs/${configId}/refresh-token`,
-        {
-          method: "POST",
-          headers: annixRepAuthHeaders(),
-        },
-      );
-      return handleResponse<{ success: boolean }>(response);
-    },
+    refreshToken: createEndpoint<[configId: number], { success: boolean }>(apiClient, "POST", {
+      path: (configId) => `/annix-rep/crm/configs/${configId}/refresh-token`,
+    }),
   },
 
   routes: {
@@ -2370,22 +1986,23 @@ export const annixRepApi = {
       return handleResponse<ColdCallSuggestion[]>(response);
     },
 
-    optimizeRoute: async (
-      startLat: number,
-      startLng: number,
-      stops: Array<{ id: number; type: "prospect" | "meeting" }>,
-      returnToStart?: boolean,
-    ): Promise<OptimizedRoute> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/routes/optimize`, {
-        method: "POST",
-        headers: {
-          ...annixRepAuthHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ startLat, startLng, stops, returnToStart }),
-      });
-      return handleResponse<OptimizedRoute>(response);
-    },
+    optimizeRoute: createEndpoint<
+      [
+        startLat: number,
+        startLng: number,
+        stops: Array<{ id: number; type: "prospect" | "meeting" }>,
+        returnToStart?: boolean,
+      ],
+      OptimizedRoute
+    >(apiClient, "POST", {
+      path: "/annix-rep/routes/optimize",
+      body: (startLat, startLng, stops, returnToStart) => ({
+        startLat,
+        startLng,
+        stops,
+        returnToStart,
+      }),
+    }),
 
     planDayRoute: async (
       date: string,
@@ -2406,12 +2023,9 @@ export const annixRepApi = {
   },
 
   repProfile: {
-    status: async (): Promise<RepProfileStatus> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/rep-profile/status`, {
-        headers: annixRepAuthHeaders(),
-      });
-      return handleResponse<RepProfileStatus>(response);
-    },
+    status: createEndpoint<[], RepProfileStatus>(apiClient, "GET", {
+      path: "/annix-rep/rep-profile/status",
+    }),
 
     profile: async (): Promise<RepProfile | null> => {
       const response = await fetch(`${browserBaseUrl()}/annix-rep/rep-profile`, {
@@ -2421,53 +2035,29 @@ export const annixRepApi = {
       return handleResponse<RepProfile>(response);
     },
 
-    create: async (dto: CreateRepProfileDto): Promise<RepProfile> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/rep-profile`, {
-        method: "POST",
-        headers: {
-          ...annixRepAuthHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(dto),
-      });
-      return handleResponse<RepProfile>(response);
-    },
+    create: createEndpoint<[dto: CreateRepProfileDto], RepProfile>(apiClient, "POST", {
+      path: "/annix-rep/rep-profile",
+      body: (dto) => dto,
+    }),
 
-    update: async (dto: UpdateRepProfileDto): Promise<RepProfile> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/rep-profile`, {
-        method: "PATCH",
-        headers: {
-          ...annixRepAuthHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(dto),
-      });
-      return handleResponse<RepProfile>(response);
-    },
+    update: createEndpoint<[dto: UpdateRepProfileDto], RepProfile>(apiClient, "PATCH", {
+      path: "/annix-rep/rep-profile",
+      body: (dto) => dto,
+    }),
 
-    completeSetup: async (): Promise<RepProfile> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/rep-profile/complete-setup`, {
-        method: "POST",
-        headers: annixRepAuthHeaders(),
-      });
-      return handleResponse<RepProfile>(response);
-    },
+    completeSetup: createEndpoint<[], RepProfile>(apiClient, "POST", {
+      path: "/annix-rep/rep-profile/complete-setup",
+    }),
 
-    searchTerms: async (): Promise<string[]> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/rep-profile/search-terms`, {
-        headers: annixRepAuthHeaders(),
-      });
-      return handleResponse<string[]>(response);
-    },
+    searchTerms: createEndpoint<[], string[]>(apiClient, "GET", {
+      path: "/annix-rep/rep-profile/search-terms",
+    }),
   },
 
   analytics: {
-    summary: async (): Promise<AnalyticsSummary> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/analytics/summary`, {
-        headers: annixRepAuthHeaders(),
-      });
-      return handleResponse<AnalyticsSummary>(response);
-    },
+    summary: createEndpoint<[], AnalyticsSummary>(apiClient, "GET", {
+      path: "/annix-rep/analytics/summary",
+    }),
 
     meetingsOverTime: async (
       period?: "week" | "month",
@@ -2486,12 +2076,9 @@ export const annixRepApi = {
       return handleResponse<MeetingsOverTime[]>(response);
     },
 
-    prospectFunnel: async (): Promise<ProspectFunnel[]> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/analytics/prospect-funnel`, {
-        headers: annixRepAuthHeaders(),
-      });
-      return handleResponse<ProspectFunnel[]>(response);
-    },
+    prospectFunnel: createEndpoint<[], ProspectFunnel[]>(apiClient, "GET", {
+      path: "/annix-rep/analytics/prospect-funnel",
+    }),
 
     winLossRateTrends: async (months?: number): Promise<WinLossRateTrend[]> => {
       const params = months ? `?months=${months}` : "";
@@ -2504,19 +2091,13 @@ export const annixRepApi = {
       return handleResponse<WinLossRateTrend[]>(response);
     },
 
-    activityHeatmap: async (): Promise<ActivityHeatmapCell[]> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/analytics/activity-heatmap`, {
-        headers: annixRepAuthHeaders(),
-      });
-      return handleResponse<ActivityHeatmapCell[]>(response);
-    },
+    activityHeatmap: createEndpoint<[], ActivityHeatmapCell[]>(apiClient, "GET", {
+      path: "/annix-rep/analytics/activity-heatmap",
+    }),
 
-    revenuePipeline: async (): Promise<RevenuePipeline[]> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/analytics/revenue-pipeline`, {
-        headers: annixRepAuthHeaders(),
-      });
-      return handleResponse<RevenuePipeline[]>(response);
-    },
+    revenuePipeline: createEndpoint<[], RevenuePipeline[]>(apiClient, "GET", {
+      path: "/annix-rep/analytics/revenue-pipeline",
+    }),
 
     topProspects: async (limit?: number): Promise<TopProspect[]> => {
       const params = limit ? `?limit=${limit}` : "";
@@ -2531,106 +2112,59 @@ export const annixRepApi = {
   },
 
   bookingLinks: {
-    list: async (): Promise<BookingLink[]> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/booking-links`, {
-        headers: annixRepAuthHeaders(),
-      });
-      return handleResponse<BookingLink[]>(response);
-    },
+    list: createEndpoint<[], BookingLink[]>(apiClient, "GET", {
+      path: "/annix-rep/booking-links",
+    }),
 
-    detail: async (id: number): Promise<BookingLink> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/booking-links/${id}`, {
-        headers: annixRepAuthHeaders(),
-      });
-      return handleResponse<BookingLink>(response);
-    },
+    detail: createEndpoint<[id: number], BookingLink>(apiClient, "GET", {
+      path: (id) => `/annix-rep/booking-links/${id}`,
+    }),
 
-    create: async (dto: CreateBookingLinkDto): Promise<BookingLink> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/booking-links`, {
-        method: "POST",
-        headers: {
-          ...annixRepAuthHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(dto),
-      });
-      return handleResponse<BookingLink>(response);
-    },
+    create: createEndpoint<[dto: CreateBookingLinkDto], BookingLink>(apiClient, "POST", {
+      path: "/annix-rep/booking-links",
+      body: (dto) => dto,
+    }),
 
-    update: async (id: number, dto: UpdateBookingLinkDto): Promise<BookingLink> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/booking-links/${id}`, {
-        method: "PATCH",
-        headers: {
-          ...annixRepAuthHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(dto),
-      });
-      return handleResponse<BookingLink>(response);
-    },
+    update: createEndpoint<[id: number, dto: UpdateBookingLinkDto], BookingLink>(
+      apiClient,
+      "PATCH",
+      {
+        path: (id, _dto) => `/annix-rep/booking-links/${id}`,
+        body: (_id, dto) => dto,
+      },
+    ),
 
-    delete: async (id: number): Promise<void> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/booking-links/${id}`, {
-        method: "DELETE",
-        headers: annixRepAuthHeaders(),
-      });
-      await throwIfNotOk(response);
-    },
+    delete: createEndpoint<[id: number], void>(apiClient, "DELETE", {
+      path: (id) => `/annix-rep/booking-links/${id}`,
+    }),
   },
 
   goals: {
-    list: async (): Promise<SalesGoal[]> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/goals`, {
-        headers: annixRepAuthHeaders(),
-      });
-      return handleResponse<SalesGoal[]>(response);
-    },
+    list: createEndpoint<[], SalesGoal[]>(apiClient, "GET", {
+      path: "/annix-rep/goals",
+    }),
 
-    byPeriod: async (period: GoalPeriod): Promise<SalesGoal> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/goals/${period}`, {
-        headers: annixRepAuthHeaders(),
-      });
-      return handleResponse<SalesGoal>(response);
-    },
+    byPeriod: createEndpoint<[period: GoalPeriod], SalesGoal>(apiClient, "GET", {
+      path: (period) => `/annix-rep/goals/${period}`,
+    }),
 
-    createOrUpdate: async (dto: CreateGoalDto): Promise<SalesGoal> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/goals`, {
-        method: "POST",
-        headers: {
-          ...annixRepAuthHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(dto),
-      });
-      return handleResponse<SalesGoal>(response);
-    },
+    createOrUpdate: createEndpoint<[dto: CreateGoalDto], SalesGoal>(apiClient, "POST", {
+      path: "/annix-rep/goals",
+      body: (dto) => dto,
+    }),
 
-    update: async (period: GoalPeriod, dto: UpdateGoalDto): Promise<SalesGoal> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/goals/${period}`, {
-        method: "PUT",
-        headers: {
-          ...annixRepAuthHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(dto),
-      });
-      return handleResponse<SalesGoal>(response);
-    },
+    update: createEndpoint<[period: GoalPeriod, dto: UpdateGoalDto], SalesGoal>(apiClient, "PUT", {
+      path: (period, _dto) => `/annix-rep/goals/${period}`,
+      body: (_period, dto) => dto,
+    }),
 
-    delete: async (period: GoalPeriod): Promise<void> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/goals/${period}`, {
-        method: "DELETE",
-        headers: annixRepAuthHeaders(),
-      });
-      await throwIfNotOk(response);
-    },
+    delete: createEndpoint<[period: GoalPeriod], void>(apiClient, "DELETE", {
+      path: (period) => `/annix-rep/goals/${period}`,
+    }),
 
-    progress: async (period: GoalPeriod): Promise<GoalProgress> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/goals/${period}/progress`, {
-        headers: annixRepAuthHeaders(),
-      });
-      return handleResponse<GoalProgress>(response);
-    },
+    progress: createEndpoint<[period: GoalPeriod], GoalProgress>(apiClient, "GET", {
+      path: (period) => `/annix-rep/goals/${period}/progress`,
+    }),
   },
 
   reports: {
@@ -2731,55 +2265,33 @@ export const annixRepApi = {
   },
 
   discovery: {
-    search: async (dto: DiscoverProspectsDto): Promise<DiscoverySearchResult> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/discovery/search`, {
-        method: "POST",
-        headers: {
-          ...annixRepAuthHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(dto),
-      });
-      return handleResponse<DiscoverySearchResult>(response);
-    },
+    search: createEndpoint<[dto: DiscoverProspectsDto], DiscoverySearchResult>(apiClient, "POST", {
+      path: "/annix-rep/discovery/search",
+      body: (dto) => dto,
+    }),
 
-    import: async (businesses: DiscoveredBusiness[]): Promise<DiscoveryImportResult> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/discovery/import`, {
-        method: "POST",
-        headers: {
-          ...annixRepAuthHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(businesses),
-      });
-      return handleResponse<DiscoveryImportResult>(response);
-    },
+    import: createEndpoint<[businesses: DiscoveredBusiness[]], DiscoveryImportResult>(
+      apiClient,
+      "POST",
+      {
+        path: "/annix-rep/discovery/import",
+        body: (businesses) => businesses,
+      },
+    ),
 
-    quota: async (): Promise<DiscoveryQuota> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/discovery/quota`, {
-        headers: annixRepAuthHeaders(),
-      });
-      return handleResponse<DiscoveryQuota>(response);
-    },
+    quota: createEndpoint<[], DiscoveryQuota>(apiClient, "GET", {
+      path: "/annix-rep/discovery/quota",
+    }),
   },
 
   meetingPlatforms: {
-    connections: async (): Promise<MeetingPlatformConnection[]> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/meeting-platforms/connections`, {
-        headers: annixRepAuthHeaders(),
-      });
-      return handleResponse<MeetingPlatformConnection[]>(response);
-    },
+    connections: createEndpoint<[], MeetingPlatformConnection[]>(apiClient, "GET", {
+      path: "/annix-rep/meeting-platforms/connections",
+    }),
 
-    connection: async (id: number): Promise<MeetingPlatformConnection> => {
-      const response = await fetch(
-        `${browserBaseUrl()}/annix-rep/meeting-platforms/connections/${id}`,
-        {
-          headers: annixRepAuthHeaders(),
-        },
-      );
-      return handleResponse<MeetingPlatformConnection>(response);
-    },
+    connection: createEndpoint<[id: number], MeetingPlatformConnection>(apiClient, "GET", {
+      path: (id) => `/annix-rep/meeting-platforms/connections/${id}`,
+    }),
 
     oauthUrl: async (
       platform: MeetingPlatform,
@@ -2793,53 +2305,26 @@ export const annixRepApi = {
       return handleResponse<{ url: string; state: string }>(response);
     },
 
-    oauthCallback: async (
-      platform: MeetingPlatform,
-      authCode: string,
-      redirectUri: string,
-    ): Promise<MeetingPlatformConnection> => {
-      const response = await fetch(
-        `${browserBaseUrl()}/annix-rep/meeting-platforms/oauth/${platform}/callback`,
-        {
-          method: "POST",
-          headers: {
-            ...annixRepAuthHeaders(),
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ authCode, redirectUri }),
-        },
-      );
-      return handleResponse<MeetingPlatformConnection>(response);
-    },
+    oauthCallback: createEndpoint<
+      [platform: MeetingPlatform, authCode: string, redirectUri: string],
+      MeetingPlatformConnection
+    >(apiClient, "POST", {
+      path: (platform, _authCode, _redirectUri) =>
+        `/annix-rep/meeting-platforms/oauth/${platform}/callback`,
+      body: (_platform, authCode, redirectUri) => ({ authCode, redirectUri }),
+    }),
 
-    update: async (
-      id: number,
-      dto: UpdateMeetingPlatformConnectionDto,
-    ): Promise<MeetingPlatformConnection> => {
-      const response = await fetch(
-        `${browserBaseUrl()}/annix-rep/meeting-platforms/connections/${id}`,
-        {
-          method: "PATCH",
-          headers: {
-            ...annixRepAuthHeaders(),
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(dto),
-        },
-      );
-      return handleResponse<MeetingPlatformConnection>(response);
-    },
+    update: createEndpoint<
+      [id: number, dto: UpdateMeetingPlatformConnectionDto],
+      MeetingPlatformConnection
+    >(apiClient, "PATCH", {
+      path: (id, _dto) => `/annix-rep/meeting-platforms/connections/${id}`,
+      body: (_id, dto) => dto,
+    }),
 
-    disconnect: async (id: number): Promise<{ success: boolean }> => {
-      const response = await fetch(
-        `${browserBaseUrl()}/annix-rep/meeting-platforms/connections/${id}`,
-        {
-          method: "DELETE",
-          headers: annixRepAuthHeaders(),
-        },
-      );
-      return handleResponse<{ success: boolean }>(response);
-    },
+    disconnect: createEndpoint<[id: number], { success: boolean }>(apiClient, "DELETE", {
+      path: (id) => `/annix-rep/meeting-platforms/connections/${id}`,
+    }),
 
     sync: async (
       id: number,
@@ -2865,13 +2350,9 @@ export const annixRepApi = {
       return handleResponse<PlatformMeetingRecord[]>(response);
     },
 
-    recording: async (recordId: number): Promise<PlatformMeetingRecord> => {
-      const response = await fetch(
-        `${browserBaseUrl()}/annix-rep/meeting-platforms/recordings/${recordId}`,
-        { headers: annixRepAuthHeaders() },
-      );
-      return handleResponse<PlatformMeetingRecord>(response);
-    },
+    recording: createEndpoint<[recordId: number], PlatformMeetingRecord>(apiClient, "GET", {
+      path: (recordId) => `/annix-rep/meeting-platforms/recordings/${recordId}`,
+    }),
 
     availablePlatforms: async (): Promise<{
       platforms: Array<{ id: MeetingPlatform; name: string; description: string }>;
@@ -2886,46 +2367,23 @@ export const annixRepApi = {
   },
 
   teamsBot: {
-    join: async (dto: JoinTeamsMeetingDto): Promise<TeamsBotSession> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/teams-bot/join`, {
-        method: "POST",
-        headers: {
-          ...annixRepAuthHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(dto),
-      });
-      return handleResponse<TeamsBotSession>(response);
-    },
+    join: createEndpoint<[dto: JoinTeamsMeetingDto], TeamsBotSession>(apiClient, "POST", {
+      path: "/annix-rep/teams-bot/join",
+      body: (dto) => dto,
+    }),
 
-    leave: async (sessionId: string): Promise<TeamsBotSession> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/teams-bot/leave`, {
-        method: "POST",
-        headers: {
-          ...annixRepAuthHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ sessionId }),
-      });
-      return handleResponse<TeamsBotSession>(response);
-    },
+    leave: createEndpoint<[sessionId: string], TeamsBotSession>(apiClient, "POST", {
+      path: "/annix-rep/teams-bot/leave",
+      body: (sessionId) => ({ sessionId }),
+    }),
 
-    session: async (sessionId: string): Promise<TeamsBotSession> => {
-      const response = await fetch(
-        `${browserBaseUrl()}/annix-rep/teams-bot/sessions/${sessionId}`,
-        {
-          headers: annixRepAuthHeaders(),
-        },
-      );
-      return handleResponse<TeamsBotSession>(response);
-    },
+    session: createEndpoint<[sessionId: string], TeamsBotSession>(apiClient, "GET", {
+      path: (sessionId) => `/annix-rep/teams-bot/sessions/${sessionId}`,
+    }),
 
-    activeSessions: async (): Promise<TeamsBotSession[]> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/teams-bot/sessions/active`, {
-        headers: annixRepAuthHeaders(),
-      });
-      return handleResponse<TeamsBotSession[]>(response);
-    },
+    activeSessions: createEndpoint<[], TeamsBotSession[]>(apiClient, "GET", {
+      path: "/annix-rep/teams-bot/sessions/active",
+    }),
 
     sessionHistory: async (limit?: number): Promise<TeamsBotSession[]> => {
       const params = limit ? `?limit=${limit}` : "";
@@ -2938,15 +2396,9 @@ export const annixRepApi = {
       return handleResponse<TeamsBotSession[]>(response);
     },
 
-    transcript: async (sessionId: string): Promise<TeamsBotTranscript> => {
-      const response = await fetch(
-        `${browserBaseUrl()}/annix-rep/teams-bot/sessions/${sessionId}/transcript`,
-        {
-          headers: annixRepAuthHeaders(),
-        },
-      );
-      return handleResponse<TeamsBotTranscript>(response);
-    },
+    transcript: createEndpoint<[sessionId: string], TeamsBotTranscript>(apiClient, "GET", {
+      path: (sessionId) => `/annix-rep/teams-bot/sessions/${sessionId}/transcript`,
+    }),
 
     eventsUrl: (sessionId: string): string => {
       return `${browserBaseUrl()}/annix-rep/teams-bot/events/${sessionId}`;
@@ -3228,127 +2680,74 @@ export const teamApi = {
       return handleResponse<Organization>(response);
     },
 
-    create: async (dto: CreateOrganizationDto): Promise<Organization> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/organization`, {
-        method: "POST",
-        headers: {
-          ...annixRepAuthHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(dto),
-      });
-      return handleResponse<Organization>(response);
-    },
+    create: createEndpoint<[dto: CreateOrganizationDto], Organization>(apiClient, "POST", {
+      path: "/annix-rep/organization",
+      body: (dto) => dto,
+    }),
 
-    update: async (id: number, dto: UpdateOrganizationDto): Promise<Organization> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/organization/${id}`, {
-        method: "PATCH",
-        headers: {
-          ...annixRepAuthHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(dto),
-      });
-      return handleResponse<Organization>(response);
-    },
+    update: createEndpoint<[id: number, dto: UpdateOrganizationDto], Organization>(
+      apiClient,
+      "PATCH",
+      {
+        path: (id, _dto) => `/annix-rep/organization/${id}`,
+        body: (_id, dto) => dto,
+      },
+    ),
 
-    delete: async (id: number): Promise<void> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/organization/${id}`, {
-        method: "DELETE",
-        headers: annixRepAuthHeaders(),
-      });
-      await throwIfNotOk(response);
-    },
+    delete: createEndpoint<[id: number], void>(apiClient, "DELETE", {
+      path: (id) => `/annix-rep/organization/${id}`,
+    }),
 
-    stats: async (id: number): Promise<OrganizationStats> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/organization/${id}/stats`, {
-        headers: annixRepAuthHeaders(),
-      });
-      return handleResponse<OrganizationStats>(response);
-    },
+    stats: createEndpoint<[id: number], OrganizationStats>(apiClient, "GET", {
+      path: (id) => `/annix-rep/organization/${id}/stats`,
+    }),
   },
 
   members: {
-    list: async (): Promise<TeamMember[]> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/team/members`, {
-        headers: annixRepAuthHeaders(),
-      });
-      return handleResponse<TeamMember[]>(response);
-    },
+    list: createEndpoint<[], TeamMember[]>(apiClient, "GET", {
+      path: "/annix-rep/team/members",
+    }),
 
-    detail: async (id: number): Promise<TeamMember> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/team/members/${id}`, {
-        headers: annixRepAuthHeaders(),
-      });
-      return handleResponse<TeamMember>(response);
-    },
+    detail: createEndpoint<[id: number], TeamMember>(apiClient, "GET", {
+      path: (id) => `/annix-rep/team/members/${id}`,
+    }),
 
-    updateRole: async (id: number, role: TeamRole): Promise<TeamMember> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/team/members/${id}/role`, {
-        method: "PATCH",
-        headers: {
-          ...annixRepAuthHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ role }),
-      });
-      return handleResponse<TeamMember>(response);
-    },
+    updateRole: createEndpoint<[id: number, role: TeamRole], TeamMember>(apiClient, "PATCH", {
+      path: (id, _role) => `/annix-rep/team/members/${id}/role`,
+      body: (_id, role) => ({ role }),
+    }),
 
-    remove: async (id: number): Promise<void> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/team/members/${id}`, {
-        method: "DELETE",
-        headers: annixRepAuthHeaders(),
-      });
-      await throwIfNotOk(response);
-    },
+    remove: createEndpoint<[id: number], void>(apiClient, "DELETE", {
+      path: (id) => `/annix-rep/team/members/${id}`,
+    }),
 
-    setReportsTo: async (id: number, reportsToId: number | null): Promise<TeamMember> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/team/members/${id}/reports-to`, {
-        method: "PATCH",
-        headers: {
-          ...annixRepAuthHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ reportsToId }),
-      });
-      return handleResponse<TeamMember>(response);
-    },
+    setReportsTo: createEndpoint<[id: number, reportsToId: number | null], TeamMember>(
+      apiClient,
+      "PATCH",
+      {
+        path: (id, _reportsToId) => `/annix-rep/team/members/${id}/reports-to`,
+        body: (_id, reportsToId) => ({ reportsToId }),
+      },
+    ),
 
-    hierarchy: async (): Promise<TeamHierarchyNode[]> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/team/hierarchy`, {
-        headers: annixRepAuthHeaders(),
-      });
-      return handleResponse<TeamHierarchyNode[]>(response);
-    },
+    hierarchy: createEndpoint<[], TeamHierarchyNode[]>(apiClient, "GET", {
+      path: "/annix-rep/team/hierarchy",
+    }),
 
-    myTeam: async (): Promise<TeamMember[]> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/team/my-team`, {
-        headers: annixRepAuthHeaders(),
-      });
-      return handleResponse<TeamMember[]>(response);
-    },
+    myTeam: createEndpoint<[], TeamMember[]>(apiClient, "GET", {
+      path: "/annix-rep/team/my-team",
+    }),
   },
 
   invitations: {
-    list: async (): Promise<TeamInvitation[]> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/team/invitations`, {
-        headers: annixRepAuthHeaders(),
-      });
-      return handleResponse<TeamInvitation[]>(response);
-    },
+    list: createEndpoint<[], TeamInvitation[]>(apiClient, "GET", {
+      path: "/annix-rep/team/invitations",
+    }),
 
-    create: async (dto: CreateInvitationDto): Promise<TeamInvitation> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/team/invitations`, {
-        method: "POST",
-        headers: {
-          ...annixRepAuthHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(dto),
-      });
-      return handleResponse<TeamInvitation>(response);
-    },
+    create: createEndpoint<[dto: CreateInvitationDto], TeamInvitation>(apiClient, "POST", {
+      path: "/annix-rep/team/invitations",
+      body: (dto) => dto,
+    }),
 
     validate: async (token: string): Promise<ValidateInvitationResult> => {
       const response = await fetch(
@@ -3357,16 +2756,9 @@ export const teamApi = {
       return handleResponse<ValidateInvitationResult>(response);
     },
 
-    accept: async (token: string): Promise<TeamMember> => {
-      const response = await fetch(
-        `${browserBaseUrl()}/annix-rep/team/invitations/${token}/accept`,
-        {
-          method: "POST",
-          headers: annixRepAuthHeaders(),
-        },
-      );
-      return handleResponse<TeamMember>(response);
-    },
+    accept: createEndpoint<[token: string], TeamMember>(apiClient, "POST", {
+      path: (token) => `/annix-rep/team/invitations/${token}/accept`,
+    }),
 
     decline: async (token: string): Promise<void> => {
       const response = await fetch(
@@ -3378,138 +2770,73 @@ export const teamApi = {
       await throwIfNotOk(response);
     },
 
-    cancel: async (id: number): Promise<void> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/team/invitations/${id}`, {
-        method: "DELETE",
-        headers: annixRepAuthHeaders(),
-      });
-      await throwIfNotOk(response);
-    },
+    cancel: createEndpoint<[id: number], void>(apiClient, "DELETE", {
+      path: (id) => `/annix-rep/team/invitations/${id}`,
+    }),
 
-    resend: async (id: number): Promise<TeamInvitation> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/team/invitations/${id}/resend`, {
-        method: "POST",
-        headers: annixRepAuthHeaders(),
-      });
-      return handleResponse<TeamInvitation>(response);
-    },
+    resend: createEndpoint<[id: number], TeamInvitation>(apiClient, "POST", {
+      path: (id) => `/annix-rep/team/invitations/${id}/resend`,
+    }),
   },
 
   territories: {
-    list: async (): Promise<Territory[]> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/territories`, {
-        headers: annixRepAuthHeaders(),
-      });
-      return handleResponse<Territory[]>(response);
-    },
+    list: createEndpoint<[], Territory[]>(apiClient, "GET", {
+      path: "/annix-rep/territories",
+    }),
 
-    my: async (): Promise<Territory[]> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/territories/my`, {
-        headers: annixRepAuthHeaders(),
-      });
-      return handleResponse<Territory[]>(response);
-    },
+    my: createEndpoint<[], Territory[]>(apiClient, "GET", {
+      path: "/annix-rep/territories/my",
+    }),
 
-    detail: async (id: number): Promise<Territory> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/territories/${id}`, {
-        headers: annixRepAuthHeaders(),
-      });
-      return handleResponse<Territory>(response);
-    },
+    detail: createEndpoint<[id: number], Territory>(apiClient, "GET", {
+      path: (id) => `/annix-rep/territories/${id}`,
+    }),
 
-    create: async (dto: CreateTerritoryDto): Promise<Territory> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/territories`, {
-        method: "POST",
-        headers: {
-          ...annixRepAuthHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(dto),
-      });
-      return handleResponse<Territory>(response);
-    },
+    create: createEndpoint<[dto: CreateTerritoryDto], Territory>(apiClient, "POST", {
+      path: "/annix-rep/territories",
+      body: (dto) => dto,
+    }),
 
-    update: async (id: number, dto: UpdateTerritoryDto): Promise<Territory> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/territories/${id}`, {
-        method: "PATCH",
-        headers: {
-          ...annixRepAuthHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(dto),
-      });
-      return handleResponse<Territory>(response);
-    },
+    update: createEndpoint<[id: number, dto: UpdateTerritoryDto], Territory>(apiClient, "PATCH", {
+      path: (id, _dto) => `/annix-rep/territories/${id}`,
+      body: (_id, dto) => dto,
+    }),
 
-    delete: async (id: number): Promise<void> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/territories/${id}`, {
-        method: "DELETE",
-        headers: annixRepAuthHeaders(),
-      });
-      await throwIfNotOk(response);
-    },
+    delete: createEndpoint<[id: number], void>(apiClient, "DELETE", {
+      path: (id) => `/annix-rep/territories/${id}`,
+    }),
 
-    assign: async (id: number, userId: number | null): Promise<Territory> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/territories/${id}/assign`, {
-        method: "PATCH",
-        headers: {
-          ...annixRepAuthHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ userId }),
-      });
-      return handleResponse<Territory>(response);
-    },
+    assign: createEndpoint<[id: number, userId: number | null], Territory>(apiClient, "PATCH", {
+      path: (id, _userId) => `/annix-rep/territories/${id}/assign`,
+      body: (_id, userId) => ({ userId }),
+    }),
 
-    prospects: async (id: number): Promise<Prospect[]> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/territories/${id}/prospects`, {
-        headers: annixRepAuthHeaders(),
-      });
-      return handleResponse<Prospect[]>(response);
-    },
+    prospects: createEndpoint<[id: number], Prospect[]>(apiClient, "GET", {
+      path: (id) => `/annix-rep/territories/${id}/prospects`,
+    }),
   },
 
   handoff: {
-    handoff: async (prospectId: number, toUserId: number, reason?: string): Promise<Prospect> => {
-      const response = await fetch(
-        `${browserBaseUrl()}/annix-rep/prospects/handoff/${prospectId}`,
-        {
-          method: "POST",
-          headers: {
-            ...annixRepAuthHeaders(),
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ toUserId, reason }),
-        },
-      );
-      return handleResponse<Prospect>(response);
-    },
+    handoff: createEndpoint<[prospectId: number, toUserId: number, reason?: string], Prospect>(
+      apiClient,
+      "POST",
+      {
+        path: (prospectId, _toUserId, _reason) => `/annix-rep/prospects/handoff/${prospectId}`,
+        body: (_prospectId, toUserId, reason) => ({ toUserId, reason }),
+      },
+    ),
 
-    bulkHandoff: async (
-      prospectIds: number[],
-      toUserId: number,
-      reason?: string,
-    ): Promise<Prospect[]> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/prospects/handoff/bulk`, {
-        method: "POST",
-        headers: {
-          ...annixRepAuthHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ prospectIds, toUserId, reason }),
-      });
-      return handleResponse<Prospect[]>(response);
-    },
+    bulkHandoff: createEndpoint<
+      [prospectIds: number[], toUserId: number, reason?: string],
+      Prospect[]
+    >(apiClient, "POST", {
+      path: "/annix-rep/prospects/handoff/bulk",
+      body: (prospectIds, toUserId, reason) => ({ prospectIds, toUserId, reason }),
+    }),
 
-    history: async (prospectId: number): Promise<HandoffHistory[]> => {
-      const response = await fetch(
-        `${browserBaseUrl()}/annix-rep/prospects/handoff/${prospectId}/history`,
-        {
-          headers: annixRepAuthHeaders(),
-        },
-      );
-      return handleResponse<HandoffHistory[]>(response);
-    },
+    history: createEndpoint<[prospectId: number], HandoffHistory[]>(apiClient, "GET", {
+      path: (prospectId) => `/annix-rep/prospects/handoff/${prospectId}/history`,
+    }),
   },
 
   activity: {
@@ -3545,12 +2872,9 @@ export const teamApi = {
   },
 
   manager: {
-    dashboard: async (): Promise<ManagerDashboard> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/manager/dashboard`, {
-        headers: annixRepAuthHeaders(),
-      });
-      return handleResponse<ManagerDashboard>(response);
-    },
+    dashboard: createEndpoint<[], ManagerDashboard>(apiClient, "GET", {
+      path: "/annix-rep/manager/dashboard",
+    }),
 
     teamPerformance: async (startDate?: string, endDate?: string): Promise<MemberPerformance[]> => {
       const params = new URLSearchParams();
@@ -3566,12 +2890,9 @@ export const teamApi = {
       return handleResponse<MemberPerformance[]>(response);
     },
 
-    territoryPerformance: async (): Promise<TerritoryPerformance[]> => {
-      const response = await fetch(`${browserBaseUrl()}/annix-rep/manager/territory-performance`, {
-        headers: annixRepAuthHeaders(),
-      });
-      return handleResponse<TerritoryPerformance[]>(response);
-    },
+    territoryPerformance: createEndpoint<[], TerritoryPerformance[]>(apiClient, "GET", {
+      path: "/annix-rep/manager/territory-performance",
+    }),
 
     pipelineByRep: async (): Promise<
       Array<{ userId: number; userName: string; pipeline: number }>
