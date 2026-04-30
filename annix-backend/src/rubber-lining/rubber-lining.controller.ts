@@ -221,6 +221,7 @@ import {
   RubberTaxInvoiceService,
   UpdateTaxInvoiceDto,
 } from "./rubber-tax-invoice.service";
+import { PdfPageCacheService } from "./services/pdf-page-cache.service";
 import { RubberExtractionOrchestratorService } from "./services/rubber-extraction-orchestrator.service";
 import { RubberOrderConfirmationService } from "./services/rubber-order-confirmation.service";
 
@@ -268,6 +269,7 @@ export class RubberLiningController {
     private readonly rubberRollIssuanceService: RubberRollIssuanceService,
     private readonly rubberOrderConfirmationService: RubberOrderConfirmationService,
     private readonly extractionOrchestratorService: RubberExtractionOrchestratorService,
+    private readonly pdfPageCacheService: PdfPageCacheService,
     @InjectRepository(RubberAppProfile)
     private readonly appProfileRepository: Repository<RubberAppProfile>,
   ) {}
@@ -1508,7 +1510,9 @@ Formula: totalPrice = totalKg × salePricePerKg
               deliveryDate: dn.deliveryDate ?? null,
               customerName: dn.customerName ?? null,
               customerReference: dn.customerReference ?? null,
+              supplierName: dn.supplierName ?? null,
               pageNumber: dnIdx + 1,
+              sourcePages: dn.sourcePages && dn.sourcePages.length > 0 ? dn.sourcePages : null,
             })),
         );
 
@@ -1624,8 +1628,11 @@ Formula: totalPrice = totalKg × salePricePerKg
       throw new BadRequestException("Page number must be at least 1");
     }
 
-    const pdfBuffer = await this.storageService.download(note.documentPath);
-    const images = await this.rubberCocExtractionService.convertPdfToImages(pdfBuffer);
+    const documentPath = note.documentPath;
+    const images = await this.pdfPageCacheService.pages(documentPath, async () => {
+      const pdfBuffer = await this.storageService.download(documentPath);
+      return this.rubberCocExtractionService.convertPdfToImages(pdfBuffer);
+    });
 
     if (pageNum > images.length) {
       throw new NotFoundException(`Page ${pageNum} not found. PDF has ${images.length} pages.`);
@@ -3058,7 +3065,11 @@ Formula: totalPrice = totalKg × salePricePerKg
     );
 
     const withDocuments = allNotes.filter(
-      (note) => note.documentPath && matchingCompanyIds.has(note.supplierCompanyId),
+      (note) =>
+        note.documentPath &&
+        matchingCompanyIds.has(note.supplierCompanyId) &&
+        (note.status === DeliveryNoteStatus.PENDING ||
+          note.status === DeliveryNoteStatus.EXTRACTED),
     );
     const startedAt = nowISO();
     const logger = this.logger;

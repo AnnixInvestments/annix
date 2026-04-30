@@ -104,6 +104,7 @@ import { RubberStockService } from "./rubber-stock.service";
 import { RubberStockLocationService } from "./rubber-stock-location.service";
 import { RubberTaxInvoiceService } from "./rubber-tax-invoice.service";
 import { ArEmailAdapterService } from "./services/ar-email-adapter.service";
+import { PdfPageCacheService } from "./services/pdf-page-cache.service";
 import { RubberExtractionOrchestratorService } from "./services/rubber-extraction-orchestrator.service";
 import { RubberOrderConfirmationService } from "./services/rubber-order-confirmation.service";
 import { TestimonialsController } from "./testimonials.controller";
@@ -218,6 +219,7 @@ import { WebsitePagesService } from "./website-pages.service";
     TestimonialsService,
     BlogPostsService,
     ArEmailAdapterService,
+    PdfPageCacheService,
     RubberExtractionOrchestratorService,
     RubberCompanyDirectorService,
     RubberAccountingPdfService,

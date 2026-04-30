@@ -21,6 +21,7 @@ import {
   DeliveryNoteStatus,
   DeliveryNoteType,
   ExtractedDeliveryNoteData,
+  ExtractedDeliveryNoteRoll,
   RubberDeliveryNote,
 } from "./entities/rubber-delivery-note.entity";
 import { RubberDeliveryNoteCorrection } from "./entities/rubber-delivery-note-correction.entity";
@@ -792,6 +793,41 @@ export class RubberDeliveryNoteService {
     await this.deliveryNoteItemRepository.delete({ deliveryNoteId });
   }
 
+  async replaceItemsFromRolls(
+    deliveryNoteId: number,
+    rolls: ExtractedDeliveryNoteRoll[],
+  ): Promise<void> {
+    await this.deliveryNoteItemRepository.delete({ deliveryNoteId });
+    if (rolls.length === 0) return;
+
+    const note = await this.deliveryNoteRepository.findOne({
+      where: { id: deliveryNoteId },
+      relations: ["supplierCompany"],
+    });
+    if (!note) return;
+    const sg = await this.specificGravityForDeliveryNote(note);
+
+    const items = rolls.map((roll) => {
+      const item = this.deliveryNoteItemRepository.create({
+        firebaseUid: `pg_${generateUniqueId()}`,
+        deliveryNoteId,
+        rollNumber: roll.rollNumber ?? null,
+        rollWeightKg: roll.weightKg ?? null,
+        widthMm: roll.widthMm ?? null,
+        thicknessMm: roll.thicknessMm ?? null,
+        lengthM: roll.lengthM ?? null,
+        compoundType: roll.compoundCode ?? null,
+        linkedBatchIds: [],
+        itemCategory: "ROLL",
+        quantity: 1,
+      });
+      this.calculateWeightDeviation(item, sg);
+      return item;
+    });
+
+    await this.deliveryNoteItemRepository.save(items);
+  }
+
   async deleteDeliveryNote(id: number): Promise<boolean> {
     const result = await this.deliveryNoteRepository.delete(id);
     return (result.affected || 0) > 0;
@@ -933,6 +969,7 @@ export class RubberDeliveryNoteService {
       note.status = DeliveryNoteStatus.EXTRACTED;
       note.sourcePageNumbers = this.sourcePagesFromRolls(ownRolls);
       await this.deliveryNoteRepository.save(note);
+      await this.replaceItemsFromRolls(note.id, ownRolls);
       this.logger.log(
         `Re-extract on existing DN ${noteDnNumber} (#${note.id}) — kept own rolls (${ownRolls.length}), skipped splitting against ${rollsByDnNumber.size - 1} sibling DN(s) already in the system`,
       );
@@ -972,6 +1009,7 @@ export class RubberDeliveryNoteService {
       }
 
       await this.deliveryNoteRepository.save(note);
+      await this.replaceItemsFromRolls(note.id, singleRolls);
       return { deliveryNoteIds: [note.id] };
     }
 
@@ -1015,6 +1053,7 @@ export class RubberDeliveryNoteService {
             );
           }
           await this.deliveryNoteRepository.save(note);
+          await this.replaceItemsFromRolls(note.id, rolls);
           return [...acc, note.id];
         }
 
@@ -1039,6 +1078,7 @@ export class RubberDeliveryNoteService {
           sourcePageNumbers: this.sourcePagesFromRolls(rolls),
         });
         const savedNote = await this.deliveryNoteRepository.save(newNote);
+        await this.replaceItemsFromRolls(savedNote.id, rolls);
         return [...acc, savedNote.id];
       },
       Promise.resolve([] as number[]),
