@@ -239,6 +239,8 @@ export interface EndpointConfig<TArgs extends unknown[], TResponse> {
   body?: (...args: TArgs) => unknown;
   formData?: (...args: TArgs) => FormData;
   transform?: (raw: unknown) => TResponse;
+  /** Response type. Defaults to "json" (parsed via client.request). Use "blob" for file downloads. */
+  responseType?: "json" | "blob";
 }
 
 export type Endpoint<TArgs extends unknown[], TResponse> = (...args: TArgs) => Promise<TResponse>;
@@ -281,7 +283,10 @@ export function createEndpoint<TArgs extends unknown[] = [], TResponse = unknown
       }
     }
 
-    const raw = await client.request<unknown>(fullPath, init);
+    const raw =
+      config.responseType === "blob"
+        ? await client.requestBlob(fullPath, init)
+        : await client.request<unknown>(fullPath, init);
     return (config.transform ? config.transform(raw) : raw) as TResponse;
   };
 

@@ -4,6 +4,12 @@
  */
 import type { CallOff } from "./rubberPortalApi";
 
+export interface SageExportFilter {
+  dateFrom?: string;
+  dateTo?: string;
+  excludeExported?: boolean;
+}
+
 export interface RubberOrderItemInput {
   productId?: number;
   thickness?: number;

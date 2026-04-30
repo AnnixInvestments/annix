@@ -190,6 +190,25 @@ describe("createEndpoint", () => {
     });
   });
 
+  it("uses requestBlob when responseType is 'blob' and returns the Blob unchanged", async () => {
+    const blob = new Blob(["pdf-bytes"], { type: "application/pdf" });
+    const requestBlob = vi.fn().mockResolvedValue(blob);
+    const request = vi.fn();
+    const client = stubClient(request);
+    (client as unknown as { requestBlob: typeof requestBlob }).requestBlob = requestBlob;
+
+    const download = createEndpoint<[id: number], Blob>(client, "GET", {
+      path: (id) => `/items/${id}/pdf`,
+      responseType: "blob",
+    });
+
+    const result = await download(7);
+
+    expect(result).toBe(blob);
+    expect(requestBlob).toHaveBeenCalledWith("/items/7/pdf", { method: "GET" });
+    expect(request).not.toHaveBeenCalled();
+  });
+
   it("does not send a body when the body builder returns null", async () => {
     const request = vi.fn().mockResolvedValue({});
     const client = stubClient(request);

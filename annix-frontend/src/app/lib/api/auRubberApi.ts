@@ -1,6 +1,11 @@
 import { toPairs as entries } from "es-toolkit/compat";
 import { throwIfNotOk } from "@/app/lib/api/apiError";
-import { type ApiClient, createApiClient, createEndpoint } from "@/app/lib/api/createApiClient";
+import {
+  type ApiClient,
+  createApiClient,
+  createEndpoint,
+  type QueryParamValue,
+} from "@/app/lib/api/createApiClient";
 import { auRubberTokenStore } from "@/app/lib/api/portalTokenStores";
 import type { RubberAppProfileDto } from "@/app/lib/api/rubberPortalApi";
 import { API_BASE_URL } from "@/lib/api-config";
@@ -83,6 +88,7 @@ import type {
   RubberTaxInvoiceStatementDto,
   SageContactMappingStatus,
   SageContactSyncResult,
+  SageExportFilter,
   ScrapedBrandingCandidates,
   StockLocationDto,
   SupplierCocType,
@@ -367,9 +373,10 @@ class AuRubberApiClient {
     path: (id) => `/rubber-lining/portal/orders/${id}`,
   });
 
-  orderConfirmationPdfBlob(orderId: number): Promise<Blob> {
-    return apiClient.requestBlob(`/rubber-lining/portal/orders/${orderId}/confirmation-pdf`);
-  }
+  orderConfirmationPdfBlob = createEndpoint<[orderId: number], Blob>(apiClient, "GET", {
+    path: (orderId) => `/rubber-lining/portal/orders/${orderId}/confirmation-pdf`,
+    responseType: "blob",
+  });
 
   sendOrderConfirmation = createEndpoint<
     [orderId: number, email: string, cc?: string, bcc?: string],
@@ -1461,13 +1468,15 @@ class AuRubberApiClient {
     return `${this.baseURL}/rubber-lining/portal/au-cocs/${id}/pdf`;
   }
 
-  async auCocPdfBlob(id: number): Promise<Blob> {
-    return this.requestBlob(`/rubber-lining/portal/au-cocs/${id}/pdf`);
-  }
+  auCocPdfBlob = createEndpoint<[id: number], Blob>(apiClient, "GET", {
+    path: (id) => `/rubber-lining/portal/au-cocs/${id}/pdf`,
+    responseType: "blob",
+  });
 
-  async downloadAuCocPdf(id: number): Promise<Blob> {
-    return this.requestBlob(`/rubber-lining/portal/au-cocs/${id}/pdf`);
-  }
+  downloadAuCocPdf = createEndpoint<[id: number], Blob>(apiClient, "GET", {
+    path: (id) => `/rubber-lining/portal/au-cocs/${id}/pdf`,
+    responseType: "blob",
+  });
 
   deleteAuCoc = createEndpoint<[id: number], void>(apiClient, "DELETE", {
     path: (id) => `/rubber-lining/portal/au-cocs/${id}`,
@@ -2055,77 +2064,37 @@ class AuRubberApiClient {
     });
   }
 
-  async cocSageExportPreview(params: {
-    dateFrom?: string;
-    dateTo?: string;
-    excludeExported?: boolean;
-  }): Promise<{ cocCount: number; batchCount: number; totalBatches: number }> {
-    const query = new URLSearchParams();
-    if (params.dateFrom) query.set("dateFrom", params.dateFrom);
-    if (params.dateTo) query.set("dateTo", params.dateTo);
-    if (params.excludeExported !== undefined) {
-      query.set("excludeExported", String(params.excludeExported));
-    }
-    return this.request(
-      `/rubber-lining/portal/supplier-cocs/export/sage-preview?${query.toString()}`,
-    );
-  }
+  cocSageExportPreview = createEndpoint<
+    [params: SageExportFilter],
+    { cocCount: number; batchCount: number; totalBatches: number }
+  >(apiClient, "GET", {
+    path: "/rubber-lining/portal/supplier-cocs/export/sage-preview",
+    query: (params) => params as Record<string, QueryParamValue>,
+  });
 
-  async cocSageExportCsv(params: {
-    dateFrom?: string;
-    dateTo?: string;
-    excludeExported?: boolean;
-  }): Promise<Blob> {
-    const query = new URLSearchParams();
-    if (params.dateFrom) query.set("dateFrom", params.dateFrom);
-    if (params.dateTo) query.set("dateTo", params.dateTo);
-    if (params.excludeExported !== undefined) {
-      query.set("excludeExported", String(params.excludeExported));
-    }
-    const url = `${this.baseURL}/rubber-lining/portal/supplier-cocs/export/sage-csv?${query.toString()}`;
-    const headers = this.authHeaders();
-    const response = await fetch(url, { headers });
-    await throwIfNotOk(response);
-    return response.blob();
-  }
+  cocSageExportCsv = createEndpoint<[params: SageExportFilter], Blob>(apiClient, "GET", {
+    path: "/rubber-lining/portal/supplier-cocs/export/sage-csv",
+    query: (params) => params as Record<string, QueryParamValue>,
+    responseType: "blob",
+  });
 
-  async sageExportPreview(params: {
-    dateFrom?: string;
-    dateTo?: string;
-    excludeExported?: boolean;
-    invoiceId?: number;
-  }): Promise<{ invoiceCount: number; lineItemCount: number; totalAmount: number }> {
-    const query = new URLSearchParams();
-    if (params.dateFrom) query.set("dateFrom", params.dateFrom);
-    if (params.dateTo) query.set("dateTo", params.dateTo);
-    if (params.excludeExported !== undefined) {
-      query.set("excludeExported", String(params.excludeExported));
-    }
-    if (params.invoiceId) query.set("invoiceId", String(params.invoiceId));
-    return this.request(
-      `/rubber-lining/portal/tax-invoices/export/sage-preview?${query.toString()}`,
-    );
-  }
+  sageExportPreview = createEndpoint<
+    [params: SageExportFilter & { invoiceId?: number }],
+    { invoiceCount: number; lineItemCount: number; totalAmount: number }
+  >(apiClient, "GET", {
+    path: "/rubber-lining/portal/tax-invoices/export/sage-preview",
+    query: (params) => params as Record<string, QueryParamValue>,
+  });
 
-  async sageExportCsv(params: {
-    dateFrom?: string;
-    dateTo?: string;
-    excludeExported?: boolean;
-    invoiceId?: number;
-  }): Promise<Blob> {
-    const query = new URLSearchParams();
-    if (params.dateFrom) query.set("dateFrom", params.dateFrom);
-    if (params.dateTo) query.set("dateTo", params.dateTo);
-    if (params.excludeExported !== undefined) {
-      query.set("excludeExported", String(params.excludeExported));
-    }
-    if (params.invoiceId) query.set("invoiceId", String(params.invoiceId));
-    const url = `${this.baseURL}/rubber-lining/portal/tax-invoices/export/sage-csv?${query.toString()}`;
-    const headers = this.authHeaders();
-    const response = await fetch(url, { headers });
-    await throwIfNotOk(response);
-    return response.blob();
-  }
+  sageExportCsv = createEndpoint<[params: SageExportFilter & { invoiceId?: number }], Blob>(
+    apiClient,
+    "GET",
+    {
+      path: "/rubber-lining/portal/tax-invoices/export/sage-csv",
+      query: (params) => params as Record<string, QueryParamValue>,
+      responseType: "blob",
+    },
+  );
 
   async reExtractAllTaxInvoices(
     invoiceType?: TaxInvoiceType,
@@ -2159,39 +2128,19 @@ class AuRubberApiClient {
     });
   }
 
-  async customerSageExportPreview(params: {
-    dateFrom?: string;
-    dateTo?: string;
-    excludeExported?: boolean;
-  }): Promise<{ invoiceCount: number; lineItemCount: number; totalAmount: number }> {
-    const query = new URLSearchParams();
-    if (params.dateFrom) query.set("dateFrom", params.dateFrom);
-    if (params.dateTo) query.set("dateTo", params.dateTo);
-    if (params.excludeExported !== undefined) {
-      query.set("excludeExported", String(params.excludeExported));
-    }
-    return this.request(
-      `/rubber-lining/portal/tax-invoices/export/customer-sage-preview?${query.toString()}`,
-    );
-  }
+  customerSageExportPreview = createEndpoint<
+    [params: SageExportFilter],
+    { invoiceCount: number; lineItemCount: number; totalAmount: number }
+  >(apiClient, "GET", {
+    path: "/rubber-lining/portal/tax-invoices/export/customer-sage-preview",
+    query: (params) => params as Record<string, QueryParamValue>,
+  });
 
-  async customerSageExportCsv(params: {
-    dateFrom?: string;
-    dateTo?: string;
-    excludeExported?: boolean;
-  }): Promise<Blob> {
-    const query = new URLSearchParams();
-    if (params.dateFrom) query.set("dateFrom", params.dateFrom);
-    if (params.dateTo) query.set("dateTo", params.dateTo);
-    if (params.excludeExported !== undefined) {
-      query.set("excludeExported", String(params.excludeExported));
-    }
-    const url = `${this.baseURL}/rubber-lining/portal/tax-invoices/export/customer-sage-csv?${query.toString()}`;
-    const headers = this.authHeaders();
-    const response = await fetch(url, { headers });
-    await throwIfNotOk(response);
-    return response.blob();
-  }
+  customerSageExportCsv = createEndpoint<[params: SageExportFilter], Blob>(apiClient, "GET", {
+    path: "/rubber-lining/portal/tax-invoices/export/customer-sage-csv",
+    query: (params) => params as Record<string, QueryParamValue>,
+    responseType: "blob",
+  });
 
   sageConnectionStatus = createEndpoint<
     [],
@@ -2436,20 +2385,11 @@ class AuRubberApiClient {
     body: (year, month, accountType) => ({ year, month, accountType }),
   });
 
-  async accountingDownloadPdf(id: number): Promise<void> {
-    const response = await fetch(`${this.baseURL}/rubber-lining/portal/accounting/${id}/pdf`, {
-      headers: this.headers(),
-    });
-    await throwIfNotOk(response);
-    const blob = await response.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `account-${id}.pdf`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+  accountingDownloadPdf(id: number): Promise<void> {
+    return apiClient.downloadBlob(
+      `/rubber-lining/portal/accounting/${id}/pdf`,
+      `account-${id}.pdf`,
+    );
   }
 
   accountingRequestSignOff = createEndpoint<[id: number], Record<string, unknown>>(
