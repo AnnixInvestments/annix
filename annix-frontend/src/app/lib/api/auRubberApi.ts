@@ -15,6 +15,7 @@ import type {
   AnalyzedDeliveryNoteResult,
   AnalyzeOrderFilesResult,
   AnalyzeProductFilesResult,
+  AnalyzeSupplierCocsResult,
   AuCocStatus,
   AuRubberAccessInfo,
   AuRubberInviteUserResponse,
@@ -152,53 +153,20 @@ class AuRubberApiClient {
     return apiClient.requestBlob(endpoint, options);
   }
 
-  private async requestWithFiles<T>(
+  private requestWithFiles<T>(
     endpoint: string,
     files: File[],
     data?: Record<string, string | number | undefined>,
     fieldName: string = "files",
   ): Promise<T> {
     const formData = new FormData();
-
-    files.forEach((file) => {
-      formData.append(fieldName, file);
-    });
-
+    files.forEach((file) => formData.append(fieldName, file));
     if (data) {
       entries(data).forEach(([key, value]) => {
-        if (value !== undefined) {
-          formData.append(key, String(value));
-        }
+        if (value !== undefined) formData.append(key, String(value));
       });
     }
-
-    const accessToken = auRubberTokenStore.accessToken();
-    const headers: Record<string, string> = {};
-    if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
-
-    const url = `${API_BASE_URL}${endpoint}`;
-    const response = await fetch(url, { method: "POST", headers, body: formData });
-
-    if (response.status === 401 && auRubberTokenStore.refreshToken()) {
-      const refreshed = await apiClient.refreshAccessToken();
-      if (refreshed) {
-        const newToken = auRubberTokenStore.accessToken();
-        const retryHeaders: Record<string, string> = {};
-        if (newToken) retryHeaders.Authorization = `Bearer ${newToken}`;
-        const retryResponse = await fetch(url, {
-          method: "POST",
-          headers: retryHeaders,
-          body: formData,
-        });
-        await throwIfNotOk(retryResponse);
-        const text = await retryResponse.text();
-        return text && text.trim() !== "" ? (JSON.parse(text) as T) : ({} as T);
-      }
-    }
-
-    await throwIfNotOk(response);
-    const text = await response.text();
-    return text && text.trim() !== "" ? (JSON.parse(text) as T) : ({} as T);
+    return apiClient.request<T>(endpoint, { method: "POST", body: formData });
   }
 
   refreshAccessToken(): Promise<boolean> {
@@ -847,66 +815,22 @@ class AuRubberApiClient {
     });
   }
 
-  async analyzeSupplierCocs(files: File[]): Promise<{
-    files: Array<{
-      filename: string;
-      isGraph: boolean;
-      cocType: SupplierCocType | null;
-      companyId: number | null;
-      companyName: string | null;
-      batchNumbers: string[];
-      linkedToIndex: number | null;
-      compoundCode: string | null;
-      extractedData: Record<string, unknown> | null;
-    }>;
-    dataPdfs: number[];
-    graphPdfs: number[];
-  }> {
+  analyzeSupplierCocs(files: File[]): Promise<AnalyzeSupplierCocsResult> {
     return this.requestWithFiles("/rubber-lining/portal/supplier-cocs/analyze", files);
   }
 
-  async createCocsFromAnalysis(
-    files: File[],
-    analysis: {
-      files: Array<{
-        filename: string;
-        isGraph: boolean;
-        cocType: SupplierCocType | null;
-        companyId: number | null;
-        companyName: string | null;
-        batchNumbers: string[];
-        linkedToIndex: number | null;
-        compoundCode: string | null;
-        extractedData: Record<string, unknown> | null;
-      }>;
-      dataPdfs: number[];
-      graphPdfs: number[];
+  createCocsFromAnalysis = createEndpoint<
+    [files: File[], analysis: AnalyzeSupplierCocsResult],
+    { cocIds: number[] }
+  >(apiClient, "POST", {
+    path: "/rubber-lining/portal/supplier-cocs/create-from-analysis",
+    formData: (files, analysis) => {
+      const fd = new FormData();
+      files.forEach((f) => fd.append("files", f));
+      fd.append("analysis", JSON.stringify(analysis));
+      return fd;
     },
-  ): Promise<{ cocIds: number[] }> {
-    const url = `${this.baseURL}/rubber-lining/portal/supplier-cocs/create-from-analysis`;
-    const formData = new FormData();
-
-    files.forEach((file) => {
-      formData.append("files", file);
-    });
-
-    formData.append("analysis", JSON.stringify(analysis));
-
-    const headers: Record<string, string> = {};
-    if (this.accessToken) {
-      headers["Authorization"] = `Bearer ${this.accessToken}`;
-    }
-
-    const response = await fetch(url, {
-      method: "POST",
-      headers,
-      body: formData,
-    });
-
-    await throwIfNotOk(response);
-
-    return response.json();
-  }
+  });
 
   updateSupplierCoc = createEndpoint<
     [
@@ -1128,52 +1052,31 @@ class AuRubberApiClient {
     body: (_id, corrections) => corrections,
   });
 
-  async analyzeDeliveryNotePhoto(file: File): Promise<AnalyzedDeliveryNoteResult> {
-    const formData = new FormData();
-    formData.append("file", file);
-
-    const headers: Record<string, string> = {};
-    if (this.accessToken) {
-      headers["Authorization"] = `Bearer ${this.accessToken}`;
-    }
-
-    const response = await fetch(`${this.baseURL}/rubber-lining/portal/delivery-notes/analyze`, {
-      method: "POST",
-      headers,
-      body: formData,
-    });
-
-    await throwIfNotOk(response);
-
-    return response.json();
-  }
-
-  async acceptAnalyzedDeliveryNote(
-    file: File,
-    analyzedData: AnalyzedDeliveryNoteResult["data"],
-  ): Promise<RubberDeliveryNoteDto> {
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("analyzedData", JSON.stringify(analyzedData));
-
-    const headers: Record<string, string> = {};
-    if (this.accessToken) {
-      headers["Authorization"] = `Bearer ${this.accessToken}`;
-    }
-
-    const response = await fetch(
-      `${this.baseURL}/rubber-lining/portal/delivery-notes/accept-analyzed`,
-      {
-        method: "POST",
-        headers,
-        body: formData,
+  analyzeDeliveryNotePhoto = createEndpoint<[file: File], AnalyzedDeliveryNoteResult>(
+    apiClient,
+    "POST",
+    {
+      path: "/rubber-lining/portal/delivery-notes/analyze",
+      formData: (file) => {
+        const fd = new FormData();
+        fd.append("file", file);
+        return fd;
       },
-    );
+    },
+  );
 
-    await throwIfNotOk(response);
-
-    return response.json();
-  }
+  acceptAnalyzedDeliveryNote = createEndpoint<
+    [file: File, analyzedData: AnalyzedDeliveryNoteResult["data"]],
+    RubberDeliveryNoteDto
+  >(apiClient, "POST", {
+    path: "/rubber-lining/portal/delivery-notes/accept-analyzed",
+    formData: (file, analyzedData) => {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("analyzedData", JSON.stringify(analyzedData));
+      return fd;
+    },
+  });
 
   linkDeliveryNoteToCoc = createEndpoint<
     [deliveryNoteId: number, cocId: number],
@@ -1221,61 +1124,36 @@ class AuRubberApiClient {
     );
   }
 
-  async replaceDeliveryNoteDocument(id: number, file: File): Promise<RubberDeliveryNoteDto> {
-    const url = `${this.baseURL}/rubber-lining/portal/delivery-notes/${id}/document`;
-    const formData = new FormData();
-    formData.append("file", file);
-
-    const headers: Record<string, string> = {};
-    if (this.accessToken) {
-      headers["Authorization"] = `Bearer ${this.accessToken}`;
-    }
-
-    const response = await fetch(url, {
-      method: "PUT",
-      headers,
-      body: formData,
-    });
-
-    await throwIfNotOk(response);
-
-    return response.json();
-  }
+  replaceDeliveryNoteDocument = createEndpoint<[id: number, file: File], RubberDeliveryNoteDto>(
+    apiClient,
+    "PUT",
+    {
+      path: (id) => `/rubber-lining/portal/delivery-notes/${id}/document`,
+      formData: (_id, file) => {
+        const fd = new FormData();
+        fd.append("file", file);
+        return fd;
+      },
+    },
+  );
 
   async analyzeCustomerDeliveryNotes(files: File[]): Promise<AnalyzeCustomerDnsResult> {
     return this.requestWithFiles("/rubber-lining/portal/customer-delivery-notes/analyze", files);
   }
 
-  async createCustomerDnsFromAnalysis(
-    files: File[],
-    analysis: AnalyzeCustomerDnsResult,
-    overrides: CustomerDnOverride[],
-  ): Promise<{ deliveryNoteIds: number[] }> {
-    const url = `${this.baseURL}/rubber-lining/portal/customer-delivery-notes/create-from-analysis`;
-    const formData = new FormData();
-
-    files.forEach((file) => {
-      formData.append("files", file);
-    });
-
-    formData.append("analysis", JSON.stringify(analysis));
-    formData.append("overrides", JSON.stringify(overrides));
-
-    const headers: Record<string, string> = {};
-    if (this.accessToken) {
-      headers["Authorization"] = `Bearer ${this.accessToken}`;
-    }
-
-    const response = await fetch(url, {
-      method: "POST",
-      headers,
-      body: formData,
-    });
-
-    await throwIfNotOk(response);
-
-    return response.json();
-  }
+  createCustomerDnsFromAnalysis = createEndpoint<
+    [files: File[], analysis: AnalyzeCustomerDnsResult, overrides: CustomerDnOverride[]],
+    { deliveryNoteIds: number[] }
+  >(apiClient, "POST", {
+    path: "/rubber-lining/portal/customer-delivery-notes/create-from-analysis",
+    formData: (files, analysis, overrides) => {
+      const fd = new FormData();
+      files.forEach((f) => fd.append("files", f));
+      fd.append("analysis", JSON.stringify(analysis));
+      fd.append("overrides", JSON.stringify(overrides));
+      return fd;
+    },
+  });
 
   async rollStock(filters?: {
     status?: RollStockStatus;
@@ -1759,32 +1637,19 @@ class AuRubberApiClient {
     return this.requestWithFiles("/rubber-lining/portal/orders/document-pages", [file], {}, "file");
   }
 
-  async extractOrderRegion(
-    file: File,
-    coordinates: RegionCoordinates,
-    fieldName: string,
-  ): Promise<{ text: string; confidence: number }> {
-    const url = `${this.baseURL}/rubber-lining/portal/orders/extract-region`;
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("coordinates", JSON.stringify(coordinates));
-    formData.append("fieldName", fieldName);
-
-    const headers: Record<string, string> = {};
-    if (this.accessToken) {
-      headers["Authorization"] = `Bearer ${this.accessToken}`;
-    }
-
-    const response = await fetch(url, {
-      method: "POST",
-      headers,
-      body: formData,
-    });
-
-    await throwIfNotOk(response);
-
-    return response.json();
-  }
+  extractOrderRegion = createEndpoint<
+    [file: File, coordinates: RegionCoordinates, fieldName: string],
+    { text: string; confidence: number }
+  >(apiClient, "POST", {
+    path: "/rubber-lining/portal/orders/extract-region",
+    formData: (file, coordinates, fieldName) => {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("coordinates", JSON.stringify(coordinates));
+      fd.append("fieldName", fieldName);
+      return fd;
+    },
+  });
 
   savePoTemplate = createEndpoint<[dto: CreateTemplateDto], { templateId: number }>(
     apiClient,

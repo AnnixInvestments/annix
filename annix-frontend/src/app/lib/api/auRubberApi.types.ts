@@ -10,6 +10,24 @@ export interface SageExportFilter {
   excludeExported?: boolean;
 }
 
+export interface AnalyzeSupplierCocsFile {
+  filename: string;
+  isGraph: boolean;
+  cocType: SupplierCocType | null;
+  companyId: number | null;
+  companyName: string | null;
+  batchNumbers: string[];
+  linkedToIndex: number | null;
+  compoundCode: string | null;
+  extractedData: Record<string, unknown> | null;
+}
+
+export interface AnalyzeSupplierCocsResult {
+  files: AnalyzeSupplierCocsFile[];
+  dataPdfs: number[];
+  graphPdfs: number[];
+}
+
 export interface RubberOrderItemInput {
   productId?: number;
   thickness?: number;
