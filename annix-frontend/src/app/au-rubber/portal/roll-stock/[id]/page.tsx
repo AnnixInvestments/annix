@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import { useToast } from "@/app/components/Toast";
+import { toastError } from "@/app/lib/api/apiError";
 import {
   auRubberApiClient,
   type RollStockStatus,
@@ -67,7 +68,7 @@ export default function RollStockDetailPage() {
       setShowSellModal(false);
       fetchData();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to sell roll", "error");
+      toastError(showToast, err, "Failed to sell roll");
     } finally {
       setIsSelling(false);
     }
@@ -79,7 +80,7 @@ export default function RollStockDetailPage() {
       showToast("Roll reserved", "success");
       fetchData();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to reserve roll", "error");
+      toastError(showToast, err, "Failed to reserve roll");
     }
   };
 
@@ -89,7 +90,7 @@ export default function RollStockDetailPage() {
       showToast("Reservation cancelled", "success");
       fetchData();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to unreserve roll", "error");
+      toastError(showToast, err, "Failed to unreserve roll");
     }
   };
 

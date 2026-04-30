@@ -3,6 +3,7 @@
 import { useParams, useRouter } from "next/navigation";
 import React, { useState } from "react";
 import { useToast } from "@/app/components/Toast";
+import { toastError } from "@/app/lib/api/apiError";
 import { formatDateZA } from "@/app/lib/datetime";
 import {
   type BoqLineItem,
@@ -45,7 +46,7 @@ export default function BoqDetailPage() {
       await addLineItemMutation.mutateAsync(item);
       setShowAddModal(false);
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to add line item", "error");
+      toastError(showToast, err, "Failed to add line item");
     }
   };
 
@@ -54,7 +55,7 @@ export default function BoqDetailPage() {
       await updateLineItemMutation.mutateAsync({ itemId, updates });
       setEditingItem(null);
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to update line item", "error");
+      toastError(showToast, err, "Failed to update line item");
     }
   };
 
@@ -65,7 +66,7 @@ export default function BoqDetailPage() {
     try {
       await deleteLineItemMutation.mutateAsync(itemId);
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to delete line item", "error");
+      toastError(showToast, err, "Failed to delete line item");
     }
   };
 
@@ -74,7 +75,7 @@ export default function BoqDetailPage() {
       await submitForReviewMutation.mutateAsync();
       showToast("BOQ submitted for review", "success");
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to submit", "error");
+      toastError(showToast, err, "Failed to submit");
     }
   };
 

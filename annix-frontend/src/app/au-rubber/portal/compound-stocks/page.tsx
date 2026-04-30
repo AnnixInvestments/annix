@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { TableLoadingState } from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
+import { toastError } from "@/app/lib/api/apiError";
 import {
   auRubberApiClient,
   type CreateCompoundOpeningStockDto,
@@ -842,7 +843,7 @@ export default function CompoundStocksPage() {
       resetOpeningStockForm();
       fetchData();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to create opening stock", "error");
+      toastError(showToast, err, "Failed to create opening stock");
     } finally {
       setIsSubmittingOpeningStock(false);
     }
@@ -910,7 +911,7 @@ export default function CompoundStocksPage() {
         fetchData();
       }
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to import opening stock", "error");
+      toastError(showToast, err, "Failed to import opening stock");
     } finally {
       setIsImporting(false);
     }

@@ -9,6 +9,7 @@ import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import { RollRejectionsPanel } from "@/app/au-rubber/components/RollRejectionsPanel";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { useToast } from "@/app/components/Toast";
+import { toastError } from "@/app/lib/api/apiError";
 import {
   auRubberApiClient,
   type CocProcessingStatus,
@@ -164,7 +165,7 @@ export default function SupplierCocDetailPage() {
       showToast("Data extracted successfully", "success");
       fetchData();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to extract data", "error");
+      toastError(showToast, err, "Failed to extract data");
     } finally {
       hideExtraction();
       setIsExtracting(false);
@@ -178,7 +179,7 @@ export default function SupplierCocDetailPage() {
       showToast("CoC approved", "success");
       router.push("/au-rubber/portal/supplier-cocs");
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to approve CoC", "error");
+      toastError(showToast, err, "Failed to approve CoC");
       setIsApproving(false);
     }
   };
@@ -225,7 +226,7 @@ export default function SupplierCocDetailPage() {
       setIsEditing(false);
       fetchData();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to update CoC", "error");
+      toastError(showToast, err, "Failed to update CoC");
     } finally {
       setIsSaving(false);
     }
@@ -262,7 +263,7 @@ export default function SupplierCocDetailPage() {
       setEditingBatchId(null);
       fetchData();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to update batch", "error");
+      toastError(showToast, err, "Failed to update batch");
     } finally {
       setIsSavingBatch(false);
     }
@@ -274,7 +275,7 @@ export default function SupplierCocDetailPage() {
       showToast("Batch deleted", "success");
       fetchData();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to delete batch", "error");
+      toastError(showToast, err, "Failed to delete batch");
     }
   };
 
@@ -347,7 +348,7 @@ export default function SupplierCocDetailPage() {
       setIsEditingExtracted(false);
       fetchData();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to save extracted data", "error");
+      toastError(showToast, err, "Failed to save extracted data");
     } finally {
       setIsSavingExtracted(false);
     }

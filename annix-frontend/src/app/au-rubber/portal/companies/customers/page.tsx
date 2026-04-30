@@ -11,6 +11,7 @@ import {
   TableLoadingState,
 } from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
+import { toastError } from "@/app/lib/api/apiError";
 import type { RubberTaxInvoiceDto } from "@/app/lib/api/auRubberApi";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
 import type {
@@ -715,7 +716,7 @@ export default function CustomersPage() {
       setActiveView("list");
       fetchData();
     } catch (err: unknown) {
-      showToast(err instanceof Error ? err.message : "Failed to save customer", "error");
+      toastError(showToast, err, "Failed to save customer");
     } finally {
       setIsSaving(false);
     }
@@ -728,7 +729,7 @@ export default function CustomersPage() {
       setDeleteCompanyId(null);
       fetchData();
     } catch (err: unknown) {
-      showToast(err instanceof Error ? err.message : "Failed to delete customer", "error");
+      toastError(showToast, err, "Failed to delete customer");
     }
   };
 

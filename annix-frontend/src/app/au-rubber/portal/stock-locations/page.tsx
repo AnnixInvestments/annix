@@ -12,6 +12,7 @@ import {
 } from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
 import { usePersistedState } from "@/app/hooks/usePersistedState";
+import { toastError } from "@/app/lib/api/apiError";
 import { auRubberApiClient, type StockLocationDto } from "@/app/lib/api/auRubberApi";
 import { Breadcrumb } from "../../components/Breadcrumb";
 import { ConfirmModal } from "../../components/ConfirmModal";
@@ -155,7 +156,7 @@ export default function StockLocationsPage() {
       setShowModal(false);
       fetchData();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to save", "error");
+      toastError(showToast, err, "Failed to save");
     } finally {
       setIsSaving(false);
     }
@@ -168,7 +169,7 @@ export default function StockLocationsPage() {
       setDeleteLocationId(null);
       fetchData();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to delete", "error");
+      toastError(showToast, err, "Failed to delete");
     }
   };
 

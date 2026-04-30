@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import { useToast } from "@/app/components/Toast";
+import { toastError } from "@/app/lib/api/apiError";
 import { auRubberApiClient, type RubberRollStockDto } from "@/app/lib/api/auRubberApi";
 import type { RubberCompanyDto } from "@/app/lib/api/rubberPortalApi";
 
@@ -102,7 +103,7 @@ export default function NewAuCocPage() {
       showToast("Certificate created successfully", "success");
       router.push(`/au-rubber/portal/au-cocs/${result.id}`);
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to create certificate", "error");
+      toastError(showToast, err, "Failed to create certificate");
     } finally {
       setIsCreating(false);
     }

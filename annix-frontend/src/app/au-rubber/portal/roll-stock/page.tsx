@@ -13,6 +13,7 @@ import {
 } from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
 import { usePersistedState } from "@/app/hooks/usePersistedState";
+import { toastError } from "@/app/lib/api/apiError";
 import {
   auRubberApiClient,
   type CreateOpeningStockDto,
@@ -181,7 +182,7 @@ export default function RollStockPage() {
       setReserveCustomerId(null);
       fetchData();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to reserve roll", "error");
+      toastError(showToast, err, "Failed to reserve roll");
     } finally {
       setIsReserving(false);
     }
@@ -193,7 +194,7 @@ export default function RollStockPage() {
       showToast("Reservation cancelled", "success");
       fetchData();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to unreserve roll", "error");
+      toastError(showToast, err, "Failed to unreserve roll");
     }
   };
 
@@ -208,7 +209,7 @@ export default function RollStockPage() {
       setScrapReason("");
       fetchData();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to scrap roll", "error");
+      toastError(showToast, err, "Failed to scrap roll");
     } finally {
       setIsScrapping(false);
     }
@@ -248,7 +249,7 @@ export default function RollStockPage() {
       resetOpeningStockForm();
       fetchData();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to create opening stock", "error");
+      toastError(showToast, err, "Failed to create opening stock");
     } finally {
       setIsSubmittingOpeningStock(false);
     }
@@ -310,7 +311,7 @@ export default function RollStockPage() {
         fetchData();
       }
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to import opening stock", "error");
+      toastError(showToast, err, "Failed to import opening stock");
     } finally {
       setIsImporting(false);
     }

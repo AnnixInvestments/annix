@@ -12,6 +12,7 @@ import {
 } from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
 import { usePersistedState } from "@/app/hooks/usePersistedState";
+import { toastError } from "@/app/lib/api/apiError";
 import {
   auRubberApiClient,
   type CreateOtherStockDto,
@@ -214,7 +215,7 @@ export default function OtherItemsPage() {
       resetItemForm();
       fetchData();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to create item", "error");
+      toastError(showToast, err, "Failed to create item");
     } finally {
       setIsSubmittingItem(false);
     }
@@ -296,7 +297,7 @@ export default function OtherItemsPage() {
         fetchData();
       }
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to import items", "error");
+      toastError(showToast, err, "Failed to import items");
     } finally {
       setIsImporting(false);
     }
@@ -309,7 +310,7 @@ export default function OtherItemsPage() {
       setDeleteItemId(null);
       fetchData();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to delete", "error");
+      toastError(showToast, err, "Failed to delete");
     }
   };
 
@@ -330,7 +331,7 @@ export default function OtherItemsPage() {
       setReceiveQty("");
       fetchData();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to receive stock", "error");
+      toastError(showToast, err, "Failed to receive stock");
     } finally {
       setIsReceiving(false);
     }
@@ -355,7 +356,7 @@ export default function OtherItemsPage() {
       setAdjustReason("");
       fetchData();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to adjust stock", "error");
+      toastError(showToast, err, "Failed to adjust stock");
     } finally {
       setIsAdjusting(false);
     }

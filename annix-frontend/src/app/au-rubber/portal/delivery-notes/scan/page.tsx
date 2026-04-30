@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import { useToast } from "@/app/components/Toast";
+import { toastError } from "@/app/lib/api/apiError";
 import {
   type AnalyzedDeliveryNoteLineItem,
   type AnalyzedDeliveryNoteResult,
@@ -49,7 +50,7 @@ export default function ScanDeliveryNotePage() {
       setResult(analysisResult);
       showToast("Delivery note analyzed successfully", "success");
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to analyze delivery note", "error");
+      toastError(showToast, err, "Failed to analyze delivery note");
     } finally {
       setIsAnalyzing(false);
     }
@@ -75,7 +76,7 @@ export default function ScanDeliveryNotePage() {
       showToast("Delivery note created successfully", "success");
       router.push(`/au-rubber/portal/delivery-notes/${deliveryNote.id}`);
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to create delivery note", "error");
+      toastError(showToast, err, "Failed to create delivery note");
     } finally {
       setIsAccepting(false);
     }

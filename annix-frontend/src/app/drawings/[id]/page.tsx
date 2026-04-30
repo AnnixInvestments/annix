@@ -3,6 +3,7 @@
 import { useParams, useRouter } from "next/navigation";
 import React, { useState } from "react";
 import { useToast } from "@/app/components/Toast";
+import { toastError } from "@/app/lib/api/apiError";
 import { formatDateTimeZA, nowISO } from "@/app/lib/datetime";
 import type { AnalysisResult } from "@/app/lib/query/hooks";
 import {
@@ -75,7 +76,7 @@ export default function DrawingDetailPage() {
       await submitForReviewMutation.mutateAsync();
       showToast("Drawing submitted for review", "success");
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to submit", "error");
+      toastError(showToast, err, "Failed to submit");
     }
   };
 
@@ -97,7 +98,7 @@ export default function DrawingDetailPage() {
       setShowVersionModal(false);
       showToast("New version uploaded successfully", "success");
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Upload failed", "error");
+      toastError(showToast, err, "Upload failed");
     }
   };
 

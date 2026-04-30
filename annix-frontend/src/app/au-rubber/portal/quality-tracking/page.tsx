@@ -11,6 +11,7 @@ import {
 } from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
 import { usePersistedState } from "@/app/hooks/usePersistedState";
+import { toastError } from "@/app/lib/api/apiError";
 import {
   auRubberApiClient,
   type CompoundQualitySummaryDto,
@@ -61,7 +62,7 @@ export default function QualityTrackingPage() {
       alertsQuery.refetch();
       summaryQuery.refetch();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to acknowledge alert", "error");
+      toastError(showToast, err, "Failed to acknowledge alert");
     }
   };
 

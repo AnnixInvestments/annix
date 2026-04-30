@@ -13,6 +13,7 @@ import { useToast } from "@/app/components/Toast";
 import { useAuRubberAuth } from "@/app/context/AuRubberAuthContext";
 import { useAuRubberBranding } from "@/app/context/AuRubberBrandingContext";
 import { usePersistedState } from "@/app/hooks/usePersistedState";
+import { toastError } from "@/app/lib/api/apiError";
 import type {
   CocProcessingStatus,
   RubberSupplierCocDto,
@@ -308,7 +309,7 @@ export default function SupplierCocsPage() {
       setAnalysisResult(result);
       setIsAnalyzing(false);
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to analyze files", "error");
+      toastError(showToast, err, "Failed to analyze files");
       setShowAnalysisModal(false);
       setIsAnalyzing(false);
       setUploadFiles([]);
@@ -335,7 +336,7 @@ export default function SupplierCocsPage() {
       setUploadFiles([]);
       cocsQuery.refetch();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to create CoCs", "error");
+      toastError(showToast, err, "Failed to create CoCs");
     } finally {
       setIsUploading(false);
     }
@@ -378,7 +379,7 @@ export default function SupplierCocsPage() {
       setUploadFiles([]);
       cocsQuery.refetch();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to create CoC", "error");
+      toastError(showToast, err, "Failed to create CoC");
     } finally {
       setIsUploading(false);
     }
@@ -431,7 +432,7 @@ export default function SupplierCocsPage() {
       setDeletingId(null);
       cocsQuery.refetch();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to delete supplier CoC", "error");
+      toastError(showToast, err, "Failed to delete supplier CoC");
     } finally {
       setIsDeleting(false);
     }
@@ -444,7 +445,7 @@ export default function SupplierCocsPage() {
       showToast("Data re-extracted successfully", "success");
       cocsQuery.refetch();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to re-extract data", "error");
+      toastError(showToast, err, "Failed to re-extract data");
     } finally {
       setReextractingId(null);
     }
@@ -497,7 +498,7 @@ export default function SupplierCocsPage() {
       setSelectedForApproval(new Set());
       cocsQuery.refetch();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to approve CoCs", "error");
+      toastError(showToast, err, "Failed to approve CoCs");
     } finally {
       setIsBulkApproving(false);
     }
@@ -509,7 +510,7 @@ export default function SupplierCocsPage() {
       showToast("Version authorized successfully", "success");
       cocsQuery.refetch();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to authorize version", "error");
+      toastError(showToast, err, "Failed to authorize version");
     }
   };
 
@@ -519,7 +520,7 @@ export default function SupplierCocsPage() {
       showToast("Version rejected", "success");
       cocsQuery.refetch();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to reject version", "error");
+      toastError(showToast, err, "Failed to reject version");
     }
   };
 

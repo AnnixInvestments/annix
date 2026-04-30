@@ -15,6 +15,7 @@ import {
 } from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
 import { useAuRubberAuth } from "@/app/context/AuRubberAuthContext";
+import { toastError } from "@/app/lib/api/apiError";
 import {
   type AuCocStatus,
   auRubberApiClient,
@@ -308,7 +309,7 @@ export default function AuCocsPage() {
       showToast("PDF generated successfully", "success");
       refresh();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to generate PDF", "error");
+      toastError(showToast, err, "Failed to generate PDF");
     }
   };
 
@@ -320,7 +321,7 @@ export default function AuCocsPage() {
         `${coc.cocNumber}.pdf`,
       );
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to preview PDF", "error");
+      toastError(showToast, err, "Failed to preview PDF");
     } finally {
       setPreviewingId(null);
     }
@@ -338,7 +339,7 @@ export default function AuCocsPage() {
         `${coc.cocNumber}.pdf`,
       );
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to download PDF", "error");
+      toastError(showToast, err, "Failed to download PDF");
     } finally {
       setDownloadingId(null);
     }
@@ -362,7 +363,7 @@ export default function AuCocsPage() {
       setSendBcc("");
       refresh();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to send CoC", "error");
+      toastError(showToast, err, "Failed to send CoC");
     } finally {
       setIsSending(false);
     }
@@ -378,7 +379,7 @@ export default function AuCocsPage() {
       setDeletingId(null);
       refresh();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to delete certificate", "error");
+      toastError(showToast, err, "Failed to delete certificate");
     } finally {
       setIsDeleting(false);
     }

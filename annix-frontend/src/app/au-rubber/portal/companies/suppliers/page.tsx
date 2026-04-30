@@ -11,6 +11,7 @@ import {
   TableLoadingState,
 } from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
+import { toastError } from "@/app/lib/api/apiError";
 import type { RubberDeliveryNoteDto, RubberTaxInvoiceDto } from "@/app/lib/api/auRubberApi";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
 import type { RubberCompanyDto, RubberProductDto } from "@/app/lib/api/rubberPortalApi";
@@ -671,7 +672,7 @@ export default function SuppliersPage() {
       setActiveView("list");
       fetchData();
     } catch (err: unknown) {
-      showToast(err instanceof Error ? err.message : "Failed to save supplier", "error");
+      toastError(showToast, err, "Failed to save supplier");
     } finally {
       setIsSaving(false);
     }
@@ -684,7 +685,7 @@ export default function SuppliersPage() {
       setDeleteCompanyId(null);
       fetchData();
     } catch (err: unknown) {
-      showToast(err instanceof Error ? err.message : "Failed to delete supplier", "error");
+      toastError(showToast, err, "Failed to delete supplier");
     }
   };
 

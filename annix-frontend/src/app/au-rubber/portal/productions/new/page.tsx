@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import { useConfirm } from "@/app/au-rubber/hooks/useConfirm";
 import { useToast } from "@/app/components/Toast";
+import { toastError } from "@/app/lib/api/apiError";
 import {
   auRubberApiClient,
   type CompoundCalculationResultDto,
@@ -44,7 +45,7 @@ export default function NewProductionPage() {
         setProducts(isArray(productsData) ? productsData : []);
         setStocks(isArray(stocksData) ? stocksData : []);
       } catch (err) {
-        showToast(err instanceof Error ? err.message : "Failed to load data", "error");
+        toastError(showToast, err, "Failed to load data");
       } finally {
         setIsLoading(false);
       }
@@ -128,7 +129,7 @@ export default function NewProductionPage() {
       showToast("Production created", "success");
       router.push("/au-rubber/portal/productions");
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to create production", "error");
+      toastError(showToast, err, "Failed to create production");
     } finally {
       setIsSubmitting(false);
     }

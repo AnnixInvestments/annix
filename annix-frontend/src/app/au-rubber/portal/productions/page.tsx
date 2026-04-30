@@ -13,6 +13,7 @@ import {
 } from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
 import { usePersistedState } from "@/app/hooks/usePersistedState";
+import { toastError } from "@/app/lib/api/apiError";
 import {
   auRubberApiClient,
   type RubberProductionDto,
@@ -121,7 +122,7 @@ export default function ProductionsPage() {
       showToast("Production started", "success");
       fetchData();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to start", "error");
+      toastError(showToast, err, "Failed to start");
     }
   };
 
@@ -132,7 +133,7 @@ export default function ProductionsPage() {
       setCompleteId(null);
       fetchData();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to complete", "error");
+      toastError(showToast, err, "Failed to complete");
     }
   };
 
@@ -143,7 +144,7 @@ export default function ProductionsPage() {
       setCancelId(null);
       fetchData();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to cancel", "error");
+      toastError(showToast, err, "Failed to cancel");
     }
   };
 

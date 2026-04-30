@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { Pagination, TableLoadingState } from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
 import { usePersistedState } from "@/app/hooks/usePersistedState";
+import { toastError } from "@/app/lib/api/apiError";
 import type { CostRateType } from "@/app/lib/api/rubberPortalApi";
 import { formatDateZA } from "@/app/lib/datetime";
 import {
@@ -169,7 +170,7 @@ export default function CostOfSalePage() {
       showToast("Calenderer conversion rates saved", "success");
       setIsEditingCalenderer(false);
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to save rates", "error");
+      toastError(showToast, err, "Failed to save rates");
     } finally {
       setIsSaving(false);
     }
@@ -191,7 +192,7 @@ export default function CostOfSalePage() {
       setAddCompoundCost("");
       setAddCompoundNotes("");
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to add compound rate", "error");
+      toastError(showToast, err, "Failed to add compound rate");
     } finally {
       setIsSaving(false);
     }
@@ -209,7 +210,7 @@ export default function CostOfSalePage() {
       showToast("Cost rate updated", "success");
       setEditingId(null);
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to update rate", "error");
+      toastError(showToast, err, "Failed to update rate");
     } finally {
       setIsSaving(false);
     }
@@ -222,7 +223,7 @@ export default function CostOfSalePage() {
       showToast("Cost rate deleted", "success");
       setDeletingId(null);
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to delete rate", "error");
+      toastError(showToast, err, "Failed to delete rate");
     }
   };
 

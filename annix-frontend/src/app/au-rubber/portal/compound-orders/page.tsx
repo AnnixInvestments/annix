@@ -12,6 +12,7 @@ import {
 } from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
 import { usePersistedState } from "@/app/hooks/usePersistedState";
+import { toastError } from "@/app/lib/api/apiError";
 import {
   auRubberApiClient,
   type RubberCompoundOrderDto,
@@ -151,7 +152,7 @@ export default function CompoundOrdersPage() {
       resetNewForm();
       fetchData();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to create", "error");
+      toastError(showToast, err, "Failed to create");
     } finally {
       setIsSubmitting(false);
     }
@@ -163,7 +164,7 @@ export default function CompoundOrdersPage() {
       showToast("Status updated", "success");
       fetchData();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to update", "error");
+      toastError(showToast, err, "Failed to update");
     }
   };
 
@@ -174,7 +175,7 @@ export default function CompoundOrdersPage() {
       setCancelOrderId(null);
       fetchData();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to cancel", "error");
+      toastError(showToast, err, "Failed to cancel");
     }
   };
 
@@ -198,7 +199,7 @@ export default function CompoundOrdersPage() {
       setReceiveNotes("");
       fetchData();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to receive", "error");
+      toastError(showToast, err, "Failed to receive");
     } finally {
       setIsSubmitting(false);
     }

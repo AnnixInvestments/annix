@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import { useToast } from "@/app/components/Toast";
 import { useAuRubberAuth } from "@/app/context/AuRubberAuthContext";
+import { toastError } from "@/app/lib/api/apiError";
 import {
   auRubberApiClient,
   type RequisitionDto,
@@ -74,7 +75,7 @@ export default function PurchaseRequisitionDetailPage() {
       showToast("Requisition approved", "success");
       fetchData();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to approve", "error");
+      toastError(showToast, err, "Failed to approve");
     } finally {
       setIsProcessing(false);
     }
@@ -93,7 +94,7 @@ export default function PurchaseRequisitionDetailPage() {
       setRejectReason("");
       fetchData();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to reject", "error");
+      toastError(showToast, err, "Failed to reject");
     } finally {
       setIsProcessing(false);
     }
@@ -112,7 +113,7 @@ export default function PurchaseRequisitionDetailPage() {
       setOrderExpectedDate("");
       fetchData();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to update", "error");
+      toastError(showToast, err, "Failed to update");
     } finally {
       setIsProcessing(false);
     }
@@ -139,7 +140,7 @@ export default function PurchaseRequisitionDetailPage() {
       setReceiveAmounts({});
       fetchData();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to receive", "error");
+      toastError(showToast, err, "Failed to receive");
     } finally {
       setIsProcessing(false);
     }
@@ -152,7 +153,7 @@ export default function PurchaseRequisitionDetailPage() {
       showToast("Requisition cancelled", "success");
       router.push("/au-rubber/portal/purchase-requisitions");
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to cancel", "error");
+      toastError(showToast, err, "Failed to cancel");
     } finally {
       setIsProcessing(false);
     }

@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { FeatureGate } from "@/app/components/FeatureGate";
 import { useToast } from "@/app/components/Toast";
 import { useSupplierAuth } from "@/app/context/SupplierAuthContext";
+import { toastError } from "@/app/lib/api/apiError";
 import { type SupplierBoqListItem, type SupplierBoqStatus } from "@/app/lib/api/supplierApi";
 import { formatDateZA, formatIcsDate, fromISO, now, nowMillis } from "@/app/lib/datetime";
 import {
@@ -122,7 +123,7 @@ function SupplierDashboardContent() {
       showToast("RFQ declined successfully", "success");
       setShowDeclineModal(false);
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to decline", "error");
+      toastError(showToast, err, "Failed to decline");
     }
   };
 
@@ -133,7 +134,7 @@ function SupplierDashboardContent() {
       await markViewedMutation.mutateAsync(boqId);
       showToast("Marked as intending to quote", "success");
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to update status", "error");
+      toastError(showToast, err, "Failed to update status");
     }
   };
 
@@ -170,7 +171,8 @@ function SupplierDashboardContent() {
         return rawName || "Project";
       })()}\\nCustomer: ${(() => {
         const rawCompany = boq.customerInfo?.company;
-        return rawCompany || boq.customerInfo?.name || "N/A";
+        const customerName = boq.customerInfo?.name;
+        return rawCompany || customerName || "N/A";
       })()}`,
       "END:VEVENT",
       "END:VCALENDAR",
@@ -203,7 +205,7 @@ function SupplierDashboardContent() {
       );
       setShowCalendarModal(false);
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to set reminder", "error");
+      toastError(showToast, err, "Failed to set reminder");
     }
   };
 
@@ -239,7 +241,8 @@ function SupplierDashboardContent() {
             <h1 className="text-2xl font-bold text-gray-900">
               Welcome, {(() => {
                 const rawFirstName = supplier?.firstName;
-                return rawFirstName || supplier?.companyName || "Supplier";
+                const companyName = supplier?.companyName;
+                return rawFirstName || companyName || "Supplier";
               })()}
             </h1>
             <p className="mt-1 text-gray-600">{dashboard?.profile.email}</p>
@@ -382,7 +385,8 @@ function SupplierDashboardContent() {
                             </svg>
                             {(() => {
                               const rawCompany = boq.customerInfo?.company;
-                              return rawCompany || boq.customerInfo?.name || "Customer";
+                              const customerName = boq.customerInfo?.name;
+                              return rawCompany || customerName || "Customer";
                             })()}
                           </span>
                           <span className="flex items-center gap-1">

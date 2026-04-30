@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
-
 import { useToast } from "@/app/components/Toast";
+import { toastError } from "@/app/lib/api/apiError";
 import type { SupplierInvoice } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
 import {
@@ -113,7 +113,7 @@ export default function InvoicesPage() {
         showToast(`Invoice ${invDisplay} created successfully`, "success");
         invalidateInvoices();
       } catch (err) {
-        showToast(err instanceof Error ? err.message : "Failed to analyze document", "error");
+        toastError(showToast, err, "Failed to analyze document");
       } finally {
         setIsAnalyzing(false);
       }
@@ -133,7 +133,7 @@ export default function InvoicesPage() {
       showToast("Extraction triggered successfully", "success");
       invalidateInvoices();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to re-extract", "error");
+      toastError(showToast, err, "Failed to re-extract");
     }
   };
 
@@ -152,7 +152,7 @@ export default function InvoicesPage() {
       }
       invalidateInvoices();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Bulk re-extract failed", "error");
+      toastError(showToast, err, "Bulk re-extract failed");
     } finally {
       setIsReExtractingAll(false);
     }
@@ -169,7 +169,7 @@ export default function InvoicesPage() {
         showToast("No matching delivery notes found for unlinked invoices", "info");
       }
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Auto-link failed", "error");
+      toastError(showToast, err, "Auto-link failed");
     } finally {
       setIsAutoLinking(false);
     }

@@ -14,6 +14,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import { useToast } from "@/app/components/Toast";
+import { toastError } from "@/app/lib/api/apiError";
 import {
   auRubberApiClient,
   type CompoundQualityDetailDto,
@@ -163,7 +164,7 @@ export default function QualityTrackingDetailPage() {
       showToast("Alert acknowledged", "success");
       fetchData();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to acknowledge alert", "error");
+      toastError(showToast, err, "Failed to acknowledge alert");
     }
   };
 
@@ -175,7 +176,7 @@ export default function QualityTrackingDetailPage() {
       setShowConfigModal(false);
       fetchData();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to save configuration", "error");
+      toastError(showToast, err, "Failed to save configuration");
     } finally {
       setIsSavingConfig(false);
     }

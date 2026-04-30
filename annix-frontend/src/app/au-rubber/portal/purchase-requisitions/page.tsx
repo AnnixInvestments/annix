@@ -13,6 +13,7 @@ import {
 } from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
 import { usePersistedState } from "@/app/hooks/usePersistedState";
+import { toastError } from "@/app/lib/api/apiError";
 import {
   auRubberApiClient,
   type RequisitionDto,
@@ -166,7 +167,7 @@ export default function PurchaseRequisitionsPage() {
       setCancelReqId(null);
       fetchData();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to cancel", "error");
+      toastError(showToast, err, "Failed to cancel");
     }
   };
 
@@ -181,7 +182,7 @@ export default function PurchaseRequisitionsPage() {
         showToast("No low-stock items found", "info");
       }
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to check", "error");
+      toastError(showToast, err, "Failed to check");
     } finally {
       setIsCheckingLowStock(false);
     }
@@ -239,7 +240,7 @@ export default function PurchaseRequisitionsPage() {
       resetForm();
       fetchData();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to create", "error");
+      toastError(showToast, err, "Failed to create");
     } finally {
       setIsCreating(false);
     }

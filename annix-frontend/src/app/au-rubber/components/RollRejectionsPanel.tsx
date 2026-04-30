@@ -13,6 +13,7 @@ import {
 import NextLink from "next/link";
 import { useEffect, useState } from "react";
 import { useToast } from "@/app/components/Toast";
+import { toastError } from "@/app/lib/api/apiError";
 import {
   auRubberApiClient,
   type RollRejectionDto,
@@ -62,7 +63,7 @@ export function RollRejectionsPanel(props: RollRejectionsPanelProps) {
         setIsExpanded(true);
       }
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to load rejections", "error");
+      toastError(showToast, err, "Failed to load rejections");
     } finally {
       setIsLoading(false);
     }
@@ -94,7 +95,7 @@ export function RollRejectionsPanel(props: RollRejectionsPanelProps) {
       fetchRejections();
       if (onRejectionCreated) onRejectionCreated();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to create rejection", "error");
+      toastError(showToast, err, "Failed to create rejection");
     } finally {
       setIsSubmitting(false);
     }
@@ -107,7 +108,7 @@ export function RollRejectionsPanel(props: RollRejectionsPanelProps) {
       showToast("Return document uploaded", "success");
       fetchRejections();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to upload document", "error");
+      toastError(showToast, err, "Failed to upload document");
     } finally {
       setUploadingId(null);
     }
@@ -130,7 +131,7 @@ export function RollRejectionsPanel(props: RollRejectionsPanelProps) {
       setLinkRollNumber("");
       fetchRejections();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to link replacement", "error");
+      toastError(showToast, err, "Failed to link replacement");
     } finally {
       setIsSubmitting(false);
     }
@@ -142,7 +143,7 @@ export function RollRejectionsPanel(props: RollRejectionsPanelProps) {
       showToast("Rejection closed", "success");
       fetchRejections();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to close rejection", "error");
+      toastError(showToast, err, "Failed to close rejection");
     }
   };
 
@@ -153,7 +154,7 @@ export function RollRejectionsPanel(props: RollRejectionsPanelProps) {
         window.open(result.url, "_blank");
       }
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to get document URL", "error");
+      toastError(showToast, err, "Failed to get document URL");
     }
   };
 

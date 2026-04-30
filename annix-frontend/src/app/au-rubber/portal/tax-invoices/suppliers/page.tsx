@@ -26,6 +26,7 @@ import {
   TableIcons,
   TableLoadingState,
 } from "@/app/components/shared/TableComponents";
+import { toastError } from "@/app/lib/api/apiError";
 import NixProcessingPopup from "@/app/lib/nix/components/NixProcessingPopup";
 
 const ITEMS_PER_PAGE = 25;
@@ -175,7 +176,7 @@ export default function SupplierTaxInvoicesPage() {
       showToast(`Invoice ${inv.invoiceNumber} posted to Sage`, "success");
       refresh();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to post to Sage", "error");
+      toastError(showToast, err, "Failed to post to Sage");
     } finally {
       setPostingToSageId(null);
     }
@@ -206,7 +207,7 @@ export default function SupplierTaxInvoicesPage() {
       }
       refresh();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to post to Sage", "error");
+      toastError(showToast, err, "Failed to post to Sage");
     } finally {
       setIsBulkPostingToSage(false);
     }
@@ -226,7 +227,7 @@ export default function SupplierTaxInvoicesPage() {
       showToast(`Tax invoice ${invoiceNumber} deleted`, "success");
       refresh();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to delete tax invoice", "error");
+      toastError(showToast, err, "Failed to delete tax invoice");
     } finally {
       setDeletingId(null);
     }
@@ -279,7 +280,7 @@ export default function SupplierTaxInvoicesPage() {
       setSelectedForApproval(new Set());
       refresh();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to approve invoices", "error");
+      toastError(showToast, err, "Failed to approve invoices");
     } finally {
       setIsBulkApproving(false);
     }
@@ -292,7 +293,7 @@ export default function SupplierTaxInvoicesPage() {
       showToast(`Invoice ${inv.invoiceNumber} version authorized`, "success");
       refresh();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to authorize version", "error");
+      toastError(showToast, err, "Failed to authorize version");
     } finally {
       setAuthorizingId(null);
     }
@@ -312,7 +313,7 @@ export default function SupplierTaxInvoicesPage() {
       showToast(`Invoice ${inv.invoiceNumber} version rejected`, "success");
       refresh();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to reject version", "error");
+      toastError(showToast, err, "Failed to reject version");
     } finally {
       setRejectingId(null);
     }
@@ -396,7 +397,7 @@ export default function SupplierTaxInvoicesPage() {
       );
       refresh();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to upload tax invoices", "error");
+      toastError(showToast, err, "Failed to upload tax invoices");
     } finally {
       setIsBulkUploading(false);
       setBulkUploadProgress(0);
@@ -445,7 +446,7 @@ export default function SupplierTaxInvoicesPage() {
       setUploadIsCreditNote(false);
       refresh();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to create tax invoice", "error");
+      toastError(showToast, err, "Failed to create tax invoice");
     } finally {
       setIsUploading(false);
     }
@@ -551,7 +552,7 @@ export default function SupplierTaxInvoicesPage() {
                 );
                 refresh();
               } catch (err) {
-                showToast(err instanceof Error ? err.message : "Dedupe failed", "error");
+                toastError(showToast, err, "Dedupe failed");
               }
             }}
             className="inline-flex items-center px-4 py-2 border border-red-300 rounded-md shadow-sm text-sm font-medium text-red-700 bg-white hover:bg-red-50"
@@ -606,7 +607,7 @@ export default function SupplierTaxInvoicesPage() {
                 });
                 refresh();
               } catch (err) {
-                showToast(err instanceof Error ? err.message : "Re-extraction failed", "error");
+                toastError(showToast, err, "Re-extraction failed");
               } finally {
                 hideExtraction();
                 setIsReExtracting(false);

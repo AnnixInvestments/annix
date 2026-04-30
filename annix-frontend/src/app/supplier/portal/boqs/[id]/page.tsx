@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { use, useEffect, useState } from "react";
 import * as XLSX from "xlsx";
 import { useToast } from "@/app/components/Toast";
+import { toastError } from "@/app/lib/api/apiError";
 import type { RfqItemDetail, SupplierBoqDetailResponse } from "@/app/lib/api/supplierApi";
 import { DEFAULT_CURRENCY } from "@/app/lib/currencies";
 import { formatDateTimeZA, nowISO } from "@/app/lib/datetime";
@@ -580,7 +581,7 @@ export default function SupplierBoqDetailPage(props: PageProps) {
       showToast("BOQ declined successfully", "success");
       loadBoqDetails();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to decline BOQ", "error");
+      toastError(showToast, err, "Failed to decline BOQ");
     } finally {
       setDecliningLoading(false);
     }
@@ -599,7 +600,7 @@ export default function SupplierBoqDetailPage(props: PageProps) {
       });
       showToast("Progress saved successfully", "success");
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to save progress", "error");
+      toastError(showToast, err, "Failed to save progress");
     } finally {
       setSavingProgress(false);
     }
@@ -619,7 +620,7 @@ export default function SupplierBoqDetailPage(props: PageProps) {
       showToast("Quote submitted successfully", "success");
       loadBoqDetails();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to submit quote", "error");
+      toastError(showToast, err, "Failed to submit quote");
     } finally {
       setSubmittingQuote(false);
     }

@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import { TableLoadingState } from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
+import { toastError } from "@/app/lib/api/apiError";
 import {
   auRubberApiClient,
   type RubberCompoundMovementDto,
@@ -77,7 +78,7 @@ export default function CompoundStockDetailPage() {
       setReceiveNotes("");
       fetchData();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to receive", "error");
+      toastError(showToast, err, "Failed to receive");
     } finally {
       setIsSubmitting(false);
     }
@@ -101,7 +102,7 @@ export default function CompoundStockDetailPage() {
       setAdjustNotes("");
       fetchData();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to adjust", "error");
+      toastError(showToast, err, "Failed to adjust");
     } finally {
       setIsSubmitting(false);
     }
@@ -119,7 +120,7 @@ export default function CompoundStockDetailPage() {
       setShowEditModal(false);
       fetchData();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to update", "error");
+      toastError(showToast, err, "Failed to update");
     } finally {
       setIsSubmitting(false);
     }

@@ -7,6 +7,7 @@ import { PasskeyManagementSection } from "@/app/components/PasskeyManagementSect
 import { useToast } from "@/app/components/Toast";
 import { useAuRubberAuth } from "@/app/context/AuRubberAuthContext";
 import { useAuRubberBranding } from "@/app/context/AuRubberBrandingContext";
+import { toastError } from "@/app/lib/api/apiError";
 import type {
   AuRubberPermissionDto,
   AuRubberRoleDto,
@@ -1221,7 +1222,7 @@ function FeaturesTab() {
       const metaLabel = meta ? meta.label : flagKey;
       showToast(`${metaLabel} ${updated.enabled ? "enabled" : "disabled"}`, "success");
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to update feature", "error");
+      toastError(showToast, err, "Failed to update feature");
     } finally {
       setTogglingKey(null);
     }

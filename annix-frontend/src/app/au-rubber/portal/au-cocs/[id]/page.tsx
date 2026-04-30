@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
 import { useToast } from "@/app/components/Toast";
+import { toastError } from "@/app/lib/api/apiError";
 import {
   type AuCocStatus,
   auRubberApiClient,
@@ -70,7 +71,7 @@ export default function AuCocDetailPage() {
       showToast("PDF generated successfully", "success");
       fetchData();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to generate PDF", "error");
+      toastError(showToast, err, "Failed to generate PDF");
     } finally {
       setIsGenerating(false);
     }
@@ -89,7 +90,7 @@ export default function AuCocDetailPage() {
       setSendEmail("");
       fetchData();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to send certificate", "error");
+      toastError(showToast, err, "Failed to send certificate");
     } finally {
       setIsSending(false);
     }
@@ -312,7 +313,10 @@ export default function AuCocDetailPage() {
             <div>
               <dt className="text-sm font-medium text-gray-500">Number of Rolls</dt>
               <dd className="mt-1 text-2xl font-semibold text-gray-900">
-                {rawItemsLength || coc.extractedRollData?.length || 0}
+                {(() => {
+                  const extractedLen = coc.extractedRollData?.length;
+                  return rawItemsLength || extractedLen || 0;
+                })()}
               </dd>
             </div>
             <div>
