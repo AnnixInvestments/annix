@@ -472,7 +472,11 @@ export default function DeliveryNoteDetailPage() {
       setIsRefiling(true);
       await refileDeliveryNoteStockMutation.mutateAsync(noteId);
       showToast("Stock refiled from corrected data", "success");
-      fetchData();
+      router.push(
+        isCustomerDn
+          ? "/au-rubber/portal/delivery-notes/customers"
+          : "/au-rubber/portal/delivery-notes/suppliers",
+      );
     } catch (err) {
       toastError(showToast, err, "Failed to refile stock");
     } finally {
