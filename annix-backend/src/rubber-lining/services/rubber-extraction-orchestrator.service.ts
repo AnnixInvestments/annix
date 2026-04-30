@@ -1,5 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { extractTextFromPdf, extractTextFromWord } from "../../lib/document-extraction";
+import { CompanyType } from "../entities/rubber-company.entity";
 import { DeliveryNoteType } from "../entities/rubber-delivery-note.entity";
 import { SupplierCocType } from "../entities/rubber-supplier-coc.entity";
 import { TaxInvoiceType } from "../entities/rubber-tax-invoice.entity";
@@ -7,6 +8,7 @@ import { RubberAuCocReadinessService } from "../rubber-au-coc-readiness.service"
 import { RubberCocService } from "../rubber-coc.service";
 import { RubberCocExtractionService } from "../rubber-coc-extraction.service";
 import { RubberDeliveryNoteService } from "../rubber-delivery-note.service";
+import { RubberRollStockService } from "../rubber-roll-stock.service";
 import { RubberTaxInvoiceService } from "../rubber-tax-invoice.service";
 import { AuRubberDocumentFilerService } from "./au-rubber-document-filer.service";
 
@@ -21,6 +23,7 @@ export class RubberExtractionOrchestratorService {
     private readonly deliveryNoteService: RubberDeliveryNoteService,
     private readonly auCocReadinessService: RubberAuCocReadinessService,
     private readonly documentFilerService: AuRubberDocumentFilerService,
+    private readonly rollStockService: RubberRollStockService,
   ) {}
 
   triggerCocExtraction(
@@ -216,12 +219,66 @@ export class RubberExtractionOrchestratorService {
             deliveryNoteIds: splitResult.deliveryNoteIds,
           });
         }
+
+        await Promise.all(
+          splitResult.deliveryNoteIds.map((dnId) => this.dispatchRollsForDeliveryNote(dnId)),
+        );
       } catch (error) {
         this.logger.error(
           `Failed to auto-extract delivery note ${deliveryNoteId}: ${error instanceof Error ? error.message : String(error)}`,
         );
       }
     })();
+  }
+
+  private async dispatchRollsForDeliveryNote(deliveryNoteId: number): Promise<void> {
+    try {
+      const dn = await this.deliveryNoteService.deliveryNoteEntityById(deliveryNoteId);
+      if (!dn || dn.deliveryNoteType !== DeliveryNoteType.ROLL) return;
+      const rolls = dn.extractedData?.rolls;
+      if (!rolls || rolls.length === 0) return;
+      const company = dn.supplierCompany;
+      if (!company) {
+        this.logger.warn(
+          `DN ${deliveryNoteId}: cannot dispatch rolls — supplier company relation not loaded`,
+        );
+        return;
+      }
+      const isCustomerSide = company.companyType === CompanyType.CUSTOMER;
+      if (isCustomerSide) {
+        const result = await this.rollStockService.upsertCustomerRollDispatchFromCdn(
+          dn.id,
+          dn.supplierCompanyId,
+          rolls.map((r) => ({
+            rollNumber: r.rollNumber ?? null,
+            compoundCode: r.compoundCode ?? null,
+            weightKg: r.weightKg ?? null,
+          })),
+        );
+        this.logger.log(
+          `CDN ${dn.deliveryNoteNumber} (#${dn.id}): linked ${result.linked} existing rolls, created ${result.created} placeholders, unlinked ${result.unlinked} orphans${result.skippedNoCompound > 0 ? `, skipped ${result.skippedNoCompound} (no compound)` : ""}`,
+        );
+      } else {
+        const result = await this.rollStockService.reconcileRollsFromSupplierDeliveryNote(
+          dn.id,
+          rolls.map((r) => ({
+            rollNumber: r.rollNumber ?? null,
+            compoundCode: r.compoundCode ?? null,
+            weightKg: r.weightKg ?? null,
+            widthMm: r.widthMm ?? null,
+            thicknessMm: r.thicknessMm ?? null,
+            lengthM: r.lengthM ?? null,
+          })),
+        );
+        this.logger.log(
+          `SDN ${dn.deliveryNoteNumber} (#${dn.id}): created ${result.created} new rolls, reconciled ${result.reconciled} placeholders${result.skipped > 0 ? `, skipped ${result.skipped}` : ""}`,
+        );
+      }
+    } catch (err) {
+      this.logger.error(
+        `dispatchRollsForDeliveryNote(${deliveryNoteId}) failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
   }
 
   triggerReadinessCheckForCoc(cocId: number): void {

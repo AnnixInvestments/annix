@@ -793,6 +793,13 @@ export class RubberDeliveryNoteService {
     await this.deliveryNoteItemRepository.delete({ deliveryNoteId });
   }
 
+  async deliveryNoteEntityById(id: number): Promise<RubberDeliveryNote | null> {
+    return this.deliveryNoteRepository.findOne({
+      where: { id },
+      relations: ["supplierCompany", "linkedCoc"],
+    });
+  }
+
   async replaceItemsFromRolls(
     deliveryNoteId: number,
     rolls: ExtractedDeliveryNoteRoll[],

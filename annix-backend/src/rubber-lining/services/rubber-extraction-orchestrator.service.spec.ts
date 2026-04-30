@@ -5,6 +5,7 @@ import { RubberAuCocReadinessService } from "../rubber-au-coc-readiness.service"
 import { RubberCocService } from "../rubber-coc.service";
 import { RubberCocExtractionService } from "../rubber-coc-extraction.service";
 import { RubberDeliveryNoteService } from "../rubber-delivery-note.service";
+import { RubberRollStockService } from "../rubber-roll-stock.service";
 import { RubberTaxInvoiceService } from "../rubber-tax-invoice.service";
 import { AuRubberDocumentFilerService } from "./au-rubber-document-filer.service";
 import { RubberExtractionOrchestratorService } from "./rubber-extraction-orchestrator.service";
@@ -60,6 +61,7 @@ describe("RubberExtractionOrchestratorService", () => {
     setPodPageNumbers: jest.fn().mockResolvedValue(undefined),
     acceptExtractAndSplit: jest.fn().mockResolvedValue({ deliveryNoteIds: [1] }),
     deliveryNoteById: jest.fn().mockResolvedValue({ supplierCompanyName: "Test Supplier" }),
+    deliveryNoteEntityById: jest.fn().mockResolvedValue(null),
     correctionHintsForDnSupplier: jest.fn().mockResolvedValue(null),
   };
 
@@ -73,6 +75,15 @@ describe("RubberExtractionOrchestratorService", () => {
     isInboxPath: jest.fn().mockReturnValue(false),
   };
 
+  const rollStockMock = {
+    upsertCustomerRollDispatchFromCdn: jest
+      .fn()
+      .mockResolvedValue({ linked: 0, created: 0, unlinked: 0, skippedNoCompound: 0 }),
+    reconcileRollsFromSupplierDeliveryNote: jest
+      .fn()
+      .mockResolvedValue({ created: 0, reconciled: 0, skipped: 0 }),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -83,6 +94,7 @@ describe("RubberExtractionOrchestratorService", () => {
         { provide: RubberDeliveryNoteService, useValue: deliveryNoteMock },
         { provide: RubberAuCocReadinessService, useValue: readinessMock },
         { provide: AuRubberDocumentFilerService, useValue: documentFilerMock },
+        { provide: RubberRollStockService, useValue: rollStockMock },
       ],
     }).compile();
 

@@ -879,9 +879,11 @@ export class RubberRollStockService {
     for (const orphan of previouslyLinked) {
       if (!currentNumbers.has(orphan.rollNumber)) {
         orphan.customerTaxInvoiceId = null;
-        orphan.soldToCompanyId = null;
-        orphan.soldAt = null;
-        orphan.status = RollStockStatus.IN_STOCK;
+        if (orphan.customerDeliveryNoteId == null) {
+          orphan.soldToCompanyId = null;
+          orphan.soldAt = null;
+          orphan.status = RollStockStatus.IN_STOCK;
+        }
         toSave.push(orphan);
         unlinked += 1;
       }
@@ -892,6 +894,235 @@ export class RubberRollStockService {
     }
 
     return { linked, created, unlinked, skippedNoCompound };
+  }
+
+  async upsertCustomerRollDispatchFromCdn(
+    customerDeliveryNoteId: number,
+    soldToCompanyId: number,
+    rolls: Array<{
+      rollNumber: string | null;
+      compoundCode?: string | null;
+      weightKg?: number | null;
+    }>,
+  ): Promise<{ linked: number; created: number; unlinked: number; skippedNoCompound: number }> {
+    const rollInfo = rolls
+      .map((r) => {
+        const trimmedNumber = r.rollNumber ? r.rollNumber.trim() : "";
+        return {
+          rollNumber: trimmedNumber,
+          weightKg: r.weightKg ?? null,
+          compoundCode: r.compoundCode ? r.compoundCode.trim() : null,
+        };
+      })
+      .filter((r) => r.rollNumber.length > 0);
+
+    const currentNumbers = new Set(rollInfo.map((r) => r.rollNumber));
+
+    const existing =
+      currentNumbers.size > 0
+        ? await this.rollStockRepository.find({
+            where: { rollNumber: In([...currentNumbers]) },
+          })
+        : [];
+    const existingByNumber = new Map(existing.map((r) => [r.rollNumber, r]));
+
+    const compoundCodes = [
+      ...new Set(rollInfo.map((r) => r.compoundCode).filter((c): c is string => !!c)),
+    ];
+    const codings =
+      compoundCodes.length > 0
+        ? await this.productCodingRepository.find({
+            where: { code: In(compoundCodes), codingType: ProductCodingType.COMPOUND },
+          })
+        : [];
+    const codingByCode = new Map(codings.map((c) => [c.code, c]));
+
+    const toSave: RubberRollStock[] = [];
+    const soldAt = now().toJSDate();
+    let linked = 0;
+    let created = 0;
+    let skippedNoCompound = 0;
+
+    for (const info of rollInfo) {
+      const existingRoll = existingByNumber.get(info.rollNumber);
+      if (existingRoll) {
+        existingRoll.status = RollStockStatus.SOLD;
+        existingRoll.soldToCompanyId = soldToCompanyId;
+        existingRoll.customerDeliveryNoteId = customerDeliveryNoteId;
+        existingRoll.soldAt = soldAt;
+        const incomingWeight = info.weightKg;
+        const currentWeight = existingRoll.weightKg;
+        const currentWeightNumeric = currentWeight == null ? 0 : Number(currentWeight);
+        if (incomingWeight != null && currentWeightNumeric === 0) {
+          existingRoll.weightKg = incomingWeight;
+        }
+        toSave.push(existingRoll);
+        linked += 1;
+      } else {
+        const compoundCode = info.compoundCode;
+        if (!compoundCode) {
+          skippedNoCompound += 1;
+          continue;
+        }
+        const coding = codingByCode.get(compoundCode);
+        if (!coding) {
+          skippedNoCompound += 1;
+          continue;
+        }
+        const newRoll = this.rollStockRepository.create({
+          firebaseUid: `pg_${generateUniqueId()}`,
+          rollNumber: info.rollNumber,
+          compoundCodingId: coding.id,
+          weightKg: info.weightKg ?? 0,
+          status: RollStockStatus.SOLD,
+          soldToCompanyId,
+          customerDeliveryNoteId,
+          soldAt,
+          linkedBatchIds: [],
+        });
+        toSave.push(newRoll);
+        created += 1;
+      }
+    }
+
+    const previouslyLinked = await this.rollStockRepository.find({
+      where: { customerDeliveryNoteId },
+    });
+    let unlinked = 0;
+    for (const orphan of previouslyLinked) {
+      if (!currentNumbers.has(orphan.rollNumber)) {
+        orphan.customerDeliveryNoteId = null;
+        if (orphan.customerTaxInvoiceId == null) {
+          orphan.soldToCompanyId = null;
+          orphan.soldAt = null;
+          orphan.status = RollStockStatus.IN_STOCK;
+        }
+        toSave.push(orphan);
+        unlinked += 1;
+      }
+    }
+
+    if (toSave.length > 0) {
+      await this.rollStockRepository.save(toSave);
+    }
+
+    return { linked, created, unlinked, skippedNoCompound };
+  }
+
+  async reconcileRollsFromSupplierDeliveryNote(
+    supplierDeliveryNoteId: number,
+    rolls: Array<{
+      rollNumber: string | null;
+      compoundCode?: string | null;
+      weightKg?: number | null;
+      widthMm?: number | null;
+      thicknessMm?: number | null;
+      lengthM?: number | null;
+    }>,
+  ): Promise<{ created: number; reconciled: number; skipped: number }> {
+    const rollInfo = rolls
+      .map((r) => ({
+        rollNumber: r.rollNumber ? r.rollNumber.trim() : "",
+        weightKg: r.weightKg ?? null,
+        compoundCode: r.compoundCode ? r.compoundCode.trim() : null,
+        widthMm: r.widthMm ?? null,
+        thicknessMm: r.thicknessMm ?? null,
+        lengthM: r.lengthM ?? null,
+      }))
+      .filter((r) => r.rollNumber.length > 0);
+
+    if (rollInfo.length === 0) return { created: 0, reconciled: 0, skipped: 0 };
+
+    const compoundCodes = [
+      ...new Set(rollInfo.map((r) => r.compoundCode).filter((c): c is string => !!c)),
+    ];
+    const codings =
+      compoundCodes.length > 0
+        ? await this.productCodingRepository.find({
+            where: { code: In(compoundCodes), codingType: ProductCodingType.COMPOUND },
+          })
+        : [];
+    const codingByCode = new Map(codings.map((c) => [c.code, c]));
+
+    const existing = await this.rollStockRepository.find({
+      where: { rollNumber: In(rollInfo.map((r) => r.rollNumber)) },
+    });
+    const existingByNumber = new Map(existing.map((r) => [r.rollNumber, r]));
+
+    const toSave: RubberRollStock[] = [];
+    let created = 0;
+    let reconciled = 0;
+    let skipped = 0;
+
+    for (const info of rollInfo) {
+      const existingRoll = existingByNumber.get(info.rollNumber);
+      if (existingRoll) {
+        const isSameSdn = existingRoll.supplierDeliveryNoteId === supplierDeliveryNoteId;
+        const isAlreadyClaimedByDifferentSdn =
+          existingRoll.supplierDeliveryNoteId != null && !isSameSdn;
+        if (isAlreadyClaimedByDifferentSdn) {
+          skipped += 1;
+          continue;
+        }
+        existingRoll.supplierDeliveryNoteId = supplierDeliveryNoteId;
+        const coding = info.compoundCode ? codingByCode.get(info.compoundCode) : null;
+        if (coding && existingRoll.compoundCodingId == null) {
+          existingRoll.compoundCodingId = coding.id;
+        }
+        const currentWeight = existingRoll.weightKg;
+        const currentWeightNumeric = currentWeight == null ? 0 : Number(currentWeight);
+        if (info.weightKg != null && currentWeightNumeric === 0) {
+          existingRoll.weightKg = info.weightKg;
+        }
+        if (existingRoll.widthMm == null) existingRoll.widthMm = info.widthMm;
+        if (existingRoll.thicknessMm == null) existingRoll.thicknessMm = info.thicknessMm;
+        if (existingRoll.lengthM == null) existingRoll.lengthM = info.lengthM;
+        toSave.push(existingRoll);
+        reconciled += 1;
+        continue;
+      }
+      const compoundCode = info.compoundCode;
+      if (!compoundCode) {
+        skipped += 1;
+        continue;
+      }
+      const coding = codingByCode.get(compoundCode);
+      if (!coding) {
+        skipped += 1;
+        continue;
+      }
+      const newRoll = this.rollStockRepository.create({
+        firebaseUid: `pg_${generateUniqueId()}`,
+        rollNumber: info.rollNumber,
+        compoundCodingId: coding.id,
+        weightKg: info.weightKg ?? 0,
+        widthMm: info.widthMm,
+        thicknessMm: info.thicknessMm,
+        lengthM: info.lengthM,
+        status: RollStockStatus.IN_STOCK,
+        supplierDeliveryNoteId,
+        linkedBatchIds: [],
+      });
+      toSave.push(newRoll);
+      created += 1;
+    }
+
+    const currentNumbers = new Set(rollInfo.map((r) => r.rollNumber));
+    const previouslyLinked = await this.rollStockRepository.find({
+      where: { supplierDeliveryNoteId },
+    });
+    for (const orphan of previouslyLinked) {
+      if (!currentNumbers.has(orphan.rollNumber)) {
+        orphan.supplierDeliveryNoteId = null;
+        toSave.push(orphan);
+      }
+    }
+
+    if (toSave.length > 0) {
+      await this.rollStockRepository.save(toSave);
+    }
+
+    return { created, reconciled, skipped };
   }
 
   async markRollsSoldByNumbers(
