@@ -483,6 +483,33 @@ export default function CustomerTaxInvoicesPage() {
           <button
             onClick={async () => {
               const confirmed = await confirm({
+                title: "Re-extract CTIs with missing rolls?",
+                message:
+                  "Identifies customer tax invoices where Gemini missed the per-line rolls[] array on at least one line item (the document shows 'Roll No & Weight' rows but no rolls were captured during extraction). Re-runs extraction with the updated prompt. Skips approved invoices.",
+                confirmLabel: "Re-extract Incomplete CTIs",
+              });
+              if (!confirmed) return;
+              try {
+                const result = await auRubberApiClient.reExtractCtisMissingRolls();
+                if (result.triggered === 0) {
+                  showToast("No CTIs found with missing rolls — all good.", "info");
+                } else {
+                  showToast(
+                    `Re-triggered extraction on ${result.triggered} CTI(s): ${result.invoiceIds.join(", ")}. Wait a few minutes, refresh, then click Rematch Rolls.`,
+                    "success",
+                  );
+                }
+              } catch (err) {
+                toastError(showToast, err, "Re-extract failed");
+              }
+            }}
+            className="inline-flex items-center px-4 py-2 border border-amber-300 rounded-md shadow-sm text-sm font-medium text-amber-700 bg-white hover:bg-amber-50"
+          >
+            Re-extract Incomplete
+          </button>
+          <button
+            onClick={async () => {
+              const confirmed = await confirm({
                 title: "Re-extract all customer tax invoices?",
                 message:
                   "Re-runs Vision AI on every NOT-yet-approved customer tax invoice with a document attached. Approved invoices are skipped — un-approve them first if you need them re-extracted. Existing extracted data on non-approved invoices will be overwritten. Runs in the background and can take several minutes.",

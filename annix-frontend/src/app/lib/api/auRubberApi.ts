@@ -2014,6 +2014,15 @@ class AuRubberApiClient {
     });
   }
 
+  async reExtractCtisMissingRolls(): Promise<{
+    triggered: number;
+    invoiceIds: number[];
+  }> {
+    return this.request("/rubber-lining/portal/admin/re-extract-ctis-missing-rolls", {
+      method: "POST",
+    });
+  }
+
   customerSageExportPreview = createEndpoint<
     [params: SageExportFilter],
     { invoiceCount: number; lineItemCount: number; totalAmount: number }

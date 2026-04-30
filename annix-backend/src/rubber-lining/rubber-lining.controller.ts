@@ -3112,6 +3112,53 @@ Formula: totalPrice = totalKg × salePricePerKg
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
+  @Post("portal/admin/re-extract-ctis-missing-rolls")
+  @ApiOperation({
+    summary:
+      "Re-extract customer tax invoices whose extracted_data has line items with no rolls[] array (Gemini missed them on the first pass)",
+  })
+  async reExtractCtisMissingRolls(): Promise<{
+    triggered: number;
+    invoiceIds: number[];
+  }> {
+    const allInvoices = await this.rubberTaxInvoiceService.allTaxInvoices({
+      invoiceType: TaxInvoiceType.CUSTOMER,
+      isCreditNote: false,
+    });
+    const candidates = allInvoices.filter((inv) => {
+      if (!inv.documentPath) return false;
+      if (inv.status === TaxInvoiceStatus.APPROVED) return false;
+      if (inv.versionStatus !== "ACTIVE") return false;
+      const lineItems = inv.extractedData?.lineItems;
+      if (!lineItems || lineItems.length === 0) return false;
+      return lineItems.some((li) => !Array.isArray(li.rolls) || li.rolls.length === 0);
+    });
+    if (candidates.length === 0) {
+      return { triggered: 0, invoiceIds: [] };
+    }
+    for (const inv of candidates) {
+      try {
+        const docBuffer = await this.storageService.download(inv.documentPath!);
+        this.extractionOrchestratorService.triggerTaxInvoiceExtraction(
+          inv.id,
+          docBuffer,
+          inv.documentPath!,
+          inv.companyName,
+        );
+        this.logger.log(
+          `Re-triggered extraction for incomplete CTI ${inv.id} (${inv.invoiceNumber})`,
+        );
+      } catch (err) {
+        this.logger.error(
+          `Failed to re-trigger extraction for CTI ${inv.id}: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    }
+    return { triggered: candidates.length, invoiceIds: candidates.map((inv) => inv.id) };
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
   @Post("portal/admin/rematch-rolls")
   @ApiOperation({
     summary:
