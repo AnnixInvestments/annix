@@ -1,14 +1,14 @@
 "use client";
 
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import { useAnnixRepAuth } from "@/app/context/AnnixRepAuthContext";
 import {
   allIndustryLabels,
   subIndustryByValue,
   subIndustryLabelsForIndustry,
-} from "@/app/lib/config/annix-rep/industryOptions";
+} from "@annix/product-data/portals";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useAnnixRepAuth } from "@/app/context/AnnixRepAuthContext";
 import { useCreateRepProfile, useRepProfileStatus } from "@/app/lib/query/hooks";
 
 const productCategoryLabelsForSubIndustries = (

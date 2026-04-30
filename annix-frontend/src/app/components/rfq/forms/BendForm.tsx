@@ -1,5 +1,11 @@
 "use client";
 
+import {
+  SABS62_BEND_RADIUS,
+  type SABS62BendType,
+  sabs62AvailableAngles,
+  sabs62CFInterpolated,
+} from "@annix/product-data/pipe";
 import { toPairs as entries, keys } from "es-toolkit/compat";
 import Link from "next/link";
 import React, { memo, useCallback, useEffect, useRef, useState } from "react";
@@ -38,12 +44,6 @@ import {
   recommendDuckfootGussetCount,
   recommendDuckfootGussetThickness,
 } from "@/app/lib/utils/pipeCalculations";
-import {
-  SABS62_BEND_RADIUS,
-  SABS62BendType,
-  sabs62AvailableAngles,
-  sabs62CFInterpolated,
-} from "@/app/lib/utils/sabs62CfData";
 import { isApi5LSpec } from "@/app/lib/utils/steelSpecGroups";
 import { useFlangeResolution } from "./hooks/useFlangeResolution";
 import { useMaterialSelector } from "./hooks/useMaterialSelector";

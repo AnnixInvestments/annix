@@ -1,5 +1,10 @@
 "use client";
 
+import {
+  SABS62_BEND_RADIUS,
+  type SABS62BendType,
+  sabs62CFInterpolated,
+} from "@annix/product-data/pipe";
 import { toPairs as entries } from "es-toolkit/compat";
 import { Select } from "@/app/components/ui/Select";
 import {
@@ -9,11 +14,6 @@ import {
   scheduleListForSpec,
 } from "@/app/lib/config/rfq";
 import { calculateMinWallThickness } from "@/app/lib/utils/pipeCalculations";
-import {
-  SABS62_BEND_RADIUS,
-  SABS62BendType,
-  sabs62CFInterpolated,
-} from "@/app/lib/utils/sabs62CfData";
 import type { SteelSpecItem } from "../shared";
 
 interface BendNominalBoreSelectProps {

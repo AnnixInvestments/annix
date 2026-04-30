@@ -1,4 +1,3 @@
-import { toPairs as entries, keys } from "es-toolkit/compat";
 /**
  * SABS 62 Centre to Face (C/F) Data for Pulled Bends
  *
@@ -7640,7 +7639,7 @@ export function sabs62CFInterpolated(
   if (exactCF !== undefined) return exactCF;
 
   // Get all available angles for this bend type
-  const angles = keys(bendData)
+  const angles = Object.keys(bendData)
     .map(Number)
     .sort((a, b) => a - b);
 
@@ -7696,7 +7695,7 @@ export function sabs62AvailableAngles(bendType: SABS62BendType, nb: number): num
   const bendData = SABS62_CF_DATA[bendType];
   if (!bendData) return [];
 
-  return entries(bendData)
+  return Object.entries(bendData)
     .filter(([_, nbData]) => (nbData as Record<number, number>)[nb] !== undefined)
     .map(([angle]) => Number(angle))
     .sort((a, b) => a - b);

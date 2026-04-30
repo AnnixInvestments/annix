@@ -110,6 +110,23 @@ export {
   SABS719_REDUCER_COMBINATIONS,
   SABS719_STANDARD_REDUCER_LENGTHS,
 } from "./reducer-sizes";
+export type { SABS62BendType } from "./sabs62-cf-data";
+export {
+  calculateSabs62BendRadius,
+  getSabs62PipeData,
+  isSabs62CombinationAvailable,
+  SABS62_BEND_RADIUS,
+  SABS62_CF_DATA,
+  SABS62_COMMON_ANGLES,
+  SABS62_NB_OPTIONS,
+  SABS62_PIPE_DATA,
+  sabs62AvailableAngles,
+  sabs62BendRadius,
+  sabs62BendTypes,
+  sabs62CF,
+  sabs62CFInterpolated,
+  sabs62Multiplier,
+} from "./sabs62-cf-data";
 export type { Sabs719BendDimension } from "./sabs719-bend";
 export {
   SABS719_BEND_TYPES,

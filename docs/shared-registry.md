@@ -1,6 +1,6 @@
 # Shared Module Registry
 
-**Last updated:** 2026-04-20
+**Last updated:** 2026-04-30
 
 This is the canonical index of shared modules across the Annix monorepo. Every Claude session MUST consult this file before writing new constants, components, services, or utilities (see `CLAUDE.md` §"Discovery-first protocol").
 
@@ -14,7 +14,7 @@ Shared workspace package (pnpm workspace). Both `annix-backend` and `annix-front
 
 | Domain | Path | Exports |
 |---|---|---|
-| Pipe specs | `pipe/` | `NPS_TO_NB_MM`, `NB_MM_TO_NPS`, schedules, `PIPE_END_OPTIONS`, `BEND_END_OPTIONS`, `FITTING_END_OPTIONS`, `REDUCER_END_OPTIONS`, `SABS719_BEND_TYPES`, `SABS719_REDUCER_COMBINATIONS`, `AR_STEEL_GRADES`, `FITTING_CLASS_WALL_THICKNESS`, `PIPE_TOLERANCES`, `toleranceForPipe`, `calculateTolerances`, `MATERIAL_GROUP_MAPPINGS`, `ptRatingMaterialGroup`, `asmeGroupNumber`, `PT_RATINGS`, `interpolatePTRating`, `selectRequiredClass`, `temperatureRange`, `API_5L_GRADES`, `calculateCarbonEquivalent`, `STEEL_MATERIALS`, `validatePSL2Compliance`, `validateNACECompliance`, `WORKING_PRESSURE_BAR`, `WORKING_TEMPERATURE_CELSIUS`, `TEMPERATURE_CATEGORIES`, `STANDARD_PIPE_LENGTHS_M`, `DEFAULT_NOMINAL_BORES`, `ANSI_PRESSURE_CLASSES`, `SABS_1123_PRESSURE_CLASSES`, `BS_4504_PRESSURE_CLASSES`, `FLANGE_OD`, `TACK_WELD_CONFIG`, `CLOSURE_LENGTH_CONFIG`, `RETAINING_RING_CONFIG`, `FILLET_WELD_CONFIG`, `BUTT_WELD_CONFIG`, `PRESSURE_CALCULATION_CONSTANTS`, `SURFACE_AREA_CONSTANTS`, `CALCULATION_DEFAULTS`, `tackWeldWeight`, `closureLengthLimits`, `closureWeight` |
+| Pipe specs | `pipe/` | `NPS_TO_NB_MM`, `NB_MM_TO_NPS`, schedules, `PIPE_END_OPTIONS`, `BEND_END_OPTIONS`, `FITTING_END_OPTIONS`, `REDUCER_END_OPTIONS`, `SABS719_BEND_TYPES`, `SABS719_REDUCER_COMBINATIONS`, `AR_STEEL_GRADES`, `FITTING_CLASS_WALL_THICKNESS`, `PIPE_TOLERANCES`, `toleranceForPipe`, `calculateTolerances`, `MATERIAL_GROUP_MAPPINGS`, `ptRatingMaterialGroup`, `asmeGroupNumber`, `PT_RATINGS`, `interpolatePTRating`, `selectRequiredClass`, `temperatureRange`, `API_5L_GRADES`, `calculateCarbonEquivalent`, `STEEL_MATERIALS`, `validatePSL2Compliance`, `validateNACECompliance`, `WORKING_PRESSURE_BAR`, `WORKING_TEMPERATURE_CELSIUS`, `TEMPERATURE_CATEGORIES`, `STANDARD_PIPE_LENGTHS_M`, `DEFAULT_NOMINAL_BORES`, `ANSI_PRESSURE_CLASSES`, `SABS_1123_PRESSURE_CLASSES`, `BS_4504_PRESSURE_CLASSES`, `FLANGE_OD`, `TACK_WELD_CONFIG`, `CLOSURE_LENGTH_CONFIG`, `RETAINING_RING_CONFIG`, `FILLET_WELD_CONFIG`, `BUTT_WELD_CONFIG`, `PRESSURE_CALCULATION_CONSTANTS`, `SURFACE_AREA_CONSTANTS`, `CALCULATION_DEFAULTS`, `tackWeldWeight`, `closureLengthLimits`, `closureWeight`, `SABS62_NB_OPTIONS`, `SABS62_BEND_RADIUS`, `SABS62_PIPE_DATA`, `SABS62_CF_DATA`, `SABS62_COMMON_ANGLES`, `SABS62BendType`, `sabs62CF`, `sabs62CFInterpolated`, `sabs62BendRadius`, `calculateSabs62BendRadius`, `sabs62AvailableAngles`, `isSabs62CombinationAvailable`, `sabs62Multiplier`, `sabs62BendTypes`, `getSabs62PipeData` |
 | Steel | `steel/` | `STEEL_DENSITY_KG_M3`, `STEEL_DENSITY_KG_MM3`, `STEEL_DENSITY_KG_CM3`, `NACE_MAX_HARDNESS_HRC` |
 | Rubber | `rubber/` | rubber products, lining recommendations, dimensions, coding types, calloff status, order status |
 | Paint | `paint/` | paint products, system recommendations, standards validation |
@@ -24,7 +24,7 @@ Shared workspace package (pnpm workspace). Both `annix-backend` and `annix-front
 | HDPE | `hdpe/` | grades, SDR ratings, dimensions, temperature derating, welding, welding standards, standards, fittings, pricing |
 | PVC | `pvc/` | PVC-specific data |
 | RFQ shared types | `rfq/` | straight pipe, bend, tank-chute, flange, pipe dimension, weld, material, boq, coating, pt-rating, pump |
-| Portal hosts | `portals/` | `PORTAL_HOSTS`, `PortalCode`, `PortalHost`, `portalForHost`, `portalForCode`, `canonicalHostFor`, `corsOriginsFor`, `normaliseHost`, `isAliasHost`, `DEFAULT_DEV_PORT`. Single source of truth for production + dev hostnames per portal — drives middleware host routing, backend CORS, WebAuthn RP ID resolution, and email/PDF link generation. **Adding a new portal? Add it here first; everything else derives from this.** |
+| Portal hosts | `portals/` | `PORTAL_HOSTS`, `PortalCode`, `PortalHost`, `portalForHost`, `portalForCode`, `canonicalHostFor`, `corsOriginsFor`, `normaliseHost`, `isAliasHost`, `DEFAULT_DEV_PORT`. Single source of truth for production + dev hostnames per portal — drives middleware host routing, backend CORS, WebAuthn RP ID resolution, and email/PDF link generation. **Adding a new portal? Add it here first; everything else derives from this.** Also exports Annix Rep industry taxonomy: `INDUSTRIES`, `Industry`, `SubIndustry`, `ProductCategory`, `IndustryValue`, `industryByValue`, `subIndustryByValue`, `productCategoryByValue`, `searchTermsForSelection`, `allIndustryLabels`, `subIndustryLabelsForIndustry`, `productCategoryLabelsForSubIndustry`, `productCategoryLabelsForSubIndustries`. |
 
 **When to put new data here:** anything that is factual, static, cross-app, and not user-owned (standards data, product catalogues, engineering constants, enumerations). Tests live alongside source (`*.spec.ts`).
 
