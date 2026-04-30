@@ -1,443 +1,46 @@
-import { type ApiClient, createApiClient } from "@/app/lib/api/createApiClient";
+import { type ApiClient, createApiClient, createEndpoint } from "@/app/lib/api/createApiClient";
 import { adminTokenStore } from "@/app/lib/api/portalTokenStores";
 import { API_BASE_URL } from "@/lib/api-config";
 
 // Types for admin portal - must match backend DTOs
 
-export interface AdminLoginDto {
-  email: string;
-  password: string;
-}
+import type {
+  ActivityItem,
+  AdminLoginDto,
+  AdminLoginResponse,
+  AdminRfqListResponse,
+  AdminRfqQueryDto,
+  AdminUserProfile,
+  AutoApprovalResult,
+  CreateSecureDocumentDto,
+  CustomerDetail,
+  CustomerDocument,
+  CustomerListResponse,
+  CustomerQueryDto,
+  CustomerStats,
+  DashboardStats,
+  DocumentPreviewImages,
+  DocumentReviewData,
+  FeedbackAttachmentUrl,
+  FeedbackDetail,
+  FeedbackItem,
+  LocalDocument,
+  LocalDocumentWithContent,
+  LoginHistoryItem,
+  ReactivateCustomerDto,
+  ResetDeviceBindingDto,
+  ResolutionStatus,
+  RfqFullDraftResponse,
+  SecureDocument,
+  SecureDocumentWithContent,
+  SecureEntityFolder,
+  SupplierStats,
+  SuspendCustomerDto,
+  UpdateSecureDocumentDto,
+  VerificationResult,
+} from "./adminApi.types";
 
-export interface AdminUser {
-  id: number;
-  email: string;
-  firstName: string;
-  lastName: string;
-  roles: string[];
-}
-
-export interface AdminLoginResponse {
-  accessToken: string;
-  refreshToken: string;
-  user: AdminUser;
-}
-
-export interface AdminUserProfile {
-  id: number;
-  email: string;
-  firstName: string;
-  lastName: string;
-  roles: string[];
-  createdAt: string;
-  lastActiveAt?: string;
-}
-
-export interface DashboardStats {
-  totalCustomers: number;
-  totalSuppliers: number;
-  totalRfqs: number;
-  pendingApprovals: {
-    customers: number;
-    suppliers: number;
-    total: number;
-  };
-  recentActivity: ActivityItem[];
-  systemHealth: {
-    activeCustomerSessions: number;
-    activeSupplierSessions: number;
-    activeAdminSessions: number;
-  };
-}
-
-export interface ActivityItem {
-  id: number;
-  timestamp: string;
-  userId: number;
-  userName: string;
-  action: string;
-  entityType: string;
-  entityId?: number;
-  details?: string;
-  ipAddress?: string;
-}
-
-export interface CustomerStats {
-  total: number;
-  active: number;
-  suspended: number;
-  pendingReview: number;
-}
-
-export interface SupplierStats {
-  total: number;
-  active: number;
-  suspended: number;
-  pendingReview: number;
-}
-
-// Feedback Types
-
-export type FeedbackSource = "text" | "voice";
-
-export type FeedbackClassification =
-  | "bug"
-  | "feature-request"
-  | "question"
-  | "ui-issue"
-  | "data-issue";
-export type FeedbackStatus = "submitted" | "triaged" | "in_progress" | "resolved";
-
-export type ResolutionStatus =
-  | "needs_investigation"
-  | "investigating"
-  | "fix_in_progress"
-  | "fix_deployed"
-  | "verified"
-  | "cannot_reproduce"
-  | "wont_fix"
-  | "duplicate";
-
-export interface FeedbackItem {
-  id: number;
-  customerProfileId: number | null;
-  conversationId: number | null;
-  assignedToId: number | null;
-  content: string;
-  source: FeedbackSource;
-  pageUrl: string | null;
-  submitterType: string | null;
-  submitterName: string | null;
-  submitterEmail: string | null;
-  appContext: string | null;
-  githubIssueNumber: number | null;
-  aiClassification: FeedbackClassification | null;
-  status: FeedbackStatus;
-  resolutionStatus: ResolutionStatus | null;
-  testCriteria: string | null;
-  verifiedAt: string | null;
-  createdAt: string;
-  customerProfile?: {
-    id: number;
-    firstName: string;
-    lastName: string;
-    company?: { legalName: string };
-  } | null;
-  assignedTo?: {
-    id: number;
-    firstName: string;
-    lastName: string;
-  } | null;
-  attachments?: FeedbackAttachmentItem[];
-}
-
-export interface FeedbackAttachmentItem {
-  id: number;
-  originalFilename: string;
-  mimeType: string;
-  fileSize: number;
-  isAutoScreenshot: boolean;
-  createdAt: string;
-}
-
-export interface FeedbackAttachmentUrl {
-  id: number;
-  url: string;
-  filename: string;
-  isAutoScreenshot: boolean;
-}
-
-export interface FeedbackDetail extends FeedbackItem {
-  conversation?: {
-    id: number;
-    subject: string;
-  } | null;
-}
-
-// Customer Management Types
-
-export type CustomerAccountStatus = "pending" | "active" | "suspended" | "deactivated";
-
-export interface CustomerQueryDto {
-  search?: string;
-  status?: CustomerAccountStatus;
-  page?: number;
-  limit?: number;
-  sortBy?: string;
-  sortOrder?: "ASC" | "DESC";
-}
-
-export interface CustomerListItem {
-  id: number;
-  firstName: string;
-  lastName: string;
-  email: string;
-  companyName: string;
-  accountStatus: CustomerAccountStatus;
-  createdAt: string;
-  lastLoginAt?: string | null;
-  deviceBound: boolean;
-}
-
-export interface CustomerListResponse {
-  items: CustomerListItem[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-}
-
-export interface CustomerDetail {
-  id: number;
-  firstName: string;
-  lastName: string;
-  email: string;
-  jobTitle?: string;
-  directPhone?: string;
-  mobilePhone?: string;
-  accountStatus: CustomerAccountStatus;
-  suspensionReason?: string | null;
-  suspendedAt?: string | null;
-  createdAt: string;
-  lastLoginAt?: string | null;
-  deviceBound: boolean;
-  company?: {
-    name: string;
-    vatNumber?: string;
-    registrationNumber?: string;
-    address?: string;
-    city?: string;
-    province?: string;
-    postalCode?: string;
-  };
-  onboarding?: {
-    id: number;
-    status: string;
-    submittedAt?: string;
-    reviewedAt?: string;
-    reviewedByName?: string | null;
-  };
-}
-
-export interface SuspendCustomerDto {
-  reason: string;
-}
-
-export interface ReactivateCustomerDto {
-  note?: string;
-}
-
-export interface ResetDeviceBindingDto {
-  reason: string;
-}
-
-export interface LoginHistoryItem {
-  id: number;
-  timestamp: string;
-  ipAddress: string;
-  userAgent: string;
-  success: boolean;
-  failureReason?: string;
-}
-
-export interface CustomerDocument {
-  id: number;
-  documentType: string;
-  fileName: string;
-  filePath: string;
-  uploadedAt: string;
-  validationStatus?: string;
-  validationNotes?: string;
-  ocrProcessedAt?: string;
-  ocrFailed?: boolean;
-  verificationConfidence?: number;
-  allFieldsMatch?: boolean;
-}
-
-export interface FieldComparisonResult {
-  field: string;
-  expected: string | number | null;
-  extracted: string | number | null;
-  matches: boolean;
-  similarity: number;
-}
-
-export interface DocumentReviewData {
-  documentId: number;
-  documentType: string;
-  fileName: string;
-  mimeType: string;
-  fileSize: number;
-  uploadedAt: string;
-  validationStatus: string;
-  validationNotes: string | null;
-  presignedUrl: string;
-  ocrProcessedAt: string | null;
-  ocrFailed: boolean;
-  verificationConfidence: number | null;
-  allFieldsMatch: boolean | null;
-  expectedData: Record<string, any>;
-  extractedData: Record<string, any>;
-  fieldComparison: FieldComparisonResult[];
-  reviewedBy: string | null;
-  reviewedAt: string | null;
-  customer?: {
-    id: number;
-    firstName: string;
-    lastName: string;
-  };
-  supplier?: {
-    id: number;
-    firstName: string;
-    lastName: string;
-  };
-}
-
-export interface VerificationResult {
-  success: boolean;
-  documentId: number;
-  entityType: "customer" | "supplier";
-  validationStatus: string;
-  allFieldsMatch: boolean;
-  requiresManualReview: boolean;
-  errorMessage?: string;
-}
-
-export interface AutoApprovalResult {
-  entityType: "customer" | "supplier";
-  entityId: number;
-  approved: boolean;
-  reason: string;
-  missingDocuments: string[];
-}
-
-export interface DocumentPreviewImages {
-  pages: string[];
-  totalPages: number;
-  invalidDocuments: string[];
-  manualReviewDocuments: string[];
-}
-
-export interface SecureDocument {
-  id: string;
-  slug: string;
-  title: string;
-  description: string | null;
-  folder: string | null;
-  storagePath: string;
-  fileType: "markdown" | "pdf" | "excel" | "word" | "other";
-  originalFilename: string | null;
-  attachmentPath: string | null;
-  createdBy: {
-    id: number;
-    firstName?: string | null;
-    lastName?: string | null;
-    username?: string | null;
-    email?: string | null;
-  } | null;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface SecureDocumentWithContent extends SecureDocument {
-  content: string;
-}
-
-export interface CreateSecureDocumentDto {
-  title: string;
-  description?: string;
-  content: string;
-  folder?: string;
-}
-
-export interface UpdateSecureDocumentDto {
-  title?: string;
-  description?: string;
-  content?: string;
-  folder?: string;
-}
-
-export interface SecureEntityFolder {
-  id: number;
-  entityType: "customer" | "supplier";
-  entityId: number;
-  folderName: string;
-  secureFolderPath: string;
-  isActive: boolean;
-  createdAt: string;
-  deletedAt: string | null;
-  deletionReason: string | null;
-}
-
-export interface LocalDocument {
-  slug: string;
-  title: string;
-  description: string;
-  filePath: string;
-  updatedAt: string;
-  isLocal: true;
-}
-
-export interface LocalDocumentWithContent extends LocalDocument {
-  content: string;
-}
-
-// Re-export RfqDraftStatus from client for admin use
-export type { RfqDraftStatus } from "./client";
-
-// Admin RFQ types - extends existing types with admin-specific fields
-export interface AdminRfqListItem {
-  id: number;
-  rfqNumber?: string;
-  projectName: string;
-  customerName: string;
-  customerEmail: string;
-  status: string;
-  isUnregistered?: boolean;
-  createdAt: string;
-  updatedAt: string;
-  itemCount: number;
-  documentCount?: number;
-  requiredDate?: string;
-  isPastDeadline?: boolean;
-}
-
-export interface AdminRfqListResponse {
-  items: AdminRfqListItem[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-}
-
-export interface RfqFullDraftResponse {
-  id: number;
-  draftNumber: string;
-  projectName?: string;
-  currentStep: number;
-  completionPercentage: number;
-  isConverted: boolean;
-  convertedRfqId?: number;
-  formData: Record<string, any>;
-  globalSpecs?: Record<string, any>;
-  requiredProducts?: string[];
-  straightPipeEntries?: Record<string, any>[];
-  pendingDocuments?: Record<string, any>[];
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface AdminRfqQueryDto {
-  search?: string;
-  status?: string;
-  customerId?: number;
-  dateFrom?: string;
-  dateTo?: string;
-  sortBy?: string;
-  sortOrder?: "ASC" | "DESC";
-  page?: number;
-  limit?: number;
-}
+export type * from "./adminApi.types";
 
 const apiClient: ApiClient = createApiClient({
   baseURL: API_BASE_URL,
@@ -499,27 +102,27 @@ class AdminApiClient {
     }
   }
 
-  async getCurrentUser(): Promise<AdminUserProfile> {
-    return this.request<AdminUserProfile>("/admin/auth/me");
-  }
+  getCurrentUser = createEndpoint<[], AdminUserProfile>(apiClient, "GET", {
+    path: "/admin/auth/me",
+  });
 
   // Dashboard endpoints
 
-  async getDashboardStats(): Promise<DashboardStats> {
-    return this.request<DashboardStats>("/admin/dashboard/stats");
-  }
+  getDashboardStats = createEndpoint<[], DashboardStats>(apiClient, "GET", {
+    path: "/admin/dashboard/stats",
+  });
 
-  async getRecentActivity(limit: number = 20): Promise<ActivityItem[]> {
-    return this.request<ActivityItem[]>(`/admin/dashboard/recent-activity?limit=${limit}`);
-  }
+  getRecentActivity = createEndpoint<[limit?: number], ActivityItem[]>(apiClient, "GET", {
+    path: (limit) => `/admin/dashboard/recent-activity?limit=${limit}`,
+  });
 
-  async getCustomerStats(): Promise<CustomerStats> {
-    return this.request<CustomerStats>("/admin/dashboard/customers/stats");
-  }
+  getCustomerStats = createEndpoint<[], CustomerStats>(apiClient, "GET", {
+    path: "/admin/dashboard/customers/stats",
+  });
 
-  async getSupplierStats(): Promise<SupplierStats> {
-    return this.request<SupplierStats>("/admin/dashboard/suppliers/stats");
-  }
+  getSupplierStats = createEndpoint<[], SupplierStats>(apiClient, "GET", {
+    path: "/admin/dashboard/suppliers/stats",
+  });
 
   // Customer Management endpoints
 
@@ -538,30 +141,32 @@ class AdminApiClient {
     );
   }
 
-  async getCustomerDetail(id: number): Promise<CustomerDetail> {
-    return this.request<CustomerDetail>(`/admin/customers/${id}`);
-  }
+  getCustomerDetail = createEndpoint<[id: number], CustomerDetail>(apiClient, "GET", {
+    path: (id) => `/admin/customers/${id}`,
+  });
 
-  async suspendCustomer(id: number, dto: SuspendCustomerDto): Promise<void> {
-    return this.request<void>(`/admin/customers/${id}/suspend`, {
-      method: "POST",
-      body: JSON.stringify(dto),
-    });
-  }
+  suspendCustomer = createEndpoint<[id: number, dto: SuspendCustomerDto], void>(apiClient, "POST", {
+    path: (id, _dto) => `/admin/customers/${id}/suspend`,
+    body: (_id, dto) => dto,
+  });
 
-  async reactivateCustomer(id: number, dto: ReactivateCustomerDto): Promise<void> {
-    return this.request<void>(`/admin/customers/${id}/reactivate`, {
-      method: "POST",
-      body: JSON.stringify(dto),
-    });
-  }
+  reactivateCustomer = createEndpoint<[id: number, dto: ReactivateCustomerDto], void>(
+    apiClient,
+    "POST",
+    {
+      path: (id, _dto) => `/admin/customers/${id}/reactivate`,
+      body: (_id, dto) => dto,
+    },
+  );
 
-  async resetDeviceBinding(id: number, dto: ResetDeviceBindingDto): Promise<void> {
-    return this.request<void>(`/admin/customers/${id}/reset-device`, {
-      method: "POST",
-      body: JSON.stringify(dto),
-    });
-  }
+  resetDeviceBinding = createEndpoint<[id: number, dto: ResetDeviceBindingDto], void>(
+    apiClient,
+    "POST",
+    {
+      path: (id, _dto) => `/admin/customers/${id}/reset-device`,
+      body: (_id, dto) => dto,
+    },
+  );
 
   async getCustomerLoginHistory(id: number, limit?: number): Promise<LoginHistoryItem[]> {
     return this.request<LoginHistoryItem[]>(
@@ -569,9 +174,9 @@ class AdminApiClient {
     );
   }
 
-  async getCustomerDocuments(id: number): Promise<CustomerDocument[]> {
-    return this.request<CustomerDocument[]>(`/admin/customers/${id}/documents`);
-  }
+  getCustomerDocuments = createEndpoint<[id: number], CustomerDocument[]>(apiClient, "GET", {
+    path: (id) => `/admin/customers/${id}/documents`,
+  });
 
   async getCustomerDocumentUrl(
     documentId: number,
@@ -581,45 +186,41 @@ class AdminApiClient {
     );
   }
 
-  async getPendingReviewCustomers(): Promise<any[]> {
-    return this.request<any[]>("/admin/customers/onboarding/pending-review");
-  }
+  getPendingReviewCustomers = createEndpoint<[], any[]>(apiClient, "GET", {
+    path: "/admin/customers/onboarding/pending-review",
+  });
 
-  async getCustomerOnboardingForReview(id: number): Promise<any> {
-    return this.request<any>(`/admin/customers/onboarding/${id}`);
-  }
+  getCustomerOnboardingForReview = createEndpoint<[id: number], any>(apiClient, "GET", {
+    path: (id) => `/admin/customers/onboarding/${id}`,
+  });
 
-  async approveCustomerOnboarding(id: number): Promise<void> {
-    return this.request<void>(`/admin/customers/onboarding/${id}/approve`, {
-      method: "POST",
-    });
-  }
+  approveCustomerOnboarding = createEndpoint<[id: number], void>(apiClient, "POST", {
+    path: (id) => `/admin/customers/onboarding/${id}/approve`,
+  });
 
-  async rejectCustomerOnboarding(
-    id: number,
-    reason: string,
-    remediationSteps: string,
-  ): Promise<void> {
-    return this.request<void>(`/admin/customers/onboarding/${id}/reject`, {
-      method: "POST",
-      body: JSON.stringify({ reason, remediationSteps }),
-    });
-  }
+  rejectCustomerOnboarding = createEndpoint<
+    [id: number, reason: string, remediationSteps: string],
+    void
+  >(apiClient, "POST", {
+    path: (id, _reason, _remediationSteps) => `/admin/customers/onboarding/${id}/reject`,
+    body: (_id, reason, remediationSteps) => ({ reason, remediationSteps }),
+  });
 
-  async reviewCustomerDocument(
-    id: number,
-    validationStatus: string,
-    validationNotes?: string,
-  ): Promise<void> {
-    return this.request<void>(`/admin/customers/documents/${id}/review`, {
-      method: "POST",
-      body: JSON.stringify({ validationStatus, validationNotes }),
-    });
-  }
+  reviewCustomerDocument = createEndpoint<
+    [id: number, validationStatus: string, validationNotes?: string],
+    void
+  >(apiClient, "POST", {
+    path: (id, _validationStatus, _validationNotes) => `/admin/customers/documents/${id}/review`,
+    body: (_id, validationStatus, validationNotes) => ({ validationStatus, validationNotes }),
+  });
 
-  async getCustomerDocumentReviewData(documentId: number): Promise<DocumentReviewData> {
-    return this.request<DocumentReviewData>(`/admin/customers/documents/${documentId}/review-data`);
-  }
+  getCustomerDocumentReviewData = createEndpoint<[documentId: number], DocumentReviewData>(
+    apiClient,
+    "GET",
+    {
+      path: (documentId) => `/admin/customers/documents/${documentId}/review-data`,
+    },
+  );
 
   async getCustomerDocumentPreviewImages(documentId: number): Promise<DocumentPreviewImages> {
     return this.request<DocumentPreviewImages>(
@@ -627,27 +228,29 @@ class AdminApiClient {
     );
   }
 
-  async reVerifyCustomerDocument(documentId: number): Promise<VerificationResult> {
-    return this.request<VerificationResult>(`/admin/customers/documents/${documentId}/re-verify`, {
-      method: "POST",
-    });
-  }
+  reVerifyCustomerDocument = createEndpoint<[documentId: number], VerificationResult>(
+    apiClient,
+    "POST",
+    {
+      path: (documentId) => `/admin/customers/documents/${documentId}/re-verify`,
+    },
+  );
 
-  async checkCustomerAutoApproval(customerId: number): Promise<AutoApprovalResult> {
-    return this.request<AutoApprovalResult>(`/admin/customers/${customerId}/check-auto-approval`, {
-      method: "POST",
-    });
-  }
+  checkCustomerAutoApproval = createEndpoint<[customerId: number], AutoApprovalResult>(
+    apiClient,
+    "POST",
+    {
+      path: (customerId) => `/admin/customers/${customerId}/check-auto-approval`,
+    },
+  );
 
-  async inviteCustomer(
-    email: string,
-    message?: string,
-  ): Promise<{ success: boolean; message: string }> {
-    return this.request<{ success: boolean; message: string }>("/admin/customers/invite", {
-      method: "POST",
-      body: JSON.stringify({ email, message }),
-    });
-  }
+  inviteCustomer = createEndpoint<
+    [email: string, message?: string],
+    { success: boolean; message: string }
+  >(apiClient, "POST", {
+    path: "/admin/customers/invite",
+    body: (email, message) => ({ email, message }),
+  });
 
   // Supplier Management endpoints
 
@@ -661,71 +264,58 @@ class AdminApiClient {
     return this.request<any>(`/admin/suppliers${queryString ? `?${queryString}` : ""}`);
   }
 
-  async getSupplierDetail(id: number): Promise<any> {
-    return this.request<any>(`/admin/suppliers/${id}`);
-  }
+  getSupplierDetail = createEndpoint<[id: number], any>(apiClient, "GET", {
+    path: (id) => `/admin/suppliers/${id}`,
+  });
 
-  async getPendingReviewSuppliers(): Promise<any[]> {
-    return this.request<any[]>("/admin/suppliers/pending-review");
-  }
+  getPendingReviewSuppliers = createEndpoint<[], any[]>(apiClient, "GET", {
+    path: "/admin/suppliers/pending-review",
+  });
 
-  async reviewSupplierDocument(
-    supplierId: number,
-    documentId: number,
-    validationStatus: string,
-    validationNotes?: string,
-  ): Promise<void> {
-    return this.request<void>(`/admin/suppliers/${supplierId}/documents/${documentId}/review`, {
-      method: "PATCH",
-      body: JSON.stringify({ validationStatus, validationNotes }),
-    });
-  }
+  reviewSupplierDocument = createEndpoint<
+    [supplierId: number, documentId: number, validationStatus: string, validationNotes?: string],
+    void
+  >(apiClient, "PATCH", {
+    path: (supplierId, documentId, _validationStatus, _validationNotes) =>
+      `/admin/suppliers/${supplierId}/documents/${documentId}/review`,
+    body: (_supplierId, _documentId, validationStatus, validationNotes) => ({
+      validationStatus,
+      validationNotes,
+    }),
+  });
 
-  async startSupplierReview(id: number): Promise<void> {
-    return this.request<void>(`/admin/suppliers/${id}/start-review`, {
-      method: "POST",
-    });
-  }
+  startSupplierReview = createEndpoint<[id: number], void>(apiClient, "POST", {
+    path: (id) => `/admin/suppliers/${id}/start-review`,
+  });
 
-  async approveSupplierOnboarding(id: number): Promise<void> {
-    return this.request<void>(`/admin/suppliers/${id}/approve`, {
-      method: "POST",
-    });
-  }
+  approveSupplierOnboarding = createEndpoint<[id: number], void>(apiClient, "POST", {
+    path: (id) => `/admin/suppliers/${id}/approve`,
+  });
 
-  async rejectSupplierOnboarding(
-    id: number,
-    reason: string,
-    remediationSteps: string,
-  ): Promise<void> {
-    return this.request<void>(`/admin/suppliers/${id}/reject`, {
-      method: "POST",
-      body: JSON.stringify({ reason, remediationSteps }),
-    });
-  }
+  rejectSupplierOnboarding = createEndpoint<
+    [id: number, reason: string, remediationSteps: string],
+    void
+  >(apiClient, "POST", {
+    path: (id, _reason, _remediationSteps) => `/admin/suppliers/${id}/reject`,
+    body: (_id, reason, remediationSteps) => ({ reason, remediationSteps }),
+  });
 
-  async suspendSupplier(id: number, reason: string): Promise<void> {
-    return this.request<void>(`/admin/suppliers/${id}/suspend`, {
-      method: "POST",
-      body: JSON.stringify({ reason }),
-    });
-  }
+  suspendSupplier = createEndpoint<[id: number, reason: string], void>(apiClient, "POST", {
+    path: (id, _reason) => `/admin/suppliers/${id}/suspend`,
+    body: (_id, reason) => ({ reason }),
+  });
 
-  async reactivateSupplier(id: number): Promise<void> {
-    return this.request<void>(`/admin/suppliers/${id}/reactivate`, {
-      method: "POST",
-    });
-  }
+  reactivateSupplier = createEndpoint<[id: number], void>(apiClient, "POST", {
+    path: (id) => `/admin/suppliers/${id}/reactivate`,
+  });
 
-  async inviteSupplier(
-    email: string,
-    message?: string,
-  ): Promise<{ success: boolean; message: string }> {
-    return this.request<{ success: boolean; message: string }>("/admin/suppliers/invite", {
-      method: "POST",
-      body: JSON.stringify({ email, message }),
-    });
-  }
+  inviteSupplier = createEndpoint<
+    [email: string, message?: string],
+    { success: boolean; message: string }
+  >(apiClient, "POST", {
+    path: "/admin/suppliers/invite",
+    body: (email, message) => ({ email, message }),
+  });
 
   async getSupplierDocumentReviewData(
     supplierId: number,
@@ -748,11 +338,13 @@ class AdminApiClient {
     );
   }
 
-  async checkSupplierAutoApproval(supplierId: number): Promise<AutoApprovalResult> {
-    return this.request<AutoApprovalResult>(`/admin/suppliers/${supplierId}/check-auto-approval`, {
-      method: "POST",
-    });
-  }
+  checkSupplierAutoApproval = createEndpoint<[supplierId: number], AutoApprovalResult>(
+    apiClient,
+    "POST",
+    {
+      path: (supplierId) => `/admin/suppliers/${supplierId}/check-auto-approval`,
+    },
+  );
 
   async getSupplierDocumentPreviewImages(
     supplierId: number,
@@ -765,33 +357,35 @@ class AdminApiClient {
 
   // Secure Documents endpoints
 
-  async listSecureDocuments(): Promise<SecureDocument[]> {
-    return this.request<SecureDocument[]>("/admin/secure-documents");
-  }
+  listSecureDocuments = createEndpoint<[], SecureDocument[]>(apiClient, "GET", {
+    path: "/admin/secure-documents",
+  });
 
-  async getSecureDocument(id: string): Promise<SecureDocumentWithContent> {
-    return this.request<SecureDocumentWithContent>(`/admin/secure-documents/${id}`);
-  }
+  getSecureDocument = createEndpoint<[id: string], SecureDocumentWithContent>(apiClient, "GET", {
+    path: (id) => `/admin/secure-documents/${id}`,
+  });
 
-  async createSecureDocument(dto: CreateSecureDocumentDto): Promise<SecureDocument> {
-    return this.request<SecureDocument>("/admin/secure-documents", {
-      method: "POST",
-      body: JSON.stringify(dto),
-    });
-  }
+  createSecureDocument = createEndpoint<[dto: CreateSecureDocumentDto], SecureDocument>(
+    apiClient,
+    "POST",
+    {
+      path: "/admin/secure-documents",
+      body: (dto) => dto,
+    },
+  );
 
-  async updateSecureDocument(id: string, dto: UpdateSecureDocumentDto): Promise<SecureDocument> {
-    return this.request<SecureDocument>(`/admin/secure-documents/${id}`, {
-      method: "PUT",
-      body: JSON.stringify(dto),
-    });
-  }
+  updateSecureDocument = createEndpoint<[id: string, dto: UpdateSecureDocumentDto], SecureDocument>(
+    apiClient,
+    "PUT",
+    {
+      path: (id, _dto) => `/admin/secure-documents/${id}`,
+      body: (_id, dto) => dto,
+    },
+  );
 
-  async deleteSecureDocument(id: string): Promise<void> {
-    return this.request<void>(`/admin/secure-documents/${id}`, {
-      method: "DELETE",
-    });
-  }
+  deleteSecureDocument = createEndpoint<[id: string], void>(apiClient, "DELETE", {
+    path: (id) => `/admin/secure-documents/${id}`,
+  });
 
   async secureDocumentAttachmentUrl(id: string): Promise<{ url: string; filename: string }> {
     return this.request<{ url: string; filename: string }>(
@@ -799,9 +393,9 @@ class AdminApiClient {
     );
   }
 
-  async listLocalDocuments(): Promise<LocalDocument[]> {
-    return this.request<LocalDocument[]>("/admin/secure-documents/local");
-  }
+  listLocalDocuments = createEndpoint<[], LocalDocument[]>(apiClient, "GET", {
+    path: "/admin/secure-documents/local",
+  });
 
   async getLocalDocument(filePath: string): Promise<LocalDocumentWithContent> {
     const encodedPath = encodeURIComponent(filePath);
@@ -811,9 +405,9 @@ class AdminApiClient {
     return { ...response.document, content: response.content };
   }
 
-  async listEntityFolders(): Promise<SecureEntityFolder[]> {
-    return this.request<SecureEntityFolder[]>("/admin/secure-documents/entity-folders/list");
-  }
+  listEntityFolders = createEndpoint<[], SecureEntityFolder[]>(apiClient, "GET", {
+    path: "/admin/secure-documents/entity-folders/list",
+  });
 
   async getEntityFolderDocuments(
     entityType: "customer" | "supplier",
@@ -842,31 +436,27 @@ class AdminApiClient {
     return this.request<AdminRfqListResponse>(`/admin/rfqs${queryString ? `?${queryString}` : ""}`);
   }
 
-  async getRfqDetail(id: number): Promise<any> {
-    return this.request<any>(`/admin/rfqs/${id}`);
-  }
+  getRfqDetail = createEndpoint<[id: number], any>(apiClient, "GET", {
+    path: (id) => `/admin/rfqs/${id}`,
+  });
 
-  async getRfqItems(id: number): Promise<any[]> {
-    return this.request<any[]>(`/admin/rfqs/${id}/items`);
-  }
+  getRfqItems = createEndpoint<[id: number], any[]>(apiClient, "GET", {
+    path: (id) => `/admin/rfqs/${id}/items`,
+  });
 
-  async getRfqFullDraft(id: number): Promise<RfqFullDraftResponse> {
-    return this.request<RfqFullDraftResponse>(`/admin/rfqs/${id}/full`);
-  }
+  getRfqFullDraft = createEndpoint<[id: number], RfqFullDraftResponse>(apiClient, "GET", {
+    path: (id) => `/admin/rfqs/${id}/full`,
+  });
 
-  async updateRfq(id: number, data: any): Promise<any> {
-    return this.request<any>(`/admin/rfqs/${id}/unified`, {
-      method: "PUT",
-      body: JSON.stringify(data),
-    });
-  }
+  updateRfq = createEndpoint<[id: number, data: any], any>(apiClient, "PUT", {
+    path: (id, _data) => `/admin/rfqs/${id}/unified`,
+    body: (_id, data) => data,
+  });
 
-  async saveDraft(data: any): Promise<any> {
-    return this.request<any>("/admin/rfqs/drafts", {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-  }
+  saveDraft = createEndpoint<[data: any], any>(apiClient, "POST", {
+    path: "/admin/rfqs/drafts",
+    body: (data) => data,
+  });
 
   async uploadNixDocument(
     file: File,
@@ -887,16 +477,16 @@ class AdminApiClient {
     });
   }
 
-  async listNixDocuments(): Promise<NixDocumentListResponse> {
-    return this.request<NixDocumentListResponse>("/nix/admin/documents");
-  }
+  listNixDocuments = createEndpoint<[], NixDocumentListResponse>(apiClient, "GET", {
+    path: "/nix/admin/documents",
+  });
 
-  async documentPagesForTraining(
-    entityType: "customer" | "supplier",
-    documentId: number,
-  ): Promise<PdfPagesResponse> {
-    return this.request<PdfPagesResponse>(`/nix/admin/document-pages/${entityType}/${documentId}`);
-  }
+  documentPagesForTraining = createEndpoint<
+    [entityType: "customer" | "supplier", documentId: number],
+    PdfPagesResponse
+  >(apiClient, "GET", {
+    path: (entityType, documentId) => `/nix/admin/document-pages/${entityType}/${documentId}`,
+  });
 
   async extractFromRegion(
     entityType: "customer" | "supplier",
@@ -913,14 +503,13 @@ class AdminApiClient {
     );
   }
 
-  async saveExtractionRegion(
-    data: SaveExtractionRegionDto,
-  ): Promise<{ success: boolean; id: number }> {
-    return this.request<{ success: boolean; id: number }>("/nix/admin/extraction-regions", {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-  }
+  saveExtractionRegion = createEndpoint<
+    [data: SaveExtractionRegionDto],
+    { success: boolean; id: number }
+  >(apiClient, "POST", {
+    path: "/nix/admin/extraction-regions",
+    body: (data) => data,
+  });
 
   async listExtractionRegions(documentCategory?: string): Promise<ExtractionRegion[]> {
     const path = documentCategory
@@ -929,20 +518,17 @@ class AdminApiClient {
     return this.request<ExtractionRegion[]>(path);
   }
 
-  async deleteExtractionRegion(id: number): Promise<{ success: boolean }> {
-    return this.request<{ success: boolean }>(`/nix/admin/extraction-regions/${id}`, {
-      method: "DELETE",
-    });
-  }
+  deleteExtractionRegion = createEndpoint<[id: number], { success: boolean }>(apiClient, "DELETE", {
+    path: (id) => `/nix/admin/extraction-regions/${id}`,
+  });
 
-  async saveCustomFieldValue(
-    data: SaveCustomFieldValueDto,
-  ): Promise<{ success: boolean; id: number }> {
-    return this.request<{ success: boolean; id: number }>("/nix/admin/custom-field-values", {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-  }
+  saveCustomFieldValue = createEndpoint<
+    [data: SaveCustomFieldValueDto],
+    { success: boolean; id: number }
+  >(apiClient, "POST", {
+    path: "/nix/admin/custom-field-values",
+    body: (data) => data,
+  });
 
   async customFieldValues(
     entityType: "customer" | "supplier",
@@ -964,9 +550,9 @@ class AdminApiClient {
 
   // Reference Data endpoints
 
-  async referenceDataModules(): Promise<ReferenceDataModuleInfo[]> {
-    return this.request<ReferenceDataModuleInfo[]>("/admin/reference-data/modules");
-  }
+  referenceDataModules = createEndpoint<[], ReferenceDataModuleInfo[]>(apiClient, "GET", {
+    path: "/admin/reference-data/modules",
+  });
 
   async referenceDataSchema(entityName: string): Promise<EntitySchemaResponse> {
     return this.request<EntitySchemaResponse>(
@@ -1028,45 +614,43 @@ class AdminApiClient {
     );
   }
 
-  async listFeedback(): Promise<FeedbackItem[]> {
-    return this.request<FeedbackItem[]>("/admin/feedback");
-  }
+  listFeedback = createEndpoint<[], FeedbackItem[]>(apiClient, "GET", {
+    path: "/admin/feedback",
+  });
 
-  async feedbackById(id: number): Promise<FeedbackDetail | null> {
-    return this.request<FeedbackDetail | null>(`/admin/feedback/${id}`);
-  }
+  feedbackById = createEndpoint<[id: number], FeedbackDetail | null>(apiClient, "GET", {
+    path: (id) => `/admin/feedback/${id}`,
+  });
 
   async feedbackByConversationId(conversationId: number): Promise<FeedbackDetail | null> {
     const allFeedback = await this.listFeedback();
     return allFeedback.find((f) => f.conversationId === conversationId) ?? null;
   }
 
-  async assignFeedback(feedbackId: number): Promise<FeedbackDetail> {
-    return this.request<FeedbackDetail>(`/admin/feedback/${feedbackId}/assign`, {
-      method: "POST",
-    });
-  }
+  assignFeedback = createEndpoint<[feedbackId: number], FeedbackDetail>(apiClient, "POST", {
+    path: (feedbackId) => `/admin/feedback/${feedbackId}/assign`,
+  });
 
-  async unassignFeedback(feedbackId: number): Promise<FeedbackDetail> {
-    return this.request<FeedbackDetail>(`/admin/feedback/${feedbackId}/unassign`, {
-      method: "POST",
-    });
-  }
+  unassignFeedback = createEndpoint<[feedbackId: number], FeedbackDetail>(apiClient, "POST", {
+    path: (feedbackId) => `/admin/feedback/${feedbackId}/unassign`,
+  });
 
-  async updateFeedbackResolution(
-    feedbackId: number,
-    resolutionStatus: ResolutionStatus | null,
-    testCriteria: string | null,
-  ): Promise<FeedbackDetail> {
-    return this.request<FeedbackDetail>(`/admin/feedback/${feedbackId}/resolution`, {
-      method: "PUT",
-      body: JSON.stringify({ resolutionStatus, testCriteria }),
-    });
-  }
+  updateFeedbackResolution = createEndpoint<
+    [feedbackId: number, resolutionStatus: ResolutionStatus | null, testCriteria: string | null],
+    FeedbackDetail
+  >(apiClient, "PUT", {
+    path: (feedbackId, _resolutionStatus, _testCriteria) =>
+      `/admin/feedback/${feedbackId}/resolution`,
+    body: (_feedbackId, resolutionStatus, testCriteria) => ({ resolutionStatus, testCriteria }),
+  });
 
-  async feedbackAttachmentUrls(feedbackId: number): Promise<FeedbackAttachmentUrl[]> {
-    return this.request<FeedbackAttachmentUrl[]>(`/admin/feedback/${feedbackId}/attachments`);
-  }
+  feedbackAttachmentUrls = createEndpoint<[feedbackId: number], FeedbackAttachmentUrl[]>(
+    apiClient,
+    "GET",
+    {
+      path: (feedbackId) => `/admin/feedback/${feedbackId}/attachments`,
+    },
+  );
 
   async conversations(
     filters?: ConversationFilterDto,
@@ -1084,9 +668,13 @@ class AdminApiClient {
     );
   }
 
-  async conversationDetail(conversationId: number): Promise<ConversationDetailDto> {
-    return this.request<ConversationDetailDto>(`/admin/messaging/conversations/${conversationId}`);
-  }
+  conversationDetail = createEndpoint<[conversationId: number], ConversationDetailDto>(
+    apiClient,
+    "GET",
+    {
+      path: (conversationId) => `/admin/messaging/conversations/${conversationId}`,
+    },
+  );
 
   async conversationMessages(
     conversationId: number,
@@ -1102,19 +690,19 @@ class AdminApiClient {
     );
   }
 
-  async sendMessage(conversationId: number, dto: SendMessageDto): Promise<MessageDto> {
-    return this.request<MessageDto>(`/admin/messaging/conversations/${conversationId}/messages`, {
-      method: "POST",
-      body: JSON.stringify(dto),
-    });
-  }
+  sendMessage = createEndpoint<[conversationId: number, dto: SendMessageDto], MessageDto>(
+    apiClient,
+    "POST",
+    {
+      path: (conversationId, _dto) => `/admin/messaging/conversations/${conversationId}/messages`,
+      body: (_conversationId, dto) => dto,
+    },
+  );
 
-  async deleteConversations(ids: number[]): Promise<{ deleted: number }> {
-    return this.request<{ deleted: number }>("/admin/messaging/conversations/delete", {
-      method: "POST",
-      body: JSON.stringify({ ids }),
-    });
-  }
+  deleteConversations = createEndpoint<[ids: number[]], { deleted: number }>(apiClient, "POST", {
+    path: "/admin/messaging/conversations/delete",
+    body: (ids) => ({ ids }),
+  });
 
   async broadcasts(
     filters?: BroadcastFilterDto,
@@ -1132,16 +720,18 @@ class AdminApiClient {
     );
   }
 
-  async broadcastDetail(broadcastId: number): Promise<BroadcastDetailDto> {
-    return this.request<BroadcastDetailDto>(`/admin/messaging/broadcasts/${broadcastId}`);
-  }
+  broadcastDetail = createEndpoint<[broadcastId: number], BroadcastDetailDto>(apiClient, "GET", {
+    path: (broadcastId) => `/admin/messaging/broadcasts/${broadcastId}`,
+  });
 
-  async createBroadcast(dto: CreateBroadcastDto): Promise<BroadcastDetailDto> {
-    return this.request<BroadcastDetailDto>("/admin/messaging/broadcasts", {
-      method: "POST",
-      body: JSON.stringify(dto),
-    });
-  }
+  createBroadcast = createEndpoint<[dto: CreateBroadcastDto], BroadcastDetailDto>(
+    apiClient,
+    "POST",
+    {
+      path: "/admin/messaging/broadcasts",
+      body: (dto) => dto,
+    },
+  );
 
   async responseMetrics(filters?: MetricsFilterDto): Promise<ResponseMetricsSummaryDto> {
     const params = new URLSearchParams();
@@ -1155,17 +745,17 @@ class AdminApiClient {
     );
   }
 
-  async rbacApps(): Promise<RbacApp[]> {
-    return this.request<RbacApp[]>("/admin/rbac/apps");
-  }
+  rbacApps = createEndpoint<[], RbacApp[]>(apiClient, "GET", {
+    path: "/admin/rbac/apps",
+  });
 
-  async rbacAppDetails(code: string): Promise<RbacAppDetail> {
-    return this.request<RbacAppDetail>(`/admin/rbac/apps/${encodeURIComponent(code)}`);
-  }
+  rbacAppDetails = createEndpoint<[code: string], RbacAppDetail>(apiClient, "GET", {
+    path: "/admin/rbac/apps/${encodeURIComponent(code)}",
+  });
 
-  async rbacUsersWithAccess(appCode: string): Promise<RbacUserAccess[]> {
-    return this.request<RbacUserAccess[]>(`/admin/rbac/apps/${encodeURIComponent(appCode)}/users`);
-  }
+  rbacUsersWithAccess = createEndpoint<[appCode: string], RbacUserAccess[]>(apiClient, "GET", {
+    path: "/admin/rbac/apps/${encodeURIComponent(appCode)}/users",
+  });
 
   async rbacSearchUsers(query: string): Promise<RbacSearchUser[]> {
     return this.request<RbacSearchUser[]>(
@@ -1173,84 +763,82 @@ class AdminApiClient {
     );
   }
 
-  async rbacAllUsers(): Promise<RbacUserWithAccessSummary[]> {
-    return this.request<RbacUserWithAccessSummary[]>("/admin/rbac/users/all");
-  }
+  rbacAllUsers = createEndpoint<[], RbacUserWithAccessSummary[]>(apiClient, "GET", {
+    path: "/admin/rbac/users/all",
+  });
 
-  async rbacAssignAccess(userId: number, dto: AssignUserAccessDto): Promise<RbacUserAccess> {
-    return this.request<RbacUserAccess>(`/admin/rbac/users/${userId}/access`, {
-      method: "POST",
-      body: JSON.stringify(dto),
-    });
-  }
+  rbacAssignAccess = createEndpoint<[userId: number, dto: AssignUserAccessDto], RbacUserAccess>(
+    apiClient,
+    "POST",
+    {
+      path: (userId, _dto) => `/admin/rbac/users/${userId}/access`,
+      body: (_userId, dto) => dto,
+    },
+  );
 
-  async rbacUpdateAccess(accessId: number, dto: UpdateUserAccessDto): Promise<RbacUserAccess> {
-    return this.request<RbacUserAccess>(`/admin/rbac/access/${accessId}`, {
-      method: "PATCH",
-      body: JSON.stringify(dto),
-    });
-  }
+  rbacUpdateAccess = createEndpoint<[accessId: number, dto: UpdateUserAccessDto], RbacUserAccess>(
+    apiClient,
+    "PATCH",
+    {
+      path: (accessId, _dto) => `/admin/rbac/access/${accessId}`,
+      body: (_accessId, dto) => dto,
+    },
+  );
 
-  async rbacRevokeAccess(accessId: number): Promise<{ message: string }> {
-    return this.request<{ message: string }>(`/admin/rbac/access/${accessId}`, {
-      method: "DELETE",
-    });
-  }
+  rbacRevokeAccess = createEndpoint<[accessId: number], { message: string }>(apiClient, "DELETE", {
+    path: (accessId) => `/admin/rbac/access/${accessId}`,
+  });
 
-  async rbacInviteUser(dto: InviteUserDto): Promise<InviteUserResponse> {
-    return this.request<InviteUserResponse>("/admin/rbac/invite", {
-      method: "POST",
-      body: JSON.stringify(dto),
-    });
-  }
+  rbacInviteUser = createEndpoint<[dto: InviteUserDto], InviteUserResponse>(apiClient, "POST", {
+    path: "/admin/rbac/invite",
+    body: (dto) => dto,
+  });
 
-  async rbacSendAccessLink(userId: number): Promise<{ message: string }> {
-    return this.request<{ message: string }>(`/admin/rbac/users/${userId}/send-access-link`, {
-      method: "POST",
-    });
-  }
+  rbacSendAccessLink = createEndpoint<[userId: number], { message: string }>(apiClient, "POST", {
+    path: (userId) => `/admin/rbac/users/${userId}/send-access-link`,
+  });
 
-  async rbacCreateRole(appCode: string, dto: CreateRoleDto): Promise<RbacRoleResponse> {
-    return this.request<RbacRoleResponse>(`/admin/rbac/apps/${encodeURIComponent(appCode)}/roles`, {
-      method: "POST",
-      body: JSON.stringify(dto),
-    });
-  }
+  rbacCreateRole = createEndpoint<[appCode: string, dto: CreateRoleDto], RbacRoleResponse>(
+    apiClient,
+    "POST",
+    {
+      path: "/admin/rbac/apps/${encodeURIComponent(appCode)}/roles",
+      body: (_appCode, dto) => dto,
+    },
+  );
 
-  async rbacRoleById(roleId: number): Promise<RbacRoleResponse> {
-    return this.request<RbacRoleResponse>(`/admin/rbac/roles/${roleId}`);
-  }
+  rbacRoleById = createEndpoint<[roleId: number], RbacRoleResponse>(apiClient, "GET", {
+    path: (roleId) => `/admin/rbac/roles/${roleId}`,
+  });
 
-  async rbacUpdateRole(roleId: number, dto: UpdateRoleDto): Promise<RbacRoleResponse> {
-    return this.request<RbacRoleResponse>(`/admin/rbac/roles/${roleId}`, {
-      method: "PATCH",
-      body: JSON.stringify(dto),
-    });
-  }
+  rbacUpdateRole = createEndpoint<[roleId: number, dto: UpdateRoleDto], RbacRoleResponse>(
+    apiClient,
+    "PATCH",
+    {
+      path: (roleId, _dto) => `/admin/rbac/roles/${roleId}`,
+      body: (_roleId, dto) => dto,
+    },
+  );
 
-  async rbacDeleteRole(roleId: number): Promise<RbacDeleteRoleResponse> {
-    return this.request<RbacDeleteRoleResponse>(`/admin/rbac/roles/${roleId}`, {
-      method: "DELETE",
-    });
-  }
+  rbacDeleteRole = createEndpoint<[roleId: number], RbacDeleteRoleResponse>(apiClient, "DELETE", {
+    path: (roleId) => `/admin/rbac/roles/${roleId}`,
+  });
 
-  async rbacRoleProducts(roleId: number): Promise<RbacRoleProductsResponse> {
-    return this.request<RbacRoleProductsResponse>(`/admin/rbac/roles/${roleId}/products`);
-  }
+  rbacRoleProducts = createEndpoint<[roleId: number], RbacRoleProductsResponse>(apiClient, "GET", {
+    path: (roleId) => `/admin/rbac/roles/${roleId}/products`,
+  });
 
-  async rbacSetRoleProducts(
-    roleId: number,
-    productKeys: string[],
-  ): Promise<RbacRoleProductsResponse> {
-    return this.request<RbacRoleProductsResponse>(`/admin/rbac/roles/${roleId}/products`, {
-      method: "PUT",
-      body: JSON.stringify({ productKeys }),
-    });
-  }
+  rbacSetRoleProducts = createEndpoint<
+    [roleId: number, productKeys: string[]],
+    RbacRoleProductsResponse
+  >(apiClient, "PUT", {
+    path: (roleId, _productKeys) => `/admin/rbac/roles/${roleId}/products`,
+    body: (_roleId, productKeys) => ({ productKeys }),
+  });
 
-  async scheduledJobs(): Promise<ScheduledJobDto[]> {
-    return this.request<ScheduledJobDto[]>("/admin/scheduled-jobs");
-  }
+  scheduledJobs = createEndpoint<[], ScheduledJobDto[]>(apiClient, "GET", {
+    path: "/admin/scheduled-jobs",
+  });
 
   async pauseScheduledJob(name: string): Promise<ScheduledJobDto> {
     return this.request<ScheduledJobDto>(
@@ -1281,26 +869,25 @@ class AdminApiClient {
     );
   }
 
-  async syncScheduledJobs(): Promise<SyncResultDto> {
-    return this.request<SyncResultDto>("/admin/scheduled-jobs/sync", {
-      method: "POST",
-    });
-  }
+  syncScheduledJobs = createEndpoint<[], SyncResultDto>(apiClient, "POST", {
+    path: "/admin/scheduled-jobs/sync",
+  });
 
-  async scheduledJobsSyncStatus(): Promise<SyncStatusDto> {
-    return this.request<SyncStatusDto>("/admin/scheduled-jobs/sync-status");
-  }
+  scheduledJobsSyncStatus = createEndpoint<[], SyncStatusDto>(apiClient, "GET", {
+    path: "/admin/scheduled-jobs/sync-status",
+  });
 
-  async scheduledJobsGlobalSettings(): Promise<GlobalSettingsDto> {
-    return this.request<GlobalSettingsDto>("/admin/scheduled-jobs/global-settings");
-  }
+  scheduledJobsGlobalSettings = createEndpoint<[], GlobalSettingsDto>(apiClient, "GET", {
+    path: "/admin/scheduled-jobs/global-settings",
+  });
 
-  async updateScheduledJobsGlobalSettings(settings: GlobalSettingsDto): Promise<GlobalSettingsDto> {
-    return this.request<GlobalSettingsDto>("/admin/scheduled-jobs/global-settings", {
-      method: "POST",
-      body: JSON.stringify(settings),
-    });
-  }
+  updateScheduledJobsGlobalSettings = createEndpoint<
+    [settings: GlobalSettingsDto],
+    GlobalSettingsDto
+  >(apiClient, "POST", {
+    path: "/admin/scheduled-jobs/global-settings",
+    body: (settings) => settings,
+  });
 
   async updateScheduledJobNightSuspension(
     name: string,
@@ -1315,28 +902,26 @@ class AdminApiClient {
     );
   }
 
-  async pollingJobs(): Promise<PollingJobDto[]> {
-    return this.request<PollingJobDto[]>("/admin/polling-jobs");
-  }
+  pollingJobs = createEndpoint<[], PollingJobDto[]>(apiClient, "GET", {
+    path: "/admin/polling-jobs",
+  });
 
-  async pausePollingJob(name: string): Promise<PollingJobDto> {
-    return this.request<PollingJobDto>(`/admin/polling-jobs/${encodeURIComponent(name)}/pause`, {
-      method: "POST",
-    });
-  }
+  pausePollingJob = createEndpoint<[name: string], PollingJobDto>(apiClient, "POST", {
+    path: "/admin/polling-jobs/${encodeURIComponent(name)}/pause",
+  });
 
-  async resumePollingJob(name: string): Promise<PollingJobDto> {
-    return this.request<PollingJobDto>(`/admin/polling-jobs/${encodeURIComponent(name)}/resume`, {
-      method: "POST",
-    });
-  }
+  resumePollingJob = createEndpoint<[name: string], PollingJobDto>(apiClient, "POST", {
+    path: "/admin/polling-jobs/${encodeURIComponent(name)}/resume",
+  });
 
-  async updatePollingJobInterval(name: string, intervalMs: number): Promise<PollingJobDto> {
-    return this.request<PollingJobDto>(`/admin/polling-jobs/${encodeURIComponent(name)}/interval`, {
-      method: "POST",
-      body: JSON.stringify({ intervalMs }),
-    });
-  }
+  updatePollingJobInterval = createEndpoint<[name: string, intervalMs: number], PollingJobDto>(
+    apiClient,
+    "POST",
+    {
+      path: "/admin/polling-jobs/${encodeURIComponent(name)}/interval",
+      body: (_name, intervalMs) => ({ intervalMs }),
+    },
+  );
 
   async updatePollingJobNightSuspension(
     name: string,
@@ -1348,18 +933,17 @@ class AdminApiClient {
     );
   }
 
-  async pollingJobsGlobalSettings(): Promise<PollingJobsGlobalSettingsDto> {
-    return this.request<PollingJobsGlobalSettingsDto>("/admin/polling-jobs/global-settings");
-  }
+  pollingJobsGlobalSettings = createEndpoint<[], PollingJobsGlobalSettingsDto>(apiClient, "GET", {
+    path: "/admin/polling-jobs/global-settings",
+  });
 
-  async updatePollingJobsGlobalSettings(
-    settings: PollingJobsGlobalSettingsDto,
-  ): Promise<PollingJobsGlobalSettingsDto> {
-    return this.request<PollingJobsGlobalSettingsDto>("/admin/polling-jobs/global-settings", {
-      method: "POST",
-      body: JSON.stringify(settings),
-    });
-  }
+  updatePollingJobsGlobalSettings = createEndpoint<
+    [settings: PollingJobsGlobalSettingsDto],
+    PollingJobsGlobalSettingsDto
+  >(apiClient, "POST", {
+    path: "/admin/polling-jobs/global-settings",
+    body: (settings) => settings,
+  });
 
   async aiUsageLogs(params?: AiUsageQueryParams): Promise<AiUsageListResponse> {
     const searchParams = new URLSearchParams();
@@ -1376,16 +960,17 @@ class AdminApiClient {
     );
   }
 
-  async companyProfile(): Promise<CompanyProfileResponse> {
-    return this.request<CompanyProfileResponse>("/admin/company-profile");
-  }
+  companyProfile = createEndpoint<[], CompanyProfileResponse>(apiClient, "GET", {
+    path: "/admin/company-profile",
+  });
 
-  async updateCompanyProfile(data: UpdateCompanyProfileRequest): Promise<CompanyProfileResponse> {
-    return this.request<CompanyProfileResponse>("/admin/company-profile", {
-      method: "PATCH",
-      body: JSON.stringify(data),
-    });
-  }
+  updateCompanyProfile = createEndpoint<
+    [data: UpdateCompanyProfileRequest],
+    CompanyProfileResponse
+  >(apiClient, "PATCH", {
+    path: "/admin/company-profile",
+    body: (data) => data,
+  });
 }
 
 export interface AiUsageQueryParams {
