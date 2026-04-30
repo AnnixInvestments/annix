@@ -1,4 +1,4 @@
-import { toPairs as entries } from "es-toolkit/compat";
+import { toPairs as entries, isArray } from "es-toolkit/compat";
 import { throwIfNotOk } from "./apiError";
 
 export interface ApiClientTokenStore {
@@ -227,3 +227,65 @@ export const createApiClient = (options: ApiClientOptions): ApiClient => {
     triggerDownload,
   };
 };
+
+export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+
+export type QueryParamValue = string | number | boolean | null | undefined;
+export type QueryParams = Record<string, QueryParamValue | QueryParamValue[]>;
+
+export interface EndpointConfig<TArgs, TResponse> {
+  path: string | ((args: TArgs) => string);
+  query?: (args: TArgs) => QueryParams;
+  body?: (args: TArgs) => unknown;
+  formData?: (args: TArgs) => FormData;
+  transform?: (raw: unknown) => TResponse;
+}
+
+export type Endpoint<TArgs, TResponse> = [TArgs] extends [undefined]
+  ? () => Promise<TResponse>
+  : (args: TArgs) => Promise<TResponse>;
+
+const buildQueryString = (params: QueryParams): string => {
+  const search = new URLSearchParams();
+  entries(params).forEach(([key, value]) => {
+    if (value === null || value === undefined) return;
+    if (isArray(value)) {
+      value.forEach((item) => {
+        if (item !== null && item !== undefined) search.append(key, String(item));
+      });
+    } else {
+      search.set(key, String(value));
+    }
+  });
+  const qs = search.toString();
+  return qs ? `?${qs}` : "";
+};
+
+export function createEndpoint<TArgs = void, TResponse = unknown>(
+  client: ApiClient,
+  method: HttpMethod,
+  config: EndpointConfig<TArgs, TResponse>,
+): Endpoint<TArgs, TResponse> {
+  const fn = async (args: TArgs): Promise<TResponse> => {
+    const basePath = typeof config.path === "function" ? config.path(args) : config.path;
+    const queryString = config.query ? buildQueryString(config.query(args)) : "";
+    const fullPath = `${basePath}${queryString}`;
+
+    const init: RequestInit = { method };
+
+    if (config.formData) {
+      init.body = config.formData(args);
+    } else if (config.body) {
+      const bodyValue = config.body(args);
+      if (bodyValue !== undefined && bodyValue !== null) {
+        init.body = JSON.stringify(bodyValue);
+        init.headers = { "Content-Type": "application/json" };
+      }
+    }
+
+    const raw = await client.request<unknown>(fullPath, init);
+    return (config.transform ? config.transform(raw) : raw) as TResponse;
+  };
+
+  return fn as Endpoint<TArgs, TResponse>;
+}

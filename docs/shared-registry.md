@@ -1,6 +1,6 @@
 # Shared Module Registry
 
-**Last updated:** 2026-04-30
+**Last updated:** 2026-05-01
 
 This is the canonical index of shared modules across the Annix monorepo. Every Claude session MUST consult this file before writing new constants, components, services, or utilities (see `CLAUDE.md` §"Discovery-first protocol").
 
@@ -185,7 +185,7 @@ Host-app-agnostic React module. Consumed by Stock Control (via `app/stock-contro
 | Concept | Path | Use for |
 |---|---|---|
 | Date/time (Luxon) | `lib/datetime` | ANY date operation. Never use `new Date()` or import `luxon` directly. |
-| HTTP API client | `lib/api/` | All API calls. Per-subject methods live in `lib/api/<subject>-api/`. |
+| HTTP API client | `lib/api/` | All API calls. Per-subject methods live in `lib/api/<subject>-api/`. The `createApiClient` factory (auth-aware fetch wrapper) and `createEndpoint<TArgs, TResponse>(client, method, config)` factory (per-endpoint declaration with path builder, query, JSON or FormData body, response transform) live in `lib/api/createApiClient.ts`. New per-endpoint definitions should use `createEndpoint` rather than hand-rolled class methods. |
 | Auth / token storage | `lib/auth/PortalTokenStore` | Shared across all portals — customer, supplier, stock-control, AU, CV. |
 | SA validators | `lib/validators/` | ID numbers, VAT numbers, phone numbers, email, company registration numbers. |
 | Config | `lib/config/rfq/` | RFQ config — **thin re-export shims over `@annix/product-data/pipe`**. Do not add new local data here. |
