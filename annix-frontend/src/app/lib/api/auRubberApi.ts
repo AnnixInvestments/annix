@@ -1,6 +1,6 @@
 import { toPairs as entries } from "es-toolkit/compat";
 import { throwIfNotOk } from "@/app/lib/api/apiError";
-import { type ApiClient, createApiClient } from "@/app/lib/api/createApiClient";
+import { type ApiClient, createApiClient, createEndpoint } from "@/app/lib/api/createApiClient";
 import { auRubberTokenStore } from "@/app/lib/api/portalTokenStores";
 import type { RubberAppProfileDto } from "@/app/lib/api/rubberPortalApi";
 import { API_BASE_URL } from "@/lib/api-config";
@@ -1422,70 +1422,66 @@ class AuRubberApiClient {
     return this.request<AuRubberUserProfile>("/admin/auth/me");
   }
 
-  async productCodings(codingType?: string): Promise<RubberProductCodingDto[]> {
-    const query = codingType ? `?codingType=${codingType}` : "";
-    return this.request(`/rubber-lining/portal/product-codings${query}`);
-  }
+  productCodings = createEndpoint<[codingType?: string], RubberProductCodingDto[]>(
+    apiClient,
+    "GET",
+    {
+      path: "/rubber-lining/portal/product-codings",
+      query: (codingType) => ({ codingType }),
+    },
+  );
 
-  async productCodingById(id: number): Promise<RubberProductCodingDto> {
-    return this.request(`/rubber-lining/portal/product-codings/${id}`);
-  }
+  productCodingById = createEndpoint<[id: number], RubberProductCodingDto>(apiClient, "GET", {
+    path: (id) => `/rubber-lining/portal/product-codings/${id}`,
+  });
 
-  async createProductCoding(
-    data: Omit<RubberProductCodingDto, "id" | "firebaseUid">,
-  ): Promise<RubberProductCodingDto> {
-    return this.request("/rubber-lining/portal/product-codings", {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-  }
+  createProductCoding = createEndpoint<
+    [data: Omit<RubberProductCodingDto, "id" | "firebaseUid">],
+    RubberProductCodingDto
+  >(apiClient, "POST", {
+    path: "/rubber-lining/portal/product-codings",
+    body: (data) => data,
+  });
 
-  async updateProductCoding(
-    id: number,
-    data: Partial<RubberProductCodingDto>,
-  ): Promise<RubberProductCodingDto> {
-    return this.request(`/rubber-lining/portal/product-codings/${id}`, {
-      method: "PUT",
-      body: JSON.stringify(data),
-    });
-  }
+  updateProductCoding = createEndpoint<
+    [id: number, data: Partial<RubberProductCodingDto>],
+    RubberProductCodingDto
+  >(apiClient, "PUT", {
+    path: (id) => `/rubber-lining/portal/product-codings/${id}`,
+    body: (_id, data) => data,
+  });
 
-  async deleteProductCoding(id: number): Promise<void> {
-    return this.request(`/rubber-lining/portal/product-codings/${id}`, {
-      method: "DELETE",
-    });
-  }
+  deleteProductCoding = createEndpoint<[id: number], void>(apiClient, "DELETE", {
+    path: (id) => `/rubber-lining/portal/product-codings/${id}`,
+  });
 
-  async pricingTiers(): Promise<RubberPricingTierDto[]> {
-    return this.request("/rubber-lining/portal/pricing-tiers");
-  }
+  pricingTiers = createEndpoint<[], RubberPricingTierDto[]>(apiClient, "GET", {
+    path: "/rubber-lining/portal/pricing-tiers",
+  });
 
-  async pricingTierById(id: number): Promise<RubberPricingTierDto> {
-    return this.request(`/rubber-lining/portal/pricing-tiers/${id}`);
-  }
+  pricingTierById = createEndpoint<[id: number], RubberPricingTierDto>(apiClient, "GET", {
+    path: (id) => `/rubber-lining/portal/pricing-tiers/${id}`,
+  });
 
-  async createPricingTier(data: Omit<RubberPricingTierDto, "id">): Promise<RubberPricingTierDto> {
-    return this.request("/rubber-lining/portal/pricing-tiers", {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-  }
+  createPricingTier = createEndpoint<
+    [data: Omit<RubberPricingTierDto, "id">],
+    RubberPricingTierDto
+  >(apiClient, "POST", {
+    path: "/rubber-lining/portal/pricing-tiers",
+    body: (data) => data,
+  });
 
-  async updatePricingTier(
-    id: number,
-    data: Partial<RubberPricingTierDto>,
-  ): Promise<RubberPricingTierDto> {
-    return this.request(`/rubber-lining/portal/pricing-tiers/${id}`, {
-      method: "PUT",
-      body: JSON.stringify(data),
-    });
-  }
+  updatePricingTier = createEndpoint<
+    [id: number, data: Partial<RubberPricingTierDto>],
+    RubberPricingTierDto
+  >(apiClient, "PUT", {
+    path: (id) => `/rubber-lining/portal/pricing-tiers/${id}`,
+    body: (_id, data) => data,
+  });
 
-  async deletePricingTier(id: number): Promise<void> {
-    return this.request(`/rubber-lining/portal/pricing-tiers/${id}`, {
-      method: "DELETE",
-    });
-  }
+  deletePricingTier = createEndpoint<[id: number], void>(apiClient, "DELETE", {
+    path: (id) => `/rubber-lining/portal/pricing-tiers/${id}`,
+  });
 
   async companies(): Promise<RubberCompanyDto[]> {
     return this.request("/rubber-lining/portal/companies");
