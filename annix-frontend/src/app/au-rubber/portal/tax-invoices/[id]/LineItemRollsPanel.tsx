@@ -6,6 +6,15 @@ import { createPortal } from "react-dom";
 import { useToast } from "@/app/components/Toast";
 import { auRubberApiClient, type TaxInvoiceType } from "@/app/lib/api/auRubberApi";
 
+const PREFIX_SUFFIX_PATTERN = /^\d+-(\d+)$/;
+
+function canonicalRollNumber(rollNumber: string | null | undefined): string {
+  if (!rollNumber) return "";
+  const trimmed = rollNumber.trim();
+  const match = trimmed.match(PREFIX_SUFFIX_PATTERN);
+  return match ? match[1] : trimmed;
+}
+
 interface RollCostBreakdown {
   rollNumber: string;
   tollCostR: number | null;
@@ -74,7 +83,7 @@ export function LineItemRollsPanel(props: LineItemRollsPanelProps) {
       const nextCosts: Record<string, RollCostBreakdown> = {};
       const nextMatches: Record<string, RollMatchInfo> = {};
       rolls.forEach((roll) => {
-        const stock = stockByNumber.get(roll.rollNumber);
+        const stock = stockByNumber.get(canonicalRollNumber(roll.rollNumber));
         if (!stock) {
           nextMatches[roll.rollNumber] = {
             status: "missing",

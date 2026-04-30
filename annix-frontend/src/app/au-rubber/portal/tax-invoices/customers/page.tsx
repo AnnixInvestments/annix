@@ -459,6 +459,30 @@ export default function CustomerTaxInvoicesPage() {
           <button
             onClick={async () => {
               const confirmed = await confirm({
+                title: "Rematch rolls across all customer documents?",
+                message:
+                  "Re-runs roll-stock matching for every customer tax invoice and customer delivery note using the new canonical roll-number normalization. Cleans up any prefix-suffix orphan placeholder rolls (merging into the canonical row when only the customer linkage exists). Safe to run; no destructive change to roll state beyond consolidating duplicates.",
+                confirmLabel: "Rematch Rolls",
+              });
+              if (!confirmed) return;
+              try {
+                const result = await auRubberApiClient.rematchAllRolls();
+                showToast(
+                  `Rematched ${result.customerInvoicesDispatched} CTI(s) and ${result.customerDeliveryNotesDispatched} CDN(s); deleted ${result.orphansDeleted} orphan(s) (merged ${result.orphansMerged}).`,
+                  "success",
+                );
+                refresh();
+              } catch (err) {
+                toastError(showToast, err, "Rematch failed");
+              }
+            }}
+            className="inline-flex items-center px-4 py-2 border border-purple-300 rounded-md shadow-sm text-sm font-medium text-purple-700 bg-white hover:bg-purple-50"
+          >
+            Rematch Rolls
+          </button>
+          <button
+            onClick={async () => {
+              const confirmed = await confirm({
                 title: "Re-extract all customer tax invoices?",
                 message:
                   "Re-runs Vision AI on every NOT-yet-approved customer tax invoice with a document attached. Approved invoices are skipped — un-approve them first if you need them re-extracted. Existing extracted data on non-approved invoices will be overwritten. Runs in the background and can take several minutes.",

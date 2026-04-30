@@ -29,6 +29,7 @@ import {
   SupplierCocType,
 } from "./entities/rubber-supplier-coc.entity";
 import { RubberTaxInvoice, TaxInvoiceType } from "./entities/rubber-tax-invoice.entity";
+import { canonicalRollNumber, isPrefixedRollNumber } from "./lib/canonical-roll-number";
 
 const ROLL_STATUS_LABELS: Record<RollStockStatus, string> = {
   [RollStockStatus.IN_STOCK]: "In Stock",
@@ -715,8 +716,13 @@ export class RubberRollStockService {
       const coding = productCode ? await this.findOrCreateProductCoding(productCode) : null;
       const tollCost = line.unitPrice ?? null;
       for (const roll of lineRolls) {
+        const canonicalNumber = canonicalRollNumber(roll.rollNumber);
+        if (!canonicalNumber) {
+          skipped += 1;
+          continue;
+        }
         const existing = await this.rollStockRepository.findOne({
-          where: { rollNumber: roll.rollNumber },
+          where: { rollNumber: canonicalNumber },
         });
         if (existing) {
           const placeholderHasNoCosts =
@@ -748,7 +754,7 @@ export class RubberRollStockService {
         }
         const entity = this.rollStockRepository.create({
           firebaseUid: `pg_${generateUniqueId()}`,
-          rollNumber: roll.rollNumber,
+          rollNumber: canonicalNumber,
           compoundCodingId: coding ? coding.id : null,
           weightKg: roll.weightKg ?? 0,
           widthMm: dims.widthMm,
@@ -792,8 +798,7 @@ export class RubberRollStockService {
       const compoundCode = explicitCompound || fallbackCompound;
       const rolls = li.rolls ?? [];
       for (const roll of rolls) {
-        const rawRollNumber = roll.rollNumber;
-        const rollNumber = rawRollNumber ? rawRollNumber.trim() : "";
+        const rollNumber = canonicalRollNumber(roll.rollNumber);
         if (!rollNumber) continue;
         rollInfo.push({
           rollNumber,
@@ -907,9 +912,8 @@ export class RubberRollStockService {
   ): Promise<{ linked: number; created: number; unlinked: number; skippedNoCompound: number }> {
     const rollInfo = rolls
       .map((r) => {
-        const trimmedNumber = r.rollNumber ? r.rollNumber.trim() : "";
         return {
-          rollNumber: trimmedNumber,
+          rollNumber: canonicalRollNumber(r.rollNumber),
           weightKg: r.weightKg ?? null,
           compoundCode: r.compoundCode ? r.compoundCode.trim() : null,
         };
@@ -1022,7 +1026,7 @@ export class RubberRollStockService {
   ): Promise<{ created: number; reconciled: number; skipped: number }> {
     const rollInfo = rolls
       .map((r) => ({
-        rollNumber: r.rollNumber ? r.rollNumber.trim() : "",
+        rollNumber: canonicalRollNumber(r.rollNumber),
         weightKg: r.weightKg ?? null,
         compoundCode: r.compoundCode ? r.compoundCode.trim() : null,
         widthMm: r.widthMm ?? null,
@@ -1131,11 +1135,15 @@ export class RubberRollStockService {
     customerTaxInvoiceId: number,
   ): Promise<{ marked: number; missing: string[] }> {
     if (rollNumbers.length === 0) return { marked: 0, missing: [] };
+    const canonicalNumbers = rollNumbers
+      .map((n) => canonicalRollNumber(n))
+      .filter((n) => n.length > 0);
+    if (canonicalNumbers.length === 0) return { marked: 0, missing: rollNumbers };
     const rolls = await this.rollStockRepository.find({
-      where: { rollNumber: In(rollNumbers) },
+      where: { rollNumber: In(canonicalNumbers) },
     });
     const found = new Set(rolls.map((r) => r.rollNumber));
-    const missing = rollNumbers.filter((n) => !found.has(n));
+    const missing = canonicalNumbers.filter((n) => !found.has(n));
     const updates = rolls.map((r) => ({
       ...r,
       status: RollStockStatus.SOLD,
@@ -1149,11 +1157,41 @@ export class RubberRollStockService {
 
   async rollsByNumbers(rollNumbers: string[]): Promise<RubberRollStockDto[]> {
     if (rollNumbers.length === 0) return [];
+    const canonical = rollNumbers.map((n) => canonicalRollNumber(n)).filter((n) => n.length > 0);
+    if (canonical.length === 0) return [];
     const rolls = await this.rollStockRepository.find({
-      where: { rollNumber: In(rollNumbers) },
+      where: { rollNumber: In(canonical) },
       relations: ["compoundCoding", "soldToCompany"],
     });
     return rolls.map((r) => this.mapRollStockToDto(r));
+  }
+
+  async cleanupPrefixedOrphanRolls(): Promise<{ deleted: number; merged: number }> {
+    const allRolls = await this.rollStockRepository.find();
+    const byRollNumber = new Map(allRolls.map((r) => [r.rollNumber, r]));
+    const toDelete: RubberRollStock[] = [];
+    let merged = 0;
+    for (const roll of allRolls) {
+      if (!isPrefixedRollNumber(roll.rollNumber)) continue;
+      const canonicalNumber = canonicalRollNumber(roll.rollNumber);
+      const canonicalRoll = byRollNumber.get(canonicalNumber);
+      if (!canonicalRoll) continue;
+      const hasNoCosts = roll.tollCostR == null && roll.compoundCostR == null;
+      if (!hasNoCosts) continue;
+      if (canonicalRoll.customerTaxInvoiceId == null && roll.customerTaxInvoiceId != null) {
+        canonicalRoll.customerTaxInvoiceId = roll.customerTaxInvoiceId;
+        canonicalRoll.soldToCompanyId = roll.soldToCompanyId;
+        canonicalRoll.soldAt = roll.soldAt;
+        canonicalRoll.status = RollStockStatus.SOLD;
+        await this.rollStockRepository.save(canonicalRoll);
+        merged += 1;
+      }
+      toDelete.push(roll);
+    }
+    if (toDelete.length > 0) {
+      await this.rollStockRepository.remove(toDelete);
+    }
+    return { deleted: toDelete.length, merged };
   }
 
   async availableRollsForProductCode(productCode: string): Promise<RubberRollStockDto[]> {

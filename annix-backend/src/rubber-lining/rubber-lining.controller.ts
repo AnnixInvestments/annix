@@ -3112,6 +3112,77 @@ Formula: totalPrice = totalKg × salePricePerKg
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
+  @Post("portal/admin/rematch-rolls")
+  @ApiOperation({
+    summary:
+      "Re-run roll dispatch across all customer-side documents and clean up prefix-suffix orphan placeholder rolls",
+  })
+  async rematchAllRolls(): Promise<{
+    customerInvoicesDispatched: number;
+    customerDeliveryNotesDispatched: number;
+    orphansDeleted: number;
+    orphansMerged: number;
+  }> {
+    const allInvoices = await this.rubberTaxInvoiceService.allTaxInvoices({
+      invoiceType: TaxInvoiceType.CUSTOMER,
+      isCreditNote: false,
+    });
+    const eligibleInvoices = allInvoices.filter(
+      (inv) => inv.extractedData != null && inv.versionStatus === "ACTIVE",
+    );
+    let customerInvoicesDispatched = 0;
+    for (const invDto of eligibleInvoices) {
+      const invoice = await this.rubberTaxInvoiceService.taxInvoiceEntityById(invDto.id);
+      if (!invoice) continue;
+      try {
+        await this.rubberTaxInvoiceService.dispatchCustomerRollsToStock(invoice);
+        customerInvoicesDispatched += 1;
+      } catch (err) {
+        this.logger.error(
+          `Rematch failed for CTI ${invoice.invoiceNumber} (#${invoice.id}): ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    }
+
+    const allDns = await this.rubberDeliveryNoteService.allDeliveryNotes();
+    const allCompanies = await this.rubberLiningService.allCompanies();
+    const customerCompanyIds = new Set(
+      allCompanies.filter((c) => c.companyType === CompanyType.CUSTOMER).map((c) => c.id),
+    );
+    const eligibleDns = allDns.filter(
+      (dn) =>
+        customerCompanyIds.has(dn.supplierCompanyId) &&
+        dn.versionStatus === "ACTIVE" &&
+        dn.extractedData != null,
+    );
+    let customerDeliveryNotesDispatched = 0;
+    for (const dn of eligibleDns) {
+      try {
+        await this.extractionOrchestratorService.dispatchRollsForDeliveryNote(dn.id);
+        customerDeliveryNotesDispatched += 1;
+      } catch (err) {
+        this.logger.error(
+          `Rematch failed for CDN ${dn.deliveryNoteNumber} (#${dn.id}): ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    }
+
+    const cleanup = await this.rubberRollStockService.cleanupPrefixedOrphanRolls();
+
+    this.logger.log(
+      `Rematch complete: ${customerInvoicesDispatched} CTIs, ${customerDeliveryNotesDispatched} CDNs, deleted ${cleanup.deleted} orphan(s), merged ${cleanup.merged}`,
+    );
+
+    return {
+      customerInvoicesDispatched,
+      customerDeliveryNotesDispatched,
+      orphansDeleted: cleanup.deleted,
+      orphansMerged: cleanup.merged,
+    };
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
   @Post("portal/tax-invoices/dedupe")
   @ApiOperation({
     summary:

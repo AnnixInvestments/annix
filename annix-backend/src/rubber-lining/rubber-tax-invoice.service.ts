@@ -326,6 +326,13 @@ export class RubberTaxInvoiceService {
     return invoice ? this.mapToDto(invoice) : null;
   }
 
+  async taxInvoiceEntityById(id: number): Promise<RubberTaxInvoice | null> {
+    return this.taxInvoiceRepository.findOne({
+      where: { id },
+      relations: ["company"],
+    });
+  }
+
   async createTaxInvoice(
     dto: CreateTaxInvoiceDto,
     createdBy?: string,
@@ -1130,7 +1137,7 @@ export class RubberTaxInvoiceService {
     return this.mapToDto(invoice);
   }
 
-  private async dispatchCustomerRollsToStock(invoice: RubberTaxInvoice): Promise<void> {
+  async dispatchCustomerRollsToStock(invoice: RubberTaxInvoice): Promise<void> {
     const data = invoice.extractedData;
     const lineItems = data ? data.lineItems : null;
     if (!lineItems || lineItems.length === 0) return;

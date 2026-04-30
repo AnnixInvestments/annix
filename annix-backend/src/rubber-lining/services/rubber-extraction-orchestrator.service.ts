@@ -231,7 +231,7 @@ export class RubberExtractionOrchestratorService {
     })();
   }
 
-  private async dispatchRollsForDeliveryNote(deliveryNoteId: number): Promise<void> {
+  async dispatchRollsForDeliveryNote(deliveryNoteId: number): Promise<void> {
     try {
       const dn = await this.deliveryNoteService.deliveryNoteEntityById(deliveryNoteId);
       if (!dn || dn.deliveryNoteType !== DeliveryNoteType.ROLL) return;

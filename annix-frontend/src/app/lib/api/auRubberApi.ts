@@ -2003,6 +2003,17 @@ class AuRubberApiClient {
     });
   }
 
+  async rematchAllRolls(): Promise<{
+    customerInvoicesDispatched: number;
+    customerDeliveryNotesDispatched: number;
+    orphansDeleted: number;
+    orphansMerged: number;
+  }> {
+    return this.request("/rubber-lining/portal/admin/rematch-rolls", {
+      method: "POST",
+    });
+  }
+
   customerSageExportPreview = createEndpoint<
     [params: SageExportFilter],
     { invoiceCount: number; lineItemCount: number; totalAmount: number }
