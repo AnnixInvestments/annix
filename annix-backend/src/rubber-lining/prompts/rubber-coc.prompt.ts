@@ -554,6 +554,28 @@ IMPORTANT: You are analyzing IMAGES of delivery notes, not text. Look at the vis
 A single PDF may contain MULTIPLE delivery notes (one per page). You MUST detect and return ALL delivery notes found.
 Pages that are upside down, duplicates, or customer copies of the same DN should still be extracted if readable.
 
+MULTI-DN PDFS (HARD REQUIREMENT — DO THIS BEFORE ANYTHING ELSE):
+A single uploaded PDF very often contains MULTIPLE distinct delivery notes stitched together — a bulk scan from a multi-feed scanner, an emailed batch, a saved PDF dump from a supplier portal. ASSUME multi-DN unless proven otherwise. Failing to split is a hard error: collapsing 9 DNs into 1 corrupts stock-control downstream because every roll loses its source-DN traceability.
+
+PROCEDURE — run this FIRST, before extracting any line items:
+  1. Walk EVERY page of the PDF in order. For each page, find the delivery-note number (look for "Document No", "DN No:", "No:", "NUMBER:" labels — the value is that page's DN number). For Impilo: the "Document No" cell in the header table.
+  2. Group consecutive pages by DN number. Pages with the SAME DN number = same delivery note (continuation). Pages with a DIFFERENT DN number = new delivery note.
+  3. Count distinct DN numbers across the whole PDF. If the count is greater than 1, this is a MULTI-DN PDF and you MUST return every one of them as a separate element of the "deliveryNotes" array — each with its own deliveryNoteNumber, customerReference, deliveryDate, sourcePages, and lineItems.
+
+EXTRA SIGNALS that you're starting a NEW delivery note on a later page (any one is sufficient — be aggressive):
+  - The DN number changes ("Document No" / "DN No" / "No:" cell shows a different value)
+  - A new "DELIVERY NOTE" letterhead / banner appears at the top of a page (typical when each DN is page-1 of its own)
+  - The customer name changes
+  - The delivery date changes
+  - Page numbering resets ("Page 1 of N" appears more than once across the PDF)
+  - The Order No. / customer reference changes
+  - The line-item table restarts with a fresh header row (Stock Code / Description / Qty)
+  - A signature / "Received" block ends a section and the next page begins with fresh address/letterhead content
+
+WHEN IN DOUBT, SPLIT. False positives (over-splitting) are recoverable; false negatives (collapsing 9 DNs into 1) are NOT — they corrupt traceability and stock-deduction tonnage.
+
+EVERY line item you emit MUST be tagged with the deliveryNoteNumber of the DN it belongs to. Do NOT share line items between deliveryNotes[] elements. The number of elements in "deliveryNotes" must equal the number of distinct DN numbers you found in step 3 above. If you found 9 different DN numbers, the array must have 9 elements (excluding any POD-only pages, which go in "podPages").
+
 DOCUMENT FORMAT 1 - AU INDUSTRIES DELIVERY NOTE (outgoing):
 The header contains a box/table with fields arranged horizontally:
 ┌─────────────────────────────────────────────────────────────────┐
