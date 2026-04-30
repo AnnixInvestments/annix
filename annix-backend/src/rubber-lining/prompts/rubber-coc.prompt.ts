@@ -230,11 +230,12 @@ AU INDUSTRIES DELIVERY NOTE FORMAT:
   - 20 = thickness in mm
   - 950 = width in mm
   - 125 = length (12.5m - divide by 10 if > 100)
-- Roll No & Weight line: "154-41210 - 258Kg" means roll number "154-41210", weight 258kg
-  The format is ORDER_NUMBER-TICKET_NUMBER (e.g., 154-41210, 156-41213)
+- Roll No & Weight line: "154-41210 - 258Kg" means weight 258kg for the roll printed as "154-41210"
+  The printed format on the document is ORDER_NUMBER-TICKET_NUMBER (e.g., 154-41210, 156-41213).
+  CRITICAL — CANONICAL ROLL NUMBER: ONLY extract and return the TICKET NUMBER (the part after the dash). The ORDER NUMBER prefix is the customer's PO/order reference, NOT part of the roll's stock-tracking identity. So "154-41210" → rollNumber "41210"; "156-41213" → rollNumber "41213". This is REQUIRED so the roll can be matched against supplier stock records (which use the bare ticket number).
 
 IMPORTANT OCR CORRECTIONS:
-- Roll numbers starting with "5" at the beginning are often OCR errors for "1" (e.g., "554-41210" should be "154-41210")
+- Roll numbers starting with "5" at the beginning are often OCR errors for "1" (e.g., the printed "554-41210" should be read as "154-41210" → return ticket "41210")
 - Length values like 125 or 12.5 both mean 12.5 meters
 - If compound code shows "125" as the last segment, this means 12.5m length
 - Standard roll lengths are typically 12.5m, 10m, or 5m - prefer these common values
@@ -259,7 +260,7 @@ Return a JSON object with this structure:
   "totalWeightKg": number or null (for compound deliveries),
   "rolls": [
     {
-      "rollNumber": string (format: "XXX-XXXXX", e.g., "154-41210"),
+      "rollNumber": string (CANONICAL ticket number ONLY — strip the order prefix; "154-41210" → "41210", "156-41213" → "41213"),
       "thicknessMm": number or null (typically 3-20mm),
       "widthMm": number or null (typically 800-1600mm),
       "lengthM": number or null (typically 5, 10, or 12.5 meters),
@@ -441,9 +442,9 @@ FORMAT 1 - AU INDUSTRIES DELIVERY NOTE (outgoing):
   Roll No & Weights:
     187-41524 - 68KG
     187-41525 - 67KG
-  This produces TWO lineItems:
-    { "rollNumber": "187-41524", "actualWeightKg": 68, "widthMm": 800, ... }
-    { "rollNumber": "187-41525", "actualWeightKg": 67, "widthMm": 800, ... }
+  This produces TWO lineItems (rollNumber holds ONLY the ticket suffix — strip the "187-" prefix):
+    { "rollNumber": "41524", "actualWeightKg": 68, "widthMm": 800, ... }
+    { "rollNumber": "41525", "actualWeightKg": 67, "widthMm": 800, ... }
   The "62.40Kg per Roll" in the description is the THEORETICAL weight, not the actual weight.
   The actual weight is the number next to each roll number (68KG, 67KG).
 
@@ -505,7 +506,7 @@ Return a JSON object with this structure:
           "lengthM": number or null,
           "weightPerRollKg": number or null (theoretical weight per roll),
           "specificGravity": number or null (e.g., 1.05),
-          "rollNumber": string or null (e.g., "154-41210", "41210"),
+          "rollNumber": string or null (CANONICAL ticket only — strip any "<order>-" prefix; "154-41210" → "41210"),
           "actualWeightKg": number or null (actual roll weight),
           "quantity": number or null
         }
@@ -587,12 +588,13 @@ The header contains a box/table with fields arranged horizontally:
 - TO: Customer name and address
 - Product description: "RSCA40-20.950.125 - Red A40 SC - 20mm x 950mm x 12.5m, 249.37kg per Roll @ 1.05 S.G's"
 - Roll numbers and weights listed BELOW description, one per line: "154-41210 - 258Kg"
+  (the printed format is "<order>-<ticket>"; ALWAYS strip the order prefix and return ONLY the ticket — "154-41210" → rollNumber "41210")
 - Quantity column (far right) shows total number of rolls for that line (e.g., 2.00 = 2 rolls)
 - CRITICAL: When quantity > 1, MULTIPLE roll numbers with individual weights are listed.
   Each roll MUST become its own separate lineItem. For example with Qty 2.00:
     187-41524 - 68KG
     187-41525 - 67KG
-  → TWO lineItems, each with their own rollNumber and actualWeightKg (68, 67).
+  → TWO lineItems, each with rollNumber "41524" and "41525" (ticket only, no prefix) and actualWeightKg (68, 67).
   The "per Roll" weight in the description is THEORETICAL, not actual.
   The actual weight is next to each individual roll number.
 
@@ -838,8 +840,8 @@ You MUST emit the rolls[] array on each line item using the per-roll detail list
 
 Rules (apply to EVERY AU customer-invoice line item that contains a "Roll No & Weight" / "Roll No & Weights" / "Roll No's & Weights" / "Roll Nos & Weights" sub-block — accept any of these label variants and any colon/dash/hyphen punctuation after the label):
 1. The "<number>kg per Roll" / "<number>Kg per Roll" value embedded in the description (e.g. "63kg per Roll", "249.37kg per Roll", "62.40Kg per Roll") is a THEORETICAL specification weight derived from dimensions × specific gravity. It is NEVER the actual roll weight. NEVER use it as weightKg on a roll. Treat it as forbidden source data for the rolls[] array.
-2. Each line beneath the "Roll No & Weight" label has the form "<rollNumber> - <weight>Kg" (e.g. "200-42377 - 62Kg", "154-41210 - 258Kg", "187-41525 - 67KG"). The roll number is the token to the left of the dash; the weight is the integer/decimal followed by "Kg" / "KG" / "kg" to the right of the dash. Read these digit-by-digit.
-3. Emit ONE entry in the rolls[] array per "<rollNumber> - <weight>Kg" line — even if the line item's qty is 1. rollNumber is the verbatim token (keep the "<order>-<ticket>" hyphen, e.g. "200-42377"). weightKg is the actual per-line weight (e.g. 62), NOT the description's "per Roll" spec figure (e.g. 63).
+2. Each line beneath the "Roll No & Weight" label has the form "<orderNumber>-<ticketNumber> - <weight>Kg" (e.g. "200-42377 - 62Kg", "154-41210 - 258Kg", "187-41525 - 67KG"). The TICKET NUMBER is the digits AFTER the dash inside the roll-number token (e.g. "42377", "41210", "41525"); the ORDER NUMBER is the digits BEFORE that dash (e.g. "200", "154", "187"). The weight is the integer/decimal followed by "Kg" / "KG" / "kg" after the second dash. Read these digit-by-digit.
+3. Emit ONE entry in the rolls[] array per "<orderNumber>-<ticketNumber> - <weight>Kg" line — even if the line item's qty is 1. CRITICAL: rollNumber is the TICKET NUMBER ONLY (the digits after the first dash, e.g. "42377", NOT "200-42377"). The order-number prefix is the customer's PO reference and is NOT part of the roll's stock-tracking identity — strip it. This is REQUIRED so the roll can be matched against supplier stock records (which use the bare ticket number). weightKg is the actual per-line weight (e.g. 62), NOT the description's "per Roll" spec figure (e.g. 63).
 4. If the qty column says 2 (or higher) and the description has 2 (or N) "<rollNumber> - <weight>Kg" lines beneath it, the rolls[] array MUST contain N entries — one per physical roll, each with its own number and actual weight. Never collapse them.
 5. If a "Roll No & Weight" sub-block is genuinely absent (no roll-number lines printed under the description at all), set rolls to null/omit — do NOT synthesise rolls from the spec weight.
 6. The "1.05 S.G's" / "S.G 1.04" / "@ 1.05 S.G" tail in the description is the specific gravity used to derive the spec weight — also forbidden as a weight source. Ignore it for weightKg purposes.
