@@ -20,6 +20,7 @@ import { CompoundMovementReferenceType } from "./entities/rubber-compound-moveme
 import {
   DeliveryNoteStatus,
   DeliveryNoteType,
+  ExtractedCustomerDeliveryNoteData,
   ExtractedDeliveryNoteData,
   ExtractedDeliveryNoteRoll,
   RubberDeliveryNote,
@@ -1150,6 +1151,130 @@ export class RubberDeliveryNoteService {
     );
 
     return { deliveryNoteIds };
+  }
+
+  async backfillSiblingsFromExtractedDeliveryNotes(
+    parentId: number,
+    extractedDns: ExtractedCustomerDeliveryNoteData[],
+  ): Promise<{
+    created: number;
+    deliveryNoteIds: number[];
+    skipped: { dnNumber: string; reason: string }[];
+  }> {
+    const parent = await this.deliveryNoteRepository.findOne({
+      where: { id: parentId },
+      relations: ["supplierCompany"],
+    });
+    if (!parent) {
+      throw new BadRequestException("Parent delivery note not found");
+    }
+    if (!parent.documentPath) {
+      throw new BadRequestException("Parent delivery note has no source document");
+    }
+
+    const suppliers = await this.companyRepository.find({
+      where: { companyType: CompanyType.SUPPLIER },
+    });
+
+    const result = await extractedDns.reduce(
+      async (accPromise, dn, idx) => {
+        const acc = await accPromise;
+        const dnNumber = dn.deliveryNoteNumber?.trim() ?? "";
+        if (!dnNumber) {
+          return {
+            ...acc,
+            skipped: [
+              ...acc.skipped,
+              { dnNumber: "(missing)", reason: "no DN number in extraction" },
+            ],
+          };
+        }
+        if (dnNumber === parent.deliveryNoteNumber) {
+          return {
+            ...acc,
+            skipped: [...acc.skipped, { dnNumber, reason: "matches parent — already exists" }],
+          };
+        }
+
+        const rolls: ExtractedDeliveryNoteRoll[] = (dn.lineItems ?? [])
+          .filter((item) => item != null && typeof item === "object")
+          .map((item) => ({
+            rollNumber: item.rollNumber ?? null,
+            compoundCode: item.compoundCode ?? null,
+            thicknessMm: item.thicknessMm ?? null,
+            widthMm: item.widthMm ?? null,
+            lengthM: item.lengthM ?? null,
+            weightKg: item.actualWeightKg ?? null,
+            areaSqM: item.widthMm && item.lengthM ? (item.widthMm * item.lengthM) / 1000 : null,
+            deliveryNoteNumber: dn.deliveryNoteNumber ?? null,
+            deliveryDate: dn.deliveryDate ?? null,
+            customerName: dn.customerName ?? null,
+            customerReference: dn.customerReference ?? null,
+            supplierName: dn.supplierName ?? null,
+            pageNumber: idx + 1,
+            sourcePages: dn.sourcePages && dn.sourcePages.length > 0 ? dn.sourcePages : null,
+          }));
+
+        const resolvedSupplierId = this.resolveSupplierFromRolls(
+          rolls,
+          suppliers,
+          parent.supplierCompanyId,
+        );
+
+        const existingActive = await this.versioningService.existingActiveDeliveryNote(
+          dnNumber,
+          resolvedSupplierId,
+        );
+        if (existingActive) {
+          return {
+            ...acc,
+            skipped: [
+              ...acc.skipped,
+              { dnNumber, reason: `already exists as #${existingActive.id}` },
+            ],
+          };
+        }
+
+        const rollExtractedData: ExtractedDeliveryNoteData = {
+          deliveryNoteNumber: dnNumber,
+          deliveryDate: dn.deliveryDate ?? undefined,
+          customerName: dn.customerName ?? undefined,
+          customerReference: dn.customerReference ?? undefined,
+          supplierName: dn.supplierName ?? undefined,
+          rolls,
+        };
+
+        const newNote = this.deliveryNoteRepository.create({
+          firebaseUid: `pg_${generateUniqueId()}`,
+          deliveryNoteType: parent.deliveryNoteType,
+          deliveryNoteNumber: dnNumber,
+          deliveryDate: dn.deliveryDate ? (dn.deliveryDate as unknown as Date) : null,
+          customerReference: dn.customerReference || null,
+          supplierCompanyId: resolvedSupplierId,
+          documentPath: parent.documentPath,
+          status: DeliveryNoteStatus.EXTRACTED,
+          createdBy: "backfill-siblings",
+          extractedData: rollExtractedData,
+          sourcePageNumbers: this.sourcePagesFromRolls(rolls),
+        });
+        const saved = await this.deliveryNoteRepository.save(newNote);
+        await this.replaceItemsFromRolls(saved.id, rolls);
+        this.logger.log(
+          `Backfill: created sibling SDN ${dnNumber} (#${saved.id}) from parent #${parentId}`,
+        );
+        return { ...acc, created: [...acc.created, saved.id] };
+      },
+      Promise.resolve({
+        created: [] as number[],
+        skipped: [] as { dnNumber: string; reason: string }[],
+      }),
+    );
+
+    return {
+      created: result.created.length,
+      deliveryNoteIds: result.created,
+      skipped: result.skipped,
+    };
   }
 
   private sourcePagesFromRolls(rolls: { sourcePages?: number[] | null }[]): number[] | null {

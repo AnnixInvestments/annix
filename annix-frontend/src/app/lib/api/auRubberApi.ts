@@ -1,5 +1,4 @@
 import { toPairs as entries } from "es-toolkit/compat";
-import { throwIfNotOk } from "@/app/lib/api/apiError";
 import {
   type ApiClient,
   createApiClient,
@@ -1097,6 +1096,17 @@ class AuRubberApiClient {
 
   refileDeliveryNoteStock = createEndpoint<[id: number], RubberDeliveryNoteDto>(apiClient, "PUT", {
     path: (id) => `/rubber-lining/portal/delivery-notes/${id}/refile-stock`,
+  });
+
+  backfillDeliveryNoteSiblings = createEndpoint<
+    [id: number],
+    {
+      created: number;
+      deliveryNoteIds: number[];
+      skipped: { dnNumber: string; reason: string }[];
+    }
+  >(apiClient, "POST", {
+    path: (id) => `/rubber-lining/portal/delivery-notes/${id}/backfill-siblings`,
   });
 
   deliveryNoteItems = createEndpoint<[deliveryNoteId: number], RubberDeliveryNoteItemDto[]>(

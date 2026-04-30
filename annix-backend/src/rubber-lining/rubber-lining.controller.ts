@@ -1456,6 +1456,76 @@ Formula: totalPrice = totalKg × salePricePerKg
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
+  @Post("portal/delivery-notes/:id/backfill-siblings")
+  @ApiOperation({
+    summary:
+      "Re-extract this delivery note's source PDF and create sibling DN records for any DN numbers in the PDF that don't yet exist (recovery for multi-DN PDFs that were collapsed during initial extraction)",
+  })
+  @ApiParam({ name: "id", description: "Parent delivery note ID" })
+  async backfillSiblingsFromDocument(@Param("id") id: string): Promise<{
+    created: number;
+    deliveryNoteIds: number[];
+    skipped: { dnNumber: string; reason: string }[];
+  }> {
+    const parentId = Number(id);
+    const note = await this.rubberDeliveryNoteService.deliveryNoteById(parentId);
+    if (!note) throw new NotFoundException("Delivery note not found");
+    if (!note.documentPath) {
+      throw new BadRequestException("Delivery note has no source document to re-extract from");
+    }
+    if (note.deliveryNoteType !== DeliveryNoteType.ROLL) {
+      throw new BadRequestException(
+        "Backfill siblings is only supported for ROLL delivery notes (compound DNs use a different extraction path)",
+      );
+    }
+
+    const isAvailable = await this.rubberCocExtractionService.isAvailable();
+    if (!isAvailable) {
+      throw new BadRequestException(
+        "AI extraction service not available - GEMINI_API_KEY not configured",
+      );
+    }
+
+    const pdfBuffer = await this.storageService.download(note.documentPath);
+    const correctionHints = await this.rubberDeliveryNoteService.correctionHintsForDnSupplier(
+      note.supplierCompanyName,
+    );
+
+    const customerResult = await (async () => {
+      try {
+        return await this.rubberCocExtractionService.extractCustomerDeliveryNoteFromImages(
+          pdfBuffer,
+          correctionHints,
+        );
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Unknown error";
+        throw new BadRequestException(
+          `Failed to re-extract source PDF: ${msg}. Please ensure the document is a valid PDF.`,
+        );
+      }
+    })();
+
+    const supplierDns = customerResult.deliveryNotes.filter((dn) => {
+      const supplier = (dn.supplierName || "").toLowerCase();
+      return !(supplier.includes("au industrie") || supplier.includes("au industries"));
+    });
+
+    const dnsToProcess = supplierDns.length > 0 ? supplierDns : customerResult.deliveryNotes;
+
+    const result = await this.rubberDeliveryNoteService.backfillSiblingsFromExtractedDeliveryNotes(
+      parentId,
+      dnsToProcess,
+    );
+
+    this.logger.log(
+      `Backfill on DN #${parentId}: created ${result.created} sibling(s), skipped ${result.skipped.length}`,
+    );
+
+    return result;
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
   @Put("portal/delivery-notes/:id/refile-stock")
   @ApiOperation({
     summary: "Re-approve and overwrite stock movement using corrected extracted data",

@@ -23,6 +23,7 @@ import type {
 import { formatDateTimeZA, formatDateZA } from "@/app/lib/datetime";
 import {
   useAuRubberApproveDeliveryNote,
+  useAuRubberBackfillDeliveryNoteSiblings,
   useAuRubberCompanies,
   useAuRubberDeleteDeliveryNote,
   useAuRubberDeliveryNoteDetail,
@@ -82,6 +83,7 @@ export default function DeliveryNoteDetailPage() {
   const finalizeDeliveryNoteMutation = useAuRubberFinalizeDeliveryNote();
   const approveDeliveryNoteMutation = useAuRubberApproveDeliveryNote();
   const refileDeliveryNoteStockMutation = useAuRubberRefileDeliveryNoteStock();
+  const backfillSiblingsMutation = useAuRubberBackfillDeliveryNoteSiblings();
   const { confirm: confirmDialog, ConfirmDialog } = useConfirm();
 
   const noteData = noteQuery.data;
@@ -125,6 +127,7 @@ export default function DeliveryNoteDetailPage() {
   const [isLinking, setIsLinking] = useState(false);
   const [isFinalizing, setIsFinalizing] = useState(false);
   const [isRefiling, setIsRefiling] = useState(false);
+  const [isBackfilling, setIsBackfilling] = useState(false);
   const [isExtracting, setIsExtracting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [editedData, setEditedData] = useState<EditableExtractedData[] | null>(null);
@@ -491,6 +494,42 @@ export default function DeliveryNoteDetailPage() {
     }
   };
 
+  const handleBackfillSiblings = async () => {
+    const confirmed = await confirmDialog({
+      title: "Backfill missing sibling DNs from this PDF?",
+      message:
+        "Re-extracts the source PDF and creates new SDN records for any DN numbers in the document that don't yet exist in the system. Useful when a multi-DN PDF was originally collapsed into a single record. Existing SDNs (including this one) are not modified — only the missing siblings are created. Each new sibling lands in 'Extracted' status for you to review.",
+      confirmLabel: "Backfill Siblings",
+    });
+    if (!confirmed) return;
+    try {
+      setIsBackfilling(true);
+      const result = await backfillSiblingsMutation.mutateAsync(noteId);
+      if (result.created === 0) {
+        showToast(
+          result.skipped.length > 0
+            ? `No siblings created — ${result.skipped.length} DN(s) skipped (already exist or empty).`
+            : "No additional DNs found in the source PDF.",
+          "info",
+        );
+      } else {
+        showToast(
+          `Created ${result.created} sibling SDN${result.created === 1 ? "" : "s"} — review them in the SDN hub.`,
+          "success",
+        );
+        router.push(
+          isCustomerDn
+            ? "/au-rubber/portal/delivery-notes/customers"
+            : "/au-rubber/portal/delivery-notes/suppliers",
+        );
+      }
+    } catch (err) {
+      toastError(showToast, err, "Failed to backfill siblings");
+    } finally {
+      setIsBackfilling(false);
+    }
+  };
+
   const statusBadge = (status: DeliveryNoteStatus) => {
     const colors: Record<DeliveryNoteStatus, string> = {
       PENDING: "bg-gray-100 text-gray-800",
@@ -707,6 +746,16 @@ export default function DeliveryNoteDetailPage() {
               className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 disabled:opacity-50"
             >
               {isRefiling ? "Refiling..." : "Re-approve & Refile Stock"}
+            </button>
+          )}
+          {note.deliveryNoteType === "ROLL" && note.documentPath && (
+            <button
+              onClick={handleBackfillSiblings}
+              disabled={isBackfilling}
+              className="inline-flex items-center px-4 py-2 border border-purple-300 rounded-md shadow-sm text-sm font-medium text-purple-700 bg-white hover:bg-purple-50 disabled:opacity-50"
+              title="Re-extract this PDF and create SDN records for any DN numbers in it that don't yet exist"
+            >
+              {isBackfilling ? "Backfilling..." : "Backfill Missing DNs from PDF"}
             </button>
           )}
           {note.status !== "STOCK_CREATED" && (

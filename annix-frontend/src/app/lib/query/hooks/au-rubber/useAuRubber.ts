@@ -383,6 +383,17 @@ export function useAuRubberRefileDeliveryNoteStock() {
   });
 }
 
+export function useAuRubberBackfillDeliveryNoteSiblings() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => auRubberApiClient.backfillDeliveryNoteSiblings(id),
+    onSuccess: (_result, id) => {
+      queryClient.invalidateQueries({ queryKey: rubberKeys.deliveryNotes.detail(id) });
+      queryClient.invalidateQueries({ queryKey: rubberKeys.deliveryNotes.all });
+    },
+  });
+}
+
 export function useAuRubberRefileTaxInvoiceStock() {
   const queryClient = useQueryClient();
   return useMutation({
