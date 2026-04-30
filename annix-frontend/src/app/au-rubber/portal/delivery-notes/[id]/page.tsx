@@ -11,6 +11,7 @@ import {
   useImageViewer,
 } from "@/app/components/ImageViewerToolbar";
 import { useToast } from "@/app/components/Toast";
+import { toastError } from "@/app/lib/api/apiError";
 import type {
   DeliveryNoteStatus,
   DeliveryNoteType,
@@ -324,7 +325,7 @@ export default function DeliveryNoteDetailPage() {
       setHasUnsavedChanges(false);
       fetchData();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to save corrections", "error");
+      toastError(showToast, err, "Failed to save corrections");
     } finally {
       setIsSaving(false);
     }
@@ -337,7 +338,7 @@ export default function DeliveryNoteDetailPage() {
       showToast("Data extracted successfully", "success");
       fetchData();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to extract data", "error");
+      toastError(showToast, err, "Failed to extract data");
     } finally {
       setIsExtracting(false);
     }
@@ -355,7 +356,7 @@ export default function DeliveryNoteDetailPage() {
       setDocPageUrl(result.url);
       setDocTotalPages(result.totalPages);
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to load document page", "error");
+      toastError(showToast, err, "Failed to load document page");
     } finally {
       setIsLoadingDoc(false);
     }
@@ -393,7 +394,7 @@ export default function DeliveryNoteDetailPage() {
       });
       setPodPageUrl(result.url);
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to load POD page", "error");
+      toastError(showToast, err, "Failed to load POD page");
       setShowPodModal(false);
     } finally {
       setIsLoadingPod(false);
@@ -414,7 +415,7 @@ export default function DeliveryNoteDetailPage() {
       showToast("Delivery note deleted successfully", "success");
       router.back();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to delete delivery note", "error");
+      toastError(showToast, err, "Failed to delete delivery note");
       setIsDeleting(false);
       setShowDeleteConfirm(false);
     }
@@ -433,7 +434,7 @@ export default function DeliveryNoteDetailPage() {
       setSelectedCocId(null);
       fetchData();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to link CoC", "error");
+      toastError(showToast, err, "Failed to link CoC");
     } finally {
       setIsLinking(false);
     }
@@ -453,7 +454,7 @@ export default function DeliveryNoteDetailPage() {
           : "/au-rubber/portal/delivery-notes/suppliers",
       );
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to approve and create stock", "error");
+      toastError(showToast, err, "Failed to approve and create stock");
     } finally {
       setIsFinalizing(false);
     }
