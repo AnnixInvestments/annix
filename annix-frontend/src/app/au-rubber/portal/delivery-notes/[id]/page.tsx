@@ -458,7 +458,11 @@ export default function DeliveryNoteDetailPage() {
       setIsApproving(true);
       await approveDeliveryNoteMutation.mutateAsync(noteId);
       showToast("Extraction approved", "success");
-      fetchData();
+      router.push(
+        isCustomerDn
+          ? "/au-rubber/portal/delivery-notes/customers"
+          : "/au-rubber/portal/delivery-notes/suppliers",
+      );
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to approve", "error");
     } finally {
