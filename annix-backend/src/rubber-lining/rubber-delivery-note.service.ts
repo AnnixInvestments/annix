@@ -665,6 +665,25 @@ export class RubberDeliveryNoteService {
     return this.mapDeliveryNoteToDto(note);
   }
 
+  async approveDeliveryNote(id: number): Promise<RubberDeliveryNoteDto | null> {
+    const note = await this.deliveryNoteRepository.findOne({
+      where: { id },
+      relations: ["supplierCompany", "linkedCoc"],
+    });
+    if (!note) return null;
+
+    if (note.status !== DeliveryNoteStatus.EXTRACTED) {
+      throw new BadRequestException(
+        `Delivery note must be in EXTRACTED state to approve (current: ${note.status})`,
+      );
+    }
+
+    note.status = DeliveryNoteStatus.APPROVED;
+    await this.deliveryNoteRepository.save(note);
+
+    return this.mapDeliveryNoteToDto(note);
+  }
+
   private async processCompoundStockOut(note: RubberDeliveryNote): Promise<void> {
     const alreadyProcessed = await this.rubberStockService.movementExistsForReference(
       CompoundMovementReferenceType.DELIVERY_DEDUCTION,
@@ -912,6 +931,7 @@ export class RubberDeliveryNoteService {
         note.supplierCompanyId,
       );
       note.status = DeliveryNoteStatus.EXTRACTED;
+      note.sourcePageNumbers = this.sourcePagesFromRolls(ownRolls);
       await this.deliveryNoteRepository.save(note);
       this.logger.log(
         `Re-extract on existing DN ${noteDnNumber} (#${note.id}) — kept own rolls (${ownRolls.length}), skipped splitting against ${rollsByDnNumber.size - 1} sibling DN(s) already in the system`,
@@ -934,6 +954,7 @@ export class RubberDeliveryNoteService {
       );
       note.supplierCompanyId = resolvedSupplierId;
       note.status = DeliveryNoteStatus.EXTRACTED;
+      note.sourcePageNumbers = this.sourcePagesFromRolls(singleRolls);
 
       const existingActive = extractedDnNumber
         ? await this.versioningService.existingActiveDeliveryNote(
@@ -984,6 +1005,7 @@ export class RubberDeliveryNoteService {
           note.supplierCompanyId = resolvedSupplierId;
           note.status = DeliveryNoteStatus.EXTRACTED;
           note.extractedData = rollExtractedData;
+          note.sourcePageNumbers = this.sourcePagesFromRolls(rolls);
           if (existingActive && existingActive.id !== note.id) {
             note.version = existingActive.version + 1;
             note.previousVersionId = existingActive.id;
@@ -1014,6 +1036,7 @@ export class RubberDeliveryNoteService {
           status: DeliveryNoteStatus.EXTRACTED,
           createdBy: note.createdBy,
           extractedData: rollExtractedData,
+          sourcePageNumbers: this.sourcePagesFromRolls(rolls),
         });
         const savedNote = await this.deliveryNoteRepository.save(newNote);
         return [...acc, savedNote.id];
@@ -1022,6 +1045,15 @@ export class RubberDeliveryNoteService {
     );
 
     return { deliveryNoteIds };
+  }
+
+  private sourcePagesFromRolls(rolls: { sourcePages?: number[] | null }[]): number[] | null {
+    const pages = rolls.flatMap((r) =>
+      Array.isArray(r.sourcePages) ? r.sourcePages.filter((p) => Number.isInteger(p) && p > 0) : [],
+    );
+    if (pages.length === 0) return null;
+    const unique = Array.from(new Set(pages)).sort((a, b) => a - b);
+    return unique;
   }
 
   private resolveSupplierFromRolls(
@@ -1123,6 +1155,7 @@ export class RubberDeliveryNoteService {
       previousVersionId: note.previousVersionId,
       stockCategory: note.stockCategory || null,
       podPageNumbers: note.podPageNumbers || null,
+      sourcePageNumbers: note.sourcePageNumbers || null,
     };
   }
 

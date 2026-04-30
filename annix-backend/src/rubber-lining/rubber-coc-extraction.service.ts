@@ -1225,11 +1225,21 @@ Return ONLY a valid JSON object of this exact shape (no extra fields, no comment
     }
   }
 
-  async convertPdfToImages(pdfBuffer: Buffer): Promise<Buffer[]> {
+  async convertPdfToImages(documentBuffer: Buffer): Promise<Buffer[]> {
+    const kind = this.sniffDocumentKind(documentBuffer);
+    if (kind === "png" || kind === "jpeg") {
+      this.logger.log(`Document is already an image (${kind}); skipping PDF rasterisation`);
+      return [documentBuffer];
+    }
+    if (kind !== "pdf") {
+      throw new Error(
+        "Unsupported document format: expected PDF, PNG or JPEG. The uploaded file's magic bytes match none of these — re-upload the original document.",
+      );
+    }
     this.logger.log("Converting PDF to images for OCR...");
-    const pdfInput = pdfBuffer.buffer.slice(
-      pdfBuffer.byteOffset,
-      pdfBuffer.byteOffset + pdfBuffer.byteLength,
+    const pdfInput = documentBuffer.buffer.slice(
+      documentBuffer.byteOffset,
+      documentBuffer.byteOffset + documentBuffer.byteLength,
     );
     const pages = await pdfToPng(pdfInput, {
       disableFontFace: true,
@@ -1238,6 +1248,27 @@ Return ONLY a valid JSON object of this exact shape (no extra fields, no comment
     });
     this.logger.log(`Converted PDF to ${pages.length} image(s)`);
     return pages.filter((page) => page.content !== undefined).map((page) => page.content as Buffer);
+  }
+
+  private sniffDocumentKind(buffer: Buffer): "pdf" | "png" | "jpeg" | "unknown" {
+    if (buffer.length >= 5 && buffer.toString("ascii", 0, 5) === "%PDF-") return "pdf";
+    if (
+      buffer.length >= 8 &&
+      buffer[0] === 0x89 &&
+      buffer[1] === 0x50 &&
+      buffer[2] === 0x4e &&
+      buffer[3] === 0x47 &&
+      buffer[4] === 0x0d &&
+      buffer[5] === 0x0a &&
+      buffer[6] === 0x1a &&
+      buffer[7] === 0x0a
+    ) {
+      return "png";
+    }
+    if (buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
+      return "jpeg";
+    }
+    return "unknown";
   }
 
   private async callGeminiWithImages(

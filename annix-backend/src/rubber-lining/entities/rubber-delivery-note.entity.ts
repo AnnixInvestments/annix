@@ -38,6 +38,7 @@ export interface ExtractedDeliveryNoteRoll {
   customerReference?: string | null;
   supplierName?: string | null;
   pageNumber?: number;
+  sourcePages?: number[] | null;
   specificGravity?: number | null;
 }
 
@@ -171,6 +172,9 @@ export class RubberDeliveryNote {
 
   @Column({ name: "pod_page_numbers", type: "jsonb", nullable: true })
   podPageNumbers: number[] | null;
+
+  @Column({ name: "source_page_numbers", type: "jsonb", nullable: true })
+  sourcePageNumbers: number[] | null;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

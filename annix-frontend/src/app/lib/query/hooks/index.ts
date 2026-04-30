@@ -358,6 +358,7 @@ export {
   useAuRubberAccessRoles,
   useAuRubberAccessUsers,
   useAuRubberAnalyzeSupplierCocs,
+  useAuRubberApproveDeliveryNote,
   useAuRubberApproveSupplierCoc,
   useAuRubberAuCocs,
   useAuRubberAuthorizeVersion,

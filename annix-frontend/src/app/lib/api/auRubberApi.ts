@@ -687,6 +687,7 @@ export interface RubberDeliveryNoteDto {
   versionStatusLabel: string;
   previousVersionId: number | null;
   podPageNumbers: number[] | null;
+  sourcePageNumbers: number[] | null;
 }
 
 export interface RubberDeliveryNoteItemDto {
@@ -2431,6 +2432,12 @@ class AuRubberApiClient {
 
   async finalizeDeliveryNote(id: number): Promise<RubberDeliveryNoteDto> {
     return this.request(`/rubber-lining/portal/delivery-notes/${id}/finalize`, {
+      method: "PUT",
+    });
+  }
+
+  async approveDeliveryNote(id: number): Promise<RubberDeliveryNoteDto> {
+    return this.request(`/rubber-lining/portal/delivery-notes/${id}/approve`, {
       method: "PUT",
     });
   }

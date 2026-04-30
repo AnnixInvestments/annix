@@ -159,6 +159,7 @@ export class RubberExtractionOrchestratorService {
                   customerReference: dn.customerReference ?? null,
                   supplierName: dn.supplierName ?? null,
                   pageNumber: dnIdx + 1,
+                  sourcePages: dn.sourcePages && dn.sourcePages.length > 0 ? dn.sourcePages : null,
                 })),
             );
 

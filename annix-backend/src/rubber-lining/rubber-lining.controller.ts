@@ -1438,6 +1438,17 @@ Formula: totalPrice = totalKg × salePricePerKg
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
+  @Put("portal/delivery-notes/:id/approve")
+  @ApiOperation({ summary: "Approve extracted delivery note data (status EXTRACTED → APPROVED)" })
+  @ApiParam({ name: "id", description: "Delivery note ID" })
+  async approveDeliveryNote(@Param("id") id: string): Promise<RubberDeliveryNoteDto> {
+    const note = await this.rubberDeliveryNoteService.approveDeliveryNote(Number(id));
+    if (!note) throw new NotFoundException("Delivery note not found");
+    return note;
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
   @Post("portal/delivery-notes/:id/extract")
   @ApiOperation({ summary: "Extract data from delivery note PDF using AI" })
   @ApiParam({ name: "id", description: "Delivery note ID" })

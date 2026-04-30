@@ -287,6 +287,7 @@ export class RubberDeliveryNoteDto {
   previousVersionId: number | null;
   stockCategory: string | null;
   podPageNumbers: number[] | null;
+  sourcePageNumbers: number[] | null;
 }
 
 export class CreateDeliveryNoteDto {

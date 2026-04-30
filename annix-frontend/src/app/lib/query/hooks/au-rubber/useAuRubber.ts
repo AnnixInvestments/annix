@@ -361,6 +361,17 @@ export function useAuRubberFinalizeDeliveryNote() {
   });
 }
 
+export function useAuRubberApproveDeliveryNote() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => auRubberApiClient.approveDeliveryNote(id),
+    onSuccess: (_result, id) => {
+      queryClient.invalidateQueries({ queryKey: rubberKeys.deliveryNotes.detail(id) });
+      queryClient.invalidateQueries({ queryKey: rubberKeys.deliveryNotes.all });
+    },
+  });
+}
+
 export function useAuRubberAnalyzeSupplierCocs() {
   return useMutation({
     mutationFn: (files: File[]) => auRubberApiClient.analyzeSupplierCocs(files),

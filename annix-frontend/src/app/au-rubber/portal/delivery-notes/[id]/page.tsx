@@ -20,6 +20,7 @@ import type {
 } from "@/app/lib/api/auRubberApi";
 import { formatDateTimeZA, formatDateZA } from "@/app/lib/datetime";
 import {
+  useAuRubberApproveDeliveryNote,
   useAuRubberCompanies,
   useAuRubberDeleteDeliveryNote,
   useAuRubberDeliveryNoteDetail,
@@ -76,6 +77,7 @@ export default function DeliveryNoteDetailPage() {
   const deleteDeliveryNoteMutation = useAuRubberDeleteDeliveryNote();
   const linkDeliveryNoteToCocMutation = useAuRubberLinkDeliveryNoteToCoc();
   const finalizeDeliveryNoteMutation = useAuRubberFinalizeDeliveryNote();
+  const approveDeliveryNoteMutation = useAuRubberApproveDeliveryNote();
 
   const noteData = noteQuery.data;
   const note = noteData ? noteData : null;
@@ -117,6 +119,7 @@ export default function DeliveryNoteDetailPage() {
   const [selectedCocId, setSelectedCocId] = useState<number | null>(null);
   const [isLinking, setIsLinking] = useState(false);
   const [isFinalizing, setIsFinalizing] = useState(false);
+  const [isApproving, setIsApproving] = useState(false);
   const [isExtracting, setIsExtracting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [editedData, setEditedData] = useState<EditableExtractedData[] | null>(null);
@@ -136,6 +139,17 @@ export default function DeliveryNoteDetailPage() {
   const [docPageUrl, setDocPageUrl] = useState<string | null>(null);
   const [isLoadingDoc, setIsLoadingDoc] = useState(false);
   const docViewer = useImageViewer();
+
+  const visiblePages = useMemo(() => {
+    const sourcePages = note?.sourcePageNumbers;
+    if (sourcePages && sourcePages.length > 0) return sourcePages;
+    return Array.from({ length: docTotalPages }, (_unused, i) => i + 1);
+  }, [note?.sourcePageNumbers, docTotalPages]);
+  const visiblePageCount = visiblePages.length;
+  const visibleIndex = visiblePages.indexOf(docPageNumber);
+  const visiblePositionLabel = visibleIndex >= 0 ? visibleIndex + 1 : 1;
+  const hasPrevPage = visibleIndex > 0;
+  const hasNextPage = visibleIndex >= 0 && visibleIndex < visiblePageCount - 1;
 
   const noteFetching = noteQuery.isFetching;
   const itemsFetching = itemsQuery.isFetching;
@@ -354,7 +368,9 @@ export default function DeliveryNoteDetailPage() {
     if (!editedData) {
       handleStartEditing();
     }
-    await loadDocPage(1);
+    const firstPage =
+      note.sourcePageNumbers && note.sourcePageNumbers.length > 0 ? note.sourcePageNumbers[0] : 1;
+    await loadDocPage(firstPage);
   };
 
   const handleCloseDocViewer = () => {
@@ -434,6 +450,19 @@ export default function DeliveryNoteDetailPage() {
       showToast(err instanceof Error ? err.message : "Failed to finalize", "error");
     } finally {
       setIsFinalizing(false);
+    }
+  };
+
+  const handleApprove = async () => {
+    try {
+      setIsApproving(true);
+      await approveDeliveryNoteMutation.mutateAsync(noteId);
+      showToast("Extraction approved", "success");
+      fetchData();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Failed to approve", "error");
+    } finally {
+      setIsApproving(false);
     }
   };
 
@@ -607,7 +636,9 @@ export default function DeliveryNoteDetailPage() {
               {showDocViewer ? "Hide Document" : "View Document"}
             </button>
           )}
-          {(note.status === "PENDING" || note.status === "EXTRACTED") && (
+          {(note.status === "PENDING" ||
+            note.status === "EXTRACTED" ||
+            note.status === "APPROVED") && (
             <button
               onClick={handleExtract}
               disabled={isExtracting}
@@ -620,16 +651,23 @@ export default function DeliveryNoteDetailPage() {
                   : "Extract Data"}
             </button>
           )}
-          {(note.status === "PENDING" || note.status === "EXTRACTED") &&
-            !note.linkedCocId &&
-            unlinkedCocs.length > 0 && (
-              <button
-                onClick={() => setShowLinkModal(true)}
-                className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-              >
-                Link to CoC
-              </button>
-            )}
+          {note.status === "EXTRACTED" && hasExtractedData && (
+            <button
+              onClick={handleApprove}
+              disabled={isApproving}
+              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 disabled:opacity-50"
+            >
+              {isApproving ? "Approving..." : "Approve Extraction"}
+            </button>
+          )}
+          {note.status === "APPROVED" && !note.linkedCocId && unlinkedCocs.length > 0 && (
+            <button
+              onClick={() => setShowLinkModal(true)}
+              className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+            >
+              Link to CoC
+            </button>
+          )}
           {note.status === "LINKED" && (
             <button
               onClick={handleFinalize}
@@ -711,11 +749,14 @@ export default function DeliveryNoteDetailPage() {
                 onRotate={docViewer.rotateClockwise}
                 onReset={docViewer.reset}
               />
-              {docTotalPages > 1 && (
+              {visiblePageCount > 1 && (
                 <div className="flex items-center space-x-1 ml-2">
                   <button
-                    onClick={() => loadDocPage(docPageNumber - 1)}
-                    disabled={docPageNumber <= 1 || isLoadingDoc}
+                    onClick={() => {
+                      const prev = visiblePages[visibleIndex - 1];
+                      if (prev !== undefined) loadDocPage(prev);
+                    }}
+                    disabled={!hasPrevPage || isLoadingDoc}
                     className="p-1.5 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -728,11 +769,14 @@ export default function DeliveryNoteDetailPage() {
                     </svg>
                   </button>
                   <span className="text-sm text-gray-600 min-w-[60px] text-center">
-                    {docPageNumber} / {docTotalPages}
+                    {visiblePositionLabel} / {visiblePageCount}
                   </span>
                   <button
-                    onClick={() => loadDocPage(docPageNumber + 1)}
-                    disabled={docPageNumber >= docTotalPages || isLoadingDoc}
+                    onClick={() => {
+                      const next = visiblePages[visibleIndex + 1];
+                      if (next !== undefined) loadDocPage(next);
+                    }}
+                    disabled={!hasNextPage || isLoadingDoc}
                     className="p-1.5 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
