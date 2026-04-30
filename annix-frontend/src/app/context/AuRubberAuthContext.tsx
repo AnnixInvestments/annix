@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, ReactNode, useCallback, useContext, useEffect, useState } from "react";
+import { isApiError } from "@/app/lib/api/apiError";
 import { AuRubberUser, AuRubberUserProfile, auRubberApiClient } from "@/app/lib/api/auRubberApi";
 import { nowMillis } from "@/app/lib/datetime";
 
@@ -133,18 +134,27 @@ export function AuRubberAuthProvider(props: { children: ReactNode }) {
         roleCode: accessInfo.roleCode,
         isAdmin: accessInfo.isAdmin,
       });
-    } catch {
-      auRubberApiClient.clearTokens();
-      clearCachedAuth();
-      setState({
-        isAuthenticated: false,
+    } catch (err) {
+      const isAuthFailure = isApiError(err) && (err.isUnauthorized() || err.isForbidden());
+      if (isAuthFailure) {
+        auRubberApiClient.clearTokens();
+        clearCachedAuth();
+        setState({
+          isAuthenticated: false,
+          isLoading: false,
+          user: null,
+          profile: null,
+          permissions: [],
+          roleCode: null,
+          isAdmin: false,
+        });
+        return;
+      }
+      setState((prev) => ({
+        ...prev,
+        isAuthenticated: true,
         isLoading: false,
-        user: null,
-        profile: null,
-        permissions: [],
-        roleCode: null,
-        isAdmin: false,
-      });
+      }));
     }
   }, []);
 

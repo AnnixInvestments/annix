@@ -276,8 +276,13 @@ class ApiClient {
           sessionExpiredEvent.emit();
           throw new SessionExpiredError();
         }
+        if (response.status === 502 || response.status === 503 || response.status === 504) {
+          throw new Error(
+            "We're having trouble reaching the server. Please wait a moment and try again.",
+          );
+        }
         const errorText = await response.text();
-        throw new Error(`API Error (${response.status}): ${errorText}`);
+        throw new Error(`Server error (HTTP ${response.status}): ${errorText}`);
       }
 
       // Handle empty responses gracefully
@@ -294,9 +299,10 @@ class ApiClient {
         return {} as T;
       }
     } catch (error) {
-      // Silently handle network errors (backend unavailable)
       if (error instanceof TypeError && error.message === "Failed to fetch") {
-        throw new Error("Backend unavailable");
+        throw new Error(
+          "We're having trouble reaching the server. Please wait a moment and try again.",
+        );
       }
       throw error;
     }

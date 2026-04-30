@@ -45,19 +45,41 @@ async function proxyRequest(request: NextRequest) {
       cache: "no-store",
     });
 
+  const retryDelaysMs = [500, 1500, 3000];
+  const attemptWithRetries = async (
+    remainingDelays: number[],
+    attemptNumber: number,
+  ): Promise<Response> => {
+    try {
+      return await attempt();
+    } catch (err) {
+      if (remainingDelays.length === 0) throw err;
+      const [delay, ...rest] = remainingDelays;
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn(
+        `[proxy] fetch failed for ${targetUrl} (attempt ${attemptNumber}/${retryDelaysMs.length + 1}): ${msg} — retrying in ${delay}ms`,
+      );
+      await new Promise((r) => setTimeout(r, delay));
+      return attemptWithRetries(rest, attemptNumber + 1);
+    }
+  };
+
   let response: Response;
   try {
-    response = await attempt();
-  } catch (firstErr) {
-    const firstMsg = firstErr instanceof Error ? firstErr.message : String(firstErr);
-    console.warn(`[proxy] fetch failed for ${targetUrl}: ${firstMsg} — retrying once`);
-    try {
-      response = await attempt();
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error(`[proxy] fetch failed (retry) for ${targetUrl}: ${msg}`);
-      return NextResponse.json({ error: "Backend unreachable", detail: msg }, { status: 502 });
-    }
+    response = await attemptWithRetries(retryDelaysMs, 1);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(
+      `[proxy] fetch failed for ${targetUrl} after ${retryDelaysMs.length + 1} attempts: ${msg}`,
+    );
+    return NextResponse.json(
+      {
+        error: "Backend unreachable",
+        detail: msg,
+        message: "We're having trouble reaching the server. Please wait a moment and try again.",
+      },
+      { status: 502 },
+    );
   }
 
   if (response.status >= 500) {

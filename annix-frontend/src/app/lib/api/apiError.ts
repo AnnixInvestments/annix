@@ -51,8 +51,16 @@ export class ApiError extends Error {
 export const isApiError = (error: unknown): error is ApiError =>
   error instanceof ApiError || (error instanceof Error && error.name === "ApiError");
 
+export const FRIENDLY_BACKEND_UNREACHABLE_MESSAGE =
+  "We're having trouble reaching the server. Please wait a moment and try again.";
+
+const TRANSIENT_SERVER_STATUSES = new Set([502, 503, 504]);
+
 export function extractErrorMessage(error: unknown, fallback: string): string {
   if (isApiError(error)) {
+    if (TRANSIENT_SERVER_STATUSES.has(error.status)) {
+      return FRIENDLY_BACKEND_UNREACHABLE_MESSAGE;
+    }
     const detail = error.detail;
     return detail ? `${error.message} — ${detail}` : error.message;
   }
@@ -69,9 +77,6 @@ export async function throwIfNotOk(response: Response): Promise<void> {
   if (response.ok) return;
 
   const errorText = await response.text().catch(() => "");
-  const fallbackMessage = errorText
-    ? `API Error (${response.status}): ${errorText}`
-    : `HTTP ${response.status}`;
 
   let parsed: Record<string, unknown> | null = null;
   try {
@@ -80,18 +85,28 @@ export async function throwIfNotOk(response: Response): Promise<void> {
     parsed = null;
   }
 
-  const message =
-    parsed && isString(parsed.message)
+  const isTransient = TRANSIENT_SERVER_STATUSES.has(response.status);
+
+  const fallbackMessage = isTransient
+    ? FRIENDLY_BACKEND_UNREACHABLE_MESSAGE
+    : `Server error (HTTP ${response.status})`;
+
+  const message = isTransient
+    ? FRIENDLY_BACKEND_UNREACHABLE_MESSAGE
+    : parsed && isString(parsed.message)
       ? parsed.message
       : parsed && isArray(parsed.message)
         ? (parsed.message as string[]).join(", ")
-        : fallbackMessage;
+        : parsed && isString(parsed.error)
+          ? (parsed.error as string)
+          : fallbackMessage;
 
   throw new ApiError({
     status: response.status,
     code: parsed && isString(parsed.code) ? (parsed.code as string) : undefined,
     message,
-    detail: parsed && isString(parsed.detail) ? (parsed.detail as string) : undefined,
+    detail:
+      isTransient || !(parsed && isString(parsed.detail)) ? undefined : (parsed.detail as string),
     fieldErrors:
       parsed?.fieldErrors && isObject(parsed.fieldErrors)
         ? (parsed.fieldErrors as Record<string, string[]>)
