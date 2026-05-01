@@ -3,6 +3,7 @@
 import { CODING_TYPES, CodingType } from "@annix/product-data/rubber/codingTypes";
 import { toPairs as entries, isArray } from "es-toolkit/compat";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { Pagination, TableLoadingState } from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
 import { usePersistedState } from "@/app/hooks/usePersistedState";
@@ -486,12 +487,18 @@ export default function AuRubberCodingsPage() {
           </>
         )}
 
-        {showModal && (
-          <div className="fixed inset-0 z-50 overflow-y-auto">
-            <div className="flex min-h-screen items-center justify-center p-4">
+        {showModal &&
+          globalThis.document &&
+          createPortal(
+            <div
+              className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+              role="dialog"
+              aria-modal="true"
+            >
               <div
                 className="fixed inset-0 bg-black/10 backdrop-blur-md"
                 onClick={() => setShowModal(false)}
+                aria-hidden="true"
               />
               <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
                 <h3 className="text-lg font-medium text-gray-900 mb-4">
@@ -554,9 +561,9 @@ export default function AuRubberCodingsPage() {
                   </button>
                 </div>
               </div>
-            </div>
-          </div>
-        )}
+            </div>,
+            globalThis.document.body,
+          )}
 
         <ConfirmModal
           isOpen={deleteCodingId !== null}
