@@ -1,7 +1,7 @@
 "use client";
 
 import { CODING_TYPES, CodingType } from "@annix/product-data/rubber/codingTypes";
-import { toPairs as entries } from "es-toolkit/compat";
+import { toPairs as entries, isArray } from "es-toolkit/compat";
 import { useEffect, useState } from "react";
 import { Pagination, TableLoadingState } from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
@@ -134,6 +134,7 @@ export default function AuRubberCodingsPage() {
     codingType: "COMPOUND" as CodingType,
     code: "",
     name: "",
+    aliases: "",
   });
   const [currentPage, setCurrentPage] = useState(0);
   const [pageSize, setPageSize] = usePersistedState<number>(
@@ -187,16 +188,20 @@ export default function AuRubberCodingsPage() {
       codingType: selectedType || "COMPOUND",
       code: "",
       name: "",
+      aliases: "",
     });
     setShowModal(true);
   };
 
   const openEditModal = (coding: RubberProductCodingDto) => {
     setEditingCoding(coding);
+    const codingAliases = coding.aliases;
+    const aliasesString = isArray(codingAliases) ? codingAliases.join(", ") : "";
     setFormData({
       codingType: coding.codingType,
       code: coding.code,
       name: coding.name,
+      aliases: aliasesString,
     });
     setShowModal(true);
   };
@@ -204,10 +209,15 @@ export default function AuRubberCodingsPage() {
   const handleSave = async () => {
     try {
       setIsSaving(true);
+      const aliasesArray = formData.aliases
+        .split(",")
+        .map((a) => a.trim())
+        .filter((a) => a.length > 0);
       const payload = {
         codingType: formData.codingType,
         code: formData.code,
         name: formData.name,
+        aliases: aliasesArray,
       };
       if (editingCoding) {
         await auRubberApiClient.updateProductCoding(editingCoding.id, payload);
@@ -400,38 +410,64 @@ export default function AuRubberCodingsPage() {
                       >
                         Name
                       </th>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Aliases
+                      </th>
                       <th scope="col" className="relative px-6 py-3">
                         <span className="sr-only">Actions</span>
                       </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {paginatedCodings.map((coding) => (
-                      <tr key={coding.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
-                            {coding.code}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">{coding.name}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <button
-                            onClick={() => openEditModal(coding)}
-                            className="text-yellow-600 hover:text-yellow-900"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => setDeleteCodingId(coding.id)}
-                            className="text-red-600 hover:text-red-900 ml-4"
-                          >
-                            Delete
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                    {paginatedCodings.map((coding) => {
+                      const codingAliases = coding.aliases;
+                      const aliasList = isArray(codingAliases) ? codingAliases : [];
+                      return (
+                        <tr key={coding.id} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                              {coding.code}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-gray-900">{coding.name}</div>
+                          </td>
+                          <td className="px-6 py-4">
+                            {aliasList.length === 0 ? (
+                              <span className="text-xs text-gray-400">—</span>
+                            ) : (
+                              <div className="flex flex-wrap gap-1">
+                                {aliasList.map((alias) => (
+                                  <span
+                                    key={alias}
+                                    className="px-2 py-0.5 text-xs rounded bg-blue-50 text-blue-700"
+                                  >
+                                    {alias}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <button
+                              onClick={() => openEditModal(coding)}
+                              className="text-yellow-600 hover:text-yellow-900"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => setDeleteCodingId(coding.id)}
+                              className="text-red-600 hover:text-red-900 ml-4"
+                            >
+                              Delete
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               )}
@@ -483,6 +519,23 @@ export default function AuRubberCodingsPage() {
                       placeholder="e.g. Natural Rubber, Red"
                       maxLength={100}
                     />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Aliases (comma-separated)
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.aliases}
+                      onChange={(e) => setFormData({ ...formData, aliases: e.target.value })}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
+                      placeholder="e.g. RSCA40, AU-RSCA40"
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      Other names this code is known by — used to match supplier documents that use
+                      a different naming convention. e.g. an Impilo CoC saying "RSCA40" can match
+                      S&N batches under "AUA40RSCA" if you list "RSCA40" as an alias.
+                    </p>
                   </div>
                 </div>
                 <div className="mt-6 flex justify-end space-x-3">

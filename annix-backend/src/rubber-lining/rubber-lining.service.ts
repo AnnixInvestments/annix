@@ -1110,6 +1110,7 @@ export class RubberLiningService {
       codingType: coding.codingType,
       code: coding.code,
       name: coding.name,
+      aliases: Array.isArray(coding.aliases) ? coding.aliases : [],
     };
   }
 

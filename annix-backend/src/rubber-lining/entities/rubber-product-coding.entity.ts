@@ -36,6 +36,9 @@ export class RubberProductCoding {
   @Column({ name: "name", type: "varchar", length: 100 })
   name: string;
 
+  @Column({ name: "aliases", type: "jsonb", default: () => "'[]'::jsonb" })
+  aliases: string[];
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

@@ -31,6 +31,7 @@ export interface RubberProductCodingDto {
   codingType: "COLOUR" | "COMPOUND" | "CURING_METHOD" | "GRADE" | "HARDNESS" | "TYPE";
   code: string;
   name: string;
+  aliases: string[];
 }
 
 export interface RubberPricingTierDto {

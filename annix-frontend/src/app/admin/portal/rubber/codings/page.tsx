@@ -65,6 +65,7 @@ export default function RubberCodingsPage() {
       codingType: formData.codingType,
       code: formData.code,
       name: formData.name,
+      aliases: [],
     };
 
     saveMutation.mutate(

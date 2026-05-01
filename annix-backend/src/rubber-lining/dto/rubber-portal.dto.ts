@@ -28,6 +28,7 @@ export class RubberProductCodingDto {
   codingType: ProductCodingType;
   code: string;
   name: string;
+  aliases: string[];
 }
 
 export class CreateRubberProductCodingDto {
@@ -39,6 +40,11 @@ export class CreateRubberProductCodingDto {
 
   @IsString()
   name: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  aliases?: string[];
 }
 
 export class UpdateRubberProductCodingDto {
@@ -53,6 +59,11 @@ export class UpdateRubberProductCodingDto {
   @IsOptional()
   @IsString()
   name?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  aliases?: string[];
 }
 
 export class RubberPricingTierDto {

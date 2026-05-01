@@ -698,9 +698,13 @@ export class RubberCocService {
         .where("batch.batchNumber IN (:...batchNumbers)", { batchNumbers });
 
       if (coc.compoundCode) {
-        qb.andWhere("compoundCoding.code = :compoundCode", {
-          compoundCode: coc.compoundCode,
-        });
+        qb.andWhere(
+          "(compoundCoding.code = :compoundCode OR compoundCoding.aliases @> :compoundCodeJson::jsonb)",
+          {
+            compoundCode: coc.compoundCode,
+            compoundCodeJson: JSON.stringify([coc.compoundCode]),
+          },
+        );
       }
 
       qb.orderBy(
