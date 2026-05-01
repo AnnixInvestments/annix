@@ -203,6 +203,10 @@ class AuRubberApiClient {
     },
   );
 
+  productCodingsNeedsReviewCount = createEndpoint<[], { count: number }>(apiClient, "GET", {
+    path: "/rubber-lining/portal/product-codings/needs-review-count",
+  });
+
   productCodingById = createEndpoint<[id: number], RubberProductCodingDto>(apiClient, "GET", {
     path: (id) => `/rubber-lining/portal/product-codings/${id}`,
   });

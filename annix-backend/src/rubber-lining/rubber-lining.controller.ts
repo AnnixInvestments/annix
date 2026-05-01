@@ -300,6 +300,17 @@ export class RubberLiningController {
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
+  @Get("portal/product-codings/needs-review-count")
+  @ApiOperation({
+    summary:
+      "Count of product codings auto-created from extraction that haven't been reviewed by an admin yet",
+  })
+  async productCodingsNeedsReviewCount(): Promise<{ count: number }> {
+    return this.rubberLiningService.countProductCodingsNeedingReview();
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
   @Get("portal/product-codings/:id")
   @ApiOperation({ summary: "Get product coding by ID" })
   @ApiParam({ name: "id", description: "Product coding ID" })

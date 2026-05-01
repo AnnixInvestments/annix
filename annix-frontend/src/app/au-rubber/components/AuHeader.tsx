@@ -7,6 +7,7 @@ import { ThemeToggle } from "@/app/components/ThemeToggle";
 import { useAuRubberAuth } from "@/app/context/AuRubberAuthContext";
 import { useAuRubberBranding } from "@/app/context/AuRubberBrandingContext";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
+import { useAuRubberCodingsNeedsReviewCount } from "@/app/lib/query/hooks";
 import { PAGE_PERMISSIONS } from "../config/pagePermissions";
 import { AU_RUBBER_VERSION } from "../config/version";
 
@@ -351,6 +352,9 @@ export function AuHeader(props: AuHeaderProps) {
   const userMenuRef = useRef<HTMLDivElement>(null);
   const { colors, branding } = useAuRubberBranding();
   const { user, logout, hasPermission, isAdmin } = useAuRubberAuth();
+  const codingsNeedsReviewQuery = useAuRubberCodingsNeedsReviewCount();
+  const codingsNeedsReviewData = codingsNeedsReviewQuery.data;
+  const codingsNeedsReviewCount = codingsNeedsReviewData ? codingsNeedsReviewData.count : 0;
   const rawEmailSplitAt0 = user?.email?.split("@")[0];
   const rawFirstNameAt0 = user?.firstName?.[0];
   const rawLastNameAt0 = user?.lastName?.[0];
@@ -523,20 +527,32 @@ export function AuHeader(props: AuHeaderProps) {
             {hoveredSection === section.label && (
               <div className="absolute left-0 top-full pt-1 w-52 z-50">
                 <div className="bg-white rounded-lg shadow-lg border border-gray-200 py-1">
-                  {section.items.map((item) => (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className={`block px-4 py-2 text-sm transition-colors ${
-                        isActive(item.href)
-                          ? "bg-yellow-50 text-yellow-800 font-medium"
-                          : "text-gray-700 hover:bg-gray-100"
-                      }`}
-                      onClick={() => setHoveredSection(null)}
-                    >
-                      {item.label}
-                    </Link>
-                  ))}
+                  {section.items.map((item) => {
+                    const showCodingsBadge =
+                      item.href === "/au-rubber/portal/codings" && codingsNeedsReviewCount > 0;
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className={`flex items-center justify-between px-4 py-2 text-sm transition-colors ${
+                          isActive(item.href)
+                            ? "bg-yellow-50 text-yellow-800 font-medium"
+                            : "text-gray-700 hover:bg-gray-100"
+                        }`}
+                        onClick={() => setHoveredSection(null)}
+                      >
+                        <span>{item.label}</span>
+                        {showCodingsBadge && (
+                          <span
+                            className="ml-2 inline-flex items-center justify-center px-2 py-0.5 text-xs font-semibold rounded-full bg-amber-100 text-amber-800"
+                            title={`${codingsNeedsReviewCount} coding(s) need review`}
+                          >
+                            {codingsNeedsReviewCount}
+                          </span>
+                        )}
+                      </Link>
+                    );
+                  })}
                 </div>
               </div>
             )}

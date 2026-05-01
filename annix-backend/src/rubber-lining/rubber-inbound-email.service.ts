@@ -1860,12 +1860,26 @@ ${truncatedText}`;
       return existingCoding;
     }
 
-    this.logger.log(`Creating new compound coding: ${fullCode} - ${fullName}`);
+    const aliasMatch = await this.productCodingRepository
+      .createQueryBuilder("pc")
+      .where("pc.coding_type = :type", { type: ProductCodingType.COMPOUND })
+      .andWhere("pc.aliases @> :aliasJson::jsonb", { aliasJson: JSON.stringify([fullCode]) })
+      .getOne();
+    if (aliasMatch) {
+      this.logger.log(
+        `Resolved compound coding via alias: ${fullCode} → ${aliasMatch.code} (${aliasMatch.name})`,
+      );
+      return aliasMatch;
+    }
+
+    this.logger.log(`Creating new compound coding: ${fullCode} - ${fullName} (needs review)`);
     const coding = this.productCodingRepository.create({
       firebaseUid: `pg_${generateUniqueId()}`,
       codingType: ProductCodingType.COMPOUND,
       code: fullCode,
       name: fullName,
+      aliases: [],
+      needsReview: true,
     });
     await this.productCodingRepository.save(coding);
 

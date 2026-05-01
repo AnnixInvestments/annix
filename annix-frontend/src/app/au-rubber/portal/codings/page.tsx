@@ -177,8 +177,11 @@ export default function AuRubberCodingsPage() {
     }
   }, [selectedTab]);
 
-  const effectivePageSize = pageSize === 0 ? codings.length : pageSize;
-  const paginatedCodings = codings.slice(
+  const [showOnlyNeedsReview, setShowOnlyNeedsReview] = useState(false);
+  const filteredCodings = showOnlyNeedsReview ? codings.filter((c) => c.needsReview) : codings;
+  const needsReviewCount = codings.filter((c) => c.needsReview).length;
+  const effectivePageSize = pageSize === 0 ? filteredCodings.length : pageSize;
+  const paginatedCodings = filteredCodings.slice(
     currentPage * effectivePageSize,
     (currentPage + 1) * effectivePageSize,
   );
@@ -219,6 +222,7 @@ export default function AuRubberCodingsPage() {
         code: formData.code,
         name: formData.name,
         aliases: aliasesArray,
+        needsReview: false,
       };
       if (editingCoding) {
         await auRubberApiClient.updateProductCoding(editingCoding.id, payload);
@@ -310,6 +314,43 @@ export default function AuRubberCodingsPage() {
             </button>
           )}
         </div>
+
+        {needsReviewCount > 0 && !isSansTab && (
+          <div className="bg-amber-50 border border-amber-200 rounded-md px-4 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <svg
+                className="w-5 h-5 text-amber-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                />
+              </svg>
+              <div>
+                <p className="text-sm font-medium text-amber-800">
+                  {needsReviewCount} coding{needsReviewCount === 1 ? "" : "s"} need
+                  {needsReviewCount === 1 ? "s" : ""} review
+                </p>
+                <p className="text-xs text-amber-700">
+                  Auto-created from supplier documents. Open each one, set a real Name and any
+                  Aliases, then Save — that clears the flag.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowOnlyNeedsReview(!showOnlyNeedsReview)}
+              className="px-3 py-1.5 text-sm font-medium rounded-md bg-amber-600 text-white hover:bg-amber-700"
+            >
+              {showOnlyNeedsReview ? "Show all" : "Show only needs-review"}
+            </button>
+          </div>
+        )}
 
         <div className="border-b border-gray-200">
           <nav className="-mb-px flex space-x-8 overflow-x-auto" aria-label="Tabs">
@@ -427,11 +468,24 @@ export default function AuRubberCodingsPage() {
                       const codingAliases = coding.aliases;
                       const aliasList = isArray(codingAliases) ? codingAliases : [];
                       return (
-                        <tr key={coding.id} className="hover:bg-gray-50">
+                        <tr
+                          key={coding.id}
+                          className={`hover:bg-gray-50 ${coding.needsReview ? "bg-amber-50/40" : ""}`}
+                        >
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
-                              {coding.code}
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                                {coding.code}
+                              </span>
+                              {coding.needsReview && (
+                                <span
+                                  className="px-1.5 py-0.5 text-xs font-semibold rounded-full bg-amber-100 text-amber-800"
+                                  title="Auto-created from a supplier document — review and set a proper name + any aliases"
+                                >
+                                  Needs Review
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm font-medium text-gray-900">{coding.name}</div>

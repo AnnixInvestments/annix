@@ -683,15 +683,27 @@ export class RubberRollStockService {
   }
 
   private async findOrCreateProductCoding(code: string): Promise<RubberProductCoding> {
-    const existing = await this.productCodingRepository.findOne({
-      where: { code, codingType: ProductCodingType.COMPOUND },
+    const trimmed = code.trim();
+    if (!trimmed) {
+      throw new BadRequestException("Cannot create product coding with empty code");
+    }
+    const exact = await this.productCodingRepository.findOne({
+      where: { code: trimmed, codingType: ProductCodingType.COMPOUND },
     });
-    if (existing) return existing;
+    if (exact) return exact;
+    const aliasMatch = await this.productCodingRepository
+      .createQueryBuilder("pc")
+      .where("pc.coding_type = :type", { type: ProductCodingType.COMPOUND })
+      .andWhere("pc.aliases @> :aliasJson::jsonb", { aliasJson: JSON.stringify([trimmed]) })
+      .getOne();
+    if (aliasMatch) return aliasMatch;
     const coding = this.productCodingRepository.create({
       firebaseUid: `pg_${generateUniqueId()}`,
       codingType: ProductCodingType.COMPOUND,
-      code,
-      name: code,
+      code: trimmed,
+      name: "(needs review)",
+      aliases: [],
+      needsReview: true,
     });
     return this.productCodingRepository.save(coding);
   }

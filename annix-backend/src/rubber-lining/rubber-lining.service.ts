@@ -463,6 +463,9 @@ export class RubberLiningService {
     });
     if (!coding) return null;
     Object.assign(coding, dto);
+    if (dto.needsReview === undefined) {
+      coding.needsReview = false;
+    }
     const saved = await this.productCodingRepository.save(coding);
     return this.mapProductCodingToDto(saved);
   }
@@ -470,6 +473,13 @@ export class RubberLiningService {
   async deleteProductCoding(id: number): Promise<boolean> {
     const result = await this.productCodingRepository.delete(id);
     return (result.affected || 0) > 0;
+  }
+
+  async countProductCodingsNeedingReview(): Promise<{ count: number }> {
+    const count = await this.productCodingRepository.count({
+      where: { needsReview: true },
+    });
+    return { count };
   }
 
   async allPricingTiers(): Promise<RubberPricingTierDto[]> {
@@ -1111,6 +1121,7 @@ export class RubberLiningService {
       code: coding.code,
       name: coding.name,
       aliases: Array.isArray(coding.aliases) ? coding.aliases : [],
+      needsReview: coding.needsReview ?? false,
     };
   }
 

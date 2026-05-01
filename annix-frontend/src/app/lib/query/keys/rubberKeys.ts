@@ -27,6 +27,7 @@ export const rubberKeys = {
   codings: {
     all: ["rubber", "codings"] as const,
     list: (codingType?: string) => [...rubberKeys.codings.all, "list", codingType ?? null] as const,
+    needsReviewCount: () => [...rubberKeys.codings.all, "needsReviewCount"] as const,
   },
   pricingTiers: {
     all: ["rubber", "pricingTiers"] as const,

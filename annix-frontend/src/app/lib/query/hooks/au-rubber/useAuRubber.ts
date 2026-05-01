@@ -179,6 +179,14 @@ export function useAuRubberCodings(codingType?: string) {
   });
 }
 
+export function useAuRubberCodingsNeedsReviewCount() {
+  return useQuery<{ count: number }>({
+    queryKey: rubberKeys.codings.needsReviewCount(),
+    queryFn: () => auRubberApiClient.productCodingsNeedsReviewCount(),
+    ...cacheConfig.static,
+  });
+}
+
 export function useAuRubberSpecifications() {
   return useQuery<RubberSpecificationDto[]>({
     queryKey: rubberKeys.specifications.list(),

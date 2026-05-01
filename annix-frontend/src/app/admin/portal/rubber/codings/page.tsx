@@ -66,6 +66,7 @@ export default function RubberCodingsPage() {
       code: formData.code,
       name: formData.name,
       aliases: [],
+      needsReview: false,
     };
 
     saveMutation.mutate(

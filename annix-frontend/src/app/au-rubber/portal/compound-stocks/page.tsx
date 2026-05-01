@@ -830,6 +830,7 @@ export default function CompoundStocksPage() {
           code: compoundInput.trim().toUpperCase(),
           name: compoundInput.trim(),
           aliases: [],
+          needsReview: false,
         });
         setCompounds([...compounds, newCoding]);
         return newCoding.id;

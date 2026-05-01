@@ -32,6 +32,7 @@ export interface RubberProductCodingDto {
   code: string;
   name: string;
   aliases: string[];
+  needsReview: boolean;
 }
 
 export interface RubberPricingTierDto {

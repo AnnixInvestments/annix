@@ -39,6 +39,9 @@ export class RubberProductCoding {
   @Column({ name: "aliases", type: "jsonb", default: () => "'[]'::jsonb" })
   aliases: string[];
 
+  @Column({ name: "needs_review", type: "boolean", default: false })
+  needsReview: boolean;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

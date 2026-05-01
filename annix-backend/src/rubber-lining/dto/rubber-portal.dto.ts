@@ -29,6 +29,7 @@ export class RubberProductCodingDto {
   code: string;
   name: string;
   aliases: string[];
+  needsReview: boolean;
 }
 
 export class CreateRubberProductCodingDto {
@@ -64,6 +65,9 @@ export class UpdateRubberProductCodingDto {
   @IsArray()
   @IsString({ each: true })
   aliases?: string[];
+
+  @IsOptional()
+  needsReview?: boolean;
 }
 
 export class RubberPricingTierDto {
