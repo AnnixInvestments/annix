@@ -40,7 +40,7 @@
     }
   },
   "devDependencies": {
-    "@annix/claude-swarm": "0.1.26",
+    "@annix/claude-swarm": "0.1.27",
     "@biomejs/biome": "^2.4.10",
     "@inquirer/prompts": "^8.2.0",
     "@types/node": "^25.0.9",
