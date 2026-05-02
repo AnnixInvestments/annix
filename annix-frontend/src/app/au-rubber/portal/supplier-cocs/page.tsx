@@ -568,6 +568,25 @@ export default function SupplierCocsPage() {
     });
     const succeeded: number[] = [];
     const failed: number[] = [];
+    const skipped: { id: number; reason: string }[] = [];
+    let toastsShown = 0;
+    const reportFailureOrSkip = (id: number, message: string, kind: "skipped" | "failed") => {
+      if (kind === "skipped") skipped.push({ id, reason: message });
+      else failed.push(id);
+      if (toastsShown < 3) {
+        showToast(`CoC #${id} ${kind}: ${message}`, "warning");
+        toastsShown += 1;
+      }
+    };
+    const isTransient = (err: unknown): boolean => {
+      const message = err instanceof Error ? err.message : String(err);
+      return /trouble reaching the server|HTTP 5\d\d|fetch failed|network|timeout/i.test(message);
+    };
+    const isMissingFile = (err: unknown): boolean => {
+      const message = err instanceof Error ? err.message : String(err);
+      return /file not found|no document|ENOENT|NoSuchKey/i.test(message);
+    };
+    const delay = (ms: number) => new Promise((resolve) => globalThis.setTimeout(resolve, ms));
     const finalCount = await candidateIds.reduce(
       (chain, cocId, index) =>
         chain.then(async (currentDone) => {
@@ -577,10 +596,31 @@ export default function SupplierCocsPage() {
           try {
             await auRubberApiClient.extractSupplierCoc(cocId);
             succeeded.push(cocId);
-          } catch (err) {
-            failed.push(cocId);
-            const message = err instanceof Error ? err.message : String(err);
-            showToast(`CoC #${cocId} failed: ${message}`, "warning");
+          } catch (firstErr) {
+            if (isMissingFile(firstErr)) {
+              reportFailureOrSkip(
+                cocId,
+                "PDF missing in storage — skipped (delete the CoC if you no longer need it)",
+                "skipped",
+              );
+            } else if (isTransient(firstErr)) {
+              await delay(2000);
+              try {
+                await auRubberApiClient.extractSupplierCoc(cocId);
+                succeeded.push(cocId);
+              } catch (retryErr) {
+                const retryMessage =
+                  retryErr instanceof Error ? retryErr.message : String(retryErr);
+                reportFailureOrSkip(
+                  cocId,
+                  `transient failure (retried once) — ${retryMessage}`,
+                  "failed",
+                );
+              }
+            } else {
+              const message = firstErr instanceof Error ? firstErr.message : String(firstErr);
+              reportFailureOrSkip(cocId, message, "failed");
+            }
           }
           const itemsDone = currentDone + 1;
           if (itemsDone < total) {
@@ -588,6 +628,7 @@ export default function SupplierCocsPage() {
             const avgPerItemMs = elapsedSoFar / itemsDone;
             const projectedTotalMs = avgPerItemMs * total;
             updateExtraction({ estimatedDurationMs: projectedTotalMs });
+            await delay(500);
           }
           return itemsDone;
         }),
@@ -595,11 +636,17 @@ export default function SupplierCocsPage() {
     );
     hideExtraction();
     setIsBulkReextracting(false);
-    showToast(
-      `Re-extracted ${succeeded.length}/${finalCount} Compounder CoC${finalCount > 1 ? "s" : ""}` +
-        (failed.length > 0 ? `; ${failed.length} failed (#${failed.join(", #")})` : ""),
-      failed.length > 0 ? "warning" : "success",
-    );
+    const summaryParts: string[] = [`${succeeded.length}/${finalCount} re-extracted`];
+    if (skipped.length > 0) {
+      summaryParts.push(
+        `${skipped.length} skipped (missing PDF: #${skipped.map((s) => s.id).join(", #")})`,
+      );
+    }
+    if (failed.length > 0) {
+      summaryParts.push(`${failed.length} failed (#${failed.join(", #")})`);
+    }
+    const summaryVariant = failed.length > 0 ? "warning" : skipped.length > 0 ? "info" : "success";
+    showToast(summaryParts.join(" · "), summaryVariant);
     cocsQuery.refetch();
   };
 
