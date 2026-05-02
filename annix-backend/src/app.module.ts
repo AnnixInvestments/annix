@@ -22,6 +22,7 @@ import { HdpeModule } from "./hdpe/hdpe.module";
 import { HeavyFeaturesModule } from "./heavy-features";
 import { InboundEmailModule } from "./inbound-email/inbound-email.module";
 import { MessagingModule } from "./messaging/messaging.module";
+import { MetricsModule } from "./metrics/metrics.module";
 import { NominalOutsideDiameterMmModule } from "./nominal-outside-diameter-mm/nominal-outside-diameter-mm.module";
 import { NotificationsModule } from "./notifications/notifications.module";
 import { PasskeyModule } from "./passkey/passkey.module";
@@ -104,6 +105,7 @@ import { WorkflowModule } from "./workflow/workflow.module";
     RemoteAccessModule,
     FeedbackModule,
     MessagingModule,
+    MetricsModule,
 
     PipeSteelWorkModule,
     StructuralSteelModule,

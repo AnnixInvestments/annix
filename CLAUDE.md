@@ -116,21 +116,43 @@ Update `docs/shared-registry.md` in the same commit. Reviewers / pre-push hook w
 - **Backdrop**: Use `fixed inset-0` (never `absolute inset-0`) for the backdrop overlay
 - **Early returns**: Keep `if (!isOpen) return null;` outside the portal — only wrap the actual modal JSX
 
-### Long-Running Operations (Frontend Only — MANDATORY)
+### Long-Running Operations (MANDATORY — Frontend + Backend)
 **Any user-triggered operation that can take more than ~3 seconds must show progress feedback.** A button stuck in a loading state with no UI feedback is unacceptable — the user has no way to tell whether the action is working, frozen, or finished.
 
-- **Use `useExtractionProgress` from `@/app/components/ExtractionProgressModal`** for AI extraction or any other long async operation. It provides a centred branded modal with a progress bar, brand-specific styling (au-rubber, stock-control, etc.), and `showExtraction` / `updateExtraction` / `hideExtraction` methods.
+#### Frontend — Progress UI
+- **For bulk operations: use `useAdaptiveExtractionProgress` from `@/app/lib/hooks/useAdaptiveExtractionProgress`.** It is the DRY entry-point: orchestrates a per-item loop, drives the centred branded `ExtractionProgressModal`, fetches the persisted average duration for the operation up-front so the initial estimate is calibrated to recent reality, and adaptively recalibrates `estimatedDurationMs` after every item using the in-run observed pace. Works across all apps (au-rubber, stock-control, rfq, comply-sa, fieldflow, annix-rep, cv-assistant — any `ExtractionBrand`).
     ```tsx
-    const { showExtraction, hideExtraction, updateExtraction } = useExtractionProgress();
-    showExtraction({ brand: "au-rubber", label: "Processing 1 of 18…", estimatedDurationMs: 60_000 * 18, itemCount: 18 });
-    // for each item:
-    updateExtraction({ label: `Processing ${index + 1} of ${total}…` });
-    // when done:
-    hideExtraction();
+    const { runBulk } = useAdaptiveExtractionProgress();
+    const result = await runBulk({
+      brand: "au-rubber",
+      metricCategory: "rubber-coc-extract",   // matches backend ExtractionMetricService.record category
+      metricOperation: "COMPOUNDER",          // matches backend operation
+      items: candidateIds,
+      itemId: (id) => id,
+      itemLabel: (id, i, t) => `Re-extracting CoC ${i + 1} of ${t} (system #${id})…`,
+      perItemDelayMs: 500,                    // small inter-item delay to spread load
+      run: async (id) => { /* per-item work; throw on failure */ },
+    });
+    // result: { succeeded, failed, totalElapsedMs }
     ```
-- **Bulk operations must orchestrate per-item from the frontend** so progress can update after each item, not run as a single long-blocking server-side loop. Pattern: backend GET endpoint returns the list of candidate IDs, frontend loops through calling the existing per-item endpoint, updating the progress modal after each.
-- **Never hide a long-running operation behind a button label change alone.** "Re-extracting…" with nothing else is the same as no feedback — the user doesn't know how many of how many are done, whether it's stuck, or how long is left.
-- **For deterministic-duration operations** (e.g. file upload, PDF generation), set `estimatedDurationMs` accurately so the bar moves at the right rate.
+- **For one-shot long operations**: use `useExtractionProgress` directly (the lower-level primitive that `useAdaptiveExtractionProgress` is built on).
+- **Bulk operations must orchestrate per-item from the frontend** so progress can update after each item, not run as a single long-blocking server-side loop. Pattern: backend GET endpoint returns the list of candidate IDs, frontend loops calling the existing per-item endpoint, updating the modal after each.
+- **Never hide a long-running operation behind a button label change alone.**
+- **Error handling**: the `run` callback should throw on failure; the hook collects throws into `result.failed`. The caller is responsible for retry-on-transient and skip-on-stale-resource categorisation around the throw boundary, plus the final summary toast (limit per-failure toasts to 3 to avoid flooding).
+
+#### Backend — Metric recording (DRY across all apps)
+- **All long-running operations must record their duration via `ExtractionMetricService.time()` from `MetricsModule`.** This is what makes the frontend's adaptive progress get sharper over time.
+- **Wire it up**: import `MetricsModule` in your feature module, inject `ExtractionMetricService`, then wrap the operation:
+    ```ts
+    return this.extractionMetricService.time(
+      "rubber-coc-extract",  // category — must match what the frontend hook passes
+      cocType,                // operation — sub-classification (e.g. COMPOUNDER, CALENDARER)
+      async () => doTheWork(),
+      pdfBuffer?.length,      // optional payloadSizeBytes for size-bucketed analysis later
+    );
+    ```
+- **Stats endpoint**: `GET /metrics/extraction-stats?category=...&operation=...` returns `{ averageMs, sampleSize }` over a 50-row rolling window with 10% top/bottom trim for outliers. The frontend hook calls this automatically.
+- **Naming convention**: `category` should be the operation kind (e.g. `rubber-coc-extract`, `stock-control-positector-import`, `rfq-pdf-extract`, `comply-sa-doc-extract`); `operation` is the sub-classification (e.g. `COMPOUNDER`, `CALENDARER`).
 
 ### Confirmations / Alerts (Frontend Only — MANDATORY)
 **Never use `window.confirm()`, `window.alert()`, or `window.prompt()` in frontend code.** These trigger the browser's native dialog (left-aligned, anchored to the URL bar, unbranded) and break the app's visual consistency. They also block the JavaScript main thread.

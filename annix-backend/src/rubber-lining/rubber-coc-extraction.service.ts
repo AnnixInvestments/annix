@@ -3,6 +3,7 @@ import { pdfToPng } from "pdf-to-png-converter";
 import { AiUsageService } from "../ai-usage/ai-usage.service";
 import { AiApp, AiProvider } from "../ai-usage/entities/ai-usage-log.entity";
 import { nowMillis } from "../lib/datetime";
+import { ExtractionMetricService } from "../metrics/extraction-metric.service";
 import {
   ExtractedCustomerDeliveryNoteData,
   ExtractedCustomerDeliveryNotePodPage,
@@ -109,7 +110,10 @@ export class RubberCocExtractionService {
   private readonly model = "gemini-2.5-flash";
   private readonly baseUrl = "https://generativelanguage.googleapis.com/v1beta";
 
-  constructor(private readonly aiUsageService: AiUsageService) {
+  constructor(
+    private readonly aiUsageService: AiUsageService,
+    private readonly extractionMetricService: ExtractionMetricService,
+  ) {
     this.apiKey = process.env.GEMINI_API_KEY || "";
     if (!this.apiKey) {
       this.logger.warn("GEMINI_API_KEY not configured - CoC extraction will be unavailable");
@@ -971,16 +975,23 @@ Return ONLY a valid JSON object of this exact shape (no extra fields, no comment
     tokensUsed?: number;
     processingTimeMs: number;
   }> {
-    if (cocType === SupplierCocType.COMPOUNDER) {
-      if (pdfBuffer) {
-        return this.extractCompounderCocFromImages(pdfBuffer, correctionHints);
-      }
-      return this.extractCompounderCoc(pdfText, correctionHints);
-    } else if (cocType === SupplierCocType.CALENDER_ROLL) {
-      return this.extractCalenderRollCoc(pdfText, correctionHints);
-    } else {
-      return this.extractCalendererCoc(pdfText, correctionHints);
-    }
+    return this.extractionMetricService.time(
+      "rubber-coc-extract",
+      cocType,
+      async () => {
+        if (cocType === SupplierCocType.COMPOUNDER) {
+          if (pdfBuffer) {
+            return this.extractCompounderCocFromImages(pdfBuffer, correctionHints);
+          }
+          return this.extractCompounderCoc(pdfText, correctionHints);
+        } else if (cocType === SupplierCocType.CALENDER_ROLL) {
+          return this.extractCalenderRollCoc(pdfText, correctionHints);
+        } else {
+          return this.extractCalendererCoc(pdfText, correctionHints);
+        }
+      },
+      pdfBuffer?.length,
+    );
   }
 
   private sanitizeSnRubberColumnConfusion(

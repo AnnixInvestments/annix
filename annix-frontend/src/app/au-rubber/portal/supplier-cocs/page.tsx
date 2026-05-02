@@ -15,7 +15,6 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useConfirm } from "@/app/au-rubber/hooks/useConfirm";
-import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import {
   Pagination,
   SortDirection,
@@ -33,7 +32,8 @@ import {
   type RubberSupplierCocDto,
   type SupplierCocType,
 } from "@/app/lib/api/auRubberApi";
-import { formatDateZA, nowMillis } from "@/app/lib/datetime";
+import { formatDateZA } from "@/app/lib/datetime";
+import { useAdaptiveExtractionProgress } from "@/app/lib/hooks/useAdaptiveExtractionProgress";
 import {
   useAuRubberAnalyzeSupplierCocs,
   useAuRubberApproveSupplierCoc,
@@ -85,7 +85,7 @@ export default function SupplierCocsPage() {
   const router = useRouter();
   const { showToast } = useToast();
   const { confirm, ConfirmDialog } = useConfirm();
-  const { showExtraction, hideExtraction, updateExtraction } = useExtractionProgress();
+  const { runBulk: runAdaptiveBulk } = useAdaptiveExtractionProgress();
   const { isAdmin } = useAuRubberAuth();
   const { colors, branding } = useAuRubberBranding();
   const logoProxy = useAuRubberProxyImageBlob(branding.logoUrl);
@@ -557,24 +557,11 @@ export default function SupplierCocsPage() {
     });
     if (!confirmed) return;
     setIsBulkReextracting(true);
-    const total = candidateIds.length;
-    const initialPerItemMs = 60_000;
-    const runStartedAt = nowMillis();
-    showExtraction({
-      brand: "au-rubber",
-      label: `Re-extracting CoC 1 of ${total}…`,
-      estimatedDurationMs: initialPerItemMs * total,
-      itemCount: total,
-    });
-    const succeeded: number[] = [];
-    const failed: number[] = [];
     const skipped: { id: number; reason: string }[] = [];
     let toastsShown = 0;
-    const reportFailureOrSkip = (id: number, message: string, kind: "skipped" | "failed") => {
-      if (kind === "skipped") skipped.push({ id, reason: message });
-      else failed.push(id);
+    const reportToast = (message: string, variant: "warning" | "info" = "warning") => {
       if (toastsShown < 3) {
-        showToast(`CoC #${id} ${kind}: ${message}`, "warning");
+        showToast(message, variant);
         toastsShown += 1;
       }
     };
@@ -587,65 +574,58 @@ export default function SupplierCocsPage() {
       return /file not found|no document|ENOENT|NoSuchKey/i.test(message);
     };
     const delay = (ms: number) => new Promise((resolve) => globalThis.setTimeout(resolve, ms));
-    const finalCount = await candidateIds.reduce(
-      (chain, cocId, index) =>
-        chain.then(async (currentDone) => {
-          updateExtraction({
-            label: `Re-extracting CoC ${index + 1} of ${total} (system #${cocId})…`,
-          });
-          try {
+    const result = await runAdaptiveBulk({
+      brand: "au-rubber",
+      metricCategory: "rubber-coc-extract",
+      metricOperation: "COMPOUNDER",
+      items: candidateIds,
+      itemId: (id) => id,
+      itemLabel: (id, index, total) =>
+        `Re-extracting CoC ${index + 1} of ${total} (system #${id})…`,
+      perItemDelayMs: 500,
+      run: async (cocId) => {
+        try {
+          await auRubberApiClient.extractSupplierCoc(cocId);
+        } catch (firstErr) {
+          if (isMissingFile(firstErr)) {
+            skipped.push({
+              id: cocId,
+              reason: "PDF missing in storage — skipped (delete the CoC if you no longer need it)",
+            });
+            reportToast(`CoC #${cocId} skipped: PDF missing in storage`, "info");
+            return;
+          }
+          if (isTransient(firstErr)) {
+            await delay(2000);
             await auRubberApiClient.extractSupplierCoc(cocId);
-            succeeded.push(cocId);
-          } catch (firstErr) {
-            if (isMissingFile(firstErr)) {
-              reportFailureOrSkip(
-                cocId,
-                "PDF missing in storage — skipped (delete the CoC if you no longer need it)",
-                "skipped",
-              );
-            } else if (isTransient(firstErr)) {
-              await delay(2000);
-              try {
-                await auRubberApiClient.extractSupplierCoc(cocId);
-                succeeded.push(cocId);
-              } catch (retryErr) {
-                const retryMessage =
-                  retryErr instanceof Error ? retryErr.message : String(retryErr);
-                reportFailureOrSkip(
-                  cocId,
-                  `transient failure (retried once) — ${retryMessage}`,
-                  "failed",
-                );
-              }
-            } else {
-              const message = firstErr instanceof Error ? firstErr.message : String(firstErr);
-              reportFailureOrSkip(cocId, message, "failed");
-            }
+            return;
           }
-          const itemsDone = currentDone + 1;
-          if (itemsDone < total) {
-            const elapsedSoFar = nowMillis() - runStartedAt;
-            const avgPerItemMs = elapsedSoFar / itemsDone;
-            const projectedTotalMs = avgPerItemMs * total;
-            updateExtraction({ estimatedDurationMs: projectedTotalMs });
-            await delay(500);
-          }
-          return itemsDone;
-        }),
-      Promise.resolve(0) as Promise<number>,
-    );
-    hideExtraction();
+          throw firstErr;
+        }
+      },
+    });
     setIsBulkReextracting(false);
-    const summaryParts: string[] = [`${succeeded.length}/${finalCount} re-extracted`];
+    const failedIds = result.failed.map(({ item }) => item);
+    if (failedIds.length > 0) {
+      const firstFew = result.failed.slice(0, 3 - toastsShown);
+      firstFew.forEach(({ item, error }) => {
+        const message = error instanceof Error ? error.message : String(error);
+        reportToast(`CoC #${item} failed: ${message}`, "warning");
+      });
+    }
+    const summaryParts: string[] = [
+      `${result.succeeded.length}/${candidateIds.length} re-extracted`,
+    ];
     if (skipped.length > 0) {
       summaryParts.push(
         `${skipped.length} skipped (missing PDF: #${skipped.map((s) => s.id).join(", #")})`,
       );
     }
-    if (failed.length > 0) {
-      summaryParts.push(`${failed.length} failed (#${failed.join(", #")})`);
+    if (failedIds.length > 0) {
+      summaryParts.push(`${failedIds.length} failed (#${failedIds.join(", #")})`);
     }
-    const summaryVariant = failed.length > 0 ? "warning" : skipped.length > 0 ? "info" : "success";
+    const summaryVariant =
+      failedIds.length > 0 ? "warning" : skipped.length > 0 ? "info" : "success";
     showToast(summaryParts.join(" · "), summaryVariant);
     cocsQuery.refetch();
   };
