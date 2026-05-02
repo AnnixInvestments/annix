@@ -16,6 +16,7 @@ export enum JobPostingPortalStatus {
   POSTED = "posted",
   FAILED = "failed",
   UNPOSTED = "unposted",
+  ABANDONED = "abandoned",
 }
 
 @Entity("cv_assistant_job_posting_portal_postings")
@@ -53,6 +54,12 @@ export class JobPostingPortalPosting {
 
   @Column({ name: "last_error", type: "text", nullable: true })
   lastError: string | null;
+
+  @Column({ name: "retry_count", type: "int", default: 0 })
+  retryCount: number;
+
+  @Column({ name: "next_retry_at", type: "timestamptz", nullable: true })
+  nextRetryAt: Date | null;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

@@ -16,6 +16,15 @@ export interface PortalOrchestratorRunSummary {
   failed: number;
 }
 
+export const PORTAL_POSTING_BACKOFF_HOURS = [1, 6, 24, 72] as const;
+export const PORTAL_POSTING_MAX_RETRIES = PORTAL_POSTING_BACKOFF_HOURS.length;
+
+export function nextRetryAtFromCount(retryCount: number): Date | null {
+  if (retryCount >= PORTAL_POSTING_BACKOFF_HOURS.length) return null;
+  const hours = PORTAL_POSTING_BACKOFF_HOURS[retryCount];
+  return now().plus({ hours }).toJSDate();
+}
+
 @Injectable()
 export class PortalPostingOrchestrator {
   private readonly logger = new Logger(PortalPostingOrchestrator.name);
@@ -66,7 +75,7 @@ export class PortalPostingOrchestrator {
     return { attempted: results.length, succeeded, failed };
   }
 
-  private async runSingleAdapter(
+  async runSingleAdapter(
     jobPosting: JobPosting,
     adapter: PortalAdapter,
   ): Promise<PortalPostingResult> {
@@ -89,21 +98,38 @@ export class PortalPostingOrchestrator {
         record.portalJobId = result.portalJobId ?? null;
         record.portalUrl = result.portalUrl ?? null;
         record.lastError = null;
+        record.retryCount = 0;
+        record.nextRetryAt = null;
       } else {
-        record.status = JobPostingPortalStatus.FAILED;
-        record.lastError = result.error ?? "Adapter reported failure with no error message.";
+        this.applyFailure(
+          record,
+          result.error ?? "Adapter reported failure with no error message.",
+        );
       }
       await this.portalPostingRepo.save(record);
       return result;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      record.status = JobPostingPortalStatus.FAILED;
-      record.lastError = message;
+      this.applyFailure(record, message);
       await this.portalPostingRepo.save(record);
       this.logger.error(
         `Portal adapter "${adapter.portalCode}" threw while posting job ${jobPosting.id}: ${message}`,
       );
       return { success: false, error: message };
+    }
+  }
+
+  private applyFailure(record: JobPostingPortalPosting, message: string): void {
+    const nextCount = record.retryCount + 1;
+    record.lastError = message;
+    record.retryCount = nextCount;
+    const nextAt = nextRetryAtFromCount(nextCount);
+    if (nextAt === null) {
+      record.status = JobPostingPortalStatus.ABANDONED;
+      record.nextRetryAt = null;
+    } else {
+      record.status = JobPostingPortalStatus.FAILED;
+      record.nextRetryAt = nextAt;
     }
   }
 }

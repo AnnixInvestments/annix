@@ -106,6 +106,12 @@ const JOB_METADATA: Record<string, { description: string; module: string; defaul
     module: "CV Assistant",
     defaultCron: "0 9 * * *",
   },
+  "cv-assistant:retry-portal-postings": {
+    description:
+      "Retry failed external job-portal postings with exponential backoff (1h, 6h, 24h, 72h, then abandon)",
+    module: "CV Assistant",
+    defaultCron: "0 */6 * * *",
+  },
   "customers:bee-expiry-check": {
     description: "Check B-BEE certificate expiry and send notifications",
     module: "Customers",

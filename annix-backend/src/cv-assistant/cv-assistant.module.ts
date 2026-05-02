@@ -65,6 +65,7 @@ import { MarketInsightsService } from "./services/market-insights.service";
 import { PopiaService } from "./services/popia.service";
 import { PortalAdapterRegistry } from "./services/portal-adapter-registry.service";
 import { PortalPostingOrchestrator } from "./services/portal-posting-orchestrator.service";
+import { PortalPostingRetryService } from "./services/portal-posting-retry.service";
 import { ReferenceService } from "./services/reference.service";
 import { SettingsService } from "./services/settings.service";
 import { WorkflowAutomationService } from "./services/workflow-automation.service";
@@ -151,6 +152,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     IndividualProfileService,
     PortalAdapterRegistry,
     PortalPostingOrchestrator,
+    PortalPostingRetryService,
     GumtreePortalAdapter,
     LinkedInPortalAdapter,
     IndeedPortalAdapter,
