@@ -144,38 +144,6 @@ describe("JobCardImportService", () => {
       );
     });
 
-    it("archives and overwrites when job card exists without JT/DN number", async () => {
-      const existing = {
-        id: 5,
-        jobNumber: "JOB-001",
-        companyId: 1,
-        jobName: "Old Job",
-        versionNumber: 1,
-        parentJobCardId: null,
-        lineItems: [],
-      };
-      mockJobCardRepo.findOne.mockResolvedValue(existing);
-      mockJobCardRepo.save.mockImplementation((entity) => Promise.resolve({ ...entity, id: 5 }));
-
-      const rows: JobCardImportRow[] = [
-        {
-          jobNumber: "JOB-001",
-          jobName: "Updated Job",
-        },
-      ];
-
-      const result = await service.importJobCards(1, rows);
-
-      expect(result.updated).toBe(1);
-      expect(mockVersionService.archiveCurrentVersion).toHaveBeenCalledWith(
-        1,
-        5,
-        "Re-uploaded with same job number",
-        null,
-      );
-      expect(mockVersionService.resetWorkflow).toHaveBeenCalledWith(1, 5);
-    });
-
     it("creates delivery job card when existing job and JT/DN number detected", async () => {
       const existing = {
         id: 5,

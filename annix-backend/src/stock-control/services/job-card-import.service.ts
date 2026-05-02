@@ -1,6 +1,6 @@
 import { forwardRef, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { IsNull, Repository } from "typeorm";
+import { Repository } from "typeorm";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { ChatMessage } from "../../nix/ai-providers/claude-chat.provider";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
