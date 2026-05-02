@@ -1153,6 +1153,18 @@ Formula: totalPrice = totalKg × salePricePerKg
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
+  @Get("portal/supplier-cocs/non-canonical-compounder-ids")
+  @ApiOperation({
+    summary:
+      "List Compounder CoC IDs whose compoundCode does not match any canonical compound coding",
+  })
+  async nonCanonicalCompounderCocIds(): Promise<{ ids: number[] }> {
+    const ids = await this.rubberCocService.nonCanonicalCompounderCocIds();
+    return { ids };
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
   @Get("portal/supplier-cocs/:id")
   @ApiOperation({ summary: "Get supplier CoC by ID" })
   @ApiParam({ name: "id", description: "Supplier CoC ID" })
@@ -1222,18 +1234,6 @@ Formula: totalPrice = totalKg × salePricePerKg
   async reextractSupplierCoc(@Param("id") id: string): Promise<RubberSupplierCocDto> {
     const updatedCoc = await this.runReextractForSupplierCoc(Number(id));
     return updatedCoc;
-  }
-
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
-  @ApiBearerAuth()
-  @Get("portal/supplier-cocs/non-canonical-compounder-ids")
-  @ApiOperation({
-    summary:
-      "List Compounder CoC IDs whose compoundCode does not match any canonical compound coding",
-  })
-  async nonCanonicalCompounderCocIds(): Promise<{ ids: number[] }> {
-    const ids = await this.rubberCocService.nonCanonicalCompounderCocIds();
-    return { ids };
   }
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
