@@ -3,12 +3,17 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { keys } from "es-toolkit/compat";
 import Link from "next/link";
-import { useParams } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { Requisition } from "@/app/lib/api/stockControlApi";
-import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import { formatDateZA } from "@/app/lib/datetime";
 import { exportToExcel, exportToPDF, exportToWord } from "@/app/lib/export/exportTable";
+import {
+  useCompleteBackgroundStep,
+  useCompleteRequisitionStep,
+  useRequisitionDetail,
+  useUpdateRequisitionItem,
+} from "@/app/lib/query/hooks";
+import { stockControlKeys } from "@/app/lib/query/keys";
 
 function statusBadgeColor(status: string): string {
   const colors: Record<string, string> = {
@@ -35,19 +40,14 @@ export default function RequisitionDetailPage() {
 
   const [editingItemId, setEditingItemId] = useState<number | null>(null);
   const [editPackSize, setEditPackSize] = useState<number>(20);
-  const [isSaving, setIsSaving] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const exportMenuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (exportMenuRef.current && !exportMenuRef.current.contains(event.target as Node)) {
-        setShowExportMenu(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  const [pendingReorderQty, setPendingReorderQty] = useState<Map<number, string>>(new Map());
+  const [pendingReqNumber, setPendingReqNumber] = useState<Map<number, string>>(new Map());
+  const [error, setError] = useState<string | null>(null);
+  const [isAccepting, setIsAccepting] = useState(false);
+  const [savingRowId, setSavingRowId] = useState<number | null>(null);
+  const [savedRows, setSavedRows] = useState<Set<number>>(new Set());
 
   const { data: requisition, isLoading, error: fetchError } = useRequisitionDetail(reqId);
   const updateItem = useUpdateRequisitionItem(reqId);
@@ -88,6 +88,128 @@ export default function RequisitionDetailPage() {
     setEditingItemId(null);
   };
 
+  const handleReorderQtyChange = (itemId: number, value: string) => {
+    setPendingReorderQty((prev) => new Map(prev).set(itemId, value));
+  };
+
+  const handleReqNumberChange = (itemId: number, value: string) => {
+    setPendingReqNumber((prev) => new Map(prev).set(itemId, value));
+  };
+
+  const reorderQtyValue = (itemId: number, dbValue: number | null): string => {
+    const pending = pendingReorderQty.get(itemId);
+    if (pending !== undefined) return pending;
+    return dbValue !== null ? dbValue.toString() : "";
+  };
+
+  const reqNumberValue = (itemId: number, dbValue: string | null): string => {
+    const pending = pendingReqNumber.get(itemId);
+    if (pending !== undefined) return pending;
+    return dbValue ? dbValue : "";
+  };
+
+  const handleSaveRow = async (itemId: number) => {
+    if (!requisition) return;
+    const item = requisition.items.find((i) => i.id === itemId);
+    if (!item) return;
+
+    setSavingRowId(itemId);
+    setError(null);
+
+    const reorderVal = pendingReorderQty.get(itemId);
+    const reqNumVal = pendingReqNumber.get(itemId);
+
+    const payload: Record<string, unknown> = {};
+    if (reorderVal !== undefined) {
+      payload.reorderQty = reorderVal === "" ? null : parseInt(reorderVal, 10);
+    }
+    if (reqNumVal !== undefined) {
+      payload.reqNumber = reqNumVal === "" ? null : reqNumVal;
+    }
+
+    if (keys(payload).length === 0) {
+      setSavingRowId(null);
+      setSavedRows((prev) => new Set(prev).add(itemId));
+      setTimeout(() => {
+        setSavedRows((prev) => {
+          const next = new Set(prev);
+          next.delete(itemId);
+          return next;
+        });
+      }, 2000);
+      return;
+    }
+
+    try {
+      await updateItem.mutateAsync({ itemId, data: payload });
+      await queryClient.invalidateQueries({
+        queryKey: stockControlKeys.requisitions.detail(reqId),
+      });
+      setPendingReorderQty((prev) => {
+        const next = new Map(prev);
+        next.delete(itemId);
+        return next;
+      });
+      setPendingReqNumber((prev) => {
+        const next = new Map(prev);
+        next.delete(itemId);
+        return next;
+      });
+      setSavingRowId(null);
+      setSavedRows((prev) => new Set(prev).add(itemId));
+      setTimeout(() => {
+        setSavedRows((prev) => {
+          const next = new Set(prev);
+          next.delete(itemId);
+          return next;
+        });
+      }, 2000);
+    } catch (err) {
+      setSavingRowId(null);
+      setError(err instanceof Error ? err.message : "Failed to save");
+    }
+  };
+
+  const completeStepAndReturn = async () => {
+    if (!fromJobCard || !requisition) return;
+    try {
+      setIsAccepting(true);
+      setError(null);
+      if (completeStep) {
+        await completeBackgroundStepMutation.mutateAsync({
+          jobCardId: Number(fromJobCard),
+          stepKey: completeStep,
+          notes: "Requisition reviewed and accepted",
+        });
+      } else {
+        await completeRequisitionStepMutation.mutateAsync(Number(fromJobCard));
+      }
+      router.push(`/stock-control/portal/job-cards/${fromJobCard}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to complete requisition step");
+      setIsAccepting(false);
+    }
+  };
+
+  const handlePrintAndReturn = () => {
+    window.print();
+    const onAfterPrint = () => {
+      window.removeEventListener("afterprint", onAfterPrint);
+      completeStepAndReturn();
+    };
+    window.addEventListener("afterprint", onAfterPrint);
+  };
+
+  const handleAcceptAndReturn = () => {
+    if (isOrderPlacement) {
+      handlePrintAndReturn();
+    } else {
+      completeStepAndReturn();
+    }
+  };
+
+  const isSaving = updateItem.isPending;
+
   const exportColumns = [
     { header: "Product Name", accessorKey: "productName" },
     { header: "Area", accessorKey: "area" },
@@ -97,26 +219,38 @@ export default function RequisitionDetailPage() {
     { header: "Stock Match", accessorKey: "stockMatch" },
   ];
 
-  const exportData = () =>
-    (requisition?.items ?? []).map((item) => ({
-      productName: item.productName,
-      area:
-        item.area === "external" ? "Ext" : item.area === "internal" ? "Int" : (item.area || "-"),
-      litresRequired: Number(item.litresRequired).toFixed(1),
-      packSizeLitres: `${Number(item.packSizeLitres).toFixed(0)}L`,
-      packsToOrder: item.packsToOrder,
-      stockMatch: item.stockItem ? item.stockItem.name : "Not in inventory",
-    }));
+  const exportData = () => {
+    const requisitionItems = requisition?.items;
+    const items = requisitionItems ?? [];
+    return items.map((item) => {
+      const itemArea = item.area;
+      const areaLabel =
+        itemArea === "external" ? "Ext" : itemArea === "internal" ? "Int" : itemArea || "-";
+      return {
+        productName: item.productName,
+        area: areaLabel,
+        litresRequired: Number(item.litresRequired).toFixed(1),
+        packSizeLitres: `${Number(item.packSizeLitres).toFixed(0)}L`,
+        packsToOrder: item.packsToOrder,
+        stockMatch: item.stockItem ? item.stockItem.name : "Not in inventory",
+      };
+    });
+  };
 
-  const exportMetadata = () => ({
-    "Requisition": requisition?.requisitionNumber ?? "",
-    "Status": requisition?.status ?? "",
-    "Created By": requisition?.createdBy ?? "-",
-    "Created": requisition ? formatDateZA(requisition.createdAt) : "",
-    ...(requisition?.jobCard
-      ? { "Job Card": `${requisition.jobCard.jobNumber} - ${requisition.jobCard.jobName}` }
-      : {}),
-  });
+  const exportMetadata = () => {
+    const requisitionNumber = requisition?.requisitionNumber;
+    const requisitionStatus = requisition?.status;
+    const requisitionCreatedBy = requisition?.createdBy;
+    return {
+      Requisition: requisitionNumber ?? "",
+      Status: requisitionStatus ?? "",
+      "Created By": requisitionCreatedBy ?? "-",
+      Created: requisition ? formatDateZA(requisition.createdAt) : "",
+      ...(requisition?.jobCard
+        ? { "Job Card": `${requisition.jobCard.jobNumber} - ${requisition.jobCard.jobName}` }
+        : {}),
+    };
+  };
 
   const handleExport = (format: "excel" | "word" | "pdf") => {
     if (!requisition) return;

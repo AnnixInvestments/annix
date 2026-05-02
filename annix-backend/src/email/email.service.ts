@@ -1691,6 +1691,51 @@ This is an automated notification from the Annix test site.
     });
   }
 
+  async sendCvAssistantDeletionConfirmEmail(
+    email: string,
+    deletionToken: string,
+  ): Promise<boolean> {
+    const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
+    const confirmLink = `${frontendUrl}/cv-assistant/confirm-delete?token=${deletionToken}`;
+
+    const html = emailLayout({
+      title: "Confirm Account Deletion - CV Assistant",
+      heading: "Confirm Account Deletion",
+      headingColor: "#dc2626",
+      bodyHtml: `
+          <p>We received a request to permanently delete your CV Assistant account.</p>
+          <p>If you go ahead, this will erase your CV, qualifications, certificates, account details, and all associated data. This cannot be undone.</p>
+          <p>Click the button below to confirm. The link is valid for 1 hour.</p>`,
+      cta: {
+        href: confirmLink,
+        label: "Confirm deletion",
+        color: "#dc2626",
+        expiryNote: "This link will expire in 1 hour.",
+      },
+      footerText:
+        "If you did not request account deletion, you can safely ignore this email — nothing will happen.",
+    });
+
+    const text = `
+      Confirm Account Deletion - CV Assistant
+
+      We received a request to permanently delete your CV Assistant account.
+
+      Click here to confirm — this cannot be undone:
+
+      ${confirmLink}
+
+      The link expires in 1 hour. If you did not request this, ignore this email.
+    `;
+
+    return this.sendEmail({
+      to: email,
+      subject: "Confirm Account Deletion - CV Assistant",
+      html,
+      text,
+    });
+  }
+
   async sendCvAssistantRejectionEmail(
     email: string,
     candidateName: string,

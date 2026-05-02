@@ -1,6 +1,6 @@
 "use client";
 
-import { isArray } from "es-toolkit/compat";
+import { toPairs as entries, isArray, keys } from "es-toolkit/compat";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -8,8 +8,10 @@ import { createPortal } from "react-dom";
 import { PdfPreviewModal } from "@/app/components/PdfPreviewModal";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import type {
+  BackgroundStepStatus,
   JobCard,
   JobCardApproval,
+  QcControlPlanRecord,
   Requisition,
   StockAllocation,
   WorkflowStatus as WorkflowStatusData,
@@ -96,6 +98,13 @@ export default function JobCardDetailPage() {
   const [isAnalysing, setIsAnalysing] = useState(false);
   const [isDownloadingQr, setIsDownloadingQr] = useState(false);
   const [capturedFile, setCapturedFile] = useState<File | null>(null);
+  const [backgroundSteps, setBackgroundSteps] = useState<BackgroundStepStatus[]>([]);
+  const [controlPlans, setControlPlans] = useState<QcControlPlanRecord[]>([]);
+  const [deliveryJobCards, setDeliveryJobCards] = useState<JobCard[]>([]);
+  const [adjacentIds, setAdjacentIds] = useState<{
+    previousId: number | null;
+    nextId: number | null;
+  }>({ previousId: null, nextId: null });
 
   const fetchData = useCallback(async () => {
     try {
@@ -384,8 +393,9 @@ export default function JobCardDetailPage() {
   const hasAllocations = allocations.some((a) => !a.undone);
   const hasUnissuedAllocations = allocations.some((a) => !a.undone && !a.issuedAt);
 
+  const batchesSavedLocal = actions.batchesSavedLocal;
   const batchesSaved =
-    actions.batchesSavedLocal ||
+    batchesSavedLocal ||
     backgroundSteps.some((bg) => bg.stepKey === "qc_batch_certs" && bg.completedAt !== null);
 
   const { activeTab, visitedTabs, handleTabChange, visibleTabs } = useJobCardTabs(tabDefinitions);
@@ -400,6 +410,16 @@ export default function JobCardDetailPage() {
 
   const handlePlaceRequisition = async () => {
     await actions.handlePlaceRequisition(router);
+  };
+
+  const coatingAnalysis = coating.coatingAnalysis;
+  const handleRunAnalysis = coating.handleRunAnalysis;
+  const transitions: { targetStatus: string | null; label: string }[] = [];
+
+  const handleSaveNotes = async (editedNotes: string) => {
+    const jobCardNotes = jobCard?.notes;
+    const originalNotes = jobCardNotes ? jobCardNotes : null;
+    await actions.handleSaveNotes(editedNotes, originalNotes);
   };
 
   const handlePrintQr = async () => {
@@ -436,13 +456,15 @@ export default function JobCardDetailPage() {
     );
   }
 
-  if (actions.error || !jobCard) {
+  const actionsError = actions.error;
+  if (actionsError || !jobCard) {
+    const actionsErrorMessage = actionsError?.message;
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Data</div>
           <p className="text-gray-600">
-            {actions.error?.message ? actions.error.message : "Job card not found"}
+            {actionsErrorMessage ? actionsErrorMessage : "Job card not found"}
           </p>
           <Link
             href="/stock-control/portal/job-cards"
@@ -454,6 +476,12 @@ export default function JobCardDetailPage() {
       </div>
     );
   }
+
+  const jobCardSourceFileName = jobCard.sourceFileName;
+  const jobCardJcNumber = jobCard.jcNumber;
+  const jobCardPageNumber = jobCard.pageNumber;
+  const jobCardCustomerName = jobCard.customerName;
+  const jobCardCustomFields = jobCard.customFields;
 
   return (
     <div className="space-y-6">
@@ -467,7 +495,7 @@ export default function JobCardDetailPage() {
       <SourceFileModal
         isOpen={showSourceFileModal}
         sourceFileUrl={sourceFileUrl}
-        sourceFileName={jobCard.sourceFileName || null}
+        sourceFileName={jobCardSourceFileName || null}
         onClose={() => {
           setShowSourceFileModal(false);
           setSourceFileUrl(null);
@@ -592,24 +620,29 @@ export default function JobCardDetailPage() {
             </svg>
             {isDownloadingQr ? "Generating..." : "Print QR"}
           </button>
-          {transitions.map((transition) => (
-            <button
-              key={transition.targetStatus ?? transition.label}
-              onClick={actions.handlePrintQr}
-              disabled={actions.isDownloadingQr}
-              className="inline-flex items-center px-3 py-1.5 sm:px-4 sm:py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:bg-gray-100 disabled:cursor-not-allowed"
-            >
-              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"
-                />
-              </svg>
-              {actions.isDownloadingQr ? "Generating..." : "Print JC"}
-            </button>
-          ))}
+          {transitions.map((transition) => {
+            const transitionTargetStatus = transition.targetStatus;
+            const transitionLabel = transition.label;
+            const transitionKey = transitionTargetStatus ?? transitionLabel;
+            return (
+              <button
+                key={transitionKey}
+                onClick={actions.handlePrintQr}
+                disabled={actions.isDownloadingQr}
+                className="inline-flex items-center px-3 py-1.5 sm:px-4 sm:py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:bg-gray-100 disabled:cursor-not-allowed"
+              >
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"
+                  />
+                </svg>
+                {actions.isDownloadingQr ? "Generating..." : "Print JC"}
+              </button>
+            );
+          })}
           {currentStatus === "dispatched" && (
             <button
               onClick={actions.handlePrintSignedPdf}
@@ -641,11 +674,11 @@ export default function JobCardDetailPage() {
             </div>
             <div>
               <dt className="text-sm font-medium text-gray-500">JC Number</dt>
-              <dd className="mt-1 text-sm text-gray-900">{jobCard.jcNumber || "-"}</dd>
+              <dd className="mt-1 text-sm text-gray-900">{jobCardJcNumber || "-"}</dd>
             </div>
             <div>
               <dt className="text-sm font-medium text-gray-500">Page Number</dt>
-              <dd className="mt-1 text-sm text-gray-900">{jobCard.pageNumber || "-"}</dd>
+              <dd className="mt-1 text-sm text-gray-900">{jobCardPageNumber || "-"}</dd>
             </div>
             <div>
               <dt className="text-sm font-medium text-gray-500">Job Name</dt>
@@ -653,7 +686,7 @@ export default function JobCardDetailPage() {
             </div>
             <div>
               <dt className="text-sm font-medium text-gray-500">Customer</dt>
-              <dd className="mt-1 text-sm text-gray-900">{jobCard.customerName || "-"}</dd>
+              <dd className="mt-1 text-sm text-gray-900">{jobCardCustomerName || "-"}</dd>
             </div>
             <div>
               <dt className="text-sm font-medium text-gray-500">Status</dt>
@@ -838,22 +871,27 @@ export default function JobCardDetailPage() {
               </div>
             </div>
           )}
-          {coatingAnalysis && coatingAnalysis.status === "failed" && (
-            <div className="mt-6 pt-4 border-t border-gray-200">
-              <div className="flex items-center justify-between">
-                <div className="text-sm text-red-600">
-                  Coating analysis failed: {coatingAnalysis.error || "Unknown error"}
+          {coatingAnalysis &&
+            coatingAnalysis.status === "failed" &&
+            (() => {
+              const coatingAnalysisError = coatingAnalysis.error;
+              return (
+                <div className="mt-6 pt-4 border-t border-gray-200">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm text-red-600">
+                      Coating analysis failed: {coatingAnalysisError || "Unknown error"}
+                    </div>
+                    <button
+                      onClick={handleRunAnalysis}
+                      disabled={isAnalysing}
+                      className="text-sm text-teal-600 hover:text-teal-800 disabled:text-gray-400"
+                    >
+                      {isAnalysing ? "Analysing..." : "Retry"}
+                    </button>
+                  </div>
                 </div>
-                <button
-                  onClick={handleRunAnalysis}
-                  disabled={isAnalysing}
-                  className="text-sm text-teal-600 hover:text-teal-800 disabled:text-gray-400"
-                >
-                  {isAnalysing ? "Analysing..." : "Retry"}
-                </button>
-              </div>
-            </div>
-          )}
+              );
+            })()}
           {!coatingAnalysis && jobCard.notes && (
             <div className="mt-6 pt-4 border-t border-gray-200">
               <div className="flex items-center justify-between">
@@ -909,11 +947,11 @@ export default function JobCardDetailPage() {
               </div>
             </div>
           )}
-          {jobCard.customFields && Object.keys(jobCard.customFields).length > 0 && (
+          {jobCardCustomFields && keys(jobCardCustomFields).length > 0 && (
             <div className="mt-6 pt-4 border-t border-gray-200">
               <h4 className="text-sm font-medium text-gray-500 mb-3">Custom Fields</h4>
               <dl className="grid grid-cols-2 gap-x-4 gap-y-4">
-                {Object.entries(jobCard.customFields).map(([key, value]) => (
+                {entries(jobCardCustomFields).map(([key, value]: [string, string]) => (
                   <div key={key}>
                     <dt className="text-sm font-medium text-gray-500">{key}</dt>
                     <dd className="mt-1 text-sm text-gray-900">{value}</dd>
@@ -973,26 +1011,33 @@ export default function JobCardDetailPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {jobCard.lineItems.map((li, idx) => (
-                <tr key={li.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{idx + 1}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
-                    {li.itemCode || "-"}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
-                    {li.itemDescription || "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {li.itemNo || "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
-                    {li.quantity ?? "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {li.jtNo || "-"}
-                  </td>
-                </tr>
-              ))}
+              {jobCard.lineItems.map((li, idx) => {
+                const liItemCode = li.itemCode;
+                const liItemDescription = li.itemDescription;
+                const liItemNo = li.itemNo;
+                const liQuantity = li.quantity;
+                const liJtNo = li.jtNo;
+                return (
+                  <tr key={li.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{idx + 1}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
+                      {liItemCode || "-"}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
+                      {liItemDescription || "-"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {liItemNo || "-"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
+                      {liQuantity ?? "-"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {liJtNo || "-"}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

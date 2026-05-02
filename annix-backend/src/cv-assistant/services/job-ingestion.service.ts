@@ -159,6 +159,46 @@ export class JobIngestionService {
     return this.externalJobRepo.findOne({ where: { id: jobId }, relations: ["source"] });
   }
 
+  async publicJobs(
+    options: {
+      country?: string;
+      category?: string;
+      search?: string;
+      page?: number;
+      limit?: number;
+    } = {},
+  ): Promise<{ jobs: PublicJob[]; total: number }> {
+    const requestedLimit = options.limit ?? 20;
+    const limit = Math.min(Math.max(requestedLimit, 1), 50);
+    const page = Math.max(options.page ?? 1, 1);
+
+    const qb = this.externalJobRepo.createQueryBuilder("job");
+
+    if (options.country) {
+      qb.andWhere("job.country = :country", { country: options.country });
+    }
+    if (options.category) {
+      qb.andWhere("job.category = :category", { category: options.category });
+    }
+    if (options.search) {
+      qb.andWhere("(job.title ILIKE :search OR job.company ILIKE :search)", {
+        search: `%${options.search}%`,
+      });
+    }
+
+    qb.orderBy("job.posted_at", "DESC", "NULLS LAST")
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    const [jobs, total] = await qb.getManyAndCount();
+    return { jobs: jobs.map(toPublicJob), total };
+  }
+
+  async publicJobById(jobId: number): Promise<PublicJob | null> {
+    const job = await this.externalJobRepo.findOne({ where: { id: jobId } });
+    return job ? toPublicJob(job) : null;
+  }
+
   async ingestionStats(companyId: number): Promise<{
     totalJobs: number;
     jobsLast7Days: number;
@@ -286,4 +326,42 @@ export class JobIngestionService {
       source.requestsResetAt = DateTime.now().endOf("day").toJSDate();
     }
   }
+}
+
+export interface PublicJob {
+  id: number;
+  title: string;
+  company: string | null;
+  country: string;
+  locationRaw: string | null;
+  locationArea: string | null;
+  salaryMin: number | null;
+  salaryMax: number | null;
+  salaryCurrency: string | null;
+  description: string | null;
+  extractedSkills: string[];
+  category: string | null;
+  sourceUrl: string | null;
+  postedAt: string | null;
+  expiresAt: string | null;
+}
+
+function toPublicJob(job: ExternalJob): PublicJob {
+  return {
+    id: job.id,
+    title: job.title,
+    company: job.company,
+    country: job.country,
+    locationRaw: job.locationRaw,
+    locationArea: job.locationArea,
+    salaryMin: job.salaryMin,
+    salaryMax: job.salaryMax,
+    salaryCurrency: job.salaryCurrency,
+    description: job.description,
+    extractedSkills: job.extractedSkills ?? [],
+    category: job.category,
+    sourceUrl: job.sourceUrl,
+    postedAt: job.postedAt ? job.postedAt.toISOString() : null,
+    expiresAt: job.expiresAt ? job.expiresAt.toISOString() : null,
+  };
 }

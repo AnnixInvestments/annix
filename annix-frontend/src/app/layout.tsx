@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Great_Vibes } from "next/font/google";
 import "./globals.css";
 import ConditionalNavigation from "./components/ConditionalNavigation";
-import { Polyfills } from "./components/Polyfills";
 import { Providers } from "./components/Providers";
 import SessionExpiredModal from "./components/SessionExpiredModal";
 
@@ -58,7 +57,6 @@ export default function RootLayout(
         className={`${geistSans.variable} ${geistMono.variable} ${greatVibes.variable} antialiased`}
         suppressHydrationWarning
       >
-        <Polyfills />
         <Providers>
           <ConditionalNavigation />
           {children}

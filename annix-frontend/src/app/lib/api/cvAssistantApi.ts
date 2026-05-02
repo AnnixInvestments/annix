@@ -356,6 +356,65 @@ export interface NotificationPreferences {
   pushEnabled: boolean;
 }
 
+export interface IndividualNotificationPreferences {
+  matchAlertThreshold: number;
+  digestEnabled: boolean;
+  pushEnabled: boolean;
+  jobAlertsOptIn?: boolean;
+}
+
+export interface PublicJob {
+  id: number;
+  title: string;
+  company: string | null;
+  country: string;
+  locationRaw: string | null;
+  locationArea: string | null;
+  salaryMin: number | null;
+  salaryMax: number | null;
+  salaryCurrency: string | null;
+  description: string | null;
+  extractedSkills: string[];
+  category: string | null;
+  sourceUrl: string | null;
+  postedAt: string | null;
+  expiresAt: string | null;
+}
+
+export interface IndividualDataExportAccount {
+  id: number;
+  email: string;
+  firstName: string | null;
+  lastName: string | null;
+  createdAt: string;
+  emailVerified: boolean;
+}
+
+export interface IndividualDataExportProfile {
+  matchAlertThreshold: number;
+  digestEnabled: boolean;
+  pushEnabled: boolean;
+  cvUploadedAt: string | null;
+}
+
+export interface IndividualDataExportDocument {
+  id: number;
+  kind: IndividualDocumentKind;
+  originalFilename: string;
+  mimeType: string;
+  sizeBytes: number;
+  label: string | null;
+  uploadedAt: string;
+}
+
+export interface IndividualDataExport {
+  exportedAt: string;
+  account: IndividualDataExportAccount;
+  profile: IndividualDataExportProfile;
+  documents: IndividualDataExportDocument[];
+  extractedCv: unknown;
+}
+
 export type IndividualDocumentKind = "cv" | "qualification" | "certificate";
 
 export interface IndividualDocument {
@@ -895,6 +954,54 @@ class CvAssistantApiClient {
 
   async deleteMyDocument(id: number): Promise<{ message: string }> {
     return this.request(`/cv-assistant/me/documents/${id}`, { method: "DELETE" });
+  }
+
+  async myNotificationPreferences(): Promise<IndividualNotificationPreferences> {
+    return this.request("/cv-assistant/me/notification-preferences");
+  }
+
+  async updateMyNotificationPreferences(
+    data: Partial<IndividualNotificationPreferences>,
+  ): Promise<IndividualNotificationPreferences> {
+    return this.request("/cv-assistant/me/notification-preferences", {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async myDataExport(): Promise<IndividualDataExport> {
+    return this.request("/cv-assistant/me/data-export");
+  }
+
+  async requestMyAccountDeletion(): Promise<{ message: string; email: string }> {
+    return this.request("/cv-assistant/me/account/request-delete", {
+      method: "POST",
+    });
+  }
+
+  async confirmMyAccountDeletion(token: string): Promise<{ message: string }> {
+    return this.request("/cv-assistant/public/account/confirm-delete", {
+      method: "POST",
+      body: JSON.stringify({ token }),
+    });
+  }
+
+  async publicJobs(params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    country?: string;
+    category?: string;
+  }): Promise<{ jobs: PublicJob[]; total: number }> {
+    const query = new URLSearchParams();
+    if (params?.page != null) query.append("page", String(params.page));
+    if (params?.limit != null) query.append("limit", String(params.limit));
+    if (params?.search) query.append("search", params.search);
+    if (params?.country) query.append("country", params.country);
+    if (params?.category) query.append("category", params.category);
+    const queryString = query.toString();
+    const suffix = queryString ? `?${queryString}` : "";
+    return this.request(`/cv-assistant/public/jobs${suffix}`);
   }
 }
 

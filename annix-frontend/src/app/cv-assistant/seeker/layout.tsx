@@ -13,6 +13,7 @@ const navigation = [
   { name: "My CV", href: "/cv-assistant/seeker/profile" },
   { name: "Browse Jobs", href: "/cv-assistant/seeker/jobs" },
   { name: "Applications", href: "/cv-assistant/seeker/applications" },
+  { name: "Settings", href: "/cv-assistant/seeker/settings" },
 ];
 
 function SeekerContent({ children }: { children: React.ReactNode }) {
@@ -25,6 +26,8 @@ function SeekerContent({ children }: { children: React.ReactNode }) {
   const profileStatus = profileStatusQuery.data;
   const hasCv = profileStatus ? profileStatus.hasCv : null;
   const isOnProfilePage = pathname.startsWith("/cv-assistant/seeker/profile");
+  const isOnSettingsPage = pathname.startsWith("/cv-assistant/seeker/settings");
+  const cvGateExempt = isOnProfilePage || isOnSettingsPage;
 
   useEffect(() => {
     if (isLoading) return;
@@ -40,7 +43,7 @@ function SeekerContent({ children }: { children: React.ReactNode }) {
       router.push("/cv-assistant/portal/dashboard");
       return;
     }
-    if (isIndividual && hasCv === false && !isOnProfilePage) {
+    if (isIndividual && hasCv === false && !cvGateExempt) {
       router.push("/cv-assistant/seeker/profile");
     }
   }, [
@@ -49,7 +52,7 @@ function SeekerContent({ children }: { children: React.ReactNode }) {
     user,
     isIndividual,
     hasCv,
-    isOnProfilePage,
+    cvGateExempt,
     router,
     pathname,
     searchParams,
@@ -67,7 +70,7 @@ function SeekerContent({ children }: { children: React.ReactNode }) {
     return null;
   }
 
-  if (isIndividual && hasCv === false && !isOnProfilePage) {
+  if (isIndividual && hasCv === false && !cvGateExempt) {
     return null;
   }
 

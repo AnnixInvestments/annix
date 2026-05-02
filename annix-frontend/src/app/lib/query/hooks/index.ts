@@ -564,9 +564,13 @@ export {
   useCvTopCandidates,
 } from "./cv-assistant/useCvDashboard";
 export {
+  useCvConfirmMyAccountDeletion,
   useCvDeleteMyDocument,
   useCvMyDocuments,
+  useCvMyNotificationPreferences,
   useCvMyProfileStatus,
+  useCvRequestMyAccountDeletion,
+  useCvUpdateMyNotificationPreferences,
   useCvUploadMyDocument,
 } from "./cv-assistant/useCvIndividualProfile";
 export {

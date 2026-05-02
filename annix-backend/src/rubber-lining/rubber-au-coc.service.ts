@@ -10,6 +10,7 @@ import { In, Repository } from "typeorm";
 import { EmailService } from "../email/email.service";
 import { formatDateZA, generateUniqueId, now, nowISO } from "../lib/datetime";
 import { createPdfDocument } from "../lib/pdf-builder";
+import type { PdfDoc } from "../lib/pdf-templates/types";
 import { IStorageService, STORAGE_SERVICE } from "../storage/storage.interface";
 import {
   CreateAuCocDto,
@@ -1173,7 +1174,7 @@ export class RubberAuCocService {
     return toBuffer();
   }
 
-  private drawHeader(doc: PDFKit.PDFDocument): void {
+  private drawHeader(doc: PdfDoc): void {
     const headerPath = path.join(__dirname, "..", "..", "assets", "au-header.jpg");
     this.logger.debug(`Header image path: ${headerPath}`);
     this.logger.debug(`Header file exists: ${fs.existsSync(headerPath)}`);
@@ -1200,7 +1201,7 @@ export class RubberAuCocService {
     doc.moveTo(40, 165).lineTo(555, 165).lineWidth(0.5).stroke();
   }
 
-  private drawDetailsSection(doc: PDFKit.PDFDocument, data: CocPdfData): void {
+  private drawDetailsSection(doc: PdfDoc, data: CocPdfData): void {
     const leftCol = 40;
     const rightCol = 250;
     const lineHeight = 16;
@@ -1225,7 +1226,7 @@ export class RubberAuCocService {
     doc.font("Helvetica-Bold").text("LABORATORY ANALYSIS DATA", leftCol, finalY + 5);
   }
 
-  private drawLabDataTable(doc: PDFKit.PDFDocument, data: CocPdfData): void {
+  private drawLabDataTable(doc: PdfDoc, data: CocPdfData): void {
     const tableTop = 295;
     const colWidths = [85, 55, 55, 55, 55, 65, 65, 65];
     const colStarts = colWidths.reduce(
@@ -1361,7 +1362,7 @@ export class RubberAuCocService {
     doc.rect(40, y, 515, 0).stroke("#cccccc");
   }
 
-  private drawComments(doc: PDFKit.PDFDocument): void {
+  private drawComments(doc: PdfDoc): void {
     const y = 680;
 
     doc.fontSize(8).font("Helvetica-Bold").fillColor("black").text("Comments:", 40, y);
@@ -1381,7 +1382,7 @@ export class RubberAuCocService {
     });
   }
 
-  private drawFooter(doc: PDFKit.PDFDocument, data: CocPdfData): void {
+  private drawFooter(doc: PdfDoc, data: CocPdfData): void {
     const y = 720;
 
     doc.fontSize(9).font("Helvetica").fillColor("black");

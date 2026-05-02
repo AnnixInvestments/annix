@@ -3,6 +3,7 @@ import {
   cvAssistantApiClient,
   type IndividualDocument,
   type IndividualDocumentKind,
+  type IndividualNotificationPreferences,
   type IndividualProfileStatus,
 } from "@/app/lib/api/cvAssistantApi";
 import { cvAssistantKeys } from "../../keys";
@@ -52,5 +53,38 @@ export function useCvDeleteMyDocument() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: cvAssistantKeys.individualProfile.all });
     },
+  });
+}
+
+export function useCvMyNotificationPreferences(enabled = true) {
+  return useQuery<IndividualNotificationPreferences>({
+    queryKey: cvAssistantKeys.individualProfile.notificationPreferences(),
+    queryFn: () => cvAssistantApiClient.myNotificationPreferences(),
+    enabled,
+    staleTime: 60 * 1000,
+  });
+}
+
+export function useCvUpdateMyNotificationPreferences() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (body: Partial<IndividualNotificationPreferences>) =>
+      cvAssistantApiClient.updateMyNotificationPreferences(body),
+    onSuccess: (data) => {
+      queryClient.setQueryData(cvAssistantKeys.individualProfile.notificationPreferences(), data);
+    },
+  });
+}
+
+export function useCvRequestMyAccountDeletion() {
+  return useMutation({
+    mutationFn: () => cvAssistantApiClient.requestMyAccountDeletion(),
+  });
+}
+
+export function useCvConfirmMyAccountDeletion() {
+  return useMutation({
+    mutationFn: (token: string) => cvAssistantApiClient.confirmMyAccountDeletion(token),
   });
 }

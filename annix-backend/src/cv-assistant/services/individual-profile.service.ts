@@ -1,8 +1,11 @@
 import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { MoreThan, Repository } from "typeorm";
+import { v4 as uuidv4 } from "uuid";
+import { EmailService } from "../../email/email.service";
 import { now } from "../../lib/datetime";
 import { IStorageService, STORAGE_SERVICE, StorageArea } from "../../storage/storage.interface";
+import { User } from "../../user/entities/user.entity";
 import { isAcceptedDocumentMime } from "../config/individual-documents.config";
 import {
   CvAssistantIndividualDocument,
@@ -10,6 +13,8 @@ import {
 } from "../entities/cv-assistant-individual-document.entity";
 import { CvAssistantProfile, CvAssistantUserType } from "../entities/cv-assistant-profile.entity";
 import { CvExtractionService } from "./cv-extraction.service";
+
+const DELETION_TOKEN_EXPIRY_HOURS = 1;
 
 export interface IndividualProfileStatus {
   profileComplete: boolean;
@@ -31,6 +36,40 @@ export interface IndividualDocumentSummary {
   downloadUrl: string;
 }
 
+export interface IndividualNotificationPreferences {
+  matchAlertThreshold: number;
+  digestEnabled: boolean;
+  pushEnabled: boolean;
+}
+
+export interface IndividualDataExport {
+  exportedAt: string;
+  account: {
+    id: number;
+    email: string;
+    firstName: string | null;
+    lastName: string | null;
+    createdAt: Date;
+    emailVerified: boolean;
+  };
+  profile: {
+    matchAlertThreshold: number;
+    digestEnabled: boolean;
+    pushEnabled: boolean;
+    cvUploadedAt: Date | null;
+  };
+  documents: Array<{
+    id: number;
+    kind: IndividualDocumentKind;
+    originalFilename: string;
+    mimeType: string;
+    sizeBytes: number;
+    label: string | null;
+    uploadedAt: Date;
+  }>;
+  extractedCv: unknown;
+}
+
 @Injectable()
 export class IndividualProfileService {
   private readonly logger = new Logger(IndividualProfileService.name);
@@ -40,9 +79,12 @@ export class IndividualProfileService {
     private readonly profileRepo: Repository<CvAssistantProfile>,
     @InjectRepository(CvAssistantIndividualDocument)
     private readonly documentRepo: Repository<CvAssistantIndividualDocument>,
+    @InjectRepository(User)
+    private readonly userRepo: Repository<User>,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
     private readonly cvExtractionService: CvExtractionService,
+    private readonly emailService: EmailService,
   ) {}
 
   async profileForUser(userId: number): Promise<CvAssistantProfile> {
@@ -214,5 +256,144 @@ export class IndividualProfileService {
     }
 
     await this.profileRepo.save(profile);
+  }
+
+  async notificationPreferences(userId: number): Promise<IndividualNotificationPreferences> {
+    const profile = await this.profileForUser(userId);
+    return {
+      matchAlertThreshold: profile.matchAlertThreshold,
+      digestEnabled: profile.digestEnabled,
+      pushEnabled: profile.pushEnabled,
+    };
+  }
+
+  async updateNotificationPreferences(
+    userId: number,
+    body: { matchAlertThreshold?: number; digestEnabled?: boolean; pushEnabled?: boolean },
+  ): Promise<IndividualNotificationPreferences> {
+    const profile = await this.profileForUser(userId);
+
+    if (body.matchAlertThreshold != null) {
+      profile.matchAlertThreshold = Math.max(0, Math.min(100, body.matchAlertThreshold));
+    }
+    if (body.digestEnabled != null) {
+      profile.digestEnabled = body.digestEnabled;
+    }
+    if (body.pushEnabled != null) {
+      profile.pushEnabled = body.pushEnabled;
+    }
+
+    await this.profileRepo.save(profile);
+    return {
+      matchAlertThreshold: profile.matchAlertThreshold,
+      digestEnabled: profile.digestEnabled,
+      pushEnabled: profile.pushEnabled,
+    };
+  }
+
+  async dataExport(userId: number): Promise<IndividualDataExport> {
+    const profile = await this.profileForUser(userId);
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException("User not found");
+    }
+    const docs = await this.documentRepo.find({
+      where: { profileId: profile.id },
+      order: { uploadedAt: "DESC" },
+    });
+
+    return {
+      exportedAt: now().toISO() ?? "",
+      account: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName ?? null,
+        lastName: user.lastName ?? null,
+        createdAt: user.createdAt,
+        emailVerified: user.emailVerified,
+      },
+      profile: {
+        matchAlertThreshold: profile.matchAlertThreshold,
+        digestEnabled: profile.digestEnabled,
+        pushEnabled: profile.pushEnabled,
+        cvUploadedAt: profile.cvUploadedAt,
+      },
+      documents: docs.map((doc) => ({
+        id: doc.id,
+        kind: doc.kind,
+        originalFilename: doc.originalFilename,
+        mimeType: doc.mimeType,
+        sizeBytes: doc.sizeBytes,
+        label: doc.label,
+        uploadedAt: doc.uploadedAt,
+      })),
+      extractedCv: profile.extractedCvData,
+    };
+  }
+
+  async requestAccountDeletion(userId: number): Promise<{ message: string; email: string }> {
+    const profile = await this.profileForUser(userId);
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException("User not found");
+    }
+
+    const token = uuidv4();
+    profile.deletionToken = token;
+    profile.deletionTokenExpires = now().plus({ hours: DELETION_TOKEN_EXPIRY_HOURS }).toJSDate();
+    await this.profileRepo.save(profile);
+
+    await this.emailService.sendCvAssistantDeletionConfirmEmail(user.email, token);
+
+    return {
+      message:
+        "We have sent a confirmation link to your email. Click it within 1 hour to permanently delete your account.",
+      email: user.email,
+    };
+  }
+
+  async confirmAccountDeletion(token: string): Promise<{ message: string }> {
+    const profile = await this.profileRepo.findOne({
+      where: {
+        deletionToken: token,
+        deletionTokenExpires: MoreThan(now().toJSDate()),
+      },
+    });
+
+    if (!profile) {
+      throw new BadRequestException(
+        "Invalid or expired deletion link. Please request a new one from your settings.",
+      );
+    }
+
+    if (profile.userType !== CvAssistantUserType.INDIVIDUAL) {
+      throw new BadRequestException(
+        "Account deletion is only available to individual job seekers.",
+      );
+    }
+
+    return this.performErasure(profile);
+  }
+
+  private async performErasure(profile: CvAssistantProfile): Promise<{ message: string }> {
+    const userId = profile.userId;
+    const docs = await this.documentRepo.find({ where: { profileId: profile.id } });
+
+    await Promise.all(
+      docs.map(async (doc) => {
+        try {
+          await this.storageService.delete(doc.filePath);
+        } catch (err) {
+          this.logger.warn(`Failed to delete file ${doc.filePath} during erasure: ${err}`);
+        }
+      }),
+    );
+
+    await this.documentRepo.delete({ profileId: profile.id });
+    await this.profileRepo.delete(profile.id);
+    await this.userRepo.delete(userId);
+
+    this.logger.log(`POPIA self-erasure completed for user ${userId}`);
+    return { message: "Your account and all associated data have been permanently deleted." };
   }
 }

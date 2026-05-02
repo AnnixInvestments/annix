@@ -61,6 +61,12 @@ export class CvAssistantProfile {
   @Column({ name: "cv_uploaded_at", type: "timestamptz", nullable: true })
   cvUploadedAt: Date | null;
 
+  @Column({ name: "deletion_token", type: "varchar", length: 255, nullable: true })
+  deletionToken: string | null;
+
+  @Column({ name: "deletion_token_expires", type: "timestamptz", nullable: true })
+  deletionTokenExpires: Date | null;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

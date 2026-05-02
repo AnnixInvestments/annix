@@ -78,8 +78,14 @@ export default function CvAssistantHomePage() {
           />
         </div>
 
-        <div className="text-center mt-8">
-          <Link href="/" className="text-violet-200 hover:text-white text-sm">
+        <div className="text-center mt-8 space-y-3">
+          <Link
+            href="/cv-assistant/jobs"
+            className="block text-violet-100 hover:text-white text-sm font-medium"
+          >
+            Just want to look around? Browse jobs without signing up →
+          </Link>
+          <Link href="/" className="block text-violet-200 hover:text-white text-sm">
             Back to Annix Platform
           </Link>
         </div>

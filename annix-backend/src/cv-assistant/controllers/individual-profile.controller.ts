@@ -6,6 +6,7 @@ import {
   Get,
   Param,
   ParseIntPipe,
+  Patch,
   Post,
   Request,
   UploadedFile,
@@ -64,5 +65,29 @@ export class IndividualProfileController {
   ) {
     await this.individualProfileService.deleteDocument(req.user.id, id);
     return { message: "Document deleted" };
+  }
+
+  @Get("notification-preferences")
+  notificationPreferences(@Request() req: { user: { id: number } }) {
+    return this.individualProfileService.notificationPreferences(req.user.id);
+  }
+
+  @Patch("notification-preferences")
+  updateNotificationPreferences(
+    @Request() req: { user: { id: number } },
+    @Body()
+    body: { matchAlertThreshold?: number; digestEnabled?: boolean; pushEnabled?: boolean },
+  ) {
+    return this.individualProfileService.updateNotificationPreferences(req.user.id, body);
+  }
+
+  @Get("data-export")
+  dataExport(@Request() req: { user: { id: number } }) {
+    return this.individualProfileService.dataExport(req.user.id);
+  }
+
+  @Post("account/request-delete")
+  requestAccountDeletion(@Request() req: { user: { id: number } }) {
+    return this.individualProfileService.requestAccountDeletion(req.user.id);
   }
 }
