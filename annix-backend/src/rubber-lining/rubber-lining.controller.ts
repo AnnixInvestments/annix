@@ -1220,7 +1220,43 @@ Formula: totalPrice = totalKg × salePricePerKg
   @ApiOperation({ summary: "Re-extract data from supplier CoC PDF using AI" })
   @ApiParam({ name: "id", description: "Supplier CoC ID" })
   async reextractSupplierCoc(@Param("id") id: string): Promise<RubberSupplierCocDto> {
-    const coc = await this.rubberCocService.supplierCocById(Number(id));
+    const updatedCoc = await this.runReextractForSupplierCoc(Number(id));
+    return updatedCoc;
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Post("portal/supplier-cocs/reextract-non-canonical")
+  @ApiOperation({
+    summary:
+      "Re-extract all Compounder CoCs whose compoundCode does not match any canonical compound coding",
+  })
+  async reextractNonCanonicalCompounderCocs(): Promise<{
+    candidates: number[];
+    succeeded: number[];
+    failed: { id: number; error: string }[];
+  }> {
+    const candidates = await this.rubberCocService.nonCanonicalCompounderCocIds();
+    const succeeded: number[] = [];
+    const failed: { id: number; error: string }[] = [];
+    for (const cocId of candidates) {
+      try {
+        await this.runReextractForSupplierCoc(cocId);
+        succeeded.push(cocId);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.logger.warn(`Bulk re-extract failed for supplier CoC ${cocId}: ${message}`);
+        failed.push({ id: cocId, error: message });
+      }
+    }
+    this.logger.log(
+      `Bulk re-extract: ${succeeded.length}/${candidates.length} succeeded, ${failed.length} failed`,
+    );
+    return { candidates, succeeded, failed };
+  }
+
+  private async runReextractForSupplierCoc(id: number): Promise<RubberSupplierCocDto> {
+    const coc = await this.rubberCocService.supplierCocById(id);
     if (!coc) throw new NotFoundException("Supplier CoC not found");
 
     if (!coc.documentPath) {
@@ -1253,7 +1289,7 @@ Formula: totalPrice = totalKg × salePricePerKg
       );
     }
 
-    const correctionHints = await this.rubberCocService.correctionHintsForCoc(Number(id));
+    const correctionHints = await this.rubberCocService.correctionHintsForCoc(id);
 
     const extractionResult = await this.rubberCocExtractionService.extractByType(
       coc.cocType,
@@ -1262,10 +1298,7 @@ Formula: totalPrice = totalKg × salePricePerKg
       pdfBuffer,
     );
 
-    const updatedCoc = await this.rubberCocService.reextractAndUpdateCoc(
-      Number(id),
-      extractionResult.data,
-    );
+    const updatedCoc = await this.rubberCocService.reextractAndUpdateCoc(id, extractionResult.data);
     if (!updatedCoc) throw new NotFoundException("Failed to update supplier CoC");
 
     return updatedCoc;

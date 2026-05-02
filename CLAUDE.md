@@ -116,6 +116,35 @@ Update `docs/shared-registry.md` in the same commit. Reviewers / pre-push hook w
 - **Backdrop**: Use `fixed inset-0` (never `absolute inset-0`) for the backdrop overlay
 - **Early returns**: Keep `if (!isOpen) return null;` outside the portal — only wrap the actual modal JSX
 
+### Confirmations / Alerts (Frontend Only — MANDATORY)
+**Never use `window.confirm()`, `window.alert()`, or `window.prompt()` in frontend code.** These trigger the browser's native dialog (left-aligned, anchored to the URL bar, unbranded) and break the app's visual consistency. They also block the JavaScript main thread.
+
+- **For yes/no confirmations** (delete, destructive action, "are you sure"): use the `useConfirm` hook from `@/app/au-rubber/hooks/useConfirm` (or `@/app/lib/hooks/useConfirm` from non-AU-Rubber pages). It returns `{ confirm, ConfirmDialog }`. `confirm(options)` returns a `Promise<boolean>` so it's a drop-in replacement for `window.confirm()`. Render `{ConfirmDialog}` once near the root of your page's JSX.
+    ```tsx
+    const { confirm, ConfirmDialog } = useConfirm();
+    const handleDelete = async () => {
+      const confirmed = await confirm({
+        title: "Delete this CoC?",
+        message: "This cannot be undone.",
+        confirmLabel: "Delete",
+        cancelLabel: "Cancel",
+        variant: "danger",  // "danger" | "warning" | "info" | "default"
+      });
+      if (!confirmed) return;
+      // ... do the destructive thing
+    };
+    return (
+      <div>
+        {/* page content */}
+        {ConfirmDialog}
+      </div>
+    );
+    ```
+- **For form-style modals** (input collection, multi-field): use `FormModal` from `@/app/components/modals/FormModal`.
+- **For toasts / non-blocking notifications**: use `useToast` from `@/app/components/Toast` — never `alert()`.
+- **Underlying component**: `ConfirmModal` at `@/app/components/modals/ConfirmModal` is already centred via `createPortal(document.body)` with `z-[9999]`, blurred backdrop, branded styling, and Escape-key handling. Do not write a parallel implementation — extend `ConfirmModal` if you need new variants.
+- **ESLint should reject `window.confirm` / `window.alert` / `window.prompt` in `annix-frontend/src/app/**/*.tsx`** if a rule isn't already in place; add one if you find a violation.
+
 ### Date/Time Handling
 - **Always use Luxon via the datetime module**: Never use native `Date`, `Date.now()`, or `Date.parse()`
 - **Frontend**: Import from `@/app/lib/datetime`

@@ -79,6 +79,27 @@ export class RubberCocService {
     return cocNumber.trim().replace(/\s+/g, "").replace(/[–—]/g, "-");
   }
 
+  async nonCanonicalCompounderCocIds(): Promise<number[]> {
+    const codings = await this.productCodingRepository.find({
+      where: { codingType: ProductCodingType.COMPOUND },
+    });
+    const knownCodes = new Set<string>();
+    codings.forEach((c) => {
+      if (!c.needsReview) {
+        knownCodes.add(c.code);
+        c.aliases.forEach((a) => knownCodes.add(a));
+      }
+    });
+    const cocs = await this.supplierCocRepository.find({
+      where: { cocType: SupplierCocType.COMPOUNDER },
+      select: ["id", "compoundCode", "documentPath"],
+    });
+    return cocs
+      .filter((c) => !!c.documentPath)
+      .filter((c) => !c.compoundCode || !knownCodes.has(c.compoundCode))
+      .map((c) => c.id);
+  }
+
   private async equivalentCompoundCodes(compoundCode: string | null): Promise<string[]> {
     if (!compoundCode) return [];
     const coding = await this.productCodingRepository

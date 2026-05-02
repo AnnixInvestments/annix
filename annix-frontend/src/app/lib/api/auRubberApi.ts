@@ -858,6 +858,13 @@ class AuRubberApiClient {
     path: (id) => `/rubber-lining/portal/supplier-cocs/${id}/extract`,
   });
 
+  reextractNonCanonicalCompounderCocs = createEndpoint<
+    [],
+    { candidates: number[]; succeeded: number[]; failed: { id: number; error: string }[] }
+  >(apiClient, "POST", {
+    path: () => "/rubber-lining/portal/supplier-cocs/reextract-non-canonical",
+  });
+
   reviewSupplierCoc = createEndpoint<
     [id: number, data: { extractedData?: Record<string, unknown>; reviewNotes?: string }],
     RubberSupplierCocDto

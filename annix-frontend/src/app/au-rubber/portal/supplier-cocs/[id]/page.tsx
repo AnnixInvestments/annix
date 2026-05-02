@@ -7,6 +7,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import { RollRejectionsPanel } from "@/app/au-rubber/components/RollRejectionsPanel";
+import { useConfirm } from "@/app/au-rubber/hooks/useConfirm";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { useToast } from "@/app/components/Toast";
 import { useAuRubberAuth } from "@/app/context/AuRubberAuthContext";
@@ -55,6 +56,7 @@ export default function SupplierCocDetailPage() {
   const router = useRouter();
   const { showToast } = useToast();
   const { showExtraction, hideExtraction } = useExtractionProgress();
+  const { confirm, ConfirmDialog } = useConfirm();
   const { isAdmin } = useAuRubberAuth();
   const [coc, setCoc] = useState<RubberSupplierCocDto | null>(null);
   const [batches, setBatches] = useState<RubberCompoundBatchDto[]>([]);
@@ -157,9 +159,14 @@ export default function SupplierCocDetailPage() {
 
   const handleExtract = async () => {
     if (coc?.processingStatus === "APPROVED") {
-      const confirmed = window.confirm(
-        "This CoC is APPROVED. Re-extracting will delete the existing persisted batches and recreate them from the new extraction. Continue?",
-      );
+      const confirmed = await confirm({
+        title: "Re-extract approved CoC?",
+        message:
+          "This CoC is APPROVED. Re-extracting will delete the existing persisted batches and recreate them from the new extraction.\n\nAny manual corrections previously made to those batches will be lost.",
+        confirmLabel: "Re-extract",
+        cancelLabel: "Cancel",
+        variant: "warning",
+      });
       if (!confirmed) return;
     }
     try {
@@ -1421,6 +1428,7 @@ export default function SupplierCocDetailPage() {
       )}
 
       {coc && <RollRejectionsPanel supplierCoc={coc} onRejectionCreated={fetchData} />}
+      {ConfirmDialog}
     </div>
   );
 }
