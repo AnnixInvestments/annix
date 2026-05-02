@@ -3,6 +3,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { Eye, Loader2, Mail, RefreshCw, Zap } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
 import {
@@ -37,6 +38,7 @@ type SortColumn =
   | "createdAt";
 
 export default function AuCocsPage() {
+  const router = useRouter();
   const { showToast } = useToast();
   const { isAdmin } = useAuRubberAuth();
   const queryClient = useQueryClient();
@@ -710,7 +712,11 @@ export default function AuCocsPage() {
                 const rawCocDeliveryNoteRef = coc.deliveryNoteRef;
                 const rawCocItemCount = coc.itemCount;
                 return (
-                  <tr key={coc.id} className="hover:bg-gray-50">
+                  <tr
+                    key={coc.id}
+                    onClick={() => router.push(`/au-rubber/portal/au-cocs/${coc.id}`)}
+                    className="hover:bg-gray-50 cursor-pointer"
+                  >
                     <td className="px-6 py-4 whitespace-nowrap">
                       <Link
                         href={`/au-rubber/portal/au-cocs/${coc.id}`}
@@ -725,7 +731,10 @@ export default function AuCocsPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {rawCocPoNumber || "-"}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td
+                      className="px-6 py-4 whitespace-nowrap text-sm text-gray-500"
+                      onClick={(e) => coc.sourceDeliveryNoteId && e.stopPropagation()}
+                    >
                       {coc.sourceDeliveryNoteId ? (
                         <button
                           onClick={() =>
@@ -753,7 +762,10 @@ export default function AuCocsPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {formatDateZA(coc.createdAt)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                    <td
+                      className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <Link
                         href={`/au-rubber/portal/au-cocs/${coc.id}`}
                         className="text-yellow-600 hover:text-yellow-800"

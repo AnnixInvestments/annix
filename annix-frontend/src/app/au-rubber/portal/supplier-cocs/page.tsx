@@ -11,6 +11,7 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -78,6 +79,7 @@ type SortColumn =
   | "createdAt";
 
 export default function SupplierCocsPage() {
+  const router = useRouter();
   const { showToast } = useToast();
   const { isAdmin } = useAuRubberAuth();
   const { colors, branding } = useAuRubberBranding();
@@ -850,10 +852,11 @@ export default function SupplierCocsPage() {
                       return (
                         <tr
                           key={coc.id}
-                          className={`hover:bg-gray-50 ${isInactive ? "opacity-40" : ""}`}
+                          onClick={() => router.push(`/au-rubber/portal/supplier-cocs/${coc.id}`)}
+                          className={`hover:bg-gray-50 cursor-pointer ${isInactive ? "opacity-40" : ""}`}
                         >
                           {hasApprovable && (
-                            <td className="px-4 py-4 w-10">
+                            <td className="px-4 py-4 w-10" onClick={(e) => e.stopPropagation()}>
                               {isApprovable(coc) && (
                                 <input
                                   type="checkbox"
@@ -873,11 +876,11 @@ export default function SupplierCocsPage() {
                           <td className="px-6 py-4 whitespace-nowrap">
                             {statusBadge(coc.processingStatus)}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center space-x-2">
+                          <td className="px-6 py-4 break-words">
+                            <div className="flex flex-wrap items-center gap-2">
                               <Link
                                 href={`/au-rubber/portal/supplier-cocs/${coc.id}`}
-                                className="text-yellow-600 hover:text-yellow-800 font-medium"
+                                className="text-yellow-600 hover:text-yellow-800 font-medium break-words"
                               >
                                 {rawCocCocNumber || `COC-${coc.id}`}
                               </Link>
@@ -915,7 +918,10 @@ export default function SupplierCocsPage() {
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {formatDateZA(coc.createdAt)}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
+                          <td
+                            className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3"
+                            onClick={(e) => e.stopPropagation()}
+                          >
                             {isPendingAuth && (
                               <>
                                 <button
