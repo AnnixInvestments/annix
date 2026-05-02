@@ -20,19 +20,31 @@ import { StaffLeaveModule } from "../staff-leave/staff-leave.module";
 import { StorageModule } from "../storage/storage.module";
 import { User } from "../user/entities/user.entity";
 import { StockControlAuthController } from "./controllers/auth.controller";
+import { CertificateController } from "./controllers/certificate.controller";
+import { ChatController } from "./controllers/chat.controller";
+import { CpoController } from "./controllers/cpo.controller";
 import { DashboardController } from "./controllers/dashboard.controller";
 import { DeliveriesController } from "./controllers/deliveries.controller";
+import { GlossaryController } from "./controllers/glossary.controller";
 import { ImportController } from "./controllers/import.controller";
 import { InspectionPublicController } from "./controllers/inspection-public.controller";
 import { InventoryController } from "./controllers/inventory.controller";
 import { InvitationController } from "./controllers/invitation.controller";
+import { InvoicesController } from "./controllers/invoices.controller";
 import { JobCardImportController } from "./controllers/job-card-import.controller";
 import { JobCardsController } from "./controllers/job-cards.controller";
 import { MovementsController } from "./controllers/movements.controller";
 import { PublicBrandingController } from "./controllers/public-branding.controller";
 import { QrCodeController } from "./controllers/qr-code.controller";
+import { ReconciliationController } from "./controllers/reconciliation.controller";
 import { ReportsController } from "./controllers/reports.controller";
 import { RequisitionsController } from "./controllers/requisitions.controller";
+import { SearchController } from "./controllers/search.controller";
+import { SignatureController } from "./controllers/signature.controller";
+import { StaffController } from "./controllers/staff.controller";
+import { SupplierController } from "./controllers/supplier.controller";
+import { SupplierDocumentController } from "./controllers/supplier-document.controller";
+import { WorkflowController } from "./controllers/workflow.controller";
 import { ChatConversation } from "./entities/chat-conversation.entity";
 import { ChatConversationParticipant } from "./entities/chat-conversation-participant.entity";
 import { ChatMessage } from "./entities/chat-message.entity";
@@ -106,26 +118,67 @@ import { MessagingEnabledGuard } from "./guards/messaging-enabled.guard";
 import { StockControlAuthGuard } from "./guards/stock-control-auth.guard";
 import { StockControlRoleGuard } from "./guards/stock-control-role.guard";
 import { QcModule } from "./qc/qc.module";
+import { ActionPermissionService } from "./services/action-permission.service";
 import { StockControlAuthService } from "./services/auth.service";
+import { BackgroundStepService } from "./services/background-step.service";
 import { BrandingScraperService } from "./services/branding-scraper.service";
+import { CertificateService } from "./services/certificate.service";
+import { CertificateAnalysisService } from "./services/certificate-analysis.service";
+import { ChatService } from "./services/chat.service";
 import { CoatingAnalysisService } from "./services/coating-analysis.service";
 import { CompanyEmailService } from "./services/company-email.service";
+import { CompanyRoleService } from "./services/company-role.service";
+import { CpoService } from "./services/cpo.service";
 import { DashboardService } from "./services/dashboard.service";
+import { DataBookPdfService } from "./services/data-book-pdf.service";
 import { DeliveryService } from "./services/delivery.service";
 import { DeliveryExtractionService } from "./services/delivery-extraction.service";
 import { DeliveryInvoiceService } from "./services/delivery-invoice.service";
 import { DeliverySupplierService } from "./services/delivery-supplier.service";
+import { DispatchService } from "./services/dispatch.service";
+import { DispatchCdnService } from "./services/dispatch-cdn.service";
+import { DispatchLoadPhotoService } from "./services/dispatch-load-photo.service";
+import { DrawingExtractionService } from "./services/drawing-extraction.service";
+import { GlossaryService } from "./services/glossary.service";
 import { ImportService } from "./services/import.service";
+import { InspectionBookingService } from "./services/inspection-booking.service";
 import { InventoryService } from "./services/inventory.service";
 import { StockControlInvitationService } from "./services/invitation.service";
+import { InvoiceService } from "./services/invoice.service";
+import { InvoiceExtractionService } from "./services/invoice-extraction.service";
+import { ItemIdentificationService } from "./services/item-identification.service";
 import { JobCardService } from "./services/job-card.service";
 import { JobCardImportService } from "./services/job-card-import.service";
+import { JobCardPdfService } from "./services/job-card-pdf.service";
+import { JobCardVersionService } from "./services/job-card-version.service";
+import { JobCardWorkflowService } from "./services/job-card-workflow.service";
+import { JobFileService } from "./services/job-file.service";
+import { LookupService } from "./services/lookup.service";
 import { M2CalculationService } from "./services/m2-calculation.service";
 import { MovementService } from "./services/movement.service";
+import { PriceHistoryService } from "./services/price-history.service";
 import { PublicBrandingService } from "./services/public-branding.service";
+import { QaProcessService } from "./services/qa-process.service";
 import { QrCodeService } from "./services/qr-code.service";
+import { RbacConfigService } from "./services/rbac-config.service";
+import { ReconciliationService } from "./services/reconciliation.service";
+import { ReconciliationDocumentService } from "./services/reconciliation-document.service";
+import { ReconciliationExtractionService } from "./services/reconciliation-extraction.service";
 import { ReportsService } from "./services/reports.service";
 import { RequisitionService } from "./services/requisition.service";
+import { RubberCuttingTrainingService } from "./services/rubber-cutting-training.service";
+import { SageInvoiceAdapterService } from "./services/sage-invoice-adapter.service";
+import { SageJcDumpService } from "./services/sage-jc-dump.service";
+import { ScEmailAdapterService } from "./services/sc-email-adapter.service";
+import { SearchService } from "./services/search.service";
+import { SignatureService } from "./services/signature.service";
+import { StaffService } from "./services/staff.service";
+import { StockAllocationService } from "./services/stock-allocation.service";
+import { SupplierDocumentService } from "./services/supplier-document.service";
+import { WebPushService } from "./services/web-push.service";
+import { WorkflowAssignmentService } from "./services/workflow-assignment.service";
+import { WorkflowNotificationService } from "./services/workflow-notification.service";
+import { WorkflowStepConfigService } from "./services/workflow-step-config.service";
 
 @Module({
   imports: [
@@ -246,6 +299,18 @@ import { RequisitionService } from "./services/requisition.service";
     InvitationController,
     QrCodeController,
     RequisitionsController,
+    SearchController,
+    StaffController,
+    WorkflowController,
+    SignatureController,
+    InvoicesController,
+    SupplierController,
+    CpoController,
+    GlossaryController,
+    CertificateController,
+    SupplierDocumentController,
+    ChatController,
+    ReconciliationController,
   ],
   providers: [
     StockControlAuthGuard,
@@ -271,6 +336,47 @@ import { RequisitionService } from "./services/requisition.service";
     QrCodeService,
     ReportsService,
     RequisitionService,
+    StaffService,
+    ItemIdentificationService,
+    LookupService,
+    SignatureService,
+    WebPushService,
+    WorkflowAssignmentService,
+    WorkflowNotificationService,
+    JobCardWorkflowService,
+    DispatchService,
+    DispatchCdnService,
+    DispatchLoadPhotoService,
+    JobCardPdfService,
+    JobCardVersionService,
+    DrawingExtractionService,
+    InvoiceExtractionService,
+    InvoiceService,
+    PriceHistoryService,
+    CompanyRoleService,
+    ActionPermissionService,
+    RbacConfigService,
+    SageInvoiceAdapterService,
+    SearchService,
+    CpoService,
+    GlossaryService,
+    CertificateService,
+    CertificateAnalysisService,
+    SupplierDocumentService,
+    DataBookPdfService,
+    ChatService,
+    WorkflowStepConfigService,
+    BackgroundStepService,
+    QaProcessService,
+    InspectionBookingService,
+    ScEmailAdapterService,
+    JobFileService,
+    ReconciliationDocumentService,
+    ReconciliationExtractionService,
+    ReconciliationService,
+    RubberCuttingTrainingService,
+    StockAllocationService,
+    SageJcDumpService,
   ],
   exports: [StockControlAuthService],
 })

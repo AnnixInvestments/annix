@@ -1,5 +1,12 @@
 import { Readable } from "node:stream";
-import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  forwardRef,
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { PDFDocument } from "pdf-lib";
 import { In, IsNull, Not, Repository } from "typeorm";
@@ -147,6 +154,7 @@ export class CertificateService {
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
     private readonly dataBookPdfService: DataBookPdfService,
+    @Inject(forwardRef(() => QcMeasurementService))
     private readonly qcMeasurementService: QcMeasurementService,
     private readonly positectorUploadService: PositectorUploadService,
     private readonly qcBatchAssignmentService: QcBatchAssignmentService,
