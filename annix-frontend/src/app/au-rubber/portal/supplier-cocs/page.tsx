@@ -33,7 +33,7 @@ import {
   type RubberSupplierCocDto,
   type SupplierCocType,
 } from "@/app/lib/api/auRubberApi";
-import { formatDateZA } from "@/app/lib/datetime";
+import { formatDateZA, nowMillis } from "@/app/lib/datetime";
 import {
   useAuRubberAnalyzeSupplierCocs,
   useAuRubberApproveSupplierCoc,
@@ -557,15 +557,17 @@ export default function SupplierCocsPage() {
     });
     if (!confirmed) return;
     setIsBulkReextracting(true);
+    const total = candidateIds.length;
+    const initialPerItemMs = 60_000;
+    const runStartedAt = nowMillis();
     showExtraction({
       brand: "au-rubber",
-      label: `Re-extracting CoC 1 of ${candidateIds.length}…`,
-      estimatedDurationMs: 60_000 * candidateIds.length,
-      itemCount: candidateIds.length,
+      label: `Re-extracting CoC 1 of ${total}…`,
+      estimatedDurationMs: initialPerItemMs * total,
+      itemCount: total,
     });
     const succeeded: number[] = [];
     const failed: number[] = [];
-    const total = candidateIds.length;
     const finalCount = await candidateIds.reduce(
       (chain, cocId, index) =>
         chain.then(async (currentDone) => {
@@ -580,7 +582,14 @@ export default function SupplierCocsPage() {
             const message = err instanceof Error ? err.message : String(err);
             showToast(`CoC #${cocId} failed: ${message}`, "warning");
           }
-          return currentDone + 1;
+          const itemsDone = currentDone + 1;
+          if (itemsDone < total) {
+            const elapsedSoFar = nowMillis() - runStartedAt;
+            const avgPerItemMs = elapsedSoFar / itemsDone;
+            const projectedTotalMs = avgPerItemMs * total;
+            updateExtraction({ estimatedDurationMs: projectedTotalMs });
+          }
+          return itemsDone;
         }),
       Promise.resolve(0) as Promise<number>,
     );
