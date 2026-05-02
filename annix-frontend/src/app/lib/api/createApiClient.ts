@@ -1,4 +1,4 @@
-import { toPairs as entries, isArray } from "es-toolkit/compat";
+import { toPairs as entries, isArray, isString, keys } from "es-toolkit/compat";
 import { throwIfNotOk } from "./apiError";
 
 export interface ApiClientTokenStore {
@@ -94,13 +94,19 @@ export const createApiClient = (options: ApiClientOptions): ApiClient => {
     return result;
   };
 
-  const buildConfig = (init: RequestInit): RequestInit => ({
-    ...init,
-    headers: {
-      ...tokenStore.authHeaders(),
-      ...(init.headers as Record<string, string>),
-    },
-  });
+  const buildConfig = (init: RequestInit): RequestInit => {
+    const callerHeaders = (init.headers as Record<string, string>) ?? {};
+    const hasContentType = keys(callerHeaders).some((key) => key.toLowerCase() === "content-type");
+    const shouldDefaultJson = isString(init.body) && !hasContentType;
+    return {
+      ...init,
+      headers: {
+        ...tokenStore.authHeaders(),
+        ...(shouldDefaultJson ? { "Content-Type": "application/json" } : {}),
+        ...callerHeaders,
+      },
+    };
+  };
 
   const request = async <T>(endpoint: string, init: RequestInit = {}): Promise<T> => {
     const url = `${baseURL}${endpoint}`;

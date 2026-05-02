@@ -95,6 +95,9 @@ export class JobPosting {
   @Column({ name: "activated_at", type: "timestamptz", nullable: true })
   activatedAt: Date | null;
 
+  @Column({ name: "enabled_portal_codes", type: "jsonb", default: [] })
+  enabledPortalCodes: string[];
+
   @ManyToOne(() => CvAssistantCompany, { onDelete: "CASCADE" })
   @JoinColumn({ name: "company_id" })
   company: CvAssistantCompany;

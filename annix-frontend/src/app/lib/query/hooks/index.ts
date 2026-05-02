@@ -590,6 +590,7 @@ export {
   useCvDeleteJobPosting,
   useCvJobPostingStatusChange,
   useCvJobPostings,
+  useCvPortalAdapters,
   useCvUpdateJobPosting,
 } from "./cv-assistant/useCvJobPostings";
 export { useCvReferences } from "./cv-assistant/useCvReferences";

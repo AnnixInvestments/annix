@@ -82,6 +82,11 @@ export class CreateJobPostingDto {
 
   @OptionalEmail({ maxLength: 255 })
   applyByEmail?: string;
+
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  enabledPortalCodes?: string[];
 }
 
 export class UpdateJobPostingDto {
@@ -152,4 +157,9 @@ export class UpdateJobPostingDto {
 
   @OptionalEmail({ maxLength: 255 })
   applyByEmail?: string;
+
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  enabledPortalCodes?: string[];
 }

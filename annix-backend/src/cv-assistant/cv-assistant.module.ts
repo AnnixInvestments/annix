@@ -20,6 +20,7 @@ import { IndividualProfileController } from "./controllers/individual-profile.co
 import { JobMarketController } from "./controllers/job-market.controller";
 import { JobPostingController } from "./controllers/job-posting.controller";
 import { NotificationController } from "./controllers/notification.controller";
+import { PortalAdaptersController } from "./controllers/portal-adapters.controller";
 import { PublicAccountController } from "./controllers/public-account.controller";
 import { PublicJobMarketController } from "./controllers/public-job-market.controller";
 import { PublicJobPostingController } from "./controllers/public-job-posting.controller";
@@ -119,6 +120,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     AnalyticsController,
     NotificationController,
     IndividualProfileController,
+    PortalAdaptersController,
     PublicJobMarketController,
     PublicJobPostingController,
     PublicAccountController,

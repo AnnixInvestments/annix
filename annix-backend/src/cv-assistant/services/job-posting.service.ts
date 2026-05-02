@@ -52,6 +52,7 @@ export class JobPostingService {
       employmentType: (dto.employmentType ?? null) as EmploymentType | null,
       salaryCurrency: dto.salaryCurrency ?? "ZAR",
       responseTimelineDays: dto.responseTimelineDays ?? 14,
+      enabledPortalCodes: dto.enabledPortalCodes ?? [],
       referenceNumber,
       companyId,
       status: JobPostingStatus.DRAFT,
@@ -105,6 +106,7 @@ export class JobPostingService {
     if (dto.salaryMax != null) jobPosting.salaryMax = dto.salaryMax;
     if (dto.salaryCurrency != null) jobPosting.salaryCurrency = dto.salaryCurrency;
     if (dto.applyByEmail != null) jobPosting.applyByEmail = dto.applyByEmail;
+    if (dto.enabledPortalCodes != null) jobPosting.enabledPortalCodes = dto.enabledPortalCodes;
     if (dto.status != null) {
       const newStatus = dto.status as JobPostingStatus;
       const wasActive = jobPosting.status === JobPostingStatus.ACTIVE;
@@ -133,7 +135,13 @@ export class JobPostingService {
   }
 
   private distributeToPortals(jobPosting: JobPosting): void {
-    void this.portalPostingOrchestrator.postToFreeAdapters(jobPosting).catch((error) => {
+    const codes = jobPosting.enabledPortalCodes ?? [];
+    const dispatch =
+      codes.length > 0
+        ? this.portalPostingOrchestrator.postToSelectedAdapters(jobPosting, codes)
+        : this.portalPostingOrchestrator.postToFreeAdapters(jobPosting);
+
+    void dispatch.catch((error) => {
       const message = error instanceof Error ? error.message : String(error);
       this.logger.error(`Portal distribution for job posting ${jobPosting.id} failed: ${message}`);
     });

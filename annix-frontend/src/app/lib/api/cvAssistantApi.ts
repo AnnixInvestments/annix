@@ -65,9 +65,17 @@ export interface JobPosting {
   salaryCurrency: string;
   applyByEmail: string | null;
   activatedAt: string | null;
+  enabledPortalCodes: string[];
   companyId: number;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface PortalAdapterSummary {
+  code: string;
+  displayName: string;
+  costTier: "free" | "freemium" | "paid";
+  available: boolean;
 }
 
 export interface PublicJobPosting {
@@ -1070,6 +1078,10 @@ class CvAssistantApiClient {
   async publicJobPosting(referenceNumber: string): Promise<PublicJobPosting> {
     const safeRef = encodeURIComponent(referenceNumber);
     return this.request(`/cv-assistant/public/job-postings/${safeRef}`);
+  }
+
+  async portalAdapters(): Promise<PortalAdapterSummary[]> {
+    return this.request("/cv-assistant/portal-adapters");
   }
 }
 

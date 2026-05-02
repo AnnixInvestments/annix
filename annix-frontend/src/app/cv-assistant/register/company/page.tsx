@@ -1,8 +1,11 @@
 "use client";
 
 import { allIndustryLabels } from "@annix/product-data/portals/annix-rep-industries";
+import { toPairs as entries } from "es-toolkit/compat";
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { useToast } from "@/app/components/Toast";
+import { isApiError } from "@/app/lib/api/apiError";
 import { cvAssistantApiClient } from "@/app/lib/api/cvAssistantApi";
 import {
   COMPANY_SIZE_OPTIONS,
@@ -10,40 +13,69 @@ import {
 } from "@/app/lib/config/registration/constants";
 
 export default function CvAssistantRegisterCompanyPage() {
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [companyName, setCompanyName] = useState("");
-  const [industry, setIndustry] = useState("");
-  const [companySize, setCompanySize] = useState("");
-  const [province, setProvince] = useState("");
-  const [city, setCity] = useState("");
+  const { showToast } = useToast();
   const [popiaConsent, setPopiaConsent] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [submittedEmail, setSubmittedEmail] = useState("");
   const [success, setSuccess] = useState(false);
 
   const industryOptions = useMemo(() => allIndustryLabels(), []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setIsLoading(true);
+  const readField = (form: HTMLFormElement, fieldName: string): string => {
+    const el = form.elements.namedItem(fieldName) as HTMLInputElement | HTMLSelectElement | null;
+    if (!el) return "";
+    el.focus();
+    el.blur();
+    const value = el.value;
+    return value || "";
+  };
 
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const form = e.currentTarget;
+
+    const payload = {
+      name: readField(form, "name").trim(),
+      email: readField(form, "email").trim(),
+      password: readField(form, "password"),
+      companyName: readField(form, "companyName").trim(),
+      industry: readField(form, "industry"),
+      companySize: readField(form, "companySize"),
+      province: readField(form, "province"),
+      city: readField(form, "city").trim(),
+    };
+
+    const missing = entries(payload)
+      .filter(([, value]) => !value)
+      .map(([key]) => key);
+
+    if (missing.length > 0) {
+      showToast("Please fill in all required fields.", "error");
+      return;
+    }
+
+    if (payload.password.length < 8) {
+      showToast("Password must be at least 8 characters.", "error");
+      return;
+    }
+
+    setIsLoading(true);
     try {
-      await cvAssistantApiClient.register({
-        name,
-        email,
-        password,
-        companyName,
-        industry,
-        companySize,
-        province,
-        city,
-      });
+      await cvAssistantApiClient.register(payload);
+      setSubmittedEmail(payload.email);
       setSuccess(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Registration failed");
+      if (isApiError(err)) {
+        if (err.isValidation()) {
+          showToast("Please check your details and try again.", "error");
+        } else if (err.status === 409) {
+          showToast("An account with this email already exists.", "error");
+        } else {
+          showToast("Registration failed. Please try again.", "error");
+        }
+      } else {
+        showToast("Registration failed. Please try again.", "error");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -71,8 +103,8 @@ export default function CvAssistantRegisterCompanyPage() {
             </div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Check your email</h2>
             <p className="text-gray-600 mb-6">
-              We have sent a verification link to <strong>{email}</strong>. Please check your inbox
-              and click the link to verify your account.
+              We have sent a verification link to <strong>{submittedEmail}</strong>. Please check
+              your inbox and click the link to verify your account.
             </p>
             <Link
               href="/cv-assistant/login?type=company"
@@ -111,21 +143,15 @@ export default function CvAssistantRegisterCompanyPage() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-                {error}
-              </div>
-            )}
-
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
                 Your name
               </label>
               <input
                 id="name"
+                name="name"
                 type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
+                autoComplete="name"
                 required
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
                 placeholder="John Smith"
@@ -138,9 +164,9 @@ export default function CvAssistantRegisterCompanyPage() {
               </label>
               <input
                 id="email"
+                name="email"
                 type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
                 required
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
                 placeholder="you@example.com"
@@ -153,9 +179,9 @@ export default function CvAssistantRegisterCompanyPage() {
               </label>
               <input
                 id="companyName"
+                name="companyName"
                 type="text"
-                value={companyName}
-                onChange={(e) => setCompanyName(e.target.value)}
+                autoComplete="organization"
                 required
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
                 placeholder="Your Company"
@@ -168,8 +194,8 @@ export default function CvAssistantRegisterCompanyPage() {
               </label>
               <select
                 id="industry"
-                value={industry}
-                onChange={(e) => setIndustry(e.target.value)}
+                name="industry"
+                defaultValue=""
                 required
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent bg-white"
               >
@@ -190,8 +216,8 @@ export default function CvAssistantRegisterCompanyPage() {
               </label>
               <select
                 id="companySize"
-                value={companySize}
-                onChange={(e) => setCompanySize(e.target.value)}
+                name="companySize"
+                defaultValue=""
                 required
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent bg-white"
               >
@@ -213,8 +239,9 @@ export default function CvAssistantRegisterCompanyPage() {
                 </label>
                 <select
                   id="province"
-                  value={province}
-                  onChange={(e) => setProvince(e.target.value)}
+                  name="province"
+                  autoComplete="address-level1"
+                  defaultValue=""
                   required
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent bg-white"
                 >
@@ -234,9 +261,9 @@ export default function CvAssistantRegisterCompanyPage() {
                 </label>
                 <input
                   id="city"
+                  name="city"
                   type="text"
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
+                  autoComplete="address-level2"
                   required
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
                   placeholder="Johannesburg"
@@ -250,9 +277,9 @@ export default function CvAssistantRegisterCompanyPage() {
               </label>
               <input
                 id="password"
+                name="password"
                 type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="new-password"
                 required
                 minLength={8}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"

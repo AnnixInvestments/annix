@@ -1,10 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import type { EmploymentType, JobPosting } from "@/app/lib/api/cvAssistantApi";
 import { SOUTH_AFRICAN_PROVINCES } from "@/app/lib/config/registration/constants";
-import { useCvCreateJobPosting, useCvUpdateJobPosting } from "@/app/lib/query/hooks";
+import {
+  useCvCreateJobPosting,
+  useCvPortalAdapters,
+  useCvUpdateJobPosting,
+} from "@/app/lib/query/hooks";
 
 const EMPLOYMENT_TYPE_OPTIONS = [
   { value: "full_time", label: "Full-time" },
@@ -32,6 +36,7 @@ export function JobFormModal({ job, onClose }: { job: JobPosting | null; onClose
   const jobSalaryMax = job?.salaryMax;
   const jobSalaryCurrency = job?.salaryCurrency;
   const jobResponseDays = job?.responseTimelineDays;
+  const jobEnabledPortalCodes = job?.enabledPortalCodes;
 
   const [title, setTitle] = useState(jobTitle || "");
   const [description, setDescription] = useState(jobDescription || "");
@@ -58,6 +63,38 @@ export function JobFormModal({ job, onClose }: { job: JobPosting | null; onClose
   const [salaryMax, setSalaryMax] = useState(salaryMaxStr || "");
   const [salaryCurrency, setSalaryCurrency] = useState(jobSalaryCurrency || "ZAR");
   const [responseDays, setResponseDays] = useState(responseDaysStr || "14");
+
+  const { data: portalAdapters = [] } = useCvPortalAdapters();
+  const [enabledPortalCodes, setEnabledPortalCodes] = useState<string[]>(
+    jobEnabledPortalCodes ?? [],
+  );
+  const [portalsTouched, setPortalsTouched] = useState(false);
+  const defaultsKey = useMemo(
+    () =>
+      portalAdapters
+        .filter((p) => p.available)
+        .map((p) => p.code)
+        .join(","),
+    [portalAdapters],
+  );
+
+  useEffect(() => {
+    if (portalsTouched) return;
+    if (jobEnabledPortalCodes && jobEnabledPortalCodes.length > 0) {
+      setEnabledPortalCodes(jobEnabledPortalCodes);
+      return;
+    }
+    if (defaultsKey) {
+      setEnabledPortalCodes(defaultsKey.split(","));
+    }
+  }, [defaultsKey, jobEnabledPortalCodes, portalsTouched]);
+
+  const togglePortal = (code: string) => {
+    setPortalsTouched(true);
+    setEnabledPortalCodes((current) =>
+      current.includes(code) ? current.filter((c) => c !== code) : [...current, code],
+    );
+  };
 
   const createMutation = useCvCreateJobPosting();
   const updateMutation = useCvUpdateJobPosting();
@@ -91,6 +128,7 @@ export function JobFormModal({ job, onClose }: { job: JobPosting | null; onClose
       salaryMax: salaryMax ? parseInt(salaryMax, 10) : null,
       salaryCurrency: salaryCurrency || "ZAR",
       responseTimelineDays: responseDays ? parseInt(responseDays, 10) : 14,
+      enabledPortalCodes,
     };
 
     if (job) {
@@ -245,6 +283,63 @@ export function JobFormModal({ job, onClose }: { job: JobPosting | null; onClose
               the job's reference number in the subject line. Annix handles the inbox; you receive
               the matched, screened candidates here.
             </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Where to post this job
+            </label>
+            <p className="text-xs text-gray-500 mb-2">
+              Free portals are pre-selected. Toggle off any you don't want this role on (e.g.
+              confidential roles).
+            </p>
+            <div className="space-y-2">
+              {portalAdapters.length === 0 ? (
+                <p className="text-xs text-gray-400">Loading portals…</p>
+              ) : (
+                portalAdapters.map((adapter) => {
+                  const code = adapter.code;
+                  const checked = enabledPortalCodes.includes(code);
+                  const available = adapter.available;
+                  const tier = adapter.costTier;
+                  return (
+                    <label
+                      key={code}
+                      className={`flex items-center gap-3 p-2 border rounded-lg ${
+                        available
+                          ? "border-gray-200 hover:bg-gray-50 cursor-pointer"
+                          : "border-gray-100 bg-gray-50 cursor-not-allowed opacity-60"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={available && checked}
+                        disabled={!available}
+                        onChange={() => available && togglePortal(code)}
+                        className="h-4 w-4 text-violet-600 focus:ring-violet-500 border-gray-300 rounded"
+                      />
+                      <span className="text-sm font-medium text-gray-900">
+                        {adapter.displayName}
+                      </span>
+                      <span
+                        className={`text-xs px-2 py-0.5 rounded-full ml-auto ${
+                          tier === "free"
+                            ? "bg-green-100 text-green-700"
+                            : tier === "freemium"
+                              ? "bg-amber-100 text-amber-700"
+                              : "bg-violet-100 text-violet-700"
+                        }`}
+                      >
+                        {tier}
+                      </span>
+                      {!available ? (
+                        <span className="text-xs text-gray-400 italic">Coming soon</span>
+                      ) : null}
+                    </label>
+                  );
+                })
+              )}
+            </div>
           </div>
 
           <div>
