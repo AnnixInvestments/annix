@@ -161,6 +161,11 @@ Guidelines:
 - Elongation is typically 300-980% - if you get < 100, columns are likely misaligned
 - Rheometer values: S'min (0.1-2.0 dNm), S'max (3-15 dNm), Ts2/TC10 (0.3-6 min), Tc90 (0.5-7 min)
 - PASS/FAIL status may be in the last column labeled "State"
+- ROW ALIGNMENT (CRITICAL — this has produced real downstream data corruption):
+  - The leftmost cell of each data row contains the batch number. The data values in that same row (Shore A, SG, Tensile, Elongation, Tear, Rebound, S'min, S'max, TS2, TC90, State) belong to THAT batch number — not to the row above or below.
+  - When a row has BLANK/EMPTY cells in some data columns, return null for those fields. NEVER fill blanks by pulling values from the row above or below (this is the most common cause of an entire table being shifted by one row).
+  - Verify by tracing horizontally: pick the first data row, follow its left-edge batch number across to each column, and confirm the value you extract for that batch is the value PHYSICALLY ON THAT SAME ROW. If a batch row visually contains only Shore A and rheometer values (with SG/Tensile/Elong/Tear/Rebound blank), the extracted batch must have only Shore A + rheometer + null for the rest — NEVER copy the next row's full data into the sparse row.
+  - Compounder CoCs commonly contain "spot-check" rows where one batch has full lab data and the surrounding batches have only Shore A + rheometer values. This is normal and expected — return null for the missing columns, do NOT shift data up or down.
 - SELF-CHECK AFTER EXTRACTION - verify ALL of these:
   1. Shore A should be 35-90. If you see a value like 1.0-1.5 in Shore A, that is SG - columns are shifted.
   2. SG should be 1.0-1.5. If you see a value like 39 in SG, that is Shore A - columns are shifted.
@@ -171,6 +176,8 @@ Guidelines:
   7. S'max should be 3-15 dNm. If you see values like 4-7 in S'max, verify against column headers.
   8. If a batch has FEWER non-null values than the number of populated columns in the PDF, your column alignment is wrong. Re-check.
   9. Cross-reference against the Nominal/Limit rows - extracted values should fall near the nominal ranges.
+  10. ROW ALIGNMENT: Take the FIRST batch number in the table. Confirm its Shore A value matches what's physically beside it on the PDF — NOT the value on the next row. If the first batch on the PDF has blank SG/Tensile/Elong/Tear/Rebound but you extracted full values for it, the entire table is shifted by one row — start over and respect blank cells as null.
+  11. ROW ALIGNMENT: Take the LAST batch number on the page. Confirm its rheometer values (S'min, S'max, TS2, TC90) match the PDF's last row — NOT the second-to-last row.
 - Return ONLY the JSON object, no additional text`;
 
 export const CALENDARER_COC_SYSTEM_PROMPT = `You are an expert at extracting structured data from Impilo Industries rubber Batch Certificates.
