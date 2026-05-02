@@ -35,7 +35,7 @@ export default function CvAssistantRegisterCompanyPage() {
         name,
         email,
         password,
-        companyName: companyName || null,
+        companyName,
         industry,
         companySize,
         province,
@@ -149,13 +149,14 @@ export default function CvAssistantRegisterCompanyPage() {
 
             <div>
               <label htmlFor="companyName" className="block text-sm font-medium text-gray-700 mb-1">
-                Company name <span className="text-gray-400">(optional)</span>
+                Company name
               </label>
               <input
                 id="companyName"
                 type="text"
                 value={companyName}
                 onChange={(e) => setCompanyName(e.target.value)}
+                required
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
                 placeholder="Your Company"
               />

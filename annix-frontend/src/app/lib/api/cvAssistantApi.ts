@@ -503,7 +503,7 @@ class CvAssistantApiClient {
     email: string;
     password: string;
     name: string;
-    companyName?: string | null;
+    companyName: string;
     industry: string;
     companySize: string;
     province: string;

@@ -49,7 +49,7 @@ export class CvAssistantAuthService {
     email: string;
     password: string;
     name: string;
-    companyName?: string;
+    companyName: string;
     industry: string;
     companySize: string;
     province: string;
@@ -65,10 +65,8 @@ export class CvAssistantAuthService {
     const verificationToken = uuidv4();
     const verificationExpires = now().plus({ hours: VERIFICATION_EXPIRY_HOURS }).toJSDate();
 
-    const resolvedCompanyName = companyName || `${name} Company`;
-
     const company = this.companyRepo.create({
-      name: resolvedCompanyName,
+      name: companyName,
       companyType: "CUSTOMER" as any,
       industry,
       companySize,

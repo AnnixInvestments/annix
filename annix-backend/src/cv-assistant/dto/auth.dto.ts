@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, IsOptional, IsString, MinLength } from "class-validator";
+import { IsEmail, IsNotEmpty, IsString, MinLength } from "class-validator";
 import { COMPANY_SIZE_VALUES } from "../../lib/dto/common-company.dto";
 import { RequiredIn, RequiredString } from "../../lib/dto/validation-decorators";
 
@@ -26,9 +26,8 @@ export class RegisterDto {
   @IsNotEmpty()
   name: string;
 
-  @IsString()
-  @IsOptional()
-  companyName?: string;
+  @RequiredString({ maxLength: 255 })
+  companyName: string;
 
   @RequiredString({ maxLength: 100 })
   industry: string;
