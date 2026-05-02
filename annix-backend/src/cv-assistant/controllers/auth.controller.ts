@@ -16,7 +16,16 @@ export class CvAssistantAuthController {
 
   @Post("register")
   async register(@Body() dto: RegisterDto) {
-    return this.authService.register(dto.email, dto.password, dto.name, dto.companyName);
+    return this.authService.register({
+      email: dto.email,
+      password: dto.password,
+      name: dto.name,
+      companyName: dto.companyName,
+      industry: dto.industry,
+      companySize: dto.companySize,
+      province: dto.province,
+      city: dto.city,
+    });
   }
 
   @Post("register/individual")

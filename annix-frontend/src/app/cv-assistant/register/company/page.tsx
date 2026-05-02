@@ -1,18 +1,29 @@
 "use client";
 
+import { allIndustryLabels } from "@annix/product-data/portals/annix-rep-industries";
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { cvAssistantApiClient } from "@/app/lib/api/cvAssistantApi";
+import {
+  COMPANY_SIZE_OPTIONS,
+  SOUTH_AFRICAN_PROVINCES,
+} from "@/app/lib/config/registration/constants";
 
 export default function CvAssistantRegisterCompanyPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [companyName, setCompanyName] = useState("");
+  const [industry, setIndustry] = useState("");
+  const [companySize, setCompanySize] = useState("");
+  const [province, setProvince] = useState("");
+  const [city, setCity] = useState("");
   const [popiaConsent, setPopiaConsent] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+
+  const industryOptions = useMemo(() => allIndustryLabels(), []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,6 +36,10 @@ export default function CvAssistantRegisterCompanyPage() {
         email,
         password,
         companyName: companyName || null,
+        industry,
+        companySize,
+        province,
+        city,
       });
       setSuccess(true);
     } catch (err) {
@@ -144,6 +159,88 @@ export default function CvAssistantRegisterCompanyPage() {
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
                 placeholder="Your Company"
               />
+            </div>
+
+            <div>
+              <label htmlFor="industry" className="block text-sm font-medium text-gray-700 mb-1">
+                Industry
+              </label>
+              <select
+                id="industry"
+                value={industry}
+                onChange={(e) => setIndustry(e.target.value)}
+                required
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent bg-white"
+              >
+                <option value="" disabled>
+                  Select your industry
+                </option>
+                {industryOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="companySize" className="block text-sm font-medium text-gray-700 mb-1">
+                Company size
+              </label>
+              <select
+                id="companySize"
+                value={companySize}
+                onChange={(e) => setCompanySize(e.target.value)}
+                required
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent bg-white"
+              >
+                <option value="" disabled>
+                  Select company size
+                </option>
+                {COMPANY_SIZE_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label htmlFor="province" className="block text-sm font-medium text-gray-700 mb-1">
+                  Province
+                </label>
+                <select
+                  id="province"
+                  value={province}
+                  onChange={(e) => setProvince(e.target.value)}
+                  required
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent bg-white"
+                >
+                  <option value="" disabled>
+                    Select province
+                  </option>
+                  {SOUTH_AFRICAN_PROVINCES.map((p) => (
+                    <option key={p} value={p}>
+                      {p}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-1">
+                  City / town
+                </label>
+                <input
+                  id="city"
+                  type="text"
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  required
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                  placeholder="Johannesburg"
+                />
+              </div>
             </div>
 
             <div>

@@ -128,12 +128,40 @@ export interface DashboardStats {
 export interface CompanySettings {
   id: number;
   name: string;
+  industry: string | null;
+  companySize: string | null;
+  province: string | null;
+  city: string | null;
+  streetAddress: string | null;
+  postalCode: string | null;
+  phone: string | null;
+  contactEmail: string | null;
+  websiteUrl: string | null;
+  registrationNumber: string | null;
+  vatNumber: string | null;
+  beeLevel: number | null;
   imapHost: string | null;
   imapPort: number | null;
   imapUser: string | null;
   imapConfigured: boolean;
   monitoringEnabled: boolean;
   emailFromAddress: string | null;
+}
+
+export interface UpdateCompanySettingsInput {
+  name?: string;
+  industry?: string;
+  companySize?: string;
+  province?: string;
+  city?: string;
+  streetAddress?: string;
+  postalCode?: string;
+  phone?: string;
+  contactEmail?: string;
+  websiteUrl?: string;
+  registrationNumber?: string;
+  vatNumber?: string;
+  beeLevel?: number;
 }
 
 export interface JobMarketSource {
@@ -417,6 +445,10 @@ class CvAssistantApiClient {
     password: string;
     name: string;
     companyName?: string | null;
+    industry: string;
+    companySize: string;
+    province: string;
+    city: string;
   }): Promise<{ message: string; user: CvAssistantUser }> {
     return this.request("/cv-assistant/auth/register", {
       method: "POST",
@@ -623,7 +655,7 @@ class CvAssistantApiClient {
     });
   }
 
-  async updateCompanySettings(data: { name?: string }): Promise<{ message: string }> {
+  async updateCompanySettings(data: UpdateCompanySettingsInput): Promise<{ message: string }> {
     return this.request("/cv-assistant/settings/company", {
       method: "PATCH",
       body: JSON.stringify(data),

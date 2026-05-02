@@ -1,4 +1,18 @@
 import { IsEmail, IsNotEmpty, IsOptional, IsString, MinLength } from "class-validator";
+import { COMPANY_SIZE_VALUES } from "../../lib/dto/common-company.dto";
+import { RequiredIn, RequiredString } from "../../lib/dto/validation-decorators";
+
+export const SA_PROVINCES = [
+  "Eastern Cape",
+  "Free State",
+  "Gauteng",
+  "KwaZulu-Natal",
+  "Limpopo",
+  "Mpumalanga",
+  "Northern Cape",
+  "North West",
+  "Western Cape",
+] as const;
 
 export class RegisterDto {
   @IsEmail()
@@ -15,6 +29,18 @@ export class RegisterDto {
   @IsString()
   @IsOptional()
   companyName?: string;
+
+  @RequiredString({ maxLength: 100 })
+  industry: string;
+
+  @RequiredIn(COMPANY_SIZE_VALUES)
+  companySize: string;
+
+  @RequiredIn(SA_PROVINCES)
+  province: string;
+
+  @RequiredString({ maxLength: 100 })
+  city: string;
 }
 
 export class RegisterIndividualDto {

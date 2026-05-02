@@ -10,6 +10,18 @@ const CV_APP_NAME = "cv-assistant";
 export interface CvCompanySettingsResponse {
   id: number;
   name: string;
+  industry: string | null;
+  companySize: string | null;
+  province: string | null;
+  city: string | null;
+  streetAddress: string | null;
+  postalCode: string | null;
+  phone: string | null;
+  contactEmail: string | null;
+  websiteUrl: string | null;
+  registrationNumber: string | null;
+  vatNumber: string | null;
+  beeLevel: number | null;
   imapHost: string | null;
   imapPort: number | null;
   imapUser: string | null;
@@ -39,6 +51,18 @@ export class SettingsService {
     return {
       id: company.id,
       name: company.name,
+      industry: company.industry,
+      companySize: company.companySize,
+      province: company.province,
+      city: company.city,
+      streetAddress: company.streetAddress,
+      postalCode: company.postalCode,
+      phone: company.phone,
+      contactEmail: company.email,
+      websiteUrl: company.websiteUrl,
+      registrationNumber: company.registrationNumber,
+      vatNumber: company.vatNumber,
+      beeLevel: company.beeLevel,
       imapHost: emailConfig.emailHost,
       imapPort: emailConfig.emailPort,
       imapUser: emailConfig.emailUser,
@@ -87,6 +111,18 @@ export class SettingsService {
     }
 
     if (dto.name != null) company.name = dto.name;
+    if (dto.industry != null) company.industry = dto.industry;
+    if (dto.companySize != null) company.companySize = dto.companySize;
+    if (dto.province != null) company.province = dto.province;
+    if (dto.city != null) company.city = dto.city;
+    if (dto.streetAddress != null) company.streetAddress = dto.streetAddress;
+    if (dto.postalCode != null) company.postalCode = dto.postalCode;
+    if (dto.phone != null) company.phone = dto.phone;
+    if (dto.contactEmail != null) company.email = dto.contactEmail;
+    if (dto.websiteUrl != null) company.websiteUrl = dto.websiteUrl;
+    if (dto.registrationNumber != null) company.registrationNumber = dto.registrationNumber;
+    if (dto.vatNumber != null) company.vatNumber = dto.vatNumber;
+    if (dto.beeLevel != null) company.beeLevel = dto.beeLevel;
 
     return this.companyRepo.save(company);
   }

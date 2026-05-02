@@ -4,6 +4,7 @@ import {
   cvAssistantApiClient,
   type NotificationPreferences,
   type PopiaRetentionStats,
+  type UpdateCompanySettingsInput,
 } from "@/app/lib/api/cvAssistantApi";
 import { cvAssistantKeys } from "../../keys";
 
@@ -35,7 +36,8 @@ export function useCvUpdateCompanySettings() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: { name?: string }) => cvAssistantApiClient.updateCompanySettings(data),
+    mutationFn: (data: UpdateCompanySettingsInput) =>
+      cvAssistantApiClient.updateCompanySettings(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: cvAssistantKeys.settings.all });
     },

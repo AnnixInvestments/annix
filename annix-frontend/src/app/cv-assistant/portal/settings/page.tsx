@@ -1,9 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { allIndustryLabels } from "@annix/product-data/portals/annix-rep-industries";
+import { useEffect, useMemo, useState } from "react";
 import { PasskeyManagementSection } from "@/app/components/PasskeyManagementSection";
 import { cvAssistantApiClient } from "@/app/lib/api/cvAssistantApi";
 import { cvAssistantTokenStore } from "@/app/lib/api/portalTokenStores";
+import {
+  BEE_LEVELS,
+  COMPANY_SIZE_OPTIONS,
+  SOUTH_AFRICAN_PROVINCES,
+} from "@/app/lib/config/registration/constants";
 import {
   useCvNotificationPreferences,
   useCvPopiaStats,
@@ -26,6 +32,20 @@ export default function SettingsPage() {
   const [notifSaved, setNotifSaved] = useState(false);
 
   const [companyName, setCompanyName] = useState("");
+  const [companyIndustry, setCompanyIndustry] = useState("");
+  const [companySize, setCompanySize] = useState("");
+  const [companyProvince, setCompanyProvince] = useState("");
+  const [companyCity, setCompanyCity] = useState("");
+  const [streetAddress, setStreetAddress] = useState("");
+  const [postalCode, setPostalCode] = useState("");
+  const [companyPhone, setCompanyPhone] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [websiteUrl, setWebsiteUrl] = useState("");
+  const [registrationNumber, setRegistrationNumber] = useState("");
+  const [vatNumber, setVatNumber] = useState("");
+  const [beeLevel, setBeeLevel] = useState<string>("");
+  const [companySaved, setCompanySaved] = useState(false);
+  const industryOptions = useMemo(() => allIndustryLabels(), []);
   const [imapHost, setImapHost] = useState("");
   const [imapPort, setImapPort] = useState("993");
   const [imapUser, setImapUser] = useState("");
@@ -44,7 +64,31 @@ export default function SettingsPage() {
       const imapUserVal = settings.imapUser;
       const imapPortStr = imapPortVal?.toString();
       const emailFromVal = settings.emailFromAddress;
+      const industryVal = settings.industry;
+      const companySizeVal = settings.companySize;
+      const provinceVal = settings.province;
+      const cityVal = settings.city;
+      const streetVal = settings.streetAddress;
+      const postalVal = settings.postalCode;
+      const phoneVal = settings.phone;
+      const contactEmailVal = settings.contactEmail;
+      const websiteVal = settings.websiteUrl;
+      const regNumVal = settings.registrationNumber;
+      const vatVal = settings.vatNumber;
+      const beeLevelStr = settings.beeLevel?.toString();
       setCompanyName(settings.name);
+      setCompanyIndustry(industryVal || "");
+      setCompanySize(companySizeVal || "");
+      setCompanyProvince(provinceVal || "");
+      setCompanyCity(cityVal || "");
+      setStreetAddress(streetVal || "");
+      setPostalCode(postalVal || "");
+      setCompanyPhone(phoneVal || "");
+      setContactEmail(contactEmailVal || "");
+      setWebsiteUrl(websiteVal || "");
+      setRegistrationNumber(regNumVal || "");
+      setVatNumber(vatVal || "");
+      setBeeLevel(beeLevelStr || "");
       setImapHost(imapHostVal || "");
       setImapPort(imapPortStr || "993");
       setImapUser(imapUserVal || "");
@@ -62,7 +106,31 @@ export default function SettingsPage() {
   }, [notifPrefs]);
 
   const handleSaveCompany = () => {
-    updateCompanyMutation.mutate({ name: companyName });
+    setCompanySaved(false);
+    const beeLevelNum = beeLevel ? parseInt(beeLevel, 10) : undefined;
+    updateCompanyMutation.mutate(
+      {
+        name: companyName,
+        industry: companyIndustry || undefined,
+        companySize: companySize || undefined,
+        province: companyProvince || undefined,
+        city: companyCity || undefined,
+        streetAddress: streetAddress || undefined,
+        postalCode: postalCode || undefined,
+        phone: companyPhone || undefined,
+        contactEmail: contactEmail || undefined,
+        websiteUrl: websiteUrl || undefined,
+        registrationNumber: registrationNumber || undefined,
+        vatNumber: vatNumber || undefined,
+        beeLevel: beeLevelNum,
+      },
+      {
+        onSuccess: () => {
+          setCompanySaved(true);
+          setTimeout(() => setCompanySaved(false), 3000);
+        },
+      },
+    );
   };
 
   const handleSaveImap = () => {
@@ -178,23 +246,187 @@ export default function SettingsPage() {
       />
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Company Information</h2>
-        <div className="space-y-4 max-w-md">
+        <h2 className="text-lg font-semibold text-gray-900 mb-1">Company Information</h2>
+        <p className="text-sm text-gray-600 mb-4">
+          A complete profile improves how the AI matches candidates to your roles.
+        </p>
+        <div className="space-y-4 max-w-2xl">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Company Name</label>
+              <input
+                type="text"
+                value={companyName}
+                onChange={(e) => setCompanyName(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Industry</label>
+              <select
+                value={companyIndustry}
+                onChange={(e) => setCompanyIndustry(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent bg-white"
+              >
+                <option value="">Select industry</option>
+                {industryOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Company Size</label>
+              <select
+                value={companySize}
+                onChange={(e) => setCompanySize(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent bg-white"
+              >
+                <option value="">Select company size</option>
+                {COMPANY_SIZE_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Website</label>
+              <input
+                type="url"
+                value={websiteUrl}
+                onChange={(e) => setWebsiteUrl(e.target.value)}
+                placeholder="https://yourcompany.co.za"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Province</label>
+              <select
+                value={companyProvince}
+                onChange={(e) => setCompanyProvince(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent bg-white"
+              >
+                <option value="">Select province</option>
+                {SOUTH_AFRICAN_PROVINCES.map((p) => (
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">City / Town</label>
+              <input
+                type="text"
+                value={companyCity}
+                onChange={(e) => setCompanyCity(e.target.value)}
+                placeholder="Johannesburg"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Postal Code</label>
+              <input
+                type="text"
+                value={postalCode}
+                onChange={(e) => setPostalCode(e.target.value)}
+                placeholder="2000"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+              />
+            </div>
+          </div>
+
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Company Name</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Street Address</label>
             <input
               type="text"
-              value={companyName}
-              onChange={(e) => setCompanyName(e.target.value)}
+              value={streetAddress}
+              onChange={(e) => setStreetAddress(e.target.value)}
+              placeholder="123 Main Road, Sandton"
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
             />
           </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+              <input
+                type="tel"
+                value={companyPhone}
+                onChange={(e) => setCompanyPhone(e.target.value)}
+                placeholder="+27 11 000 0000"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Contact Email</label>
+              <input
+                type="email"
+                value={contactEmail}
+                onChange={(e) => setContactEmail(e.target.value)}
+                placeholder="hr@yourcompany.co.za"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Registration No. (CIPC)
+              </label>
+              <input
+                type="text"
+                value={registrationNumber}
+                onChange={(e) => setRegistrationNumber(e.target.value)}
+                placeholder="2020/123456/07"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">VAT Number</label>
+              <input
+                type="text"
+                value={vatNumber}
+                onChange={(e) => setVatNumber(e.target.value)}
+                placeholder="4000000000"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">B-BBEE Level</label>
+              <select
+                value={beeLevel}
+                onChange={(e) => setBeeLevel(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent bg-white"
+              >
+                <option value="">Not specified</option>
+                {BEE_LEVELS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {companySaved && (
+            <div className="px-4 py-3 rounded-lg text-sm bg-green-50 text-green-700">
+              Company information saved
+            </div>
+          )}
+
           <button
             onClick={handleSaveCompany}
             disabled={updateCompanyMutation.isPending}
             className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 disabled:opacity-50"
           >
-            {updateCompanyMutation.isPending ? "Saving..." : "Save"}
+            {updateCompanyMutation.isPending ? "Saving..." : "Save Company Information"}
           </button>
         </div>
       </div>

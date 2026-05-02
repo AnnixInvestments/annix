@@ -45,7 +45,17 @@ export class CvAssistantAuthService {
     private readonly passwordService: PasswordService,
   ) {}
 
-  async register(email: string, password: string, name: string, companyName?: string) {
+  async register(input: {
+    email: string;
+    password: string;
+    name: string;
+    companyName?: string;
+    industry: string;
+    companySize: string;
+    province: string;
+    city: string;
+  }) {
+    const { email, password, name, companyName, industry, companySize, province, city } = input;
     const existing = await this.userRepo.findOne({ where: { email } });
     if (existing) {
       throw new ConflictException("Email already registered");
@@ -60,6 +70,10 @@ export class CvAssistantAuthService {
     const company = this.companyRepo.create({
       name: resolvedCompanyName,
       companyType: "CUSTOMER" as any,
+      industry,
+      companySize,
+      province,
+      city,
     });
     const savedCompany = await this.companyRepo.save(company);
 
