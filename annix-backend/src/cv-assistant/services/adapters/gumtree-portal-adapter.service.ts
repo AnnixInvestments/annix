@@ -1,12 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { portalForCode } from "@annix/product-data/portals";
 import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { EmailService } from "../../../email/email.service";
 import { JobPosting } from "../../entities/job-posting.entity";
 import { PortalAdapter, PortalCostTier, PortalPostingResult } from "../portal-adapter.interface";
 import { PortalAdapterRegistry } from "../portal-adapter-registry.service";
 
-const GUMTREE_SUBMISSION_EMAIL = "listings@gumtree.co.za";
+const DEFAULT_GUMTREE_SUBMISSION_EMAIL = "listings@example.com";
 
 @Injectable()
 export class GumtreePortalAdapter implements PortalAdapter, OnModuleInit {
@@ -19,6 +20,7 @@ export class GumtreePortalAdapter implements PortalAdapter, OnModuleInit {
   constructor(
     private readonly registry: PortalAdapterRegistry,
     private readonly emailService: EmailService,
+    private readonly configService: ConfigService,
   ) {}
 
   onModuleInit(): void {
@@ -27,16 +29,18 @@ export class GumtreePortalAdapter implements PortalAdapter, OnModuleInit {
 
   async post(jobPosting: JobPosting): Promise<PortalPostingResult> {
     this.logger.warn(
-      "Gumtree.co.za does not currently expose a programmatic 'post via email' workflow; this adapter sends a notification email to the public listings inbox and Annix staff complete the actual posting manually.",
+      "Gumtree does not currently expose a programmatic 'post via email' workflow; this adapter sends a notification email to the configured listings inbox and Annix staff complete the actual posting manually.",
     );
 
+    const submissionEmail =
+      this.configService.get<string>("GUMTREE_LISTINGS_EMAIL") || DEFAULT_GUMTREE_SUBMISSION_EMAIL;
     const subject = this.subjectFor(jobPosting);
     const text = this.plainTextBody(jobPosting);
     const html = this.htmlBody(jobPosting);
 
     try {
       const sent = await this.emailService.sendEmail({
-        to: GUMTREE_SUBMISSION_EMAIL,
+        to: submissionEmail,
         subject,
         text,
         html,
