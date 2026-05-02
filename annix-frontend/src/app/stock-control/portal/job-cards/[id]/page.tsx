@@ -8,10 +8,8 @@ import { createPortal } from "react-dom";
 import { PdfPreviewModal } from "@/app/components/PdfPreviewModal";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import type {
-  BackgroundStepStatus,
   JobCard,
   JobCardApproval,
-  QcControlPlanRecord,
   Requisition,
   StockAllocation,
   WorkflowStatus as WorkflowStatusData,
@@ -53,7 +51,6 @@ import { RequisitionTab } from "./components/RequisitionTab";
 import { RubberAllocationGuard } from "./components/RubberAllocation";
 import { SourceFileModal } from "./components/SourceFileModal";
 import { StockIssuesTab } from "./components/StockIssuesTab";
-import { WorkflowActionsBar } from "./components/WorkflowActionsBar";
 import { useJobCardActions } from "./hooks/useJobCardActions";
 import { useJobCardCoating } from "./hooks/useJobCardCoating";
 import { useJobCardDocuments } from "./hooks/useJobCardDocuments";
@@ -403,17 +400,6 @@ export default function JobCardDetailPage() {
 
   const handlePlaceRequisition = async () => {
     await actions.handlePlaceRequisition(router);
-  };
-
-  const handlePrintQr = async () => {
-    try {
-      setIsDownloadingQr(true);
-      await stockControlApiClient.downloadJobCardQrPdf(jobId);
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to download job card PDF"));
-    } finally {
-      setIsDownloadingQr(false);
-    }
   };
 
   const handlePrintQr = async () => {

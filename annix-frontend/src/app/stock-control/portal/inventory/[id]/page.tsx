@@ -205,21 +205,6 @@ export default function InventoryDetailPage() {
     }
   };
 
-  const [isDownloadingQr, setIsDownloadingQr] = useState(false);
-
-  const handlePrintQr = async () => {
-    try {
-      setIsDownloadingQr(true);
-      await stockControlApiClient.downloadStockItemQrPdf(itemId);
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to download QR label"));
-    } finally {
-      setIsDownloadingQr(false);
-    }
-  };
-
-  const canAdjustStock = user?.role === "manager" || user?.role === "admin";
-
   const handlePhotoCapture = async (file: File) => {
     try {
       setMutationError(null);
