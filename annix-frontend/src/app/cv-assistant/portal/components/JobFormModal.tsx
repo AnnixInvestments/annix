@@ -31,7 +31,6 @@ export function JobFormModal({ job, onClose }: { job: JobPosting | null; onClose
   const jobSalaryMin = job?.salaryMin;
   const jobSalaryMax = job?.salaryMax;
   const jobSalaryCurrency = job?.salaryCurrency;
-  const jobApplyByEmail = job?.applyByEmail;
   const jobResponseDays = job?.responseTimelineDays;
 
   const [title, setTitle] = useState(jobTitle || "");
@@ -58,7 +57,6 @@ export function JobFormModal({ job, onClose }: { job: JobPosting | null; onClose
   const [salaryMin, setSalaryMin] = useState(salaryMinStr || "");
   const [salaryMax, setSalaryMax] = useState(salaryMaxStr || "");
   const [salaryCurrency, setSalaryCurrency] = useState(jobSalaryCurrency || "ZAR");
-  const [applyByEmail, setApplyByEmail] = useState(jobApplyByEmail || "");
   const [responseDays, setResponseDays] = useState(responseDaysStr || "14");
 
   const createMutation = useCvCreateJobPosting();
@@ -92,7 +90,6 @@ export function JobFormModal({ job, onClose }: { job: JobPosting | null; onClose
       salaryMin: salaryMin ? parseInt(salaryMin, 10) : null,
       salaryMax: salaryMax ? parseInt(salaryMax, 10) : null,
       salaryCurrency: salaryCurrency || "ZAR",
-      applyByEmail: applyByEmail || null,
       responseTimelineDays: responseDays ? parseInt(responseDays, 10) : 14,
     };
 
@@ -240,17 +237,14 @@ export function JobFormModal({ job, onClose }: { job: JobPosting | null; onClose
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Application email <span className="text-gray-400">(where CVs come back to)</span>
-            </label>
-            <input
-              type="email"
-              value={applyByEmail}
-              onChange={(e) => setApplyByEmail(e.target.value)}
-              placeholder="apply+jobref@cv.annix.co.za"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
-            />
+          <div className="rounded-lg bg-violet-50 border border-violet-100 p-3 text-sm text-violet-900">
+            <p className="font-medium">Where applicants send their CVs</p>
+            <p className="text-xs mt-1 text-violet-700">
+              All CV Assistant applications come into{" "}
+              <code className="font-mono bg-white px-1 py-0.5 rounded">jobs@annix.co.za</code> with
+              the job's reference number in the subject line. Annix handles the inbox; you receive
+              the matched, screened candidates here.
+            </p>
           </div>
 
           <div>

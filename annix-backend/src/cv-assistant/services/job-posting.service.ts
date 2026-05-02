@@ -11,6 +11,8 @@ const REF_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const REF_LENGTH = 6;
 const MAX_REF_ATTEMPTS = 8;
 
+export const CV_ASSISTANT_APPLICATIONS_INBOX = "jobs@annix.co.za";
+
 export interface PublicJobPostingDto {
   referenceNumber: string;
   title: string;
@@ -175,7 +177,7 @@ export class JobPostingService {
       requiredCertifications: jobPosting.requiredCertifications,
       minExperienceYears: jobPosting.minExperienceYears,
       responseTimelineDays: jobPosting.responseTimelineDays,
-      applyByEmail: jobPosting.applyByEmail,
+      applyByEmail: CV_ASSISTANT_APPLICATIONS_INBOX,
       postedAt: jobPosting.activatedAt ?? jobPosting.createdAt,
       companyName: company?.name ?? null,
     };
