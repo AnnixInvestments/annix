@@ -15,6 +15,7 @@ import { AnalyticsController } from "./controllers/analytics.controller";
 import { CvAssistantAuthController } from "./controllers/auth.controller";
 import { CandidateController } from "./controllers/candidate.controller";
 import { DashboardController } from "./controllers/dashboard.controller";
+import { IndividualProfileController } from "./controllers/individual-profile.controller";
 import { JobMarketController } from "./controllers/job-market.controller";
 import { JobPostingController } from "./controllers/job-posting.controller";
 import { NotificationController } from "./controllers/notification.controller";
@@ -24,6 +25,7 @@ import { SettingsController } from "./controllers/settings.controller";
 import { Candidate } from "./entities/candidate.entity";
 import { CandidateJobMatch } from "./entities/candidate-job-match.entity";
 import { CandidateReference } from "./entities/candidate-reference.entity";
+import { CvAssistantIndividualDocument } from "./entities/cv-assistant-individual-document.entity";
 import { CvAssistantProfile } from "./entities/cv-assistant-profile.entity";
 import { CvAssistantUser } from "./entities/cv-assistant-user.entity";
 import { CvPushSubscription } from "./entities/cv-push-subscription.entity";
@@ -41,6 +43,7 @@ import { CvEmailAdapterService } from "./services/cv-email-adapter.service";
 import { CvExtractionService } from "./services/cv-extraction.service";
 import { CvNotificationService } from "./services/cv-notification.service";
 import { EmbeddingService } from "./services/embedding.service";
+import { IndividualProfileService } from "./services/individual-profile.service";
 import { JobIngestionService } from "./services/job-ingestion.service";
 import { JobMarketSourceService } from "./services/job-market-source.service";
 import { JobMatchService } from "./services/job-match.service";
@@ -68,6 +71,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
       CandidateJobMatch,
       CvPushSubscription,
       CvAssistantUser,
+      CvAssistantIndividualDocument,
     ]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -97,6 +101,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     JobMarketController,
     AnalyticsController,
     NotificationController,
+    IndividualProfileController,
   ],
   providers: [
     CvAssistantAuthGuard,
@@ -119,6 +124,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     MarketInsightsService,
     AnalyticsService,
     CvNotificationService,
+    IndividualProfileService,
   ],
   exports: [CvAssistantAuthService],
 })

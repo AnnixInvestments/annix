@@ -192,12 +192,7 @@ export default function HomePage() {
             </div>
           </Link>
 
-          <Link
-            href="/cv-assistant/login"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="group"
-          >
+          <Link href="/cv-assistant" target="_blank" rel="noopener noreferrer" className="group">
             <div className="bg-white bg-opacity-95 backdrop-blur-sm rounded-xl shadow-lg p-8 border-2 border-transparent hover:border-violet-400 hover:shadow-xl transition-all duration-300 h-full">
               <div className="text-center">
                 <div className="inline-flex items-center justify-center w-20 h-20 bg-violet-100 rounded-2xl text-violet-600 mb-6 group-hover:bg-violet-600 group-hover:text-white transition-colors">
@@ -205,10 +200,11 @@ export default function HomePage() {
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 mb-3">CV Assistant</h3>
                 <p className="text-gray-600 mb-6">
-                  AI-powered candidate screening and reference checking for recruitment teams.
+                  For companies: AI-powered candidate screening and reference checking. For
+                  individuals: upload your CV and get matched to jobs you qualify for.
                 </p>
                 <span className="inline-flex items-center text-violet-600 font-semibold group-hover:translate-x-1 transition-transform">
-                  Login
+                  Get started
                   <svg
                     className="w-5 h-5 ml-2"
                     fill="none"

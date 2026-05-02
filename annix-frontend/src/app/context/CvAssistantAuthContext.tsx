@@ -15,7 +15,7 @@ interface CvAssistantAuthState {
 }
 
 interface CvAssistantAuthContextType extends CvAssistantAuthState {
-  login: (email: string, password: string, rememberMe: boolean) => Promise<void>;
+  login: (email: string, password: string, rememberMe: boolean) => Promise<CvAssistantUserProfile>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -52,6 +52,7 @@ export function CvAssistantAuthProvider(props: { children: ReactNode }) {
           email: profile.email,
           name: profile.name,
           role: profile.role,
+          userType: profile.userType,
         },
         profile,
       });
@@ -85,6 +86,8 @@ export function CvAssistantAuthProvider(props: { children: ReactNode }) {
         user: response.user,
         profile,
       });
+
+      return profile;
     } catch (error) {
       setState((prev) => ({ ...prev, isLoading: false }));
       throw error;
@@ -119,6 +122,7 @@ export function CvAssistantAuthProvider(props: { children: ReactNode }) {
               ...prev.user,
               name: profile.name,
               role: profile.role,
+              userType: profile.userType,
             }
           : null,
       }));

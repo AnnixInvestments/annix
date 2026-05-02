@@ -564,6 +564,12 @@ export {
   useCvTopCandidates,
 } from "./cv-assistant/useCvDashboard";
 export {
+  useCvDeleteMyDocument,
+  useCvMyDocuments,
+  useCvMyProfileStatus,
+  useCvUploadMyDocument,
+} from "./cv-assistant/useCvIndividualProfile";
+export {
   useCvCreateJobMarketSource,
   useCvDeleteJobMarketSource,
   useCvExternalJobs,

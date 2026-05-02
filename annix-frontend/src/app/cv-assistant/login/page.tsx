@@ -5,13 +5,21 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { PasskeyLoginButton } from "@/app/components/PasskeyLoginButton";
 import { useCvAssistantAuth } from "@/app/context/CvAssistantAuthContext";
+import { cvAssistantApiClient } from "@/app/lib/api/cvAssistantApi";
 import { cvAssistantTokenStore } from "@/app/lib/api/portalTokenStores";
 import { redirectAfterPasskeyLogin, storePasskeyJwt } from "@/app/lib/passkey";
+
+function postLoginPath(userType: string | undefined, returnUrl: string | null): string {
+  if (returnUrl) return returnUrl;
+  if (userType === "individual") return "/cv-assistant/seeker/dashboard";
+  return "/cv-assistant/portal/dashboard";
+}
 
 function CvAssistantLoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const returnUrl = searchParams.get("returnUrl");
+  const accountType = searchParams.get("type");
   const { login, isLoading } = useCvAssistantAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -23,12 +31,19 @@ function CvAssistantLoginContent() {
     setError(null);
 
     try {
-      await login(email, password, rememberMe);
-      router.push(returnUrl || "/cv-assistant/portal/dashboard");
+      const profile = await login(email, password, rememberMe);
+      router.push(postLoginPath(profile.userType, returnUrl));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
     }
   };
+
+  const registerHref =
+    accountType === "individual"
+      ? "/cv-assistant/register/individual"
+      : accountType === "company"
+        ? "/cv-assistant/register/company"
+        : "/cv-assistant";
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-violet-900 via-purple-900 to-violet-900 flex items-center justify-center px-4">
@@ -51,7 +66,13 @@ function CvAssistantLoginContent() {
               </svg>
             </div>
             <h1 className="text-2xl font-bold text-gray-900">CV Assistant</h1>
-            <p className="text-gray-600 mt-2">Sign in to manage your candidates</p>
+            <p className="text-gray-600 mt-2">
+              {accountType === "individual"
+                ? "Sign in to your job seeker account"
+                : accountType === "company"
+                  ? "Sign in to your company account"
+                  : "Sign in"}
+            </p>
           </div>
 
           <form
@@ -138,9 +159,10 @@ function CvAssistantLoginContent() {
               <PasskeyLoginButton
                 email={email}
                 appCode="cv-assistant"
-                onSuccess={(response) => {
+                onSuccess={async (response) => {
                   storePasskeyJwt(cvAssistantTokenStore, response, rememberMe);
-                  redirectAfterPasskeyLogin(returnUrl || "/cv-assistant/portal/dashboard");
+                  const profile = await cvAssistantApiClient.currentUser();
+                  redirectAfterPasskeyLogin(postLoginPath(profile.userType, returnUrl));
                 }}
                 onError={(message) => setError(message)}
               />
@@ -151,7 +173,7 @@ function CvAssistantLoginContent() {
             <p className="text-gray-600">
               Do not have an account?{" "}
               <Link
-                href="/cv-assistant/register"
+                href={registerHref}
                 className="text-violet-600 hover:text-violet-700 font-medium"
               >
                 Register
@@ -160,9 +182,9 @@ function CvAssistantLoginContent() {
           </div>
         </div>
 
-        <div className="text-center mt-6">
-          <Link href="/" className="text-violet-200 hover:text-white text-sm">
-            Back to Annix Platform
+        <div className="text-center mt-6 space-x-4">
+          <Link href="/cv-assistant" className="text-violet-200 hover:text-white text-sm">
+            Choose a different account type
           </Link>
         </div>
       </div>

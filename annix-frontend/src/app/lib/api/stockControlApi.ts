@@ -134,6 +134,11 @@ export interface JobCard {
   updatedAt: string;
   allocations?: StockAllocation[];
   lineItems?: JobCardLineItem[];
+  jtDnNumber?: string | null;
+  parentJobCardId?: number | null;
+  cpoId?: number | null;
+  workflowStatus?: string | null;
+  effectiveWorkflowStatus?: string | null;
 }
 
 export interface StockAllocation {

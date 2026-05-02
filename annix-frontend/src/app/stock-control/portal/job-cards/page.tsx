@@ -134,7 +134,8 @@ export default function JobCardsPage() {
     if (alreadyRan || !isAdmin) return;
     dedupRanRef.current = true;
     deduplicateMutation.mutate(undefined, {
-      onSuccess: (result) => {
+      onSuccess: (data) => {
+        const result = data as { merged: number; groups: number };
         if (result.merged > 0) {
           setDedupResult(result);
         }
@@ -551,128 +552,6 @@ export default function JobCardsPage() {
             <p className="mt-1 text-sm text-gray-500">Create a new job card to get started.</p>
           </div>
         ) : (
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Job Number
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  JC Number
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Page
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Job Name
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Customer
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Status
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Created
-                </th>
-                <th scope="col" className="relative px-6 py-3">
-                  <span className="sr-only">Actions</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {jobCards.map((job) => (
-                <div
-                  key={job.id}
-                  className="p-4 hover:bg-gray-50 cursor-pointer"
-                  onClick={() => router.push(`/stock-control/portal/job-cards/${job.id}`)}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <Link
-                      href={`/stock-control/portal/job-cards/${job.id}`}
-                      className="text-sm font-medium text-teal-700 hover:text-teal-900"
-                    >
-                      {job.jobNumber}
-                      {job.jtDnNumber ? ` / ${job.jtDnNumber}` : ""}
-                    </Link>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {job.jcNumber || "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {job.pageNumber || "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {job.jobName}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {job.customerName || "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusBadgeColor(job.status)}`}
-                    >
-                      {job.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {formatDateZA(job.createdAt)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDelete(job.id, job.jobNumber);
-                      }}
-                      disabled={deletingId === job.id}
-                      className="text-gray-400 hover:text-red-600 disabled:opacity-50"
-                      title="Delete job card"
-                    >
-                      {deletingId === job.id ? (
-                        <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                          <circle
-                            className="opacity-25"
-                            cx="12"
-                            cy="12"
-                            r="10"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                            />
-                          </svg>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
 
             <table className="hidden sm:table w-full table-fixed divide-y divide-gray-200">
               <thead className="bg-gray-50">
@@ -950,7 +829,6 @@ export default function JobCardsPage() {
                 })}
               </tbody>
             </table>
-          </>
         )}
       </div>
 

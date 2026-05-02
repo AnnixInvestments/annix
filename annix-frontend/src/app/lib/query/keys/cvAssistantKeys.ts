@@ -68,4 +68,10 @@ export const cvAssistantKeys = {
     timeToFill: () => ["cv-assistant", "analytics", "time-to-fill"] as const,
     marketTrends: () => ["cv-assistant", "analytics", "market-trends"] as const,
   },
+
+  individualProfile: {
+    all: ["cv-assistant", "me"] as const,
+    status: () => ["cv-assistant", "me", "profile-status"] as const,
+    documents: () => ["cv-assistant", "me", "documents"] as const,
+  },
 } as const;

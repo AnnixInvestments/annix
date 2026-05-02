@@ -608,6 +608,7 @@ export default function JobCardDetailPage() {
           </button>
           {transitions.map((transition) => (
             <button
+              key={transition.targetStatus ?? transition.label}
               onClick={actions.handlePrintQr}
               disabled={actions.isDownloadingQr}
               className="inline-flex items-center px-3 py-1.5 sm:px-4 sm:py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:bg-gray-100 disabled:cursor-not-allowed"
@@ -622,7 +623,7 @@ export default function JobCardDetailPage() {
               </svg>
               {actions.isDownloadingQr ? "Generating..." : "Print JC"}
             </button>
-          )}
+          ))}
           {currentStatus === "dispatched" && (
             <button
               onClick={actions.handlePrintSignedPdf}
@@ -1016,7 +1017,7 @@ export default function JobCardDetailPage() {
           <h3 className="text-lg leading-6 font-medium text-gray-900">Stock Allocations</h3>
           <span className="text-sm text-gray-500">{allocations.length} allocations</span>
         </div>
-        {allocations.length === 0 ? (
+        {allocations.length === 0 && (
           <div className="text-center py-12">
             <svg
               className="mx-auto h-12 w-12 text-gray-400"
@@ -1031,9 +1032,9 @@ export default function JobCardDetailPage() {
                 d="M6 18L18 6M6 6l12 12"
               />
             </svg>
-          </button>
-        </div>
-      )}
+          </div>
+        )}
+      </div>
 
       {workflowStatus &&
         (() => {

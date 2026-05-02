@@ -17,6 +17,19 @@ export class RegisterDto {
   companyName?: string;
 }
 
+export class RegisterIndividualDto {
+  @IsEmail()
+  email: string;
+
+  @IsString()
+  @MinLength(8)
+  password: string;
+
+  @IsString()
+  @IsNotEmpty()
+  name: string;
+}
+
 export class LoginDto {
   @IsEmail()
   email: string;

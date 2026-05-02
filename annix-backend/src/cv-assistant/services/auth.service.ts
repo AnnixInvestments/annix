@@ -18,7 +18,7 @@ import { AppRole } from "../../rbac/entities/app-role.entity";
 import { UserAppAccess } from "../../rbac/entities/user-app-access.entity";
 import { PasswordService } from "../../shared/auth/password.service";
 import { User } from "../../user/entities/user.entity";
-import { CvAssistantProfile } from "../entities/cv-assistant-profile.entity";
+import { CvAssistantProfile, CvAssistantUserType } from "../entities/cv-assistant-profile.entity";
 import { CvAssistantRole } from "../entities/cv-assistant-user.entity";
 
 const VERIFICATION_EXPIRY_HOURS = 24;
@@ -79,6 +79,7 @@ export class CvAssistantAuthService {
     const profile = this.profileRepo.create({
       userId: savedUser.id,
       companyId: savedCompany.id,
+      userType: CvAssistantUserType.COMPANY,
     });
     await this.profileRepo.save(profile);
 
@@ -93,6 +94,51 @@ export class CvAssistantAuthService {
         email: savedUser.email,
         name,
         role: CvAssistantRole.ADMIN,
+        userType: CvAssistantUserType.COMPANY,
+      },
+    };
+  }
+
+  async registerIndividual(email: string, password: string, name: string) {
+    const existing = await this.userRepo.findOne({ where: { email } });
+    if (existing) {
+      throw new ConflictException("Email already registered");
+    }
+
+    const passwordHash = await this.passwordService.hashSimple(password);
+    const verificationToken = uuidv4();
+    const verificationExpires = now().plus({ hours: VERIFICATION_EXPIRY_HOURS }).toJSDate();
+
+    const user = this.userRepo.create({
+      email,
+      username: email,
+      passwordHash,
+      firstName: name.split(" ")[0],
+      lastName: name.includes(" ") ? name.substring(name.indexOf(" ") + 1) : undefined,
+      status: "pending",
+      emailVerified: false,
+      emailVerificationToken: verificationToken,
+      emailVerificationExpires: verificationExpires,
+    } as Partial<User>);
+    const savedUser = await this.userRepo.save(user);
+
+    const profile = this.profileRepo.create({
+      userId: savedUser.id,
+      companyId: null,
+      userType: CvAssistantUserType.INDIVIDUAL,
+    });
+    await this.profileRepo.save(profile);
+
+    await this.emailService.sendCvAssistantVerificationEmail(email, verificationToken);
+
+    return {
+      message: "Registration successful. Please check your email to verify your account.",
+      user: {
+        id: savedUser.id,
+        email: savedUser.email,
+        name,
+        role: CvAssistantRole.INDIVIDUAL,
+        userType: CvAssistantUserType.INDIVIDUAL,
       },
     };
   }
@@ -118,7 +164,7 @@ export class CvAssistantAuthService {
     await this.userRepo.save(user);
 
     const profile = await this.profileRepo.findOne({ where: { userId: user.id } });
-    const role = await this.resolveRole(user.id);
+    const role = await this.resolveRole(user.id, profile);
     const tokens = this.generateTokens(user, profile, role);
 
     return {
@@ -211,7 +257,7 @@ export class CvAssistantAuthService {
     }
 
     const profile = await this.profileRepo.findOne({ where: { userId: user.id } });
-    const role = await this.resolveRole(user.id);
+    const role = await this.resolveRole(user.id, profile);
     const userName = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email;
     const tokens = this.generateTokens(user, profile, role);
 
@@ -222,6 +268,7 @@ export class CvAssistantAuthService {
         email: user.email,
         name: userName,
         role,
+        userType: profile?.userType ?? CvAssistantUserType.COMPANY,
       },
     };
   }
@@ -237,7 +284,7 @@ export class CvAssistantAuthService {
       relations: ["company"],
     });
 
-    const role = await this.resolveRole(userId);
+    const role = await this.resolveRole(userId, profile);
     const userName = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email;
 
     return {
@@ -245,6 +292,7 @@ export class CvAssistantAuthService {
       email: user.email,
       name: userName,
       role,
+      userType: profile?.userType ?? CvAssistantUserType.COMPANY,
       companyId: profile?.companyId ?? null,
       companyName: profile?.company?.name ?? null,
       createdAt: user.createdAt,
@@ -264,7 +312,7 @@ export class CvAssistantAuthService {
       }
 
       const profile = await this.profileRepo.findOne({ where: { userId: user.id } });
-      const role = await this.resolveRole(user.id);
+      const role = await this.resolveRole(user.id, profile);
       const userName = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email;
 
       return {
@@ -274,7 +322,8 @@ export class CvAssistantAuthService {
             email: user.email,
             name: userName,
             role,
-            companyId: profile?.companyId ?? payload.companyId,
+            userType: profile?.userType ?? CvAssistantUserType.COMPANY,
+            companyId: profile?.companyId ?? payload.companyId ?? null,
             type: "cv-assistant",
           },
           { expiresIn: "1h" },
@@ -287,7 +336,7 @@ export class CvAssistantAuthService {
 
   async teamMembers(companyId: number) {
     const profiles = await this.profileRepo.find({
-      where: { companyId },
+      where: { companyId, userType: CvAssistantUserType.COMPANY },
       relations: ["user"],
       order: { createdAt: "ASC" },
     });
@@ -300,7 +349,7 @@ export class CvAssistantAuthService {
       createdAt: Date;
     }> = [];
     for (const p of profiles) {
-      const role = await this.resolveRole(p.userId);
+      const role = await this.resolveRole(p.userId, p);
       const userName =
         [p.user.firstName, p.user.lastName].filter(Boolean).join(" ") || p.user.email;
       result.push({
@@ -314,7 +363,13 @@ export class CvAssistantAuthService {
     return result;
   }
 
-  private async resolveRole(userId: number): Promise<string> {
+  private async resolveRole(userId: number, profile?: CvAssistantProfile | null): Promise<string> {
+    const resolvedProfile =
+      profile === undefined ? await this.profileRepo.findOne({ where: { userId } }) : profile;
+    if (resolvedProfile?.userType === CvAssistantUserType.INDIVIDUAL) {
+      return CvAssistantRole.INDIVIDUAL;
+    }
+
     const access = await this.userAppAccessRepo.findOne({
       where: { userId, app: { code: "cv-assistant" } },
       relations: ["role"],
@@ -326,7 +381,8 @@ export class CvAssistantAuthService {
         editor: CvAssistantRole.RECRUITER,
         administrator: CvAssistantRole.ADMIN,
       };
-      return roleMap[access.role.code] || CvAssistantRole.VIEWER;
+      const mapped = roleMap[access.role.code];
+      return mapped || CvAssistantRole.VIEWER;
     }
 
     return CvAssistantRole.VIEWER;
@@ -370,12 +426,13 @@ export class CvAssistantAuthService {
     user: User,
   ): Promise<{ accessToken: string; refreshToken: string }> {
     const profile = await this.profileRepo.findOne({ where: { userId: user.id } });
-    const role = await this.resolveRole(user.id);
+    const role = await this.resolveRole(user.id, profile);
     return this.generateTokens(user, profile, role);
   }
 
   private generateTokens(user: User, profile: CvAssistantProfile | null, role: string) {
     const userName = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email;
+    const userType = profile?.userType ?? CvAssistantUserType.COMPANY;
 
     const accessToken = this.jwtService.sign(
       {
@@ -383,6 +440,7 @@ export class CvAssistantAuthService {
         email: user.email,
         name: userName,
         role,
+        userType,
         companyId: profile?.companyId ?? null,
         type: "cv-assistant",
       },
@@ -392,6 +450,7 @@ export class CvAssistantAuthService {
     const refreshToken = this.jwtService.sign(
       {
         sub: user.id,
+        userType,
         companyId: profile?.companyId ?? null,
         tokenType: "refresh",
         type: "cv-assistant",

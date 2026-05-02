@@ -38,14 +38,19 @@ export class CvAssistantAuthGuard implements CanActivate {
         throw new UnauthorizedException("User not found");
       }
 
-      const role = await this.resolveRole(user.id, payload.role);
+      const userType = payload.userType ?? "company";
+      const role =
+        userType === "individual"
+          ? CvAssistantRole.INDIVIDUAL
+          : await this.resolveRole(user.id, payload.role);
 
       request.user = {
         id: user.id,
         email: user.email,
         name: payload.name,
         role,
-        companyId: payload.companyId,
+        userType,
+        companyId: payload.companyId ?? null,
       };
 
       return true;

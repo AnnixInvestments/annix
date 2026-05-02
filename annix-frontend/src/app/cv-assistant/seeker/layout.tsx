@@ -5,33 +5,26 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect } from "react";
 import { FeedbackWidget } from "@/app/components/FeedbackWidget";
 import { useCvAssistantAuth } from "@/app/context/CvAssistantAuthContext";
+import { useCvMyProfileStatus } from "@/app/lib/query/hooks";
 import { CV_ASSISTANT_VERSION } from "../config/version";
-import {
-  BriefcaseIcon,
-  ChartIcon,
-  ClipboardIcon,
-  CogIcon,
-  DocumentIcon,
-  GlobeIcon,
-  HomeIcon,
-  UsersIcon,
-} from "./components/icons";
 
 const navigation = [
-  { name: "Dashboard", href: "/cv-assistant/portal/dashboard", icon: HomeIcon },
-  { name: "Jobs", href: "/cv-assistant/portal/jobs", icon: BriefcaseIcon },
-  { name: "Candidates", href: "/cv-assistant/portal/candidates", icon: UsersIcon },
-  { name: "References", href: "/cv-assistant/portal/references", icon: ClipboardIcon },
-  { name: "Job Market", href: "/cv-assistant/portal/job-market", icon: GlobeIcon },
-  { name: "Analytics", href: "/cv-assistant/portal/analytics", icon: ChartIcon },
-  { name: "Settings", href: "/cv-assistant/portal/settings", icon: CogIcon },
+  { name: "Dashboard", href: "/cv-assistant/seeker/dashboard" },
+  { name: "My CV", href: "/cv-assistant/seeker/profile" },
+  { name: "Browse Jobs", href: "/cv-assistant/seeker/jobs" },
+  { name: "Applications", href: "/cv-assistant/seeker/applications" },
 ];
 
-function PortalContent({ children }: { children: React.ReactNode }) {
+function SeekerContent({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { isAuthenticated, isLoading, user, logout } = useCvAssistantAuth();
+  const isIndividual = user?.userType === "individual";
+  const profileStatusQuery = useCvMyProfileStatus(isAuthenticated && isIndividual);
+  const profileStatus = profileStatusQuery.data;
+  const hasCv = profileStatus ? profileStatus.hasCv : null;
+  const isOnProfilePage = pathname.startsWith("/cv-assistant/seeker/profile");
 
   useEffect(() => {
     if (isLoading) return;
@@ -40,29 +33,47 @@ function PortalContent({ children }: { children: React.ReactNode }) {
         ? `${pathname}?${searchParams.toString()}`
         : pathname;
       const returnUrl = encodeURIComponent(currentUrl);
-      router.push(`/cv-assistant/login?returnUrl=${returnUrl}`);
+      router.push(`/cv-assistant/login?type=individual&returnUrl=${returnUrl}`);
       return;
     }
-    if (user && user.userType === "individual") {
-      router.push("/cv-assistant/seeker/dashboard");
+    if (user && user.userType !== "individual") {
+      router.push("/cv-assistant/portal/dashboard");
+      return;
     }
-  }, [isLoading, isAuthenticated, user, router, pathname, searchParams]);
+    if (isIndividual && hasCv === false && !isOnProfilePage) {
+      router.push("/cv-assistant/seeker/profile");
+    }
+  }, [
+    isLoading,
+    isAuthenticated,
+    user,
+    isIndividual,
+    hasCv,
+    isOnProfilePage,
+    router,
+    pathname,
+    searchParams,
+  ]);
 
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600" />
       </div>
     );
   }
 
-  if (!isAuthenticated || (user && user.userType === "individual")) {
+  if (!isAuthenticated || (user && user.userType !== "individual")) {
+    return null;
+  }
+
+  if (isIndividual && hasCv === false && !isOnProfilePage) {
     return null;
   }
 
   const handleLogout = async () => {
     await logout();
-    router.push("/cv-assistant/login");
+    router.push("/cv-assistant/login?type=individual");
   };
 
   return (
@@ -71,9 +82,21 @@ function PortalContent({ children }: { children: React.ReactNode }) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex">
-              <Link href="/cv-assistant/portal/dashboard" className="flex items-center">
+              <Link href="/cv-assistant/seeker/dashboard" className="flex items-center">
                 <div className="flex items-center justify-center w-10 h-10 bg-violet-100 rounded-lg mr-3">
-                  <DocumentIcon className="w-6 h-6 text-violet-600" />
+                  <svg
+                    className="w-6 h-6 text-violet-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.5}
+                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                    />
+                  </svg>
                 </div>
                 <span className="font-bold text-lg text-gray-900">CV Assistant</span>
                 <span className="ml-1.5 text-gray-400 text-xs font-mono hidden sm:inline">
@@ -93,7 +116,6 @@ function PortalContent({ children }: { children: React.ReactNode }) {
                           : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
                       }`}
                     >
-                      <item.icon className="w-5 h-5 mr-2" />
                       {item.name}
                     </Link>
                   );
@@ -102,7 +124,11 @@ function PortalContent({ children }: { children: React.ReactNode }) {
             </div>
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-600">{user?.name}</span>
-              <button onClick={handleLogout} className="text-sm text-gray-600 hover:text-gray-900">
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="text-sm text-gray-600 hover:text-gray-900"
+              >
                 Sign out
               </button>
             </div>
@@ -116,7 +142,7 @@ function PortalContent({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default function PortalLayout(props: { children: React.ReactNode }) {
+export default function SeekerLayout(props: { children: React.ReactNode }) {
   const { children } = props;
   return (
     <Suspense
@@ -126,7 +152,7 @@ export default function PortalLayout(props: { children: React.ReactNode }) {
         </div>
       }
     >
-      <PortalContent>{children}</PortalContent>
+      <SeekerContent>{children}</SeekerContent>
     </Suspense>
   );
 }

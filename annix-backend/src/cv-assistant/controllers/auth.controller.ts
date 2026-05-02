@@ -3,6 +3,7 @@ import {
   ForgotPasswordDto,
   LoginDto,
   RegisterDto,
+  RegisterIndividualDto,
   ResendVerificationDto,
   ResetPasswordDto,
 } from "../dto/auth.dto";
@@ -16,6 +17,11 @@ export class CvAssistantAuthController {
   @Post("register")
   async register(@Body() dto: RegisterDto) {
     return this.authService.register(dto.email, dto.password, dto.name, dto.companyName);
+  }
+
+  @Post("register/individual")
+  async registerIndividual(@Body() dto: RegisterIndividualDto) {
+    return this.authService.registerIndividual(dto.email, dto.password, dto.name);
   }
 
   @Post("login")

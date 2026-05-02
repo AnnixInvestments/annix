@@ -13,6 +13,7 @@ export enum CvAssistantRole {
   VIEWER = "viewer",
   RECRUITER = "recruiter",
   ADMIN = "admin",
+  INDIVIDUAL = "individual",
 }
 
 @Entity("cv_assistant_users")

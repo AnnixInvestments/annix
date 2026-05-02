@@ -25,6 +25,7 @@ export class CvAssistantRoleGuard implements CanActivate {
     }
 
     const roleHierarchy: Record<CvAssistantRole, number> = {
+      [CvAssistantRole.INDIVIDUAL]: 0,
       [CvAssistantRole.VIEWER]: 1,
       [CvAssistantRole.RECRUITER]: 2,
       [CvAssistantRole.ADMIN]: 3,

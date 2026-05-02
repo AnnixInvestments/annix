@@ -7,11 +7,14 @@ export interface CvAssistantLoginDto {
   password: string;
 }
 
+export type CvAssistantUserType = "company" | "individual";
+
 export interface CvAssistantUser {
   id: number;
   email: string;
   name: string;
   role: string;
+  userType: CvAssistantUserType;
 }
 
 export interface CvAssistantLoginResponse {
@@ -25,7 +28,8 @@ export interface CvAssistantUserProfile {
   email: string;
   name: string;
   role: string;
-  companyId: number;
+  userType: CvAssistantUserType;
+  companyId: number | null;
   companyName: string | null;
   createdAt: string;
 }
@@ -324,6 +328,28 @@ export interface NotificationPreferences {
   pushEnabled: boolean;
 }
 
+export type IndividualDocumentKind = "cv" | "qualification" | "certificate";
+
+export interface IndividualDocument {
+  id: number;
+  kind: IndividualDocumentKind;
+  originalFilename: string;
+  mimeType: string;
+  sizeBytes: number;
+  label: string | null;
+  uploadedAt: string;
+  downloadUrl: string;
+}
+
+export interface IndividualProfileStatus {
+  profileComplete: boolean;
+  hasCv: boolean;
+  qualificationsCount: number;
+  certificatesCount: number;
+  cvUploadedAt: string | null;
+  cvOriginalFilename: string | null;
+}
+
 export interface CandidateJobMatchDetails {
   embeddingSimilarity: number;
   skillsOverlap: number;
@@ -393,6 +419,17 @@ class CvAssistantApiClient {
     companyName?: string | null;
   }): Promise<{ message: string; user: CvAssistantUser }> {
     return this.request("/cv-assistant/auth/register", {
+      method: "POST",
+      body: JSON.stringify(dto),
+    });
+  }
+
+  async registerIndividual(dto: {
+    email: string;
+    password: string;
+    name: string;
+  }): Promise<{ message: string; user: CvAssistantUser }> {
+    return this.request("/cv-assistant/auth/register/individual", {
       method: "POST",
       body: JSON.stringify(dto),
     });
@@ -804,6 +841,28 @@ class CvAssistantApiClient {
       method: "PATCH",
       body: JSON.stringify(data),
     });
+  }
+
+  async myProfileStatus(): Promise<IndividualProfileStatus> {
+    return this.request("/cv-assistant/me/profile/status");
+  }
+
+  async myDocuments(): Promise<IndividualDocument[]> {
+    return this.request("/cv-assistant/me/documents");
+  }
+
+  async uploadMyDocument(
+    file: File,
+    kind: IndividualDocumentKind,
+    label?: string | null,
+  ): Promise<IndividualDocument> {
+    const params: Record<string, string> = { kind };
+    if (label) params.label = label;
+    return apiClient.uploadFile<IndividualDocument>("/cv-assistant/me/documents", file, params);
+  }
+
+  async deleteMyDocument(id: number): Promise<{ message: string }> {
+    return this.request(`/cv-assistant/me/documents/${id}`, { method: "DELETE" });
   }
 }
 
