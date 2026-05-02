@@ -116,6 +116,22 @@ Update `docs/shared-registry.md` in the same commit. Reviewers / pre-push hook w
 - **Backdrop**: Use `fixed inset-0` (never `absolute inset-0`) for the backdrop overlay
 - **Early returns**: Keep `if (!isOpen) return null;` outside the portal — only wrap the actual modal JSX
 
+### Long-Running Operations (Frontend Only — MANDATORY)
+**Any user-triggered operation that can take more than ~3 seconds must show progress feedback.** A button stuck in a loading state with no UI feedback is unacceptable — the user has no way to tell whether the action is working, frozen, or finished.
+
+- **Use `useExtractionProgress` from `@/app/components/ExtractionProgressModal`** for AI extraction or any other long async operation. It provides a centred branded modal with a progress bar, brand-specific styling (au-rubber, stock-control, etc.), and `showExtraction` / `updateExtraction` / `hideExtraction` methods.
+    ```tsx
+    const { showExtraction, hideExtraction, updateExtraction } = useExtractionProgress();
+    showExtraction({ brand: "au-rubber", label: "Processing 1 of 18…", estimatedDurationMs: 60_000 * 18, itemCount: 18 });
+    // for each item:
+    updateExtraction({ label: `Processing ${index + 1} of ${total}…` });
+    // when done:
+    hideExtraction();
+    ```
+- **Bulk operations must orchestrate per-item from the frontend** so progress can update after each item, not run as a single long-blocking server-side loop. Pattern: backend GET endpoint returns the list of candidate IDs, frontend loops through calling the existing per-item endpoint, updating the progress modal after each.
+- **Never hide a long-running operation behind a button label change alone.** "Re-extracting…" with nothing else is the same as no feedback — the user doesn't know how many of how many are done, whether it's stuck, or how long is left.
+- **For deterministic-duration operations** (e.g. file upload, PDF generation), set `estimatedDurationMs` accurately so the bar moves at the right rate.
+
 ### Confirmations / Alerts (Frontend Only — MANDATORY)
 **Never use `window.confirm()`, `window.alert()`, or `window.prompt()` in frontend code.** These trigger the browser's native dialog (left-aligned, anchored to the URL bar, unbranded) and break the app's visual consistency. They also block the JavaScript main thread.
 

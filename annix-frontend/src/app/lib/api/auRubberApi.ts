@@ -865,6 +865,10 @@ class AuRubberApiClient {
     path: () => "/rubber-lining/portal/supplier-cocs/reextract-non-canonical",
   });
 
+  nonCanonicalCompounderCocIds = createEndpoint<[], { ids: number[] }>(apiClient, "GET", {
+    path: () => "/rubber-lining/portal/supplier-cocs/non-canonical-compounder-ids",
+  });
+
   reviewSupplierCoc = createEndpoint<
     [id: number, data: { extractedData?: Record<string, unknown>; reviewNotes?: string }],
     RubberSupplierCocDto

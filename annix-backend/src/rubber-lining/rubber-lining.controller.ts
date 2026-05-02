@@ -1226,6 +1226,18 @@ Formula: totalPrice = totalKg × salePricePerKg
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
+  @Get("portal/supplier-cocs/non-canonical-compounder-ids")
+  @ApiOperation({
+    summary:
+      "List Compounder CoC IDs whose compoundCode does not match any canonical compound coding",
+  })
+  async nonCanonicalCompounderCocIds(): Promise<{ ids: number[] }> {
+    const ids = await this.rubberCocService.nonCanonicalCompounderCocIds();
+    return { ids };
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
   @Post("portal/supplier-cocs/reextract-non-canonical")
   @ApiOperation({
     summary:

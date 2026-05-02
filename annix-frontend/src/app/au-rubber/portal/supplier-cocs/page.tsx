@@ -15,6 +15,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useConfirm } from "@/app/au-rubber/hooks/useConfirm";
+import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import {
   Pagination,
   SortDirection,
@@ -84,6 +85,7 @@ export default function SupplierCocsPage() {
   const router = useRouter();
   const { showToast } = useToast();
   const { confirm, ConfirmDialog } = useConfirm();
+  const { showExtraction, hideExtraction, updateExtraction } = useExtractionProgress();
   const { isAdmin } = useAuRubberAuth();
   const { colors, branding } = useAuRubberBranding();
   const logoProxy = useAuRubberProxyImageBlob(branding.logoUrl);
@@ -539,29 +541,57 @@ export default function SupplierCocsPage() {
   };
 
   const handleBulkReextractNonCanonical = async () => {
+    const candidatesResult = await auRubberApiClient.nonCanonicalCompounderCocIds();
+    const candidateIds = candidatesResult.ids;
+    if (candidateIds.length === 0) {
+      showToast("No non-canonical Compounder CoCs found — nothing to re-extract", "info");
+      return;
+    }
     const confirmed = await confirm({
-      title: "Re-extract non-canonical Compounder CoCs?",
+      title: `Re-extract ${candidateIds.length} non-canonical Compounder CoC${candidateIds.length > 1 ? "s" : ""}?`,
       message:
-        "This will run Gemini against every Compounder CoC whose compound code does not match a canonical compound, and will delete + recreate their batches.\n\nAny manual corrections previously made to those batches will be lost.",
+        "This will run Gemini against each affected PDF and delete + recreate their batches.\n\nAny manual corrections previously made to those batches will be lost.",
       confirmLabel: "Re-extract",
       cancelLabel: "Cancel",
       variant: "warning",
     });
     if (!confirmed) return;
-    try {
-      setIsBulkReextracting(true);
-      const result = await auRubberApiClient.reextractNonCanonicalCompounderCocs();
-      showToast(
-        `Re-extracted ${result.succeeded.length}/${result.candidates.length} non-canonical Compounder CoC(s)` +
-          (result.failed.length > 0 ? `; ${result.failed.length} failed` : ""),
-        result.failed.length > 0 ? "warning" : "success",
-      );
-      cocsQuery.refetch();
-    } catch (err) {
-      toastError(showToast, err, "Bulk re-extract failed");
-    } finally {
-      setIsBulkReextracting(false);
-    }
+    setIsBulkReextracting(true);
+    showExtraction({
+      brand: "au-rubber",
+      label: `Re-extracting CoC 1 of ${candidateIds.length}…`,
+      estimatedDurationMs: 60_000 * candidateIds.length,
+      itemCount: candidateIds.length,
+    });
+    const succeeded: number[] = [];
+    const failed: number[] = [];
+    const total = candidateIds.length;
+    const finalCount = await candidateIds.reduce(
+      (chain, cocId, index) =>
+        chain.then(async (currentDone) => {
+          updateExtraction({
+            label: `Re-extracting CoC ${index + 1} of ${total} (system #${cocId})…`,
+          });
+          try {
+            await auRubberApiClient.extractSupplierCoc(cocId);
+            succeeded.push(cocId);
+          } catch (err) {
+            failed.push(cocId);
+            const message = err instanceof Error ? err.message : String(err);
+            showToast(`CoC #${cocId} failed: ${message}`, "warning");
+          }
+          return currentDone + 1;
+        }),
+      Promise.resolve(0) as Promise<number>,
+    );
+    hideExtraction();
+    setIsBulkReextracting(false);
+    showToast(
+      `Re-extracted ${succeeded.length}/${finalCount} Compounder CoC${finalCount > 1 ? "s" : ""}` +
+        (failed.length > 0 ? `; ${failed.length} failed (#${failed.join(", #")})` : ""),
+      failed.length > 0 ? "warning" : "success",
+    );
+    cocsQuery.refetch();
   };
 
   const handleReclassify = async (newType: SupplierCocType) => {
