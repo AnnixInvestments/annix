@@ -84,7 +84,7 @@ export class CandidateController {
 
   @Patch(":id/status")
   async updateStatus(
-    @Request() req: { user: { companyId: number } },
+    @Request() req: { user: { id: number; companyId: number } },
     @Param("id", ParseIntPipe) id: number,
     @Body() dto: UpdateCandidateStatusDto,
   ) {
@@ -92,33 +92,74 @@ export class CandidateController {
       req.user.companyId,
       id,
       dto.status as CandidateStatus,
+      req.user.id,
+      dto.reason ?? null,
     );
+  }
+
+  @Get(":id/data-export")
+  async dataExport(
+    @Request() req: { user: { companyId: number } },
+    @Param("id", ParseIntPipe) id: number,
+  ) {
+    return this.candidateService.dataExport(req.user.companyId, id);
+  }
+
+  @Get(":id/cv-url")
+  async cvUrl(
+    @Request() req: { user: { companyId: number } },
+    @Param("id", ParseIntPipe) id: number,
+  ) {
+    const candidate = await this.candidateService.findById(req.user.companyId, id);
+    if (!candidate.cvFilePath) {
+      return { url: null };
+    }
+    const url = await this.storageService.presignedUrl(candidate.cvFilePath, 3600);
+    return { url };
   }
 
   @Post(":id/reject")
   async reject(
-    @Request() req: { user: { companyId: number } },
+    @Request() req: { user: { id: number; companyId: number } },
     @Param("id", ParseIntPipe) id: number,
+    @Body() body: { reason?: string | null } = {},
   ) {
-    await this.workflowService.manualReject(id, req.user.companyId);
+    await this.workflowService.manualReject(
+      id,
+      req.user.companyId,
+      req.user.id,
+      body.reason ?? null,
+    );
     return { message: "Candidate rejected" };
   }
 
   @Post(":id/shortlist")
   async shortlist(
-    @Request() req: { user: { companyId: number } },
+    @Request() req: { user: { id: number; companyId: number } },
     @Param("id", ParseIntPipe) id: number,
+    @Body() body: { reason?: string | null } = {},
   ) {
-    await this.workflowService.manualShortlist(id, req.user.companyId);
+    await this.workflowService.manualShortlist(
+      id,
+      req.user.companyId,
+      req.user.id,
+      body.reason ?? null,
+    );
     return { message: "Candidate shortlisted" };
   }
 
   @Post(":id/accept")
   async accept(
-    @Request() req: { user: { companyId: number } },
+    @Request() req: { user: { id: number; companyId: number } },
     @Param("id", ParseIntPipe) id: number,
+    @Body() body: { reason?: string | null } = {},
   ) {
-    await this.workflowService.manualAccept(id, req.user.companyId);
+    await this.workflowService.manualAccept(
+      id,
+      req.user.companyId,
+      req.user.id,
+      body.reason ?? null,
+    );
     return { message: "Candidate accepted" };
   }
 

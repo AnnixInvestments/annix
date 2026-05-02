@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from "@nestjs/config";
 import { JwtModule } from "@nestjs/jwt";
 import { MulterModule } from "@nestjs/platform-express";
 import { TypeOrmModule } from "@nestjs/typeorm";
+import { AuditModule } from "../audit/audit.module";
 import { EmailModule } from "../email/email.module";
 import { NixModule } from "../nix/nix.module";
 import { Company } from "../platform/entities/company.entity";
@@ -28,6 +29,7 @@ import { SettingsController } from "./controllers/settings.controller";
 import { Candidate } from "./entities/candidate.entity";
 import { CandidateJobMatch } from "./entities/candidate-job-match.entity";
 import { CandidateReference } from "./entities/candidate-reference.entity";
+import { CvAssistantCompany } from "./entities/cv-assistant-company.entity";
 import { CvAssistantIndividualDocument } from "./entities/cv-assistant-individual-document.entity";
 import { CvAssistantProfile } from "./entities/cv-assistant-profile.entity";
 import { CvAssistantUser } from "./entities/cv-assistant-user.entity";
@@ -35,16 +37,23 @@ import { CvPushSubscription } from "./entities/cv-push-subscription.entity";
 import { ExternalJob } from "./entities/external-job.entity";
 import { JobMarketSource } from "./entities/job-market-source.entity";
 import { JobPosting } from "./entities/job-posting.entity";
+import { JobPostingPortalPosting } from "./entities/job-posting-portal-posting.entity";
 import { CvAssistantAuthGuard } from "./guards/cv-assistant-auth.guard";
 import { CvAssistantRoleGuard } from "./guards/cv-assistant-role.guard";
+import { FacebookPortalAdapter } from "./services/adapters/facebook-portal-adapter.service";
+import { GumtreePortalAdapter } from "./services/adapters/gumtree-portal-adapter.service";
+import { IndeedPortalAdapter } from "./services/adapters/indeed-portal-adapter.service";
+import { LinkedInPortalAdapter } from "./services/adapters/linkedin-portal-adapter.service";
 import { AdzunaService } from "./services/adzuna.service";
 import { AnalyticsService } from "./services/analytics.service";
 import { CvAssistantAuthService } from "./services/auth.service";
 import { CandidateService } from "./services/candidate.service";
 import { CandidateJobMatchingService } from "./services/candidate-job-matching.service";
+import { CvAuditService } from "./services/cv-audit.service";
 import { CvEmailAdapterService } from "./services/cv-email-adapter.service";
 import { CvExtractionService } from "./services/cv-extraction.service";
 import { CvNotificationService } from "./services/cv-notification.service";
+import { CvScreeningService } from "./services/cv-screening.service";
 import { EmbeddingService } from "./services/embedding.service";
 import { IndividualProfileService } from "./services/individual-profile.service";
 import { JobIngestionService } from "./services/job-ingestion.service";
@@ -53,6 +62,8 @@ import { JobMatchService } from "./services/job-match.service";
 import { JobPostingService } from "./services/job-posting.service";
 import { MarketInsightsService } from "./services/market-insights.service";
 import { PopiaService } from "./services/popia.service";
+import { PortalAdapterRegistry } from "./services/portal-adapter-registry.service";
+import { PortalPostingOrchestrator } from "./services/portal-posting-orchestrator.service";
 import { ReferenceService } from "./services/reference.service";
 import { SettingsService } from "./services/settings.service";
 import { WorkflowAutomationService } from "./services/workflow-automation.service";
@@ -75,6 +86,8 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
       CvPushSubscription,
       CvAssistantUser,
       CvAssistantIndividualDocument,
+      CvAssistantCompany,
+      JobPostingPortalPosting,
     ]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -92,6 +105,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     NixModule,
     EmailModule,
     StorageModule,
+    AuditModule,
   ],
   controllers: [
     CvAssistantAuthController,
@@ -113,12 +127,14 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     CvAssistantAuthGuard,
     CvAssistantRoleGuard,
     CvAssistantAuthService,
+    CvAuditService,
     JobPostingService,
     CandidateService,
     CvExtractionService,
     JobMatchService,
     ReferenceService,
     CvEmailAdapterService,
+    CvScreeningService,
     WorkflowAutomationService,
     SettingsService,
     AdzunaService,
@@ -131,6 +147,12 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     AnalyticsService,
     CvNotificationService,
     IndividualProfileService,
+    PortalAdapterRegistry,
+    PortalPostingOrchestrator,
+    GumtreePortalAdapter,
+    LinkedInPortalAdapter,
+    IndeedPortalAdapter,
+    FacebookPortalAdapter,
   ],
   exports: [CvAssistantAuthService],
 })

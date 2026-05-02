@@ -7,6 +7,7 @@ import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interfac
 import { isCvAssistantCronEnabled } from "../cv-assistant-cron.config";
 import { Candidate } from "../entities/candidate.entity";
 import { CandidateReference } from "../entities/candidate-reference.entity";
+import { CvAuditService, ErasureReason } from "./cv-audit.service";
 
 @Injectable()
 export class PopiaService {
@@ -20,6 +21,7 @@ export class PopiaService {
     private readonly referenceRepo: Repository<CandidateReference>,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
+    private readonly cvAuditService: CvAuditService,
   ) {}
 
   @Cron(CronExpression.EVERY_DAY_AT_2AM, { name: "cv-assistant:purge-inactive" })
@@ -38,7 +40,7 @@ export class PopiaService {
     const purged = await inactiveCandidates.reduce(async (accPromise, candidate) => {
       const acc = await accPromise;
       try {
-        await this.eraseCandidateData(candidate);
+        await this.eraseCandidateData(candidate, "inactive");
         return acc + 1;
       } catch (error) {
         this.logger.error(
@@ -57,7 +59,12 @@ export class PopiaService {
     return { purged };
   }
 
-  async eraseCandidateData(candidate: Candidate): Promise<void> {
+  async eraseCandidateData(
+    candidate: Candidate,
+    reason: ErasureReason = "requested",
+  ): Promise<void> {
+    const candidateId = candidate.id;
+
     if (candidate.cvFilePath) {
       try {
         await this.storageService.delete(candidate.cvFilePath);
@@ -73,6 +80,8 @@ export class PopiaService {
     }
 
     await this.candidateRepo.remove(candidate);
+
+    await this.cvAuditService.logCvErasure(candidateId, reason);
   }
 
   async rightToErasure(companyId: number, candidateId: number): Promise<{ message: string }> {
@@ -85,7 +94,7 @@ export class PopiaService {
       return { message: "Candidate not found" };
     }
 
-    await this.eraseCandidateData(candidate);
+    await this.eraseCandidateData(candidate, "requested");
 
     this.logger.log(
       `POPIA right to erasure exercised for candidate ${candidateId} by company ${companyId}`,

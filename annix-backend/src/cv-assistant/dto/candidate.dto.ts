@@ -1,8 +1,23 @@
-import { IsBoolean, IsInt, IsOptional, IsString, Max, Min } from "class-validator";
+import {
+  IsBoolean,
+  IsEnum,
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+} from "class-validator";
+import { CandidateStatus } from "../entities/candidate.entity";
 
 export class UpdateCandidateStatusDto {
+  @IsEnum(CandidateStatus)
+  status: CandidateStatus;
+
   @IsString()
-  status: string;
+  @IsOptional()
+  @MaxLength(500)
+  reason?: string;
 }
 
 export class SubmitReferenceFeedbackDto {

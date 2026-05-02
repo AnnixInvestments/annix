@@ -90,4 +90,9 @@ export class IndividualProfileController {
   requestAccountDeletion(@Request() req: { user: { id: number } }) {
     return this.individualProfileService.requestAccountDeletion(req.user.id);
   }
+
+  @Post("withdraw-consent")
+  withdrawConsent(@Request() req: { user: { id: number } }) {
+    return this.individualProfileService.withdrawConsent(req.user.id);
+  }
 }

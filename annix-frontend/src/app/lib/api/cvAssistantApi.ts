@@ -685,6 +685,23 @@ class CvAssistantApiClient {
     return this.request(`/cv-assistant/candidates/${id}`);
   }
 
+  async updateCandidateStatus(
+    id: number,
+    dto: { status: string; reason?: string | null },
+  ): Promise<Candidate> {
+    return this.request(`/cv-assistant/candidates/${id}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        status: dto.status,
+        ...(dto.reason ? { reason: dto.reason } : {}),
+      }),
+    });
+  }
+
+  async candidateCvUrl(id: number): Promise<{ url: string | null }> {
+    return this.request(`/cv-assistant/candidates/${id}/cv-url`);
+  }
+
   async rejectCandidate(id: number): Promise<void> {
     return this.request(`/cv-assistant/candidates/${id}/reject`, { method: "POST" });
   }
@@ -1023,6 +1040,14 @@ class CvAssistantApiClient {
       method: "POST",
       body: JSON.stringify({ token }),
     });
+  }
+
+  async withdrawMyConsent(): Promise<{ message: string; erasedCandidates: number }> {
+    return this.request("/cv-assistant/me/withdraw-consent", { method: "POST" });
+  }
+
+  async candidateDataExport(candidateId: number): Promise<unknown> {
+    return this.request(`/cv-assistant/candidates/${candidateId}/data-export`);
   }
 
   async publicJobs(params?: {

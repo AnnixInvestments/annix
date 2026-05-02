@@ -553,6 +553,7 @@ export {
 } from "./cv-assistant/useCvAnalytics";
 export {
   useCvCandidateAction,
+  useCvCandidateStatusUpdate,
   useCvCandidates,
   useCvDismissMatch,
   useCvRecommendedJobs,
@@ -572,6 +573,7 @@ export {
   useCvRequestMyAccountDeletion,
   useCvUpdateMyNotificationPreferences,
   useCvUploadMyDocument,
+  useCvWithdrawMyConsent,
 } from "./cv-assistant/useCvIndividualProfile";
 export {
   useCvCreateJobMarketSource,

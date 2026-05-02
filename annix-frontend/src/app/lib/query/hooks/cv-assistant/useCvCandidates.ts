@@ -57,6 +57,22 @@ export function useCvCandidateAction() {
   });
 }
 
+export function useCvCandidateStatusUpdate() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, status, reason }: { id: number; status: string; reason?: string | null }) =>
+      cvAssistantApiClient.updateCandidateStatus(id, {
+        status,
+        reason: reason ?? null,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: cvAssistantKeys.candidates.all });
+      queryClient.invalidateQueries({ queryKey: cvAssistantKeys.dashboard.all });
+    },
+  });
+}
+
 export function useCvUploadCv() {
   const queryClient = useQueryClient();
 

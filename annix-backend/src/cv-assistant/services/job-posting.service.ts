@@ -1,10 +1,11 @@
-import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
+import { ConflictException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { now } from "../../lib/datetime";
 import { Company } from "../../platform/entities/company.entity";
 import { CreateJobPostingDto, UpdateJobPostingDto } from "../dto/job-posting.dto";
 import { EmploymentType, JobPosting, JobPostingStatus } from "../entities/job-posting.entity";
+import { PortalPostingOrchestrator } from "./portal-posting-orchestrator.service";
 
 const REF_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const REF_LENGTH = 6;
@@ -33,11 +34,14 @@ export interface PublicJobPostingDto {
 
 @Injectable()
 export class JobPostingService {
+  private readonly logger = new Logger(JobPostingService.name);
+
   constructor(
     @InjectRepository(JobPosting)
     private readonly jobPostingRepo: Repository<JobPosting>,
     @InjectRepository(Company)
     private readonly companyRepo: Repository<Company>,
+    private readonly portalPostingOrchestrator: PortalPostingOrchestrator,
   ) {}
 
   async create(companyId: number, dto: CreateJobPostingDto): Promise<JobPosting> {
@@ -118,7 +122,20 @@ export class JobPostingService {
   }
 
   async activate(companyId: number, id: number): Promise<JobPosting> {
-    return this.update(companyId, id, { status: JobPostingStatus.ACTIVE });
+    const previous = await this.findById(companyId, id);
+    const wasAlreadyActive = previous.status === JobPostingStatus.ACTIVE;
+    const updated = await this.update(companyId, id, { status: JobPostingStatus.ACTIVE });
+    if (!wasAlreadyActive) {
+      this.distributeToPortals(updated);
+    }
+    return updated;
+  }
+
+  private distributeToPortals(jobPosting: JobPosting): void {
+    void this.portalPostingOrchestrator.postToFreeAdapters(jobPosting).catch((error) => {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Portal distribution for job posting ${jobPosting.id} failed: ${message}`);
+    });
   }
 
   async pause(companyId: number, id: number): Promise<JobPosting> {

@@ -2042,4 +2042,87 @@ This is an automated notification from the Annix test site.
       html,
     });
   }
+
+  async sendCvApplicationAcknowledged(options: {
+    to: string;
+    applicantName: string;
+    jobTitle: string;
+    jobReference: string | null;
+    companyName: string;
+    responseTimelineDays: number;
+  }): Promise<boolean> {
+    const refLine = options.jobReference
+      ? `<p style="color: #6b7280; font-size: 14px;">Reference: <strong>${options.jobReference}</strong></p>`
+      : "";
+
+    const html = emailLayout({
+      title: "Application Received",
+      heading: "Application Received",
+      headingColor: "#8B5CF6",
+      bodyHtml: `
+          <p>Dear ${options.applicantName},</p>
+          <p>Thank you for applying for the <strong>${options.jobTitle}</strong> position at <strong>${options.companyName}</strong>. We have received your CV and it is now in our review queue.</p>
+          ${refLine}
+          <p>We aim to respond to all applicants within <strong>${options.responseTimelineDays} day${options.responseTimelineDays === 1 ? "" : "s"}</strong>. If you do not hear from us within that time, please consider your application unsuccessful on this occasion.</p>
+          <p>Kind regards,<br/>${options.companyName}</p>`,
+      footerText:
+        "This is an automated acknowledgement. You do not need to reply. Your information is processed in accordance with the Protection of Personal Information Act (POPIA).",
+    });
+
+    return this.sendEmail({
+      to: options.to,
+      subject: `Application Received - ${options.jobTitle}`,
+      html,
+    });
+  }
+
+  async sendCvApplicationRejected(options: {
+    to: string;
+    applicantName: string;
+    jobTitle: string;
+    jobReference: string | null;
+    companyName: string;
+    reasons: Array<"experience" | "qualifications" | "certifications" | "skills">;
+    retentionMonths: number;
+  }): Promise<boolean> {
+    const reasonLabels: Record<string, string> = {
+      experience: "minimum years of relevant experience",
+      qualifications: "the educational qualification specified for this role",
+      certifications: "one or more required certifications",
+      skills: "a sufficient match against the core skills listed for this role",
+    };
+
+    const reasonItems =
+      options.reasons.length > 0
+        ? options.reasons.map((r) => `<li>${reasonLabels[r] || r}</li>`).join("")
+        : "<li>the criteria specified for this role</li>";
+
+    const refLine = options.jobReference
+      ? `<p style="color: #6b7280; font-size: 14px;">Reference: <strong>${options.jobReference}</strong></p>`
+      : "";
+
+    const html = emailLayout({
+      title: "Application Update",
+      heading: "Application Update",
+      headingColor: "#333",
+      bodyHtml: `
+          <p>Dear ${options.applicantName},</p>
+          <p>Thank you for your interest in the <strong>${options.jobTitle}</strong> position at <strong>${options.companyName}</strong>, and for the time you took to apply.</p>
+          ${refLine}
+          <p>After reviewing your application, we are unable to take it forward at this time. Based on the requirements set for this role, your CV did not align on:</p>
+          <ul>${reasonItems}</ul>
+          <p>This decision is specific to this vacancy and is not a reflection of your wider experience.</p>
+          <p style="color: #6b7280; font-size: 14px;"><strong>Your data and POPIA rights:</strong> Under the Protection of Personal Information Act (POPIA), we will retain your CV and application details for up to <strong>${options.retentionMonths} months</strong> so that we can consider you for future suitable roles. You have the right to request access to, correction of, or erasure of your personal information at any time by replying to this email or contacting <strong>${options.companyName}</strong> directly.</p>
+          <p>We wish you every success in your job search.</p>
+          <p>Kind regards,<br/>${options.companyName}</p>`,
+      footerText:
+        "This is an automated message. Your application has been processed in line with POPIA.",
+    });
+
+    return this.sendEmail({
+      to: options.to,
+      subject: `Application Update - ${options.jobTitle}`,
+      html,
+    });
+  }
 }

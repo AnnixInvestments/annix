@@ -1,9 +1,51 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { now } from "../../lib/datetime";
+import { AuditService } from "../../audit/audit.service";
+import { now, nowISO } from "../../lib/datetime";
 import { Candidate, CandidateStatus } from "../entities/candidate.entity";
+import { CandidateReference } from "../entities/candidate-reference.entity";
 import { JobPosting } from "../entities/job-posting.entity";
+import { CvAuditService } from "./cv-audit.service";
+
+export interface CandidateDataExport {
+  exportedAt: string;
+  candidate: {
+    id: number;
+    name: string | null;
+    email: string | null;
+    status: string;
+    matchScore: number | null;
+    extractedData: unknown;
+    matchAnalysis: unknown;
+    beeLevel: number | null;
+    popiaConsent: boolean;
+    popiaConsentedAt: Date | null;
+    lastActiveAt: Date | null;
+    jobAlertsOptIn: boolean;
+    createdAt: Date;
+    updatedAt: Date;
+  };
+  applications: Array<{
+    jobPostingId: number;
+    jobTitle: string;
+    referenceNumber: string | null;
+    appliedAt: Date;
+    currentStatus: string;
+  }>;
+  screeningDecisions: Array<{
+    timestamp: Date;
+    subAction: string;
+    actorUserId: number | null;
+    details: Record<string, unknown> | null;
+  }>;
+  communications: Array<{
+    type: "rejection_email" | "shortlist_email" | "reference_request";
+    sentAt: Date;
+    recipient: string | null;
+    metadata: Record<string, unknown> | null;
+  }>;
+}
 
 @Injectable()
 export class CandidateService {
@@ -12,6 +54,10 @@ export class CandidateService {
     private readonly candidateRepo: Repository<Candidate>,
     @InjectRepository(JobPosting)
     private readonly jobPostingRepo: Repository<JobPosting>,
+    @InjectRepository(CandidateReference)
+    private readonly referenceRepo: Repository<CandidateReference>,
+    private readonly cvAuditService: CvAuditService,
+    private readonly auditService: AuditService,
   ) {}
 
   async create(jobPostingId: number, data: Partial<Candidate>): Promise<Candidate> {
@@ -86,10 +132,100 @@ export class CandidateService {
       .getMany();
   }
 
-  async updateStatus(companyId: number, id: number, status: CandidateStatus): Promise<Candidate> {
+  async updateStatus(
+    companyId: number,
+    id: number,
+    status: CandidateStatus,
+    actorId: number | null = null,
+    reason: string | null = null,
+  ): Promise<Candidate> {
     const candidate = await this.findById(companyId, id);
+    const previousStatus = candidate.status;
     candidate.status = status;
-    return this.candidateRepo.save(candidate);
+    const saved = await this.candidateRepo.save(candidate);
+
+    if (actorId !== null && previousStatus !== status) {
+      await this.cvAuditService.logHrOverride(id, previousStatus, status, reason, actorId);
+    }
+
+    return saved;
+  }
+
+  async dataExport(companyId: number, candidateId: number): Promise<CandidateDataExport> {
+    const candidate = await this.findById(companyId, candidateId);
+    const references = await this.referenceRepo.find({ where: { candidateId } });
+
+    const auditLogs = await this.auditService.findByEntity("cv_candidate", candidateId);
+    const screeningDecisions = auditLogs
+      .filter((log) => log.appName === "cv-assistant" && log.subAction !== null)
+      .map((log) => ({
+        timestamp: log.timestamp,
+        subAction: log.subAction ?? "",
+        actorUserId: log.userIdRaw,
+        details: log.details ?? null,
+      }));
+
+    const communications: CandidateDataExport["communications"] = [];
+
+    if (candidate.rejectionSentAt) {
+      communications.push({
+        type: "rejection_email",
+        sentAt: candidate.rejectionSentAt,
+        recipient: candidate.email,
+        metadata: { jobTitle: candidate.jobPosting.title },
+      });
+    }
+    if (candidate.acceptanceSentAt) {
+      communications.push({
+        type: "shortlist_email",
+        sentAt: candidate.acceptanceSentAt,
+        recipient: candidate.email,
+        metadata: { jobTitle: candidate.jobPosting.title },
+      });
+    }
+    references.forEach((ref) => {
+      if (ref.requestSentAt) {
+        communications.push({
+          type: "reference_request",
+          sentAt: ref.requestSentAt,
+          recipient: ref.email,
+          metadata: { referenceName: ref.name, status: ref.status },
+        });
+      }
+    });
+
+    await this.cvAuditService.logDataExport(candidateId, null);
+
+    return {
+      exportedAt: nowISO() ?? "",
+      candidate: {
+        id: candidate.id,
+        name: candidate.name,
+        email: candidate.email,
+        status: candidate.status,
+        matchScore: candidate.matchScore,
+        extractedData: candidate.extractedData,
+        matchAnalysis: candidate.matchAnalysis,
+        beeLevel: candidate.beeLevel,
+        popiaConsent: candidate.popiaConsent,
+        popiaConsentedAt: candidate.popiaConsentedAt,
+        lastActiveAt: candidate.lastActiveAt,
+        jobAlertsOptIn: candidate.jobAlertsOptIn,
+        createdAt: candidate.createdAt,
+        updatedAt: candidate.updatedAt,
+      },
+      applications: [
+        {
+          jobPostingId: candidate.jobPosting.id,
+          jobTitle: candidate.jobPosting.title,
+          referenceNumber: candidate.jobPosting.referenceNumber ?? null,
+          appliedAt: candidate.createdAt,
+          currentStatus: candidate.status,
+        },
+      ],
+      screeningDecisions,
+      communications,
+    };
   }
 
   async updateExtractedData(id: number, data: Partial<Candidate>): Promise<Candidate> {

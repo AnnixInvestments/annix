@@ -88,3 +88,14 @@ export function useCvConfirmMyAccountDeletion() {
     mutationFn: (token: string) => cvAssistantApiClient.confirmMyAccountDeletion(token),
   });
 }
+
+export function useCvWithdrawMyConsent() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => cvAssistantApiClient.withdrawMyConsent(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: cvAssistantKeys.individualProfile.all });
+    },
+  });
+}

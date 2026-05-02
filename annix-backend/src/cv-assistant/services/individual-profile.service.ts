@@ -7,12 +7,15 @@ import { now } from "../../lib/datetime";
 import { IStorageService, STORAGE_SERVICE, StorageArea } from "../../storage/storage.interface";
 import { User } from "../../user/entities/user.entity";
 import { isAcceptedDocumentMime } from "../config/individual-documents.config";
+import { Candidate } from "../entities/candidate.entity";
 import {
   CvAssistantIndividualDocument,
   IndividualDocumentKind,
 } from "../entities/cv-assistant-individual-document.entity";
 import { CvAssistantProfile, CvAssistantUserType } from "../entities/cv-assistant-profile.entity";
+import { CvAuditService } from "./cv-audit.service";
 import { CvExtractionService } from "./cv-extraction.service";
+import { PopiaService } from "./popia.service";
 
 const DELETION_TOKEN_EXPIRY_HOURS = 1;
 
@@ -81,10 +84,14 @@ export class IndividualProfileService {
     private readonly documentRepo: Repository<CvAssistantIndividualDocument>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
+    @InjectRepository(Candidate)
+    private readonly candidateRepo: Repository<Candidate>,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
     private readonly cvExtractionService: CvExtractionService,
     private readonly emailService: EmailService,
+    private readonly cvAuditService: CvAuditService,
+    private readonly popiaService: PopiaService,
   ) {}
 
   async profileForUser(userId: number): Promise<CvAssistantProfile> {
@@ -375,8 +382,51 @@ export class IndividualProfileService {
     return this.performErasure(profile);
   }
 
+  async withdrawConsent(userId: number): Promise<{ message: string; erasedCandidates: number }> {
+    const profile = await this.profileForUser(userId);
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException("User not found");
+    }
+
+    const linkedCandidates = await this.candidateRepo.find({
+      where: { email: user.email },
+      relations: ["jobPosting", "references"],
+    });
+
+    const erased = await linkedCandidates.reduce(async (accPromise, candidate) => {
+      const acc = await accPromise;
+      try {
+        await this.popiaService.eraseCandidateData(candidate, "requested");
+        return acc + 1;
+      } catch (err) {
+        this.logger.warn(
+          `Failed to erase candidate ${candidate.id} during consent withdrawal: ${err instanceof Error ? err.message : String(err)}`,
+        );
+        return acc;
+      }
+    }, Promise.resolve(0));
+
+    await this.cvAuditService.logConsentChange(null, false, "portal", userId);
+    profile.updatedAt = now().toJSDate();
+    await this.profileRepo.save(profile);
+
+    this.logger.log(
+      `POPIA consent withdrawn for user ${userId}; erased ${erased} candidate row(s).`,
+    );
+
+    return {
+      message:
+        erased > 0
+          ? `Consent withdrawn. We have permanently deleted ${erased} job application${erased === 1 ? "" : "s"} tied to your email.`
+          : "Consent withdrawn. No job applications were on file for your email.",
+      erasedCandidates: erased,
+    };
+  }
+
   private async performErasure(profile: CvAssistantProfile): Promise<{ message: string }> {
     const userId = profile.userId;
+    const user = await this.userRepo.findOne({ where: { id: userId } });
     const docs = await this.documentRepo.find({ where: { profileId: profile.id } });
 
     await Promise.all(
@@ -389,9 +439,29 @@ export class IndividualProfileService {
       }),
     );
 
+    if (user?.email) {
+      const linkedCandidates = await this.candidateRepo.find({
+        where: { email: user.email },
+        relations: ["jobPosting", "references"],
+      });
+      await Promise.all(
+        linkedCandidates.map(async (candidate) => {
+          try {
+            await this.popiaService.eraseCandidateData(candidate, "requested");
+          } catch (err) {
+            this.logger.warn(
+              `Failed to erase candidate ${candidate.id} during seeker self-erasure: ${err instanceof Error ? err.message : String(err)}`,
+            );
+          }
+        }),
+      );
+    }
+
     await this.documentRepo.delete({ profileId: profile.id });
     await this.profileRepo.delete(profile.id);
     await this.userRepo.delete(userId);
+
+    await this.cvAuditService.logConsentChange(null, false, "email", userId);
 
     this.logger.log(`POPIA self-erasure completed for user ${userId}`);
     return { message: "Your account and all associated data have been permanently deleted." };

@@ -7,6 +7,7 @@ import {
   useCvMyNotificationPreferences,
   useCvRequestMyAccountDeletion,
   useCvUpdateMyNotificationPreferences,
+  useCvWithdrawMyConsent,
 } from "@/app/lib/query/hooks";
 
 export default function SeekerSettingsPage() {
@@ -14,12 +15,14 @@ export default function SeekerSettingsPage() {
   const prefsQuery = useCvMyNotificationPreferences();
   const updatePrefs = useCvUpdateMyNotificationPreferences();
   const requestDeletion = useCvRequestMyAccountDeletion();
+  const withdrawConsent = useCvWithdrawMyConsent();
 
   const [threshold, setThreshold] = useState(80);
   const [digestEnabled, setDigestEnabled] = useState(true);
   const [pushEnabled, setPushEnabled] = useState(false);
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [consentMessage, setConsentMessage] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [deletionRequestedFor, setDeletionRequestedFor] = useState<string | null>(null);
 
@@ -85,6 +88,27 @@ export default function SeekerSettingsPage() {
       setDeletionRequestedFor(result.email);
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : "Could not request deletion");
+    }
+  };
+
+  const handleWithdrawConsent = async () => {
+    setErrorMessage(null);
+    setConsentMessage(null);
+    const confirmed = await confirm({
+      title: "Withdraw POPIA consent?",
+      message:
+        "This permanently deletes any job applications submitted under your email and revokes our right to process your data. Your account stays open, but we will not be able to apply you to any jobs until you grant consent again.",
+      confirmLabel: "Withdraw consent",
+      cancelLabel: "Keep consent",
+      variant: "danger",
+    });
+    if (!confirmed) return;
+
+    try {
+      const result = await withdrawConsent.mutateAsync();
+      setConsentMessage(result.message);
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : "Could not withdraw consent");
     }
   };
 
@@ -184,6 +208,27 @@ export default function SeekerSettingsPage() {
 
           <div className="border-t border-gray-100 pt-4 flex items-start justify-between gap-4">
             <div>
+              <h3 className="text-sm font-medium text-amber-700">Withdraw POPIA consent</h3>
+              <p className="text-xs text-gray-500 mt-1">
+                Permanently delete any job applications tied to your email and revoke our right to
+                process your data. Your account stays, but we cannot apply you to jobs until you
+                grant consent again.
+              </p>
+            </div>
+            <WithdrawConsentButton
+              isPending={withdrawConsent.isPending}
+              onClick={handleWithdrawConsent}
+            />
+          </div>
+
+          {consentMessage !== null && (
+            <div className="bg-amber-50 border border-amber-200 text-amber-900 px-4 py-3 rounded-lg text-sm">
+              {consentMessage}
+            </div>
+          )}
+
+          <div className="border-t border-gray-100 pt-4 flex items-start justify-between gap-4">
+            <div>
               <h3 className="text-sm font-medium text-red-700">Delete my account</h3>
               <p className="text-xs text-gray-500 mt-1">
                 Request permanent deletion of your account, CV, qualifications, and all associated
@@ -276,6 +321,21 @@ function DeleteRequestButton(props: {
       onClick={onClick}
       disabled={disabled}
       className="bg-white text-red-700 border border-red-200 px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+    >
+      {label}
+    </button>
+  );
+}
+
+function WithdrawConsentButton(props: { isPending: boolean; onClick: () => void }) {
+  const { isPending, onClick } = props;
+  const label = isPending ? "Withdrawing..." : "Withdraw consent";
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={isPending}
+      className="bg-white text-amber-700 border border-amber-200 px-4 py-2 rounded-lg text-sm font-medium hover:bg-amber-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
     >
       {label}
     </button>
