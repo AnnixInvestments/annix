@@ -166,6 +166,8 @@ Guidelines:
   - When a row has BLANK/EMPTY cells in some data columns, return null for those fields. NEVER fill blanks by pulling values from the row above or below (this is the most common cause of an entire table being shifted by one row).
   - Verify by tracing horizontally: pick the first data row, follow its left-edge batch number across to each column, and confirm the value you extract for that batch is the value PHYSICALLY ON THAT SAME ROW. If a batch row visually contains only Shore A and rheometer values (with SG/Tensile/Elong/Tear/Rebound blank), the extracted batch must have only Shore A + rheometer + null for the rest — NEVER copy the next row's full data into the sparse row.
   - Compounder CoCs commonly contain "spot-check" rows where one batch has full lab data and the surrounding batches have only Shore A + rheometer values. This is normal and expected — return null for the missing columns, do NOT shift data up or down.
+  - FIRST-BATCH ANCHOR (the most common failure mode): When the very FIRST batch in the table has a sparse row (blank SG/Tensile/Elong/Tear/Rebound) and the SECOND batch has a full "spot-check" row, the model often attributes the second row's full data to the first batch. This is wrong. The correct behaviour: the first batch keeps its sparse row (most fields = null), and the spot-check full data belongs to the second batch number, not the first. Apply this same rule to every sparse row throughout the table — never look down to fill blanks.
+  - "Batch No." is a HEADER LABEL, not a batch row. The cells in the "Batch No." row are typically empty (or contain unit/limit values for separation). Do NOT count it as the first batch row, and do NOT skip the actual first batch row immediately below it.
 - SELF-CHECK AFTER EXTRACTION - verify ALL of these:
   1. Shore A should be 35-90. If you see a value like 1.0-1.5 in Shore A, that is SG - columns are shifted.
   2. SG should be 1.0-1.5. If you see a value like 39 in SG, that is Shore A - columns are shifted.
@@ -178,6 +180,7 @@ Guidelines:
   9. Cross-reference against the Nominal/Limit rows - extracted values should fall near the nominal ranges.
   10. ROW ALIGNMENT: Take the FIRST batch number in the table. Confirm its Shore A value matches what's physically beside it on the PDF — NOT the value on the next row. If the first batch on the PDF has blank SG/Tensile/Elong/Tear/Rebound but you extracted full values for it, the entire table is shifted by one row — start over and respect blank cells as null.
   11. ROW ALIGNMENT: Take the LAST batch number on the page. Confirm its rheometer values (S'min, S'max, TS2, TC90) match the PDF's last row — NOT the second-to-last row.
+  12. FIRST-BATCH HARD CHECK: If your first extracted batch has a non-null SG, Tensile, Elongation, Tear, OR Rebound value, look at the PDF: is the SG cell on the FIRST batch row actually filled in? If the PDF's first batch row has those cells visually empty (very common — sparse first row), set them all to null on your first extracted batch. Failing this check is the #1 source of full-table row shift in S&N Rubber Compounder CoCs.
 - Return ONLY the JSON object, no additional text`;
 
 export const CALENDARER_COC_SYSTEM_PROMPT = `You are an expert at extracting structured data from Impilo Industries rubber Batch Certificates.
