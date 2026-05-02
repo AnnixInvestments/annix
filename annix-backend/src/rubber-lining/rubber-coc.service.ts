@@ -325,7 +325,16 @@ export class RubberCocService {
     await this.supplierCocRepository.save(coc);
 
     if (coc.extractedData?.batches) {
-      await this.createBatchesFromExtractedData(coc);
+      const existingCount = await this.compoundBatchRepository.count({
+        where: { supplierCocId: id },
+      });
+      if (existingCount === 0) {
+        await this.createBatchesFromExtractedData(coc);
+      } else {
+        this.logger.log(
+          `Skipping batch creation for CoC ${id} during approve — ${existingCount} batches already persisted (likely from a prior re-extract)`,
+        );
+      }
     }
 
     if (coc.cocType === SupplierCocType.COMPOUNDER && coc.compoundCode) {
