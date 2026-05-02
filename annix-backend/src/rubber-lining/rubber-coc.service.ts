@@ -959,7 +959,23 @@ export class RubberCocService {
   private async createBatchesFromExtractedData(coc: RubberSupplierCoc): Promise<void> {
     const extractedBatches = coc.extractedData?.batches || [];
 
-    const batchesToCreate = extractedBatches.map((batchData) =>
+    const dedupedByBatchNumber = Array.from(
+      extractedBatches
+        .reduce((acc, batchData) => {
+          const key = String(batchData.batchNumber ?? "").trim();
+          if (key) acc.set(key, batchData);
+          return acc;
+        }, new Map<string, (typeof extractedBatches)[number]>())
+        .values(),
+    );
+
+    if (dedupedByBatchNumber.length < extractedBatches.length) {
+      this.logger.warn(
+        `CoC ${coc.id}: deduped ${extractedBatches.length - dedupedByBatchNumber.length} duplicate batch number(s) from extracted data before insert`,
+      );
+    }
+
+    const batchesToCreate = dedupedByBatchNumber.map((batchData) =>
       this.compoundBatchRepository.create({
         firebaseUid: `pg_${generateUniqueId()}`,
         supplierCocId: coc.id,
