@@ -17,6 +17,7 @@ import { RubberCocBatchCorrection } from "./entities/rubber-coc-batch-correction
 import { RubberCompany } from "./entities/rubber-company.entity";
 import { BatchPassFailStatus, RubberCompoundBatch } from "./entities/rubber-compound-batch.entity";
 import { RubberCompoundStock } from "./entities/rubber-compound-stock.entity";
+import { ProductCodingType, RubberProductCoding } from "./entities/rubber-product-coding.entity";
 import { RubberRollRejection } from "./entities/rubber-roll-rejection.entity";
 import {
   CocProcessingStatus,
@@ -61,6 +62,8 @@ export class RubberCocService {
     private companyRepository: Repository<RubberCompany>,
     @InjectRepository(RubberCompoundStock)
     private compoundStockRepository: Repository<RubberCompoundStock>,
+    @InjectRepository(RubberProductCoding)
+    private productCodingRepository: Repository<RubberProductCoding>,
     @InjectRepository(RubberCocBatchCorrection)
     private batchCorrectionRepository: Repository<RubberCocBatchCorrection>,
     @InjectRepository(RubberRollRejection)
@@ -74,6 +77,20 @@ export class RubberCocService {
 
   private normalizeCocNumber(cocNumber: string): string {
     return cocNumber.trim().replace(/\s+/g, "").replace(/[–—]/g, "-");
+  }
+
+  private async equivalentCompoundCodes(compoundCode: string | null): Promise<string[]> {
+    if (!compoundCode) return [];
+    const coding = await this.productCodingRepository
+      .createQueryBuilder("pc")
+      .where("pc.coding_type = :type", { type: ProductCodingType.COMPOUND })
+      .andWhere("(pc.code = :code OR pc.aliases @> :codeJson::jsonb)", {
+        code: compoundCode,
+        codeJson: JSON.stringify([compoundCode]),
+      })
+      .getOne();
+    if (!coding) return [compoundCode];
+    return [coding.code, ...coding.aliases];
   }
 
   async allSupplierCocs(filters?: {
@@ -690,6 +707,8 @@ export class RubberCocService {
         return [];
       }
 
+      const equivalentCompoundCodes = await this.equivalentCompoundCodes(coc.compoundCode);
+
       const qb = this.compoundBatchRepository
         .createQueryBuilder("batch")
         .leftJoinAndSelect("batch.supplierCoc", "supplierCoc")
@@ -697,14 +716,10 @@ export class RubberCocService {
         .leftJoinAndSelect("compoundStock.compoundCoding", "compoundCoding")
         .where("batch.batchNumber IN (:...batchNumbers)", { batchNumbers });
 
-      if (coc.compoundCode) {
-        qb.andWhere(
-          "(compoundCoding.code = :compoundCode OR compoundCoding.aliases @> :compoundCodeJson::jsonb)",
-          {
-            compoundCode: coc.compoundCode,
-            compoundCodeJson: JSON.stringify([coc.compoundCode]),
-          },
-        );
+      if (equivalentCompoundCodes.length > 0) {
+        qb.andWhere("supplierCoc.compoundCode IN (:...equivalentCompoundCodes)", {
+          equivalentCompoundCodes,
+        });
       }
 
       qb.orderBy(

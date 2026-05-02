@@ -75,7 +75,38 @@ Return a JSON object with this structure:
   "cocNumber": string or null,
   "productionDate": string or null (ISO date format YYYY-MM-DD),
   "customerName": string or null,
-  "compoundCode": string or null - extract the compound ID but REMOVE the compounder's trailing code after the compound name (e.g., "AUA40RSCA22-MDR" → extract "AUA40RSCA", "AU-NR-60-15X" → extract "AU-NR-60"),
+  "compoundCode": string or null - extract the canonical AU compound code, STRIPPING any compounder revision/test-type suffix.
+
+    The canonical compound codes follow the pattern: AU-{grade}{shore}-{colour}{cure} (hyphenated) or AU{grade}{shore}{colour}{cure} (hyphenless). Recognised compounds:
+      AU-A38-BSC  / AUA38BSC   (38 Shore Black)
+      AU-A38-PPSC / AUA38PPSC  (38 Shore Premium Pink)
+      AU-A40-BSC  / AUA40BSC   (40 Shore Black)
+      AU-A40-GSC  / AUA40GSC   (40 Shore Green)
+      AU-A40-RSC  / AUA40RSC   (40 Shore Red)
+      AU-A40-YSC  / AUA40YSC   (40 Shore Yellow)
+      AU-A60-BSC  / AUA60BSC   (60 Shore Black)
+      AU-A60-PRSC / AUA60PRSC  (60 Shore Premium Red)
+      AU-A60-RSC  / AUA60RSC   (60 Shore Red)
+      AU-C50-BBSC / AUC50BBSC  (50 Shore Bromobutyl Black)
+      AU-C50-NBRBR/ AUC50NBRBR (50 Shore Nitrile/Butadiene Blend)
+      AU-C60-CBSC / AUC60CBSC  (60 Shore Chlorobutyl Black)
+      AU-C60-NBRBSC/AUC60NBRBSC (60 Shore Nitrile/Butadiene Blend)
+      AU-C60-NBSC / AUC60NBSC  (60 Shore Nitrile)
+
+    SUFFIX-STRIPPING RULES (CRITICAL — these have caused real downstream data corruption):
+      - S&N Rubber compound IDs append "{A##}-{TEST-TYPE}" to the canonical code, where A## is a revision/year tag (e.g. A22) and TEST-TYPE is "MDR" (Moving Die Rheometer). Examples:
+          "AUA40RSCA22-MDR"   → "AUA40RSC"   (NOT "AUA40RSCA" — the trailing A belongs to A22)
+          "AUA60BSCA21-MDR"   → "AUA60BSC"
+          "AUC60NBSCA23-MDR"  → "AUC60NBSC"
+      - Generic rule: if the extracted token does not match one of the recognised canonical codes above, look for a trailing "A##" or "A##-XXX" or "-##X" pattern and strip it.
+      - Examples: "AU-NR-60-15X" → "AU-NR-60", "AUA40RSC-2024-Q3" → "AUA40RSC".
+      - If after stripping you still cannot match a canonical code, return the stripped value but DO NOT invent characters.
+      - If the source PDF clearly shows a colour-name suffix (e.g. "AUA40RSCRED", "AUA38PPSCPINK"), KEEP that suffix — those are real S&N variants, not OCR noise.
+    Examples for clarity:
+      "AUA40RSCA22-MDR" → "AUA40RSC"          (strip A22-MDR)
+      "AUA40RSCRED"     → "AUA40RSCRED"       (keep — colour variant)
+      "AU-NR-60-15X"    → "AU-NR-60"          (strip -15X)
+      "RSCA40"          → "RSCA40"            (already canonical sheeting code, keep),
   "compoundDescription": string or null (e.g., "Natural Rubber 40 Shore A"),
   "batchNumbers": string[] (array of batch numbers mentioned),
   "approverNames": string[] (names of people who approved/signed),

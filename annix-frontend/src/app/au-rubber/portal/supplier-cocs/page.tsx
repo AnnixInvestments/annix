@@ -70,6 +70,7 @@ interface AnalysisResult {
 }
 
 type SortColumn =
+  | "id"
   | "productionDate"
   | "cocNumber"
   | "compoundCode"
@@ -205,6 +206,9 @@ export default function SupplierCocsPage() {
   ): RubberSupplierCocDto[] => {
     return [...cocsToSort].sort((a, b) => {
       const direction = sort.direction === "asc" ? 1 : -1;
+      if (sort.column === "id") {
+        return direction * (a.id - b.id);
+      }
       if (sort.column === "productionDate") {
         const rawAProductionDate = a.productionDate;
         const rawBProductionDate = b.productionDate;
@@ -761,6 +765,17 @@ export default function SupplierCocsPage() {
                       <th
                         scope="col"
                         className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                        onClick={() => handleSort(group.section, "id")}
+                      >
+                        System #
+                        <SortIcon
+                          active={group.sort.column === "id"}
+                          direction={group.sort.direction}
+                        />
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                         onClick={() => handleSort(group.section, "productionDate")}
                       >
                         Doc Date
@@ -849,6 +864,9 @@ export default function SupplierCocsPage() {
                               )}
                             </td>
                           )}
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-700">
+                            #{coc.id}
+                          </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             {coc.productionDate ? formatDateZA(coc.productionDate) : "-"}
                           </td>

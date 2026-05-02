@@ -9,6 +9,7 @@ import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import { RollRejectionsPanel } from "@/app/au-rubber/components/RollRejectionsPanel";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { useToast } from "@/app/components/Toast";
+import { useAuRubberAuth } from "@/app/context/AuRubberAuthContext";
 import { toastError } from "@/app/lib/api/apiError";
 import {
   auRubberApiClient,
@@ -54,6 +55,7 @@ export default function SupplierCocDetailPage() {
   const router = useRouter();
   const { showToast } = useToast();
   const { showExtraction, hideExtraction } = useExtractionProgress();
+  const { isAdmin } = useAuRubberAuth();
   const [coc, setCoc] = useState<RubberSupplierCocDto | null>(null);
   const [batches, setBatches] = useState<RubberCompoundBatchDto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -154,6 +156,12 @@ export default function SupplierCocDetailPage() {
   }, [cocId]);
 
   const handleExtract = async () => {
+    if (coc?.processingStatus === "APPROVED") {
+      const confirmed = window.confirm(
+        "This CoC is APPROVED. Re-extracting will delete the existing persisted batches and recreate them from the new extraction. Continue?",
+      );
+      if (!confirmed) return;
+    }
     try {
       setIsExtracting(true);
       showExtraction({
@@ -444,7 +452,7 @@ export default function SupplierCocDetailPage() {
           </div>
         </div>
         <div className="flex space-x-3">
-          {coc.processingStatus !== "APPROVED" && (
+          {(coc.processingStatus !== "APPROVED" || isAdmin) && (
             <button
               onClick={handleExtract}
               disabled={isExtracting}
@@ -512,7 +520,7 @@ export default function SupplierCocDetailPage() {
         >
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-medium text-gray-900">CoC Details</h2>
-            {!isEditing && coc.processingStatus !== "APPROVED" && (
+            {!isEditing && (coc.processingStatus !== "APPROVED" || isAdmin) && (
               <button
                 onClick={startEditing}
                 className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 border border-gray-300 rounded-md hover:bg-gray-50"
@@ -713,7 +721,7 @@ export default function SupplierCocDetailPage() {
           >
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-medium text-gray-900">Extracted Data</h2>
-              {!isEditingExtracted && coc.processingStatus !== "APPROVED" && (
+              {!isEditingExtracted && (coc.processingStatus !== "APPROVED" || isAdmin) && (
                 <button
                   onClick={startEditingExtracted}
                   className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 border border-gray-300 rounded-md hover:bg-gray-50"
