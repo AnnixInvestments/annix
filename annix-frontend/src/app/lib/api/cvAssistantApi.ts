@@ -88,7 +88,6 @@ export interface PublicJobPosting {
   applyByEmail: string | null;
   postedAt: string;
   companyName: string | null;
-  companyLogoUrl: string | null;
 }
 
 export interface ExtractedCvData {

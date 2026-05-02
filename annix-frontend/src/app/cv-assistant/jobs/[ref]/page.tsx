@@ -89,7 +89,6 @@ export default function PublicJobPostingPage() {
   const minExperience = job.minExperienceYears;
   const applyEmail = job.applyByEmail;
   const companyName = job.companyName;
-  const companyLogoUrl = job.companyLogoUrl;
   const postedAtIso = job.postedAt;
   const postedAtLabel = formatDateLongZA(postedAtIso);
   const responseDays = job.responseTimelineDays;
@@ -113,23 +112,11 @@ export default function PublicJobPostingPage() {
       <main className="max-w-4xl mx-auto px-6 py-10 space-y-6">
         <div className="bg-white rounded-2xl shadow-xl p-8">
           <div className="flex items-start justify-between gap-4 mb-6">
-            <div className="flex items-center gap-4">
-              {companyLogoUrl ? (
-                // biome-ignore lint/performance/noImgElement: external company logo URL
-                <img
-                  src={companyLogoUrl}
-                  alt={companyName || "Company logo"}
-                  className="w-16 h-16 rounded-lg object-contain bg-gray-50 border border-gray-200"
-                />
-              ) : (
-                <div className="w-16 h-16 rounded-lg bg-violet-100 flex items-center justify-center text-violet-600 font-bold text-2xl">
-                  {companyName ? companyName.charAt(0).toUpperCase() : "?"}
-                </div>
-              )}
-              <div>
-                <p className="text-sm text-gray-500">{companyName || "Confidential employer"}</p>
-                <h1 className="text-3xl font-bold text-gray-900">{job.title}</h1>
-              </div>
+            <div>
+              <p className="text-sm text-gray-500">
+                Posted by {companyName || "a verified employer"}
+              </p>
+              <h1 className="text-3xl font-bold text-gray-900">{job.title}</h1>
             </div>
             <span className="inline-block bg-violet-100 text-violet-700 text-xs font-semibold px-3 py-1 rounded-full">
               {job.referenceNumber}

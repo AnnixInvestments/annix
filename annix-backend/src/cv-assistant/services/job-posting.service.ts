@@ -29,7 +29,6 @@ export interface PublicJobPostingDto {
   applyByEmail: string | null;
   postedAt: Date;
   companyName: string | null;
-  companyLogoUrl: string | null;
 }
 
 @Injectable()
@@ -179,7 +178,6 @@ export class JobPostingService {
       applyByEmail: jobPosting.applyByEmail,
       postedAt: jobPosting.activatedAt ?? jobPosting.createdAt,
       companyName: company?.name ?? null,
-      companyLogoUrl: company?.logoUrl ?? null,
     };
   }
 
