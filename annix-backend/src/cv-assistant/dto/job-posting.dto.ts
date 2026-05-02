@@ -1,11 +1,27 @@
 import { IsArray, IsBoolean, IsInt, IsOptional, IsString, Max, Min } from "class-validator";
+import {
+  OptionalEmail,
+  OptionalIn,
+  OptionalInt,
+  OptionalString,
+  RequiredString,
+} from "../../lib/dto/validation-decorators";
+import { EmploymentType } from "../entities/job-posting.entity";
+
+const EMPLOYMENT_TYPE_VALUES = [
+  EmploymentType.FULL_TIME,
+  EmploymentType.PART_TIME,
+  EmploymentType.CONTRACT,
+  EmploymentType.TEMPORARY,
+  EmploymentType.INTERNSHIP,
+  EmploymentType.LEARNERSHIP,
+] as const;
 
 export class CreateJobPostingDto {
-  @IsString()
+  @RequiredString({ maxLength: 255 })
   title: string;
 
-  @IsString()
-  @IsOptional()
+  @OptionalString()
   description?: string;
 
   @IsArray()
@@ -13,13 +29,10 @@ export class CreateJobPostingDto {
   @IsOptional()
   requiredSkills?: string[];
 
-  @IsInt()
-  @Min(0)
-  @IsOptional()
+  @OptionalInt({ min: 0, max: 60 })
   minExperienceYears?: number;
 
-  @IsString()
-  @IsOptional()
+  @OptionalString({ maxLength: 255 })
   requiredEducation?: string;
 
   @IsArray()
@@ -27,8 +40,7 @@ export class CreateJobPostingDto {
   @IsOptional()
   requiredCertifications?: string[];
 
-  @IsString()
-  @IsOptional()
+  @OptionalString({ maxLength: 255 })
   emailSubjectPattern?: string;
 
   @IsBoolean()
@@ -46,15 +58,37 @@ export class CreateJobPostingDto {
   @Max(100)
   @IsOptional()
   autoAcceptThreshold?: number;
+
+  @OptionalInt({ min: 1, max: 90 })
+  responseTimelineDays?: number;
+
+  @OptionalString({ maxLength: 255 })
+  location?: string;
+
+  @OptionalString({ maxLength: 50 })
+  province?: string;
+
+  @OptionalIn(EMPLOYMENT_TYPE_VALUES)
+  employmentType?: string;
+
+  @OptionalInt({ min: 0 })
+  salaryMin?: number;
+
+  @OptionalInt({ min: 0 })
+  salaryMax?: number;
+
+  @OptionalString({ maxLength: 3 })
+  salaryCurrency?: string;
+
+  @OptionalEmail({ maxLength: 255 })
+  applyByEmail?: string;
 }
 
 export class UpdateJobPostingDto {
-  @IsString()
-  @IsOptional()
+  @OptionalString({ maxLength: 255 })
   title?: string;
 
-  @IsString()
-  @IsOptional()
+  @OptionalString()
   description?: string;
 
   @IsArray()
@@ -62,13 +96,10 @@ export class UpdateJobPostingDto {
   @IsOptional()
   requiredSkills?: string[];
 
-  @IsInt()
-  @Min(0)
-  @IsOptional()
+  @OptionalInt({ min: 0, max: 60 })
   minExperienceYears?: number;
 
-  @IsString()
-  @IsOptional()
+  @OptionalString({ maxLength: 255 })
   requiredEducation?: string;
 
   @IsArray()
@@ -76,8 +107,7 @@ export class UpdateJobPostingDto {
   @IsOptional()
   requiredCertifications?: string[];
 
-  @IsString()
-  @IsOptional()
+  @OptionalString({ maxLength: 255 })
   emailSubjectPattern?: string;
 
   @IsBoolean()
@@ -96,7 +126,30 @@ export class UpdateJobPostingDto {
   @IsOptional()
   autoAcceptThreshold?: number;
 
-  @IsString()
-  @IsOptional()
+  @OptionalString({ maxLength: 20 })
   status?: string;
+
+  @OptionalInt({ min: 1, max: 90 })
+  responseTimelineDays?: number;
+
+  @OptionalString({ maxLength: 255 })
+  location?: string;
+
+  @OptionalString({ maxLength: 50 })
+  province?: string;
+
+  @OptionalIn(EMPLOYMENT_TYPE_VALUES)
+  employmentType?: string;
+
+  @OptionalInt({ min: 0 })
+  salaryMin?: number;
+
+  @OptionalInt({ min: 0 })
+  salaryMax?: number;
+
+  @OptionalString({ maxLength: 3 })
+  salaryCurrency?: string;
+
+  @OptionalEmail({ maxLength: 255 })
+  applyByEmail?: string;
 }

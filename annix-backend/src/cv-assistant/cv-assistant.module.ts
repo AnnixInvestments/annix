@@ -21,6 +21,7 @@ import { JobPostingController } from "./controllers/job-posting.controller";
 import { NotificationController } from "./controllers/notification.controller";
 import { PublicAccountController } from "./controllers/public-account.controller";
 import { PublicJobMarketController } from "./controllers/public-job-market.controller";
+import { PublicJobPostingController } from "./controllers/public-job-posting.controller";
 import { ReferenceFeedbackController } from "./controllers/reference-feedback.controller";
 import { ReferencesController } from "./controllers/references.controller";
 import { SettingsController } from "./controllers/settings.controller";
@@ -105,6 +106,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     NotificationController,
     IndividualProfileController,
     PublicJobMarketController,
+    PublicJobPostingController,
     PublicAccountController,
   ],
   providers: [

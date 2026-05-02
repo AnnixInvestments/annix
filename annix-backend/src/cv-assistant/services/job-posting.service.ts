@@ -1,19 +1,53 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
+import { now } from "../../lib/datetime";
+import { Company } from "../../platform/entities/company.entity";
 import { CreateJobPostingDto, UpdateJobPostingDto } from "../dto/job-posting.dto";
-import { JobPosting, JobPostingStatus } from "../entities/job-posting.entity";
+import { EmploymentType, JobPosting, JobPostingStatus } from "../entities/job-posting.entity";
+
+const REF_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+const REF_LENGTH = 6;
+const MAX_REF_ATTEMPTS = 8;
+
+export interface PublicJobPostingDto {
+  referenceNumber: string;
+  title: string;
+  description: string | null;
+  location: string | null;
+  province: string | null;
+  employmentType: EmploymentType | null;
+  salaryMin: number | null;
+  salaryMax: number | null;
+  salaryCurrency: string;
+  requiredSkills: string[];
+  requiredEducation: string | null;
+  requiredCertifications: string[];
+  minExperienceYears: number | null;
+  responseTimelineDays: number;
+  applyByEmail: string | null;
+  postedAt: Date;
+  companyName: string | null;
+  companyLogoUrl: string | null;
+}
 
 @Injectable()
 export class JobPostingService {
   constructor(
     @InjectRepository(JobPosting)
     private readonly jobPostingRepo: Repository<JobPosting>,
+    @InjectRepository(Company)
+    private readonly companyRepo: Repository<Company>,
   ) {}
 
   async create(companyId: number, dto: CreateJobPostingDto): Promise<JobPosting> {
+    const referenceNumber = await this.allocateReferenceNumber();
     const jobPosting = this.jobPostingRepo.create({
       ...dto,
+      employmentType: (dto.employmentType ?? null) as EmploymentType | null,
+      salaryCurrency: dto.salaryCurrency ?? "ZAR",
+      responseTimelineDays: dto.responseTimelineDays ?? 14,
+      referenceNumber,
       companyId,
       status: JobPostingStatus.DRAFT,
     });
@@ -56,7 +90,24 @@ export class JobPostingService {
     if (dto.autoRejectEnabled != null) jobPosting.autoRejectEnabled = dto.autoRejectEnabled;
     if (dto.autoRejectThreshold != null) jobPosting.autoRejectThreshold = dto.autoRejectThreshold;
     if (dto.autoAcceptThreshold != null) jobPosting.autoAcceptThreshold = dto.autoAcceptThreshold;
-    if (dto.status != null) jobPosting.status = dto.status as JobPostingStatus;
+    if (dto.responseTimelineDays != null)
+      jobPosting.responseTimelineDays = dto.responseTimelineDays;
+    if (dto.location != null) jobPosting.location = dto.location;
+    if (dto.province != null) jobPosting.province = dto.province;
+    if (dto.employmentType != null)
+      jobPosting.employmentType = dto.employmentType as EmploymentType;
+    if (dto.salaryMin != null) jobPosting.salaryMin = dto.salaryMin;
+    if (dto.salaryMax != null) jobPosting.salaryMax = dto.salaryMax;
+    if (dto.salaryCurrency != null) jobPosting.salaryCurrency = dto.salaryCurrency;
+    if (dto.applyByEmail != null) jobPosting.applyByEmail = dto.applyByEmail;
+    if (dto.status != null) {
+      const newStatus = dto.status as JobPostingStatus;
+      const wasActive = jobPosting.status === JobPostingStatus.ACTIVE;
+      jobPosting.status = newStatus;
+      if (newStatus === JobPostingStatus.ACTIVE && !wasActive && !jobPosting.activatedAt) {
+        jobPosting.activatedAt = now().toJSDate();
+      }
+    }
 
     return this.jobPostingRepo.save(jobPosting);
   }
@@ -82,5 +133,58 @@ export class JobPostingService {
     return this.jobPostingRepo.find({
       where: { companyId, status: JobPostingStatus.ACTIVE },
     });
+  }
+
+  async publicByReferenceNumber(referenceNumber: string): Promise<PublicJobPostingDto | null> {
+    const normalised = referenceNumber.trim().toUpperCase();
+    const jobPosting = await this.jobPostingRepo.findOne({
+      where: { referenceNumber: normalised, status: JobPostingStatus.ACTIVE },
+    });
+    if (!jobPosting) return null;
+
+    const company = await this.companyRepo.findOne({ where: { id: jobPosting.companyId } });
+
+    return {
+      referenceNumber: jobPosting.referenceNumber ?? normalised,
+      title: jobPosting.title,
+      description: jobPosting.description,
+      location: jobPosting.location,
+      province: jobPosting.province,
+      employmentType: jobPosting.employmentType,
+      salaryMin: jobPosting.salaryMin,
+      salaryMax: jobPosting.salaryMax,
+      salaryCurrency: jobPosting.salaryCurrency,
+      requiredSkills: jobPosting.requiredSkills,
+      requiredEducation: jobPosting.requiredEducation,
+      requiredCertifications: jobPosting.requiredCertifications,
+      minExperienceYears: jobPosting.minExperienceYears,
+      responseTimelineDays: jobPosting.responseTimelineDays,
+      applyByEmail: jobPosting.applyByEmail,
+      postedAt: jobPosting.activatedAt ?? jobPosting.createdAt,
+      companyName: company?.name ?? null,
+      companyLogoUrl: company?.logoUrl ?? null,
+    };
+  }
+
+  private async allocateReferenceNumber(): Promise<string> {
+    const attempts = Array.from({ length: MAX_REF_ATTEMPTS });
+    for (const _ of attempts) {
+      const candidate = `JOB-${this.randomReferenceCore()}`;
+      const existing = await this.jobPostingRepo.findOne({
+        where: { referenceNumber: candidate },
+      });
+      if (!existing) return candidate;
+    }
+    throw new ConflictException(
+      "Unable to allocate a unique job reference number; please retry shortly.",
+    );
+  }
+
+  private randomReferenceCore(): string {
+    const chars = Array.from({ length: REF_LENGTH }, () => {
+      const idx = Math.floor(Math.random() * REF_ALPHABET.length);
+      return REF_ALPHABET[idx];
+    });
+    return chars.join("");
   }
 }

@@ -34,6 +34,14 @@ export interface CvAssistantUserProfile {
   createdAt: string;
 }
 
+export type EmploymentType =
+  | "full_time"
+  | "part_time"
+  | "contract"
+  | "temporary"
+  | "internship"
+  | "learnership";
+
 export interface JobPosting {
   id: number;
   title: string;
@@ -47,9 +55,40 @@ export interface JobPosting {
   autoRejectThreshold: number;
   autoAcceptThreshold: number;
   status: string;
+  referenceNumber: string | null;
+  responseTimelineDays: number;
+  location: string | null;
+  province: string | null;
+  employmentType: EmploymentType | null;
+  salaryMin: number | null;
+  salaryMax: number | null;
+  salaryCurrency: string;
+  applyByEmail: string | null;
+  activatedAt: string | null;
   companyId: number;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface PublicJobPosting {
+  referenceNumber: string;
+  title: string;
+  description: string | null;
+  location: string | null;
+  province: string | null;
+  employmentType: EmploymentType | null;
+  salaryMin: number | null;
+  salaryMax: number | null;
+  salaryCurrency: string;
+  requiredSkills: string[];
+  requiredEducation: string | null;
+  requiredCertifications: string[];
+  minExperienceYears: number | null;
+  responseTimelineDays: number;
+  applyByEmail: string | null;
+  postedAt: string;
+  companyName: string | null;
+  companyLogoUrl: string | null;
 }
 
 export interface ExtractedCvData {
@@ -1002,6 +1041,11 @@ class CvAssistantApiClient {
     const queryString = query.toString();
     const suffix = queryString ? `?${queryString}` : "";
     return this.request(`/cv-assistant/public/jobs${suffix}`);
+  }
+
+  async publicJobPosting(referenceNumber: string): Promise<PublicJobPosting> {
+    const safeRef = encodeURIComponent(referenceNumber);
+    return this.request(`/cv-assistant/public/job-postings/${safeRef}`);
   }
 }
 

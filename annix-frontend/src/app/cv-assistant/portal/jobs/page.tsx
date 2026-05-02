@@ -69,6 +69,9 @@ export default function JobsPage() {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Reference
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Title
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -88,100 +91,118 @@ export default function JobsPage() {
             <tbody className="bg-white divide-y divide-gray-200">
               {jobs.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
                     No job postings yet. Create your first job to start receiving candidates.
                   </td>
                 </tr>
               ) : (
-                jobs.map((job) => (
-                  <tr key={job.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">
-                      <div className="text-sm font-medium text-gray-900">{job.title}</div>
-                      {job.description && (
-                        <div className="text-sm text-gray-500 truncate max-w-xs">
-                          {job.description}
+                jobs.map((job) => {
+                  const referenceNumber = job.referenceNumber;
+                  const description = job.description;
+                  return (
+                    <tr key={job.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {referenceNumber ? (
+                          <a
+                            href={`/cv-assistant/jobs/${referenceNumber}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-mono text-xs text-violet-700 hover:text-violet-900 underline-offset-2 hover:underline"
+                          >
+                            {referenceNumber}
+                          </a>
+                        ) : (
+                          <span className="text-xs text-gray-400">—</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm font-medium text-gray-900">{job.title}</div>
+                        {description ? (
+                          <div className="text-sm text-gray-500 truncate max-w-xs">
+                            {description}
+                          </div>
+                        ) : null}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-wrap gap-1">
+                          {job.requiredSkills.slice(0, 3).map((skill, i) => (
+                            <span
+                              key={i}
+                              className="inline-flex px-2 py-0.5 text-xs bg-violet-100 text-violet-700 rounded"
+                            >
+                              {skill}
+                            </span>
+                          ))}
+                          {job.requiredSkills.length > 3 && (
+                            <span className="text-xs text-gray-500">
+                              +{job.requiredSkills.length - 3}
+                            </span>
+                          )}
                         </div>
-                      )}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-wrap gap-1">
-                        {job.requiredSkills.slice(0, 3).map((skill, i) => (
-                          <span
-                            key={i}
-                            className="inline-flex px-2 py-0.5 text-xs bg-violet-100 text-violet-700 rounded"
-                          >
-                            {skill}
-                          </span>
-                        ))}
-                        {job.requiredSkills.length > 3 && (
-                          <span className="text-xs text-gray-500">
-                            +{job.requiredSkills.length - 3}
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-sm text-gray-600">
-                        {job.minExperienceYears ? `${job.minExperienceYears}+ years` : "-"}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${statusColor(job.status)}`}
-                      >
-                        {job.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
-                      <div className="flex items-center justify-end space-x-2">
-                        {job.status === "draft" && (
-                          <button
-                            onClick={() => handleStatusChange(job, "activate")}
-                            className="text-green-600 hover:text-green-700"
-                          >
-                            Activate
-                          </button>
-                        )}
-                        {job.status === "active" && (
-                          <button
-                            onClick={() => handleStatusChange(job, "pause")}
-                            className="text-yellow-600 hover:text-yellow-700"
-                          >
-                            Pause
-                          </button>
-                        )}
-                        {job.status === "paused" && (
-                          <button
-                            onClick={() => handleStatusChange(job, "activate")}
-                            className="text-green-600 hover:text-green-700"
-                          >
-                            Resume
-                          </button>
-                        )}
-                        {job.status !== "closed" && (
-                          <button
-                            onClick={() => handleStatusChange(job, "close")}
-                            className="text-red-600 hover:text-red-700"
-                          >
-                            Close
-                          </button>
-                        )}
-                        <button
-                          onClick={() => setEditingJob(job)}
-                          className="text-violet-600 hover:text-violet-700"
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-sm text-gray-600">
+                          {job.minExperienceYears ? `${job.minExperienceYears}+ years` : "-"}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span
+                          className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${statusColor(job.status)}`}
                         >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDelete(job)}
-                          className="text-gray-400 hover:text-red-600"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                          {job.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
+                        <div className="flex items-center justify-end space-x-2">
+                          {job.status === "draft" && (
+                            <button
+                              onClick={() => handleStatusChange(job, "activate")}
+                              className="text-green-600 hover:text-green-700"
+                            >
+                              Activate
+                            </button>
+                          )}
+                          {job.status === "active" && (
+                            <button
+                              onClick={() => handleStatusChange(job, "pause")}
+                              className="text-yellow-600 hover:text-yellow-700"
+                            >
+                              Pause
+                            </button>
+                          )}
+                          {job.status === "paused" && (
+                            <button
+                              onClick={() => handleStatusChange(job, "activate")}
+                              className="text-green-600 hover:text-green-700"
+                            >
+                              Resume
+                            </button>
+                          )}
+                          {job.status !== "closed" && (
+                            <button
+                              onClick={() => handleStatusChange(job, "close")}
+                              className="text-red-600 hover:text-red-700"
+                            >
+                              Close
+                            </button>
+                          )}
+                          <button
+                            onClick={() => setEditingJob(job)}
+                            className="text-violet-600 hover:text-violet-700"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDelete(job)}
+                            className="text-gray-400 hover:text-red-600"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

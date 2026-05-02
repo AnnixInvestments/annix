@@ -18,6 +18,15 @@ export enum JobPostingStatus {
   CLOSED = "closed",
 }
 
+export enum EmploymentType {
+  FULL_TIME = "full_time",
+  PART_TIME = "part_time",
+  CONTRACT = "contract",
+  TEMPORARY = "temporary",
+  INTERNSHIP = "internship",
+  LEARNERSHIP = "learnership",
+}
+
 @Entity("cv_assistant_job_postings")
 export class JobPosting {
   @PrimaryGeneratedColumn()
@@ -55,6 +64,36 @@ export class JobPosting {
 
   @Column({ type: "varchar", length: 20, default: JobPostingStatus.DRAFT })
   status: JobPostingStatus;
+
+  @Column({ name: "reference_number", type: "varchar", length: 20, nullable: true })
+  referenceNumber: string | null;
+
+  @Column({ name: "response_timeline_days", type: "int", default: 14 })
+  responseTimelineDays: number;
+
+  @Column({ type: "varchar", length: 255, nullable: true })
+  location: string | null;
+
+  @Column({ type: "varchar", length: 50, nullable: true })
+  province: string | null;
+
+  @Column({ name: "employment_type", type: "varchar", length: 30, nullable: true })
+  employmentType: EmploymentType | null;
+
+  @Column({ name: "salary_min", type: "int", nullable: true })
+  salaryMin: number | null;
+
+  @Column({ name: "salary_max", type: "int", nullable: true })
+  salaryMax: number | null;
+
+  @Column({ name: "salary_currency", type: "varchar", length: 3, default: "ZAR" })
+  salaryCurrency: string;
+
+  @Column({ name: "apply_by_email", type: "varchar", length: 255, nullable: true })
+  applyByEmail: string | null;
+
+  @Column({ name: "activated_at", type: "timestamptz", nullable: true })
+  activatedAt: Date | null;
 
   @ManyToOne(() => CvAssistantCompany, { onDelete: "CASCADE" })
   @JoinColumn({ name: "company_id" })
