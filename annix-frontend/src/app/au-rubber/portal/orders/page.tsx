@@ -25,6 +25,7 @@ import type {
   RubberProductDto,
 } from "@/app/lib/api/rubberPortalApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import { useScrollRestoration } from "@/app/lib/hooks/useScrollRestoration";
 import {
   useAuRubberCompanies,
   useAuRubberOrders,
@@ -62,6 +63,7 @@ const isDeletable = (status: number): boolean => DELETABLE_STATUSES.includes(sta
 
 export default function AuRubberOrdersPage() {
   const { showToast } = useToast();
+  const scrollSentinelRef = useScrollRestoration("au-rubber:orders");
 
   const [statusFilter, setStatusFilter] = useState<number | undefined>(undefined);
   const ordersQuery = useAuRubberOrders(statusFilter);
@@ -309,6 +311,7 @@ export default function AuRubberOrdersPage() {
   return (
     <RequirePermission permission={PAGE_PERMISSIONS["/au-rubber/portal/orders"]}>
       <div
+        ref={scrollSentinelRef}
         className="space-y-6 relative"
         onDragEnter={handlePageDragEnter}
         onDragOver={handlePageDragOver}

@@ -333,6 +333,27 @@ input[type="number"] {
   appearance: textfield;
 }
 
+/* Make the native date/time picker icon visible in both light and dark mode.
+   Chrome picks a white icon when color-scheme resolves to dark, which is
+   invisible against our light input backgrounds. */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+input[type="month"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator,
+input[type="week"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.45);
+  opacity: 1;
+  cursor: pointer;
+}
+
+.dark input[type="date"]::-webkit-calendar-picker-indicator,
+.dark input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+.dark input[type="month"]::-webkit-calendar-picker-indicator,
+.dark input[type="time"]::-webkit-calendar-picker-indicator,
+.dark input[type="week"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.85);
+}
+
 /* Global button click feedback - visual indication when pressed */
 button:not(:disabled):active {
   transform: scale(0.97) !important;

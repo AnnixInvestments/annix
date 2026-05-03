@@ -24,6 +24,7 @@ import {
   type StockLocationDto,
 } from "@/app/lib/api/auRubberApi";
 import type { RubberCompanyDto, RubberProductCodingDto } from "@/app/lib/api/rubberPortalApi";
+import { useScrollRestoration } from "@/app/lib/hooks/useScrollRestoration";
 import { Breadcrumb } from "../../components/Breadcrumb";
 
 const ITEMS_PER_PAGE = 25;
@@ -38,6 +39,7 @@ type SortColumn =
 
 export default function RollStockPage() {
   const { showToast } = useToast();
+  const scrollSentinelRef = useScrollRestoration("au-rubber:roll-stock");
   const [rolls, setRolls] = useState<RubberRollStockDto[]>([]);
   const [companies, setCompanies] = useState<RubberCompanyDto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -370,7 +372,7 @@ export default function RollStockPage() {
   const rawOpeningStockFormNotes = openingStockForm.notes;
 
   return (
-    <div className="space-y-6">
+    <div ref={scrollSentinelRef} className="space-y-6">
       <Breadcrumb items={[{ label: "Roll Stock" }]} />
       <div className="flex items-center justify-between">
         <div>

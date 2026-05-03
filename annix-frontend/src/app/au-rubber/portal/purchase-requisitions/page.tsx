@@ -23,6 +23,7 @@ import {
 } from "@/app/lib/api/auRubberApi";
 import type { RubberCompanyDto } from "@/app/lib/api/rubberPortalApi";
 import { formatDateZA, fromISO } from "@/app/lib/datetime";
+import { useScrollRestoration } from "@/app/lib/hooks/useScrollRestoration";
 import { Breadcrumb } from "../../components/Breadcrumb";
 import { ConfirmModal } from "../../components/ConfirmModal";
 
@@ -53,6 +54,7 @@ const sourceColors: Record<RequisitionSourceType, string> = {
 
 export default function PurchaseRequisitionsPage() {
   const { showToast } = useToast();
+  const scrollSentinelRef = useScrollRestoration("au-rubber:purchase-requisitions");
   const [requisitions, setRequisitions] = useState<RequisitionDto[]>([]);
   const [compoundStocks, setCompoundStocks] = useState<RubberCompoundStockDto[]>([]);
   const [companies, setCompanies] = useState<RubberCompanyDto[]>([]);
@@ -276,7 +278,7 @@ export default function PurchaseRequisitionsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div ref={scrollSentinelRef} className="space-y-6">
       <Breadcrumb items={[{ label: "Purchase Requisitions" }]} />
       <div className="flex items-center justify-between">
         <div>

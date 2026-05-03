@@ -15,6 +15,7 @@ import { usePersistedState } from "@/app/hooks/usePersistedState";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
 import type { RubberProductDto } from "@/app/lib/api/rubberPortalApi";
 import { now } from "@/app/lib/datetime";
+import { useScrollRestoration } from "@/app/lib/hooks/useScrollRestoration";
 import { useAuRubberCodings, useAuRubberProducts } from "@/app/lib/query/hooks";
 import { Breadcrumb } from "../../components/Breadcrumb";
 import { ConfirmModal } from "../../components/ConfirmModal";
@@ -90,6 +91,7 @@ const exportProductsToCSV = (products: RubberProductDto[]) => {
 
 export default function AuRubberProductsPage() {
   const { showToast } = useToast();
+  const scrollSentinelRef = useScrollRestoration("au-rubber:products");
 
   const productsQuery = useAuRubberProducts();
   const codingsQuery = useAuRubberCodings();
@@ -268,7 +270,7 @@ export default function AuRubberProductsPage() {
 
   return (
     <RequirePermission permission={PAGE_PERMISSIONS["/au-rubber/portal/products"]}>
-      <div className="space-y-6">
+      <div ref={scrollSentinelRef} className="space-y-6">
         <Breadcrumb items={[{ label: "Products" }]} />
         <div className="flex items-center justify-between">
           <div>
