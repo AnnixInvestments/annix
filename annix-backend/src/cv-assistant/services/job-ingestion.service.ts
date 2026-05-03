@@ -4,8 +4,10 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { In, Repository } from "typeorm";
 import { DateTime, fromISO } from "../../lib/datetime";
 import { isCvAssistantCronEnabled } from "../cv-assistant-cron.config";
+import { CvAssistantCompany } from "../entities/cv-assistant-company.entity";
 import { ExternalJob } from "../entities/external-job.entity";
 import { JobMarketSource } from "../entities/job-market-source.entity";
+import { JobPosting } from "../entities/job-posting.entity";
 import { AdzunaJobResult, AdzunaService } from "./adzuna.service";
 import { CandidateJobMatchingService } from "./candidate-job-matching.service";
 import { EmbeddingService } from "./embedding.service";
@@ -19,6 +21,10 @@ export class JobIngestionService {
     private readonly sourceRepo: Repository<JobMarketSource>,
     @InjectRepository(ExternalJob)
     private readonly externalJobRepo: Repository<ExternalJob>,
+    @InjectRepository(JobPosting)
+    private readonly jobPostingRepo: Repository<JobPosting>,
+    @InjectRepository(CvAssistantCompany)
+    private readonly companyRepo: Repository<CvAssistantCompany>,
     private readonly adzunaService: AdzunaService,
     private readonly embeddingService: EmbeddingService,
     private readonly candidateJobMatchingService: CandidateJobMatchingService,
@@ -330,6 +336,8 @@ export class JobIngestionService {
 
 export interface PublicJob {
   id: number;
+  kind: "external" | "annix";
+  referenceNumber: string | null;
   title: string;
   company: string | null;
   country: string;
@@ -349,6 +357,8 @@ export interface PublicJob {
 function toPublicJob(job: ExternalJob): PublicJob {
   return {
     id: job.id,
+    kind: "external",
+    referenceNumber: null,
     title: job.title,
     company: job.company,
     country: job.country,
@@ -363,5 +373,33 @@ function toPublicJob(job: ExternalJob): PublicJob {
     sourceUrl: job.sourceUrl,
     postedAt: job.postedAt ? job.postedAt.toISOString() : null,
     expiresAt: job.expiresAt ? job.expiresAt.toISOString() : null,
+  };
+}
+
+function annixJobToPublic(job: JobPosting, companyName: string | null): PublicJob {
+  const postedDate = job.activatedAt ?? job.createdAt;
+  const country = job.province ? "ZA" : "ZA";
+  const locationParts = [job.location, job.province].filter((part): part is string =>
+    Boolean(part),
+  );
+  const locationLabel = locationParts.length > 0 ? locationParts.join(", ") : null;
+  return {
+    id: job.id,
+    kind: "annix",
+    referenceNumber: job.referenceNumber,
+    title: job.title,
+    company: companyName,
+    country,
+    locationRaw: locationLabel,
+    locationArea: job.location,
+    salaryMin: job.salaryMin,
+    salaryMax: job.salaryMax,
+    salaryCurrency: job.salaryCurrency,
+    description: job.description,
+    extractedSkills: job.requiredSkills ?? [],
+    category: job.industry,
+    sourceUrl: null,
+    postedAt: postedDate ? postedDate.toISOString() : null,
+    expiresAt: null,
   };
 }

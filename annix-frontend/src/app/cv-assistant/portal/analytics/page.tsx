@@ -160,32 +160,39 @@ export default function AnalyticsPage() {
     );
   }
 
+  const funnelStagesRaw = funnel ? funnel.stages : null;
+  const funnelStages = funnelStagesRaw || [];
+  const trendsByCategoryRaw = marketTrends ? marketTrends.byCategory : null;
+  const trendsByCategory = trendsByCategoryRaw || [];
+  const trendsByLocationRaw = marketTrends ? marketTrends.byLocation : null;
+  const trendsByLocation = trendsByLocationRaw || [];
+  const trendsMonthlyRaw = marketTrends ? marketTrends.monthlyTrend : null;
+  const trendsMonthly = trendsMonthlyRaw || [];
+  const trendsTopSkillsRaw = marketTrends ? marketTrends.topSkills : null;
+  const trendsTopSkills = trendsTopSkillsRaw || [];
+  const trendsSalaryRaw = marketTrends ? marketTrends.salaryByCategory : null;
+  const trendsSalaryByCategory = trendsSalaryRaw || [];
+  const trendsTotalJobsRaw = marketTrends ? marketTrends.totalJobs : null;
+  const trendsTotalJobs = trendsTotalJobsRaw || 0;
+  const timeToFillJobsRaw = timeToFill ? timeToFill.byJob : null;
+  const timeToFillJobs = timeToFillJobsRaw || [];
+
   const maxFunnelCount =
-    funnel && funnel.stages.length > 0 ? Math.max(...funnel.stages.map((s) => s.count), 1) : 1;
+    funnelStages.length > 0 ? Math.max(...funnelStages.map((s) => s.count), 1) : 1;
 
   const maxCategoryCount =
-    marketTrends && marketTrends.byCategory.length > 0
-      ? Math.max(...marketTrends.byCategory.map((c) => c.count), 1)
-      : 1;
+    trendsByCategory.length > 0 ? Math.max(...trendsByCategory.map((c) => c.count), 1) : 1;
 
   const maxLocationCount =
-    marketTrends && marketTrends.byLocation.length > 0
-      ? Math.max(...marketTrends.byLocation.map((l) => l.count), 1)
-      : 1;
+    trendsByLocation.length > 0 ? Math.max(...trendsByLocation.map((l) => l.count), 1) : 1;
 
   const maxMonthlyCount =
-    marketTrends && marketTrends.monthlyTrend.length > 0
-      ? Math.max(...marketTrends.monthlyTrend.map((m) => m.count), 1)
-      : 1;
+    trendsMonthly.length > 0 ? Math.max(...trendsMonthly.map((m) => m.count), 1) : 1;
 
   const maxSkillCount =
-    marketTrends && marketTrends.topSkills.length > 0
-      ? Math.max(...marketTrends.topSkills.map((s) => s.count), 1)
-      : 1;
+    trendsTopSkills.length > 0 ? Math.max(...trendsTopSkills.map((s) => s.count), 1) : 1;
 
-  const sortedTimeToFillJobs = timeToFill
-    ? [...timeToFill.byJob].sort((a, b) => a.averageDays - b.averageDays)
-    : [];
+  const sortedTimeToFillJobs = [...timeToFillJobs].sort((a, b) => a.averageDays - b.averageDays);
 
   return (
     <div className="space-y-8">
@@ -290,9 +297,9 @@ export default function AnalyticsPage() {
                 <div key={`funnel-skeleton-${i}`} className="h-12 bg-gray-200 rounded" />
               ))}
             </div>
-          ) : funnel && funnel.stages.length > 0 ? (
+          ) : funnelStages.length > 0 ? (
             <div className="space-y-3">
-              {funnel.stages.map((stage, index) => {
+              {funnelStages.map((stage, index) => {
                 const widthPercent = Math.max((stage.count / maxFunnelCount) * 100, 8);
                 return (
                   <div key={stage.label} className="flex items-center gap-4">
@@ -470,7 +477,7 @@ export default function AnalyticsPage() {
           <h2 className="text-lg font-semibold text-gray-900">SA Labour Market Trends</h2>
           {marketTrends && (
             <p className="text-sm text-gray-500 mt-1">
-              Based on {marketTrends.totalJobs.toLocaleString()} total job listings
+              Based on {trendsTotalJobs.toLocaleString()} total job listings
             </p>
           )}
         </div>
@@ -481,9 +488,9 @@ export default function AnalyticsPage() {
                 <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-4">
                   Top Categories
                 </h3>
-                {marketTrends.byCategory.length > 0 ? (
+                {trendsByCategory.length > 0 ? (
                   <div className="space-y-2">
-                    {marketTrends.byCategory.slice(0, 10).map((cat) => (
+                    {trendsByCategory.slice(0, 10).map((cat) => (
                       <div key={cat.category} className="flex items-center gap-3">
                         <div className="w-36 text-sm text-gray-700 truncate shrink-0">
                           {cat.category.replace(/-jobs$/, "").replace(/-/g, " ")}
@@ -509,9 +516,9 @@ export default function AnalyticsPage() {
                 <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-4">
                   Top Locations
                 </h3>
-                {marketTrends.byLocation.length > 0 ? (
+                {trendsByLocation.length > 0 ? (
                   <div className="space-y-2">
-                    {marketTrends.byLocation.slice(0, 10).map((loc) => (
+                    {trendsByLocation.slice(0, 10).map((loc) => (
                       <div key={loc.location} className="flex items-center gap-3">
                         <div className="w-36 text-sm text-gray-700 truncate shrink-0">
                           {loc.location}
@@ -534,7 +541,7 @@ export default function AnalyticsPage() {
               </div>
             </div>
 
-            {marketTrends.salaryByCategory.length > 0 && (
+            {trendsSalaryByCategory.length > 0 && (
               <div>
                 <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-4">
                   Salary by Category
@@ -558,7 +565,7 @@ export default function AnalyticsPage() {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {marketTrends.salaryByCategory.slice(0, 10).map((sal) => (
+                      {trendsSalaryByCategory.slice(0, 10).map((sal) => (
                         <tr key={sal.category} className="hover:bg-gray-50">
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                             {sal.category.replace(/-jobs$/, "").replace(/-/g, " ")}
@@ -581,13 +588,13 @@ export default function AnalyticsPage() {
               </div>
             )}
 
-            {marketTrends.monthlyTrend.length > 0 && (
+            {trendsMonthly.length > 0 && (
               <div>
                 <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-4">
                   Monthly Job Posting Trend
                 </h3>
                 <div className="flex items-end gap-1 h-40">
-                  {marketTrends.monthlyTrend.map((month) => {
+                  {trendsMonthly.map((month) => {
                     const heightPercent = Math.max((month.count / maxMonthlyCount) * 100, 4);
                     return (
                       <div
@@ -611,13 +618,13 @@ export default function AnalyticsPage() {
               </div>
             )}
 
-            {marketTrends.topSkills.length > 0 && (
+            {trendsTopSkills.length > 0 && (
               <div>
                 <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-4">
                   Top Skills in Demand
                 </h3>
                 <div className="space-y-2">
-                  {marketTrends.topSkills.slice(0, 15).map((skill) => (
+                  {trendsTopSkills.slice(0, 15).map((skill) => (
                     <div key={skill.skill} className="flex items-center gap-3">
                       <div className="w-36 text-sm text-gray-700 truncate shrink-0">
                         {skill.skill}

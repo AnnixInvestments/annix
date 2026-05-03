@@ -95,7 +95,7 @@ export class CvAssistantAuthService {
     if (profile && profile.userType === CvAssistantUserType.INDIVIDUAL) {
       return profile;
     }
-    if (profile && profile.companyId) {
+    if (profile?.companyId) {
       return profile;
     }
 
