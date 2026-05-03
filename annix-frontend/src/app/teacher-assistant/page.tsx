@@ -1,12 +1,11 @@
 "use client";
 
 import type { Assignment, AssignmentInput } from "@annix/product-data/teacher-assistant";
-import { GraduationCap } from "lucide-react";
+import { GraduationCap, LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { useToast } from "@/app/components/Toast";
-import { useAdminAuth } from "@/app/context/AdminAuthContext";
 import { useGenerateAssignment } from "@/app/lib/query/hooks";
 import {
   type RecentAssignmentEntry,
@@ -16,12 +15,13 @@ import { AssignmentPreview } from "./components/AssignmentPreview";
 import { RecentAssignmentsList } from "./components/RecentAssignmentsList";
 import { TeacherAssistantForm } from "./components/TeacherAssistantForm";
 import { TEACHER_ASSISTANT_VERSION } from "./config/version";
+import { useTeacherAssistantAuth } from "./context/TeacherAssistantAuthContext";
 
 const ESTIMATED_GENERATION_MS = 25_000;
 
 export default function TeacherAssistantPage() {
   const router = useRouter();
-  const { admin, isLoading } = useAdminAuth();
+  const { user, isLoading, isAuthenticated, logout } = useTeacherAssistantAuth();
   const { showToast } = useToast();
   const { showExtraction, hideExtraction } = useExtractionProgress();
   const generate = useGenerateAssignment();
@@ -33,18 +33,23 @@ export default function TeacherAssistantPage() {
   const forgetAssignment = useTeacherAssistantStore((s) => s.forgetAssignment);
 
   useEffect(() => {
-    if (!isLoading && !admin) {
-      router.push("/admin/login?returnUrl=%2Fteacher-assistant");
+    if (!isLoading && !isAuthenticated) {
+      router.replace("/teacher-assistant/login?returnUrl=%2Fteacher-assistant");
     }
-  }, [isLoading, admin, router]);
+  }, [isLoading, isAuthenticated, router]);
 
-  if (isLoading || !admin) {
+  if (isLoading || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#f5f6ff]">
         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#323288]" />
       </div>
     );
   }
+
+  const handleLogout = () => {
+    logout();
+    router.replace("/teacher-assistant/login");
+  };
 
   const handleSubmit = (input: AssignmentInput) => {
     setGeneratedFrom(input);
@@ -92,15 +97,30 @@ export default function TeacherAssistantPage() {
               <p className="text-xs text-white/70">v{TEACHER_ASSISTANT_VERSION}</p>
             </div>
           </div>
-          {assignment ? (
+          <div className="flex items-center gap-4">
+            {assignment ? (
+              <button
+                type="button"
+                onClick={handleReset}
+                className="text-sm text-white/80 hover:text-[#FFA500] transition-colors"
+              >
+                Start new assignment
+              </button>
+            ) : null}
+            <div className="hidden md:flex flex-col items-end text-xs leading-tight">
+              <span className="text-white">{user.name}</span>
+              {user.schoolName ? <span className="text-white/60">{user.schoolName}</span> : null}
+            </div>
             <button
               type="button"
-              onClick={handleReset}
-              className="text-sm text-white/80 hover:text-[#FFA500] transition-colors"
+              onClick={handleLogout}
+              className="inline-flex items-center gap-1 text-sm text-white/80 hover:text-[#FFA500] transition-colors"
+              aria-label="Sign out"
             >
-              Start new assignment
+              <LogOut className="w-4 h-4" />
+              <span className="hidden sm:inline">Sign out</span>
             </button>
-          ) : null}
+          </div>
         </div>
       </header>
 

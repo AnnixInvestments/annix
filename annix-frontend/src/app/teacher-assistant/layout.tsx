@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { AdminAuthProvider } from "@/app/context/AdminAuthContext";
+import { TeacherAssistantAuthProvider } from "./context/TeacherAssistantAuthContext";
 
 export const metadata: Metadata = {
   title: {
@@ -11,5 +11,5 @@ export const metadata: Metadata = {
 
 export default function TeacherAssistantLayout(props: { children: React.ReactNode }) {
   const { children } = props;
-  return <AdminAuthProvider>{children}</AdminAuthProvider>;
+  return <TeacherAssistantAuthProvider>{children}</TeacherAssistantAuthProvider>;
 }

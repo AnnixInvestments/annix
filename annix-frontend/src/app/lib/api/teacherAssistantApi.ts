@@ -4,7 +4,7 @@ import type {
   AssignmentSection,
 } from "@annix/product-data/teacher-assistant";
 import { type ApiClient, createApiClient } from "@/app/lib/api/createApiClient";
-import { adminTokenStore } from "@/app/lib/api/portalTokenStores";
+import { teacherAssistantTokenStore } from "@/app/lib/api/portalTokenStores";
 import { API_BASE_URL } from "@/lib/api-config";
 
 export interface GenerateAssignmentRequest extends AssignmentInput {}
@@ -15,15 +15,59 @@ export interface RegenerateSectionRequest {
   existingAssignment: Assignment;
 }
 
+export interface TeacherAssistantUser {
+  id: number;
+  email: string;
+  name: string;
+  schoolName: string | null;
+}
+
+export interface TeacherAssistantAuthResult {
+  accessToken: string;
+  expiresIn: number;
+  user: TeacherAssistantUser;
+}
+
+export interface RegisterTeacherInput {
+  email: string;
+  password: string;
+  name: string;
+  schoolName?: string | null;
+}
+
+export interface LoginTeacherInput {
+  email: string;
+  password: string;
+}
+
+export interface DocxExportResult {
+  filename: string;
+  storagePath: string;
+  presignedUrl: string;
+  byteSize: number;
+}
+
 class TeacherAssistantApi {
   private readonly client: ApiClient;
 
   constructor() {
     this.client = createApiClient({
       baseURL: API_BASE_URL,
-      tokenStore: adminTokenStore,
-      refreshUrl: `${API_BASE_URL}/admin/auth/refresh`,
+      tokenStore: teacherAssistantTokenStore,
+      refreshHandler: async () => false,
     });
+  }
+
+  register(input: RegisterTeacherInput): Promise<TeacherAssistantAuthResult> {
+    return this.client.post<TeacherAssistantAuthResult>("/teacher-assistant/auth/register", input);
+  }
+
+  login(input: LoginTeacherInput): Promise<TeacherAssistantAuthResult> {
+    return this.client.post<TeacherAssistantAuthResult>("/teacher-assistant/auth/login", input);
+  }
+
+  me(): Promise<TeacherAssistantUser> {
+    return this.client.get<TeacherAssistantUser>("/teacher-assistant/auth/me");
   }
 
   generate(input: GenerateAssignmentRequest): Promise<Assignment> {
@@ -47,13 +91,6 @@ class TeacherAssistantApi {
   exportDocx(assignment: Assignment): Promise<DocxExportResult> {
     return this.client.post<DocxExportResult>("/teacher-assistant/export/docx", { assignment });
   }
-}
-
-export interface DocxExportResult {
-  filename: string;
-  storagePath: string;
-  presignedUrl: string;
-  byteSize: number;
 }
 
 function pdfFilename(title: string): string {

@@ -1,11 +1,11 @@
 import type { Assignment, AssignmentInput } from "@annix/product-data/teacher-assistant";
 import { Body, Controller, Header, Post, Res, UseGuards } from "@nestjs/common";
 import type { Response } from "express";
-import { AdminAuthGuard } from "../admin/guards/admin-auth.guard";
 import { ExportAssignmentDocxDto } from "./dto/export-docx.dto";
 import { ExportAssignmentPdfDto } from "./dto/export-pdf.dto";
 import { GenerateAssignmentDto } from "./dto/generate-assignment.dto";
 import { RegenerateSectionDto } from "./dto/regenerate-section.dto";
+import { TeacherAssistantAuthGuard } from "./guards/teacher-assistant-auth.guard";
 import {
   type AssignmentDocxResult,
   AssignmentDocxService,
@@ -14,7 +14,7 @@ import { AssignmentGeneratorService } from "./services/assignment-generator.serv
 import { AssignmentPdfService } from "./services/assignment-pdf.service";
 
 @Controller("teacher-assistant")
-@UseGuards(AdminAuthGuard)
+@UseGuards(TeacherAssistantAuthGuard)
 export class TeacherAssistantController {
   constructor(
     private readonly generator: AssignmentGeneratorService,

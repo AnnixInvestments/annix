@@ -25,6 +25,11 @@ export const auRubberTokenStore = new PortalTokenStore({
   refreshToken: "auRubberRefreshToken",
 });
 
+export const teacherAssistantTokenStore = new PortalTokenStore({
+  accessToken: "teacherAssistantAccessToken",
+  refreshToken: "teacherAssistantRefreshToken",
+});
+
 export const annixRepTokenStore = new PortalTokenStore({
   accessToken: "annixRepAccessToken",
   refreshToken: "annixRepRefreshToken",
