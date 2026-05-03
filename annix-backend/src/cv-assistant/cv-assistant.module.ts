@@ -17,6 +17,7 @@ import { AnalyticsController } from "./controllers/analytics.controller";
 import { CvAssistantAuthController } from "./controllers/auth.controller";
 import { CandidateController } from "./controllers/candidate.controller";
 import { DashboardController } from "./controllers/dashboard.controller";
+import { EmailTemplateController } from "./controllers/email-template.controller";
 import { IndividualProfileController } from "./controllers/individual-profile.controller";
 import { JobMarketController } from "./controllers/job-market.controller";
 import { JobPostingController } from "./controllers/job-posting.controller";
@@ -32,6 +33,7 @@ import { Candidate } from "./entities/candidate.entity";
 import { CandidateJobMatch } from "./entities/candidate-job-match.entity";
 import { CandidateReference } from "./entities/candidate-reference.entity";
 import { CvAssistantCompany } from "./entities/cv-assistant-company.entity";
+import { CvAssistantEmailTemplate } from "./entities/cv-assistant-email-template.entity";
 import { CvAssistantIndividualDocument } from "./entities/cv-assistant-individual-document.entity";
 import { CvAssistantProfile } from "./entities/cv-assistant-profile.entity";
 import { CvAssistantUser } from "./entities/cv-assistant-user.entity";
@@ -60,6 +62,7 @@ import { CvEmailAdapterService } from "./services/cv-email-adapter.service";
 import { CvExtractionService } from "./services/cv-extraction.service";
 import { CvNotificationService } from "./services/cv-notification.service";
 import { CvScreeningService } from "./services/cv-screening.service";
+import { EmailTemplateService } from "./services/email-template.service";
 import { EmbeddingService } from "./services/embedding.service";
 import { IndividualProfileService } from "./services/individual-profile.service";
 import { JobIngestionService } from "./services/job-ingestion.service";
@@ -98,6 +101,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
       CvAssistantUser,
       CvAssistantIndividualDocument,
       CvAssistantCompany,
+      CvAssistantEmailTemplate,
       JobPostingPortalPosting,
       JobSkill,
       JobSuccessMetric,
@@ -139,6 +143,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     PublicJobMarketController,
     PublicJobPostingController,
     PublicAccountController,
+    EmailTemplateController,
   ],
   providers: [
     CvAssistantAuthGuard,
@@ -175,6 +180,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     NixSeekerAssistService,
     SalaryBenchmarkService,
     TestCandidateSeederService,
+    EmailTemplateService,
   ],
   exports: [CvAssistantAuthService],
 })

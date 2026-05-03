@@ -1,6 +1,7 @@
 "use client";
 
 import { allIndustryLabels } from "@annix/product-data/portals/annix-rep-industries";
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { PasskeyManagementSection } from "@/app/components/PasskeyManagementSection";
 import { cvAssistantApiClient } from "@/app/lib/api/cvAssistantApi";
@@ -244,6 +245,22 @@ export default function SettingsPage() {
         authHeaders={cvAssistantTokenStore.authHeaders()}
         title="Your passkeys"
       />
+
+      <Link
+        href="/cv-assistant/portal/settings/email-templates"
+        className="block bg-white rounded-xl shadow-sm border border-[#e0e0f5] p-6 hover:border-[#FFA500] transition-all"
+      >
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">Email templates</h2>
+            <p className="text-sm text-gray-600 mt-1">
+              Customise the candidate-facing emails for rejection, shortlist, acceptance, reference
+              requests and acknowledgement. Nix can draft them for you.
+            </p>
+          </div>
+          <span className="text-[#FFA500] text-sm font-semibold">Manage →</span>
+        </div>
+      </Link>
 
       <div className="bg-white rounded-xl shadow-sm border border-[#e0e0f5] p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-1">Company Information</h2>

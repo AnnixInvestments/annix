@@ -274,6 +274,25 @@ export interface CompanySettings {
   emailFromAddress: string | null;
 }
 
+export type CvEmailTemplateKind =
+  | "rejection"
+  | "shortlist"
+  | "acceptance"
+  | "reference_request"
+  | "acknowledgement";
+
+export interface CvEmailTemplate {
+  kind: CvEmailTemplateKind;
+  label: string;
+  description: string;
+  subject: string;
+  bodyHtml: string;
+  bodyText: string;
+  placeholders: string[];
+  isCustomised: boolean;
+  updatedAt: string | null;
+}
+
 export interface UpdateCompanySettingsInput {
   name?: string;
   industry?: string;
@@ -876,6 +895,40 @@ class CvAssistantApiClient {
   async clearTestCandidates(id: number): Promise<{ deleted: number }> {
     return this.request(`/cv-assistant/job-postings/${id}/test-candidates`, {
       method: "DELETE",
+    });
+  }
+
+  async listEmailTemplates(): Promise<CvEmailTemplate[]> {
+    return this.request("/cv-assistant/email-templates");
+  }
+
+  async getEmailTemplate(kind: CvEmailTemplateKind): Promise<CvEmailTemplate> {
+    return this.request(`/cv-assistant/email-templates/${kind}`);
+  }
+
+  async updateEmailTemplate(
+    kind: CvEmailTemplateKind,
+    payload: { subject: string; bodyHtml: string; bodyText: string },
+  ): Promise<CvEmailTemplate> {
+    return this.request(`/cv-assistant/email-templates/${kind}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async resetEmailTemplate(kind: CvEmailTemplateKind): Promise<CvEmailTemplate> {
+    return this.request(`/cv-assistant/email-templates/${kind}`, {
+      method: "DELETE",
+    });
+  }
+
+  async nixDraftEmailTemplate(
+    kind: CvEmailTemplateKind,
+    instructions?: string,
+  ): Promise<{ subject: string; bodyHtml: string; bodyText: string }> {
+    return this.request(`/cv-assistant/email-templates/${kind}/nix-draft`, {
+      method: "POST",
+      body: JSON.stringify(instructions ? { instructions } : {}),
     });
   }
 

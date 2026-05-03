@@ -565,6 +565,13 @@ export {
   useCvTopCandidates,
 } from "./cv-assistant/useCvDashboard";
 export {
+  useCvEmailTemplate,
+  useCvEmailTemplates,
+  useCvNixDraftEmailTemplate,
+  useCvResetEmailTemplate,
+  useCvUpdateEmailTemplate,
+} from "./cv-assistant/useCvEmailTemplates";
+export {
   useCvConfirmMyAccountDeletion,
   useCvDeleteMyDocument,
   useCvMyDocuments,

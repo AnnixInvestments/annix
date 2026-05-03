@@ -4,6 +4,7 @@ import { Repository } from "typeorm";
 import { EmailService } from "../../email/email.service";
 import { Candidate, CandidateStatus, type MatchAnalysis } from "../entities/candidate.entity";
 import { CvAssistantCompany } from "../entities/cv-assistant-company.entity";
+import { CvEmailTemplateKind } from "../entities/cv-assistant-email-template.entity";
 import { JobPosting } from "../entities/job-posting.entity";
 import { CandidateService } from "./candidate.service";
 import { CandidateJobMatchingService } from "./candidate-job-matching.service";
@@ -14,6 +15,7 @@ import {
   type ScreeningRejectionCategory,
   type ScreeningResult,
 } from "./cv-screening.service";
+import { EmailTemplateService } from "./email-template.service";
 import { EmbeddingService } from "./embedding.service";
 import { JobMatchService } from "./job-match.service";
 import { ReferenceService } from "./reference.service";
@@ -40,6 +42,7 @@ export class WorkflowAutomationService {
     private readonly candidateJobMatchingService: CandidateJobMatchingService,
     private readonly cvAuditService: CvAuditService,
     private readonly cvScreeningService: CvScreeningService,
+    private readonly emailTemplateService: EmailTemplateService,
   ) {}
 
   async processCandidateCv(candidateId: number): Promise<void> {
@@ -280,11 +283,17 @@ export class WorkflowAutomationService {
       await this.candidateRepo.save(candidate);
 
       if (candidate.email && !candidate.rejectionSentAt) {
-        const sent = await this.emailService.sendCvAssistantRejectionEmail(
-          candidate.email,
-          candidate.name || "Applicant",
-          candidate.jobPosting.title,
-        );
+        const companyName = await this.companyName(candidate.jobPosting.companyId);
+        const sent = await this.emailTemplateService.renderAndSend({
+          companyId: candidate.jobPosting.companyId,
+          kind: CvEmailTemplateKind.REJECTION,
+          to: candidate.email,
+          vars: {
+            candidateName: candidate.name || "Applicant",
+            jobTitle: candidate.jobPosting.title,
+            companyName,
+          },
+        });
 
         if (sent) {
           await this.candidateService.markRejectionSent(candidate.id);
@@ -327,11 +336,17 @@ export class WorkflowAutomationService {
       await this.candidateRepo.save(candidate);
 
       if (candidate.email && !candidate.acceptanceSentAt) {
-        const sent = await this.emailService.sendCvAssistantShortlistEmail(
-          candidate.email,
-          candidate.name || "Applicant",
-          candidate.jobPosting.title,
-        );
+        const companyName = await this.companyName(candidate.jobPosting.companyId);
+        const sent = await this.emailTemplateService.renderAndSend({
+          companyId: candidate.jobPosting.companyId,
+          kind: CvEmailTemplateKind.SHORTLIST,
+          to: candidate.email,
+          vars: {
+            candidateName: candidate.name || "Applicant",
+            jobTitle: candidate.jobPosting.title,
+            companyName,
+          },
+        });
 
         if (sent) {
           await this.candidateService.markAcceptanceSent(candidate.id);
@@ -378,11 +393,17 @@ export class WorkflowAutomationService {
       await this.candidateRepo.save(candidate);
 
       if (candidate.email) {
-        await this.emailService.sendCvAssistantAcceptanceEmail(
-          candidate.email,
-          candidate.name || "Applicant",
-          candidate.jobPosting.title,
-        );
+        const companyName = await this.companyName(candidate.jobPosting.companyId);
+        await this.emailTemplateService.renderAndSend({
+          companyId: candidate.jobPosting.companyId,
+          kind: CvEmailTemplateKind.ACCEPTANCE,
+          to: candidate.email,
+          vars: {
+            candidateName: candidate.name || "Applicant",
+            jobTitle: candidate.jobPosting.title,
+            companyName,
+          },
+        });
       }
 
       if (actorId !== null) {

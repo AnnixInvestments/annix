@@ -38,6 +38,11 @@ export const cvAssistantKeys = {
     wizard: (id: number) => ["cv-assistant", "job-postings", "wizard", id] as const,
   },
 
+  emailTemplates: {
+    all: ["cv-assistant", "email-templates"] as const,
+    detail: (kind: string) => ["cv-assistant", "email-templates", "detail", kind] as const,
+  },
+
   references: {
     all: ["cv-assistant", "references"] as const,
     list: (status?: string | null) =>
