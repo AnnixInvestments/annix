@@ -7,9 +7,9 @@ export class AddAuCocApprovalAndAutoConfig1820100000053 implements MigrationInte
         IF NOT EXISTS (
           SELECT 1 FROM pg_enum e
           JOIN pg_type t ON e.enumtypid = t.oid
-          WHERE t.typname = 'rubber_au_cocs_status_enum' AND e.enumlabel = 'APPROVED'
+          WHERE t.typname = 'au_coc_status_enum' AND e.enumlabel = 'APPROVED'
         ) THEN
-          ALTER TYPE rubber_au_cocs_status_enum ADD VALUE 'APPROVED' BEFORE 'SENT';
+          ALTER TYPE au_coc_status_enum ADD VALUE 'APPROVED' BEFORE 'SENT';
         END IF;
       END $$;
     `);
