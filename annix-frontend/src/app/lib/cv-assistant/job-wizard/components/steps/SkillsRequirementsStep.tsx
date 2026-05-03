@@ -67,8 +67,33 @@ export function SkillsRequirementsStep({ draft, onChange }: SkillsRequirementsSt
           const dupe = merged.some((existing) => existing.name.toLowerCase() === lowerName);
           if (!dupe) merged.push(s);
         }
-        onChange({ skills: merged });
-        showToast(`Nix added ${suggested.length} skill suggestions.`, "success");
+
+        const patch: UpdateJobWizardPayload = { skills: merged };
+        const filledFields: string[] = [];
+
+        const currentMin = draft.minExperienceYears;
+        if ((currentMin === null || currentMin === undefined) && data.minExperienceYears != null) {
+          patch.minExperienceYears = data.minExperienceYears;
+          filledFields.push("minimum years");
+        }
+
+        const currentEdu = strOr(draft.requiredEducation).trim();
+        if (!currentEdu && data.requiredEducation) {
+          patch.requiredEducation = data.requiredEducation;
+          filledFields.push("required education");
+        }
+
+        const currentCerts = arrOr(draft.requiredCertifications);
+        if (currentCerts.length === 0 && data.requiredCertifications.length > 0) {
+          patch.requiredCertifications = data.requiredCertifications;
+          filledFields.push("certifications");
+        }
+
+        onChange(patch);
+        const skillCount = suggested.length;
+        const extraNote =
+          filledFields.length > 0 ? ` Also filled: ${filledFields.join(", ")}.` : "";
+        showToast(`Nix added ${skillCount} skill suggestions.${extraNote}`, "success");
       },
       onError: () => {
         showToast("Nix couldn't suggest skills right now. Try again.", "error");
@@ -159,6 +184,7 @@ export function SkillsRequirementsStep({ draft, onChange }: SkillsRequirementsSt
         <div className="space-y-2">
           <FieldLabel htmlFor="min-experience">Minimum years of experience</FieldLabel>
           <input
+            key={`minexp-${minExperienceDefault}`}
             id="min-experience"
             type="number"
             min={0}
@@ -174,6 +200,7 @@ export function SkillsRequirementsStep({ draft, onChange }: SkillsRequirementsSt
         <div className="space-y-2">
           <FieldLabel htmlFor="required-education">Required Education</FieldLabel>
           <input
+            key={`edu-${requiredEducationDefault}`}
             id="required-education"
             type="text"
             className={inputClass}
@@ -192,6 +219,7 @@ export function SkillsRequirementsStep({ draft, onChange }: SkillsRequirementsSt
           Required Certifications
         </FieldLabel>
         <input
+          key={`certs-${certs}`}
           id="required-certifications"
           type="text"
           className={inputClass}

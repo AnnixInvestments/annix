@@ -61,6 +61,12 @@ export interface NixSkillSuggestion {
 export interface NixSkillSuggestionsResponse {
   skills: NixSkillSuggestion[];
   notes: string[];
+  /** Minimum years of total relevant experience for the role. */
+  minExperienceYears: number | null;
+  /** SA-style education line (e.g. "Matric + NQF6 in Mechanical Engineering"). */
+  requiredEducation: string | null;
+  /** Concrete certifications a candidate must hold (ECSA Pr Eng, SAICA, etc.). */
+  requiredCertifications: string[];
 }
 
 export interface NixQualityScoreResponse {
@@ -284,7 +290,10 @@ Return JSON with this exact shape:
     },
     ...
   ],
-  "notes": ["string — optional caveats", ...]
+  "notes": ["string — optional caveats", ...],
+  "minExperienceYears": number | null,
+  "requiredEducation": "string or null",
+  "requiredCertifications": ["string", ...]
 }
 
 Rules:
@@ -294,7 +303,10 @@ Rules:
 - For entry/junior roles, basic/intermediate is appropriate.
 - evidenceRequired is concrete: "Has managed their own pipeline", "Holds an ECSA registration", etc.
 - If the seniority and yearsExperience combination is unrealistic (e.g. expert + 1 year), don't suggest it.
-- Use SA-specific certifications where relevant (ECSA, SACPCMP, SAICA, SAIPA, etc.).`,
+- Use SA-specific certifications where relevant (ECSA, SACPCMP, SAICA, SAIPA, etc.).
+- minExperienceYears: a single integer for total relevant years expected for the role. Match the seniority — entry 0-1, junior 1-3, mid 3-6, senior 6-10, lead/manager 8-12, executive 10+. Return null only if seniority is genuinely unspecified.
+- requiredEducation: a single SA-style line — e.g. "Matric (NSC)", "Matric + NQF6 in Mechanical Engineering", "BCom Accounting (NQF7)", "Trade Test (Section 13/26D)". Use NQF levels where appropriate. Return null only if no formal education is required for the role.
+- requiredCertifications: 0-4 concrete certifications a candidate must HOLD (not nice-to-have — those go in skills). Examples: "ECSA Pr Eng", "SAICA registered CA(SA)", "Code 10 (C1) driver's licence", "First Aid Level 1". Use empty array if none are essential.`,
   };
 }
 

@@ -869,6 +869,9 @@ class CvAssistantApiClient {
       reasoning: string | null;
     }>;
     notes: string[];
+    minExperienceYears: number | null;
+    requiredEducation: string | null;
+    requiredCertifications: string[];
   }> {
     return this.request(`/cv-assistant/job-postings/${id}/nix/skill-suggestions`, {
       method: "POST",
