@@ -10,6 +10,7 @@ import { TeacherAssistantAuthGuard } from "./guards/teacher-assistant-auth.guard
 import { AssignmentDocxService } from "./services/assignment-docx.service";
 import { AssignmentGeneratorService } from "./services/assignment-generator.service";
 import { AssignmentPdfService } from "./services/assignment-pdf.service";
+import { ObjectiveSuggesterService } from "./services/objective-suggester.service";
 import { SubjectTemplateService } from "./services/subject-template.service";
 import { TeacherAssistantAuthService } from "./services/teacher-assistant-auth.service";
 import { TeacherAssistantController } from "./teacher-assistant.controller";
@@ -29,6 +30,7 @@ import { TeacherAssistantAuthController } from "./teacher-assistant-auth.control
     AssignmentGeneratorService,
     AssignmentPdfService,
     AssignmentDocxService,
+    ObjectiveSuggesterService,
     SubjectTemplateService,
     TeacherAssistantAuthService,
     TeacherAssistantAuthGuard,
@@ -37,6 +39,7 @@ import { TeacherAssistantAuthController } from "./teacher-assistant-auth.control
     AssignmentGeneratorService,
     AssignmentPdfService,
     AssignmentDocxService,
+    ObjectiveSuggesterService,
     SubjectTemplateService,
     TeacherAssistantAuthService,
     TeacherAssistantAuthGuard,

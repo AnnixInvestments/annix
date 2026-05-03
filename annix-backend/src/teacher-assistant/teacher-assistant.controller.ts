@@ -5,6 +5,7 @@ import { ExportAssignmentDocxDto } from "./dto/export-docx.dto";
 import { ExportAssignmentPdfDto } from "./dto/export-pdf.dto";
 import { GenerateAssignmentDto } from "./dto/generate-assignment.dto";
 import { RegenerateSectionDto } from "./dto/regenerate-section.dto";
+import { SuggestObjectivesDto } from "./dto/suggest-objectives.dto";
 import { TeacherAssistantAuthGuard } from "./guards/teacher-assistant-auth.guard";
 import {
   type AssignmentDocxResult,
@@ -12,6 +13,7 @@ import {
 } from "./services/assignment-docx.service";
 import { AssignmentGeneratorService } from "./services/assignment-generator.service";
 import { AssignmentPdfService } from "./services/assignment-pdf.service";
+import { ObjectiveSuggesterService } from "./services/objective-suggester.service";
 
 @Controller("teacher-assistant")
 @UseGuards(TeacherAssistantAuthGuard)
@@ -20,6 +22,7 @@ export class TeacherAssistantController {
     private readonly generator: AssignmentGeneratorService,
     private readonly pdf: AssignmentPdfService,
     private readonly docx: AssignmentDocxService,
+    private readonly objectiveSuggester: ObjectiveSuggesterService,
   ) {}
 
   @Post("generate")
@@ -50,6 +53,17 @@ export class TeacherAssistantController {
   @Post("export/docx")
   async exportDocx(@Body() body: ExportAssignmentDocxDto): Promise<AssignmentDocxResult> {
     return this.docx.render(body.assignment);
+  }
+
+  @Post("suggest/objectives")
+  async suggestObjectives(@Body() body: SuggestObjectivesDto): Promise<{ suggestions: string[] }> {
+    const suggestions = await this.objectiveSuggester.suggest({
+      subject: body.subject,
+      topic: body.topic,
+      ageBucket: body.ageBucket,
+      difficulty: body.difficulty,
+    });
+    return { suggestions };
   }
 
   private toAssignmentInput(dto: GenerateAssignmentDto): AssignmentInput {

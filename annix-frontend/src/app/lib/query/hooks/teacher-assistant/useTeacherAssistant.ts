@@ -4,7 +4,11 @@ import type {
   AssignmentSection,
 } from "@annix/product-data/teacher-assistant";
 import { useMutation } from "@tanstack/react-query";
-import { teacherAssistantApi } from "@/app/lib/api/teacherAssistantApi";
+import {
+  type SuggestObjectivesInput,
+  type SuggestObjectivesResult,
+  teacherAssistantApi,
+} from "@/app/lib/api/teacherAssistantApi";
 
 export function useGenerateAssignment() {
   return useMutation({
@@ -21,5 +25,11 @@ export interface RegenerateSectionArgs {
 export function useRegenerateSection() {
   return useMutation({
     mutationFn: (args: RegenerateSectionArgs) => teacherAssistantApi.regenerateSection(args),
+  });
+}
+
+export function useSuggestObjectives() {
+  return useMutation<SuggestObjectivesResult, Error, SuggestObjectivesInput>({
+    mutationFn: (input) => teacherAssistantApi.suggestObjectives(input),
   });
 }

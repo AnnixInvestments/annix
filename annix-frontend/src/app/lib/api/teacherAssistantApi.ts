@@ -1,7 +1,10 @@
 import type {
+  AgeBucket,
   Assignment,
   AssignmentInput,
   AssignmentSection,
+  DifficultyLevel,
+  Subject,
 } from "@annix/product-data/teacher-assistant";
 import { type ApiClient, createApiClient } from "@/app/lib/api/createApiClient";
 import { teacherAssistantTokenStore } from "@/app/lib/api/portalTokenStores";
@@ -38,6 +41,17 @@ export interface RegisterTeacherInput {
 export interface LoginTeacherInput {
   email: string;
   password: string;
+}
+
+export interface SuggestObjectivesInput {
+  subject: Subject;
+  topic: string;
+  ageBucket: AgeBucket;
+  difficulty: DifficultyLevel;
+}
+
+export interface SuggestObjectivesResult {
+  suggestions: string[];
 }
 
 export interface DocxExportResult {
@@ -90,6 +104,13 @@ class TeacherAssistantApi {
 
   exportDocx(assignment: Assignment): Promise<DocxExportResult> {
     return this.client.post<DocxExportResult>("/teacher-assistant/export/docx", { assignment });
+  }
+
+  suggestObjectives(input: SuggestObjectivesInput): Promise<SuggestObjectivesResult> {
+    return this.client.post<SuggestObjectivesResult>(
+      "/teacher-assistant/suggest/objectives",
+      input,
+    );
   }
 }
 

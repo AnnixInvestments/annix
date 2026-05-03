@@ -17,6 +17,7 @@ import {
 } from "@annix/product-data/teacher-assistant";
 import { Sparkles } from "lucide-react";
 import { useState } from "react";
+import { LearningObjectiveField } from "./LearningObjectiveField";
 
 interface FormState {
   subject: Subject;
@@ -167,11 +168,13 @@ export function TeacherAssistantForm(props: TeacherAssistantFormProps) {
         </div>
       </div>
 
-      <FormText
-        label="Learning objective (optional)"
+      <LearningObjectiveField
         value={form.learningObjective}
         onChange={(v) => setField("learningObjective", v)}
-        placeholder="e.g. Identify five cloud types and link them to weather patterns."
+        subject={form.subject}
+        topic={form.topic}
+        ageBucket={form.ageBucket}
+        difficulty={form.difficulty}
       />
 
       <div>

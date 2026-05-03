@@ -1059,4 +1059,5 @@ export type { RegenerateSectionArgs } from "./teacher-assistant/useTeacherAssist
 export {
   useGenerateAssignment,
   useRegenerateSection,
+  useSuggestObjectives,
 } from "./teacher-assistant/useTeacherAssistant";
