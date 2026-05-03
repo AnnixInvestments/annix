@@ -5,6 +5,7 @@ import { MulterModule } from "@nestjs/platform-express";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { AuditModule } from "../audit/audit.module";
 import { EmailModule } from "../email/email.module";
+import { MetricsModule } from "../metrics/metrics.module";
 import { NixModule } from "../nix/nix.module";
 import { Company } from "../platform/entities/company.entity";
 import { App } from "../rbac/entities/app.entity";
@@ -66,6 +67,7 @@ import { JobMarketSourceService } from "./services/job-market-source.service";
 import { JobMatchService } from "./services/job-match.service";
 import { JobPostingService } from "./services/job-posting.service";
 import { MarketInsightsService } from "./services/market-insights.service";
+import { NixJobAssistService } from "./services/nix-job-assist.service";
 import { PopiaService } from "./services/popia.service";
 import { PortalAdapterRegistry } from "./services/portal-adapter-registry.service";
 import { PortalPostingOrchestrator } from "./services/portal-posting-orchestrator.service";
@@ -113,6 +115,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
       },
     }),
     NixModule,
+    MetricsModule,
     EmailModule,
     StorageModule,
     AuditModule,
@@ -165,6 +168,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     LinkedInPortalAdapter,
     IndeedPortalAdapter,
     FacebookPortalAdapter,
+    NixJobAssistService,
   ],
   exports: [CvAssistantAuthService],
 })

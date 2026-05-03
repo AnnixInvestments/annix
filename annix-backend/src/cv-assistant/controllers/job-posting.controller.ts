@@ -15,11 +15,15 @@ import { CreateJobPostingDto, UpdateJobPostingDto } from "../dto/job-posting.dto
 import { UpdateJobWizardDto } from "../dto/job-wizard.dto";
 import { CvAssistantAuthGuard } from "../guards/cv-assistant-auth.guard";
 import { JobPostingService } from "../services/job-posting.service";
+import { NixJobAssistService } from "../services/nix-job-assist.service";
 
 @Controller("cv-assistant/job-postings")
 @UseGuards(CvAssistantAuthGuard)
 export class JobPostingController {
-  constructor(private readonly jobPostingService: JobPostingService) {}
+  constructor(
+    private readonly jobPostingService: JobPostingService,
+    private readonly nixJobAssist: NixJobAssistService,
+  ) {}
 
   @Post()
   async create(@Request() req: { user: { companyId: number } }, @Body() dto: CreateJobPostingDto) {
@@ -54,6 +58,32 @@ export class JobPostingController {
     @Param("id", ParseIntPipe) id: number,
   ) {
     return this.jobPostingService.publishDraft(req.user.companyId, id);
+  }
+
+  // Phase 2 — Nix in the form
+  @Post(":id/nix/title-suggestions")
+  async nixTitleSuggestions(
+    @Request() req: { user: { companyId: number } },
+    @Param("id", ParseIntPipe) id: number,
+    @Body() body: { title?: string } = {},
+  ) {
+    return this.nixJobAssist.titleSuggestions(req.user.companyId, id, body.title);
+  }
+
+  @Post(":id/nix/description")
+  async nixDescription(
+    @Request() req: { user: { companyId: number } },
+    @Param("id", ParseIntPipe) id: number,
+  ) {
+    return this.nixJobAssist.description(req.user.companyId, id);
+  }
+
+  @Post(":id/nix/skill-suggestions")
+  async nixSkillSuggestions(
+    @Request() req: { user: { companyId: number } },
+    @Param("id", ParseIntPipe) id: number,
+  ) {
+    return this.nixJobAssist.skillSuggestions(req.user.companyId, id);
   }
 
   @Get()
