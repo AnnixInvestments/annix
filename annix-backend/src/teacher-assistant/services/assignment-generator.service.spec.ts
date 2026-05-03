@@ -185,7 +185,12 @@ describe("AssignmentGeneratorService", () => {
   it("throws after retries are exhausted", async () => {
     const broken = validAssignment();
     broken.title = "";
-    const ai = stubAiChat([JSON.stringify(broken), JSON.stringify(broken), JSON.stringify(broken)]);
+    const ai = stubAiChat([
+      JSON.stringify(broken),
+      JSON.stringify(broken),
+      JSON.stringify(broken),
+      JSON.stringify(broken),
+    ]);
     const service = new AssignmentGeneratorService(ai.service, stubMetrics());
     await expect(service.generate(sampleInput)).rejects.toBeInstanceOf(BadRequestException);
   });

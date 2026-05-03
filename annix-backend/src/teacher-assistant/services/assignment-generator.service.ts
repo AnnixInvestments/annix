@@ -17,8 +17,9 @@ import { ExtractionMetricService } from "../../metrics/extraction-metric.service
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 
 const METRIC_CATEGORY = "teacher-assistant-generate";
-const MAX_RETRIES = 2;
+const MAX_RETRIES = 3;
 const CACHE_TTL_MS = 5 * 60 * 1000;
+const RAW_AI_RESPONSE_LOG_CHARS = 600;
 
 interface CacheEntry {
   assignment: Assignment;
@@ -84,6 +85,7 @@ export class AssignmentGeneratorService {
     let attempt = 0;
     let lastFailures: ValidationFailure[] = [];
     let lastFluffyFailures: ValidationFailure[] = [];
+    let lastRawResponse = "";
 
     while (attempt <= MAX_RETRIES) {
       const prompt =
@@ -99,6 +101,7 @@ export class AssignmentGeneratorService {
         SYSTEM_PROMPT,
         "gemini",
       );
+      lastRawResponse = response.content;
 
       let assignment: Assignment;
       try {
@@ -110,6 +113,7 @@ export class AssignmentGeneratorService {
             message: error instanceof Error ? error.message : String(error),
           },
         ];
+        this.logger.warn(`Attempt ${attempt + 1} JSON parse failed: ${lastFailures[0].message}`);
         attempt += 1;
         continue;
       }
@@ -132,9 +136,18 @@ export class AssignmentGeneratorService {
       attempt += 1;
     }
 
+    const allFailures = [...lastFailures, ...lastFluffyFailures];
+    this.logger.error(
+      `Generation exhausted ${MAX_RETRIES + 1} attempts for ${input.subject}/${input.topic}. Final failures: ${this.summariseFailures(allFailures)}`,
+    );
+    if (lastRawResponse) {
+      this.logger.error(
+        `Last raw AI response (truncated to ${RAW_AI_RESPONSE_LOG_CHARS} chars): ${lastRawResponse.slice(0, RAW_AI_RESPONSE_LOG_CHARS)}`,
+      );
+    }
     throw new BadRequestException({
       message: `Generation failed after ${MAX_RETRIES + 1} attempts.`,
-      failures: [...lastFailures, ...lastFluffyFailures],
+      failures: allFailures,
     });
   }
 

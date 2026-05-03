@@ -6,6 +6,7 @@ export interface ApiErrorPayload {
   message: string;
   detail?: string;
   fieldErrors?: Record<string, string[]>;
+  meta?: Record<string, unknown>;
 }
 
 export class ApiError extends Error {
@@ -13,6 +14,7 @@ export class ApiError extends Error {
   readonly code?: string;
   readonly detail?: string;
   readonly fieldErrors?: Record<string, string[]>;
+  readonly meta?: Record<string, unknown>;
 
   constructor(payload: ApiErrorPayload) {
     super(payload.message);
@@ -21,6 +23,7 @@ export class ApiError extends Error {
     this.code = payload.code;
     this.detail = payload.detail;
     this.fieldErrors = payload.fieldErrors;
+    this.meta = payload.meta;
   }
 
   isUnauthorized(): boolean {
@@ -149,5 +152,6 @@ export async function throwIfNotOk(response: Response): Promise<void> {
       parsed?.fieldErrors && isObject(parsed.fieldErrors)
         ? (parsed.fieldErrors as Record<string, string[]>)
         : undefined,
+    meta: parsed && isObject(parsed) ? (parsed as Record<string, unknown>) : undefined,
   });
 }

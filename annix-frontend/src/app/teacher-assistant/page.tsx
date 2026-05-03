@@ -1,12 +1,13 @@
 "use client";
 
 import type { Assignment, AssignmentInput } from "@annix/product-data/teacher-assistant";
+import { isArray, isString } from "es-toolkit/compat";
 import { AlertTriangle, GraduationCap, LogOut, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { useToast } from "@/app/components/Toast";
-import { extractErrorMessage } from "@/app/lib/api/apiError";
+import { type ApiError, extractErrorMessage, isApiError } from "@/app/lib/api/apiError";
 import { useGenerateAssignment } from "@/app/lib/query/hooks";
 import {
   type RecentAssignmentEntry,
@@ -29,6 +30,7 @@ export default function TeacherAssistantPage() {
   const [assignment, setAssignment] = useState<Assignment | null>(null);
   const [generatedFrom, setGeneratedFrom] = useState<AssignmentInput | null>(null);
   const [lastError, setLastError] = useState<string | null>(null);
+  const [lastFailures, setLastFailures] = useState<string[]>([]);
 
   const recent = useTeacherAssistantStore((s) => s.recent);
   const rememberAssignment = useTeacherAssistantStore((s) => s.rememberAssignment);
@@ -56,6 +58,7 @@ export default function TeacherAssistantPage() {
   const handleSubmit = (input: AssignmentInput) => {
     setGeneratedFrom(input);
     setLastError(null);
+    setLastFailures([]);
     showExtraction({
       brand: "teacher-assistant",
       label: `Generating ${input.subject} assignment on "${input.topic}"…`,
@@ -72,6 +75,7 @@ export default function TeacherAssistantPage() {
         hideExtraction();
         const message = extractErrorMessage(error, "Generation failed.");
         setLastError(message);
+        setLastFailures(extractFailures(error));
         showToast(message, "error", 12_000);
       },
     });
@@ -156,6 +160,21 @@ export default function TeacherAssistantPage() {
                   <div className="flex-1 text-sm text-red-800">
                     <p className="font-semibold mb-1">Generation failed</p>
                     <p>{lastError}</p>
+                    {lastFailures.length > 0 ? (
+                      <details className="mt-2">
+                        <summary className="cursor-pointer text-red-700 hover:text-red-900 font-medium">
+                          What the AI struggled with ({lastFailures.length})
+                        </summary>
+                        <ul className="mt-2 ml-2 space-y-1 list-disc list-inside text-red-700">
+                          {lastFailures.slice(0, 8).map((failure) => (
+                            <li key={failure}>{failure}</li>
+                          ))}
+                          {lastFailures.length > 8 ? (
+                            <li className="opacity-70">…and {lastFailures.length - 8} more.</li>
+                          ) : null}
+                        </ul>
+                      </details>
+                    ) : null}
                     <p className="mt-2 text-red-700">
                       Try a more specific topic, change the difficulty, or try again in a few
                       seconds.
@@ -163,7 +182,10 @@ export default function TeacherAssistantPage() {
                   </div>
                   <button
                     type="button"
-                    onClick={() => setLastError(null)}
+                    onClick={() => {
+                      setLastError(null);
+                      setLastFailures([]);
+                    }}
                     className="text-red-400 hover:text-red-600"
                     aria-label="Dismiss error"
                   >
@@ -178,4 +200,19 @@ export default function TeacherAssistantPage() {
       </main>
     </div>
   );
+}
+
+interface FailureLike {
+  message?: unknown;
+  code?: unknown;
+}
+
+function extractFailures(error: unknown): string[] {
+  if (!isApiError(error)) return [];
+  const apiError = error as ApiError;
+  const meta = apiError.meta;
+  if (!meta || !isArray(meta.failures)) return [];
+  return (meta.failures as FailureLike[])
+    .map((f) => (isString(f?.message) ? f.message : ""))
+    .filter((m) => m.length > 0);
 }
