@@ -112,6 +112,12 @@ const JOB_METADATA: Record<string, { description: string; module: string; defaul
     module: "CV Assistant",
     defaultCron: "0 */6 * * *",
   },
+  "cv-assistant:refresh-salary-benchmarks": {
+    description:
+      "Refresh cv_assistant_salary_benchmarks cache from Adzuna SA for top title × province combinations",
+    module: "CV Assistant",
+    defaultCron: "0 2 * * *",
+  },
   "customers:bee-expiry-check": {
     description: "Check B-BEE certificate expiry and send notifications",
     module: "Customers",

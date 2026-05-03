@@ -24,6 +24,7 @@ import {
   titleSuggestionsPrompt,
   volumePredictionPrompt,
 } from "./nix-prompts";
+import { SalaryBenchmarkService } from "./salary-benchmark.service";
 
 const METRIC_CATEGORY = "cv-assistant-nix";
 
@@ -36,6 +37,7 @@ export class NixJobAssistService {
     private readonly metrics: ExtractionMetricService,
     @InjectRepository(JobPosting)
     private readonly jobPostingRepo: Repository<JobPosting>,
+    private readonly salaryBenchmarks: SalaryBenchmarkService,
   ) {}
 
   async titleSuggestions(
@@ -190,6 +192,14 @@ export class NixJobAssistService {
   ): Promise<NixSalaryGuidanceResponse> {
     const posting = await this.loadPostingWithRelations(companyId, jobPostingId);
 
+    // Phase 5b: pull the Adzuna benchmark cache row if we have one. Nix
+    // narrates around real percentiles when available; falls back to
+    // its own SA market knowledge otherwise.
+    const benchmarkTitle = posting.normalizedTitle || posting.title;
+    const cachedBenchmark = benchmarkTitle
+      ? await this.salaryBenchmarks.cachedBenchmark(benchmarkTitle, posting.province)
+      : null;
+
     return this.metrics.time(METRIC_CATEGORY, "salary-guidance", async () => {
       const prompt = salaryGuidancePrompt({
         title: posting.title,
@@ -205,6 +215,16 @@ export class NixJobAssistService {
         currency: posting.salaryCurrency,
         benefits: posting.benefits || [],
         commissionStructure: posting.commissionStructure,
+        benchmark: cachedBenchmark
+          ? {
+              p25: cachedBenchmark.minSalary ? Number(cachedBenchmark.minSalary) : null,
+              p50: cachedBenchmark.medianSalary ? Number(cachedBenchmark.medianSalary) : null,
+              p75: cachedBenchmark.maxSalary ? Number(cachedBenchmark.maxSalary) : null,
+              sampleSize: cachedBenchmark.sampleSize,
+              source: cachedBenchmark.source,
+              confidence: Number(cachedBenchmark.confidence),
+            }
+          : null,
       });
       const result = await this.callAi(prompt);
       return parseNixJson<NixSalaryGuidanceResponse>(result.content);

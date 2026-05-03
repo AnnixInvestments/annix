@@ -73,6 +73,7 @@ import { PortalAdapterRegistry } from "./services/portal-adapter-registry.servic
 import { PortalPostingOrchestrator } from "./services/portal-posting-orchestrator.service";
 import { PortalPostingRetryService } from "./services/portal-posting-retry.service";
 import { ReferenceService } from "./services/reference.service";
+import { SalaryBenchmarkService } from "./services/salary-benchmark.service";
 import { SettingsService } from "./services/settings.service";
 import { WorkflowAutomationService } from "./services/workflow-automation.service";
 
@@ -169,6 +170,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     IndeedPortalAdapter,
     FacebookPortalAdapter,
     NixJobAssistService,
+    SalaryBenchmarkService,
   ],
   exports: [CvAssistantAuthService],
 })

@@ -902,6 +902,23 @@ class CvAssistantApiClient {
     });
   }
 
+  async salaryInsights(params: { normalizedTitle: string; province?: string | null }): Promise<{
+    normalizedTitle: string;
+    province: string | null;
+    p25?: number | null;
+    p50?: number | null;
+    p75?: number | null;
+    sampleSize: number;
+    confidence?: number;
+    source: string | null;
+    updatedAt?: string;
+    attribution: string | null;
+  }> {
+    const search = new URLSearchParams({ normalizedTitle: params.normalizedTitle });
+    if (params.province) search.set("province", params.province);
+    return this.request(`/cv-assistant/job-postings/salary-insights?${search.toString()}`);
+  }
+
   async candidates(filters?: { status?: string; jobPostingId?: number }): Promise<Candidate[]> {
     const params = new URLSearchParams();
     if (filters?.status) params.append("status", filters.status);

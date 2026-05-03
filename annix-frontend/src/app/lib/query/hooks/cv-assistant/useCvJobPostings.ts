@@ -159,6 +159,27 @@ export function useCvNixSalaryGuidance() {
   });
 }
 
+export function useCvSalaryInsights(params: {
+  normalizedTitle: string | null | undefined;
+  province?: string | null;
+}) {
+  const titleParam = params.normalizedTitle;
+  const provinceParam = params.province;
+  const titleKey = titleParam ? titleParam : "";
+  const provinceKey = provinceParam ? provinceParam : "";
+  const enabled = Boolean(titleParam && titleParam.length > 0);
+  return useQuery({
+    queryKey: ["cv-assistant", "salary-insights", titleKey, provinceKey] as const,
+    queryFn: () =>
+      cvAssistantApiClient.salaryInsights({
+        normalizedTitle: titleParam as string,
+        province: provinceParam ? provinceParam : null,
+      }),
+    enabled,
+    staleTime: 60 * 60 * 1000,
+  });
+}
+
 export function useCvNixSourcingQueries() {
   return useMutation({
     mutationFn: (id: number) => cvAssistantApiClient.nixSourcingQueries(id),

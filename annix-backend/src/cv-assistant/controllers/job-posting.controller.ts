@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Header,
   Param,
   ParseIntPipe,
   Patch,
@@ -16,6 +17,7 @@ import { UpdateJobWizardDto } from "../dto/job-wizard.dto";
 import { CvAssistantAuthGuard } from "../guards/cv-assistant-auth.guard";
 import { JobPostingService } from "../services/job-posting.service";
 import { NixJobAssistService } from "../services/nix-job-assist.service";
+import { SalaryBenchmarkService } from "../services/salary-benchmark.service";
 
 @Controller("cv-assistant/job-postings")
 @UseGuards(CvAssistantAuthGuard)
@@ -23,7 +25,44 @@ export class JobPostingController {
   constructor(
     private readonly jobPostingService: JobPostingService,
     private readonly nixJobAssist: NixJobAssistService,
+    private readonly salaryBenchmarks: SalaryBenchmarkService,
   ) {}
+
+  @Get("salary-insights")
+  @Header("Cache-Control", "public, max-age=3600")
+  async salaryInsights(
+    @Query("normalizedTitle") normalizedTitle: string,
+    @Query("province") province?: string,
+  ) {
+    const row = await this.salaryBenchmarks.cachedBenchmark(normalizedTitle, province ?? null);
+    if (!row) {
+      return {
+        normalizedTitle,
+        province: province ?? null,
+        sampleSize: 0,
+        source: null,
+        attribution: null,
+      };
+    }
+    const minSalary = row.minSalary;
+    const medianSalary = row.medianSalary;
+    const maxSalary = row.maxSalary;
+    return {
+      normalizedTitle: row.normalizedTitle,
+      province: row.province,
+      p25: minSalary != null ? Number(minSalary) : null,
+      p50: medianSalary != null ? Number(medianSalary) : null,
+      p75: maxSalary != null ? Number(maxSalary) : null,
+      sampleSize: row.sampleSize,
+      confidence: Number(row.confidence),
+      source: row.source,
+      updatedAt: row.updatedAt,
+      attribution:
+        row.source === "adzuna"
+          ? "Salary aggregates powered by Adzuna SA. Individual postings remain the property of their respective publishers."
+          : null,
+    };
+  }
 
   @Post()
   async create(@Request() req: { user: { companyId: number } }, @Body() dto: CreateJobPostingDto) {

@@ -601,6 +601,7 @@ export {
   useCvNixTitleSuggestions,
   useCvPortalAdapters,
   useCvPublishJobDraft,
+  useCvSalaryInsights,
   useCvUpdateJobPosting,
   useCvUpdateJobWizard,
 } from "./cv-assistant/useCvJobPostings";

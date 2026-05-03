@@ -90,6 +90,82 @@ export class AdzunaService {
     return { jobs, totalCount: data.count };
   }
 
+  /**
+   * Phase 5b: aggregate salary data for a given title + province by sampling
+   * recent Adzuna postings. Returns p25 / p50 / p75 / sampleSize so we can
+   * cache it under cv_assistant_salary_benchmarks.
+   *
+   * Calls into the standard Adzuna search endpoint; salaries are extracted
+   * from each result's salary_min / salary_max midpoint and quantiles are
+   * computed locally. Anything below 5 results returns sampleSize=0 so the
+   * caller knows to fall back to Nix narration.
+   */
+  async salaryAggregates(
+    appId: string,
+    appKey: string,
+    country: string,
+    options: {
+      title: string;
+      province?: string | null;
+      maxDaysOld?: number;
+      maxPages?: number;
+    },
+  ): Promise<{
+    p25: number | null;
+    p50: number | null;
+    p75: number | null;
+    sampleSize: number;
+  }> {
+    const maxPages = options.maxPages ?? 2;
+    const maxDaysOld = options.maxDaysOld ?? 60;
+    const collected: number[] = [];
+
+    for (let page = 1; page <= maxPages; page++) {
+      const { jobs } = await this.searchJobs(appId, appKey, country, {
+        keywords: options.title,
+        locationArea: options.province ?? undefined,
+        page,
+        resultsPerPage: 50,
+        maxDaysOld,
+      });
+      if (jobs.length === 0) break;
+      for (const job of jobs) {
+        const min = job.salaryMin;
+        const max = job.salaryMax;
+        if (min != null && max != null) {
+          collected.push((min + max) / 2);
+        } else if (min != null) {
+          collected.push(min);
+        } else if (max != null) {
+          collected.push(max);
+        }
+      }
+      if (jobs.length < 50) break;
+    }
+
+    if (collected.length < 5) {
+      return { p25: null, p50: null, p75: null, sampleSize: collected.length };
+    }
+
+    const sorted = [...collected].sort((a, b) => a - b);
+    const quantile = (q: number): number => {
+      const pos = (sorted.length - 1) * q;
+      const lo = Math.floor(pos);
+      const hi = Math.ceil(pos);
+      const lower = sorted[lo];
+      const upper = sorted[hi];
+      if (lo === hi) return lower;
+      return lower + (upper - lower) * (pos - lo);
+    };
+
+    return {
+      p25: Math.round(quantile(0.25)),
+      p50: Math.round(quantile(0.5)),
+      p75: Math.round(quantile(0.75)),
+      sampleSize: sorted.length,
+    };
+  }
+
   async categories(
     appId: string,
     appKey: string,

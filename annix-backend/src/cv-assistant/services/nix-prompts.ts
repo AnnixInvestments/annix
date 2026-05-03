@@ -390,10 +390,28 @@ export function salaryGuidancePrompt(input: {
   currency: string;
   benefits: string[];
   commissionStructure: string | null;
+  benchmark?: {
+    p25: number | null;
+    p50: number | null;
+    p75: number | null;
+    sampleSize: number;
+    source: string;
+    confidence: number;
+  } | null;
 }): NixPrompt {
+  const benchmarkBlock = input.benchmark
+    ? `
+
+Live SA market benchmark (source: ${input.benchmark.source}, sample size: ${input.benchmark.sampleSize}, confidence: ${input.benchmark.confidence}):
+- p25: ${input.benchmark.p25 ?? "(unknown)"} ZAR/month
+- p50 (median): ${input.benchmark.p50 ?? "(unknown)"} ZAR/month
+- p75: ${input.benchmark.p75 ?? "(unknown)"} ZAR/month
+Use these numbers as the primary anchor for your recommendation. Your suggestedMin/suggestedMax/marketMedian should respect them. Increase confidence to 0.85+ when sampleSize >= 20.`
+    : "";
+
   return {
     system: SA_SYSTEM_PREAMBLE,
-    user: `Recommend a realistic monthly salary band for this South African role using your knowledge of the SA labour market in 2026.
+    user: `Recommend a realistic monthly salary band for this South African role using your knowledge of the SA labour market in 2026.${benchmarkBlock}
 
 Role:
 Title: ${input.title}

@@ -6,6 +6,7 @@ import {
   type JobPosting,
   type UpdateJobWizardPayload,
 } from "@/app/lib/api/cvAssistantApi";
+import { useCvSalaryInsights } from "@/app/lib/query/hooks";
 import { useNixCall } from "../../hooks/useNixCall";
 import { arrOr, strOr } from "../../utils/value-helpers";
 import { FieldLabel, inputClass, StepShell, textareaClass } from "../StepShell";
@@ -31,6 +32,15 @@ export function SalaryBenefitsStep({ draft, onChange }: SalaryBenefitsStepProps)
     label: "Nix is benchmarking salary for this role…",
     fn: (id: number) => cvAssistantApiClient.nixSalaryGuidance(id),
   });
+  const draftNormalizedTitle = draft.normalizedTitle;
+  const draftTitle = draft.title;
+  const benchmarkTitle = draftNormalizedTitle ? draftNormalizedTitle : draftTitle;
+  const draftProvince = draft.province;
+  const insights = useCvSalaryInsights({
+    normalizedTitle: benchmarkTitle,
+    province: draftProvince ? draftProvince : null,
+  });
+  const insightsData = insights.data;
   const guidanceData = salaryGuidance.data;
   const isGuiding = salaryGuidance.isPending;
   const handleGuidance = () => {
@@ -138,6 +148,9 @@ export function SalaryBenefitsStep({ draft, onChange }: SalaryBenefitsStepProps)
             {isGuiding ? "Nix thinking…" : guidanceData ? "Refresh" : "Ask Nix"}
           </button>
         </div>
+        {insightsData && insightsData.sampleSize >= 5 ? (
+          <BenchmarkInsightsCard data={insightsData} currency={currencyDefault} />
+        ) : null}
         {guidanceData ? (
           <SalaryGuidanceCard
             data={guidanceData}
@@ -222,6 +235,54 @@ function SalaryGuidanceCard({ data, currency, onApply }: SalaryGuidanceCardProps
       >
         Apply this band
       </button>
+    </div>
+  );
+}
+
+interface BenchmarkInsightsCardProps {
+  data: {
+    p25?: number | null;
+    p50?: number | null;
+    p75?: number | null;
+    sampleSize: number;
+    confidence?: number;
+    source: string | null;
+    attribution: string | null;
+  };
+  currency: string;
+}
+
+function BenchmarkInsightsCard({ data, currency }: BenchmarkInsightsCardProps) {
+  const fmt = (n: number | null | undefined) =>
+    n == null ? "—" : `${currency} ${n.toLocaleString("en-ZA")}`;
+  const attribution = data.attribution;
+  const confidencePct = data.confidence != null ? Math.round(data.confidence * 100) : null;
+  return (
+    <div className="rounded-lg bg-white border border-emerald-200 p-3 space-y-2">
+      <div className="flex items-center justify-between">
+        <span className="text-xs uppercase tracking-wider text-emerald-700 font-semibold">
+          Live SA market benchmark
+        </span>
+        <span className="text-xs text-gray-500">
+          n={data.sampleSize}
+          {confidencePct != null ? ` · ${confidencePct}% confidence` : null}
+        </span>
+      </div>
+      <div className="grid grid-cols-3 gap-2 text-center">
+        <div className="bg-[#f5f5fc] rounded p-2">
+          <div className="text-xs text-gray-500">25th pct</div>
+          <div className="text-sm font-semibold text-[#1a1a40]">{fmt(data.p25)}</div>
+        </div>
+        <div className="bg-[#f5f5fc] rounded p-2">
+          <div className="text-xs text-gray-500">Median</div>
+          <div className="text-sm font-semibold text-[#1a1a40]">{fmt(data.p50)}</div>
+        </div>
+        <div className="bg-[#f5f5fc] rounded p-2">
+          <div className="text-xs text-gray-500">75th pct</div>
+          <div className="text-sm font-semibold text-[#1a1a40]">{fmt(data.p75)}</div>
+        </div>
+      </div>
+      {attribution ? <p className="text-[11px] text-gray-500 italic">{attribution}</p> : null}
     </div>
   );
 }
