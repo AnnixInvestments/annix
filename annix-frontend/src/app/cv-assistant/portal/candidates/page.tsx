@@ -70,11 +70,21 @@ export default function CandidatesPage() {
   const { data: jobs = [] } = useCvJobPostings();
   const statusMutation = useCvCandidateStatusUpdate();
 
+  const rejectedCount = useMemo(
+    () => candidates.filter((c) => c.status === "rejected").length,
+    [candidates],
+  );
+  const showingRejected = selectedStatuses.has("rejected");
+
   const rankedCandidates = useMemo(() => {
     const filtered = candidates.filter((c) => {
       const score = c.matchScore;
       if (score !== null && (score < minScore || score > maxScore)) return false;
-      if (selectedStatuses.size > 0 && !selectedStatuses.has(c.status)) return false;
+      if (selectedStatuses.size > 0) {
+        if (!selectedStatuses.has(c.status)) return false;
+      } else if (c.status === "rejected") {
+        return false;
+      }
       return true;
     });
 
@@ -268,9 +278,35 @@ export default function CandidatesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Candidate Shortlist</h1>
+          <h1 className="text-2xl font-bold text-white">
+            {showingRejected ? "Rejected applicants" : "Candidate Shortlist"}
+          </h1>
           <p className="text-white/70 mt-1">
             Ranked by AI match score. Showing {visibleCount} of {totalCandidates} candidates.
+            {!showingRejected && rejectedCount > 0 ? (
+              <>
+                {" "}
+                <button
+                  type="button"
+                  onClick={() => setSelectedStatuses(new Set(["rejected"]))}
+                  className="underline hover:text-white"
+                >
+                  {rejectedCount} rejected hidden — view rejected
+                </button>
+              </>
+            ) : null}
+            {showingRejected ? (
+              <>
+                {" "}
+                <button
+                  type="button"
+                  onClick={() => setSelectedStatuses(new Set())}
+                  className="underline hover:text-white"
+                >
+                  ← back to active shortlist
+                </button>
+              </>
+            ) : null}
           </p>
         </div>
         <button
