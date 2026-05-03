@@ -2,6 +2,7 @@ import {
   AudioLines,
   ClipboardCheck,
   FileText,
+  GraduationCap,
   MapPinned,
   Package,
   ShieldCheck,
@@ -205,6 +206,45 @@ export default function HomePage() {
                 </p>
                 <span className="inline-flex items-center text-violet-600 font-semibold group-hover:translate-x-1 transition-transform">
                   Get started
+                  <svg
+                    className="w-5 h-5 ml-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 5l7 7-7 7"
+                    />
+                  </svg>
+                </span>
+              </div>
+            </div>
+          </Link>
+
+          <Link
+            href="/teacher-assistant"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group"
+          >
+            <div className="bg-white bg-opacity-95 backdrop-blur-sm rounded-xl shadow-lg p-8 border-2 border-transparent hover:border-amber-400 hover:shadow-xl transition-all duration-300 h-full relative">
+              <div className="absolute top-4 right-4 inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">
+                Coming Soon
+              </div>
+              <div className="text-center">
+                <div className="inline-flex items-center justify-center w-20 h-20 bg-amber-100 rounded-2xl text-amber-600 mb-6 group-hover:bg-amber-600 group-hover:text-white transition-colors">
+                  <GraduationCap {...iconProps} />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-3">Teacher Assistant</h3>
+                <p className="text-gray-600 mb-6">
+                  AI assignment & workbook generator for high-school teachers. Process-based tasks
+                  that grade thinking, evidence, and AI critique — not recall.
+                </p>
+                <span className="inline-flex items-center text-amber-600 font-semibold group-hover:translate-x-1 transition-transform">
+                  Preview
                   <svg
                     className="w-5 h-5 ml-2"
                     fill="none"
