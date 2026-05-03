@@ -247,9 +247,9 @@ function SuccessMetricList({
       <ul className="space-y-2">
         {metrics.map((metric, i) => (
           <li key={`${i}-${metric.metric}`} className="flex items-start gap-2">
-            <input
-              type="text"
-              className={inputClass}
+            <textarea
+              rows={3}
+              className={`${textareaClass} min-h-[72px] resize-y whitespace-pre-wrap`}
               placeholder="e.g. Closed first R250k of new business"
               defaultValue={metric.metric}
               onBlur={(e) => onUpdate(i, e.target.value.trim())}
@@ -257,7 +257,7 @@ function SuccessMetricList({
             <button
               type="button"
               onClick={() => onRemove(i)}
-              className="px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg"
+              className="px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg shrink-0"
               aria-label="Remove outcome"
             >
               Remove
