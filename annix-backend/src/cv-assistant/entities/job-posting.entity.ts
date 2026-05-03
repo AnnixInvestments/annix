@@ -107,6 +107,9 @@ export class JobPosting {
   @Column({ name: "enabled_portal_codes", type: "jsonb", default: [] })
   enabledPortalCodes: string[];
 
+  @Column({ name: "test_mode", type: "boolean", default: false })
+  testMode: boolean;
+
   @Column({ name: "normalized_title", type: "text", nullable: true })
   normalizedTitle: string | null;
 

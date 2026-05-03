@@ -587,6 +587,7 @@ export {
   useCvUpdateJobMarketSource,
 } from "./cv-assistant/useCvJobMarket";
 export {
+  useCvClearTestCandidates,
   useCvCreateJobDraft,
   useCvCreateJobPosting,
   useCvDeleteJobPosting,
@@ -603,6 +604,7 @@ export {
   useCvPortalAdapters,
   useCvPublishJobDraft,
   useCvSalaryInsights,
+  useCvSeedTestCandidates,
   useCvUpdateJobPosting,
   useCvUpdateJobWizard,
 } from "./cv-assistant/useCvJobPostings";

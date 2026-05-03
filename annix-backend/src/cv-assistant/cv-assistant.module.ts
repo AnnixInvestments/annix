@@ -76,6 +76,7 @@ import { PortalPostingRetryService } from "./services/portal-posting-retry.servi
 import { ReferenceService } from "./services/reference.service";
 import { SalaryBenchmarkService } from "./services/salary-benchmark.service";
 import { SettingsService } from "./services/settings.service";
+import { TestCandidateSeederService } from "./services/test-candidate-seeder.service";
 import { WorkflowAutomationService } from "./services/workflow-automation.service";
 
 @Module({
@@ -173,6 +174,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     NixJobAssistService,
     NixSeekerAssistService,
     SalaryBenchmarkService,
+    TestCandidateSeederService,
   ],
   exports: [CvAssistantAuthService],
 })

@@ -112,11 +112,38 @@ export function useCvUpdateJobWizard() {
 export function useCvPublishJobDraft() {
   const queryClient = useQueryClient();
 
-  return useMutation<JobPosting, Error, number>({
-    mutationFn: (id) => cvAssistantApiClient.publishJobDraft(id),
+  return useMutation<JobPosting, Error, { id: number; testMode?: boolean }>({
+    mutationFn: ({ id, testMode }) => cvAssistantApiClient.publishJobDraft(id, { testMode }),
     onSuccess: (data) => {
       queryClient.setQueryData(cvAssistantKeys.jobPostings.wizard(data.id), data);
       queryClient.invalidateQueries({ queryKey: cvAssistantKeys.jobPostings.all });
+    },
+  });
+}
+
+export function useCvSeedTestCandidates() {
+  const queryClient = useQueryClient();
+  return useMutation<
+    { created: number; byProfile: Record<string, number> },
+    Error,
+    { id: number; count: number }
+  >({
+    mutationFn: ({ id, count }) => cvAssistantApiClient.seedTestCandidates(id, count),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: cvAssistantKeys.candidates.all });
+      queryClient.invalidateQueries({
+        queryKey: cvAssistantKeys.jobPostings.wizard(variables.id),
+      });
+    },
+  });
+}
+
+export function useCvClearTestCandidates() {
+  const queryClient = useQueryClient();
+  return useMutation<{ deleted: number }, Error, number>({
+    mutationFn: (id) => cvAssistantApiClient.clearTestCandidates(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: cvAssistantKeys.candidates.all });
     },
   });
 }

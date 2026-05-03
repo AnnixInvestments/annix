@@ -18,6 +18,7 @@ import { CvAssistantAuthGuard } from "../guards/cv-assistant-auth.guard";
 import { JobPostingService } from "../services/job-posting.service";
 import { NixJobAssistService } from "../services/nix-job-assist.service";
 import { SalaryBenchmarkService } from "../services/salary-benchmark.service";
+import { TestCandidateSeederService } from "../services/test-candidate-seeder.service";
 
 @Controller("cv-assistant/job-postings")
 @UseGuards(CvAssistantAuthGuard)
@@ -26,6 +27,7 @@ export class JobPostingController {
     private readonly jobPostingService: JobPostingService,
     private readonly nixJobAssist: NixJobAssistService,
     private readonly salaryBenchmarks: SalaryBenchmarkService,
+    private readonly testCandidateSeeder: TestCandidateSeederService,
   ) {}
 
   @Get("salary-insights")
@@ -95,8 +97,29 @@ export class JobPostingController {
   async publish(
     @Request() req: { user: { companyId: number } },
     @Param("id", ParseIntPipe) id: number,
+    @Body() body: { testMode?: boolean } = {},
   ) {
-    return this.jobPostingService.publishDraft(req.user.companyId, id);
+    return this.jobPostingService.publishDraft(req.user.companyId, id, {
+      testMode: Boolean(body.testMode),
+    });
+  }
+
+  @Post(":id/seed-test-candidates")
+  async seedTestCandidates(
+    @Request() req: { user: { companyId: number } },
+    @Param("id", ParseIntPipe) id: number,
+    @Body() body: { count?: number } = {},
+  ) {
+    const count = body.count ?? 10;
+    return this.testCandidateSeeder.seedForJobPosting(req.user.companyId, id, count);
+  }
+
+  @Delete(":id/test-candidates")
+  async clearTestCandidates(
+    @Request() req: { user: { companyId: number } },
+    @Param("id", ParseIntPipe) id: number,
+  ) {
+    return this.testCandidateSeeder.clearForJobPosting(req.user.companyId, id);
   }
 
   // Phase 2 — Nix in the form

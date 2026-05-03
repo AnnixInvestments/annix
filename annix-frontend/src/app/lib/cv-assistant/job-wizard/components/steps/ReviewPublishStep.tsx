@@ -1,10 +1,15 @@
 "use client";
 
+import { toPairs as entries } from "es-toolkit/compat";
 import { useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import { isApiError } from "@/app/lib/api/apiError";
 import { cvAssistantApiClient, type JobPosting } from "@/app/lib/api/cvAssistantApi";
-import { useCvPublishJobDraft } from "@/app/lib/query/hooks";
+import {
+  useCvClearTestCandidates,
+  useCvPublishJobDraft,
+  useCvSeedTestCandidates,
+} from "@/app/lib/query/hooks";
 import { useNixCall } from "../../hooks/useNixCall";
 import { JobPreviewCard } from "../JobPreviewCard";
 import { StepShell } from "../StepShell";
@@ -44,6 +49,8 @@ const readinessIssues = (draft: JobPosting): ReadinessIssue[] => {
 
 export function ReviewPublishStep({ draft, onPublished, onFlush }: ReviewPublishStepProps) {
   const publishMutation = useCvPublishJobDraft();
+  const seedMutation = useCvSeedTestCandidates();
+  const clearTestMutation = useCvClearTestCandidates();
   const qualityScoreMutation = useNixCall({
     operation: "quality-score",
     label: "Nix is scoring your job post…",
@@ -56,9 +63,12 @@ export function ReviewPublishStep({ draft, onPublished, onFlush }: ReviewPublish
   });
   const { showToast } = useToast();
   const [isPublishing, setIsPublishing] = useState(false);
+  const [seedCount, setSeedCount] = useState(10);
 
   const issues = readinessIssues(draft);
   const canPublish = issues.length === 0;
+  const isPublished = draft.status === "active";
+  const isTestMode = Boolean(draft.testMode);
   const qualityData = qualityScoreMutation.data;
   const isScoring = qualityScoreMutation.isPending;
   const volumeData = volumeMutation.data;
@@ -76,14 +86,19 @@ export function ReviewPublishStep({ draft, onPublished, onFlush }: ReviewPublish
     });
   };
 
-  const handlePublish = async () => {
+  const handlePublish = async (testMode: boolean) => {
     if (!canPublish) return;
     setIsPublishing(true);
     try {
       await onFlush();
-      const published = await publishMutation.mutateAsync(draft.id);
-      showToast("Job published — candidates can now apply.", "success");
-      onPublished(published);
+      const published = await publishMutation.mutateAsync({ id: draft.id, testMode });
+      const message = testMode
+        ? "Job published in TEST MODE — no external portals were notified. Seed fake applicants below to walk through the company flow."
+        : "Job published — candidates can now apply.";
+      showToast(message, "success");
+      if (!testMode) {
+        onPublished(published);
+      }
     } catch (err) {
       const message =
         isApiError(err) && err.message ? err.message : "Could not publish. Please try again.";
@@ -91,6 +106,31 @@ export function ReviewPublishStep({ draft, onPublished, onFlush }: ReviewPublish
     } finally {
       setIsPublishing(false);
     }
+  };
+
+  const handleSeed = () => {
+    seedMutation.mutate(
+      { id: draft.id, count: seedCount },
+      {
+        onSuccess: (data) => {
+          const summary = entries(data.byProfile)
+            .filter(([, v]) => v > 0)
+            .map(([k, v]) => `${v} ${k}`)
+            .join(", ");
+          showToast(`Seeded ${data.created} test applicants — ${summary}.`, "success");
+        },
+        onError: () => showToast("Couldn't seed test candidates. Try again.", "error"),
+      },
+    );
+  };
+
+  const handleClearTestCandidates = () => {
+    clearTestMutation.mutate(draft.id, {
+      onSuccess: (data) => {
+        showToast(`Cleared ${data.deleted} test applicants.`, "success");
+      },
+      onError: () => showToast("Couldn't clear test candidates. Try again.", "error"),
+    });
   };
 
   return (
@@ -134,21 +174,86 @@ export function ReviewPublishStep({ draft, onPublished, onFlush }: ReviewPublish
               ))}
             </ul>
           </div>
-        ) : (
+        ) : !isPublished ? (
           <div className="rounded-lg border border-emerald-300 bg-emerald-50 p-4 text-sm text-emerald-900">
-            All required fields are present. Click <strong>Publish</strong> to make this role
-            visible.
+            All required fields are present. Choose how to publish below.
           </div>
-        )}
+        ) : null}
 
-        <button
-          type="button"
-          onClick={handlePublish}
-          disabled={!canPublish || isPublishing}
-          className="px-6 py-3 bg-[#FFA500] text-[#1a1a40] font-semibold rounded-lg shadow-md hover:bg-[#FFB733] hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isPublishing ? "Publishing…" : "Publish Job"}
-        </button>
+        {isPublished && isTestMode ? (
+          <div className="rounded-lg border border-purple-300 bg-purple-50 p-4 text-sm text-purple-900 flex items-center gap-2">
+            <span className="px-2 py-0.5 rounded bg-purple-200 text-purple-900 text-xs font-bold">
+              TEST MODE
+            </span>
+            <span>
+              This job is published internally only — external portals were skipped. Seed fake
+              applicants below to walk through the company flow.
+            </span>
+          </div>
+        ) : null}
+
+        {!isPublished ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => handlePublish(false)}
+              disabled={!canPublish || isPublishing}
+              className="px-6 py-3 bg-[#FFA500] text-[#1a1a40] font-semibold rounded-lg shadow-md hover:bg-[#FFB733] hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isPublishing ? "Publishing…" : "Publish Job (live)"}
+            </button>
+            <button
+              type="button"
+              onClick={() => handlePublish(true)}
+              disabled={!canPublish || isPublishing}
+              className="px-6 py-3 bg-[#252560] text-white font-semibold rounded-lg shadow-md hover:bg-[#1a1a40] hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isPublishing ? "Publishing…" : "Publish in TEST MODE (no external portals)"}
+            </button>
+          </div>
+        ) : null}
+
+        {isPublished && isTestMode ? (
+          <div className="rounded-lg border border-[#252560]/30 bg-white p-4 space-y-3">
+            <div>
+              <p className="font-semibold text-[#1a1a40]">Seed fake applicants</p>
+              <p className="text-xs text-gray-600 mt-0.5">
+                Generates a synthetic spread (~30% strong, 30% borderline, 30% weak, 10%
+                disqualified) so you can walk through the company-side review, screening and
+                reference flows. All emails use @example.com and phones use the +27 11 000 exchange.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="flex items-center gap-2 text-sm text-gray-700">
+                Count:
+                <input
+                  type="number"
+                  min={1}
+                  max={50}
+                  value={seedCount}
+                  onChange={(e) => setSeedCount(Math.max(1, Math.min(50, Number(e.target.value))))}
+                  className="w-20 px-2 py-1 border border-gray-300 rounded"
+                />
+              </label>
+              <button
+                type="button"
+                onClick={handleSeed}
+                disabled={seedMutation.isPending}
+                className="text-xs px-3 py-1.5 bg-[#FFA500] text-[#1a1a40] font-semibold rounded-lg hover:bg-[#FFB733] transition-all disabled:opacity-50"
+              >
+                {seedMutation.isPending ? "Seeding…" : "Seed test applicants"}
+              </button>
+              <button
+                type="button"
+                onClick={handleClearTestCandidates}
+                disabled={clearTestMutation.isPending}
+                className="text-xs px-3 py-1.5 bg-white border border-red-300 text-red-700 font-semibold rounded-lg hover:bg-red-50 transition-all disabled:opacity-50"
+              >
+                {clearTestMutation.isPending ? "Clearing…" : "Clear all test applicants"}
+              </button>
+            </div>
+          </div>
+        ) : null}
       </StepShell>
 
       <JobPreviewCard draft={draft} />

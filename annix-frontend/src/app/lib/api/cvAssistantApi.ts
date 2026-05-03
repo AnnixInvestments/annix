@@ -100,6 +100,7 @@ export interface JobPosting {
   applyByEmail: string | null;
   activatedAt: string | null;
   enabledPortalCodes: string[];
+  testMode?: boolean;
   companyId: number;
   createdAt: string;
   updatedAt: string;
@@ -855,8 +856,27 @@ class CvAssistantApiClient {
     });
   }
 
-  async publishJobDraft(id: number): Promise<JobPosting> {
-    return this.request(`/cv-assistant/job-postings/${id}/publish`, { method: "POST" });
+  async publishJobDraft(id: number, options: { testMode?: boolean } = {}): Promise<JobPosting> {
+    return this.request(`/cv-assistant/job-postings/${id}/publish`, {
+      method: "POST",
+      body: JSON.stringify({ testMode: Boolean(options.testMode) }),
+    });
+  }
+
+  async seedTestCandidates(
+    id: number,
+    count: number,
+  ): Promise<{ created: number; byProfile: Record<string, number> }> {
+    return this.request(`/cv-assistant/job-postings/${id}/seed-test-candidates`, {
+      method: "POST",
+      body: JSON.stringify({ count }),
+    });
+  }
+
+  async clearTestCandidates(id: number): Promise<{ deleted: number }> {
+    return this.request(`/cv-assistant/job-postings/${id}/test-candidates`, {
+      method: "DELETE",
+    });
   }
 
   // Phase 2 Nix endpoints

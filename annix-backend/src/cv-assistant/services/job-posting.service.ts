@@ -227,7 +227,11 @@ export class JobPostingService {
    * Phase 1 wizard: validate required fields and transition to ACTIVE,
    * then dispatch to the configured external portals.
    */
-  async publishDraft(companyId: number, id: number): Promise<JobPosting> {
+  async publishDraft(
+    companyId: number,
+    id: number,
+    options: { testMode?: boolean } = {},
+  ): Promise<JobPosting> {
     const draft = await this.findWizardDraft(companyId, id);
 
     if (draft.status === JobPostingStatus.ACTIVE) {
@@ -243,11 +247,18 @@ export class JobPostingService {
     }
 
     draft.status = JobPostingStatus.ACTIVE;
+    draft.testMode = Boolean(options.testMode);
     if (!draft.activatedAt) {
       draft.activatedAt = now().toJSDate();
     }
     const saved = await this.jobPostingRepo.save(draft);
-    this.distributeToPortals(saved);
+    if (!saved.testMode) {
+      this.distributeToPortals(saved);
+    } else {
+      this.logger.log(
+        `Job posting ${saved.id} published in TEST MODE — skipping external portal distribution.`,
+      );
+    }
     return saved;
   }
 

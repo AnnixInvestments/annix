@@ -100,6 +100,9 @@ export class Candidate {
   @Column({ name: "rejection_sent_at", type: "timestamptz", nullable: true })
   rejectionSentAt: Date | null;
 
+  @Column({ name: "is_test_fixture", type: "boolean", default: false })
+  isTestFixture: boolean;
+
   @Column({ name: "acceptance_sent_at", type: "timestamptz", nullable: true })
   acceptanceSentAt: Date | null;
 
