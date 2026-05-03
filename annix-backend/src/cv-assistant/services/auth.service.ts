@@ -55,6 +55,55 @@ export class CvAssistantAuthService {
     );
   }
 
+  /**
+   * Self-healing for legacy users who landed in CV Assistant without a
+   * complete `cv_assistant_profile` row (e.g. accounts created in another
+   * portal before CV Assistant existed). On login we auto-provision a
+   * placeholder company so the wizard can save against a real companyId
+   * instead of 500-ing on the not-null constraint.
+   *
+   * Individual users intentionally have companyId=null and userType=individual;
+   * we leave those alone.
+   */
+  private async ensureCompanyProfile(
+    user: User,
+    profile: CvAssistantProfile | null,
+  ): Promise<CvAssistantProfile | null> {
+    if (profile && profile.userType === CvAssistantUserType.INDIVIDUAL) {
+      return profile;
+    }
+    if (profile && profile.companyId) {
+      return profile;
+    }
+
+    const fallbackCompanyName =
+      [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email;
+    this.logger.warn(
+      `User ${user.id} (${user.email}) has incomplete CV Assistant profile — auto-provisioning placeholder company`,
+    );
+    const company = this.companyRepo.create({
+      name: `${fallbackCompanyName}'s Company`,
+      companyType: "CUSTOMER" as never,
+      industry: null,
+      companySize: null,
+      province: null,
+      city: null,
+    });
+    const savedCompany = await this.companyRepo.save(company);
+
+    if (profile) {
+      profile.companyId = savedCompany.id;
+      profile.userType = CvAssistantUserType.COMPANY;
+      return this.profileRepo.save(profile);
+    }
+    const created = this.profileRepo.create({
+      userId: user.id,
+      companyId: savedCompany.id,
+      userType: CvAssistantUserType.COMPANY,
+    });
+    return this.profileRepo.save(created);
+  }
+
   async register(input: {
     email: string;
     password: string;
@@ -278,7 +327,8 @@ export class CvAssistantAuthService {
       );
     }
 
-    const profile = await this.profileRepo.findOne({ where: { userId: user.id } });
+    let profile = await this.profileRepo.findOne({ where: { userId: user.id } });
+    profile = await this.ensureCompanyProfile(user, profile);
     const role = await this.resolveRole(user.id, profile);
     const userName = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email;
     const tokens = this.generateTokens(user, profile, role);
