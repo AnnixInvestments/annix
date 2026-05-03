@@ -63,7 +63,7 @@ export function ReviewPublishStep({ draft, onPublished, onFlush }: ReviewPublish
   });
   const { showToast } = useToast();
   const [isPublishing, setIsPublishing] = useState(false);
-  const [seedCount, setSeedCount] = useState(10);
+  const [seedCountInput, setSeedCountInput] = useState("10");
 
   const issues = readinessIssues(draft);
   const canPublish = issues.length === 0;
@@ -109,8 +109,10 @@ export function ReviewPublishStep({ draft, onPublished, onFlush }: ReviewPublish
   };
 
   const handleSeed = () => {
+    const parsed = Number.parseInt(seedCountInput, 10);
+    const safeCount = Number.isFinite(parsed) ? Math.max(1, Math.min(50, parsed)) : 10;
     seedMutation.mutate(
-      { id: draft.id, count: seedCount },
+      { id: draft.id, count: safeCount },
       {
         onSuccess: (data) => {
           const summary = entries(data.byProfile)
@@ -230,8 +232,17 @@ export function ReviewPublishStep({ draft, onPublished, onFlush }: ReviewPublish
                   type="number"
                   min={1}
                   max={50}
-                  value={seedCount}
-                  onChange={(e) => setSeedCount(Math.max(1, Math.min(50, Number(e.target.value))))}
+                  value={seedCountInput}
+                  onChange={(e) => setSeedCountInput(e.target.value)}
+                  onBlur={(e) => {
+                    const parsed = Number.parseInt(e.target.value, 10);
+                    if (!Number.isFinite(parsed)) {
+                      setSeedCountInput("10");
+                      return;
+                    }
+                    const clamped = Math.max(1, Math.min(50, parsed));
+                    setSeedCountInput(String(clamped));
+                  }}
                   className="w-20 px-2 py-1 border border-gray-300 rounded"
                 />
               </label>
