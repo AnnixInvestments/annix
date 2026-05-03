@@ -378,6 +378,8 @@ export function qualityScorePrompt(input: {
   salaryMin: number | null;
   salaryMax: number | null;
   salaryCurrency: string;
+  benefits: string[];
+  commissionStructure: string | null;
 }): NixPrompt {
   const skillSummary =
     input.skills.length > 0
@@ -403,6 +405,8 @@ Seniority: ${input.seniorityLevel || "(unspecified)"}
 Location: ${input.city || "(unspecified)"}, ${input.province || "(unspecified)"}
 Employment: ${input.employmentType || "(unspecified)"} / ${input.workMode || "(unspecified)"}
 Salary: ${salary}
+Commission: ${input.commissionStructure?.trim() ? input.commissionStructure : "(none — base salary only)"}
+Benefits: ${input.benefits.length > 0 ? input.benefits.join(", ") : "(none listed)"}
 Description: ${input.description || "(empty)"}
 Responsibilities: ${input.responsibilities.join(" | ") || "(none)"}
 Success in 3 months: ${input.successIn3Months.join(" | ") || "(none)"}

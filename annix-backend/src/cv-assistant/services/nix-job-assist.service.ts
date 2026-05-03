@@ -202,6 +202,8 @@ export class NixJobAssistService {
         salaryMin: posting.salaryMin,
         salaryMax: posting.salaryMax,
         salaryCurrency: posting.salaryCurrency,
+        benefits: posting.benefits ?? [],
+        commissionStructure: posting.commissionStructure,
       });
       const aiResult = await this.callAi(prompt);
       return parseNixJson<NixQualityScoreResponse>(aiResult.content);

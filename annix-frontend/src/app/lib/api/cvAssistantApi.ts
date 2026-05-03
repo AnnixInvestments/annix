@@ -627,6 +627,52 @@ const apiClient: ApiClient = createApiClient({
   refreshUrl: `${API_BASE_URL}/cv-assistant/auth/refresh`,
 });
 
+// Strip frontend-only fields (id, etc.) from nested arrays before PATCHing
+// the wizard. The backend DTOs use forbidNonWhitelisted: true at the global
+// validation pipe, so any extra property on a nested skill / metric /
+// screening question fails the entire request with a 400 — silently
+// surfacing as "Couldn't save — retrying" in the wizard.
+const sanitizeWizardPayload = (payload: UpdateJobWizardPayload): UpdateJobWizardPayload => {
+  const out: UpdateJobWizardPayload = { ...payload };
+  if (payload.skills) {
+    out.skills = payload.skills.map((s) => {
+      const yearsExperience = s.yearsExperience;
+      const evidenceRequired = s.evidenceRequired;
+      return {
+        name: s.name,
+        importance: s.importance,
+        proficiency: s.proficiency,
+        yearsExperience: yearsExperience == null ? undefined : yearsExperience,
+        evidenceRequired: evidenceRequired == null ? undefined : evidenceRequired,
+        weight: s.weight,
+        sortOrder: s.sortOrder,
+      };
+    });
+  }
+  if (payload.successMetrics) {
+    out.successMetrics = payload.successMetrics.map((m) => ({
+      timeframe: m.timeframe,
+      metric: m.metric,
+      sortOrder: m.sortOrder,
+    }));
+  }
+  if (payload.screeningQuestions) {
+    out.screeningQuestions = payload.screeningQuestions.map((q) => {
+      const options = q.options;
+      const disqualifyingAnswer = q.disqualifyingAnswer;
+      return {
+        question: q.question,
+        questionType: q.questionType,
+        options: options == null ? undefined : options,
+        disqualifyingAnswer: disqualifyingAnswer == null ? undefined : disqualifyingAnswer,
+        weight: q.weight,
+        sortOrder: q.sortOrder,
+      };
+    });
+  }
+  return out;
+};
+
 class CvAssistantApiClient {
   setRememberMe(_remember: boolean) {
     // PortalTokenStore tracks rememberMe via setTokens; this no-op preserves the public API
@@ -805,7 +851,7 @@ class CvAssistantApiClient {
   async updateJobWizard(id: number, payload: UpdateJobWizardPayload): Promise<JobPosting> {
     return this.request(`/cv-assistant/job-postings/${id}/wizard`, {
       method: "PATCH",
-      body: JSON.stringify(payload),
+      body: JSON.stringify(sanitizeWizardPayload(payload)),
     });
   }
 

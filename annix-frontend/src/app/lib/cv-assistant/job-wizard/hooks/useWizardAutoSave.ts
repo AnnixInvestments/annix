@@ -32,7 +32,9 @@ export function useWizardAutoSave(jobId: number | null): UseWizardAutoSaveResult
     try {
       await updateMutation.mutateAsync({ id, payload: patch });
       setStatus("saved");
-    } catch {
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error("[wizard autosave] save failed", { patch, error: message });
       setStatus("error");
     }
   };
