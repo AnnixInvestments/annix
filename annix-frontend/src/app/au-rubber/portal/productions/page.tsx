@@ -20,6 +20,7 @@ import {
   type RubberProductionStatus,
 } from "@/app/lib/api/auRubberApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import { useScrollRestoration } from "@/app/lib/hooks/useScrollRestoration";
 import { Breadcrumb } from "../../components/Breadcrumb";
 import { ConfirmModal } from "../../components/ConfirmModal";
 
@@ -46,6 +47,7 @@ const statusColor = (status: RubberProductionStatus) => {
 
 export default function ProductionsPage() {
   const { showToast } = useToast();
+  const scrollSentinelRef = useScrollRestoration("au-rubber:productions");
   const [productions, setProductions] = useState<RubberProductionDto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -170,7 +172,7 @@ export default function ProductionsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div ref={scrollSentinelRef} className="space-y-6">
       <Breadcrumb items={[{ label: "Production" }]} />
       <div className="flex items-center justify-between">
         <div>

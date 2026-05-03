@@ -2,6 +2,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
@@ -16,6 +17,7 @@ export enum BatchPassFailStatus {
 }
 
 @Entity("rubber_compound_batches")
+@Index("uq_rubber_compound_batches_coc_batch", ["supplierCocId", "batchNumber"], { unique: true })
 export class RubberCompoundBatch {
   @PrimaryGeneratedColumn()
   id: number;

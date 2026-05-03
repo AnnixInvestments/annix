@@ -30,6 +30,7 @@ import {
   type TaxInvoiceStatus,
 } from "@/app/lib/api/auRubberApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import { useScrollRestoration } from "@/app/lib/hooks/useScrollRestoration";
 import NixProcessingPopup from "@/app/lib/nix/components/NixProcessingPopup";
 import { useAuRubberCompanies, useAuRubberTaxInvoices } from "@/app/lib/query/hooks";
 import { rubberKeys } from "@/app/lib/query/keys";
@@ -57,6 +58,7 @@ export default function CustomerTaxInvoicesPage() {
   const router = useRouter();
   const { showToast } = useToast();
   const { branding } = useAuRubberBranding();
+  const scrollSentinelRef = useScrollRestoration("au-rubber:customer-tax-invoices");
   const { showExtraction, hideExtraction, updateExtraction } = useExtractionProgress();
   const { confirm, ConfirmDialog } = useConfirm();
   const queryClient = useQueryClient();
@@ -407,7 +409,7 @@ export default function CustomerTaxInvoicesPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div ref={scrollSentinelRef} className="space-y-6">
       {ConfirmDialog}
       <Breadcrumb items={[{ label: "Customers" }, { label: "Tax Invoices" }]} />
       <div className="flex items-center justify-between">

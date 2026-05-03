@@ -1,6 +1,6 @@
 import type { MigrationInterface, QueryRunner } from "typeorm";
 
-export class AddTestModeToCvJobPostings1820100000058 implements MigrationInterface {
+export class AddTestModeToCvJobPostings1820100000061 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
       DO $$ BEGIN

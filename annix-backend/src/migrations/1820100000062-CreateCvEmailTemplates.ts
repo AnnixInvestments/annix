@@ -1,6 +1,6 @@
 import type { MigrationInterface, QueryRunner } from "typeorm";
 
-export class CreateCvEmailTemplates1820100000059 implements MigrationInterface {
+export class CreateCvEmailTemplates1820100000062 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS cv_assistant_email_templates (

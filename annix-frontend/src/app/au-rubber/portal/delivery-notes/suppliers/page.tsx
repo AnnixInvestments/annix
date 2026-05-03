@@ -28,6 +28,7 @@ import {
   type RubberDeliveryNoteDto,
 } from "@/app/lib/api/auRubberApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import { useScrollRestoration } from "@/app/lib/hooks/useScrollRestoration";
 import NixProcessingPopup from "@/app/lib/nix/components/NixProcessingPopup";
 import { useAuRubberCompanies, useAuRubberDeliveryNotes } from "@/app/lib/query/hooks";
 
@@ -53,6 +54,7 @@ export default function SupplierDeliveryNotesPage() {
   const router = useRouter();
   const { showToast } = useToast();
   const { branding } = useAuRubberBranding();
+  const scrollSentinelRef = useScrollRestoration("au-rubber:supplier-delivery-notes");
   const { showExtraction, hideExtraction, updateExtraction } = useExtractionProgress();
   const { confirm: confirmDialog, ConfirmDialog } = useConfirm();
   const [isReExtracting, setIsReExtracting] = useState(false);
@@ -313,7 +315,7 @@ export default function SupplierDeliveryNotesPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div ref={scrollSentinelRef} className="space-y-6">
       <Breadcrumb items={[{ label: "Delivery Notes" }, { label: "Suppliers" }]} />
       <div className="flex items-center justify-between">
         <div>

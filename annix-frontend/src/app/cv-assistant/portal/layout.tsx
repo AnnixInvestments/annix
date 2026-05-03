@@ -49,7 +49,9 @@ function PortalContent({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { isAuthenticated, isLoading, user, logout } = useCvAssistantAuth();
+  const { isAuthenticated, isLoading, user, profile, logout } = useCvAssistantAuth();
+  const isIndividual =
+    (user && user.userType === "individual") || (profile && profile.companyId === null);
 
   useEffect(() => {
     if (isLoading) return;
@@ -61,10 +63,10 @@ function PortalContent({ children }: { children: React.ReactNode }) {
       router.push(`/cv-assistant/login?returnUrl=${returnUrl}`);
       return;
     }
-    if (user && user.userType === "individual") {
+    if (isIndividual) {
       router.push("/cv-assistant/seeker/dashboard");
     }
-  }, [isLoading, isAuthenticated, user, router, pathname, searchParams]);
+  }, [isLoading, isAuthenticated, isIndividual, router, pathname, searchParams]);
 
   if (isLoading) {
     return (
@@ -74,7 +76,7 @@ function PortalContent({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (!isAuthenticated || (user && user.userType === "individual")) {
+  if (!isAuthenticated || isIndividual) {
     return null;
   }
 

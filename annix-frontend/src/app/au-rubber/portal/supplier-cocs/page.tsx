@@ -34,6 +34,7 @@ import {
 } from "@/app/lib/api/auRubberApi";
 import { formatDateZA } from "@/app/lib/datetime";
 import { useAdaptiveExtractionProgress } from "@/app/lib/hooks/useAdaptiveExtractionProgress";
+import { useScrollRestoration } from "@/app/lib/hooks/useScrollRestoration";
 import {
   useAuRubberAnalyzeSupplierCocs,
   useAuRubberApproveSupplierCoc,
@@ -86,6 +87,7 @@ export default function SupplierCocsPage() {
   const { showToast } = useToast();
   const { confirm, ConfirmDialog } = useConfirm();
   const { runBulk: runAdaptiveBulk } = useAdaptiveExtractionProgress();
+  const scrollSentinelRef = useScrollRestoration("au-rubber:supplier-cocs");
   const { isAdmin } = useAuRubberAuth();
   const { colors, branding } = useAuRubberBranding();
   const logoProxy = useAuRubberProxyImageBlob(branding.logoUrl);
@@ -691,7 +693,7 @@ export default function SupplierCocsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div ref={scrollSentinelRef} className="space-y-6">
       <Breadcrumb items={[{ label: "Supplier CoCs" }]} />
       <div className="flex items-center justify-between">
         <div>

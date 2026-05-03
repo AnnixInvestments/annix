@@ -20,6 +20,7 @@ import {
   type RubberCompoundStockDto,
 } from "@/app/lib/api/auRubberApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import { useScrollRestoration } from "@/app/lib/hooks/useScrollRestoration";
 import { Breadcrumb } from "../../components/Breadcrumb";
 import { ConfirmModal } from "../../components/ConfirmModal";
 
@@ -47,6 +48,7 @@ const statusColor = (status: RubberCompoundOrderStatus) => {
 
 export default function CompoundOrdersPage() {
   const { showToast } = useToast();
+  const scrollSentinelRef = useScrollRestoration("au-rubber:compound-orders");
   const [orders, setOrders] = useState<RubberCompoundOrderDto[]>([]);
   const [stocks, setStocks] = useState<RubberCompoundStockDto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -237,7 +239,7 @@ export default function CompoundOrdersPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div ref={scrollSentinelRef} className="space-y-6">
       <Breadcrumb items={[{ label: "Compound Orders" }]} />
       <div className="flex items-center justify-between">
         <div>

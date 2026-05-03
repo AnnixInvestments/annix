@@ -29,3 +29,4 @@ export { rfqKeys } from "./rfqKeys";
 export { rubberKeys } from "./rubberKeys";
 export { stockControlKeys } from "./stockControlKeys";
 export { supplierKeys } from "./supplierKeys";
+export { teacherAssistantKeys } from "./teacherAssistantKeys";

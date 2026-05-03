@@ -20,6 +20,7 @@ import {
   type StockLocationDto,
 } from "@/app/lib/api/auRubberApi";
 import type { RubberProductCodingDto } from "@/app/lib/api/rubberPortalApi";
+import { useScrollRestoration } from "@/app/lib/hooks/useScrollRestoration";
 import { Breadcrumb } from "../../components/Breadcrumb";
 
 interface CompoundSection {
@@ -492,6 +493,7 @@ function DispatchedSection(props: {
 
 export default function CompoundStocksPage() {
   const { showToast } = useToast();
+  const scrollSentinelRef = useScrollRestoration("au-rubber:compound-stocks");
 
   const [sections, setSections] = useState<CompoundSection[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -948,7 +950,7 @@ export default function CompoundStocksPage() {
   const rawOpeningStockFormNotes = openingStockForm.notes;
 
   return (
-    <div className="space-y-6">
+    <div ref={scrollSentinelRef} className="space-y-6">
       <Breadcrumb items={[{ label: "Compound Inventory" }]} />
       <div className="flex items-center justify-between">
         <div>

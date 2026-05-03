@@ -23,6 +23,7 @@ import {
   type RubberAuCocDto,
 } from "@/app/lib/api/auRubberApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import { useScrollRestoration } from "@/app/lib/hooks/useScrollRestoration";
 import { useAuRubberAuCocs } from "@/app/lib/query/hooks";
 import { rubberKeys } from "@/app/lib/query/keys";
 import { Breadcrumb } from "../../components/Breadcrumb";
@@ -42,6 +43,7 @@ export default function AuCocsPage() {
   const { showToast } = useToast();
   const { isAdmin } = useAuRubberAuth();
   const queryClient = useQueryClient();
+  const scrollSentinelRef = useScrollRestoration("au-rubber:au-cocs");
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<AuCocStatus | "">("");
   const cocsQuery = useAuRubberAuCocs({
@@ -470,7 +472,7 @@ export default function AuCocsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div ref={scrollSentinelRef} className="space-y-6">
       <Breadcrumb items={[{ label: "AU Certificates" }]} />
       <div className="flex items-center justify-between">
         <div>

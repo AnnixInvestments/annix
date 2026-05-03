@@ -273,6 +273,7 @@ All apps follow semantic versioning (major.minor.patch):
 | FieldFlow/Voice | `annix-frontend/src/app/annix-rep/config/version.ts` | `FIELDFLOW_VERSION` | PortalToolbar |
 | Annix Rep | `annix-frontend/src/app/annix-rep/config/annix-rep-version.ts` | `ANNIX_REP_VERSION` | PortalToolbar |
 | CV Assistant | `annix-frontend/src/app/cv-assistant/config/version.ts` | `CV_ASSISTANT_VERSION` | Portal layout header |
+| Teacher Assistant | `annix-frontend/src/app/teacher-assistant/config/version.ts` | `TEACHER_ASSISTANT_VERSION` | Coming-soon page (Portal layout once built) |
 
 ## Stock Control How To Guides
 When you change any user-facing Stock Control feature (new button, renamed field, new workflow), check `annix-frontend/src/app/stock-control/how-to/guides/*.md` for guides whose `relatedPaths` include the files you touched. Update the guide and bump `lastUpdated`. The pre-push hook runs `scripts/check-how-to-freshness.mjs` (warns, non-blocking).

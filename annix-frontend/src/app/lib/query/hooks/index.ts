@@ -1064,3 +1064,9 @@ export {
   useSupplierPumpQuoteDetails,
   useSupplierPumpQuotes,
 } from "./supplier/useSupplierPumpQuotes";
+export type { RegenerateSectionArgs } from "./teacher-assistant/useTeacherAssistant";
+export {
+  useGenerateAssignment,
+  useRegenerateSection,
+  useSuggestObjectives,
+} from "./teacher-assistant/useTeacherAssistant";

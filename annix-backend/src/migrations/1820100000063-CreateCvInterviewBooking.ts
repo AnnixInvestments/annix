@@ -1,6 +1,6 @@
 import type { MigrationInterface, QueryRunner } from "typeorm";
 
-export class CreateCvInterviewBooking1820100000060 implements MigrationInterface {
+export class CreateCvInterviewBooking1820100000063 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS cv_assistant_interview_slots (
