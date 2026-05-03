@@ -9,6 +9,7 @@ import { stockControlTokenStore } from "@/app/lib/api/portalTokenStores";
 // eslint-disable-next-line no-restricted-imports -- Auth flow page (login); requires new auth hooks for unauthenticated operations. Tracked as tech debt per Phase 9 of annix/annix#191.
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { redirectAfterPasskeyLogin, storePasskeyJwt } from "@/app/lib/passkey";
+import { readFieldWithDomFallback } from "@/app/lib/utils/formAutofillFallback";
 
 function StockControlLoginContent() {
   const router = useRouter();
@@ -73,15 +74,18 @@ function StockControlLoginContent() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const form = e.currentTarget as HTMLFormElement;
+    const submitEmail = readFieldWithDomFallback(email, form, "email");
+    const submitPassword = readFieldWithDomFallback(password, form, "password");
 
     setIsSubmitting(true);
     setError(null);
 
     try {
-      await login(email.trim(), password, rememberMe);
+      await login(submitEmail.trim(), submitPassword, rememberMe);
 
       if (rememberMe) {
-        localStorage.setItem("stockControlRememberedEmail", email);
+        localStorage.setItem("stockControlRememberedEmail", submitEmail);
         localStorage.setItem("stockControlRememberMe", "true");
       } else {
         localStorage.removeItem("stockControlRememberedEmail");

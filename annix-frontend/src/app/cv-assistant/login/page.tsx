@@ -8,6 +8,7 @@ import { useCvAssistantAuth } from "@/app/context/CvAssistantAuthContext";
 import { cvAssistantApiClient } from "@/app/lib/api/cvAssistantApi";
 import { cvAssistantTokenStore } from "@/app/lib/api/portalTokenStores";
 import { redirectAfterPasskeyLogin, storePasskeyJwt } from "@/app/lib/passkey";
+import { readFieldWithDomFallback } from "@/app/lib/utils/formAutofillFallback";
 
 function postLoginPath(userType: string | undefined, returnUrl: string | null): string {
   if (returnUrl) return returnUrl;
@@ -28,10 +29,13 @@ function CvAssistantLoginContent() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const form = e.currentTarget as HTMLFormElement;
+    const submitEmail = readFieldWithDomFallback(email, form, "email");
+    const submitPassword = readFieldWithDomFallback(password, form, "password");
     setError(null);
 
     try {
-      const profile = await login(email, password, rememberMe);
+      const profile = await login(submitEmail, submitPassword, rememberMe);
       router.push(postLoginPath(profile.userType, returnUrl));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");

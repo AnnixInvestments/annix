@@ -9,6 +9,7 @@ import { useDeviceFingerprint } from "@/app/hooks/useDeviceFingerprint";
 import { customerEmailApi } from "@/app/lib/api/customerApi";
 import { customerTokenStore } from "@/app/lib/api/portalTokenStores";
 import { redirectAfterPasskeyLogin, storePasskeyJwt } from "@/app/lib/passkey";
+import { readFieldWithDomFallback } from "@/app/lib/utils/formAutofillFallback";
 
 function CustomerLoginContent() {
   const router = useRouter();
@@ -71,6 +72,9 @@ function CustomerLoginContent() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const form = e.currentTarget as HTMLFormElement;
+    const submitEmail = readFieldWithDomFallback(email, form, "email");
+    const submitPassword = readFieldWithDomFallback(password, form, "password");
 
     if (!fingerprint) {
       setError("Device fingerprint not available. Please refresh the page.");
@@ -83,10 +87,10 @@ function CustomerLoginContent() {
     setResendSuccess(false);
 
     try {
-      await login(email, password, fingerprint, browserInfo || undefined, rememberMe);
+      await login(submitEmail, submitPassword, fingerprint, browserInfo || undefined, rememberMe);
 
       if (rememberMe) {
-        localStorage.setItem("customerRememberedEmail", email);
+        localStorage.setItem("customerRememberedEmail", submitEmail);
         localStorage.setItem("customerRememberMe", "true");
       } else {
         localStorage.removeItem("customerRememberedEmail");

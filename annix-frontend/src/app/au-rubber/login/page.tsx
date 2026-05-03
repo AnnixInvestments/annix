@@ -7,6 +7,7 @@ import { PasskeyLoginButton } from "@/app/components/PasskeyLoginButton";
 import { useAuRubberAuth } from "@/app/context/AuRubberAuthContext";
 import { auRubberTokenStore } from "@/app/lib/api/portalTokenStores";
 import { redirectAfterPasskeyLogin, storePasskeyJwt } from "@/app/lib/passkey";
+import { readFieldWithDomFallback } from "@/app/lib/utils/formAutofillFallback";
 
 function AuRubberLoginContent() {
   const router = useRouter();
@@ -41,15 +42,18 @@ function AuRubberLoginContent() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const form = e.currentTarget as HTMLFormElement;
+    const submitEmail = readFieldWithDomFallback(email, form, "email");
+    const submitPassword = readFieldWithDomFallback(password, form, "password");
 
     setIsSubmitting(true);
     setError(null);
 
     try {
-      await login(email, password, rememberMe);
+      await login(submitEmail, submitPassword, rememberMe);
 
       if (rememberMe) {
-        localStorage.setItem("auRubberRememberedEmail", email);
+        localStorage.setItem("auRubberRememberedEmail", submitEmail);
         localStorage.setItem("auRubberRememberMe", "true");
       } else {
         localStorage.removeItem("auRubberRememberedEmail");

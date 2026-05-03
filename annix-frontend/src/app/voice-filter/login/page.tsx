@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { useVoiceFilterAuth } from "@/app/context/VoiceFilterAuthContext";
+import { readFieldWithDomFallback } from "@/app/lib/utils/formAutofillFallback";
 
 function LoginPageContent() {
   const router = useRouter();
@@ -34,14 +35,17 @@ function LoginPageContent() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const form = e.currentTarget as HTMLFormElement;
+    const submitEmail = readFieldWithDomFallback(email, form, "email");
+    const submitPassword = readFieldWithDomFallback(password, form, "password");
     setError(null);
 
-    if (!email || !password) {
+    if (!submitEmail || !submitPassword) {
       setError("Please fill in all fields.");
       return;
     }
 
-    if (password.length < 8) {
+    if (submitPassword.length < 8) {
       setError("Password must be at least 8 characters.");
       return;
     }
@@ -49,7 +53,7 @@ function LoginPageContent() {
     setIsSubmitting(true);
 
     try {
-      const success = await login(email, password);
+      const success = await login(submitEmail, submitPassword);
 
       if (success) {
         setSuccess("Signed in!");

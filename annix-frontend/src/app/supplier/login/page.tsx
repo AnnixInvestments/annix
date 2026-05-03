@@ -8,6 +8,7 @@ import { useSupplierAuth } from "@/app/context/SupplierAuthContext";
 import { useDeviceFingerprint } from "@/app/hooks/useDeviceFingerprint";
 import { supplierTokenStore } from "@/app/lib/api/portalTokenStores";
 import { redirectAfterPasskeyLogin, storePasskeyJwt } from "@/app/lib/passkey";
+import { readFieldWithDomFallback } from "@/app/lib/utils/formAutofillFallback";
 
 function SupplierLoginContent() {
   const router = useRouter();
@@ -37,6 +38,9 @@ function SupplierLoginContent() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const form = e.currentTarget as HTMLFormElement;
+    const submitEmail = readFieldWithDomFallback(email, form, "email");
+    const submitPassword = readFieldWithDomFallback(password, form, "password");
     setError(null);
 
     if (!fingerprint) {
@@ -47,10 +51,10 @@ function SupplierLoginContent() {
     setIsLoading(true);
 
     try {
-      await login(email, password, fingerprint, browserInfo ?? undefined, rememberMe);
+      await login(submitEmail, submitPassword, fingerprint, browserInfo ?? undefined, rememberMe);
 
       if (rememberMe) {
-        localStorage.setItem("supplierRememberedEmail", email);
+        localStorage.setItem("supplierRememberedEmail", submitEmail);
         localStorage.setItem("supplierRememberMe", "true");
       } else {
         localStorage.removeItem("supplierRememberedEmail");

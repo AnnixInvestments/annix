@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { login } from "@/app/comply-sa/lib/api";
 import AmixLogo from "@/app/components/AmixLogo";
+import { readFieldWithDomFallback } from "@/app/lib/utils/formAutofillFallback";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -17,11 +18,14 @@ export default function LoginPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    const form = e.currentTarget as HTMLFormElement;
+    const submitEmail = readFieldWithDomFallback(email, form, "email");
+    const submitPassword = readFieldWithDomFallback(password, form, "password");
     setError(null);
     setLoading(true);
 
     try {
-      const result = await login(email, password);
+      const result = await login(submitEmail, submitPassword);
       if (result.termsOutdated) {
         router.push("/comply-sa/auth/accept-terms");
       } else {

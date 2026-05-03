@@ -8,6 +8,7 @@ import { useAnnixRepAuth } from "@/app/context/AnnixRepAuthContext";
 import { annixRepTokenStore } from "@/app/lib/api/portalTokenStores";
 import { redirectAfterPasskeyLogin, storePasskeyJwt } from "@/app/lib/passkey";
 import { useRepProfileStatus } from "@/app/lib/query/hooks";
+import { readFieldWithDomFallback } from "@/app/lib/utils/formAutofillFallback";
 
 interface LoginFormData {
   email: string;
@@ -56,20 +57,23 @@ function LoginPageContent() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const form = e.currentTarget as HTMLFormElement;
+    const submitEmail = readFieldWithDomFallback(formData.email, form, "email");
+    const submitPassword = readFieldWithDomFallback(formData.password, form, "password");
     setError(null);
     setIsSubmitting(true);
 
     try {
       await login(
         {
-          email: formData.email,
-          password: formData.password,
+          email: submitEmail,
+          password: submitPassword,
         },
         rememberMe,
       );
 
       if (rememberMe) {
-        localStorage.setItem("annixRepRememberedEmail", formData.email);
+        localStorage.setItem("annixRepRememberedEmail", submitEmail);
         localStorage.setItem("annixRepRememberMe", "true");
       } else {
         localStorage.removeItem("annixRepRememberedEmail");

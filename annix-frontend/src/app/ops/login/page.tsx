@@ -6,6 +6,7 @@ import React, { Suspense, useEffect, useState } from "react";
 import { PasskeyLoginButton } from "@/app/components/PasskeyLoginButton";
 import { stockControlTokenStore } from "@/app/lib/api/portalTokenStores";
 import { redirectAfterPasskeyLogin, storePasskeyJwt } from "@/app/lib/passkey";
+import { readFieldWithDomFallback } from "@/app/lib/utils/formAutofillFallback";
 import { OpsAuthProvider, useOpsAuth } from "@/app/ops/context/OpsAuthContext";
 
 function OpsLoginContent() {
@@ -41,14 +42,17 @@ function OpsLoginContent() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const form = e.currentTarget as HTMLFormElement;
+    const submitEmail = readFieldWithDomFallback(email, form, "email");
+    const submitPassword = readFieldWithDomFallback(password, form, "password");
     setIsSubmitting(true);
     setError(null);
 
     try {
-      await login(email.trim(), password, rememberMe);
+      await login(submitEmail.trim(), submitPassword, rememberMe);
 
       if (rememberMe) {
-        localStorage.setItem("opsRememberedEmail", email);
+        localStorage.setItem("opsRememberedEmail", submitEmail);
         localStorage.setItem("opsRememberMe", "true");
       } else {
         localStorage.removeItem("opsRememberedEmail");
