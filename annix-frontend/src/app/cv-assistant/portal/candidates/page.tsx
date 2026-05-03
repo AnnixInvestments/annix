@@ -56,6 +56,8 @@ export default function CandidatesPage() {
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [detailCandidateId, setDetailCandidateId] = useState<number | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [bulkPending, setBulkPending] = useState(false);
 
   const { showToast } = useToast();
   const { confirm, ConfirmDialog } = useConfirm();
@@ -159,6 +161,74 @@ export default function CandidatesPage() {
         },
       },
     );
+  };
+
+  const toggleSelected = (id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectAll = (visibleIds: number[]) => {
+    setSelectedIds((prev) => {
+      const allSelected = visibleIds.every((id) => prev.has(id));
+      if (allSelected) {
+        const next = new Set(prev);
+        for (const id of visibleIds) next.delete(id);
+        return next;
+      }
+      const next = new Set(prev);
+      for (const id of visibleIds) next.add(id);
+      return next;
+    });
+  };
+
+  const clearSelection = () => setSelectedIds(new Set());
+
+  const handleBulkStatusChange = async (
+    targetStatus: string,
+    label: string,
+    variant: "default" | "danger" | "warning" = "default",
+  ) => {
+    const ids = [...selectedIds];
+    if (ids.length === 0) return;
+    const confirmed = await confirm({
+      title: `${label} ${ids.length} candidate${ids.length === 1 ? "" : "s"}?`,
+      message: `This will set every selected candidate's status to "${targetStatus.replace(/_/g, " ")}". The matching email template will be sent to each.`,
+      confirmLabel: `${label} ${ids.length}`,
+      cancelLabel: "Cancel",
+      variant,
+    });
+    if (!confirmed) return;
+
+    setBulkPending(true);
+    try {
+      const results = await Promise.allSettled(
+        ids.map((id) => statusMutation.mutateAsync({ id, status: targetStatus })),
+      );
+      const succeeded = results.filter((r) => r.status === "fulfilled").length;
+      const failed = results.length - succeeded;
+      if (failed === 0) {
+        showToast(
+          `${succeeded} candidate${succeeded === 1 ? "" : "s"} ${label.toLowerCase()}.`,
+          "success",
+        );
+      } else {
+        showToast(
+          `${succeeded} updated, ${failed} failed. Check the candidates list and retry the rest.`,
+          "warning",
+        );
+      }
+      clearSelection();
+    } finally {
+      setBulkPending(false);
+    }
   };
 
   const handleViewCv = async (candidate: Candidate) => {
@@ -333,11 +403,80 @@ export default function CandidatesPage() {
         </div>
       </div>
 
+      {selectedIds.size > 0 ? (
+        <div className="bg-[#252560] text-white rounded-xl shadow-sm p-4 flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-semibold">{selectedIds.size} selected</span>
+            <button
+              type="button"
+              onClick={clearSelection}
+              className="text-xs text-white/70 hover:text-white underline"
+            >
+              Clear
+            </button>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={() => handleBulkStatusChange("shortlisted", "Shortlist")}
+              disabled={bulkPending}
+              className="px-3 py-1.5 text-xs font-semibold bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 disabled:opacity-50"
+            >
+              Shortlist selected
+            </button>
+            <button
+              type="button"
+              onClick={() => handleBulkStatusChange("screening", "Move to screening", "warning")}
+              disabled={bulkPending}
+              className="px-3 py-1.5 text-xs font-semibold bg-yellow-500 text-[#1a1a40] rounded-lg hover:bg-yellow-600 disabled:opacity-50"
+            >
+              Move to screening
+            </button>
+            <button
+              type="button"
+              onClick={() => handleBulkStatusChange("reference_check", "Send to reference check")}
+              disabled={bulkPending}
+              className="px-3 py-1.5 text-xs font-semibold bg-[#FFA500] text-[#1a1a40] rounded-lg hover:bg-[#FFB733] disabled:opacity-50"
+            >
+              Reference check
+            </button>
+            <button
+              type="button"
+              onClick={() => handleBulkStatusChange("accepted", "Accept")}
+              disabled={bulkPending}
+              className="px-3 py-1.5 text-xs font-semibold bg-emerald-700 text-white rounded-lg hover:bg-emerald-800 disabled:opacity-50"
+            >
+              Accept
+            </button>
+            <button
+              type="button"
+              onClick={() => handleBulkStatusChange("rejected", "Reject", "danger")}
+              disabled={bulkPending}
+              className="px-3 py-1.5 text-xs font-semibold bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+            >
+              Reject
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       <div className="bg-white rounded-xl shadow-sm border border-[#e0e0f5]">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
+                <th className="px-3 py-3 w-10">
+                  <input
+                    type="checkbox"
+                    aria-label="Select all visible candidates"
+                    checked={
+                      rankedCandidates.length > 0 &&
+                      rankedCandidates.every((c) => selectedIds.has(c.id))
+                    }
+                    onChange={() => toggleSelectAll(rankedCandidates.map((c) => c.id))}
+                    className="h-4 w-4 text-[#252560] border-gray-300 rounded focus:ring-[#252560]"
+                  />
+                </th>
                 <SortHeader
                   label="Rank"
                   active={sortKey === "rank"}
@@ -376,7 +515,7 @@ export default function CandidatesPage() {
             <tbody className="bg-white divide-y divide-gray-200">
               {rankedCandidates.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
                     {totalCandidates === 0
                       ? "No candidates yet. Upload CVs to start ranking applicants."
                       : "No candidates match the current filters."}
@@ -398,8 +537,24 @@ export default function CandidatesPage() {
                   const candidateStatus = candidate.status;
                   const isFinalStatus =
                     candidateStatus === "accepted" || candidateStatus === "rejected";
+                  const isSelected = selectedIds.has(candidate.id);
+                  const selectLabel = candidateName ? candidateName : "candidate";
                   return (
-                    <tr key={candidate.id} className="hover:bg-gray-50">
+                    <tr
+                      key={candidate.id}
+                      className={
+                        isSelected ? "bg-[#f0f0fc] hover:bg-[#e8e8f5]" : "hover:bg-gray-50"
+                      }
+                    >
+                      <td className="px-3 py-4 w-10">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleSelected(candidate.id)}
+                          aria-label={`Select ${selectLabel}`}
+                          className="h-4 w-4 text-[#252560] border-gray-300 rounded focus:ring-[#252560]"
+                        />
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-[#e0e0f5] text-[#252560] text-sm font-bold">
                           {candidate.rank}
