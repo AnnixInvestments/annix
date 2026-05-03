@@ -1,11 +1,12 @@
 "use client";
 
 import type { Assignment, AssignmentInput } from "@annix/product-data/teacher-assistant";
-import { GraduationCap, LogOut } from "lucide-react";
+import { AlertTriangle, GraduationCap, LogOut, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { useToast } from "@/app/components/Toast";
+import { extractErrorMessage } from "@/app/lib/api/apiError";
 import { useGenerateAssignment } from "@/app/lib/query/hooks";
 import {
   type RecentAssignmentEntry,
@@ -27,6 +28,7 @@ export default function TeacherAssistantPage() {
   const generate = useGenerateAssignment();
   const [assignment, setAssignment] = useState<Assignment | null>(null);
   const [generatedFrom, setGeneratedFrom] = useState<AssignmentInput | null>(null);
+  const [lastError, setLastError] = useState<string | null>(null);
 
   const recent = useTeacherAssistantStore((s) => s.recent);
   const rememberAssignment = useTeacherAssistantStore((s) => s.rememberAssignment);
@@ -53,6 +55,7 @@ export default function TeacherAssistantPage() {
 
   const handleSubmit = (input: AssignmentInput) => {
     setGeneratedFrom(input);
+    setLastError(null);
     showExtraction({
       brand: "teacher-assistant",
       label: `Generating ${input.subject} assignment on "${input.topic}"…`,
@@ -67,7 +70,9 @@ export default function TeacherAssistantPage() {
       },
       onError: (error) => {
         hideExtraction();
-        showToast(error instanceof Error ? error.message : "Generation failed.", "error");
+        const message = extractErrorMessage(error, "Generation failed.");
+        setLastError(message);
+        showToast(message, "error", 12_000);
       },
     });
   };
@@ -142,6 +147,30 @@ export default function TeacherAssistantPage() {
                   editable before export.
                 </p>
               </div>
+              {lastError ? (
+                <div
+                  role="alert"
+                  className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 flex items-start gap-3"
+                >
+                  <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1 text-sm text-red-800">
+                    <p className="font-semibold mb-1">Generation failed</p>
+                    <p>{lastError}</p>
+                    <p className="mt-2 text-red-700">
+                      Try a more specific topic, change the difficulty, or try again in a few
+                      seconds.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setLastError(null)}
+                    className="text-red-400 hover:text-red-600"
+                    aria-label="Dismiss error"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : null}
               <TeacherAssistantForm onSubmit={handleSubmit} isSubmitting={generate.isPending} />
             </div>
           </>
