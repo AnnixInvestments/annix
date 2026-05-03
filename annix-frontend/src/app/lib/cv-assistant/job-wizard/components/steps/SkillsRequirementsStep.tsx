@@ -12,7 +12,7 @@ import {
 import { SKILL_IMPORTANCE_OPTIONS, SKILL_PROFICIENCY_OPTIONS } from "../../constants/skill-options";
 import { useNixCall } from "../../hooks/useNixCall";
 import { arrOr, strOr } from "../../utils/value-helpers";
-import { FieldLabel, inputClass, StepShell, selectClass } from "../StepShell";
+import { FieldLabel, inputClass, StepShell, selectClass, textareaClass } from "../StepShell";
 
 export interface SkillsRequirementsStepProps {
   draft: JobPosting;
@@ -101,44 +101,44 @@ export function SkillsRequirementsStep({ draft, onChange }: SkillsRequirementsSt
         )}
         <ul className="space-y-3">
           {skills.map((skill, i) => (
-            <li
-              key={i}
-              className="grid grid-cols-1 md:grid-cols-12 gap-3 items-start bg-[#f5f5fc] p-4 rounded-lg"
-            >
-              <input
-                type="text"
-                placeholder="Skill name (e.g. B2B Sales)"
-                className={`${inputClass} md:col-span-4`}
-                defaultValue={skill.name}
-                onBlur={(e) => updateSkill(i, { name: e.target.value.trim() })}
-              />
-              <select
-                className={`${selectClass} md:col-span-2`}
-                defaultValue={skill.importance}
-                onChange={(e) => updateSkill(i, { importance: e.target.value as SkillImportance })}
-              >
-                {SKILL_IMPORTANCE_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-              <select
-                className={`${selectClass} md:col-span-2`}
-                defaultValue={skill.proficiency}
-                onChange={(e) =>
-                  updateSkill(i, { proficiency: e.target.value as SkillProficiency })
-                }
-              >
-                {SKILL_PROFICIENCY_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-              <SkillRow
+            <li key={`${i}-${skill.name}`} className="bg-[#f5f5fc] p-4 rounded-lg space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-start">
+                <input
+                  type="text"
+                  placeholder="Skill name (e.g. B2B Sales)"
+                  className={`${inputClass} md:col-span-6`}
+                  defaultValue={skill.name}
+                  onBlur={(e) => updateSkill(i, { name: e.target.value.trim() })}
+                />
+                <select
+                  className={`${selectClass} md:col-span-3`}
+                  defaultValue={skill.importance}
+                  onChange={(e) =>
+                    updateSkill(i, { importance: e.target.value as SkillImportance })
+                  }
+                >
+                  {SKILL_IMPORTANCE_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  className={`${selectClass} md:col-span-3`}
+                  defaultValue={skill.proficiency}
+                  onChange={(e) =>
+                    updateSkill(i, { proficiency: e.target.value as SkillProficiency })
+                  }
+                >
+                  {SKILL_PROFICIENCY_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <SkillEvidenceRow
                 skill={skill}
-                inputClass={inputClass}
                 onYears={(value) => updateSkill(i, { yearsExperience: value })}
                 onEvidence={(value) => updateSkill(i, { evidenceRequired: value })}
                 onRemove={() => removeSkill(i)}
@@ -211,51 +211,62 @@ export function SkillsRequirementsStep({ draft, onChange }: SkillsRequirementsSt
   );
 }
 
-interface SkillRowProps {
+interface SkillEvidenceRowProps {
   skill: JobSkill;
-  inputClass: string;
   onYears: (value: number | null) => void;
   onEvidence: (value: string | null) => void;
   onRemove: () => void;
 }
 
-function SkillRow({ skill, inputClass, onYears, onEvidence, onRemove }: SkillRowProps) {
+function SkillEvidenceRow({ skill, onYears, onEvidence, onRemove }: SkillEvidenceRowProps) {
   const yearsValue = skill.yearsExperience;
   const yearsDefault = yearsValue === null || yearsValue === undefined ? "" : String(yearsValue);
   const evidenceValue = skill.evidenceRequired;
   const evidenceDefault = evidenceValue ? evidenceValue : "";
 
   return (
-    <>
-      <input
-        type="number"
-        min={0}
-        max={60}
-        placeholder="Years"
-        className={`${inputClass} md:col-span-1`}
-        defaultValue={yearsDefault}
-        onBlur={(e) => {
-          const raw = e.target.value;
-          onYears(raw ? Number(raw) : null);
-        }}
-      />
-      <input
-        type="text"
-        placeholder="Evidence (optional)"
-        className={`${inputClass} md:col-span-2`}
-        defaultValue={evidenceDefault}
-        onBlur={(e) => {
-          const trimmed = e.target.value.trim();
-          onEvidence(trimmed ? trimmed : null);
-        }}
-      />
-      <button
-        type="button"
-        onClick={onRemove}
-        className="md:col-span-1 px-2 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg"
-      >
-        Remove
-      </button>
-    </>
+    <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-start">
+      <div className="md:col-span-2">
+        <label className="block text-[11px] uppercase tracking-wider text-gray-500 mb-1">
+          Years
+        </label>
+        <input
+          type="number"
+          min={0}
+          max={60}
+          placeholder="0"
+          className={inputClass}
+          defaultValue={yearsDefault}
+          onBlur={(e) => {
+            const raw = e.target.value;
+            onYears(raw ? Number(raw) : null);
+          }}
+        />
+      </div>
+      <div className="md:col-span-9">
+        <label className="block text-[11px] uppercase tracking-wider text-gray-500 mb-1">
+          Evidence required (optional)
+        </label>
+        <textarea
+          rows={2}
+          placeholder="e.g. Demonstrate a closed deal worth R250k+ in industrial sales"
+          className={`${textareaClass} min-h-[56px] resize-y whitespace-pre-wrap`}
+          defaultValue={evidenceDefault}
+          onBlur={(e) => {
+            const trimmed = e.target.value.trim();
+            onEvidence(trimmed ? trimmed : null);
+          }}
+        />
+      </div>
+      <div className="md:col-span-1 flex md:items-end md:h-full md:pb-1">
+        <button
+          type="button"
+          onClick={onRemove}
+          className="w-full md:w-auto px-2 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg shrink-0"
+        >
+          Remove
+        </button>
+      </div>
+    </div>
   );
 }
