@@ -230,10 +230,7 @@ export default function HomePage() {
             rel="noopener noreferrer"
             className="group"
           >
-            <div className="bg-white bg-opacity-95 backdrop-blur-sm rounded-xl shadow-lg p-8 border-2 border-transparent hover:border-amber-400 hover:shadow-xl transition-all duration-300 h-full relative">
-              <div className="absolute top-4 right-4 inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">
-                Coming Soon
-              </div>
+            <div className="bg-white bg-opacity-95 backdrop-blur-sm rounded-xl shadow-lg p-8 border-2 border-transparent hover:border-amber-400 hover:shadow-xl transition-all duration-300 h-full">
               <div className="text-center">
                 <div className="inline-flex items-center justify-center w-20 h-20 bg-amber-100 rounded-2xl text-amber-600 mb-6 group-hover:bg-amber-600 group-hover:text-white transition-colors">
                   <GraduationCap {...iconProps} />
@@ -244,7 +241,7 @@ export default function HomePage() {
                   that grade thinking, evidence, and AI critique — not recall.
                 </p>
                 <span className="inline-flex items-center text-amber-600 font-semibold group-hover:translate-x-1 transition-transform">
-                  Preview
+                  Open
                   <svg
                     className="w-5 h-5 ml-2"
                     fill="none"
