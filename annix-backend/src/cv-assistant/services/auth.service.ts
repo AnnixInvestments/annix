@@ -20,6 +20,7 @@ import { UserAppAccess } from "../../rbac/entities/user-app-access.entity";
 import { PasswordService } from "../../shared/auth/password.service";
 import { User } from "../../user/entities/user.entity";
 import { CV_ASSISTANT_JWT_SECRET_DEFAULT } from "../cv-assistant.constants";
+import { CvAssistantCompany } from "../entities/cv-assistant-company.entity";
 import { CvAssistantProfile, CvAssistantUserType } from "../entities/cv-assistant-profile.entity";
 import { CvAssistantRole } from "../entities/cv-assistant-user.entity";
 
@@ -36,6 +37,8 @@ export class CvAssistantAuthService {
     private readonly profileRepo: Repository<CvAssistantProfile>,
     @InjectRepository(Company)
     private readonly companyRepo: Repository<Company>,
+    @InjectRepository(CvAssistantCompany)
+    private readonly cvCompanyRepo: Repository<CvAssistantCompany>,
     @InjectRepository(App)
     private readonly appRepo: Repository<App>,
     @InjectRepository(AppRole)
@@ -52,6 +55,26 @@ export class CvAssistantAuthService {
     return this.configService.get<string>(
       "CV_ASSISTANT_JWT_SECRET",
       CV_ASSISTANT_JWT_SECRET_DEFAULT,
+    );
+  }
+
+  /**
+   * The CV Assistant module stores company FKs against `cv_assistant_companies`
+   * (a CV-specific mirror table) rather than the shared `companies` table the
+   * profile + registration use. To keep both consistent we INSERT a matching
+   * row in `cv_assistant_companies` with the SAME id whenever a `companies`
+   * row is created from this service. Idempotent — INSERT…ON CONFLICT.
+   */
+  private async mirrorIntoCvAssistantCompanies(id: number, name: string): Promise<void> {
+    await this.cvCompanyRepo.query(
+      `INSERT INTO cv_assistant_companies (id, name, created_at, updated_at)
+       VALUES ($1, $2, now(), now())
+       ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, updated_at = now()`,
+      [id, name],
+    );
+    await this.cvCompanyRepo.query(
+      `SELECT setval('cv_assistant_companies_id_seq', GREATEST((SELECT COALESCE(MAX(id), 0) FROM cv_assistant_companies), $1))`,
+      [id],
     );
   }
 
@@ -90,6 +113,7 @@ export class CvAssistantAuthService {
       city: null,
     });
     const savedCompany = await this.companyRepo.save(company);
+    await this.mirrorIntoCvAssistantCompanies(savedCompany.id, company.name);
 
     if (profile) {
       profile.companyId = savedCompany.id;
@@ -133,6 +157,7 @@ export class CvAssistantAuthService {
       city,
     });
     const savedCompany = await this.companyRepo.save(company);
+    await this.mirrorIntoCvAssistantCompanies(savedCompany.id, companyName);
 
     const user = this.userRepo.create({
       email,
