@@ -68,7 +68,7 @@ function PortalContent({ children }: { children: React.ReactNode }) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#323288] flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40] flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#323288]"></div>
       </div>
     );
@@ -89,7 +89,7 @@ function PortalContent({ children }: { children: React.ReactNode }) {
   const lastName = nameParts.length > 1 ? nameParts.slice(1).join(" ") : undefined;
 
   return (
-    <div className="min-h-screen bg-[#323288]">
+    <div className="min-h-screen bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40]">
       <PortalToolbar
         portalType="cvAssistant"
         navItems={navItems}
@@ -118,7 +118,7 @@ export default function PortalLayout(props: { children: React.ReactNode }) {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-[#323288] flex items-center justify-center">
+        <div className="min-h-screen bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40] flex items-center justify-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#323288] mx-auto" />
         </div>
       }
