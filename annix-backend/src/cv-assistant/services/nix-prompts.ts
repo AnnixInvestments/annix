@@ -77,6 +77,23 @@ export interface NixScreeningQuestionsResponse {
   notes: string[];
 }
 
+export interface NixSalaryGuidanceResponse {
+  suggestedMin: number;
+  suggestedMax: number;
+  marketMedian: number;
+  competitiveness: "low" | "medium" | "strong";
+  confidence: number;
+  warnings: string[];
+  explanation: string;
+}
+
+export interface NixSourcingQueriesResponse {
+  linkedin: string;
+  indeed: string;
+  google: string;
+  explanations: string[];
+}
+
 const SA_SYSTEM_PREAMBLE =
   "You are Nix, the AI hiring assistant inside the Annix CV Assistant product. " +
   "You help South African employers create high-quality job posts. " +
@@ -347,6 +364,99 @@ Rules:
 - For multiple_choice, give 3-5 plausible options.
 - Weight: must-have requirements 8-10, nice-to-have 3-6.
 - Use SA-relevant phrasing ("right to work in South Africa", "valid driver's licence with own vehicle", etc.).`,
+  };
+}
+
+export function salaryGuidancePrompt(input: {
+  title: string;
+  industry: string | null;
+  province: string | null;
+  city: string | null;
+  seniorityLevel: string | null;
+  employmentType: string | null;
+  workMode: string | null;
+  yearsExperienceMin: number | null;
+  currentMin: number | null;
+  currentMax: number | null;
+  currency: string;
+  benefits: string[];
+  commissionStructure: string | null;
+}): NixPrompt {
+  return {
+    system: SA_SYSTEM_PREAMBLE,
+    user: `Recommend a realistic monthly salary band for this South African role using your knowledge of the SA labour market in 2026.
+
+Role:
+Title: ${input.title}
+Industry: ${input.industry || "(unspecified)"}
+Seniority: ${input.seniorityLevel || "(unspecified)"}
+Location: ${input.city || "(unspecified)"}, ${input.province || "(unspecified)"}
+Employment: ${input.employmentType || "(unspecified)"} / ${input.workMode || "(unspecified)"}
+Years experience required: ${input.yearsExperienceMin ?? "unspecified"}
+Current proposed range: ${input.currency} ${input.currentMin ?? "?"} - ${input.currentMax ?? "?"} per month
+Benefits: ${input.benefits.length > 0 ? input.benefits.join(", ") : "(none listed)"}
+Commission: ${input.commissionStructure ?? "(none)"}
+
+Return JSON with this exact shape:
+{
+  "suggestedMin": number,
+  "suggestedMax": number,
+  "marketMedian": number,
+  "competitiveness": "low" | "medium" | "strong",
+  "confidence": 0-1,
+  "warnings": ["string", ...],
+  "explanation": "1-2 sentence rationale"
+}
+
+Rules:
+- All amounts in ZAR per month, gross of tax.
+- competitiveness compares the user's currentMin/currentMax against your suggested range and SA market median.
+  - "low" if currentMin < suggested 25th percentile
+  - "medium" if currentMin is between p25 and p50
+  - "strong" if currentMin >= suggested median
+- confidence: 0.8+ for very common SA roles, 0.5-0.7 for niche, <0.5 for highly specialised. Be honest if you have low data.
+- warnings: include "below market median" if applicable; flag if commission structure is unrealistic, etc.
+- Don't pretend certainty. Phase 5b will replace this with Adzuna SA cache data.`,
+  };
+}
+
+export function sourcingQueriesPrompt(input: {
+  title: string;
+  normalizedTitle: string | null;
+  city: string | null;
+  province: string | null;
+  industry: string | null;
+  seniorityLevel: string | null;
+  requiredSkills: string[];
+  preferredSkills: string[];
+}): NixPrompt {
+  return {
+    system: SA_SYSTEM_PREAMBLE,
+    user: `Generate Boolean search strings for sourcing passive candidates outside our application funnel.
+
+Role:
+Title: ${input.title}
+Normalised: ${input.normalizedTitle ?? "(none)"}
+Industry: ${input.industry ?? "(unspecified)"}
+Seniority: ${input.seniorityLevel ?? "(unspecified)"}
+Location: ${input.city ?? "(unspecified)"}, ${input.province ?? "(unspecified)"}
+Required skills: ${input.requiredSkills.join(", ") || "(none)"}
+Preferred skills: ${input.preferredSkills.join(", ") || "(none)"}
+
+Return JSON with this exact shape:
+{
+  "linkedin": "string — paste-ready LinkedIn boolean string",
+  "indeed": "string — paste-ready Indeed boolean string",
+  "google": "string — paste-ready Google search string with site: operators",
+  "explanations": ["string — short notes on what each query does", ...]
+}
+
+Rules:
+- LinkedIn: combine title variants with OR; required skills with AND; province/city as a separate location filter (NOT in the boolean string itself, but mention it in explanations).
+- Indeed: similar but Indeed supports more relaxed boolean syntax.
+- Google: use site:linkedin.com/in/ OR site:github.com/ OR site:twitter.com/ as appropriate; combine with quoted skills. Include "South Africa" or the province for geo-targeting.
+- Don't exceed 200 chars for any single string.
+- explanations[] is 1-2 short notes per query that the user can show alongside.`,
   };
 }
 

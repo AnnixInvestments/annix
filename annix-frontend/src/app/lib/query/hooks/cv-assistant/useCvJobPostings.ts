@@ -152,3 +152,15 @@ export function useCvNixScreeningSuggestions() {
     mutationFn: (id: number) => cvAssistantApiClient.nixScreeningQuestionsSuggest(id),
   });
 }
+
+export function useCvNixSalaryGuidance() {
+  return useMutation({
+    mutationFn: (id: number) => cvAssistantApiClient.nixSalaryGuidance(id),
+  });
+}
+
+export function useCvNixSourcingQueries() {
+  return useMutation({
+    mutationFn: (id: number) => cvAssistantApiClient.nixSourcingQueries(id),
+  });
+}

@@ -8,13 +8,17 @@ import {
   descriptionPrompt,
   type NixDescriptionResponse,
   type NixQualityScoreResponse,
+  type NixSalaryGuidanceResponse,
   type NixScreeningQuestionsResponse,
   type NixSkillSuggestionsResponse,
+  type NixSourcingQueriesResponse,
   type NixTitleSuggestionsResponse,
   parseNixJson,
   qualityScorePrompt,
+  salaryGuidancePrompt,
   screeningQuestionsPrompt,
   skillSuggestionsPrompt,
+  sourcingQueriesPrompt,
   summariseSuccessMetrics,
   titleSuggestionsPrompt,
 } from "./nix-prompts";
@@ -175,6 +179,60 @@ export class NixJobAssistService {
       });
       const result = await this.callAi(prompt);
       return parseNixJson<NixScreeningQuestionsResponse>(result.content);
+    });
+  }
+
+  async salaryGuidance(
+    companyId: number,
+    jobPostingId: number,
+  ): Promise<NixSalaryGuidanceResponse> {
+    const posting = await this.loadPostingWithRelations(companyId, jobPostingId);
+
+    return this.metrics.time(METRIC_CATEGORY, "salary-guidance", async () => {
+      const prompt = salaryGuidancePrompt({
+        title: posting.title,
+        industry: posting.industry,
+        province: posting.province,
+        city: posting.location,
+        seniorityLevel: posting.seniorityLevel,
+        employmentType: posting.employmentType,
+        workMode: posting.workMode,
+        yearsExperienceMin: posting.minExperienceYears,
+        currentMin: posting.salaryMin,
+        currentMax: posting.salaryMax,
+        currency: posting.salaryCurrency,
+        benefits: posting.benefits || [],
+        commissionStructure: posting.commissionStructure,
+      });
+      const result = await this.callAi(prompt);
+      return parseNixJson<NixSalaryGuidanceResponse>(result.content);
+    });
+  }
+
+  async sourcingQueries(
+    companyId: number,
+    jobPostingId: number,
+  ): Promise<NixSourcingQueriesResponse> {
+    const posting = await this.loadPostingWithRelations(companyId, jobPostingId);
+    const allSkills = posting.skills || [];
+    const requiredSkills = allSkills.filter((s) => s.importance === "required").map((s) => s.name);
+    const preferredSkills = allSkills
+      .filter((s) => s.importance === "preferred")
+      .map((s) => s.name);
+
+    return this.metrics.time(METRIC_CATEGORY, "sourcing-queries", async () => {
+      const prompt = sourcingQueriesPrompt({
+        title: posting.title,
+        normalizedTitle: posting.normalizedTitle,
+        city: posting.location,
+        province: posting.province,
+        industry: posting.industry,
+        seniorityLevel: posting.seniorityLevel,
+        requiredSkills,
+        preferredSkills,
+      });
+      const result = await this.callAi(prompt);
+      return parseNixJson<NixSourcingQueriesResponse>(result.content);
     });
   }
 

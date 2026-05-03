@@ -864,6 +864,31 @@ class CvAssistantApiClient {
     });
   }
 
+  async nixSalaryGuidance(id: number): Promise<{
+    suggestedMin: number;
+    suggestedMax: number;
+    marketMedian: number;
+    competitiveness: "low" | "medium" | "strong";
+    confidence: number;
+    warnings: string[];
+    explanation: string;
+  }> {
+    return this.request(`/cv-assistant/job-postings/${id}/nix/salary-guidance`, {
+      method: "POST",
+    });
+  }
+
+  async nixSourcingQueries(id: number): Promise<{
+    linkedin: string;
+    indeed: string;
+    google: string;
+    explanations: string[];
+  }> {
+    return this.request(`/cv-assistant/job-postings/${id}/nix/sourcing-queries`, {
+      method: "POST",
+    });
+  }
+
   async candidates(filters?: { status?: string; jobPostingId?: number }): Promise<Candidate[]> {
     const params = new URLSearchParams();
     if (filters?.status) params.append("status", filters.status);

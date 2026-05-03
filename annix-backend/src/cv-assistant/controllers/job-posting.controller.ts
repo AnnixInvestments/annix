@@ -102,6 +102,22 @@ export class JobPostingController {
     return this.nixJobAssist.screeningQuestions(req.user.companyId, id);
   }
 
+  @Post(":id/nix/salary-guidance")
+  async nixSalaryGuidance(
+    @Request() req: { user: { companyId: number } },
+    @Param("id", ParseIntPipe) id: number,
+  ) {
+    return this.nixJobAssist.salaryGuidance(req.user.companyId, id);
+  }
+
+  @Post(":id/nix/sourcing-queries")
+  async nixSourcingQueries(
+    @Request() req: { user: { companyId: number } },
+    @Param("id", ParseIntPipe) id: number,
+  ) {
+    return this.nixJobAssist.sourcingQueries(req.user.companyId, id);
+  }
+
   @Get()
   async findAll(@Request() req: { user: { companyId: number } }, @Query("status") status?: string) {
     return this.jobPostingService.findAll(req.user.companyId, status);
