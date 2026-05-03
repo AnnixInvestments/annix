@@ -31,6 +31,11 @@ export {
   SUBJECTS,
 } from "./enums";
 export {
+  electricalCircuitsFixture,
+  FIXTURES,
+  skyInvestigatorFixture,
+} from "./fixtures";
+export {
   buildRetryPrompt,
   buildSectionRegeneratePrompt,
   buildUserPrompt,
