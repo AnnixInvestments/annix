@@ -33,6 +33,8 @@ export {
 export {
   electricalCircuitsFixture,
   FIXTURES,
+  localWaterReportFixture,
+  reactionRatesLabFixture,
   skyInvestigatorFixture,
 } from "./fixtures";
 export {

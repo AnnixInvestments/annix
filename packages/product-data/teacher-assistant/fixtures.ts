@@ -323,4 +323,321 @@ export const electricalCircuitsFixture: Assignment = {
   optionalWorkbookPages: [],
 };
 
-export const FIXTURES: Assignment[] = [skyInvestigatorFixture, electricalCircuitsFixture];
+export const localWaterReportFixture: Assignment = {
+  title: "Map My Water: Local Water Story",
+  subject: "geography",
+  topic: "local water cycle and supply",
+  ageBucket: "14-16",
+  duration: "2 weeks",
+  outputType: "Report",
+  difficulty: "standard",
+  studentBrief:
+    "Trace where the water in your home comes from and where it goes. Map the local water cycle in your suburb using observations, interviews with adults, and one online utility map. Then compare an AI summary of your local supply against what you actually documented.",
+  learningObjective:
+    "Describe the local water cycle, supply chain, and risks using observed evidence and primary interviews.",
+  successCriteria: [
+    "Hand-drawn or annotated map of the local water flow",
+    "Three observations of water in your environment with photos",
+    "Two short interviews with adults about water use or shortages",
+    "AI summary documented and corrected against your evidence",
+  ],
+  tasks: [
+    {
+      step: 1,
+      title: "Observe and photograph",
+      studentInstruction:
+        "Take three photos of water in your environment over two days — a tap, a drain or stormwater grid, and a natural water feature near your home or school. Record location, time, and weather for each.",
+      requiredEvidence: ["photos", "GPS or address", "time", "weather"],
+      reasoningPrompt: "What does each photo tell you about how water moves through your area?",
+      aiCritique: null,
+      reflectionPrompt: "Which photo surprised you most and why?",
+    },
+    {
+      step: 2,
+      title: "Interview two people",
+      studentInstruction:
+        "Interview two adults about water — one about their household water bill and any shortages they remember, one who works outside or at a school about how water is used at work. Record short notes and quotes.",
+      requiredEvidence: ["interview notes", "two named sources", "quotes"],
+      reasoningPrompt: "What do the two adults agree or disagree on about water in your area?",
+      aiCritique: null,
+      reflectionPrompt: "What new local information did the interviews give you that AI did not?",
+    },
+    {
+      step: 3,
+      title: "Map the local water cycle",
+      studentInstruction:
+        "Draw a simple map showing where your water comes from, the route it takes to your home, and where wastewater goes. Use one online utility/municipality map as a reference; cite it.",
+      requiredEvidence: ["hand-drawn map", "labels", "cited reference"],
+      reasoningPrompt: "Where on your map are the biggest unknowns or assumptions?",
+      aiCritique: null,
+      reflectionPrompt: "Which part of the map would change in a drought year?",
+    },
+    {
+      step: 4,
+      title: "Critique an AI summary",
+      studentInstruction:
+        "Ask AI to summarise the water supply, treatment, and risks for your suburb in 3 short paragraphs. Compare AI's summary to your evidence and interviews; correct or extend at least three statements.",
+      requiredEvidence: ["AI prompt used", "AI output", "annotated corrections"],
+      reasoningPrompt: "Where did AI generalise or miss your local context?",
+      aiCritique: {
+        promptToTry:
+          "Summarise the water supply, treatment, and seasonal risks in [my suburb] in three short paragraphs.",
+        documentPromptAndOutput: true,
+        compareToEvidence: "Compare AI's summary to your map, photos, and interviews.",
+        noteIssues: "Where did AI hallucinate, omit, or oversimplify?",
+        improveWithPersonalInput:
+          "Rewrite each paragraph with one specific local detail from your evidence.",
+      },
+      reflectionPrompt: "What is one thing AI got right that you would not have known yourself?",
+    },
+  ],
+  aiUseRules: [
+    "Use AI only after you have collected your own evidence.",
+    "Always document the AI prompt and the full output.",
+    "Mark AI-only claims you could not verify with a question mark.",
+    "Cite primary sources (interviews, photos) before AI claims.",
+  ],
+  evidenceChecklist: [
+    "Three water photos with metadata",
+    "Two interview notes with named sources",
+    "Hand-drawn local water map",
+    "AI prompt + output + annotated corrections",
+  ],
+  finalSubmissionRequirements: [
+    "Report (4-6 pages)",
+    "Photo and map appendix",
+    "Interview transcript notes",
+    "Reflection paragraph",
+  ],
+  rubric: [
+    {
+      criterion: "Local evidence",
+      excellent: "Detailed observations with named places and times.",
+      good: "Observations with most metadata.",
+      satisfactory: "Some observations recorded.",
+      needsWork: "Generic or no observations.",
+    },
+    {
+      criterion: "Interviews",
+      excellent: "Two distinct sources, useful quotes, integrated into report.",
+      good: "Two sources with notes.",
+      satisfactory: "One usable interview.",
+      needsWork: "No interviews or fabricated.",
+    },
+    {
+      criterion: "Map quality",
+      excellent: "Clear, labelled, traceable from source to drain.",
+      good: "Most labels, clear route.",
+      satisfactory: "Partial map.",
+      needsWork: "No map or unclear.",
+    },
+    {
+      criterion: "AI critique",
+      excellent: "Three specific corrections with evidence.",
+      good: "Two corrections with evidence.",
+      satisfactory: "One correction.",
+      needsWork: "Copies AI summary.",
+    },
+  ],
+  teacherNotes: {
+    setup:
+      "Confirm safety boundaries before students photograph drains or visit water features. Provide an interview consent script.",
+    setupTime: "20 minutes prep + safety brief in class",
+    materialsNeeded: [
+      "smartphone or camera",
+      "interview consent slip",
+      "printed worksheet",
+      "coloured pens for the map",
+    ],
+    commonMisconceptions: [
+      "Believing local tap water comes from a single dam.",
+      "Assuming stormwater and sewage share one network in suburbs.",
+    ],
+    markingGuidance:
+      "Reward specific local detail and corrected AI claims over textbook-style writing.",
+    supportOption: "Provide a simplified map template with placeholders to label.",
+    extensionOption: "Compare two adjacent suburbs and explain why their water risks differ.",
+  },
+  parentNote:
+    "Your child will photograph water around the home, interview two adults briefly, and draw a map of the local water cycle.",
+  studentAiPromptStarters: [
+    "Summarise water supply and treatment for my suburb in three paragraphs.",
+    "What seasonal water risks does my suburb face?",
+    "Trace stormwater from a typical street to the nearest river.",
+    "What questions should I ask an adult about household water?",
+  ],
+  partialExemplars: [
+    {
+      forCriterion: "AI critique",
+      strongElement:
+        "AI said our water comes from one dam, but the municipality map shows two reservoirs feeding our suburb. I corrected this with a citation to the map.",
+      weakElement: "AI said our water comes from a dam. I agreed.",
+    },
+  ],
+  optionalWorkbookPages: [],
+};
+
+export const reactionRatesLabFixture: Assignment = {
+  title: "Reaction Detective: Find the Hidden Variable",
+  subject: "science",
+  topic: "factors affecting reaction rate",
+  ageBucket: "14-16",
+  duration: "3 days",
+  outputType: "Lab worksheet",
+  difficulty: "advanced",
+  studentBrief:
+    "Run three controlled experiments measuring how a single variable changes the rate of a reaction. Record measurements with uncertainty, identify which variable causes the biggest change, and compare an AI prediction against your real timing data.",
+  learningObjective:
+    "Identify the dominant factor affecting reaction rate using controlled experiments and uncertainty analysis.",
+  successCriteria: [
+    "Three controlled trials per variable with timed data",
+    "Uncertainty estimate per measurement",
+    "Graph of rate vs variable",
+    "AI prediction documented and corrected against your data",
+  ],
+  tasks: [
+    {
+      step: 1,
+      title: "Plan and predict",
+      studentInstruction:
+        "Choose three variables (concentration, temperature, surface area) and predict in writing how each will change the reaction rate before you start. Justify each prediction with a sentence.",
+      requiredEvidence: ["written predictions", "justification per variable"],
+      reasoningPrompt: "Which variable do you expect to dominate and why?",
+      aiCritique: null,
+      reflectionPrompt: "What would change your prediction if it were wrong?",
+    },
+    {
+      step: 2,
+      title: "Run the trials",
+      studentInstruction:
+        "For each variable, run three trials at three different levels (nine trials total). Time each trial with a stopwatch. Record measurements with uncertainty (e.g. 12.4 ± 0.2 s).",
+      requiredEvidence: ["trial table", "stopwatch readings", "uncertainty per row"],
+      reasoningPrompt: "Where did your timing uncertainty come from?",
+      aiCritique: null,
+      reflectionPrompt: "Did any trial fail in a way that taught you something?",
+    },
+    {
+      step: 3,
+      title: "Graph and analyse",
+      studentInstruction:
+        "Plot rate (1/time) against each variable. Identify the variable that causes the biggest change in rate; back this up with the gradient or ratio.",
+      requiredEvidence: ["three graphs", "calculation of dominant variable"],
+      reasoningPrompt: "Why does rate (1/time) make the comparison clearer than time alone?",
+      aiCritique: null,
+      reflectionPrompt: "Which graph surprised you most?",
+    },
+    {
+      step: 4,
+      title: "Critique an AI prediction",
+      studentInstruction:
+        "Describe your three variables to an AI tool and ask it to predict which one dominates and by how much. Compare its prediction to your measured graphs and explain any disagreement.",
+      requiredEvidence: ["AI prompt used", "AI output", "annotated comparison"],
+      reasoningPrompt: "Where did AI assume idealised conditions or ignore your apparatus?",
+      aiCritique: {
+        promptToTry:
+          "Predict which of these three variables (concentration, temperature, surface area) most affects reaction rate and by what factor at typical school-lab levels.",
+        documentPromptAndOutput: true,
+        compareToEvidence: "Compare AI's predicted dominant variable to your measured graphs.",
+        noteIssues:
+          "Where did AI assume ideal conditions, ignore mixing, or miscalculate the rate ratio?",
+        improveWithPersonalInput:
+          "Rewrite AI's prediction using your real timing data and uncertainty.",
+      },
+      reflectionPrompt: "What did your data tell you that AI's prediction missed?",
+    },
+  ],
+  aiUseRules: [
+    "Run all trials before asking AI.",
+    "Document the AI prompt and full output.",
+    "Treat AI as one prediction among many.",
+    "Explain every disagreement between AI and your data.",
+  ],
+  evidenceChecklist: [
+    "Trial table with uncertainties",
+    "Three rate vs variable graphs",
+    "Identification of dominant variable",
+    "AI prompt and output with corrections",
+  ],
+  finalSubmissionRequirements: [
+    "Lab worksheet with all data",
+    "Graphs",
+    "AI critique paragraph",
+    "Reflection on what changed",
+  ],
+  rubric: [
+    {
+      criterion: "Experimental control",
+      excellent: "Only one variable changes per trial; uncertainty quoted.",
+      good: "Mostly controlled, minor confounds.",
+      satisfactory: "Trials run but control unclear.",
+      needsWork: "Variables confounded.",
+    },
+    {
+      criterion: "Data quality",
+      excellent: "Clear table, uncertainties, repeats.",
+      good: "Most data with uncertainties.",
+      satisfactory: "Some data present.",
+      needsWork: "Missing or sketchy data.",
+    },
+    {
+      criterion: "Analysis",
+      excellent: "Identifies dominant variable with calculation.",
+      good: "Identifies dominant variable.",
+      satisfactory: "Plots data only.",
+      needsWork: "No analysis.",
+    },
+    {
+      criterion: "AI critique",
+      excellent: "Names the assumption AI made and why it failed.",
+      good: "Notes the disagreement and explains it.",
+      satisfactory: "Notes the disagreement only.",
+      needsWork: "Copies AI prediction.",
+    },
+  ],
+  teacherNotes: {
+    setup:
+      "Use sodium thiosulfate + HCl 'disappearing cross' reaction or alka-seltzer + water for safer alternatives. Pre-label all bottles.",
+    setupTime: "45 minutes setup + safety brief",
+    materialsNeeded: [
+      "stopwatch (one per group)",
+      "graduated cylinders 10 mL and 50 mL",
+      "thermometer",
+      "reaction beakers",
+      "mortar and pestle (for surface area)",
+      "graph paper or graphing tool",
+    ],
+    commonMisconceptions: [
+      "Assuming temperature always doubles rate per 10°C in any reaction.",
+      "Confusing concentration and amount.",
+    ],
+    markingGuidance:
+      "Reward students who quote uncertainty and who name a specific assumption AI broke.",
+    supportOption:
+      "Reduce to two variables (temperature, concentration) with one trial level each.",
+    extensionOption: "Add a catalyst trial and ask whether the same dominant variable still wins.",
+  },
+  parentNote:
+    "Your child will run three timed lab experiments and compare the results to an AI's predictions. The reaction we use is safe at school-lab concentrations.",
+  studentAiPromptStarters: [
+    "Predict which of concentration, temperature, and surface area most affects reaction rate.",
+    "By what factor does doubling concentration change the rate of a typical iodine clock reaction?",
+    "Why might my measured rate be slower than your prediction?",
+    "What assumptions does the rate equation make at school-lab scales?",
+  ],
+  partialExemplars: [
+    {
+      forCriterion: "AI critique",
+      strongElement:
+        "AI predicted temperature doubled the rate per 10°C. My data showed only a 1.6× rise per 10°C — AI used the simplified Arrhenius rule of thumb, ignoring our reaction's specific activation energy.",
+      weakElement: "AI predicted temperature was strongest. My data agreed roughly.",
+    },
+  ],
+  optionalWorkbookPages: [],
+};
+
+export const FIXTURES: Assignment[] = [
+  skyInvestigatorFixture,
+  electricalCircuitsFixture,
+  localWaterReportFixture,
+  reactionRatesLabFixture,
+];

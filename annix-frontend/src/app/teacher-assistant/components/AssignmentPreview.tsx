@@ -72,8 +72,12 @@ export function AssignmentPreview(props: AssignmentPreviewProps) {
     showToast("Assignment copied to clipboard.", "success");
   };
 
-  const handlePdf = () => {
-    downloadAssignmentAsPdf(editor.current);
+  const handlePdf = async () => {
+    try {
+      await downloadAssignmentAsPdf(editor.current);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "PDF export failed.", "error");
+    }
   };
 
   const editedSections = useMemo(() => editor.editedSections, [editor.editedSections]);
