@@ -2,13 +2,12 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useState } from "react";
+import { Suspense, useRef, useState } from "react";
 import { PasskeyLoginButton } from "@/app/components/PasskeyLoginButton";
 import { useCvAssistantAuth } from "@/app/context/CvAssistantAuthContext";
 import { cvAssistantApiClient } from "@/app/lib/api/cvAssistantApi";
 import { cvAssistantTokenStore } from "@/app/lib/api/portalTokenStores";
 import { redirectAfterPasskeyLogin, storePasskeyJwt } from "@/app/lib/passkey";
-import { readFieldWithDomFallback } from "@/app/lib/utils/formAutofillFallback";
 
 function postLoginPath(userType: string | undefined, returnUrl: string | null): string {
   if (returnUrl) return returnUrl;
@@ -22,16 +21,18 @@ function CvAssistantLoginContent() {
   const returnUrl = searchParams.get("returnUrl");
   const accountType = searchParams.get("type");
   const { login, isLoading } = useCvAssistantAuth();
+  const emailRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const form = e.currentTarget as HTMLFormElement;
-    const submitEmail = readFieldWithDomFallback(email, form, "email");
-    const submitPassword = readFieldWithDomFallback(password, form, "password");
+    const emailInput = emailRef.current;
+    const passwordInput = passwordRef.current;
+    const submitEmail = emailInput ? emailInput.value : email;
+    const submitPassword = passwordInput ? passwordInput.value : "";
     setError(null);
 
     try {
@@ -98,11 +99,14 @@ function CvAssistantLoginContent() {
                 Email address
               </label>
               <input
+                ref={emailRef}
                 id="email"
+                name="email"
                 type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="username email"
                 required
+                defaultValue=""
+                onChange={(e) => setEmail(e.target.value)}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
                 placeholder="you@example.com"
               />
@@ -113,11 +117,13 @@ function CvAssistantLoginContent() {
                 Password
               </label>
               <input
+                ref={passwordRef}
                 id="password"
+                name="password"
                 type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
                 required
+                defaultValue=""
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
                 placeholder="Enter your password"
               />

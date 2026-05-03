@@ -2,13 +2,12 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { PasskeyLoginButton } from "@/app/components/PasskeyLoginButton";
 import { useAnnixRepAuth } from "@/app/context/AnnixRepAuthContext";
 import { annixRepTokenStore } from "@/app/lib/api/portalTokenStores";
 import { redirectAfterPasskeyLogin, storePasskeyJwt } from "@/app/lib/passkey";
 import { useRepProfileStatus } from "@/app/lib/query/hooks";
-import { readFieldWithDomFallback } from "@/app/lib/utils/formAutofillFallback";
 
 interface LoginFormData {
   email: string;
@@ -22,6 +21,8 @@ function LoginPageContent() {
   const { isAuthenticated, isLoading: authLoading, login } = useAnnixRepAuth();
   const { data: profileStatus, isLoading: profileLoading } = useRepProfileStatus();
 
+  const emailRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState<LoginFormData>({ email: "", password: "" });
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -33,10 +34,13 @@ function LoginPageContent() {
     const remembered = localGlobal.getItem("annixRepRememberedEmail");
     const flag = localGlobal.getItem("annixRepRememberMe") === "true";
     setRememberMe(flag);
-    setFormData((current) => {
-      if (current.email.trim() !== "") return current;
-      return { ...current, email: remembered || "" };
-    });
+    if (remembered) {
+      const inputEl = emailRef.current;
+      if (inputEl && !inputEl.value) {
+        inputEl.value = remembered;
+      }
+      setFormData((current) => ({ ...current, email: remembered }));
+    }
   }, []);
 
   useEffect(() => {
@@ -57,9 +61,10 @@ function LoginPageContent() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const form = e.currentTarget as HTMLFormElement;
-    const submitEmail = readFieldWithDomFallback(formData.email, form, "email");
-    const submitPassword = readFieldWithDomFallback(formData.password, form, "password");
+    const emailInput = emailRef.current;
+    const passwordInput = passwordRef.current;
+    const submitEmail = emailInput ? emailInput.value : formData.email;
+    const submitPassword = passwordInput ? passwordInput.value : formData.password;
     setError(null);
     setIsSubmitting(true);
 
@@ -146,9 +151,13 @@ function LoginPageContent() {
                     Email Address
                   </label>
                   <input
+                    ref={emailRef}
+                    id="email"
+                    name="email"
                     type="email"
+                    autoComplete="username email"
                     required
-                    value={formData.email}
+                    defaultValue=""
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     placeholder="you@example.com"
                     className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-slate-700 dark:text-white"
@@ -160,10 +169,13 @@ function LoginPageContent() {
                     Password
                   </label>
                   <input
+                    ref={passwordRef}
+                    id="password"
+                    name="password"
                     type="password"
+                    autoComplete="current-password"
                     required
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    defaultValue=""
                     placeholder="Enter your password"
                     className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-slate-700 dark:text-white"
                   />
