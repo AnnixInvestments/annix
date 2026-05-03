@@ -42,6 +42,40 @@ export type EmploymentType =
   | "internship"
   | "learnership";
 
+export type WorkMode = "on_site" | "hybrid" | "remote";
+export type SkillImportance = "required" | "preferred";
+export type SkillProficiency = "basic" | "intermediate" | "advanced" | "expert";
+export type SuccessMetricTimeframe = "3_months" | "12_months";
+export type ScreeningQuestionType = "yes_no" | "short_text" | "multiple_choice" | "numeric";
+
+export interface JobSkill {
+  id?: number;
+  name: string;
+  importance: SkillImportance;
+  proficiency: SkillProficiency;
+  yearsExperience?: number | null;
+  evidenceRequired?: string | null;
+  weight?: number;
+  sortOrder?: number;
+}
+
+export interface JobSuccessMetric {
+  id?: number;
+  timeframe: SuccessMetricTimeframe;
+  metric: string;
+  sortOrder?: number;
+}
+
+export interface JobScreeningQuestion {
+  id?: number;
+  question: string;
+  questionType: ScreeningQuestionType;
+  options?: string[] | null;
+  disqualifyingAnswer?: string | null;
+  weight?: number;
+  sortOrder?: number;
+}
+
 export interface JobPosting {
   id: number;
   title: string;
@@ -69,6 +103,51 @@ export interface JobPosting {
   companyId: number;
   createdAt: string;
   updatedAt: string;
+  // Wizard fields (Phase 1+)
+  normalizedTitle?: string | null;
+  industry?: string | null;
+  department?: string | null;
+  seniorityLevel?: string | null;
+  workMode?: WorkMode | null;
+  companyContext?: string | null;
+  mainPurpose?: string | null;
+  commissionStructure?: string | null;
+  benefits?: string[];
+  qualityScore?: number;
+  inclusivityScore?: number;
+  nixSummary?: Record<string, unknown> | null;
+  skills?: JobSkill[];
+  successMetrics?: JobSuccessMetric[];
+  screeningQuestions?: JobScreeningQuestion[];
+}
+
+export interface UpdateJobWizardPayload {
+  title?: string;
+  normalizedTitle?: string;
+  industry?: string;
+  department?: string;
+  seniorityLevel?: string;
+  location?: string;
+  province?: string;
+  employmentType?: EmploymentType;
+  workMode?: WorkMode;
+  companyContext?: string;
+  mainPurpose?: string;
+  description?: string;
+  successMetrics?: JobSuccessMetric[];
+  skills?: JobSkill[];
+  requiredCertifications?: string[];
+  minExperienceYears?: number;
+  requiredEducation?: string;
+  salaryMin?: number;
+  salaryMax?: number;
+  salaryCurrency?: string;
+  commissionStructure?: string;
+  benefits?: string[];
+  screeningQuestions?: JobScreeningQuestion[];
+  enabledPortalCodes?: string[];
+  responseTimelineDays?: number;
+  applyByEmail?: string;
 }
 
 export interface PortalAdapterSummary {
@@ -678,6 +757,26 @@ class CvAssistantApiClient {
 
   async closeJobPosting(id: number): Promise<JobPosting> {
     return this.request(`/cv-assistant/job-postings/${id}/close`, { method: "POST" });
+  }
+
+  // Phase 1 wizard
+  async createJobDraft(): Promise<JobPosting> {
+    return this.request("/cv-assistant/job-postings/draft", { method: "POST" });
+  }
+
+  async jobWizardDraft(id: number): Promise<JobPosting> {
+    return this.request(`/cv-assistant/job-postings/${id}/wizard`);
+  }
+
+  async updateJobWizard(id: number, payload: UpdateJobWizardPayload): Promise<JobPosting> {
+    return this.request(`/cv-assistant/job-postings/${id}/wizard`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async publishJobDraft(id: number): Promise<JobPosting> {
+    return this.request(`/cv-assistant/job-postings/${id}/publish`, { method: "POST" });
   }
 
   async candidates(filters?: { status?: string; jobPostingId?: number }): Promise<Candidate[]> {

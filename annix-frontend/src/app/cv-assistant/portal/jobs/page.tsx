@@ -1,30 +1,19 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { JobPosting } from "@/app/lib/api/cvAssistantApi";
 import {
   useCvDeleteJobPosting,
   useCvJobPostingStatusChange,
   useCvJobPostings,
 } from "@/app/lib/query/hooks";
-import { JobFormModal } from "../components/JobFormModal";
 
 export default function JobsPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { data: jobs = [], isLoading } = useCvJobPostings();
   const statusChangeMutation = useCvJobPostingStatusChange();
   const deleteMutation = useCvDeleteJobPosting();
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [editingJob, setEditingJob] = useState<JobPosting | null>(null);
-
-  useEffect(() => {
-    if (searchParams.get("new") === "1") {
-      setShowCreateModal(true);
-      router.replace("/cv-assistant/portal/jobs", { scroll: false });
-    }
-  }, [searchParams, router]);
 
   const handleStatusChange = (job: JobPosting, action: "activate" | "pause" | "close") => {
     statusChangeMutation.mutate({ id: job.id, action });
@@ -62,15 +51,15 @@ export default function JobsPage() {
           <h1 className="text-2xl font-bold text-white">Job Postings</h1>
           <p className="text-white/70 mt-1">Manage your job positions and requirements</p>
         </div>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="inline-flex items-center px-4 py-2 bg-[#323288] text-white rounded-lg hover:bg-[#252560] transition-colors"
+        <Link
+          href="/cv-assistant/portal/jobs/new"
+          className="inline-flex items-center px-4 py-2 bg-[#FFA500] text-[#1a1a40] font-semibold rounded-lg hover:bg-[#FFB733] transition-colors"
         >
           <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
-          Create Job
-        </button>
+          Post a New Job
+        </Link>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-[#e0e0f5]">
@@ -197,7 +186,7 @@ export default function JobsPage() {
                             </button>
                           )}
                           <button
-                            onClick={() => setEditingJob(job)}
+                            onClick={() => router.push(`/cv-assistant/portal/jobs/${job.id}/edit`)}
                             className="text-[#323288] hover:text-[#252560]"
                           >
                             Edit
@@ -218,16 +207,6 @@ export default function JobsPage() {
           </table>
         </div>
       </div>
-
-      {(showCreateModal || editingJob) && (
-        <JobFormModal
-          job={editingJob}
-          onClose={() => {
-            setShowCreateModal(false);
-            setEditingJob(null);
-          }}
-        />
-      )}
     </div>
   );
 }

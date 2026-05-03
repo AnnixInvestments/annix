@@ -3,6 +3,7 @@ import {
   cvAssistantApiClient,
   type JobPosting,
   type PortalAdapterSummary,
+  type UpdateJobWizardPayload,
 } from "@/app/lib/api/cvAssistantApi";
 import { cvAssistantKeys } from "../../keys";
 
@@ -70,6 +71,51 @@ export function useCvJobPostingStatusChange() {
       }
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: cvAssistantKeys.jobPostings.all });
+    },
+  });
+}
+
+// Phase 1 wizard hooks
+export function useCvCreateJobDraft() {
+  const queryClient = useQueryClient();
+
+  return useMutation<JobPosting, Error, void>({
+    mutationFn: () => cvAssistantApiClient.createJobDraft(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: cvAssistantKeys.jobPostings.all });
+    },
+  });
+}
+
+export function useCvJobWizardDraft(id: number | null) {
+  return useQuery<JobPosting>({
+    queryKey: cvAssistantKeys.jobPostings.wizard(id ?? 0),
+    queryFn: () => cvAssistantApiClient.jobWizardDraft(id as number),
+    enabled: id != null && id > 0,
+    staleTime: 30 * 1000,
+  });
+}
+
+export function useCvUpdateJobWizard() {
+  const queryClient = useQueryClient();
+
+  return useMutation<JobPosting, Error, { id: number; payload: UpdateJobWizardPayload }>({
+    mutationFn: ({ id, payload }) => cvAssistantApiClient.updateJobWizard(id, payload),
+    onSuccess: (data) => {
+      queryClient.setQueryData(cvAssistantKeys.jobPostings.wizard(data.id), data);
+      queryClient.invalidateQueries({ queryKey: cvAssistantKeys.jobPostings.all });
+    },
+  });
+}
+
+export function useCvPublishJobDraft() {
+  const queryClient = useQueryClient();
+
+  return useMutation<JobPosting, Error, number>({
+    mutationFn: (id) => cvAssistantApiClient.publishJobDraft(id),
+    onSuccess: (data) => {
+      queryClient.setQueryData(cvAssistantKeys.jobPostings.wizard(data.id), data);
       queryClient.invalidateQueries({ queryKey: cvAssistantKeys.jobPostings.all });
     },
   });

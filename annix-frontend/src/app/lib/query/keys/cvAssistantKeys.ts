@@ -35,6 +35,7 @@ export const cvAssistantKeys = {
     all: ["cv-assistant", "job-postings"] as const,
     list: (status?: string) => ["cv-assistant", "job-postings", "list", status ?? "all"] as const,
     detail: (id: number) => ["cv-assistant", "job-postings", "detail", id] as const,
+    wizard: (id: number) => ["cv-assistant", "job-postings", "wizard", id] as const,
   },
 
   references: {

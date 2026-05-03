@@ -586,12 +586,16 @@ export {
   useCvUpdateJobMarketSource,
 } from "./cv-assistant/useCvJobMarket";
 export {
+  useCvCreateJobDraft,
   useCvCreateJobPosting,
   useCvDeleteJobPosting,
   useCvJobPostingStatusChange,
   useCvJobPostings,
+  useCvJobWizardDraft,
   useCvPortalAdapters,
+  useCvPublishJobDraft,
   useCvUpdateJobPosting,
+  useCvUpdateJobWizard,
 } from "./cv-assistant/useCvJobPostings";
 export { useCvReferences } from "./cv-assistant/useCvReferences";
 export {

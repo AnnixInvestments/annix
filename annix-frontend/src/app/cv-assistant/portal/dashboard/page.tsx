@@ -8,7 +8,7 @@ import {
   useCvTopCandidates,
 } from "@/app/lib/query/hooks";
 
-const POST_JOB_HREF = "/cv-assistant/portal/jobs?new=1";
+const POST_JOB_HREF = "/cv-assistant/portal/jobs/new";
 
 function PostJobButton({
   size = "md",
