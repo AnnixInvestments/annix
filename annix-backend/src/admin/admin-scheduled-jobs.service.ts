@@ -148,6 +148,12 @@ const JOB_METADATA: Record<string, { description: string; module: string; defaul
     module: "AU Rubber",
     defaultCron: "0 6-18 * * *",
   },
+  "au-rubber:auto-process-au-cocs": {
+    description:
+      "Re-check readiness for stuck AU CoCs and auto-generate any that have become ready (auto-approve+send if customer opted in)",
+    module: "AU Rubber",
+    defaultCron: "0 */3 * * *",
+  },
   "secure-docs:cleanup-deleted": {
     description: "Permanently delete soft-deleted secure document folders",
     module: "Secure Docs",

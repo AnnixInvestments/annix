@@ -144,6 +144,9 @@ export class RubberTaxInvoice {
   @Column({ name: "credit_note_roll_numbers", type: "jsonb", default: "[]" })
   creditNoteRollNumbers: string[];
 
+  @Column({ name: "linked_au_coc_id", type: "int", nullable: true })
+  linkedAuCocId: number | null;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

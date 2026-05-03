@@ -22,6 +22,7 @@ export interface ExtractedRollData {
 export enum AuCocStatus {
   DRAFT = "DRAFT",
   GENERATED = "GENERATED",
+  APPROVED = "APPROVED",
   SENT = "SENT",
 }
 
@@ -119,6 +120,9 @@ export class RubberAuCoc {
 
   @Column({ name: "readiness_details", type: "jsonb", nullable: true })
   readinessDetails: ReadinessDetails | null;
+
+  @Column({ name: "last_auto_processed_at", type: "timestamptz", nullable: true })
+  lastAutoProcessedAt: Date | null;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

@@ -114,6 +114,8 @@ export class RubberCompanyDto {
   phone: string | null;
   contactPerson: string | null;
   emailConfig: Record<string, string> | null;
+  auCocRecipientEmail: string | null;
+  autoApproveAuCocs: boolean;
 }
 
 export class CreateRubberCompanyDto {
@@ -168,6 +170,14 @@ export class CreateRubberCompanyDto {
   @IsOptional()
   @IsObject()
   emailConfig?: Record<string, string> | null;
+
+  @IsOptional()
+  @IsString()
+  auCocRecipientEmail?: string | null;
+
+  @IsOptional()
+  @IsBoolean()
+  autoApproveAuCocs?: boolean;
 }
 
 export class UpdateRubberCompanyDto {
@@ -223,6 +233,14 @@ export class UpdateRubberCompanyDto {
   @IsOptional()
   @IsObject()
   emailConfig?: Record<string, string> | null;
+
+  @IsOptional()
+  @IsString()
+  auCocRecipientEmail?: string | null;
+
+  @IsOptional()
+  @IsBoolean()
+  autoApproveAuCocs?: boolean;
 }
 
 export class RubberProductDto {

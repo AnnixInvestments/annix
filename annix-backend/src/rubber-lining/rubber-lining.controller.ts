@@ -2260,6 +2260,54 @@ Formula: totalPrice = totalKg × salePricePerKg
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
+  @Post("portal/au-cocs/:id/approve")
+  @ApiOperation({ summary: "Approve a GENERATED AU CoC for customer dispatch" })
+  @ApiParam({ name: "id", description: "AU CoC ID" })
+  async approveAuCoc(@Param("id") id: string, @Req() req: AdminRequest): Promise<RubberAuCocDto> {
+    const approverEmail = req.user?.email ?? "unknown";
+    return this.rubberAuCocService.approveAuCoc(Number(id), approverEmail);
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Post("portal/au-cocs/:id/auto-send")
+  @ApiOperation({
+    summary: "Send an APPROVED AU CoC to the customer's configured recipient email",
+  })
+  @ApiParam({ name: "id", description: "AU CoC ID" })
+  async autoSendAuCoc(
+    @Param("id") id: string,
+    @Body() body: { overrideEmail?: string },
+  ): Promise<RubberAuCocDto> {
+    return this.rubberAuCocService.sendApprovedAuCocToCustomer(Number(id), body.overrideEmail);
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Post("portal/au-cocs/:id/recheck-readiness")
+  @ApiOperation({ summary: "Re-run the upstream-doc readiness check for a single AU CoC" })
+  @ApiParam({ name: "id", description: "AU CoC ID" })
+  async recheckAuCocReadiness(@Param("id") id: string) {
+    return this.rubberAuCocReadinessService.checkReadiness(Number(id));
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Post("portal/au-cocs/auto-process-now")
+  @ApiOperation({
+    summary:
+      "Manually trigger the same auto-process job that runs every 3h on cron — re-checks readiness and auto-generates ready AU CoCs",
+  })
+  async autoProcessAuCocsNow(): Promise<{
+    rechecked: number;
+    generated: number;
+    details: string[];
+  }> {
+    return this.rubberAuCocReadinessService.runScheduledAutoProcessing();
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
   @Delete("portal/au-cocs/:id")
   @ApiOperation({ summary: "Delete AU CoC" })
   @ApiParam({ name: "id", description: "AU CoC ID" })
