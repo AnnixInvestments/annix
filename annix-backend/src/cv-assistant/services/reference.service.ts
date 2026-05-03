@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { InjectRepository } from "@nestjs/typeorm";
 import { LessThan, Repository } from "typeorm";
 import { v4 as uuidv4 } from "uuid";
@@ -6,6 +7,9 @@ import { EmailService } from "../../email/email.service";
 import { fromJSDate, now } from "../../lib/datetime";
 import { Candidate, CandidateStatus, ExtractedCvData } from "../entities/candidate.entity";
 import { CandidateReference, ReferenceStatus } from "../entities/candidate-reference.entity";
+import { CvAssistantCompany } from "../entities/cv-assistant-company.entity";
+import { CvEmailTemplateKind } from "../entities/cv-assistant-email-template.entity";
+import { EmailTemplateService } from "./email-template.service";
 
 const TOKEN_EXPIRY_DAYS = 7;
 
@@ -18,7 +22,11 @@ export class ReferenceService {
     private readonly referenceRepo: Repository<CandidateReference>,
     @InjectRepository(Candidate)
     private readonly candidateRepo: Repository<Candidate>,
+    @InjectRepository(CvAssistantCompany)
+    private readonly companyRepo: Repository<CvAssistantCompany>,
     private readonly emailService: EmailService,
+    private readonly emailTemplateService: EmailTemplateService,
+    private readonly configService: ConfigService,
   ) {}
 
   async createReferencesFromExtractedData(
@@ -57,17 +65,28 @@ export class ReferenceService {
       throw new NotFoundException("Candidate not found");
     }
 
+    const companyId = candidate.jobPosting.companyId;
+    const company = await this.companyRepo.findOne({ where: { id: companyId } });
+    const companyName = company?.name ?? "the hiring team";
+    const frontendUrl = this.configService.get<string>("FRONTEND_URL") ?? "http://localhost:3000";
+
     const sentCount = await candidate.references
       .filter((reference) => reference.status === ReferenceStatus.PENDING)
       .reduce(async (countPromise, reference) => {
         const count = await countPromise;
-        const sent = await this.emailService.sendCvAssistantReferenceRequestEmail(
-          reference.email,
-          reference.name,
-          candidate.name || "the candidate",
-          candidate.jobPosting.title,
-          reference.feedbackToken,
-        );
+        const feedbackLink = `${frontendUrl}/cv-assistant/reference-feedback/${reference.feedbackToken}`;
+        const sent = await this.emailTemplateService.renderAndSend({
+          companyId,
+          kind: CvEmailTemplateKind.REFERENCE_REQUEST,
+          to: reference.email,
+          vars: {
+            referenceName: reference.name,
+            candidateName: candidate.name || "the candidate",
+            jobTitle: candidate.jobPosting.title,
+            companyName,
+            feedbackLink,
+          },
+        });
 
         if (sent) {
           reference.status = ReferenceStatus.REQUESTED;

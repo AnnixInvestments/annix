@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { forwardRef, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { AuditService } from "../../audit/audit.service";
@@ -7,6 +7,7 @@ import { Candidate, CandidateStatus } from "../entities/candidate.entity";
 import { CandidateReference } from "../entities/candidate-reference.entity";
 import { JobPosting } from "../entities/job-posting.entity";
 import { CvAuditService } from "./cv-audit.service";
+import { ReferenceService } from "./reference.service";
 
 export interface CandidateDataExport {
   exportedAt: string;
@@ -49,6 +50,8 @@ export interface CandidateDataExport {
 
 @Injectable()
 export class CandidateService {
+  private readonly logger = new Logger(CandidateService.name);
+
   constructor(
     @InjectRepository(Candidate)
     private readonly candidateRepo: Repository<Candidate>,
@@ -58,6 +61,8 @@ export class CandidateService {
     private readonly referenceRepo: Repository<CandidateReference>,
     private readonly cvAuditService: CvAuditService,
     private readonly auditService: AuditService,
+    @Inject(forwardRef(() => ReferenceService))
+    private readonly referenceService: ReferenceService,
   ) {}
 
   async create(jobPostingId: number, data: Partial<Candidate>): Promise<Candidate> {
@@ -146,6 +151,21 @@ export class CandidateService {
 
     if (actorId !== null && previousStatus !== status) {
       await this.cvAuditService.logHrOverride(id, previousStatus, status, reason, actorId);
+    }
+
+    if (
+      previousStatus !== CandidateStatus.REFERENCE_CHECK &&
+      status === CandidateStatus.REFERENCE_CHECK
+    ) {
+      try {
+        const sent = await this.referenceService.sendReferenceRequests(id);
+        this.logger.log(
+          `Reference-check transition for candidate ${id}: ${sent} reference request(s) sent.`,
+        );
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        this.logger.error(`Reference request dispatch failed for candidate ${id}: ${message}`);
+      }
     }
 
     return saved;

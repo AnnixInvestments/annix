@@ -72,19 +72,40 @@ const REFERENCE_REQUEST: EmailTemplateDefinition = {
   kind: CvEmailTemplateKind.REFERENCE_REQUEST,
   label: "Reference request",
   description: "Sent to a candidate's references asking for feedback.",
-  subject: "Reference Request — {{candidateName}} for {{jobTitle}}",
+  subject: "Reference request — {{candidateName}} for {{jobTitle}}",
   bodyHtml: `<p>Dear {{referenceName}},</p>
 <p><strong>{{candidateName}}</strong> has applied for the position of <strong>{{jobTitle}}</strong> at {{companyName}} and has listed you as a reference.</p>
-<p>We would greatly appreciate if you could take a few minutes to provide feedback about your experience working with {{candidateName}}.</p>
-<p>Click the link below to share your feedback — it should take less than five minutes:</p>
-<p><a href="{{feedbackLink}}">Provide reference feedback</a></p>`,
+<p>We'd really appreciate a few minutes of your time. To help us, please consider these standard questions when you respond:</p>
+<ol>
+  <li>In what capacity did you work with {{candidateName}}, and for how long?</li>
+  <li>What are their key strengths in the role?</li>
+  <li>What are areas where they could grow or develop further?</li>
+  <li>How do they handle pressure, deadlines and setbacks?</li>
+  <li>How do they collaborate with colleagues, customers and stakeholders?</li>
+  <li>Would you rehire or recommend them for a similar role? Why or why not?</li>
+  <li>Is there anything else a future employer should know?</li>
+</ol>
+<p>Click below to submit your answers — it should take less than five minutes:</p>
+<p><a href="{{feedbackLink}}">Provide reference feedback</a></p>
+<p>Thank you for your time. Your candid input genuinely helps us make the right hiring decision.</p>`,
   bodyText: `Dear {{referenceName}},
 
 {{candidateName}} has applied for the position of {{jobTitle}} at {{companyName}} and has listed you as a reference.
 
-We would greatly appreciate if you could take a few minutes to provide feedback about your experience working with {{candidateName}}.
+We'd really appreciate a few minutes of your time. To help us, please consider these standard questions when you respond:
 
-Provide your feedback here: {{feedbackLink}}`,
+1. In what capacity did you work with {{candidateName}}, and for how long?
+2. What are their key strengths in the role?
+3. What are areas where they could grow or develop further?
+4. How do they handle pressure, deadlines and setbacks?
+5. How do they collaborate with colleagues, customers and stakeholders?
+6. Would you rehire or recommend them for a similar role? Why or why not?
+7. Is there anything else a future employer should know?
+
+Submit your answers via this link (under five minutes):
+{{feedbackLink}}
+
+Thank you for your time. Your candid input genuinely helps us make the right hiring decision.`,
   placeholders: ["referenceName", "candidateName", "jobTitle", "companyName", "feedbackLink"],
 };
 
