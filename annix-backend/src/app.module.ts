@@ -40,6 +40,7 @@ import { SteelSpecificationModule } from "./steel-specification/steel-specificat
 import { StorageModule } from "./storage/storage.module";
 import { StructuralSteelModule } from "./structural-steel/structural-steel.module";
 import { SupplierModule } from "./supplier/supplier.module";
+import { TeacherAssistantModule } from "./teacher-assistant/teacher-assistant.module";
 import { UnifiedApiModule } from "./unified-api/unified-api.module";
 import { UserModule } from "./user/user.module";
 import { UserRolesModule } from "./user-roles/user-roles.module";
@@ -106,6 +107,7 @@ import { WorkflowModule } from "./workflow/workflow.module";
     FeedbackModule,
     MessagingModule,
     MetricsModule,
+    TeacherAssistantModule,
 
     PipeSteelWorkModule,
     StructuralSteelModule,
