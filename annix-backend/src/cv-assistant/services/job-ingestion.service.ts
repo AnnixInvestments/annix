@@ -7,7 +7,7 @@ import { isCvAssistantCronEnabled } from "../cv-assistant-cron.config";
 import { CvAssistantCompany } from "../entities/cv-assistant-company.entity";
 import { ExternalJob } from "../entities/external-job.entity";
 import { JobMarketSource } from "../entities/job-market-source.entity";
-import { JobPosting } from "../entities/job-posting.entity";
+import { JobPosting, JobPostingStatus } from "../entities/job-posting.entity";
 import { AdzunaJobResult, AdzunaService } from "./adzuna.service";
 import { CandidateJobMatchingService } from "./candidate-job-matching.service";
 import { EmbeddingService } from "./embedding.service";
@@ -178,8 +178,9 @@ export class JobIngestionService {
     const limit = Math.min(Math.max(requestedLimit, 1), 50);
     const page = Math.max(options.page ?? 1, 1);
 
-    const qb = this.externalJobRepo.createQueryBuilder("job");
+    const annixJobs = await this.activeAnnixPublicJobs(options);
 
+    const qb = this.externalJobRepo.createQueryBuilder("job");
     if (options.country) {
       qb.andWhere("job.country = :country", { country: options.country });
     }
@@ -191,13 +192,47 @@ export class JobIngestionService {
         search: `%${options.search}%`,
       });
     }
+    qb.orderBy("job.posted_at", "DESC", "NULLS LAST");
+    const externals = await qb.getMany();
+    const externalPublic = externals.map(toPublicJob);
 
-    qb.orderBy("job.posted_at", "DESC", "NULLS LAST")
-      .skip((page - 1) * limit)
-      .take(limit);
+    const merged = [...annixJobs, ...externalPublic].sort((a, b) => {
+      const aPosted = a.postedAt;
+      const bPosted = b.postedAt;
+      if (!aPosted && !bPosted) return 0;
+      if (!aPosted) return 1;
+      if (!bPosted) return -1;
+      return bPosted.localeCompare(aPosted);
+    });
 
-    const [jobs, total] = await qb.getManyAndCount();
-    return { jobs: jobs.map(toPublicJob), total };
+    const total = merged.length;
+    const start = (page - 1) * limit;
+    const jobs = merged.slice(start, start + limit);
+    return { jobs, total };
+  }
+
+  private async activeAnnixPublicJobs(options: {
+    country?: string;
+    search?: string;
+  }): Promise<PublicJob[]> {
+    if (options.country && options.country.toUpperCase() !== "ZA") {
+      return [];
+    }
+    const qb = this.jobPostingRepo
+      .createQueryBuilder("job")
+      .where("job.status = :status", { status: JobPostingStatus.ACTIVE })
+      .andWhere("(job.test_mode IS NULL OR job.test_mode = false)");
+    if (options.search) {
+      qb.andWhere("(job.title ILIKE :search OR job.industry ILIKE :search)", {
+        search: `%${options.search}%`,
+      });
+    }
+    const jobs = await qb.orderBy("job.activated_at", "DESC", "NULLS LAST").getMany();
+    if (jobs.length === 0) return [];
+    const companyIds = [...new Set(jobs.map((j) => j.companyId))];
+    const companies = await this.companyRepo.find({ where: { id: In(companyIds) } });
+    const nameById = new Map(companies.map((c) => [c.id, c.name]));
+    return jobs.map((j) => annixJobToPublic(j, nameById.get(j.companyId) ?? null));
   }
 
   async publicJobById(jobId: number): Promise<PublicJob | null> {

@@ -510,6 +510,8 @@ export interface IndividualNotificationPreferences {
 
 export interface PublicJob {
   id: number;
+  kind: "external" | "annix";
+  referenceNumber: string | null;
   title: string;
   company: string | null;
   country: string;

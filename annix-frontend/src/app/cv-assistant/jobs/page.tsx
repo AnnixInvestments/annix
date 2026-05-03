@@ -180,12 +180,26 @@ function PublicJobCard(props: { job: PublicJob }) {
   const location = locationArea || locationRaw || fallbackCountry;
   const salary = formatSalary(job);
   const posted = formatRelative(job.postedAt);
+  const isAnnixJob = job.kind === "annix";
+  const referenceNumber = job.referenceNumber;
+  const applyHref =
+    isAnnixJob && referenceNumber
+      ? `/cv-assistant/jobs/${referenceNumber}`
+      : "/cv-assistant/register/individual";
+  const applyLabel = isAnnixJob && referenceNumber ? "View & apply" : "Sign up to apply";
 
   return (
     <article className="bg-white rounded-xl border border-[#e0e0f5] p-5 hover:border-[#9999d6] transition-colors">
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
-          <h2 className="text-lg font-semibold text-gray-900">{job.title}</h2>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h2 className="text-lg font-semibold text-gray-900">{job.title}</h2>
+            {isAnnixJob ? (
+              <span className="text-[10px] uppercase tracking-wider bg-[#FFA500]/15 text-[#9c5800] px-2 py-0.5 rounded-full font-semibold">
+                Posted on Annix
+              </span>
+            ) : null}
+          </div>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-sm text-gray-600">
             {job.company && <span>{job.company}</span>}
             <span>•</span>
@@ -217,10 +231,10 @@ function PublicJobCard(props: { job: PublicJob }) {
           )}
         </div>
         <Link
-          href="/cv-assistant/register/individual"
+          href={applyHref}
           className="bg-[#323288] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#252560] transition-colors whitespace-nowrap"
         >
-          Sign up to apply
+          {applyLabel}
         </Link>
       </div>
     </article>
