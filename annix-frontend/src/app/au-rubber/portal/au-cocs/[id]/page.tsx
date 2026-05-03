@@ -25,6 +25,9 @@ export default function AuCocDetailPage() {
   const [showSendModal, setShowSendModal] = useState(false);
   const [sendEmail, setSendEmail] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [isApproving, setIsApproving] = useState(false);
+  const [isAutoSending, setIsAutoSending] = useState(false);
+  const [isRechecking, setIsRechecking] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
   const pdfPreviewModal = usePdfPreview();
@@ -96,6 +99,45 @@ export default function AuCocDetailPage() {
     }
   };
 
+  const handleApprove = async () => {
+    try {
+      setIsApproving(true);
+      await auRubberApiClient.approveAuCoc(cocId);
+      showToast("Certificate approved", "success");
+      fetchData();
+    } catch (err) {
+      toastError(showToast, err, "Failed to approve certificate");
+    } finally {
+      setIsApproving(false);
+    }
+  };
+
+  const handleAutoSend = async () => {
+    try {
+      setIsAutoSending(true);
+      await auRubberApiClient.autoSendAuCoc(cocId);
+      showToast("Certificate sent to customer", "success");
+      fetchData();
+    } catch (err) {
+      toastError(showToast, err, "Failed to send certificate");
+    } finally {
+      setIsAutoSending(false);
+    }
+  };
+
+  const handleRecheckReadiness = async () => {
+    try {
+      setIsRechecking(true);
+      await auRubberApiClient.recheckAuCocReadiness(cocId);
+      showToast("Readiness re-checked", "success");
+      fetchData();
+    } catch (err) {
+      toastError(showToast, err, "Failed to re-check readiness");
+    } finally {
+      setIsRechecking(false);
+    }
+  };
+
   const handleDownload = () => {
     if (!coc) return;
     pdfPreviewModal.openWithFetch(
@@ -108,11 +150,13 @@ export default function AuCocDetailPage() {
     const colors: Record<AuCocStatus, string> = {
       DRAFT: "bg-gray-100 text-gray-800",
       GENERATED: "bg-blue-100 text-blue-800",
+      APPROVED: "bg-amber-100 text-amber-800",
       SENT: "bg-green-100 text-green-800",
     };
     const labels: Record<AuCocStatus, string> = {
       DRAFT: "Draft",
       GENERATED: "Generated",
+      APPROVED: "Approved",
       SENT: "Sent",
     };
     return (
@@ -195,8 +239,43 @@ export default function AuCocDetailPage() {
                 {isDownloading ? "Downloading..." : "Download PDF"}
               </button>
               <button
-                onClick={() => setShowSendModal(true)}
-                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700"
+                onClick={handleApprove}
+                disabled={isApproving}
+                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 disabled:opacity-50"
+              >
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+                {isApproving ? "Approving..." : "Approve"}
+              </button>
+            </>
+          )}
+          {coc.status === "APPROVED" && (
+            <>
+              <button
+                onClick={handleDownload}
+                disabled={isDownloading}
+                className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+              >
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                  />
+                </svg>
+                {isDownloading ? "Downloading..." : "Download PDF"}
+              </button>
+              <button
+                onClick={handleAutoSend}
+                disabled={isAutoSending}
+                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 disabled:opacity-50"
               >
                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
@@ -206,7 +285,13 @@ export default function AuCocDetailPage() {
                     d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
                   />
                 </svg>
-                Send to Customer
+                {isAutoSending ? "Sending..." : "Send to Customer"}
+              </button>
+              <button
+                onClick={() => setShowSendModal(true)}
+                className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+              >
+                Send to Different Email
               </button>
             </>
           )}
@@ -350,14 +435,32 @@ export default function AuCocDetailPage() {
 
       {coc.readinessDetails && (
         <div className="bg-white shadow rounded-lg p-6">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">
-            Document Chain
-            {coc.readinessStatus === "AUTO_GENERATED" && (
-              <span className="ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-700">
-                Auto-generated
-              </span>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-medium text-gray-900">
+              Document Chain
+              {coc.readinessStatus === "AUTO_GENERATED" && (
+                <span className="ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-700">
+                  Auto-generated
+                </span>
+              )}
+              {coc.readinessStatus &&
+                coc.readinessStatus !== "AUTO_GENERATED" &&
+                coc.readinessStatus !== "READY" && (
+                  <span className="ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-orange-100 text-orange-700">
+                    {coc.readinessStatus.replace(/_/g, " ")}
+                  </span>
+                )}
+            </h2>
+            {coc.status === "DRAFT" && (
+              <button
+                onClick={handleRecheckReadiness}
+                disabled={isRechecking}
+                className="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+              >
+                {isRechecking ? "Re-checking..." : "Re-check Readiness"}
+              </button>
             )}
-          </h2>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="border rounded-lg p-3">
               <div className="text-xs font-medium text-gray-500 uppercase">Calenderer CoC</div>

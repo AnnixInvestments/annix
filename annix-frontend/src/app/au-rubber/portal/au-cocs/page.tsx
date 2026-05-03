@@ -391,11 +391,13 @@ export default function AuCocsPage() {
     const colors: Record<AuCocStatus, string> = {
       DRAFT: "bg-gray-100 text-gray-800",
       GENERATED: "bg-blue-100 text-blue-800",
+      APPROVED: "bg-amber-100 text-amber-800",
       SENT: "bg-green-100 text-green-800",
     };
     const labels: Record<AuCocStatus, string> = {
       DRAFT: "Draft",
       GENERATED: "Generated",
+      APPROVED: "Approved",
       SENT: "Sent",
     };
     return (
@@ -588,6 +590,7 @@ export default function AuCocsPage() {
               <option value="">All Statuses</option>
               <option value="DRAFT">Draft</option>
               <option value="GENERATED">Generated</option>
+              <option value="APPROVED">Approved</option>
               <option value="SENT">Sent</option>
             </select>
           </div>
@@ -781,6 +784,7 @@ export default function AuCocsPage() {
                         </button>
                       )}
                       {(coc.status === "GENERATED" ||
+                        coc.status === "APPROVED" ||
                         (coc.status === "SENT" && coc.generatedPdfPath)) && (
                         <>
                           <button
@@ -804,7 +808,7 @@ export default function AuCocsPage() {
                           </button>
                         </>
                       )}
-                      {coc.status === "GENERATED" && (
+                      {coc.status === "APPROVED" && (
                         <button
                           onClick={() => {
                             setSendingId(coc.id);

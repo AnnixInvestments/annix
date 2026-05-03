@@ -48,6 +48,8 @@ interface CustomerFormData {
   outgoingCocEmail: string;
   outgoingCtiEmail: string;
   outgoingStatementEmail: string;
+  auCocRecipientEmail: string;
+  autoApproveAuCocs: boolean;
 }
 
 const EMPTY_FORM: CustomerFormData = {
@@ -66,6 +68,8 @@ const EMPTY_FORM: CustomerFormData = {
   outgoingCocEmail: "",
   outgoingCtiEmail: "",
   outgoingStatementEmail: "",
+  auCocRecipientEmail: "",
+  autoApproveAuCocs: false,
 };
 
 function formFromCompany(company: RubberCompanyDto): CustomerFormData {
@@ -85,6 +89,7 @@ function formFromCompany(company: RubberCompanyDto): CustomerFormData {
   const rawOutgoingCocEmail = company.emailConfig?.outgoingCocEmail;
   const rawOutgoingCtiEmail = company.emailConfig?.outgoingCtiEmail;
   const rawOutgoingStatementEmail = company.emailConfig?.outgoingStatementEmail;
+  const rawAuCocRecipientEmail = company.auCocRecipientEmail;
   return {
     name: company.name,
     code: rawCode || "",
@@ -106,6 +111,8 @@ function formFromCompany(company: RubberCompanyDto): CustomerFormData {
     outgoingCocEmail: rawOutgoingCocEmail || "",
     outgoingCtiEmail: rawOutgoingCtiEmail || "",
     outgoingStatementEmail: rawOutgoingStatementEmail || "",
+    auCocRecipientEmail: rawAuCocRecipientEmail || "",
+    autoApproveAuCocs: company.autoApproveAuCocs,
   };
 }
 
@@ -377,6 +384,40 @@ function CustomerDetailForm(props: {
                 />
                 <p className="mt-1 text-xs text-gray-400">Email address to send statements to</p>
               </div>
+              <div>
+                <label className={labelClass}>AU CoC Recipient Email</label>
+                <input
+                  type="email"
+                  value={formData.auCocRecipientEmail}
+                  onChange={(e) =>
+                    onFormChange({ ...formData, auCocRecipientEmail: e.target.value })
+                  }
+                  placeholder="e.g. quality@example.com"
+                  className={inputClass}
+                />
+                <p className="mt-1 text-xs text-gray-400">
+                  Preferred email for sending AU Certificates of Conformance (falls back to Outgoing
+                  COC Email if blank)
+                </p>
+              </div>
+              <div className="flex items-center pt-2">
+                <input
+                  id="autoApproveAuCocs"
+                  type="checkbox"
+                  checked={formData.autoApproveAuCocs}
+                  onChange={(e) =>
+                    onFormChange({ ...formData, autoApproveAuCocs: e.target.checked })
+                  }
+                  className="h-4 w-4 text-yellow-600 focus:ring-yellow-500 border-gray-300 rounded"
+                />
+                <label htmlFor="autoApproveAuCocs" className="ml-2 block text-sm text-gray-900">
+                  Auto-approve and send AU CoCs
+                </label>
+              </div>
+              <p className="text-xs text-gray-400 -mt-2 ml-6">
+                When enabled, AU CoCs are auto-approved and emailed as soon as the document chain is
+                ready. Otherwise an admin must approve manually.
+              </p>
             </div>
           </div>
 
@@ -691,6 +732,7 @@ export default function CustomersPage() {
       const rawPayloadNotes = formData.notes;
       const rawPayloadPhone = formData.phone;
       const rawPayloadContactPerson = formData.contactPerson;
+      const trimmedAuCocEmail = formData.auCocRecipientEmail.trim();
       const payload = {
         name: formData.name,
         companyType: "CUSTOMER" as const,
@@ -705,6 +747,8 @@ export default function CustomersPage() {
         address: cleanedAddress || undefined,
         availableProducts: formData.availableProducts,
         emailConfig: keys(emailConfig).length > 0 ? emailConfig : undefined,
+        auCocRecipientEmail: trimmedAuCocEmail || null,
+        autoApproveAuCocs: formData.autoApproveAuCocs,
       };
 
       if (editingCompany) {

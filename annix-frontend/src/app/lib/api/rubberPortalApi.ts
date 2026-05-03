@@ -61,6 +61,8 @@ export interface RubberCompanyDto {
   phone: string | null;
   contactPerson: string | null;
   emailConfig: Record<string, string> | null;
+  auCocRecipientEmail: string | null;
+  autoApproveAuCocs: boolean;
 }
 
 export interface RubberProductDto {
