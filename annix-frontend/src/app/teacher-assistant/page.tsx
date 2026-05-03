@@ -1,6 +1,7 @@
 import { GraduationCap } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { TEACHER_ASSISTANT_VERSION } from "./config/version";
 
 export const metadata: Metadata = {
   title: "Teacher Assistant — Coming Soon | Annix Platform",
@@ -23,6 +24,7 @@ export default function TeacherAssistantComingSoonPage() {
           <p className="text-xl text-gray-700 max-w-2xl mx-auto">
             AI assignment & workbook generator for high-school teachers (ages 12–18).
           </p>
+          <p className="text-xs text-gray-400 mt-3">v{TEACHER_ASSISTANT_VERSION}</p>
         </div>
 
         <div className="bg-white rounded-xl shadow-lg p-8 mb-8 border border-amber-100">
