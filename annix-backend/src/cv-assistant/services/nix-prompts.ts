@@ -267,7 +267,7 @@ export function skillSuggestionsPrompt(input: {
 
   return {
     system: SA_SYSTEM_PREAMBLE,
-    user: `Suggest a structured set of required and preferred skills for this role.
+    user: `Build the full Skills & Requirements section for this role. You MUST populate every field below — skills, minExperienceYears, requiredEducation and requiredCertifications are all required outputs (not optional). The user is relying on you to fill all four; do not omit any.
 
 Title: ${input.title}
 Industry: ${input.industry || "(unspecified)"}
@@ -305,8 +305,8 @@ Rules:
 - If the seniority and yearsExperience combination is unrealistic (e.g. expert + 1 year), don't suggest it.
 - Use SA-specific certifications where relevant (ECSA, SACPCMP, SAICA, SAIPA, etc.).
 - minExperienceYears: a single integer for total relevant years expected for the role. Match the seniority — entry 0-1, junior 1-3, mid 3-6, senior 6-10, lead/manager 8-12, executive 10+. Return null only if seniority is genuinely unspecified.
-- requiredEducation: a single SA-style line — e.g. "Matric (NSC)", "Matric + NQF6 in Mechanical Engineering", "BCom Accounting (NQF7)", "Trade Test (Section 13/26D)". Use NQF levels where appropriate. Return null only if no formal education is required for the role.
-- requiredCertifications: 0-4 concrete certifications a candidate must HOLD (not nice-to-have — those go in skills). Examples: "ECSA Pr Eng", "SAICA registered CA(SA)", "Code 10 (C1) driver's licence", "First Aid Level 1". Use empty array if none are essential.`,
+- requiredEducation: ONE short line under 200 characters — e.g. "Matric (NSC)", "Matric + NQF6 in Mechanical Engineering", "BCom Accounting (NQF7)", "Trade Test (Section 13/26D)". Use NQF levels where appropriate. NO multi-sentence explanations. Return null only if no formal education is required for the role.
+- requiredCertifications: 0-4 concrete certifications a candidate must HOLD (not nice-to-have — those go in skills). Each entry under 100 characters. Examples: "ECSA Pr Eng", "SAICA registered CA(SA)", "Code 10 (C1) driver's licence", "First Aid Level 1". Use empty array if none are essential.`,
   };
 }
 

@@ -135,7 +135,8 @@ export class NixJobAssistService {
         existingSkills,
       });
       const result = await this.callAi(prompt);
-      return parseNixJson<NixSkillSuggestionsResponse>(result.content);
+      const parsed = parseNixJson<NixSkillSuggestionsResponse>(result.content);
+      return ensureSkillSuggestionDefaults(parsed, posting.seniorityLevel);
     });
   }
 
@@ -340,4 +341,40 @@ export class NixJobAssistService {
       throw new ServiceUnavailableException("Nix is having a moment — try again in a few seconds.");
     }
   }
+}
+
+const SENIORITY_TO_MIN_YEARS: Record<string, number> = {
+  entry: 0,
+  junior: 1,
+  mid: 3,
+  senior: 6,
+  lead: 8,
+  manager: 7,
+  executive: 10,
+};
+
+function ensureSkillSuggestionDefaults(
+  parsed: NixSkillSuggestionsResponse,
+  seniorityLevel: string | null,
+): NixSkillSuggestionsResponse {
+  const minExperienceYears =
+    parsed.minExperienceYears ??
+    (seniorityLevel ? (SENIORITY_TO_MIN_YEARS[seniorityLevel] ?? null) : null);
+  const rawEducation = parsed.requiredEducation;
+  const requiredEducation =
+    rawEducation && rawEducation.trim().length > 0 ? rawEducation.trim().slice(0, 240) : null;
+  const rawCerts = Array.isArray(parsed.requiredCertifications)
+    ? parsed.requiredCertifications
+    : [];
+  const requiredCertifications = rawCerts
+    .map((c) => (typeof c === "string" ? c.trim().slice(0, 120) : ""))
+    .filter((c) => c.length > 0);
+  const notes = Array.isArray(parsed.notes) ? parsed.notes : [];
+  return {
+    skills: parsed.skills,
+    notes,
+    minExperienceYears,
+    requiredEducation,
+    requiredCertifications,
+  };
 }
