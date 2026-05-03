@@ -8,6 +8,7 @@ import type {
 import { Copy, Download } from "lucide-react";
 import { useMemo } from "react";
 import { useToast } from "@/app/components/Toast";
+import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import { useRegenerateSection } from "@/app/lib/query/hooks";
 import { exportAssignmentAsClipboardText } from "../lib/clipboard-export";
 import { downloadAssignmentAsPdf } from "../lib/pdf-export";
@@ -26,6 +27,20 @@ export function AssignmentPreview(props: AssignmentPreviewProps) {
   const editor = useAssignmentEditor(initialAssignment);
   const regenerate = useRegenerateSection();
   const { showToast } = useToast();
+  const { confirm, ConfirmDialog } = useConfirm();
+
+  const handleDeleteTask = async (index: number) => {
+    const task = editor.current.tasks[index];
+    const ok = await confirm({
+      title: "Delete this task?",
+      message: `"${task.title}" will be removed and the remaining tasks renumbered.`,
+      confirmLabel: "Delete",
+      variant: "danger",
+    });
+    if (ok) {
+      editor.deleteTask(index);
+    }
+  };
 
   const isRegenerating = regenerate.isPending;
 
@@ -130,7 +145,12 @@ export function AssignmentPreview(props: AssignmentPreviewProps) {
         onRegenerate={() => handleRegenerateSection("tasks")}
         isRegenerating={isRegenerating}
       >
-        <TaskList tasks={editor.current.tasks} />
+        <TaskList
+          tasks={editor.current.tasks}
+          onMoveUp={editor.moveTaskUp}
+          onMoveDown={editor.moveTaskDown}
+          onDelete={handleDeleteTask}
+        />
       </EditableSection>
 
       <EditableSection
@@ -196,6 +216,61 @@ export function AssignmentPreview(props: AssignmentPreviewProps) {
           ))}
         </ul>
       </EditableSection>
+
+      {editor.current.partialExemplars.length > 0 ? (
+        <EditableSection
+          title="Partial exemplars"
+          isEdited={isEdited("partialExemplars")}
+          onRestore={() => editor.restoreSection("partialExemplars")}
+        >
+          <ul className="space-y-3">
+            {editor.current.partialExemplars.map((ex) => (
+              <li
+                key={`${ex.forCriterion}-${ex.strongElement.slice(0, 16)}`}
+                className="border border-gray-200 rounded-lg p-3"
+              >
+                <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                  {ex.forCriterion}
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <span className="font-semibold text-emerald-700">Strong:</span>
+                    <p className="text-gray-700 mt-0.5">{ex.strongElement}</p>
+                  </div>
+                  <div>
+                    <span className="font-semibold text-red-700">Weak:</span>
+                    <p className="text-gray-700 mt-0.5">{ex.weakElement}</p>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </EditableSection>
+      ) : null}
+
+      {editor.current.optionalWorkbookPages.length > 0 ? (
+        <EditableSection
+          title="Workbook pages"
+          isEdited={isEdited("optionalWorkbookPages")}
+          onRestore={() => editor.restoreSection("optionalWorkbookPages")}
+        >
+          <ul className="space-y-3">
+            {editor.current.optionalWorkbookPages.map((page) => (
+              <li key={page.pageTitle} className="border border-gray-200 rounded-lg p-3">
+                <h4 className="font-semibold text-gray-900 mb-1">{page.pageTitle}</h4>
+                <p className="text-sm text-gray-700 whitespace-pre-wrap">{page.content}</p>
+                {page.imagePromptHint ? (
+                  <p className="text-xs text-gray-500 mt-2 italic">
+                    Suggested image: {page.imagePromptHint}
+                  </p>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </EditableSection>
+      ) : null}
+
+      {ConfirmDialog}
     </div>
   );
 }

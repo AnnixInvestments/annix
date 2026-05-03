@@ -4,20 +4,33 @@ import type { Assignment, AssignmentInput } from "@annix/product-data/teacher-as
 import { GraduationCap } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { useToast } from "@/app/components/Toast";
 import { useAdminAuth } from "@/app/context/AdminAuthContext";
 import { useGenerateAssignment } from "@/app/lib/query/hooks";
+import {
+  type RecentAssignmentEntry,
+  useTeacherAssistantStore,
+} from "@/app/lib/store/teacherAssistantStore";
 import { AssignmentPreview } from "./components/AssignmentPreview";
+import { RecentAssignmentsList } from "./components/RecentAssignmentsList";
 import { TeacherAssistantForm } from "./components/TeacherAssistantForm";
 import { TEACHER_ASSISTANT_VERSION } from "./config/version";
+
+const ESTIMATED_GENERATION_MS = 25_000;
 
 export default function TeacherAssistantPage() {
   const router = useRouter();
   const { admin, isLoading } = useAdminAuth();
   const { showToast } = useToast();
+  const { showExtraction, hideExtraction } = useExtractionProgress();
   const generate = useGenerateAssignment();
   const [assignment, setAssignment] = useState<Assignment | null>(null);
   const [generatedFrom, setGeneratedFrom] = useState<AssignmentInput | null>(null);
+
+  const recent = useTeacherAssistantStore((s) => s.recent);
+  const rememberAssignment = useTeacherAssistantStore((s) => s.rememberAssignment);
+  const forgetAssignment = useTeacherAssistantStore((s) => s.forgetAssignment);
 
   useEffect(() => {
     if (!isLoading && !admin) {
@@ -35,12 +48,20 @@ export default function TeacherAssistantPage() {
 
   const handleSubmit = (input: AssignmentInput) => {
     setGeneratedFrom(input);
+    showExtraction({
+      brand: "teacher-assistant",
+      label: `Generating ${input.subject} assignment on "${input.topic}"…`,
+      estimatedDurationMs: ESTIMATED_GENERATION_MS,
+    });
     generate.mutate(input, {
       onSuccess: (result) => {
+        hideExtraction();
         setAssignment(result);
+        rememberAssignment(input, result);
         showToast("Assignment generated.", "success");
       },
       onError: (error) => {
+        hideExtraction();
         showToast(error instanceof Error ? error.message : "Generation failed.", "error");
       },
     });
@@ -49,6 +70,11 @@ export default function TeacherAssistantPage() {
   const handleReset = () => {
     setAssignment(null);
     setGeneratedFrom(null);
+  };
+
+  const handleOpenRecent = (entry: RecentAssignmentEntry) => {
+    setGeneratedFrom(entry.input);
+    setAssignment(entry.assignment);
   };
 
   return (
@@ -80,16 +106,23 @@ export default function TeacherAssistantPage() {
         {assignment && generatedFrom ? (
           <AssignmentPreview initialAssignment={assignment} generatedFrom={generatedFrom} />
         ) : (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 md:p-8 max-w-3xl mx-auto">
-            <div className="mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">Create a new assignment</h2>
-              <p className="text-sm text-gray-600 mt-1">
-                Generate a process-based, AI-aware assignment in seconds. The output is fully
-                editable before export.
-              </p>
+          <>
+            <RecentAssignmentsList
+              recent={recent}
+              onOpen={handleOpenRecent}
+              onForget={forgetAssignment}
+            />
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 md:p-8 max-w-3xl mx-auto">
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold text-gray-900">Create a new assignment</h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  Generate a process-based, AI-aware assignment in seconds. The output is fully
+                  editable before export.
+                </p>
+              </div>
+              <TeacherAssistantForm onSubmit={handleSubmit} isSubmitting={generate.isPending} />
             </div>
-            <TeacherAssistantForm onSubmit={handleSubmit} isSubmitting={generate.isPending} />
-          </div>
+          </>
         )}
       </main>
     </div>

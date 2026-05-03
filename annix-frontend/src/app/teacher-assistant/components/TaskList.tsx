@@ -1,20 +1,62 @@
 "use client";
 
 import type { AssignmentTask } from "@annix/product-data/teacher-assistant";
+import { ChevronDown, ChevronUp, Trash2 } from "lucide-react";
 
 interface TaskListProps {
   tasks: AssignmentTask[];
+  onMoveUp?: (index: number) => void;
+  onMoveDown?: (index: number) => void;
+  onDelete?: (index: number) => void;
 }
 
 export function TaskList(props: TaskListProps) {
-  const { tasks } = props;
+  const { tasks, onMoveUp, onMoveDown, onDelete } = props;
   return (
     <ol className="space-y-4">
-      {tasks.map((task) => (
+      {tasks.map((task, index) => (
         <li key={task.step} className="border-l-4 border-amber-400 pl-4 py-2">
-          <div className="flex items-baseline gap-2 mb-1">
-            <span className="text-sm font-semibold text-amber-700">Step {task.step}</span>
-            <h3 className="text-base font-bold text-gray-900">{task.title}</h3>
+          <div className="flex items-baseline justify-between gap-2 mb-1 flex-wrap">
+            <div className="flex items-baseline gap-2">
+              <span className="text-sm font-semibold text-amber-700">Step {task.step}</span>
+              <h3 className="text-base font-bold text-gray-900">{task.title}</h3>
+            </div>
+            {(onMoveUp || onMoveDown || onDelete) && (
+              <div className="flex items-center gap-1">
+                {onMoveUp ? (
+                  <button
+                    type="button"
+                    onClick={() => onMoveUp(index)}
+                    disabled={index === 0}
+                    className="p-1 text-gray-400 hover:text-amber-700 disabled:opacity-30 disabled:cursor-not-allowed"
+                    aria-label="Move task up"
+                  >
+                    <ChevronUp className="w-4 h-4" />
+                  </button>
+                ) : null}
+                {onMoveDown ? (
+                  <button
+                    type="button"
+                    onClick={() => onMoveDown(index)}
+                    disabled={index === tasks.length - 1}
+                    className="p-1 text-gray-400 hover:text-amber-700 disabled:opacity-30 disabled:cursor-not-allowed"
+                    aria-label="Move task down"
+                  >
+                    <ChevronDown className="w-4 h-4" />
+                  </button>
+                ) : null}
+                {onDelete ? (
+                  <button
+                    type="button"
+                    onClick={() => onDelete(index)}
+                    className="p-1 text-gray-400 hover:text-red-600"
+                    aria-label="Delete task"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                ) : null}
+              </div>
+            )}
           </div>
           <p className="text-gray-700 mb-3">{task.studentInstruction}</p>
 

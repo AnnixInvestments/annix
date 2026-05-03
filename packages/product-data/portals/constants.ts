@@ -8,7 +8,8 @@ export type PortalCode =
   | "cv-assistant"
   | "rfq"
   | "au-rubber"
-  | "au-industries";
+  | "au-industries"
+  | "teacher-assistant";
 
 export interface PortalHost {
   readonly code: PortalCode;
@@ -99,6 +100,14 @@ export const PORTAL_HOSTS: readonly PortalHost[] = [
     prodHost: "auind.co.za",
     prodHostAliases: ["www.auind.co.za"],
     devHost: "auind.localhost",
+  },
+  {
+    code: "teacher-assistant",
+    displayName: "Teacher Assistant",
+    internalPathPrefix: "/teacher-assistant",
+    prodHost: "teacherassistant.annix.co.za",
+    prodHostAliases: [],
+    devHost: "teacherassistant.localhost",
   },
 ];
 

@@ -13,6 +13,9 @@ export interface AssignmentEditor {
   editedSections: Set<AssignmentSection>;
   updateField: <K extends keyof Assignment>(key: K, value: Assignment[K]) => void;
   restoreSection: (section: AssignmentSection) => void;
+  moveTaskUp: (index: number) => void;
+  moveTaskDown: (index: number) => void;
+  deleteTask: (index: number) => void;
   replace: (next: Assignment) => void;
   reset: () => void;
 }
@@ -57,6 +60,35 @@ export function useAssignmentEditor(initial: Assignment): AssignmentEditor {
     [original],
   );
 
+  const moveTaskUp = useCallback((index: number) => {
+    setCurrent((prev) => {
+      if (index <= 0 || index >= prev.tasks.length) return prev;
+      const next = [...prev.tasks];
+      const swapped = next[index - 1];
+      next[index - 1] = next[index];
+      next[index] = swapped;
+      return { ...prev, tasks: renumberSteps(next) };
+    });
+  }, []);
+
+  const moveTaskDown = useCallback((index: number) => {
+    setCurrent((prev) => {
+      if (index < 0 || index >= prev.tasks.length - 1) return prev;
+      const next = [...prev.tasks];
+      const swapped = next[index + 1];
+      next[index + 1] = next[index];
+      next[index] = swapped;
+      return { ...prev, tasks: renumberSteps(next) };
+    });
+  }, []);
+
+  const deleteTask = useCallback((index: number) => {
+    setCurrent((prev) => {
+      const next = prev.tasks.filter((_, i) => i !== index);
+      return { ...prev, tasks: renumberSteps(next) };
+    });
+  }, []);
+
   const replace = useCallback((next: Assignment) => {
     setOriginal(next);
     setCurrent(next);
@@ -66,5 +98,20 @@ export function useAssignmentEditor(initial: Assignment): AssignmentEditor {
     setCurrent(original);
   }, [original]);
 
-  return { current, original, editedSections, updateField, restoreSection, replace, reset };
+  return {
+    current,
+    original,
+    editedSections,
+    updateField,
+    restoreSection,
+    moveTaskUp,
+    moveTaskDown,
+    deleteTask,
+    replace,
+    reset,
+  };
+}
+
+function renumberSteps(tasks: Assignment["tasks"]): Assignment["tasks"] {
+  return tasks.map((task, i) => ({ ...task, step: i + 1 }));
 }
