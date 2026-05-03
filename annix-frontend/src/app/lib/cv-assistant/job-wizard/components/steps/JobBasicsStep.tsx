@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   cvAssistantApiClient,
   type JobPosting,
@@ -13,12 +13,19 @@ import { useNixCall } from "../../hooks/useNixCall";
 import { strOr } from "../../utils/value-helpers";
 import { FieldLabel, inputClass, StepShell, selectClass } from "../StepShell";
 
+export interface TitlePreviewData {
+  samplePreview: string;
+  sampleResponsibilities: string[];
+  normalizedTitle: string;
+}
+
 export interface JobBasicsStepProps {
   draft: JobPosting;
   onChange: (patch: UpdateJobWizardPayload) => void;
+  onTitlePreview?: (preview: TitlePreviewData | null) => void;
 }
 
-export function JobBasicsStep({ draft, onChange }: JobBasicsStepProps) {
+export function JobBasicsStep({ draft, onChange, onTitlePreview }: JobBasicsStepProps) {
   const titleDefault = draft.title === "Untitled draft" ? "" : strOr(draft.title);
   const titleSuggestions = useNixCall({
     operation: "title-suggestions",
@@ -30,6 +37,36 @@ export function JobBasicsStep({ draft, onChange }: JobBasicsStepProps) {
   const suggestionsData = titleSuggestions.data;
   const isLoadingSuggestions = titleSuggestions.isPending;
   const [titleInput, setTitleInput] = useState(titleDefault);
+  const titleSuggestionsMutate = titleSuggestions.mutate;
+  const lastFetchedTitleRef = useRef<string>("");
+  const draftId = draft.id;
+
+  // Auto-fetch title preview from Nix as the title changes (debounced 800ms).
+  // This populates the candidate-facing preview on the right so the company
+  // user can see the difference between vague titles and sharp ones.
+  useEffect(() => {
+    const trimmed = titleInput.trim();
+    if (trimmed.length < 3) return;
+    if (trimmed === lastFetchedTitleRef.current) return;
+    const timer = setTimeout(() => {
+      lastFetchedTitleRef.current = trimmed;
+      titleSuggestionsMutate({ id: draftId, title: trimmed });
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [titleInput, draftId, titleSuggestionsMutate]);
+
+  // Propagate Nix's preview output upward so JobPreviewCard can render it.
+  useEffect(() => {
+    if (!onTitlePreview) return;
+    if (suggestionsData?.samplePreview) {
+      onTitlePreview({
+        samplePreview: suggestionsData.samplePreview,
+        sampleResponsibilities: suggestionsData.sampleResponsibilities,
+        normalizedTitle: suggestionsData.normalizedTitle,
+      });
+    }
+  }, [suggestionsData, onTitlePreview]);
+
   const industryDefault = strOr(draft.industry);
   const departmentDefault = strOr(draft.department);
   const seniorityDefault = strOr(draft.seniorityLevel);

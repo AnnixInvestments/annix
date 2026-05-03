@@ -789,6 +789,8 @@ class CvAssistantApiClient {
     seniorityLevel: string | null;
     titleQualityScore: number;
     warning: string | null;
+    samplePreview: string;
+    sampleResponsibilities: string[];
   }> {
     return this.request(`/cv-assistant/job-postings/${id}/nix/title-suggestions`, {
       method: "POST",

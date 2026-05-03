@@ -21,6 +21,10 @@ export interface NixTitleSuggestionsResponse {
   seniorityLevel: string | null;
   titleQualityScore: number;
   warning: string | null;
+  /** 1-2 sentence pitch a candidate would see — lets the company user
+   *  preview how this title reads before committing to it. */
+  samplePreview: string;
+  sampleResponsibilities: string[];
 }
 
 export interface NixDescriptionResponse {
@@ -120,7 +124,9 @@ Return JSON with this exact shape:
   "suggestedTitles": ["string", ...],
   "seniorityLevel": "entry" | "junior" | "mid" | "senior" | "lead" | "manager" | "executive" | null,
   "titleQualityScore": 0-100,
-  "warning": "string or null"
+  "warning": "string or null",
+  "samplePreview": "string — 1-2 sentence candidate-facing pitch tailored to THIS title",
+  "sampleResponsibilities": ["string", ...]
 }
 
 Rules:
@@ -128,7 +134,9 @@ Rules:
 - Avoid vague titles like "Sales", "Manager", "Engineer" — flag them with a warning and suggest 3-5 specific alternatives.
 - Do not invent seniority if the input is unclear; return null.
 - titleQualityScore: 80+ for specific roles, 30-60 for generic ones, <30 for one-word titles.
-- The normalizedTitle should be the most commonly-searched canonical form.`,
+- The normalizedTitle should be the most commonly-searched canonical form.
+- samplePreview: 30-60 words, written for a candidate browsing job boards. Make the difference between a vague title (e.g. "Sales") and a sharp one (e.g. "External Sales Representative") obvious — vague titles should produce vague pitches; sharp titles should reference concrete day-to-day work.
+- sampleResponsibilities: 3 short bullet points typical for THIS role. Keep them recognisable to SA candidates.`,
   };
 }
 

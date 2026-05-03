@@ -6,6 +6,14 @@ import { WORK_MODE_OPTIONS } from "../constants/work-modes";
 
 export interface JobPreviewCardProps {
   draft: JobPosting | null;
+  /** Nix-generated quick preview keyed off the title alone — appears
+   *  before the user has filled in outcomes, so they can see how the
+   *  role would read to a candidate. */
+  titlePreview?: {
+    samplePreview: string;
+    sampleResponsibilities: string[];
+    normalizedTitle: string;
+  } | null;
 }
 
 const formatSalaryRange = (
@@ -20,7 +28,7 @@ const formatSalaryRange = (
   return `up to ${fmt(max as number)} / month`;
 };
 
-export function JobPreviewCard({ draft }: JobPreviewCardProps) {
+export function JobPreviewCard({ draft, titlePreview }: JobPreviewCardProps) {
   if (!draft) return null;
 
   const employmentType = draft.employmentType;
@@ -58,9 +66,30 @@ export function JobPreviewCard({ draft }: JobPreviewCardProps) {
         <section className="prose prose-sm max-w-none text-gray-700 whitespace-pre-line">
           {description}
         </section>
+      ) : titlePreview?.samplePreview ? (
+        <section className="space-y-3">
+          <p className="text-sm text-gray-700 leading-relaxed">{titlePreview.samplePreview}</p>
+          {titlePreview.sampleResponsibilities.length > 0 ? (
+            <div>
+              <p className="text-xs uppercase tracking-wider text-gray-500 mb-1">
+                Typical responsibilities
+              </p>
+              <ul className="text-sm text-gray-700 list-disc pl-5 space-y-0.5">
+                {titlePreview.sampleResponsibilities.map((r) => (
+                  <li key={r}>{r}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+          <p className="text-[11px] text-gray-400 italic">
+            Sample preview from Nix based on the title. Will be replaced once you write the
+            description in step 2.
+          </p>
+        </section>
       ) : (
         <p className="text-sm text-gray-400 italic">
-          Description will appear here once you fill in the role outcomes.
+          Type a role title above and Nix will show how it would read to a candidate. Or fill in the
+          role outcomes in step 2 to write the full description.
         </p>
       )}
 

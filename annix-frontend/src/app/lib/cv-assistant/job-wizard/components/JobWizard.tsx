@@ -36,6 +36,11 @@ export function JobWizard({ jobId }: JobWizardProps) {
   const step = useWizardStep();
   const autoSave = useWizardAutoSave(resolvedId);
   const [highestVisited, setHighestVisited] = useState(step.index);
+  const [titlePreview, setTitlePreview] = useState<{
+    samplePreview: string;
+    sampleResponsibilities: string[];
+    normalizedTitle: string;
+  } | null>(null);
 
   useEffect(() => {
     setHighestVisited((prev) => Math.max(prev, step.index));
@@ -119,7 +124,9 @@ export function JobWizard({ jobId }: JobWizardProps) {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          {step.current === "basics" && <JobBasicsStep draft={draft} onChange={handleChange} />}
+          {step.current === "basics" && (
+            <JobBasicsStep draft={draft} onChange={handleChange} onTitlePreview={setTitlePreview} />
+          )}
           {step.current === "outcomes" && (
             <RoleOutcomesStep draft={draft} onChange={handleChange} />
           )}
@@ -167,7 +174,9 @@ export function JobWizard({ jobId }: JobWizardProps) {
 
         <div className="space-y-6">
           <NixAssistantPanel draft={draft} saveStatus={autoSave.status} />
-          {step.current !== "review" && <JobPreviewCard draft={draft} />}
+          {step.current !== "review" && (
+            <JobPreviewCard draft={draft} titlePreview={titlePreview} />
+          )}
         </div>
       </div>
     </div>
