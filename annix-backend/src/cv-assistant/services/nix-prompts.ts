@@ -46,6 +46,37 @@ export interface NixSkillSuggestionsResponse {
   notes: string[];
 }
 
+export interface NixQualityScoreResponse {
+  totalScore: number;
+  clarity: number;
+  salaryCompetitiveness: number;
+  candidateAttraction: number;
+  screeningStrength: number;
+  matchingReadiness: number;
+  inclusivity: number;
+  criticalIssues: string[];
+  recommendedFixes: string[];
+  flaggedTerms: Array<{
+    term: string;
+    category: "gendered" | "age_coded" | "ableist" | "national_origin" | "other";
+    replacement: string;
+    explanation: string;
+  }>;
+  readyToPost: boolean;
+}
+
+export interface NixScreeningQuestionsResponse {
+  questions: Array<{
+    question: string;
+    questionType: "yes_no" | "short_text" | "multiple_choice" | "numeric";
+    options?: string[];
+    disqualifyingAnswer?: string | null;
+    weight: number;
+    reasoning: string;
+  }>;
+  notes: string[];
+}
+
 const SA_SYSTEM_PREAMBLE =
   "You are Nix, the AI hiring assistant inside the Annix CV Assistant product. " +
   "You help South African employers create high-quality job posts. " +
@@ -172,6 +203,150 @@ Rules:
 - evidenceRequired is concrete: "Has managed their own pipeline", "Holds an ECSA registration", etc.
 - If the seniority and yearsExperience combination is unrealistic (e.g. expert + 1 year), don't suggest it.
 - Use SA-specific certifications where relevant (ECSA, SACPCMP, SAICA, SAIPA, etc.).`,
+  };
+}
+
+export function qualityScorePrompt(input: {
+  title: string;
+  industry: string | null;
+  seniorityLevel: string | null;
+  city: string | null;
+  province: string | null;
+  employmentType: string | null;
+  workMode: string | null;
+  description: string | null;
+  responsibilities: string[];
+  successIn3Months: string[];
+  successIn12Months: string[];
+  skills: Array<{
+    name: string;
+    importance: string;
+    proficiency: string;
+    yearsExperience: number | null;
+  }>;
+  screeningQuestions: Array<{ question: string; type: string }>;
+  salaryMin: number | null;
+  salaryMax: number | null;
+  salaryCurrency: string;
+}): NixPrompt {
+  const skillSummary =
+    input.skills.length > 0
+      ? input.skills
+          .map(
+            (s) =>
+              `${s.name} (${s.importance}/${s.proficiency}${s.yearsExperience ? `/${s.yearsExperience}yr` : ""})`,
+          )
+          .join(", ")
+      : "(none)";
+  const salary =
+    input.salaryMin || input.salaryMax
+      ? `${input.salaryCurrency} ${input.salaryMin ?? "?"} - ${input.salaryMax ?? "?"} per month`
+      : "(unset)";
+
+  return {
+    system: SA_SYSTEM_PREAMBLE,
+    user: `Score this job posting 0-100 across six dimensions and flag inclusivity issues.
+
+Title: ${input.title}
+Industry: ${input.industry || "(unspecified)"}
+Seniority: ${input.seniorityLevel || "(unspecified)"}
+Location: ${input.city || "(unspecified)"}, ${input.province || "(unspecified)"}
+Employment: ${input.employmentType || "(unspecified)"} / ${input.workMode || "(unspecified)"}
+Salary: ${salary}
+Description: ${input.description || "(empty)"}
+Responsibilities: ${input.responsibilities.join(" | ") || "(none)"}
+Success in 3 months: ${input.successIn3Months.join(" | ") || "(none)"}
+Success in 12 months: ${input.successIn12Months.join(" | ") || "(none)"}
+Skills: ${skillSummary}
+Screening questions: ${input.screeningQuestions.length} configured
+
+Return JSON with this exact shape:
+{
+  "totalScore": 0-100,
+  "clarity": 0-10,
+  "salaryCompetitiveness": 0-10,
+  "candidateAttraction": 0-10,
+  "screeningStrength": 0-10,
+  "matchingReadiness": 0-10,
+  "inclusivity": 0-10,
+  "criticalIssues": ["string", ...],
+  "recommendedFixes": ["string", ...],
+  "flaggedTerms": [
+    {
+      "term": "the exact phrase as written",
+      "category": "gendered" | "age_coded" | "ableist" | "national_origin" | "other",
+      "replacement": "suggested replacement",
+      "explanation": "one sentence why"
+    },
+    ...
+  ],
+  "readyToPost": boolean
+}
+
+Scoring rules:
+- clarity: title specificity, description completeness (>=200 words = good), readability
+- salaryCompetitiveness: ZAR + per month is good. Missing range = penalty. We'll add Adzuna data in Phase 5.
+- candidateAttraction: outcomes, success metrics, benefits, work mode clarity
+- screeningStrength: 4-8 questions = good; 0 = penalty
+- matchingReadiness: structured skills with evidence prompts and proficiency = good
+- inclusivity: scan for gendered ("salesman", "manpower", "rockstar", "ninja"), age-coded ("young", "energetic", "digital native"), ableist ("must be able-bodied" without justification), national-origin ("native English speaker"). Suggest neutral replacements.
+- totalScore is the weighted sum. Cap each dimension at 10; total is roughly the sum * 10/6.
+- readyToPost = true only if totalScore >= 70 AND no criticalIssues.
+
+Be honest. Better to flag issues than pretend everything's perfect.`,
+  };
+}
+
+export function screeningQuestionsPrompt(input: {
+  title: string;
+  seniorityLevel: string | null;
+  mainPurpose: string | null;
+  skills: Array<{ name: string; importance: string; yearsExperience: number | null }>;
+  successIn3Months: string[];
+}): NixPrompt {
+  const skills =
+    input.skills.length > 0
+      ? input.skills
+          .map(
+            (s) =>
+              `${s.name} (${s.importance}${s.yearsExperience ? `, ${s.yearsExperience}yr` : ""})`,
+          )
+          .join(", ")
+      : "(none)";
+
+  return {
+    system: SA_SYSTEM_PREAMBLE,
+    user: `Generate 4-8 screening questions to filter applicants for this role.
+
+Title: ${input.title}
+Seniority: ${input.seniorityLevel || "(unspecified)"}
+Main purpose: ${input.mainPurpose || "(unspecified)"}
+Skills: ${skills}
+Success in 3 months: ${input.successIn3Months.join(" | ") || "(none)"}
+
+Return JSON with this exact shape:
+{
+  "questions": [
+    {
+      "question": "string — answerable in <15 seconds",
+      "questionType": "yes_no" | "short_text" | "multiple_choice" | "numeric",
+      "options": ["string", ...] | undefined,
+      "disqualifyingAnswer": "string or null",
+      "weight": 1-10,
+      "reasoning": "why this question matters"
+    },
+    ...
+  ],
+  "notes": ["string — caveats or framing", ...]
+}
+
+Rules:
+- Cover hard requirements first (years experience, key certifications, location/right-to-work).
+- Use disqualifyingAnswer conservatively — over-filtering is worse than under-filtering.
+- Mix yes_no (most efficient) with short_text only where free-text is essential.
+- For multiple_choice, give 3-5 plausible options.
+- Weight: must-have requirements 8-10, nice-to-have 3-6.
+- Use SA-relevant phrasing ("right to work in South Africa", "valid driver's licence with own vehicle", etc.).`,
   };
 }
 

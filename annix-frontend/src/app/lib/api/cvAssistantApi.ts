@@ -825,6 +825,45 @@ class CvAssistantApiClient {
     });
   }
 
+  async nixQualityScore(id: number): Promise<{
+    totalScore: number;
+    clarity: number;
+    salaryCompetitiveness: number;
+    candidateAttraction: number;
+    screeningStrength: number;
+    matchingReadiness: number;
+    inclusivity: number;
+    criticalIssues: string[];
+    recommendedFixes: string[];
+    flaggedTerms: Array<{
+      term: string;
+      category: "gendered" | "age_coded" | "ableist" | "national_origin" | "other";
+      replacement: string;
+      explanation: string;
+    }>;
+    readyToPost: boolean;
+  }> {
+    return this.request(`/cv-assistant/job-postings/${id}/nix/quality-score`, {
+      method: "POST",
+    });
+  }
+
+  async nixScreeningQuestionsSuggest(id: number): Promise<{
+    questions: Array<{
+      question: string;
+      questionType: "yes_no" | "short_text" | "multiple_choice" | "numeric";
+      options?: string[];
+      disqualifyingAnswer?: string | null;
+      weight: number;
+      reasoning: string;
+    }>;
+    notes: string[];
+  }> {
+    return this.request(`/cv-assistant/job-postings/${id}/nix/screening-questions`, {
+      method: "POST",
+    });
+  }
+
   async candidates(filters?: { status?: string; jobPostingId?: number }): Promise<Candidate[]> {
     const params = new URLSearchParams();
     if (filters?.status) params.append("status", filters.status);

@@ -7,9 +7,13 @@ import { JobPosting } from "../entities/job-posting.entity";
 import {
   descriptionPrompt,
   type NixDescriptionResponse,
+  type NixQualityScoreResponse,
+  type NixScreeningQuestionsResponse,
   type NixSkillSuggestionsResponse,
   type NixTitleSuggestionsResponse,
   parseNixJson,
+  qualityScorePrompt,
+  screeningQuestionsPrompt,
   skillSuggestionsPrompt,
   summariseSuccessMetrics,
   titleSuggestionsPrompt,
@@ -96,6 +100,81 @@ export class NixJobAssistService {
       });
       const result = await this.callAi(prompt);
       return parseNixJson<NixSkillSuggestionsResponse>(result.content);
+    });
+  }
+
+  async qualityScore(companyId: number, jobPostingId: number): Promise<NixQualityScoreResponse> {
+    const posting = await this.jobPostingRepo.findOne({
+      where: { id: jobPostingId, companyId },
+      relations: ["skills", "successMetrics", "screeningQuestions"],
+    });
+    if (!posting) throw new NotFoundException("Job posting not found");
+
+    const { in3, in12 } = summariseSuccessMetrics(posting);
+    const skills = (posting.skills || []).map((s) => ({
+      name: s.name,
+      importance: s.importance,
+      proficiency: s.proficiency,
+      yearsExperience: s.yearsExperience,
+    }));
+    const screeningQuestions = (posting.screeningQuestions || []).map((q) => ({
+      question: q.question,
+      type: q.questionType,
+    }));
+
+    const result = await this.metrics.time(METRIC_CATEGORY, "quality-score", async () => {
+      const prompt = qualityScorePrompt({
+        title: posting.title,
+        industry: posting.industry,
+        seniorityLevel: posting.seniorityLevel,
+        city: posting.location,
+        province: posting.province,
+        employmentType: posting.employmentType,
+        workMode: posting.workMode,
+        description: posting.description,
+        responsibilities: [],
+        successIn3Months: in3,
+        successIn12Months: in12,
+        skills,
+        screeningQuestions,
+        salaryMin: posting.salaryMin,
+        salaryMax: posting.salaryMax,
+        salaryCurrency: posting.salaryCurrency,
+      });
+      const aiResult = await this.callAi(prompt);
+      return parseNixJson<NixQualityScoreResponse>(aiResult.content);
+    });
+
+    // Persist the latest scores so the dashboard can show them later
+    posting.qualityScore = result.totalScore;
+    posting.inclusivityScore = Math.round(result.inclusivity * 10);
+    await this.jobPostingRepo.save(posting);
+
+    return result;
+  }
+
+  async screeningQuestions(
+    companyId: number,
+    jobPostingId: number,
+  ): Promise<NixScreeningQuestionsResponse> {
+    const posting = await this.loadPostingWithRelations(companyId, jobPostingId);
+    const { in3 } = summariseSuccessMetrics(posting);
+    const skills = (posting.skills || []).map((s) => ({
+      name: s.name,
+      importance: s.importance,
+      yearsExperience: s.yearsExperience,
+    }));
+
+    return this.metrics.time(METRIC_CATEGORY, "screening-questions", async () => {
+      const prompt = screeningQuestionsPrompt({
+        title: posting.title,
+        seniorityLevel: posting.seniorityLevel,
+        mainPurpose: posting.mainPurpose,
+        skills,
+        successIn3Months: in3,
+      });
+      const result = await this.callAi(prompt);
+      return parseNixJson<NixScreeningQuestionsResponse>(result.content);
     });
   }
 

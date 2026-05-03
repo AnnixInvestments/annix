@@ -86,6 +86,22 @@ export class JobPostingController {
     return this.nixJobAssist.skillSuggestions(req.user.companyId, id);
   }
 
+  @Post(":id/nix/quality-score")
+  async nixQualityScore(
+    @Request() req: { user: { companyId: number } },
+    @Param("id", ParseIntPipe) id: number,
+  ) {
+    return this.nixJobAssist.qualityScore(req.user.companyId, id);
+  }
+
+  @Post(":id/nix/screening-questions")
+  async nixScreeningQuestions(
+    @Request() req: { user: { companyId: number } },
+    @Param("id", ParseIntPipe) id: number,
+  ) {
+    return this.nixJobAssist.screeningQuestions(req.user.companyId, id);
+  }
+
   @Get()
   async findAll(@Request() req: { user: { companyId: number } }, @Query("status") status?: string) {
     return this.jobPostingService.findAll(req.user.companyId, status);

@@ -140,3 +140,15 @@ export function useCvNixSkillSuggestions() {
     mutationFn: (id: number) => cvAssistantApiClient.nixSkillSuggestions(id),
   });
 }
+
+export function useCvNixQualityScore() {
+  return useMutation({
+    mutationFn: (id: number) => cvAssistantApiClient.nixQualityScore(id),
+  });
+}
+
+export function useCvNixScreeningSuggestions() {
+  return useMutation({
+    mutationFn: (id: number) => cvAssistantApiClient.nixScreeningQuestionsSuggest(id),
+  });
+}

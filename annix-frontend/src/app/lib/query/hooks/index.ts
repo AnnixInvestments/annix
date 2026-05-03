@@ -593,6 +593,8 @@ export {
   useCvJobPostings,
   useCvJobWizardDraft,
   useCvNixDescription,
+  useCvNixQualityScore,
+  useCvNixScreeningSuggestions,
   useCvNixSkillSuggestions,
   useCvNixTitleSuggestions,
   useCvPortalAdapters,

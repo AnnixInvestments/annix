@@ -1,11 +1,13 @@
 "use client";
 
+import { useToast } from "@/app/components/Toast";
 import type {
   JobPosting,
   JobScreeningQuestion,
   ScreeningQuestionType,
   UpdateJobWizardPayload,
 } from "@/app/lib/api/cvAssistantApi";
+import { useCvNixScreeningSuggestions } from "@/app/lib/query/hooks";
 import { SCREENING_QUESTION_TYPE_OPTIONS } from "../../constants/skill-options";
 import { arrOr } from "../../utils/value-helpers";
 import { inputClass, StepShell, selectClass } from "../StepShell";
@@ -33,15 +35,56 @@ export function ScreeningQuestionsStep({ draft, onChange }: ScreeningQuestionsSt
   const removeQuestion = (index: number) =>
     onChange({ screeningQuestions: questions.filter((_, i) => i !== index) });
 
+  const { showToast } = useToast();
+  const screeningSuggest = useCvNixScreeningSuggestions();
+  const isSuggesting = screeningSuggest.isPending;
+  const handleSuggest = () => {
+    screeningSuggest.mutate(draft.id, {
+      onSuccess: (data) => {
+        const suggested: JobScreeningQuestion[] = data.questions.map((q) => {
+          const opts = q.options;
+          const disq = q.disqualifyingAnswer;
+          return {
+            question: q.question,
+            questionType: q.questionType,
+            options: opts ? opts : null,
+            disqualifyingAnswer: disq ? disq : null,
+            weight: q.weight,
+          };
+        });
+        const merged: JobScreeningQuestion[] = [...questions];
+        for (const s of suggested) {
+          const lower = s.question.toLowerCase();
+          const dupe = merged.some((existing) => existing.question.toLowerCase() === lower);
+          if (!dupe) merged.push(s);
+        }
+        onChange({ screeningQuestions: merged });
+        showToast(`Nix added ${suggested.length} screening questions.`, "success");
+      },
+      onError: () => showToast("Nix couldn't suggest questions. Try again.", "error"),
+    });
+  };
+
   return (
     <StepShell
       title="Screening Questions"
-      subtitle="Filter out applicants who don't meet hard requirements. Phase 3 will let Nix auto-generate these from your outcomes + skills."
+      subtitle="Filter out applicants who don't meet hard requirements. Click Suggest to have Nix generate a starter set from your outcomes and skills."
     >
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={handleSuggest}
+          disabled={isSuggesting}
+          className="text-xs px-3 py-1.5 bg-[#FFA500] text-[#1a1a40] font-semibold rounded-lg hover:bg-[#FFB733] transition-all disabled:opacity-50"
+        >
+          {isSuggesting ? "Nix thinking…" : "Suggest screening questions"}
+        </button>
+      </div>
       <ul className="space-y-3">
         {questions.length === 0 && (
           <p className="text-sm text-gray-500 italic">
-            No screening questions yet. Add a yes/no question for any disqualifying requirement.
+            No screening questions yet. Click <strong>Suggest screening questions</strong> or add
+            one manually.
           </p>
         )}
         {questions.map((q, i) => (
