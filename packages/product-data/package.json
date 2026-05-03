@@ -96,6 +96,14 @@
     "./portals/*": {
       "types": "./portals/*.ts",
       "default": "./dist/portals/*.js"
+    },
+    "./teacher-assistant": {
+      "types": "./teacher-assistant/index.ts",
+      "default": "./dist/teacher-assistant/index.js"
+    },
+    "./teacher-assistant/*": {
+      "types": "./teacher-assistant/*.ts",
+      "default": "./dist/teacher-assistant/*.js"
     }
   }
 }

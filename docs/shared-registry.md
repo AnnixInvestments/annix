@@ -1,6 +1,6 @@
 # Shared Module Registry
 
-**Last updated:** 2026-05-01
+**Last updated:** 2026-05-03
 
 This is the canonical index of shared modules across the Annix monorepo. Every Claude session MUST consult this file before writing new constants, components, services, or utilities (see `CLAUDE.md` §"Discovery-first protocol").
 
@@ -24,6 +24,7 @@ Shared workspace package (pnpm workspace). Both `annix-backend` and `annix-front
 | HDPE | `hdpe/` | grades, SDR ratings, dimensions, temperature derating, welding, welding standards, standards, fittings, pricing |
 | PVC | `pvc/` | PVC-specific data |
 | RFQ shared types | `rfq/` | straight pipe, bend, tank-chute, flange, pipe dimension, weld, material, boq, coating, pt-rating, pump |
+| Teacher Assistant | `teacher-assistant/` | `SUBJECTS`, `AGE_BUCKETS`, `DURATIONS`, `OUTPUT_TYPES`, `DIFFICULTY_LEVELS`, `DIFFERENTIATION_OPTIONS`, `RUBRIC_LEVELS`, `ASSIGNMENT_SECTIONS`, `subjectTemplates`, `templateForSubject`, `BANNED_PHRASES`, `containsBannedPhrase`, `Assignment`, `AssignmentInput`, `AssignmentTask`, `AssignmentTaskAiCritique`, `RubricCriterion`, `TeacherNotes`, `PartialExemplar`, `WorkbookPage`, `validateAssignment`, `isTooFluffy`, `findNearDuplicateTaskPairs`, `similarityRatio`, `aiSafeSignalsHit`, `AI_SAFE_SIGNAL_KEYWORDS`, `MIN_TASKS`, `MIN_RUBRIC_CRITERIA`, `MIN_EVIDENCE_CHECKLIST`, `MIN_TASK_INSTRUCTION_CHARS`, `TASK_SIMILARITY_THRESHOLD`, `SYSTEM_PROMPT`, `buildUserPrompt`, `buildRetryPrompt`, `buildSectionRegeneratePrompt`. Single source of truth for the AI assignment generator's enums, schema, validation, and prompt construction. Used by both `annix-backend/src/teacher-assistant/` and `annix-frontend/src/app/teacher-assistant/`. |
 | Portal hosts | `portals/` | `PORTAL_HOSTS`, `PortalCode`, `PortalHost`, `portalForHost`, `portalForCode`, `canonicalHostFor`, `corsOriginsFor`, `normaliseHost`, `isAliasHost`, `DEFAULT_DEV_PORT`. Single source of truth for production + dev hostnames per portal — drives middleware host routing, backend CORS, WebAuthn RP ID resolution, and email/PDF link generation. **Adding a new portal? Add it here first; everything else derives from this.** Also exports Annix Rep industry taxonomy: `INDUSTRIES`, `Industry`, `SubIndustry`, `ProductCategory`, `IndustryValue`, `industryByValue`, `subIndustryByValue`, `productCategoryByValue`, `searchTermsForSelection`, `allIndustryLabels`, `subIndustryLabelsForIndustry`, `productCategoryLabelsForSubIndustry`, `productCategoryLabelsForSubIndustries`. |
 
 **When to put new data here:** anything that is factual, static, cross-app, and not user-owned (standards data, product catalogues, engineering constants, enumerations). Tests live alongside source (`*.spec.ts`).
