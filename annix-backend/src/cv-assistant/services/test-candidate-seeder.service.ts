@@ -194,6 +194,7 @@ export class TestCandidateSeederService {
   private async loadTestJob(companyId: number, jobPostingId: number): Promise<JobPosting> {
     const job = await this.jobPostingRepo.findOne({
       where: { id: jobPostingId, companyId },
+      relations: ["skills"],
     });
     if (!job) {
       throw new NotFoundException("Job posting not found");
@@ -204,6 +205,12 @@ export class TestCandidateSeederService {
       );
     }
     return job;
+  }
+
+  private effectiveRequiredSkills(job: JobPosting): string[] {
+    const fromRelation = (job.skills ?? []).map((s) => s.name).filter((n) => n.length > 0);
+    if (fromRelation.length > 0) return fromRelation;
+    return job.requiredSkills ?? [];
   }
 
   private profileMix(count: number, rand: () => number): FixtureProfile[] {
@@ -234,9 +241,9 @@ export class TestCandidateSeederService {
 
   private buildStrong(job: JobPosting, idx: number, rand: () => number): ExtractedCvData {
     const name = `${pick(FIRST_NAMES, rand)} ${pick(LAST_NAMES, rand)}`;
-    const requiredSkills = job.requiredSkills?.length
-      ? job.requiredSkills
-      : ["Industry knowledge", "Communication"];
+    const jobSkills = this.effectiveRequiredSkills(job);
+    const requiredSkills =
+      jobSkills.length > 0 ? jobSkills : ["Industry knowledge", "Communication"];
     const experienceYears = (job.minExperienceYears ?? 3) + 2 + Math.floor(rand() * 4);
     return {
       candidateName: name,
@@ -257,7 +264,7 @@ export class TestCandidateSeederService {
 
   private buildBorderline(job: JobPosting, idx: number, rand: () => number): ExtractedCvData {
     const name = `${pick(FIRST_NAMES, rand)} ${pick(LAST_NAMES, rand)}`;
-    const requiredSkills = job.requiredSkills ?? [];
+    const requiredSkills = this.effectiveRequiredSkills(job);
     const partialSkills =
       requiredSkills.length > 0
         ? this.shuffle(requiredSkills, rand).slice(
@@ -285,7 +292,7 @@ export class TestCandidateSeederService {
 
   private buildWeak(job: JobPosting, idx: number, rand: () => number): ExtractedCvData {
     const name = `${pick(FIRST_NAMES, rand)} ${pick(LAST_NAMES, rand)}`;
-    const requiredSkills = job.requiredSkills ?? [];
+    const requiredSkills = this.effectiveRequiredSkills(job);
     const oneSkill = requiredSkills.length > 0 ? [pick(requiredSkills, rand)] : [];
     return {
       candidateName: name,
@@ -394,7 +401,8 @@ export class TestCandidateSeederService {
 
   private computeFallbackMatch(data: ExtractedCvData, job: JobPosting): MatchAnalysis {
     const candidateSkillsLower = data.skills.map((s) => s.toLowerCase());
-    const requiredSkillsLower = (job.requiredSkills ?? []).map((s) => s.toLowerCase());
+    const required = this.effectiveRequiredSkills(job);
+    const requiredSkillsLower = required.map((s) => s.toLowerCase());
 
     const skillsMatched = requiredSkillsLower.filter((skill) =>
       candidateSkillsLower.some((cSkill) => cSkill.includes(skill) || skill.includes(cSkill)),
@@ -426,12 +434,8 @@ export class TestCandidateSeederService {
 
     return {
       overallScore,
-      skillsMatched: (job.requiredSkills ?? []).filter((_, i) =>
-        skillsMatched.includes(requiredSkillsLower[i]),
-      ),
-      skillsMissing: (job.requiredSkills ?? []).filter((_, i) =>
-        skillsMissing.includes(requiredSkillsLower[i]),
-      ),
+      skillsMatched: required.filter((_, i) => skillsMatched.includes(requiredSkillsLower[i])),
+      skillsMissing: required.filter((_, i) => skillsMissing.includes(requiredSkillsLower[i])),
       experienceMatch,
       educationMatch,
       recommendation,
