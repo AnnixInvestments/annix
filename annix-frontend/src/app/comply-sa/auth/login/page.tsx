@@ -3,25 +3,29 @@
 import { Eye, EyeOff, LogIn } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { login } from "@/app/comply-sa/lib/api";
 import AmixLogo from "@/app/components/AmixLogo";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const emailRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    const emailInput = emailRef.current;
+    const passwordInput = passwordRef.current;
+    const submitEmail = emailInput ? emailInput.value : "";
+    const submitPassword = passwordInput ? passwordInput.value : "";
     setError(null);
     setLoading(true);
 
     try {
-      const result = await login(email, password);
+      const result = await login(submitEmail, submitPassword);
       if (result.termsOutdated) {
         router.push("/comply-sa/auth/accept-terms");
       } else {
@@ -63,10 +67,13 @@ export default function LoginPage() {
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-1.5">Email</label>
               <input
+                ref={emailRef}
+                id="email"
+                name="email"
                 type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="username email"
                 required
+                defaultValue=""
                 className="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-teal-500 transition-colors"
                 placeholder="you@example.com"
               />
@@ -76,10 +83,13 @@ export default function LoginPage() {
               <label className="block text-sm font-medium text-slate-300 mb-1.5">Password</label>
               <div className="relative">
                 <input
+                  ref={passwordRef}
+                  id="password"
+                  name="password"
                   type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="current-password"
                   required
+                  defaultValue=""
                   className="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2.5 pr-11 text-white placeholder-slate-500 focus:outline-none focus:border-teal-500 transition-colors"
                   placeholder="Enter your password"
                 />

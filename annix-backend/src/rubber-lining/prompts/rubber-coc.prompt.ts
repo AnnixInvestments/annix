@@ -70,10 +70,18 @@ SPECIFICATION LIMITS:
 - These define the acceptable ranges for each property
 - Map them to the specifications object using the same column-to-field mapping
 
+CRITICAL - PRODUCTION DATE FORMAT:
+- The "Production date" field on these CoCs is in SOUTH AFRICAN format: DAY first, then month, then year.
+- Accepted source formats: DD/MM/YY, DD/MM/YYYY, DD-MM-YY, DD-MM-YYYY, DD.MM.YY, DD.MM.YYYY (e.g., "13/02/26", "13/02/2026", "13.02.26").
+- Two-digit years are ALWAYS 20XX (e.g., "26" → 2026, "24" → 2024). These CoCs are recent — never interpret a 2-digit year as 19XX or as a four-digit year prefix.
+- DO NOT interpret as YY/MM/DD or YYYY/MM/DD. "13/02/26" means 13 February 2026, NOT 26 February 2013.
+- Convert to ISO YYYY-MM-DD. Examples: "13/02/26" → "2026-02-13"; "08/04/2026" → "2026-04-08"; "12.03.26" → "2026-03-12".
+- Sanity check: the resulting year MUST be ≥ 2020. If your output year is < 2020, you have parsed the components in the wrong order — re-parse with day first.
+
 Return a JSON object with this structure:
 {
   "cocNumber": string or null,
-  "productionDate": string or null (ISO date format YYYY-MM-DD),
+  "productionDate": string or null (ISO date format YYYY-MM-DD — see PRODUCTION DATE FORMAT section above),
   "customerName": string or null,
   "compoundCode": string or null - extract the canonical AU compound code, STRIPPING any compounder revision/test-type suffix.
 
@@ -187,11 +195,19 @@ export const CALENDARER_COC_SYSTEM_PROMPT = `You are an expert at extracting str
 
 These are calendarer COCs that show test results for compound batches used in rubber roll production.
 
+CRITICAL - PRODUCTION DATE FORMAT:
+- The date field on these CoCs is in SOUTH AFRICAN format: DAY first, then month, then year.
+- Accepted source formats: DD/MM/YY, DD/MM/YYYY, DD-MM-YY, DD-MM-YYYY, DD.MM.YY, DD.MM.YYYY (e.g., "13/02/26", "13/02/2026", "13.02.26").
+- Two-digit years are ALWAYS 20XX (e.g., "26" → 2026, "24" → 2024). These CoCs are recent — never interpret a 2-digit year as 19XX or as a four-digit year prefix.
+- DO NOT interpret as YY/MM/DD or YYYY/MM/DD. "13/02/26" means 13 February 2026, NOT 26 February 2013.
+- Convert to ISO YYYY-MM-DD. Examples: "13/02/26" → "2026-02-13"; "08/04/2026" → "2026-04-08".
+- Sanity check: the resulting year MUST be ≥ 2020. If your output year is < 2020, you have parsed the components in the wrong order — re-parse with day first.
+
 Return a JSON object with this structure:
 {
   "supplierName": string or null (e.g., "Impilo Industries"),
   "customerName": string or null (e.g., "AU INDUSTRIES"),
-  "productionDate": string or null (ISO date format YYYY-MM-DD),
+  "productionDate": string or null (ISO date format YYYY-MM-DD — see PRODUCTION DATE FORMAT section above),
   "orderNumber": string or null (e.g., "154"),
   "ticketNumber": string or null (e.g., "41210"),
   "compoundCode": string or null (e.g., "RSCA40", "AU-NR-60"),

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useVoiceFilterAuth } from "@/app/context/VoiceFilterAuthContext";
 
 function LoginPageContent() {
@@ -10,8 +10,8 @@ function LoginPageContent() {
   const redirectPath = searchParams.get("redirect") ?? "/voice-filter";
   const { isAuthenticated, isLoading: authLoading, login, oauthLogin } = useVoiceFilterAuth();
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const emailRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -34,14 +34,18 @@ function LoginPageContent() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const emailInput = emailRef.current;
+    const passwordInput = passwordRef.current;
+    const submitEmail = emailInput ? emailInput.value : "";
+    const submitPassword = passwordInput ? passwordInput.value : "";
     setError(null);
 
-    if (!email || !password) {
+    if (!submitEmail || !submitPassword) {
       setError("Please fill in all fields.");
       return;
     }
 
-    if (password.length < 8) {
+    if (submitPassword.length < 8) {
       setError("Password must be at least 8 characters.");
       return;
     }
@@ -49,7 +53,7 @@ function LoginPageContent() {
     setIsSubmitting(true);
 
     try {
-      const success = await login(email, password);
+      const success = await login(submitEmail, submitPassword);
 
       if (success) {
         setSuccess("Signed in!");
@@ -113,9 +117,12 @@ function LoginPageContent() {
             <div className="mb-4">
               <label className="block text-[13px] text-[#71767b] mb-1.5">Email</label>
               <input
+                ref={emailRef}
+                id="email"
+                name="email"
                 type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="username email"
+                defaultValue=""
                 placeholder="you@example.com"
                 required
                 className="w-full px-3.5 py-3 text-[15px] bg-[#0f1419] border border-[#2f3336] rounded-lg text-white placeholder-[#536471] focus:border-[#1d9bf0] outline-none transition-colors"
@@ -125,9 +132,12 @@ function LoginPageContent() {
             <div className="mb-4">
               <label className="block text-[13px] text-[#71767b] mb-1.5">Password</label>
               <input
+                ref={passwordRef}
+                id="password"
+                name="password"
                 type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
+                defaultValue=""
                 placeholder="Enter your password"
                 required
                 minLength={8}

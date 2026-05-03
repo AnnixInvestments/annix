@@ -120,9 +120,16 @@ export class RubberCocService {
     supplierCompanyId?: number;
     includeAllVersions?: boolean;
   }): Promise<RubberSupplierCocDto[]> {
+    const cocColumns = this.supplierCocRepository.metadata.columns
+      .map((c) => c.propertyName)
+      .filter((p) => p !== "extractedData" && p !== "reviewNotes")
+      .map((p) => `coc.${p}`);
+
     const query = this.supplierCocRepository
       .createQueryBuilder("coc")
-      .leftJoinAndSelect("coc.supplierCompany", "company")
+      .select(cocColumns)
+      .leftJoin("coc.supplierCompany", "company")
+      .addSelect(["company.id", "company.name"])
       .orderBy("coc.created_at", "DESC");
 
     if (!filters?.includeAllVersions) {
@@ -1307,8 +1314,8 @@ export class RubberCocService {
       ticketNumber: coc.ticketNumber,
       processingStatus: coc.processingStatus,
       processingStatusLabel: PROCESSING_STATUS_LABELS[coc.processingStatus],
-      extractedData: coc.extractedData,
-      reviewNotes: coc.reviewNotes,
+      extractedData: coc.extractedData ?? null,
+      reviewNotes: coc.reviewNotes ?? null,
       approvedBy: coc.approvedBy,
       approvedAt: coc.approvedAt ? coc.approvedAt.toISOString() : null,
       linkedDeliveryNoteId: coc.linkedDeliveryNoteId,

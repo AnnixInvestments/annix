@@ -70,6 +70,8 @@ export interface CreateRubberCompanyInput {
   phone?: string;
   contactPerson?: string;
   emailConfig?: Record<string, string>;
+  auCocRecipientEmail?: string | null;
+  autoApproveAuCocs?: boolean;
 }
 
 export interface RubberSpecificationDto {
@@ -120,7 +122,7 @@ export type DeliveryNoteType = "COMPOUND" | "ROLL";
 export type DeliveryNoteStatus = "PENDING" | "EXTRACTED" | "APPROVED" | "LINKED" | "STOCK_CREATED";
 export type RollStockStatus = "IN_STOCK" | "RESERVED" | "SOLD" | "SCRAPPED" | "REJECTED";
 export type RollRejectionStatus = "PENDING_RETURN" | "RETURNED" | "REPLACEMENT_RECEIVED" | "CLOSED";
-export type AuCocStatus = "DRAFT" | "GENERATED" | "SENT";
+export type AuCocStatus = "DRAFT" | "GENERATED" | "APPROVED" | "SENT";
 export type RollIssuanceStatus = "ACTIVE" | "RETURNED" | "CANCELLED";
 
 export interface RollPhotoExtractionDto {

@@ -18,9 +18,10 @@ function StockControlLoginContent() {
   const sessionExpired = searchParams.get("expired") === "1";
   const { login, isAuthenticated, isLoading: authLoading, profile } = useStockControlAuth();
 
+  const emailRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
   const [mounted, setMounted] = useState(false);
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [transferMessage, setTransferMessage] = useState<string | null>(null);
@@ -31,6 +32,10 @@ function StockControlLoginContent() {
     const savedEmail = localStorage.getItem("stockControlRememberedEmail");
     const savedRemember = localStorage.getItem("stockControlRememberMe") === "true";
     if (savedEmail) {
+      const inputEl = emailRef.current;
+      if (inputEl && !inputEl.value) {
+        inputEl.value = savedEmail;
+      }
       setEmail(savedEmail);
     }
     if (savedRemember) {
@@ -73,15 +78,19 @@ function StockControlLoginContent() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const emailInput = emailRef.current;
+    const passwordInput = passwordRef.current;
+    const submitEmail = emailInput ? emailInput.value : email;
+    const submitPassword = passwordInput ? passwordInput.value : "";
 
     setIsSubmitting(true);
     setError(null);
 
     try {
-      await login(email.trim(), password, rememberMe);
+      await login(submitEmail.trim(), submitPassword, rememberMe);
 
       if (rememberMe) {
-        localStorage.setItem("stockControlRememberedEmail", email);
+        localStorage.setItem("stockControlRememberedEmail", submitEmail);
         localStorage.setItem("stockControlRememberMe", "true");
       } else {
         localStorage.removeItem("stockControlRememberedEmail");
@@ -154,12 +163,13 @@ function StockControlLoginContent() {
                 Email address
               </label>
               <input
+                ref={emailRef}
                 id="email"
                 name="email"
                 type="email"
                 autoComplete="username email"
                 required
-                value={email}
+                defaultValue=""
                 onChange={(e) => setEmail(e.target.value)}
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#323288] focus:ring-[#323288]"
                 placeholder="user@example.com"
@@ -172,13 +182,13 @@ function StockControlLoginContent() {
               </label>
               <div className="relative mt-1">
                 <input
+                  ref={passwordRef}
                   id="password"
                   name="password"
                   type={showPassword ? "text" : "password"}
                   autoComplete="current-password"
                   required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  defaultValue=""
                   className="block w-full rounded-md border-gray-300 shadow-sm focus:border-[#323288] focus:ring-[#323288] pr-10"
                 />
                 <button

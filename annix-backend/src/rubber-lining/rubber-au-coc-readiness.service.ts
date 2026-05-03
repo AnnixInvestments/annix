@@ -1,5 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import { Cron } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { EmailService } from "../email/email.service";
@@ -262,6 +263,27 @@ export class RubberAuCocReadinessService {
 
       this.notifyAdminForVerification(auCoc);
 
+      const customer = auCoc.customerCompany;
+      if (customer?.autoApproveAuCocs && customer.auCocRecipientEmail) {
+        try {
+          await this.auCocService.approveAuCoc(auCocId, "auto-approve (system)");
+          await this.auCocService.sendApprovedAuCocToCustomer(auCocId);
+          this.logger.log(
+            `AU CoC ${auCoc.cocNumber} auto-approved + sent to ${customer.auCocRecipientEmail}`,
+          );
+          return {
+            generated: true,
+            auCocId,
+            reason: "Auto-generated, auto-approved, and sent to customer",
+          };
+        } catch (error) {
+          const errorMsg = error instanceof Error ? error.message : String(error);
+          this.logger.warn(
+            `AU CoC ${auCoc.cocNumber} generated but auto-approve/send failed: ${errorMsg}`,
+          );
+        }
+      }
+
       return { generated: true, auCocId, reason: "Auto-generated successfully" };
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
@@ -318,6 +340,48 @@ export class RubberAuCocReadinessService {
       `Bulk AU CoC generation: checked ${results.checked}, generated ${results.generated}`,
     );
     return results;
+  }
+
+  async recheckStuckAuCocs(): Promise<{ rechecked: number; nowReady: number }> {
+    const stuckCocs = await this.auCocRepository.find({
+      where: { status: "DRAFT" as never },
+    });
+    let nowReady = 0;
+    for (const coc of stuckCocs) {
+      const result = await this.checkReadiness(coc.id);
+      if (result.ready) nowReady += 1;
+    }
+    return { rechecked: stuckCocs.length, nowReady };
+  }
+
+  async runScheduledAutoProcessing(): Promise<{
+    rechecked: number;
+    generated: number;
+    details: string[];
+  }> {
+    const recheck = await this.recheckStuckAuCocs();
+    const generation = await this.bulkAutoGenerateAllDraftAuCocs();
+    return {
+      rechecked: recheck.rechecked,
+      generated: generation.generated,
+      details: generation.details,
+    };
+  }
+
+  @Cron("0 */3 * * *", { name: "au-rubber:auto-process-au-cocs" })
+  async cronAutoProcessAuCocs(): Promise<void> {
+    try {
+      const result = await this.runScheduledAutoProcessing();
+      if (result.rechecked > 0 || result.generated > 0) {
+        this.logger.log(
+          `[cron au-rubber:auto-process-au-cocs] rechecked ${result.rechecked}, generated ${result.generated}`,
+        );
+      }
+    } catch (error) {
+      this.logger.error(
+        `[cron au-rubber:auto-process-au-cocs] failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
   }
 
   async findPendingAuCocsByOrderNumber(orderNumber: string): Promise<RubberAuCoc[]> {

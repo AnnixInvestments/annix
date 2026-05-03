@@ -41,6 +41,7 @@ import {
 const AU_COC_STATUS_LABELS: Record<AuCocStatus, string> = {
   [AuCocStatus.DRAFT]: "Draft",
   [AuCocStatus.GENERATED]: "Generated",
+  [AuCocStatus.APPROVED]: "Approved",
   [AuCocStatus.SENT]: "Sent",
 };
 
@@ -1734,5 +1735,46 @@ export class RubberAuCocService {
     });
 
     return toBuffer();
+  }
+
+  async approveAuCoc(id: number, approvedByName: string): Promise<RubberAuCocDto> {
+    const coc = await this.auCocRepository.findOne({
+      where: { id },
+      relations: ["customerCompany"],
+    });
+    if (!coc) throw new BadRequestException("AU CoC not found");
+    if (coc.status !== AuCocStatus.GENERATED) {
+      throw new BadRequestException(
+        `AU CoC must be in GENERATED status to approve (current: ${coc.status})`,
+      );
+    }
+    coc.status = AuCocStatus.APPROVED;
+    coc.approvedByName = approvedByName;
+    coc.approvedAt = now().toJSDate();
+    await this.auCocRepository.save(coc);
+    this.logger.log(`AU CoC ${coc.cocNumber} approved by ${approvedByName}`);
+    return this.mapAuCocToDto(coc);
+  }
+
+  async sendApprovedAuCocToCustomer(id: number, overrideEmail?: string): Promise<RubberAuCocDto> {
+    const coc = await this.auCocRepository.findOne({
+      where: { id },
+      relations: ["customerCompany"],
+    });
+    if (!coc) throw new BadRequestException("AU CoC not found");
+    if (coc.status !== AuCocStatus.APPROVED) {
+      throw new BadRequestException(
+        `AU CoC must be APPROVED before sending (current: ${coc.status})`,
+      );
+    }
+    const customerEmail = coc.customerCompany ? coc.customerCompany.auCocRecipientEmail : null;
+    const recipientEmail = overrideEmail || customerEmail;
+    if (!recipientEmail) {
+      throw new BadRequestException(
+        `No recipient email configured for customer "${coc.customerCompany ? coc.customerCompany.name : "(unknown)"}". ` +
+          "Set the AU CoC recipient email on the customer profile, or supply an override.",
+      );
+    }
+    return this.sendToCustomer(id, { email: recipientEmail });
   }
 }

@@ -3,7 +3,15 @@ import { type NextRequest, NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 
 const rawNEXT_PUBLIC_API_URL = process.env.NEXT_PUBLIC_API_URL;
-const REMOTE_BACKEND = rawNEXT_PUBLIC_API_URL || "http://localhost:4001";
+// Force IPv4 by replacing 'localhost' with '127.0.0.1' — Node.js undici on
+// Windows resolves localhost to ::1 (IPv6) by default, but the dev backend
+// listens on 0.0.0.0 (IPv4 only), causing every fetch to fail with the
+// generic "fetch failed" error. Curl falls back to IPv4 transparently;
+// undici does not. This normalisation keeps env config unchanged.
+const REMOTE_BACKEND = (rawNEXT_PUBLIC_API_URL || "http://localhost:4001").replace(
+  /^http:\/\/localhost(?=[:/])/,
+  "http://127.0.0.1",
+);
 
 async function proxyRequest(request: NextRequest) {
   if (!REMOTE_BACKEND) {
@@ -33,19 +41,21 @@ async function proxyRequest(request: NextRequest) {
     forwardHeaders["origin"] = incomingOrigin;
   }
 
-  const body =
-    request.method !== "GET" && request.method !== "HEAD" ? await request.arrayBuffer() : undefined;
+  const bodyText =
+    request.method !== "GET" && request.method !== "HEAD" ? await request.text() : undefined;
+
+  const isIdempotent = request.method === "GET" || request.method === "HEAD";
 
   const attempt = async (): Promise<Response> =>
     fetch(targetUrl, {
       method: request.method,
       headers: forwardHeaders,
-      body,
+      body: bodyText,
       redirect: "manual",
       cache: "no-store",
     });
 
-  const retryDelaysMs = [500, 1500, 3000];
+  const retryDelaysMs = isIdempotent ? [500, 1500, 3000] : [];
   const attemptWithRetries = async (
     remainingDelays: number[],
     attemptNumber: number,

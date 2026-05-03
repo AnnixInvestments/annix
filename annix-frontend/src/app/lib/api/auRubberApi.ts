@@ -1350,6 +1350,30 @@ class AuRubberApiClient {
     body: (_id, email, options) => ({ email, cc: options?.cc, bcc: options?.bcc }),
   });
 
+  approveAuCoc = createEndpoint<[id: number], RubberAuCocDto>(apiClient, "POST", {
+    path: (id) => `/rubber-lining/portal/au-cocs/${id}/approve`,
+  });
+
+  autoSendAuCoc = createEndpoint<[id: number, overrideEmail?: string], RubberAuCocDto>(
+    apiClient,
+    "POST",
+    {
+      path: (id, _overrideEmail) => `/rubber-lining/portal/au-cocs/${id}/auto-send`,
+      body: (_id, overrideEmail) => ({ overrideEmail }),
+    },
+  );
+
+  recheckAuCocReadiness = createEndpoint<[id: number], unknown>(apiClient, "POST", {
+    path: (id) => `/rubber-lining/portal/au-cocs/${id}/recheck-readiness`,
+  });
+
+  autoProcessAuCocsNow = createEndpoint<
+    [],
+    { rechecked: number; generated: number; details: string[] }
+  >(apiClient, "POST", {
+    path: () => "/rubber-lining/portal/au-cocs/auto-process-now",
+  });
+
   bulkSendAuCocs = createEndpoint<
     [email: string, options?: { cc?: string; bcc?: string }],
     { sent: number; total: number; cocNumbers: string[] }

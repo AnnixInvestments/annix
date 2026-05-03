@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { PasskeyLoginButton } from "@/app/components/PasskeyLoginButton";
 import { useSupplierAuth } from "@/app/context/SupplierAuthContext";
 import { useDeviceFingerprint } from "@/app/hooks/useDeviceFingerprint";
@@ -16,8 +16,9 @@ function SupplierLoginContent() {
   const { login } = useSupplierAuth();
   const { fingerprint, browserInfo, isLoading: isFingerprintLoading } = useDeviceFingerprint();
 
+  const emailRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -29,14 +30,21 @@ function SupplierLoginContent() {
     const remembered = localGlobal.getItem("supplierRememberedEmail");
     const flag = localGlobal.getItem("supplierRememberMe") === "true";
     setRememberMe(flag);
-    setEmail((current) => {
-      if (current.trim() !== "") return current;
-      return remembered || "";
-    });
+    if (remembered) {
+      const inputEl = emailRef.current;
+      if (inputEl && !inputEl.value) {
+        inputEl.value = remembered;
+      }
+      setEmail(remembered);
+    }
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const emailInput = emailRef.current;
+    const passwordInput = passwordRef.current;
+    const submitEmail = emailInput ? emailInput.value : email;
+    const submitPassword = passwordInput ? passwordInput.value : "";
     setError(null);
 
     if (!fingerprint) {
@@ -47,10 +55,10 @@ function SupplierLoginContent() {
     setIsLoading(true);
 
     try {
-      await login(email, password, fingerprint, browserInfo ?? undefined, rememberMe);
+      await login(submitEmail, submitPassword, fingerprint, browserInfo ?? undefined, rememberMe);
 
       if (rememberMe) {
-        localStorage.setItem("supplierRememberedEmail", email);
+        localStorage.setItem("supplierRememberedEmail", submitEmail);
         localStorage.setItem("supplierRememberMe", "true");
       } else {
         localStorage.removeItem("supplierRememberedEmail");
@@ -108,10 +116,13 @@ function SupplierLoginContent() {
                 Email Address
               </label>
               <input
+                ref={emailRef}
                 id="email"
+                name="email"
                 type="email"
+                autoComplete="username email"
                 required
-                value={email}
+                defaultValue=""
                 onChange={(e) => setEmail(e.target.value)}
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 placeholder="supplier@example.com"
@@ -124,11 +135,13 @@ function SupplierLoginContent() {
               </label>
               <div className="relative mt-1">
                 <input
+                  ref={passwordRef}
                   id="password"
+                  name="password"
                   type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
                   required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  defaultValue=""
                   className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 pr-10"
                 />
                 <button

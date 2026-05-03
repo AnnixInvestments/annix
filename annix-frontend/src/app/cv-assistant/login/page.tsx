@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useState } from "react";
+import { Suspense, useRef, useState } from "react";
 import { PasskeyLoginButton } from "@/app/components/PasskeyLoginButton";
 import { useCvAssistantAuth } from "@/app/context/CvAssistantAuthContext";
 import { cvAssistantApiClient } from "@/app/lib/api/cvAssistantApi";
@@ -21,17 +21,22 @@ function CvAssistantLoginContent() {
   const returnUrl = searchParams.get("returnUrl");
   const accountType = searchParams.get("type");
   const { login, isLoading } = useCvAssistantAuth();
+  const emailRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const emailInput = emailRef.current;
+    const passwordInput = passwordRef.current;
+    const submitEmail = emailInput ? emailInput.value : email;
+    const submitPassword = passwordInput ? passwordInput.value : "";
     setError(null);
 
     try {
-      const profile = await login(email, password, rememberMe);
+      const profile = await login(submitEmail, submitPassword, rememberMe);
       router.push(postLoginPath(profile.userType, returnUrl));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
@@ -94,12 +99,15 @@ function CvAssistantLoginContent() {
                 Email address
               </label>
               <input
+                ref={emailRef}
                 id="email"
+                name="email"
                 type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="username email"
                 required
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
+                defaultValue=""
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc] focus:border-transparent"
                 placeholder="you@example.com"
               />
             </div>
@@ -109,12 +117,14 @@ function CvAssistantLoginContent() {
                 Password
               </label>
               <input
+                ref={passwordRef}
                 id="password"
+                name="password"
                 type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
                 required
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
+                defaultValue=""
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc] focus:border-transparent"
                 placeholder="Enter your password"
               />
             </div>

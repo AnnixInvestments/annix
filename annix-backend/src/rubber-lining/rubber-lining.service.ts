@@ -551,6 +551,8 @@ export class RubberLiningService {
     company.phone = dto.phone || null;
     company.contactPerson = dto.contactPerson || null;
     company.emailConfig = dto.emailConfig || null;
+    company.auCocRecipientEmail = dto.auCocRecipientEmail || null;
+    company.autoApproveAuCocs = dto.autoApproveAuCocs || false;
 
     const saved = await this.companyRepository.save(company);
     const result = await this.companyRepository.findOne({
@@ -578,6 +580,9 @@ export class RubberLiningService {
     if (dto.phone !== undefined) company.phone = dto.phone || null;
     if (dto.contactPerson !== undefined) company.contactPerson = dto.contactPerson || null;
     if (dto.emailConfig !== undefined) company.emailConfig = dto.emailConfig || null;
+    if (dto.auCocRecipientEmail !== undefined)
+      company.auCocRecipientEmail = dto.auCocRecipientEmail || null;
+    if (dto.autoApproveAuCocs !== undefined) company.autoApproveAuCocs = dto.autoApproveAuCocs;
 
     await this.companyRepository.save(company);
     const result = await this.companyRepository.findOne({
@@ -1152,6 +1157,8 @@ export class RubberLiningService {
       phone: company.phone,
       contactPerson: company.contactPerson,
       emailConfig: company.emailConfig,
+      auCocRecipientEmail: company.auCocRecipientEmail,
+      autoApproveAuCocs: company.autoApproveAuCocs,
     };
   }
 

@@ -103,6 +103,12 @@ export class RubberCompany {
   @Column({ name: "sage_contact_type", type: "varchar", length: 20, nullable: true })
   sageContactType: string | null;
 
+  @Column({ name: "au_coc_recipient_email", type: "varchar", length: 255, nullable: true })
+  auCocRecipientEmail: string | null;
+
+  @Column({ name: "auto_approve_au_cocs", type: "boolean", default: false })
+  autoApproveAuCocs: boolean;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 
