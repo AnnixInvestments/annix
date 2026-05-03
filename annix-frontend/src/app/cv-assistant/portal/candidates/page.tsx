@@ -496,7 +496,7 @@ export default function CandidatesPage() {
         </div>
       ) : null}
 
-      <div className="bg-white rounded-xl shadow-sm border border-[#e0e0f5]">
+      <div className="bg-white rounded-xl shadow-sm border border-[#e0e0f5] overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -655,8 +655,8 @@ export default function CandidatesPage() {
                           {candidateStatus.replace(/_/g, " ")}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
-                        <div className="flex items-center justify-end gap-3">
+                      <td className="px-3 py-4 whitespace-nowrap text-right text-xs">
+                        <div className="flex items-center justify-end gap-2">
                           <button
                             type="button"
                             onClick={() => handleViewCv(candidate)}
