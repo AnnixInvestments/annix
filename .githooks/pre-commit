@@ -442,4 +442,71 @@ if [ -n "$STAGED_MIGRATIONS" ]; then
         exit 1
     fi
     echo "Migration column check passed."
+
+    # 6b. Migration enum-name validation — cross-check ALTER TYPE / DROP TYPE /
+    #     WHERE typname = '...' references against CREATE TYPE statements in
+    #     prior migrations. Catches typos like "rubber_au_cocs_status_enum" vs
+    #     "au_coc_status_enum" that pass tsc/build but crash Fly's
+    #     release_command with `type "<name>" does not exist`.
+    echo ""
+    echo "Checking migration enum-type names against CREATE TYPE statements..."
+    ENUM_ERR_FILE=$(mktemp)
+    echo "0" > "$ENUM_ERR_FILE"
+
+    for mig_file in $STAGED_MIGRATIONS; do
+        if [ ! -f "$mig_file" ]; then
+            continue
+        fi
+
+        mig_content=$(git show ":$mig_file" 2>/dev/null || cat "$mig_file")
+
+        # Extract referenced enum names from ALTER TYPE / DROP TYPE / WHERE typname.
+        # Patterns:
+        #   ALTER TYPE foo_enum ...           (unquoted)
+        #   ALTER TYPE "foo_enum" ...         (quoted)
+        #   DROP TYPE [IF EXISTS] foo_enum
+        #   WHERE typname = 'foo_enum'
+        ref_names=$(echo "$mig_content" \
+            | sed -nE 's/.*ALTER[[:space:]]+TYPE[[:space:]]+"?([a-zA-Z_][a-zA-Z0-9_]*)"?.*/\1/p; s/.*DROP[[:space:]]+TYPE[[:space:]]+(IF[[:space:]]+EXISTS[[:space:]]+)?"?([a-zA-Z_][a-zA-Z0-9_]*)"?.*/\2/p; s/.*typname[[:space:]]*=[[:space:]]*'"'"'([a-zA-Z_][a-zA-Z0-9_]*)'"'"'.*/\1/p' \
+            | sort -u | grep -v '^$' || true)
+
+        if [ -z "$ref_names" ]; then
+            continue
+        fi
+
+        for enum_name in $ref_names; do
+            # Search for CREATE TYPE "<name>" in:
+            # (a) the same migration file
+            # (b) any other migration file
+            # (c) any entity file (in case the enum is created via @Column type:"enum")
+            if grep -qE "CREATE[[:space:]]+TYPE[[:space:]]+\"?${enum_name}\"?" \
+                "$ROOT_DIR/annix-backend/src/migrations/"*.ts 2>/dev/null; then
+                continue
+            fi
+
+            echo "  WARNING: Migration $mig_file references enum \"$enum_name\""
+            echo "           but no CREATE TYPE \"$enum_name\" found in any migration."
+            echo "           Common fix: grep for the actual enum name in migrations/."
+            cur=$(cat "$ENUM_ERR_FILE")
+            echo "$((cur + 1))" > "$ENUM_ERR_FILE"
+        done
+    done
+
+    ENUM_ERRORS=$(cat "$ENUM_ERR_FILE")
+    rm -f "$ENUM_ERR_FILE"
+
+    if [ "$ENUM_ERRORS" -gt 0 ]; then
+        echo ""
+        echo "============================================"
+        echo "COMMIT BLOCKED: Migration enum-type mismatch"
+        echo "============================================"
+        echo "Found $ENUM_ERRORS reference(s) to enum types that have no"
+        echo "matching CREATE TYPE in the migrations folder."
+        echo "Fly's release_command will crash with"
+        echo "  error: type \"<name>\" does not exist"
+        echo "Verify the enum name by grepping migrations/ for the real name."
+        echo ""
+        exit 1
+    fi
+    echo "Migration enum-type check passed."
 fi

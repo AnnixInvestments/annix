@@ -6,6 +6,17 @@ ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 
 source "${ROOT_DIR}/node_modules/@annix/claude-swarm/timer.sh"
 
+OVERALL_START=$(_timer_ms)
+
+print_wall_time() {
+  local end formatted elapsed
+  end=$(_timer_ms)
+  elapsed=$((end - OVERALL_START))
+  formatted=$(_format_ms "$elapsed")
+  printf "  %-32s %8s\n" "WALL TIME" "$formatted"
+  echo ""
+}
+
 echo "Running pre-push checks..."
 
 # Note: We check ALL files with biome to catch issues from any source
@@ -114,6 +125,7 @@ if [ "$TEST_EXIT" -ne 0 ]; then
   echo ">> test suite output:"
   cat "$TEST_LOG"
   print_timing_summary
+  print_wall_time
   exit 1
 fi
 TIMED_STEPS+=("test suite|${test_elapsed}|ok")
@@ -127,6 +139,7 @@ if [ "$BUILD_BE_EXIT" -ne 0 ]; then
   echo ">> backend build output:"
   cat "$BUILD_BE_LOG"
   print_timing_summary
+  print_wall_time
   exit 1
 fi
 TIMED_STEPS+=("backend build|${build_be_elapsed}|ok")
@@ -140,10 +153,12 @@ if [ "$BUILD_FE_EXIT" -ne 0 ]; then
   echo ">> frontend build output:"
   cat "$BUILD_FE_LOG"
   print_timing_summary
+  print_wall_time
   exit 1
 fi
 TIMED_STEPS+=("frontend build|${build_fe_elapsed}|ok")
 
 print_timing_summary
+print_wall_time
 
 echo "Pre-push checks passed!"

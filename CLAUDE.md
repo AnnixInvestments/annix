@@ -308,7 +308,7 @@ Place in `annix-frontend/src/app/stock-control/how-to/guides/` with kebab-case f
 - Do not use emojis unless requested.
 
 ### Shorthand Commands
-- **`luc`** — list all unpushed commits (`git log origin/main..HEAD --oneline`)
+- **`luc`** — list all unpushed commits. Always `git fetch origin main` first so the diff is against the live remote (stale local refs have caused undercounts), then `git log origin/main..HEAD --oneline`. Count the lines actually shown — never approximate.
 - **`push`** — push all changes to main and report pre-push step timings
 - **`luc + push`** — list unpushed commits, then push immediately without confirmation
 
