@@ -261,12 +261,13 @@ function SectionHeading(props: { title: string; children: React.ReactNode }) {
 function ImprovementCard(props: { item: NixSeekerCvImprovement; onCopy: (text: string) => void }) {
   const item = props.item;
   const priorityClass = PRIORITY_PILL[item.priority];
+  const areaLabel = AREA_LABELS[item.area];
   const example = item.example;
   return (
     <li className="bg-white rounded-lg border border-[#e0e0f5] p-4 space-y-2">
       <div className="flex items-center gap-2 flex-wrap">
         <span className="text-xs font-semibold text-gray-700 bg-gray-100 px-2 py-0.5 rounded">
-          {AREA_LABELS[item.area]}
+          {areaLabel}
         </span>
         <span className={`text-xs font-semibold px-2 py-0.5 rounded ${priorityClass}`}>
           {item.priority} priority
