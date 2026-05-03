@@ -55,7 +55,7 @@ async function proxyRequest(request: NextRequest) {
       cache: "no-store",
     });
 
-  const retryDelaysMs = isIdempotent ? [500, 1500, 3000] : [];
+  const retryDelaysMs = isIdempotent ? [500, 1500, 3000] : [400];
   const attemptWithRetries = async (
     remainingDelays: number[],
     attemptNumber: number,
