@@ -12,6 +12,7 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { CreateJobPostingDto, UpdateJobPostingDto } from "../dto/job-posting.dto";
+import { UpdateJobWizardDto } from "../dto/job-wizard.dto";
 import { CvAssistantAuthGuard } from "../guards/cv-assistant-auth.guard";
 import { JobPostingService } from "../services/job-posting.service";
 
@@ -23,6 +24,36 @@ export class JobPostingController {
   @Post()
   async create(@Request() req: { user: { companyId: number } }, @Body() dto: CreateJobPostingDto) {
     return this.jobPostingService.create(req.user.companyId, dto);
+  }
+
+  @Post("draft")
+  async createDraft(@Request() req: { user: { companyId: number } }) {
+    return this.jobPostingService.createDraft(req.user.companyId);
+  }
+
+  @Get(":id/wizard")
+  async findWizardDraft(
+    @Request() req: { user: { companyId: number } },
+    @Param("id", ParseIntPipe) id: number,
+  ) {
+    return this.jobPostingService.findWizardDraft(req.user.companyId, id);
+  }
+
+  @Patch(":id/wizard")
+  async updateWizardDraft(
+    @Request() req: { user: { companyId: number } },
+    @Param("id", ParseIntPipe) id: number,
+    @Body() dto: UpdateJobWizardDto,
+  ) {
+    return this.jobPostingService.updateWizardDraft(req.user.companyId, id, dto);
+  }
+
+  @Post(":id/publish")
+  async publish(
+    @Request() req: { user: { companyId: number } },
+    @Param("id", ParseIntPipe) id: number,
+  ) {
+    return this.jobPostingService.publishDraft(req.user.companyId, id);
   }
 
   @Get()
