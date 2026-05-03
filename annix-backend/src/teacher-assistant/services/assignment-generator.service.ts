@@ -86,6 +86,9 @@ export class AssignmentGeneratorService {
     let lastFailures: ValidationFailure[] = [];
     let lastFluffyFailures: ValidationFailure[] = [];
     let lastRawResponse = "";
+    let bestAssignment: Assignment | null = null;
+    let bestFailureCount = Number.POSITIVE_INFINITY;
+    let bestFailures: ValidationFailure[] = [];
 
     while (attempt <= MAX_RETRIES) {
       const prompt =
@@ -127,13 +130,23 @@ export class AssignmentGeneratorService {
 
       lastFailures = validation.failures;
       lastFluffyFailures = fluffy.failures;
-      this.logger.warn(
-        `Attempt ${attempt + 1} failed: ${this.summariseFailures([
-          ...validation.failures,
-          ...fluffy.failures,
-        ])}`,
-      );
+      const combined = [...validation.failures, ...fluffy.failures];
+
+      if (combined.length < bestFailureCount && hasMinimalStructure(assignment)) {
+        bestAssignment = assignment;
+        bestFailures = combined;
+        bestFailureCount = combined.length;
+      }
+
+      this.logger.warn(`Attempt ${attempt + 1} failed: ${this.summariseFailures(combined)}`);
       attempt += 1;
+    }
+
+    if (bestAssignment) {
+      this.logger.warn(
+        `Soft-accepting best attempt for ${input.subject}/${input.topic} with ${bestFailureCount} warning(s): ${this.summariseFailures(bestFailures)}`,
+      );
+      return autoRepair(bestAssignment, bestFailures);
     }
 
     const allFailures = [...lastFailures, ...lastFluffyFailures];
@@ -146,7 +159,7 @@ export class AssignmentGeneratorService {
       );
     }
     throw new BadRequestException({
-      message: `Generation failed after ${MAX_RETRIES + 1} attempts.`,
+      message: `Generation failed after ${MAX_RETRIES + 1} attempts — no usable structure returned.`,
       failures: allFailures,
     });
   }
@@ -180,4 +193,59 @@ export class AssignmentGeneratorService {
     }
     return entry.assignment;
   }
+}
+
+function hasMinimalStructure(assignment: Assignment): boolean {
+  return (
+    typeof assignment.title === "string" &&
+    assignment.title.trim().length > 0 &&
+    Array.isArray(assignment.tasks) &&
+    assignment.tasks.length >= 1 &&
+    Array.isArray(assignment.rubric) &&
+    assignment.rubric.length >= 1
+  );
+}
+
+function autoRepair(assignment: Assignment, failures: ValidationFailure[]): Assignment {
+  const repairedRubric = (assignment.rubric ?? []).map((row) => ({
+    criterion: row.criterion ?? "Criterion",
+    excellent: row.excellent?.trim() || "—",
+    good: row.good?.trim() || "—",
+    satisfactory: row.satisfactory?.trim() || "—",
+    needsWork: row.needsWork?.trim() || "—",
+  }));
+  const repairedTasks = (assignment.tasks ?? []).map((task, i) => ({
+    ...task,
+    step: i + 1,
+    requiredEvidence:
+      task.requiredEvidence && task.requiredEvidence.length > 0
+        ? task.requiredEvidence
+        : ["evidence — review and refine"],
+  }));
+  return {
+    ...assignment,
+    title: assignment.title?.trim() || "Untitled assignment",
+    studentBrief: assignment.studentBrief ?? "",
+    successCriteria: assignment.successCriteria ?? [],
+    aiUseRules: assignment.aiUseRules ?? [],
+    evidenceChecklist: assignment.evidenceChecklist ?? [],
+    finalSubmissionRequirements: assignment.finalSubmissionRequirements ?? [],
+    studentAiPromptStarters: assignment.studentAiPromptStarters ?? [],
+    partialExemplars: assignment.partialExemplars ?? [],
+    optionalWorkbookPages: assignment.optionalWorkbookPages ?? [],
+    teacherNotes: assignment.teacherNotes ?? {
+      setup: "",
+      setupTime: "",
+      materialsNeeded: [],
+      commonMisconceptions: [],
+      markingGuidance: "",
+      supportOption: "",
+      extensionOption: "",
+    },
+    parentNote: assignment.parentNote ?? "",
+    learningObjective: assignment.learningObjective ?? "",
+    tasks: repairedTasks,
+    rubric: repairedRubric,
+    qualityWarnings: failures.map((f) => f.message),
+  };
 }

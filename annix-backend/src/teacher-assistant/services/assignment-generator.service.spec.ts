@@ -219,4 +219,37 @@ describe("AssignmentGeneratorService", () => {
     const result = await service.generate(sampleInput);
     expect(result.studentBrief).not.toContain("research the topic");
   });
+
+  it("soft-accepts the best attempt with qualityWarnings when validation never passes", async () => {
+    const flawed = validAssignment();
+    flawed.studentBrief = "Research the topic and write about clouds.";
+    const ai = stubAiChat([
+      JSON.stringify(flawed),
+      JSON.stringify(flawed),
+      JSON.stringify(flawed),
+      JSON.stringify(flawed),
+    ]);
+    const service = new AssignmentGeneratorService(ai.service, stubMetrics());
+    const result = await service.generate(sampleInput);
+    expect(result.title).toBe(flawed.title);
+    expect(result.qualityWarnings?.length ?? 0).toBeGreaterThan(0);
+    expect(result.qualityWarnings?.some((w) => w.includes("research the topic"))).toBe(true);
+  });
+
+  it("auto-repairs missing rubric levels and empty requiredEvidence on soft-accept", async () => {
+    const flawed = validAssignment();
+    flawed.rubric[0].satisfactory = "";
+    flawed.tasks[0].requiredEvidence = [];
+    const ai = stubAiChat([
+      JSON.stringify(flawed),
+      JSON.stringify(flawed),
+      JSON.stringify(flawed),
+      JSON.stringify(flawed),
+    ]);
+    const service = new AssignmentGeneratorService(ai.service, stubMetrics());
+    const result = await service.generate(sampleInput);
+    expect(result.rubric[0].satisfactory).toBe("—");
+    expect(result.tasks[0].requiredEvidence.length).toBeGreaterThan(0);
+    expect(result.qualityWarnings?.length ?? 0).toBeGreaterThan(0);
+  });
 });

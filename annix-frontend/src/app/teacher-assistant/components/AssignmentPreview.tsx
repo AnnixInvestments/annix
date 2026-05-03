@@ -5,7 +5,7 @@ import type {
   AssignmentInput,
   AssignmentSection,
 } from "@annix/product-data/teacher-assistant";
-import { Copy, Download, FileText } from "lucide-react";
+import { AlertTriangle, Copy, Download, FileText } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
@@ -100,11 +100,41 @@ export function AssignmentPreview(props: AssignmentPreviewProps) {
   };
 
   const editedSections = useMemo(() => editor.editedSections, [editor.editedSections]);
+  const rawQualityWarnings = editor.current.qualityWarnings;
+  const qualityWarnings = rawQualityWarnings ?? [];
 
   const isEdited = (section: AssignmentSection) => editedSections.has(section);
 
   return (
     <div className="max-w-4xl mx-auto">
+      {qualityWarnings.length > 0 ? (
+        <div
+          role="alert"
+          className="mb-4 rounded-lg border border-amber-300 bg-amber-50 p-4 flex items-start gap-3"
+        >
+          <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+          <div className="flex-1 text-sm text-amber-900">
+            <p className="font-semibold mb-1">Generated with caveats — please review</p>
+            <p className="mb-2">
+              Nix didn't fully meet our quality bar this time. The assignment is still usable but
+              you should review and edit the items below before sharing it with students.
+            </p>
+            <details>
+              <summary className="cursor-pointer font-medium hover:text-amber-950">
+                What to check ({qualityWarnings.length})
+              </summary>
+              <ul className="mt-2 ml-2 space-y-1 list-disc list-inside">
+                {qualityWarnings.slice(0, 8).map((warning) => (
+                  <li key={warning}>{warning}</li>
+                ))}
+                {qualityWarnings.length > 8 ? (
+                  <li className="opacity-70">…and {qualityWarnings.length - 8} more.</li>
+                ) : null}
+              </ul>
+            </details>
+          </div>
+        </div>
+      ) : null}
       <header className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>

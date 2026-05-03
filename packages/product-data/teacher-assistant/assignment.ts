@@ -89,4 +89,5 @@ export interface Assignment {
   studentAiPromptStarters: string[];
   partialExemplars: PartialExemplar[];
   optionalWorkbookPages: WorkbookPage[];
+  qualityWarnings?: string[];
 }
