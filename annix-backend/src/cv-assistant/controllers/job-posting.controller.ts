@@ -133,6 +133,14 @@ export class JobPostingController {
     return this.nixJobAssist.skillSuggestions(req.user.companyId, id);
   }
 
+  @Post(":id/nix/requirements-suggestions")
+  async nixRequirementsSuggestions(
+    @Request() req: { user: { companyId: number } },
+    @Param("id", ParseIntPipe) id: number,
+  ) {
+    return this.nixJobAssist.requirementsSuggestions(req.user.companyId, id);
+  }
+
   @Post(":id/nix/quality-score")
   async nixQualityScore(
     @Request() req: { user: { companyId: number } },

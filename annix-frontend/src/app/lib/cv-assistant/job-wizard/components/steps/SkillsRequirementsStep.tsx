@@ -50,7 +50,34 @@ export function SkillsRequirementsStep({ draft, onChange }: SkillsRequirementsSt
     label: "Nix is suggesting skills for this role…",
     fn: (id: number) => cvAssistantApiClient.nixSkillSuggestions(id),
   });
+  const requirementsSuggestions = useNixCall({
+    operation: "requirements-suggestions",
+    label: "Nix is suggesting role requirements…",
+    fn: (id: number) => cvAssistantApiClient.nixRequirementsSuggestions(id),
+  });
   const isSuggesting = skillSuggestions.isPending;
+  const isSuggestingReqs = requirementsSuggestions.isPending;
+  const titleReady = Boolean(draft.title) && draft.title !== "Untitled draft";
+
+  const handleSuggestRequirements = () => {
+    requirementsSuggestions.mutate(draft.id, {
+      onSuccess: (data) => {
+        const patch: UpdateJobWizardPayload = {};
+        if (data.minExperienceYears != null) patch.minExperienceYears = data.minExperienceYears;
+        if (data.requiredEducation) patch.requiredEducation = data.requiredEducation;
+        if (data.requiredCertifications.length > 0) {
+          patch.requiredCertifications = data.requiredCertifications;
+        }
+        onChange(patch);
+        const reason = data.reasoning;
+        const note = reason ? ` (${reason})` : "";
+        showToast(`Nix filled requirements.${note}`, "success");
+      },
+      onError: () => {
+        showToast("Nix couldn't suggest requirements right now. Try again.", "error");
+      },
+    });
+  };
   const handleSuggest = () => {
     skillSuggestions.mutate(draft.id, {
       onSuccess: (data) => {
@@ -177,6 +204,23 @@ export function SkillsRequirementsStep({ draft, onChange }: SkillsRequirementsSt
           className="text-sm font-semibold text-[#252560] hover:text-[#1a1a40]"
         >
           + Add skill
+        </button>
+      </div>
+
+      <div className="flex items-center justify-between pt-4 border-t border-[#e0e0f5]">
+        <div>
+          <h3 className="font-semibold text-[#1a1a40]">Experience, education & certifications</h3>
+          <p className="text-xs text-gray-500 mt-0.5">
+            Nix can fill these from the role basics — overwrites whatever's there.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={handleSuggestRequirements}
+          disabled={isSuggestingReqs || !titleReady}
+          className="text-xs px-3 py-1.5 bg-[#FFA500] text-[#1a1a40] font-semibold rounded-lg hover:bg-[#FFB733] transition-all disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+        >
+          {isSuggestingReqs ? "Nix thinking…" : "Suggest with Nix"}
         </button>
       </div>
 

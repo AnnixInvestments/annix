@@ -69,6 +69,13 @@ export interface NixSkillSuggestionsResponse {
   requiredCertifications: string[];
 }
 
+export interface NixRequirementsSuggestionsResponse {
+  minExperienceYears: number | null;
+  requiredEducation: string | null;
+  requiredCertifications: string[];
+  reasoning: string | null;
+}
+
 export interface NixQualityScoreResponse {
   totalScore: number;
   clarity: number;
@@ -307,6 +314,45 @@ Rules:
 - minExperienceYears: a single integer for total relevant years expected for the role. Match the seniority — entry 0-1, junior 1-3, mid 3-6, senior 6-10, lead/manager 8-12, executive 10+. Return null only if seniority is genuinely unspecified.
 - requiredEducation: ONE short line under 200 characters — e.g. "Matric (NSC)", "Matric + NQF6 in Mechanical Engineering", "BCom Accounting (NQF7)", "Trade Test (Section 13/26D)". Use NQF levels where appropriate. NO multi-sentence explanations. Return null only if no formal education is required for the role.
 - requiredCertifications: 0-4 concrete certifications a candidate must HOLD (not nice-to-have — those go in skills). Each entry under 100 characters. Examples: "ECSA Pr Eng", "SAICA registered CA(SA)", "Code 10 (C1) driver's licence", "First Aid Level 1". Use empty array if none are essential.`,
+  };
+}
+
+export function requirementsSuggestionsPrompt(input: {
+  title: string;
+  industry: string | null;
+  seniorityLevel: string | null;
+  mainPurpose: string | null;
+  skills: Array<{ name: string; importance: string }>;
+}): NixPrompt {
+  const skillsText =
+    input.skills.length > 0
+      ? input.skills.map((s) => `${s.name} (${s.importance})`).join(", ")
+      : "(none specified yet)";
+
+  return {
+    system: SA_SYSTEM_PREAMBLE,
+    user: `Decide the minimum years of experience, required education and required certifications for this role.
+
+Title: ${input.title}
+Industry: ${input.industry || "(unspecified)"}
+Seniority: ${input.seniorityLevel || "(unspecified)"}
+Main purpose: ${input.mainPurpose || "(unspecified)"}
+Skills already listed: ${skillsText}
+
+Return JSON with this EXACT shape — every key is required:
+{
+  "minExperienceYears": number,
+  "requiredEducation": "string",
+  "requiredCertifications": ["string", ...],
+  "reasoning": "string"
+}
+
+Rules:
+- minExperienceYears: a single non-negative integer. Calibrate to seniority — entry 0-1, junior 1-3, mid 3-6, senior 6-10, lead 8-12, manager 7-12, executive 10+. Pick the lower end of the range unless the title or main purpose suggests deeper experience. NEVER return null — pick a sensible default if unclear.
+- requiredEducation: ONE short line, max 180 characters, no multi-sentence explanations. Examples: "Matric (NSC)", "Matric + NQF6 in Mechanical Engineering", "BCom Accounting (NQF7)", "Trade Test (Section 13/26D)". Use NQF levels where appropriate. If genuinely no formal qualification is needed, return "Matric (NSC)" rather than null — entry-level SA jobs almost always assume Matric.
+- requiredCertifications: array of 0-4 concrete certifications a candidate must HOLD (not nice-to-have — those belong in skills). Each entry under 100 characters. Examples: "ECSA Pr Eng", "SAICA registered CA(SA)", "Code 10 (C1) driver's licence", "First Aid Level 1". Empty array is fine if none are essential, but prefer to include any that genuinely apply.
+- reasoning: ONE short sentence (under 200 chars) explaining the choices. Will not be persisted; the user reads it as a tooltip.
+- South-African context: NQF / SAQA / SARS / ECSA / SACPCMP / SAICA / SAIPA where relevant. Avoid US qualifications.`,
   };
 }
 

@@ -9,6 +9,7 @@ import {
   type NixDescriptionResponse,
   type NixOutcomesDraftResponse,
   type NixQualityScoreResponse,
+  type NixRequirementsSuggestionsResponse,
   type NixSalaryGuidanceResponse,
   type NixScreeningQuestionsResponse,
   type NixSkillSuggestionsResponse,
@@ -18,6 +19,7 @@ import {
   outcomesDraftPrompt,
   parseNixJson,
   qualityScorePrompt,
+  requirementsSuggestionsPrompt,
   salaryGuidancePrompt,
   screeningQuestionsPrompt,
   skillSuggestionsPrompt,
@@ -137,6 +139,29 @@ export class NixJobAssistService {
       const result = await this.callAi(prompt);
       const parsed = parseNixJson<NixSkillSuggestionsResponse>(result.content);
       return ensureSkillSuggestionDefaults(parsed, posting.seniorityLevel);
+    });
+  }
+
+  async requirementsSuggestions(
+    companyId: number,
+    jobPostingId: number,
+  ): Promise<NixRequirementsSuggestionsResponse> {
+    const posting = await this.loadPostingWithRelations(companyId, jobPostingId);
+    if (!posting.title || posting.title === "Untitled draft") {
+      throw new NotFoundException("Set a job title in step 1 before suggesting requirements");
+    }
+
+    return this.metrics.time(METRIC_CATEGORY, "requirements-suggestions", async () => {
+      const prompt = requirementsSuggestionsPrompt({
+        title: posting.title,
+        industry: posting.industry,
+        seniorityLevel: posting.seniorityLevel,
+        mainPurpose: posting.mainPurpose,
+        skills: (posting.skills || []).map((s) => ({ name: s.name, importance: s.importance })),
+      });
+      const result = await this.callAi(prompt);
+      const parsed = parseNixJson<NixRequirementsSuggestionsResponse>(result.content);
+      return ensureRequirementsDefaults(parsed, posting.seniorityLevel);
     });
   }
 
@@ -352,6 +377,41 @@ const SENIORITY_TO_MIN_YEARS: Record<string, number> = {
   manager: 7,
   executive: 10,
 };
+
+function ensureRequirementsDefaults(
+  parsed: NixRequirementsSuggestionsResponse,
+  seniorityLevel: string | null,
+): NixRequirementsSuggestionsResponse {
+  const seniorityFallback = seniorityLevel
+    ? (SENIORITY_TO_MIN_YEARS[seniorityLevel] ?? null)
+    : null;
+  const minExperienceYears = parsed.minExperienceYears ?? seniorityFallback ?? 0;
+
+  const rawEducation = parsed.requiredEducation;
+  const educationFallback = "Matric (NSC)";
+  const requiredEducation =
+    rawEducation && rawEducation.trim().length > 0
+      ? rawEducation.trim().slice(0, 240)
+      : educationFallback;
+
+  const rawCerts = Array.isArray(parsed.requiredCertifications)
+    ? parsed.requiredCertifications
+    : [];
+  const requiredCertifications = rawCerts
+    .map((c) => (typeof c === "string" ? c.trim().slice(0, 120) : ""))
+    .filter((c) => c.length > 0);
+
+  const rawReasoning = parsed.reasoning;
+  const reasoning =
+    rawReasoning && rawReasoning.trim().length > 0 ? rawReasoning.trim().slice(0, 240) : null;
+
+  return {
+    minExperienceYears,
+    requiredEducation,
+    requiredCertifications,
+    reasoning,
+  };
+}
 
 function ensureSkillSuggestionDefaults(
   parsed: NixSkillSuggestionsResponse,

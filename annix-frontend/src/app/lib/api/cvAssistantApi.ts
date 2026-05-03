@@ -859,6 +859,17 @@ class CvAssistantApiClient {
     });
   }
 
+  async nixRequirementsSuggestions(id: number): Promise<{
+    minExperienceYears: number | null;
+    requiredEducation: string | null;
+    requiredCertifications: string[];
+    reasoning: string | null;
+  }> {
+    return this.request(`/cv-assistant/job-postings/${id}/nix/requirements-suggestions`, {
+      method: "POST",
+    });
+  }
+
   async nixSkillSuggestions(id: number): Promise<{
     skills: Array<{
       name: string;
