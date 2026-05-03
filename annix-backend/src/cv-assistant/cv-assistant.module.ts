@@ -19,11 +19,13 @@ import { CandidateController } from "./controllers/candidate.controller";
 import { DashboardController } from "./controllers/dashboard.controller";
 import { EmailTemplateController } from "./controllers/email-template.controller";
 import { IndividualProfileController } from "./controllers/individual-profile.controller";
+import { InterviewBookingController } from "./controllers/interview-booking.controller";
 import { JobMarketController } from "./controllers/job-market.controller";
 import { JobPostingController } from "./controllers/job-posting.controller";
 import { NotificationController } from "./controllers/notification.controller";
 import { PortalAdaptersController } from "./controllers/portal-adapters.controller";
 import { PublicAccountController } from "./controllers/public-account.controller";
+import { PublicInterviewBookingController } from "./controllers/public-interview-booking.controller";
 import { PublicJobMarketController } from "./controllers/public-job-market.controller";
 import { PublicJobPostingController } from "./controllers/public-job-posting.controller";
 import { ReferenceFeedbackController } from "./controllers/reference-feedback.controller";
@@ -39,6 +41,9 @@ import { CvAssistantProfile } from "./entities/cv-assistant-profile.entity";
 import { CvAssistantUser } from "./entities/cv-assistant-user.entity";
 import { CvPushSubscription } from "./entities/cv-push-subscription.entity";
 import { ExternalJob } from "./entities/external-job.entity";
+import { InterviewBooking } from "./entities/interview-booking.entity";
+import { InterviewInvite } from "./entities/interview-invite.entity";
+import { InterviewSlot } from "./entities/interview-slot.entity";
 import { JobMarketSource } from "./entities/job-market-source.entity";
 import { JobPosting } from "./entities/job-posting.entity";
 import { JobPostingPortalPosting } from "./entities/job-posting-portal-posting.entity";
@@ -65,6 +70,7 @@ import { CvScreeningService } from "./services/cv-screening.service";
 import { EmailTemplateService } from "./services/email-template.service";
 import { EmbeddingService } from "./services/embedding.service";
 import { IndividualProfileService } from "./services/individual-profile.service";
+import { InterviewBookingService } from "./services/interview-booking.service";
 import { JobIngestionService } from "./services/job-ingestion.service";
 import { JobMarketSourceService } from "./services/job-market-source.service";
 import { JobMatchService } from "./services/job-match.service";
@@ -102,6 +108,9 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
       CvAssistantIndividualDocument,
       CvAssistantCompany,
       CvAssistantEmailTemplate,
+      InterviewSlot,
+      InterviewBooking,
+      InterviewInvite,
       JobPostingPortalPosting,
       JobSkill,
       JobSuccessMetric,
@@ -144,6 +153,8 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     PublicJobPostingController,
     PublicAccountController,
     EmailTemplateController,
+    InterviewBookingController,
+    PublicInterviewBookingController,
   ],
   providers: [
     CvAssistantAuthGuard,
@@ -181,6 +192,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     SalaryBenchmarkService,
     TestCandidateSeederService,
     EmailTemplateService,
+    InterviewBookingService,
   ],
   exports: [CvAssistantAuthService],
 })

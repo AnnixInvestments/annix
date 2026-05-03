@@ -110,10 +110,32 @@ You can expect to hear from us within {{responseTimelineDays}} days.`,
   ],
 };
 
+const INTERVIEW_INVITE: EmailTemplateDefinition = {
+  kind: CvEmailTemplateKind.INTERVIEW_INVITE,
+  label: "Interview invite",
+  description: "Sent when a shortlisted candidate is invited to book an interview slot.",
+  subject: "Interview invitation — {{jobTitle}} at {{companyName}}",
+  bodyHtml: `<p>Dear {{candidateName}},</p>
+<p>Great news — we'd like to invite you to interview for the <strong>{{jobTitle}}</strong> position at {{companyName}}.</p>
+<p>We've set aside a few times. Click the link below to pick the one that suits you:</p>
+<p><a href="{{bookingLink}}">Choose your interview time</a></p>
+<p>The link is unique to you — please don't share it. If none of the times work, reply to this email and we'll arrange another.</p>`,
+  bodyText: `Dear {{candidateName}},
+
+Great news — we'd like to invite you to interview for the {{jobTitle}} position at {{companyName}}.
+
+We've set aside a few times. Use the link below to pick the one that suits you:
+{{bookingLink}}
+
+The link is unique to you — please don't share it. If none of the times work, reply to this email and we'll arrange another.`,
+  placeholders: ["candidateName", "jobTitle", "companyName", "bookingLink"],
+};
+
 export const EMAIL_TEMPLATE_DEFAULTS: EmailTemplateDefinition[] = [
   REJECTION,
   SHORTLIST,
   ACCEPTANCE,
+  INTERVIEW_INVITE,
   REFERENCE_REQUEST,
   ACKNOWLEDGEMENT,
 ];
