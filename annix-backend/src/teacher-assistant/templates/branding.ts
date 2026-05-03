@@ -1,0 +1,20 @@
+export const ANNIX_BRAND = {
+  name: "Annix",
+  fullName: "Annix Investments",
+  appName: "Teacher Assistant",
+  domain: "annix.co.za",
+  colors: {
+    primaryNavy: "#323288",
+    primaryNavyLight: "#4a4da3",
+    primaryNavyDark: "#252560",
+    accentOrange: "#FFA500",
+    accentOrangeLight: "#FFB733",
+    accentOrangeDark: "#CC8400",
+    white: "#FFFFFF",
+    offWhite: "#F5F5F5",
+    grayLight: "#9CA3AF",
+    gray: "#6B7280",
+    grayDark: "#374151",
+    text: "#111827",
+  },
+} as const;

@@ -2,9 +2,14 @@ import type { Assignment, AssignmentInput } from "@annix/product-data/teacher-as
 import { Body, Controller, Header, Post, Res, UseGuards } from "@nestjs/common";
 import type { Response } from "express";
 import { AdminAuthGuard } from "../admin/guards/admin-auth.guard";
+import { ExportAssignmentDocxDto } from "./dto/export-docx.dto";
 import { ExportAssignmentPdfDto } from "./dto/export-pdf.dto";
 import { GenerateAssignmentDto } from "./dto/generate-assignment.dto";
 import { RegenerateSectionDto } from "./dto/regenerate-section.dto";
+import {
+  type AssignmentDocxResult,
+  AssignmentDocxService,
+} from "./services/assignment-docx.service";
 import { AssignmentGeneratorService } from "./services/assignment-generator.service";
 import { AssignmentPdfService } from "./services/assignment-pdf.service";
 
@@ -14,6 +19,7 @@ export class TeacherAssistantController {
   constructor(
     private readonly generator: AssignmentGeneratorService,
     private readonly pdf: AssignmentPdfService,
+    private readonly docx: AssignmentDocxService,
   ) {}
 
   @Post("generate")
@@ -39,6 +45,11 @@ export class TeacherAssistantController {
     res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
     res.setHeader("Content-Length", String(buffer.length));
     res.end(buffer);
+  }
+
+  @Post("export/docx")
+  async exportDocx(@Body() body: ExportAssignmentDocxDto): Promise<AssignmentDocxResult> {
+    return this.docx.render(body.assignment);
   }
 
   private toAssignmentInput(dto: GenerateAssignmentDto): AssignmentInput {

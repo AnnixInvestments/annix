@@ -43,6 +43,17 @@ class TeacherAssistantApi {
     });
     this.client.triggerDownload(blob, filename);
   }
+
+  exportDocx(assignment: Assignment): Promise<DocxExportResult> {
+    return this.client.post<DocxExportResult>("/teacher-assistant/export/docx", { assignment });
+  }
+}
+
+export interface DocxExportResult {
+  filename: string;
+  storagePath: string;
+  presignedUrl: string;
+  byteSize: number;
 }
 
 function pdfFilename(title: string): string {

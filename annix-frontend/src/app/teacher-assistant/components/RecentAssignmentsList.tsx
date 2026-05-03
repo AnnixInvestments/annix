@@ -16,7 +16,7 @@ export function RecentAssignmentsList(props: RecentAssignmentsListProps) {
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 max-w-3xl mx-auto mb-6">
       <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-        <Clock className="w-4 h-4 text-amber-600" />
+        <Clock className="w-4 h-4 text-[#FFA500]" />
         Recent assignments
       </h3>
       <ul className="space-y-2">
@@ -31,7 +31,7 @@ export function RecentAssignmentsList(props: RecentAssignmentsListProps) {
           return (
             <li
               key={entry.id}
-              className="flex items-center justify-between gap-3 p-2 rounded-lg hover:bg-amber-50 transition-colors"
+              className="flex items-center justify-between gap-3 p-2 rounded-lg hover:bg-[#f5f6ff] transition-colors"
             >
               <button
                 type="button"

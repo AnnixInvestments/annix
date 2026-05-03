@@ -230,9 +230,9 @@ export default function HomePage() {
             rel="noopener noreferrer"
             className="group"
           >
-            <div className="bg-white bg-opacity-95 backdrop-blur-sm rounded-xl shadow-lg p-8 border-2 border-transparent hover:border-amber-400 hover:shadow-xl transition-all duration-300 h-full">
+            <div className="bg-white bg-opacity-95 backdrop-blur-sm rounded-xl shadow-lg p-8 border-2 border-transparent hover:border-[#FFA500] hover:shadow-xl transition-all duration-300 h-full">
               <div className="text-center">
-                <div className="inline-flex items-center justify-center w-20 h-20 bg-amber-100 rounded-2xl text-amber-600 mb-6 group-hover:bg-amber-600 group-hover:text-white transition-colors">
+                <div className="inline-flex items-center justify-center w-20 h-20 bg-[#f5f6ff] rounded-2xl text-[#323288] mb-6 group-hover:bg-[#323288] group-hover:text-white transition-colors">
                   <GraduationCap {...iconProps} />
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 mb-3">Teacher Assistant</h3>
@@ -240,7 +240,7 @@ export default function HomePage() {
                   AI assignment & workbook generator for high-school teachers. Process-based tasks
                   that grade thinking, evidence, and AI critique — not recall.
                 </p>
-                <span className="inline-flex items-center text-amber-600 font-semibold group-hover:translate-x-1 transition-transform">
+                <span className="inline-flex items-center text-[#323288] font-semibold group-hover:translate-x-1 transition-transform">
                   Open
                   <svg
                     className="w-5 h-5 ml-2"

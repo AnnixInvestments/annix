@@ -40,8 +40,8 @@ export default function TeacherAssistantPage() {
 
   if (isLoading || !admin) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-amber-50">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-amber-600" />
+      <div className="min-h-screen flex items-center justify-center bg-[#f5f6ff]">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#323288]" />
       </div>
     );
   }
@@ -78,23 +78,25 @@ export default function TeacherAssistantPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-white to-amber-100">
-      <header className="bg-white border-b border-amber-100">
+    <div className="min-h-screen bg-gradient-to-br from-[#f5f6ff] via-white to-[#e8eaff]">
+      <header className="bg-[#323288] text-white shadow-md border-b-4 border-[#FFA500]">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center text-amber-600">
+            <div className="w-10 h-10 bg-[#FFA500] rounded-lg flex items-center justify-center text-white">
               <GraduationCap className="w-6 h-6" strokeWidth={1.75} />
             </div>
             <div>
-              <h1 className="text-lg font-bold text-gray-900">Teacher Assistant</h1>
-              <p className="text-xs text-gray-500">v{TEACHER_ASSISTANT_VERSION}</p>
+              <h1 className="text-lg font-bold text-white">
+                Annix <span className="font-normal opacity-80">— Teacher Assistant</span>
+              </h1>
+              <p className="text-xs text-white/70">v{TEACHER_ASSISTANT_VERSION}</p>
             </div>
           </div>
           {assignment ? (
             <button
               type="button"
               onClick={handleReset}
-              className="text-sm text-gray-600 hover:text-amber-700"
+              className="text-sm text-white/80 hover:text-[#FFA500] transition-colors"
             >
               Start new assignment
             </button>

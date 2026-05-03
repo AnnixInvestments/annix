@@ -5,12 +5,13 @@ import type {
   AssignmentInput,
   AssignmentSection,
 } from "@annix/product-data/teacher-assistant";
-import { Copy, Download } from "lucide-react";
-import { useMemo } from "react";
+import { Copy, Download, FileText } from "lucide-react";
+import { useMemo, useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import { useRegenerateSection } from "@/app/lib/query/hooks";
 import { exportAssignmentAsClipboardText } from "../lib/clipboard-export";
+import { downloadAssignmentAsDocx } from "../lib/docx-export";
 import { downloadAssignmentAsPdf } from "../lib/pdf-export";
 import { useAssignmentEditor } from "../lib/useAssignmentEditor";
 import { EditableSection } from "./EditableSection";
@@ -72,11 +73,29 @@ export function AssignmentPreview(props: AssignmentPreviewProps) {
     showToast("Assignment copied to clipboard.", "success");
   };
 
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [isExportingDocx, setIsExportingDocx] = useState(false);
+
   const handlePdf = async () => {
+    setIsExportingPdf(true);
     try {
       await downloadAssignmentAsPdf(editor.current);
     } catch (error) {
       showToast(error instanceof Error ? error.message : "PDF export failed.", "error");
+    } finally {
+      setIsExportingPdf(false);
+    }
+  };
+
+  const handleDocx = async () => {
+    setIsExportingDocx(true);
+    try {
+      await downloadAssignmentAsDocx(editor.current);
+      showToast("Word document downloaded.", "success");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Word export failed.", "error");
+    } finally {
+      setIsExportingDocx(false);
     }
   };
 
@@ -95,7 +114,7 @@ export function AssignmentPreview(props: AssignmentPreviewProps) {
               {editor.current.duration} · {editor.current.outputType} · {editor.current.difficulty}
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <button
               type="button"
               onClick={handleCopy}
@@ -106,11 +125,21 @@ export function AssignmentPreview(props: AssignmentPreviewProps) {
             </button>
             <button
               type="button"
+              onClick={handleDocx}
+              disabled={isExportingDocx}
+              className="inline-flex items-center gap-1 px-3 py-2 border border-[#323288] text-[#323288] rounded-lg text-sm hover:bg-[#f5f6ff] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <FileText className="w-4 h-4" />
+              {isExportingDocx ? "Exporting…" : "Export Word"}
+            </button>
+            <button
+              type="button"
               onClick={handlePdf}
-              className="inline-flex items-center gap-1 px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm transition-colors"
+              disabled={isExportingPdf}
+              className="inline-flex items-center gap-1 px-3 py-2 bg-[#323288] hover:bg-[#252560] disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-sm transition-colors"
             >
               <Download className="w-4 h-4" />
-              Export PDF
+              {isExportingPdf ? "Exporting…" : "Export PDF"}
             </button>
           </div>
         </div>
@@ -126,7 +155,7 @@ export function AssignmentPreview(props: AssignmentPreviewProps) {
         <textarea
           value={editor.current.studentBrief}
           onChange={(event) => editor.updateField("studentBrief", event.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 min-h-[120px]"
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#323288] min-h-[120px]"
         />
       </EditableSection>
 

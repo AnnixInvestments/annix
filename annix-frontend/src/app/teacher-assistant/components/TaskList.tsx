@@ -15,10 +15,10 @@ export function TaskList(props: TaskListProps) {
   return (
     <ol className="space-y-4">
       {tasks.map((task, index) => (
-        <li key={task.step} className="border-l-4 border-amber-400 pl-4 py-2">
+        <li key={task.step} className="border-l-4 border-[#FFA500] pl-4 py-2">
           <div className="flex items-baseline justify-between gap-2 mb-1 flex-wrap">
             <div className="flex items-baseline gap-2">
-              <span className="text-sm font-semibold text-amber-700">Step {task.step}</span>
+              <span className="text-sm font-semibold text-[#323288]">Step {task.step}</span>
               <h3 className="text-base font-bold text-gray-900">{task.title}</h3>
             </div>
             {(onMoveUp || onMoveDown || onDelete) && (
@@ -28,7 +28,7 @@ export function TaskList(props: TaskListProps) {
                     type="button"
                     onClick={() => onMoveUp(index)}
                     disabled={index === 0}
-                    className="p-1 text-gray-400 hover:text-amber-700 disabled:opacity-30 disabled:cursor-not-allowed"
+                    className="p-1 text-gray-400 hover:text-[#323288] disabled:opacity-30 disabled:cursor-not-allowed"
                     aria-label="Move task up"
                   >
                     <ChevronUp className="w-4 h-4" />
@@ -39,7 +39,7 @@ export function TaskList(props: TaskListProps) {
                     type="button"
                     onClick={() => onMoveDown(index)}
                     disabled={index === tasks.length - 1}
-                    className="p-1 text-gray-400 hover:text-amber-700 disabled:opacity-30 disabled:cursor-not-allowed"
+                    className="p-1 text-gray-400 hover:text-[#323288] disabled:opacity-30 disabled:cursor-not-allowed"
                     aria-label="Move task down"
                   >
                     <ChevronDown className="w-4 h-4" />
@@ -110,11 +110,11 @@ interface AiCritiqueBlockProps {
 function AiCritiqueBlock(props: AiCritiqueBlockProps) {
   const { critique } = props;
   return (
-    <div className="mt-2 bg-amber-50 border border-amber-100 rounded-lg p-3">
-      <span className="text-xs font-semibold text-amber-900 uppercase tracking-wide">
+    <div className="mt-2 bg-[#fff6e5] border border-[#FFA500]/30 rounded-lg p-3">
+      <span className="text-xs font-semibold text-[#252560] uppercase tracking-wide">
         AI critique
       </span>
-      <ul className="mt-1 space-y-1 text-sm text-amber-900">
+      <ul className="mt-1 space-y-1 text-sm text-[#252560]">
         <li>
           <strong>Try this prompt:</strong> {critique.promptToTry}
         </li>

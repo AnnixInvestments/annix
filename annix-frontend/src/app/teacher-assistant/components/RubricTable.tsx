@@ -12,20 +12,20 @@ export function RubricTable(props: RubricTableProps) {
     <div className="overflow-x-auto">
       <table className="w-full text-sm border-collapse">
         <thead>
-          <tr className="bg-amber-50">
-            <th className="text-left px-3 py-2 border border-amber-200 font-semibold text-amber-900">
+          <tr className="bg-[#323288]">
+            <th className="text-left px-3 py-2 border border-[#252560] font-semibold text-white">
               Criterion
             </th>
-            <th className="text-left px-3 py-2 border border-amber-200 font-semibold text-amber-900">
+            <th className="text-left px-3 py-2 border border-[#252560] font-semibold text-white">
               Excellent
             </th>
-            <th className="text-left px-3 py-2 border border-amber-200 font-semibold text-amber-900">
+            <th className="text-left px-3 py-2 border border-[#252560] font-semibold text-white">
               Good
             </th>
-            <th className="text-left px-3 py-2 border border-amber-200 font-semibold text-amber-900">
+            <th className="text-left px-3 py-2 border border-[#252560] font-semibold text-white">
               Satisfactory
             </th>
-            <th className="text-left px-3 py-2 border border-amber-200 font-semibold text-amber-900">
+            <th className="text-left px-3 py-2 border border-[#252560] font-semibold text-white">
               Needs Work
             </th>
           </tr>

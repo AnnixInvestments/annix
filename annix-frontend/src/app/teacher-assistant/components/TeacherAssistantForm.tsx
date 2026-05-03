@@ -150,7 +150,7 @@ export function TeacherAssistantForm(props: TeacherAssistantFormProps) {
                 type="radio"
                 checked={form.allowAiUse}
                 onChange={() => setField("allowAiUse", true)}
-                className="text-amber-600 focus:ring-amber-500"
+                className="accent-[#323288] focus:ring-[#323288]"
               />
               <span className="text-sm">Yes (structured)</span>
             </label>
@@ -159,7 +159,7 @@ export function TeacherAssistantForm(props: TeacherAssistantFormProps) {
                 type="radio"
                 checked={!form.allowAiUse}
                 onChange={() => setField("allowAiUse", false)}
-                className="text-amber-600 focus:ring-amber-500"
+                className="accent-[#323288] focus:ring-[#323288]"
               />
               <span className="text-sm">No (traditional)</span>
             </label>
@@ -186,15 +186,15 @@ export function TeacherAssistantForm(props: TeacherAssistantFormProps) {
                 key={option}
                 className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-colors ${
                   checked
-                    ? "border-amber-500 bg-amber-50 text-amber-900"
-                    : "border-gray-200 bg-white text-gray-700 hover:border-amber-300"
+                    ? "border-[#FFA500] bg-[#fff6e5] text-[#323288]"
+                    : "border-gray-200 bg-white text-gray-700 hover:border-[#FFA500]"
                 }`}
               >
                 <input
                   type="checkbox"
                   checked={checked}
                   onChange={() => toggleDifferentiation(option)}
-                  className="text-amber-600 focus:ring-amber-500"
+                  className="accent-[#323288] focus:ring-[#323288]"
                 />
                 <span className="text-sm">{option}</span>
               </label>
@@ -206,7 +206,7 @@ export function TeacherAssistantForm(props: TeacherAssistantFormProps) {
       <button
         type="submit"
         disabled={isSubmitting || !form.topic.trim()}
-        className="w-full md:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 bg-amber-600 hover:bg-amber-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-colors"
+        className="w-full md:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#323288] hover:bg-[#252560] disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-colors"
       >
         <Sparkles className="w-5 h-5" />
         {isSubmitting ? "Generating…" : "Generate assignment"}
@@ -234,7 +234,7 @@ function FormText(props: FormTextProps) {
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         required={required}
-        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#323288] focus:border-transparent"
       />
     </div>
   );
@@ -259,7 +259,7 @@ function FormNumber(props: FormNumberProps) {
         onChange={(event) => onChange(Number(event.target.value))}
         min={min}
         max={max}
-        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#323288] focus:border-transparent"
       />
     </div>
   );
@@ -280,7 +280,7 @@ function FormSelect<T extends string>(props: FormSelectProps<T>) {
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+        className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#323288] focus:border-transparent"
       >
         {options.map((option) => (
           <option key={option} value={option}>

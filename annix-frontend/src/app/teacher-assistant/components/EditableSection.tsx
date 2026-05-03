@@ -20,7 +20,7 @@ export function EditableSection(props: EditableSectionProps) {
         <div className="flex items-center gap-2">
           <h2 className="text-lg font-bold text-gray-900">{title}</h2>
           {isEdited ? (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-amber-100 text-amber-800">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-[#FFE0A0] text-[#92400e]">
               <Pencil className="w-3 h-3" />
               edited
             </span>
@@ -31,7 +31,7 @@ export function EditableSection(props: EditableSectionProps) {
             <button
               type="button"
               onClick={onRestore}
-              className="inline-flex items-center gap-1 px-2.5 py-1 text-sm text-gray-600 hover:text-amber-700 transition-colors"
+              className="inline-flex items-center gap-1 px-2.5 py-1 text-sm text-gray-600 hover:text-[#323288] transition-colors"
             >
               <RotateCcw className="w-3.5 h-3.5" />
               Restore original
@@ -42,7 +42,7 @@ export function EditableSection(props: EditableSectionProps) {
               type="button"
               onClick={onRegenerate}
               disabled={isRegenerating}
-              className="inline-flex items-center gap-1 px-2.5 py-1 text-sm text-amber-700 hover:text-amber-900 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors"
+              className="inline-flex items-center gap-1 px-2.5 py-1 text-sm text-[#323288] hover:text-[#252560] disabled:text-gray-400 disabled:cursor-not-allowed transition-colors"
             >
               <Sparkles className="w-3.5 h-3.5" />
               {isRegenerating ? "Regenerating…" : "Regenerate"}

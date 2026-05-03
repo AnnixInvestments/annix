@@ -1,97 +1,193 @@
 import type { Assignment } from "@annix/product-data/teacher-assistant";
+import { ANNIX_BRAND } from "./branding";
 
 export function renderAssignmentHtml(assignment: Assignment): string {
+  const c = ANNIX_BRAND.colors;
   return `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8" />
 <title>${esc(assignment.title)}</title>
 <style>
-  @page { size: A4; margin: 18mm; }
+  @page { size: A4; margin: 0; }
   * { box-sizing: border-box; }
   body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     line-height: 1.55;
-    color: #111827;
+    color: ${c.text};
     margin: 0;
     font-size: 10.5pt;
   }
-  h1 { font-size: 22pt; margin: 0 0 0.25em; color: #92400e; }
+  .page { padding: 18mm; }
+  .brand-bar {
+    background: ${c.primaryNavy};
+    color: ${c.white};
+    padding: 14px 18mm;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .brand-bar .brand-left { display: flex; align-items: center; gap: 10px; }
+  .brand-mark {
+    width: 32px; height: 32px;
+    background: ${c.accentOrange};
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; color: ${c.white}; font-size: 16pt;
+  }
+  .brand-name { font-weight: 700; font-size: 13pt; letter-spacing: 0.02em; }
+  .brand-tagline { font-size: 9.5pt; opacity: 0.85; margin-left: 2px; }
+  .brand-app { font-size: 9.5pt; opacity: 0.85; }
+  h1 {
+    font-size: 22pt; margin: 0 0 4px;
+    color: ${c.primaryNavy};
+    font-weight: 700;
+  }
   h2 {
     font-size: 13pt;
     margin: 1.2em 0 0.5em;
-    color: #92400e;
-    border-bottom: 2px solid #fbbf24;
-    padding-bottom: 0.15em;
+    color: ${c.primaryNavy};
+    border-bottom: 2px solid ${c.accentOrange};
+    padding-bottom: 0.2em;
+    font-weight: 700;
   }
-  h3 { font-size: 11pt; margin: 0.6em 0 0.2em; }
-  .meta { color: #6b7280; font-size: 9.5pt; margin-bottom: 1em; }
-  .brief { background: #fffbeb; padding: 12px 14px; border-left: 4px solid #f59e0b; border-radius: 4px; }
-  ul { padding-left: 20px; margin: 0.4em 0; }
-  ol { padding-left: 20px; margin: 0.4em 0; }
+  h3 { font-size: 11pt; margin: 0.6em 0 0.2em; color: ${c.text}; }
+  .meta { color: ${c.gray}; font-size: 9.5pt; margin-bottom: 1em; }
+  .brief {
+    background: #f5f6ff;
+    padding: 12px 14px;
+    border-left: 4px solid ${c.accentOrange};
+    border-radius: 4px;
+  }
+  ul, ol { padding-left: 20px; margin: 0.4em 0; }
   li { margin: 0.15em 0; }
   .task {
-    border-left: 3px solid #fbbf24;
+    border-left: 3px solid ${c.primaryNavy};
     padding: 8px 12px;
     margin: 12px 0;
-    background: #fffdf7;
+    background: #fafbff;
     page-break-inside: avoid;
   }
-  .task-head { color: #92400e; font-weight: 600; font-size: 10.5pt; margin-bottom: 4px; }
+  .task-head { color: ${c.primaryNavy}; font-weight: 700; font-size: 10.5pt; margin-bottom: 4px; }
+  .task-step { color: ${c.accentOrange}; font-weight: 700; }
   .evidence-tag {
     display: inline-block;
-    background: #f3f4f6;
+    background: ${c.primaryNavy};
+    color: ${c.white};
     border-radius: 999px;
-    padding: 1px 8px;
+    padding: 2px 9px;
     margin: 2px 3px 2px 0;
     font-size: 8.5pt;
-    color: #374151;
   }
   .ai-critique {
-    background: #fef3c7;
-    border-radius: 6px;
+    background: #fff6e5;
+    border-left: 3px solid ${c.accentOrange};
+    border-radius: 4px;
     padding: 8px 10px;
     margin-top: 6px;
     font-size: 10pt;
   }
-  .ai-critique strong { color: #92400e; }
+  .ai-critique strong { color: ${c.primaryNavy}; }
   .prompt-block { margin-top: 6px; font-size: 10pt; }
-  .prompt-block .label { font-size: 8.5pt; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; }
-  .prompt-block .value { font-style: italic; color: #374151; }
-  table.rubric { width: 100%; border-collapse: collapse; font-size: 9.5pt; page-break-inside: avoid; }
-  table.rubric th { background: #fef3c7; color: #92400e; text-align: left; padding: 6px 8px; border: 1px solid #fcd34d; }
-  table.rubric td { padding: 6px 8px; border: 1px solid #e5e7eb; vertical-align: top; }
-  table.rubric td.criterion { font-weight: 600; }
-  .notes-grid { display: grid; grid-template-columns: 130px 1fr; gap: 4px 12px; font-size: 10pt; }
-  .notes-grid dt { font-weight: 600; color: #374151; }
-  .notes-grid dd { margin: 0; color: #4b5563; }
+  .prompt-block .label {
+    font-size: 8.5pt;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: ${c.gray};
+    font-weight: 600;
+  }
+  .prompt-block .value { font-style: italic; color: ${c.grayDark}; }
+  table.rubric {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 9.5pt;
+    page-break-inside: avoid;
+  }
+  table.rubric th {
+    background: ${c.primaryNavy};
+    color: ${c.white};
+    text-align: left;
+    padding: 6px 8px;
+    border: 1px solid ${c.primaryNavyDark};
+    font-weight: 600;
+  }
+  table.rubric td {
+    padding: 6px 8px;
+    border: 1px solid #d1d5db;
+    vertical-align: top;
+  }
+  table.rubric td.criterion {
+    font-weight: 700;
+    color: ${c.primaryNavy};
+    background: #f5f6ff;
+  }
+  .notes-grid {
+    display: grid;
+    grid-template-columns: 130px 1fr;
+    gap: 4px 12px;
+    font-size: 10pt;
+  }
+  .notes-grid dt { font-weight: 700; color: ${c.primaryNavy}; }
+  .notes-grid dd { margin: 0; color: ${c.grayDark}; }
   .exemplar {
-    border: 1px solid #e5e7eb;
+    border: 1px solid #d1d5db;
     border-radius: 6px;
     padding: 8px 10px;
     margin-bottom: 8px;
     page-break-inside: avoid;
   }
-  .exemplar-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px; font-size: 10pt; }
-  .strong-label { color: #047857; font-weight: 600; }
-  .weak-label { color: #b91c1c; font-weight: 600; }
+  .exemplar-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 4px;
+    font-size: 10pt;
+  }
+  .strong-label { color: #047857; font-weight: 700; }
+  .weak-label { color: #b91c1c; font-weight: 700; }
   .workbook-page {
-    border: 1px solid #e5e7eb;
+    border: 1px solid #d1d5db;
     border-radius: 6px;
     padding: 10px 12px;
     margin-bottom: 8px;
     page-break-inside: avoid;
   }
-  .footer-note {
+  .footer-bar {
     margin-top: 1.5em;
-    padding-top: 0.6em;
-    border-top: 1px solid #e5e7eb;
-    color: #6b7280;
+    padding: 10px 18mm;
+    border-top: 2px solid ${c.accentOrange};
+    background: ${c.primaryNavy};
+    color: ${c.white};
     font-size: 9pt;
+    display: flex;
+    justify-content: space-between;
+  }
+  .footer-bar .right { opacity: 0.85; }
+  code {
+    font-family: "Consolas", "Monaco", monospace;
+    background: #f5f6ff;
+    padding: 1px 5px;
+    border-radius: 3px;
+    color: ${c.primaryNavy};
+    font-size: 9.5pt;
   }
 </style>
 </head>
 <body>
+
+<div class="brand-bar">
+  <div class="brand-left">
+    <div class="brand-mark">A</div>
+    <div>
+      <div class="brand-name">${ANNIX_BRAND.name}</div>
+      <div class="brand-tagline">${esc(ANNIX_BRAND.appName)}</div>
+    </div>
+  </div>
+  <div class="brand-app">${esc(ANNIX_BRAND.domain)}</div>
+</div>
+
+<div class="page">
+
 <h1>${esc(assignment.title)}</h1>
 <div class="meta">
   ${esc(cap(assignment.subject))} · ${esc(assignment.topic)} · ages ${esc(assignment.ageBucket)} · ${esc(assignment.duration)} · ${esc(assignment.outputType)} · ${esc(assignment.difficulty)}
@@ -105,7 +201,7 @@ ${assignment.learningObjective ? `<h2>Learning objective</h2><p>${esc(assignment
 ${
   assignment.successCriteria.length
     ? `<h2>Success criteria</h2><ul>${assignment.successCriteria
-        .map((c) => `<li>${esc(c)}</li>`)
+        .map((c2) => `<li>${esc(c2)}</li>`)
         .join("")}</ul>`
     : ""
 }
@@ -115,7 +211,7 @@ ${assignment.tasks
   .map(
     (task) => `
   <div class="task">
-    <div class="task-head">Step ${task.step}: ${esc(task.title)}</div>
+    <div class="task-head"><span class="task-step">Step ${task.step}:</span> ${esc(task.title)}</div>
     <div>${esc(task.studentInstruction)}</div>
     ${
       task.requiredEvidence.length
@@ -160,7 +256,7 @@ ${
 
 ${
   assignment.evidenceChecklist.length
-    ? `<h2>Evidence checklist</h2><ul>${assignment.evidenceChecklist.map((c) => `<li>${esc(c)}</li>`).join("")}</ul>`
+    ? `<h2>Evidence checklist</h2><ul>${assignment.evidenceChecklist.map((c2) => `<li>${esc(c2)}</li>`).join("")}</ul>`
     : ""
 }
 
@@ -239,14 +335,20 @@ ${
       <div class="workbook-page">
         <h3>${esc(page.pageTitle)}</h3>
         <p>${esc(page.content)}</p>
-        ${page.imagePromptHint ? `<p class="footer-note">Suggested image: ${esc(page.imagePromptHint)}</p>` : ""}
+        ${page.imagePromptHint ? `<p style="color:${c.gray};font-size:9pt;margin-top:4px;font-style:italic">Suggested image: ${esc(page.imagePromptHint)}</p>` : ""}
       </div>`,
       )
       .join("")}`
     : ""
 }
 
-<div class="footer-note">Generated by Teacher Assistant · annix.co.za</div>
+</div>
+
+<div class="footer-bar">
+  <div>Generated by ${ANNIX_BRAND.name} ${esc(ANNIX_BRAND.appName)}</div>
+  <div class="right">${esc(ANNIX_BRAND.domain)}</div>
+</div>
+
 </body>
 </html>`;
 }
