@@ -1,5 +1,6 @@
 "use client";
 
+import { useToast } from "@/app/components/Toast";
 import type {
   JobPosting,
   JobSkill,
@@ -7,6 +8,7 @@ import type {
   SkillProficiency,
   UpdateJobWizardPayload,
 } from "@/app/lib/api/cvAssistantApi";
+import { useCvNixSkillSuggestions } from "@/app/lib/query/hooks";
 import { SKILL_IMPORTANCE_OPTIONS, SKILL_PROFICIENCY_OPTIONS } from "../../constants/skill-options";
 import { arrOr, strOr } from "../../utils/value-helpers";
 import { FieldLabel, inputClass, StepShell, selectClass } from "../StepShell";
@@ -41,16 +43,55 @@ export function SkillsRequirementsStep({ draft, onChange }: SkillsRequirementsSt
 
   const removeSkill = (index: number) => onChange({ skills: skills.filter((_, i) => i !== index) });
 
+  const { showToast } = useToast();
+  const skillSuggestions = useCvNixSkillSuggestions();
+  const isSuggesting = skillSuggestions.isPending;
+  const handleSuggest = () => {
+    skillSuggestions.mutate(draft.id, {
+      onSuccess: (data) => {
+        const suggested: JobSkill[] = data.skills.map((s) => ({
+          name: s.name,
+          importance: s.importance,
+          proficiency: s.proficiency,
+          yearsExperience: s.yearsExperience,
+          evidenceRequired: s.evidenceRequired,
+        }));
+        const merged: JobSkill[] = [...skills];
+        for (const s of suggested) {
+          const lowerName = s.name.toLowerCase();
+          const dupe = merged.some((existing) => existing.name.toLowerCase() === lowerName);
+          if (!dupe) merged.push(s);
+        }
+        onChange({ skills: merged });
+        showToast(`Nix added ${suggested.length} skill suggestions.`, "success");
+      },
+      onError: () => {
+        showToast("Nix couldn't suggest skills right now. Try again.", "error");
+      },
+    });
+  };
+
   return (
     <StepShell
       title="Skills & Requirements"
       subtitle="Structured skills make Nix's matching dramatically better. Phase 2 will suggest a starter set from your title and outcomes."
     >
       <div className="space-y-3">
-        <h3 className="font-semibold text-[#1a1a40]">Required & Preferred Skills</h3>
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold text-[#1a1a40]">Required & Preferred Skills</h3>
+          <button
+            type="button"
+            onClick={handleSuggest}
+            disabled={isSuggesting}
+            className="text-xs px-3 py-1.5 bg-[#FFA500] text-[#1a1a40] font-semibold rounded-lg hover:bg-[#FFB733] transition-all disabled:opacity-50"
+          >
+            {isSuggesting ? "Nix thinking…" : "Suggest skills"}
+          </button>
+        </div>
         {skills.length === 0 && (
           <p className="text-sm text-gray-500 italic">
-            No skills yet. Add the first one — Nix will suggest more in Phase 2.
+            No skills yet. Click <strong>Suggest skills</strong> to have Nix propose a starter set
+            from your title and outcomes.
           </p>
         )}
         <ul className="space-y-3">

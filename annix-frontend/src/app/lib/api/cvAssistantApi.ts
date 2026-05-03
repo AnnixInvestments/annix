@@ -779,6 +779,52 @@ class CvAssistantApiClient {
     return this.request(`/cv-assistant/job-postings/${id}/publish`, { method: "POST" });
   }
 
+  // Phase 2 Nix endpoints
+  async nixTitleSuggestions(
+    id: number,
+    title?: string,
+  ): Promise<{
+    normalizedTitle: string;
+    suggestedTitles: string[];
+    seniorityLevel: string | null;
+    titleQualityScore: number;
+    warning: string | null;
+  }> {
+    return this.request(`/cv-assistant/job-postings/${id}/nix/title-suggestions`, {
+      method: "POST",
+      body: JSON.stringify(title ? { title } : {}),
+    });
+  }
+
+  async nixDescription(id: number): Promise<{
+    candidateFacingDescription: string;
+    responsibilities: string[];
+    requirements: string[];
+    successMetrics: string[];
+    missingInformation: string[];
+    improvementSuggestions: string[];
+  }> {
+    return this.request(`/cv-assistant/job-postings/${id}/nix/description`, {
+      method: "POST",
+    });
+  }
+
+  async nixSkillSuggestions(id: number): Promise<{
+    skills: Array<{
+      name: string;
+      importance: "required" | "preferred";
+      proficiency: "basic" | "intermediate" | "advanced" | "expert";
+      yearsExperience: number | null;
+      evidenceRequired: string | null;
+      reasoning: string | null;
+    }>;
+    notes: string[];
+  }> {
+    return this.request(`/cv-assistant/job-postings/${id}/nix/skill-suggestions`, {
+      method: "POST",
+    });
+  }
+
   async candidates(filters?: { status?: string; jobPostingId?: number }): Promise<Candidate[]> {
     const params = new URLSearchParams();
     if (filters?.status) params.append("status", filters.status);

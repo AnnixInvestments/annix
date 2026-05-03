@@ -120,3 +120,23 @@ export function useCvPublishJobDraft() {
     },
   });
 }
+
+// Phase 2 Nix hooks
+export function useCvNixTitleSuggestions() {
+  return useMutation({
+    mutationFn: ({ id, title }: { id: number; title?: string }) =>
+      cvAssistantApiClient.nixTitleSuggestions(id, title),
+  });
+}
+
+export function useCvNixDescription() {
+  return useMutation({
+    mutationFn: (id: number) => cvAssistantApiClient.nixDescription(id),
+  });
+}
+
+export function useCvNixSkillSuggestions() {
+  return useMutation({
+    mutationFn: (id: number) => cvAssistantApiClient.nixSkillSuggestions(id),
+  });
+}

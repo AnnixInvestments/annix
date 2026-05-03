@@ -1,10 +1,12 @@
 "use client";
 
+import { useToast } from "@/app/components/Toast";
 import type {
   JobPosting,
   JobSuccessMetric,
   UpdateJobWizardPayload,
 } from "@/app/lib/api/cvAssistantApi";
+import { useCvNixDescription } from "@/app/lib/query/hooks";
 import { arrOr, strOr } from "../../utils/value-helpers";
 import { FieldLabel, inputClass, StepShell, textareaClass } from "../StepShell";
 
@@ -23,6 +25,20 @@ export function RoleOutcomesStep({ draft, onChange }: RoleOutcomesStepProps) {
   const descriptionDefault = strOr(draft.description);
   const threeMonthMetrics = filterMetrics(successMetrics, "3_months");
   const twelveMonthMetrics = filterMetrics(successMetrics, "12_months");
+  const { showToast } = useToast();
+  const nixDescription = useCvNixDescription();
+  const isDrafting = nixDescription.isPending;
+  const handleDraft = () => {
+    nixDescription.mutate(draft.id, {
+      onSuccess: (data) => {
+        onChange({ description: data.candidateFacingDescription });
+        showToast("Nix drafted a description — review and tweak as needed.", "success");
+      },
+      onError: () => {
+        showToast("Nix couldn't draft right now. Try again in a moment.", "error");
+      },
+    });
+  };
 
   const updateMetric = (timeframe: JobSuccessMetric["timeframe"], index: number, value: string) => {
     const target = filterMetrics(successMetrics, timeframe);
@@ -86,10 +102,21 @@ export function RoleOutcomesStep({ draft, onChange }: RoleOutcomesStepProps) {
       </div>
 
       <div className="space-y-2">
-        <FieldLabel htmlFor="job-description" hint="Will be auto-drafted by Nix in Phase 2.">
-          Description
-        </FieldLabel>
+        <div className="flex items-center justify-between">
+          <FieldLabel htmlFor="job-description" hint="Nix can draft this from the inputs above.">
+            Description
+          </FieldLabel>
+          <button
+            type="button"
+            disabled={isDrafting}
+            onClick={handleDraft}
+            className="text-xs px-3 py-1.5 bg-[#FFA500] text-[#1a1a40] font-semibold rounded-lg hover:bg-[#FFB733] transition-all disabled:opacity-50"
+          >
+            {isDrafting ? "Nix is drafting…" : "Help me write this"}
+          </button>
+        </div>
         <textarea
+          key={descriptionDefault}
           id="job-description"
           name="description"
           className={textareaClass}
