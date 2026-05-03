@@ -39,6 +39,10 @@ import { ExternalJob } from "./entities/external-job.entity";
 import { JobMarketSource } from "./entities/job-market-source.entity";
 import { JobPosting } from "./entities/job-posting.entity";
 import { JobPostingPortalPosting } from "./entities/job-posting-portal-posting.entity";
+import { JobScreeningQuestion } from "./entities/job-screening-question.entity";
+import { JobSkill } from "./entities/job-skill.entity";
+import { JobSuccessMetric } from "./entities/job-success-metric.entity";
+import { SalaryBenchmark } from "./entities/salary-benchmark.entity";
 import { CvAssistantAuthGuard } from "./guards/cv-assistant-auth.guard";
 import { CvAssistantRoleGuard } from "./guards/cv-assistant-role.guard";
 import { FacebookPortalAdapter } from "./services/adapters/facebook-portal-adapter.service";
@@ -90,6 +94,10 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
       CvAssistantIndividualDocument,
       CvAssistantCompany,
       JobPostingPortalPosting,
+      JobSkill,
+      JobSuccessMetric,
+      JobScreeningQuestion,
+      SalaryBenchmark,
     ]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
