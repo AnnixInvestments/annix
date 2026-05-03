@@ -68,6 +68,7 @@ import { JobMatchService } from "./services/job-match.service";
 import { JobPostingService } from "./services/job-posting.service";
 import { MarketInsightsService } from "./services/market-insights.service";
 import { NixJobAssistService } from "./services/nix-job-assist.service";
+import { NixSeekerAssistService } from "./services/nix-seeker-assist.service";
 import { PopiaService } from "./services/popia.service";
 import { PortalAdapterRegistry } from "./services/portal-adapter-registry.service";
 import { PortalPostingOrchestrator } from "./services/portal-posting-orchestrator.service";
@@ -170,6 +171,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     IndeedPortalAdapter,
     FacebookPortalAdapter,
     NixJobAssistService,
+    NixSeekerAssistService,
     SalaryBenchmarkService,
   ],
   exports: [CvAssistantAuthService],

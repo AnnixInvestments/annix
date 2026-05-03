@@ -562,6 +562,40 @@ export interface IndividualProfileStatus {
   cvOriginalFilename: string | null;
 }
 
+export type NixSeekerImprovementArea =
+  | "summary"
+  | "skills"
+  | "experience"
+  | "education"
+  | "certifications"
+  | "formatting"
+  | "keywords"
+  | "references"
+  | "other";
+
+export type NixSeekerPriority = "high" | "medium" | "low";
+export type NixSeekerRankingPotential = "low" | "medium" | "strong";
+
+export interface NixSeekerCvImprovement {
+  area: NixSeekerImprovementArea;
+  priority: NixSeekerPriority;
+  finding: string;
+  suggestion: string;
+  example: string | null;
+  rankingImpact: NixSeekerPriority;
+}
+
+export interface NixSeekerCvAssessment {
+  overallScore: number;
+  rankingPotential: NixSeekerRankingPotential;
+  headline: string;
+  strengths: string[];
+  improvements: NixSeekerCvImprovement[];
+  missingDocumentSuggestions: string[];
+  keywordGaps: string[];
+  rewriteSummary: string | null;
+}
+
 export interface CandidateJobMatchDetails {
   embeddingSimilarity: number;
   skillsOverlap: number;
@@ -797,6 +831,18 @@ class CvAssistantApiClient {
     return this.request(`/cv-assistant/job-postings/${id}/nix/title-suggestions`, {
       method: "POST",
       body: JSON.stringify(title ? { title } : {}),
+    });
+  }
+
+  async nixOutcomesDraft(id: number): Promise<{
+    mainPurpose: string;
+    companyContext: string;
+    description: string;
+    successIn3Months: string[];
+    successIn12Months: string[];
+  }> {
+    return this.request(`/cv-assistant/job-postings/${id}/nix/outcomes-draft`, {
+      method: "POST",
     });
   }
 
@@ -1294,6 +1340,10 @@ class CvAssistantApiClient {
 
   async withdrawMyConsent(): Promise<{ message: string; erasedCandidates: number }> {
     return this.request("/cv-assistant/me/withdraw-consent", { method: "POST" });
+  }
+
+  async nixWizardCvImprovements(): Promise<NixSeekerCvAssessment> {
+    return this.request("/cv-assistant/me/nix-wizard/cv-improvements", { method: "POST" });
   }
 
   async candidateDataExport(candidateId: number): Promise<unknown> {

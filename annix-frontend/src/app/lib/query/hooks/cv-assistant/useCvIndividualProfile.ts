@@ -5,6 +5,7 @@ import {
   type IndividualDocumentKind,
   type IndividualNotificationPreferences,
   type IndividualProfileStatus,
+  type NixSeekerCvAssessment,
 } from "@/app/lib/api/cvAssistantApi";
 import { cvAssistantKeys } from "../../keys";
 
@@ -97,5 +98,11 @@ export function useCvWithdrawMyConsent() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: cvAssistantKeys.individualProfile.all });
     },
+  });
+}
+
+export function useCvNixWizardImprovements() {
+  return useMutation<NixSeekerCvAssessment>({
+    mutationFn: () => cvAssistantApiClient.nixWizardCvImprovements(),
   });
 }

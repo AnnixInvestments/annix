@@ -7,6 +7,7 @@ import { JobPosting } from "../entities/job-posting.entity";
 import {
   descriptionPrompt,
   type NixDescriptionResponse,
+  type NixOutcomesDraftResponse,
   type NixQualityScoreResponse,
   type NixSalaryGuidanceResponse,
   type NixScreeningQuestionsResponse,
@@ -14,6 +15,7 @@ import {
   type NixSourcingQueriesResponse,
   type NixTitleSuggestionsResponse,
   type NixVolumePredictionResponse,
+  outcomesDraftPrompt,
   parseNixJson,
   qualityScorePrompt,
   salaryGuidancePrompt,
@@ -55,6 +57,32 @@ export class NixJobAssistService {
       const prompt = titleSuggestionsPrompt(title);
       const result = await this.callAi(prompt);
       return parseNixJson<NixTitleSuggestionsResponse>(result.content);
+    });
+  }
+
+  async outcomesDraft(companyId: number, jobPostingId: number): Promise<NixOutcomesDraftResponse> {
+    const posting = await this.jobPostingRepo.findOne({
+      where: { id: jobPostingId, companyId },
+      relations: ["company"],
+    });
+    if (!posting) throw new NotFoundException("Job posting not found");
+    if (!posting.title || posting.title === "Untitled draft") {
+      throw new NotFoundException("Set a job title in step 1 before drafting outcomes");
+    }
+
+    return this.metrics.time(METRIC_CATEGORY, "outcomes-draft", async () => {
+      const prompt = outcomesDraftPrompt({
+        title: posting.title,
+        industry: posting.industry,
+        city: posting.location,
+        province: posting.province,
+        seniorityLevel: posting.seniorityLevel,
+        workMode: posting.workMode,
+        employmentType: posting.employmentType,
+        companyName: posting.company?.name ?? null,
+      });
+      const result = await this.callAi(prompt);
+      return parseNixJson<NixOutcomesDraftResponse>(result.content);
     });
   }
 

@@ -11,6 +11,7 @@ import {
 } from "@/app/lib/query/hooks";
 import { IndividualDocumentUploader } from "../components/IndividualDocumentUploader";
 import { MissingDocsWarningModal } from "../components/MissingDocsWarningModal";
+import { NixWizardPanel } from "../components/NixWizardPanel";
 
 export default function SeekerProfilePage() {
   const router = useRouter();
@@ -135,6 +136,8 @@ export default function SeekerProfilePage() {
           {deleteError}
         </div>
       )}
+
+      <NixWizardPanel hasCv={hasCv} />
 
       {hasCv && (
         <div className="bg-white rounded-xl border border-[#e0e0f5] p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">

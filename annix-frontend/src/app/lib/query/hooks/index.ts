@@ -570,6 +570,7 @@ export {
   useCvMyDocuments,
   useCvMyNotificationPreferences,
   useCvMyProfileStatus,
+  useCvNixWizardImprovements,
   useCvRequestMyAccountDeletion,
   useCvUpdateMyNotificationPreferences,
   useCvUploadMyDocument,

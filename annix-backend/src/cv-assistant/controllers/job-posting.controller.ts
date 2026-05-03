@@ -109,6 +109,14 @@ export class JobPostingController {
     return this.nixJobAssist.titleSuggestions(req.user.companyId, id, body.title);
   }
 
+  @Post(":id/nix/outcomes-draft")
+  async nixOutcomesDraft(
+    @Request() req: { user: { companyId: number } },
+    @Param("id", ParseIntPipe) id: number,
+  ) {
+    return this.nixJobAssist.outcomesDraft(req.user.companyId, id);
+  }
+
   @Post(":id/nix/description")
   async nixDescription(
     @Request() req: { user: { companyId: number } },

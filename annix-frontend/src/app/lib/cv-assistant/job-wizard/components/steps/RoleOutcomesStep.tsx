@@ -7,6 +7,7 @@ import {
   type JobSuccessMetric,
   type UpdateJobWizardPayload,
 } from "@/app/lib/api/cvAssistantApi";
+import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import { useNixCall } from "../../hooks/useNixCall";
 import { arrOr, strOr } from "../../utils/value-helpers";
 import { FieldLabel, inputClass, StepShell, textareaClass } from "../StepShell";
@@ -27,17 +28,69 @@ export function RoleOutcomesStep({ draft, onChange }: RoleOutcomesStepProps) {
   const threeMonthMetrics = filterMetrics(successMetrics, "3_months");
   const twelveMonthMetrics = filterMetrics(successMetrics, "12_months");
   const { showToast } = useToast();
+  const { confirm, ConfirmDialog } = useConfirm();
   const nixDescription = useNixCall({
     operation: "description",
     label: "Nix is drafting your job description…",
     fn: (id: number) => cvAssistantApiClient.nixDescription(id),
   });
+  const nixOutcomesDraft = useNixCall({
+    operation: "outcomes-draft",
+    label: "Nix is drafting your role outcomes…",
+    fn: (id: number) => cvAssistantApiClient.nixOutcomesDraft(id),
+  });
   const isDrafting = nixDescription.isPending;
+  const isAutofilling = nixOutcomesDraft.isPending;
+  const titleReady = Boolean(draft.title) && draft.title !== "Untitled draft";
+  const hasExistingContent = Boolean(
+    mainPurposeDefault.trim() ||
+      descriptionDefault.trim() ||
+      companyContextDefault.trim() ||
+      successMetrics.length > 0,
+  );
+
   const handleDraft = () => {
     nixDescription.mutate(draft.id, {
       onSuccess: (data) => {
         onChange({ description: data.candidateFacingDescription });
         showToast("Nix drafted a description — review and tweak as needed.", "success");
+      },
+      onError: () => {
+        showToast("Nix couldn't draft right now. Try again in a moment.", "error");
+      },
+    });
+  };
+
+  const handleAutofill = async () => {
+    if (hasExistingContent) {
+      const ok = await confirm({
+        title: "Replace your existing inputs?",
+        message:
+          "Nix will overwrite Main Purpose, Description, Company Context and Success outcomes with a fresh draft based on Step 1. You can still edit each field afterwards.",
+        confirmLabel: "Replace with Nix draft",
+        variant: "warning",
+      });
+      if (!ok) return;
+    }
+    nixOutcomesDraft.mutate(draft.id, {
+      onSuccess: (data) => {
+        const threeMonth = data.successIn3Months.map((metric, sortOrder) => ({
+          timeframe: "3_months" as const,
+          metric,
+          sortOrder,
+        }));
+        const twelveMonth = data.successIn12Months.map((metric, sortOrder) => ({
+          timeframe: "12_months" as const,
+          metric,
+          sortOrder,
+        }));
+        onChange({
+          mainPurpose: data.mainPurpose,
+          companyContext: data.companyContext,
+          description: data.description,
+          successMetrics: [...threeMonth, ...twelveMonth],
+        });
+        showToast("Nix drafted your role outcomes — review and tweak as needed.", "success");
       },
       onError: () => {
         showToast("Nix couldn't draft right now. Try again in a moment.", "error");
@@ -74,6 +127,26 @@ export function RoleOutcomesStep({ draft, onChange }: RoleOutcomesStepProps) {
       title="Role Outcomes"
       subtitle="Describe what this person will do and what success looks like. Phase 2 lets Nix turn these into a polished candidate-facing description."
     >
+      {ConfirmDialog}
+      <div className="rounded-lg border border-[#FFA500]/40 bg-[#FFA500]/10 p-4 flex items-start gap-3 -mt-2">
+        <div className="flex-1">
+          <p className="text-sm font-semibold text-[#1a1a40]">Let Nix draft this for you</p>
+          <p className="text-xs text-[#1a1a40]/70 mt-0.5">
+            Based on the title, location, seniority and other basics from Step 1, Nix can draft Main
+            Purpose, Description, Company Context and Success outcomes. You can edit anything
+            afterwards.
+          </p>
+        </div>
+        <button
+          type="button"
+          disabled={isAutofilling || !titleReady}
+          onClick={handleAutofill}
+          className="px-4 py-2 bg-[#FFA500] text-[#1a1a40] font-semibold rounded-lg hover:bg-[#FFB733] transition-all disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap text-sm"
+        >
+          {isAutofilling ? "Drafting…" : "Draft with Nix"}
+        </button>
+      </div>
+
       <div className="space-y-2">
         <FieldLabel
           htmlFor="company-context"
@@ -82,6 +155,7 @@ export function RoleOutcomesStep({ draft, onChange }: RoleOutcomesStepProps) {
           Company Context
         </FieldLabel>
         <textarea
+          key={`ctx-${companyContextDefault}`}
           id="company-context"
           name="companyContext"
           className={textareaClass}
@@ -96,6 +170,7 @@ export function RoleOutcomesStep({ draft, onChange }: RoleOutcomesStepProps) {
           Main Purpose *
         </FieldLabel>
         <input
+          key={`mp-${mainPurposeDefault}`}
           id="main-purpose"
           name="mainPurpose"
           type="text"
@@ -171,7 +246,7 @@ function SuccessMetricList({
       <h3 className="text-sm font-semibold text-[#1a1a40]">{title}</h3>
       <ul className="space-y-2">
         {metrics.map((metric, i) => (
-          <li key={i} className="flex items-start gap-2">
+          <li key={`${i}-${metric.metric}`} className="flex items-start gap-2">
             <input
               type="text"
               className={inputClass}

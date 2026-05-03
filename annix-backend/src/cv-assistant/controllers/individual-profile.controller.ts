@@ -21,11 +21,15 @@ import {
 import { UploadIndividualDocumentDto } from "../dto/individual-profile.dto";
 import { CvAssistantAuthGuard } from "../guards/cv-assistant-auth.guard";
 import { IndividualProfileService } from "../services/individual-profile.service";
+import { NixSeekerAssistService } from "../services/nix-seeker-assist.service";
 
 @Controller("cv-assistant/me")
 @UseGuards(CvAssistantAuthGuard)
 export class IndividualProfileController {
-  constructor(private readonly individualProfileService: IndividualProfileService) {}
+  constructor(
+    private readonly individualProfileService: IndividualProfileService,
+    private readonly nixSeekerAssistService: NixSeekerAssistService,
+  ) {}
 
   @Get("profile/status")
   status(@Request() req: { user: { id: number } }) {
@@ -94,5 +98,10 @@ export class IndividualProfileController {
   @Post("withdraw-consent")
   withdrawConsent(@Request() req: { user: { id: number } }) {
     return this.individualProfileService.withdrawConsent(req.user.id);
+  }
+
+  @Post("nix-wizard/cv-improvements")
+  nixCvImprovements(@Request() req: { user: { id: number } }) {
+    return this.nixSeekerAssistService.cvImprovements(req.user.id);
   }
 }

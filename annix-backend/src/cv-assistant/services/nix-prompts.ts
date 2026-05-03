@@ -41,6 +41,14 @@ export interface NixDescriptionResponse {
   improvementSuggestions: string[];
 }
 
+export interface NixOutcomesDraftResponse {
+  mainPurpose: string;
+  companyContext: string;
+  description: string;
+  successIn3Months: string[];
+  successIn12Months: string[];
+}
+
 export interface NixSkillSuggestion {
   name: string;
   importance: "required" | "preferred";
@@ -146,6 +154,47 @@ Rules:
 - sampleResponsibilities: 3 short bullet points typical for THIS role. Keep them recognisable to SA candidates.
 - scoreReason: a single sentence explaining why this title got the score it did. Be concrete — name the aspect (e.g. "lacks seniority cue", "doesn't say external/internal", "more searchable as 'Sales Consultant' on Pnet"). Don't restate the score.
 - improvementTips: 1-3 short bullets the user could action to raise the score. Empty array if the score is already 95+. Each tip should be actionable, not abstract — "Add 'Senior' for a sharper match" not "make it more specific".`,
+  };
+}
+
+export function outcomesDraftPrompt(input: {
+  title: string;
+  industry: string | null;
+  city: string | null;
+  province: string | null;
+  seniorityLevel: string | null;
+  workMode: string | null;
+  employmentType: string | null;
+  companyName: string | null;
+}): NixPrompt {
+  return {
+    system: SA_SYSTEM_PREAMBLE,
+    user: `Draft Step 2 of a job-posting wizard from these Step 1 basics:
+
+Title: ${input.title}
+Industry: ${input.industry || "(unspecified)"}
+Location: ${input.city || "(unspecified)"}, ${input.province || "(unspecified)"}
+Seniority: ${input.seniorityLevel || "(unspecified)"}
+Work mode: ${input.workMode || "(unspecified)"}
+Employment type: ${input.employmentType || "(unspecified)"}
+Company name: ${input.companyName || "(unspecified)"}
+
+Return JSON with this exact shape:
+{
+  "mainPurpose": "string — ONE sentence on why this role exists",
+  "companyContext": "string — a SHORT paragraph (2-3 sentences) the user can edit. Reference the industry and location if known. Use [bracketed placeholders] like [team size] or [year founded] for facts you cannot infer.",
+  "description": "string — 120-200 words covering day-to-day responsibilities and what the candidate would actually do. Markdown OK. No corporate fluff. Written as a draft the user will tweak.",
+  "successIn3Months": ["string", "string", "string"],
+  "successIn12Months": ["string", "string", "string"]
+}
+
+Rules:
+- successIn3Months and successIn12Months must each have exactly 3 entries — concrete, ideally measurable outcomes (e.g. "Closed first R250k of new business", "Onboarded the existing client base and identified top 5 growth accounts"). Avoid generic phrases like "Be productive" or "Settle in".
+- 3-month outcomes = ramp / proof / first deliverables. 12-month outcomes = full ownership / measurable impact.
+- mainPurpose: speak in active voice. "Drive new external sales for our industrial rubber products in Gauteng." — NOT "The purpose of this role is to…".
+- description: avoid bullet lists for responsibilities — prefer 2-3 short paragraphs. The wizard offers a "Help me write this" button later that does a polished candidate-facing version, so this draft can be working-level.
+- companyContext: do NOT invent specifics about the company (team size, founding year, awards). Use placeholders the user fills in. Industry + location can be referenced from the input.
+- South African context: ZAR, NQF, SAQA where relevant. Avoid US-isms.`,
   };
 }
 
@@ -606,4 +655,140 @@ export function summariseSuccessMetrics(posting: JobPosting): { in3: string[]; i
   const in3 = metrics.filter((m) => m.timeframe === "3_months").map((m) => m.metric);
   const in12 = metrics.filter((m) => m.timeframe === "12_months").map((m) => m.metric);
   return { in3, in12 };
+}
+
+export interface NixSeekerCvImprovement {
+  area:
+    | "summary"
+    | "skills"
+    | "experience"
+    | "education"
+    | "certifications"
+    | "formatting"
+    | "keywords"
+    | "references"
+    | "other";
+  priority: "high" | "medium" | "low";
+  finding: string;
+  suggestion: string;
+  example: string | null;
+  rankingImpact: "high" | "medium" | "low";
+}
+
+export interface NixSeekerCvAssessmentResponse {
+  overallScore: number;
+  rankingPotential: "low" | "medium" | "strong";
+  headline: string;
+  strengths: string[];
+  improvements: NixSeekerCvImprovement[];
+  missingDocumentSuggestions: string[];
+  keywordGaps: string[];
+  rewriteSummary: string | null;
+}
+
+export function seekerCvImprovementPrompt(input: {
+  cvText: string | null;
+  extractedCv: {
+    candidateName: string | null;
+    summary: string | null;
+    skills: string[];
+    experienceYears: number | null;
+    education: string[];
+    certifications: string[];
+    professionalRegistrations: string[];
+    saQualifications: string[];
+    location: string | null;
+  } | null;
+  supportingDocuments: Array<{
+    kind: "qualification" | "certificate";
+    originalFilename: string;
+    label: string | null;
+  }>;
+}): NixPrompt {
+  const supporting =
+    input.supportingDocuments.length > 0
+      ? input.supportingDocuments
+          .map((d) => `- ${d.kind}: ${d.originalFilename}${d.label ? ` (${d.label})` : ""}`)
+          .join("\n")
+      : "(none uploaded)";
+
+  const extracted = input.extractedCv;
+  const skillSummary =
+    extracted && extracted.skills.length > 0 ? extracted.skills.join(", ") : "(none extracted)";
+  const educationSummary =
+    extracted && extracted.education.length > 0
+      ? extracted.education.join(" | ")
+      : "(none extracted)";
+  const certificationSummary =
+    extracted && extracted.certifications.length > 0
+      ? extracted.certifications.join(" | ")
+      : "(none extracted)";
+  const registrationSummary =
+    extracted && extracted.professionalRegistrations.length > 0
+      ? extracted.professionalRegistrations.join(", ")
+      : "(none)";
+  const saQualSummary =
+    extracted && extracted.saQualifications.length > 0
+      ? extracted.saQualifications.join(", ")
+      : "(none)";
+
+  const cvBody = input.cvText
+    ? input.cvText.length > 8000
+      ? `${input.cvText.slice(0, 8000)}\n\n[CV truncated for prompt — first 8 000 chars shown]`
+      : input.cvText
+    : "(CV text not available — work from extracted fields and supporting documents)";
+
+  return {
+    system: `${SA_SYSTEM_PREAMBLE} You are reviewing an individual job seeker's CV and supporting documents to help them rank higher in candidate listings on the Annix CV Assistant. Be specific, kind, and actionable. Focus on changes that materially improve match scores against South African employer postings.`,
+    user: `Review this CV and the seeker's supporting documents. Identify concrete improvements that would lift their candidate ranking.
+
+Candidate name: ${extracted?.candidateName ?? "(unknown)"}
+Location: ${extracted?.location ?? "(unspecified)"}
+Years of experience (extracted): ${extracted?.experienceYears ?? "(unknown)"}
+Summary (extracted): ${extracted?.summary ?? "(none)"}
+Skills (extracted): ${skillSummary}
+Education (extracted): ${educationSummary}
+Certifications (extracted): ${certificationSummary}
+Professional registrations (extracted): ${registrationSummary}
+SA qualifications (extracted): ${saQualSummary}
+
+Supporting documents the seeker has uploaded:
+${supporting}
+
+Raw CV text:
+"""
+${cvBody}
+"""
+
+Return JSON with this exact shape:
+{
+  "overallScore": 0-100,
+  "rankingPotential": "low" | "medium" | "strong",
+  "headline": "string — 1 sentence verdict the seeker will read first",
+  "strengths": ["string — what is already working", ...],
+  "improvements": [
+    {
+      "area": "summary" | "skills" | "experience" | "education" | "certifications" | "formatting" | "keywords" | "references" | "other",
+      "priority": "high" | "medium" | "low",
+      "finding": "string — what's wrong / weak",
+      "suggestion": "string — what to do about it",
+      "example": "string or null — a concrete rewrite or addition the seeker could paste in",
+      "rankingImpact": "high" | "medium" | "low"
+    },
+    ...
+  ],
+  "missingDocumentSuggestions": ["string — qualifications / certificates that would strengthen this profile (e.g. 'Upload your matric certificate', 'Add your driver's licence')", ...],
+  "keywordGaps": ["string — SA-recruiter-friendly keywords likely missing from the CV that would lift match scores", ...],
+  "rewriteSummary": "string or null — a stronger 3-5 sentence professional summary the seeker can paste in"
+}
+
+Rules:
+- Be honest. If the CV is weak, say so. Don't invent qualifications the seeker doesn't have.
+- Prefer high-leverage changes that affect ranking: clearer summary, quantified achievements, missing high-value keywords, missing certifications, formatting that breaks ATS parsers.
+- Use SA hiring context (Pnet, Careers24, LinkedIn). Reference NQF levels, SAQA, ECSA, SACPCMP, SAICA, SAIPA, valid driver's licence + own vehicle, right-to-work in South Africa, B-BBEE designations only when the seeker has legitimately indicated them.
+- For missingDocumentSuggestions, only suggest documents that genuinely help match the seeker's apparent field. Don't suggest a "boilermaker red ticket" to an accountant.
+- Improvements list: 4 to 8 items, ordered with the highest-impact first.
+- rewriteSummary: only fill it in if the existing summary is weak or missing. 60-120 words, written in first-person, professional, SA-appropriate.
+- All amounts (if mentioned) in ZAR.`,
+  };
 }
