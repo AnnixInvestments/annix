@@ -791,6 +791,8 @@ class CvAssistantApiClient {
     warning: string | null;
     samplePreview: string;
     sampleResponsibilities: string[];
+    scoreReason: string;
+    improvementTips: string[];
   }> {
     return this.request(`/cv-assistant/job-postings/${id}/nix/title-suggestions`, {
       method: "POST",

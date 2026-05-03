@@ -95,7 +95,7 @@ export function JobBasicsStep({ draft, onChange, onTitlePreview }: JobBasicsStep
               type="text"
               className={`${inputClass} flex-1`}
               placeholder="e.g. External Sales Representative"
-              defaultValue={titleDefault}
+              value={titleInput}
               onChange={(e) => setTitleInput(e.target.value)}
               onBlur={(e) => onChange({ title: e.target.value.trim() })}
             />
@@ -256,6 +256,8 @@ interface NixTitleSuggestionsProps {
     seniorityLevel: string | null;
     titleQualityScore: number;
     warning: string | null;
+    scoreReason: string;
+    improvementTips: string[];
   };
   onApply: (title: string) => void;
 }
@@ -265,18 +267,69 @@ function NixTitleSuggestions({ suggestions, onApply }: NixTitleSuggestionsProps)
   const score = suggestions.titleQualityScore;
   const isStrong = score >= 70;
   const titles = suggestions.suggestedTitles;
+  const reason = suggestions.scoreReason;
+  const tips = suggestions.improvementTips;
+  const hasInfo = Boolean(reason) || tips.length > 0;
+  const [infoOpen, setInfoOpen] = useState(false);
 
   return (
     <div className="rounded-lg bg-[#f5f5fc] border border-[#e0e0f5] p-4 space-y-3">
       <div className="flex items-center justify-between">
         <span className="text-xs uppercase tracking-wider text-gray-500">Nix says</span>
-        <span
-          className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-            isStrong ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"
-          }`}
-        >
-          Title quality: {score}/100
-        </span>
+        <div className="relative flex items-center gap-1">
+          <span
+            className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+              isStrong ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"
+            }`}
+          >
+            Title quality: {score}/100
+          </span>
+          {hasInfo ? (
+            <button
+              type="button"
+              onClick={() => setInfoOpen((v) => !v)}
+              onMouseEnter={() => setInfoOpen(true)}
+              onMouseLeave={() => setInfoOpen(false)}
+              aria-label="Why this score"
+              className="w-5 h-5 rounded-full bg-[#252560] text-white text-[11px] font-bold flex items-center justify-center hover:bg-[#1a1a40] transition-colors"
+            >
+              i
+            </button>
+          ) : null}
+          {infoOpen && hasInfo ? (
+            <div
+              role="tooltip"
+              onMouseEnter={() => setInfoOpen(true)}
+              onMouseLeave={() => setInfoOpen(false)}
+              className="absolute right-0 top-7 z-20 w-72 rounded-lg bg-white border border-[#252560]/30 shadow-lg p-3 space-y-2 text-left"
+            >
+              {reason ? (
+                <div>
+                  <p className="text-[11px] uppercase tracking-wider text-gray-500 mb-1">
+                    Why this score
+                  </p>
+                  <p className="text-xs text-gray-700 leading-relaxed">{reason}</p>
+                </div>
+              ) : null}
+              {tips.length > 0 ? (
+                <div>
+                  <p className="text-[11px] uppercase tracking-wider text-gray-500 mb-1">
+                    How to improve
+                  </p>
+                  <ul className="text-xs text-gray-700 list-disc pl-4 space-y-0.5">
+                    {tips.map((tip) => (
+                      <li key={tip}>{tip}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : (
+                <p className="text-xs text-emerald-700 italic">
+                  This title is already strong — no changes needed.
+                </p>
+              )}
+            </div>
+          ) : null}
+        </div>
       </div>
       {warning ? <p className="text-sm text-amber-800">{warning}</p> : null}
       {titles.length > 0 ? (

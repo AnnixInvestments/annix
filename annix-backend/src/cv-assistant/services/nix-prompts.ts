@@ -25,6 +25,11 @@ export interface NixTitleSuggestionsResponse {
    *  preview how this title reads before committing to it. */
   samplePreview: string;
   sampleResponsibilities: string[];
+  /** One-sentence summary of WHY this title got the score it did. */
+  scoreReason: string;
+  /** 1-3 concrete suggestions for raising the score, or empty if the
+   *  title is already at 95+. Helps the user decide stick-or-change. */
+  improvementTips: string[];
 }
 
 export interface NixDescriptionResponse {
@@ -126,7 +131,9 @@ Return JSON with this exact shape:
   "titleQualityScore": 0-100,
   "warning": "string or null",
   "samplePreview": "string — 1-2 sentence candidate-facing pitch tailored to THIS title",
-  "sampleResponsibilities": ["string", ...]
+  "sampleResponsibilities": ["string", ...],
+  "scoreReason": "string — one sentence on WHY this score; reference the specific aspect of the title that drove it",
+  "improvementTips": ["string", ...]
 }
 
 Rules:
@@ -136,7 +143,9 @@ Rules:
 - titleQualityScore: 80+ for specific roles, 30-60 for generic ones, <30 for one-word titles.
 - The normalizedTitle should be the most commonly-searched canonical form.
 - samplePreview: 30-60 words, written for a candidate browsing job boards. Make the difference between a vague title (e.g. "Sales") and a sharp one (e.g. "External Sales Representative") obvious — vague titles should produce vague pitches; sharp titles should reference concrete day-to-day work.
-- sampleResponsibilities: 3 short bullet points typical for THIS role. Keep them recognisable to SA candidates.`,
+- sampleResponsibilities: 3 short bullet points typical for THIS role. Keep them recognisable to SA candidates.
+- scoreReason: a single sentence explaining why this title got the score it did. Be concrete — name the aspect (e.g. "lacks seniority cue", "doesn't say external/internal", "more searchable as 'Sales Consultant' on Pnet"). Don't restate the score.
+- improvementTips: 1-3 short bullets the user could action to raise the score. Empty array if the score is already 95+. Each tip should be actionable, not abstract — "Add 'Senior' for a sharper match" not "make it more specific".`,
   };
 }
 
