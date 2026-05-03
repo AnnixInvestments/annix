@@ -64,7 +64,7 @@ export default function SeekerProfilePage() {
   if (isStatusLoading || isDocumentsLoading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-violet-600" />
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#323288]" />
       </div>
     );
   }
@@ -137,7 +137,7 @@ export default function SeekerProfilePage() {
       )}
 
       {hasCv && (
-        <div className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="bg-white rounded-xl border border-[#e0e0f5] p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
             <h3 className="text-base font-semibold text-gray-900">Profile ready</h3>
             <p className="text-sm text-gray-600 mt-1">
@@ -148,7 +148,7 @@ export default function SeekerProfilePage() {
           <button
             type="button"
             onClick={handleStartSearch}
-            className="bg-violet-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-violet-700 transition-colors whitespace-nowrap"
+            className="bg-[#323288] text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-[#252560] transition-colors whitespace-nowrap"
           >
             Start job search
           </button>
@@ -168,10 +168,10 @@ export default function SeekerProfilePage() {
 
 function CvRequiredBanner() {
   return (
-    <div className="bg-violet-50 border border-violet-200 rounded-xl p-4 flex items-start gap-3">
-      <div className="flex items-center justify-center w-8 h-8 bg-violet-100 rounded-full flex-shrink-0">
+    <div className="bg-[#f0f0fc] border border-[#c0c0eb] rounded-xl p-4 flex items-start gap-3">
+      <div className="flex items-center justify-center w-8 h-8 bg-[#e0e0f5] rounded-full flex-shrink-0">
         <svg
-          className="w-4 h-4 text-violet-600"
+          className="w-4 h-4 text-[#323288]"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -185,8 +185,8 @@ function CvRequiredBanner() {
         </svg>
       </div>
       <div>
-        <p className="text-sm font-medium text-violet-900">Upload your CV to get started</p>
-        <p className="text-xs text-violet-700 mt-1">
+        <p className="text-sm font-medium text-[#1a1a40]">Upload your CV to get started</p>
+        <p className="text-xs text-[#252560] mt-1">
           We need a CV before we can find jobs for you. Qualifications and certificates are optional
           but make matches more accurate.
         </p>
@@ -202,7 +202,7 @@ function SectionCard(props: {
   children: React.ReactNode;
 }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+    <div className="bg-white rounded-xl border border-[#e0e0f5] p-6 space-y-4">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="text-lg font-semibold text-gray-900">{props.title}</h2>
@@ -225,7 +225,7 @@ function CurrentCvCard(props: { doc: IndividualDocument; cvUploadedAt: string | 
   const uploadedAt = propsCvUploadedAt ? propsCvUploadedAt : docUploadedAt;
   const sizeKb = Math.round(props.doc.sizeBytes / 1024);
   return (
-    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 flex items-center justify-between gap-4">
+    <div className="bg-gray-50 border border-[#e0e0f5] rounded-lg p-4 flex items-center justify-between gap-4">
       <div className="flex items-center gap-3 min-w-0">
         <FileBadge kind="cv" />
         <div className="min-w-0">
@@ -239,7 +239,7 @@ function CurrentCvCard(props: { doc: IndividualDocument; cvUploadedAt: string | 
         href={props.doc.downloadUrl}
         target="_blank"
         rel="noreferrer"
-        className="text-sm text-violet-600 hover:text-violet-700 font-medium whitespace-nowrap"
+        className="text-sm text-[#323288] hover:text-[#252560] font-medium whitespace-nowrap"
       >
         View
       </a>
@@ -265,7 +265,7 @@ function DocumentList(props: {
         return (
           <li
             key={doc.id}
-            className="bg-gray-50 border border-gray-200 rounded-lg p-4 flex items-center justify-between gap-4"
+            className="bg-gray-50 border border-[#e0e0f5] rounded-lg p-4 flex items-center justify-between gap-4"
           >
             <div className="flex items-center gap-3 min-w-0">
               <FileBadge kind={doc.kind} />
@@ -281,7 +281,7 @@ function DocumentList(props: {
                 href={doc.downloadUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="text-sm text-violet-600 hover:text-violet-700 font-medium"
+                className="text-sm text-[#323288] hover:text-[#252560] font-medium"
               >
                 View
               </a>
@@ -304,7 +304,7 @@ function DocumentList(props: {
 function FileBadge(props: { kind: IndividualDocumentKind }) {
   const palette =
     props.kind === "cv"
-      ? "bg-violet-100 text-violet-700"
+      ? "bg-[#e0e0f5] text-[#252560]"
       : props.kind === "qualification"
         ? "bg-blue-100 text-blue-700"
         : "bg-emerald-100 text-emerald-700";

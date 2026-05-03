@@ -34,7 +34,7 @@ export function AddSourceForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-4"
+      className="bg-white rounded-xl shadow-sm border border-[#e0e0f5] p-6 space-y-4"
     >
       <h3 className="text-lg font-semibold text-gray-900">Add Job Source</h3>
 
@@ -46,7 +46,7 @@ export function AddSourceForm({
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
           />
         </div>
         <div>
@@ -55,7 +55,7 @@ export function AddSourceForm({
             type="text"
             value="Adzuna"
             disabled
-            className="w-full px-4 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-500"
+            className="w-full px-4 py-2 border border-[#e0e0f5] rounded-lg bg-gray-50 text-gray-500"
           />
         </div>
       </div>
@@ -68,7 +68,7 @@ export function AddSourceForm({
             value={apiId}
             onChange={(e) => setApiId(e.target.value)}
             placeholder="Your Adzuna app_id"
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
           />
         </div>
         <div>
@@ -78,7 +78,7 @@ export function AddSourceForm({
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
             placeholder="Your Adzuna app_key"
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
           />
         </div>
       </div>
@@ -93,7 +93,7 @@ export function AddSourceForm({
             value={countryCodes}
             onChange={(e) => setCountryCodes(e.target.value)}
             placeholder="za, gb, us"
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
           />
         </div>
         <div>
@@ -106,7 +106,7 @@ export function AddSourceForm({
             onChange={(e) => setIntervalHours(e.target.value)}
             min="1"
             max="24"
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
           />
         </div>
       </div>
@@ -121,7 +121,7 @@ export function AddSourceForm({
         </button>
         <button
           type="submit"
-          className="px-4 py-2 text-sm bg-violet-600 text-white rounded-lg hover:bg-violet-700"
+          className="px-4 py-2 text-sm bg-[#323288] text-white rounded-lg hover:bg-[#252560]"
         >
           Add Source
         </button>

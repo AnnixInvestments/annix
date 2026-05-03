@@ -69,9 +69,9 @@ export function CandidateDetailPanel(props: CandidateDetailPanelProps) {
         aria-hidden="true"
       />
       <div className="relative bg-white w-full max-w-2xl h-full overflow-y-auto shadow-2xl">
-        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
+        <div className="sticky top-0 bg-white border-b border-[#e0e0f5] px-6 py-4 flex items-center justify-between z-10">
           <div>
-            <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-violet-100 text-violet-700 text-sm font-bold mr-3">
+            <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-[#e0e0f5] text-[#252560] text-sm font-bold mr-3">
               #{candidate.rank}
             </span>
             <span id="candidate-detail-title" className="text-xl font-bold text-gray-900">
@@ -136,7 +136,7 @@ export function CandidateDetailPanel(props: CandidateDetailPanelProps) {
             type="button"
             onClick={() => onViewCv(candidate)}
             disabled={!candidate.cvFilePath}
-            className="w-full px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 disabled:bg-gray-300 transition-colors"
+            className="w-full px-4 py-2 bg-[#323288] text-white rounded-lg hover:bg-[#252560] disabled:bg-gray-300 transition-colors"
           >
             View CV
           </button>

@@ -21,7 +21,7 @@ export function SourceCard({
     : "Never";
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+    <div className="bg-white rounded-xl shadow-sm border border-[#e0e0f5] p-5">
       <div className="flex items-start justify-between">
         <div>
           <div className="flex items-center gap-2">
@@ -49,7 +49,7 @@ export function SourceCard({
             <p
               className={`mt-2 text-sm ${
                 ingestionStatus === "running"
-                  ? "text-violet-600"
+                  ? "text-[#323288]"
                   : ingestionStatus.startsWith("Error")
                     ? "text-red-600"
                     : "text-green-600"
@@ -64,7 +64,7 @@ export function SourceCard({
             type="button"
             onClick={onTrigger}
             disabled={ingestionStatus === "running"}
-            className="px-3 py-1.5 text-sm text-violet-600 border border-violet-200 rounded-lg hover:bg-violet-50 disabled:opacity-50 transition-colors"
+            className="px-3 py-1.5 text-sm text-[#323288] border border-[#c0c0eb] rounded-lg hover:bg-[#f0f0fc] disabled:opacity-50 transition-colors"
           >
             Ingest Now
           </button>

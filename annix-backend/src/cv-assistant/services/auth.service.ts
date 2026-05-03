@@ -6,6 +6,7 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import { InjectRepository } from "@nestjs/typeorm";
 import { MoreThan, Repository } from "typeorm";
@@ -18,6 +19,7 @@ import { AppRole } from "../../rbac/entities/app-role.entity";
 import { UserAppAccess } from "../../rbac/entities/user-app-access.entity";
 import { PasswordService } from "../../shared/auth/password.service";
 import { User } from "../../user/entities/user.entity";
+import { CV_ASSISTANT_JWT_SECRET_DEFAULT } from "../cv-assistant.constants";
 import { CvAssistantProfile, CvAssistantUserType } from "../entities/cv-assistant-profile.entity";
 import { CvAssistantRole } from "../entities/cv-assistant-user.entity";
 
@@ -41,9 +43,17 @@ export class CvAssistantAuthService {
     @InjectRepository(UserAppAccess)
     private readonly userAppAccessRepo: Repository<UserAppAccess>,
     private readonly jwtService: JwtService,
+    private readonly configService: ConfigService,
     private readonly emailService: EmailService,
     private readonly passwordService: PasswordService,
   ) {}
+
+  private jwtSecret(): string {
+    return this.configService.get<string>(
+      "CV_ASSISTANT_JWT_SECRET",
+      CV_ASSISTANT_JWT_SECRET_DEFAULT,
+    );
+  }
 
   async register(input: {
     email: string;
@@ -312,8 +322,9 @@ export class CvAssistantAuthService {
   }
 
   async refreshToken(refreshToken: string) {
+    const secret = this.jwtSecret();
     try {
-      const payload = this.jwtService.verify(refreshToken);
+      const payload = this.jwtService.verify(refreshToken, { secret });
       if (payload.tokenType !== "refresh") {
         throw new UnauthorizedException("Invalid token type");
       }
@@ -338,7 +349,7 @@ export class CvAssistantAuthService {
             companyId: profile?.companyId ?? payload.companyId ?? null,
             type: "cv-assistant",
           },
-          { expiresIn: "1h" },
+          { secret, expiresIn: "1h" },
         ),
       };
     } catch {
@@ -445,6 +456,7 @@ export class CvAssistantAuthService {
   private generateTokens(user: User, profile: CvAssistantProfile | null, role: string) {
     const userName = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email;
     const userType = profile?.userType ?? CvAssistantUserType.COMPANY;
+    const secret = this.jwtSecret();
 
     const accessToken = this.jwtService.sign(
       {
@@ -456,7 +468,7 @@ export class CvAssistantAuthService {
         companyId: profile?.companyId ?? null,
         type: "cv-assistant",
       },
-      { expiresIn: "1h" },
+      { secret, expiresIn: "1h" },
     );
 
     const refreshToken = this.jwtService.sign(
@@ -467,7 +479,7 @@ export class CvAssistantAuthService {
         tokenType: "refresh",
         type: "cv-assistant",
       },
-      { expiresIn: "7d" },
+      { secret, expiresIn: "7d" },
     );
 
     return { accessToken, refreshToken };

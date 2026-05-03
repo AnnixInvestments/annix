@@ -40,7 +40,7 @@ export default function ReferencesPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#323288]"></div>
       </div>
     );
   }
@@ -48,8 +48,8 @@ export default function ReferencesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">References</h1>
-        <p className="text-gray-600 mt-1">Track reference check requests and feedback</p>
+        <h1 className="text-2xl font-bold text-white">References</h1>
+        <p className="text-white/70 mt-1">Track reference check requests and feedback</p>
       </div>
 
       <div className="flex items-center space-x-2">
@@ -59,7 +59,7 @@ export default function ReferencesPage() {
             onClick={() => setFilter(status)}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
               filter === status
-                ? "bg-violet-100 text-violet-700"
+                ? "bg-[#e0e0f5] text-[#252560]"
                 : "bg-white text-gray-600 hover:bg-gray-100"
             }`}
           >
@@ -68,7 +68,7 @@ export default function ReferencesPage() {
         ))}
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+      <div className="bg-white rounded-xl shadow-sm border border-[#e0e0f5]">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">

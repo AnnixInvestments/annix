@@ -88,6 +88,13 @@ export const corpId = {
         sidebarHover: "#f3f4ff",
         sidebarActive: "#FFA500",
       },
+      cvAssistant: {
+        background: "#323288",
+        text: "#FFFFFF",
+        accent: "#FFA500",
+        hover: "#4a4da3",
+        active: "#252560",
+      },
     },
   },
 
@@ -123,7 +130,8 @@ export type PortalType =
   | "supplier"
   | "auRubber"
   | "annixRep"
-  | "stockControl";
+  | "stockControl"
+  | "cvAssistant";
 
 export const portalConfig = {
   admin: {
@@ -155,6 +163,11 @@ export const portalConfig = {
     title: "Stock Control",
     homeHref: "/stock-control/portal/dashboard",
     loginHref: "/stock-control/login",
+  },
+  cvAssistant: {
+    title: "CV Assistant",
+    homeHref: "/cv-assistant/portal/dashboard",
+    loginHref: "/cv-assistant/login?type=company",
   },
 } as const;
 

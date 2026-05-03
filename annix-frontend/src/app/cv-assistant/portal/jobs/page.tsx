@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import type { JobPosting } from "@/app/lib/api/cvAssistantApi";
 import {
   useCvDeleteJobPosting,
@@ -10,11 +11,20 @@ import {
 import { JobFormModal } from "../components/JobFormModal";
 
 export default function JobsPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { data: jobs = [], isLoading } = useCvJobPostings();
   const statusChangeMutation = useCvJobPostingStatusChange();
   const deleteMutation = useCvDeleteJobPosting();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingJob, setEditingJob] = useState<JobPosting | null>(null);
+
+  useEffect(() => {
+    if (searchParams.get("new") === "1") {
+      setShowCreateModal(true);
+      router.replace("/cv-assistant/portal/jobs", { scroll: false });
+    }
+  }, [searchParams, router]);
 
   const handleStatusChange = (job: JobPosting, action: "activate" | "pause" | "close") => {
     statusChangeMutation.mutate({ id: job.id, action });
@@ -40,7 +50,7 @@ export default function JobsPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#323288]"></div>
       </div>
     );
   }
@@ -49,12 +59,12 @@ export default function JobsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Job Postings</h1>
-          <p className="text-gray-600 mt-1">Manage your job positions and requirements</p>
+          <h1 className="text-2xl font-bold text-white">Job Postings</h1>
+          <p className="text-white/70 mt-1">Manage your job positions and requirements</p>
         </div>
         <button
           onClick={() => setShowCreateModal(true)}
-          className="inline-flex items-center px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors"
+          className="inline-flex items-center px-4 py-2 bg-[#323288] text-white rounded-lg hover:bg-[#252560] transition-colors"
         >
           <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -63,7 +73,7 @@ export default function JobsPage() {
         </button>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+      <div className="bg-white rounded-xl shadow-sm border border-[#e0e0f5]">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -107,7 +117,7 @@ export default function JobsPage() {
                             href={`/cv-assistant/jobs/${referenceNumber}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="font-mono text-xs text-violet-700 hover:text-violet-900 underline-offset-2 hover:underline"
+                            className="font-mono text-xs text-[#252560] hover:text-[#1a1a40] underline-offset-2 hover:underline"
                           >
                             {referenceNumber}
                           </a>
@@ -128,7 +138,7 @@ export default function JobsPage() {
                           {job.requiredSkills.slice(0, 3).map((skill, i) => (
                             <span
                               key={i}
-                              className="inline-flex px-2 py-0.5 text-xs bg-violet-100 text-violet-700 rounded"
+                              className="inline-flex px-2 py-0.5 text-xs bg-[#e0e0f5] text-[#252560] rounded"
                             >
                               {skill}
                             </span>
@@ -188,7 +198,7 @@ export default function JobsPage() {
                           )}
                           <button
                             onClick={() => setEditingJob(job)}
-                            className="text-violet-600 hover:text-violet-700"
+                            className="text-[#323288] hover:text-[#252560]"
                           >
                             Edit
                           </button>

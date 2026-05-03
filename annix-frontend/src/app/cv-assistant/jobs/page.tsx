@@ -57,18 +57,18 @@ export default function CvAssistantPublicJobsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-gradient-to-br from-violet-900 via-purple-900 to-violet-900 text-white">
+      <header className="bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40] text-white">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="flex items-center justify-between mb-6">
-            <Link href="/cv-assistant" className="text-sm text-violet-200 hover:text-white">
+            <Link href="/cv-assistant" className="text-sm text-[#c0c0eb] hover:text-white">
               ← CV Assistant home
             </Link>
-            <Link href="/cv-assistant/login" className="text-sm text-violet-200 hover:text-white">
+            <Link href="/cv-assistant/login" className="text-sm text-[#c0c0eb] hover:text-white">
               Sign in
             </Link>
           </div>
           <h1 className="text-3xl sm:text-4xl font-bold">Browse jobs</h1>
-          <p className="text-violet-200 mt-2">
+          <p className="text-[#c0c0eb] mt-2">
             Public preview — sign up as an individual to get matched and apply.
           </p>
 
@@ -81,7 +81,7 @@ export default function CvAssistantPublicJobsPage() {
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               placeholder="Search title or company"
-              className="px-4 py-3 rounded-lg text-gray-900 bg-white focus:ring-2 focus:ring-violet-300 focus:outline-none"
+              className="px-4 py-3 rounded-lg text-gray-900 bg-white focus:ring-2 focus:ring-[#9999d6] focus:outline-none"
             />
             <select
               value={country}
@@ -89,7 +89,7 @@ export default function CvAssistantPublicJobsPage() {
                 setPage(1);
                 setCountry(e.target.value);
               }}
-              className="px-4 py-3 rounded-lg text-gray-900 bg-white focus:ring-2 focus:ring-violet-300 focus:outline-none"
+              className="px-4 py-3 rounded-lg text-gray-900 bg-white focus:ring-2 focus:ring-[#9999d6] focus:outline-none"
             >
               <option value="">All countries</option>
               <option value="za">South Africa</option>
@@ -99,7 +99,7 @@ export default function CvAssistantPublicJobsPage() {
             </select>
             <button
               type="submit"
-              className="bg-white text-violet-700 px-5 py-3 rounded-lg font-medium hover:bg-violet-50 transition-colors"
+              className="bg-white text-[#252560] px-5 py-3 rounded-lg font-medium hover:bg-[#f0f0fc] transition-colors"
             >
               Search
             </button>
@@ -124,7 +124,7 @@ export default function CvAssistantPublicJobsPage() {
           </p>
           <Link
             href="/cv-assistant/register/individual"
-            className="text-sm font-medium text-violet-600 hover:text-violet-700"
+            className="text-sm font-medium text-[#323288] hover:text-[#252560]"
           >
             Sign up to apply →
           </Link>
@@ -132,7 +132,7 @@ export default function CvAssistantPublicJobsPage() {
 
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
-            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-violet-600" />
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#323288]" />
           </div>
         ) : (
           <ul className="space-y-3">
@@ -182,7 +182,7 @@ function PublicJobCard(props: { job: PublicJob }) {
   const posted = formatRelative(job.postedAt);
 
   return (
-    <article className="bg-white rounded-xl border border-gray-200 p-5 hover:border-violet-300 transition-colors">
+    <article className="bg-white rounded-xl border border-[#e0e0f5] p-5 hover:border-[#9999d6] transition-colors">
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
           <h2 className="text-lg font-semibold text-gray-900">{job.title}</h2>
@@ -208,7 +208,7 @@ function PublicJobCard(props: { job: PublicJob }) {
               {job.extractedSkills.slice(0, 6).map((skill) => (
                 <span
                   key={skill}
-                  className="text-xs bg-violet-50 text-violet-700 px-2 py-1 rounded-md"
+                  className="text-xs bg-[#f0f0fc] text-[#252560] px-2 py-1 rounded-md"
                 >
                   {skill}
                 </span>
@@ -218,7 +218,7 @@ function PublicJobCard(props: { job: PublicJob }) {
         </div>
         <Link
           href="/cv-assistant/register/individual"
-          className="bg-violet-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-violet-700 transition-colors whitespace-nowrap"
+          className="bg-[#323288] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#252560] transition-colors whitespace-nowrap"
         >
           Sign up to apply
         </Link>

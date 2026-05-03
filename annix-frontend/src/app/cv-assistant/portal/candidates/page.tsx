@@ -31,7 +31,7 @@ const STATUS_COLORS: Record<string, string> = {
   screening: "bg-yellow-100 text-yellow-800",
   shortlisted: "bg-green-100 text-green-800",
   rejected: "bg-red-100 text-red-800",
-  reference_check: "bg-purple-100 text-purple-800",
+  reference_check: "bg-[#e0e0f5] text-[#1a1a40]",
   accepted: "bg-emerald-100 text-emerald-800",
 };
 
@@ -186,7 +186,7 @@ export default function CandidatesPage() {
   if (isLoadingCandidates) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600" />
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#323288]" />
       </div>
     );
   }
@@ -198,15 +198,15 @@ export default function CandidatesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Candidate Shortlist</h1>
-          <p className="text-gray-600 mt-1">
+          <h1 className="text-2xl font-bold text-white">Candidate Shortlist</h1>
+          <p className="text-white/70 mt-1">
             Ranked by AI match score. Showing {visibleCount} of {totalCandidates} candidates.
           </p>
         </div>
         <button
           type="button"
           onClick={() => setShowUploadModal(true)}
-          className="inline-flex items-center px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors"
+          className="inline-flex items-center px-4 py-2 bg-[#323288] text-white rounded-lg hover:bg-[#252560] transition-colors"
         >
           <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
@@ -220,7 +220,7 @@ export default function CandidatesPage() {
         </button>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 space-y-4">
+      <div className="bg-white rounded-xl shadow-sm border border-[#e0e0f5] p-4 space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
             <label htmlFor="job-filter" className="block text-sm font-medium text-gray-700 mb-1">
@@ -230,7 +230,7 @@ export default function CandidatesPage() {
               id="job-filter"
               value={selectedJob}
               onChange={(e) => setSelectedJob(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
             >
               <option value="all">All Jobs</option>
               {jobs.map((job) => {
@@ -256,7 +256,7 @@ export default function CandidatesPage() {
               max={100}
               value={minScore}
               onChange={(e) => setMinScore(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
             />
           </div>
           <div>
@@ -272,7 +272,7 @@ export default function CandidatesPage() {
               onChange={(e) =>
                 setMaxScore(Math.max(0, Math.min(100, Number(e.target.value) || 100)))
               }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
             />
           </div>
           <div>
@@ -288,7 +288,7 @@ export default function CandidatesPage() {
                     onClick={() => setTopN(n)}
                     className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
                       isActive
-                        ? "bg-violet-600 text-white"
+                        ? "bg-[#323288] text-white"
                         : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                     }`}
                   >
@@ -312,8 +312,8 @@ export default function CandidatesPage() {
                   onClick={() => toggleStatusFilter(opt.value)}
                   className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
                     isActive
-                      ? "bg-violet-100 text-violet-700 border border-violet-300"
-                      : "bg-gray-50 text-gray-700 border border-gray-200 hover:bg-gray-100"
+                      ? "bg-[#e0e0f5] text-[#252560] border border-[#9999d6]"
+                      : "bg-gray-50 text-gray-700 border border-[#e0e0f5] hover:bg-gray-100"
                   }`}
                 >
                   {opt.label}
@@ -333,7 +333,7 @@ export default function CandidatesPage() {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+      <div className="bg-white rounded-xl shadow-sm border border-[#e0e0f5]">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -401,7 +401,7 @@ export default function CandidatesPage() {
                   return (
                     <tr key={candidate.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-violet-100 text-violet-700 text-sm font-bold">
+                        <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-[#e0e0f5] text-[#252560] text-sm font-bold">
                           {candidate.rank}
                         </span>
                       </td>
@@ -411,7 +411,7 @@ export default function CandidatesPage() {
                           onClick={() => setDetailCandidateId(candidate.id)}
                           className="text-left"
                         >
-                          <div className="text-sm font-medium text-gray-900 hover:text-violet-700">
+                          <div className="text-sm font-medium text-gray-900 hover:text-[#252560]">
                             {candidateName || "Unknown"}
                           </div>
                           <div className="text-xs text-gray-500">{candidateEmail || "-"}</div>
@@ -469,7 +469,7 @@ export default function CandidatesPage() {
                           <button
                             type="button"
                             onClick={() => handleViewCv(candidate)}
-                            className="text-violet-600 hover:text-violet-700 disabled:text-gray-300"
+                            className="text-[#323288] hover:text-[#252560] disabled:text-gray-300"
                             disabled={!candidate.cvFilePath}
                           >
                             View CV

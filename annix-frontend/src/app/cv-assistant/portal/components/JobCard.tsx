@@ -24,7 +24,7 @@ export function JobCard({ job }: { job: ExternalJob }) {
   const postedDate = job.postedAt ? fromISO(job.postedAt).toFormat("d MMM yyyy") : null;
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 hover:shadow-md transition-shadow">
+    <div className="bg-white rounded-xl shadow-sm border border-[#e0e0f5] p-5 hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between">
         <div className="flex-1 min-w-0">
           <h3 className="text-base font-semibold text-gray-900 truncate">{job.title}</h3>
@@ -49,7 +49,7 @@ export function JobCard({ job }: { job: ExternalJob }) {
           )}
           <div className="flex items-center gap-2 mt-2">
             {job.category && (
-              <span className="px-2 py-0.5 text-xs bg-violet-50 text-violet-700 rounded-full">
+              <span className="px-2 py-0.5 text-xs bg-[#f0f0fc] text-[#252560] rounded-full">
                 {job.category}
               </span>
             )}
@@ -58,8 +58,8 @@ export function JobCard({ job }: { job: ExternalJob }) {
               onClick={() => setShowCandidates(!showCandidates)}
               className={`px-2 py-0.5 text-xs rounded-full transition-colors ${
                 showCandidates
-                  ? "bg-violet-100 text-violet-700 font-medium"
-                  : "bg-gray-100 text-gray-600 hover:bg-violet-50 hover:text-violet-600"
+                  ? "bg-[#e0e0f5] text-[#252560] font-medium"
+                  : "bg-gray-100 text-gray-600 hover:bg-[#f0f0fc] hover:text-[#323288]"
               }`}
             >
               Matching Candidates
@@ -71,7 +71,7 @@ export function JobCard({ job }: { job: ExternalJob }) {
             href={job.sourceUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="ml-4 flex-shrink-0 px-3 py-1.5 text-sm text-violet-600 border border-violet-200 rounded-lg hover:bg-violet-50 transition-colors"
+            className="ml-4 flex-shrink-0 px-3 py-1.5 text-sm text-[#323288] border border-[#c0c0eb] rounded-lg hover:bg-[#f0f0fc] transition-colors"
           >
             View
           </a>
@@ -81,7 +81,7 @@ export function JobCard({ job }: { job: ExternalJob }) {
         <div className="mt-3 pt-3 border-t border-gray-100">
           {isLoadingCandidates ? (
             <div className="flex items-center gap-2 py-2">
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-violet-600" />
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#323288]" />
               <span className="text-xs text-gray-500">Finding matching candidates...</span>
             </div>
           ) : matchingCandidates.length === 0 ? (

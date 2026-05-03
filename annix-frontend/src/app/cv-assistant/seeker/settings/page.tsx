@@ -128,14 +128,14 @@ export default function SeekerSettingsPage() {
       <SectionCard title="Notifications" description="Choose when we tell you about matching jobs.">
         {prefsQuery.isLoading ? (
           <div className="flex items-center justify-center py-6">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-violet-600" />
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#323288]" />
           </div>
         ) : (
           <div className="space-y-5">
             <div>
               <label htmlFor="threshold" className="block text-sm font-medium text-gray-900">
                 Match alert threshold
-                <span className="ml-2 text-violet-600 font-mono">{threshold}%</span>
+                <span className="ml-2 text-[#323288] font-mono">{threshold}%</span>
               </label>
               <p className="text-xs text-gray-500 mt-1">
                 Only notify me about jobs that match my CV at this score or higher.
@@ -148,7 +148,7 @@ export default function SeekerSettingsPage() {
                 step={5}
                 value={threshold}
                 onChange={(e) => setThreshold(Number(e.target.value))}
-                className="w-full mt-3 accent-violet-600"
+                className="w-full mt-3 accent-[#323288]"
               />
             </div>
 
@@ -174,7 +174,7 @@ export default function SeekerSettingsPage() {
                 type="button"
                 onClick={handleSavePrefs}
                 disabled={updatePrefs.isPending}
-                className="bg-violet-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="bg-[#323288] text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-[#252560] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {updatePrefs.isPending ? "Saving..." : "Save preferences"}
               </button>
@@ -200,7 +200,7 @@ export default function SeekerSettingsPage() {
               type="button"
               onClick={handleExport}
               disabled={isExporting}
-              className="bg-white text-violet-700 border border-violet-200 px-4 py-2 rounded-lg text-sm font-medium hover:bg-violet-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+              className="bg-white text-[#252560] border border-[#c0c0eb] px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#f0f0fc] disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
             >
               {isExporting ? "Preparing..." : "Download data"}
             </button>
@@ -262,7 +262,7 @@ export default function SeekerSettingsPage() {
 
 function SectionCard(props: { title: string; description: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+    <div className="bg-white rounded-xl border border-[#e0e0f5] p-6 space-y-4">
       <div>
         <h2 className="text-lg font-semibold text-gray-900">{props.title}</h2>
         <p className="text-sm text-gray-600 mt-1">{props.description}</p>
@@ -294,7 +294,7 @@ function ToggleRow(props: {
         aria-checked={props.checked}
         onClick={() => props.onChange(!props.checked)}
         className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0 ${
-          props.checked ? "bg-violet-600" : "bg-gray-300"
+          props.checked ? "bg-[#323288]" : "bg-gray-300"
         }`}
       >
         <span

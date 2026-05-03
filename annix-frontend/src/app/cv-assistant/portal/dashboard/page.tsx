@@ -8,6 +8,34 @@ import {
   useCvTopCandidates,
 } from "@/app/lib/query/hooks";
 
+const POST_JOB_HREF = "/cv-assistant/portal/jobs?new=1";
+
+function PostJobButton({
+  size = "md",
+  variant = "orange",
+}: {
+  size?: "md" | "lg";
+  variant?: "orange" | "navy";
+}) {
+  const sizing = size === "lg" ? "px-6 py-3 text-base" : "px-5 py-2.5 text-sm";
+  const iconSize = size === "lg" ? "w-6 h-6 mr-2" : "w-5 h-5 mr-2";
+  const palette =
+    variant === "navy"
+      ? "bg-[#252560] text-white hover:bg-[#1a1a40]"
+      : "bg-[#FFA500] text-[#1a1a40] hover:bg-[#FFB733]";
+  return (
+    <Link
+      href={POST_JOB_HREF}
+      className={`inline-flex items-center ${sizing} ${palette} font-semibold rounded-lg shadow-md hover:shadow-lg transition-all`}
+    >
+      <svg className={iconSize} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+      </svg>
+      Post a New Job
+    </Link>
+  );
+}
+
 export default function DashboardPage() {
   const { data: stats, isLoading: statsLoading } = useCvDashboardStats();
   const { data: topCandidates = [], isLoading: candidatesLoading } = useCvTopCandidates();
@@ -18,7 +46,7 @@ export default function DashboardPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#323288]"></div>
       </div>
     );
   }
@@ -29,7 +57,7 @@ export default function DashboardPage() {
       screening: "bg-yellow-100 text-yellow-800",
       shortlisted: "bg-green-100 text-green-800",
       rejected: "bg-red-100 text-red-800",
-      reference_check: "bg-purple-100 text-purple-800",
+      reference_check: "bg-[#e0e0f5] text-[#1a1a40]",
       accepted: "bg-emerald-100 text-emerald-800",
     };
     const color = colors[status];
@@ -41,19 +69,35 @@ export default function DashboardPage() {
   const averageScore = stats?.averageScore;
   const pendingReferences = stats?.pendingReferences;
 
+  const hasActiveJobs = (activeJobPostings ?? 0) > 0;
+
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-600 mt-1">Overview of your candidate screening</p>
+        <h1 className="text-2xl font-bold text-white">Dashboard</h1>
+        <p className="text-white/70 mt-1">Overview of your candidate screening</p>
       </div>
 
+      {!hasActiveJobs && (
+        <div className="rounded-xl bg-gradient-to-br from-[#FFA500] to-[#FFB733] shadow-lg p-6 sm:p-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <h2 className="text-xl sm:text-2xl font-bold text-[#1a1a40]">
+              Ready to find your next hire?
+            </h2>
+            <p className="text-[#1a1a40]/80">
+              Post your first job vacancy and let CV Assistant screen candidates for you.
+            </p>
+          </div>
+          <PostJobButton size="lg" variant="navy" />
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="bg-white rounded-xl shadow-sm border border-[#e0e0f5] p-6">
           <div className="flex items-center">
-            <div className="flex-shrink-0 w-12 h-12 bg-violet-100 rounded-lg flex items-center justify-center">
+            <div className="flex-shrink-0 w-12 h-12 bg-[#e0e0f5] rounded-lg flex items-center justify-center">
               <svg
-                className="w-6 h-6 text-violet-600"
+                className="w-6 h-6 text-[#323288]"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -68,12 +112,12 @@ export default function DashboardPage() {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500">Total Candidates</p>
-              <p className="text-2xl font-bold text-gray-900">{totalCandidates || 0}</p>
+              <p className="text-2xl font-bold text-[#252560]">{totalCandidates || 0}</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="bg-white rounded-xl shadow-sm border border-[#e0e0f5] p-6">
           <div className="flex items-center">
             <div className="flex-shrink-0 w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
               <svg
@@ -92,12 +136,12 @@ export default function DashboardPage() {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500">Active Jobs</p>
-              <p className="text-2xl font-bold text-gray-900">{activeJobPostings || 0}</p>
+              <p className="text-2xl font-bold text-[#252560]">{activeJobPostings || 0}</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="bg-white rounded-xl shadow-sm border border-[#e0e0f5] p-6">
           <div className="flex items-center">
             <div className="flex-shrink-0 w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
               <svg
@@ -116,12 +160,12 @@ export default function DashboardPage() {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500">Avg. Match Score</p>
-              <p className="text-2xl font-bold text-gray-900">{averageScore || "-"}%</p>
+              <p className="text-2xl font-bold text-[#252560]">{averageScore || "-"}%</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="bg-white rounded-xl shadow-sm border border-[#e0e0f5] p-6">
           <div className="flex items-center">
             <div className="flex-shrink-0 w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
               <svg
@@ -140,18 +184,18 @@ export default function DashboardPage() {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500">Pending References</p>
-              <p className="text-2xl font-bold text-gray-900">{pendingReferences || 0}</p>
+              <p className="text-2xl font-bold text-[#252560]">{pendingReferences || 0}</p>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+      <div className="bg-white rounded-xl shadow-sm border border-[#e0e0f5]">
+        <div className="px-6 py-4 border-b border-[#e0e0f5] flex items-center justify-between">
           <h2 className="text-lg font-semibold text-gray-900">Top Candidates</h2>
           <Link
             href="/cv-assistant/portal/candidates"
-            className="text-sm text-violet-600 hover:text-violet-700 font-medium"
+            className="text-sm text-[#323288] hover:text-[#252560] font-medium"
           >
             View all
           </Link>
@@ -196,8 +240,8 @@ export default function DashboardPage() {
       </div>
 
       {marketInsights && marketInsights.totalActiveJobs > 0 && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-          <div className="px-6 py-4 border-b border-gray-200">
+        <div className="bg-white rounded-xl shadow-sm border border-[#e0e0f5]">
+          <div className="px-6 py-4 border-b border-[#e0e0f5]">
             <h2 className="text-lg font-semibold text-gray-900">SA Market Insights</h2>
             <p className="text-sm text-gray-500 mt-1">
               Based on {marketInsights.totalActiveJobs.toLocaleString()} active job listings
@@ -300,7 +344,7 @@ export default function DashboardPage() {
           </div>
 
           {marketInsights.topSkills.length > 0 && (
-            <div className="px-6 py-4 border-t border-gray-200">
+            <div className="px-6 py-4 border-t border-[#e0e0f5]">
               <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-3">
                 In-Demand Skills
               </h3>
@@ -308,10 +352,10 @@ export default function DashboardPage() {
                 {marketInsights.topSkills.slice(0, 15).map((skill) => (
                   <span
                     key={skill.skill}
-                    className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-violet-50 text-violet-700"
+                    className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-[#f0f0fc] text-[#252560]"
                   >
                     {skill.skill}
-                    <span className="ml-1 text-violet-400">({skill.count})</span>
+                    <span className="ml-1 text-[#7373c2]">({skill.count})</span>
                   </span>
                 ))}
               </div>

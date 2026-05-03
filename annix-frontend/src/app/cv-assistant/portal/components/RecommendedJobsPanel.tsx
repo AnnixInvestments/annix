@@ -14,7 +14,7 @@ export function RecommendedJobsPanel({
   if (isLoading) {
     return (
       <div className="flex items-center gap-2 py-4">
-        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-violet-600" />
+        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-[#323288]" />
         <span className="text-sm text-gray-500">Finding matching jobs...</span>
       </div>
     );
@@ -30,7 +30,7 @@ export function RecommendedJobsPanel({
 
   return (
     <div className="space-y-2">
-      <h4 className="text-sm font-semibold text-violet-800">Recommended Jobs</h4>
+      <h4 className="text-sm font-semibold text-[#1a1a40]">Recommended Jobs</h4>
       {matches.map((match) => {
         const job = match.externalJob;
         const jobTitle = job?.title;
@@ -39,7 +39,7 @@ export function RecommendedJobsPanel({
         return (
           <div
             key={match.id}
-            className="bg-white rounded-lg border border-violet-200 p-3 flex items-start justify-between gap-3"
+            className="bg-white rounded-lg border border-[#c0c0eb] p-3 flex items-start justify-between gap-3"
           >
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
@@ -93,7 +93,7 @@ export function RecommendedJobsPanel({
                   href={job.sourceUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-xs text-violet-600 hover:underline"
+                  className="text-xs text-[#323288] hover:underline"
                 >
                   View
                 </a>

@@ -49,13 +49,13 @@ function ConfirmDeleteContent() {
   }, [token, router]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-violet-900 via-purple-900 to-violet-900 flex items-center justify-center px-4 py-12">
+    <div className="min-h-screen bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40] flex items-center justify-center px-4 py-12">
       <div className="max-w-md w-full">
         <div className="bg-white rounded-2xl shadow-2xl p-8 text-center">
           {status === "pending" && (
             <>
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-violet-100 rounded-full mb-4">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600" />
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-[#e0e0f5] rounded-full mb-4">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#323288]" />
               </div>
               <h2 className="text-2xl font-bold text-gray-900 mb-2">Deleting your account</h2>
               <p className="text-gray-600">
@@ -85,7 +85,7 @@ function ConfirmDeleteContent() {
               <p className="text-gray-600 mb-6">{message}</p>
               <Link
                 href="/cv-assistant"
-                className="inline-block bg-violet-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-violet-700 transition-colors"
+                className="inline-block bg-[#323288] text-white py-3 px-6 rounded-lg font-medium hover:bg-[#252560] transition-colors"
               >
                 Return home
               </Link>
@@ -119,7 +119,7 @@ function ConfirmDeleteContent() {
               </p>
               <Link
                 href="/cv-assistant/login?type=individual"
-                className="inline-block bg-violet-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-violet-700 transition-colors"
+                className="inline-block bg-[#323288] text-white py-3 px-6 rounded-lg font-medium hover:bg-[#252560] transition-colors"
               >
                 Sign in
               </Link>
@@ -135,8 +135,8 @@ export default function CvAssistantConfirmDeletePage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-gradient-to-br from-violet-900 via-purple-900 to-violet-900 flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-400" />
+        <div className="min-h-screen bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40] flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#7373c2]" />
         </div>
       }
     >

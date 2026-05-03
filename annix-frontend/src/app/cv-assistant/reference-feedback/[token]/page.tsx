@@ -65,7 +65,7 @@ export default function ReferenceFeedbackPage() {
   if (isValidating) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#323288]"></div>
       </div>
     );
   }
@@ -133,9 +133,9 @@ export default function ReferenceFeedbackPage() {
       <div className="max-w-lg mx-auto">
         <div className="bg-white rounded-2xl shadow-lg p-8">
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-violet-100 rounded-2xl mb-4">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-[#e0e0f5] rounded-2xl mb-4">
               <svg
-                className="w-8 h-8 text-violet-600"
+                className="w-8 h-8 text-[#323288]"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -205,7 +205,7 @@ export default function ReferenceFeedbackPage() {
                 value={feedbackText}
                 onChange={(e) => setFeedbackText(e.target.value)}
                 rows={4}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
                 placeholder="Please share any additional feedback about this candidate..."
               />
             </div>
@@ -213,7 +213,7 @@ export default function ReferenceFeedbackPage() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full bg-violet-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="w-full bg-[#323288] text-white py-3 px-4 rounded-lg font-medium hover:bg-[#252560] focus:outline-none focus:ring-2 focus:ring-[#f0f0fc]0 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {isSubmitting ? "Submitting..." : "Submit Feedback"}
             </button>

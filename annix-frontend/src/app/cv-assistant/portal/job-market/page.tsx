@@ -83,7 +83,7 @@ export default function JobMarketPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600" />
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#323288]" />
       </div>
     );
   }
@@ -92,38 +92,38 @@ export default function JobMarketPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Job Market</h1>
-          <p className="text-gray-600 mt-1">Browse external job listings and manage data sources</p>
+          <h1 className="text-2xl font-bold text-white">Job Market</h1>
+          <p className="text-white/70 mt-1">Browse external job listings and manage data sources</p>
         </div>
       </div>
 
       {stats && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+          <div className="bg-white rounded-xl shadow-sm border border-[#e0e0f5] p-5">
             <p className="text-sm text-gray-500">Total Jobs Ingested</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">{stats.totalJobs}</p>
+            <p className="text-2xl font-bold text-[#252560] mt-1">{stats.totalJobs}</p>
           </div>
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+          <div className="bg-white rounded-xl shadow-sm border border-[#e0e0f5] p-5">
             <p className="text-sm text-gray-500">New This Week</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">{stats.jobsLast7Days}</p>
+            <p className="text-2xl font-bold text-[#252560] mt-1">{stats.jobsLast7Days}</p>
           </div>
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+          <div className="bg-white rounded-xl shadow-sm border border-[#e0e0f5] p-5">
             <p className="text-sm text-gray-500">Active Sources</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">
+            <p className="text-2xl font-bold text-[#252560] mt-1">
               {stats.sources.filter((s) => s.enabled).length} / {stats.sources.length}
             </p>
           </div>
         </div>
       )}
 
-      <div className="border-b border-gray-200">
+      <div className="border-b border-[#e0e0f5]">
         <nav className="-mb-px flex space-x-8">
           <button
             type="button"
             onClick={() => setActiveTab("jobs")}
             className={`py-3 px-1 border-b-2 text-sm font-medium transition-colors ${
               activeTab === "jobs"
-                ? "border-violet-500 text-violet-600"
+                ? "border-[#f0f0fc]0 text-[#323288]"
                 : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
             }`}
           >
@@ -134,7 +134,7 @@ export default function JobMarketPage() {
             onClick={() => setActiveTab("sources")}
             className={`py-3 px-1 border-b-2 text-sm font-medium transition-colors ${
               activeTab === "sources"
-                ? "border-violet-500 text-violet-600"
+                ? "border-[#f0f0fc]0 text-[#323288]"
                 : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
             }`}
           >
@@ -151,18 +151,18 @@ export default function JobMarketPage() {
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               placeholder="Search jobs by title or company..."
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
             />
             <button
               type="submit"
-              className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700"
+              className="px-4 py-2 bg-[#323288] text-white rounded-lg hover:bg-[#252560]"
             >
               Search
             </button>
           </form>
 
           {jobs.length === 0 ? (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
+            <div className="bg-white rounded-xl shadow-sm border border-[#e0e0f5] p-12 text-center">
               <p className="text-gray-500">
                 {sources.length === 0
                   ? "No data sources configured. Add a source in the Data Sources tab to start ingesting jobs."
@@ -211,7 +211,7 @@ export default function JobMarketPage() {
             <button
               type="button"
               onClick={() => setShowAddSource(true)}
-              className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 text-sm font-medium"
+              className="px-4 py-2 bg-[#323288] text-white rounded-lg hover:bg-[#252560] text-sm font-medium"
             >
               Add Source
             </button>
@@ -222,7 +222,7 @@ export default function JobMarketPage() {
           )}
 
           {sources.length === 0 ? (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
+            <div className="bg-white rounded-xl shadow-sm border border-[#e0e0f5] p-12 text-center">
               <p className="text-gray-500">
                 No data sources configured yet. Click &quot;Add Source&quot; to connect to a job
                 board API.

@@ -67,7 +67,7 @@ export function MissingDocsWarningModal(props: MissingDocsWarningModalProps) {
           <button
             type="button"
             onClick={props.onConfirm}
-            className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 text-sm font-medium"
+            className="px-4 py-2 bg-[#323288] text-white rounded-lg hover:bg-[#252560] text-sm font-medium"
           >
             Continue anyway
           </button>

@@ -46,13 +46,13 @@ function CvAssistantLoginContent() {
         : "/cv-assistant";
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-violet-900 via-purple-900 to-violet-900 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40] flex items-center justify-center px-4">
       <div className="max-w-md w-full">
         <div className="bg-white rounded-2xl shadow-2xl p-8">
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-violet-100 rounded-2xl mb-4">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-[#e0e0f5] rounded-2xl mb-4">
               <svg
-                className="w-8 h-8 text-violet-600"
+                className="w-8 h-8 text-[#323288]"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -99,7 +99,7 @@ function CvAssistantLoginContent() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
                 placeholder="you@example.com"
               />
             </div>
@@ -114,7 +114,7 @@ function CvAssistantLoginContent() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
                 placeholder="Enter your password"
               />
             </div>
@@ -125,13 +125,13 @@ function CvAssistantLoginContent() {
                   type="checkbox"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
-                  className="h-4 w-4 text-violet-600 focus:ring-violet-500 border-gray-300 rounded"
+                  className="h-4 w-4 text-[#323288] focus:ring-[#f0f0fc]0 border-gray-300 rounded"
                 />
                 <span className="ml-2 text-sm text-gray-600">Remember me</span>
               </label>
               <Link
                 href="/cv-assistant/forgot-password"
-                className="text-sm text-violet-600 hover:text-violet-700"
+                className="text-sm text-[#323288] hover:text-[#252560]"
               >
                 Forgot password?
               </Link>
@@ -140,7 +140,7 @@ function CvAssistantLoginContent() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-violet-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="w-full bg-[#323288] text-white py-3 px-4 rounded-lg font-medium hover:bg-[#252560] focus:outline-none focus:ring-2 focus:ring-[#f0f0fc]0 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {isLoading ? "Signing in..." : "Sign in"}
             </button>
@@ -172,10 +172,7 @@ function CvAssistantLoginContent() {
           <div className="mt-6 text-center">
             <p className="text-gray-600">
               Do not have an account?{" "}
-              <Link
-                href={registerHref}
-                className="text-violet-600 hover:text-violet-700 font-medium"
-              >
+              <Link href={registerHref} className="text-[#323288] hover:text-[#252560] font-medium">
                 Register
               </Link>
             </p>
@@ -183,7 +180,7 @@ function CvAssistantLoginContent() {
         </div>
 
         <div className="text-center mt-6 space-x-4">
-          <Link href="/cv-assistant" className="text-violet-200 hover:text-white text-sm">
+          <Link href="/cv-assistant" className="text-[#c0c0eb] hover:text-white text-sm">
             Choose a different account type
           </Link>
         </div>
@@ -196,8 +193,8 @@ export default function CvAssistantLoginPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-gradient-to-br from-violet-900 via-purple-900 to-violet-900 flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-400" />
+        <div className="min-h-screen bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40] flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#7373c2]" />
         </div>
       }
     >

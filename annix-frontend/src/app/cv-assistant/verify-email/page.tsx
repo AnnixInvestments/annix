@@ -87,13 +87,13 @@ function VerifyEmailContent() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-violet-900 via-purple-900 to-violet-900 flex items-center justify-center px-4 py-12">
+    <div className="min-h-screen bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40] flex items-center justify-center px-4 py-12">
       <div className="max-w-md w-full">
         <div className="bg-white rounded-2xl shadow-2xl p-8 text-center">
           {status === "pending" && (
             <>
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-violet-100 rounded-full mb-4">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600" />
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-[#e0e0f5] rounded-full mb-4">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#323288]" />
               </div>
               <h2 className="text-2xl font-bold text-gray-900 mb-2">Verifying your email</h2>
               <p className="text-gray-600">Hold on while we confirm your verification link.</p>
@@ -122,7 +122,7 @@ function VerifyEmailContent() {
               {!autoSignedIn && (
                 <Link
                   href="/cv-assistant/login"
-                  className="inline-block bg-violet-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-violet-700 transition-colors"
+                  className="inline-block bg-[#323288] text-white py-3 px-6 rounded-lg font-medium hover:bg-[#252560] transition-colors"
                 >
                   Sign in
                 </Link>
@@ -162,13 +162,13 @@ function VerifyEmailContent() {
                   value={resendEmail}
                   onChange={(e) => setResendEmail(e.target.value)}
                   required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
                   placeholder="you@example.com"
                 />
                 <button
                   type="submit"
                   disabled={isResending}
-                  className="w-full bg-violet-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="w-full bg-[#323288] text-white py-3 px-4 rounded-lg font-medium hover:bg-[#252560] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {isResending ? "Sending..." : "Resend verification email"}
                 </button>
@@ -180,7 +180,7 @@ function VerifyEmailContent() {
               <div className="mt-6">
                 <Link
                   href="/cv-assistant/login"
-                  className="text-violet-600 hover:text-violet-700 text-sm font-medium"
+                  className="text-[#323288] hover:text-[#252560] text-sm font-medium"
                 >
                   Back to sign in
                 </Link>
@@ -197,8 +197,8 @@ export default function CvAssistantVerifyEmailPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-gradient-to-br from-violet-900 via-purple-900 to-violet-900 flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-400" />
+        <div className="min-h-screen bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40] flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#7373c2]" />
         </div>
       }
     >

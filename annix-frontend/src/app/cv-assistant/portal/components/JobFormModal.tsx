@@ -141,7 +141,7 @@ export function JobFormModal({ job, onClose }: { job: JobPosting | null; onClose
   return createPortal(
     <div className="fixed inset-0 bg-black/10 backdrop-blur-md flex items-center justify-center z-[9999] p-4">
       <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="px-6 py-4 border-b border-gray-200">
+        <div className="px-6 py-4 border-b border-[#e0e0f5]">
           <h2 className="text-xl font-bold text-gray-900">
             {job ? "Edit Job Posting" : "Create Job Posting"}
           </h2>
@@ -162,7 +162,7 @@ export function JobFormModal({ job, onClose }: { job: JobPosting | null; onClose
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
               placeholder="e.g., Senior Software Engineer"
             />
           </div>
@@ -173,7 +173,7 @@ export function JobFormModal({ job, onClose }: { job: JobPosting | null; onClose
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={4}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
               placeholder="Role, responsibilities, what success looks like..."
             />
           </div>
@@ -186,7 +186,7 @@ export function JobFormModal({ job, onClose }: { job: JobPosting | null; onClose
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
                 placeholder="Johannesburg"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
               />
             </div>
             <div>
@@ -194,7 +194,7 @@ export function JobFormModal({ job, onClose }: { job: JobPosting | null; onClose
               <select
                 value={province}
                 onChange={(e) => setProvince(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent bg-white"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent bg-white"
               >
                 <option value="">—</option>
                 {SOUTH_AFRICAN_PROVINCES.map((p) => (
@@ -214,7 +214,7 @@ export function JobFormModal({ job, onClose }: { job: JobPosting | null; onClose
               <select
                 value={employmentType}
                 onChange={(e) => setEmploymentType(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent bg-white"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent bg-white"
               >
                 {EMPLOYMENT_TYPE_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -233,7 +233,7 @@ export function JobFormModal({ job, onClose }: { job: JobPosting | null; onClose
                 onChange={(e) => setResponseDays(e.target.value)}
                 min="1"
                 max="90"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
               />
             </div>
           </div>
@@ -248,7 +248,7 @@ export function JobFormModal({ job, onClose }: { job: JobPosting | null; onClose
                 value={salaryMin}
                 onChange={(e) => setSalaryMin(e.target.value)}
                 min="0"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
               />
             </div>
             <div>
@@ -260,7 +260,7 @@ export function JobFormModal({ job, onClose }: { job: JobPosting | null; onClose
                 value={salaryMax}
                 onChange={(e) => setSalaryMax(e.target.value)}
                 min="0"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
               />
             </div>
             <div>
@@ -270,14 +270,14 @@ export function JobFormModal({ job, onClose }: { job: JobPosting | null; onClose
                 value={salaryCurrency}
                 onChange={(e) => setSalaryCurrency(e.target.value.toUpperCase().slice(0, 3))}
                 placeholder="ZAR"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
               />
             </div>
           </div>
 
-          <div className="rounded-lg bg-violet-50 border border-violet-100 p-3 text-sm text-violet-900">
+          <div className="rounded-lg bg-[#f0f0fc] border border-[#e0e0f5] p-3 text-sm text-[#1a1a40]">
             <p className="font-medium">Where applicants send their CVs</p>
-            <p className="text-xs mt-1 text-violet-700">
+            <p className="text-xs mt-1 text-[#252560]">
               All CV Assistant applications come into{" "}
               <code className="font-mono bg-white px-1 py-0.5 rounded">jobs@annix.co.za</code> with
               the job's reference number in the subject line. Annix handles the inbox; you receive
@@ -307,7 +307,7 @@ export function JobFormModal({ job, onClose }: { job: JobPosting | null; onClose
                       key={code}
                       className={`flex items-center gap-3 p-2 border rounded-lg ${
                         available
-                          ? "border-gray-200 hover:bg-gray-50 cursor-pointer"
+                          ? "border-[#e0e0f5] hover:bg-gray-50 cursor-pointer"
                           : "border-gray-100 bg-gray-50 cursor-not-allowed opacity-60"
                       }`}
                     >
@@ -316,7 +316,7 @@ export function JobFormModal({ job, onClose }: { job: JobPosting | null; onClose
                         checked={available && checked}
                         disabled={!available}
                         onChange={() => available && togglePortal(code)}
-                        className="h-4 w-4 text-violet-600 focus:ring-violet-500 border-gray-300 rounded"
+                        className="h-4 w-4 text-[#323288] focus:ring-[#f0f0fc]0 border-gray-300 rounded"
                       />
                       <span className="text-sm font-medium text-gray-900">
                         {adapter.displayName}
@@ -327,7 +327,7 @@ export function JobFormModal({ job, onClose }: { job: JobPosting | null; onClose
                             ? "bg-green-100 text-green-700"
                             : tier === "freemium"
                               ? "bg-amber-100 text-amber-700"
-                              : "bg-violet-100 text-violet-700"
+                              : "bg-[#e0e0f5] text-[#252560]"
                         }`}
                       >
                         {tier}
@@ -350,7 +350,7 @@ export function JobFormModal({ job, onClose }: { job: JobPosting | null; onClose
               type="text"
               value={skillsInput}
               onChange={(e) => setSkillsInput(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
               placeholder="Python, JavaScript, AWS"
             />
           </div>
@@ -363,7 +363,7 @@ export function JobFormModal({ job, onClose }: { job: JobPosting | null; onClose
               type="text"
               value={certificationsInput}
               onChange={(e) => setCertificationsInput(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
               placeholder="ECSA Pr Eng, CompTIA Security+"
             />
           </div>
@@ -378,7 +378,7 @@ export function JobFormModal({ job, onClose }: { job: JobPosting | null; onClose
                 value={minExperience}
                 onChange={(e) => setMinExperience(e.target.value)}
                 min="0"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
               />
             </div>
             <div>
@@ -389,7 +389,7 @@ export function JobFormModal({ job, onClose }: { job: JobPosting | null; onClose
                 type="text"
                 value={education}
                 onChange={(e) => setEducation(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
                 placeholder="Bachelor's Degree"
               />
             </div>
@@ -403,7 +403,7 @@ export function JobFormModal({ job, onClose }: { job: JobPosting | null; onClose
                 id="autoReject"
                 checked={autoReject}
                 onChange={(e) => setAutoReject(e.target.checked)}
-                className="h-4 w-4 text-violet-600 focus:ring-violet-500 border-gray-300 rounded"
+                className="h-4 w-4 text-[#323288] focus:ring-[#f0f0fc]0 border-gray-300 rounded"
               />
               <label htmlFor="autoReject" className="ml-2 text-sm text-gray-600">
                 Enable auto-rejection for low scores
@@ -420,7 +420,7 @@ export function JobFormModal({ job, onClose }: { job: JobPosting | null; onClose
                   onChange={(e) => setRejectThreshold(e.target.value)}
                   min="0"
                   max="100"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
                 />
               </div>
               <div>
@@ -433,7 +433,7 @@ export function JobFormModal({ job, onClose }: { job: JobPosting | null; onClose
                   onChange={(e) => setAcceptThreshold(e.target.value)}
                   min="0"
                   max="100"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
                 />
               </div>
             </div>
@@ -450,7 +450,7 @@ export function JobFormModal({ job, onClose }: { job: JobPosting | null; onClose
             <button
               type="submit"
               disabled={isLoading}
-              className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 disabled:opacity-50"
+              className="px-4 py-2 bg-[#323288] text-white rounded-lg hover:bg-[#252560] disabled:opacity-50"
             >
               {isLoading ? "Saving..." : job ? "Save Changes" : "Create Job"}
             </button>

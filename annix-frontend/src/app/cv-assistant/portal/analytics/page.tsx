@@ -52,14 +52,14 @@ function accuracyBarColor(accuracy: number): string {
 }
 
 function funnelStageColor(index: number): string {
-  const colors = ["bg-violet-600", "bg-violet-500", "bg-teal-500", "bg-teal-400", "bg-emerald-500"];
+  const colors = ["bg-[#323288]", "bg-[#f0f0fc]0", "bg-teal-500", "bg-teal-400", "bg-emerald-500"];
   const color = colors[index];
   return color || "bg-gray-400";
 }
 
 function SkeletonCard() {
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 animate-pulse">
+    <div className="bg-white rounded-xl shadow-sm border border-[#e0e0f5] p-6 animate-pulse">
       <div className="h-4 bg-gray-200 rounded w-1/3 mb-4" />
       <div className="h-8 bg-gray-200 rounded w-1/2 mb-2" />
       <div className="h-4 bg-gray-200 rounded w-2/3" />
@@ -69,7 +69,7 @@ function SkeletonCard() {
 
 function SkeletonSection() {
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 animate-pulse">
+    <div className="bg-white rounded-xl shadow-sm border border-[#e0e0f5] p-6 animate-pulse">
       <div className="h-5 bg-gray-200 rounded w-1/4 mb-6" />
       <div className="space-y-3">
         <div className="h-10 bg-gray-200 rounded" />
@@ -191,8 +191,8 @@ export default function AnalyticsPage() {
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Analytics & Reporting</h1>
-          <p className="text-gray-600 mt-1">
+          <h1 className="text-2xl font-bold text-white">Analytics & Reporting</h1>
+          <p className="text-white/70 mt-1">
             Insights into your recruitment pipeline and market trends
           </p>
         </div>
@@ -200,7 +200,7 @@ export default function AnalyticsPage() {
           <button
             onClick={handleExportFunnel}
             disabled={exportingFunnel}
-            className="inline-flex items-center px-3 py-2 text-sm font-medium text-violet-700 bg-violet-50 rounded-lg hover:bg-violet-100 transition-colors disabled:opacity-50"
+            className="inline-flex items-center px-3 py-2 text-sm font-medium text-[#252560] bg-[#f0f0fc] rounded-lg hover:bg-[#e0e0f5] transition-colors disabled:opacity-50"
           >
             <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -215,7 +215,7 @@ export default function AnalyticsPage() {
           <button
             onClick={handleExportTimeToFill}
             disabled={exportingTimeToFill}
-            className="inline-flex items-center px-3 py-2 text-sm font-medium text-violet-700 bg-violet-50 rounded-lg hover:bg-violet-100 transition-colors disabled:opacity-50"
+            className="inline-flex items-center px-3 py-2 text-sm font-medium text-[#252560] bg-[#f0f0fc] rounded-lg hover:bg-[#e0e0f5] transition-colors disabled:opacity-50"
           >
             <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -230,7 +230,7 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+      <div className="bg-white rounded-xl shadow-sm border border-[#e0e0f5] p-4">
         <div className="flex flex-wrap items-center gap-3">
           <span className="text-sm font-medium text-gray-700">Date Range:</span>
           <div className="flex gap-1">
@@ -247,7 +247,7 @@ export default function AnalyticsPage() {
                 onClick={() => handlePresetClick(preset.key)}
                 className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
                   activePreset === preset.key
-                    ? "bg-violet-600 text-white"
+                    ? "bg-[#323288] text-white"
                     : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                 }`}
               >
@@ -260,21 +260,21 @@ export default function AnalyticsPage() {
               type="date"
               value={dateFrom}
               onChange={(e) => handleDateChange(e.target.value, dateTo)}
-              className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
+              className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-[#f0f0fc]0"
             />
             <span className="text-sm text-gray-500">to</span>
             <input
               type="date"
               value={dateTo}
               onChange={(e) => handleDateChange(dateFrom, e.target.value)}
-              className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
+              className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-[#f0f0fc]0"
             />
           </div>
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-        <div className="px-6 py-4 border-b border-gray-200">
+      <div className="bg-white rounded-xl shadow-sm border border-[#e0e0f5]">
+        <div className="px-6 py-4 border-b border-[#e0e0f5]">
           <h2 className="text-lg font-semibold text-gray-900">Conversion Funnel</h2>
           {funnel?.dateFrom && funnel?.dateTo && (
             <p className="text-sm text-gray-500 mt-1">
@@ -320,17 +320,17 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-        <div className="px-6 py-4 border-b border-gray-200">
+      <div className="bg-white rounded-xl shadow-sm border border-[#e0e0f5]">
+        <div className="px-6 py-4 border-b border-[#e0e0f5]">
           <h2 className="text-lg font-semibold text-gray-900">Match Accuracy</h2>
         </div>
         <div className="p-6">
           {matchAccuracy ? (
             <div className="space-y-6">
               <div className="flex items-center gap-6">
-                <div className="flex-shrink-0 w-32 h-32 rounded-full border-8 border-violet-200 flex items-center justify-center">
+                <div className="flex-shrink-0 w-32 h-32 rounded-full border-8 border-[#c0c0eb] flex items-center justify-center">
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-gray-900">
+                    <div className="text-2xl font-bold text-[#252560]">
                       {matchAccuracy.overall.accuracy.toFixed(1)}%
                     </div>
                     <div className="text-xs text-gray-500">Overall</div>
@@ -386,17 +386,17 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-        <div className="px-6 py-4 border-b border-gray-200">
+      <div className="bg-white rounded-xl shadow-sm border border-[#e0e0f5]">
+        <div className="px-6 py-4 border-b border-[#e0e0f5]">
           <h2 className="text-lg font-semibold text-gray-900">Time-to-Fill Metrics</h2>
         </div>
         <div className="p-6">
           {timeToFill ? (
             <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-violet-50 rounded-lg p-4">
-                  <div className="text-sm text-violet-600 font-medium">Average Days to Fill</div>
-                  <div className="text-3xl font-bold text-violet-900 mt-1">
+                <div className="bg-[#f0f0fc] rounded-lg p-4">
+                  <div className="text-sm text-[#323288] font-medium">Average Days to Fill</div>
+                  <div className="text-3xl font-bold text-[#1a1a40] mt-1">
                     {timeToFill.overall.averageDays.toFixed(1)}
                   </div>
                 </div>
@@ -441,7 +441,7 @@ export default function AnalyticsPage() {
                               <span>{job.averageDays.toFixed(1)}</span>
                               <div className="w-20 bg-gray-100 rounded-full h-2">
                                 <div
-                                  className="bg-violet-500 h-full rounded-full"
+                                  className="bg-[#f0f0fc]0 h-full rounded-full"
                                   style={{
                                     width: `${Math.min((job.averageDays / (timeToFill.overall.averageDays * 2)) * 100, 100)}%`,
                                   }}
@@ -465,8 +465,8 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-        <div className="px-6 py-4 border-b border-gray-200">
+      <div className="bg-white rounded-xl shadow-sm border border-[#e0e0f5]">
+        <div className="px-6 py-4 border-b border-[#e0e0f5]">
           <h2 className="text-lg font-semibold text-gray-900">SA Labour Market Trends</h2>
           {marketTrends && (
             <p className="text-sm text-gray-500 mt-1">
@@ -490,7 +490,7 @@ export default function AnalyticsPage() {
                         </div>
                         <div className="flex-1 bg-gray-100 rounded-full h-5 overflow-hidden">
                           <div
-                            className="bg-violet-500 h-full rounded-full transition-all duration-500"
+                            className="bg-[#f0f0fc]0 h-full rounded-full transition-all duration-500"
                             style={{ width: `${(cat.count / maxCategoryCount) * 100}%` }}
                           />
                         </div>
@@ -596,7 +596,7 @@ export default function AnalyticsPage() {
                       >
                         <div className="text-xs text-gray-500 mb-1">{month.count}</div>
                         <div
-                          className="w-full bg-violet-400 rounded-t transition-all duration-500 min-w-[12px]"
+                          className="w-full bg-[#7373c2] rounded-t transition-all duration-500 min-w-[12px]"
                           style={{ height: `${heightPercent}%` }}
                         />
                         <div className="text-xs text-gray-400 mt-1 truncate w-full text-center">

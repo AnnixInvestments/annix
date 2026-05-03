@@ -100,8 +100,8 @@ export function IndividualDocumentUploader(props: IndividualDocumentUploaderProp
         onDrop={handleDrop}
         className={`rounded-xl border-2 border-dashed p-6 text-center transition-colors ${
           isDragging
-            ? "border-violet-500 bg-violet-50"
-            : "border-gray-300 bg-white hover:border-violet-400"
+            ? "border-[#f0f0fc]0 bg-[#f0f0fc]"
+            : "border-gray-300 bg-white hover:border-[#7373c2]"
         }`}
       >
         <input
@@ -115,7 +115,7 @@ export function IndividualDocumentUploader(props: IndividualDocumentUploaderProp
         />
         <label
           htmlFor={`uploader-${kind}`}
-          className={`inline-flex items-center justify-center bg-violet-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-violet-700 transition-colors cursor-pointer ${
+          className={`inline-flex items-center justify-center bg-[#323288] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#252560] transition-colors cursor-pointer ${
             isUploading ? "opacity-50 cursor-not-allowed" : ""
           }`}
         >

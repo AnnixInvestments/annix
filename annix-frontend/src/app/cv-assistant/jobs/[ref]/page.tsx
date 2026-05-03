@@ -53,7 +53,7 @@ export default function PublicJobPostingPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-violet-900 via-purple-900 to-violet-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40] flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white" />
       </div>
     );
@@ -61,7 +61,7 @@ export default function PublicJobPostingPage() {
 
   if (error || !job) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-violet-900 via-purple-900 to-violet-900 flex items-center justify-center px-4">
+      <div className="min-h-screen bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40] flex items-center justify-center px-4">
         <div className="max-w-md w-full bg-white rounded-2xl shadow-2xl p-8 text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Job not available</h1>
           <p className="text-gray-600 mb-6">
@@ -69,7 +69,7 @@ export default function PublicJobPostingPage() {
           </p>
           <Link
             href="/cv-assistant/jobs"
-            className="inline-block bg-violet-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-violet-700 transition-colors"
+            className="inline-block bg-[#323288] text-white py-3 px-6 rounded-lg font-medium hover:bg-[#252560] transition-colors"
           >
             Browse other jobs
           </Link>
@@ -97,13 +97,13 @@ export default function PublicJobPostingPage() {
   const mailtoLink = applyEmail ? `mailto:${applyEmail}?subject=${mailtoSubject}` : null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-violet-900 via-purple-900 to-violet-900">
+    <div className="min-h-screen bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40]">
       <header className="bg-white/10 backdrop-blur border-b border-white/20">
         <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link href="/cv-assistant" className="text-white font-semibold">
             CV Assistant
           </Link>
-          <Link href="/cv-assistant/login" className="text-sm text-violet-200 hover:text-white">
+          <Link href="/cv-assistant/login" className="text-sm text-[#c0c0eb] hover:text-white">
             Sign in
           </Link>
         </div>
@@ -118,7 +118,7 @@ export default function PublicJobPostingPage() {
               </p>
               <h1 className="text-3xl font-bold text-gray-900">{job.title}</h1>
             </div>
-            <span className="inline-block bg-violet-100 text-violet-700 text-xs font-semibold px-3 py-1 rounded-full">
+            <span className="inline-block bg-[#e0e0f5] text-[#252560] text-xs font-semibold px-3 py-1 rounded-full">
               {job.referenceNumber}
             </span>
           </div>
@@ -127,7 +127,7 @@ export default function PublicJobPostingPage() {
             {job.location ? (
               <div className="flex items-center gap-2 text-gray-700">
                 <svg
-                  className="w-4 h-4 text-violet-500"
+                  className="w-4 h-4 text-[#f0f0fc]0"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -152,7 +152,7 @@ export default function PublicJobPostingPage() {
             {employmentLabel ? (
               <div className="flex items-center gap-2 text-gray-700">
                 <svg
-                  className="w-4 h-4 text-violet-500"
+                  className="w-4 h-4 text-[#f0f0fc]0"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -170,7 +170,7 @@ export default function PublicJobPostingPage() {
             {salaryBand ? (
               <div className="flex items-center gap-2 text-gray-700">
                 <svg
-                  className="w-4 h-4 text-violet-500"
+                  className="w-4 h-4 text-[#f0f0fc]0"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -187,7 +187,7 @@ export default function PublicJobPostingPage() {
             ) : null}
             <div className="flex items-center gap-2 text-gray-700">
               <svg
-                className="w-4 h-4 text-violet-500"
+                className="w-4 h-4 text-[#f0f0fc]0"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -233,7 +233,7 @@ export default function PublicJobPostingPage() {
                       {requiredSkills.map((skill) => (
                         <span
                           key={skill}
-                          className="bg-violet-50 text-violet-700 text-xs px-2 py-0.5 rounded"
+                          className="bg-[#f0f0fc] text-[#252560] text-xs px-2 py-0.5 rounded"
                         >
                           {skill}
                         </span>
@@ -275,7 +275,7 @@ export default function PublicJobPostingPage() {
             so we can match your application to this role.
           </p>
 
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-3 text-sm">
+          <div className="bg-gray-50 border border-[#e0e0f5] rounded-lg p-4 space-y-3 text-sm">
             <div>
               <span className="text-gray-500 text-xs uppercase tracking-wide">Email to</span>
               <p className="font-mono text-gray-900 mt-0.5">
@@ -297,7 +297,7 @@ export default function PublicJobPostingPage() {
           {mailtoLink ? (
             <a
               href={mailtoLink}
-              className="mt-5 inline-block bg-violet-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-violet-700 transition-colors"
+              className="mt-5 inline-block bg-[#323288] text-white py-3 px-6 rounded-lg font-medium hover:bg-[#252560] transition-colors"
             >
               Open email to apply
             </a>

@@ -68,12 +68,12 @@ export default function SeekerDashboardPage() {
 
 function DashboardTile(props: { title: string; description: string; href: string; cta: string }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col">
+    <div className="bg-white rounded-xl border border-[#e0e0f5] p-6 flex flex-col">
       <h2 className="text-lg font-semibold text-gray-900">{props.title}</h2>
       <p className="text-sm text-gray-600 mt-2 flex-1">{props.description}</p>
       <Link
         href={props.href}
-        className="mt-4 inline-flex items-center justify-center bg-violet-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-violet-700 transition-colors"
+        className="mt-4 inline-flex items-center justify-center bg-[#323288] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#252560] transition-colors"
       >
         {props.cta}
       </Link>

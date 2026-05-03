@@ -61,7 +61,7 @@ function SeekerContent({ children }: { children: React.ReactNode }) {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600" />
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#323288]" />
       </div>
     );
   }
@@ -81,14 +81,14 @@ function SeekerContent({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white border-b border-gray-200">
+      <nav className="bg-white border-b border-[#e0e0f5]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex">
               <Link href="/cv-assistant/seeker/dashboard" className="flex items-center">
-                <div className="flex items-center justify-center w-10 h-10 bg-violet-100 rounded-lg mr-3">
+                <div className="flex items-center justify-center w-10 h-10 bg-[#e0e0f5] rounded-lg mr-3">
                   <svg
-                    className="w-6 h-6 text-violet-600"
+                    className="w-6 h-6 text-[#323288]"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -115,7 +115,7 @@ function SeekerContent({ children }: { children: React.ReactNode }) {
                       href={item.href}
                       className={`inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
                         isActive
-                          ? "bg-violet-100 text-violet-700"
+                          ? "bg-[#e0e0f5] text-[#252560]"
                           : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
                       }`}
                     >
@@ -151,7 +151,7 @@ export default function SeekerLayout(props: { children: React.ReactNode }) {
     <Suspense
       fallback={
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600 mx-auto" />
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#323288] mx-auto" />
         </div>
       }
     >

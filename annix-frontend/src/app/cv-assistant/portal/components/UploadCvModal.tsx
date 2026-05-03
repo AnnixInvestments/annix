@@ -30,7 +30,7 @@ export function UploadCvModal({ jobs, onClose }: { jobs: JobPosting[]; onClose: 
   return createPortal(
     <div className="fixed inset-0 bg-black/10 backdrop-blur-md flex items-center justify-center z-[9999] p-4">
       <div className="bg-white rounded-2xl shadow-xl max-w-md w-full">
-        <div className="px-6 py-4 border-b border-gray-200">
+        <div className="px-6 py-4 border-b border-[#e0e0f5]">
           <h2 className="text-xl font-bold text-gray-900">Upload CV</h2>
         </div>
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
@@ -45,7 +45,7 @@ export function UploadCvModal({ jobs, onClose }: { jobs: JobPosting[]; onClose: 
               value={selectedJobId}
               onChange={(e) => setSelectedJobId(e.target.value)}
               required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
             >
               <option value="">Select a job...</option>
               {jobs
@@ -65,7 +65,7 @@ export function UploadCvModal({ jobs, onClose }: { jobs: JobPosting[]; onClose: 
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
             />
           </div>
           <div>
@@ -76,7 +76,7 @@ export function UploadCvModal({ jobs, onClose }: { jobs: JobPosting[]; onClose: 
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
             />
           </div>
           <div>
@@ -89,7 +89,7 @@ export function UploadCvModal({ jobs, onClose }: { jobs: JobPosting[]; onClose: 
                 setFile(selectedFile || null);
               }}
               required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
             />
           </div>
           <div className="flex justify-end space-x-3 pt-4">
@@ -103,7 +103,7 @@ export function UploadCvModal({ jobs, onClose }: { jobs: JobPosting[]; onClose: 
             <button
               type="submit"
               disabled={isUploading || !file || !selectedJobId}
-              className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 disabled:opacity-50"
+              className="px-4 py-2 bg-[#323288] text-white rounded-lg hover:bg-[#252560] disabled:opacity-50"
             >
               {isUploading ? "Uploading..." : "Upload & Process"}
             </button>

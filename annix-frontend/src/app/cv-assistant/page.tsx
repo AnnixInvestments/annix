@@ -4,7 +4,7 @@ import Link from "next/link";
 
 export default function CvAssistantHomePage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-violet-900 via-purple-900 to-violet-900 flex items-center justify-center px-4 py-12">
+    <div className="min-h-screen bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40] flex items-center justify-center px-4 py-12">
       <div className="max-w-4xl w-full">
         <div className="text-center mb-10">
           <div className="inline-flex items-center justify-center w-20 h-20 bg-white/10 backdrop-blur rounded-2xl mb-6">
@@ -23,7 +23,7 @@ export default function CvAssistantHomePage() {
             </svg>
           </div>
           <h1 className="text-4xl sm:text-5xl font-bold text-white mb-3">CV Assistant</h1>
-          <p className="text-lg text-violet-200">Choose how you want to use CV Assistant</p>
+          <p className="text-lg text-[#c0c0eb]">Choose how you want to use CV Assistant</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -37,7 +37,7 @@ export default function CvAssistantHomePage() {
             secondaryLabel="Sign in"
             icon={
               <svg
-                className="w-7 h-7 text-violet-600"
+                className="w-7 h-7 text-[#323288]"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -62,7 +62,7 @@ export default function CvAssistantHomePage() {
             secondaryLabel="Sign in"
             icon={
               <svg
-                className="w-7 h-7 text-violet-600"
+                className="w-7 h-7 text-[#323288]"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -81,11 +81,11 @@ export default function CvAssistantHomePage() {
         <div className="text-center mt-8 space-y-3">
           <Link
             href="/cv-assistant/jobs"
-            className="block text-violet-100 hover:text-white text-sm font-medium"
+            className="block text-[#e0e0f5] hover:text-white text-sm font-medium"
           >
             Just want to look around? Browse jobs without signing up →
           </Link>
-          <Link href="/" className="block text-violet-200 hover:text-white text-sm">
+          <Link href="/" className="block text-[#c0c0eb] hover:text-white text-sm">
             Back to Annix Platform
           </Link>
         </div>
@@ -106,22 +106,22 @@ function CvHomeCard(props: {
 }) {
   return (
     <div className="bg-white rounded-2xl shadow-2xl p-8 flex flex-col">
-      <div className="inline-flex items-center justify-center w-14 h-14 bg-violet-100 rounded-xl mb-5">
+      <div className="inline-flex items-center justify-center w-14 h-14 bg-[#e0e0f5] rounded-xl mb-5">
         {props.icon}
       </div>
       <h2 className="text-2xl font-bold text-gray-900">{props.title}</h2>
-      <p className="text-sm text-violet-600 font-medium mt-1">{props.subtitle}</p>
+      <p className="text-sm text-[#323288] font-medium mt-1">{props.subtitle}</p>
       <p className="text-gray-600 mt-4 flex-1">{props.description}</p>
       <div className="mt-6 space-y-3">
         <Link
           href={props.primaryHref}
-          className="block text-center bg-violet-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-violet-700 transition-colors"
+          className="block text-center bg-[#323288] text-white py-3 px-4 rounded-lg font-medium hover:bg-[#252560] transition-colors"
         >
           {props.primaryLabel}
         </Link>
         <Link
           href={props.secondaryHref}
-          className="block text-center bg-white text-violet-700 py-3 px-4 rounded-lg font-medium border border-violet-200 hover:bg-violet-50 transition-colors"
+          className="block text-center bg-white text-[#252560] py-3 px-4 rounded-lg font-medium border border-[#c0c0eb] hover:bg-[#f0f0fc] transition-colors"
         >
           {props.secondaryLabel}
         </Link>

@@ -250,7 +250,11 @@ export default function PortalToolbar(props: PortalToolbarProps) {
                     </div>
 
                     <Link
-                      href={`/${portalType}/portal/profile`}
+                      href={
+                        portalType === "cvAssistant"
+                          ? "/cv-assistant/portal/settings"
+                          : `/${portalType}/portal/profile`
+                      }
                       className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       onClick={() => setIsUserMenuOpen(false)}
                     >
@@ -268,7 +272,7 @@ export default function PortalToolbar(props: PortalToolbarProps) {
                             d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
                           />
                         </svg>
-                        My Profile
+                        {portalType === "cvAssistant" ? "Settings" : "My Profile"}
                       </div>
                     </Link>
 
@@ -297,7 +301,7 @@ export default function PortalToolbar(props: PortalToolbarProps) {
                       </Link>
                     )}
 
-                    {portalType !== "admin" && (
+                    {portalType !== "admin" && portalType !== "cvAssistant" && (
                       <Link
                         href={`/${portalType}/portal/company`}
                         className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"

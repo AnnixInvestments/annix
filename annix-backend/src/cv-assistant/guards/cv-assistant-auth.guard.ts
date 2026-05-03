@@ -1,15 +1,18 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { UserAppAccess } from "../../rbac/entities/user-app-access.entity";
 import { User } from "../../user/entities/user.entity";
+import { CV_ASSISTANT_JWT_SECRET_DEFAULT } from "../cv-assistant.constants";
 import { CvAssistantRole } from "../entities/cv-assistant-user.entity";
 
 @Injectable()
 export class CvAssistantAuthGuard implements CanActivate {
   constructor(
     private readonly jwtService: JwtService,
+    private readonly configService: ConfigService,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
     @InjectRepository(UserAppAccess)
@@ -25,9 +28,13 @@ export class CvAssistantAuthGuard implements CanActivate {
     }
 
     const token = authHeader.substring(7);
+    const secret = this.configService.get<string>(
+      "CV_ASSISTANT_JWT_SECRET",
+      CV_ASSISTANT_JWT_SECRET_DEFAULT,
+    );
 
     try {
-      const payload = this.jwtService.verify(token);
+      const payload = this.jwtService.verify(token, { secret });
 
       if (payload.type !== "cv-assistant") {
         throw new UnauthorizedException("Invalid token type");
