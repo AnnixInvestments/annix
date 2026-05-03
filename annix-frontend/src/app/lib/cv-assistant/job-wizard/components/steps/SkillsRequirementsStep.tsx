@@ -1,15 +1,16 @@
 "use client";
 
 import { useToast } from "@/app/components/Toast";
-import type {
-  JobPosting,
-  JobSkill,
-  SkillImportance,
-  SkillProficiency,
-  UpdateJobWizardPayload,
+import {
+  cvAssistantApiClient,
+  type JobPosting,
+  type JobSkill,
+  type SkillImportance,
+  type SkillProficiency,
+  type UpdateJobWizardPayload,
 } from "@/app/lib/api/cvAssistantApi";
-import { useCvNixSkillSuggestions } from "@/app/lib/query/hooks";
 import { SKILL_IMPORTANCE_OPTIONS, SKILL_PROFICIENCY_OPTIONS } from "../../constants/skill-options";
+import { useNixCall } from "../../hooks/useNixCall";
 import { arrOr, strOr } from "../../utils/value-helpers";
 import { FieldLabel, inputClass, StepShell, selectClass } from "../StepShell";
 
@@ -44,7 +45,11 @@ export function SkillsRequirementsStep({ draft, onChange }: SkillsRequirementsSt
   const removeSkill = (index: number) => onChange({ skills: skills.filter((_, i) => i !== index) });
 
   const { showToast } = useToast();
-  const skillSuggestions = useCvNixSkillSuggestions();
+  const skillSuggestions = useNixCall({
+    operation: "skill-suggestions",
+    label: "Nix is suggesting skills for this role…",
+    fn: (id: number) => cvAssistantApiClient.nixSkillSuggestions(id),
+  });
   const isSuggesting = skillSuggestions.isPending;
   const handleSuggest = () => {
     skillSuggestions.mutate(draft.id, {

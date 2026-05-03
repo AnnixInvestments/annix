@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useToast } from "@/app/components/Toast";
-import { useCvNixSourcingQueries } from "@/app/lib/query/hooks";
+import { cvAssistantApiClient } from "@/app/lib/api/cvAssistantApi";
+import { useNixCall } from "../hooks/useNixCall";
 
 export interface SourcingQueriesPanelProps {
   jobId: number;
@@ -10,7 +11,11 @@ export interface SourcingQueriesPanelProps {
 
 export function SourcingQueriesPanel({ jobId }: SourcingQueriesPanelProps) {
   const { showToast } = useToast();
-  const sourcing = useCvNixSourcingQueries();
+  const sourcing = useNixCall({
+    operation: "sourcing-queries",
+    label: "Nix is generating Boolean search strings…",
+    fn: (id: number) => cvAssistantApiClient.nixSourcingQueries(id),
+  });
   const data = sourcing.data;
   const isPending = sourcing.isPending;
   const [copied, setCopied] = useState<string | null>(null);

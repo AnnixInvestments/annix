@@ -94,6 +94,15 @@ export interface NixSourcingQueriesResponse {
   explanations: string[];
 }
 
+export interface NixVolumePredictionResponse {
+  expectedApplicants: number;
+  lowerBound: number;
+  upperBound: number;
+  confidence: number;
+  factors: string[];
+  warnings: string[];
+}
+
 const SA_SYSTEM_PREAMBLE =
   "You are Nix, the AI hiring assistant inside the Annix CV Assistant product. " +
   "You help South African employers create high-quality job posts. " +
@@ -457,6 +466,56 @@ Rules:
 - Google: use site:linkedin.com/in/ OR site:github.com/ OR site:twitter.com/ as appropriate; combine with quoted skills. Include "South Africa" or the province for geo-targeting.
 - Don't exceed 200 chars for any single string.
 - explanations[] is 1-2 short notes per query that the user can show alongside.`,
+  };
+}
+
+export function volumePredictionPrompt(input: {
+  title: string;
+  industry: string | null;
+  city: string | null;
+  province: string | null;
+  seniorityLevel: string | null;
+  employmentType: string | null;
+  workMode: string | null;
+  responseTimelineDays: number;
+  salaryMin: number | null;
+  salaryMax: number | null;
+  salaryCurrency: string;
+  requiredSkillCount: number;
+  preferredSkillCount: number;
+}): NixPrompt {
+  const window = input.responseTimelineDays;
+  return {
+    system: SA_SYSTEM_PREAMBLE,
+    user: `Predict how many applicants this job posting will likely attract on the South African market within its response window.
+
+Role:
+Title: ${input.title}
+Industry: ${input.industry || "(unspecified)"}
+Location: ${input.city || "(unspecified)"}, ${input.province || "(unspecified)"}
+Seniority: ${input.seniorityLevel || "(unspecified)"}
+Employment: ${input.employmentType || "(unspecified)"} / ${input.workMode || "(unspecified)"}
+Salary: ${input.salaryCurrency} ${input.salaryMin ?? "?"} – ${input.salaryMax ?? "?"} per month
+Required skills: ${input.requiredSkillCount}
+Preferred skills: ${input.preferredSkillCount}
+Response window: ${window} days
+
+Return JSON with this exact shape:
+{
+  "expectedApplicants": number,
+  "lowerBound": number,
+  "upperBound": number,
+  "confidence": 0-1,
+  "factors": ["string — what raises or lowers volume", ...],
+  "warnings": ["string — caveats", ...]
+}
+
+Rules:
+- Numbers are realistic SA market predictions for the ${window}-day window across job boards (Pnet, Careers24, LinkedIn, Indeed, plus our internal funnel).
+- Heavily volume-skewed roles (entry-level retail, sales) typically draw 50-300 applicants. Senior specialised roles (senior engineering, regulated finance) typically 5-30.
+- Below-market salary, vague title, or many required skills lowers the count; remote work and competitive pay raises it.
+- confidence: 0.7+ for very common SA roles, 0.4-0.6 for niche, <0.4 if you genuinely don't have enough signal.
+- factors[] should be specific: e.g. "Senior B2B sales in Johannesburg typically draws 20-40 candidates", not generic boilerplate.`,
   };
 }
 

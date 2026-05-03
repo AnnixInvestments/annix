@@ -1,8 +1,12 @@
 "use client";
 
 import { useToast } from "@/app/components/Toast";
-import type { JobPosting, UpdateJobWizardPayload } from "@/app/lib/api/cvAssistantApi";
-import { useCvNixSalaryGuidance } from "@/app/lib/query/hooks";
+import {
+  cvAssistantApiClient,
+  type JobPosting,
+  type UpdateJobWizardPayload,
+} from "@/app/lib/api/cvAssistantApi";
+import { useNixCall } from "../../hooks/useNixCall";
 import { arrOr, strOr } from "../../utils/value-helpers";
 import { FieldLabel, inputClass, StepShell, textareaClass } from "../StepShell";
 
@@ -22,7 +26,11 @@ export function SalaryBenefitsStep({ draft, onChange }: SalaryBenefitsStepProps)
   const currencyDefault = strOr(draft.salaryCurrency, "ZAR");
   const commissionDefault = strOr(draft.commissionStructure);
   const { showToast } = useToast();
-  const salaryGuidance = useCvNixSalaryGuidance();
+  const salaryGuidance = useNixCall({
+    operation: "salary-guidance",
+    label: "Nix is benchmarking salary for this role…",
+    fn: (id: number) => cvAssistantApiClient.nixSalaryGuidance(id),
+  });
   const guidanceData = salaryGuidance.data;
   const isGuiding = salaryGuidance.isPending;
   const handleGuidance = () => {

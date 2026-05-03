@@ -118,6 +118,14 @@ export class JobPostingController {
     return this.nixJobAssist.sourcingQueries(req.user.companyId, id);
   }
 
+  @Post(":id/nix/predicted-volume")
+  async nixPredictedVolume(
+    @Request() req: { user: { companyId: number } },
+    @Param("id", ParseIntPipe) id: number,
+  ) {
+    return this.nixJobAssist.predictedVolume(req.user.companyId, id);
+  }
+
   @Get()
   async findAll(@Request() req: { user: { companyId: number } }, @Query("status") status?: string) {
     return this.jobPostingService.findAll(req.user.companyId, status);

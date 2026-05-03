@@ -3,8 +3,9 @@
 import { useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import { isApiError } from "@/app/lib/api/apiError";
-import type { JobPosting } from "@/app/lib/api/cvAssistantApi";
-import { useCvNixQualityScore, useCvPublishJobDraft } from "@/app/lib/query/hooks";
+import { cvAssistantApiClient, type JobPosting } from "@/app/lib/api/cvAssistantApi";
+import { useCvPublishJobDraft } from "@/app/lib/query/hooks";
+import { useNixCall } from "../../hooks/useNixCall";
 import { JobPreviewCard } from "../JobPreviewCard";
 import { StepShell } from "../StepShell";
 
@@ -43,7 +44,16 @@ const readinessIssues = (draft: JobPosting): ReadinessIssue[] => {
 
 export function ReviewPublishStep({ draft, onPublished, onFlush }: ReviewPublishStepProps) {
   const publishMutation = useCvPublishJobDraft();
-  const qualityScoreMutation = useCvNixQualityScore();
+  const qualityScoreMutation = useNixCall({
+    operation: "quality-score",
+    label: "Nix is scoring your job post…",
+    fn: (id: number) => cvAssistantApiClient.nixQualityScore(id),
+  });
+  const volumeMutation = useNixCall({
+    operation: "volume-prediction",
+    label: "Nix is predicting candidate volume…",
+    fn: (id: number) => cvAssistantApiClient.nixPredictedVolume(id),
+  });
   const { showToast } = useToast();
   const [isPublishing, setIsPublishing] = useState(false);
 
@@ -51,10 +61,18 @@ export function ReviewPublishStep({ draft, onPublished, onFlush }: ReviewPublish
   const canPublish = issues.length === 0;
   const qualityData = qualityScoreMutation.data;
   const isScoring = qualityScoreMutation.isPending;
+  const volumeData = volumeMutation.data;
+  const isPredicting = volumeMutation.isPending;
   const handleScore = async () => {
     await onFlush();
     qualityScoreMutation.mutate(draft.id, {
       onError: () => showToast("Couldn't fetch quality score. Try again.", "error"),
+    });
+  };
+  const handlePredict = async () => {
+    await onFlush();
+    volumeMutation.mutate(draft.id, {
+      onError: () => showToast("Couldn't predict volume. Try again.", "error"),
     });
   };
 
@@ -81,7 +99,7 @@ export function ReviewPublishStep({ draft, onPublished, onFlush }: ReviewPublish
         title="Review & Publish"
         subtitle="Get Nix to score this post — clarity, salary fit, candidate attraction, screening strength, matching readiness, and inclusivity."
       >
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <button
             type="button"
             onClick={handleScore}
@@ -90,9 +108,22 @@ export function ReviewPublishStep({ draft, onPublished, onFlush }: ReviewPublish
           >
             {isScoring ? "Nix scoring…" : qualityData ? "Re-score with Nix" : "Score with Nix"}
           </button>
+          <button
+            type="button"
+            onClick={handlePredict}
+            disabled={isPredicting}
+            className="text-sm px-4 py-2 bg-[#FFA500] text-[#1a1a40] font-semibold rounded-lg hover:bg-[#FFB733] transition-all disabled:opacity-50"
+          >
+            {isPredicting
+              ? "Predicting…"
+              : volumeData
+                ? "Re-predict volume"
+                : "Predict candidate volume"}
+          </button>
         </div>
 
         {qualityData ? <QualityScoreCard data={qualityData} /> : null}
+        {volumeData ? <VolumePredictionCard data={volumeData} /> : null}
 
         {issues.length > 0 ? (
           <div className="rounded-lg border border-amber-300 bg-amber-50 p-4">
@@ -221,6 +252,65 @@ function QualityScoreCard({ data }: QualityScoreCardProps) {
                 </span>{" "}
                 → <strong>{term.replacement}</strong> · {term.explanation}
               </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+    </div>
+  );
+}
+
+interface VolumePredictionCardProps {
+  data: {
+    expectedApplicants: number;
+    lowerBound: number;
+    upperBound: number;
+    confidence: number;
+    factors: string[];
+    warnings: string[];
+  };
+}
+
+function VolumePredictionCard({ data }: VolumePredictionCardProps) {
+  const confidencePct = Math.round(data.confidence * 100);
+  return (
+    <div className="rounded-lg bg-gradient-to-br from-[#252560]/5 to-[#FFA500]/10 border border-[#252560]/30 p-5 space-y-3">
+      <div className="flex items-center justify-between">
+        <span className="text-xs uppercase tracking-wider text-gray-500">
+          Predicted candidate volume
+        </span>
+        <span className="text-xs text-gray-500">Nix confidence {confidencePct}%</span>
+      </div>
+      <div className="grid grid-cols-3 gap-2 text-center">
+        <div className="bg-white rounded p-2 border border-[#e0e0f5]">
+          <div className="text-xs text-gray-500">Lower</div>
+          <div className="text-base font-semibold text-[#1a1a40]">{data.lowerBound}</div>
+        </div>
+        <div className="bg-[#FFA500]/10 rounded p-2 border border-[#FFA500]/40">
+          <div className="text-xs text-gray-500">Expected</div>
+          <div className="text-2xl font-bold text-[#1a1a40]">{data.expectedApplicants}</div>
+        </div>
+        <div className="bg-white rounded p-2 border border-[#e0e0f5]">
+          <div className="text-xs text-gray-500">Upper</div>
+          <div className="text-base font-semibold text-[#1a1a40]">{data.upperBound}</div>
+        </div>
+      </div>
+      {data.factors.length > 0 ? (
+        <section>
+          <p className="text-sm font-semibold text-[#1a1a40] mb-1">Drivers</p>
+          <ul className="list-disc pl-5 space-y-0.5 text-sm text-gray-700">
+            {data.factors.map((f) => (
+              <li key={f}>{f}</li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+      {data.warnings.length > 0 ? (
+        <section>
+          <p className="text-sm font-semibold text-amber-800 mb-1">Caveats</p>
+          <ul className="list-disc pl-5 space-y-0.5 text-sm text-amber-900">
+            {data.warnings.map((w) => (
+              <li key={w}>{w}</li>
             ))}
           </ul>
         </section>

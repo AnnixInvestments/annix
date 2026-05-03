@@ -1,14 +1,15 @@
 "use client";
 
 import { useToast } from "@/app/components/Toast";
-import type {
-  JobPosting,
-  JobScreeningQuestion,
-  ScreeningQuestionType,
-  UpdateJobWizardPayload,
+import {
+  cvAssistantApiClient,
+  type JobPosting,
+  type JobScreeningQuestion,
+  type ScreeningQuestionType,
+  type UpdateJobWizardPayload,
 } from "@/app/lib/api/cvAssistantApi";
-import { useCvNixScreeningSuggestions } from "@/app/lib/query/hooks";
 import { SCREENING_QUESTION_TYPE_OPTIONS } from "../../constants/skill-options";
+import { useNixCall } from "../../hooks/useNixCall";
 import { arrOr } from "../../utils/value-helpers";
 import { inputClass, StepShell, selectClass } from "../StepShell";
 
@@ -36,7 +37,11 @@ export function ScreeningQuestionsStep({ draft, onChange }: ScreeningQuestionsSt
     onChange({ screeningQuestions: questions.filter((_, i) => i !== index) });
 
   const { showToast } = useToast();
-  const screeningSuggest = useCvNixScreeningSuggestions();
+  const screeningSuggest = useNixCall({
+    operation: "screening-questions",
+    label: "Nix is generating screening questions…",
+    fn: (id: number) => cvAssistantApiClient.nixScreeningQuestionsSuggest(id),
+  });
   const isSuggesting = screeningSuggest.isPending;
   const handleSuggest = () => {
     screeningSuggest.mutate(draft.id, {

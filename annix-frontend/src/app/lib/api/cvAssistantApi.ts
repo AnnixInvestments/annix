@@ -889,6 +889,19 @@ class CvAssistantApiClient {
     });
   }
 
+  async nixPredictedVolume(id: number): Promise<{
+    expectedApplicants: number;
+    lowerBound: number;
+    upperBound: number;
+    confidence: number;
+    factors: string[];
+    warnings: string[];
+  }> {
+    return this.request(`/cv-assistant/job-postings/${id}/nix/predicted-volume`, {
+      method: "POST",
+    });
+  }
+
   async candidates(filters?: { status?: string; jobPostingId?: number }): Promise<Candidate[]> {
     const params = new URLSearchParams();
     if (filters?.status) params.append("status", filters.status);

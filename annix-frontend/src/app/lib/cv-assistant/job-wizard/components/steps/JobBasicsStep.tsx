@@ -1,11 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import type { JobPosting, UpdateJobWizardPayload } from "@/app/lib/api/cvAssistantApi";
+import {
+  cvAssistantApiClient,
+  type JobPosting,
+  type UpdateJobWizardPayload,
+} from "@/app/lib/api/cvAssistantApi";
 import { SOUTH_AFRICAN_PROVINCES } from "@/app/lib/config/registration/constants";
-import { useCvNixTitleSuggestions } from "@/app/lib/query/hooks";
 import { EMPLOYMENT_TYPE_OPTIONS } from "../../constants/employment-types";
 import { WORK_MODE_OPTIONS } from "../../constants/work-modes";
+import { useNixCall } from "../../hooks/useNixCall";
 import { strOr } from "../../utils/value-helpers";
 import { FieldLabel, inputClass, StepShell, selectClass } from "../StepShell";
 
@@ -16,7 +20,13 @@ export interface JobBasicsStepProps {
 
 export function JobBasicsStep({ draft, onChange }: JobBasicsStepProps) {
   const titleDefault = draft.title === "Untitled draft" ? "" : strOr(draft.title);
-  const titleSuggestions = useCvNixTitleSuggestions();
+  const titleSuggestions = useNixCall({
+    operation: "title-suggestions",
+    label: "Nix is normalising your title…",
+    fn: ({ id, title }: { id: number; title?: string }) =>
+      cvAssistantApiClient.nixTitleSuggestions(id, title),
+    silent: true,
+  });
   const suggestionsData = titleSuggestions.data;
   const isLoadingSuggestions = titleSuggestions.isPending;
   const [titleInput, setTitleInput] = useState(titleDefault);

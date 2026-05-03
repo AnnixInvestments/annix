@@ -1,12 +1,13 @@
 "use client";
 
 import { useToast } from "@/app/components/Toast";
-import type {
-  JobPosting,
-  JobSuccessMetric,
-  UpdateJobWizardPayload,
+import {
+  cvAssistantApiClient,
+  type JobPosting,
+  type JobSuccessMetric,
+  type UpdateJobWizardPayload,
 } from "@/app/lib/api/cvAssistantApi";
-import { useCvNixDescription } from "@/app/lib/query/hooks";
+import { useNixCall } from "../../hooks/useNixCall";
 import { arrOr, strOr } from "../../utils/value-helpers";
 import { FieldLabel, inputClass, StepShell, textareaClass } from "../StepShell";
 
@@ -26,7 +27,11 @@ export function RoleOutcomesStep({ draft, onChange }: RoleOutcomesStepProps) {
   const threeMonthMetrics = filterMetrics(successMetrics, "3_months");
   const twelveMonthMetrics = filterMetrics(successMetrics, "12_months");
   const { showToast } = useToast();
-  const nixDescription = useCvNixDescription();
+  const nixDescription = useNixCall({
+    operation: "description",
+    label: "Nix is drafting your job description…",
+    fn: (id: number) => cvAssistantApiClient.nixDescription(id),
+  });
   const isDrafting = nixDescription.isPending;
   const handleDraft = () => {
     nixDescription.mutate(draft.id, {

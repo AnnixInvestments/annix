@@ -13,6 +13,7 @@ import {
   type NixSkillSuggestionsResponse,
   type NixSourcingQueriesResponse,
   type NixTitleSuggestionsResponse,
+  type NixVolumePredictionResponse,
   parseNixJson,
   qualityScorePrompt,
   salaryGuidancePrompt,
@@ -21,6 +22,7 @@ import {
   sourcingQueriesPrompt,
   summariseSuccessMetrics,
   titleSuggestionsPrompt,
+  volumePredictionPrompt,
 } from "./nix-prompts";
 
 const METRIC_CATEGORY = "cv-assistant-nix";
@@ -233,6 +235,36 @@ export class NixJobAssistService {
       });
       const result = await this.callAi(prompt);
       return parseNixJson<NixSourcingQueriesResponse>(result.content);
+    });
+  }
+
+  async predictedVolume(
+    companyId: number,
+    jobPostingId: number,
+  ): Promise<NixVolumePredictionResponse> {
+    const posting = await this.loadPostingWithRelations(companyId, jobPostingId);
+    const skills = posting.skills || [];
+    const requiredSkillCount = skills.filter((s) => s.importance === "required").length;
+    const preferredSkillCount = skills.filter((s) => s.importance === "preferred").length;
+
+    return this.metrics.time(METRIC_CATEGORY, "volume-prediction", async () => {
+      const prompt = volumePredictionPrompt({
+        title: posting.title,
+        industry: posting.industry,
+        city: posting.location,
+        province: posting.province,
+        seniorityLevel: posting.seniorityLevel,
+        employmentType: posting.employmentType,
+        workMode: posting.workMode,
+        responseTimelineDays: posting.responseTimelineDays,
+        salaryMin: posting.salaryMin,
+        salaryMax: posting.salaryMax,
+        salaryCurrency: posting.salaryCurrency,
+        requiredSkillCount,
+        preferredSkillCount,
+      });
+      const result = await this.callAi(prompt);
+      return parseNixJson<NixVolumePredictionResponse>(result.content);
     });
   }
 
