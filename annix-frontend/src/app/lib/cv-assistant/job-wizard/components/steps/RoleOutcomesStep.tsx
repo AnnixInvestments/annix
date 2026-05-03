@@ -249,7 +249,7 @@ function SuccessMetricList({
           <li key={`${i}-${metric.metric}`} className="flex items-start gap-2">
             <textarea
               rows={3}
-              className={`${textareaClass} min-h-[72px] resize-y whitespace-pre-wrap`}
+              className={`${textareaClass} !min-h-[72px] resize-y whitespace-pre-wrap`}
               placeholder="e.g. Closed first R250k of new business"
               defaultValue={metric.metric}
               onBlur={(e) => onUpdate(i, e.target.value.trim())}

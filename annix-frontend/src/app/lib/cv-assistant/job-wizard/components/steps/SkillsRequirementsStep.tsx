@@ -322,7 +322,7 @@ function SkillEvidenceRow({ skill, onYears, onEvidence, onRemove }: SkillEvidenc
         <textarea
           rows={2}
           placeholder="e.g. Demonstrate a closed deal worth R250k+ in industrial sales"
-          className={`${textareaClass} min-h-[56px] resize-y whitespace-pre-wrap`}
+          className={`${textareaClass} !min-h-[56px] resize-y whitespace-pre-wrap`}
           defaultValue={evidenceDefault}
           onBlur={(e) => {
             const trimmed = e.target.value.trim();

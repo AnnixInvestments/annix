@@ -11,7 +11,7 @@ import {
 import { SCREENING_QUESTION_TYPE_OPTIONS } from "../../constants/skill-options";
 import { useNixCall } from "../../hooks/useNixCall";
 import { arrOr } from "../../utils/value-helpers";
-import { inputClass, StepShell, selectClass } from "../StepShell";
+import { inputClass, StepShell, selectClass, textareaClass } from "../StepShell";
 
 export interface ScreeningQuestionsStepProps {
   draft: JobPosting;
@@ -93,11 +93,12 @@ export function ScreeningQuestionsStep({ draft, onChange }: ScreeningQuestionsSt
           </p>
         )}
         {questions.map((q, i) => (
-          <li key={i} className="bg-[#f5f5fc] p-4 rounded-lg space-y-3">
+          <li key={`${i}-${q.question}`} className="bg-[#f5f5fc] p-4 rounded-lg space-y-3">
             <ScreeningRow
               question={q}
               inputClass={inputClass}
               selectClass={selectClass}
+              textareaClass={textareaClass}
               onUpdate={(patch) => updateQuestion(i, patch)}
               onRemove={() => removeQuestion(i)}
             />
@@ -119,12 +120,13 @@ interface ScreeningRowProps {
   question: JobScreeningQuestion;
   inputClass: string;
   selectClass: string;
+  textareaClass: string;
   onUpdate: (patch: Partial<JobScreeningQuestion>) => void;
   onRemove: () => void;
 }
 
 function ScreeningRow(props: ScreeningRowProps) {
-  const { question, inputClass, selectClass, onUpdate, onRemove } = props;
+  const { question, inputClass, selectClass, textareaClass, onUpdate, onRemove } = props;
   const weightValue = question.weight;
   const weightDefault = weightValue === undefined || weightValue === null ? 5 : weightValue;
   const disqualifyingValue = question.disqualifyingAnswer;
@@ -132,16 +134,16 @@ function ScreeningRow(props: ScreeningRowProps) {
 
   return (
     <>
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
-        <input
-          type="text"
-          className={`${inputClass} md:col-span-7`}
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-start">
+        <textarea
+          rows={2}
+          className={`${textareaClass} md:col-span-8 !min-h-[60px] resize-y whitespace-pre-wrap`}
           placeholder="e.g. Do you have at least 3 years external B2B sales experience?"
           defaultValue={question.question}
           onBlur={(e) => onUpdate({ question: e.target.value.trim() })}
         />
         <select
-          className={`${selectClass} md:col-span-3`}
+          className={`${selectClass} md:col-span-2`}
           defaultValue={question.questionType}
           onChange={(e) => onUpdate({ questionType: e.target.value as ScreeningQuestionType })}
         >
@@ -166,14 +168,14 @@ function ScreeningRow(props: ScreeningRowProps) {
         <button
           type="button"
           onClick={onRemove}
-          className="md:col-span-1 px-2 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg"
+          className="md:col-span-1 px-2 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg shrink-0"
         >
           Remove
         </button>
       </div>
       <input
         type="text"
-        className={inputClass}
+        className={`${inputClass} max-w-md`}
         placeholder="Disqualifying answer (optional). e.g. 'no'"
         defaultValue={disqualifyingDefault}
         onBlur={(e) => {

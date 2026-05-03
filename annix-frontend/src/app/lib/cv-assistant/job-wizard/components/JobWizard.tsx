@@ -1,10 +1,12 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import type { JobPosting, UpdateJobWizardPayload } from "@/app/lib/api/cvAssistantApi";
 import { useCvCreateJobDraft, useCvJobWizardDraft } from "@/app/lib/query/hooks";
+import { cvAssistantKeys } from "@/app/lib/query/keys";
 import { WIZARD_STEPS, type WizardStepId } from "../constants/wizard-steps";
 import { useWizardAutoSave } from "../hooks/useWizardAutoSave";
 import { useWizardStep } from "../hooks/useWizardStep";
@@ -29,6 +31,7 @@ export interface JobWizardProps {
 export function JobWizard({ jobId }: JobWizardProps) {
   const router = useRouter();
   const { showToast } = useToast();
+  const queryClient = useQueryClient();
   const createDraft = useCvCreateJobDraft();
   const draftQuery = useCvJobWizardDraft(jobId);
   const [resolvedId, setResolvedId] = useState<number | null>(jobId);
@@ -70,10 +73,21 @@ export function JobWizard({ jobId }: JobWizardProps) {
   const draftData = draftQuery.data;
   const draft = draftData || null;
 
-  // Optimistic patch — immediately update local state, debounced save in the background
+  // Optimistic patch — immediately update the query cache so the UI reflects
+  // the change instantly, then debounce the persisted save in the background.
+  // Without this, removing a question / unchecking a benefit waits ~1s for the
+  // network round-trip before disappearing.
   const handleChange = useMemo(
-    () => (patch: UpdateJobWizardPayload) => autoSave.schedule(patch),
-    [autoSave],
+    () => (patch: UpdateJobWizardPayload) => {
+      if (resolvedId != null) {
+        queryClient.setQueryData<JobPosting | undefined>(
+          cvAssistantKeys.jobPostings.wizard(resolvedId),
+          (prev) => (prev ? { ...prev, ...patch } : prev),
+        );
+      }
+      autoSave.schedule(patch);
+    },
+    [autoSave, queryClient, resolvedId],
   );
 
   const handleNext = async () => {
