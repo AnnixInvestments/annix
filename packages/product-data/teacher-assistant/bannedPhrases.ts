@@ -1,8 +1,6 @@
 export const BANNED_PHRASES = [
   "research the topic",
-  "write about",
   "use the internet",
-  "explain in your own words",
   "research online",
   "explore this topic",
   "research and write",

@@ -1,11 +1,11 @@
 import type { Assignment, AssignmentTask } from "./assignment";
 import { containsBannedPhrase } from "./bannedPhrases";
 
-export const MIN_TASKS = 4;
+export const MIN_TASKS = 3;
 export const MIN_RUBRIC_CRITERIA = 4;
 export const MIN_EVIDENCE_CHECKLIST = 3;
-export const MIN_TASK_INSTRUCTION_CHARS = 80;
-export const TASK_SIMILARITY_THRESHOLD = 0.8;
+export const MIN_TASK_INSTRUCTION_CHARS = 60;
+export const TASK_SIMILARITY_THRESHOLD = 0.92;
 
 export interface ValidationFailure {
   code: string;

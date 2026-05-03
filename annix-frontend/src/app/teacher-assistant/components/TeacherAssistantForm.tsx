@@ -4,6 +4,8 @@ import {
   AGE_BUCKETS,
   type AgeBucket,
   type AssignmentInput,
+  CURATED_TOPICS,
+  CUSTOM_TOPIC_VALUE,
   DIFFERENTIATION_OPTIONS,
   DIFFICULTY_LEVELS,
   type DifferentiationOption,
@@ -21,7 +23,8 @@ import { LearningObjectiveField } from "./LearningObjectiveField";
 
 interface FormState {
   subject: Subject;
-  topic: string;
+  topicChoice: string;
+  customTopic: string;
   ageBucket: AgeBucket;
   studentAge: number;
   duration: Duration;
@@ -34,7 +37,8 @@ interface FormState {
 
 const DEFAULT_FORM: FormState = {
   subject: "geography",
-  topic: "",
+  topicChoice: CURATED_TOPICS.geography[0],
+  customTopic: "",
   ageBucket: "12-14",
   studentAge: 13,
   duration: "1 week",
@@ -44,6 +48,13 @@ const DEFAULT_FORM: FormState = {
   learningObjective: "",
   allowAiUse: true,
 };
+
+function effectiveTopic(form: FormState): string {
+  if (form.topicChoice === CUSTOM_TOPIC_VALUE) {
+    return form.customTopic.trim();
+  }
+  return form.topicChoice;
+}
 
 const AGE_FOR_BUCKET: Record<AgeBucket, number> = {
   "12-14": 13,
@@ -78,12 +89,25 @@ export function TeacherAssistantForm(props: TeacherAssistantFormProps) {
     setForm((prev) => ({ ...prev, ageBucket: bucket, studentAge: AGE_FOR_BUCKET[bucket] }));
   };
 
+  const handleSubjectChange = (subject: Subject) => {
+    setForm((prev) => ({
+      ...prev,
+      subject,
+      topicChoice: CURATED_TOPICS[subject][0],
+      customTopic: "",
+    }));
+  };
+
+  const topic = effectiveTopic(form);
+  const isCustomTopic = form.topicChoice === CUSTOM_TOPIC_VALUE;
+  const canSubmit = topic.length >= 2 && !isSubmitting;
+
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
-    if (!form.topic.trim()) return;
+    if (!canSubmit) return;
     const input: AssignmentInput = {
       subject: form.subject,
-      topic: form.topic.trim(),
+      topic,
       ageBucket: form.ageBucket,
       studentAge: form.studentAge,
       duration: form.duration,
@@ -102,16 +126,40 @@ export function TeacherAssistantForm(props: TeacherAssistantFormProps) {
         <FormSelect
           label="Subject"
           value={form.subject}
-          onChange={(v) => setField("subject", v as Subject)}
+          onChange={(v) => handleSubjectChange(v as Subject)}
           options={SUBJECTS}
         />
-        <FormText
-          label="Topic"
-          value={form.topic}
-          onChange={(v) => setField("topic", v)}
-          placeholder="e.g. cloud types, electrical circuits, water cycle"
-          required
-        />
+        <div>
+          <label htmlFor="topic-choice" className="block text-sm font-medium text-gray-700 mb-2">
+            Topic
+          </label>
+          <select
+            id="topic-choice"
+            value={form.topicChoice}
+            onChange={(event) => setField("topicChoice", event.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#323288] focus:border-transparent"
+          >
+            {CURATED_TOPICS[form.subject].map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+            <option value={CUSTOM_TOPIC_VALUE}>Other (custom topic)…</option>
+          </select>
+          {isCustomTopic ? (
+            <input
+              type="text"
+              value={form.customTopic}
+              onChange={(event) => setField("customTopic", event.target.value)}
+              placeholder="e.g. local water supply, pulleys and gears"
+              className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#323288] focus:border-transparent"
+            />
+          ) : (
+            <p className="mt-1.5 text-xs text-gray-500">
+              Curated topics are tested to work reliably with Nix.
+            </p>
+          )}
+        </div>
         <FormSelect
           label="Age bucket"
           value={form.ageBucket}
@@ -172,7 +220,7 @@ export function TeacherAssistantForm(props: TeacherAssistantFormProps) {
         value={form.learningObjective}
         onChange={(v) => setField("learningObjective", v)}
         subject={form.subject}
-        topic={form.topic}
+        topic={topic}
         ageBucket={form.ageBucket}
         difficulty={form.difficulty}
       />
@@ -208,7 +256,7 @@ export function TeacherAssistantForm(props: TeacherAssistantFormProps) {
 
       <button
         type="submit"
-        disabled={isSubmitting || !form.topic.trim()}
+        disabled={!canSubmit}
         className="w-full md:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#323288] hover:bg-[#252560] disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-colors"
       >
         <Sparkles className="w-5 h-5" />

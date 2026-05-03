@@ -10,6 +10,7 @@ export type {
 } from "./assignment";
 export type { BannedPhrase } from "./bannedPhrases";
 export { BANNED_PHRASES, containsBannedPhrase } from "./bannedPhrases";
+export { CURATED_TOPICS, CUSTOM_TOPIC_VALUE, isCuratedTopic } from "./curated-topics";
 export type {
   AgeBucket,
   AssignmentSection,
