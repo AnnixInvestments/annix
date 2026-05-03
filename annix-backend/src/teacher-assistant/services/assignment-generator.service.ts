@@ -151,17 +151,14 @@ export class AssignmentGeneratorService {
 
     const allFailures = [...lastFailures, ...lastFluffyFailures];
     this.logger.error(
-      `Generation exhausted ${MAX_RETRIES + 1} attempts for ${input.subject}/${input.topic}. Final failures: ${this.summariseFailures(allFailures)}`,
+      `Generation exhausted ${MAX_RETRIES + 1} attempts for ${input.subject}/${input.topic} with no parseable structure. Returning fallback scaffold. Final failures: ${this.summariseFailures(allFailures)}`,
     );
     if (lastRawResponse) {
       this.logger.error(
         `Last raw AI response (truncated to ${RAW_AI_RESPONSE_LOG_CHARS} chars): ${lastRawResponse.slice(0, RAW_AI_RESPONSE_LOG_CHARS)}`,
       );
     }
-    throw new BadRequestException({
-      message: `Generation failed after ${MAX_RETRIES + 1} attempts — no usable structure returned.`,
-      failures: allFailures,
-    });
+    return buildFallbackStub(input, allFailures);
   }
 
   private summariseFailures(failures: ValidationFailure[]): string {
@@ -247,5 +244,110 @@ function autoRepair(assignment: Assignment, failures: ValidationFailure[]): Assi
     tasks: repairedTasks,
     rubric: repairedRubric,
     qualityWarnings: failures.map((f) => f.message),
+  };
+}
+
+function buildFallbackStub(input: AssignmentInput, failures: ValidationFailure[]): Assignment {
+  const niceTopic = input.topic.charAt(0).toUpperCase() + input.topic.slice(1);
+  const placeholderRubric = ["Observation", "Reasoning", "AI critique", "Presentation"].map(
+    (criterion) => ({
+      criterion,
+      excellent: "—",
+      good: "—",
+      satisfactory: "—",
+      needsWork: "—",
+    }),
+  );
+  const placeholderTasks = [
+    {
+      step: 1,
+      title: "Observe",
+      studentInstruction: `Gather first-hand evidence about ${input.topic} — photos, measurements, or local examples. Replace this instruction with the specific observations you want students to make.`,
+      requiredEvidence: ["evidence — review and refine"],
+      reasoningPrompt: "Why did you pick this evidence?",
+      aiCritique: null,
+      reflectionPrompt: "What surprised you?",
+    },
+    {
+      step: 2,
+      title: "Identify or measure",
+      studentInstruction: `Apply key concepts about ${input.topic} to your own evidence. Replace this with the specific identifications or measurements you want students to make.`,
+      requiredEvidence: ["evidence — review and refine"],
+      reasoningPrompt: "How did you decide?",
+      aiCritique: null,
+      reflectionPrompt: "What was hardest to identify?",
+    },
+    {
+      step: 3,
+      title: "Critique an AI answer",
+      studentInstruction: `Ask an AI tool about ${input.topic} and compare its answer to your own evidence. Note where AI was helpful and where it was wrong.`,
+      requiredEvidence: ["AI prompt used", "AI output", "comparison notes"],
+      reasoningPrompt: "Where did AI miss local context?",
+      aiCritique: input.allowAiUse
+        ? {
+            promptToTry: `Explain ${input.topic} in 3 sentences for a ${input.ageBucket} learner.`,
+            documentPromptAndOutput: true,
+            compareToEvidence: "Compare AI's answer to your own evidence.",
+            noteIssues: "Where did AI hallucinate, oversimplify, or generalise?",
+            improveWithPersonalInput: "Rewrite AI's answer using your own evidence.",
+          }
+        : null,
+      reflectionPrompt: "What did you change after seeing AI's answer?",
+    },
+  ];
+
+  const stubFailures: ValidationFailure[] = [
+    {
+      code: "fallback_stub",
+      message:
+        "Nix could not generate a complete assignment. We have provided a starter scaffold — please replace each section with your own content before sharing with students.",
+    },
+    ...failures,
+  ];
+
+  return {
+    title: `${niceTopic} — starter assignment (please review)`,
+    subject: input.subject,
+    topic: input.topic,
+    ageBucket: input.ageBucket,
+    duration: input.duration,
+    outputType: input.outputType,
+    difficulty: input.difficulty,
+    studentBrief: `This is a starter scaffold for an assignment on ${input.topic}. Replace each section with your own content. Nix could not produce a full draft this time — try again in a few seconds, or use this as a starting point.`,
+    learningObjective: input.learningObjective ?? "",
+    successCriteria: ["Replace this with the success criteria you want students to meet."],
+    tasks: placeholderTasks,
+    aiUseRules: input.allowAiUse
+      ? [
+          "Document any AI prompts you use and the AI output.",
+          "Compare AI's answer to your own evidence.",
+          "Note where AI is wrong or too general for your local context.",
+        ]
+      : ["AI use is not permitted for this assignment."],
+    evidenceChecklist: [
+      "Replace with the evidence you want students to gather.",
+      "Replace with secondary requirement.",
+      "Replace with final submission requirement.",
+    ],
+    finalSubmissionRequirements: [
+      "Final polished output",
+      "Evidence appendix",
+      "Reflection paragraph",
+    ],
+    rubric: placeholderRubric,
+    teacherNotes: {
+      setup: "Replace with your own setup notes.",
+      setupTime: "—",
+      materialsNeeded: [],
+      commonMisconceptions: [],
+      markingGuidance: "Replace with your own marking guidance.",
+      supportOption: "Replace with a support option for struggling learners.",
+      extensionOption: "Replace with an extension option for advanced learners.",
+    },
+    parentNote: "",
+    studentAiPromptStarters: [],
+    partialExemplars: [],
+    optionalWorkbookPages: [],
+    qualityWarnings: stubFailures.map((f) => f.message),
   };
 }

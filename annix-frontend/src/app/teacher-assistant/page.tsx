@@ -69,14 +69,17 @@ export default function TeacherAssistantPage() {
         hideExtraction();
         setAssignment(result);
         rememberAssignment(input, result);
-        showToast("Assignment generated.", "success");
+        const successMessage =
+          result.qualityWarnings && result.qualityWarnings.length > 0
+            ? "Assignment generated — review the caveats banner."
+            : "Assignment generated.";
+        showToast(successMessage, "success");
       },
       onError: (error) => {
         hideExtraction();
         const message = extractErrorMessage(error, "Generation failed.");
         setLastError(message);
         setLastFailures(extractFailures(error));
-        showToast(message, "error", 12_000);
       },
     });
   };

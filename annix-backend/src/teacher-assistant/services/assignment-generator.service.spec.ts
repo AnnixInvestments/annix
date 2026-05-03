@@ -1,5 +1,4 @@
 import type { Assignment, AssignmentInput } from "@annix/product-data/teacher-assistant";
-import { BadRequestException } from "@nestjs/common";
 import type { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import type { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { AssignmentGeneratorService } from "./assignment-generator.service";
@@ -182,7 +181,7 @@ describe("AssignmentGeneratorService", () => {
     expect(result.tasks).toHaveLength(4);
   });
 
-  it("throws after retries are exhausted", async () => {
+  it("returns a fallback stub when no attempt has minimal structure", async () => {
     const broken = validAssignment();
     broken.title = "";
     const ai = stubAiChat([
@@ -192,7 +191,25 @@ describe("AssignmentGeneratorService", () => {
       JSON.stringify(broken),
     ]);
     const service = new AssignmentGeneratorService(ai.service, stubMetrics());
-    await expect(service.generate(sampleInput)).rejects.toBeInstanceOf(BadRequestException);
+    const result = await service.generate(sampleInput);
+    expect(result.title.toLowerCase()).toContain(sampleInput.topic.toLowerCase());
+    expect(result.title.toLowerCase()).toContain("starter");
+    expect(result.tasks.length).toBeGreaterThanOrEqual(3);
+    expect(result.rubric.length).toBeGreaterThanOrEqual(4);
+    expect(result.qualityWarnings?.[0]).toMatch(/Nix could not generate/i);
+  });
+
+  it("returns a fallback stub when every AI response is unparseable", async () => {
+    const ai = stubAiChat([
+      "this is not json at all",
+      "still not json",
+      "completely garbled response",
+      "{ not valid",
+    ]);
+    const service = new AssignmentGeneratorService(ai.service, stubMetrics());
+    const result = await service.generate(sampleInput);
+    expect(result.tasks.length).toBeGreaterThanOrEqual(3);
+    expect(result.qualityWarnings?.length ?? 0).toBeGreaterThan(0);
   });
 
   it("returns cached assignment on repeat call with identical input", async () => {
