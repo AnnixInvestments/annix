@@ -41,7 +41,9 @@ const env = Object.fromEntries(
 
 const [, , email, targetCompanyIdRaw, ...flags] = process.argv;
 if (!email || !targetCompanyIdRaw) {
-  console.error("Usage: node scripts/relink-user-company.mjs <email> <target-company-id> [--apply]");
+  console.error(
+    "Usage: node scripts/relink-user-company.mjs <email> <target-company-id> [--apply]",
+  );
   process.exit(1);
 }
 
@@ -77,7 +79,7 @@ async function main() {
   console.log(`User: id=${user.id} email=${user.email} name="${user.firstName} ${user.lastName}"`);
 
   const profileRes = await client.query(
-    `SELECT id, company_id FROM stock_control_profiles WHERE user_id = $1`,
+    "SELECT id, company_id FROM stock_control_profiles WHERE user_id = $1",
     [user.id],
   );
   if (profileRes.rows.length === 0) {
@@ -88,7 +90,7 @@ async function main() {
   console.log(`Profile: id=${profile.id} current company_id=${profile.company_id}`);
 
   const currentCompanyRes = await client.query(
-    `SELECT id, name, trading_name, branding_type FROM companies WHERE id = $1`,
+    "SELECT id, name, trading_name, branding_type FROM companies WHERE id = $1",
     [profile.company_id],
   );
   const currentCompany = currentCompanyRes.rows[0];
@@ -97,7 +99,7 @@ async function main() {
   );
 
   const targetCompanyRes = await client.query(
-    `SELECT id, name, trading_name, branding_type FROM companies WHERE id = $1`,
+    "SELECT id, name, trading_name, branding_type FROM companies WHERE id = $1",
     [targetCompanyId],
   );
   if (targetCompanyRes.rows.length === 0) {
@@ -124,7 +126,7 @@ async function main() {
 
   await client.query("BEGIN");
   const updateRes = await client.query(
-    `UPDATE stock_control_profiles SET company_id = $1, updated_at = NOW() WHERE id = $2`,
+    "UPDATE stock_control_profiles SET company_id = $1, updated_at = NOW() WHERE id = $2",
     [targetCompanyId, profile.id],
   );
   await client.query("COMMIT");
