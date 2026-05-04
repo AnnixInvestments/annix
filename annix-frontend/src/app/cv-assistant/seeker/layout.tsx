@@ -20,8 +20,9 @@ function SeekerContent({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { isAuthenticated, isLoading, user, logout } = useCvAssistantAuth();
-  const isIndividual = user?.userType === "individual";
+  const { isAuthenticated, isLoading, user, profile, logout } = useCvAssistantAuth();
+  const isIndividual =
+    user?.userType === "individual" || (profile !== null && profile.companyId === null);
   const profileStatusQuery = useCvMyProfileStatus(isAuthenticated && isIndividual);
   const profileStatus = profileStatusQuery.data;
   const hasCv = profileStatus ? profileStatus.hasCv : null;
@@ -39,7 +40,7 @@ function SeekerContent({ children }: { children: React.ReactNode }) {
       router.push(`/cv-assistant/login?type=individual&returnUrl=${returnUrl}`);
       return;
     }
-    if (user && user.userType !== "individual") {
+    if (user && !isIndividual) {
       router.push("/cv-assistant/portal/dashboard");
       return;
     }
@@ -66,7 +67,7 @@ function SeekerContent({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (!isAuthenticated || (user && user.userType !== "individual")) {
+  if (!isAuthenticated || (user && !isIndividual)) {
     return null;
   }
 
