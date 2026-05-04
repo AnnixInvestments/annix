@@ -30,11 +30,23 @@ describe("parseJsonFromAi", () => {
     expect(result.b).toBe("x");
   });
 
-  it("throws JsonFromAiError when no JSON object is present", () => {
-    expect(() => parseJsonFromAi("just some text, no braces")).toThrow(JsonFromAiError);
+  it("throws JsonFromAiError on empty input", () => {
+    expect(() => parseJsonFromAi("")).toThrow(JsonFromAiError);
   });
 
-  it("throws JsonFromAiError when JSON is malformed", () => {
-    expect(() => parseJsonFromAi('{"a":}')).toThrow(JsonFromAiError);
+  it("repairs trailing commas via jsonrepair", () => {
+    const result = parseJsonFromAi<{ a: number; b: number }>('{"a":1,"b":2,}');
+    expect(result.a).toBe(1);
+    expect(result.b).toBe(2);
+  });
+
+  it("repairs single-quoted strings via jsonrepair", () => {
+    const result = parseJsonFromAi<{ a: string }>("{'a':'hello'}");
+    expect(result.a).toBe("hello");
+  });
+
+  it("repairs missing closing brace via jsonrepair", () => {
+    const result = parseJsonFromAi<{ a: number }>('{"a":1');
+    expect(result.a).toBe(1);
   });
 });

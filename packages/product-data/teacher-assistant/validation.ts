@@ -87,9 +87,10 @@ export function validateAssignment(assignment: Assignment): ValidationResult {
 
 function scanForBannedPhrases(assignment: Assignment): ValidationFailure[] {
   const failures: ValidationFailure[] = [];
+  const tasks = Array.isArray(assignment.tasks) ? assignment.tasks : [];
   const targets: { field: string; text: string }[] = [
     { field: "studentBrief", text: assignment.studentBrief ?? "" },
-    ...assignment.tasks.flatMap((task, i) => [
+    ...tasks.flatMap((task, i) => [
       { field: `tasks[${i}].studentInstruction`, text: task.studentInstruction ?? "" },
       { field: `tasks[${i}].reasoningPrompt`, text: task.reasoningPrompt ?? "" },
       { field: `tasks[${i}].reflectionPrompt`, text: task.reflectionPrompt ?? "" },

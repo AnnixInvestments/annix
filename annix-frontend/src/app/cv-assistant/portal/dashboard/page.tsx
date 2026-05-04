@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useCvAssistantAuth } from "@/app/context/CvAssistantAuthContext";
 import type { Candidate } from "@/app/lib/api/cvAssistantApi";
 import {
   useCvDashboardStats,
@@ -9,6 +10,7 @@ import {
 } from "@/app/lib/query/hooks";
 
 const POST_JOB_HREF = "/cv-assistant/portal/jobs/new";
+const UPLOAD_CV_HREF = "/cv-assistant/seeker/profile";
 
 function PostJobButton({
   size = "md",
@@ -36,10 +38,46 @@ function PostJobButton({
   );
 }
 
+function UploadCvButton({
+  size = "md",
+  variant = "orange",
+}: {
+  size?: "md" | "lg";
+  variant?: "orange" | "navy";
+}) {
+  const sizing = size === "lg" ? "px-6 py-3 text-base" : "px-5 py-2.5 text-sm";
+  const iconSize = size === "lg" ? "w-6 h-6 mr-2" : "w-5 h-5 mr-2";
+  const palette =
+    variant === "navy"
+      ? "bg-[#252560] text-white hover:bg-[#1a1a40]"
+      : "bg-[#FFA500] text-[#1a1a40] hover:bg-[#FFB733]";
+  return (
+    <Link
+      href={UPLOAD_CV_HREF}
+      className={`inline-flex items-center ${sizing} ${palette} font-semibold rounded-lg shadow-md hover:shadow-lg transition-all`}
+    >
+      <svg className={iconSize} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2.5}
+          d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+        />
+      </svg>
+      Upload a CV
+    </Link>
+  );
+}
+
 export default function DashboardPage() {
+  const { user, profile } = useCvAssistantAuth();
   const { data: stats, isLoading: statsLoading } = useCvDashboardStats();
   const { data: topCandidates = [], isLoading: candidatesLoading } = useCvTopCandidates();
   const { data: marketInsights } = useCvMarketInsights();
+
+  const userType = user ? user.userType : null;
+  const companyId = profile ? profile.companyId : null;
+  const isIndividual = userType === "individual" || companyId === null;
 
   const isLoading = statsLoading || candidatesLoading;
 
@@ -82,13 +120,19 @@ export default function DashboardPage() {
         <div className="rounded-xl bg-gradient-to-br from-[#FFA500] to-[#FFB733] shadow-lg p-6 sm:p-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-1">
             <h2 className="text-xl sm:text-2xl font-bold text-[#1a1a40]">
-              Ready to find your next hire?
+              {isIndividual ? "Ready to find your next role?" : "Ready to find your next hire?"}
             </h2>
             <p className="text-[#1a1a40]/80">
-              Post your first job vacancy and let CV Assistant screen candidates for you.
+              {isIndividual
+                ? "Upload your CV and let CV Assistant match you to suitable jobs."
+                : "Post your first job vacancy and let CV Assistant screen candidates for you."}
             </p>
           </div>
-          <PostJobButton size="lg" variant="navy" />
+          {isIndividual ? (
+            <UploadCvButton size="lg" variant="navy" />
+          ) : (
+            <PostJobButton size="lg" variant="navy" />
+          )}
         </div>
       )}
 

@@ -1,3 +1,5 @@
+import { jsonrepair } from "jsonrepair";
+
 export class JsonFromAiError extends Error {
   constructor(
     message: string,
@@ -19,20 +21,43 @@ export function stripAiCodeFences(content: string): string {
 
 export function parseJsonFromAi<T>(content: string): T {
   const cleaned = stripAiCodeFences(content);
+
   try {
     return JSON.parse(cleaned) as T;
   } catch {
-    const inner = extractJsonObject(cleaned);
-    if (inner) {
-      try {
-        return JSON.parse(inner) as T;
-      } catch (innerError) {
-        const reason = innerError instanceof Error ? innerError.message : String(innerError);
-        throw new JsonFromAiError(`Failed to parse AI response as JSON: ${reason}`, content);
-      }
-    }
-    throw new JsonFromAiError("Failed to parse AI response as JSON: no JSON object found", content);
+    // Fall through to extract + repair
   }
+
+  const inner = extractJsonObject(cleaned);
+  const candidate = inner ?? cleaned;
+
+  if (inner) {
+    try {
+      return JSON.parse(inner) as T;
+    } catch {
+      // Fall through to repair
+    }
+  }
+
+  try {
+    const repaired = jsonrepair(candidate);
+    const parsed = JSON.parse(repaired);
+    if (!isJsonObject(parsed)) {
+      throw new JsonFromAiError("AI response repaired but did not yield a JSON object.", content);
+    }
+    return parsed as T;
+  } catch (repairError) {
+    if (repairError instanceof JsonFromAiError) throw repairError;
+    const reason = repairError instanceof Error ? repairError.message : String(repairError);
+    throw new JsonFromAiError(
+      `Failed to parse AI response as JSON (after repair attempt): ${reason}`,
+      content,
+    );
+  }
+}
+
+function isJsonObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function extractJsonObject(input: string): string | null {
