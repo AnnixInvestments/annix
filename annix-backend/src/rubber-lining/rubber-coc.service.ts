@@ -751,7 +751,10 @@ export class RubberCocService {
         .leftJoinAndSelect("batch.supplierCoc", "supplierCoc")
         .leftJoinAndSelect("batch.compoundStock", "compoundStock")
         .leftJoinAndSelect("compoundStock.compoundCoding", "compoundCoding")
-        .where("batch.batchNumber IN (:...batchNumbers)", { batchNumbers });
+        .where("batch.batchNumber IN (:...batchNumbers)", { batchNumbers })
+        .andWhere("supplierCoc.version_status = :activeVersionStatus", {
+          activeVersionStatus: DocumentVersionStatus.ACTIVE,
+        });
 
       if (equivalentCompoundCodes.length > 0) {
         qb.andWhere("supplierCoc.compoundCode IN (:...equivalentCompoundCodes)", {
@@ -1263,7 +1266,11 @@ export class RubberCocService {
             .createQueryBuilder("batch")
             .leftJoinAndSelect("batch.compoundStock", "stock")
             .leftJoinAndSelect("stock.compoundCoding", "coding")
+            .leftJoin("batch.supplierCoc", "supplierCoc")
             .where("batch.batch_number IN (:...batchNumbers)", { batchNumbers })
+            .andWhere("supplierCoc.version_status = :activeVersionStatus", {
+              activeVersionStatus: DocumentVersionStatus.ACTIVE,
+            })
             .getMany()
         : [];
 
