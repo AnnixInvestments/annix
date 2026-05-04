@@ -2,6 +2,12 @@ import type { Assignment, AssignmentInput } from "@annix/product-data/teacher-as
 import type { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import type { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { AssignmentGeneratorService } from "./assignment-generator.service";
+import type { SectionFillerService } from "./section-filler.service";
+
+const stubSectionFiller = (): SectionFillerService =>
+  ({
+    fillMissingSections: async (assignment: Assignment) => ({ assignment, filled: [] }),
+  }) as unknown as SectionFillerService;
 
 const validAssignment = (): Assignment => ({
   title: "Sky Investigator",
@@ -166,7 +172,7 @@ const stubAiChat = (sequentialResponses: string[]): StubbedAi => {
 describe("AssignmentGeneratorService", () => {
   it("returns a valid assignment on first attempt", async () => {
     const ai = stubAiChat([JSON.stringify(validAssignment())]);
-    const service = new AssignmentGeneratorService(ai.service, stubMetrics());
+    const service = new AssignmentGeneratorService(ai.service, stubMetrics(), stubSectionFiller());
     const result = await service.generate(sampleInput);
     expect(result.title).toBe("Sky Investigator");
     expect(result.tasks).toHaveLength(4);
@@ -176,7 +182,7 @@ describe("AssignmentGeneratorService", () => {
     const tooFewTasks = validAssignment();
     tooFewTasks.tasks = tooFewTasks.tasks.slice(0, 2);
     const ai = stubAiChat([JSON.stringify(tooFewTasks), JSON.stringify(validAssignment())]);
-    const service = new AssignmentGeneratorService(ai.service, stubMetrics());
+    const service = new AssignmentGeneratorService(ai.service, stubMetrics(), stubSectionFiller());
     const result = await service.generate(sampleInput);
     expect(result.tasks).toHaveLength(4);
   });
@@ -190,7 +196,7 @@ describe("AssignmentGeneratorService", () => {
       JSON.stringify(broken),
       JSON.stringify(broken),
     ]);
-    const service = new AssignmentGeneratorService(ai.service, stubMetrics());
+    const service = new AssignmentGeneratorService(ai.service, stubMetrics(), stubSectionFiller());
     const result = await service.generate(sampleInput);
     expect(result.title.length).toBeGreaterThan(0);
     expect(result.tasks.length).toBeGreaterThanOrEqual(3);
@@ -205,7 +211,7 @@ describe("AssignmentGeneratorService", () => {
       "completely garbled response",
       "{ not valid",
     ]);
-    const service = new AssignmentGeneratorService(ai.service, stubMetrics());
+    const service = new AssignmentGeneratorService(ai.service, stubMetrics(), stubSectionFiller());
     const result = await service.generate(sampleInput);
     expect(result.tasks.length).toBeGreaterThanOrEqual(3);
     expect(result.qualityWarnings?.length ?? 0).toBeGreaterThan(0);
@@ -213,7 +219,7 @@ describe("AssignmentGeneratorService", () => {
 
   it("returns cached assignment on repeat call with identical input", async () => {
     const ai = stubAiChat([JSON.stringify(validAssignment())]);
-    const service = new AssignmentGeneratorService(ai.service, stubMetrics());
+    const service = new AssignmentGeneratorService(ai.service, stubMetrics(), stubSectionFiller());
     const first = await service.generate(sampleInput);
     const second = await service.generate(sampleInput);
     expect(first).toBe(second);
@@ -222,7 +228,7 @@ describe("AssignmentGeneratorService", () => {
   it("strips markdown code fences from AI responses", async () => {
     const fenced = `\`\`\`json\n${JSON.stringify(validAssignment())}\n\`\`\``;
     const ai = stubAiChat([fenced]);
-    const service = new AssignmentGeneratorService(ai.service, stubMetrics());
+    const service = new AssignmentGeneratorService(ai.service, stubMetrics(), stubSectionFiller());
     const result = await service.generate(sampleInput);
     expect(result.title).toBe("Sky Investigator");
   });
@@ -231,7 +237,7 @@ describe("AssignmentGeneratorService", () => {
     const lazy = validAssignment();
     lazy.studentBrief = "Research the topic and write about clouds.";
     const ai = stubAiChat([JSON.stringify(lazy), JSON.stringify(validAssignment())]);
-    const service = new AssignmentGeneratorService(ai.service, stubMetrics());
+    const service = new AssignmentGeneratorService(ai.service, stubMetrics(), stubSectionFiller());
     const result = await service.generate(sampleInput);
     expect(result.studentBrief).not.toContain("research the topic");
   });
@@ -245,7 +251,7 @@ describe("AssignmentGeneratorService", () => {
       JSON.stringify(flawed),
       JSON.stringify(flawed),
     ]);
-    const service = new AssignmentGeneratorService(ai.service, stubMetrics());
+    const service = new AssignmentGeneratorService(ai.service, stubMetrics(), stubSectionFiller());
     const result = await service.generate(sampleInput);
     expect(result.title).toBe(flawed.title);
     expect(result.qualityWarnings?.length ?? 0).toBeGreaterThan(0);
@@ -262,7 +268,7 @@ describe("AssignmentGeneratorService", () => {
       JSON.stringify(flawed),
       JSON.stringify(flawed),
     ]);
-    const service = new AssignmentGeneratorService(ai.service, stubMetrics());
+    const service = new AssignmentGeneratorService(ai.service, stubMetrics(), stubSectionFiller());
     const result = await service.generate(sampleInput);
     expect(result.rubric[0].satisfactory).toBe("—");
     expect(result.tasks[0].requiredEvidence.length).toBeGreaterThan(0);

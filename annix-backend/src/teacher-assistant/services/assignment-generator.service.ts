@@ -15,6 +15,22 @@ import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import { parseJsonFromAi } from "../../lib/json-from-ai";
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
+import { SectionFillerService } from "./section-filler.service";
+
+const FILLED_WARNING_PATTERNS: Record<string, RegExp[]> = {
+  rubric: [/rubric/i],
+  teacherNotes: [/teacher notes/i],
+  successCriteria: [/success criteria/i],
+  evidenceChecklist: [/evidence/i],
+  parentNote: [/parent/i],
+  studentAiPromptStarters: [/ai prompt|prompt starter/i],
+};
+
+function pruneFilledWarnings(warnings: string[], filledSections: string[]): string[] {
+  const patterns = filledSections.flatMap((s) => FILLED_WARNING_PATTERNS[s] ?? []);
+  if (patterns.length === 0) return warnings;
+  return warnings.filter((w) => !patterns.some((re) => re.test(w)));
+}
 
 const METRIC_CATEGORY = "teacher-assistant-generate";
 const MAX_RETRIES = 3;
@@ -34,6 +50,7 @@ export class AssignmentGeneratorService {
   constructor(
     private readonly aiChat: AiChatService,
     private readonly metrics: ExtractionMetricService,
+    private readonly sectionFiller: SectionFillerService,
   ) {}
 
   async generate(input: AssignmentInput): Promise<Assignment> {
@@ -44,9 +61,18 @@ export class AssignmentGeneratorService {
       return cached;
     }
 
-    const result = await this.metrics.time(METRIC_CATEGORY, input.subject, () =>
-      this.generateWithRetries(input),
-    );
+    const result = await this.metrics.time(METRIC_CATEGORY, input.subject, async () => {
+      const initial = await this.generateWithRetries(input);
+      const refilled = await this.sectionFiller.fillMissingSections(initial, input);
+      if (refilled.filled.length > 0) {
+        const remainingWarnings = pruneFilledWarnings(
+          initial.qualityWarnings ?? [],
+          refilled.filled,
+        );
+        return { ...refilled.assignment, qualityWarnings: remainingWarnings };
+      }
+      return initial;
+    });
 
     this.cache.set(cacheKey, { assignment: result, storedAt: Date.now() });
     return result;
