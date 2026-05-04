@@ -11,7 +11,8 @@ const isPortalRoute = (pathname: string): boolean => {
     pathname.startsWith("/customer/portal") ||
     pathname.startsWith("/supplier/portal") ||
     pathname.startsWith("/admin/portal") ||
-    pathname.startsWith("/comply-sa")
+    pathname.startsWith("/comply-sa") ||
+    pathname.startsWith("/teacher-assistant")
   );
 };
 

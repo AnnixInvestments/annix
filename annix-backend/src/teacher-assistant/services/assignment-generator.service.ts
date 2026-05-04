@@ -132,7 +132,7 @@ export class AssignmentGeneratorService {
       lastFluffyFailures = fluffy.failures;
       const combined = [...validation.failures, ...fluffy.failures];
 
-      if (combined.length < bestFailureCount && hasMinimalStructure(assignment)) {
+      if (combined.length < bestFailureCount) {
         bestAssignment = assignment;
         bestFailures = combined;
         bestFailureCount = combined.length;
@@ -146,7 +146,7 @@ export class AssignmentGeneratorService {
       this.logger.warn(
         `Soft-accepting best attempt for ${input.subject}/${input.topic} with ${bestFailureCount} warning(s): ${this.summariseFailures(bestFailures)}`,
       );
-      return autoRepair(bestAssignment, bestFailures);
+      return autoRepair(bestAssignment, bestFailures, input);
     }
 
     const allFailures = [...lastFailures, ...lastFluffyFailures];
@@ -192,55 +192,82 @@ export class AssignmentGeneratorService {
   }
 }
 
-function hasMinimalStructure(assignment: Assignment): boolean {
-  return (
-    typeof assignment.title === "string" &&
-    assignment.title.trim().length > 0 &&
-    Array.isArray(assignment.tasks) &&
-    assignment.tasks.length >= 1 &&
-    Array.isArray(assignment.rubric) &&
-    assignment.rubric.length >= 1
-  );
-}
+function autoRepair(
+  assignment: Assignment,
+  failures: ValidationFailure[],
+  input: AssignmentInput,
+): Assignment {
+  const stub = buildFallbackStub(input, []);
 
-function autoRepair(assignment: Assignment, failures: ValidationFailure[]): Assignment {
-  const repairedRubric = (assignment.rubric ?? []).map((row) => ({
-    criterion: row.criterion ?? "Criterion",
-    excellent: row.excellent?.trim() || "—",
-    good: row.good?.trim() || "—",
-    satisfactory: row.satisfactory?.trim() || "—",
-    needsWork: row.needsWork?.trim() || "—",
-  }));
-  const repairedTasks = (assignment.tasks ?? []).map((task, i) => ({
-    ...task,
-    step: i + 1,
-    requiredEvidence:
-      task.requiredEvidence && task.requiredEvidence.length > 0
-        ? task.requiredEvidence
-        : ["evidence — review and refine"],
-  }));
+  const sourceRubric = Array.isArray(assignment.rubric) ? assignment.rubric : [];
+  const repairedRubric =
+    sourceRubric.length > 0
+      ? sourceRubric.map((row) => ({
+          criterion: row?.criterion?.trim() || "Criterion",
+          excellent: row?.excellent?.trim() || "—",
+          good: row?.good?.trim() || "—",
+          satisfactory: row?.satisfactory?.trim() || "—",
+          needsWork: row?.needsWork?.trim() || "—",
+        }))
+      : stub.rubric;
+
+  const sourceTasks = Array.isArray(assignment.tasks) ? assignment.tasks : [];
+  const repairedTasks =
+    sourceTasks.length > 0
+      ? sourceTasks.map((task, i) => ({
+          step: i + 1,
+          title: task?.title?.trim() || `Step ${i + 1}`,
+          studentInstruction:
+            task?.studentInstruction?.trim() ||
+            "Replace this with the specific instruction you want students to follow.",
+          requiredEvidence:
+            Array.isArray(task?.requiredEvidence) && task.requiredEvidence.length > 0
+              ? task.requiredEvidence
+              : ["evidence — review and refine"],
+          reasoningPrompt: task?.reasoningPrompt ?? "",
+          aiCritique: task?.aiCritique ?? null,
+          reflectionPrompt: task?.reflectionPrompt ?? "",
+        }))
+      : stub.tasks;
+
   return {
+    ...stub,
     ...assignment,
-    title: assignment.title?.trim() || "Untitled assignment",
-    studentBrief: assignment.studentBrief ?? "",
-    successCriteria: assignment.successCriteria ?? [],
-    aiUseRules: assignment.aiUseRules ?? [],
-    evidenceChecklist: assignment.evidenceChecklist ?? [],
-    finalSubmissionRequirements: assignment.finalSubmissionRequirements ?? [],
-    studentAiPromptStarters: assignment.studentAiPromptStarters ?? [],
-    partialExemplars: assignment.partialExemplars ?? [],
-    optionalWorkbookPages: assignment.optionalWorkbookPages ?? [],
-    teacherNotes: assignment.teacherNotes ?? {
-      setup: "",
-      setupTime: "",
-      materialsNeeded: [],
-      commonMisconceptions: [],
-      markingGuidance: "",
-      supportOption: "",
-      extensionOption: "",
-    },
+    title: assignment.title?.trim() || stub.title,
+    studentBrief: assignment.studentBrief?.trim() || stub.studentBrief,
+    successCriteria:
+      Array.isArray(assignment.successCriteria) && assignment.successCriteria.length > 0
+        ? assignment.successCriteria
+        : stub.successCriteria,
+    aiUseRules:
+      Array.isArray(assignment.aiUseRules) && assignment.aiUseRules.length > 0
+        ? assignment.aiUseRules
+        : stub.aiUseRules,
+    evidenceChecklist:
+      Array.isArray(assignment.evidenceChecklist) && assignment.evidenceChecklist.length > 0
+        ? assignment.evidenceChecklist
+        : stub.evidenceChecklist,
+    finalSubmissionRequirements:
+      Array.isArray(assignment.finalSubmissionRequirements) &&
+      assignment.finalSubmissionRequirements.length > 0
+        ? assignment.finalSubmissionRequirements
+        : stub.finalSubmissionRequirements,
+    studentAiPromptStarters: Array.isArray(assignment.studentAiPromptStarters)
+      ? assignment.studentAiPromptStarters
+      : [],
+    partialExemplars: Array.isArray(assignment.partialExemplars) ? assignment.partialExemplars : [],
+    optionalWorkbookPages: Array.isArray(assignment.optionalWorkbookPages)
+      ? assignment.optionalWorkbookPages
+      : [],
+    teacherNotes: assignment.teacherNotes ?? stub.teacherNotes,
     parentNote: assignment.parentNote ?? "",
     learningObjective: assignment.learningObjective ?? "",
+    subject: assignment.subject ?? input.subject,
+    topic: assignment.topic ?? input.topic,
+    ageBucket: assignment.ageBucket ?? input.ageBucket,
+    duration: assignment.duration ?? input.duration,
+    outputType: assignment.outputType ?? input.outputType,
+    difficulty: assignment.difficulty ?? input.difficulty,
     tasks: repairedTasks,
     rubric: repairedRubric,
     qualityWarnings: failures.map((f) => f.message),

@@ -96,7 +96,7 @@ export default function TeacherAssistantPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#f5f6ff] via-white to-[#e8eaff]">
-      <header className="bg-[#323288] text-white shadow-md border-b-4 border-[#FFA500]">
+      <header className="sticky top-0 z-40 bg-[#323288] text-white shadow-md border-b-4 border-[#FFA500]">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-[#FFA500] rounded-lg flex items-center justify-center text-white">
