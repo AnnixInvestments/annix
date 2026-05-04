@@ -3,9 +3,9 @@ import { InjectRepository } from "@nestjs/typeorm";
 import sharp from "sharp";
 import { Repository } from "typeorm";
 import { nowMillis } from "../../lib/datetime";
+import { BrandingType, Company } from "../../platform/entities/company.entity";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { PublicBrandingDto } from "../dto/public-branding.dto";
-import { BrandingType, StockControlCompany } from "../entities/stock-control-company.entity";
 
 interface CachedIcon {
   buffer: Buffer;
@@ -20,8 +20,8 @@ export class PublicBrandingService {
   private readonly iconCache = new Map<string, CachedIcon>();
 
   constructor(
-    @InjectRepository(StockControlCompany)
-    private readonly companyRepo: Repository<StockControlCompany>,
+    @InjectRepository(Company)
+    private readonly companyRepo: Repository<Company>,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
   ) {}
@@ -35,6 +35,7 @@ export class PublicBrandingService {
 
     return {
       companyName: company.name,
+      tradingName: company.tradingName,
       brandingType: company.brandingType,
       primaryColor: company.primaryColor,
       accentColor: company.accentColor,

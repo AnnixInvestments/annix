@@ -413,6 +413,7 @@ export class StockControlAuthService {
       role,
       companyId: company?.id ?? null,
       companyName: company?.name ?? null,
+      tradingName: company?.tradingName ?? null,
       brandingType: company?.brandingType ?? BrandingType.ANNIX,
       primaryColor: company?.primaryColor ?? null,
       accentColor: company?.accentColor ?? null,

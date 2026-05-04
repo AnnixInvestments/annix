@@ -11,6 +11,7 @@ const BACKEND_URL = rawApiUrl?.startsWith("/")
 
 interface PublicBranding {
   companyName: string;
+  tradingName: string | null;
   brandingType: string;
   primaryColor: string | null;
   hasCustomLogo: boolean;
@@ -34,13 +35,18 @@ export async function generateMetadata(): Promise<Metadata> {
   const branding = companyId ? await companyBranding(companyId) : null;
   const hasCustomIcon = branding?.hasCustomLogo === true;
   const companyName = branding?.companyName;
+  const tradingName = branding?.tradingName;
 
   const manifestUrl =
     companyId && branding
       ? `/api/stock-control/${companyId}/manifest.json`
       : "/stock-control-manifest.json";
 
-  const title = companyName ? `${companyName} Stock Control` : "Annix Stock Control";
+  const title = tradingName
+    ? `${tradingName} App`
+    : companyName
+      ? `${companyName} Stock Control`
+      : "Annix Stock Control";
 
   const iconUrl =
     hasCustomIcon && companyId
@@ -63,7 +69,7 @@ export async function generateMetadata(): Promise<Metadata> {
     appleWebApp: {
       capable: true,
       statusBarStyle: "default",
-      title: companyName ?? "Stock Control",
+      title: tradingName ?? companyName ?? "Stock Control",
     },
   };
 }
