@@ -1,4 +1,13 @@
-import type { Assignment, AssignmentInput } from "@annix/product-data/teacher-assistant";
+import type {
+  AgeBucket,
+  Assignment,
+  AssignmentInput,
+  DifferentiationOption,
+  DifficultyLevel,
+  Duration,
+  OutputType,
+  Subject,
+} from "@annix/product-data/teacher-assistant";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { nowMillis } from "@/app/lib/datetime";
@@ -12,20 +21,38 @@ export interface RecentAssignmentEntry {
   assignment: Assignment;
 }
 
+export interface FormDraft {
+  subject: Subject;
+  topicChoice: string;
+  customTopic: string;
+  ageBucket: AgeBucket;
+  studentAge: number;
+  duration: Duration;
+  outputType: OutputType;
+  difficulty: DifficultyLevel;
+  differentiation: DifferentiationOption[];
+  learningObjective: string;
+  allowAiUse: boolean;
+}
+
 interface TeacherAssistantState {
   recent: RecentAssignmentEntry[];
+  formDraft: FormDraft | null;
 }
 
 interface TeacherAssistantActions {
   rememberAssignment: (input: AssignmentInput, assignment: Assignment) => void;
   forgetAssignment: (id: string) => void;
   clearRecent: () => void;
+  saveFormDraft: (draft: FormDraft) => void;
+  clearFormDraft: () => void;
 }
 
 export const useTeacherAssistantStore = create<TeacherAssistantState & TeacherAssistantActions>()(
   persist(
     (set) => ({
       recent: [],
+      formDraft: null,
       rememberAssignment: (input, assignment) =>
         set((state) => {
           const ts = nowMillis();
@@ -41,10 +68,12 @@ export const useTeacherAssistantStore = create<TeacherAssistantState & TeacherAs
       forgetAssignment: (id) =>
         set((state) => ({ recent: state.recent.filter((entry) => entry.id !== id) })),
       clearRecent: () => set({ recent: [] }),
+      saveFormDraft: (draft) => set({ formDraft: draft }),
+      clearFormDraft: () => set({ formDraft: null }),
     }),
     {
       name: "teacher-assistant:recent",
-      version: 1,
+      version: 2,
     },
   ),
 );

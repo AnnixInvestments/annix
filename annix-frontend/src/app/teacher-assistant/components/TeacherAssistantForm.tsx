@@ -18,22 +18,11 @@ import {
   type Subject,
 } from "@annix/product-data/teacher-assistant";
 import { Sparkles } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { type FormDraft, useTeacherAssistantStore } from "@/app/lib/store/teacherAssistantStore";
 import { LearningObjectiveField } from "./LearningObjectiveField";
 
-interface FormState {
-  subject: Subject;
-  topicChoice: string;
-  customTopic: string;
-  ageBucket: AgeBucket;
-  studentAge: number;
-  duration: Duration;
-  outputType: OutputType;
-  difficulty: DifficultyLevel;
-  differentiation: DifferentiationOption[];
-  learningObjective: string;
-  allowAiUse: boolean;
-}
+type FormState = FormDraft;
 
 const DEFAULT_FORM: FormState = {
   subject: "geography",
@@ -48,6 +37,15 @@ const DEFAULT_FORM: FormState = {
   learningObjective: "",
   allowAiUse: true,
 };
+
+function isValidDraft(draft: FormDraft): boolean {
+  if (!SUBJECTS.includes(draft.subject)) return false;
+  if (!AGE_BUCKETS.includes(draft.ageBucket)) return false;
+  if (!DURATIONS.includes(draft.duration)) return false;
+  if (!OUTPUT_TYPES.includes(draft.outputType)) return false;
+  if (!DIFFICULTY_LEVELS.includes(draft.difficulty)) return false;
+  return true;
+}
 
 function effectiveTopic(form: FormState): string {
   if (form.topicChoice === CUSTOM_TOPIC_VALUE) {
@@ -69,7 +67,18 @@ interface TeacherAssistantFormProps {
 
 export function TeacherAssistantForm(props: TeacherAssistantFormProps) {
   const { onSubmit, isSubmitting } = props;
-  const [form, setForm] = useState<FormState>(DEFAULT_FORM);
+  const persistedDraft = useTeacherAssistantStore((s) => s.formDraft);
+  const saveFormDraft = useTeacherAssistantStore((s) => s.saveFormDraft);
+  const [form, setForm] = useState<FormState>(() => {
+    if (persistedDraft && isValidDraft(persistedDraft)) {
+      return persistedDraft;
+    }
+    return DEFAULT_FORM;
+  });
+
+  useEffect(() => {
+    saveFormDraft(form);
+  }, [form, saveFormDraft]);
 
   const setField = <K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));

@@ -1,19 +1,39 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect } from "react";
 import { FeedbackWidget } from "@/app/components/FeedbackWidget";
+import PortalToolbar, { type NavItem } from "@/app/components/PortalToolbar";
 import { useCvAssistantAuth } from "@/app/context/CvAssistantAuthContext";
 import { useCvMyProfileStatus } from "@/app/lib/query/hooks";
 import { CV_ASSISTANT_VERSION } from "../config/version";
 
-const navigation = [
-  { name: "Dashboard", href: "/cv-assistant/seeker/dashboard" },
-  { name: "My CV", href: "/cv-assistant/seeker/profile" },
-  { name: "Browse Jobs", href: "/cv-assistant/seeker/jobs" },
-  { name: "Applications", href: "/cv-assistant/seeker/applications" },
-  { name: "Settings", href: "/cv-assistant/seeker/settings" },
+const navItems: NavItem[] = [
+  {
+    href: "/cv-assistant/seeker/dashboard",
+    label: "Dashboard",
+    icon: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6",
+  },
+  {
+    href: "/cv-assistant/seeker/profile",
+    label: "My CV",
+    icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9h6m-6 4h3",
+  },
+  {
+    href: "/cv-assistant/seeker/jobs",
+    label: "Browse Jobs",
+    icon: "M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z",
+  },
+  {
+    href: "/cv-assistant/seeker/applications",
+    label: "Applications",
+    icon: "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z",
+  },
+  {
+    href: "/cv-assistant/seeker/settings",
+    label: "Settings",
+    icon: "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z",
+  },
 ];
 
 function SeekerContent({ children }: { children: React.ReactNode }) {
@@ -61,7 +81,7 @@ function SeekerContent({ children }: { children: React.ReactNode }) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40] flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#323288]" />
       </div>
     );
@@ -80,65 +100,29 @@ function SeekerContent({ children }: { children: React.ReactNode }) {
     router.push("/cv-assistant/login?type=individual");
   };
 
+  const userName = user?.name;
+  const nameParts = (userName || "").split(" ");
+  const firstName = nameParts[0];
+  const lastName = nameParts.length > 1 ? nameParts.slice(1).join(" ") : undefined;
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white border-b border-[#e0e0f5]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex">
-              <Link href="/cv-assistant/seeker/dashboard" className="flex items-center">
-                <div className="flex items-center justify-center w-10 h-10 bg-[#e0e0f5] rounded-lg mr-3">
-                  <svg
-                    className="w-6 h-6 text-[#323288]"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={1.5}
-                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                    />
-                  </svg>
-                </div>
-                <span className="font-bold text-lg text-gray-900">CV Assistant</span>
-                <span className="ml-1.5 text-gray-400 text-xs font-mono hidden sm:inline">
-                  v{CV_ASSISTANT_VERSION}
-                </span>
-              </Link>
-              <div className="hidden sm:ml-8 sm:flex sm:space-x-1">
-                {navigation.map((item) => {
-                  const isActive = pathname.startsWith(item.href);
-                  return (
-                    <Link
-                      key={item.name}
-                      href={item.href}
-                      className={`inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
-                        isActive
-                          ? "bg-[#e0e0f5] text-[#252560]"
-                          : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-                      }`}
-                    >
-                      {item.name}
-                    </Link>
-                  );
-                })}
-              </div>
-            </div>
-            <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-600">{user?.name}</span>
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="text-sm text-gray-600 hover:text-gray-900"
-              >
-                Sign out
-              </button>
-            </div>
-          </div>
-        </div>
-      </nav>
+    <div className="min-h-screen bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40]">
+      <PortalToolbar
+        portalType="cvAssistant"
+        navItems={navItems}
+        user={
+          user
+            ? {
+                firstName,
+                lastName,
+                email: user.email,
+                roles: [user.role],
+              }
+            : null
+        }
+        onLogout={handleLogout}
+        version={CV_ASSISTANT_VERSION}
+      />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">{children}</main>
       <FeedbackWidget authContext="cv-assistant" />
@@ -151,7 +135,7 @@ export default function SeekerLayout(props: { children: React.ReactNode }) {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="min-h-screen bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40] flex items-center justify-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#323288] mx-auto" />
         </div>
       }
