@@ -222,6 +222,7 @@ export interface StockControlInvitation {
 
 export interface StockControlTeamMember {
   id: number;
+  unifiedUserId: number | null;
   name: string;
   email: string;
   role: string;
@@ -1830,7 +1831,10 @@ export interface WorkflowStatus {
   canApprove: boolean;
   requiredRole: string | null;
   jobCardStatus: string;
-  stepAssignments: Record<string, { name: string; isPrimary: boolean }[]>;
+  stepAssignments: Record<
+    string,
+    { name: string; unifiedUserId: number | null; isPrimary: boolean }[]
+  >;
   foregroundSteps: Array<{
     key: string;
     label: string;

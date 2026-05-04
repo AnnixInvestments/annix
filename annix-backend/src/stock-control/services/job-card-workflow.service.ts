@@ -569,7 +569,10 @@ export class JobCardWorkflowService {
     canApprove: boolean;
     requiredRole: string | null;
     jobCardStatus: JobCardStatus;
-    stepAssignments: Record<string, { name: string; isPrimary: boolean }[]>;
+    stepAssignments: Record<
+      string,
+      { name: string; unifiedUserId: number | null; isPrimary: boolean }[]
+    >;
     foregroundSteps: Array<{
       key: string;
       label: string;
@@ -632,10 +635,11 @@ export class JobCardWorkflowService {
         ...acc,
         [sa.step]: sa.users.map((u) => ({
           name: u.name,
+          unifiedUserId: u.unifiedUserId,
           isPrimary: sa.primaryUserId === u.id,
         })),
       }),
-      {} as Record<string, { name: string; isPrimary: boolean }[]>,
+      {} as Record<string, { name: string; unifiedUserId: number | null; isPrimary: boolean }[]>,
     );
 
     const foregroundSteps = fgConfigs.map((s) => ({

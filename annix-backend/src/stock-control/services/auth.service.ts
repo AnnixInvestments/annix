@@ -667,6 +667,7 @@ export class StockControlAuthService {
 
     return users.map((u) => ({
       id: u.id,
+      unifiedUserId: u.unifiedUserId ?? null,
       name: u.name,
       email: u.email,
       role: u.role,

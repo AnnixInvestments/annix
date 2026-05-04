@@ -10,11 +10,29 @@ interface UseWorkflowActionsParams {
   backgroundSteps: BackgroundStepStatus[];
   currentStatus: string | null;
   currentStep: string | null;
+  userId: number | null | undefined;
   userName: string | null | undefined;
+  effectiveUserId: number | null;
   effectiveName: string | null;
   userRole: string;
   isPreviewActive: boolean;
   isAdminView: boolean;
+}
+
+function isAssignedUser(
+  assigned: { name: string; unifiedUserId: number | null }[] | undefined,
+  candidateId: number | null | undefined,
+  candidateName: string | null | undefined,
+): boolean {
+  if (!assigned || assigned.length === 0) return false;
+  if (candidateId !== null && candidateId !== undefined) {
+    const idMatch = assigned.some((u) => u.unifiedUserId === candidateId);
+    if (idMatch) return true;
+  }
+  if (candidateName) {
+    return assigned.some((u) => u.name === candidateName);
+  }
+  return false;
 }
 
 export function useWorkflowActions(params: UseWorkflowActionsParams) {
@@ -23,7 +41,9 @@ export function useWorkflowActions(params: UseWorkflowActionsParams) {
     backgroundSteps,
     currentStatus,
     currentStep,
+    userId,
     userName,
+    effectiveUserId,
     effectiveName,
     userRole,
     isPreviewActive,
@@ -36,44 +56,37 @@ export function useWorkflowActions(params: UseWorkflowActionsParams) {
     if (jcStatus !== "active") return false;
 
     if (isPreviewActive) {
-      const checkName = effectiveName;
-      if (!checkName) return false;
       const allAssignments = workflowStatus.stepAssignments;
-      const assigned = allAssignments ? allAssignments[currentStep] : null;
-      if (!assigned || assigned.length === 0) return false;
-      return assigned.some((u) => u.name === checkName);
+      const assigned = allAssignments ? allAssignments[currentStep] : undefined;
+      return isAssignedUser(assigned, effectiveUserId, effectiveName);
     }
 
     if (userRole === "admin") return true;
 
     return workflowStatus.canApprove;
-  }, [currentStep, workflowStatus, isPreviewActive, effectiveName, userRole]);
+  }, [currentStep, workflowStatus, isPreviewActive, effectiveUserId, effectiveName, userRole]);
 
   const isQualityUser = useMemo(() => {
     if (!workflowStatus) return false;
     if (workflowStatus.jobCardStatus !== "active") return false;
+    const checkId = isPreviewActive ? effectiveUserId : (userId ?? null);
     const checkName = isPreviewActive ? effectiveName : userName;
-    if (!checkName) return false;
     const stepAssignments = workflowStatus.stepAssignments;
     const assignments = stepAssignments || {};
     const qualityKeys = keys(assignments).filter(
       (k) => k.includes("quality") || k === "qa_review" || k === "qa_final_check",
     );
-    return qualityKeys.some((k) => {
-      const assigned = assignments[k];
-      return assigned?.some((u) => u.name === checkName);
-    });
-  }, [workflowStatus, userName, effectiveName, isPreviewActive]);
+    return qualityKeys.some((k) => isAssignedUser(assignments[k], checkId, checkName));
+  }, [workflowStatus, userId, userName, effectiveUserId, effectiveName, isPreviewActive]);
 
   const canAcceptDraft = useMemo(() => {
     if (!workflowStatus || workflowStatus.jobCardStatus !== "draft") return false;
     if (userRole === "admin" && !isPreviewActive) return true;
+    const checkId = effectiveUserId ?? userId ?? null;
     const checkName = effectiveName || userName;
-    if (!checkName) return false;
     const assigned = workflowStatus.stepAssignments?.["document_upload"];
-    if (!assigned || assigned.length === 0) return false;
-    return assigned.some((u) => u.name === checkName);
-  }, [workflowStatus, userName, effectiveName, userRole, isPreviewActive]);
+    return isAssignedUser(assigned, checkId, checkName);
+  }, [workflowStatus, userId, userName, effectiveUserId, effectiveName, userRole, isPreviewActive]);
 
   const userPendingBgSteps = useMemo(() => {
     const checkName = effectiveName || userName;
@@ -459,8 +472,9 @@ export function useWorkflowActions(params: UseWorkflowActionsParams) {
 
   const requisitionIsPending = useMemo(() => {
     if (userPendingBgSteps.some(isRequisitionStep)) return true;
+    if (!workflowStatus) return false;
+    const checkId = effectiveUserId ?? userId ?? null;
     const checkName = effectiveName || userName;
-    if (!workflowStatus || !checkName) return false;
     const reqStep = backgroundSteps.find(
       (bg) =>
         (bg.stepKey === "requisition" || bg.label?.toLowerCase() === "requisition") &&
@@ -468,13 +482,15 @@ export function useWorkflowActions(params: UseWorkflowActionsParams) {
     );
     if (!reqStep) return false;
     const assigned = workflowStatus.stepAssignments?.[reqStep.stepKey];
-    return !!assigned && assigned.some((u) => u.name === checkName);
+    return isAssignedUser(assigned, checkId, checkName);
   }, [
     userPendingBgSteps,
     isRequisitionStep,
     workflowStatus,
     backgroundSteps,
+    userId,
     userName,
+    effectiveUserId,
     effectiveName,
   ]);
 
@@ -483,9 +499,9 @@ export function useWorkflowActions(params: UseWorkflowActionsParams) {
       if (!isAdminView || !stepKey || !workflowStatus) return false;
       const assigned = workflowStatus.stepAssignments?.[stepKey];
       if (!assigned || assigned.length === 0) return true;
-      return !assigned.some((u) => u.name === userName);
+      return !isAssignedUser(assigned, userId ?? null, userName);
     },
-    [isAdminView, workflowStatus, userName],
+    [isAdminView, workflowStatus, userId, userName],
   );
 
   return {

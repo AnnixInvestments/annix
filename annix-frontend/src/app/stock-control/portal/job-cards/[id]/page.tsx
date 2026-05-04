@@ -66,7 +66,9 @@ export default function JobCardDetailPage() {
   const authContext = useStockControlAuth();
   const user = authContext.user;
   const profile = authContext.profile;
-  const { effectiveRole, isPreviewActive, effectiveName } = useViewAs();
+  const { effectiveRole, isPreviewActive, effectiveName, viewAsUser } = useViewAs();
+  const viewAsUnifiedId = viewAsUser ? viewAsUser.unifiedUserId : null;
+  const effectiveUserId = isPreviewActive ? viewAsUnifiedId : null;
   const { confirm, ConfirmDialog } = useConfirm();
   const jobId = Number(params.id);
 
@@ -194,7 +196,9 @@ export default function JobCardDetailPage() {
     backgroundSteps,
     currentStatus,
     currentStep,
+    userId: authUserId,
     userName: user?.name,
+    effectiveUserId,
     effectiveName,
     userRole,
     isPreviewActive,
