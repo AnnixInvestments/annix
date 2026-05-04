@@ -106,7 +106,13 @@ export class AssignmentGeneratorService {
       }
     });
 
-    this.cache.set(cacheKey, { assignment: result, storedAt: Date.now() });
+    if (!result.qualityWarnings || result.qualityWarnings.length === 0) {
+      this.cache.set(cacheKey, { assignment: result, storedAt: Date.now() });
+    } else {
+      this.logger.log(
+        `Skipping cache for ${input.subject}/${input.topic} — assignment has ${result.qualityWarnings.length} quality warning(s); next attempt should retry from scratch`,
+      );
+    }
     return result;
   }
 

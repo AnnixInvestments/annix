@@ -24,7 +24,7 @@ interface AssignmentPreviewProps {
   generatedFrom: AssignmentInput;
 }
 
-const ESTIMATED_REGENERATE_MS = 15_000;
+const ESTIMATED_REGENERATE_MS = 25_000;
 
 const SECTION_LABELS: Partial<Record<AssignmentSection, string>> = {
   studentBrief: "student brief",

@@ -10,6 +10,7 @@ import PortalToolbar, { type NavItem } from "@/app/components/PortalToolbar";
 import { useToast } from "@/app/components/Toast";
 import { useFullWidthLayout } from "@/app/context/LayoutContext";
 import { type ApiError, extractErrorMessage, isApiError } from "@/app/lib/api/apiError";
+import { metricsApi } from "@/app/lib/api/metricsApi";
 import { useGenerateAssignment } from "@/app/lib/query/hooks";
 import {
   type RecentAssignmentEntry,
@@ -21,9 +22,24 @@ import { TeacherAssistantForm } from "./components/TeacherAssistantForm";
 import { TEACHER_ASSISTANT_VERSION } from "./config/version";
 import { useTeacherAssistantAuth } from "./context/TeacherAssistantAuthContext";
 
-const ESTIMATED_GENERATION_MS = 25_000;
+const FALLBACK_GENERATION_MS = 75_000;
+const MIN_GENERATION_ESTIMATE_MS = 45_000;
+const MAX_GENERATION_ESTIMATE_MS = 110_000;
+const METRIC_CATEGORY = "teacher-assistant-generate";
 
 const NAV_ITEMS: NavItem[] = [];
+
+async function realisticEstimateMs(subject: string): Promise<number> {
+  try {
+    const stats = await metricsApi.extractionStats(METRIC_CATEGORY, subject);
+    const rawAverage = stats.averageMs;
+    if (rawAverage === null || rawAverage <= 0) return FALLBACK_GENERATION_MS;
+    const cushion = Math.round(rawAverage * 1.15);
+    return Math.min(MAX_GENERATION_ESTIMATE_MS, Math.max(MIN_GENERATION_ESTIMATE_MS, cushion));
+  } catch {
+    return FALLBACK_GENERATION_MS;
+  }
+}
 
 export default function TeacherAssistantPage() {
   useFullWidthLayout();
@@ -60,14 +76,15 @@ export default function TeacherAssistantPage() {
     router.replace("/teacher-assistant/login");
   };
 
-  const handleSubmit = (input: AssignmentInput) => {
+  const handleSubmit = async (input: AssignmentInput) => {
     setGeneratedFrom(input);
     setLastError(null);
     setLastFailures([]);
+    const estimatedDurationMs = await realisticEstimateMs(input.subject);
     showExtraction({
       brand: "teacher-assistant",
       label: `Generating ${input.subject} assignment on "${input.topic}"…`,
-      estimatedDurationMs: ESTIMATED_GENERATION_MS,
+      estimatedDurationMs,
     });
     generate.mutate(input, {
       onSuccess: (result) => {
