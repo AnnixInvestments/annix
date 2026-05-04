@@ -7,6 +7,7 @@ import type {
 } from "@annix/product-data/teacher-assistant";
 import { AlertTriangle, Copy, Download, FileText } from "lucide-react";
 import { useMemo, useState } from "react";
+import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { useToast } from "@/app/components/Toast";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import { useRegenerateSection } from "@/app/lib/query/hooks";
@@ -23,12 +24,35 @@ interface AssignmentPreviewProps {
   generatedFrom: AssignmentInput;
 }
 
+const ESTIMATED_REGENERATE_MS = 15_000;
+
+const SECTION_LABELS: Partial<Record<AssignmentSection, string>> = {
+  studentBrief: "student brief",
+  successCriteria: "success criteria",
+  tasks: "tasks",
+  aiUseRules: "AI use rules",
+  evidenceChecklist: "evidence checklist",
+  finalSubmissionRequirements: "submission requirements",
+  rubric: "rubric",
+  teacherNotes: "teacher notes",
+  parentNote: "parent note",
+  studentAiPromptStarters: "student AI prompts",
+  partialExemplars: "partial exemplars",
+  optionalWorkbookPages: "workbook pages",
+};
+
+function humanSection(section: AssignmentSection): string {
+  const label = SECTION_LABELS[section];
+  return label ?? section;
+}
+
 export function AssignmentPreview(props: AssignmentPreviewProps) {
   const { initialAssignment, generatedFrom } = props;
   const editor = useAssignmentEditor(initialAssignment);
   const regenerate = useRegenerateSection();
   const { showToast } = useToast();
   const { confirm, ConfirmDialog } = useConfirm();
+  const { showExtraction, hideExtraction } = useExtractionProgress();
 
   const handleDeleteTask = async (index: number) => {
     const task = editor.current.tasks[index];
@@ -46,6 +70,11 @@ export function AssignmentPreview(props: AssignmentPreviewProps) {
   const isRegenerating = regenerate.isPending;
 
   const handleRegenerateSection = (section: AssignmentSection) => {
+    showExtraction({
+      brand: "teacher-assistant",
+      label: `Regenerating ${humanSection(section)}…`,
+      estimatedDurationMs: ESTIMATED_REGENERATE_MS,
+    });
     regenerate.mutate(
       {
         input: generatedFrom,
@@ -54,10 +83,12 @@ export function AssignmentPreview(props: AssignmentPreviewProps) {
       },
       {
         onSuccess: (next) => {
+          hideExtraction();
           editor.replace(next);
-          showToast(`Regenerated ${section}.`, "success");
+          showToast(`Regenerated ${humanSection(section)}.`, "success");
         },
         onError: (error) => {
+          hideExtraction();
           showToast(
             error instanceof Error ? error.message : "Section regeneration failed.",
             "error",

@@ -6,6 +6,7 @@ import type { Candidate } from "@/app/lib/api/cvAssistantApi";
 import {
   useCvDashboardStats,
   useCvMarketInsights,
+  useCvMyProfileStatus,
   useCvTopCandidates,
 } from "@/app/lib/query/hooks";
 
@@ -74,17 +75,93 @@ export default function DashboardPage() {
   const { data: stats, isLoading: statsLoading } = useCvDashboardStats();
   const { data: topCandidates = [], isLoading: candidatesLoading } = useCvTopCandidates();
   const { data: marketInsights } = useCvMarketInsights();
+  const profileStatusQuery = useCvMyProfileStatus();
 
   const userType = user ? user.userType : null;
   const companyId = profile ? profile.companyId : null;
   const isIndividual = userType === "individual" || companyId === null;
 
-  const isLoading = statsLoading || candidatesLoading;
+  const isLoading = isIndividual ? false : statsLoading || candidatesLoading;
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#323288]"></div>
+      </div>
+    );
+  }
+
+  if (isIndividual) {
+    const userName = user ? user.name : null;
+    const firstNameToken = userName ? userName.split(" ")[0] : null;
+    const firstName = firstNameToken ? firstNameToken : "there";
+    const profileStatus = profileStatusQuery.data;
+    const hasCv = profileStatus ? profileStatus.hasCv : false;
+    const missingOptional =
+      hasCv &&
+      profileStatus &&
+      (profileStatus.qualificationsCount === 0 || profileStatus.certificatesCount === 0);
+
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold text-white">Welcome, {firstName}</h1>
+          <p className="text-white/70 mt-1">Your CV Assistant job seeker workspace</p>
+        </div>
+
+        {!hasCv && (
+          <div className="rounded-xl bg-gradient-to-br from-[#FFA500] to-[#FFB733] shadow-lg p-6 sm:p-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-1">
+              <h2 className="text-xl sm:text-2xl font-bold text-[#1a1a40]">
+                Ready to find your next role?
+              </h2>
+              <p className="text-[#1a1a40]/80">
+                Upload your CV and let CV Assistant match you to suitable jobs.
+              </p>
+            </div>
+            <UploadCvButton size="lg" variant="navy" />
+          </div>
+        )}
+
+        {missingOptional && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium text-amber-900">
+                Add qualifications and certificates to improve your matches
+              </p>
+              <p className="text-xs text-amber-700 mt-1">
+                Your CV is uploaded — matches will work, but more documents make them more accurate.
+              </p>
+            </div>
+            <Link
+              href="/cv-assistant/seeker/profile"
+              className="text-sm font-medium text-amber-900 hover:text-amber-950 underline whitespace-nowrap"
+            >
+              Add documents
+            </Link>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <SeekerTile
+            title="My CV"
+            description="Upload, edit, and improve your CV with AI suggestions."
+            href="/cv-assistant/seeker/profile"
+            cta="Open my CV"
+          />
+          <SeekerTile
+            title="Browse Jobs"
+            description="See opportunities matched to your skills and experience."
+            href="/cv-assistant/seeker/jobs"
+            cta="See jobs"
+          />
+          <SeekerTile
+            title="Applications"
+            description="Track jobs you have applied to and their status."
+            href="/cv-assistant/seeker/applications"
+            cta="View applications"
+          />
+        </div>
       </div>
     );
   }
@@ -407,6 +484,21 @@ export default function DashboardPage() {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+function SeekerTile(props: { title: string; description: string; href: string; cta: string }) {
+  return (
+    <div className="bg-white rounded-xl border border-[#e0e0f5] p-6 flex flex-col">
+      <h2 className="text-lg font-semibold text-gray-900">{props.title}</h2>
+      <p className="text-sm text-gray-600 mt-2 flex-1">{props.description}</p>
+      <Link
+        href={props.href}
+        className="mt-4 inline-flex items-center justify-center bg-[#323288] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#252560] transition-colors"
+      >
+        {props.cta}
+      </Link>
     </div>
   );
 }
