@@ -5,7 +5,7 @@ import type {
   AssignmentInput,
   AssignmentSection,
 } from "@annix/product-data/teacher-assistant";
-import { AlertTriangle, Copy, Download, FileText } from "lucide-react";
+import { AlertTriangle, Copy, Download, FileText, RefreshCw } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { useToast } from "@/app/components/Toast";
@@ -22,6 +22,8 @@ import { TaskList } from "./TaskList";
 interface AssignmentPreviewProps {
   initialAssignment: Assignment;
   generatedFrom: AssignmentInput;
+  onRegenerateAll?: () => void;
+  isRegeneratingAll?: boolean;
 }
 
 const ESTIMATED_REGENERATE_MS = 25_000;
@@ -47,7 +49,7 @@ function humanSection(section: AssignmentSection): string {
 }
 
 export function AssignmentPreview(props: AssignmentPreviewProps) {
-  const { initialAssignment, generatedFrom } = props;
+  const { initialAssignment, generatedFrom, onRegenerateAll, isRegeneratingAll } = props;
   const editor = useAssignmentEditor(initialAssignment);
   const regenerate = useRegenerateSection();
   const { showToast } = useToast();
@@ -176,6 +178,17 @@ export function AssignmentPreview(props: AssignmentPreviewProps) {
             </p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
+            {onRegenerateAll ? (
+              <button
+                type="button"
+                onClick={onRegenerateAll}
+                disabled={isRegeneratingAll}
+                className="inline-flex items-center gap-1 px-3 py-2 border border-[#FFA500] text-[#92400e] bg-[#fff6e5] rounded-lg text-sm hover:bg-[#FFE0A0] disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+              >
+                <RefreshCw className={`w-4 h-4 ${isRegeneratingAll ? "animate-spin" : ""}`} />
+                {isRegeneratingAll ? "Regenerating…" : "Regenerate all"}
+              </button>
+            ) : null}
             <button
               type="button"
               onClick={handleCopy}

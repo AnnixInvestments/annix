@@ -263,6 +263,12 @@ export class IndividualProfileService {
     }
 
     await this.profileRepo.save(profile);
+
+    if (!profile.rawCvText || profile.rawCvText.trim().length === 0) {
+      throw new BadRequestException(
+        "We couldn't read any text from this CV file. If it is a scanned image, please upload a text-based PDF, Word, or Excel version instead.",
+      );
+    }
   }
 
   async notificationPreferences(userId: number): Promise<IndividualNotificationPreferences> {

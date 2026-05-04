@@ -97,6 +97,8 @@ export default function SeekerProfilePage() {
         />
       </SectionCard>
 
+      <NixWizardPanel hasCv={hasCv} autoRunKey={nixAutoRunKey} />
+
       <SectionCard
         title="Qualifications"
         description="Optional but strongly recommended. Degrees, diplomas, transcripts — one file per qualification."
@@ -138,8 +140,6 @@ export default function SeekerProfilePage() {
           {deleteError}
         </div>
       )}
-
-      <NixWizardPanel hasCv={hasCv} autoRunKey={nixAutoRunKey} />
 
       {hasCv && (
         <div className="bg-white rounded-xl border border-[#e0e0f5] p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">

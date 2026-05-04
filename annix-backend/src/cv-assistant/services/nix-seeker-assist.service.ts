@@ -47,6 +47,11 @@ export class NixSeekerAssistService {
         "Upload your CV first — Nix needs at least your CV before it can suggest improvements.",
       );
     }
+    if (!profile.rawCvText || profile.rawCvText.trim().length === 0) {
+      throw new BadRequestException(
+        "We couldn't read any text from your CV file. If it is a scanned image, please re-upload a text-based PDF, Word, or Excel version.",
+      );
+    }
 
     const documents = await this.documentRepo.find({
       where: { profileId: profile.id },

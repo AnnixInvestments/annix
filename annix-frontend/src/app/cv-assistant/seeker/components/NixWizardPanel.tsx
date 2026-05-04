@@ -2,6 +2,7 @@
 
 import { isNumber } from "es-toolkit/compat";
 import { useEffect, useRef, useState } from "react";
+import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import type {
   NixSeekerCvAssessment,
   NixSeekerCvImprovement,
@@ -10,6 +11,8 @@ import type {
   NixSeekerRankingPotential,
 } from "@/app/lib/api/cvAssistantApi";
 import { useCvNixWizardImprovements } from "@/app/lib/query/hooks";
+
+const NIX_REVIEW_ESTIMATED_MS = 12000;
 
 const AREA_LABELS: Record<NixSeekerImprovementArea, string> = {
   summary: "Summary",
@@ -54,6 +57,8 @@ export function NixWizardPanel(props: NixWizardPanelProps) {
   const lastAutoRunKey = useRef<number | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const mutate = mutation.mutate;
+  const { showExtraction, hideExtraction } = useExtractionProgress();
+  const isLoading = mutation.isPending;
 
   useEffect(() => {
     if (!hasCv) return;
@@ -69,13 +74,27 @@ export function NixWizardPanel(props: NixWizardPanelProps) {
     }
   }, [autoRunKey, hasCv, mutate]);
 
+  useEffect(() => {
+    if (isLoading) {
+      showExtraction({
+        brand: "cv-assistant",
+        label: "Nix is reviewing your CV…",
+        estimatedDurationMs: NIX_REVIEW_ESTIMATED_MS,
+      });
+    } else {
+      hideExtraction();
+    }
+    return () => {
+      hideExtraction();
+    };
+  }, [isLoading, showExtraction, hideExtraction]);
+
   const result = mutation.data;
   const errorMessage = mutation.error
     ? mutation.error instanceof Error
       ? mutation.error.message
       : "Nix could not review your CV right now."
     : null;
-  const isLoading = mutation.isPending;
 
   const handleRun = () => {
     setCopied(false);
@@ -135,8 +154,6 @@ export function NixWizardPanel(props: NixWizardPanelProps) {
         </div>
       )}
 
-      {isLoading && <NixLoadingShimmer />}
-
       {result && !isLoading && (
         <NixResultBlock assessment={result} copied={copied} onCopy={handleCopy} />
       )}
@@ -148,16 +165,6 @@ function NixBadge() {
   return (
     <div className="flex items-center justify-center w-10 h-10 bg-[#323288] text-white rounded-lg flex-shrink-0 font-semibold">
       Nix
-    </div>
-  );
-}
-
-function NixLoadingShimmer() {
-  return (
-    <div className="space-y-3">
-      <div className="h-4 bg-[#e0e0f5] rounded animate-pulse w-1/2" />
-      <div className="h-4 bg-[#e0e0f5] rounded animate-pulse w-3/4" />
-      <div className="h-4 bg-[#e0e0f5] rounded animate-pulse w-2/3" />
     </div>
   );
 }

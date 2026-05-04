@@ -111,6 +111,11 @@ export default function TeacherAssistantPage() {
     setGeneratedFrom(null);
   };
 
+  const handleRegenerateAll = () => {
+    if (!generatedFrom) return;
+    handleSubmit(generatedFrom);
+  };
+
   const handleOpenRecent = (entry: RecentAssignmentEntry) => {
     setGeneratedFrom(entry.input);
     setAssignment(entry.assignment);
@@ -149,7 +154,12 @@ export default function TeacherAssistantPage() {
 
       <main className="w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
         {assignment && generatedFrom ? (
-          <AssignmentPreview initialAssignment={assignment} generatedFrom={generatedFrom} />
+          <AssignmentPreview
+            initialAssignment={assignment}
+            generatedFrom={generatedFrom}
+            onRegenerateAll={handleRegenerateAll}
+            isRegeneratingAll={generate.isPending}
+          />
         ) : (
           <>
             <RecentAssignmentsList
