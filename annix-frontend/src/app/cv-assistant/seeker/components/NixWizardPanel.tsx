@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { isNumber } from "es-toolkit/compat";
+import { useEffect, useRef, useState } from "react";
 import type {
   NixSeekerCvAssessment,
   NixSeekerCvImprovement,
@@ -42,12 +43,31 @@ const RANKING_LABEL: Record<NixSeekerRankingPotential, string> = {
 
 export interface NixWizardPanelProps {
   hasCv: boolean;
+  autoRunKey?: number;
 }
 
 export function NixWizardPanel(props: NixWizardPanelProps) {
   const hasCv = props.hasCv;
+  const autoRunKey = props.autoRunKey;
   const mutation = useCvNixWizardImprovements();
   const [copied, setCopied] = useState(false);
+  const lastAutoRunKey = useRef<number | null>(null);
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const mutate = mutation.mutate;
+
+  useEffect(() => {
+    if (!hasCv) return;
+    if (!isNumber(autoRunKey)) return;
+    if (autoRunKey <= 0) return;
+    if (lastAutoRunKey.current === autoRunKey) return;
+    lastAutoRunKey.current = autoRunKey;
+    setCopied(false);
+    mutate();
+    const node = panelRef.current;
+    if (node) {
+      node.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [autoRunKey, hasCv, mutate]);
 
   const result = mutation.data;
   const errorMessage = mutation.error
@@ -59,7 +79,7 @@ export function NixWizardPanel(props: NixWizardPanelProps) {
 
   const handleRun = () => {
     setCopied(false);
-    mutation.mutate();
+    mutate();
   };
 
   const handleCopy = (text: string) => {
@@ -75,7 +95,10 @@ export function NixWizardPanel(props: NixWizardPanelProps) {
   };
 
   return (
-    <div className="bg-gradient-to-br from-[#f7f7ff] to-white rounded-xl border border-[#c0c0eb] p-6 space-y-4">
+    <div
+      ref={panelRef}
+      className="bg-gradient-to-br from-[#f7f7ff] to-white rounded-xl border border-[#c0c0eb] p-6 space-y-4 scroll-mt-24"
+    >
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="flex items-start gap-3">
           <NixBadge />
@@ -101,7 +124,8 @@ export function NixWizardPanel(props: NixWizardPanelProps) {
 
       {!hasCv && (
         <p className="text-xs text-gray-500 italic">
-          Upload your CV above and Nix will review it the moment you press the button.
+          Upload your CV above and Nix will review it automatically. You can also re-run the review
+          any time by pressing the button.
         </p>
       )}
 

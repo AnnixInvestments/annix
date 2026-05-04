@@ -21,6 +21,7 @@ export default function SeekerProfilePage() {
   const [warningOpen, setWarningOpen] = useState(false);
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [nixAutoRunKey, setNixAutoRunKey] = useState(0);
 
   const status = statusQuery.data;
   const documentsData = documentsQuery.data;
@@ -92,6 +93,7 @@ export default function SeekerProfilePage() {
           kind="cv"
           ctaLabel={cvDoc ? "Replace CV" : "Upload CV"}
           helperText="PDF works best. Word, Excel, or PowerPoint also accepted (10 MB max). Replacing your CV will overwrite the old version."
+          onUploaded={() => setNixAutoRunKey((k) => k + 1)}
         />
       </SectionCard>
 
@@ -137,7 +139,7 @@ export default function SeekerProfilePage() {
         </div>
       )}
 
-      <NixWizardPanel hasCv={hasCv} />
+      <NixWizardPanel hasCv={hasCv} autoRunKey={nixAutoRunKey} />
 
       {hasCv && (
         <div className="bg-white rounded-xl border border-[#e0e0f5] p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
