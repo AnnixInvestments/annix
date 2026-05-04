@@ -73,8 +73,8 @@ export default function SeekerProfilePage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">My CV &amp; Documents</h1>
-        <p className="text-gray-600 mt-2">
+        <h1 className="text-3xl font-bold text-white">My CV &amp; Documents</h1>
+        <p className="text-white/70 mt-2">
           {hasCv
             ? "Keep your CV current and add qualifications or certificates so we can match you to better jobs."
             : "Upload your CV to get started — we will use it to find jobs you are qualified for."}

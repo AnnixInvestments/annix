@@ -2,10 +2,11 @@
 
 import type { Assignment, AssignmentInput } from "@annix/product-data/teacher-assistant";
 import { isArray, isString } from "es-toolkit/compat";
-import { AlertTriangle, GraduationCap, LogOut, X } from "lucide-react";
+import { AlertTriangle, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
+import PortalToolbar, { type NavItem } from "@/app/components/PortalToolbar";
 import { useToast } from "@/app/components/Toast";
 import { type ApiError, extractErrorMessage, isApiError } from "@/app/lib/api/apiError";
 import { useGenerateAssignment } from "@/app/lib/query/hooks";
@@ -20,6 +21,8 @@ import { TEACHER_ASSISTANT_VERSION } from "./config/version";
 import { useTeacherAssistantAuth } from "./context/TeacherAssistantAuthContext";
 
 const ESTIMATED_GENERATION_MS = 25_000;
+
+const NAV_ITEMS: NavItem[] = [];
 
 export default function TeacherAssistantPage() {
   const router = useRouter();
@@ -44,8 +47,8 @@ export default function TeacherAssistantPage() {
 
   if (isLoading || !user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#f5f6ff]">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#323288]" />
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40]">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#FFA500]" />
       </div>
     );
   }
@@ -94,47 +97,36 @@ export default function TeacherAssistantPage() {
     setAssignment(entry.assignment);
   };
 
+  const nameParts = user.name.split(" ");
+  const firstName = nameParts[0];
+  const lastName = nameParts.length > 1 ? nameParts.slice(1).join(" ") : undefined;
+  const rawSchoolName = user.schoolName;
+  const companyName = rawSchoolName ?? undefined;
+  const startNewAssignmentAction = assignment ? (
+    <button
+      type="button"
+      onClick={handleReset}
+      className="text-sm text-white/80 hover:text-[#FFA500] transition-colors px-3 py-2"
+    >
+      Start new assignment
+    </button>
+  ) : null;
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#f5f6ff] via-white to-[#e8eaff]">
-      <header className="sticky top-0 z-40 bg-[#323288] text-white shadow-md border-b-4 border-[#FFA500]">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-[#FFA500] rounded-lg flex items-center justify-center text-white">
-              <GraduationCap className="w-6 h-6" strokeWidth={1.75} />
-            </div>
-            <div>
-              <h1 className="text-lg font-bold text-white">
-                Annix <span className="font-normal opacity-80">— Teacher Assistant</span>
-              </h1>
-              <p className="text-xs text-white/70">v{TEACHER_ASSISTANT_VERSION}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-4">
-            {assignment ? (
-              <button
-                type="button"
-                onClick={handleReset}
-                className="text-sm text-white/80 hover:text-[#FFA500] transition-colors"
-              >
-                Start new assignment
-              </button>
-            ) : null}
-            <div className="hidden md:flex flex-col items-end text-xs leading-tight">
-              <span className="text-white">{user.name}</span>
-              {user.schoolName ? <span className="text-white/60">{user.schoolName}</span> : null}
-            </div>
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="inline-flex items-center gap-1 text-sm text-white/80 hover:text-[#FFA500] transition-colors"
-              aria-label="Sign out"
-            >
-              <LogOut className="w-4 h-4" />
-              <span className="hidden sm:inline">Sign out</span>
-            </button>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40]">
+      <PortalToolbar
+        portalType="teacherAssistant"
+        navItems={NAV_ITEMS}
+        user={{
+          firstName,
+          lastName,
+          email: user.email,
+          companyName,
+        }}
+        onLogout={handleLogout}
+        version={TEACHER_ASSISTANT_VERSION}
+        additionalActions={startNewAssignmentAction}
+      />
 
       <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {assignment && generatedFrom ? (

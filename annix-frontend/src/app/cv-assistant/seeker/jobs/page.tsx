@@ -4,8 +4,8 @@ export default function SeekerJobsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Browse Jobs</h1>
-        <p className="text-gray-600 mt-2">Opportunities tailored to your CV.</p>
+        <h1 className="text-3xl font-bold text-white">Browse Jobs</h1>
+        <p className="text-white/70 mt-2">Opportunities tailored to your CV.</p>
       </div>
 
       <div className="bg-white rounded-xl border border-dashed border-gray-300 p-12 text-center">

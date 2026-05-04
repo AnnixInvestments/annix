@@ -95,6 +95,13 @@ export const corpId = {
         hover: "#4a4da3",
         active: "#252560",
       },
+      teacherAssistant: {
+        background: "#323288",
+        text: "#FFFFFF",
+        accent: "#FFA500",
+        hover: "#4a4da3",
+        active: "#252560",
+      },
     },
   },
 
@@ -131,7 +138,8 @@ export type PortalType =
   | "auRubber"
   | "annixRep"
   | "stockControl"
-  | "cvAssistant";
+  | "cvAssistant"
+  | "teacherAssistant";
 
 export const portalConfig = {
   admin: {
@@ -168,6 +176,11 @@ export const portalConfig = {
     title: "CV Assistant",
     homeHref: "/cv-assistant/portal/dashboard",
     loginHref: "/cv-assistant/login?type=company",
+  },
+  teacherAssistant: {
+    title: "Teacher Assistant",
+    homeHref: "/teacher-assistant",
+    loginHref: "/teacher-assistant/login",
   },
 } as const;
 
