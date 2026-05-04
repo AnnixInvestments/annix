@@ -36,6 +36,20 @@ const METRIC_CATEGORY = "teacher-assistant-generate";
 const MAX_RETRIES = 3;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 const RAW_AI_RESPONSE_LOG_CHARS = 600;
+const SINGLE_AI_CALL_TIMEOUT_MS = 45_000;
+const TOTAL_GENERATION_TIMEOUT_MS = 120_000;
+
+async function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  let timer: NodeJS.Timeout | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+  });
+  try {
+    return await Promise.race([promise, timeout]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
 
 interface CacheEntry {
   assignment: Assignment;
@@ -62,16 +76,34 @@ export class AssignmentGeneratorService {
     }
 
     const result = await this.metrics.time(METRIC_CATEGORY, input.subject, async () => {
-      const initial = await this.generateWithRetries(input);
-      const refilled = await this.sectionFiller.fillMissingSections(initial, input);
-      if (refilled.filled.length > 0) {
-        const remainingWarnings = pruneFilledWarnings(
-          initial.qualityWarnings ?? [],
-          refilled.filled,
+      const work = (async () => {
+        const initial = await this.generateWithRetries(input);
+        const refilled = await this.sectionFiller.fillMissingSections(initial, input);
+        if (refilled.filled.length > 0) {
+          const remainingWarnings = pruneFilledWarnings(
+            initial.qualityWarnings ?? [],
+            refilled.filled,
+          );
+          return { ...refilled.assignment, qualityWarnings: remainingWarnings };
+        }
+        return initial;
+      })();
+      try {
+        return await withTimeout(work, TOTAL_GENERATION_TIMEOUT_MS, "Total generation");
+      } catch (error) {
+        this.logger.error(
+          `Total generation hit hard timeout for ${input.subject}/${input.topic}: ${
+            error instanceof Error ? error.message : String(error)
+          }. Returning fallback stub.`,
         );
-        return { ...refilled.assignment, qualityWarnings: remainingWarnings };
+        return buildFallbackStub(input, [
+          {
+            code: "generation_timeout",
+            message:
+              "Nix took too long to respond. We have provided a starter scaffold — please try again or replace each section with your own content.",
+          },
+        ]);
       }
-      return initial;
     });
 
     this.cache.set(cacheKey, { assignment: result, storedAt: Date.now() });
@@ -125,11 +157,24 @@ export class AssignmentGeneratorService {
               ...lastFluffyFailures.map((f) => f.message),
             ]);
 
-      const response = await this.aiChat.chat(
-        [{ role: "user", content: prompt }],
-        SYSTEM_PROMPT,
-        "gemini",
-      );
+      let response: Awaited<ReturnType<typeof this.aiChat.chat>>;
+      try {
+        response = await withTimeout(
+          this.aiChat.chat([{ role: "user", content: prompt }], SYSTEM_PROMPT, "gemini"),
+          SINGLE_AI_CALL_TIMEOUT_MS,
+          `Generation attempt ${attempt + 1}`,
+        );
+      } catch (error) {
+        lastFailures = [
+          {
+            code: "ai_call_failed",
+            message: error instanceof Error ? error.message : String(error),
+          },
+        ];
+        this.logger.warn(`Attempt ${attempt + 1} AI call failed: ${lastFailures[0].message}`);
+        attempt += 1;
+        continue;
+      }
       lastRawResponse = response.content;
 
       let assignment: Assignment;

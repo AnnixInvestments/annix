@@ -13,6 +13,20 @@ Return STRICT JSON only — no prose, no markdown fences, no commentary.
 Every string value must use straight double quotes, escape internal quotes as \\".
 Match the requested shape EXACTLY. Do not add extra fields.`;
 
+const SECTION_FILL_TIMEOUT_MS = 30_000;
+
+async function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  let timer: NodeJS.Timeout | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+  });
+  try {
+    return await Promise.race([promise, timeout]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 interface RubricResponse {
   rubric: RubricCriterion[];
 }
@@ -35,75 +49,61 @@ export class SectionFillerService {
     assignment: Assignment,
     input: AssignmentInput,
   ): Promise<{ assignment: Assignment; filled: string[] }> {
+    const wantsRubric = this.needsRubric(assignment);
+    const wantsTeacherNotes = this.needsTeacherNotes(assignment);
+    const wantsSuccessCriteria = this.needsSuccessCriteria(assignment);
+    const wantsEvidenceChecklist = this.needsEvidenceChecklist(assignment);
+    const wantsParentNote = this.needsParentNote(assignment);
+    const wantsStudentAiPrompts = this.needsStudentAiPrompts(assignment) && input.allowAiUse;
+
+    const [rubric, notes, criteria, evidence, parent, prompts] = await Promise.all([
+      wantsRubric ? this.guarded("rubric", this.tryFillRubric(input)) : Promise.resolve(null),
+      wantsTeacherNotes
+        ? this.guarded("teacherNotes", this.tryFillTeacherNotes(input))
+        : Promise.resolve(null),
+      wantsSuccessCriteria
+        ? this.guarded("successCriteria", this.tryFillStringList("successCriteria", input))
+        : Promise.resolve(null),
+      wantsEvidenceChecklist
+        ? this.guarded("evidenceChecklist", this.tryFillStringList("evidenceChecklist", input))
+        : Promise.resolve(null),
+      wantsParentNote
+        ? this.guarded("parentNote", this.tryFillParentNote(input))
+        : Promise.resolve(null),
+      wantsStudentAiPrompts
+        ? this.guarded(
+            "studentAiPromptStarters",
+            this.tryFillStringList("studentAiPromptStarters", input),
+          )
+        : Promise.resolve(null),
+    ]);
+
     const filled: string[] = [];
     let next = assignment;
 
-    if (this.needsRubric(next)) {
-      const rubric = await this.tryFillRubric(input).catch((error) => {
-        this.logger.warn(`Rubric refill failed: ${this.errMsg(error)}`);
-        return null;
-      });
-      if (rubric && rubric.length >= 4) {
-        next = { ...next, rubric };
-        filled.push("rubric");
-      }
+    if (rubric && Array.isArray(rubric) && rubric.length >= 4) {
+      next = { ...next, rubric };
+      filled.push("rubric");
     }
-
-    if (this.needsTeacherNotes(next)) {
-      const notes = await this.tryFillTeacherNotes(input).catch((error) => {
-        this.logger.warn(`Teacher notes refill failed: ${this.errMsg(error)}`);
-        return null;
-      });
-      if (notes) {
-        next = { ...next, teacherNotes: notes };
-        filled.push("teacherNotes");
-      }
+    if (notes && typeof notes === "object" && !Array.isArray(notes)) {
+      next = { ...next, teacherNotes: notes };
+      filled.push("teacherNotes");
     }
-
-    if (this.needsSuccessCriteria(next)) {
-      const items = await this.tryFillStringList("successCriteria", input).catch((error) => {
-        this.logger.warn(`Success criteria refill failed: ${this.errMsg(error)}`);
-        return null;
-      });
-      if (items && items.length > 0) {
-        next = { ...next, successCriteria: items };
-        filled.push("successCriteria");
-      }
+    if (Array.isArray(criteria) && criteria.length > 0) {
+      next = { ...next, successCriteria: criteria };
+      filled.push("successCriteria");
     }
-
-    if (this.needsEvidenceChecklist(next)) {
-      const items = await this.tryFillStringList("evidenceChecklist", input).catch((error) => {
-        this.logger.warn(`Evidence checklist refill failed: ${this.errMsg(error)}`);
-        return null;
-      });
-      if (items && items.length >= 3) {
-        next = { ...next, evidenceChecklist: items };
-        filled.push("evidenceChecklist");
-      }
+    if (Array.isArray(evidence) && evidence.length >= 3) {
+      next = { ...next, evidenceChecklist: evidence };
+      filled.push("evidenceChecklist");
     }
-
-    if (this.needsParentNote(next)) {
-      const note = await this.tryFillParentNote(input).catch((error) => {
-        this.logger.warn(`Parent note refill failed: ${this.errMsg(error)}`);
-        return null;
-      });
-      if (note) {
-        next = { ...next, parentNote: note };
-        filled.push("parentNote");
-      }
+    if (typeof parent === "string" && parent.length > 0) {
+      next = { ...next, parentNote: parent };
+      filled.push("parentNote");
     }
-
-    if (this.needsStudentAiPrompts(next) && input.allowAiUse) {
-      const prompts = await this.tryFillStringList("studentAiPromptStarters", input).catch(
-        (error) => {
-          this.logger.warn(`Student AI prompts refill failed: ${this.errMsg(error)}`);
-          return null;
-        },
-      );
-      if (prompts && prompts.length > 0) {
-        next = { ...next, studentAiPromptStarters: prompts };
-        filled.push("studentAiPromptStarters");
-      }
+    if (Array.isArray(prompts) && prompts.length > 0) {
+      next = { ...next, studentAiPromptStarters: prompts };
+      filled.push("studentAiPromptStarters");
     }
 
     if (filled.length > 0) {
@@ -112,6 +112,15 @@ export class SectionFillerService {
       );
     }
     return { assignment: next, filled };
+  }
+
+  private async guarded<T>(label: string, work: Promise<T>): Promise<T | null> {
+    try {
+      return await withTimeout(work, SECTION_FILL_TIMEOUT_MS, `${label} fill`);
+    } catch (error) {
+      this.logger.warn(`${label} refill failed: ${this.errMsg(error)}`);
+      return null;
+    }
   }
 
   private needsRubric(a: Assignment): boolean {
