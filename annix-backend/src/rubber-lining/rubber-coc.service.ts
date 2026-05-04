@@ -644,6 +644,13 @@ export class RubberCocService {
     return (result.affected || 0) > 0;
   }
 
+  async countPendingAuthorization(): Promise<{ count: number }> {
+    const count = await this.supplierCocRepository.count({
+      where: { versionStatus: DocumentVersionStatus.PENDING_AUTHORIZATION },
+    });
+    return { count };
+  }
+
   async upsertByCocNumber(
     cocNumber: string,
     cocType: SupplierCocType,

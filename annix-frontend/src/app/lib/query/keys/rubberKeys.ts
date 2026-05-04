@@ -45,6 +45,8 @@ export const rubberKeys = {
       supplierId?: number;
     }) => [...rubberKeys.supplierCocs.all, "list", filters ?? {}] as const,
     detail: (id: number) => [...rubberKeys.supplierCocs.all, "detail", id] as const,
+    pendingAuthorizationCount: () =>
+      [...rubberKeys.supplierCocs.all, "pendingAuthorizationCount"] as const,
   },
   deliveryNotes: {
     all: ["rubber", "deliveryNotes"] as const,

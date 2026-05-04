@@ -1080,6 +1080,17 @@ Formula: totalPrice = totalKg × salePricePerKg
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
+  @Get("portal/supplier-cocs/pending-authorization-count")
+  @ApiOperation({
+    summary:
+      "Count of supplier CoCs in PENDING_AUTHORIZATION (newer versions awaiting human review)",
+  })
+  async supplierCocsPendingAuthorizationCount(): Promise<{ count: number }> {
+    return this.rubberCocService.countPendingAuthorization();
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
   @Get("portal/supplier-cocs")
   @ApiOperation({ summary: "List supplier CoCs" })
   @ApiQuery({ name: "cocType", required: false, enum: SupplierCocType })

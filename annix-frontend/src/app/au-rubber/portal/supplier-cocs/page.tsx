@@ -47,6 +47,7 @@ import {
   useAuRubberProxyImageBlob,
   useAuRubberRejectVersion,
   useAuRubberSupplierCocs,
+  useAuRubberSupplierCocsPendingAuthorizationCount,
   useAuRubberUpdateSupplierCoc,
   useAuRubberUploadSupplierCoc,
   useAuRubberUploadSupplierCocWithFiles,
@@ -99,6 +100,9 @@ export default function SupplierCocsPage() {
     processingStatus: filterStatus || undefined,
     includeAllVersions: showAllVersions || undefined,
   });
+  const pendingAuthCountQuery = useAuRubberSupplierCocsPendingAuthorizationCount();
+  const pendingAuthCountData = pendingAuthCountQuery.data;
+  const pendingAuthCount = pendingAuthCountData ? pendingAuthCountData.count : 0;
   const companiesQuery = useAuRubberCompanies();
   const rawCocsQueryData = cocsQuery.data;
   const rawCompaniesQueryData = companiesQuery.data;
@@ -695,6 +699,40 @@ export default function SupplierCocsPage() {
   return (
     <div ref={scrollSentinelRef} className="space-y-6">
       <Breadcrumb items={[{ label: "Supplier CoCs" }]} />
+      {pendingAuthCount > 0 && !showAllVersions && (
+        <div className="bg-amber-50 border border-amber-300 rounded-lg p-4 flex items-start gap-3">
+          <svg
+            className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+            />
+          </svg>
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-amber-900">
+              {pendingAuthCount} CoC version{pendingAuthCount === 1 ? "" : "s"} awaiting
+              authorization
+            </p>
+            <p className="text-sm text-amber-800 mt-1">
+              Newer uploads of CoCs that already exist in the system are held as pending versions
+              until you Authorize or Reject them. Until then, the previously-approved version
+              remains in use throughout the platform.
+            </p>
+          </div>
+          <button
+            onClick={() => setShowAllVersions(true)}
+            className="flex-shrink-0 px-3 py-1.5 text-sm font-medium bg-amber-600 hover:bg-amber-700 text-white rounded-md"
+          >
+            Review pending
+          </button>
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Supplier Certificates of Conformance</h1>

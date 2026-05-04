@@ -7,7 +7,10 @@ import { ThemeToggle } from "@/app/components/ThemeToggle";
 import { useAuRubberAuth } from "@/app/context/AuRubberAuthContext";
 import { useAuRubberBranding } from "@/app/context/AuRubberBrandingContext";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
-import { useAuRubberCodingsNeedsReviewCount } from "@/app/lib/query/hooks";
+import {
+  useAuRubberCodingsNeedsReviewCount,
+  useAuRubberSupplierCocsPendingAuthorizationCount,
+} from "@/app/lib/query/hooks";
 import { PAGE_PERMISSIONS } from "../config/pagePermissions";
 import { AU_RUBBER_VERSION } from "../config/version";
 
@@ -355,6 +358,9 @@ export function AuHeader(props: AuHeaderProps) {
   const codingsNeedsReviewQuery = useAuRubberCodingsNeedsReviewCount();
   const codingsNeedsReviewData = codingsNeedsReviewQuery.data;
   const codingsNeedsReviewCount = codingsNeedsReviewData ? codingsNeedsReviewData.count : 0;
+  const supplierCocsPendingQuery = useAuRubberSupplierCocsPendingAuthorizationCount();
+  const supplierCocsPendingData = supplierCocsPendingQuery.data;
+  const supplierCocsPendingCount = supplierCocsPendingData ? supplierCocsPendingData.count : 0;
   const rawEmailSplitAt0 = user?.email?.split("@")[0];
   const rawFirstNameAt0 = user?.firstName?.[0];
   const rawLastNameAt0 = user?.lastName?.[0];
@@ -497,67 +503,95 @@ export function AuHeader(props: AuHeaderProps) {
           </Link>
         ))}
 
-        {filteredNavSections.map((section) => (
-          <div
-            key={section.label}
-            className="relative flex-1"
-            onMouseEnter={() => handleSectionEnter(section.label)}
-            onMouseLeave={handleSectionLeave}
-          >
-            <button
-              onClick={() => handleSectionClick(section.label)}
-              className={`w-full flex items-center justify-center gap-1.5 px-2 py-1.5 text-sm font-medium whitespace-nowrap rounded-md transition-colors ${
-                isSectionActive(section) || hoveredSection === section.label
-                  ? "bg-white/20 text-white"
-                  : "text-white/70 hover:bg-white/10 hover:text-white"
-              }`}
+        {filteredNavSections.map((section) => {
+          const sectionPendingCount =
+            (section.items.some((i) => i.href === "/au-rubber/portal/codings")
+              ? codingsNeedsReviewCount
+              : 0) +
+            (section.items.some((i) => i.href === "/au-rubber/portal/supplier-cocs")
+              ? supplierCocsPendingCount
+              : 0);
+          return (
+            <div
+              key={section.label}
+              className="relative flex-1"
+              onMouseEnter={() => handleSectionEnter(section.label)}
+              onMouseLeave={handleSectionLeave}
             >
-              <span className="[&>svg]:w-4 [&>svg]:h-4">{section.icon}</span>
-              {section.label}
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 9l-7 7-7-7"
-                />
-              </svg>
-            </button>
+              <button
+                onClick={() => handleSectionClick(section.label)}
+                className={`w-full flex items-center justify-center gap-1.5 px-2 py-1.5 text-sm font-medium whitespace-nowrap rounded-md transition-colors ${
+                  isSectionActive(section) || hoveredSection === section.label
+                    ? "bg-white/20 text-white"
+                    : "text-white/70 hover:bg-white/10 hover:text-white"
+                }`}
+              >
+                <span className="[&>svg]:w-4 [&>svg]:h-4">{section.icon}</span>
+                {section.label}
+                {sectionPendingCount > 0 && (
+                  <span
+                    className="ml-1 inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-semibold rounded-full bg-amber-100 text-amber-800"
+                    title={`${sectionPendingCount} item(s) need attention`}
+                  >
+                    {sectionPendingCount}
+                  </span>
+                )}
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
+              </button>
 
-            {hoveredSection === section.label && (
-              <div className="absolute left-0 top-full pt-1 w-52 z-50">
-                <div className="bg-white rounded-lg shadow-lg border border-gray-200 py-1">
-                  {section.items.map((item) => {
-                    const showCodingsBadge =
-                      item.href === "/au-rubber/portal/codings" && codingsNeedsReviewCount > 0;
-                    return (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        className={`flex items-center justify-between px-4 py-2 text-sm transition-colors ${
-                          isActive(item.href)
-                            ? "bg-yellow-50 text-yellow-800 font-medium"
-                            : "text-gray-700 hover:bg-gray-100"
-                        }`}
-                        onClick={() => setHoveredSection(null)}
-                      >
-                        <span>{item.label}</span>
-                        {showCodingsBadge && (
-                          <span
-                            className="ml-2 inline-flex items-center justify-center px-2 py-0.5 text-xs font-semibold rounded-full bg-amber-100 text-amber-800"
-                            title={`${codingsNeedsReviewCount} coding(s) need review`}
-                          >
-                            {codingsNeedsReviewCount}
-                          </span>
-                        )}
-                      </Link>
-                    );
-                  })}
+              {hoveredSection === section.label && (
+                <div className="absolute left-0 top-full pt-1 w-52 z-50">
+                  <div className="bg-white rounded-lg shadow-lg border border-gray-200 py-1">
+                    {section.items.map((item) => {
+                      const showCodingsBadge =
+                        item.href === "/au-rubber/portal/codings" && codingsNeedsReviewCount > 0;
+                      const showSupplierCocsBadge =
+                        item.href === "/au-rubber/portal/supplier-cocs" &&
+                        supplierCocsPendingCount > 0;
+                      return (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          className={`flex items-center justify-between px-4 py-2 text-sm transition-colors ${
+                            isActive(item.href)
+                              ? "bg-yellow-50 text-yellow-800 font-medium"
+                              : "text-gray-700 hover:bg-gray-100"
+                          }`}
+                          onClick={() => setHoveredSection(null)}
+                        >
+                          <span>{item.label}</span>
+                          {showCodingsBadge && (
+                            <span
+                              className="ml-2 inline-flex items-center justify-center px-2 py-0.5 text-xs font-semibold rounded-full bg-amber-100 text-amber-800"
+                              title={`${codingsNeedsReviewCount} coding(s) need review`}
+                            >
+                              {codingsNeedsReviewCount}
+                            </span>
+                          )}
+                          {showSupplierCocsBadge && (
+                            <span
+                              className="ml-2 inline-flex items-center justify-center px-2 py-0.5 text-xs font-semibold rounded-full bg-amber-100 text-amber-800"
+                              title={`${supplierCocsPendingCount} supplier CoC version(s) awaiting authorization`}
+                            >
+                              {supplierCocsPendingCount}
+                            </span>
+                          )}
+                        </Link>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
-        ))}
+              )}
+            </div>
+          );
+        })}
       </nav>
 
       <div className="flex items-center space-x-2 ml-auto shrink-0">

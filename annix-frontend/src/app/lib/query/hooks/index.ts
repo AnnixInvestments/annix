@@ -400,6 +400,7 @@ export {
   useAuRubberSetRolePermissions,
   useAuRubberSpecifications,
   useAuRubberSupplierCocs,
+  useAuRubberSupplierCocsPendingAuthorizationCount,
   useAuRubberTaxInvoiceStatements,
   useAuRubberTaxInvoices,
   useAuRubberTestimonial,
