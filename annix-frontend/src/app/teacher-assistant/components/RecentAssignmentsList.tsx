@@ -14,7 +14,7 @@ export function RecentAssignmentsList(props: RecentAssignmentsListProps) {
   const { recent, onOpen, onForget } = props;
   if (recent.length === 0) return null;
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 max-w-3xl mx-auto mb-6">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
       <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
         <Clock className="w-4 h-4 text-[#FFA500]" />
         Recent assignments

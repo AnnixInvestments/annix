@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import PortalToolbar, { type NavItem } from "@/app/components/PortalToolbar";
 import { useToast } from "@/app/components/Toast";
+import { useFullWidthLayout } from "@/app/context/LayoutContext";
 import { type ApiError, extractErrorMessage, isApiError } from "@/app/lib/api/apiError";
 import { useGenerateAssignment } from "@/app/lib/query/hooks";
 import {
@@ -25,6 +26,7 @@ const ESTIMATED_GENERATION_MS = 25_000;
 const NAV_ITEMS: NavItem[] = [];
 
 export default function TeacherAssistantPage() {
+  useFullWidthLayout();
   const router = useRouter();
   const { user, isLoading, isAuthenticated, logout } = useTeacherAssistantAuth();
   const { showToast } = useToast();
@@ -128,7 +130,7 @@ export default function TeacherAssistantPage() {
         additionalActions={startNewAssignmentAction}
       />
 
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
         {assignment && generatedFrom ? (
           <AssignmentPreview initialAssignment={assignment} generatedFrom={generatedFrom} />
         ) : (
@@ -138,7 +140,7 @@ export default function TeacherAssistantPage() {
               onOpen={handleOpenRecent}
               onForget={forgetAssignment}
             />
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 md:p-8 max-w-3xl mx-auto">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6 md:p-8">
               <div className="mb-6">
                 <h2 className="text-2xl font-bold text-gray-900">Create a new assignment</h2>
                 <p className="text-sm text-gray-600 mt-1">
