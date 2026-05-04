@@ -76,20 +76,12 @@ export class AssignmentGeneratorService {
     }
 
     const result = await this.metrics.time(METRIC_CATEGORY, input.subject, async () => {
-      const work = (async () => {
-        const initial = await this.generateWithRetries(input);
-        const refilled = await this.sectionFiller.fillMissingSections(initial, input);
-        if (refilled.filled.length > 0) {
-          const remainingWarnings = pruneFilledWarnings(
-            initial.qualityWarnings ?? [],
-            refilled.filled,
-          );
-          return { ...refilled.assignment, qualityWarnings: remainingWarnings };
-        }
-        return initial;
-      })();
       try {
-        return await withTimeout(work, TOTAL_GENERATION_TIMEOUT_MS, "Total generation");
+        return await withTimeout(
+          this.sectionFiller.buildBySection(input),
+          TOTAL_GENERATION_TIMEOUT_MS,
+          "Total generation",
+        );
       } catch (error) {
         this.logger.error(
           `Total generation hit hard timeout for ${input.subject}/${input.topic}: ${

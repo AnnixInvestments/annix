@@ -4,10 +4,18 @@ import type { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { AssignmentGeneratorService } from "./assignment-generator.service";
 import type { SectionFillerService } from "./section-filler.service";
 
-const stubSectionFiller = (): SectionFillerService =>
-  ({
-    fillMissingSections: async (assignment: Assignment) => ({ assignment, filled: [] }),
-  }) as unknown as SectionFillerService;
+const sampleInput: AssignmentInput = {
+  subject: "geography",
+  topic: "cloud types",
+  ageBucket: "12-14",
+  studentAge: 13,
+  duration: "1 week",
+  outputType: "Poster",
+  difficulty: "standard",
+  differentiation: [],
+  learningObjective: null,
+  allowAiUse: true,
+};
 
 const validAssignment = (): Assignment => ({
   title: "Sky Investigator",
@@ -17,65 +25,59 @@ const validAssignment = (): Assignment => ({
   duration: "1 week",
   outputType: "Poster",
   difficulty: "standard",
-  studentBrief:
-    "Investigate different cloud types by photographing the sky at different times. Compare your observations with AI's identification and explain where you agree or disagree.",
+  studentBrief: "Investigate cloud types using your own observations of the sky.",
   learningObjective: "Identify five cloud types and link them to weather patterns.",
-  successCriteria: [
-    "Three sky photos with date/time/location",
-    "Five cloud types identified",
-    "AI critique table",
-    "Reflection paragraph",
-  ],
+  successCriteria: ["Three sky photos", "Five clouds named", "AI critique table", "Reflection"],
   tasks: [
     {
       step: 1,
       title: "Observe",
       studentInstruction:
-        "Take three photos of the sky at different times of day. Record date, time, weather, and location for each photo on the worksheet.",
-      requiredEvidence: ["photo", "date", "time", "weather"],
-      reasoningPrompt: "Why did you pick those times?",
+        "Take three photos of the sky at different times. Record date, time, weather.",
+      requiredEvidence: ["photo", "date", "time"],
+      reasoningPrompt: "Why those times?",
       aiCritique: null,
-      reflectionPrompt: "What changed in the sky between photos?",
+      reflectionPrompt: "What surprised you?",
     },
     {
       step: 2,
       title: "Identify",
       studentInstruction:
-        "Choose five cloud types and record name, height, appearance, and the weather usually linked to each one. Sketch each cloud or attach a picture.",
+        "Name five cloud types from your photos with height and weather link. Sketch each.",
       requiredEvidence: ["names", "heights", "sketches"],
-      reasoningPrompt: "Why this cloud type?",
+      reasoningPrompt: "How did you decide?",
       aiCritique: null,
-      reflectionPrompt: "Hardest cloud to identify?",
+      reflectionPrompt: "Hardest one?",
     },
     {
       step: 3,
       title: "Critique AI",
       studentInstruction:
-        "Ask an AI tool to identify the same five cloud types and compare. Note where AI was right, wrong, or too general for your local sky.",
-      requiredEvidence: ["AI output", "comparison table"],
+        "Ask AI for the same identifications. Compare and note where AI was wrong or too general.",
+      requiredEvidence: ["AI prompt", "AI output", "comparison table"],
       reasoningPrompt: "Where did AI miss local context?",
       aiCritique: {
         promptToTry: "Identify these clouds.",
         documentPromptAndOutput: true,
-        compareToEvidence: "Compare AI to your notes.",
-        noteIssues: "Where did AI hallucinate?",
-        improveWithPersonalInput: "Rewrite using your evidence.",
+        compareToEvidence: "Compare to your notes.",
+        noteIssues: "AI hallucinations.",
+        improveWithPersonalInput: "Rewrite with your evidence.",
       },
-      reflectionPrompt: "What did you change after seeing AI's answer?",
+      reflectionPrompt: "What did you change?",
     },
     {
       step: 4,
       title: "Final poster",
       studentInstruction:
-        "Build a poster combining your observations, identifications, AI critique, and reflection. Use your photos and sketches as evidence.",
+        "Build a poster combining your observations, identifications, AI critique, and reflection.",
       requiredEvidence: ["poster"],
       reasoningPrompt: "How does the poster prove your reasoning?",
       aiCritique: null,
-      reflectionPrompt: "What surprised you most?",
+      reflectionPrompt: "Most surprising thing?",
     },
   ],
-  aiUseRules: ["Compare AI with your evidence.", "Do not copy AI directly."],
-  evidenceChecklist: ["Sky photos", "Cloud descriptions", "Comparison table", "Final poster"],
+  aiUseRules: ["Do not copy AI directly.", "Compare AI with evidence.", "Note where AI is wrong."],
+  evidenceChecklist: ["Photos", "Cloud descriptions", "AI comparison", "Final poster"],
   finalSubmissionRequirements: ["Raw evidence", "Final poster", "Reflection"],
   rubric: [
     {
@@ -94,8 +96,8 @@ const validAssignment = (): Assignment => ({
     },
     {
       criterion: "Reasoning",
-      excellent: "Explains clearly.",
-      good: "Some explanation.",
+      excellent: "Clear.",
+      good: "Some.",
       satisfactory: "Limited.",
       needsWork: "None.",
     },
@@ -109,37 +111,24 @@ const validAssignment = (): Assignment => ({
   ],
   teacherNotes: {
     setup: "Photo-based fieldwork.",
-    setupTime: "10 minutes prep.",
-    materialsNeeded: ["camera", "worksheet", "poster paper"],
+    setupTime: "10 min prep.",
+    materialsNeeded: ["camera", "worksheet"],
     commonMisconceptions: ["Confusing low and high clouds."],
-    markingGuidance: "Focus on evidence over neatness.",
+    markingGuidance: "Reward evidence.",
     supportOption: "3-cloud cheat sheet.",
     extensionOption: "Predict tomorrow's weather.",
   },
-  parentNote: "Your child will photograph the sky this week.",
-  studentAiPromptStarters: ["Identify this cloud", "How do cumulus form?", "What weather follows?"],
+  parentNote: "Your child will photograph the sky.",
+  studentAiPromptStarters: ["Identify this cloud."],
   partialExemplars: [
     {
       forCriterion: "Reasoning",
-      strongElement: "Picked cumulus because puffy and below 2km.",
-      weakElement: "Picked cumulus because AI said so.",
+      strongElement: "I picked cumulus because puffy and below 2km.",
+      weakElement: "AI said cumulus.",
     },
   ],
   optionalWorkbookPages: [],
 });
-
-const sampleInput: AssignmentInput = {
-  subject: "geography",
-  topic: "cloud types",
-  ageBucket: "12-14",
-  studentAge: 13,
-  duration: "1 week",
-  outputType: "Poster",
-  difficulty: "standard",
-  differentiation: [],
-  learningObjective: null,
-  allowAiUse: true,
-};
 
 const stubMetrics = (): ExtractionMetricService =>
   ({
@@ -148,130 +137,74 @@ const stubMetrics = (): ExtractionMetricService =>
     stats: async () => ({ category: "", operation: "", averageMs: null, sampleSize: 0 }),
   }) as unknown as ExtractionMetricService;
 
-interface StubbedAi {
-  service: AiChatService;
-  callCount: () => number;
+const stubAiChat = (): AiChatService =>
+  ({
+    chat: async () => {
+      throw new Error(
+        "AiChatService.chat should not be called when SectionFillerService is stubbed",
+      );
+    },
+  }) as unknown as AiChatService;
+
+interface FillerStub {
+  service: SectionFillerService;
+  buildCallCount: () => number;
 }
 
-const stubAiChat = (sequentialResponses: string[]): StubbedAi => {
-  const queue = [...sequentialResponses];
+const stubSectionFiller = (responses: (Assignment | (() => Promise<Assignment>))[]): FillerStub => {
+  const queue = [...responses];
   let calls = 0;
   const service = {
-    chat: async () => {
+    fillMissingSections: async (a: Assignment) => ({ assignment: a, filled: [] }),
+    buildBySection: async (_input: AssignmentInput): Promise<Assignment> => {
       calls += 1;
       const next = queue.shift();
       if (next === undefined) {
-        throw new Error("No more stubbed responses");
+        throw new Error("No more stubbed buildBySection responses");
       }
-      return { content: next, providerUsed: "gemini" };
+      return typeof next === "function" ? next() : next;
     },
-  } as unknown as AiChatService;
-  return { service, callCount: () => calls };
+  } as unknown as SectionFillerService;
+  return { service, buildCallCount: () => calls };
 };
 
 describe("AssignmentGeneratorService", () => {
-  it("returns a valid assignment on first attempt", async () => {
-    const ai = stubAiChat([JSON.stringify(validAssignment())]);
-    const service = new AssignmentGeneratorService(ai.service, stubMetrics(), stubSectionFiller());
+  it("returns whatever buildBySection produces", async () => {
+    const filler = stubSectionFiller([validAssignment()]);
+    const service = new AssignmentGeneratorService(stubAiChat(), stubMetrics(), filler.service);
     const result = await service.generate(sampleInput);
     expect(result.title).toBe("Sky Investigator");
-    expect(result.tasks).toHaveLength(4);
+    expect(result.tasks.length).toBe(4);
+    expect(result.rubric.length).toBe(4);
   });
 
-  it("retries when first attempt has too few tasks", async () => {
-    const tooFewTasks = validAssignment();
-    tooFewTasks.tasks = tooFewTasks.tasks.slice(0, 2);
-    const ai = stubAiChat([JSON.stringify(tooFewTasks), JSON.stringify(validAssignment())]);
-    const service = new AssignmentGeneratorService(ai.service, stubMetrics(), stubSectionFiller());
-    const result = await service.generate(sampleInput);
-    expect(result.tasks).toHaveLength(4);
-  });
-
-  it("auto-repairs missing title by deriving one from the input topic", async () => {
-    const broken = validAssignment();
-    broken.title = "";
-    const ai = stubAiChat([
-      JSON.stringify(broken),
-      JSON.stringify(broken),
-      JSON.stringify(broken),
-      JSON.stringify(broken),
-    ]);
-    const service = new AssignmentGeneratorService(ai.service, stubMetrics(), stubSectionFiller());
-    const result = await service.generate(sampleInput);
-    expect(result.title.length).toBeGreaterThan(0);
-    expect(result.tasks.length).toBeGreaterThanOrEqual(3);
-    expect(result.rubric.length).toBeGreaterThanOrEqual(4);
-    expect(result.qualityWarnings?.some((w) => w.toLowerCase().includes("title"))).toBe(true);
-  });
-
-  it("returns a fallback stub when every AI response is unparseable", async () => {
-    const ai = stubAiChat([
-      "this is not json at all",
-      "still not json",
-      "completely garbled response",
-      "{ not valid",
-    ]);
-    const service = new AssignmentGeneratorService(ai.service, stubMetrics(), stubSectionFiller());
-    const result = await service.generate(sampleInput);
-    expect(result.tasks.length).toBeGreaterThanOrEqual(3);
-    expect(result.qualityWarnings?.length ?? 0).toBeGreaterThan(0);
-  });
-
-  it("returns cached assignment on repeat call with identical input", async () => {
-    const ai = stubAiChat([JSON.stringify(validAssignment())]);
-    const service = new AssignmentGeneratorService(ai.service, stubMetrics(), stubSectionFiller());
+  it("caches a clean result and returns it on subsequent calls", async () => {
+    const filler = stubSectionFiller([validAssignment()]);
+    const service = new AssignmentGeneratorService(stubAiChat(), stubMetrics(), filler.service);
     const first = await service.generate(sampleInput);
     const second = await service.generate(sampleInput);
     expect(first).toBe(second);
+    expect(filler.buildCallCount()).toBe(1);
   });
 
-  it("strips markdown code fences from AI responses", async () => {
-    const fenced = `\`\`\`json\n${JSON.stringify(validAssignment())}\n\`\`\``;
-    const ai = stubAiChat([fenced]);
-    const service = new AssignmentGeneratorService(ai.service, stubMetrics(), stubSectionFiller());
-    const result = await service.generate(sampleInput);
-    expect(result.title).toBe("Sky Investigator");
-  });
-
-  it("rejects banned-phrase output then accepts a clean retry", async () => {
-    const lazy = validAssignment();
-    lazy.studentBrief = "Research the topic and write about clouds.";
-    const ai = stubAiChat([JSON.stringify(lazy), JSON.stringify(validAssignment())]);
-    const service = new AssignmentGeneratorService(ai.service, stubMetrics(), stubSectionFiller());
-    const result = await service.generate(sampleInput);
-    expect(result.studentBrief).not.toContain("research the topic");
-  });
-
-  it("soft-accepts the best attempt with qualityWarnings when validation never passes", async () => {
+  it("does NOT cache results that carry quality warnings — next call retries", async () => {
     const flawed = validAssignment();
-    flawed.studentBrief = "Research the topic and write about clouds.";
-    const ai = stubAiChat([
-      JSON.stringify(flawed),
-      JSON.stringify(flawed),
-      JSON.stringify(flawed),
-      JSON.stringify(flawed),
-    ]);
-    const service = new AssignmentGeneratorService(ai.service, stubMetrics(), stubSectionFiller());
-    const result = await service.generate(sampleInput);
-    expect(result.title).toBe(flawed.title);
-    expect(result.qualityWarnings?.length ?? 0).toBeGreaterThan(0);
-    expect(result.qualityWarnings?.some((w) => w.includes("research the topic"))).toBe(true);
+    flawed.qualityWarnings = ["Nix could not produce a rubric; placeholder used."];
+    const fixed = validAssignment();
+    const filler = stubSectionFiller([flawed, fixed]);
+    const service = new AssignmentGeneratorService(stubAiChat(), stubMetrics(), filler.service);
+    const first = await service.generate(sampleInput);
+    expect(first.qualityWarnings?.length ?? 0).toBeGreaterThan(0);
+    const second = await service.generate(sampleInput);
+    expect(second.qualityWarnings ?? []).toHaveLength(0);
+    expect(filler.buildCallCount()).toBe(2);
   });
 
-  it("auto-repairs missing rubric levels and empty requiredEvidence on soft-accept", async () => {
-    const flawed = validAssignment();
-    flawed.rubric[0].satisfactory = "";
-    flawed.tasks[0].requiredEvidence = [];
-    const ai = stubAiChat([
-      JSON.stringify(flawed),
-      JSON.stringify(flawed),
-      JSON.stringify(flawed),
-      JSON.stringify(flawed),
-    ]);
-    const service = new AssignmentGeneratorService(ai.service, stubMetrics(), stubSectionFiller());
+  it("returns a fallback scaffold when buildBySection throws", async () => {
+    const filler = stubSectionFiller([() => Promise.reject(new Error("Gemini network failure"))]);
+    const service = new AssignmentGeneratorService(stubAiChat(), stubMetrics(), filler.service);
     const result = await service.generate(sampleInput);
-    expect(result.rubric[0].satisfactory).toBe("—");
-    expect(result.tasks[0].requiredEvidence.length).toBeGreaterThan(0);
-    expect(result.qualityWarnings?.length ?? 0).toBeGreaterThan(0);
+    expect(result.title.toLowerCase()).toContain(sampleInput.topic.toLowerCase());
+    expect(result.qualityWarnings?.[0]).toMatch(/took too long|could not generate/i);
   });
 });

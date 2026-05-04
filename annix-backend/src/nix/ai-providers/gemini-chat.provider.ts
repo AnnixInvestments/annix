@@ -22,7 +22,12 @@ export class GeminiChatProvider {
     this.apiKey = config?.apiKey || process.env.GEMINI_API_KEY || "";
     this.model = config?.model || process.env.GEMINI_CHAT_MODEL || "gemini-2.5-flash";
     this.temperature = config?.temperature ?? 0.7;
-    this.maxTokens = config?.maxTokens ?? 4096;
+    const envMaxTokens = process.env.GEMINI_CHAT_MAX_TOKENS
+      ? Number.parseInt(process.env.GEMINI_CHAT_MAX_TOKENS, 10)
+      : null;
+    const defaultMaxTokens =
+      envMaxTokens && Number.isFinite(envMaxTokens) && envMaxTokens > 0 ? envMaxTokens : 16_384;
+    this.maxTokens = config?.maxTokens ?? defaultMaxTokens;
   }
 
   async isAvailable(): Promise<boolean> {
