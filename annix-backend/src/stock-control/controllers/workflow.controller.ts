@@ -43,6 +43,7 @@ import {
 } from "../dto/workflow.dto";
 import { JobCardDocumentType } from "../entities/job-card-document.entity";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
+import { StockControlOnboardingGuard } from "../guards/stock-control-onboarding.guard";
 import {
   PermissionKey,
   StockControlRoleGuard,
@@ -65,7 +66,7 @@ import { WorkflowStepConfigService } from "../services/workflow-step-config.serv
 
 @ApiTags("Stock Control - Workflow")
 @Controller("stock-control/workflow")
-@UseGuards(StockControlAuthGuard, StockControlRoleGuard)
+@UseGuards(StockControlAuthGuard, StockControlOnboardingGuard, StockControlRoleGuard)
 export class WorkflowController {
   private readonly logger = new Logger(WorkflowController.name);
 

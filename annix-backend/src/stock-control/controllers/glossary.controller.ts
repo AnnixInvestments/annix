@@ -1,10 +1,12 @@
 import { Body, Controller, Delete, Get, Param, Put, Req, UseGuards } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
+import { StockControlOnboardingGuard } from "../guards/stock-control-onboarding.guard";
 import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
 import { GlossaryService } from "../services/glossary.service";
 
 @ApiTags("Stock Control - Glossary")
+@UseGuards(StockControlOnboardingGuard)
 @Controller("stock-control/glossary")
 export class GlossaryController {
   constructor(private readonly glossaryService: GlossaryService) {}

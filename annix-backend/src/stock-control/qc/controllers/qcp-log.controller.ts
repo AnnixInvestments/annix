@@ -1,6 +1,7 @@
 import { Controller, Get, Query, Req, UseGuards } from "@nestjs/common";
 import { ApiOperation, ApiQuery, ApiTags } from "@nestjs/swagger";
 import { StockControlAuthGuard } from "../../guards/stock-control-auth.guard";
+import { StockControlOnboardingGuard } from "../../guards/stock-control-onboarding.guard";
 import {
   PermissionKey,
   StockControlRoleGuard,
@@ -11,7 +12,12 @@ import { QcMeasurementService } from "../services/qc-measurement.service";
 
 @ApiTags("Stock Control - QCP Log")
 @Controller("stock-control/qcp-log")
-@UseGuards(StockControlAuthGuard, QcEnabledGuard, StockControlRoleGuard)
+@UseGuards(
+  StockControlAuthGuard,
+  StockControlOnboardingGuard,
+  QcEnabledGuard,
+  StockControlRoleGuard,
+)
 @StockControlRoles("quality", "manager", "admin")
 @PermissionKey("qc.measurements")
 export class QcpLogController {

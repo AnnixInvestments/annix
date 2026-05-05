@@ -17,6 +17,7 @@ import type { Response } from "express";
 import type { Observable } from "rxjs";
 import { nowISO } from "../../../lib/datetime";
 import { StockControlAuthGuard } from "../../guards/stock-control-auth.guard";
+import { StockControlOnboardingGuard } from "../../guards/stock-control-onboarding.guard";
 import {
   PermissionKey,
   StockControlRoleGuard,
@@ -28,6 +29,7 @@ import type { StreamingSessionConfig } from "../services/positector-streaming.se
 import { PositectorStreamingService } from "../services/positector-streaming.service";
 
 @ApiTags("Stock Control - PosiTector Streaming")
+@UseGuards(StockControlOnboardingGuard)
 @Controller("stock-control/positector-streaming")
 export class PositectorStreamingController {
   private readonly logger = new Logger(PositectorStreamingController.name);

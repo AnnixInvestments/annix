@@ -10,6 +10,7 @@ import {
 import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
+import { StockControlOnboardingGuard } from "../guards/stock-control-onboarding.guard";
 import {
   PermissionKey,
   StockControlRoleGuard,
@@ -20,7 +21,7 @@ import { ImportService } from "../services/import.service";
 
 @ApiTags("Stock Control - Import")
 @Controller("stock-control/import")
-@UseGuards(StockControlAuthGuard, StockControlRoleGuard)
+@UseGuards(StockControlAuthGuard, StockControlOnboardingGuard, StockControlRoleGuard)
 @StockControlRoles("manager", "admin")
 @PermissionKey("job-cards.import")
 export class ImportController {

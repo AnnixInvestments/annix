@@ -22,6 +22,7 @@ import { IdempotencyInterceptor } from "../../shared/interceptors/idempotency.in
 import { UpdateInvoiceItemDto } from "../dto/additional.dto";
 import { LinkInvoiceToDeliveryNoteDto, SubmitClarificationDto } from "../dto/create-invoice.dto";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
+import { StockControlOnboardingGuard } from "../guards/stock-control-onboarding.guard";
 import {
   PermissionKey,
   StockControlRoleGuard,
@@ -37,7 +38,7 @@ import { SageInvoiceAdapterService } from "../services/sage-invoice-adapter.serv
 
 @ApiTags("Stock Control - Invoices")
 @Controller("stock-control/invoices")
-@UseGuards(StockControlAuthGuard, StockControlRoleGuard)
+@UseGuards(StockControlAuthGuard, StockControlOnboardingGuard, StockControlRoleGuard)
 export class InvoicesController {
   constructor(
     private readonly invoiceService: InvoiceService,

@@ -18,6 +18,7 @@ import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import type { Response } from "express";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
+import { StockControlOnboardingGuard } from "../guards/stock-control-onboarding.guard";
 import {
   PermissionKey,
   StockControlRoleGuard,
@@ -33,7 +34,7 @@ import { ScEmailAdapterService } from "../services/sc-email-adapter.service";
 
 @ApiTags("Stock Control - Certificates")
 @Controller("stock-control/certificates")
-@UseGuards(StockControlAuthGuard, StockControlRoleGuard)
+@UseGuards(StockControlAuthGuard, StockControlOnboardingGuard, StockControlRoleGuard)
 export class CertificateController {
   private readonly logger = new Logger(CertificateController.name);
 

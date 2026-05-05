@@ -16,6 +16,7 @@ import {
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import type { Response } from "express";
 import { StockControlAuthGuard } from "../../guards/stock-control-auth.guard";
+import { StockControlOnboardingGuard } from "../../guards/stock-control-onboarding.guard";
 import {
   PermissionKey,
   StockControlRoleGuard,
@@ -31,7 +32,12 @@ import { QcpApprovalService } from "../services/qcp-approval.service";
 
 @ApiTags("Stock Control - QC Measurements")
 @Controller("stock-control/job-cards/:jobCardId/qc")
-@UseGuards(StockControlAuthGuard, QcEnabledGuard, StockControlRoleGuard)
+@UseGuards(
+  StockControlAuthGuard,
+  StockControlOnboardingGuard,
+  QcEnabledGuard,
+  StockControlRoleGuard,
+)
 export class QcMeasurementController {
   private readonly logger = new Logger(QcMeasurementController.name);
 

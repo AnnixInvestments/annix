@@ -17,6 +17,7 @@ import {
 import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiBearerAuth, ApiOperation, ApiTags } from "@nestjs/swagger";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
+import { StockControlOnboardingGuard } from "../guards/stock-control-onboarding.guard";
 import {
   PermissionKey,
   StockControlRoleGuard,
@@ -31,7 +32,7 @@ import {
 @ApiTags("Stock Control - Supplier Documents")
 @ApiBearerAuth()
 @Controller("stock-control/supplier-documents")
-@UseGuards(StockControlAuthGuard, StockControlRoleGuard)
+@UseGuards(StockControlAuthGuard, StockControlOnboardingGuard, StockControlRoleGuard)
 export class SupplierDocumentController {
   private readonly logger = new Logger(SupplierDocumentController.name);
 

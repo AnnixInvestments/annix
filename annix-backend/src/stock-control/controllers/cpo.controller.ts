@@ -30,6 +30,7 @@ import {
 import { CalloffStatus } from "../entities/cpo-calloff-record.entity";
 import { CpoStatus } from "../entities/customer-purchase-order.entity";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
+import { StockControlOnboardingGuard } from "../guards/stock-control-onboarding.guard";
 import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
 import { CoatingAnalysisService } from "../services/coating-analysis.service";
 import { CpoService } from "../services/cpo.service";
@@ -38,7 +39,7 @@ import { SageJcDumpService } from "../services/sage-jc-dump.service";
 
 @ApiTags("Stock Control - Customer Purchase Orders")
 @Controller("stock-control/cpos")
-@UseGuards(StockControlAuthGuard, StockControlRoleGuard)
+@UseGuards(StockControlAuthGuard, StockControlOnboardingGuard, StockControlRoleGuard)
 @StockControlRoles("manager", "admin")
 export class CpoController {
   private readonly logger = new Logger(CpoController.name);

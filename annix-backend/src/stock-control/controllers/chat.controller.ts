@@ -15,12 +15,13 @@ import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import { MessagingEnabledGuard } from "../guards/messaging-enabled.guard";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
+import { StockControlOnboardingGuard } from "../guards/stock-control-onboarding.guard";
 import { StockControlAuthService } from "../services/auth.service";
 import { ChatService } from "../services/chat.service";
 
 @ApiTags("Stock Control - Chat")
 @Controller("stock-control/chat")
-@UseGuards(StockControlAuthGuard, MessagingEnabledGuard)
+@UseGuards(StockControlAuthGuard, StockControlOnboardingGuard, MessagingEnabledGuard)
 export class ChatController {
   constructor(
     private readonly chatService: ChatService,

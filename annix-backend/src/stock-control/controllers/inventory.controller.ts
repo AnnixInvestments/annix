@@ -18,6 +18,7 @@ import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import { CreateStockItemDto } from "../dto/create-stock-item.dto";
 import { UpdateStockItemDto } from "../dto/update-stock-item.dto";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
+import { StockControlOnboardingGuard } from "../guards/stock-control-onboarding.guard";
 import {
   PermissionKey,
   StockControlRoleGuard,
@@ -29,7 +30,7 @@ import { PriceHistoryService } from "../services/price-history.service";
 
 @ApiTags("Stock Control - Inventory")
 @Controller("stock-control/inventory")
-@UseGuards(StockControlAuthGuard, StockControlRoleGuard)
+@UseGuards(StockControlAuthGuard, StockControlOnboardingGuard, StockControlRoleGuard)
 export class InventoryController {
   constructor(
     private readonly inventoryService: InventoryService,

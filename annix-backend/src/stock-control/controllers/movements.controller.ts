@@ -2,6 +2,7 @@ import { Body, Controller, Get, Post, Query, Req, UseGuards } from "@nestjs/comm
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import { CreateStockMovementDto } from "../dto/create-stock-movement.dto";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
+import { StockControlOnboardingGuard } from "../guards/stock-control-onboarding.guard";
 import {
   PermissionKey,
   StockControlRoleGuard,
@@ -11,7 +12,7 @@ import { MovementService } from "../services/movement.service";
 
 @ApiTags("Stock Control - Movements")
 @Controller("stock-control/movements")
-@UseGuards(StockControlAuthGuard, StockControlRoleGuard)
+@UseGuards(StockControlAuthGuard, StockControlOnboardingGuard, StockControlRoleGuard)
 export class MovementsController {
   constructor(private readonly movementService: MovementService) {}
 

@@ -1,6 +1,7 @@
 import { BadRequestException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
+import { StockControlOnboardingGuard } from "../guards/stock-control-onboarding.guard";
 import { StockControlRoleGuard } from "../guards/stock-control-role.guard";
 import { InventoryService } from "../services/inventory.service";
 import { ItemIdentificationService } from "../services/item-identification.service";
@@ -48,6 +49,8 @@ describe("InventoryController", () => {
       ],
     })
       .overrideGuard(StockControlAuthGuard)
+      .useValue({ canActivate: () => true })
+      .overrideGuard(StockControlOnboardingGuard)
       .useValue({ canActivate: () => true })
       .overrideGuard(StockControlRoleGuard)
       .useValue({ canActivate: () => true })

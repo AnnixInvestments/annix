@@ -16,6 +16,7 @@ import {
 import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import { StockControlAuthGuard } from "../../guards/stock-control-auth.guard";
+import { StockControlOnboardingGuard } from "../../guards/stock-control-onboarding.guard";
 import {
   PermissionKey,
   StockControlRoleGuard,
@@ -34,7 +35,12 @@ import { QcMeasurementService } from "../services/qc-measurement.service";
 
 @ApiTags("Stock Control - PosiTector Devices")
 @Controller("stock-control/positector-devices")
-@UseGuards(StockControlAuthGuard, QcEnabledGuard, StockControlRoleGuard)
+@UseGuards(
+  StockControlAuthGuard,
+  StockControlOnboardingGuard,
+  QcEnabledGuard,
+  StockControlRoleGuard,
+)
 export class PositectorController {
   private readonly logger = new Logger(PositectorController.name);
 

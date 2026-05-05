@@ -3,6 +3,7 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { RubberCocExtractionService } from "../../rubber-lining/rubber-coc-extraction.service";
 import { IdempotencyService } from "../../shared/services/idempotency.service";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
+import { StockControlOnboardingGuard } from "../guards/stock-control-onboarding.guard";
 import { StockControlRoleGuard } from "../guards/stock-control-role.guard";
 import { DeliveryService } from "../services/delivery.service";
 import { DeliveriesController } from "./deliveries.controller";
@@ -45,6 +46,8 @@ describe("DeliveriesController", () => {
       ],
     })
       .overrideGuard(StockControlAuthGuard)
+      .useValue({ canActivate: () => true })
+      .overrideGuard(StockControlOnboardingGuard)
       .useValue({ canActivate: () => true })
       .overrideGuard(StockControlRoleGuard)
       .useValue({ canActivate: () => true })

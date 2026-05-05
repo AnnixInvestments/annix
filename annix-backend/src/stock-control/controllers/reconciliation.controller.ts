@@ -18,6 +18,7 @@ import type { Response } from "express";
 import { ReconciliationDocCategory } from "../entities/reconciliation-document.entity";
 import { ReconciliationEventType } from "../entities/reconciliation-event.entity";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
+import { StockControlOnboardingGuard } from "../guards/stock-control-onboarding.guard";
 import { StockControlRoleGuard } from "../guards/stock-control-role.guard";
 import { ReconciliationService } from "../services/reconciliation.service";
 import { ReconciliationDocumentService } from "../services/reconciliation-document.service";
@@ -25,7 +26,7 @@ import { ReconciliationExtractionService } from "../services/reconciliation-extr
 
 @ApiTags("Stock Control - Reconciliation")
 @Controller("stock-control/job-cards/:jobCardId/reconciliation")
-@UseGuards(StockControlAuthGuard, StockControlRoleGuard)
+@UseGuards(StockControlAuthGuard, StockControlOnboardingGuard, StockControlRoleGuard)
 export class ReconciliationController {
   constructor(
     private readonly docService: ReconciliationDocumentService,

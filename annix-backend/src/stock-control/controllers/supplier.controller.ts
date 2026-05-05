@@ -4,11 +4,12 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { StockControlSupplier } from "../entities/stock-control-supplier.entity";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
+import { StockControlOnboardingGuard } from "../guards/stock-control-onboarding.guard";
 import { StockControlRoleGuard } from "../guards/stock-control-role.guard";
 
 @ApiTags("Stock Control - Suppliers")
 @Controller("stock-control/suppliers")
-@UseGuards(StockControlAuthGuard, StockControlRoleGuard)
+@UseGuards(StockControlAuthGuard, StockControlOnboardingGuard, StockControlRoleGuard)
 export class SupplierController {
   constructor(
     @InjectRepository(StockControlSupplier)

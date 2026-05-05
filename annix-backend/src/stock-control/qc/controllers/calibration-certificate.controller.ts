@@ -16,6 +16,7 @@ import {
 import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import { StockControlAuthGuard } from "../../guards/stock-control-auth.guard";
+import { StockControlOnboardingGuard } from "../../guards/stock-control-onboarding.guard";
 import { StockControlRoleGuard, StockControlRoles } from "../../guards/stock-control-role.guard";
 import { QcEnabledGuard } from "../guards/qc-enabled.guard";
 import {
@@ -26,7 +27,12 @@ import {
 
 @ApiTags("Stock Control - Calibration Certificates")
 @Controller("stock-control/calibration-certificates")
-@UseGuards(StockControlAuthGuard, QcEnabledGuard, StockControlRoleGuard)
+@UseGuards(
+  StockControlAuthGuard,
+  StockControlOnboardingGuard,
+  QcEnabledGuard,
+  StockControlRoleGuard,
+)
 export class CalibrationCertificateController {
   private readonly logger = new Logger(CalibrationCertificateController.name);
 

@@ -1,10 +1,12 @@
 import { Body, Controller, Delete, Get, Param, Post, Req, UseGuards } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
+import { StockControlOnboardingGuard } from "../guards/stock-control-onboarding.guard";
 import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
 import { StockControlInvitationService } from "../services/invitation.service";
 
 @ApiTags("Stock Control - Invitations")
+@UseGuards(StockControlOnboardingGuard)
 @Controller("stock-control/invitations")
 export class InvitationController {
   constructor(private readonly invitationService: StockControlInvitationService) {}

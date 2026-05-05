@@ -22,6 +22,7 @@ import { RubberCocExtractionService } from "../../rubber-lining/rubber-coc-extra
 import { IdempotencyInterceptor } from "../../shared/interceptors/idempotency.interceptor";
 import { CreateDeliveryNoteDto } from "../dto/create-delivery-note.dto";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
+import { StockControlOnboardingGuard } from "../guards/stock-control-onboarding.guard";
 import {
   PermissionKey,
   StockControlRoleGuard,
@@ -31,7 +32,7 @@ import { DeliveryService } from "../services/delivery.service";
 
 @ApiTags("Stock Control - Deliveries")
 @Controller("stock-control/deliveries")
-@UseGuards(StockControlAuthGuard, StockControlRoleGuard)
+@UseGuards(StockControlAuthGuard, StockControlOnboardingGuard, StockControlRoleGuard)
 export class DeliveriesController {
   private readonly logger = new Logger(DeliveriesController.name);
 

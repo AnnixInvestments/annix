@@ -16,6 +16,7 @@ import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import { IStorageService, STORAGE_SERVICE, StorageArea } from "../../storage/storage.interface";
 import { ImportMappingConfig } from "../entities/job-card-import-mapping.entity";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
+import { StockControlOnboardingGuard } from "../guards/stock-control-onboarding.guard";
 import {
   PermissionKey,
   StockControlRoleGuard,
@@ -29,7 +30,7 @@ import { WorkflowNotificationService } from "../services/workflow-notification.s
 
 @ApiTags("Stock Control - Job Card Import")
 @Controller("stock-control/job-card-import")
-@UseGuards(StockControlAuthGuard, StockControlRoleGuard)
+@UseGuards(StockControlAuthGuard, StockControlOnboardingGuard, StockControlRoleGuard)
 @StockControlRoles("manager", "admin")
 @PermissionKey("job-cards.import")
 export class JobCardImportController {

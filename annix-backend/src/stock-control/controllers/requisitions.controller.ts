@@ -2,12 +2,13 @@ import { Body, Controller, Get, Param, Post, Put, Query, Req, UseGuards } from "
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import { RecordRequisitionReceiptDto, UpdateRequisitionItemDto } from "../dto/additional.dto";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
+import { StockControlOnboardingGuard } from "../guards/stock-control-onboarding.guard";
 import { StockControlRoleGuard } from "../guards/stock-control-role.guard";
 import { RequisitionService } from "../services/requisition.service";
 
 @ApiTags("Stock Control - Requisitions")
 @Controller("stock-control/requisitions")
-@UseGuards(StockControlAuthGuard, StockControlRoleGuard)
+@UseGuards(StockControlAuthGuard, StockControlOnboardingGuard, StockControlRoleGuard)
 export class RequisitionsController {
   constructor(private readonly requisitionService: RequisitionService) {}
 

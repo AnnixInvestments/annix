@@ -19,6 +19,7 @@ import { Repository } from "typeorm";
 import { JobCardCoatingAnalysis } from "../../entities/coating-analysis.entity";
 import { JobCard } from "../../entities/job-card.entity";
 import { StockControlAuthGuard } from "../../guards/stock-control-auth.guard";
+import { StockControlOnboardingGuard } from "../../guards/stock-control-onboarding.guard";
 import {
   PermissionKey,
   StockControlRoleGuard,
@@ -32,7 +33,12 @@ import { QcMeasurementService } from "../services/qc-measurement.service";
 
 @ApiTags("Stock Control - CPO QC")
 @Controller("stock-control/cpos/:cpoId/qc")
-@UseGuards(StockControlAuthGuard, QcEnabledGuard, StockControlRoleGuard)
+@UseGuards(
+  StockControlAuthGuard,
+  StockControlOnboardingGuard,
+  QcEnabledGuard,
+  StockControlRoleGuard,
+)
 export class CpoQcController {
   private readonly logger = new Logger(CpoQcController.name);
 

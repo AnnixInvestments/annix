@@ -1,12 +1,13 @@
 import { Body, Controller, Delete, Get, Logger, Post, Req, UseGuards } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
+import { StockControlOnboardingGuard } from "../guards/stock-control-onboarding.guard";
 import { StockControlRoleGuard } from "../guards/stock-control-role.guard";
 import { SignatureService } from "../services/signature.service";
 
 @ApiTags("Stock Control - Signatures")
 @Controller("stock-control/signatures")
-@UseGuards(StockControlAuthGuard, StockControlRoleGuard)
+@UseGuards(StockControlAuthGuard, StockControlOnboardingGuard, StockControlRoleGuard)
 export class SignatureController {
   private readonly logger = new Logger(SignatureController.name);
 

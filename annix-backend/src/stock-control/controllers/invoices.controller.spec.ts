@@ -2,6 +2,7 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { SageExportService } from "../../sage-export/sage-export.service";
 import { IdempotencyService } from "../../shared/services/idempotency.service";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
+import { StockControlOnboardingGuard } from "../guards/stock-control-onboarding.guard";
 import { StockControlRoleGuard } from "../guards/stock-control-role.guard";
 import { InvoiceService } from "../services/invoice.service";
 import { InvoiceExtractionService } from "../services/invoice-extraction.service";
@@ -65,6 +66,8 @@ describe("InvoicesController", () => {
       ],
     })
       .overrideGuard(StockControlAuthGuard)
+      .useValue({ canActivate: () => true })
+      .overrideGuard(StockControlOnboardingGuard)
       .useValue({ canActivate: () => true })
       .overrideGuard(StockControlRoleGuard)
       .useValue({ canActivate: () => true })
