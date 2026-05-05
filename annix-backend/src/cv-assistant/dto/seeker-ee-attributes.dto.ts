@@ -1,8 +1,8 @@
 import {
+  OptionalInt,
   OptionalString,
   RequiredBoolean,
   RequiredIn,
-  RequiredInt,
   RequiredStringArray,
 } from "../../lib/dto/validation-decorators";
 import {
@@ -32,8 +32,8 @@ export class UpdateSeekerEeAttributesDto {
   @RequiredIn(EE_NATIONALITY_VALUES)
   nationalityStatus: (typeof EE_NATIONALITY_VALUES)[number];
 
-  @RequiredInt({ min: 1 })
-  consentTextVersionId: number;
+  @OptionalInt({ min: 1 })
+  consentTextVersionId: number | null;
 
   @RequiredStringArray()
   purposes: Array<(typeof EE_PURPOSE_VALUES)[number]>;

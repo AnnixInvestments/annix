@@ -81,6 +81,7 @@ export const cvAssistantKeys = {
     documents: () => ["cv-assistant", "me", "documents"] as const,
     notificationPreferences: () => ["cv-assistant", "me", "notification-preferences"] as const,
     interviewBookings: () => ["cv-assistant", "me", "interview-bookings"] as const,
+    eeAttributes: () => ["cv-assistant", "me", "ee-attributes"] as const,
     interviewInvites: () => ["cv-assistant", "me", "interview-invites"] as const,
   },
 

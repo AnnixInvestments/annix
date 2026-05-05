@@ -100,7 +100,7 @@ export interface SeekerEeUpdateInput {
   requiresAccommodation: boolean;
   accommodationNotes: string | null;
   nationalityStatus: EeNationalityStatus;
-  consentTextVersionId: number;
+  consentTextVersionId: number | null;
   purposes: EePurpose[];
 }
 
@@ -440,7 +440,7 @@ export class IndividualProfileService {
   async updateEeAttributesForUser(
     userId: number,
     input: SeekerEeUpdateInput,
-  ): Promise<{ updated: number }> {
+  ): Promise<{ updated: number; consentTextVersionId: number }> {
     const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user?.email) throw new NotFoundException("User not found");
 
@@ -450,6 +450,8 @@ export class IndividualProfileService {
         "No candidacies found for your account; apply to a job first before disclosing.",
       );
     }
+
+    const consentTextVersionId = await this.resolveConsentTextVersionId(input.consentTextVersionId);
 
     await Promise.all(
       candidates.map((candidate) =>
@@ -461,7 +463,7 @@ export class IndividualProfileService {
           requiresAccommodation: input.requiresAccommodation,
           accommodationNotes: input.accommodationNotes,
           nationalityStatus: input.nationalityStatus,
-          consentTextVersionId: input.consentTextVersionId,
+          consentTextVersionId,
           consentSource: EeConsentSource.CANDIDATE_PORTAL,
           purposes: input.purposes,
           actorId: userId,
@@ -469,7 +471,18 @@ export class IndividualProfileService {
       ),
     );
 
-    return { updated: candidates.length };
+    return { updated: candidates.length, consentTextVersionId };
+  }
+
+  private async resolveConsentTextVersionId(provided: number | null): Promise<number> {
+    if (provided !== null) return provided;
+    const active = await this.popiaService.activeConsentTextVersion();
+    if (!active) {
+      throw new BadRequestException(
+        "No active EE consent text version configured; ask the company HR team to seed one before disclosing.",
+      );
+    }
+    return active.id;
   }
 
   async deleteEeAttributesForUser(userId: number): Promise<{ tombstoned: number }> {

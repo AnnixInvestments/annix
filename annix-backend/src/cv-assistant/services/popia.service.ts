@@ -201,6 +201,15 @@ export class PopiaService {
     };
   }
 
+  async activeConsentTextVersion(): Promise<CvAssistantEeConsentTextVersion | null> {
+    const activeNow = DateTime.now().toJSDate();
+    const active = await this.eeConsentTextVersionRepo.findOne({
+      where: [{ effectiveFrom: LessThan(activeNow), effectiveTo: IsNull() }],
+      order: { effectiveFrom: "DESC" },
+    });
+    return active;
+  }
+
   async recordEeConsent(input: RecordEeConsentInput): Promise<CvAssistantCandidateEeAttributes> {
     const candidate = await this.candidateRepo.findOne({ where: { id: input.candidateId } });
     if (!candidate) {

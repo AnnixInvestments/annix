@@ -798,6 +798,33 @@ export interface EeSectorTargetComparison {
   gazetteReference: string | null;
 }
 
+export interface MySeekerEeAttributes {
+  populationGroup: EePopulationGroupKey;
+  gender: EeGenderKey;
+  disabilityStatus: EeDisabilityKey;
+  requiresAccommodation: boolean;
+  accommodationNotes: string | null;
+  nationalityStatus:
+    | "sa_citizen"
+    | "sa_permanent_resident"
+    | "foreign_national"
+    | "prefer_not_to_say";
+  consentTextVersionId: number;
+  consentGrantedAt: string;
+  purposes: Array<"ee_reporting" | "fairness_monitoring">;
+}
+
+export interface UpdateMyEeAttributesInput {
+  populationGroup: EePopulationGroupKey;
+  gender: EeGenderKey;
+  disabilityStatus: EeDisabilityKey;
+  requiresAccommodation: boolean;
+  accommodationNotes: string | null;
+  nationalityStatus: MySeekerEeAttributes["nationalityStatus"];
+  consentTextVersionId: number | null;
+  purposes: Array<"ee_reporting" | "fairness_monitoring">;
+}
+
 export interface EeReportResponse {
   companyId: number;
   companyName: string;
@@ -1655,6 +1682,23 @@ class CvAssistantApiClient {
 
   async withdrawMyConsent(): Promise<{ message: string; erasedCandidates: number }> {
     return this.request("/cv-assistant/me/withdraw-consent", { method: "POST" });
+  }
+
+  async myEeAttributes(): Promise<MySeekerEeAttributes | null> {
+    return this.request("/cv-assistant/me/ee-attributes");
+  }
+
+  async updateMyEeAttributes(
+    input: UpdateMyEeAttributesInput,
+  ): Promise<{ updated: number; consentTextVersionId: number }> {
+    return this.request("/cv-assistant/me/ee-attributes", {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    });
+  }
+
+  async deleteMyEeAttributes(): Promise<{ tombstoned: number }> {
+    return this.request("/cv-assistant/me/ee-attributes", { method: "DELETE" });
   }
 
   async nixWizardCvImprovements(): Promise<NixSeekerCvAssessment> {
