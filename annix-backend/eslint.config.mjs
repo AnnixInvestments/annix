@@ -175,4 +175,33 @@ export default tseslint.config(
       ],
     },
   },
+  {
+    files: [
+      "src/cv-assistant/services/job-match.service.ts",
+      "src/cv-assistant/services/cv-screening.service.ts",
+      "src/cv-assistant/services/candidate-job-matching.service.ts",
+      "src/cv-assistant/services/embedding.service.ts",
+    ],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: [
+                "**/cv-assistant-candidate-ee-attributes.entity",
+                "**/cv-assistant-ee-consent-text-version.entity",
+                "**/cv-assistant-ee-disclosure-invite.entity",
+                "**/cv-assistant-ee-sectoral-target.entity",
+                "**/services/popia.service",
+                "**/services/ee-disclosure.service",
+              ],
+              message:
+                "AI screening / matching / embedding services MUST NOT import EE-compliance modules. EE attributes are special personal information (POPIA s26) and must be invisible to the ranker. Aggregate fairness monitoring lives in analytics.service.ts; this firewall is enforced at three layers — DI, ESLint (this rule), and the annix_cv_ai Postgres role's REVOKE SELECT (issue #240 Phase B).",
+            },
+          ],
+        },
+      ],
+    },
+  },
 );
