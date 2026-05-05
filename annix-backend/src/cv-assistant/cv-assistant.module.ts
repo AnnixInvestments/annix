@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from "@nestjs/config";
 import { JwtModule } from "@nestjs/jwt";
 import { MulterModule } from "@nestjs/platform-express";
 import { TypeOrmModule } from "@nestjs/typeorm";
+import { AdminModule } from "../admin/admin.module";
 import { AuditModule } from "../audit/audit.module";
 import { EmailModule } from "../email/email.module";
 import { MetricsModule } from "../metrics/metrics.module";
@@ -13,6 +14,7 @@ import { AppRole } from "../rbac/entities/app-role.entity";
 import { UserAppAccess } from "../rbac/entities/user-app-access.entity";
 import { StorageModule } from "../storage/storage.module";
 import { User } from "../user/entities/user.entity";
+import { AdminEeTargetsController } from "./controllers/admin-ee-targets.controller";
 import { AnalyticsController } from "./controllers/analytics.controller";
 import { CvAssistantAuthController } from "./controllers/auth.controller";
 import { CandidateController } from "./controllers/candidate.controller";
@@ -148,6 +150,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     EmailModule,
     StorageModule,
     AuditModule,
+    AdminModule,
   ],
   controllers: [
     CvAssistantAuthController,
@@ -170,6 +173,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     PublicInterviewBookingController,
     PublicEeDisclosureController,
     ComplianceController,
+    AdminEeTargetsController,
   ],
   providers: [
     CvAssistantAuthGuard,

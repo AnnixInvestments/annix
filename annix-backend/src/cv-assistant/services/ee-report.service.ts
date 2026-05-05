@@ -16,6 +16,7 @@ import { CvAssistantCompany } from "../entities/cv-assistant-company.entity";
 import {
   CvAssistantEeSectoralTarget,
   EeTargetMetric,
+  type EeTargetOccupationalLevel,
 } from "../entities/cv-assistant-ee-sectoral-target.entity";
 import { JobPosting, OccupationalLevel } from "../entities/job-posting.entity";
 import { CvAuditService } from "./cv-audit.service";
@@ -122,6 +123,49 @@ export class EeReportService {
     private readonly jobPostingRepo: Repository<JobPosting>,
     private readonly cvAuditService: CvAuditService,
   ) {}
+
+  async listSectoralTargets(): Promise<CvAssistantEeSectoralTarget[]> {
+    return this.sectoralTargetRepo.find({
+      order: { sectorCode: "ASC", occupationalLevel: "ASC", targetMetric: "ASC" },
+    });
+  }
+
+  async upsertSectoralTarget(input: {
+    id?: number | null;
+    sectorCode: string;
+    occupationalLevel: EeTargetOccupationalLevel;
+    targetYear: number;
+    targetMetric: EeTargetMetric;
+    targetPercent: number;
+    gazetteReference: string | null;
+  }): Promise<CvAssistantEeSectoralTarget> {
+    if (input.id) {
+      const existing = await this.sectoralTargetRepo.findOne({ where: { id: input.id } });
+      if (!existing) throw new NotFoundException("Sectoral target not found");
+      existing.sectorCode = input.sectorCode;
+      existing.occupationalLevel = input.occupationalLevel;
+      existing.targetYear = input.targetYear;
+      existing.targetMetric = input.targetMetric;
+      existing.targetPercent = input.targetPercent.toFixed(2);
+      existing.gazetteReference = input.gazetteReference;
+      return this.sectoralTargetRepo.save(existing);
+    }
+
+    const created = this.sectoralTargetRepo.create({
+      sectorCode: input.sectorCode,
+      occupationalLevel: input.occupationalLevel,
+      targetYear: input.targetYear,
+      targetMetric: input.targetMetric,
+      targetPercent: input.targetPercent.toFixed(2),
+      gazetteReference: input.gazetteReference,
+    });
+    return this.sectoralTargetRepo.save(created) as Promise<CvAssistantEeSectoralTarget>;
+  }
+
+  async deleteSectoralTarget(id: number): Promise<{ deleted: boolean }> {
+    const result = await this.sectoralTargetRepo.delete(id);
+    return { deleted: (result.affected ?? 0) > 0 };
+  }
 
   async buildReport(
     companyId: number,
