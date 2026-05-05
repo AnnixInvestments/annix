@@ -114,6 +114,19 @@ export interface CompanyDetailsUpdate {
   notificationsEnabled?: boolean;
 }
 
+export interface CompleteOnboardingDto {
+  legalName: string;
+  tradingName?: string;
+  registrationNumber: string;
+  vatNumber?: string;
+  streetAddress: string;
+  city: string;
+  province?: string;
+  postalCode: string;
+  phone: string;
+  email: string;
+}
+
 export interface SmtpConfigResponse {
   smtpHost: string | null;
   smtpPort: number | null;

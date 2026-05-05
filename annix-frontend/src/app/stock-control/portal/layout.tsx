@@ -207,11 +207,13 @@ function PortalContent({ children }: { children: React.ReactNode }) {
   );
 }
 
+const ONBOARDING_PATH = "/stock-control/portal/onboarding";
+
 function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { isAuthenticated, isLoading } = useStockControlAuth();
+  const { isAuthenticated, isLoading, profile } = useStockControlAuth();
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -222,6 +224,13 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
       router.push(`/stock-control/login?returnUrl=${returnUrl}`);
     }
   }, [isAuthenticated, isLoading, router, pathname, searchParams]);
+
+  useEffect(() => {
+    if (isLoading || !isAuthenticated || !profile) return;
+    if (profile.onboardingComplete) return;
+    if (pathname === ONBOARDING_PATH) return;
+    router.replace(ONBOARDING_PATH);
+  }, [isLoading, isAuthenticated, profile, pathname, router]);
 
   if (isLoading) {
     return (

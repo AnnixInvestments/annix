@@ -247,6 +247,7 @@ export {
   useActionPermissions,
   useCancelAdminTransfer,
   useCompanyRoles,
+  useCompleteOnboarding,
   useCreateCompanyRole,
   useDeleteCompanyRole,
   useInitiateAdminTransfer,

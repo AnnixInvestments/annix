@@ -1,6 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { isArray } from "es-toolkit/compat";
-import type { CompanyRole, StockControlTeamMember } from "@/app/lib/api/stockControlApi";
+import type {
+  CompanyRole,
+  CompleteOnboardingDto,
+  StockControlTeamMember,
+} from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { stockControlKeys } from "../../keys/stockControlKeys";
 
@@ -123,6 +127,12 @@ export function useUpdateUserLocations() {
 export function useUpdateCompanyDetails() {
   return useMutation({
     mutationFn: (data: Record<string, unknown>) => stockControlApiClient.updateCompanyDetails(data),
+  });
+}
+
+export function useCompleteOnboarding() {
+  return useMutation({
+    mutationFn: (dto: CompleteOnboardingDto) => stockControlApiClient.completeOnboarding(dto),
   });
 }
 

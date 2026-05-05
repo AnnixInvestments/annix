@@ -4,6 +4,7 @@ import type {
   AdminTransferPending,
   CompanyDetailsUpdate,
   CompanyRole,
+  CompleteOnboardingDto,
   InvitationValidation,
   ProcessedBrandingResult,
   ScrapedBrandingCandidates,
@@ -38,6 +39,7 @@ declare module "./base" {
     }>;
     updateCompanyDetails(details: CompanyDetailsUpdate): Promise<{ message: string }>;
     updateCompanyName(name: string): Promise<{ message: string }>;
+    completeOnboarding(dto: CompleteOnboardingDto): Promise<StockControlUserProfile>;
     scrapeBranding(websiteUrl: string): Promise<ScrapedBrandingCandidates>;
     processBrandingSelection(data: {
       logoSourceUrl?: string;
@@ -182,6 +184,13 @@ proto.updateCompanyDetails = async function (details) {
 
 proto.updateCompanyName = async function (name) {
   return this.updateCompanyDetails({ name });
+};
+
+proto.completeOnboarding = async function (dto) {
+  return this.request("/stock-control/auth/me/onboarding", {
+    method: "PATCH",
+    body: JSON.stringify(dto),
+  });
 };
 
 proto.scrapeBranding = async function (websiteUrl) {

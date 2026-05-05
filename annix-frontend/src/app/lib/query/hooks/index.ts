@@ -805,6 +805,7 @@ export {
   useCompleteBackgroundStep,
   useCompleteBackgroundStepWithOutcome,
   useCompleteDispatch,
+  useCompleteOnboarding,
   useCompleteRequisitionStep,
   useConfirmCpoImport,
   useConfirmDeliveryMatches,
