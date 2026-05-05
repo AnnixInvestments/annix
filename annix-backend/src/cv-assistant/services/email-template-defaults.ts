@@ -152,6 +152,39 @@ The link is unique to you — please don't share it. If none of the times work, 
   placeholders: ["candidateName", "jobTitle", "companyName", "bookingLink"],
 };
 
+const EE_DISCLOSURE_INVITE: EmailTemplateDefinition = {
+  kind: CvEmailTemplateKind.EE_DISCLOSURE_INVITE,
+  label: "EE disclosure invite",
+  description:
+    "Optional, post-application invite asking the candidate to voluntarily disclose Employment Equity attributes for statutory reporting and AI fairness monitoring.",
+  subject: "Optional Employment Equity disclosure — {{jobTitle}} at {{companyName}}",
+  bodyHtml: `<p>Dear {{candidateName}},</p>
+<p>Thanks for applying for the <strong>{{jobTitle}}</strong> role at {{companyName}}.</p>
+<p>As a designated employer under the Employment Equity Act, we collect voluntary demographic information for two purposes only:</p>
+<ul>
+  <li>Statutory Employment Equity reporting (EEA2 / EEA4)</li>
+  <li>Independent fairness monitoring of our AI-assisted screening</li>
+</ul>
+<p>Disclosure is <strong>completely voluntary</strong> and does not affect your application. The information is stored separately from your CV and is never used by the AI ranker. You may decline, choose "prefer not to say" for any field, or withdraw your consent at any time.</p>
+<p><a href="{{disclosureLink}}">Open the disclosure form</a></p>
+<p>The link is unique to you — please don't share it. It expires in 30 days.</p>`,
+  bodyText: `Dear {{candidateName}},
+
+Thanks for applying for the {{jobTitle}} role at {{companyName}}.
+
+As a designated employer under the Employment Equity Act, we collect voluntary demographic information for two purposes only:
+- Statutory Employment Equity reporting (EEA2 / EEA4)
+- Independent fairness monitoring of our AI-assisted screening
+
+Disclosure is completely voluntary and does not affect your application. The information is stored separately from your CV and is never used by the AI ranker. You may decline, choose "prefer not to say" for any field, or withdraw your consent at any time.
+
+Open the disclosure form:
+{{disclosureLink}}
+
+The link is unique to you — please don't share it. It expires in 30 days.`,
+  placeholders: ["candidateName", "jobTitle", "companyName", "disclosureLink"],
+};
+
 export const EMAIL_TEMPLATE_DEFAULTS: EmailTemplateDefinition[] = [
   REJECTION,
   SHORTLIST,
@@ -159,6 +192,7 @@ export const EMAIL_TEMPLATE_DEFAULTS: EmailTemplateDefinition[] = [
   INTERVIEW_INVITE,
   REFERENCE_REQUEST,
   ACKNOWLEDGEMENT,
+  EE_DISCLOSURE_INVITE,
 ];
 
 export const defaultByKind = (kind: CvEmailTemplateKind): EmailTemplateDefinition => {

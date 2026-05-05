@@ -17,6 +17,7 @@ export enum CvEmailTemplateKind {
   REFERENCE_REQUEST = "reference_request",
   ACKNOWLEDGEMENT = "acknowledgement",
   INTERVIEW_INVITE = "interview_invite",
+  EE_DISCLOSURE_INVITE = "ee_disclosure_invite",
 }
 
 @Entity("cv_assistant_email_templates")

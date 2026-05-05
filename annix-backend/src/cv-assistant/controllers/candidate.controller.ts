@@ -21,6 +21,7 @@ import { UpdateCandidateProfileDto, UpdateCandidateStatusDto } from "../dto/cand
 import { CandidateStatus } from "../entities/candidate.entity";
 import { CvAssistantAuthGuard } from "../guards/cv-assistant-auth.guard";
 import { CandidateService } from "../services/candidate.service";
+import { EeDisclosureService } from "../services/ee-disclosure.service";
 import { PopiaService } from "../services/popia.service";
 import { ReferenceService } from "../services/reference.service";
 import { WorkflowAutomationService } from "../services/workflow-automation.service";
@@ -35,6 +36,7 @@ export class CandidateController {
     private readonly referenceService: ReferenceService,
     private readonly workflowService: WorkflowAutomationService,
     private readonly popiaService: PopiaService,
+    private readonly eeDisclosureService: EeDisclosureService,
   ) {}
 
   @Get()
@@ -208,6 +210,24 @@ export class CandidateController {
   @Get("popia/retention-stats")
   async retentionStats(@Request() req: { user: { companyId: number } }) {
     return this.popiaService.retentionStats(req.user.companyId);
+  }
+
+  @Post(":id/ee-disclosure-invite")
+  async sendEeDisclosureInvite(
+    @Request() req: { user: { companyId: number } },
+    @Param("id", ParseIntPipe) id: number,
+  ) {
+    await this.candidateService.findById(req.user.companyId, id);
+    return this.eeDisclosureService.sendInviteForCandidate(req.user.companyId, id);
+  }
+
+  @Get(":id/ee-attributes")
+  async eeAttributes(
+    @Request() req: { user: { id: number; companyId: number } },
+    @Param("id", ParseIntPipe) id: number,
+  ) {
+    await this.candidateService.findById(req.user.companyId, id);
+    return this.popiaService.eeAttributesForCandidate(id, "hr", req.user.id);
   }
 
   @Post("upload")

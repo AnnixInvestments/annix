@@ -1,11 +1,14 @@
 import { randomBytes } from "node:crypto";
 import {
+  BadRequestException,
   ConflictException,
+  ForbiddenException,
   GoneException,
   Injectable,
   Logger,
   NotFoundException,
 } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { InjectRepository } from "@nestjs/typeorm";
 import { IsNull, LessThan, MoreThan, Repository } from "typeorm";
 import { DateTime, now } from "../../lib/datetime";
@@ -18,9 +21,12 @@ import {
   EePopulationGroup,
   EePurpose,
 } from "../entities/cv-assistant-candidate-ee-attributes.entity";
+import { CvAssistantCompany } from "../entities/cv-assistant-company.entity";
 import { CvAssistantEeConsentTextVersion } from "../entities/cv-assistant-ee-consent-text-version.entity";
 import { CvAssistantEeDisclosureInvite } from "../entities/cv-assistant-ee-disclosure-invite.entity";
+import { CvEmailTemplateKind } from "../entities/cv-assistant-email-template.entity";
 import { JobPosting } from "../entities/job-posting.entity";
+import { EmailTemplateService } from "./email-template.service";
 import { PopiaService } from "./popia.service";
 
 const INVITE_TOKEN_TTL_DAYS = 30;
@@ -57,7 +63,11 @@ export class EeDisclosureService {
     private readonly candidateRepo: Repository<Candidate>,
     @InjectRepository(JobPosting)
     private readonly jobPostingRepo: Repository<JobPosting>,
+    @InjectRepository(CvAssistantCompany)
+    private readonly companyRepo: Repository<CvAssistantCompany>,
     private readonly popiaService: PopiaService,
+    private readonly emailTemplateService: EmailTemplateService,
+    private readonly configService: ConfigService,
   ) {}
 
   async createInvite(
@@ -152,6 +162,60 @@ export class EeDisclosureService {
     });
 
     await this.inviteRepo.update(invite.id, { usedAt: now().toJSDate() });
+  }
+
+  async sendInviteForCandidate(
+    companyId: number,
+    candidateId: number,
+  ): Promise<{ sent: boolean; disclosureLink: string; alreadyUsed: boolean }> {
+    const candidate = await this.candidateRepo.findOne({
+      where: { id: candidateId },
+      relations: ["jobPosting"],
+    });
+    if (!candidate) throw new NotFoundException("Candidate not found");
+    if (candidate.jobPosting.companyId !== companyId) {
+      throw new ForbiddenException("Candidate does not belong to your company");
+    }
+    if (!candidate.email) {
+      throw new BadRequestException("Candidate has no email address on file.");
+    }
+
+    const company = await this.companyRepo.findOne({ where: { id: companyId } });
+    if (!company) throw new NotFoundException("Company not found");
+    if (!company.isDesignatedEmployer) {
+      throw new BadRequestException(
+        "Company must be flagged as a designated employer before sending EE disclosure invites",
+      );
+    }
+    if (!company.eeaReportingEnabled) {
+      throw new BadRequestException(
+        "EEA reporting must be enabled on the company before sending EE disclosure invites",
+      );
+    }
+
+    await this.activeConsentText();
+
+    const invite = await this.createInvite(candidate.id, candidate.jobPosting.id);
+    const disclosureLink = this.disclosureLinkFor(invite.token);
+
+    const sent = await this.emailTemplateService.renderAndSend({
+      companyId,
+      kind: CvEmailTemplateKind.EE_DISCLOSURE_INVITE,
+      to: candidate.email,
+      vars: {
+        candidateName: candidate.name || "Applicant",
+        jobTitle: candidate.jobPosting.title,
+        companyName: company.name,
+        disclosureLink,
+      },
+    });
+
+    return { sent, disclosureLink, alreadyUsed: invite.usedAt !== null };
+  }
+
+  private disclosureLinkFor(token: string): string {
+    const baseUrl = this.configService.get<string>("FRONTEND_URL") ?? "http://localhost:3000";
+    return `${baseUrl}/cv-assistant/ee-disclosure/${token}`;
   }
 
   private async activeConsentText(): Promise<CvAssistantEeConsentTextVersion> {
