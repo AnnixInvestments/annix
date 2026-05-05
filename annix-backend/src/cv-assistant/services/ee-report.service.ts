@@ -1,7 +1,10 @@
 import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { DateTime, now } from "../../lib/datetime";
+import { DateTime, formatDateZA, now } from "../../lib/datetime";
+import { createPdfDocument } from "../../lib/pdf-builder";
+import { renderHeader } from "../../lib/pdf-templates/render-header";
+import { renderTable } from "../../lib/pdf-templates/render-table";
 import { Candidate, CandidateStatus } from "../entities/candidate.entity";
 import {
   CvAssistantCandidateEeAttributes,
@@ -245,6 +248,252 @@ export class EeReportService {
     });
   }
 
+  buildCsv(report: EeReport): string {
+    const lines: string[] = [];
+    lines.push("# Employment Equity Report");
+    lines.push(`# Company: ${csvField(report.companyName)}`);
+    lines.push(`# Sector: ${csvField(report.economicSector ?? "Not configured")}`);
+    lines.push(`# Period: ${formatDateZA(report.dateFrom)} to ${formatDateZA(report.dateTo)}`);
+    lines.push(`# Generated: ${report.generatedAt.toISOString()}`);
+    lines.push(
+      `# Totals: ${report.totalApplicantsWithDisclosure} applicants, ${report.totalNewHiresWithDisclosure} new hires`,
+    );
+    lines.push("");
+
+    lines.push("# Applicant counts by occupational level × demographic");
+    lines.push("occupational_level,dimension,group,applicants,new_hires");
+    report.byOccupationalLevel.forEach((level) => {
+      const dimensionRows = [
+        ...Object.entries(level.byPopulation).map(([group, count]) => ({
+          dimension: "population_group",
+          group,
+          count,
+        })),
+        ...Object.entries(level.byGender).map(([group, count]) => ({
+          dimension: "gender",
+          group,
+          count,
+        })),
+        ...Object.entries(level.byDisability).map(([group, count]) => ({
+          dimension: "disability",
+          group,
+          count,
+        })),
+      ];
+      dimensionRows.forEach((row) => {
+        lines.push(
+          [
+            csvField(level.occupationalLevel),
+            row.dimension,
+            row.group,
+            String(row.count),
+            row.dimension === "population_group" ? String(level.newHires) : "",
+          ].join(","),
+        );
+      });
+    });
+    lines.push("");
+
+    lines.push("# Sector targets vs actuals");
+    lines.push("occupational_level,metric,target_percent,actual_percent,met,gazette_reference");
+    report.sectorTargetComparisons.forEach((c) => {
+      lines.push(
+        [
+          c.occupationalLevel,
+          c.metric,
+          c.targetPercent.toFixed(2),
+          c.actualPercent.toFixed(2),
+          c.met ? "yes" : "no",
+          csvField(c.gazetteReference ?? ""),
+        ].join(","),
+      );
+    });
+    lines.push("");
+
+    lines.push("# 3% disability workforce target");
+    lines.push("target_percent,actual_percent,sample_size,met");
+    lines.push(
+      [
+        report.disabilityTarget.targetPercent.toFixed(2),
+        report.disabilityTarget.actualPercent.toFixed(2),
+        String(report.disabilityTarget.sampleSize),
+        report.disabilityTarget.met ? "yes" : "no",
+      ].join(","),
+    );
+    lines.push("");
+
+    lines.push("# Year-over-year delta");
+    lines.push("previous_total,delta,delta_percent");
+    lines.push(
+      [
+        String(report.yearOverYear.previousTotalApplicants),
+        String(report.yearOverYear.delta),
+        report.yearOverYear.deltaPercent === null
+          ? ""
+          : report.yearOverYear.deltaPercent.toFixed(2),
+      ].join(","),
+    );
+
+    return lines.join("\n");
+  }
+
+  async buildPdf(report: EeReport): Promise<Buffer> {
+    const { doc, toBuffer } = createPdfDocument({ size: "A4", margin: 36 });
+
+    const subtitle = `${report.companyName} · ${report.economicSector ?? "Sector not set"} · ${formatDateZA(report.dateFrom)} → ${formatDateZA(report.dateTo)}`;
+    const headerEnd = renderHeader(doc, {
+      title: "Employment Equity Report",
+      subtitle,
+      x: 36,
+      y: 36,
+      width: 525,
+    });
+
+    let cursorY = headerEnd + 20;
+
+    doc
+      .fontSize(10)
+      .text(
+        `Total applicants with disclosure: ${report.totalApplicantsWithDisclosure}` +
+          `   ·   New hires: ${report.totalNewHiresWithDisclosure}` +
+          `   ·   Generated ${report.generatedAt.toISOString()}`,
+        36,
+        cursorY,
+      );
+    cursorY += 24;
+
+    cursorY = renderTable<{
+      level: string;
+      applicants: number;
+      newHires: number;
+      blackPct: string;
+      femalePct: string;
+      disabilityPct: string;
+    }>(doc, {
+      startX: 36,
+      startY: cursorY,
+      columns: [
+        { key: "level", header: "Occupational level", width: 150 },
+        { key: "applicants", header: "Applicants", width: 70, align: "right" },
+        { key: "newHires", header: "New hires", width: 70, align: "right" },
+        { key: "blackPct", header: "Afr. Black %", width: 80, align: "right" },
+        { key: "femalePct", header: "Female %", width: 70, align: "right" },
+        { key: "disabilityPct", header: "Disability %", width: 80, align: "right" },
+      ],
+      rows: report.byOccupationalLevel.map((b) => ({
+        level: b.occupationalLevel,
+        applicants: b.applicants,
+        newHires: b.newHires,
+        blackPct:
+          b.applicants === 0
+            ? "—"
+            : `${((b.byPopulation[EePopulationGroup.AFRICAN_BLACK] / b.applicants) * 100).toFixed(1)}`,
+        femalePct:
+          b.applicants === 0
+            ? "—"
+            : `${((b.byGender[EeGender.FEMALE] / b.applicants) * 100).toFixed(1)}`,
+        disabilityPct:
+          b.applicants === 0
+            ? "—"
+            : `${((b.byDisability[EeDisabilityStatus.YES] / b.applicants) * 100).toFixed(1)}`,
+      })),
+    });
+
+    cursorY += 30;
+    doc.fontSize(11).text("Sector targets vs actuals", 36, cursorY);
+    cursorY += 16;
+
+    if (report.sectorTargetComparisons.length === 0) {
+      doc
+        .fontSize(9)
+        .fillColor("#6b7280")
+        .text(
+          "No targets configured for this sector. Have an admin populate cv_assistant_ee_sectoral_targets from the Department of Employment and Labour gazette.",
+          36,
+          cursorY,
+          { width: 525 },
+        );
+      doc.fillColor("#000000");
+      cursorY += 30;
+    } else {
+      cursorY = renderTable<SectorTargetComparison>(doc, {
+        startX: 36,
+        startY: cursorY,
+        columns: [
+          { key: "level", header: "Occ. level", width: 130 },
+          { key: "metric", header: "Metric", width: 130 },
+          {
+            key: "target",
+            header: "Target %",
+            width: 70,
+            align: "right",
+            format: (row) => row.targetPercent.toFixed(2),
+          },
+          {
+            key: "actual",
+            header: "Actual %",
+            width: 70,
+            align: "right",
+            format: (row) => row.actualPercent.toFixed(2),
+          },
+          {
+            key: "met",
+            header: "Met?",
+            width: 50,
+            align: "center",
+            format: (row) => (row.met ? "yes" : "no"),
+          },
+          {
+            key: "gazette",
+            header: "Gazette",
+            width: 100,
+            format: (row) => row.gazetteReference ?? "",
+          },
+        ],
+        rows: report.sectorTargetComparisons.map((c) => ({
+          ...c,
+          occupationalLevel: c.occupationalLevel,
+        })),
+      });
+      cursorY += 16;
+    }
+
+    cursorY += 14;
+    doc
+      .fontSize(11)
+      .text(
+        `3% disability workforce target — actual ${report.disabilityTarget.actualPercent.toFixed(2)}% across ${report.disabilityTarget.sampleSize} declared candidates · ${report.disabilityTarget.met ? "MET" : "NOT MET"}`,
+        36,
+        cursorY,
+        { width: 525 },
+      );
+    cursorY += 24;
+
+    const yoyDelta = report.yearOverYear.deltaPercent;
+    doc
+      .fontSize(11)
+      .text(
+        `Year-over-year delta: ${report.yearOverYear.delta >= 0 ? "+" : ""}${report.yearOverYear.delta} disclosed applicants vs ${report.yearOverYear.previousTotalApplicants} prior period${yoyDelta === null ? " (no prior data)" : ` (${yoyDelta >= 0 ? "+" : ""}${yoyDelta.toFixed(1)}%)`}`,
+        36,
+        cursorY,
+        { width: 525 },
+      );
+    cursorY += 30;
+
+    doc
+      .fontSize(8)
+      .fillColor("#6b7280")
+      .text(
+        "This report is source data for EEA2 / EEA4 statutory submissions; the official forms remain the customer's responsibility. Generated by Annix CV Assistant.",
+        36,
+        cursorY,
+        { width: 525 },
+      );
+
+    doc.end();
+    return toBuffer();
+  }
+
   private computeDisabilityTarget(rows: RawRow[]): EeReport["disabilityTarget"] {
     const declaring = rows.filter(
       (r) => r.disability_status !== EeDisabilityStatus.PREFER_NOT_TO_SAY,
@@ -280,6 +529,13 @@ const tally = <T extends string, K extends keyof RawRow>(
     acc[bucket] = (acc[bucket] ?? 0) + 1;
     return acc;
   }, seed);
+};
+
+const csvField = (value: string): string => {
+  if (value.includes(",") || value.includes('"') || value.includes("\n")) {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+  return value;
 };
 
 const computeActualPercent = (
