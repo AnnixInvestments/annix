@@ -10,7 +10,7 @@ import {
 import { ConfigService } from "@nestjs/config";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Between, In, IsNull, Repository } from "typeorm";
-import { now } from "../../lib/datetime";
+import { fromISO, fromJSDate, now, nowMillis } from "../../lib/datetime";
 import { Candidate, CandidateStatus } from "../entities/candidate.entity";
 import { CvAssistantCompany } from "../entities/cv-assistant-company.entity";
 import { CvEmailTemplateKind } from "../entities/cv-assistant-email-template.entity";
@@ -64,8 +64,9 @@ export class InterviewBookingService {
   }
 
   async listSlotsForCompany(companyId: number, fromIso: string | null): Promise<InterviewSlot[]> {
-    const fromDate = fromIso ? new Date(fromIso) : new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const toDate = new Date(fromDate.getTime() + 90 * 24 * 60 * 60 * 1000);
+    const fromDateTime = fromIso ? fromISO(fromIso) : now().minus({ days: 1 });
+    const fromDate = fromDateTime.toJSDate();
+    const toDate = fromDateTime.plus({ days: 90 }).toJSDate();
     return this.slotRepo.find({
       where: { companyId, startsAt: Between(fromDate, toDate) },
       relations: ["jobPosting", "bookings", "bookings.candidate"],
@@ -141,7 +142,7 @@ export class InterviewBookingService {
     }
 
     const token = randomBytes(24).toString("hex");
-    const expiresAt = new Date(Date.now() + INVITE_TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000);
+    const expiresAt = now().plus({ days: INVITE_TOKEN_TTL_DAYS }).toJSDate();
     const invite = this.inviteRepo.create({
       candidateId: candidate.id,
       jobPostingId: candidate.jobPosting.id,
@@ -177,7 +178,7 @@ export class InterviewBookingService {
   }> {
     const invite = await this.inviteRepo.findOne({ where: { token } });
     if (!invite) throw new NotFoundException("Invitation link not found");
-    if (invite.expiresAt.getTime() < Date.now()) {
+    if (fromJSDate(invite.expiresAt).toMillis() < nowMillis()) {
       throw new ForbiddenException(
         "This invitation link has expired. Ask the company for a new one.",
       );
@@ -292,12 +293,13 @@ export class InterviewBookingService {
       relations: ["jobPosting"],
       order: { createdAt: "DESC" },
     });
-    const nowMs = Date.now();
-    return invites.filter((i) => i.expiresAt.getTime() > nowMs);
+    const nowMs = nowMillis();
+    return invites.filter((i) => fromJSDate(i.expiresAt).toMillis() > nowMs);
   }
 
   private bookingLinkFor(token: string): string {
-    const baseUrl = this.configService.get<string>("FRONTEND_URL") ?? "http://localhost:3000";
+    const configured = this.configService.get<string>("FRONTEND_URL");
+    const baseUrl = configured ? configured.replace(/\/$/, "") : "https://cv-assistant.annix.co.za";
     return `${baseUrl}/cv-assistant/interview-booking/${token}`;
   }
 

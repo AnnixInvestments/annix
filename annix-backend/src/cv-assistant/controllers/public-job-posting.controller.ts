@@ -1,6 +1,7 @@
 import { Controller, Get, Header, NotFoundException, Param, Res } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import type { Response } from "express";
+import { fromJSDate, nowISO } from "../../lib/datetime";
 import type { PublicJobPostingDto } from "../services/job-posting.service";
 import { JobPostingService } from "../services/job-posting.service";
 
@@ -61,7 +62,7 @@ export class PublicJobPostingController {
   }
 
   private renderFeed(jobs: PublicJobPostingDto[], baseUrl: string): string {
-    const generatedAt = new Date().toISOString();
+    const generatedAt = nowISO();
     const items = jobs.map((job) => this.renderJobNode(job, baseUrl)).join("\n");
     return `<?xml version="1.0" encoding="utf-8"?>
 <source>
@@ -92,9 +93,7 @@ ${items}
         ? `    <experience>${escapeXml(`${job.minExperienceYears}+ years`)}</experience>\n`
         : "";
     const postedAt =
-      job.postedAt instanceof Date
-        ? job.postedAt.toISOString()
-        : new Date(job.postedAt).toISOString();
+      job.postedAt instanceof Date ? (fromJSDate(job.postedAt).toISO() ?? "") : job.postedAt;
     const description = job.description ? job.description : job.title;
 
     return `  <job>

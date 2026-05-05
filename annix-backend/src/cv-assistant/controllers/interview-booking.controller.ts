@@ -11,6 +11,7 @@ import {
   Request,
   UseGuards,
 } from "@nestjs/common";
+import { fromISO } from "../../lib/datetime";
 import { CvAssistantAuthGuard } from "../guards/cv-assistant-auth.guard";
 import { InterviewBookingService } from "../services/interview-booking.service";
 
@@ -27,11 +28,11 @@ interface CreateSlotBody {
 
 const parseDate = (value: string | undefined, label: string): Date => {
   if (!value) throw new BadRequestException(`${label} is required`);
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
+  const parsed = fromISO(value);
+  if (!parsed.isValid) {
     throw new BadRequestException(`${label} is not a valid ISO datetime`);
   }
-  return parsed;
+  return parsed.toJSDate();
 };
 
 @Controller("cv-assistant/interview-slots")
