@@ -25,6 +25,7 @@ import { JobPostingController } from "./controllers/job-posting.controller";
 import { NotificationController } from "./controllers/notification.controller";
 import { PortalAdaptersController } from "./controllers/portal-adapters.controller";
 import { PublicAccountController } from "./controllers/public-account.controller";
+import { PublicEeDisclosureController } from "./controllers/public-ee-disclosure.controller";
 import { PublicInterviewBookingController } from "./controllers/public-interview-booking.controller";
 import { PublicJobMarketController } from "./controllers/public-job-market.controller";
 import { PublicJobPostingController } from "./controllers/public-job-posting.controller";
@@ -37,6 +38,7 @@ import { CandidateReference } from "./entities/candidate-reference.entity";
 import { CvAssistantCandidateEeAttributes } from "./entities/cv-assistant-candidate-ee-attributes.entity";
 import { CvAssistantCompany } from "./entities/cv-assistant-company.entity";
 import { CvAssistantEeConsentTextVersion } from "./entities/cv-assistant-ee-consent-text-version.entity";
+import { CvAssistantEeDisclosureInvite } from "./entities/cv-assistant-ee-disclosure-invite.entity";
 import { CvAssistantEeSectoralTarget } from "./entities/cv-assistant-ee-sectoral-target.entity";
 import { CvAssistantEmailTemplate } from "./entities/cv-assistant-email-template.entity";
 import { CvAssistantIndividualDocument } from "./entities/cv-assistant-individual-document.entity";
@@ -71,6 +73,7 @@ import { CvEmailAdapterService } from "./services/cv-email-adapter.service";
 import { CvExtractionService } from "./services/cv-extraction.service";
 import { CvNotificationService } from "./services/cv-notification.service";
 import { CvScreeningService } from "./services/cv-screening.service";
+import { EeDisclosureService } from "./services/ee-disclosure.service";
 import { EmailTemplateService } from "./services/email-template.service";
 import { EmbeddingService } from "./services/embedding.service";
 import { IndividualProfileService } from "./services/individual-profile.service";
@@ -113,6 +116,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
       CvAssistantCompany,
       CvAssistantCandidateEeAttributes,
       CvAssistantEeConsentTextVersion,
+      CvAssistantEeDisclosureInvite,
       CvAssistantEeSectoralTarget,
       CvAssistantEmailTemplate,
       InterviewSlot,
@@ -162,6 +166,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     EmailTemplateController,
     InterviewBookingController,
     PublicInterviewBookingController,
+    PublicEeDisclosureController,
   ],
   providers: [
     CvAssistantAuthGuard,
@@ -175,6 +180,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     ReferenceService,
     CvEmailAdapterService,
     CvScreeningService,
+    EeDisclosureService,
     WorkflowAutomationService,
     SettingsService,
     AdzunaService,
