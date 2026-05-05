@@ -175,7 +175,8 @@ const EE_DISCLOSURE_INVITE: EmailTemplateDefinition = {
 </ul>
 <p>Disclosure is <strong>completely voluntary</strong> and does not affect your application. The information is stored separately from your CV and is never used by the AI ranker. You may decline, choose "prefer not to say" for any field, or withdraw your consent at any time.</p>
 <p><a href="{{disclosureLink}}">Open the disclosure form</a></p>
-<p>The link is unique to you — please don't share it. It expires in 30 days.</p>`,
+<p>The link is unique to you — please don't share it. It expires in 30 days.</p>
+<p style="color: #6b7280; font-size: 13px;">Questions about your data, retention, or POPIA rights: contact our Data Protection Officer at {{dpoEmail}}.</p>`,
   bodyText: `Dear {{candidateName}},
 
 Thanks for applying for the {{jobTitle}} role at {{companyName}}.
@@ -189,8 +190,10 @@ Disclosure is completely voluntary and does not affect your application. The inf
 Open the disclosure form:
 {{disclosureLink}}
 
-The link is unique to you — please don't share it. It expires in 30 days.`,
-  placeholders: ["candidateName", "jobTitle", "companyName", "disclosureLink"],
+The link is unique to you — please don't share it. It expires in 30 days.
+
+Questions about your data, retention, or POPIA rights: contact our Data Protection Officer at {{dpoEmail}}.`,
+  placeholders: ["candidateName", "jobTitle", "companyName", "disclosureLink", "dpoEmail"],
 };
 
 export const EMAIL_TEMPLATE_DEFAULTS: EmailTemplateDefinition[] = [

@@ -75,6 +75,7 @@ export const FEATURE_FLAGS = {
   STOCK_MGMT_STOCK_HOLD_QUEUE: "STOCK_MGMT_STOCK_HOLD_QUEUE",
   STOCK_MGMT_VARIANCE_REPORTING: "STOCK_MGMT_VARIANCE_REPORTING",
   STOCK_MGMT_VALUATION_EXPORTS: "STOCK_MGMT_VALUATION_EXPORTS",
+  CV_ASSISTANT_EE_COMPLIANCE_ENABLED: "CV_ASSISTANT_EE_COMPLIANCE_ENABLED",
 } as const;
 
 export type FeatureFlagKey = (typeof FEATURE_FLAGS)[keyof typeof FEATURE_FLAGS];
@@ -160,6 +161,8 @@ export const FEATURE_FLAG_DESCRIPTIONS: Record<FeatureFlagKey, string> = {
     "Stock management module — damaged/expired stock hold queue with disposition workflow",
   STOCK_MGMT_VARIANCE_REPORTING: "Stock management module — variance archive and trend reporting",
   STOCK_MGMT_VALUATION_EXPORTS: "Stock management module — PDF/Excel/Word valuation exports",
+  CV_ASSISTANT_EE_COMPLIANCE_ENABLED:
+    "CV Assistant — Employment Equity Act 55/1998 compliance feature (EE disclosure flow, fairness monitoring, EEA2/EEA4 reporting). Default off. Per-customer activation also requires the customer's is_designated_employer + eea_reporting_enabled company flags AND a signed DPIA per docs/privacy/cv-assistant-ee-dpia.md.",
 };
 
 export const FEATURE_FLAG_DEFAULTS: Record<FeatureFlagKey, boolean> = {
@@ -239,6 +242,7 @@ export const FEATURE_FLAG_DEFAULTS: Record<FeatureFlagKey, boolean> = {
   STOCK_MGMT_STOCK_HOLD_QUEUE: true,
   STOCK_MGMT_VARIANCE_REPORTING: true,
   STOCK_MGMT_VALUATION_EXPORTS: true,
+  CV_ASSISTANT_EE_COMPLIANCE_ENABLED: false,
 };
 
 export type FeatureFlagCategory =
@@ -328,4 +332,5 @@ export const FEATURE_FLAG_CATEGORIES: Record<FeatureFlagKey, FeatureFlagCategory
   STOCK_MGMT_STOCK_HOLD_QUEUE: "stock-management",
   STOCK_MGMT_VARIANCE_REPORTING: "stock-management",
   STOCK_MGMT_VALUATION_EXPORTS: "stock-management",
+  CV_ASSISTANT_EE_COMPLIANCE_ENABLED: "addons",
 };

@@ -197,6 +197,7 @@ export class EeDisclosureService {
 
     const invite = await this.createInvite(candidate.id, candidate.jobPosting.id);
     const disclosureLink = this.disclosureLinkFor(invite.token);
+    const dpoEmail = this.dpoEmail();
 
     const sent = await this.emailTemplateService.renderAndSend({
       companyId,
@@ -207,10 +208,18 @@ export class EeDisclosureService {
         jobTitle: candidate.jobPosting.title,
         companyName: company.name,
         disclosureLink,
+        dpoEmail,
       },
     });
 
     return { sent, disclosureLink, alreadyUsed: invite.usedAt !== null };
+  }
+
+  private dpoEmail(): string {
+    return (
+      this.configService.get<string>("ANNIX_EE_DATA_PROTECTION_OFFICER_EMAIL") ??
+      "privacy@example.com"
+    );
   }
 
   private disclosureLinkFor(token: string): string {
