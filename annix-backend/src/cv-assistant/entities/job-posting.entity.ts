@@ -36,6 +36,15 @@ export enum WorkMode {
   REMOTE = "remote",
 }
 
+export enum OccupationalLevel {
+  TOP_MANAGEMENT = "top_management",
+  SENIOR_MANAGEMENT = "senior_management",
+  PROFESSIONALLY_QUALIFIED = "professionally_qualified",
+  SKILLED = "skilled",
+  SEMI_SKILLED = "semi_skilled",
+  UNSKILLED = "unskilled",
+}
+
 @Entity("cv_assistant_job_postings")
 export class JobPosting {
   @PrimaryGeneratedColumn()
@@ -124,6 +133,9 @@ export class JobPosting {
 
   @Column({ name: "work_mode", type: "text", nullable: true })
   workMode: WorkMode | null;
+
+  @Column({ name: "occupational_level", type: "varchar", length: 40, nullable: true })
+  occupationalLevel: OccupationalLevel | null;
 
   @Column({ name: "company_context", type: "text", nullable: true })
   companyContext: string | null;

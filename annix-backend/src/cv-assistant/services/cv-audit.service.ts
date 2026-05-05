@@ -15,6 +15,10 @@ export type ScreeningDecision =
 export type ConsentSource = "email" | "portal" | "admin";
 export type ErasureReason = "inactive" | "requested";
 
+export type EeAccessReason = "hr_view" | "candidate_self" | "ee_report" | "fairness_monitor";
+export type EeAttributesAction = "consent_recorded" | "correction_recorded" | "tombstoned";
+export type EeConsentChannel = "candidate_portal" | "post_application_email" | "hr_recorded";
+
 @Injectable()
 export class CvAuditService {
   private readonly logger = new Logger(CvAuditService.name);
@@ -89,6 +93,35 @@ export class CvAuditService {
       entityId: candidateId,
       userId: actorId,
       details: {},
+    });
+  }
+
+  async logEeAttributesAccess(
+    candidateId: number,
+    reason: EeAccessReason,
+    actorId: number | null,
+    purpose: string | null = null,
+  ): Promise<void> {
+    await this.safeLog({
+      subAction: "ee_attributes_access",
+      entityId: candidateId,
+      userId: actorId,
+      details: { reason, purpose },
+    });
+  }
+
+  async logEeAttributesAction(
+    candidateId: number,
+    action: EeAttributesAction,
+    channel: EeConsentChannel,
+    actorId: number | null,
+    consentTextVersionId: number | null = null,
+  ): Promise<void> {
+    await this.safeLog({
+      subAction: `ee_attributes_${action}`,
+      entityId: candidateId,
+      userId: actorId,
+      details: { action, channel, consentTextVersionId },
     });
   }
 

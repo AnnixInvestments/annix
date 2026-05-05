@@ -34,7 +34,10 @@ import { SettingsController } from "./controllers/settings.controller";
 import { Candidate } from "./entities/candidate.entity";
 import { CandidateJobMatch } from "./entities/candidate-job-match.entity";
 import { CandidateReference } from "./entities/candidate-reference.entity";
+import { CvAssistantCandidateEeAttributes } from "./entities/cv-assistant-candidate-ee-attributes.entity";
 import { CvAssistantCompany } from "./entities/cv-assistant-company.entity";
+import { CvAssistantEeConsentTextVersion } from "./entities/cv-assistant-ee-consent-text-version.entity";
+import { CvAssistantEeSectoralTarget } from "./entities/cv-assistant-ee-sectoral-target.entity";
 import { CvAssistantEmailTemplate } from "./entities/cv-assistant-email-template.entity";
 import { CvAssistantIndividualDocument } from "./entities/cv-assistant-individual-document.entity";
 import { CvAssistantProfile } from "./entities/cv-assistant-profile.entity";
@@ -108,6 +111,9 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
       CvAssistantUser,
       CvAssistantIndividualDocument,
       CvAssistantCompany,
+      CvAssistantCandidateEeAttributes,
+      CvAssistantEeConsentTextVersion,
+      CvAssistantEeSectoralTarget,
       CvAssistantEmailTemplate,
       InterviewSlot,
       InterviewBooking,
