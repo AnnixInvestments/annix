@@ -16,6 +16,7 @@ import { User } from "../user/entities/user.entity";
 import { AnalyticsController } from "./controllers/analytics.controller";
 import { CvAssistantAuthController } from "./controllers/auth.controller";
 import { CandidateController } from "./controllers/candidate.controller";
+import { ComplianceController } from "./controllers/compliance.controller";
 import { DashboardController } from "./controllers/dashboard.controller";
 import { EmailTemplateController } from "./controllers/email-template.controller";
 import { IndividualProfileController } from "./controllers/individual-profile.controller";
@@ -74,6 +75,7 @@ import { CvExtractionService } from "./services/cv-extraction.service";
 import { CvNotificationService } from "./services/cv-notification.service";
 import { CvScreeningService } from "./services/cv-screening.service";
 import { EeDisclosureService } from "./services/ee-disclosure.service";
+import { EeReportService } from "./services/ee-report.service";
 import { EmailTemplateService } from "./services/email-template.service";
 import { EmbeddingService } from "./services/embedding.service";
 import { IndividualProfileService } from "./services/individual-profile.service";
@@ -167,6 +169,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     InterviewBookingController,
     PublicInterviewBookingController,
     PublicEeDisclosureController,
+    ComplianceController,
   ],
   providers: [
     CvAssistantAuthGuard,
@@ -181,6 +184,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     CvEmailAdapterService,
     CvScreeningService,
     EeDisclosureService,
+    EeReportService,
     WorkflowAutomationService,
     SettingsService,
     AdzunaService,
