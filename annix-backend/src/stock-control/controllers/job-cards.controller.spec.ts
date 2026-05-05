@@ -6,6 +6,7 @@ import { RubberDimensionOverride } from "../entities/rubber-dimension-override.e
 import { StockItem } from "../entities/stock-item.entity";
 import { StockMovement } from "../entities/stock-movement.entity";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
+import { StockControlOnboardingGuard } from "../guards/stock-control-onboarding.guard";
 import { StockControlRoleGuard } from "../guards/stock-control-role.guard";
 import { CoatingAnalysisService } from "../services/coating-analysis.service";
 import { CpoService } from "../services/cpo.service";
@@ -159,6 +160,8 @@ describe("JobCardsController", () => {
       ],
     })
       .overrideGuard(StockControlAuthGuard)
+      .useValue({ canActivate: () => true })
+      .overrideGuard(StockControlOnboardingGuard)
       .useValue({ canActivate: () => true })
       .overrideGuard(StockControlRoleGuard)
       .useValue({ canActivate: () => true })

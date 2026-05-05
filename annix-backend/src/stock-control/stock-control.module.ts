@@ -116,6 +116,7 @@ import { WorkflowStepAssignment } from "./entities/workflow-step-assignment.enti
 import { WorkflowStepConfig } from "./entities/workflow-step-config.entity";
 import { MessagingEnabledGuard } from "./guards/messaging-enabled.guard";
 import { StockControlAuthGuard } from "./guards/stock-control-auth.guard";
+import { StockControlOnboardingGuard } from "./guards/stock-control-onboarding.guard";
 import { StockControlRoleGuard } from "./guards/stock-control-role.guard";
 import { QcModule } from "./qc/qc.module";
 import { ActionPermissionService } from "./services/action-permission.service";
@@ -315,6 +316,7 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
   providers: [
     StockControlAuthGuard,
     StockControlRoleGuard,
+    StockControlOnboardingGuard,
     MessagingEnabledGuard,
     StockControlAuthService,
     PublicBrandingService,

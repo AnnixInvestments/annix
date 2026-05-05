@@ -39,6 +39,7 @@ import { RubberDimensionOverride } from "../entities/rubber-dimension-override.e
 import { StockItem } from "../entities/stock-item.entity";
 import { MovementType, ReferenceType, StockMovement } from "../entities/stock-movement.entity";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
+import { StockControlOnboardingGuard } from "../guards/stock-control-onboarding.guard";
 import {
   PermissionKey,
   StockControlRoleGuard,
@@ -60,7 +61,7 @@ import { WorkflowNotificationService } from "../services/workflow-notification.s
 
 @ApiTags("Stock Control - Job Cards")
 @Controller("stock-control/job-cards")
-@UseGuards(StockControlAuthGuard, StockControlRoleGuard)
+@UseGuards(StockControlAuthGuard, StockControlOnboardingGuard, StockControlRoleGuard)
 export class JobCardsController {
   private readonly logger = new Logger(JobCardsController.name);
 

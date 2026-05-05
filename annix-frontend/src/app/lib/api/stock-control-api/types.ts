@@ -24,6 +24,8 @@ export interface StockControlUserProfile {
   companyId: number;
   companyName: string | null;
   tradingName: string | null;
+  legalName: string | null;
+  onboardingComplete: boolean;
   brandingType: string;
   primaryColor: string | null;
   accentColor: string | null;

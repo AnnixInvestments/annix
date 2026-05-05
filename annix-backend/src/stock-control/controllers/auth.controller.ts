@@ -16,10 +16,12 @@ import {
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import { Response } from "express";
 import { AdminAuthGuard } from "../../admin/guards/admin-auth.guard";
+import { CompleteOnboardingDto } from "../dto/complete-onboarding.dto";
 import { ProcessBrandingSelectionDto } from "../dto/process-branding-selection.dto";
 import { SetBrandingDto } from "../dto/set-branding.dto";
 import { UpdateCompanyDetailsDto } from "../dto/update-company-details.dto";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
+import { SkipOnboardingCheck } from "../guards/stock-control-onboarding.guard";
 import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
 import { ActionPermissionService } from "../services/action-permission.service";
 import { StockControlAuthService } from "../services/auth.service";
@@ -187,6 +189,15 @@ export class StockControlAuthController {
   @ApiOperation({ summary: "Current user profile" })
   async currentUser(@Req() req: any) {
     return this.authService.currentUser(req.user.unifiedUserId);
+  }
+
+  @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
+  @StockControlRoles("admin")
+  @SkipOnboardingCheck()
+  @Patch("me/onboarding")
+  @ApiOperation({ summary: "Complete company onboarding (sets onboardingComplete=true)" })
+  async completeOnboarding(@Req() req: any, @Body() body: CompleteOnboardingDto) {
+    return this.authService.completeOnboarding(req.user.companyId, req.user.unifiedUserId, body);
   }
 
   @UseGuards(StockControlAuthGuard)

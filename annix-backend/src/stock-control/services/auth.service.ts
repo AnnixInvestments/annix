@@ -17,6 +17,7 @@ import { now } from "../../lib/datetime";
 import { PasswordService } from "../../shared/auth/password.service";
 import { S3StorageService } from "../../storage/s3-storage.service";
 import { User } from "../../user/entities/user.entity";
+import { CompleteOnboardingDto } from "../dto/complete-onboarding.dto";
 import { UpdateCompanyDetailsDto } from "../dto/update-company-details.dto";
 import { PushSubscription } from "../entities/push-subscription.entity";
 import { StaffMember } from "../entities/staff-member.entity";
@@ -414,6 +415,8 @@ export class StockControlAuthService {
       companyId: company?.id ?? null,
       companyName: company?.name ?? null,
       tradingName: company?.tradingName ?? null,
+      legalName: company?.legalName ?? null,
+      onboardingComplete: company?.onboardingComplete ?? true,
       brandingType: company?.brandingType ?? BrandingType.ANNIX,
       primaryColor: company?.primaryColor ?? null,
       accentColor: company?.accentColor ?? null,
@@ -658,6 +661,61 @@ export class StockControlAuthService {
     }
 
     return { message: "Company details updated successfully." };
+  }
+
+  async completeOnboarding(companyId: number, unifiedUserId: number, dto: CompleteOnboardingDto) {
+    const legacy = await this.companyRepo.findOne({ where: { id: companyId } });
+    if (legacy) {
+      legacy.name = dto.legalName;
+      legacy.registrationNumber = dto.registrationNumber;
+      legacy.vatNumber = dto.vatNumber ?? null;
+      legacy.streetAddress = dto.streetAddress;
+      legacy.city = dto.city;
+      legacy.province = dto.province ?? null;
+      legacy.postalCode = dto.postalCode;
+      legacy.phone = dto.phone;
+      legacy.email = dto.email;
+      await this.companyRepo.save(legacy);
+    }
+
+    const unifiedIdResult = await this.profileRepo.manager.query(
+      "SELECT unified_company_id FROM stock_control_companies WHERE id = $1",
+      [companyId],
+    );
+    const unifiedCompanyId = unifiedIdResult[0]?.unified_company_id ?? companyId;
+
+    await this.profileRepo.manager.query(
+      `UPDATE companies SET
+        legal_name = $1,
+        name = $1,
+        trading_name = $2,
+        registration_number = $3,
+        vat_number = $4,
+        street_address = $5,
+        city = $6,
+        province = $7,
+        postal_code = $8,
+        phone = $9,
+        email = $10,
+        onboarding_complete = TRUE,
+        updated_at = NOW()
+      WHERE id = $11`,
+      [
+        dto.legalName,
+        dto.tradingName ?? null,
+        dto.registrationNumber,
+        dto.vatNumber ?? null,
+        dto.streetAddress,
+        dto.city,
+        dto.province ?? null,
+        dto.postalCode,
+        dto.phone,
+        dto.email,
+        unifiedCompanyId,
+      ],
+    );
+
+    return this.currentUser(unifiedUserId);
   }
 
   async teamMembers(companyId: number) {

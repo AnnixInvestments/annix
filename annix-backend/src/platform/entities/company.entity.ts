@@ -167,6 +167,9 @@ export class Company {
   @Column({ name: "bee_expiry_notification_sent_at", type: "timestamptz", nullable: true })
   beeExpiryNotificationSentAt: Date | null;
 
+  @Column({ name: "onboarding_complete", type: "boolean", default: false })
+  onboardingComplete: boolean;
+
   @OneToMany(
     () => CompanyModuleSubscription,
     (sub) => sub.company,
