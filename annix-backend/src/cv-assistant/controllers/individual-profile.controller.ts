@@ -19,6 +19,14 @@ import {
   isAcceptedDocumentMime,
 } from "../config/individual-documents.config";
 import { UploadIndividualDocumentDto } from "../dto/individual-profile.dto";
+import { UpdateSeekerEeAttributesDto } from "../dto/seeker-ee-attributes.dto";
+import type {
+  EeDisabilityStatus,
+  EeGender,
+  EeNationalityStatus,
+  EePopulationGroup,
+  EePurpose,
+} from "../entities/cv-assistant-candidate-ee-attributes.entity";
 import { CvAssistantAuthGuard } from "../guards/cv-assistant-auth.guard";
 import { IndividualProfileService } from "../services/individual-profile.service";
 import { InterviewBookingService } from "../services/interview-booking.service";
@@ -101,6 +109,33 @@ export class IndividualProfileController {
   @Post("withdraw-consent")
   withdrawConsent(@Request() req: { user: { id: number } }) {
     return this.individualProfileService.withdrawConsent(req.user.id);
+  }
+
+  @Get("ee-attributes")
+  eeAttributes(@Request() req: { user: { id: number } }) {
+    return this.individualProfileService.eeAttributesForUser(req.user.id);
+  }
+
+  @Patch("ee-attributes")
+  updateEeAttributes(
+    @Request() req: { user: { id: number } },
+    @Body() dto: UpdateSeekerEeAttributesDto,
+  ) {
+    return this.individualProfileService.updateEeAttributesForUser(req.user.id, {
+      populationGroup: dto.populationGroup as EePopulationGroup,
+      gender: dto.gender as EeGender,
+      disabilityStatus: dto.disabilityStatus as EeDisabilityStatus,
+      requiresAccommodation: dto.requiresAccommodation,
+      accommodationNotes: dto.accommodationNotes,
+      nationalityStatus: dto.nationalityStatus as EeNationalityStatus,
+      consentTextVersionId: dto.consentTextVersionId,
+      purposes: dto.purposes as EePurpose[],
+    });
+  }
+
+  @Delete("ee-attributes")
+  deleteEeAttributes(@Request() req: { user: { id: number } }) {
+    return this.individualProfileService.deleteEeAttributesForUser(req.user.id);
   }
 
   @Post("nix-wizard/cv-improvements")

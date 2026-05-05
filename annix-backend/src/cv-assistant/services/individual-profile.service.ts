@@ -9,13 +9,21 @@ import { User } from "../../user/entities/user.entity";
 import { isAcceptedDocumentMime } from "../config/individual-documents.config";
 import { Candidate } from "../entities/candidate.entity";
 import {
+  EeConsentSource,
+  type EeDisabilityStatus,
+  type EeGender,
+  type EeNationalityStatus,
+  type EePopulationGroup,
+  type EePurpose,
+} from "../entities/cv-assistant-candidate-ee-attributes.entity";
+import {
   CvAssistantIndividualDocument,
   IndividualDocumentKind,
 } from "../entities/cv-assistant-individual-document.entity";
 import { CvAssistantProfile, CvAssistantUserType } from "../entities/cv-assistant-profile.entity";
 import { CvAuditService } from "./cv-audit.service";
 import { CvExtractionService } from "./cv-extraction.service";
-import { PopiaService } from "./popia.service";
+import { type EeAttributesView, PopiaService } from "./popia.service";
 
 const DELETION_TOKEN_EXPIRY_HOURS = 1;
 
@@ -71,6 +79,29 @@ export interface IndividualDataExport {
     uploadedAt: Date;
   }>;
   extractedCv: unknown;
+  eeAttributes: Array<{
+    candidateId: number;
+    jobTitle: string | null;
+    populationGroup: string;
+    gender: string;
+    disabilityStatus: string;
+    requiresAccommodation: boolean;
+    nationalityStatus: string;
+    consentGrantedAt: Date;
+    consentTextVersionId: number;
+    purposes: string[];
+  }>;
+}
+
+export interface SeekerEeUpdateInput {
+  populationGroup: EePopulationGroup;
+  gender: EeGender;
+  disabilityStatus: EeDisabilityStatus;
+  requiresAccommodation: boolean;
+  accommodationNotes: string | null;
+  nationalityStatus: EeNationalityStatus;
+  consentTextVersionId: number;
+  purposes: EePurpose[];
 }
 
 @Injectable()
@@ -341,7 +372,114 @@ export class IndividualProfileService {
         uploadedAt: doc.uploadedAt,
       })),
       extractedCv: profile.extractedCvData,
+      eeAttributes: await this.eeAttributesForExport(user.email),
     };
+  }
+
+  private async eeAttributesForExport(email: string | null): Promise<
+    Array<{
+      candidateId: number;
+      jobTitle: string | null;
+      populationGroup: string;
+      gender: string;
+      disabilityStatus: string;
+      requiresAccommodation: boolean;
+      nationalityStatus: string;
+      consentGrantedAt: Date;
+      consentTextVersionId: number;
+      purposes: string[];
+    }>
+  > {
+    if (!email) return [];
+    const linkedCandidates = await this.candidateRepo.find({
+      where: { email },
+      relations: ["jobPosting"],
+    });
+    const rowsAcrossCandidates = await Promise.all(
+      linkedCandidates.map(async (candidate) => {
+        const view = await this.popiaService.eeAttributesForCandidate(
+          candidate.id,
+          "candidate_self",
+          null,
+        );
+        if (!view) return null;
+        return {
+          candidateId: candidate.id,
+          jobTitle: candidate.jobPosting?.title ?? null,
+          populationGroup: view.populationGroup,
+          gender: view.gender,
+          disabilityStatus: view.disabilityStatus,
+          requiresAccommodation: view.requiresAccommodation,
+          nationalityStatus: view.nationalityStatus,
+          consentGrantedAt: view.consentGrantedAt,
+          consentTextVersionId: view.consentTextVersionId,
+          purposes: view.purposes,
+        };
+      }),
+    );
+    return rowsAcrossCandidates.filter((r): r is NonNullable<typeof r> => r !== null);
+  }
+
+  async eeAttributesForUser(userId: number): Promise<EeAttributesView | null> {
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user?.email) return null;
+
+    const candidates = await this.candidateRepo.find({ where: { email: user.email } });
+    const views = await Promise.all(
+      candidates.map((c) =>
+        this.popiaService.eeAttributesForCandidate(c.id, "candidate_self", userId),
+      ),
+    );
+    const active = views.filter((v): v is EeAttributesView => v !== null);
+    if (active.length === 0) return null;
+    return active.reduce((latest, current) =>
+      current.consentGrantedAt.getTime() > latest.consentGrantedAt.getTime() ? current : latest,
+    );
+  }
+
+  async updateEeAttributesForUser(
+    userId: number,
+    input: SeekerEeUpdateInput,
+  ): Promise<{ updated: number }> {
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user?.email) throw new NotFoundException("User not found");
+
+    const candidates = await this.candidateRepo.find({ where: { email: user.email } });
+    if (candidates.length === 0) {
+      throw new BadRequestException(
+        "No candidacies found for your account; apply to a job first before disclosing.",
+      );
+    }
+
+    await Promise.all(
+      candidates.map((candidate) =>
+        this.popiaService.recordEeConsent({
+          candidateId: candidate.id,
+          populationGroup: input.populationGroup,
+          gender: input.gender,
+          disabilityStatus: input.disabilityStatus,
+          requiresAccommodation: input.requiresAccommodation,
+          accommodationNotes: input.accommodationNotes,
+          nationalityStatus: input.nationalityStatus,
+          consentTextVersionId: input.consentTextVersionId,
+          consentSource: EeConsentSource.CANDIDATE_PORTAL,
+          purposes: input.purposes,
+          actorId: userId,
+        }),
+      ),
+    );
+
+    return { updated: candidates.length };
+  }
+
+  async deleteEeAttributesForUser(userId: number): Promise<{ tombstoned: number }> {
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user?.email) throw new NotFoundException("User not found");
+
+    const candidates = await this.candidateRepo.find({ where: { email: user.email } });
+    await Promise.all(candidates.map((c) => this.popiaService.tombstoneEeAttributes(c.id, userId)));
+
+    return { tombstoned: candidates.length };
   }
 
   async requestAccountDeletion(userId: number): Promise<{ message: string; email: string }> {
