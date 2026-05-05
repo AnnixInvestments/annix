@@ -154,8 +154,19 @@ export interface UpdateJobWizardPayload {
 export interface PortalAdapterSummary {
   code: string;
   displayName: string;
-  costTier: "free" | "freemium" | "paid";
+  costTier: "free" | "freemium" | "paid" | "assisted";
+  postingMode: "api" | "assisted";
   available: boolean;
+}
+
+export interface AssistedPostingPackEntry {
+  portalCode: string;
+  displayName: string;
+  targetUrl: string;
+  copyTitle: string;
+  copyBody: string;
+  copyContact: string | null;
+  notes: string | null;
 }
 
 export interface PublicJobPosting {
@@ -1621,6 +1632,10 @@ class CvAssistantApiClient {
 
   async portalAdapters(): Promise<PortalAdapterSummary[]> {
     return this.request("/cv-assistant/portal-adapters");
+  }
+
+  async assistedPostingPack(jobPostingId: number): Promise<AssistedPostingPackEntry[]> {
+    return this.request(`/cv-assistant/job-postings/${jobPostingId}/assisted-posting-pack`);
   }
 
   async interviewSlotsForCompany(fromIso?: string | null): Promise<InterviewSlot[]> {

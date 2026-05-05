@@ -53,6 +53,7 @@ import { JobSuccessMetric } from "./entities/job-success-metric.entity";
 import { SalaryBenchmark } from "./entities/salary-benchmark.entity";
 import { CvAssistantAuthGuard } from "./guards/cv-assistant-auth.guard";
 import { CvAssistantRoleGuard } from "./guards/cv-assistant-role.guard";
+import { AssistedPortalAdapters } from "./services/adapters/assisted-portal-adapters.service";
 import { FacebookPortalAdapter } from "./services/adapters/facebook-portal-adapter.service";
 import { GumtreePortalAdapter } from "./services/adapters/gumtree-portal-adapter.service";
 import { IndeedPortalAdapter } from "./services/adapters/indeed-portal-adapter.service";
@@ -187,6 +188,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     LinkedInPortalAdapter,
     IndeedPortalAdapter,
     FacebookPortalAdapter,
+    AssistedPortalAdapters,
     NixJobAssistService,
     NixSeekerAssistService,
     SalaryBenchmarkService,

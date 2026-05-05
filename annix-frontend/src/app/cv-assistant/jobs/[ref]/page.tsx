@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { cvAssistantApiClient, type PublicJobPosting } from "@/app/lib/api/cvAssistantApi";
-import { formatDateLongZA } from "@/app/lib/datetime";
+import { formatDateLongZA, fromISO } from "@/app/lib/datetime";
 
 const EMPLOYMENT_TYPE_LABELS: Record<string, string> = {
   full_time: "Full-time",
@@ -14,6 +14,114 @@ const EMPLOYMENT_TYPE_LABELS: Record<string, string> = {
   internship: "Internship",
   learnership: "Learnership",
 };
+
+const SCHEMA_EMPLOYMENT_TYPE: Record<string, string> = {
+  full_time: "FULL_TIME",
+  part_time: "PART_TIME",
+  contract: "CONTRACTOR",
+  temporary: "TEMPORARY",
+  internship: "INTERN",
+  learnership: "OTHER",
+};
+
+interface JobPostingSchema {
+  "@context": "https://schema.org/";
+  "@type": "JobPosting";
+  title: string;
+  description: string;
+  datePosted: string;
+  validThrough?: string;
+  employmentType?: string;
+  hiringOrganization: {
+    "@type": "Organization";
+    name: string;
+  };
+  jobLocation: {
+    "@type": "Place";
+    address: {
+      "@type": "PostalAddress";
+      addressLocality?: string;
+      addressRegion?: string;
+      addressCountry: string;
+    };
+  };
+  baseSalary?: {
+    "@type": "MonetaryAmount";
+    currency: string;
+    value: {
+      "@type": "QuantitativeValue";
+      minValue?: number;
+      maxValue?: number;
+      unitText: "MONTH";
+    };
+  };
+  identifier: {
+    "@type": "PropertyValue";
+    name: string;
+    value: string;
+  };
+  directApply: boolean;
+}
+
+function buildJobPostingSchema(job: PublicJobPosting): JobPostingSchema {
+  const postedAt = job.postedAt;
+  const validThrough = fromISO(postedAt).plus({ days: 60 }).toISO();
+  const employmentTypeKey = job.employmentType;
+  const employmentType = employmentTypeKey ? SCHEMA_EMPLOYMENT_TYPE[employmentTypeKey] : null;
+  const minSalary = job.salaryMin;
+  const maxSalary = job.salaryMax;
+  const rawCurrency = job.salaryCurrency;
+  const currency = rawCurrency || "ZAR";
+  const hasSalary = minSalary !== null || maxSalary !== null;
+
+  const schema: JobPostingSchema = {
+    "@context": "https://schema.org/",
+    "@type": "JobPosting",
+    title: job.title,
+    description: job.description ? job.description : job.title,
+    datePosted: postedAt,
+    hiringOrganization: {
+      "@type": "Organization",
+      name: job.companyName ? job.companyName : "Confidential employer",
+    },
+    jobLocation: {
+      "@type": "Place",
+      address: {
+        "@type": "PostalAddress",
+        addressLocality: job.location ? job.location : undefined,
+        addressRegion: job.province ? job.province : undefined,
+        addressCountry: "ZA",
+      },
+    },
+    identifier: {
+      "@type": "PropertyValue",
+      name: job.companyName ? job.companyName : "CV Assistant",
+      value: job.referenceNumber,
+    },
+    directApply: false,
+  };
+
+  if (validThrough) {
+    schema.validThrough = validThrough;
+  }
+  if (employmentType) {
+    schema.employmentType = employmentType;
+  }
+  if (hasSalary) {
+    schema.baseSalary = {
+      "@type": "MonetaryAmount",
+      currency,
+      value: {
+        "@type": "QuantitativeValue",
+        minValue: minSalary !== null ? minSalary : undefined,
+        maxValue: maxSalary !== null ? maxSalary : undefined,
+        unitText: "MONTH",
+      },
+    };
+  }
+
+  return schema;
+}
 
 function formatSalaryBand(job: PublicJobPosting): string | null {
   const min = job.salaryMin;
@@ -96,8 +204,15 @@ export default function PublicJobPostingPage() {
   const mailtoSubject = encodeURIComponent(subjectLine);
   const mailtoLink = applyEmail ? `mailto:${applyEmail}?subject=${mailtoSubject}` : null;
 
+  const jobPostingSchema = buildJobPostingSchema(job);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40]">
+      <script
+        type="application/ld+json"
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: JSON-LD structured data for Google for Jobs indexing
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jobPostingSchema) }}
+      />
       <header className="bg-white/10 backdrop-blur border-b border-white/20">
         <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link href="/cv-assistant" className="text-white font-semibold">

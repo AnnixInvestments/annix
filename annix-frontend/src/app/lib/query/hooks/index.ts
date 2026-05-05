@@ -605,6 +605,7 @@ export {
   useCvUpdateJobMarketSource,
 } from "./cv-assistant/useCvJobMarket";
 export {
+  useCvAssistedPostingPack,
   useCvClearTestCandidates,
   useCvCreateJobDraft,
   useCvCreateJobPosting,

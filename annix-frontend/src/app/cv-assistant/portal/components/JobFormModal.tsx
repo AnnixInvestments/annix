@@ -72,7 +72,7 @@ export function JobFormModal({ job, onClose }: { job: JobPosting | null; onClose
   const defaultsKey = useMemo(
     () =>
       portalAdapters
-        .filter((p) => p.available)
+        .filter((p) => p.available && p.postingMode !== "assisted")
         .map((p) => p.code)
         .join(","),
     [portalAdapters],
@@ -327,13 +327,17 @@ export function JobFormModal({ job, onClose }: { job: JobPosting | null; onClose
                             ? "bg-green-100 text-green-700"
                             : tier === "freemium"
                               ? "bg-amber-100 text-amber-700"
-                              : "bg-[#e0e0f5] text-[#252560]"
+                              : tier === "assisted"
+                                ? "bg-blue-100 text-blue-700"
+                                : "bg-[#e0e0f5] text-[#252560]"
                         }`}
                       >
                         {tier}
                       </span>
                       {!available ? (
                         <span className="text-xs text-gray-400 italic">Coming soon</span>
+                      ) : adapter.postingMode === "assisted" ? (
+                        <span className="text-xs text-blue-700 italic">Manual paste</span>
                       ) : null}
                     </label>
                   );

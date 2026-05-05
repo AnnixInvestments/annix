@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  type AssistedPostingPackEntry,
   cvAssistantApiClient,
   type JobPosting,
   type PortalAdapterSummary,
@@ -12,6 +13,15 @@ export function useCvPortalAdapters() {
     queryKey: ["cv-assistant", "portal-adapters"],
     queryFn: () => cvAssistantApiClient.portalAdapters(),
     staleTime: 60 * 60 * 1000,
+  });
+}
+
+export function useCvAssistedPostingPack(jobPostingId: number | null) {
+  return useQuery<AssistedPostingPackEntry[]>({
+    queryKey: ["cv-assistant", "assisted-posting-pack", jobPostingId ?? 0],
+    queryFn: () => cvAssistantApiClient.assistedPostingPack(jobPostingId as number),
+    enabled: jobPostingId !== null && jobPostingId > 0,
+    staleTime: 5 * 60 * 1000,
   });
 }
 

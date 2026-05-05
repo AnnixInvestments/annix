@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { DataSource, Repository } from "typeorm";
+import { DataSource, In, Repository } from "typeorm";
 import { now } from "../../lib/datetime";
 import { Company } from "../../platform/entities/company.entity";
 import { CreateJobPostingDto, UpdateJobPostingDto } from "../dto/job-posting.dto";
@@ -393,6 +393,43 @@ export class JobPostingService {
   async activeJobPostingsForCompany(companyId: number): Promise<JobPosting[]> {
     return this.jobPostingRepo.find({
       where: { companyId, status: JobPostingStatus.ACTIVE },
+    });
+  }
+
+  async listActiveForFeed(): Promise<PublicJobPostingDto[]> {
+    const jobs = await this.jobPostingRepo.find({
+      where: { status: JobPostingStatus.ACTIVE },
+      order: { activatedAt: "DESC" },
+      take: 1000,
+    });
+    if (jobs.length === 0) return [];
+
+    const companyIds = Array.from(new Set(jobs.map((j) => j.companyId)));
+    const companies = await this.companyRepo.find({ where: { id: In(companyIds) } });
+    const companyById = new Map(companies.map((c) => [c.id, c]));
+
+    return jobs.map((job) => {
+      const company = companyById.get(job.companyId);
+      const refNumber = job.referenceNumber ? job.referenceNumber : `JOB-${job.id}`;
+      return {
+        referenceNumber: refNumber,
+        title: job.title,
+        description: job.description,
+        location: job.location,
+        province: job.province,
+        employmentType: job.employmentType,
+        salaryMin: job.salaryMin,
+        salaryMax: job.salaryMax,
+        salaryCurrency: job.salaryCurrency,
+        requiredSkills: job.requiredSkills,
+        requiredEducation: job.requiredEducation,
+        requiredCertifications: job.requiredCertifications,
+        minExperienceYears: job.minExperienceYears,
+        responseTimelineDays: job.responseTimelineDays,
+        applyByEmail: CV_ASSISTANT_APPLICATIONS_INBOX,
+        postedAt: job.activatedAt ? job.activatedAt : job.createdAt,
+        companyName: company?.name ? company.name : null,
+      };
     });
   }
 
