@@ -18,6 +18,7 @@ import {
 import { EmailTemplateService } from "./email-template.service";
 import { EmbeddingService } from "./embedding.service";
 import { JobMatchService } from "./job-match.service";
+import { formatMatchExplanation } from "./match-explanation";
 import { ReferenceService } from "./reference.service";
 
 const POPIA_RETENTION_MONTHS = 12;
@@ -221,6 +222,7 @@ export class WorkflowAutomationService {
 
     if (candidate.email && !candidate.rejectionSentAt) {
       const companyName = await this.companyName(jobPosting.companyId);
+      const explanation = formatMatchExplanation(candidate.matchAnalysis, jobPosting);
       const sent = await this.emailService.sendCvApplicationRejected({
         to: candidate.email,
         applicantName: candidate.name || "Applicant",
@@ -229,10 +231,18 @@ export class WorkflowAutomationService {
         companyName,
         reasons: categories,
         retentionMonths: POPIA_RETENTION_MONTHS,
+        matchExplanationBullets: explanation.bullets,
+        matchReasoningSummary: explanation.reasoning,
       });
 
       if (sent) {
         await this.candidateService.markRejectionSent(candidate.id);
+        await this.cvAuditService.logRejectionExplanation(candidate.id, jobPosting.id, {
+          channel: "auto_reject_email",
+          bullets: explanation.bullets,
+          reasoning: explanation.reasoning,
+          categories,
+        });
         this.logger.log(`Rejection email sent to candidate ${candidate.id}`);
       }
     }
@@ -284,6 +294,7 @@ export class WorkflowAutomationService {
 
       if (candidate.email && !candidate.rejectionSentAt) {
         const companyName = await this.companyName(candidate.jobPosting.companyId);
+        const explanation = formatMatchExplanation(candidate.matchAnalysis, candidate.jobPosting);
         const sent = await this.emailTemplateService.renderAndSend({
           companyId: candidate.jobPosting.companyId,
           kind: CvEmailTemplateKind.REJECTION,
@@ -292,11 +303,18 @@ export class WorkflowAutomationService {
             candidateName: candidate.name || "Applicant",
             jobTitle: candidate.jobPosting.title,
             companyName,
+            matchExplanation: explanation.text,
           },
         });
 
         if (sent) {
           await this.candidateService.markRejectionSent(candidate.id);
+          await this.cvAuditService.logRejectionExplanation(candidate.id, candidate.jobPosting.id, {
+            channel: "manual_reject_email",
+            bullets: explanation.bullets,
+            reasoning: explanation.reasoning,
+            hrReason: reason,
+          });
         }
       }
 

@@ -2084,6 +2084,8 @@ This is an automated notification from the Annix test site.
     companyName: string;
     reasons: Array<"experience" | "qualifications" | "certifications" | "skills">;
     retentionMonths: number;
+    matchExplanationBullets?: string[];
+    matchReasoningSummary?: string | null;
   }): Promise<boolean> {
     const reasonLabels: Record<string, string> = {
       experience: "minimum years of relevant experience",
@@ -2101,6 +2103,16 @@ This is an automated notification from the Annix test site.
       ? `<p style="color: #6b7280; font-size: 14px;">Reference: <strong>${options.jobReference}</strong></p>`
       : "";
 
+    const explanationBullets = options.matchExplanationBullets ?? [];
+    const explanationSection =
+      explanationBullets.length > 0 || options.matchReasoningSummary
+        ? `
+          <p style="margin-top: 18px;"><strong>How the automated screening assessed your application (POPIA s71):</strong></p>
+          ${explanationBullets.length > 0 ? `<ul>${explanationBullets.map((b) => `<li>${b}</li>`).join("")}</ul>` : ""}
+          ${options.matchReasoningSummary ? `<p style="font-style: italic; color: #4b5563;">${options.matchReasoningSummary}</p>` : ""}
+          <p style="color: #6b7280; font-size: 14px;">You may request human review of this automated decision by replying to this email.</p>`
+        : "";
+
     const html = emailLayout({
       title: "Application Update",
       heading: "Application Update",
@@ -2111,6 +2123,7 @@ This is an automated notification from the Annix test site.
           ${refLine}
           <p>After reviewing your application, we are unable to take it forward at this time. Based on the requirements set for this role, your CV did not align on:</p>
           <ul>${reasonItems}</ul>
+          ${explanationSection}
           <p>This decision is specific to this vacancy and is not a reflection of your wider experience.</p>
           <p style="color: #6b7280; font-size: 14px;"><strong>Your data and POPIA rights:</strong> Under the Protection of Personal Information Act (POPIA), we will retain your CV and application details for up to <strong>${options.retentionMonths} months</strong> so that we can consider you for future suitable roles. You have the right to request access to, correction of, or erasure of your personal information at any time by replying to this email or contacting <strong>${options.companyName}</strong> directly.</p>
           <p>We wish you every success in your job search.</p>

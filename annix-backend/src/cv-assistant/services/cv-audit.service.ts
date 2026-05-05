@@ -138,6 +138,19 @@ export class CvAuditService {
     });
   }
 
+  async logRejectionExplanation(
+    candidateId: number,
+    jobPostingId: number,
+    explanation: Record<string, unknown>,
+  ): Promise<void> {
+    await this.safeLog({
+      subAction: "rejection_explanation_disclosed",
+      entityId: candidateId,
+      userId: null,
+      details: { jobPostingId, ...explanation },
+    });
+  }
+
   private async safeLog(input: {
     subAction: string;
     entityId: number | null;

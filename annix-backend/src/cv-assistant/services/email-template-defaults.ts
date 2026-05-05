@@ -19,6 +19,9 @@ const REJECTION: EmailTemplateDefinition = {
   bodyHtml: `<p>Dear {{candidateName}},</p>
 <p>Thank you for your interest in the <strong>{{jobTitle}}</strong> position at {{companyName}} and for taking the time to apply.</p>
 <p>After careful consideration of your application, we regret to inform you that we will not be moving forward with your candidacy at this time.</p>
+<p style="margin-top: 18px;"><strong>How the screening assessed your application (POPIA s71):</strong></p>
+<p style="white-space: pre-wrap; color: #4b5563;">{{matchExplanation}}</p>
+<p style="color: #6b7280; font-size: 14px;">You may request human review of this decision by replying to this email.</p>
 <p>We appreciate your interest in our company and wish you the best in your job search.</p>`,
   bodyText: `Dear {{candidateName}},
 
@@ -26,8 +29,13 @@ Thank you for your interest in the {{jobTitle}} position at {{companyName}} and 
 
 After careful consideration of your application, we regret to inform you that we will not be moving forward with your candidacy at this time.
 
+How the screening assessed your application (POPIA s71):
+{{matchExplanation}}
+
+You may request human review of this decision by replying to this email.
+
 We appreciate your interest in our company and wish you the best in your job search.`,
-  placeholders: ["candidateName", "jobTitle", "companyName"],
+  placeholders: ["candidateName", "jobTitle", "companyName", "matchExplanation"],
 };
 
 const SHORTLIST: EmailTemplateDefinition = {
