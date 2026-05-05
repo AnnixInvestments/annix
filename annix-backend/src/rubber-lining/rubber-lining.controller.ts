@@ -1069,10 +1069,14 @@ Formula: totalPrice = totalKg × salePricePerKg
   @Header("Cache-Control", "private, max-age=3000")
   @ApiOperation({ summary: "Get presigned URL for a document" })
   @ApiQuery({ name: "path", description: "Document path in storage" })
-  @ApiResponse({ status: 200, description: "Presigned URL for the document" })
-  async documentUrl(@Query("path") path: string): Promise<{ url: string }> {
+  @ApiResponse({ status: 200, description: "Presigned URL or null if file is missing" })
+  async documentUrl(@Query("path") path: string): Promise<{ url: string | null }> {
     if (!path) {
       throw new NotFoundException("Document path is required");
+    }
+    const exists = await this.storageService.exists(path);
+    if (!exists) {
+      return { url: null };
     }
     const url = await this.storageService.presignedUrl(path);
     return { url };

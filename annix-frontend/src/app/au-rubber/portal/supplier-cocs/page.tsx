@@ -1105,6 +1105,13 @@ export default function SupplierCocsPage() {
                                     const graphPath = coc.graphPdfPath;
                                     if (!graphPath) return;
                                     const url = await documentUrlMutation.mutateAsync(graphPath);
+                                    if (!url) {
+                                      showToast(
+                                        "Rheometer graph PDF is missing from storage",
+                                        "error",
+                                      );
+                                      return;
+                                    }
                                     window.open(url, "_blank");
                                   }}
                                   className="text-blue-600 hover:text-blue-800 inline-flex items-center"

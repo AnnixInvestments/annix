@@ -1429,8 +1429,8 @@ class AuRubberApiClient {
     return `${this.baseURL}/rubber-lining/portal/au-cocs/${id}/pdf-with-graph/${supplierCocId}`;
   }
 
-  async documentUrl(documentPath: string): Promise<string> {
-    const response = await this.request<{ url: string }>(
+  async documentUrl(documentPath: string): Promise<string | null> {
+    const response = await this.request<{ url: string | null }>(
       `/rubber-lining/portal/documents/url?path=${encodeURIComponent(documentPath)}`,
     );
     return response.url;

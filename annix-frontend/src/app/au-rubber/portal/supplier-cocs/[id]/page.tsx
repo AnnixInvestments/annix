@@ -1,7 +1,7 @@
 "use client";
 
 import { isArray, keys, values } from "es-toolkit/compat";
-import { Check, Download, FileText, Pencil, RefreshCw, Trash2, X } from "lucide-react";
+import { Check, Download, FileText, FileWarning, Pencil, RefreshCw, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -79,6 +79,7 @@ export default function SupplierCocDetailPage() {
   const [editBatchFields, setEditBatchFields] = useState<Record<string, string>>({});
   const [isSavingBatch, setIsSavingBatch] = useState(false);
   const [documentUrl, setDocumentUrl] = useState<string | null>(null);
+  const [documentMissing, setDocumentMissing] = useState(false);
   const [isEditingExtracted, setIsEditingExtracted] = useState(false);
   const [editedBatches, setEditedBatches] = useState<ExtractedBatch[]>([]);
   const [editedExtractedFields, setEditedExtractedFields] = useState<Record<string, string>>({});
@@ -141,6 +142,10 @@ export default function SupplierCocDetailPage() {
       if (cocData.documentPath) {
         const url = await auRubberApiClient.documentUrl(cocData.documentPath);
         setDocumentUrl(url);
+        setDocumentMissing(url === null);
+      } else {
+        setDocumentUrl(null);
+        setDocumentMissing(false);
       }
 
       setError(null);
@@ -512,6 +517,21 @@ export default function SupplierCocDetailPage() {
             />
           ) : documentUrl ? (
             <iframe src={documentUrl} className="w-full h-full" title="CoC Document" />
+          ) : documentMissing ? (
+            <div className="flex flex-col items-center justify-center h-full p-6 text-center">
+              <FileWarning className="w-12 h-12 text-amber-500 mb-3" />
+              <h3 className="text-base font-semibold text-gray-900">
+                Document missing from storage
+              </h3>
+              <p className="mt-2 text-sm text-gray-600 max-w-md">
+                The PDF for this CoC is no longer available in storage. Extracted data below is
+                preserved. To restore the document, forward the original supplier email again or
+                upload the PDF manually.
+              </p>
+              <p className="mt-3 text-xs text-gray-400 font-mono break-all max-w-md">
+                {coc.documentPath}
+              </p>
+            </div>
           ) : (
             <div className="flex items-center justify-center h-full text-gray-500">
               No document available
