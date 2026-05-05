@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import type { Candidate, InterviewSlot } from "@/app/lib/api/cvAssistantApi";
@@ -99,7 +100,15 @@ export function InterviewSlotsPanel(props: InterviewSlotsPanelProps) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h4 className="text-sm font-semibold text-gray-900">Interview slots for this job</h4>
+        <div>
+          <h4 className="text-sm font-semibold text-gray-900">Interview slots for this job</h4>
+          <Link
+            href={`/cv-assistant/portal/jobs/${jobPostingId}/slots`}
+            className="text-xs text-[#323288] hover:text-[#252560] underline"
+          >
+            View all slots for this job →
+          </Link>
+        </div>
         <div className="flex items-center gap-2">
           <button
             type="button"

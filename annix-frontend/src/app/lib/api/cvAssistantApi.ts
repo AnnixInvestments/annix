@@ -732,6 +732,28 @@ export interface SeekerInterviewInvite {
   } | null;
 }
 
+export interface NixCalendarAdvisoryConflict {
+  bookingId: number;
+  type: "overlap" | "insufficient-travel";
+  prevSlot: {
+    endsAt: string;
+    locationLabel: string | null;
+    locationAddress: string | null;
+  };
+  nextSlot: {
+    startsAt: string;
+    endsAt: string;
+    locationLabel: string | null;
+    locationAddress: string | null;
+  };
+  travelMinutes: number | null;
+  gapMinutes: number;
+}
+
+export interface NixCalendarAdvisoryResponse {
+  advisories: Array<{ bookingId: number; message: string }>;
+}
+
 const apiClient: ApiClient = createApiClient({
   baseURL: API_BASE_URL,
   tokenStore: cvAssistantTokenStore,
@@ -1634,6 +1656,15 @@ class CvAssistantApiClient {
 
   async myInterviewInvites(): Promise<SeekerInterviewInvite[]> {
     return this.request("/cv-assistant/me/interview-invites");
+  }
+
+  async calendarAdvisory(
+    conflicts: NixCalendarAdvisoryConflict[],
+  ): Promise<NixCalendarAdvisoryResponse> {
+    return this.request("/cv-assistant/me/calendar-advisory", {
+      method: "POST",
+      body: JSON.stringify({ conflicts }),
+    });
   }
 }
 

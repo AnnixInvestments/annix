@@ -585,6 +585,7 @@ export {
   useCvWithdrawMyConsent,
 } from "./cv-assistant/useCvIndividualProfile";
 export {
+  useCvCalendarAdvisory,
   useCvCreateInterviewSlot,
   useCvDeleteInterviewSlot,
   useCvInterviewSlotsForCompany,

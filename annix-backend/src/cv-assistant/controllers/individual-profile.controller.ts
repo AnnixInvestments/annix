@@ -22,6 +22,7 @@ import { UploadIndividualDocumentDto } from "../dto/individual-profile.dto";
 import { CvAssistantAuthGuard } from "../guards/cv-assistant-auth.guard";
 import { IndividualProfileService } from "../services/individual-profile.service";
 import { InterviewBookingService } from "../services/interview-booking.service";
+import type { NixCalendarAdvisoryConflict } from "../services/nix-prompts";
 import { NixSeekerAssistService } from "../services/nix-seeker-assist.service";
 
 @Controller("cv-assistant/me")
@@ -139,6 +140,12 @@ export class IndividualProfileController {
           }
         : null,
     }));
+  }
+
+  @Post("calendar-advisory")
+  async calendarAdvisory(@Body() body: { conflicts: NixCalendarAdvisoryConflict[] }) {
+    const conflicts = body.conflicts ? body.conflicts : [];
+    return this.nixSeekerAssistService.calendarAdvisory(conflicts);
   }
 
   @Get("interview-invites")

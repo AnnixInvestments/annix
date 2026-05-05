@@ -665,6 +665,63 @@ Rules:
   };
 }
 
+export interface NixCalendarAdvisoryConflict {
+  bookingId: number;
+  type: "overlap" | "insufficient-travel";
+  prevSlot: {
+    endsAt: string;
+    locationLabel: string | null;
+    locationAddress: string | null;
+  };
+  nextSlot: {
+    startsAt: string;
+    endsAt: string;
+    locationLabel: string | null;
+    locationAddress: string | null;
+  };
+  travelMinutes: number | null;
+  gapMinutes: number;
+}
+
+export interface NixCalendarAdvisoryResponse {
+  advisories: Array<{
+    bookingId: number;
+    message: string;
+  }>;
+}
+
+export function calendarAdvisoryPrompt(conflicts: NixCalendarAdvisoryConflict[]): NixPrompt {
+  const items = conflicts.map((c) => {
+    const prevLoc = c.prevSlot.locationLabel || c.prevSlot.locationAddress || "(unknown)";
+    const nextLoc = c.nextSlot.locationLabel || c.nextSlot.locationAddress || "(unknown)";
+    const travelStr = c.travelMinutes === null ? "(unknown)" : `~${c.travelMinutes} min`;
+    return `- bookingId ${c.bookingId} (${c.type}): previous interview ends at ${c.prevSlot.endsAt} at ${prevLoc}; next interview starts at ${c.nextSlot.startsAt} at ${nextLoc}. Gap = ${Math.round(c.gapMinutes)} min, driving = ${travelStr}.`;
+  });
+  return {
+    system: SA_SYSTEM_PREAMBLE,
+    user: `A job seeker has back-to-back interviews on the same day that may conflict. Write a one-sentence advisory for each booking flagged below.
+
+Conflicts:
+${items.join("\n")}
+
+Return JSON with this exact shape:
+{
+  "advisories": [
+    { "bookingId": <number>, "message": "<one sentence>" }
+  ]
+}
+
+Rules:
+- One advisory per input bookingId. Same number of items, same order.
+- Each message: a single sentence, 15-30 words, candidate-facing, plain English.
+- For "overlap": state that the two interviews overlap and suggest asking for a different time. Don't moralise.
+- For "insufficient-travel": reference the locations (use the labels if present, otherwise just "the previous interview"), the drive time, and the gap. Mention SA-specific factors only if obvious (e.g. peak-hour traffic between Sandton and Centurion).
+- Action-oriented close ("Consider asking the second company for a later slot." / "Reply to the second invitation asking for a 30-minute push.").
+- No emojis. No markdown. No bullet lists.
+- If travelMinutes is "(unknown)", say "the drive between locations may not fit the gap" instead of inventing a number.`,
+  };
+}
+
 /**
  * Helper: extract Gemini's JSON content even if the model wrapped it in
  * a code fence or added stray narrative. Throws if no parseable JSON

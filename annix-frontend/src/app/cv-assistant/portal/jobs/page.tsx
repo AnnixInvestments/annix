@@ -186,6 +186,12 @@ export default function JobsPage() {
                             </button>
                           )}
                           <button
+                            onClick={() => router.push(`/cv-assistant/portal/jobs/${job.id}/slots`)}
+                            className="text-[#FFA500] hover:text-[#FFB733]"
+                          >
+                            Slots
+                          </button>
+                          <button
                             onClick={() => router.push(`/cv-assistant/portal/jobs/${job.id}/edit`)}
                             className="text-[#323288] hover:text-[#252560]"
                           >

@@ -3,9 +3,16 @@
 import { useJsApiLoader } from "@react-google-maps/api";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import type { SeekerInterviewBooking } from "@/app/lib/api/cvAssistantApi";
+import type {
+  NixCalendarAdvisoryConflict,
+  SeekerInterviewBooking,
+} from "@/app/lib/api/cvAssistantApi";
 import { DateTime, formatDateLongZA, formatTimeZA, fromISO, now } from "@/app/lib/datetime";
-import { useCvMyInterviewBookings, useCvMyInterviewInvites } from "@/app/lib/query/hooks";
+import {
+  useCvCalendarAdvisory,
+  useCvMyInterviewBookings,
+  useCvMyInterviewInvites,
+} from "@/app/lib/query/hooks";
 
 type LibraryName = "places";
 const libraries: LibraryName[] = ["places"];
@@ -171,6 +178,74 @@ export default function SeekerCalendarPage() {
     }, new Map());
   }, [conflicts]);
 
+  const advisoryMutation = useCvCalendarAdvisory();
+  const [nixMessageByBookingId, setNixMessageByBookingId] = useState<Record<number, string>>({});
+
+  const advisoryPayload = useMemo<NixCalendarAdvisoryConflict[]>(() => {
+    const sorted = [...upcomingBookings].sort((a, b) => slotStartMillis(a) - slotStartMillis(b));
+    return sorted.reduce<NixCalendarAdvisoryConflict[]>((acc, prev, i) => {
+      if (i === sorted.length - 1) return acc;
+      const next = sorted[i + 1];
+      const prevSlot = prev.slot;
+      const nextSlot = next.slot;
+      if (!prevSlot || !nextSlot) return acc;
+      if (!sameDay(prevSlot.startsAt, nextSlot.startsAt)) return acc;
+      const gap = minutesBetween(nextSlot.startsAt, prevSlot.endsAt);
+      const travelMin = travelMinutesByPair[`${prev.id}-${next.id}`];
+      const isOverlap = gap < 0;
+      const insufficient =
+        !isOverlap && travelMin != null && gap < travelMin + TRAVEL_BUFFER_MINUTES;
+      if (!isOverlap && !insufficient) return acc;
+      acc.push({
+        bookingId: next.id,
+        type: isOverlap ? "overlap" : "insufficient-travel",
+        prevSlot: {
+          endsAt: prevSlot.endsAt,
+          locationLabel: prevSlot.locationLabel,
+          locationAddress: prevSlot.locationAddress,
+        },
+        nextSlot: {
+          startsAt: nextSlot.startsAt,
+          endsAt: nextSlot.endsAt,
+          locationLabel: nextSlot.locationLabel,
+          locationAddress: nextSlot.locationAddress,
+        },
+        travelMinutes: travelMin == null ? null : travelMin,
+        gapMinutes: gap,
+      });
+      return acc;
+    }, []);
+  }, [upcomingBookings, travelMinutesByPair]);
+
+  const advisoryKey = useMemo(
+    () =>
+      advisoryPayload
+        .map((c) => {
+          const travel = c.travelMinutes;
+          const travelStr = travel === null ? "null" : String(travel);
+          return `${c.bookingId}:${c.type}:${travelStr}:${Math.round(c.gapMinutes)}`;
+        })
+        .join("|"),
+    [advisoryPayload],
+  );
+
+  const advisoryMutate = advisoryMutation.mutate;
+  useEffect(() => {
+    if (advisoryPayload.length === 0) {
+      setNixMessageByBookingId({});
+      return;
+    }
+    advisoryMutate(advisoryPayload, {
+      onSuccess: (response) => {
+        const next = response.advisories.reduce<Record<number, string>>((acc, a) => {
+          acc[a.bookingId] = a.message;
+          return acc;
+        }, {});
+        setNixMessageByBookingId(next);
+      },
+    });
+  }, [advisoryKey, advisoryMutate, advisoryPayload]);
+
   const bookingsByDay = useMemo(() => {
     const grouped = upcomingBookings.reduce<Map<string, SeekerInterviewBooking[]>>((map, b) => {
       const slot = b.slot;
@@ -306,14 +381,10 @@ export default function SeekerCalendarPage() {
                         </div>
                         {hasConflict ? (
                           <div className="mt-2 space-y-1">
-                            {conflictsForBooking.map((c, idx) => (
-                              <p
-                                key={`${c.type}-${idx}`}
-                                className="text-xs text-red-800 font-medium"
-                              >
-                                ⚠ {c.message}
-                              </p>
-                            ))}
+                            <ConflictAdvisory
+                              fallbackConflicts={conflictsForBooking}
+                              nixMessage={nixMessageByBookingId[booking.id]}
+                            />
                           </div>
                         ) : null}
                       </li>
@@ -326,5 +397,26 @@ export default function SeekerCalendarPage() {
         </div>
       )}
     </div>
+  );
+}
+
+interface ConflictAdvisoryProps {
+  fallbackConflicts: BookingConflict[];
+  nixMessage: string | undefined;
+}
+
+function ConflictAdvisory(props: ConflictAdvisoryProps) {
+  const message = props.nixMessage;
+  if (message) {
+    return <p className="text-xs text-red-800 font-medium">⚠ {message}</p>;
+  }
+  return (
+    <>
+      {props.fallbackConflicts.map((c, idx) => (
+        <p key={`${c.type}-${idx}`} className="text-xs text-red-800 font-medium">
+          ⚠ {c.message}
+        </p>
+      ))}
+    </>
   );
 }

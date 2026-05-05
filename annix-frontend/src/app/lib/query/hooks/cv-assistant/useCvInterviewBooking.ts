@@ -3,6 +3,8 @@ import {
   type CreateInterviewSlotInput,
   cvAssistantApiClient,
   type InterviewSlot,
+  type NixCalendarAdvisoryConflict,
+  type NixCalendarAdvisoryResponse,
   type SeekerInterviewBooking,
   type SeekerInterviewInvite,
 } from "@/app/lib/api/cvAssistantApi";
@@ -72,5 +74,11 @@ export function useCvMyInterviewInvites() {
     queryKey: cvAssistantKeys.individualProfile.interviewInvites(),
     queryFn: () => cvAssistantApiClient.myInterviewInvites(),
     staleTime: 60 * 1000,
+  });
+}
+
+export function useCvCalendarAdvisory() {
+  return useMutation<NixCalendarAdvisoryResponse, Error, NixCalendarAdvisoryConflict[]>({
+    mutationFn: (conflicts) => cvAssistantApiClient.calendarAdvisory(conflicts),
   });
 }

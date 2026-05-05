@@ -14,6 +14,9 @@ import {
 } from "../entities/cv-assistant-individual-document.entity";
 import { CvAssistantProfile, CvAssistantUserType } from "../entities/cv-assistant-profile.entity";
 import {
+  calendarAdvisoryPrompt,
+  type NixCalendarAdvisoryConflict,
+  type NixCalendarAdvisoryResponse,
   type NixSeekerCvAssessmentResponse,
   parseNixJson,
   seekerCvImprovementPrompt,
@@ -92,6 +95,19 @@ export class NixSeekerAssistService {
       });
       const result = await this.callAi(prompt);
       return parseNixJson<NixSeekerCvAssessmentResponse>(result.content);
+    });
+  }
+
+  async calendarAdvisory(
+    conflicts: NixCalendarAdvisoryConflict[],
+  ): Promise<NixCalendarAdvisoryResponse> {
+    if (conflicts.length === 0) {
+      return { advisories: [] };
+    }
+    return this.metrics.time(METRIC_CATEGORY, "calendar-advisory", async () => {
+      const prompt = calendarAdvisoryPrompt(conflicts);
+      const result = await this.callAi(prompt);
+      return parseNixJson<NixCalendarAdvisoryResponse>(result.content);
     });
   }
 
