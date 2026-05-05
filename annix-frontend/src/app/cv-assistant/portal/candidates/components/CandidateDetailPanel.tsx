@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import type { Candidate } from "@/app/lib/api/cvAssistantApi";
+import { InterviewSlotsPanel } from "./InterviewSlotsPanel";
 
 interface CandidateDetailPanelProps {
   candidateId: number | null;
@@ -241,6 +242,10 @@ export function CandidateDetailPanel(props: CandidateDetailPanelProps) {
               </ul>
             </Section>
           )}
+
+          <Section title="Interview">
+            <InterviewSlotsPanel candidate={candidate} />
+          </Section>
         </div>
       </div>
     </div>,

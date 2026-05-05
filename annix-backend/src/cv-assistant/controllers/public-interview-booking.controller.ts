@@ -9,10 +9,13 @@ export class PublicInterviewBookingController {
   async lookup(@Param("token") token: string) {
     if (!token) throw new NotFoundException("Token is required");
     const result = await this.bookings.lookupByToken(token);
+    const extracted = result.candidate.extractedData;
+    const candidateLocation = extracted ? extracted.location : null;
     return {
       candidate: {
         name: result.candidate.name,
         email: result.candidate.email,
+        location: candidateLocation,
       },
       job: {
         id: result.job.id,

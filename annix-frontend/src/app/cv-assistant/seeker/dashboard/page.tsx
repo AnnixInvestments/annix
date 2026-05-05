@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { useCvAssistantAuth } from "@/app/context/CvAssistantAuthContext";
-import { useCvMyProfileStatus } from "@/app/lib/query/hooks";
+import { formatDateLongZA } from "@/app/lib/datetime";
+import { useCvMyInterviewInvites, useCvMyProfileStatus } from "@/app/lib/query/hooks";
 
 export default function SeekerDashboardPage() {
   const { user } = useCvAssistantAuth();
   const statusQuery = useCvMyProfileStatus();
+  const invitesQuery = useCvMyInterviewInvites();
   const userName = user?.name;
   const firstNameToken = userName ? userName.split(" ")[0] : null;
   const firstName = firstNameToken ? firstNameToken : "there";
@@ -14,6 +16,10 @@ export default function SeekerDashboardPage() {
   const hasCv = status ? status.hasCv : false;
   const missingOptional =
     hasCv && status && (status.qualificationsCount === 0 || status.certificatesCount === 0);
+
+  const invitesData = invitesQuery.data;
+  const invites = invitesData ? invitesData : [];
+  const openInvites = invites.filter((invite) => invite.usedAt === null);
 
   return (
     <div className="space-y-6">
@@ -23,6 +29,57 @@ export default function SeekerDashboardPage() {
           Your CV Assistant job seeker workspace. We will be adding more here soon.
         </p>
       </div>
+
+      {openInvites.length > 0 ? (
+        <div className="bg-gradient-to-br from-[#FFA500] to-[#FFB733] rounded-xl shadow-lg p-5">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-2xl shrink-0">
+              ✉
+            </div>
+            <div className="flex-1 min-w-0">
+              <h2 className="text-lg font-bold text-[#1a1a40]">
+                {openInvites.length === 1
+                  ? "You have an interview invitation"
+                  : `${openInvites.length} interview invitations`}
+              </h2>
+              <ul className="mt-2 space-y-2">
+                {openInvites.map((invite) => {
+                  const job = invite.jobPosting;
+                  const jobTitle = job ? job.title : "An employer";
+                  const jobLocation = job ? job.location : null;
+                  return (
+                    <li
+                      key={invite.id}
+                      className="bg-white/95 rounded-lg px-3 py-2 flex items-center justify-between gap-3"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-[#1a1a40] truncate">
+                          {jobTitle}
+                          {jobLocation ? (
+                            <span className="text-gray-600 font-normal">
+                              {" — "}
+                              {jobLocation}
+                            </span>
+                          ) : null}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          Reply by {formatDateLongZA(invite.expiresAt)}
+                        </p>
+                      </div>
+                      <Link
+                        href={`/cv-assistant/interview-booking/${invite.token}`}
+                        className="text-xs font-semibold px-3 py-1.5 bg-[#252560] text-white rounded-lg hover:bg-[#1a1a40] whitespace-nowrap"
+                      >
+                        Pick a time
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {!hasCv && (
         <div className="rounded-xl bg-gradient-to-br from-[#FFA500] to-[#FFB733] shadow-lg p-6 sm:p-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

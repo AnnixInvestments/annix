@@ -282,6 +282,20 @@ export class InterviewBookingService {
     });
   }
 
+  async openInvitesForIndividualByEmail(email: string): Promise<InterviewInvite[]> {
+    const candidates = await this.candidateRepo.find({ where: { email } });
+    if (candidates.length === 0) return [];
+    const invites = await this.inviteRepo.find({
+      where: {
+        candidateId: In(candidates.map((c) => c.id)),
+      },
+      relations: ["jobPosting"],
+      order: { createdAt: "DESC" },
+    });
+    const nowMs = Date.now();
+    return invites.filter((i) => i.expiresAt.getTime() > nowMs);
+  }
+
   private bookingLinkFor(token: string): string {
     const baseUrl = this.configService.get<string>("FRONTEND_URL") ?? "http://localhost:3000";
     return `${baseUrl}/cv-assistant/interview-booking/${token}`;

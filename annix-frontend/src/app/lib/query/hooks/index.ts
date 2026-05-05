@@ -585,6 +585,15 @@ export {
   useCvWithdrawMyConsent,
 } from "./cv-assistant/useCvIndividualProfile";
 export {
+  useCvCreateInterviewSlot,
+  useCvDeleteInterviewSlot,
+  useCvInterviewSlotsForCompany,
+  useCvInterviewSlotsForJob,
+  useCvMyInterviewBookings,
+  useCvMyInterviewInvites,
+  useCvSendInterviewInvite,
+} from "./cv-assistant/useCvInterviewBooking";
+export {
   useCvCreateJobMarketSource,
   useCvDeleteJobMarketSource,
   useCvExternalJobs,

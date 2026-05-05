@@ -21,6 +21,7 @@ import {
 import { UploadIndividualDocumentDto } from "../dto/individual-profile.dto";
 import { CvAssistantAuthGuard } from "../guards/cv-assistant-auth.guard";
 import { IndividualProfileService } from "../services/individual-profile.service";
+import { InterviewBookingService } from "../services/interview-booking.service";
 import { NixSeekerAssistService } from "../services/nix-seeker-assist.service";
 
 @Controller("cv-assistant/me")
@@ -29,6 +30,7 @@ export class IndividualProfileController {
   constructor(
     private readonly individualProfileService: IndividualProfileService,
     private readonly nixSeekerAssistService: NixSeekerAssistService,
+    private readonly interviewBookingService: InterviewBookingService,
   ) {}
 
   @Get("profile/status")
@@ -103,5 +105,64 @@ export class IndividualProfileController {
   @Post("nix-wizard/cv-improvements")
   nixCvImprovements(@Request() req: { user: { id: number } }) {
     return this.nixSeekerAssistService.cvImprovements(req.user.id);
+  }
+
+  @Get("interview-bookings")
+  async myInterviewBookings(@Request() req: { user: { email: string } }) {
+    const bookings = await this.interviewBookingService.bookingsForIndividualByEmail(
+      req.user.email,
+    );
+    return bookings.map((b) => ({
+      id: b.id,
+      slotId: b.slotId,
+      candidateId: b.candidateId,
+      status: b.status,
+      bookedAt: b.bookedAt,
+      slot: b.slot
+        ? {
+            id: b.slot.id,
+            startsAt: b.slot.startsAt,
+            endsAt: b.slot.endsAt,
+            locationLabel: b.slot.locationLabel,
+            locationAddress: b.slot.locationAddress,
+            locationLat: b.slot.locationLat,
+            locationLng: b.slot.locationLng,
+            notes: b.slot.notes,
+            jobPosting: b.slot.jobPosting
+              ? {
+                  id: b.slot.jobPosting.id,
+                  title: b.slot.jobPosting.title,
+                  referenceNumber: b.slot.jobPosting.referenceNumber,
+                  companyId: b.slot.jobPosting.companyId,
+                }
+              : null,
+          }
+        : null,
+    }));
+  }
+
+  @Get("interview-invites")
+  async myOpenInterviewInvites(@Request() req: { user: { email: string } }) {
+    const invites = await this.interviewBookingService.openInvitesForIndividualByEmail(
+      req.user.email,
+    );
+    return invites.map((i) => ({
+      id: i.id,
+      token: i.token,
+      candidateId: i.candidateId,
+      jobPostingId: i.jobPostingId,
+      expiresAt: i.expiresAt,
+      usedAt: i.usedAt,
+      createdAt: i.createdAt,
+      jobPosting: i.jobPosting
+        ? {
+            id: i.jobPosting.id,
+            title: i.jobPosting.title,
+            referenceNumber: i.jobPosting.referenceNumber,
+            location: i.jobPosting.location,
+            province: i.jobPosting.province,
+          }
+        : null,
+    }));
   }
 }

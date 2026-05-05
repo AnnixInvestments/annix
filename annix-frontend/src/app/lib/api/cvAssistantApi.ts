@@ -643,6 +643,95 @@ export interface CandidateJobMatch {
   updatedAt: string;
 }
 
+export type InterviewBookingStatus = "booked" | "cancelled";
+
+export interface InterviewSlotBookingSummary {
+  id: number;
+  candidateId: number;
+  status: InterviewBookingStatus;
+  bookedAt: string;
+  candidate?: {
+    id: number;
+    name: string | null;
+    email: string | null;
+  } | null;
+}
+
+export interface InterviewSlot {
+  id: number;
+  companyId: number;
+  jobPostingId: number;
+  startsAt: string;
+  endsAt: string;
+  locationLabel: string | null;
+  locationAddress: string | null;
+  locationLat: number | null;
+  locationLng: number | null;
+  capacity: number;
+  notes: string | null;
+  isCancelled: boolean;
+  bookings?: InterviewSlotBookingSummary[];
+  jobPosting?: {
+    id: number;
+    title: string;
+    referenceNumber: string | null;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateInterviewSlotInput {
+  startsAt: string;
+  endsAt: string;
+  locationLabel?: string | null;
+  locationAddress?: string | null;
+  locationLat?: number | null;
+  locationLng?: number | null;
+  capacity?: number;
+  notes?: string | null;
+}
+
+export interface SeekerInterviewBooking {
+  id: number;
+  slotId: number;
+  candidateId: number;
+  status: InterviewBookingStatus;
+  bookedAt: string;
+  slot: {
+    id: number;
+    startsAt: string;
+    endsAt: string;
+    locationLabel: string | null;
+    locationAddress: string | null;
+    locationLat: number | null;
+    locationLng: number | null;
+    notes: string | null;
+    jobPosting: {
+      id: number;
+      title: string;
+      referenceNumber: string | null;
+      companyId: number;
+    } | null;
+  } | null;
+}
+
+export interface SeekerInterviewInvite {
+  id: number;
+  token: string;
+  candidateId: number;
+  jobPostingId: number;
+  expiresAt: string;
+  usedAt: string | null;
+  createdAt: string;
+  jobPosting: {
+    id: number;
+    title: string;
+    referenceNumber: string | null;
+    location: string | null;
+    province: string | null;
+  } | null;
+}
+
 const apiClient: ApiClient = createApiClient({
   baseURL: API_BASE_URL,
   tokenStore: cvAssistantTokenStore,
@@ -1510,6 +1599,41 @@ class CvAssistantApiClient {
 
   async portalAdapters(): Promise<PortalAdapterSummary[]> {
     return this.request("/cv-assistant/portal-adapters");
+  }
+
+  async interviewSlotsForCompany(fromIso?: string | null): Promise<InterviewSlot[]> {
+    const suffix = fromIso ? `?from=${encodeURIComponent(fromIso)}` : "";
+    return this.request(`/cv-assistant/interview-slots${suffix}`);
+  }
+
+  async interviewSlotsForJob(jobPostingId: number): Promise<InterviewSlot[]> {
+    return this.request(`/cv-assistant/interview-slots/by-job/${jobPostingId}`);
+  }
+
+  async createInterviewSlot(
+    jobPostingId: number,
+    input: CreateInterviewSlotInput,
+  ): Promise<InterviewSlot> {
+    return this.request(`/cv-assistant/interview-slots/by-job/${jobPostingId}`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+  }
+
+  async deleteInterviewSlot(slotId: number): Promise<{ deleted: boolean }> {
+    return this.request(`/cv-assistant/interview-slots/${slotId}`, { method: "DELETE" });
+  }
+
+  async sendInterviewInvite(candidateId: number): Promise<{ sent: boolean; bookingLink: string }> {
+    return this.request(`/cv-assistant/interview-slots/invite/${candidateId}`, { method: "POST" });
+  }
+
+  async myInterviewBookings(): Promise<SeekerInterviewBooking[]> {
+    return this.request("/cv-assistant/me/interview-bookings");
+  }
+
+  async myInterviewInvites(): Promise<SeekerInterviewInvite[]> {
+    return this.request("/cv-assistant/me/interview-invites");
   }
 }
 

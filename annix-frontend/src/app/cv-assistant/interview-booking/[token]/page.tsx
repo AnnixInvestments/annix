@@ -1,10 +1,17 @@
 "use client";
 
+import { GoogleMap, Marker, useJsApiLoader } from "@react-google-maps/api";
 import { useParams } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import { fromISO } from "@/app/lib/datetime";
 import { API_BASE_URL } from "@/lib/api-config";
+
+type LibraryName = "places" | "geocoding";
+const libraries: LibraryName[] = ["places", "geocoding"];
+
+const rawMapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+const GOOGLE_MAPS_API_KEY = rawMapsKey || "";
 
 interface InterviewSlotView {
   id: number;
@@ -20,7 +27,7 @@ interface InterviewSlotView {
 }
 
 interface InterviewBookingLookupResponse {
-  candidate: { name: string | null; email: string | null };
+  candidate: { name: string | null; email: string | null; location: string | null };
   job: { id: number; title: string; location: string | null; province: string | null };
   currentBooking: { id: number; slotId: number; bookedAt: string } | null;
   slots: InterviewSlotView[];
@@ -36,6 +43,13 @@ export default function InterviewBookingPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [submittingSlotId, setSubmittingSlotId] = useState<number | null>(null);
+  const [candidateOrigin, setCandidateOrigin] = useState<{ lat: number; lng: number } | null>(null);
+  const [travelMinutesBySlotId, setTravelMinutesBySlotId] = useState<Record<number, number>>({});
+
+  const { isLoaded } = useJsApiLoader({
+    googleMapsApiKey: GOOGLE_MAPS_API_KEY || "placeholder",
+    libraries,
+  });
 
   const load = useCallback(async () => {
     try {
@@ -61,6 +75,64 @@ export default function InterviewBookingPage() {
   useEffect(() => {
     if (token) void load();
   }, [token, load]);
+
+  const candidateLocationText = useMemo(() => {
+    if (!data) return null;
+    return data.candidate.location;
+  }, [data]);
+
+  useEffect(() => {
+    if (!GOOGLE_MAPS_API_KEY) return;
+    if (!isLoaded || !window.google) return;
+    if (!candidateLocationText) return;
+
+    const geocoder = new window.google.maps.Geocoder();
+    geocoder.geocode({ address: candidateLocationText }, (results, status) => {
+      if (status !== "OK" || !results || results.length === 0) return;
+      const loc = results[0].geometry.location;
+      setCandidateOrigin({ lat: loc.lat(), lng: loc.lng() });
+    });
+  }, [isLoaded, candidateLocationText]);
+
+  const slotsWithCoords = useMemo(() => {
+    if (!data) return [];
+    return data.slots.filter(
+      (slot) => slot.locationLat !== null && slot.locationLng !== null && slot.available,
+    );
+  }, [data]);
+
+  useEffect(() => {
+    if (!GOOGLE_MAPS_API_KEY) return;
+    if (!isLoaded || !window.google) return;
+    if (!candidateOrigin || slotsWithCoords.length === 0) return;
+
+    const destinations = slotsWithCoords.map((slot) => ({
+      lat: slot.locationLat as number,
+      lng: slot.locationLng as number,
+    }));
+
+    const service = new window.google.maps.DistanceMatrixService();
+    service.getDistanceMatrix(
+      {
+        origins: [candidateOrigin],
+        destinations,
+        travelMode: window.google.maps.TravelMode.DRIVING,
+        unitSystem: window.google.maps.UnitSystem.METRIC,
+      },
+      (response, status) => {
+        if (status !== "OK" || !response) return;
+        const row = response.rows[0];
+        if (!row) return;
+        const updates: Record<number, number> = {};
+        slotsWithCoords.forEach((slot, idx) => {
+          const cell = row.elements[idx];
+          if (!cell || cell.status !== "OK" || !cell.duration) return;
+          updates[slot.id] = Math.round(cell.duration.value / 60);
+        });
+        setTravelMinutesBySlotId((prev) => ({ ...prev, ...updates }));
+      },
+    );
+  }, [isLoaded, candidateOrigin, slotsWithCoords]);
 
   const handleBook = async (slotId: number) => {
     setSubmittingSlotId(slotId);
@@ -181,10 +253,14 @@ export default function InterviewBookingPage() {
                 const isBookedByMe = currentBooking && currentBooking.slotId === slot.id;
                 const isDisabled =
                   !slotAvailable || submittingSlotId !== null || Boolean(isBookedByMe);
+                const slotLat = slot.locationLat;
+                const slotLng = slot.locationLng;
+                const hasCoords = slotLat !== null && slotLng !== null;
+                const travelMin = travelMinutesBySlotId[slot.id];
                 return (
                   <li
                     key={slot.id}
-                    className={`border rounded-lg p-4 flex items-start justify-between gap-4 ${
+                    className={`border rounded-lg p-4 ${
                       isBookedByMe
                         ? "border-emerald-300 bg-emerald-50"
                         : slot.available
@@ -192,39 +268,62 @@ export default function InterviewBookingPage() {
                           : "border-gray-200 bg-gray-50 opacity-70"
                     }`}
                   >
-                    <div>
-                      <p className="text-sm font-semibold text-[#1a1a40]">
-                        {formatSlotRange(slot.startsAt, slot.endsAt)}
-                      </p>
-                      {slot.locationLabel ? (
-                        <p className="text-xs text-gray-600 mt-0.5">{slot.locationLabel}</p>
-                      ) : null}
-                      {slot.locationAddress ? (
-                        <p className="text-xs text-gray-500">{slot.locationAddress}</p>
-                      ) : null}
-                      {slot.notes ? (
-                        <p className="text-xs text-gray-500 mt-1 italic">{slot.notes}</p>
-                      ) : null}
-                      {!slot.available ? (
-                        <p className="text-xs text-red-600 mt-1">Already taken</p>
-                      ) : null}
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-[#1a1a40]">
+                          {formatSlotRange(slot.startsAt, slot.endsAt)}
+                        </p>
+                        {slot.locationLabel ? (
+                          <p className="text-xs text-gray-600 mt-0.5">{slot.locationLabel}</p>
+                        ) : null}
+                        {slot.locationAddress ? (
+                          <p className="text-xs text-gray-500">{slot.locationAddress}</p>
+                        ) : null}
+                        {slot.notes ? (
+                          <p className="text-xs text-gray-500 mt-1 italic">{slot.notes}</p>
+                        ) : null}
+                        {travelMin != null ? (
+                          <p className="text-xs text-blue-700 mt-1">
+                            ~{travelMin} min drive from {candidateLocationText}
+                          </p>
+                        ) : null}
+                        {!slot.available ? (
+                          <p className="text-xs text-red-600 mt-1">Already taken</p>
+                        ) : null}
+                      </div>
+                      <button
+                        type="button"
+                        disabled={isDisabled}
+                        onClick={() => handleBook(slot.id)}
+                        className={`text-sm px-4 py-2 rounded-lg font-semibold whitespace-nowrap transition-all disabled:opacity-50 ${
+                          isBookedByMe
+                            ? "bg-emerald-600 text-white"
+                            : "bg-[#FFA500] text-[#1a1a40] hover:bg-[#FFB733]"
+                        }`}
+                      >
+                        {submittingSlotId === slot.id
+                          ? "Booking…"
+                          : isBookedByMe
+                            ? "Your slot"
+                            : "Book this time"}
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      disabled={isDisabled}
-                      onClick={() => handleBook(slot.id)}
-                      className={`text-sm px-4 py-2 rounded-lg font-semibold whitespace-nowrap transition-all disabled:opacity-50 ${
-                        isBookedByMe
-                          ? "bg-emerald-600 text-white"
-                          : "bg-[#FFA500] text-[#1a1a40] hover:bg-[#FFB733]"
-                      }`}
-                    >
-                      {submittingSlotId === slot.id
-                        ? "Booking…"
-                        : isBookedByMe
-                          ? "Your slot"
-                          : "Book this time"}
-                    </button>
+                    {GOOGLE_MAPS_API_KEY && isLoaded && hasCoords ? (
+                      <div className="mt-3 rounded-lg overflow-hidden border border-gray-200">
+                        <GoogleMap
+                          mapContainerStyle={{ width: "100%", height: "180px" }}
+                          center={{ lat: slotLat as number, lng: slotLng as number }}
+                          zoom={14}
+                          options={{
+                            disableDefaultUI: true,
+                            zoomControl: true,
+                            gestureHandling: "cooperative",
+                          }}
+                        >
+                          <Marker position={{ lat: slotLat as number, lng: slotLng as number }} />
+                        </GoogleMap>
+                      </div>
+                    ) : null}
                   </li>
                 );
               })}
