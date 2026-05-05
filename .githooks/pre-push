@@ -72,9 +72,12 @@ pull_rebase() {
   fi
 
   if [ "$ahead" -gt 0 ]; then
-    echo "Branch has diverged (${ahead} ahead, ${behind} behind) — skipping auto-rebase."
-    echo "If this is an intended force push, push will be rejected unless you use --force-with-lease."
-    return 0
+    echo "Branch has diverged (${ahead} ahead, ${behind} behind)."
+    echo "Push would be rejected as non-fast-forward, so skipping the remaining checks."
+    echo "Resolve by rebasing onto origin/main, then push again:"
+    echo "    git rebase origin/main && git push"
+    echo "(For an intentional force push, run with --no-verify.)"
+    return 1
   fi
 
   echo "Integrating ${behind} new remote commit(s)..."
