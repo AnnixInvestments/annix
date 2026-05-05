@@ -89,6 +89,7 @@ export function useWorkflowActions(params: UseWorkflowActionsParams) {
   }, [workflowStatus, userId, userName, effectiveUserId, effectiveName, userRole, isPreviewActive]);
 
   const userPendingBgSteps = useMemo(() => {
+    const checkId = effectiveUserId ?? userId ?? null;
     const checkName = effectiveName || userName;
     if (!workflowStatus || !checkName) return [];
     if (workflowStatus.jobCardStatus === "draft") return [];
@@ -211,7 +212,7 @@ export function useWorkflowActions(params: UseWorkflowActionsParams) {
 
       const assigned = assignments[bg.stepKey];
       if (!assigned || assigned.length === 0) return false;
-      if (!isAdminView && !assigned.some((u) => u.name === checkName)) {
+      if (!isAdminView && !isAssignedUser(assigned, checkId, checkName)) {
         return false;
       }
 
@@ -233,7 +234,9 @@ export function useWorkflowActions(params: UseWorkflowActionsParams) {
     workflowStatus,
     backgroundSteps,
     currentStatus,
+    userId,
     userName,
+    effectiveUserId,
     effectiveName,
     userRole,
     isPreviewActive,
@@ -367,6 +370,7 @@ export function useWorkflowActions(params: UseWorkflowActionsParams) {
       : currentStepPhaseInfo.actionLabel;
     if (!currentStepPhaseInfo.isMultiPhase) return false;
     if (userRole === "admin" && !isPreviewActive) return false;
+    const checkId = effectiveUserId ?? userId ?? null;
     const checkName = effectiveName || userName;
     if (!workflowStatus || !currentStep || !checkName) return false;
     if (!currentStepActionLabel) return false;
@@ -374,12 +378,14 @@ export function useWorkflowActions(params: UseWorkflowActionsParams) {
     const assignments = rawFgaAssignments || {};
     const fgStepAssigned = assignments[currentStep];
     if (!fgStepAssigned || fgStepAssigned.length === 0) return false;
-    return !fgStepAssigned.some((u) => u.name === checkName);
+    return !isAssignedUser(fgStepAssigned, checkId, checkName);
   }, [
     workflowStatus,
     currentStep,
     currentStepPhaseInfo,
+    userId,
     userName,
+    effectiveUserId,
     effectiveName,
     userRole,
     isPreviewActive,
