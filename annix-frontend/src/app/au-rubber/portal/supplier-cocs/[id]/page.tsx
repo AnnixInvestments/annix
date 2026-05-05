@@ -1,7 +1,17 @@
 "use client";
 
 import { isArray, keys, values } from "es-toolkit/compat";
-import { Check, Download, FileText, FileWarning, Pencil, RefreshCw, Trash2, X } from "lucide-react";
+import {
+  AlertTriangle,
+  Check,
+  Download,
+  FileText,
+  FileWarning,
+  Pencil,
+  RefreshCw,
+  Trash2,
+  X,
+} from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -20,6 +30,7 @@ import {
   type SupplierCocType,
 } from "@/app/lib/api/auRubberApi";
 import { formatDateTimeZA, formatDateZA } from "@/app/lib/datetime";
+import { useAuRubberAuthorizeVersion, useAuRubberRejectVersion } from "@/app/lib/query/hooks";
 
 interface ExtractedBatch {
   batchNumber: string;
@@ -58,6 +69,8 @@ export default function SupplierCocDetailPage() {
   const { showExtraction, hideExtraction } = useExtractionProgress();
   const { confirm, ConfirmDialog } = useConfirm();
   const { isAdmin } = useAuRubberAuth();
+  const authorizeVersionMutation = useAuRubberAuthorizeVersion();
+  const rejectVersionMutation = useAuRubberRejectVersion();
   const [coc, setCoc] = useState<RubberSupplierCocDto | null>(null);
   const [batches, setBatches] = useState<RubberCompoundBatchDto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -201,6 +214,35 @@ export default function SupplierCocDetailPage() {
     } catch (err) {
       toastError(showToast, err, "Failed to approve CoC");
       setIsApproving(false);
+    }
+  };
+
+  const handleAuthorizeVersion = async () => {
+    try {
+      await authorizeVersionMutation.mutateAsync({ kind: "supplier-cocs", id: cocId });
+      showToast("Version authorized — previous version superseded", "success");
+      fetchData();
+    } catch (err) {
+      toastError(showToast, err, "Failed to authorize version");
+    }
+  };
+
+  const handleRejectVersion = async () => {
+    const confirmed = await confirm({
+      title: "Reject this version?",
+      message:
+        "Rejecting this re-uploaded version will mark it as rejected. The previous version will remain the active one. This cannot be undone.",
+      confirmLabel: "Reject",
+      cancelLabel: "Cancel",
+      variant: "danger",
+    });
+    if (!confirmed) return;
+    try {
+      await rejectVersionMutation.mutateAsync({ kind: "supplier-cocs", id: cocId });
+      showToast("Version rejected", "success");
+      router.push("/au-rubber/portal/supplier-cocs");
+    } catch (err) {
+      toastError(showToast, err, "Failed to reject version");
     }
   };
 
@@ -453,6 +495,37 @@ export default function SupplierCocDetailPage() {
         ]}
       />
 
+      {coc.versionStatus === "PENDING_AUTHORIZATION" && (
+        <div className="rounded-md border border-amber-300 bg-amber-50 p-4 flex items-start space-x-3">
+          <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <h3 className="text-sm font-semibold text-amber-900">
+              Awaiting authorization (version {coc.version})
+            </h3>
+            <p className="mt-1 text-sm text-amber-800">
+              A new version of this CoC has been received from the supplier. Authorize it to
+              supersede
+              {coc.previousVersionId ? (
+                <>
+                  {" "}
+                  the{" "}
+                  <Link
+                    href={`/au-rubber/portal/supplier-cocs/${coc.previousVersionId}`}
+                    className="underline font-medium"
+                  >
+                    previous version
+                  </Link>
+                </>
+              ) : (
+                " the previous version"
+              )}
+              , or reject it to keep the existing version active. Approve / Re-extract are disabled
+              until this is resolved.
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">
@@ -461,31 +534,67 @@ export default function SupplierCocDetailPage() {
           <div className="mt-2 flex items-center space-x-3">
             {typeBadge(coc.cocType)}
             {statusBadge(coc.processingStatus)}
+            {coc.versionStatus === "PENDING_AUTHORIZATION" && (
+              <span className="px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full bg-amber-100 text-amber-800">
+                Pending Authorization
+              </span>
+            )}
           </div>
         </div>
         <div className="flex space-x-3">
-          {(coc.processingStatus !== "APPROVED" || isAdmin) && (
-            <button
-              onClick={handleExtract}
-              disabled={isExtracting}
-              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
-            >
-              <RefreshCw className={`w-4 h-4 mr-1.5 ${isExtracting ? "animate-spin" : ""}`} />
-              {isExtracting
-                ? "Extracting..."
-                : coc.processingStatus === "PENDING"
-                  ? "Extract Data"
-                  : "Re-extract"}
-            </button>
-          )}
-          {(coc.processingStatus === "EXTRACTED" || coc.processingStatus === "NEEDS_REVIEW") && (
-            <button
-              onClick={handleApprove}
-              disabled={isApproving}
-              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:opacity-50"
-            >
-              {isApproving ? "Approving..." : "Approve"}
-            </button>
+          {coc.versionStatus === "PENDING_AUTHORIZATION" ? (
+            (() => {
+              const isAuthorizing = authorizeVersionMutation.isPending;
+              const isRejecting = rejectVersionMutation.isPending;
+              const versionActionPending = isAuthorizing || isRejecting;
+              return (
+                <>
+                  <button
+                    onClick={handleRejectVersion}
+                    disabled={versionActionPending}
+                    className="inline-flex items-center px-4 py-2 border border-red-300 rounded-md shadow-sm text-sm font-medium text-red-700 bg-white hover:bg-red-50 disabled:opacity-50"
+                  >
+                    <X className="w-4 h-4 mr-1.5" />
+                    {isRejecting ? "Rejecting..." : "Reject Version"}
+                  </button>
+                  <button
+                    onClick={handleAuthorizeVersion}
+                    disabled={versionActionPending}
+                    className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 disabled:opacity-50"
+                  >
+                    <Check className="w-4 h-4 mr-1.5" />
+                    {isAuthorizing ? "Authorizing..." : "Authorize Version"}
+                  </button>
+                </>
+              );
+            })()
+          ) : (
+            <>
+              {(coc.processingStatus !== "APPROVED" || isAdmin) && (
+                <button
+                  onClick={handleExtract}
+                  disabled={isExtracting}
+                  className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-4 h-4 mr-1.5 ${isExtracting ? "animate-spin" : ""}`} />
+                  {isExtracting
+                    ? "Extracting..."
+                    : coc.processingStatus === "PENDING"
+                      ? "Extract Data"
+                      : "Re-extract"}
+                </button>
+              )}
+              {(coc.processingStatus === "EXTRACTED" ||
+                coc.processingStatus === "NEEDS_REVIEW") && (
+                <button
+                  onClick={handleApprove}
+                  disabled={isApproving}
+                  className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:opacity-50"
+                >
+                  {isApproving ? "Approving..." : "Approve"}
+                </button>
+              )}
+            </>
           )}
         </div>
       </div>
