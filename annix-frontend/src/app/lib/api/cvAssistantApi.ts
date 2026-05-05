@@ -765,6 +765,64 @@ export interface NixCalendarAdvisoryResponse {
   advisories: Array<{ bookingId: number; message: string }>;
 }
 
+export type EePopulationGroupKey =
+  | "african_black"
+  | "coloured"
+  | "indian"
+  | "white"
+  | "prefer_not_to_say";
+export type EeGenderKey = "female" | "male" | "other" | "prefer_not_to_say";
+export type EeDisabilityKey = "yes" | "no" | "prefer_not_to_say";
+export type EeTargetMetricKey =
+  | "race_african_black"
+  | "race_coloured"
+  | "race_indian"
+  | "female"
+  | "disability";
+
+export interface EeOccupationalLevelBreakdown {
+  occupationalLevel: string;
+  applicants: number;
+  newHires: number;
+  byPopulation: Record<EePopulationGroupKey, number>;
+  byGender: Record<EeGenderKey, number>;
+  byDisability: Record<EeDisabilityKey, number>;
+}
+
+export interface EeSectorTargetComparison {
+  occupationalLevel: string;
+  metric: EeTargetMetricKey;
+  targetPercent: number;
+  actualPercent: number;
+  met: boolean;
+  gazetteReference: string | null;
+}
+
+export interface EeReportResponse {
+  companyId: number;
+  companyName: string;
+  economicSector: string | null;
+  isDesignatedEmployer: boolean;
+  dateFrom: string;
+  dateTo: string;
+  totalApplicantsWithDisclosure: number;
+  totalNewHiresWithDisclosure: number;
+  byOccupationalLevel: EeOccupationalLevelBreakdown[];
+  sectorTargetComparisons: EeSectorTargetComparison[];
+  disabilityTarget: {
+    targetPercent: number;
+    actualPercent: number;
+    sampleSize: number;
+    met: boolean;
+  };
+  yearOverYear: {
+    previousTotalApplicants: number;
+    delta: number;
+    deltaPercent: number | null;
+  };
+  generatedAt: string;
+}
+
 const apiClient: ApiClient = createApiClient({
   baseURL: API_BASE_URL,
   tokenStore: cvAssistantTokenStore,
@@ -1680,6 +1738,21 @@ class CvAssistantApiClient {
       method: "POST",
       body: JSON.stringify({ conflicts }),
     });
+  }
+
+  async complianceEeReport(dateFrom: string, dateTo: string): Promise<EeReportResponse> {
+    const query = new URLSearchParams({ dateFrom, dateTo });
+    return this.request<EeReportResponse>(`/cv-assistant/compliance/ee-report?${query.toString()}`);
+  }
+
+  complianceEeReportCsvUrl(dateFrom: string, dateTo: string): string {
+    const query = new URLSearchParams({ dateFrom, dateTo });
+    return `${API_BASE_URL}/cv-assistant/compliance/ee-report.csv?${query.toString()}`;
+  }
+
+  complianceEeReportPdfUrl(dateFrom: string, dateTo: string): string {
+    const query = new URLSearchParams({ dateFrom, dateTo });
+    return `${API_BASE_URL}/cv-assistant/compliance/ee-report.pdf?${query.toString()}`;
   }
 }
 

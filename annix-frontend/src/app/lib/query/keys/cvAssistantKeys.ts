@@ -91,4 +91,10 @@ export const cvAssistantKeys = {
     job: (jobPostingId: number) =>
       ["cv-assistant", "interview-slots", "job", jobPostingId] as const,
   },
+
+  compliance: {
+    all: ["cv-assistant", "compliance"] as const,
+    eeReport: (dateFrom: string, dateTo: string) =>
+      ["cv-assistant", "compliance", "ee-report", dateFrom, dateTo] as const,
+  },
 } as const;

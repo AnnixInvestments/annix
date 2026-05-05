@@ -560,6 +560,7 @@ export {
   useCvRecommendedJobs,
   useCvUploadCv,
 } from "./cv-assistant/useCvCandidates";
+export { useEeReport } from "./cv-assistant/useCvCompliance";
 export {
   useCvDashboardStats,
   useCvMarketInsights,
