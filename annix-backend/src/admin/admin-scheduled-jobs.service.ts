@@ -86,6 +86,12 @@ const JOB_METADATA: Record<string, { description: string; module: string; defaul
     module: "CV Assistant",
     defaultCron: "0 2 * * *",
   },
+  "cv-assistant:disparate-impact-monitor": {
+    description:
+      "EE Act fairness check — applies the 4/5 rule to the last 100 candidates per active job and audits any breach (issue #240 Phase B)",
+    module: "CV Assistant",
+    defaultCron: "0 8 * * *",
+  },
   "cv-assistant:poll-emails": {
     description: "Poll inbound emails for CV submissions",
     module: "CV Assistant",

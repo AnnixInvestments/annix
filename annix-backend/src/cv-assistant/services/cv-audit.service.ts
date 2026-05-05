@@ -125,6 +125,19 @@ export class CvAuditService {
     });
   }
 
+  async logFairnessBreach(
+    jobPostingId: number,
+    companyId: number,
+    report: Record<string, unknown>,
+  ): Promise<void> {
+    await this.safeLog({
+      subAction: "ee_fairness_breach",
+      entityId: jobPostingId,
+      userId: null,
+      details: { companyId, report },
+    });
+  }
+
   private async safeLog(input: {
     subAction: string;
     entityId: number | null;

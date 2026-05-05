@@ -1,11 +1,21 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
+import { Cron } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { DateTime, fromISO, now } from "../../lib/datetime";
+import { isCvAssistantCronEnabled } from "../cv-assistant-cron.config";
 import { Candidate, CandidateStatus } from "../entities/candidate.entity";
 import { CandidateJobMatch } from "../entities/candidate-job-match.entity";
+import {
+  CvAssistantCandidateEeAttributes,
+  EeDisabilityStatus,
+  EeGender,
+  EeNationalityStatus,
+  EePopulationGroup,
+} from "../entities/cv-assistant-candidate-ee-attributes.entity";
 import { ExternalJob } from "../entities/external-job.entity";
 import { JobPosting, JobPostingStatus } from "../entities/job-posting.entity";
+import { CvAuditService } from "./cv-audit.service";
 
 export interface FunnelStage {
   label: string;
@@ -69,6 +79,8 @@ const FUNNEL_STAGE_LABELS = [
 
 @Injectable()
 export class AnalyticsService {
+  private readonly logger = new Logger(AnalyticsService.name);
+
   constructor(
     @InjectRepository(Candidate)
     private readonly candidateRepo: Repository<Candidate>,
@@ -78,6 +90,9 @@ export class AnalyticsService {
     private readonly matchRepo: Repository<CandidateJobMatch>,
     @InjectRepository(ExternalJob)
     private readonly externalJobRepo: Repository<ExternalJob>,
+    @InjectRepository(CvAssistantCandidateEeAttributes)
+    private readonly eeAttributesRepo: Repository<CvAssistantCandidateEeAttributes>,
+    private readonly cvAuditService: CvAuditService,
   ) {}
 
   async conversionFunnel(
@@ -446,7 +461,177 @@ export class AnalyticsService {
 
     return [header, ...rows].join("\n");
   }
+
+  @Cron("0 8 * * *", { name: "cv-assistant:disparate-impact-monitor" })
+  async runDisparateImpactMonitor(): Promise<{
+    jobsChecked: number;
+    breaches: number;
+    skippedNoData: number;
+  }> {
+    if (!isCvAssistantCronEnabled()) return { jobsChecked: 0, breaches: 0, skippedNoData: 0 };
+
+    const activeJobs = await this.jobPostingRepo.find({
+      where: { status: JobPostingStatus.ACTIVE },
+      select: ["id", "companyId", "title"],
+    });
+
+    const reports = await Promise.all(
+      activeJobs.map((job) => this.analyseJobFairness(job.id, job.companyId, job.title)),
+    );
+
+    const breachReports = reports.filter((r) => r.breaches.length > 0);
+    const skippedNoData = reports.filter((r) => r.totalAnalysed < FAIRNESS_MIN_GROUP_SAMPLE).length;
+
+    await Promise.all(
+      breachReports.map((report) =>
+        this.cvAuditService.logFairnessBreach(report.jobPostingId, report.companyId, {
+          jobTitle: report.jobTitle,
+          totalAnalysed: report.totalAnalysed,
+          breaches: report.breaches,
+          passRateByPopulation: report.passRateByPopulation,
+          passRateByGender: report.passRateByGender,
+          passRateByDisability: report.passRateByDisability,
+        }),
+      ),
+    );
+
+    if (breachReports.length > 0) {
+      this.logger.warn(
+        `EE fairness monitor: ${breachReports.length} of ${activeJobs.length} active jobs breached the 4/5 rule (last ${FAIRNESS_WINDOW} apps)`,
+      );
+    }
+
+    return {
+      jobsChecked: activeJobs.length,
+      breaches: breachReports.length,
+      skippedNoData,
+    };
+  }
+
+  async analyseJobFairness(
+    jobPostingId: number,
+    companyId: number,
+    jobTitle: string,
+  ): Promise<JobFairnessReport> {
+    const rows = await this.candidateRepo
+      .createQueryBuilder("c")
+      .innerJoin(
+        "cv_assistant_candidate_ee_attributes",
+        "ee",
+        "ee.candidate_id = c.id AND ee.deleted_at IS NULL",
+      )
+      .where("c.job_posting_id = :jobPostingId", { jobPostingId })
+      .andWhere("c.status IN (:...screeningStatuses)", {
+        screeningStatuses: PAST_SCREENING_STATUSES,
+      })
+      .select([
+        "c.id AS candidate_id",
+        "c.status AS status",
+        "ee.population_group AS population_group",
+        "ee.gender AS gender",
+        "ee.disability_status AS disability_status",
+        "ee.nationality_status AS nationality_status",
+      ])
+      .orderBy("c.created_at", "DESC")
+      .limit(FAIRNESS_WINDOW)
+      .getRawMany<{
+        candidate_id: number;
+        status: CandidateStatus;
+        population_group: EePopulationGroup;
+        gender: EeGender;
+        disability_status: EeDisabilityStatus;
+        nationality_status: EeNationalityStatus;
+      }>();
+
+    const passRateByPopulation = passRatesFor(rows, "population_group");
+    const passRateByGender = passRatesFor(rows, "gender");
+    const passRateByDisability = passRatesFor(rows, "disability_status");
+
+    const breaches: string[] = [
+      ...checkFourFifthsRule("population_group", passRateByPopulation),
+      ...checkFourFifthsRule("gender", passRateByGender),
+      ...checkFourFifthsRule("disability_status", passRateByDisability),
+    ];
+
+    return {
+      jobPostingId,
+      companyId,
+      jobTitle,
+      totalAnalysed: rows.length,
+      passRateByPopulation,
+      passRateByGender,
+      passRateByDisability,
+      breaches,
+    };
+  }
 }
+
+interface DemographicPassRate {
+  group: string;
+  passes: number;
+  total: number;
+  passRate: number;
+}
+
+export interface JobFairnessReport {
+  jobPostingId: number;
+  companyId: number;
+  jobTitle: string;
+  totalAnalysed: number;
+  passRateByPopulation: DemographicPassRate[];
+  passRateByGender: DemographicPassRate[];
+  passRateByDisability: DemographicPassRate[];
+  breaches: string[];
+}
+
+const FAIRNESS_WINDOW = 100;
+const FAIRNESS_THRESHOLD = 0.8;
+const FAIRNESS_MIN_GROUP_SAMPLE = 5;
+const PASS_STATUSES = new Set<CandidateStatus>([
+  CandidateStatus.SHORTLISTED,
+  CandidateStatus.REFERENCE_CHECK,
+  CandidateStatus.ACCEPTED,
+]);
+
+const passRatesFor = <K extends string>(
+  rows: Array<Record<K, string> & { status: CandidateStatus }>,
+  key: K,
+): DemographicPassRate[] => {
+  const buckets = rows.reduce((acc, row) => {
+    const groupValue = row[key];
+    if (groupValue === "prefer_not_to_say") return acc;
+    const existing = acc.get(groupValue) ?? { passes: 0, total: 0 };
+    const updated = {
+      passes: existing.passes + (PASS_STATUSES.has(row.status) ? 1 : 0),
+      total: existing.total + 1,
+    };
+    acc.set(groupValue, updated);
+    return acc;
+  }, new Map<string, { passes: number; total: number }>());
+
+  return Array.from(buckets.entries()).map(([group, counts]) => ({
+    group,
+    passes: counts.passes,
+    total: counts.total,
+    passRate: counts.total === 0 ? 0 : counts.passes / counts.total,
+  }));
+};
+
+const checkFourFifthsRule = (dimension: string, rates: DemographicPassRate[]): string[] => {
+  const eligible = rates.filter((r) => r.total >= FAIRNESS_MIN_GROUP_SAMPLE);
+  if (eligible.length < 2) return [];
+
+  const maxRate = eligible.reduce((acc, r) => (r.passRate > acc.passRate ? r : acc), eligible[0]);
+  if (maxRate.passRate === 0) return [];
+
+  return eligible
+    .filter((r) => r !== maxRate)
+    .filter((r) => r.passRate / maxRate.passRate < FAIRNESS_THRESHOLD)
+    .map(
+      (r) =>
+        `${dimension}: group "${r.group}" pass-rate ${r.passRate.toFixed(2)} vs max group "${maxRate.group}" ${maxRate.passRate.toFixed(2)} (ratio ${(r.passRate / maxRate.passRate).toFixed(2)} < 4/5)`,
+    );
+};
 
 const csvEscape = (value: string | null): string => {
   if (value === null) {
