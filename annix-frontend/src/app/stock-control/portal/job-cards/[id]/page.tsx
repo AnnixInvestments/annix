@@ -28,7 +28,6 @@ import {
   useLoadWorkflowStatus,
 } from "@/app/lib/query/hooks";
 import { ApprovalModal } from "@/app/stock-control/components/ApprovalModal";
-import { JobCardNextAction } from "@/app/stock-control/components/NextActionBanner";
 import { WorkflowStatus } from "@/app/stock-control/components/WorkflowStatus";
 import { useViewAs } from "@/app/stock-control/context/ViewAsContext";
 import { useConfirm } from "@/app/stock-control/hooks/useConfirm";
@@ -53,6 +52,7 @@ import { RequisitionTab } from "./components/RequisitionTab";
 import { RubberAllocationGuard } from "./components/RubberAllocation";
 import { SourceFileModal } from "./components/SourceFileModal";
 import { StockIssuesTab } from "./components/StockIssuesTab";
+import { WorkflowActionsBar } from "./components/WorkflowActionsBar";
 import { useJobCardActions } from "./hooks/useJobCardActions";
 import { useJobCardCoating } from "./hooks/useJobCardCoating";
 import { useJobCardDocuments } from "./hooks/useJobCardDocuments";
@@ -1090,22 +1090,69 @@ export default function JobCardDetailPage() {
 
       <InspectionProposalBanner jobCardId={jobId} onChanged={fetchData} />
 
-      {!specsNeedReview &&
-        !workflow.prevStepBgPending &&
-        !currentStepBlueBgPending &&
-        !workflow.currentStepBgPending &&
-        (currentStepActionCompleted || !currentStepActionLabel) && (
-          <JobCardNextAction
-            currentStatus={currentStatus}
-            canApprove={workflow.canApprove}
-            currentStep={currentStep}
-            currentStepLabel={currentStepLabel}
-            userRole={userRole}
-            onApprove={currentStep ? () => actions.openApprovalModal(currentStep) : undefined}
-            jobCardId={jobId}
-            hasLineItems={validLineItemCount > 0}
-          />
-        )}
+      <WorkflowActionsBar
+        jobId={jobId}
+        currentStep={currentStep}
+        canApprove={workflow.canApprove}
+        canAcceptDraft={workflow.canAcceptDraft}
+        isAdminView={isAdminView}
+        isQualityUser={workflow.isQualityUser}
+        specsNeedReview={specsNeedReview}
+        prevStepBgPending={workflow.prevStepBgPending}
+        currentStepBgPending={workflow.currentStepBgPending}
+        currentStepBlueBgPending={currentStepBlueBgPending}
+        hasBlueLineTasks={hasBlueLineTasks}
+        fgActionAssignedToOther={workflow.fgActionAssignedToOther}
+        currentStepActionCompleted={currentStepActionCompleted}
+        currentStepActionLabel={currentStepActionLabel}
+        receptionIsPending={workflow.receptionIsPending}
+        qcpsNeedApproval={qcpsNeedApproval}
+        rubberPlanPending={rubberPlanPending}
+        userPendingBgSteps={workflow.userPendingBgSteps}
+        bgStepError={actions.bgStepError}
+        completingStepKey={actions.completingStepKey}
+        isDownloadingQr={actions.isDownloadingQr}
+        isUpdatingStatus={actions.isUpdatingStatus}
+        isCompletingFgAction={actions.isCompletingFgAction}
+        isUploadingReadyPhoto={false}
+        isConfirmingIssuance={actions.isConfirmingIssuance}
+        isProcessingDecision={actions.isProcessingDecision}
+        hasAllocations={hasAllocations}
+        hasUnissuedAllocations={hasUnissuedAllocations}
+        hasReadyPhoto={hasReadyPhoto}
+        batchesSaved={batchesSaved}
+        finalPhotosSaved={actions.finalPhotosSaved}
+        jobFileGateSatisfied={jobFileGateSatisfied}
+        docUploadGateSatisfied={docUploadGateSatisfied}
+        requisition={requisition}
+        coatingAnalysis={coating.coatingAnalysis}
+        phase2ActionLabel={workflow.currentStepPhaseInfo.phase2ActionLabel}
+        adminBlockedFromStep={workflow.adminBlockedFromStep}
+        isReceptionStep={workflow.isReceptionStep}
+        isRequisitionStep={workflow.isRequisitionStep}
+        isReqAuthStep={workflow.isReqAuthStep}
+        isOrderPlacementStep={workflow.isOrderPlacementStep}
+        isStockAllocStep={workflow.isStockAllocStep}
+        isReadyStep={workflow.isReadyStep}
+        isQaReviewStep={workflow.isQaReviewStep}
+        isQcRepairsStep={workflow.isQcRepairsStep}
+        isQaFinalCheckStep={workflow.isQaFinalCheckStep}
+        isInspectionBookingStep={workflow.isInspectionBookingStep}
+        isDataBookStep={workflow.isDataBookStep}
+        isJobFileReviewStep={workflow.isJobFileReviewStep}
+        isDocUploadStep={workflow.isDocUploadStep}
+        onPrintQr={handlePrintQr}
+        onCompleteFgAction={actions.handleCompleteFgAction}
+        onCompleteBackgroundStep={actions.handleCompleteBackgroundStep}
+        onOpenApprovalModal={actions.openApprovalModal}
+        onDraftAccepted={actions.handleDraftAccepted}
+        onConfirmIssuance={handleConfirmIssuance}
+        onShowReadyPhotoModal={() => setShowReadyPhotoModal(true)}
+        onShowInspectionModal={() => setShowInspectionModal(true)}
+        onTabChange={handleTabChange}
+        onScrollToElement={scrollToElementId}
+        onDismissBgStepError={() => actions.setBgStepError(null)}
+      />
 
       <div className="bg-white shadow rounded-lg overflow-x-auto">
         <JobCardTabs tabs={tabDefinitions} activeTab={activeTab} onTabChange={handleTabChange} />
