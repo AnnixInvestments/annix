@@ -1066,7 +1066,7 @@ Formula: totalPrice = totalKg × salePricePerKg
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
   @Get("portal/documents/url")
-  @Header("Cache-Control", "private, max-age=3000")
+  @Header("Cache-Control", "no-store")
   @ApiOperation({ summary: "Get presigned URL for a document" })
   @ApiQuery({ name: "path", description: "Document path in storage" })
   @ApiResponse({ status: 200, description: "Presigned URL or null if file is missing" })
