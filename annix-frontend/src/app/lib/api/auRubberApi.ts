@@ -928,6 +928,10 @@ class AuRubberApiClient {
     },
   );
 
+  siblingSupplierCocs = createEndpoint<[cocId: number], RubberSupplierCocDto[]>(apiClient, "GET", {
+    path: (cocId) => `/rubber-lining/portal/supplier-cocs/${cocId}/siblings`,
+  });
+
   createCompoundBatch = createEndpoint<
     [
       data: {

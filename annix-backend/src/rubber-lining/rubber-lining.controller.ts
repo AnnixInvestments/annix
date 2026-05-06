@@ -1404,6 +1404,18 @@ Formula: totalPrice = totalKg × salePricePerKg
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
+  @Get("portal/supplier-cocs/:id/siblings")
+  @ApiOperation({
+    summary:
+      "List supplier CoCs that share the same source document as the given CoC (typically created by Calender Roll multi-page split)",
+  })
+  @ApiParam({ name: "id", description: "Supplier CoC ID" })
+  async siblingSupplierCocs(@Param("id") id: string): Promise<RubberSupplierCocDto[]> {
+    return this.rubberCocService.siblingSupplierCocs(Number(id));
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
   @Put("portal/compound-batches/:id")
   @ApiOperation({ summary: "Update a compound batch" })
   @ApiParam({ name: "id", description: "Compound Batch ID" })

@@ -211,6 +211,23 @@ export class RubberCocService {
     return this.mapSupplierCocToDto(coc, rejectionMap.get(id) || []);
   }
 
+  async siblingSupplierCocs(id: number): Promise<RubberSupplierCocDto[]> {
+    const coc = await this.supplierCocRepository.findOne({ where: { id } });
+    if (!coc?.documentPath) return [];
+
+    const siblings = await this.supplierCocRepository
+      .createQueryBuilder("coc")
+      .leftJoinAndSelect("coc.supplierCompany", "company")
+      .where("coc.document_path = :documentPath", { documentPath: coc.documentPath })
+      .andWhere("coc.id <> :id", { id })
+      .orderBy("coc.id", "ASC")
+      .getMany();
+
+    if (siblings.length === 0) return [];
+    const rejectionMap = await this.rejectedRollNumbersByCocIds(siblings.map((s) => s.id));
+    return siblings.map((s) => this.mapSupplierCocToDto(s, rejectionMap.get(s.id) || []));
+  }
+
   async createSupplierCoc(
     dto: CreateSupplierCocDto,
     createdBy?: string,

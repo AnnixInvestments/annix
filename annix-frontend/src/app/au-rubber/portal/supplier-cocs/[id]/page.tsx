@@ -1,6 +1,6 @@
 "use client";
 
-import { isArray, keys, values } from "es-toolkit/compat";
+import { isArray, isNumber, keys, values } from "es-toolkit/compat";
 import {
   AlertTriangle,
   Check,
@@ -73,6 +73,7 @@ export default function SupplierCocDetailPage() {
   const rejectVersionMutation = useAuRubberRejectVersion();
   const [coc, setCoc] = useState<RubberSupplierCocDto | null>(null);
   const [batches, setBatches] = useState<RubberCompoundBatchDto[]>([]);
+  const [siblingCocs, setSiblingCocs] = useState<RubberSupplierCocDto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [isExtracting, setIsExtracting] = useState(false);
@@ -145,12 +146,14 @@ export default function SupplierCocDetailPage() {
   const fetchData = async () => {
     try {
       setIsLoading(true);
-      const [cocData, batchesData] = await Promise.all([
+      const [cocData, batchesData, siblingsData] = await Promise.all([
         auRubberApiClient.supplierCocById(cocId),
         auRubberApiClient.compoundBatchesByCocId(cocId),
+        auRubberApiClient.siblingSupplierCocs(cocId),
       ]);
       setCoc(cocData);
       setBatches(isArray(batchesData) ? batchesData : []);
+      setSiblingCocs(isArray(siblingsData) ? siblingsData : []);
 
       if (cocData.documentPath) {
         const url = await auRubberApiClient.documentUrl(cocData.documentPath);
@@ -963,6 +966,155 @@ export default function SupplierCocDetailPage() {
                       </div>
                     );
                   })()}
+
+                  {coc.cocType === "CALENDER_ROLL" &&
+                    (() => {
+                      const rawExtractedRolls = extracted.rolls;
+                      const rolls = (rawExtractedRolls || []) as Array<{
+                        rollNumber: string;
+                        shoreA?: number | null;
+                      }>;
+                      if (rolls.length === 0) return null;
+                      return (
+                        <div className="mb-4">
+                          <h3 className="text-sm font-medium text-gray-700 mb-2">
+                            Per-Roll Shore A
+                          </h3>
+                          <table className="min-w-full text-sm border border-gray-200 rounded">
+                            <thead className="bg-gray-50">
+                              <tr>
+                                <th className="px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase">
+                                  Roll
+                                </th>
+                                <th className="px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase">
+                                  Shore A
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-200">
+                              {rolls.map((roll) => {
+                                const rawRollShoreA = roll.shoreA;
+                                const shoreDisplay =
+                                  rawRollShoreA == null ? "—" : String(rawRollShoreA);
+                                return (
+                                  <tr key={String(roll.rollNumber)}>
+                                    <td className="px-3 py-1.5 font-mono text-gray-700">
+                                      {String(roll.rollNumber)}
+                                    </td>
+                                    <td className="px-3 py-1.5 text-gray-900">{shoreDisplay}</td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      );
+                    })()}
+
+                  {coc.cocType === "CALENDER_ROLL" &&
+                    (() => {
+                      const rawBatchNumbers = extracted.batchNumbers;
+                      const compoundBatchNumbers = (rawBatchNumbers || []) as string[];
+                      if (compoundBatchNumbers.length === 0) return null;
+                      return (
+                        <div className="mb-4">
+                          <h3 className="text-sm font-medium text-gray-700 mb-2">
+                            Compound Batches
+                          </h3>
+                          <div className="flex flex-wrap gap-1.5">
+                            {compoundBatchNumbers.map((bn) => (
+                              <span
+                                key={String(bn)}
+                                className="px-2 py-0.5 text-xs font-medium rounded bg-purple-50 text-purple-800"
+                                title="Compound batch number used for this page's rolls"
+                              >
+                                {String(bn)}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                  {coc.cocType === "CALENDER_ROLL" &&
+                    (() => {
+                      const rawSharedDensity = extracted.sharedDensity;
+                      const rawSharedTensile = extracted.sharedTensile;
+                      const rawSharedElongation = extracted.sharedElongation;
+                      const sharedDensity = isNumber(rawSharedDensity) ? rawSharedDensity : null;
+                      const sharedTensile = isNumber(rawSharedTensile) ? rawSharedTensile : null;
+                      const sharedElongation = isNumber(rawSharedElongation)
+                        ? rawSharedElongation
+                        : null;
+                      if (
+                        sharedDensity === null &&
+                        sharedTensile === null &&
+                        sharedElongation === null
+                      ) {
+                        return null;
+                      }
+                      return (
+                        <div className="mb-4">
+                          <h3 className="text-sm font-medium text-gray-700 mb-2">
+                            Page Test Results (shared across this page&apos;s rolls)
+                          </h3>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+                            {sharedDensity !== null && (
+                              <div className="bg-gray-50 rounded px-2 py-1">
+                                Density: {sharedDensity} g/cm³
+                              </div>
+                            )}
+                            {sharedTensile !== null && (
+                              <div className="bg-gray-50 rounded px-2 py-1">
+                                Tensile: {sharedTensile} MPa
+                              </div>
+                            )}
+                            {sharedElongation !== null && (
+                              <div className="bg-gray-50 rounded px-2 py-1">
+                                Elongation: {sharedElongation}%
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                  {siblingCocs.length > 0 && (
+                    <div className="mb-4">
+                      <h3 className="text-sm font-medium text-gray-700 mb-2">
+                        Sibling CoCs (same source PDF)
+                      </h3>
+                      <ul className="space-y-1">
+                        {siblingCocs.map((sibling) => {
+                          const rawSiblingCocNumber = sibling.cocNumber;
+                          const rawSiblingCompoundCode = sibling.compoundCode;
+                          const rawSiblingProductionDate = sibling.productionDate;
+                          const siblingLabel = rawSiblingCocNumber || `COC-${sibling.id}`;
+                          return (
+                            <li
+                              key={sibling.id}
+                              className="flex items-center gap-3 text-sm bg-blue-50 rounded px-3 py-1.5"
+                            >
+                              <Link
+                                href={`/au-rubber/portal/supplier-cocs/${sibling.id}`}
+                                className="text-blue-700 hover:text-blue-900 font-medium"
+                              >
+                                #{sibling.id} — {siblingLabel}
+                              </Link>
+                              <span className="text-xs text-gray-600">
+                                {rawSiblingCompoundCode || "—"}
+                              </span>
+                              {rawSiblingProductionDate && (
+                                <span className="text-xs text-gray-500">
+                                  Doc {formatDateZA(rawSiblingProductionDate)}
+                                </span>
+                              )}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
+                  )}
 
                   {values(specs).some((v) => v != null) && (
                     <div className="mb-4">
