@@ -1343,12 +1343,6 @@ Formula: totalPrice = totalKg × salePricePerKg
       }
     })();
 
-    if (pdfText.length < 50 && coc.cocType === SupplierCocType.CALENDER_ROLL) {
-      throw new NotFoundException(
-        "PDF appears to be scanned/image-based. Re-extraction for this CoC type requires text-based PDFs.",
-      );
-    }
-
     const correctionHints = await this.rubberCocService.correctionHintsForCoc(id);
 
     const extractionResult = await this.rubberCocExtractionService.extractByType(
@@ -1357,6 +1351,23 @@ Formula: totalPrice = totalKg × salePricePerKg
       correctionHints,
       pdfBuffer,
     );
+
+    if (
+      coc.cocType === SupplierCocType.CALENDER_ROLL &&
+      extractionResult.pages &&
+      extractionResult.pages.length > 1
+    ) {
+      const split = await this.rubberCocService.splitCalenderRollExtraction(
+        id,
+        extractionResult.pages,
+      );
+      this.logger.log(
+        `Manual re-extract on Calender Roll CoC ${id} — split into ${split.supplierCocIds.length} CoCs: ${split.supplierCocIds.join(", ")}`,
+      );
+      const updatedParent = await this.rubberCocService.supplierCocById(id);
+      if (!updatedParent) throw new NotFoundException("Failed to update supplier CoC");
+      return updatedParent;
+    }
 
     const updatedCoc = await this.rubberCocService.reextractAndUpdateCoc(id, extractionResult.data);
     if (!updatedCoc) throw new NotFoundException("Failed to update supplier CoC");

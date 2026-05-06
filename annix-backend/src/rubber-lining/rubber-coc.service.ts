@@ -333,6 +333,71 @@ export class RubberCocService {
     return this.mapSupplierCocToDto(dedupedCoc);
   }
 
+  async splitCalenderRollExtraction(
+    parentId: number,
+    pages: ExtractedCocData[],
+  ): Promise<{ supplierCocIds: number[] }> {
+    const parent = await this.supplierCocRepository.findOne({
+      where: { id: parentId },
+      relations: ["supplierCompany"],
+    });
+    if (!parent) {
+      throw new BadRequestException("Supplier CoC not found");
+    }
+
+    if (!pages || pages.length === 0) {
+      return { supplierCocIds: [parentId] };
+    }
+
+    const siblings = await this.supplierCocRepository
+      .createQueryBuilder("coc")
+      .where("coc.document_path = :documentPath", { documentPath: parent.documentPath })
+      .andWhere("coc.coc_type = :cocType", { cocType: SupplierCocType.CALENDER_ROLL })
+      .orderBy("coc.id", "ASC")
+      .getMany();
+
+    if (siblings.length >= pages.length) {
+      const ordered = siblings.slice(0, pages.length);
+      const updatedIds: number[] = [];
+      for (let i = 0; i < ordered.length; i += 1) {
+        const updated = await this.setExtractedData(ordered[i].id, pages[i]);
+        if (updated) updatedIds.push(ordered[i].id);
+      }
+      this.logger.log(
+        `Calender roll re-extract — updated ${updatedIds.length} existing sibling CoC(s) [${updatedIds.join(", ")}] for documentPath ${parent.documentPath}`,
+      );
+      return { supplierCocIds: updatedIds };
+    }
+
+    await this.setExtractedData(parentId, pages[0]);
+
+    const startIndex = siblings.length > 0 ? siblings.length : 1;
+    const remainingPages = pages.slice(startIndex);
+    const newCocIds: number[] = [];
+    for (const pageData of remainingPages) {
+      const created = await this.createSupplierCoc(
+        {
+          cocType: SupplierCocType.CALENDER_ROLL,
+          supplierCompanyId: parent.supplierCompanyId,
+          documentPath: parent.documentPath,
+          cocNumber: pageData.cocNumber ?? null,
+          compoundCode: pageData.compoundCode ?? null,
+          productionDate: pageData.productionDate ?? null,
+          orderNumber: pageData.orderNumber ?? null,
+        },
+        parent.createdBy ?? undefined,
+      );
+      await this.setExtractedData(created.id, pageData);
+      newCocIds.push(created.id);
+    }
+
+    this.logger.log(
+      `Calender roll split — kept #${parentId} for page 1, created [${newCocIds.join(", ")}] for pages 2..${pages.length} (sharing documentPath ${parent.documentPath})`,
+    );
+
+    return { supplierCocIds: [parentId, ...newCocIds] };
+  }
+
   private async flagAsPendingIfDuplicate(coc: RubberSupplierCoc): Promise<RubberSupplierCoc> {
     if (!coc.cocNumber) return coc;
     if (coc.versionStatus !== DocumentVersionStatus.ACTIVE) return coc;

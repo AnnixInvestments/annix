@@ -36,10 +36,17 @@ export class RubberExtractionOrchestratorService {
       .correctionHintsForCoc(cocId)
       .then((hints) => this.cocExtractionService.extractByType(cocType, pdfText, hints, pdfBuffer))
       .then(async (result) => {
-        if (result?.data) {
-          await this.cocService.setExtractedData(cocId, result.data);
-          this.logger.log(`Auto-extracted data for CoC ${cocId} in ${result.processingTimeMs}ms`);
+        if (!result?.data) return;
+        const pageData = result.pages;
+        if (cocType === SupplierCocType.CALENDER_ROLL && pageData && pageData.length > 1) {
+          const split = await this.cocService.splitCalenderRollExtraction(cocId, pageData);
+          this.logger.log(
+            `Auto-extracted Calender Roll CoC ${cocId} via Vision in ${result.processingTimeMs}ms — split into ${split.supplierCocIds.length} CoCs: ${split.supplierCocIds.join(", ")}`,
+          );
+          return;
         }
+        await this.cocService.setExtractedData(cocId, result.data);
+        this.logger.log(`Auto-extracted data for CoC ${cocId} in ${result.processingTimeMs}ms`);
       })
       .catch((error) => {
         this.logger.error(`Auto-extraction failed for CoC ${cocId}: ${error.message}`);

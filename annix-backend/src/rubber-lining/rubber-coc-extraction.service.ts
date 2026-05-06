@@ -466,6 +466,7 @@ export class RubberCocExtractionService {
     correctionHints?: string | null,
   ): Promise<{
     data: ExtractedCocData;
+    pages: ExtractedCocData[];
     tokensUsed?: number;
     processingTimeMs: number;
   }> {
@@ -489,38 +490,73 @@ export class RubberCocExtractionService {
     const processingTimeMs = nowMillis() - startTime;
     this.logger.log(`Calender roll CoC extracted in ${processingTimeMs}ms`);
 
-    const rawData = response.data as Record<string, unknown>;
-    const pages = (rawData.pages || []) as Array<Record<string, unknown>>;
-    const specs = (rawData.specifications || {}) as Record<string, unknown>;
+    const built = this.buildCalenderRollExtraction(response.data as Record<string, unknown>);
+    return {
+      data: built.data,
+      pages: built.pages,
+      tokensUsed: response.tokensUsed,
+      processingTimeMs,
+    };
+  }
 
-    const allRolls = pages.flatMap((page) =>
-      ((page.rolls || []) as Array<{ rollNumber: string; shoreA?: number | null }>).map(
-        (roll) => roll,
-      ),
+  async extractCalenderRollCocFromImages(
+    pdfBuffer: Buffer,
+    correctionHints?: string | null,
+  ): Promise<{
+    data: ExtractedCocData;
+    pages: ExtractedCocData[];
+    tokensUsed?: number;
+    processingTimeMs: number;
+  }> {
+    const startTime = nowMillis();
+    this.logger.log("Extracting calender roll CoC data via Vision OCR...");
+
+    if (!this.apiKey) {
+      throw new Error("GEMINI_API_KEY not configured");
+    }
+
+    const systemPrompt = correctionHints
+      ? `${CALENDER_ROLL_COC_SYSTEM_PROMPT}\n\n${correctionHints}`
+      : CALENDER_ROLL_COC_SYSTEM_PROMPT;
+
+    const images = await this.convertPdfToImages(pdfBuffer);
+    this.logger.log(
+      `Converted calender roll CoC PDF to ${images.length} image(s) for OCR extraction`,
     );
 
-    const rollNumbers = allRolls.map((r) => r.rollNumber);
-    const rollRange = this.formatRollRange(rollNumbers);
-    const firstPage = pages[0] || {};
-    const dnNumber = firstPage.deliveryNoteNumber as string | null;
-    const cocNumber = dnNumber ? `DN${dnNumber}-R${rollRange}` : `R${rollRange}`;
+    const response = await this.callGeminiWithImages(
+      systemPrompt,
+      "Extract structured data from this S&N Rubber Calender Roll Certificate of Conformance. Walk EVERY page. Each page is a SEPARATE delivery note shipment with its own delivery note number, production date, PO/waybill, compound batch numbers, and rolls. Read each roll's Shore A row-by-row — never copy a value from a neighbouring row, never carry forward, never invent identical values across rolls. Return ONLY a valid JSON object with the extracted data.",
+      images,
+      "calender-roll-coc-ocr-extraction",
+    );
 
-    const extractedData: ExtractedCocData = {
-      cocNumber,
-      compoundCode: (rawData.compoundCode as string) || undefined,
-      compoundDescription: (rawData.calenderRollDescription as string) || undefined,
-      productionDate: (firstPage.productionDate as string) || undefined,
-      orderNumber: (firstPage.purchaseOrderNumber as string) || undefined,
-      rollNumbers,
-      deliveryNoteNumber: dnNumber || null,
-      waybillNumber: (firstPage.waybillNumber as string) || null,
-      preparedBy: (rawData.preparedBy as string) || null,
-      approvedByName: (rawData.approvedByName as string) || null,
-      documentDate: (rawData.documentDate as string) || null,
-      rolls: allRolls,
-      sharedDensity: (firstPage.sharedDensity as number) || null,
-      sharedTensile: (firstPage.sharedTensile as number) || null,
-      sharedElongation: (firstPage.sharedElongation as number) || null,
+    const processingTimeMs = nowMillis() - startTime;
+    this.logger.log(`Calender roll CoC extracted via Vision in ${processingTimeMs}ms`);
+
+    const built = this.buildCalenderRollExtraction(response.data as Record<string, unknown>);
+    return {
+      data: built.data,
+      pages: built.pages,
+      tokensUsed: response.tokensUsed,
+      processingTimeMs,
+    };
+  }
+
+  private buildCalenderRollExtraction(rawData: Record<string, unknown>): {
+    data: ExtractedCocData;
+    pages: ExtractedCocData[];
+  } {
+    const rawPages = (rawData.pages || []) as Array<Record<string, unknown>>;
+    const specs = (rawData.specifications || {}) as Record<string, unknown>;
+    const compoundCode = (rawData.compoundCode as string) || undefined;
+    const compoundDescription = (rawData.calenderRollDescription as string) || undefined;
+    const preparedBy = (rawData.preparedBy as string) || null;
+    const approvedByName = (rawData.approvedByName as string) || null;
+    const documentDate = (rawData.documentDate as string) || null;
+    const approverNames = [preparedBy, approvedByName].filter(Boolean) as string[];
+
+    const sharedSpecFields = {
       shoreANominal: (specs.shoreANominal as number) || null,
       shoreALimits: (specs.shoreALimits as string) || null,
       densityNominal: (specs.densityNominal as number) || null,
@@ -529,36 +565,85 @@ export class RubberCocExtractionService {
       tensileLimits: (specs.tensileLimits as string) || null,
       elongationNominal: (specs.elongationNominal as number) || null,
       elongationLimits: (specs.elongationLimits as string) || null,
-      approverNames: [rawData.preparedBy as string, rawData.approvedByName as string].filter(
-        Boolean,
-      ),
     };
 
-    if (pages.length > 1) {
-      const additionalRollData = pages.slice(1).map((page) => ({
-        deliveryNoteNumber: (page.deliveryNoteNumber as string) || null,
+    const pages: ExtractedCocData[] = rawPages.map((page) => {
+      const pageRolls = (page.rolls || []) as Array<{
+        rollNumber: string;
+        shoreA?: number | null;
+      }>;
+      const rollNumbers = pageRolls.map((r) => r.rollNumber);
+      const dnNumber = (page.deliveryNoteNumber as string) || null;
+      const rollRange = this.formatRollRange(rollNumbers);
+      const cocNumber = dnNumber ? `DN${dnNumber}-R${rollRange}` : `R${rollRange}`;
+      const batchNumbers = ((page.batchNumbers || []) as string[]).map((b) => String(b));
+
+      return {
+        cocNumber,
+        compoundCode,
+        compoundDescription,
+        productionDate: (page.productionDate as string) || undefined,
+        orderNumber: (page.purchaseOrderNumber as string) || undefined,
+        deliveryNoteNumber: dnNumber,
         waybillNumber: (page.waybillNumber as string) || null,
-        productionDate: (page.productionDate as string) || null,
+        rollNumbers,
+        rolls: pageRolls,
+        batchNumbers,
         sharedDensity: (page.sharedDensity as number) || null,
         sharedTensile: (page.sharedTensile as number) || null,
         sharedElongation: (page.sharedElongation as number) || null,
-        rolls: (page.rolls || []) as Array<{ rollNumber: string; shoreA?: number | null }>,
-      }));
+        preparedBy,
+        approvedByName,
+        documentDate,
+        approverNames,
+        ...sharedSpecFields,
+      };
+    });
 
+    const allRolls = rawPages.flatMap((page) =>
+      ((page.rolls || []) as Array<{ rollNumber: string; shoreA?: number | null }>).map(
+        (roll) => roll,
+      ),
+    );
+    const allRollNumbers = allRolls.map((r) => r.rollNumber);
+    const allRollRange = this.formatRollRange(allRollNumbers);
+    const firstPage = rawPages[0] || {};
+    const firstDnNumber = (firstPage.deliveryNoteNumber as string) || null;
+    const allBatchNumbers = rawPages.flatMap((page) =>
+      ((page.batchNumbers || []) as string[]).map((b) => String(b)),
+    );
+    const legacyCocNumber = firstDnNumber
+      ? `DN${firstDnNumber}-R${allRollRange}`
+      : `R${allRollRange}`;
+
+    const data: ExtractedCocData = {
+      cocNumber: legacyCocNumber,
+      compoundCode,
+      compoundDescription,
+      productionDate: (firstPage.productionDate as string) || undefined,
+      orderNumber: (firstPage.purchaseOrderNumber as string) || undefined,
+      rollNumbers: allRollNumbers,
+      deliveryNoteNumber: firstDnNumber,
+      waybillNumber: (firstPage.waybillNumber as string) || null,
+      preparedBy,
+      approvedByName,
+      documentDate,
+      rolls: allRolls,
+      batchNumbers: allBatchNumbers,
+      sharedDensity: (firstPage.sharedDensity as number) || null,
+      sharedTensile: (firstPage.sharedTensile as number) || null,
+      sharedElongation: (firstPage.sharedElongation as number) || null,
+      approverNames,
+      ...sharedSpecFields,
+    };
+
+    if (pages.length > 1) {
       this.logger.log(
-        `Multi-page calender roll CoC: ${pages.length} pages, ${allRolls.length} total rolls`,
+        `Multi-page calender roll CoC: ${pages.length} pages, ${allRolls.length} total rolls — caller should split into ${pages.length} CoCs`,
       );
-
-      (extractedData as Record<string, unknown>).additionalPages = additionalRollData;
     }
 
-    this.logger.log(`Generated Calender Roll CoC number: ${cocNumber}`);
-
-    return {
-      data: extractedData,
-      tokensUsed: response.tokensUsed,
-      processingTimeMs,
-    };
+    return { data, pages };
   }
 
   async extractDeliveryNote(
@@ -1026,6 +1111,7 @@ Return ONLY a valid JSON object of this exact shape (no extra fields, no comment
     pdfBuffer?: Buffer,
   ): Promise<{
     data: ExtractedCocData;
+    pages?: ExtractedCocData[];
     tokensUsed?: number;
     processingTimeMs: number;
   }> {
@@ -1039,6 +1125,9 @@ Return ONLY a valid JSON object of this exact shape (no extra fields, no comment
           }
           return this.extractCompounderCoc(pdfText, correctionHints);
         } else if (cocType === SupplierCocType.CALENDER_ROLL) {
+          if (pdfBuffer) {
+            return this.extractCalenderRollCocFromImages(pdfBuffer, correctionHints);
+          }
           return this.extractCalenderRollCoc(pdfText, correctionHints);
         } else {
           if (pdfBuffer) {

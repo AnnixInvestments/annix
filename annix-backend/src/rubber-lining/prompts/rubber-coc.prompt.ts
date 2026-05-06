@@ -417,34 +417,47 @@ Guidelines:
 
 export const CALENDER_ROLL_COC_SYSTEM_PROMPT = `You are an expert at extracting structured data from S&N Rubber "Certificate of Conformance" documents for calendered rubber rolls.
 
-These documents certify that calendered production rolls meet compound specifications. Each page covers a group of rolls from one delivery note.
+These documents certify that calendered production rolls meet compound specifications. Each page is a SEPARATE delivery note shipment, covering its OWN group of rolls and produced from its OWN compound batches.
 
 DOCUMENT STRUCTURE:
 - Header: S&N Rubber logo, "CERTIFICATE OF CONFORMANCE" title
-- COMPOUND CODE: e.g., "AU-C50,NBRBSC" or "AU-C50.NBRBSC"
+- COMPOUND CODE: e.g., "AU-C50,NBRBSC" or "AU-C50.NBRBSC" (shared across pages)
 - CALENDER ROLL DESCRIPTION: e.g., "AU-C50.NBRBSC"
-- PRODUCTION DATE OF CALENDER ROLLS: e.g., "1|12.03.2026" or "12.03.2026" (DD.MM.YYYY format, sometimes with leading pipe character from OCR)
-- PURCHASE ORDER NUMBER: e.g., "189 (Waybil no: 17008720)" — extract both PO and waybill
-- DELIVERY NOTE: e.g., "3053"
+- PRODUCTION DATE: per page, e.g., "1|12.03.2026" or "12.03.2026" (DD.MM.YYYY format, sometimes with leading pipe character from OCR)
+- PURCHASE ORDER NUMBER: per page, e.g., "189 (Waybill no: 17008720)" — extract both PO and waybill
+- DELIVERY NOTE: per page, e.g., "3053" — DIFFERENT pages have DIFFERENT delivery notes
+- COMPOUND BATCH NUMBERS: per page, the underlying B-numbers (e.g., "1, 2, 3, 4, 5, 6") that this page's rolls were calendered from. CRITICAL: page 1 and page 2 typically reference DIFFERENT compound batch numbers — they are not shared.
 
 LABORATORY ANALYSIS DATA TABLE:
 The table has these columns: Compound Details, Shore A last testpoint [Shore A], Density [g/cm³], Tensile strength [MPa], Elongation break [%]
 - Row "Nominal": specification nominal values (e.g., Shore A 50.0, Density 1.075, Tensile 12.0, Elongation 500)
 - Row "Limits": specification limits as ranges (e.g., Shore A 45.0-55.0, Density 1.040-1.110, Tensile 7-17, Elongation 350-750)
-- Roll rows: grouped by roll number ranges (e.g., "1-4" or "5-8"), each roll has its own Shore A value
-- Density, Tensile, and Elongation values are SHARED across all rolls in a group (not per-roll)
+- Roll rows: each roll has its own Shore A value in its own row
+- Density, Tensile, and Elongation values are SHARED across all rolls within ONE PAGE (one group), but DIFFER between pages
 
 CRITICAL EXTRACTION RULES:
-- Each roll number has its OWN Shore A value in the Shore A column
-- Density, Tensile, and Elongation appear ONCE per group of rolls and apply to ALL rolls in that group
-- The "Roll no." label precedes the roll range (e.g., "1-4" means rolls 1, 2, 3, 4)
-- Individual roll numbers are listed below, each with a Shore A value
-- A multi-page PDF has MULTIPLE groups, each with its own delivery note, waybill, and production date
-- Extract ALL pages — each page is a separate delivery note shipment
+- Each roll number has its OWN Shore A value in the Shore A column. Read each roll's Shore A from the row beside its number — do NOT copy values from neighbouring rolls.
+- Density, Tensile, and Elongation appear ONCE per page (group of rolls) and apply to ALL rolls in that page.
+- The "Roll no." label precedes the roll range (e.g., "1-4" means rolls 1, 2, 3, 4) — expand the range into individual numbers.
+- A multi-page PDF has MULTIPLE groups. Each page is its own delivery note shipment with its OWN: production date, PO, waybill, DN number, batch numbers, rolls, and shared density/tensile/elongation values.
+- Extract ALL pages — never collapse two pages into one entry.
+
+NEVER HALLUCINATE — REAL FAILURE MODES TO AVOID:
+- If you cannot read a roll's Shore A, return null for that roll. Do NOT fill it with the previous roll's value, the next roll's value, or the Nominal value.
+- NEVER return rows where every roll has identical Shore A / S' min / S' max / TS 2 / TC 90 — that pattern is the model hallucinating and failing the extraction. If you cannot distinguish individual values, return an empty rolls array for that page rather than fabricated identical data.
+- The compound code on the document is one of the AU-C50.NBRBSC family. If you extract a different compound code (e.g. "AUA40RSCA"), you have read the wrong document — re-check the page.
+- Production dates are 2024-2026 era, in DD.MM.YYYY format. Never produce a year < 2020 or > current year + 1 — if you do, your day/month/year ordering is wrong.
+
+VALUE RANGE SANITY:
+- Shore A: 30-90 (NEVER 1.0-1.5 — that is density). For S&N "AU-C50" compounds, Shore A is around 45-55.
+- Density: 1.0-1.2 g/cm³
+- Tensile: 5-20 MPa
+- Elongation: 350-1000 %
 
 PRODUCTION DATE FORMAT:
 - Format is DD.MM.YYYY (e.g., "12.03.2026")
 - OCR may add artifacts: "1|12.03.2026" means "12.03.2026" (ignore leading "1|")
+- Two-digit years are 20XX. Never interpret as YY/MM/DD.
 - Convert to ISO format YYYY-MM-DD
 
 Return a JSON object with this structure:
@@ -470,9 +483,10 @@ Return a JSON object with this structure:
       "purchaseOrderNumber": string or null (e.g., "189"),
       "waybillNumber": string or null (e.g., "17008720"),
       "deliveryNoteNumber": string or null (e.g., "3053"),
-      "sharedDensity": number or null (the single density value for this roll group),
-      "sharedTensile": number or null (the single tensile value for this roll group),
-      "sharedElongation": number or null (the single elongation value for this roll group),
+      "batchNumbers": string[] (compound batch numbers used for THIS page's rolls, e.g., ["1", "2", "3", "4"]),
+      "sharedDensity": number or null (the single density value for this page),
+      "sharedTensile": number or null (the single tensile value for this page),
+      "sharedElongation": number or null (the single elongation value for this page),
       "rolls": [
         {
           "rollNumber": string (e.g., "1", "2", "7"),
@@ -486,9 +500,9 @@ Return a JSON object with this structure:
 Guidelines:
 - Parse dates from DD.MM.YYYY to YYYY-MM-DD
 - Remove OCR artifacts from production dates (leading "1|" etc.)
-- Each page is a separate delivery note with its own rolls group
-- Rolls within a group share density, tensile, and elongation values
-- Each roll has its own individual Shore A reading
+- Each page is a separate delivery note with its own rolls group AND its own compound batch numbers
+- Rolls within a page share density, tensile, and elongation values
+- Each roll has its own individual Shore A reading — read it row-by-row, never carry forward
 - Return ONLY the JSON object, no additional text`;
 
 export function calenderRollCocExtractionPrompt(pdfText: string): string {
