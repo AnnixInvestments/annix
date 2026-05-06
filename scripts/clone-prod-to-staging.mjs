@@ -126,6 +126,28 @@ try {
     { allowExitCodes: [1] },
   );
 
+  await run("post-restore cleanup", "psql", [
+    STAGING_URL,
+    "-v",
+    "ON_ERROR_STOP=1",
+    "-c",
+    `DELETE FROM scheduled_job_overrides
+     WHERE ctid NOT IN (
+       SELECT MIN(ctid) FROM scheduled_job_overrides GROUP BY "jobName"
+     );
+     DO $$
+     BEGIN
+       IF NOT EXISTS (
+         SELECT 1 FROM pg_constraint
+         WHERE conrelid = 'public.scheduled_job_overrides'::regclass
+           AND conname = 'scheduled_job_overrides_pkey'
+       ) THEN
+         ALTER TABLE scheduled_job_overrides
+           ADD CONSTRAINT scheduled_job_overrides_pkey PRIMARY KEY ("jobName");
+       END IF;
+     END $$;`,
+  ]);
+
   const totalSeconds = ((Date.now() - startedAt) / 1000).toFixed(1);
   console.log("");
   console.log(`Done in ${totalSeconds}s. Staging is now a copy of prod.`);

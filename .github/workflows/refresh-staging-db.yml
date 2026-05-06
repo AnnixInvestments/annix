@@ -32,16 +32,10 @@ jobs:
 
       - uses: superfly/flyctl-actions/setup-flyctl@master
 
-      - name: Stop staging Fly machines
+      - name: Scale staging to 0 machines
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        run: |
-          flyctl machine list -a annix-app-staging --json \
-            | jq -r '.[].id' \
-            | while read -r m; do
-                echo "Stopping $m"
-                flyctl machine stop "$m" -a annix-app-staging
-              done
+        run: flyctl scale count 0 -a annix-app-staging --yes
 
       - name: Clone prod -> staging
         env:
@@ -52,14 +46,8 @@ jobs:
           pg_dump --version
           node scripts/clone-prod-to-staging.mjs --yes
 
-      - name: Restart staging Fly machines
+      - name: Scale staging back to 2 machines
         if: always()
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        run: |
-          flyctl machine list -a annix-app-staging --json \
-            | jq -r '.[].id' \
-            | while read -r m; do
-                echo "Starting $m"
-                flyctl machine start "$m" -a annix-app-staging
-              done
+        run: flyctl scale count 2 -a annix-app-staging --yes
