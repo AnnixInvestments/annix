@@ -6,15 +6,10 @@ import { fileURLToPath } from "node:url";
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(SCRIPT_DIR, "..");
-const GUIDES_DIR = join(
-  REPO_ROOT,
-  "annix-frontend",
-  "src",
-  "app",
-  "stock-control",
-  "how-to",
-  "guides",
-);
+const GUIDES_DIRS = [
+  join(REPO_ROOT, "annix-frontend", "src", "app", "stock-control", "how-to", "guides"),
+  join(REPO_ROOT, "annix-frontend", "src", "app", "cv-assistant", "how-to", "guides"),
+];
 
 const parseFrontmatter = (raw) => {
   const match = raw.match(/^---\r?\n([\s\S]*?)\r?\n---/);
@@ -50,26 +45,36 @@ const lastCommitDate = (path) => {
 
 const stale = [];
 
-readdirSync(GUIDES_DIR)
-  .filter((f) => f.endsWith(".md"))
-  .forEach((file) => {
-    const raw = readFileSync(join(GUIDES_DIR, file), "utf8");
-    const fm = parseFrontmatter(raw);
-    const guideUpdated = fm.lastUpdated || "0000-00-00";
-    const related = Array.isArray(fm.relatedPaths) ? fm.relatedPaths : [];
+const safeReaddir = (dir) => {
+  try {
+    return readdirSync(dir);
+  } catch {
+    return [];
+  }
+};
 
-    const newerPaths = related
-      .map((p) => ({ path: p, date: lastCommitDate(p) }))
-      .filter((r) => r.date && r.date > guideUpdated);
+GUIDES_DIRS.forEach((guidesDir) => {
+  safeReaddir(guidesDir)
+    .filter((f) => f.endsWith(".md"))
+    .forEach((file) => {
+      const raw = readFileSync(join(guidesDir, file), "utf8");
+      const fm = parseFrontmatter(raw);
+      const guideUpdated = fm.lastUpdated || "0000-00-00";
+      const related = Array.isArray(fm.relatedPaths) ? fm.relatedPaths : [];
 
-    if (newerPaths.length > 0) {
-      stale.push({
-        guide: file,
-        guideUpdated,
-        newerPaths,
-      });
-    }
-  });
+      const newerPaths = related
+        .map((p) => ({ path: p, date: lastCommitDate(p) }))
+        .filter((r) => r.date && r.date > guideUpdated);
+
+      if (newerPaths.length > 0) {
+        stale.push({
+          guide: `${guidesDir.split("/app/")[1] ?? guidesDir}/${file}`,
+          guideUpdated,
+          newerPaths,
+        });
+      }
+    });
+});
 
 if (stale.length === 0) {
   console.log("How To guides are fresh.");
