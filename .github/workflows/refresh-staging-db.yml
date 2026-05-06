@@ -1,0 +1,62 @@
+name: Refresh staging DB from prod
+
+on:
+  schedule:
+    # 04:00 UTC = 06:00 SAST daily
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: refresh-staging-db
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Postgres 17 client (matches Neon)
+        run: |
+          sudo apt-get update
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          sudo sh -c 'echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(. /etc/os-release && echo $VERSION_CODENAME)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-17
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Stop staging Fly machines
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          flyctl machine list -a annix-app-staging --json \
+            | jq -r '.[].id' \
+            | while read -r m; do
+                echo "Stopping $m"
+                flyctl machine stop "$m" -a annix-app-staging
+              done
+
+      - name: Clone prod -> staging
+        env:
+          PROD_DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+          STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+        run: node scripts/clone-prod-to-staging.mjs --yes
+
+      - name: Restart staging Fly machines
+        if: always()
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          flyctl machine list -a annix-app-staging --json \
+            | jq -r '.[].id' \
+            | while read -r m; do
+                echo "Starting $m"
+                flyctl machine start "$m" -a annix-app-staging
+              done
