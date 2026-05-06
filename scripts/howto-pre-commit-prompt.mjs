@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 import { execSync, spawn, spawnSync } from "node:child_process";
 import {
+  closeSync,
   createReadStream,
   createWriteStream,
+  openSync,
   readdirSync,
   readFileSync,
   writeFileSync,
@@ -106,11 +108,9 @@ if (affected.length === 0) {
 
 const ttyAvailable = (() => {
   try {
-    const stat = execSync("test -r /dev/tty && echo yes || echo no", {
-      cwd: REPO_ROOT,
-      encoding: "utf8",
-    }).trim();
-    return stat === "yes";
+    const fd = openSync("/dev/tty", "r");
+    closeSync(fd);
+    return true;
   } catch {
     return false;
   }

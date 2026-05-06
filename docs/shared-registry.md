@@ -215,6 +215,34 @@ When creating a new hook:
 
 ---
 
+## Repo-level scripts (`scripts/`)
+
+Cross-app build / quality / tooling scripts that run from the repo root, typically invoked by git hooks or `pnpm` aliases. Not application code; do not import from these in `annix-backend` / `annix-frontend`.
+
+| Script | Purpose | Invoked by |
+|---|---|---|
+| `scripts/check-legal-risks.sh` | Pre-push gate against committing real `.co.za` / `.com` emails, reserved standards-body data, etc. (#149) | `.githooks/pre-push` |
+| `scripts/check-inter-app-duplication.sh` | Pre-push gate against duplicated app constants. Enforces the discovery-first protocol. | `.githooks/pre-push` |
+| `scripts/check-how-to-freshness.mjs` | Pre-push warning when any how-to guide's `lastUpdated` is older than the latest commit on any of its `relatedPaths`. Auto-discovers guides under `annix-frontend/src/app/*/how-to/guides/*.md` (Stock Control, CV Assistant, future apps). Warn-only. | `.githooks/pre-push` |
+| `scripts/howto-pre-commit-prompt.mjs` | Pre-commit interactive prompt (`edit` / `bump` / `skip` / `draft`) when staged files match any guide's `relatedPaths`. Same auto-discovery as the freshness checker. Reads `/dev/tty`; honours `HOWTO_HOOK=skip` (#250). | `.githooks/pre-commit` |
+| `scripts/draft-howto-update.mjs` | One-shot Gemini / Claude API call that drafts a minimal-edit patch to a guide given the staged diff(s). 30s `AbortController` timeout. Skips silently if neither `GEMINI_API_KEY` nor `ANTHROPIC_API_KEY` is set (#250). | `howto-pre-commit-prompt.mjs` |
+
+**When to add a new script here:** a quality gate, validator, or tooling script that runs across the whole repo (not bound to a single app). For app-specific scripts, prefer the app's own `scripts/` directory.
+
+---
+
+## Repo-level dev tooling (`tools/`)
+
+Developer-machine tooling that ships outside the deployed apps — e.g. editor extensions, local utilities, CLI helpers.
+
+| Tool | Purpose |
+|---|---|
+| `tools/vscode-howto-watcher/` | VS Code extension. Status-bar item appears when the active editor path matches any how-to guide's `relatedPaths`; click opens the guide(s) (#250). Self-contained — own `package.json` + `tsconfig.json`. Not auto-installed; engineers `pnpm build` then `Developer: Install Extension from Location`. |
+
+**When to add a new tool here:** local-only dev ergonomics that don't fit `scripts/` (more than a single file, has its own build step, or wraps a third-party tooling surface like a VS Code extension).
+
+---
+
 ## Red-flag locations — NOT canonical homes
 
 Do NOT put shared code in any of these locations. If you see shared code here, it's a bug to fix.
