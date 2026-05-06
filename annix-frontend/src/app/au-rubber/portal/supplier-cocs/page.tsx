@@ -2,6 +2,7 @@
 
 import {
   ArrowLeftRight,
+  Check,
   CheckCircle,
   Eye,
   FileText,
@@ -48,6 +49,7 @@ import {
   useAuRubberProxyImageBlob,
   useAuRubberRejectVersion,
   useAuRubberSupplierCocs,
+  useAuRubberSupplierCocsPendingAuthorization,
   useAuRubberSupplierCocsPendingAuthorizationCount,
   useAuRubberUpdateSupplierCoc,
   useAuRubberUploadSupplierCoc,
@@ -104,6 +106,12 @@ export default function SupplierCocsPage() {
   const pendingAuthCountQuery = useAuRubberSupplierCocsPendingAuthorizationCount();
   const pendingAuthCountData = pendingAuthCountQuery.data;
   const pendingAuthCount = pendingAuthCountData ? pendingAuthCountData.count : 0;
+  const pendingAuthListQuery = useAuRubberSupplierCocsPendingAuthorization({
+    enabled: pendingAuthCount > 0,
+  });
+  const pendingAuthListData = pendingAuthListQuery.data;
+  const pendingAuthList = pendingAuthListData ? pendingAuthListData : [];
+  const [pendingActionId, setPendingActionId] = useState<number | null>(null);
   const companiesQuery = useAuRubberCompanies();
   const rawCocsQueryData = cocsQuery.data;
   const rawCompaniesQueryData = companiesQuery.data;
@@ -693,21 +701,31 @@ export default function SupplierCocsPage() {
 
   const handleAuthorizeVersion = async (id: number) => {
     try {
+      setPendingActionId(id);
       await authorizeVersionMutation.mutateAsync({ kind: "supplier-cocs", id });
       showToast("Version authorized successfully", "success");
       cocsQuery.refetch();
+      pendingAuthListQuery.refetch();
+      pendingAuthCountQuery.refetch();
     } catch (err) {
       toastError(showToast, err, "Failed to authorize version");
+    } finally {
+      setPendingActionId(null);
     }
   };
 
   const handleRejectVersion = async (id: number) => {
     try {
+      setPendingActionId(id);
       await rejectVersionMutation.mutateAsync({ kind: "supplier-cocs", id });
       showToast("Version rejected", "success");
       cocsQuery.refetch();
+      pendingAuthListQuery.refetch();
+      pendingAuthCountQuery.refetch();
     } catch (err) {
       toastError(showToast, err, "Failed to reject version");
+    } finally {
+      setPendingActionId(null);
     }
   };
 
@@ -731,38 +749,123 @@ export default function SupplierCocsPage() {
   return (
     <div ref={scrollSentinelRef} className="space-y-6">
       <Breadcrumb items={[{ label: "Supplier CoCs" }]} />
-      {pendingAuthCount > 0 && !showAllVersions && (
-        <div className="bg-amber-50 border border-amber-300 rounded-lg p-4 flex items-start gap-3">
-          <svg
-            className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-            />
-          </svg>
-          <div className="flex-1">
-            <p className="text-sm font-semibold text-amber-900">
-              {pendingAuthCount} CoC version{pendingAuthCount === 1 ? "" : "s"} awaiting
-              authorization
-            </p>
-            <p className="text-sm text-amber-800 mt-1">
-              Newer uploads of CoCs that already exist in the system are held as pending versions
-              until you Authorize or Reject them. Until then, the previously-approved version
-              remains in use throughout the platform.
-            </p>
+      {pendingAuthCount > 0 && (
+        <div className="bg-amber-50 border border-amber-300 rounded-lg p-4 space-y-3">
+          <div className="flex items-start gap-3">
+            <svg
+              className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+              />
+            </svg>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-amber-900">
+                {pendingAuthCount} CoC version{pendingAuthCount === 1 ? "" : "s"} awaiting
+                authorization
+              </p>
+              <p className="text-sm text-amber-800 mt-1">
+                Newer uploads of CoCs that already exist in the system are held as pending versions
+                until you Authorize or Reject them. The previously-approved version remains in use
+                until you act.
+              </p>
+            </div>
           </div>
-          <button
-            onClick={() => setShowAllVersions(true)}
-            className="flex-shrink-0 px-3 py-1.5 text-sm font-medium bg-amber-600 hover:bg-amber-700 text-white rounded-md"
-          >
-            Review pending
-          </button>
+          {pendingAuthListQuery.isLoading && pendingAuthList.length === 0 ? (
+            <div className="bg-white border border-amber-200 rounded-md p-4 text-sm text-amber-700">
+              Loading pending CoCs…
+            </div>
+          ) : (
+            <ul className="space-y-2">
+              {pendingAuthList.map((pending) => {
+                const rawCocNumber = pending.cocNumber;
+                const rawCompoundCode = pending.compoundCode;
+                const rawSupplierName = pending.supplierCompanyName;
+                const rawProductionDate = pending.productionDate;
+                const rawPreviousVersionId = pending.previousVersionId;
+                const rawPreviousVersionCocNumber = pending.previousVersionCocNumber;
+                const isActing = pendingActionId === pending.id;
+                const previousLabel = rawPreviousVersionCocNumber
+                  ? `${rawPreviousVersionCocNumber} (#${rawPreviousVersionId})`
+                  : rawPreviousVersionId
+                    ? `#${rawPreviousVersionId}`
+                    : null;
+                return (
+                  <li
+                    key={pending.id}
+                    className="bg-white border border-amber-200 rounded-md p-3 flex flex-wrap items-center gap-3"
+                  >
+                    <span
+                      className={`px-2 py-0.5 text-xs font-semibold rounded-full ${
+                        pending.cocType === "COMPOUNDER"
+                          ? "bg-purple-100 text-purple-800"
+                          : pending.cocType === "CALENDARER"
+                            ? "bg-indigo-100 text-indigo-800"
+                            : "bg-amber-100 text-amber-800"
+                      }`}
+                    >
+                      {COC_TYPE_LABELS[pending.cocType]}
+                    </span>
+                    <span className="text-sm font-mono text-gray-700">#{pending.id}</span>
+                    <Link
+                      href={`/au-rubber/portal/supplier-cocs/${pending.id}`}
+                      className="text-sm font-medium text-yellow-700 hover:text-yellow-800 break-all"
+                    >
+                      {rawCocNumber || `COC-${pending.id}`}
+                    </Link>
+                    <span className="px-1.5 py-0.5 text-xs font-semibold rounded-full bg-blue-100 text-blue-700">
+                      v{pending.version}
+                    </span>
+                    {previousLabel && (
+                      <span className="text-xs text-gray-600">replacing {previousLabel}</span>
+                    )}
+                    <span className="text-xs text-gray-600">
+                      {rawCompoundCode || "—"} · {rawSupplierName || "—"}
+                    </span>
+                    {rawProductionDate && (
+                      <span className="text-xs text-gray-500">
+                        Doc {formatDateZA(rawProductionDate)}
+                      </span>
+                    )}
+                    <div className="ml-auto flex items-center gap-2">
+                      <Link
+                        href={`/au-rubber/portal/supplier-cocs/${pending.id}`}
+                        className="inline-flex items-center px-2.5 py-1.5 text-xs font-medium border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                        title="Open detail page"
+                      >
+                        <Eye className="w-3.5 h-3.5 mr-1" />
+                        View
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => handleAuthorizeVersion(pending.id)}
+                        disabled={isActing}
+                        className="inline-flex items-center px-2.5 py-1.5 text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 disabled:opacity-50"
+                      >
+                        <Check className="w-3.5 h-3.5 mr-1" />
+                        {isActing ? "Authorizing…" : "Authorize"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleRejectVersion(pending.id)}
+                        disabled={isActing}
+                        className="inline-flex items-center px-2.5 py-1.5 text-xs font-medium rounded-md text-white bg-amber-600 hover:bg-amber-700 disabled:opacity-50"
+                      >
+                        <X className="w-3.5 h-3.5 mr-1" />
+                        {isActing ? "Rejecting…" : "Reject"}
+                      </button>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </div>
       )}
       <div className="flex items-center justify-between">

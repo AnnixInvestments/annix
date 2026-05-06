@@ -195,6 +195,17 @@ export function useAuRubberSupplierCocsPendingAuthorizationCount() {
   });
 }
 
+export function useAuRubberSupplierCocsPendingAuthorization(options?: { enabled?: boolean }) {
+  const enabledOption = options ? options.enabled : undefined;
+  const enabled = enabledOption === undefined ? true : enabledOption;
+  return useQuery<Array<RubberSupplierCocDto & { previousVersionCocNumber: string | null }>>({
+    queryKey: rubberKeys.supplierCocs.pendingAuthorization(),
+    queryFn: () => auRubberApiClient.supplierCocsPendingAuthorization(),
+    enabled,
+    ...cacheConfig.static,
+  });
+}
+
 export function useAuRubberSpecifications() {
   return useQuery<RubberSpecificationDto[]>({
     queryKey: rubberKeys.specifications.list(),

@@ -119,6 +119,7 @@ export class RubberCocService {
     processingStatus?: CocProcessingStatus;
     supplierCompanyId?: number;
     includeAllVersions?: boolean;
+    versionStatus?: DocumentVersionStatus;
   }): Promise<RubberSupplierCocDto[]> {
     const cocColumns = this.supplierCocRepository.metadata.columns
       .map((c) => c.propertyName)
@@ -132,7 +133,11 @@ export class RubberCocService {
       .addSelect(["company.id", "company.name"])
       .orderBy("coc.created_at", "DESC");
 
-    if (!filters?.includeAllVersions) {
+    if (filters?.versionStatus) {
+      query.andWhere("coc.version_status = :versionStatus", {
+        versionStatus: filters.versionStatus,
+      });
+    } else if (!filters?.includeAllVersions) {
       query.andWhere("coc.version_status = :versionStatus", {
         versionStatus: DocumentVersionStatus.ACTIVE,
       });
@@ -153,6 +158,47 @@ export class RubberCocService {
     const cocs = await query.getMany();
     const rejectionMap = await this.rejectedRollNumbersByCocIds(cocs.map((c) => c.id));
     return cocs.map((coc) => this.mapSupplierCocToDto(coc, rejectionMap.get(coc.id) || []));
+  }
+
+  async pendingAuthorizationSupplierCocs(): Promise<
+    Array<RubberSupplierCocDto & { previousVersionCocNumber: string | null }>
+  > {
+    const pending = await this.supplierCocRepository
+      .createQueryBuilder("coc")
+      .leftJoinAndSelect("coc.supplierCompany", "company")
+      .where("coc.version_status = :status", {
+        status: DocumentVersionStatus.PENDING_AUTHORIZATION,
+      })
+      .orderBy("coc.created_at", "DESC")
+      .getMany();
+
+    if (pending.length === 0) return [];
+
+    const previousVersionIds = pending
+      .map((coc) => coc.previousVersionId)
+      .filter((id): id is number => id !== null && id !== undefined);
+
+    const previousVersions =
+      previousVersionIds.length > 0
+        ? await this.supplierCocRepository
+            .createQueryBuilder("coc")
+            .select(["coc.id", "coc.cocNumber"])
+            .whereInIds(previousVersionIds)
+            .getMany()
+        : [];
+
+    const previousByid = previousVersions.reduce<Record<number, string | null>>((acc, prev) => {
+      acc[prev.id] = prev.cocNumber;
+      return acc;
+    }, {});
+
+    const rejectionMap = await this.rejectedRollNumbersByCocIds(pending.map((c) => c.id));
+    return pending.map((coc) => ({
+      ...this.mapSupplierCocToDto(coc, rejectionMap.get(coc.id) || []),
+      previousVersionCocNumber: coc.previousVersionId
+        ? (previousByid[coc.previousVersionId] ?? null)
+        : null,
+    }));
   }
 
   async supplierCocById(id: number): Promise<RubberSupplierCocDto | null> {

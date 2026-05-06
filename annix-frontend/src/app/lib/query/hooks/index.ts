@@ -401,6 +401,7 @@ export {
   useAuRubberSetRolePermissions,
   useAuRubberSpecifications,
   useAuRubberSupplierCocs,
+  useAuRubberSupplierCocsPendingAuthorization,
   useAuRubberSupplierCocsPendingAuthorizationCount,
   useAuRubberTaxInvoiceStatements,
   useAuRubberTaxInvoices,

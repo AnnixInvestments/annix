@@ -211,6 +211,13 @@ class AuRubberApiClient {
     path: "/rubber-lining/portal/supplier-cocs/pending-authorization-count",
   });
 
+  supplierCocsPendingAuthorization = createEndpoint<
+    [],
+    Array<RubberSupplierCocDto & { previousVersionCocNumber: string | null }>
+  >(apiClient, "GET", {
+    path: "/rubber-lining/portal/supplier-cocs/pending-authorization",
+  });
+
   productCodingById = createEndpoint<[id: number], RubberProductCodingDto>(apiClient, "GET", {
     path: (id) => `/rubber-lining/portal/product-codings/${id}`,
   });

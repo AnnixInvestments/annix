@@ -47,6 +47,7 @@ export const rubberKeys = {
     detail: (id: number) => [...rubberKeys.supplierCocs.all, "detail", id] as const,
     pendingAuthorizationCount: () =>
       [...rubberKeys.supplierCocs.all, "pendingAuthorizationCount"] as const,
+    pendingAuthorization: () => [...rubberKeys.supplierCocs.all, "pendingAuthorization"] as const,
   },
   deliveryNotes: {
     all: ["rubber", "deliveryNotes"] as const,
