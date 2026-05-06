@@ -47,7 +47,10 @@ jobs:
         env:
           PROD_DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
           STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
-        run: node scripts/clone-prod-to-staging.mjs --yes
+        run: |
+          export PATH="/usr/lib/postgresql/17/bin:$PATH"
+          pg_dump --version
+          node scripts/clone-prod-to-staging.mjs --yes
 
       - name: Restart staging Fly machines
         if: always()
