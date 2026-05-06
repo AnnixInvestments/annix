@@ -257,10 +257,66 @@ Guidelines:
 - Look for "IMPILO INDUSTRIES" header to confirm this is a calendarer CoC
 - Batch Number field may show a range like "209-227" - expand this to individual batch numbers
 - Page 1 has order details (Customer, Date, Order Number, Ticket Number, Compound, Batch Number range)
-- Page 2 has batch test results table with individual batch data
+- Page 2 has the BATCH CERTIFICATES table with per-batch test results — this is the most important page
 - Page 3 has rheometer graph (set hasGraph: true if graph page exists)
-- Extract all batch rows from the results table
-- Look for specification limits in header rows or separate columns labeled "Min", "Max", "Limit", or "Spec"
+- Extract every numeric batch row from the page 2 table — do NOT return an empty batches array if the table is present
+
+CRITICAL - PAGE 2 BATCH CERTIFICATES TABLE:
+The Page 2 table on Impilo Calenderer CoCs has columns in this typical order (read the actual headers — order may vary):
+  Batch No. | Shore A | Specific gravity | Rebound Resilience | Tear strength Die | Tensile strength | Elongation break | S' min | S' max | TS 2 | TC 90 | State
+
+Above the per-batch rows, the table has reference rows that must NOT be transcribed as batches:
+  - "Unit" row: shows units like [Shore A], [g/cm³], [%], [N/mm], [MPa], [%], [dNm], [dNm], [min], [min] — these are unit labels, not data. Skip.
+  - "Nominal" row: shows the spec target values (e.g., 40.0 / 1.0550 / 85.00 / 15.0 / 25.0 / 750 / 1.25 / 7.50 / 4.00 / 5.70). Map them into the specifications object (shoreANominal, specificGravityNominal, etc.). Do NOT include this as a batch.
+  - "Limit" row: shows ranges (e.g., "35.0-45.0" / "1.0300-1.0800" / "74.00-96.00"). Parse the dash-separated ranges into shoreAMin/Max, specificGravityMin/Max, etc. on the specifications object. Do NOT include this as a batch.
+The first ACTUAL batch is the row whose leftmost cell is a numeric batch number (e.g., "19", "20"). Any row above that whose leftmost cell is "Unit", "Nominal", "Limit", or empty is NOT a batch.
+
+CRITICAL - SPARSE ROWS AND COLUMN ALIGNMENT (most important rule):
+- Most batches have values in ONLY SOME columns. On Impilo CoCs, the typical pattern is: most batches have only Shore A + S'min + S'max + TS 2 + TC 90 + State, while a few "spot-check" batches (e.g. batches 20 and 28) also have Specific gravity, Rebound, Tear, Tensile, and Elongation filled in.
+- If a cell is empty/blank in the source row, the corresponding output field MUST be null. NEVER fill blanks by copying values from a neighbouring batch row — that produces a row-shifted table and corrupts downstream data.
+- STEP 1: Read the column header row. Note the position of each column.
+- STEP 2: For each batch row, walk left-to-right. If a cell is blank, that field is null. If a cell has a value, assign it to the field matching the column header position.
+- Example: Headers [Shore A, SG, Rebound, Tear, Tensile, Elongation, S'min, S'max, TS2, TC90, State]. Row "21 | 38.0 | (blank) | (blank) | (blank) | (blank) | (blank) | 0.95 | 6.15 | 3.72 | 5.22 | Pass" → shoreA=38.0, specificGravity=null, reboundPercent=null, tearStrengthKnM=null, tensileStrengthMpa=null, elongationPercent=null, rheometerSMin=0.95, rheometerSMax=6.15, rheometerTs2=3.72, rheometerTc90=5.22, passFailStatus=PASS.
+- Example: Row "20 | 39.0 | 1.0350 | 75.10 | 36.1 | 22.7 | 649 | 0.97 | 6.15 | 3.67 | 5.13 | Pass" → all fields populated for that batch only.
+
+NEVER COPY VALUES BETWEEN BATCHES:
+- A blank cell on row N stays null on batch N — even if batch N+1 has a value in the same column.
+- Do NOT use the Nominal row as per-batch values.
+- Each row is read independently.
+
+COLUMN HEADER TO OUTPUT FIELD MAPPING:
+- "Shore A" / "Shore A last testpoint" → shoreA
+- "Specific gravity" / "[g/cm³]" → specificGravity
+- "Rebound Resilience" / "Rebound" → reboundPercent
+- "Tear strength" / "Tear strength Die" / "[N/mm]" → tearStrengthKnM
+- "Tensile strength" / "[MPa]" → tensileStrengthMpa
+- "Elongation" / "Elongation break" / "[%]" → elongationPercent
+- "S' min" / "S'min" → rheometerSMin
+- "S' max" / "S'max" → rheometerSMax
+- "TS 2" / "Ts2" → rheometerTs2
+- "TC 90" / "Tc90" → rheometerTc90
+- "State" / "Status" → passFailStatus
+
+VALUE RANGE SANITY (if your output is outside these ranges, your column alignment is wrong):
+- Shore A: 30-90 (NEVER 1.0-1.5 — that is SG)
+- Specific gravity: 1.0-1.5 (NEVER 30-90 — that is Shore A)
+- Rebound Resilience: 50-96
+- Tear strength: 5-50
+- Tensile strength: 5-30
+- Elongation: 300-1000
+- S'min: 0.1-2.5
+- S'max: 3-15
+- TS 2: 0.3-7
+- TC 90: 0.5-8
+
+SELF-CHECK AFTER EXTRACTION:
+1. Count how many batches you returned. It must equal the number of numeric-batch-number rows on page 2 of the PDF — NOT the number of all rows including Unit/Nominal/Limit.
+2. Verify every Shore A is 30-90. If any are 1.0-1.5, columns are misaligned.
+3. Verify every SG is 1.0-1.5. If any are 30-90, columns are misaligned.
+4. For sparse rows (Shore A + rheometer only), confirm SG/Rebound/Tear/Tensile/Elongation are null — NOT carried forward from a neighbouring batch.
+5. Re-read the FIRST batch row visually. The values you extracted for batch 1 must match what is physically beside batch 1's number on the PDF — not row 0 (Limit) and not row 2 (the next batch).
+6. Re-read the LAST batch row visually. The values you extracted for the last batch must match what is physically beside its number — not the second-to-last row.
+
 - Return ONLY the JSON object, no additional text`;
 
 export const DELIVERY_NOTE_SYSTEM_PROMPT = `You are an expert at extracting structured data from delivery notes for rubber compound or rubber rolls.

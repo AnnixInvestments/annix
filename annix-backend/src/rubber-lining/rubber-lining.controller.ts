@@ -1330,7 +1330,7 @@ Formula: totalPrice = totalKg × salePricePerKg
       }
     })();
 
-    if (pdfText.length < 50 && coc.cocType !== SupplierCocType.COMPOUNDER) {
+    if (pdfText.length < 50 && coc.cocType === SupplierCocType.CALENDER_ROLL) {
       throw new NotFoundException(
         "PDF appears to be scanned/image-based. Re-extraction for this CoC type requires text-based PDFs.",
       );

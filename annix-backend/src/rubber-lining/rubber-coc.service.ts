@@ -874,7 +874,28 @@ export class RubberCocService {
       ).addOrderBy("batch.batchNumber", "ASC");
 
       const batches = await qb.getMany();
-      return batches.map((batch) => this.mapCompoundBatchToDto(batch));
+      const dedupedByBatchNumber = batches.reduce<Map<string, RubberCompoundBatch>>(
+        (acc, batch) => {
+          const key = batch.batchNumber;
+          const existing = acc.get(key);
+          if (!existing) {
+            acc.set(key, batch);
+            return acc;
+          }
+          if (batch.supplierCocId === supplierCocId && existing.supplierCocId !== supplierCocId) {
+            acc.set(key, batch);
+          }
+          return acc;
+        },
+        new Map<string, RubberCompoundBatch>(),
+      );
+      const orderedBatches = Array.from(dedupedByBatchNumber.values()).sort((a, b) => {
+        const aNumeric = /^\d+$/.test(a.batchNumber) ? parseInt(a.batchNumber, 10) : 0;
+        const bNumeric = /^\d+$/.test(b.batchNumber) ? parseInt(b.batchNumber, 10) : 0;
+        if (aNumeric !== bNumeric) return aNumeric - bNumeric;
+        return a.batchNumber.localeCompare(b.batchNumber);
+      });
+      return orderedBatches.map((batch) => this.mapCompoundBatchToDto(batch));
     }
 
     const batches = await this.compoundBatchRepository

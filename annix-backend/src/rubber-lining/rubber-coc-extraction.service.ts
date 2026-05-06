@@ -407,6 +407,60 @@ export class RubberCocExtractionService {
     };
   }
 
+  async extractCalendererCocFromImages(
+    pdfBuffer: Buffer,
+    correctionHints?: string | null,
+  ): Promise<{
+    data: ExtractedCocData;
+    tokensUsed?: number;
+    processingTimeMs: number;
+  }> {
+    const startTime = nowMillis();
+    this.logger.log("Extracting calenderer CoC data via Vision OCR...");
+
+    if (!this.apiKey) {
+      throw new Error("GEMINI_API_KEY not configured");
+    }
+
+    const systemPrompt = correctionHints
+      ? `${CALENDARER_COC_SYSTEM_PROMPT}\n\n${correctionHints}`
+      : CALENDARER_COC_SYSTEM_PROMPT;
+
+    const images = await this.convertPdfToImages(pdfBuffer);
+    this.logger.log(`Converted calenderer CoC PDF to ${images.length} image(s) for OCR extraction`);
+
+    const response = await this.callGeminiWithImages(
+      systemPrompt,
+      "Extract structured data from this Impilo Industries Calenderer Certificate of Conformance. Walk EVERY page. The page-2 batch certificates table is the most important — read column headers first, then each batch row preserving column alignment (blanks must remain null). Skip the Unit/Nominal/Limit reference rows; they go into the specifications object, NOT into batches. Return ONLY a valid JSON object with the extracted data.",
+      images,
+      "calenderer-coc-ocr-extraction",
+    );
+
+    const processingTimeMs = nowMillis() - startTime;
+    this.logger.log(`Calenderer CoC extracted via Vision in ${processingTimeMs}ms`);
+
+    const extractedData = response.data as ExtractedCocData;
+
+    const cocNumber = this.generateCalendererCocNumber(
+      extractedData.orderNumber ?? null,
+      extractedData.ticketNumber ?? null,
+      extractedData.rollNumbers ?? null,
+    );
+
+    if (cocNumber) {
+      extractedData.cocNumber = cocNumber;
+      this.logger.log(`Generated Calenderer CoC number: ${cocNumber}`);
+    }
+
+    this.validateBatchData(extractedData);
+
+    return {
+      data: extractedData,
+      tokensUsed: response.tokensUsed,
+      processingTimeMs,
+    };
+  }
+
   async extractCalenderRollCoc(
     pdfText: string,
     correctionHints?: string | null,
@@ -987,6 +1041,9 @@ Return ONLY a valid JSON object of this exact shape (no extra fields, no comment
         } else if (cocType === SupplierCocType.CALENDER_ROLL) {
           return this.extractCalenderRollCoc(pdfText, correctionHints);
         } else {
+          if (pdfBuffer) {
+            return this.extractCalendererCocFromImages(pdfBuffer, correctionHints);
+          }
           return this.extractCalendererCoc(pdfText, correctionHints);
         }
       },
