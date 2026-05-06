@@ -370,6 +370,7 @@ export {
   useAuRubberCompanies,
   useAuRubberCreateCocsFromAnalysis,
   useAuRubberCreateRole,
+  useAuRubberDedupeActiveSupplierCocs,
   useAuRubberDeleteDeliveryNote,
   useAuRubberDeleteRole,
   useAuRubberDeleteSupplierCoc,

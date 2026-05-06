@@ -500,6 +500,16 @@ export function useAuRubberApproveSupplierCoc() {
   });
 }
 
+export function useAuRubberDedupeActiveSupplierCocs() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => auRubberApiClient.dedupeActiveSupplierCocs(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: rubberKeys.supplierCocs.all });
+    },
+  });
+}
+
 export function useAuRubberUpdateSupplierCoc() {
   const queryClient = useQueryClient();
   return useMutation({

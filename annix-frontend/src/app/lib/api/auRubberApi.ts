@@ -869,6 +869,22 @@ class AuRubberApiClient {
     path: () => "/rubber-lining/portal/supplier-cocs/reextract-non-canonical",
   });
 
+  dedupeActiveSupplierCocs = createEndpoint<
+    [],
+    {
+      groups: Array<{
+        cocNumber: string;
+        cocType: SupplierCocType;
+        keptId: number;
+        supersededIds: number[];
+      }>;
+      totalKept: number;
+      totalSuperseded: number;
+    }
+  >(apiClient, "POST", {
+    path: () => "/rubber-lining/portal/supplier-cocs/dedupe-active-versions",
+  });
+
   nonCanonicalCompounderCocIds = createEndpoint<[], { ids: number[] }>(apiClient, "GET", {
     path: () => "/rubber-lining/portal/supplier-cocs/non-canonical-compounder-ids",
   });

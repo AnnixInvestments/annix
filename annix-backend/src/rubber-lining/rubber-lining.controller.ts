@@ -1253,6 +1253,26 @@ Formula: totalPrice = totalKg × salePricePerKg
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
+  @Post("portal/supplier-cocs/dedupe-active-versions")
+  @ApiOperation({
+    summary:
+      "Backfill: collapse duplicate ACTIVE supplier CoCs (same cocNumber + cocType) into a single ACTIVE row with the rest superseded",
+  })
+  async dedupeActiveSupplierCocs(): Promise<{
+    groups: Array<{
+      cocNumber: string;
+      cocType: SupplierCocType;
+      keptId: number;
+      supersededIds: number[];
+    }>;
+    totalKept: number;
+    totalSuperseded: number;
+  }> {
+    return this.rubberCocService.dedupeActiveSupplierCocs();
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
   @Post("portal/supplier-cocs/reextract-non-canonical")
   @ApiOperation({
     summary:

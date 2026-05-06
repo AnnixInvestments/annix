@@ -83,7 +83,12 @@ export class RubberDocumentVersioningService {
       )
       .andWhere("coc.coc_type = :cocType", { cocType })
       .andWhere("coc.version_status = :status", { status: DocumentVersionStatus.ACTIVE })
+      .orderBy("coc.id", "DESC")
       .getOne();
+  }
+
+  async repointSupplierCocReferences(oldId: number, newId: number): Promise<void> {
+    await this.updateDownstreamReferences("supplier-coc", oldId, newId);
   }
 
   async authorizeVersion(

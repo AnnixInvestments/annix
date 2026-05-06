@@ -272,17 +272,33 @@ export class RubberCocService {
 
     await this.supplierCocRepository.save(coc);
 
-    if (coc.cocType === SupplierCocType.CALENDARER) {
-      this.autoLinkCalendererToCompounder(coc);
+    const dedupedCoc = await this.flagAsPendingIfDuplicate(coc);
+
+    if (dedupedCoc.cocType === SupplierCocType.CALENDARER) {
+      this.autoLinkCalendererToCompounder(dedupedCoc);
     }
 
-    if (coc.cocType === SupplierCocType.CALENDER_ROLL) {
-      this.autoLinkCalenderRollToCalenderer(coc);
+    if (dedupedCoc.cocType === SupplierCocType.CALENDER_ROLL) {
+      this.autoLinkCalenderRollToCalenderer(dedupedCoc);
     }
 
-    this.triggerAutoLinkDnsForCoc(coc);
+    this.triggerAutoLinkDnsForCoc(dedupedCoc);
 
-    return this.mapSupplierCocToDto(coc);
+    return this.mapSupplierCocToDto(dedupedCoc);
+  }
+
+  private async flagAsPendingIfDuplicate(coc: RubberSupplierCoc): Promise<RubberSupplierCoc> {
+    if (!coc.cocNumber) return coc;
+    if (coc.versionStatus !== DocumentVersionStatus.ACTIVE) return coc;
+
+    const result = await this.mergeIfDuplicateCocNumber(coc.id, coc.cocNumber, coc.cocType);
+    if (!result.merged) return coc;
+
+    const refreshed = await this.supplierCocRepository.findOne({
+      where: { id: coc.id },
+      relations: ["supplierCompany"],
+    });
+    return refreshed ?? coc;
   }
 
   async reviewExtraction(
@@ -391,7 +407,9 @@ export class RubberCocService {
       await this.saveSpecificationsFromExtractedData(coc);
     }
 
-    return this.mapSupplierCocToDto(coc);
+    const dedupedCoc = await this.flagAsPendingIfDuplicate(coc);
+
+    return this.mapSupplierCocToDto(dedupedCoc);
   }
 
   private mergeExtractedData(
@@ -714,6 +732,87 @@ export class RubberCocService {
       coc: this.mapSupplierCocToDto(result),
       wasUpdated: isDuplicate,
       requiresAuthorization: isDuplicate,
+    };
+  }
+
+  async dedupeActiveSupplierCocs(): Promise<{
+    groups: Array<{
+      cocNumber: string;
+      cocType: SupplierCocType;
+      keptId: number;
+      supersededIds: number[];
+    }>;
+    totalKept: number;
+    totalSuperseded: number;
+  }> {
+    const activeCocs = await this.supplierCocRepository
+      .createQueryBuilder("coc")
+      .where("coc.version_status = :status", { status: DocumentVersionStatus.ACTIVE })
+      .andWhere("coc.coc_number IS NOT NULL")
+      .andWhere("coc.coc_number <> ''")
+      .orderBy("coc.id", "ASC")
+      .getMany();
+
+    const buckets: Record<string, RubberSupplierCoc[]> = {};
+    activeCocs.forEach((coc) => {
+      const cocNumber = coc.cocNumber;
+      if (!cocNumber) return;
+      const key = `${this.normalizeCocNumber(cocNumber).toLowerCase()}|${coc.cocType}`;
+      const existing = buckets[key] ?? [];
+      buckets[key] = [...existing, coc];
+    });
+
+    const duplicateGroups: RubberSupplierCoc[][] = Object.values(buckets).filter(
+      (group) => group.length > 1,
+    );
+
+    const summaries: Array<{
+      cocNumber: string;
+      cocType: SupplierCocType;
+      keptId: number;
+      supersededIds: number[];
+    }> = [];
+
+    for (const group of duplicateGroups) {
+      const sorted = [...group].sort((a, b) => a.id - b.id);
+      const kept = sorted[sorted.length - 1];
+      const supersededOldestFirst = sorted.slice(0, -1);
+      const supersededIds: number[] = [];
+
+      for (let i = 0; i < supersededOldestFirst.length; i += 1) {
+        const row = supersededOldestFirst[i];
+        row.versionStatus = DocumentVersionStatus.SUPERSEDED;
+        row.version = i + 1;
+        row.previousVersionId = i === 0 ? null : supersededOldestFirst[i - 1].id;
+        await this.supplierCocRepository.save(row);
+        await this.versioningService.repointSupplierCocReferences(row.id, kept.id);
+        supersededIds.push(row.id);
+      }
+
+      kept.version = sorted.length;
+      kept.previousVersionId =
+        supersededOldestFirst.length > 0
+          ? supersededOldestFirst[supersededOldestFirst.length - 1].id
+          : null;
+      kept.versionStatus = DocumentVersionStatus.ACTIVE;
+      await this.supplierCocRepository.save(kept);
+
+      summaries.push({
+        cocNumber: kept.cocNumber ?? "",
+        cocType: kept.cocType,
+        keptId: kept.id,
+        supersededIds,
+      });
+
+      this.logger.log(
+        `Dedup: kept CoC ${kept.id} (${kept.cocNumber} ${kept.cocType}), superseded [${supersededIds.join(", ")}]`,
+      );
+    }
+
+    return {
+      groups: summaries,
+      totalKept: summaries.length,
+      totalSuperseded: summaries.reduce((sum, g) => sum + g.supersededIds.length, 0),
     };
   }
 

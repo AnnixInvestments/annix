@@ -41,6 +41,7 @@ import {
   useAuRubberAuthorizeVersion,
   useAuRubberCompanies,
   useAuRubberCreateCocsFromAnalysis,
+  useAuRubberDedupeActiveSupplierCocs,
   useAuRubberDeleteSupplierCoc,
   useAuRubberDocumentUrl,
   useAuRubberExtractSupplierCoc,
@@ -111,6 +112,7 @@ export default function SupplierCocsPage() {
   const uploadSupplierCocWithFilesMutation = useAuRubberUploadSupplierCocWithFiles();
   const uploadSupplierCocMutation = useAuRubberUploadSupplierCoc();
   const deleteSupplierCocMutation = useAuRubberDeleteSupplierCoc();
+  const dedupeActiveMutation = useAuRubberDedupeActiveSupplierCocs();
   const extractSupplierCocMutation = useAuRubberExtractSupplierCoc();
   const approveSupplierCocMutation = useAuRubberApproveSupplierCoc();
   const updateSupplierCocMutation = useAuRubberUpdateSupplierCoc();
@@ -174,6 +176,7 @@ export default function SupplierCocsPage() {
   const [selectedForApproval, setSelectedForApproval] = useState<Set<number>>(new Set());
   const [isBulkApproving, setIsBulkApproving] = useState(false);
   const [isBulkReextracting, setIsBulkReextracting] = useState(false);
+  const [isDedupingActive, setIsDedupingActive] = useState(false);
 
   const supplierForType = (type: SupplierCocType): number | null => {
     const supplierNames: Record<SupplierCocType, string[]> = {
@@ -546,6 +549,35 @@ export default function SupplierCocsPage() {
     }
   };
 
+  const handleDedupeActive = async () => {
+    const confirmed = await confirm({
+      title: "Collapse duplicate active CoCs?",
+      message:
+        "This finds groups of active CoCs that share the same CoC number + type and keeps only the most recent in each group. The older copies become Superseded and are hidden from the main list. Delivery note links repoint to the kept copy.\n\nThis is safe to run repeatedly — it only acts on duplicates.",
+      confirmLabel: "Run dedupe",
+      cancelLabel: "Cancel",
+      variant: "warning",
+    });
+    if (!confirmed) return;
+    try {
+      setIsDedupingActive(true);
+      const result = await dedupeActiveMutation.mutateAsync();
+      if (result.totalKept === 0) {
+        showToast("No duplicate active CoCs found — nothing to dedupe", "info");
+      } else {
+        showToast(
+          `Deduped ${result.totalKept} group${result.totalKept > 1 ? "s" : ""} (${result.totalSuperseded} superseded)`,
+          "success",
+        );
+      }
+      cocsQuery.refetch();
+    } catch (err) {
+      toastError(showToast, err, "Failed to dedupe active CoCs");
+    } finally {
+      setIsDedupingActive(false);
+    }
+  };
+
   const handleBulkReextractNonCanonical = async () => {
     const candidatesResult = await auRubberApiClient.nonCanonicalCompounderCocIds();
     const candidateIds = candidatesResult.ids;
@@ -741,6 +773,17 @@ export default function SupplierCocsPage() {
           </p>
         </div>
         <div className="flex items-center space-x-3">
+          {isAdmin && (
+            <button
+              onClick={handleDedupeActive}
+              disabled={isDedupingActive}
+              className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+              title="Collapse duplicate active CoCs (same CoC number + type) into a single active row"
+            >
+              <RefreshCw className={`w-4 h-4 mr-2 ${isDedupingActive ? "animate-spin" : ""}`} />
+              {isDedupingActive ? "Deduping…" : "Dedupe duplicate CoCs"}
+            </button>
+          )}
           {isAdmin && (
             <button
               onClick={handleBulkReextractNonCanonical}
