@@ -1,0 +1,35 @@
+{
+  "name": "annix-howto-watcher",
+  "displayName": "Annix How-To Watcher",
+  "description": "Status-bar indicator that surfaces how-to guides affected by the file you're currently editing.",
+  "version": "0.1.0",
+  "publisher": "annix",
+  "private": true,
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "annix-howto-watcher.openAffected",
+        "title": "Annix: Open how-to guides affected by current file"
+      }
+    ]
+  },
+  "scripts": {
+    "build": "tsc -p .",
+    "watch": "tsc -w -p ."
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.5.0"
+  }
+}
