@@ -1,4 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
+import { isArray, isNumber, isString } from "es-toolkit/compat";
 import { AiUsageService } from "../../ai-usage/ai-usage.service";
 import { AiApp, AiProvider } from "../../ai-usage/entities/ai-usage-log.entity";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
@@ -69,10 +70,9 @@ export class JobMatchService {
 
   private validateMatchAnalysis(raw: Record<string, unknown>): MatchAnalysis {
     const asStringArray = (val: unknown): string[] =>
-      Array.isArray(val) ? val.filter((v): v is string => typeof v === "string") : [];
+      isArray(val) ? val.filter((v): v is string => isString(v)) : [];
 
-    const score =
-      typeof raw.overallScore === "number" ? Math.min(100, Math.max(0, raw.overallScore)) : 0;
+    const score = isNumber(raw.overallScore) ? Math.min(100, Math.max(0, raw.overallScore)) : 0;
 
     return {
       overallScore: score,
@@ -81,7 +81,7 @@ export class JobMatchService {
       experienceMatch: Boolean(raw.experienceMatch),
       educationMatch: Boolean(raw.educationMatch),
       recommendation: this.normalizeRecommendation(raw.recommendation as string | undefined),
-      reasoning: typeof raw.reasoning === "string" ? raw.reasoning : null,
+      reasoning: isString(raw.reasoning) ? raw.reasoning : null,
     };
   }
 
