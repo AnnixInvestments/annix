@@ -87,13 +87,25 @@ CRITICAL — schema rules (must follow exactly):
 4. Use null (not empty string, not omitted) when a value is genuinely unknown.
 5. Do NOT define what the codes mean (R1, R2a, SC1 etc.) — just capture them. The spec extraction step resolves the codes.
 
-CRITICAL — coating, lining and class assignment rules (the model has been getting these wrong):
-- ONLY assign coatingSystem / liningType / materialClass when the drawing EXPLICITLY tags THIS specific item or spool mark with that code, either via a per-item column, an arrow leader to the item, or a "this mark gets X" annotation.
-- Do NOT propagate a code from one mark to another mark just because they appear on the same drawing. Each mark is independent.
-- Plain End (P.E.) pipes are very often UNCOATED. If the drawing does NOT explicitly tag a P.E. item with a coating code, set coatingSystem = null. Never default to "R1" or any other code.
-- Same rule for lining: if the drawing doesn't show internal lining for this mark, liningType = null. Don't carry over LINATEX from a different mark.
-- If a single drawing note says "applies to all marks" or "all items receive R1", THAT is grounds for assigning the code to every mark. Without such a blanket statement, the code only applies where the drawing explicitly marks it.
-- When uncertain, prefer null and add a deviations entry like "uncertain whether mark -03 receives R1 — drawing does not show explicit tag" so the user can confirm. Never guess in the field itself.
+CRITICAL — coating, lining and class assignment rules (the model has been getting these wrong, last attempt over-applied R1 to every Plain End pipe in the test pack — DO NOT repeat this):
+
+The drawing's title block / general-notes block often shows a default coating like "External Paint: R1". DO NOT propagate that default to per-item rows. The per-item BOM table is the authoritative source — read THAT, not the title block.
+
+Per-item rules:
+- For each row in the per-item BOM table, look at the SPECIFIC coating / lining / class CELL for that row.
+- If the cell contains an explicit code (R1, R2a, SC1, 1000/3, etc.) — use that code.
+- If the cell is BLANK, contains "—", "-", "N/A", "NA", "uncoated", "none", "no coating", or equivalent shorthand — set coatingSystem (or liningType / materialClass) to null. DO NOT fall back to a title-block default.
+- If the row's flange config is "P.E." (Plain End) and the coating cell is anything other than an explicit code — assume coatingSystem = null. P.E. items are uncoated by convention unless the per-item cell EXPLICITLY shows a coating code.
+- Do NOT carry a code from one mark to another. Each mark's cell is read independently.
+
+Blanket-rule exception:
+- If a separately-numbered drawing note says something like "All items receive R1 unless otherwise stated" AND a per-item cell is blank, you MAY use the blanket default — but only after confirming there is NO per-item cell that overrides it (an explicit "—" or "uncoated" in the per-item cell ALWAYS wins over the blanket default).
+- Mention which note you applied in the deviations field: "Applied note 4 'all items R1 unless stated' to mark -10".
+
+When uncertain, prefer null + deviations note. Example:
+{ "itemNumber": "-03", ..., "flangeConfig": "P.E.", "coatingSystem": null, "liningType": null, "materialClass": "SC1", "deviations": ["coating cell blank for mark -03 — assumed uncoated as P.E."] }
+
+Same rules apply for liningType, liningThicknessMm and materialClass — read the per-item cell, treat blank/dash/N/A as null, never propagate from another mark or a title-block default.
 
 Also extract drawing-level metadata: project, customer, drawing number, sheet of, revision, date, drawn-by.
 
