@@ -804,31 +804,58 @@ export class NixService {
       return null;
     };
     const description = strFrom("description", "desc", "itemDescription") ?? "";
+    const liningType = strFrom("liningType", "lining", "internal_lining", "internalLining");
+    const coatingSystem = strFrom(
+      "coatingSystem",
+      "paintSystem",
+      "external_paint_system_ref",
+      "externalPaintSystemRef",
+      "external_paint_system",
+    );
+    const materialClass = strFrom(
+      "materialClass",
+      "material_class_ref",
+      "materialClassRef",
+      "material_class",
+    );
     return {
       rowNumber: numFrom("rowNumber") ?? 0,
       itemNumber:
-        strFrom("itemNumber", "mark", "markNumber", "itemNo", "itemMark", "spoolNumber", "no") ??
-        null,
+        strFrom(
+          "itemNumber",
+          "mark",
+          "markNumber",
+          "mark_number",
+          "itemNo",
+          "itemMark",
+          "spoolNumber",
+          "spool_number",
+          "no",
+        ) ?? null,
       description,
       itemType: (strFrom("itemType", "type") as ExtractedItem["itemType"]) ?? "unknown",
       material: strFrom("material"),
       materialGrade: strFrom("materialGrade", "grade"),
-      diameter: numFrom("diameter", "nb", "NB", "nominalBore", "bore"),
+      diameter: numFrom("diameter", "nb", "NB", "nominalBore", "nominal_bore_mm", "bore"),
       diameterUnit: (strFrom("diameterUnit") as ExtractedItem["diameterUnit"]) ?? "mm",
       secondaryDiameter: numFrom("secondaryDiameter"),
-      length: numFrom("length", "lengthMm", "L", "overallLengthMm"),
-      wallThickness: numFrom("wallThickness", "wt", "WT"),
+      length: numFrom("length", "lengthMm", "length_mm", "L", "overallLengthMm"),
+      wallThickness: numFrom("wallThickness", "wt", "WT", "wall_thickness_mm"),
       schedule: strFrom("schedule"),
       angle: numFrom("angle"),
       flangeConfig:
-        (strFrom("flangeConfig", "endConfiguration", "ends") as ExtractedItem["flangeConfig"]) ??
-        null,
+        (strFrom("flangeConfig", "endConfiguration", "end_configuration", "ends") as
+          | ExtractedItem["flangeConfig"]
+          | undefined) ?? null,
       quantity: numFrom("quantity", "qty", "count") ?? 1,
       unit: strFrom("unit") ?? "ea",
       confidence: numFrom("confidence") ?? 0.7,
       needsClarification: false,
       clarificationReason: null,
       rawData: item as Record<string, unknown>,
+      ...(liningType ? { liningType } : {}),
+      ...(coatingSystem ? { coatingSystem } : {}),
+      ...(materialClass ? { materialClass } : {}),
     } as ExtractedItem;
   }
 
