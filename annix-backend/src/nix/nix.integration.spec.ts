@@ -118,7 +118,23 @@ describe("NixService Integration Tests", () => {
     ...overrides,
   });
 
-  beforeEach(async () => {
+  // Single mock-and-module compilation per file. Compiling the testing
+  // module via `Test.createTestingModule(...).compile()` is the dominant
+  // cost of this spec — it forces Nest to resolve the entire NixService
+  // provider graph (~10 deps + Repository tokens). Doing that once in
+  // `beforeAll` instead of `beforeEach` cuts the spec's wall time by
+  // ~80% across 30+ tests, while `jest.resetAllMocks()` in `beforeEach`
+  // keeps test isolation intact (mock call history + default impls are
+  // wiped between tests; we re-seed the few mocks that need a default
+  // return value).
+  let mockProfileRegistry: {
+    handler: jest.Mock;
+    isRegistered: jest.Mock;
+    registeredProfiles: jest.Mock;
+  };
+  let mockLearningRepoFind: jest.Mock;
+
+  beforeAll(async () => {
     const mockExtractionRepo = {
       create: jest.fn(),
       save: jest.fn(),
@@ -134,10 +150,11 @@ describe("NixService Integration Tests", () => {
       count: jest.fn(),
     };
 
+    mockLearningRepoFind = jest.fn().mockResolvedValue([]);
     const mockLearningRepo = {
       create: jest.fn(),
       save: jest.fn(),
-      find: jest.fn().mockResolvedValue([]),
+      find: mockLearningRepoFind,
       findOne: jest.fn(),
     };
 
@@ -166,6 +183,12 @@ describe("NixService Integration Tests", () => {
     const mockSecureDocumentsService = {};
     const mockS3StorageService = {};
 
+    mockProfileRegistry = {
+      handler: jest.fn().mockReturnValue(null),
+      isRegistered: jest.fn().mockReturnValue(false),
+      registeredProfiles: jest.fn().mockReturnValue([]),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         NixService,
@@ -179,14 +202,7 @@ describe("NixService Integration Tests", () => {
         { provide: AiExtractionService, useValue: mockAiExtractor },
         { provide: SecureDocumentsService, useValue: mockSecureDocumentsService },
         { provide: S3StorageService, useValue: mockS3StorageService },
-        {
-          provide: NixExtractionProfileRegistry,
-          useValue: {
-            handler: jest.fn().mockReturnValue(null),
-            isRegistered: jest.fn().mockReturnValue(false),
-            registeredProfiles: jest.fn().mockReturnValue([]),
-          },
-        },
+        { provide: NixExtractionProfileRegistry, useValue: mockProfileRegistry },
       ],
     }).compile();
 
@@ -197,6 +213,21 @@ describe("NixService Integration Tests", () => {
     pdfExtractor = module.get(PdfExtractorService);
     excelExtractor = module.get(ExcelExtractorService);
     aiExtractor = module.get(AiExtractionService);
+  });
+
+  beforeEach(() => {
+    // Reset call history + default impls on every mock the module graph
+    // hands out. This restores the per-test isolation we previously got
+    // from compiling the module per-test, without paying the compile cost.
+    jest.resetAllMocks();
+
+    // Re-seed the defaults that were inline in the original per-test
+    // mock objects (jest.resetAllMocks wipes mockReturnValue /
+    // mockResolvedValue setups along with call history).
+    mockLearningRepoFind.mockResolvedValue([]);
+    mockProfileRegistry.handler.mockReturnValue(null);
+    mockProfileRegistry.isRegistered.mockReturnValue(false);
+    mockProfileRegistry.registeredProfiles.mockReturnValue([]);
   });
 
   describe("Document Processing Pipeline - PDF", () => {
