@@ -4,8 +4,10 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
+import { useConfirm } from "@/app/au-rubber/hooks/useConfirm";
 import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
 import { useToast } from "@/app/components/Toast";
+import { useAuRubberAuth } from "@/app/context/AuRubberAuthContext";
 import { toastError } from "@/app/lib/api/apiError";
 import {
   type AuCocStatus,
@@ -30,7 +32,10 @@ export default function AuCocDetailPage() {
   const [isRechecking, setIsRechecking] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
+  const [isRegenerating, setIsRegenerating] = useState(false);
   const pdfPreviewModal = usePdfPreview();
+  const { isAdmin } = useAuRubberAuth();
+  const { confirm, ConfirmDialog } = useConfirm();
 
   const cocId = Number(params.id);
 
@@ -77,6 +82,28 @@ export default function AuCocDetailPage() {
       toastError(showToast, err, "Failed to generate PDF");
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const handleRegeneratePdf = async () => {
+    const confirmed = await confirm({
+      title: "Regenerate PDF?",
+      message:
+        "This will rebuild the AU CoC PDF from the latest source data and overwrite the stored copy in S3. Use this if the stored PDF is missing or out of date.",
+      confirmLabel: "Regenerate",
+      cancelLabel: "Cancel",
+      variant: "warning",
+    });
+    if (!confirmed) return;
+    try {
+      setIsRegenerating(true);
+      await auRubberApiClient.generateAuCocPdf(cocId);
+      showToast("PDF regenerated and re-uploaded", "success");
+      fetchData();
+    } catch (err) {
+      toastError(showToast, err, "Failed to regenerate PDF");
+    } finally {
+      setIsRegenerating(false);
     }
   };
 
@@ -219,6 +246,24 @@ export default function AuCocDetailPage() {
               className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
             >
               {isGenerating ? "Generating..." : "Generate PDF"}
+            </button>
+          )}
+          {isAdmin && coc.status !== "DRAFT" && (
+            <button
+              onClick={handleRegeneratePdf}
+              disabled={isRegenerating}
+              className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+              title="Rebuild the PDF from source data and re-upload to S3 (admin only)"
+            >
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                />
+              </svg>
+              {isRegenerating ? "Regenerating..." : "Regenerate PDF"}
             </button>
           )}
           {coc.status === "GENERATED" && (
@@ -728,6 +773,7 @@ export default function AuCocDetailPage() {
         </div>
       )}
       <PdfPreviewModal state={pdfPreviewModal.state} onClose={pdfPreviewModal.close} />
+      {ConfirmDialog}
     </div>
   );
 }

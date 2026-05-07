@@ -361,9 +361,21 @@ export class RubberAuCocService {
         }
       })();
 
-      this.logger.debug(`PDF created (${buffer.length} bytes), updating status...`);
+      this.logger.debug(
+        `PDF created (${buffer.length} bytes), uploading to storage before saving DB row...`,
+      );
+      const uploadFile = {
+        fieldname: "file",
+        originalname: filename,
+        mimetype: "application/pdf",
+        buffer,
+        size: buffer.length,
+      } as Express.Multer.File;
+      const upload = await this.storageService.upload(uploadFile, "au-cocs");
+      this.logger.debug(`Uploaded AU CoC PDF to ${upload.path}, updating DB row...`);
+
       coc.status = AuCocStatus.GENERATED;
-      coc.generatedPdfPath = `au-cocs/${filename}`;
+      coc.generatedPdfPath = upload.path;
       if (
         coc.readinessStatus === AuCocReadinessStatus.GENERATION_FAILED ||
         coc.readinessStatus === AuCocReadinessStatus.READY_FOR_GENERATION
@@ -381,7 +393,7 @@ export class RubberAuCocService {
       }
       await this.auCocRepository.save(coc);
 
-      this.logger.log(`PDF generated and uploaded for AU CoC ${coc.cocNumber}`);
+      this.logger.log(`PDF generated and uploaded for AU CoC ${coc.cocNumber} → ${upload.path}`);
       return { buffer, filename };
     } catch (error) {
       this.logger.error(`Error generating PDF for AU CoC ${id}:`, error);
@@ -426,6 +438,19 @@ export class RubberAuCocService {
     });
     if (!coc) {
       throw new BadRequestException("AU CoC not found");
+    }
+
+    const cachedPath = coc.generatedPdfPath;
+    if (cachedPath) {
+      try {
+        const cachedBuffer = await this.storageService.download(cachedPath);
+        return { buffer: cachedBuffer, filename: `${coc.cocNumber}.pdf` };
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        this.logger.warn(
+          `AU CoC ${coc.cocNumber} (#${id}) generatedPdfPath ${cachedPath} missing from storage — regenerating: ${message}`,
+        );
+      }
     }
 
     const items = await this.auCocItemRepository.find({
