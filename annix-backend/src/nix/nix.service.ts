@@ -867,27 +867,29 @@ export class NixService {
   }
 
   /**
-   * Discards "items" produced by AI extraction when the source document is a
-   * specification, the AI ignored our instruction to leave items empty, and
-   * the items are clearly clause fragments rather than real BOM rows.
+   * Drops "items" from a specification-role extraction when they don't look
+   * like real Bill of Materials rows. Specifications hold clause-level facts
+   * under 'specifications', not 'items' — so we only keep an entry under
+   * items if it shows positive evidence of being a quotable BOM row.
    *
-   * Heuristics for "this is a fragment, not a BOM row":
-   * - description longer than 120 chars (clauses are sentences; line items
-   *   are short)
-   * - no quantity > 1 AND no diameter / wall thickness / length / itemType
-   *   that maps to a recognised pipe/fitting type
+   * "Real BOM row" requires AT LEAST ONE of:
+   * - quantity > 1 (a clause heading is rarely "qty: 5")
+   * - a numeric diameter (NB)
+   * - a numeric length
+   * - a recognised piping itemType (pipe / bend / reducer / tee / flange /
+   *   expansion_joint / tank_chute)
    *
-   * If after filtering the items array is empty AND the document had any
-   * fragments to begin with, the spec correctly produced zero items — exactly
-   * what the role-aware prompt asked for, just enforced post-hoc against an
-   * unreliable model.
+   * Everything else — clause titles, paragraph fragments, regex-extracted
+   * spec-doc snippets from the Word path — is dropped. If the document
+   * legitimately has nothing item-like, items=[] is the correct outcome and
+   * the cross-linker still resolves the spec's clauses against the drawing
+   * extractions. Drawings and other-role documents are unaffected.
    */
   private dropPseudoItemsForSpec<T extends Record<string, unknown>>(
     items: T[],
     role: DocumentRole | undefined,
   ): T[] {
     if (role !== DocumentRole.SPECIFICATION) return items;
-    const FRAGMENT_LEN = 120;
     const realItemTypes = new Set([
       "pipe",
       "bend",
@@ -898,19 +900,18 @@ export class NixService {
       "tank_chute",
     ]);
     const kept = items.filter((item) => {
-      const description = typeof item.description === "string" ? (item.description as string) : "";
       const itemType = typeof item.itemType === "string" ? (item.itemType as string) : "";
       const qty = typeof item.quantity === "number" ? (item.quantity as number) : 1;
       const hasDimension =
         item.diameter !== null && item.diameter !== undefined && item.diameter !== "";
       const hasLength = item.length !== null && item.length !== undefined && item.length !== "";
-      const looksLikeBomRow = qty > 1 || hasDimension || hasLength || realItemTypes.has(itemType);
-      const looksLikeFragment = description.length > FRAGMENT_LEN && !looksLikeBomRow;
-      return !looksLikeFragment;
+      const looksLikeRealBomRow =
+        qty > 1 || hasDimension || hasLength || realItemTypes.has(itemType);
+      return looksLikeRealBomRow;
     });
     if (kept.length < items.length) {
       this.logger.log(
-        `Dropped ${items.length - kept.length} fragment "items" from a specification document (kept ${kept.length})`,
+        `Dropped ${items.length - kept.length} pseudo-items from a specification document (kept ${kept.length})`,
       );
     }
     return kept;
