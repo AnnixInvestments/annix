@@ -307,6 +307,7 @@ export default function SupplierCocDetailPage() {
       tensileStrengthMpa: batch.tensileStrengthMpa != null ? String(batch.tensileStrengthMpa) : "",
       elongationPercent: batch.elongationPercent != null ? String(batch.elongationPercent) : "",
       tearStrengthKnM: batch.tearStrengthKnM != null ? String(batch.tearStrengthKnM) : "",
+      reboundPercent: batch.reboundPercent != null ? String(batch.reboundPercent) : "",
     });
   };
 
@@ -323,6 +324,7 @@ export default function SupplierCocDetailPage() {
         tensileStrengthMpa: parseNum(editBatchFields.tensileStrengthMpa),
         elongationPercent: parseNum(editBatchFields.elongationPercent),
         tearStrengthKnM: parseNum(editBatchFields.tearStrengthKnM),
+        reboundPercent: parseNum(editBatchFields.reboundPercent),
       });
       showToast("Batch updated - Nix will learn from this correction", "success");
       setEditingBatchId(null);
@@ -1499,6 +1501,9 @@ export default function SupplierCocDetailPage() {
                     Tear (kN/m)
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Rebound (%)
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Status
                   </th>
                   {coc.cocType === "CALENDARER" && (
@@ -1520,6 +1525,7 @@ export default function SupplierCocDetailPage() {
                   const rawBatchTensileStrengthMpa3 = batch.tensileStrengthMpa;
                   const rawBatchElongationPercent3 = batch.elongationPercent;
                   const rawBatchTearStrengthKnM3 = batch.tearStrengthKnM;
+                  const rawBatchReboundPercent3 = batch.reboundPercent;
                   const rawBatchSupplierCocNumber = batch.supplierCocNumber;
                   const isEditingRow = editingBatchId === batch.id;
                   if (isEditingRow) {
@@ -1609,6 +1615,20 @@ export default function SupplierCocDetailPage() {
                             className="w-20 rounded border-gray-300 text-sm"
                           />
                         </td>
+                        <td className="px-4 py-2">
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={editBatchFields.reboundPercent}
+                            onChange={(e) =>
+                              setEditBatchFields({
+                                ...editBatchFields,
+                                reboundPercent: e.target.value,
+                              })
+                            }
+                            className="w-20 rounded border-gray-300 text-sm"
+                          />
+                        </td>
                         <td className="px-4 py-2 text-sm text-gray-500">
                           {rawBatchPassFailStatusLabel || "-"}
                         </td>
@@ -1653,6 +1673,9 @@ export default function SupplierCocDetailPage() {
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
                         {rawBatchTearStrengthKnM3 || "-"}
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {rawBatchReboundPercent3 || "-"}
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap">
                         <span
