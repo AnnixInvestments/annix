@@ -93,6 +93,12 @@ export class ProcessDocumentResponseDto {
     context: Record<string, any>;
   }>;
 
+  @ApiPropertyOptional({
+    description:
+      "Profile-handler-produced metadata (e.g. RFQ piping supplier bundles, duplicates, drawing references). Shape depends on the active extractionProfile.",
+  })
+  profileMetadata?: Record<string, any>;
+
   @ApiPropertyOptional({ description: "Error message if failed" })
   error?: string;
 }

@@ -661,5 +661,191 @@ describe("ExcelExtractorService", () => {
         expect(pipeItem?.material).toBe("Carbon Steel");
       });
     });
+
+    describe("hierarchical 3-col BOQ format (SANS-style)", () => {
+      const buildHierarchicalSheet = (
+        name: string,
+        rows: Array<[string, string, number | string | null]>,
+      ) => {
+        const headerRow = ["Description", "UOM", "Quantity Req"];
+        const allRows = [headerRow, ...rows];
+        return {
+          name,
+          rowCount: allRows.length,
+          eachRow: (callback: (row: any, rowNumber: number) => void) => {
+            allRows.forEach((cells, idx) => callback(createMockRow(cells as any[]), idx + 1));
+          },
+          getRow: (rowNumber: number) => createMockRow(allRows[rowNumber - 1] as any[]),
+        };
+      };
+
+      it("walks every worksheet (not just the first)", async () => {
+        const sheet1 = buildHierarchicalSheet("HDPE ENQ 1", [
+          ["MEDIUM-PRESSURE PIPELINES", "", 0],
+          ["Supply, lay and bed pipes complete with couplings", "", 0],
+          ["a) Perforated HDPE PE100 PN34 (SDR6) drain pipes:", "", 0],
+          ["1) 250 mm diameter", "", null],
+          ["i) Supply", "m", 7823.9],
+          ["ii) Install", "m", 7823.9],
+        ]);
+        const sheet2 = buildHierarchicalSheet("HDPE ENQ 2", [
+          ["MEDIUM-PRESSURE PIPELINES", "", 0],
+          ["Supply, lay and bed pipes complete with couplings", "", 0],
+          ["a) DN560 PE 100 PN 10 (SDR 17) HDPE pipes, welded connections", "", 0],
+          ["1) Supply", "m", 2082],
+        ]);
+        mockWorkbook.worksheets = [sheet1, sheet2];
+
+        const result = await service.extractFromExcel("/fake/file.xlsx");
+
+        expect(result.sheetName).toBe("HDPE ENQ 1 | HDPE ENQ 2");
+        expect(result.items).toHaveLength(2);
+        expect(result.items[0].sheetName).toBe("HDPE ENQ 1");
+        expect(result.items[1].sheetName).toBe("HDPE ENQ 2");
+      });
+
+      it("emits Supply rows only and drops Install", async () => {
+        mockWorkbook.worksheets = [
+          buildHierarchicalSheet("Sheet", [
+            ["MEDIUM-PRESSURE PIPELINES", "", 0],
+            ["Supply, lay and bed pipes complete with couplings", "", 0],
+            ["a) Perforated HDPE PE100 PN34 (SDR6) drain pipes:", "", 0],
+            ["1) 250 mm diameter", "", null],
+            ["i) Supply", "m", 7823.9],
+            ["ii) Install", "m", 7823.9],
+          ]),
+        ];
+
+        const result = await service.extractFromExcel("/fake/file.xlsx");
+
+        expect(result.items).toHaveLength(1);
+        expect(result.items[0].actionType).toBe("supply");
+        expect(result.items[0].quantity).toBe(7823.9);
+      });
+
+      it("flattens parent + size into the line item description", async () => {
+        mockWorkbook.worksheets = [
+          buildHierarchicalSheet("Sheet", [
+            ["MEDIUM-PRESSURE PIPELINES", "", 0],
+            ["Supply, lay and bed pipes complete with couplings", "", 0],
+            ["a) Perforated HDPE PE100 PN34 (SDR6) drain pipes:", "", 0],
+            ["1) 250 mm diameter", "", null],
+            ["i) Supply", "m", 100],
+          ]),
+        ];
+
+        const result = await service.extractFromExcel("/fake/file.xlsx");
+
+        expect(result.items[0].description).toContain(
+          "a) Perforated HDPE PE100 PN34 (SDR6) drain pipes:",
+        );
+        expect(result.items[0].description).toContain("1) 250 mm diameter");
+        expect(result.items[0].pressureClass).toBe("PN34");
+        expect(result.items[0].sdr).toBe("SDR6");
+      });
+
+      it("captures Dismantle rows separately as actionType=dismantle", async () => {
+        mockWorkbook.worksheets = [
+          buildHierarchicalSheet("Sheet", [
+            ["MEDIUM-PRESSURE PIPELINES", "", 0],
+            ["Extra-over for the supplying, laying, and bedding of specials", "", 0],
+            ["a) DN 400 rubber-lined mild steel pipes", "", 0],
+            ["1) DN 400 Long radius bend", "", null],
+            ["i) Supply", "No.", 2],
+            ["iii) Dismantle and dispose of existing DN 400 mild steel long radius bend", "No.", 2],
+          ]),
+        ];
+
+        const result = await service.extractFromExcel("/fake/file.xlsx");
+
+        const supply = result.items.filter((i) => i.actionType === "supply");
+        const dismantle = result.items.filter((i) => i.actionType === "dismantle");
+        expect(supply).toHaveLength(1);
+        expect(dismantle).toHaveLength(1);
+      });
+
+      it("classifies valves, consumables, UPVC, and pipe boots", async () => {
+        mockWorkbook.worksheets = [
+          buildHierarchicalSheet("Sheet", [
+            ["MEDIUM-PRESSURE PIPELINES", "", 0],
+            ["Supply, lay and bed pipes complete with couplings", "", 0],
+            ["a) DN 110 RSV gate valve for below liner pipes complete with HDPE stub", "", 0],
+            ["1) Supply", "No.", 10],
+            ["b) DN 400 manual hydraulically actuated pinch valve", "", 0],
+            ["i) Supply", "No.", 4],
+            ["c) Other", "", 0],
+            ["1) Compressed fibre gaskets", "No.", 27],
+            ["2) Grade 8.8 galvanised M36 bolt sets C/W nut and washer", "No.", 27],
+            ["3) 20 litre drum of Carboline 890UHS epoxy coating for touch-up", "No.", 1],
+            ["d) UPVC Class 4 22.5-degree bend to slip over discharge point:", "", 0],
+            ["i) DN450", "", null],
+            ["1) Supply", "No.", 1],
+            ["e) HDPE pipe boot for DN200 PE100 PN25 (SDR 7.4) pipe", "", 0],
+            ["1) Supply", "No.", 3],
+          ]),
+        ];
+
+        const result = await service.extractFromExcel("/fake/file.xlsx");
+
+        const types = result.items.map((i) => i.itemType);
+        expect(types).toContain("valve");
+        expect(types).toContain("consumable");
+        expect(types).toContain("upvc");
+        expect(types).toContain("boot");
+        expect(result.items.find((i) => /gaskets/.test(i.description))?.itemType).toBe(
+          "consumable",
+        );
+        expect(result.items.find((i) => /pinch/.test(i.description))?.itemType).toBe("valve");
+        expect(result.items.find((i) => /UPVC/i.test(i.description))?.itemType).toBe("upvc");
+      });
+
+      it("extracts pressure class, SDR, drawing references, and item codes", async () => {
+        mockWorkbook.worksheets = [
+          buildHierarchicalSheet("Sheet", [
+            ["MEDIUM-PRESSURE PIPELINES", "", 0],
+            ["Extra-over for the supplying, fixing, and bedding of valves", "", 0],
+            [
+              "a) DN 400 manual hydraulically actuated pinch valve, flanged to SANS 1123 Table 4000/3 as per AAP specifications (Item code 697)",
+              "",
+              0,
+            ],
+            ["i) Supply", "No.", 4],
+            [
+              "b) Cast in DN 200 HDPE puddle pipe (AL-2) including c/w puddle flange and backing flange as detailed on Dwg J528-303-110",
+              "",
+              0,
+            ],
+            ["1) Supply", "No.", 3],
+          ]),
+        ];
+
+        const result = await service.extractFromExcel("/fake/file.xlsx");
+
+        const valveItem = result.items.find((i) => i.itemType === "valve");
+        expect(valveItem?.itemCode).toBe("697");
+        expect(valveItem?.diameter).toBe(400);
+
+        const puddle = result.items.find((i) => i.itemType === "puddle_pipe");
+        expect(puddle?.drawingReference).toBe("J528-303-110");
+        expect(puddle?.diameter).toBe(200);
+      });
+
+      it("does not flag valves or consumables as needing diameter clarification", async () => {
+        mockWorkbook.worksheets = [
+          buildHierarchicalSheet("Sheet", [
+            ["MEDIUM-PRESSURE PIPELINES", "", 0],
+            ["Supply, lay and bed pipes complete with couplings", "", 0],
+            ["a) Other", "", 0],
+            ["1) Compressed fibre gaskets", "No.", 27],
+            ["b) Hydraulic hand pump for PN16 DN450 hydraulically actuated pinch valves", "", 0],
+            ["i) Supply", "No.", 6],
+          ]),
+        ];
+
+        const result = await service.extractFromExcel("/fake/file.xlsx");
+
+        expect(result.clarificationsNeeded).toBe(0);
+      });
+    });
   });
 });

@@ -1,19 +1,34 @@
 import { Injectable, Logger } from "@nestjs/common";
 import * as ExcelJS from "exceljs";
 
+export type ExtractedItemType =
+  | "pipe"
+  | "bend"
+  | "reducer"
+  | "tee"
+  | "lateral"
+  | "flange"
+  | "end_cap"
+  | "puddle_pipe"
+  | "expansion_joint"
+  | "tank_chute"
+  | "valve"
+  | "pump"
+  | "boot"
+  | "wrapping"
+  | "consumable"
+  | "upvc"
+  | "skid"
+  | "unknown";
+
+export type ExtractedItemAction = "supply" | "install" | "dismantle" | "supply_install";
+
 export interface ExtractedItem {
   rowNumber: number;
   itemNumber: string;
   description: string;
-  itemType:
-    | "pipe"
-    | "bend"
-    | "reducer"
-    | "tee"
-    | "flange"
-    | "expansion_joint"
-    | "tank_chute"
-    | "unknown";
+  itemType: ExtractedItemType;
+  actionType: ExtractedItemAction;
   material: string | null;
   materialGrade: string | null;
   diameter: number | null;
@@ -24,14 +39,24 @@ export interface ExtractedItem {
   schedule: string | null;
   angle: number | null;
   flangeConfig: "none" | "one_end" | "both_ends" | "puddle" | "blind" | null;
+  pressureClass: string | null;
+  sdr: string | null;
   quantity: number;
   unit: string;
   confidence: number;
   needsClarification: boolean;
   clarificationReason: string | null;
   rawData: Record<string, any>;
-  assemblyType?: "tank" | "chute" | "hopper" | "underpan" | "custom";
+  sheetName?: string;
+  assemblyContext?: {
+    section?: string;
+    group?: string;
+    parent?: string;
+    size?: string;
+  };
   drawingReference?: string;
+  itemCode?: string;
+  assemblyType?: "tank" | "chute" | "hopper" | "underpan" | "custom";
   overallLengthMm?: number;
   overallWidthMm?: number;
   overallHeightMm?: number;
@@ -121,23 +146,55 @@ export class ExcelExtractorService {
     { pattern: /\bERW\b/i, material: "Carbon Steel", grade: "ERW" },
   ];
 
-  private readonly itemTypePatterns = [
+  // Order matters: the first pattern that matches wins, so the most specific
+  // patterns (puddle pipe, pipe boot, valve+pinch) must precede the generic
+  // ones (pipe, flange).
+  private readonly itemTypePatterns: Array<{ pattern: RegExp; type: ExtractedItemType }> = [
+    { pattern: /\bpinch\s*valve\b/i, type: "valve" as const },
+    { pattern: /\b(gate|globe|ball|butterfly|check|knife)\s*valve\b/i, type: "valve" as const },
+    { pattern: /\brsv\b/i, type: "valve" as const },
+    { pattern: /\bvalve\b/i, type: "valve" as const },
+    { pattern: /\bhand\s*pump\b|\bhydraulic\s*pump\b/i, type: "pump" as const },
+    { pattern: /\bpump\b/i, type: "pump" as const },
+    { pattern: /\bpuddle\s*pipe\b/i, type: "puddle_pipe" as const },
+    { pattern: /\bpipe\s*boot\b/i, type: "boot" as const },
+    {
+      pattern: /\b(visco[-\s]?elastic|denso)\s*(wrap|tape|wrapping|coating)?\b/i,
+      type: "wrapping" as const,
+    },
+    {
+      pattern:
+        /\b(gaskets?|bolt\s*sets?|nut\s*and\s*washer|drum\s*of\s*[a-z\s]*coating|carboline|epoxy\s*touch[-\s]?up)\b/i,
+      type: "consumable" as const,
+    },
+    { pattern: /\bupvc\b/i, type: "upvc" as const },
+    { pattern: /\bend\s*caps?\b/i, type: "end_cap" as const },
+    {
+      pattern:
+        /\b\d+\s*deg(?:ree)?s?\s*laterals?\b|\blaterals?\s*t[-\s]?piece\b|\b45\s*deg(?:ree)?s?\s*lateral\s*t[-\s]?piece\b/i,
+      type: "lateral" as const,
+    },
     { pattern: /\belbow\b/i, type: "bend" as const },
     { pattern: /\bs[-\s]?bend\b/i, type: "bend" as const },
-    { pattern: /\bbend\b|\bdeg\b|\bdegree\b/i, type: "bend" as const },
+    { pattern: /\bbends?\b|\b\d+\s*deg(?:ree)?s?\b|\bdegrees?\b/i, type: "bend" as const },
     {
-      pattern: /\breducer\b|\breducing\b(?!\s*tee)/i,
+      pattern: /\breducers?\b|\breducing\b(?!\s*tee)/i,
       type: "reducer" as const,
     },
-    { pattern: /\btee\b/i, type: "tee" as const },
-    { pattern: /\bflange\b(?!.*gasket)/i, type: "flange" as const },
+    { pattern: /\bsweep\s*t[-\s]?pieces?\b|\bt[-\s]?pieces?\b|\btees?\b/i, type: "tee" as const },
+    {
+      pattern: /\bblank\s*flanges?\b|\bbacking\s*flanges?\b|\bflanges?\b(?!.*gasket)/i,
+      type: "flange" as const,
+    },
     { pattern: /\bexpansion\s*joint\b/i, type: "expansion_joint" as const },
+    { pattern: /\bpipe\s*skid\b|\bskid\b/i, type: "skid" as const },
     { pattern: /\btank\b/i, type: "tank_chute" as const },
     { pattern: /\bchute\b/i, type: "tank_chute" as const },
     { pattern: /\bhopper\b/i, type: "tank_chute" as const },
     { pattern: /\bunderpan\b|\bunder[-\s]?pan\b/i, type: "tank_chute" as const },
-    { pattern: /\b\d+\s*NB\s+PIPE\b/i, type: "pipe" as const },
-    { pattern: /\bpipe\b|\bdia\s*pipe\b/i, type: "pipe" as const },
+    { pattern: /\b\d+\s*NB\s+PIPES?\b/i, type: "pipe" as const },
+    { pattern: /\bspool\s*pipes?\b|\bstraight\s*pipes?\b/i, type: "pipe" as const },
+    { pattern: /\bpipes?\b|\bdia\s*pipes?\b/i, type: "pipe" as const },
     { pattern: /\d+\s*mm\s*(steel|stainless)/i, type: "pipe" as const },
   ];
 
@@ -165,11 +222,84 @@ export class ExcelExtractorService {
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.readFile(filePath);
 
-    const worksheet = workbook.worksheets[0];
-    if (!worksheet) {
+    if (workbook.worksheets.length === 0) {
       throw new Error("No worksheets found in Excel file");
     }
 
+    const aggregateItems: ExtractedItem[] = [];
+    const aggregateSpecCells: SpecificationCellData[] = [];
+    const aggregateMetadata: ExtractionResult["metadata"] = {
+      projectReference: null,
+      projectLocation: null,
+      projectName: null,
+      standard: null,
+      coating: null,
+      lining: null,
+      materialGrade: null,
+      wallThickness: null,
+    };
+    let totalRows = 0;
+    const sheetNames: string[] = [];
+
+    for (const worksheet of workbook.worksheets) {
+      sheetNames.push(worksheet.name);
+      totalRows += worksheet.rowCount;
+      const format = this.detectSheetFormat(worksheet);
+      this.logger.log(`Sheet "${worksheet.name}" detected as format: ${format}`);
+
+      const sheetResult =
+        format === "hierarchical_3col"
+          ? this.extractHierarchicalFormat(worksheet)
+          : this.extractWideFormat(worksheet);
+
+      for (const item of sheetResult.items) {
+        item.sheetName = worksheet.name;
+        aggregateItems.push(item);
+      }
+      aggregateSpecCells.push(...sheetResult.specificationCells);
+      this.mergeMetadata(aggregateMetadata, sheetResult.metadata);
+    }
+
+    return {
+      sheetName: sheetNames.length === 1 ? sheetNames[0] : sheetNames.join(" | "),
+      totalRows,
+      items: aggregateItems,
+      clarificationsNeeded: aggregateItems.filter((i) => i.needsClarification).length,
+      specificationCells: aggregateSpecCells,
+      metadata: aggregateMetadata,
+    };
+  }
+
+  private mergeMetadata(
+    target: ExtractionResult["metadata"],
+    src: ExtractionResult["metadata"],
+  ): void {
+    (Object.keys(target) as Array<keyof ExtractionResult["metadata"]>).forEach((k) => {
+      if (target[k] == null && src[k] != null) {
+        target[k] = src[k];
+      }
+    });
+  }
+
+  private detectSheetFormat(worksheet: ExcelJS.Worksheet): "hierarchical_3col" | "wide" {
+    const headerRow = worksheet.getRow(1);
+    const c1 = this.getCellText(headerRow.getCell(1)).trim().toLowerCase();
+    const c2 = this.getCellText(headerRow.getCell(2)).trim().toLowerCase();
+    const c3 = this.getCellText(headerRow.getCell(3)).trim().toLowerCase();
+    const c4 = this.getCellText(headerRow.getCell(4)).trim().toLowerCase();
+    const c5 = this.getCellText(headerRow.getCell(5)).trim().toLowerCase();
+
+    const looksLikeNarrowHeader =
+      c1.startsWith("description") &&
+      (c2.startsWith("uom") || c2.startsWith("unit")) &&
+      c3.startsWith("quantity") &&
+      !c4 &&
+      !c5;
+
+    return looksLikeNarrowHeader ? "hierarchical_3col" : "wide";
+  }
+
+  private extractWideFormat(worksheet: ExcelJS.Worksheet): ExtractionResult {
     const specificationCells = this.extractSpecificationCells(worksheet);
     this.logger.log(`📋 Found ${specificationCells.length} specification header(s)`);
 
@@ -352,6 +482,261 @@ export class ExcelExtractorService {
         wallThickness: specDefaults.wallThickness,
       },
     };
+  }
+
+  private extractHierarchicalFormat(worksheet: ExcelJS.Worksheet): ExtractionResult {
+    const items: ExtractedItem[] = [];
+    const sectionHeaderRegex =
+      /^(MEDIUM[-\s]?PRESSURE\s+PIPELINES|HIGH[-\s]?PRESSURE\s+PIPELINES|LOW[-\s]?PRESSURE\s+PIPELINES|PHASE\s+\d+[\s-]+.+|PIPING|CIVIL|STRUCTURAL)$/i;
+    const groupHeaderRegex =
+      /^(Supply,?\s+lay|Supply\s+and\s+place|Extra[-\s]?over|Supplying\s+and\s+placing)/i;
+    const letterPrefixRegex = /^\s*([a-z])\)\s*/i;
+    const numericPrefixRegex = /^\s*(\d+)\)\s*/;
+    const romanPrefixRegex = /^\s*(i|ii|iii|iv|v|vi|vii|viii|ix|x)\)\s*/i;
+    const supplyActionRegex = /^\s*(?:\d+|[ivx]+)\)\s*supply\b/i;
+    const installActionRegex = /^\s*(?:\d+|[ivx]+)\)\s*install\b/i;
+    const dismantleActionRegex = /^\s*(?:\d+|[ivx]+)\)\s*dismantle\b/i;
+
+    let section: string | null = null;
+    let group: string | null = null;
+    let parent: string | null = null;
+    let size: string | null = null;
+
+    worksheet.eachRow((row, rowNumber) => {
+      if (rowNumber === 1) return;
+
+      const desc = this.getCellText(row.getCell(1)).trim();
+      const uom = this.getCellText(row.getCell(2)).trim();
+      const qtyRaw = row.getCell(3).value;
+      const qty =
+        typeof qtyRaw === "number"
+          ? qtyRaw
+          : qtyRaw && !Number.isNaN(parseFloat(qtyRaw.toString()))
+            ? parseFloat(qtyRaw.toString())
+            : 0;
+
+      if (!desc) return;
+
+      if (sectionHeaderRegex.test(desc) || /^[A-Z\s\d-]{8,}$/.test(desc)) {
+        if (sectionHeaderRegex.test(desc)) {
+          section = desc;
+          parent = null;
+          size = null;
+          return;
+        }
+      }
+
+      if (groupHeaderRegex.test(desc) && !uom && !qty) {
+        group = desc;
+        parent = null;
+        size = null;
+        return;
+      }
+
+      const isActionRow =
+        supplyActionRegex.test(desc) ||
+        installActionRegex.test(desc) ||
+        dismantleActionRegex.test(desc);
+
+      const hasMeasure = uom !== "" && qty > 0;
+
+      if (isActionRow && hasMeasure) {
+        const action: ExtractedItemAction = supplyActionRegex.test(desc)
+          ? "supply"
+          : dismantleActionRegex.test(desc)
+            ? "dismantle"
+            : "install";
+
+        const composedDescription = [parent, size].filter((s): s is string => !!s).join(" / ");
+        const finalDescription = composedDescription || desc;
+
+        const item = this.buildHierarchicalItem(rowNumber, finalDescription, uom, qty, action, {
+          section,
+          group,
+          parent,
+          size,
+        });
+        if (item) items.push(item);
+        return;
+      }
+
+      if (
+        !isActionRow &&
+        hasMeasure &&
+        (numericPrefixRegex.test(desc) || romanPrefixRegex.test(desc))
+      ) {
+        const composedParent = parent ? `${parent} / ${desc}` : desc;
+        const item = this.buildHierarchicalItem(rowNumber, composedParent, uom, qty, "supply", {
+          section,
+          group,
+          parent,
+          size: desc,
+        });
+        if (item) items.push(item);
+        return;
+      }
+
+      if (
+        (numericPrefixRegex.test(desc) || romanPrefixRegex.test(desc)) &&
+        !isActionRow &&
+        !hasMeasure
+      ) {
+        size = desc;
+        return;
+      }
+
+      if (letterPrefixRegex.test(desc) && !isActionRow) {
+        parent = desc;
+        size = null;
+        return;
+      }
+    });
+
+    const clarificationsNeeded = items.filter((i) => i.needsClarification).length;
+
+    return {
+      sheetName: worksheet.name,
+      totalRows: worksheet.rowCount,
+      items,
+      clarificationsNeeded,
+      specificationCells: [],
+      metadata: {
+        projectReference: null,
+        projectLocation: null,
+        projectName: null,
+        standard: this.firstStandard(items),
+        coating: null,
+        lining: null,
+        materialGrade: null,
+        wallThickness: null,
+      },
+    };
+  }
+
+  private firstStandard(items: ExtractedItem[]): string | null {
+    for (const item of items) {
+      const m = item.description.match(/\b(SANS\s*\d+|SABS\s*\d+|ASTM\s*\w+|API\s*5L)/i);
+      if (m) return m[1].toUpperCase().replace(/\s+/g, " ");
+    }
+    return null;
+  }
+
+  private buildHierarchicalItem(
+    rowNumber: number,
+    description: string,
+    uom: string,
+    quantity: number,
+    action: ExtractedItemAction,
+    context: {
+      section: string | null;
+      group: string | null;
+      parent: string | null;
+      size: string | null;
+    },
+  ): ExtractedItem | null {
+    if (action === "install") return null;
+
+    const itemType = this.detectItemType(description);
+    const material = this.extractMaterial(description);
+    const materialGrade = this.extractMaterialGrade(description);
+    const diameter = this.extractDiameter(description);
+    const secondaryDiameter = this.extractSecondaryDiameter(description);
+    const angle = this.extractAngle(description);
+    const flangeConfig = this.extractFlangeConfig(description);
+    const pressureClass = this.extractPressureClass(description);
+    const sdr = this.extractSdr(description);
+    const wallThickness = this.extractWallThicknessMm(description);
+    const drawingReference = this.extractDrawingReference(description);
+    const itemCode = this.extractItemCode(description);
+
+    const requiresDiameter = ["pipe", "bend", "reducer", "tee", "lateral", "end_cap"].includes(
+      itemType,
+    );
+    const needsClarification = requiresDiameter && !diameter;
+    const clarificationReason = needsClarification
+      ? "Could not determine diameter from description"
+      : null;
+
+    let confidence = 0.5;
+    if (material) confidence += 0.1;
+    if (diameter) confidence += 0.15;
+    if (itemType !== "unknown") confidence += 0.15;
+    if (quantity > 0) confidence += 0.05;
+    if (pressureClass) confidence += 0.05;
+    confidence = Math.min(1.0, confidence);
+
+    const itemNumber = this.deriveHierarchicalItemNumber(context.parent, context.size, rowNumber);
+
+    return {
+      rowNumber,
+      itemNumber,
+      description: description.trim(),
+      itemType,
+      actionType: action,
+      material,
+      materialGrade,
+      diameter,
+      diameterUnit: "mm",
+      secondaryDiameter,
+      length: this.extractLength(description),
+      wallThickness,
+      schedule: null,
+      angle,
+      flangeConfig,
+      pressureClass,
+      sdr,
+      quantity,
+      unit: uom || "No",
+      confidence,
+      needsClarification,
+      clarificationReason,
+      rawData: { description, uom, qty: quantity },
+      assemblyContext: {
+        section: context.section ?? undefined,
+        group: context.group ?? undefined,
+        parent: context.parent ?? undefined,
+        size: context.size ?? undefined,
+      },
+      drawingReference,
+      itemCode,
+    };
+  }
+
+  private deriveHierarchicalItemNumber(
+    parent: string | null,
+    size: string | null,
+    rowNumber: number,
+  ): string {
+    const parentLetter = parent?.match(/^\s*([a-z])\)/i)?.[1];
+    const sizeNumberOrRoman = size?.match(/^\s*(\d+|[ivx]+)\)/i)?.[1];
+    if (parentLetter && sizeNumberOrRoman) return `${parentLetter}.${sizeNumberOrRoman}`;
+    if (parentLetter) return parentLetter;
+    return `Row${rowNumber}`;
+  }
+
+  private extractPressureClass(description: string): string | null {
+    const match = description.match(/\bPN\s*(\d+(?:\.\d+)?)\b/i);
+    return match ? `PN${match[1]}` : null;
+  }
+
+  private extractSdr(description: string): string | null {
+    const match = description.match(/\bSDR\s*(\d+(?:\.\d+)?)\b/i);
+    return match ? `SDR${match[1]}` : null;
+  }
+
+  private extractWallThicknessMm(description: string): number | null {
+    const match = description.match(/(\d+(?:\.\d+)?)\s*mm\s*(?:wall|thick|thk)/i);
+    return match ? parseFloat(match[1]) : null;
+  }
+
+  private extractDrawingReference(description: string): string | undefined {
+    const match = description.match(/\b([JK]\d{3,4}[-_/]\d{2,4}[-_/]\d{2,4})\b/);
+    return match ? match[1] : undefined;
+  }
+
+  private extractItemCode(description: string): string | undefined {
+    const match = description.match(/\bItem\s*code\s*(\d+)\b/i);
+    return match ? match[1] : undefined;
   }
 
   private extractSpecificationCells(worksheet: ExcelJS.Worksheet): SpecificationCellData[] {
@@ -958,6 +1343,7 @@ export class ExcelExtractorService {
       itemNumber,
       description: description.trim(),
       itemType,
+      actionType: "supply",
       material,
       materialGrade,
       diameter,
@@ -968,12 +1354,16 @@ export class ExcelExtractorService {
       schedule: null,
       angle,
       flangeConfig,
+      pressureClass: this.extractPressureClass(description),
+      sdr: this.extractSdr(description),
       quantity,
       unit: rowData.unit?.toString() || "No",
       confidence,
       needsClarification,
       clarificationReason,
       rawData: rowData,
+      drawingReference: this.extractDrawingReference(description),
+      itemCode: this.extractItemCode(description),
     };
   }
 
@@ -1009,6 +1399,7 @@ export class ExcelExtractorService {
 
   private extractDiameter(description: string): number | null {
     const patterns = [
+      /\bDN\s*(\d+)\b/i,
       /(\d+)\s*NB\b/i,
       /(\d+)\s*mm\s*(?:dia|diameter)/i,
       /(\d+)mm\s+(?:dia|steel|pipe|bend)/i,

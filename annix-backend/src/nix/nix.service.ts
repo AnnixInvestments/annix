@@ -304,6 +304,10 @@ export class NixService {
 
       await this.extractionRepo.save(extraction);
 
+      const profileMetadata =
+        (extraction.extractedData?.profileMetadata as Record<string, unknown> | undefined) ??
+        undefined;
+
       return {
         extractionId: extraction.id,
         status: extraction.status,
@@ -313,6 +317,7 @@ export class NixService {
           question: c.question,
           context: c.context || {},
         })),
+        ...(profileMetadata ? { profileMetadata } : {}),
       };
     } catch (error) {
       extraction.status = ExtractionStatus.FAILED;

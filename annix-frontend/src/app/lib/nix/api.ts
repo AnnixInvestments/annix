@@ -27,19 +27,34 @@ export interface NixExtractedPlateBomRow {
   areaM2?: number;
 }
 
+export type NixExtractedItemType =
+  | "pipe"
+  | "bend"
+  | "reducer"
+  | "tee"
+  | "lateral"
+  | "flange"
+  | "end_cap"
+  | "puddle_pipe"
+  | "expansion_joint"
+  | "tank_chute"
+  | "valve"
+  | "pump"
+  | "boot"
+  | "wrapping"
+  | "consumable"
+  | "upvc"
+  | "skid"
+  | "unknown";
+
+export type NixExtractedItemAction = "supply" | "install" | "dismantle" | "supply_install";
+
 export interface NixExtractedItem {
   rowNumber: number;
   itemNumber: string;
   description: string;
-  itemType:
-    | "pipe"
-    | "bend"
-    | "reducer"
-    | "tee"
-    | "flange"
-    | "expansion_joint"
-    | "tank_chute"
-    | "unknown";
+  itemType: NixExtractedItemType;
+  actionType: NixExtractedItemAction;
   material: string | null;
   materialGrade: string | null;
   diameter: number | null;
@@ -50,13 +65,23 @@ export interface NixExtractedItem {
   schedule: string | null;
   angle: number | null;
   flangeConfig: "none" | "one_end" | "both_ends" | "puddle" | "blind" | null;
+  pressureClass: string | null;
+  sdr: string | null;
   quantity: number;
   unit: string;
   confidence: number;
   needsClarification: boolean;
   clarificationReason: string | null;
-  assemblyType?: "tank" | "chute" | "hopper" | "underpan" | "custom";
+  sheetName?: string;
+  assemblyContext?: {
+    section?: string;
+    group?: string;
+    parent?: string;
+    size?: string;
+  };
   drawingReference?: string;
+  itemCode?: string;
+  assemblyType?: "tank" | "chute" | "hopper" | "underpan" | "custom";
   overallLengthMm?: number;
   overallWidthMm?: number;
   overallHeightMm?: number;
@@ -68,6 +93,36 @@ export interface NixExtractedItem {
   coatingAreaM2?: number;
   surfacePrepStandard?: string;
   plateBom?: NixExtractedPlateBomRow[];
+}
+
+export interface NixSupplierBundle {
+  key: string;
+  label: string;
+  itemCount: number;
+  totalLineQuantity: number;
+  units: string[];
+  itemRowNumbers: number[];
+}
+
+export interface NixDuplicateOccurrence {
+  sheetName?: string;
+  rowNumber: number;
+  quantity: number;
+  unit: string;
+}
+
+export interface NixDuplicateGroup {
+  description: string;
+  occurrences: NixDuplicateOccurrence[];
+}
+
+export interface NixRfqPipingProfileMetadata {
+  supplierBundles: NixSupplierBundle[];
+  duplicates: NixDuplicateGroup[];
+  drawingReferences: string[];
+  itemCodes: string[];
+  supplyItemCount: number;
+  dismantleItemCount: number;
 }
 
 export interface NixClarificationContext {
@@ -118,6 +173,7 @@ export interface NixProcessResponse {
   items?: NixExtractedItem[];
   pendingClarifications?: NixClarificationDto[];
   metadata?: NixExtractionMetadata;
+  profileMetadata?: NixRfqPipingProfileMetadata | Record<string, unknown>;
   error?: string;
 }
 

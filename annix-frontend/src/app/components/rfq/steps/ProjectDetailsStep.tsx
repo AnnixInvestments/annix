@@ -3,6 +3,7 @@
 import { isNumber, keys } from "es-toolkit/compat";
 import Link from "next/link";
 import React, { useCallback, useEffect, useState } from "react";
+import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import GoogleMapLocationPicker from "@/app/components/GoogleMapLocationPicker";
 import AddMineModal from "@/app/components/rfq/modals/AddMineModal";
 import { AutoFilledInput } from "@/app/components/rfq/shared/AutoFilledField";
@@ -23,6 +24,7 @@ import {
 import { generateUniqueId } from "@/app/lib/datetime";
 import { useEnvironmentalIntelligence } from "@/app/lib/hooks/useEnvironmentalIntelligence";
 import { log } from "@/app/lib/logger";
+import { type NixRfqPipingProfileMetadata, nixApi } from "@/app/lib/nix/api";
 import { useRfqWizardStore } from "@/app/lib/store/rfqWizardStore";
 import { generateSystemReferenceNumber } from "@/app/lib/utils/systemUtils";
 import {
@@ -99,17 +101,87 @@ export default function ProjectDetailsStep() {
   const storeAddTenderDocument = useRfqWizardStore((s) => s.addTenderDocument);
   const { flags: featureFlags } = useFeatureFlags();
   const onRemoveTenderDocument = useRfqWizardStore((s) => s.removeTenderDocument);
+  const currentDraftId = useRfqWizardStore((s) => s.currentDraftId);
   const globalSpecs = rfqData.globalSpecs;
   const useNix = rfqData.useNix;
+  const { showToast } = useToast();
+  const { showExtraction, hideExtraction } = useExtractionProgress();
+  const [boqExtractionSummary, setBoqExtractionSummary] = useState<{
+    fileName: string;
+    itemCount: number;
+    bundleCount: number;
+    duplicateCount: number;
+    drawingRefCount: number;
+  } | null>(null);
+
+  const isExcelFile = (file: File) =>
+    /\.xlsx?$/i.test(file.name) || file.type.includes("spreadsheet") || file.type.includes("excel");
 
   const onAddDocument = useCallback(
-    (file: File) => {
+    async (file: File) => {
       storeAddDocument({
         file,
         id: `doc-${generateUniqueId()}-${Math.random().toString(36).substr(2, 9)}`,
       });
+
+      if (!isExcelFile(file)) return;
+
+      try {
+        showExtraction({
+          brand: "rfq",
+          label: `Nix is reading ${file.name} and splitting it into line items…`,
+          estimatedDurationMs: 30_000,
+        });
+        const result = await nixApi.uploadAndProcess(file, {
+          extractionProfile: "rfq-piping",
+          documentRole: "drawing",
+          rfqId: currentDraftId ?? undefined,
+          sourceModule: "rfq",
+        });
+        hideExtraction();
+
+        if (result.error) {
+          showToast(`Nix couldn't extract ${file.name}: ${result.error}`, "error");
+          return;
+        }
+
+        const rawProfile = result.profileMetadata as NixRfqPipingProfileMetadata | undefined;
+        const profile = rawProfile ?? null;
+        const items = result.items;
+        const itemCount = items ? items.length : 0;
+        const bundles = profile ? profile.supplierBundles : undefined;
+        const bundleCount = bundles ? bundles.length : 0;
+        const duplicates = profile ? profile.duplicates : undefined;
+        const duplicateCount = duplicates ? duplicates.length : 0;
+        const drawingRefs = profile ? profile.drawingReferences : undefined;
+        const drawingRefCount = drawingRefs ? drawingRefs.length : 0;
+
+        setBoqExtractionSummary({
+          fileName: file.name,
+          itemCount,
+          bundleCount,
+          duplicateCount,
+          drawingRefCount,
+        });
+
+        const bundleSummary =
+          bundleCount > 0
+            ? ` across ${bundleCount} supplier bundle${bundleCount === 1 ? "" : "s"}`
+            : "";
+        showToast(
+          `Nix extracted ${itemCount} line item${itemCount === 1 ? "" : "s"}${bundleSummary} from ${file.name}.`,
+          "success",
+        );
+      } catch (err) {
+        hideExtraction();
+        log.error("Nix BOQ extraction failed:", err);
+        showToast(
+          `Couldn't auto-extract ${file.name}. The file is still uploaded — admin can extract manually.`,
+          "warning",
+        );
+      }
     },
-    [storeAddDocument],
+    [storeAddDocument, showExtraction, hideExtraction, showToast, currentDraftId],
   );
 
   const onAddTenderDocument = useCallback(
@@ -121,7 +193,6 @@ export default function ProjectDetailsStep() {
     },
     [storeAddTenderDocument],
   );
-  const { showToast } = useToast();
   const [additionalNotes, setAdditionalNotes] = useState<string[]>([]);
   const [showMapPicker, setShowMapPicker] = useState(false);
   const hasProjectTypeError = Boolean(errors.projectType);
@@ -1598,19 +1669,58 @@ export default function ProjectDetailsStep() {
                 </div>
               </div>
             ) : (
-              <DocumentBucket
-                id="rfq-boq-drawings"
-                title="BOQ & Drawing Documents Only"
-                subtitle="Bills of quantities and technical drawings"
-                tone="blue"
-                documents={pendingDocuments || []}
-                onAddDocument={onAddDocument}
-                onRemoveDocument={onRemoveDocument}
-                isConfirmed={documentsConfirmed}
-                onConfirm={() => setDocumentsConfirmed(true)}
-                onUnconfirm={() => setDocumentsConfirmed(false)}
-                onConfirmEmpty={() => setShowNoDocumentsPopup(true)}
-              />
+              <div>
+                <DocumentBucket
+                  id="rfq-boq-drawings"
+                  title="BOQ & Drawing Documents Only"
+                  subtitle="Bills of quantities and technical drawings"
+                  tone="blue"
+                  documents={pendingDocuments || []}
+                  onAddDocument={onAddDocument}
+                  onRemoveDocument={onRemoveDocument}
+                  isConfirmed={documentsConfirmed}
+                  onConfirm={() => setDocumentsConfirmed(true)}
+                  onUnconfirm={() => setDocumentsConfirmed(false)}
+                  onConfirmEmpty={() => setShowNoDocumentsPopup(true)}
+                />
+                {boqExtractionSummary && (
+                  <div className="mt-2 bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs">
+                    <div className="flex items-start gap-2">
+                      <svg
+                        className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+                        />
+                      </svg>
+                      <div className="flex-1">
+                        <p className="font-semibold text-blue-900">
+                          Nix extracted {boqExtractionSummary.itemCount} line item
+                          {boqExtractionSummary.itemCount === 1 ? "" : "s"} from{" "}
+                          {boqExtractionSummary.fileName}
+                        </p>
+                        <p className="text-blue-800 mt-0.5">
+                          Split into {boqExtractionSummary.bundleCount} supplier bundle
+                          {boqExtractionSummary.bundleCount === 1 ? "" : "s"}
+                          {boqExtractionSummary.duplicateCount > 0
+                            ? `; ${boqExtractionSummary.duplicateCount} duplicate group${boqExtractionSummary.duplicateCount === 1 ? "" : "s"} flagged for review`
+                            : ""}
+                          {boqExtractionSummary.drawingRefCount > 0
+                            ? `; ${boqExtractionSummary.drawingRefCount} drawing reference${boqExtractionSummary.drawingRefCount === 1 ? "" : "s"} captured`
+                            : ""}
+                          .
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
 
             {/* Tender Specification Documents */}
