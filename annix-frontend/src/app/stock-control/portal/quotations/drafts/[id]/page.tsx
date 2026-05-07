@@ -4,6 +4,7 @@ import { toPairs as entries, isArray, isNumber, isString, keys } from "es-toolki
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
+import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { FormModal } from "@/app/components/modals/FormModal";
 import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
 import { useToast } from "@/app/components/Toast";
@@ -52,22 +53,27 @@ export default function NixExtractionDraftPage() {
 
   const pdfPreview = usePdfPreview();
   const [retryingId, setRetryingId] = useState<number | null>(null);
+  const { showExtraction, hideExtraction } = useExtractionProgress();
 
   const handleRetry = useCallback(
     async (extraction: NixExtractionSummary) => {
       try {
         setRetryingId(extraction.id);
-        showToast(`Retrying extraction for ${extraction.documentName}...`, "info");
+        showExtraction({
+          brand: "stock-control",
+          label: `Re-extracting ${extraction.documentName}…`,
+          estimatedDurationMs: 60_000,
+        });
         await nixApi.retryExtraction(extraction.id);
         await sessionQuery.refetch();
-        showToast(`Retry of ${extraction.documentName} complete.`, "success");
       } catch (err) {
         showToast(err instanceof Error ? err.message : "Retry failed", "error");
       } finally {
+        hideExtraction();
         setRetryingId(null);
       }
     },
-    [showToast, sessionQuery],
+    [showToast, sessionQuery, showExtraction, hideExtraction],
   );
 
   const handleViewOriginal = useCallback(
