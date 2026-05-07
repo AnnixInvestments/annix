@@ -1,6 +1,6 @@
 # Shared Module Registry
 
-**Last updated:** 2026-05-03
+**Last updated:** 2026-05-07
 
 This is the canonical index of shared modules across the Annix monorepo. Every Claude session MUST consult this file before writing new constants, components, services, or utilities (see `CLAUDE.md` §"Discovery-first protocol").
 
@@ -120,6 +120,12 @@ Host-app-agnostic inventory management module. Currently consumed by Stock Contr
 The canonical frontend components directory. **App-specific components live in `app/<app>/components/` only if they're truly unique to that app** — if there's any chance another app might use it, put it here.
 
 Existing shared components include: `DataTable`, `TableComponents`, `ConfirmModal`, `FormModal` (reusable form-based modal shell with portal, backdrop, header, scrollable body, and footer), `AdminActionModal` (approve/suspend/reject modal for admin entity actions), `ImportModal`, `MonthYearPicker`, `FileDropzone`, `SurfaceAreaDisplay`, `WeldSummaryCard`, `CalloffInput`, `SageExportModal`, `PortalToolbar`, `PdfPreviewModal` (+ `usePdfPreview` hook — mandatory for all generated PDF documents).
+
+#### Document upload + AI extraction (`components/uploads/`)
+
+| Component | Use for |
+|---|---|
+| `DocumentDropzone` | Generic multi-file dropzone with size/duplicate-name/limit validation. Imports from `@/app/components/uploads`. **Use this for any drop-files UI** — RFQ wizard, ASCA quote, supplier CoC upload, etc. Pre-2026-05 this was named `RfqDocumentUpload` and lived under `components/rfq/uploads/`; renamed and moved as part of issue #251. |
 
 #### RFQ 3D preview hooks (`components/rfq/previews/hooks/`)
 

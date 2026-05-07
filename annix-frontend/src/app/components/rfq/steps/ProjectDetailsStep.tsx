@@ -7,8 +7,8 @@ import GoogleMapLocationPicker from "@/app/components/GoogleMapLocationPicker";
 import AddMineModal from "@/app/components/rfq/modals/AddMineModal";
 import { AutoFilledInput } from "@/app/components/rfq/shared/AutoFilledField";
 import EnvironmentalIntelligenceSection from "@/app/components/rfq/steps/EnvironmentalIntelligenceSection";
-import RfqDocumentUpload from "@/app/components/rfq/uploads/RfqDocumentUpload";
 import { useToast } from "@/app/components/Toast";
+import { DocumentDropzone } from "@/app/components/uploads";
 import { useOptionalAdminAuth } from "@/app/context/AdminAuthContext";
 import { useOptionalCustomerAuth } from "@/app/context/CustomerAuthContext";
 import { useFeatureFlags } from "@/app/hooks/useFeatureFlags";
@@ -1236,7 +1236,7 @@ export default function ProjectDetailsStep() {
 
             {!documentsConfirmed ? (
               <>
-                <RfqDocumentUpload
+                <DocumentDropzone
                   documents={pendingDocuments || []}
                   onAddDocument={onAddDocument}
                   onRemoveDocument={onRemoveDocument}
@@ -1757,7 +1757,7 @@ export default function ProjectDetailsStep() {
 
                 {!documentsConfirmed ? (
                   <>
-                    <RfqDocumentUpload
+                    <DocumentDropzone
                       documents={pendingDocuments || []}
                       onAddDocument={onAddDocument}
                       onRemoveDocument={onRemoveDocument}
@@ -1932,7 +1932,7 @@ export default function ProjectDetailsStep() {
 
                 {!tenderDocumentsConfirmed ? (
                   <>
-                    <RfqDocumentUpload
+                    <DocumentDropzone
                       documents={pendingTenderDocuments || []}
                       onAddDocument={onAddTenderDocument}
                       onRemoveDocument={onRemoveTenderDocument}

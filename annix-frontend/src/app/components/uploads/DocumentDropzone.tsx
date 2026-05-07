@@ -2,13 +2,12 @@
 
 import React, { useCallback, useState } from "react";
 
-interface PendingDocument {
+export interface PendingDocument {
   file: File;
-  // Unique ID for React key
   id: string;
 }
 
-interface RfqDocumentUploadProps {
+export interface DocumentDropzoneProps {
   documents: PendingDocument[];
   onAddDocument: (file: File) => void;
   onRemoveDocument: (id: string) => void;
@@ -16,7 +15,6 @@ interface RfqDocumentUploadProps {
   maxFileSizeMB?: number;
 }
 
-// File size formatter
 function formatFileSize(bytes: number): string {
   if (bytes === 0) return "0 Bytes";
   const k = 1024;
@@ -25,7 +23,6 @@ function formatFileSize(bytes: number): string {
   return `${parseFloat((bytes / k ** i).toFixed(2))} ${sizes[i]}`;
 }
 
-// Get file type icon based on MIME type
 function getFileIcon(mimeType: string): React.ReactNode {
   if (mimeType === "application/pdf") {
     return (
@@ -63,7 +60,6 @@ function getFileIcon(mimeType: string): React.ReactNode {
     );
   }
 
-  // Default document icon
   return (
     <svg className="w-5 h-5 text-gray-500" fill="currentColor" viewBox="0 0 24 24">
       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 2l5 5h-5V4zM6 20V4h6v6h6v10H6z" />
@@ -71,7 +67,7 @@ function getFileIcon(mimeType: string): React.ReactNode {
   );
 }
 
-export default function RfqDocumentUpload(props: RfqDocumentUploadProps) {
+export function DocumentDropzone(props: DocumentDropzoneProps) {
   const {
     documents,
     onAddDocument,
@@ -83,18 +79,17 @@ export default function RfqDocumentUpload(props: RfqDocumentUploadProps) {
   const [error, setError] = useState<string | null>(null);
 
   const maxFileSizeBytes = maxFileSizeMB * 1024 * 1024;
+  const inputId = React.useId();
 
   const validateAndAddFile = useCallback(
     (file: File) => {
       setError(null);
 
-      // Check document limit
       if (documents.length >= maxDocuments) {
-        setError(`Maximum ${maxDocuments} documents allowed per RFQ`);
+        setError(`Maximum ${maxDocuments} documents allowed`);
         return;
       }
 
-      // Check file size
       if (file.size === 0) {
         setError(`File "${file.name}" is empty (0 bytes). Please select a valid file.`);
         return;
@@ -105,7 +100,6 @@ export default function RfqDocumentUpload(props: RfqDocumentUploadProps) {
         return;
       }
 
-      // Check for duplicate filename
       if (documents.some((doc) => doc.file.name === file.name)) {
         setError(`A file named "${file.name}" has already been added`);
         return;
@@ -143,7 +137,6 @@ export default function RfqDocumentUpload(props: RfqDocumentUploadProps) {
       if (files) {
         Array.from(files).forEach(validateAndAddFile);
       }
-      // Reset input so same file can be selected again
       e.target.value = "";
     },
     [validateAndAddFile],
@@ -151,7 +144,6 @@ export default function RfqDocumentUpload(props: RfqDocumentUploadProps) {
 
   return (
     <div className="space-y-2">
-      {/* Error message */}
       {error && (
         <div className="p-2 bg-red-50 rounded border border-red-200 flex items-center gap-2">
           <svg
@@ -171,7 +163,6 @@ export default function RfqDocumentUpload(props: RfqDocumentUploadProps) {
         </div>
       )}
 
-      {/* Compact drop zone */}
       {documents.length < maxDocuments && (
         <div
           onDrop={handleDrop}
@@ -183,15 +174,9 @@ export default function RfqDocumentUpload(props: RfqDocumentUploadProps) {
               : "border-gray-300 hover:border-gray-400 bg-white"
           }`}
         >
-          <input
-            type="file"
-            id="document-upload"
-            multiple
-            onChange={handleFileSelect}
-            className="hidden"
-          />
+          <input type="file" id={inputId} multiple onChange={handleFileSelect} className="hidden" />
           <label
-            htmlFor="document-upload"
+            htmlFor={inputId}
             className="cursor-pointer flex items-center justify-center gap-3"
           >
             <svg
@@ -222,7 +207,6 @@ export default function RfqDocumentUpload(props: RfqDocumentUploadProps) {
         </div>
       )}
 
-      {/* Compact document list */}
       {documents.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {documents.map((doc) => (
@@ -255,7 +239,6 @@ export default function RfqDocumentUpload(props: RfqDocumentUploadProps) {
         </div>
       )}
 
-      {/* Limit reached - inline */}
       {documents.length >= maxDocuments && (
         <p className="text-xs text-amber-600 flex items-center gap-1">
           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -272,3 +255,5 @@ export default function RfqDocumentUpload(props: RfqDocumentUploadProps) {
     </div>
   );
 }
+
+export default DocumentDropzone;
