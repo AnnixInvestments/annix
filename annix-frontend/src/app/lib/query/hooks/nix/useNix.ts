@@ -29,14 +29,20 @@ const nixAuthHeaders = (portalContext?: PortalContext): Record<string, string> =
 
   let token: string | null = null;
 
+  // PortalTokenStore writes the access token to localStorage when the
+  // user ticked "Remember me" at login, sessionStorage otherwise.
+  // Both storages must be checked.
+  const readToken = (key: string): string | null =>
+    localStorage.getItem(key) ?? sessionStorage.getItem(key);
+
   if (portalContext && portalContext !== "general") {
     const preferredKey = TOKEN_KEY_MAP[portalContext];
-    token = localStorage.getItem(preferredKey);
+    token = readToken(preferredKey);
   }
 
   if (!token) {
     for (const key of TOKEN_FALLBACK_ORDER) {
-      token = localStorage.getItem(key);
+      token = readToken(key);
       if (token) break;
     }
   }

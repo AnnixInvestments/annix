@@ -33,8 +33,11 @@ const NIX_TOKEN_KEYS = [
 function resolveNixAuthHeaders(): Record<string, string> {
   // eslint-disable-next-line no-restricted-syntax -- SSR guard
   if (typeof window === "undefined") return {};
+  // Check both storages — PortalTokenStore writes to localStorage when the
+  // user ticked "Remember me" at login, sessionStorage otherwise. Either
+  // can hold the active token at any moment so we have to look in both.
   for (const key of NIX_TOKEN_KEYS) {
-    const value = localStorage.getItem(key);
+    const value = localStorage.getItem(key) ?? sessionStorage.getItem(key);
     if (value) return { Authorization: `Bearer ${value}` };
   }
   return {};
