@@ -1,7 +1,9 @@
 import { BadRequestException, forwardRef, Inject, Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import { PDFDocument } from "pdf-lib";
 import { Repository } from "typeorm";
 import { fromISO, generateUniqueId, now } from "../lib/datetime";
+import { IStorageService, STORAGE_SERVICE } from "../storage/storage.interface";
 import {
   CreateSupplierCocDto,
   ReviewExtractionDto,
@@ -73,6 +75,8 @@ export class RubberCocService {
     private auCocReadinessService: RubberAuCocReadinessService,
     private deliveryNoteService: RubberDeliveryNoteService,
     private versioningService: RubberDocumentVersioningService,
+    @Inject(STORAGE_SERVICE)
+    private storageService: IStorageService,
   ) {}
 
   private normalizeCocNumber(cocNumber: string): string {
@@ -366,6 +370,8 @@ export class RubberCocService {
       return { supplierCocIds: [parentId] };
     }
 
+    const slicedPaths = await this.slicePdfPerCalenderRollPage(parent, pages.length);
+
     const siblings = await this.supplierCocRepository
       .createQueryBuilder("coc")
       .where("coc.document_path = :documentPath", { documentPath: parent.documentPath })
@@ -377,26 +383,37 @@ export class RubberCocService {
       const ordered = siblings.slice(0, pages.length);
       const updatedIds: number[] = [];
       for (let i = 0; i < ordered.length; i += 1) {
+        const slicePath = slicedPaths[i];
+        if (slicePath) {
+          ordered[i].documentPath = slicePath;
+          await this.supplierCocRepository.save(ordered[i]);
+        }
         const updated = await this.setExtractedData(ordered[i].id, pages[i]);
         if (updated) updatedIds.push(ordered[i].id);
       }
       this.logger.log(
-        `Calender roll re-extract — updated ${updatedIds.length} existing sibling CoC(s) [${updatedIds.join(", ")}] for documentPath ${parent.documentPath}`,
+        `Calender roll re-extract — updated ${updatedIds.length} existing sibling CoC(s) [${updatedIds.join(", ")}] with per-page slices`,
       );
       return { supplierCocIds: updatedIds };
     }
 
+    if (slicedPaths[0]) {
+      parent.documentPath = slicedPaths[0];
+      await this.supplierCocRepository.save(parent);
+    }
     await this.setExtractedData(parentId, pages[0]);
 
     const startIndex = siblings.length > 0 ? siblings.length : 1;
     const remainingPages = pages.slice(startIndex);
     const newCocIds: number[] = [];
-    for (const pageData of remainingPages) {
+    for (let i = 0; i < remainingPages.length; i += 1) {
+      const pageData = remainingPages[i];
+      const slicePath = slicedPaths[startIndex + i];
       const created = await this.createSupplierCoc(
         {
           cocType: SupplierCocType.CALENDER_ROLL,
           supplierCompanyId: parent.supplierCompanyId,
-          documentPath: parent.documentPath,
+          documentPath: slicePath ?? parent.documentPath,
           cocNumber: pageData.cocNumber ?? null,
           compoundCode: pageData.compoundCode ?? null,
           productionDate: pageData.productionDate ?? null,
@@ -409,10 +426,61 @@ export class RubberCocService {
     }
 
     this.logger.log(
-      `Calender roll split — kept #${parentId} for page 1, created [${newCocIds.join(", ")}] for pages 2..${pages.length} (sharing documentPath ${parent.documentPath})`,
+      `Calender roll split — kept #${parentId} for page 1, created [${newCocIds.join(", ")}] for pages 2..${pages.length}, each with its own per-page PDF slice`,
     );
 
     return { supplierCocIds: [parentId, ...newCocIds] };
+  }
+
+  private async slicePdfPerCalenderRollPage(
+    parent: RubberSupplierCoc,
+    totalPages: number,
+  ): Promise<(string | null)[]> {
+    const sourcePath = parent.documentPath;
+    if (!sourcePath?.toLowerCase().endsWith(".pdf")) {
+      return Array(totalPages).fill(null);
+    }
+
+    try {
+      const sourceBuffer = await this.storageService.download(sourcePath);
+      const sourcePdf = await PDFDocument.load(sourceBuffer);
+      const sourcePageCount = sourcePdf.getPageCount();
+      const subdir = sourcePath.includes("/")
+        ? sourcePath.substring(0, sourcePath.lastIndexOf("/"))
+        : "";
+
+      const slicedPaths: (string | null)[] = [];
+      for (let pageIdx = 0; pageIdx < totalPages; pageIdx += 1) {
+        if (pageIdx >= sourcePageCount) {
+          slicedPaths.push(null);
+          continue;
+        }
+        const sliced = await PDFDocument.create();
+        const copied = await sliced.copyPages(sourcePdf, [pageIdx]);
+        copied.forEach((page) => sliced.addPage(page));
+        const slicedBytes = await sliced.save();
+        const slicedBuffer = Buffer.from(slicedBytes);
+        const filename = `${generateUniqueId()}-page-${pageIdx + 1}.pdf`;
+        const file = {
+          fieldname: "file",
+          originalname: filename,
+          mimetype: "application/pdf",
+          buffer: slicedBuffer,
+          size: slicedBuffer.length,
+        } as Express.Multer.File;
+        const upload = await this.storageService.upload(file, subdir);
+        slicedPaths.push(upload.path);
+        this.logger.log(
+          `Sliced page ${pageIdx + 1}/${totalPages} for Calender Roll CoC ${parent.id} → ${upload.path}`,
+        );
+      }
+      return slicedPaths;
+    } catch (err) {
+      this.logger.error(
+        `Failed to slice PDF for Calender Roll CoC ${parent.id}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      return Array(totalPages).fill(null);
+    }
   }
 
   private async flagAsPendingIfDuplicate(coc: RubberSupplierCoc): Promise<RubberSupplierCoc> {
