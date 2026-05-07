@@ -524,8 +524,8 @@ export default function SupplierCocDetailPage() {
               ) : (
                 " the previous version"
               )}
-              , or reject it to keep the existing version active. Approve / Re-extract are disabled
-              until this is resolved.
+              , or reject it to keep the existing version active. You can also Re-extract this
+              version if the data is wrong; Approve is disabled until the version is authorized.
             </p>
           </div>
         </div>
@@ -554,6 +554,15 @@ export default function SupplierCocDetailPage() {
               const versionActionPending = isAuthorizing || isRejecting;
               return (
                 <>
+                  <button
+                    onClick={handleExtract}
+                    disabled={isExtracting || versionActionPending}
+                    className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
+                    title="Re-run AI extraction on this pending version (does not authorize it)"
+                  >
+                    <RefreshCw className={`w-4 h-4 mr-1.5 ${isExtracting ? "animate-spin" : ""}`} />
+                    {isExtracting ? "Extracting..." : "Re-extract"}
+                  </button>
                   <button
                     onClick={handleRejectVersion}
                     disabled={versionActionPending}
