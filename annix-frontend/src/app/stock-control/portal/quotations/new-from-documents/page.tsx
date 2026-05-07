@@ -6,6 +6,7 @@ import { useCallback, useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import { DocumentBucket, type PendingDocument } from "@/app/components/uploads";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
+import { useAdaptiveExtractionProgress } from "@/app/lib/hooks/useAdaptiveExtractionProgress";
 import { type NixDocumentRole, nixApi } from "@/app/lib/nix";
 import { type NixExtractionSessionDto, useCreateNixExtractionSession } from "@/app/lib/query/hooks";
 
@@ -36,6 +37,7 @@ export default function QuoteFromDocumentsPage() {
   const [session, setSession] = useState<NixExtractionSessionDto | null>(null);
 
   const createSessionMutation = useCreateNixExtractionSession();
+  const { runBulk } = useAdaptiveExtractionProgress();
 
   const ensureSession = useCallback(async (): Promise<NixExtractionSessionDto> => {
     if (session) return session;
@@ -73,20 +75,33 @@ export default function QuoteFromDocumentsPage() {
   const processBucket = useCallback(
     async (bucket: BucketState, role: NixDocumentRole, label: string): Promise<void> => {
       const activeSession = await ensureSession();
-      let processedCount = 0;
-      for (const doc of bucket.documents) {
-        await nixApi.uploadAndProcess(doc.file, {
-          userId,
-          sourceModule: ASCA_SOURCE_MODULE,
-          extractionProfile: ASCA_PROFILE_KEY,
-          documentRole: role,
-          sessionId: activeSession.id,
-        });
-        processedCount += 1;
+      const result = await runBulk({
+        brand: "stock-control",
+        metricCategory: "asca-quote-extract",
+        metricOperation: role,
+        items: bucket.documents,
+        itemId: (doc) => doc.id,
+        itemLabel: (doc, i, t) =>
+          `Reading ${role === "drawing" ? "drawing" : "specification"} ${i + 1} of ${t}: ${doc.file.name}`,
+        run: async (doc) => {
+          await nixApi.uploadAndProcess(doc.file, {
+            userId,
+            sourceModule: ASCA_SOURCE_MODULE,
+            extractionProfile: ASCA_PROFILE_KEY,
+            documentRole: role,
+            sessionId: activeSession.id,
+          });
+        },
+      });
+      const succeeded = result.succeeded.length;
+      const failed = result.failed.length;
+      if (failed === 0) {
+        showToast(`${label}: processed ${succeeded} document${succeeded === 1 ? "" : "s"}`);
+      } else {
+        showToast(`${label}: ${succeeded} succeeded, ${failed} failed`);
       }
-      showToast(`${label}: processed ${processedCount} document${processedCount === 1 ? "" : "s"}`);
     },
-    [userId, showToast, ensureSession],
+    [userId, showToast, ensureSession, runBulk],
   );
 
   const handleConfirmDrawings = useCallback(async () => {

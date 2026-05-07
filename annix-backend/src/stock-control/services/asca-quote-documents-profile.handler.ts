@@ -64,28 +64,58 @@ const ASCA_DRAWING_PROMPT = `You are Nix, extracting line items from an ASCA (AU
 
 Items may be any fabricated industrial product: pipes/spools, bends, fittings, flanges, tanks, chutes, hoppers, conveyor pulleys, drums, screens, launders, underpans, plate work, structural assemblies. Identify what the drawing actually shows — do not force everything into a pipes-only shape.
 
-For each line item, capture (where applicable to the item type):
-- quantity (qty)
-- principal dimensions: pipe-shaped items use nominal bore (NB, mm) + wall thickness (WT, mm) + length; assemblies use overall L × W × H or item-specific dimensions (e.g. pulley OD × face width × shaft Ø)
-- end configuration if applicable: P.E. (plain end), F.B.E. (flanged both ends), F/PE (one flanged one plain), or the drawing's own wording
-- mark / spool / item number (e.g. -01, -02, HH01-HH09, P1)
-- internal lining: material + thickness on the principal surface AND thickness on flange face / sealing face when DIFFERENT from the bore (e.g. "6 mm Linatex Linard 60 bore + 6 mm on flange face, no overlap joint" — capture both values when the drawing or red-pen markup shows a different value from the standard 3 mm spec return)
-- external paint system reference (e.g. "R1", "R2a") — capture the code only; the spec doc defines what it means
-- material class reference (e.g. "SC1") — same: capture the code, the spec doc defines it
-- banding: count the number of identification bands shown PER ITEM — banding is priced PER BAND not per item, so the count matters
-- handwritten / red-pen / coloured-pen client deviations from the printed spec — surface SEPARATELY in a 'deviations' field, do NOT silently merge into the printed values
-- drawing reference and revision
+CRITICAL — schema rules (must follow exactly):
+1. Each item MUST be a FLAT object — no nested 'dimensions' / 'paint' / 'lining' sub-objects. Every property is at the top level of the item.
+2. Use these EXACT field names (camelCase, no aliases, no variants):
+   - itemNumber (string, e.g. "-01", "HH01", "P1") — the mark / spool / item number
+   - description (string, REQUIRED, what the item is, e.g. "Pipe", "90° Bend", "Reducer", "Tank chute")
+   - itemType (one of: pipe | bend | reducer | tee | flange | expansion_joint | tank_chute | other)
+   - quantity (number)
+   - diameter (number, mm — nominal bore for pipe-shaped items)
+   - wallThickness (number, mm)
+   - length (number, mm)
+   - flangeConfig (string — verbatim drawing wording, e.g. "P.E.", "F.B.E. F/F", "F/PE")
+   - liningType (string or null — internal lining material, e.g. "Linatex Linard 60", or null if none)
+   - liningThicknessMm (number or null)
+   - coatingSystem (string — external paint system code only, e.g. "R1", "R2a")
+   - materialClass (string — material class code only, e.g. "SC1", "1000/3")
+   - banding (number — count of identification bands shown per item)
+   - deviations (array of strings — handwritten/red-pen/coloured-pen client deviations from the printed spec; surface SEPARATELY here, do NOT silently merge into the printed values)
+   - drawingReference (string)
+   - revision (string)
+3. EVERY item MUST have description, itemType, and itemNumber populated. Never omit description.
+4. Use null (not empty string, not omitted) when a value is genuinely unknown.
+5. Do NOT define what the codes mean (R1, R2a, SC1 etc.) — just capture them. The spec extraction step resolves the codes.
 
 Also extract drawing-level metadata: project, customer, drawing number, sheet of, revision, date, drawn-by.
 
-Respond ONLY with valid JSON of the shape:
+Respond ONLY with valid JSON of this exact shape:
 {
-  "items": [...],
-  "specifications": { "referencedCodes": [...] },
-  "metadata": {...}
+  "items": [
+    {
+      "itemNumber": "-01",
+      "description": "Pipe",
+      "itemType": "pipe",
+      "quantity": 6,
+      "diameter": 1000,
+      "wallThickness": 16,
+      "length": 6000,
+      "flangeConfig": "F.B.E. F/F",
+      "liningType": null,
+      "liningThicknessMm": null,
+      "coatingSystem": "R2a",
+      "materialClass": "1000/3",
+      "banding": 0,
+      "deviations": [],
+      "drawingReference": "HH01",
+      "revision": "Sheet 1 Of 9"
+    }
+  ],
+  "specifications": { "referencedCodes": ["R1", "R2a", "1000/3"] },
+  "metadata": { "project": "...", "customer": "...", "drawingNumber": "...", "revision": "...", "date": "...", "drawnBy": "..." }
 }
 
-Where 'referencedCodes' is the list of paint / material-class / lining codes the drawing cites without defining (so the spec extraction step can resolve them). Mark any uncertain value with confidence < 0.7.`;
+'referencedCodes' is the list of paint / material-class / lining codes the drawing cites without defining (so the spec extraction step can resolve them). Mark any uncertain value with confidence < 0.7.`;
 
 /**
  * Specification-role prompt — focused on extracting clause-level facts and,

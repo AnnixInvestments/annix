@@ -785,9 +785,33 @@ export class NixService {
    * rather than throwing on schema drift.
    */
   private normaliseVisionItem(item: Record<string, unknown>): ExtractedItem {
+    // Gemini occasionally nests dimensions, lining, and other groups despite
+    // the system prompt asking for a flat schema. Flatten one level so the
+    // multi-key lookup below sees them whether top-level or nested.
+    const flat: Record<string, unknown> = { ...item };
+    const dims = item.dimensions;
+    if (dims && typeof dims === "object" && !Array.isArray(dims)) {
+      Object.assign(flat, dims as Record<string, unknown>);
+    }
+    const lining = item.internal_lining ?? item.internalLining ?? item.lining;
+    if (lining && typeof lining === "object" && !Array.isArray(lining)) {
+      const liningObj = lining as Record<string, unknown>;
+      if (liningObj.material && !flat.liningType) flat.liningType = liningObj.material;
+      if (liningObj.thicknessMm && !flat.liningThicknessMm)
+        flat.liningThicknessMm = liningObj.thicknessMm;
+    }
+    const drawingRef = item.drawing_reference ?? item.drawingReference;
+    if (drawingRef && typeof drawingRef === "object" && !Array.isArray(drawingRef)) {
+      const refObj = drawingRef as Record<string, unknown>;
+      const parts = [refObj.number, refObj.mto, refObj.sheet]
+        .filter((v) => typeof v === "string" && v.length > 0)
+        .join(" ");
+      if (parts.length > 0) flat.drawingReference = parts;
+    }
+
     const numFrom = (...keys: string[]): number | null => {
       for (const k of keys) {
-        const v = item[k];
+        const v = flat[k];
         if (typeof v === "number") return v;
         if (typeof v === "string" && v.trim().length > 0) {
           const parsed = Number.parseFloat(v);
@@ -798,7 +822,7 @@ export class NixService {
     };
     const strFrom = (...keys: string[]): string | null => {
       for (const k of keys) {
-        const v = item[k];
+        const v = flat[k];
         if (typeof v === "string" && v.trim().length > 0) return v;
       }
       return null;
@@ -809,12 +833,15 @@ export class NixService {
       "coatingSystem",
       "paintSystem",
       "external_paint_system_ref",
+      "external_paint_system_reference",
       "externalPaintSystemRef",
+      "externalPaintSystem",
       "external_paint_system",
     );
     const materialClass = strFrom(
       "materialClass",
       "material_class_ref",
+      "material_class_reference",
       "materialClassRef",
       "material_class",
     );
@@ -836,11 +863,20 @@ export class NixService {
       itemType: (strFrom("itemType", "type") as ExtractedItem["itemType"]) ?? "unknown",
       material: strFrom("material"),
       materialGrade: strFrom("materialGrade", "grade"),
-      diameter: numFrom("diameter", "nb", "NB", "nominalBore", "nominal_bore_mm", "bore"),
+      diameter: numFrom(
+        "diameter",
+        "nb",
+        "NB",
+        "NB_mm",
+        "nb_mm",
+        "nominalBore",
+        "nominal_bore_mm",
+        "bore",
+      ),
       diameterUnit: (strFrom("diameterUnit") as ExtractedItem["diameterUnit"]) ?? "mm",
       secondaryDiameter: numFrom("secondaryDiameter"),
       length: numFrom("length", "lengthMm", "length_mm", "L", "overallLengthMm"),
-      wallThickness: numFrom("wallThickness", "wt", "WT", "wall_thickness_mm"),
+      wallThickness: numFrom("wallThickness", "wt", "WT", "WT_mm", "wt_mm", "wall_thickness_mm"),
       schedule: strFrom("schedule"),
       angle: numFrom("angle"),
       flangeConfig:
