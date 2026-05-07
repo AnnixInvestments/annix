@@ -819,7 +819,8 @@ export default function SupplierCocsPage() {
                 return (
                   <li
                     key={pending.id}
-                    className="bg-white border border-amber-200 rounded-md p-3 flex flex-wrap items-center gap-3"
+                    onClick={() => router.push(`/au-rubber/portal/supplier-cocs/${pending.id}`)}
+                    className="bg-white border border-amber-200 rounded-md p-3 flex flex-wrap items-center gap-3 cursor-pointer hover:bg-amber-50/60"
                   >
                     <span
                       className={`px-2 py-0.5 text-xs font-semibold rounded-full ${
@@ -836,6 +837,7 @@ export default function SupplierCocsPage() {
                     <Link
                       href={`/au-rubber/portal/supplier-cocs/${pending.id}`}
                       className="text-sm font-medium text-yellow-700 hover:text-yellow-800 break-all"
+                      onClick={(e) => e.stopPropagation()}
                     >
                       {rawCocNumber || `COC-${pending.id}`}
                     </Link>
@@ -853,7 +855,10 @@ export default function SupplierCocsPage() {
                         Doc {formatDateZA(rawProductionDate)}
                       </span>
                     )}
-                    <div className="ml-auto flex items-center gap-2">
+                    <div
+                      className="ml-auto flex items-center gap-2"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <Link
                         href={`/au-rubber/portal/supplier-cocs/${pending.id}`}
                         className="inline-flex items-center px-2.5 py-1.5 text-xs font-medium border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50"
