@@ -51,7 +51,7 @@ import {
   VerifyRegistrationDocumentResponseDto,
 } from "./dto/verify-registration-document.dto";
 import { NixClarification } from "./entities/nix-clarification.entity";
-import { NixExtraction } from "./entities/nix-extraction.entity";
+import { DocumentRole, NixExtraction } from "./entities/nix-extraction.entity";
 import { NixLearning } from "./entities/nix-learning.entity";
 import { NixService } from "./nix.service";
 import { CustomFieldService } from "./services/custom-field.service";
@@ -103,6 +103,7 @@ export class NixController {
         sourceModule: { type: "string" },
         sourceId: { type: "number" },
         extractionProfile: { type: "string" },
+        documentRole: { type: "string", enum: ["drawing", "specification", "other"] },
         productTypes: { type: "array", items: { type: "string" } },
       },
     },
@@ -118,6 +119,7 @@ export class NixController {
     @Body("sourceModule") sourceModule?: string,
     @Body("sourceId") sourceId?: string,
     @Body("extractionProfile") extractionProfile?: string,
+    @Body("documentRole") documentRole?: string,
     @Body("productTypes") productTypes?: string,
   ): Promise<ProcessDocumentResponseDto> {
     if (!file) {
@@ -133,6 +135,8 @@ export class NixController {
       }
     }
 
+    const role = parseDocumentRole(documentRole);
+
     const dto: ProcessDocumentDto = {
       documentPath: file.path,
       documentName: file.originalname,
@@ -141,6 +145,7 @@ export class NixController {
       sourceModule: sourceModule || undefined,
       sourceId: sourceId ? parseInt(sourceId, 10) : undefined,
       extractionProfile: extractionProfile || undefined,
+      documentRole: role,
       productTypes: parsedProductTypes,
     };
 
@@ -825,4 +830,10 @@ export class NixController {
     const region = await this.documentAnnotationService.saveExtractionRegion(dto, undefined);
     return { success: true, id: region.id };
   }
+}
+
+function parseDocumentRole(input?: string): DocumentRole | undefined {
+  if (!input) return undefined;
+  const allowed = Object.values(DocumentRole) as string[];
+  return allowed.includes(input) ? (input as DocumentRole) : undefined;
 }

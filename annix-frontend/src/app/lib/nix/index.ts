@@ -2,9 +2,11 @@ export {
   type NixClarificationContext,
   type NixClarificationDto,
   type NixCorrectionPayload,
+  type NixDocumentRole,
   type NixExtractedItem,
   type NixExtractionMetadata,
   type NixProcessResponse,
+  type NixUploadOptions,
   nixApi,
 } from "./api";
 export {

@@ -29,6 +29,25 @@ export enum DocumentType {
   UNKNOWN = "unknown",
 }
 
+/**
+ * Distinguishes the role of an uploaded document inside a quote/RFQ pack so
+ * that downstream AI extraction can apply role-specific prompts and so the
+ * cross-document linker (#253 task B) knows what to extract first vs second.
+ *
+ * - drawing: workshop sheets / spool sheets / isometrics / GA drawings.
+ *   Extracted first; produces line items.
+ * - specification: paint/lining/fabrication/scope documents. Extracted
+ *   second, with the drawings' items as Gemini context, so spec clauses can
+ *   be cross-linked to the items they apply to.
+ * - other: anything that doesn't fit the above (correspondence, scope of
+ *   work narratives, reference docs). Extracted as plain context.
+ */
+export enum DocumentRole {
+  DRAWING = "drawing",
+  SPECIFICATION = "specification",
+  OTHER = "other",
+}
+
 @Entity("nix_extractions")
 export class NixExtraction {
   @ApiProperty({ description: "Primary key" })
@@ -138,6 +157,20 @@ export class NixExtraction {
   })
   @Column({ name: "extraction_profile", type: "varchar", length: 64, nullable: true })
   extractionProfile?: string;
+
+  @ApiProperty({
+    description:
+      "Role of this document within the quote/RFQ pack — drives role-specific prompts and drawings-first ordering for cross-document linking.",
+    enum: DocumentRole,
+    required: false,
+  })
+  @Column({
+    name: "document_role",
+    type: "varchar",
+    length: 32,
+    nullable: true,
+  })
+  documentRole?: DocumentRole;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

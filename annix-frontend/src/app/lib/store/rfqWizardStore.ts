@@ -1580,12 +1580,15 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
                 "nixProcessDocuments/reading",
               );
 
-              const result = await nixApi.uploadAndProcess(
-                doc.file,
-                undefined,
-                undefined,
-                rfqData.requiredProducts,
-              );
+              const result = await nixApi.uploadAndProcess(doc.file, {
+                productTypes: rfqData.requiredProducts,
+                // The RFQ wizard's Nix-enabled bucket carries drawings + BOQ
+                // documents for AI extraction. Tagging them as "drawing"
+                // lets Nix apply role-specific prompts and (per #253 task B)
+                // makes them the prior context for any later spec uploads
+                // dropped into the same RFQ.
+                documentRole: "drawing",
+              });
 
               set(
                 {

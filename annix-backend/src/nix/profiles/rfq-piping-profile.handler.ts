@@ -30,7 +30,12 @@ export class RfqPipingProfileHandler implements IExtractionProfileHandler, OnMod
     return {};
   }
 
-  systemPrompt(): string {
-    return "You are extracting line items for a piping/fabrication Request for Quote (RFQ). Focus on pipe specifications, materials, dimensions, fittings, valves, instruments, pumps, and any technical requirements.";
+  systemPrompt(): string | undefined {
+    // Defer to DEFAULT_EXTRACTION_SYSTEM_PROMPT — already broadened in #253
+    // task A to cover the full RFQ vocabulary (pipes, bends, fittings,
+    // valves, instruments, pumps, tank/chute assemblies, plate work).
+    // Returning undefined keeps the fall-through clean rather than
+    // duplicating the default.
+    return undefined;
   }
 }

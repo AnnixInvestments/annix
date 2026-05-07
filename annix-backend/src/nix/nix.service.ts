@@ -85,6 +85,7 @@ export class NixService {
       sourceModule,
       sourceId,
       extractionProfile,
+      documentRole: dto.documentRole,
     });
 
     await this.extractionRepo.save(extraction);
@@ -92,7 +93,18 @@ export class NixService {
     const profileHandler = extractionProfile
       ? this.profileRegistry.handler(extractionProfile)
       : null;
-    const profileSystemPrompt = profileHandler?.systemPrompt?.();
+
+    // Sibling extractions inside the same (sourceModule, sourceId) — used by
+    // role-aware prompts (e.g. specification prompt cross-references
+    // already-extracted drawings) and by post-extract handlers. Returns []
+    // when source linkage isn't supplied. Task B (#253) replaces this with
+    // a session-scoped lookup once sessions exist.
+    const sessionSiblings = await this.findSessionSiblings(sourceModule, sourceId, extraction.id);
+
+    const profileSystemPrompt = profileHandler?.systemPrompt?.({
+      role: dto.documentRole,
+      siblings: sessionSiblings,
+    });
 
     try {
       let extractedData: Record<string, any>;
@@ -145,12 +157,14 @@ export class NixService {
             const profileResult = await profileHandler.postExtract(extraction, {
               documentName: extraction.documentName,
               documentPath: extraction.documentPath,
+              documentRole: dto.documentRole,
               extractedItems: relevantItems,
               specificationCells,
               sourceModule,
               sourceId,
               userId: dto.userId,
               productTypes: dto.productTypes,
+              sessionSiblings,
             });
             if (profileResult.metadata) {
               extraction.extractedData = {
@@ -198,6 +212,35 @@ export class NixService {
         error: extraction.errorMessage,
       };
     }
+  }
+
+  /**
+   * Returns sibling extractions inside the same (sourceModule, sourceId)
+   * tuple, excluding the current extraction. Used by role-aware system
+   * prompts (the specification prompt cross-references already-extracted
+   * drawings) and by post-extract handlers.
+   *
+   * Returns an empty array when source linkage isn't supplied. Task B
+   * (#253) introduces nix_extraction_sessions and switches this to a
+   * session-scoped lookup; for now we group by source tuple, which is
+   * effectively per-quote/per-RFQ.
+   */
+  private async findSessionSiblings(
+    sourceModule: string | undefined,
+    sourceId: number | undefined,
+    excludeExtractionId: number,
+  ): Promise<NixExtraction[]> {
+    if (!sourceModule || !sourceId) return [];
+    return this.extractionRepo
+      .createQueryBuilder("extraction")
+      .where("extraction.source_module = :sourceModule", { sourceModule })
+      .andWhere("extraction.source_id = :sourceId", { sourceId })
+      .andWhere("extraction.id <> :excludeId", { excludeId: excludeExtractionId })
+      .andWhere("extraction.status IN (:...completedStatuses)", {
+        completedStatuses: [ExtractionStatus.COMPLETED, ExtractionStatus.NEEDS_CLARIFICATION],
+      })
+      .orderBy("extraction.created_at", "ASC")
+      .getMany();
   }
 
   async submitClarification(dto: SubmitClarificationDto): Promise<SubmitClarificationResponseDto> {

@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { IsArray, IsNumber, IsOptional, IsString } from "class-validator";
+import { IsArray, IsEnum, IsNumber, IsOptional, IsString } from "class-validator";
+import { DocumentRole } from "../entities/nix-extraction.entity";
 
 export class ProcessDocumentDto {
   @ApiProperty({ description: "Path or URL to the document" })
@@ -43,6 +44,15 @@ export class ProcessDocumentDto {
   @IsString()
   @IsOptional()
   extractionProfile?: string;
+
+  @ApiPropertyOptional({
+    description:
+      "Role of this document within a quote pack — 'drawing', 'specification', or 'other'. Drives role-specific extraction prompts and the cross-document linker's ordering (drawings first, specs second with drawings as context).",
+    enum: DocumentRole,
+  })
+  @IsEnum(DocumentRole)
+  @IsOptional()
+  documentRole?: DocumentRole;
 
   @ApiPropertyOptional({ description: "Product/service types to filter for" })
   @IsArray()

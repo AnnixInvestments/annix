@@ -6,7 +6,7 @@ import { useCallback, useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import { DocumentBucket, type PendingDocument } from "@/app/components/uploads";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
-import { nixApi } from "@/app/lib/nix";
+import { type NixDocumentRole, nixApi } from "@/app/lib/nix";
 
 const ASCA_PROFILE_KEY = "asca-quote-documents";
 const ASCA_SOURCE_MODULE = "asca";
@@ -58,13 +58,14 @@ export default function QuoteFromDocumentsPage() {
   );
 
   const processBucket = useCallback(
-    async (bucket: BucketState, profileLabel: string): Promise<number[]> => {
+    async (bucket: BucketState, role: NixDocumentRole, profileLabel: string): Promise<number[]> => {
       const ids: number[] = [];
       for (const doc of bucket.documents) {
         const result = await nixApi.uploadAndProcess(doc.file, {
           userId,
           sourceModule: ASCA_SOURCE_MODULE,
           extractionProfile: ASCA_PROFILE_KEY,
+          documentRole: role,
         });
         if (result.extractionId) ids.push(result.extractionId);
       }
@@ -78,7 +79,7 @@ export default function QuoteFromDocumentsPage() {
     setErrorMessage(null);
     setDrawings((prev) => ({ ...prev, confirmed: true, processing: true }));
     try {
-      const ids = await processBucket(drawings, "Drawings");
+      const ids = await processBucket(drawings, "drawing", "Drawings");
       setExtractionIds((prev) => [...prev, ...ids]);
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : "Drawing upload failed");
@@ -92,7 +93,7 @@ export default function QuoteFromDocumentsPage() {
     setErrorMessage(null);
     setSpecs((prev) => ({ ...prev, confirmed: true, processing: true }));
     try {
-      const ids = await processBucket(specs, "Specifications");
+      const ids = await processBucket(specs, "specification", "Specifications");
       setExtractionIds((prev) => [...prev, ...ids]);
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : "Specification upload failed");

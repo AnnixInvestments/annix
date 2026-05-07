@@ -209,12 +209,20 @@ export interface RegionExtractionResult {
   confidence: number;
 }
 
+export type NixDocumentRole = "drawing" | "specification" | "other";
+
 export interface NixUploadOptions {
   userId?: number;
   rfqId?: number;
   sourceModule?: string;
   sourceId?: number;
   extractionProfile?: string;
+  /**
+   * Role of this document inside a quote/RFQ pack. Drives role-specific
+   * extraction prompts and (per #253 task B) the cross-document linker's
+   * drawings-first → specs-with-context ordering.
+   */
+  documentRole?: NixDocumentRole;
   productTypes?: string[];
 }
 
@@ -258,6 +266,7 @@ export const nixApi = {
     if (opts.sourceModule) formData.append("sourceModule", opts.sourceModule);
     if (opts.sourceId) formData.append("sourceId", opts.sourceId.toString());
     if (opts.extractionProfile) formData.append("extractionProfile", opts.extractionProfile);
+    if (opts.documentRole) formData.append("documentRole", opts.documentRole);
     if (opts.productTypes && opts.productTypes.length > 0) {
       formData.append("productTypes", JSON.stringify(opts.productTypes));
     }
