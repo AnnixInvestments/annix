@@ -43,12 +43,26 @@ export class CreateNixExtractionSessions1820100000071 implements MigrationInterf
     // owner FK — soft (no cascade) so a deleted user doesn't blow away the
     // session. The session retains the owner_user_id even if the user row
     // is later removed.
+    //
+    // The table is "user" (singular, quoted) — that's the convention every
+    // other migration in this repo uses (see CreateAuditLogTable,
+    // CreateDrawingsTables, CreateBoqTables, CreateWorkflowTables, etc.).
+    // The User entity is `@Entity()` with no explicit name, so TypeORM
+    // derives the table name from the class with its default naming
+    // strategy → "user". An earlier draft of this migration mistakenly
+    // referenced `users(id)` and crashed Fly deploys with
+    //   relation "users" does not exist
+    // The migration is wrapped in a TypeORM transaction, so that crash
+    // rolled the whole file back atomically — no partial state on any
+    // database. Fixing the table name in place is correct here; a
+    // follow-up "repair" migration would be the wrong tool for a failure
+    // that never persisted.
     await queryRunner.query(`
       DO $$
       BEGIN
         ALTER TABLE nix_extraction_sessions
           ADD CONSTRAINT fk_nix_sessions_owner
-          FOREIGN KEY (owner_user_id) REFERENCES users(id) ON DELETE SET NULL;
+          FOREIGN KEY (owner_user_id) REFERENCES "user"("id") ON DELETE SET NULL;
       EXCEPTION WHEN duplicate_object THEN NULL;
       END $$;
     `);
