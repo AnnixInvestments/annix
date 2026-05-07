@@ -65,10 +65,30 @@ export const ALL_PORTAL_TOKEN_STORES: readonly PortalTokenStore[] = [
  * without each client re-implementing the storage-key lookup.
  */
 export function anyPortalAuthHeaders(): Record<string, string> {
+  // eslint-disable-next-line no-restricted-syntax -- temporary diagnostic for #253 debug, will remove
+  if (typeof window !== "undefined") {
+    const summary = ALL_PORTAL_TOKEN_STORES.map((s) => ({
+      keyName: (s as unknown as { keys: { accessToken: string } }).keys.accessToken,
+      authed: s.isAuthenticated(),
+    }));
+    // eslint-disable-next-line no-restricted-syntax -- temporary diagnostic
+    console.warn("[anyPortalAuthHeaders] store states:", summary);
+  }
   for (const store of ALL_PORTAL_TOKEN_STORES) {
     if (store.isAuthenticated()) {
-      return store.authHeaders();
+      const headers = store.authHeaders();
+      // eslint-disable-next-line no-restricted-syntax -- temporary diagnostic
+      if (typeof window !== "undefined")
+        console.warn(
+          "[anyPortalAuthHeaders] using store:",
+          (store as unknown as { keys: { accessToken: string } }).keys.accessToken,
+          "headerKeys:",
+          Object.keys(headers),
+        );
+      return headers;
     }
   }
+  // eslint-disable-next-line no-restricted-syntax -- temporary diagnostic
+  if (typeof window !== "undefined") console.warn("[anyPortalAuthHeaders] NO authenticated store");
   return {};
 }
