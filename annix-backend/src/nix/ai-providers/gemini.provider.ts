@@ -17,7 +17,7 @@ export class GeminiProvider implements AiProvider {
 
   constructor(config?: AiProviderConfig) {
     this.apiKey = config?.apiKey || process.env.GEMINI_API_KEY || "";
-    this.model = config?.model || "gemini-1.5-flash";
+    this.model = config?.model || process.env.GEMINI_MODEL || "gemini-2.5-flash";
   }
 
   async isAvailable(): Promise<boolean> {

@@ -136,7 +136,7 @@ describe("GeminiProvider", () => {
       await provider.extractItems(mockRequest);
 
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining("gemini-1.5-flash:generateContent"),
+        expect.stringContaining("gemini-2.5-flash:generateContent"),
         expect.objectContaining({
           method: "POST",
           headers: { "Content-Type": "application/json" },
