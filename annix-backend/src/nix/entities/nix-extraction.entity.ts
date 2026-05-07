@@ -172,6 +172,36 @@ export class NixExtraction {
   })
   documentRole?: DocumentRole;
 
+  @ApiProperty({
+    description:
+      "Durable S3 key for the uploaded source document. Resolved against the storage service's bucket configuration and storage_area. Distinct from documentPath (which records the temporary processing path).",
+    required: false,
+  })
+  @Column({ name: "storage_path", type: "varchar", length: 512, nullable: true })
+  storagePath?: string;
+
+  @ApiProperty({
+    description:
+      "Top-level StorageArea (e.g. 'stock-control', 'annix-app') the storage_path lives under.",
+    required: false,
+  })
+  @Column({ name: "storage_area", type: "varchar", length: 64, nullable: true })
+  storageArea?: string;
+
+  @ApiProperty({
+    description: "Size of the stored object in bytes (mirrors S3 metadata).",
+    required: false,
+  })
+  @Column({ name: "storage_size_bytes", type: "bigint", nullable: true })
+  storageSizeBytes?: number;
+
+  @ApiProperty({
+    description: "MIME type of the stored object (mirrors S3 metadata).",
+    required: false,
+  })
+  @Column({ name: "storage_mime_type", type: "varchar", length: 128, nullable: true })
+  storageMimeType?: string;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

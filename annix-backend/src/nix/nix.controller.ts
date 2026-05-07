@@ -163,6 +163,38 @@ export class NixController {
     return this.nixService.extraction(id);
   }
 
+  @Get("extraction/:id/document-url")
+  @UseGuards(AnyUserAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: "Presigned URL for the original source document of an extraction (10 min expiry).",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Presigned URL or null when no S3 source is persisted.",
+  })
+  async extractionDocumentUrl(
+    @Param("id", ParseIntPipe) id: number,
+    @Req() req: Request,
+  ): Promise<{ url: string | null; expiresInSeconds: number }> {
+    const authUser = req["authUser"] as AuthenticatedUser;
+    const extraction = await this.nixService.extraction(id);
+    if (!extraction) {
+      throw new BadRequestException("Extraction not found");
+    }
+
+    // Owner / admin only — same gate the clarifications endpoint uses.
+    const isOwner = extraction.userId === authUser.userId;
+    const isAdmin = authUser.type === "admin";
+    if (!isOwner && !isAdmin) {
+      throw new ForbiddenException("Not allowed to view this document");
+    }
+
+    const expiresInSeconds = 600;
+    const url = await this.nixService.extractionDocumentUrl(extraction, expiresInSeconds);
+    return { url, expiresInSeconds };
+  }
+
   @Get("extraction/:id/clarifications")
   @UseGuards(AnyUserAuthGuard)
   @ApiBearerAuth()

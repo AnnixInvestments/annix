@@ -2,7 +2,7 @@ import * as fs from "node:fs";
 import { forwardRef, Inject, Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { documentPath } from "../lib/app-storage-helper";
+import { bufferToMulterFile, documentPath } from "../lib/app-storage-helper";
 import { SecureDocumentsService } from "../secure-documents/secure-documents.service";
 import { S3StorageService } from "../storage/s3-storage.service";
 import { StorageArea } from "../storage/storage.interface";
@@ -68,6 +68,104 @@ export class NixService {
     return { sourceModule, sourceId, extractionProfile };
   }
 
+  /**
+   * Maps a source module key (e.g. "asca", "rfq") to the StorageArea bucket
+   * its uploads live under. Falls back to ANNIX_APP for unknown sources so
+   * a document is never silently dropped.
+   */
+  private storageAreaForSource(sourceModule: string | undefined): StorageArea {
+    switch (sourceModule) {
+      case "asca":
+        return StorageArea.STOCK_CONTROL;
+      case "rfq":
+        return StorageArea.ANNIX_APP;
+      default:
+        return StorageArea.ANNIX_APP;
+    }
+  }
+
+  /**
+   * Persist the uploaded file to S3 alongside the temp-disk copy that
+   * Nix's extractors consume. The temp file is still required by the
+   * extractors during this request; the S3 key is the durable reference
+   * for everything after — audit playback, the draft review page, retention
+   * tied to the parent session/quote.
+   *
+   * Failures here are logged but do NOT block extraction — the AI flow
+   * still has the temp file. Storage remains best-effort while the disk
+   * copy is the ground truth for the in-flight call.
+   */
+  private async persistToObjectStorage(
+    extraction: NixExtraction,
+    tempPath: string,
+    originalName: string,
+    sourceModule: string | undefined,
+  ): Promise<void> {
+    try {
+      const buffer = fs.readFileSync(tempPath);
+      const area = this.storageAreaForSource(sourceModule);
+      const subPath = documentPath(
+        area,
+        "extractions",
+        extraction.id,
+        extraction.documentRole ?? "unrolled",
+        originalName,
+      );
+      const mimeType = this.mimeTypeForName(originalName);
+      const file = bufferToMulterFile(buffer, originalName, mimeType);
+      const result = await this.s3StorageService.upload(file, subPath);
+
+      extraction.storagePath = result.path;
+      extraction.storageArea = area;
+      extraction.storageSizeBytes = result.size;
+      extraction.storageMimeType = result.mimeType;
+      await this.extractionRepo.save(extraction);
+
+      this.logger.log(
+        `Persisted extraction #${extraction.id} source to ${result.path} (${result.size} bytes)`,
+      );
+    } catch (err) {
+      this.logger.error(
+        `Failed to persist extraction #${extraction.id} source to S3: ${
+          err instanceof Error ? err.message : "unknown"
+        }. Extraction will continue against the temp file but the source will not be available for later audit.`,
+      );
+    }
+  }
+
+  private mimeTypeForName(name: string): string {
+    const ext = name.split(".").pop()?.toLowerCase() ?? "";
+    const map: Record<string, string> = {
+      pdf: "application/pdf",
+      xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      xls: "application/vnd.ms-excel",
+      csv: "text/csv",
+      docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      doc: "application/msword",
+      png: "image/png",
+      jpg: "image/jpeg",
+      jpeg: "image/jpeg",
+    };
+    return map[ext] ?? "application/octet-stream";
+  }
+
+  /**
+   * Returns a short-lived presigned URL the user can use to view the original
+   * source document of a Nix extraction. Used by the draft review UI's
+   * "View original" links so the user can audit Nix's reading against the
+   * actual drawing or specification.
+   *
+   * Returns null if the extraction has no S3-persisted source (typically a
+   * legacy row created before #253 task E).
+   */
+  async extractionDocumentUrl(
+    extraction: NixExtraction,
+    expiresInSeconds = 600,
+  ): Promise<string | null> {
+    if (!extraction.storagePath) return null;
+    return this.s3StorageService.presignedUrl(extraction.storagePath, expiresInSeconds);
+  }
+
   async processDocument(dto: ProcessDocumentDto): Promise<ProcessDocumentResponseDto> {
     const startTime = Date.now();
     this.logger.log(`Processing document: ${dto.documentPath} (${dto.documentName})`);
@@ -89,6 +187,17 @@ export class NixService {
     });
 
     await this.extractionRepo.save(extraction);
+
+    // Persist the uploaded file to S3 so the source document survives the
+    // request. Best-effort — does not block extraction even if S3 is down.
+    if (dto.documentPath) {
+      await this.persistToObjectStorage(
+        extraction,
+        dto.documentPath,
+        extraction.documentName,
+        sourceModule,
+      );
+    }
 
     const profileHandler = extractionProfile
       ? this.profileRegistry.handler(extractionProfile)

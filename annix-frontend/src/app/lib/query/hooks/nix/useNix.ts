@@ -339,6 +339,33 @@ export const useValidateNixItem = createMutationHook<
   }),
 );
 
+export interface NixExtractionDocumentUrlResponse {
+  url: string | null;
+  expiresInSeconds: number;
+}
+
+/**
+ * Fetches a short-lived presigned URL for the original source document of a
+ * Nix extraction. Used by the draft review UI's "View original" links so
+ * the user can audit Nix's reading against the actual drawing or spec.
+ *
+ * Returns null when the extraction has no S3-persisted source (legacy rows
+ * created before #253 task E).
+ */
+export const useNixExtractionDocumentUrl = createQueryHook(
+  (extractionId: number | null) => nixKeys.extractions.documentUrl(extractionId ?? 0),
+  (extractionId: number | null) =>
+    nixRequest<NixExtractionDocumentUrlResponse>(`/nix/extraction/${extractionId}/document-url`, {
+      errorLabel: "Failed to fetch document URL",
+    }),
+  {
+    enabled: (extractionId: number | null) => extractionId !== null && extractionId > 0,
+    // Presigned URL is short-lived (10 minutes) — refetch on focus and after
+    // 5 minutes so a stale tab can still open the document.
+    staleTime: 5 * 60 * 1000,
+  },
+);
+
 export const useValidateNixRfq = createMutationHook<
   {
     valid: boolean;
