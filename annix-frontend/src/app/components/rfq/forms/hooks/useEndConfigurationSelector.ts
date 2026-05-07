@@ -55,10 +55,14 @@ function resolveOptions(input: EndConfigSelectorInput): EndOption[] {
 }
 
 function resolveDetails(option: EndOption | undefined, configValue: string): EndConfigDetails {
-  const weldCount = option?.weldCount || 0;
-  const flangeWeldCount = option?.flangeWeldCount || 0;
-  const tackWeldEnds = option?.tackWeldEnds || 0;
-  const flangeCount = option?.flangeCount || 0;
+  const optionWeldCount = option?.weldCount;
+  const optionFlangeWeldCount = option?.flangeWeldCount;
+  const optionTackWeldEnds = option?.tackWeldEnds;
+  const optionFlangeCount = option?.flangeCount;
+  const weldCount = optionWeldCount || 0;
+  const flangeWeldCount = optionFlangeWeldCount || 0;
+  const tackWeldEnds = optionTackWeldEnds || 0;
+  const flangeCount = optionFlangeCount || 0;
   const hasFlanges = configValue !== "PE" && flangeCount > 0;
   const hasLooseFlange =
     configValue.includes("_LF") || configValue.includes("FOE_LF") || configValue === "2xLF";

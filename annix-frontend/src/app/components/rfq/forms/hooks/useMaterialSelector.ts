@@ -35,7 +35,8 @@ export function useMaterialSelector(input: MaterialSelectorInput): MaterialSelec
     [masterData?.steelSpecs, effectiveSpecId],
   );
 
-  const specName = selectedSpec?.steelSpecName || "";
+  const rawSpecName = selectedSpec?.steelSpecName;
+  const specName = rawSpecName || "";
 
   const isFromGlobal = !steelSpecificationId && !!globalSpecs?.steelSpecificationId;
   const isOverride =
