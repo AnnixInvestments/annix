@@ -698,6 +698,13 @@ export class NixService {
         return null;
       }
       const rawItems = Array.isArray(parsed.items) ? parsed.items : [];
+      if (rawItems.length > 0) {
+        const sample = rawItems[0];
+        const sampleKeys = Object.keys(sample as Record<string, unknown>);
+        this.logger.log(
+          `Vision extraction sample item keys: [${sampleKeys.join(", ")}]; first item: ${JSON.stringify(sample).slice(0, 400)}`,
+        );
+      }
       const items: ExtractedItem[] = rawItems.map((item: Record<string, unknown>) =>
         this.normaliseVisionItem(item),
       );
@@ -778,38 +785,47 @@ export class NixService {
    * rather than throwing on schema drift.
    */
   private normaliseVisionItem(item: Record<string, unknown>): ExtractedItem {
-    const num = (k: string): number | null => {
-      const v = item[k];
-      if (typeof v === "number") return v;
-      if (typeof v === "string" && v.trim().length > 0) {
-        const parsed = Number.parseFloat(v);
-        return Number.isFinite(parsed) ? parsed : null;
+    const numFrom = (...keys: string[]): number | null => {
+      for (const k of keys) {
+        const v = item[k];
+        if (typeof v === "number") return v;
+        if (typeof v === "string" && v.trim().length > 0) {
+          const parsed = Number.parseFloat(v);
+          if (Number.isFinite(parsed)) return parsed;
+        }
       }
       return null;
     };
-    const str = (k: string): string | null => {
-      const v = item[k];
-      return typeof v === "string" && v.trim().length > 0 ? v : null;
+    const strFrom = (...keys: string[]): string | null => {
+      for (const k of keys) {
+        const v = item[k];
+        if (typeof v === "string" && v.trim().length > 0) return v;
+      }
+      return null;
     };
-    const description = str("description") ?? "";
+    const description = strFrom("description", "desc", "itemDescription") ?? "";
     return {
-      rowNumber: num("rowNumber") ?? 0,
-      itemNumber: str("itemNumber") ?? str("mark") ?? null,
+      rowNumber: numFrom("rowNumber") ?? 0,
+      itemNumber:
+        strFrom("itemNumber", "mark", "markNumber", "itemNo", "itemMark", "spoolNumber", "no") ??
+        null,
       description,
-      itemType: (str("itemType") as ExtractedItem["itemType"]) ?? "unknown",
-      material: str("material"),
-      materialGrade: str("materialGrade"),
-      diameter: num("diameter"),
-      diameterUnit: (str("diameterUnit") as ExtractedItem["diameterUnit"]) ?? "mm",
-      secondaryDiameter: num("secondaryDiameter"),
-      length: num("length"),
-      wallThickness: num("wallThickness"),
-      schedule: str("schedule"),
-      angle: num("angle"),
-      flangeConfig: (str("flangeConfig") as ExtractedItem["flangeConfig"]) ?? null,
-      quantity: num("quantity") ?? 1,
-      unit: str("unit") ?? "ea",
-      confidence: num("confidence") ?? 0.7,
+      itemType: (strFrom("itemType", "type") as ExtractedItem["itemType"]) ?? "unknown",
+      material: strFrom("material"),
+      materialGrade: strFrom("materialGrade", "grade"),
+      diameter: numFrom("diameter", "nb", "NB", "nominalBore", "bore"),
+      diameterUnit: (strFrom("diameterUnit") as ExtractedItem["diameterUnit"]) ?? "mm",
+      secondaryDiameter: numFrom("secondaryDiameter"),
+      length: numFrom("length", "lengthMm", "L", "overallLengthMm"),
+      wallThickness: numFrom("wallThickness", "wt", "WT"),
+      schedule: strFrom("schedule"),
+      angle: numFrom("angle"),
+      flangeConfig:
+        (strFrom("flangeConfig", "endConfiguration", "ends") as ExtractedItem["flangeConfig"]) ??
+        null,
+      quantity: numFrom("quantity", "qty", "count") ?? 1,
+      unit: strFrom("unit") ?? "ea",
+      confidence: numFrom("confidence") ?? 0.7,
       needsClarification: false,
       clarificationReason: null,
       rawData: item as Record<string, unknown>,
