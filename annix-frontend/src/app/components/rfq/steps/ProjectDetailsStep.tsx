@@ -119,14 +119,25 @@ export default function ProjectDetailsStep() {
 
   const onAddDocument = useCallback(
     async (file: File) => {
+      // eslint-disable-next-line no-console -- diagnostic for BOQ Nix extraction wiring
+      console.log("[BOQ-NIX] onAddDocument fired:", {
+        name: file.name,
+        type: file.type,
+        size: file.size,
+      });
       storeAddDocument({
         file,
         id: `doc-${generateUniqueId()}-${Math.random().toString(36).substr(2, 9)}`,
       });
 
-      if (!isExcelFile(file)) return;
+      const excel = isExcelFile(file);
+      // eslint-disable-next-line no-console -- diagnostic for BOQ Nix extraction wiring
+      console.log("[BOQ-NIX] isExcelFile =", excel);
+      if (!excel) return;
 
       try {
+        // eslint-disable-next-line no-console -- diagnostic for BOQ Nix extraction wiring
+        console.log("[BOQ-NIX] calling nixApi.uploadAndProcess with profile rfq-piping…");
         showExtraction({
           brand: "rfq",
           label: `Nix is reading ${file.name} and splitting it into line items…`,
@@ -138,6 +149,8 @@ export default function ProjectDetailsStep() {
           rfqId: currentDraftId ?? undefined,
           sourceModule: "rfq",
         });
+        // eslint-disable-next-line no-console -- diagnostic for BOQ Nix extraction wiring
+        console.log("[BOQ-NIX] uploadAndProcess returned:", result);
         hideExtraction();
 
         if (result.error) {
