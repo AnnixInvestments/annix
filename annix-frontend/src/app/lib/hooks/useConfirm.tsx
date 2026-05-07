@@ -9,6 +9,7 @@ export interface ConfirmOptions {
   confirmLabel?: string;
   cancelLabel?: string;
   variant?: ConfirmModalVariant;
+  hideCancel?: boolean;
 }
 
 interface ConfirmState extends ConfirmOptions {
@@ -49,6 +50,7 @@ export function useConfirm() {
       confirmLabel={state?.confirmLabel}
       cancelLabel={state?.cancelLabel}
       variant={state?.variant}
+      hideCancel={state?.hideCancel}
       onConfirm={handleConfirm}
       onCancel={handleCancel}
     />

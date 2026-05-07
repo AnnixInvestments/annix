@@ -107,6 +107,9 @@ export default function PortalToolbar(props: PortalToolbarProps) {
     return roleCheck && flagCheck;
   });
 
+  const titleText = config.title;
+  const showTitleOrVersion = Boolean(titleText) || Boolean(version);
+
   return (
     <nav className="shadow-lg sticky top-0 z-50" style={{ backgroundColor: colors.background }}>
       <div className="w-full px-4 sm:px-6 lg:px-8">
@@ -115,7 +118,7 @@ export default function PortalToolbar(props: PortalToolbarProps) {
             <div className="flex-shrink-0 flex items-center">
               <Link href={config.homeHref} className="flex items-center space-x-3">
                 <AmixLogo size="sm" showText={true} />
-                {config.title && (
+                {showTitleOrVersion && (
                   <span
                     className="text-lg font-semibold hidden md:block"
                     style={{ color: corpId.colors.accent.orange }}

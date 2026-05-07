@@ -22,10 +22,12 @@ import {
   PROJECT_TYPES,
 } from "@/app/lib/config/productsServices";
 import { generateUniqueId } from "@/app/lib/datetime";
+import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import { useEnvironmentalIntelligence } from "@/app/lib/hooks/useEnvironmentalIntelligence";
 import { log } from "@/app/lib/logger";
 import { type NixRfqPipingProfileMetadata, nixApi } from "@/app/lib/nix/api";
 import { useRfqWizardStore } from "@/app/lib/store/rfqWizardStore";
+import { extractXlsxFromEml, isEmlFile } from "@/app/lib/utils/emlAttachmentExtractor";
 import { generateSystemReferenceNumber } from "@/app/lib/utils/systemUtils";
 import {
   buildFallbackEnvironmentalSpecs,
@@ -106,6 +108,7 @@ export default function ProjectDetailsStep() {
   const useNix = rfqData.useNix;
   const { showToast } = useToast();
   const { showExtraction, hideExtraction } = useExtractionProgress();
+  const { confirm, ConfirmDialog } = useConfirm();
   const [boqExtractionSummary, setBoqExtractionSummary] = useState<{
     fileName: string;
     itemCount: number;
@@ -118,43 +121,51 @@ export default function ProjectDetailsStep() {
     /\.xlsx?$/i.test(file.name) || file.type.includes("spreadsheet") || file.type.includes("excel");
 
   const onAddDocument = useCallback(
-    async (file: File) => {
-      // eslint-disable-next-line no-console -- diagnostic for BOQ Nix extraction wiring
-      console.log("[BOQ-NIX] onAddDocument fired:", {
-        name: file.name,
-        type: file.type,
-        size: file.size,
-      });
+    async (incoming: File) => {
+      let workingFile = incoming;
+
+      if (isEmlFile(incoming)) {
+        const extracted = await extractXlsxFromEml(incoming).catch(() => null);
+        if (extracted) {
+          workingFile = extracted;
+          showToast(`Found ${extracted.name} attached to ${incoming.name} — extracting…`, "info");
+        } else {
+          showToast(
+            `Couldn't find an Excel attachment in ${incoming.name}. Save the .xlsx from your email client and drop that instead.`,
+            "warning",
+          );
+        }
+      }
+
       storeAddDocument({
-        file,
+        file: workingFile,
         id: `doc-${generateUniqueId()}-${Math.random().toString(36).substr(2, 9)}`,
       });
 
-      const excel = isExcelFile(file);
-      // eslint-disable-next-line no-console -- diagnostic for BOQ Nix extraction wiring
-      console.log("[BOQ-NIX] isExcelFile =", excel);
-      if (!excel) return;
+      if (!isExcelFile(workingFile)) return;
 
       try {
-        // eslint-disable-next-line no-console -- diagnostic for BOQ Nix extraction wiring
-        console.log("[BOQ-NIX] calling nixApi.uploadAndProcess with profile rfq-piping…");
         showExtraction({
           brand: "rfq",
-          label: `Nix is reading ${file.name} and splitting it into line items…`,
+          label: `Nix is reading ${workingFile.name} and splitting it into line items…`,
           estimatedDurationMs: 30_000,
         });
-        const result = await nixApi.uploadAndProcess(file, {
+        const result = await nixApi.uploadAndProcess(workingFile, {
           extractionProfile: "rfq-piping",
           documentRole: "drawing",
           rfqId: currentDraftId ?? undefined,
           sourceModule: "rfq",
         });
-        // eslint-disable-next-line no-console -- diagnostic for BOQ Nix extraction wiring
-        console.log("[BOQ-NIX] uploadAndProcess returned:", result);
         hideExtraction();
 
         if (result.error) {
-          showToast(`Nix couldn't extract ${file.name}: ${result.error}`, "error");
+          await confirm({
+            title: "Nix extraction failed",
+            message: `Couldn't extract ${workingFile.name}.\n\n${result.error}`,
+            variant: "warning",
+            confirmLabel: "Got it",
+            hideCancel: true,
+          });
           return;
         }
 
@@ -170,31 +181,49 @@ export default function ProjectDetailsStep() {
         const drawingRefCount = drawingRefs ? drawingRefs.length : 0;
 
         setBoqExtractionSummary({
-          fileName: file.name,
+          fileName: workingFile.name,
           itemCount,
           bundleCount,
           duplicateCount,
           drawingRefCount,
         });
 
-        const bundleSummary =
-          bundleCount > 0
-            ? ` across ${bundleCount} supplier bundle${bundleCount === 1 ? "" : "s"}`
-            : "";
-        showToast(
-          `Nix extracted ${itemCount} line item${itemCount === 1 ? "" : "s"}${bundleSummary} from ${file.name}.`,
-          "success",
-        );
+        const messageLines = [
+          `Nix extracted ${itemCount} line item${itemCount === 1 ? "" : "s"} from ${workingFile.name}.`,
+          "",
+          `• Split into ${bundleCount} supplier bundle${bundleCount === 1 ? "" : "s"}`,
+        ];
+        if (duplicateCount > 0) {
+          messageLines.push(
+            `• ${duplicateCount} duplicate group${duplicateCount === 1 ? "" : "s"} flagged for review`,
+          );
+        }
+        if (drawingRefCount > 0) {
+          messageLines.push(
+            `• ${drawingRefCount} drawing reference${drawingRefCount === 1 ? "" : "s"} captured`,
+          );
+        }
+
+        await confirm({
+          title: "BOQ extraction complete",
+          message: messageLines.join("\n"),
+          variant: "info",
+          confirmLabel: "Got it",
+          hideCancel: true,
+        });
       } catch (err) {
         hideExtraction();
         log.error("Nix BOQ extraction failed:", err);
-        showToast(
-          `Couldn't auto-extract ${file.name}. The file is still uploaded — admin can extract manually.`,
-          "warning",
-        );
+        await confirm({
+          title: "Couldn't auto-extract this BOQ",
+          message: `${workingFile.name} is still uploaded — admin can extract it manually after submission.`,
+          variant: "warning",
+          confirmLabel: "Got it",
+          hideCancel: true,
+        });
       }
     },
-    [storeAddDocument, showExtraction, hideExtraction, showToast, currentDraftId],
+    [storeAddDocument, showExtraction, hideExtraction, showToast, confirm, currentDraftId],
   );
 
   const onAddTenderDocument = useCallback(
@@ -1922,6 +1951,7 @@ export default function ProjectDetailsStep() {
       />
       {/* Restriction Popup for Unregistered Customers */}
       {restrictionPopup && <RestrictionTooltip position={restrictionPopup} />}
+      {ConfirmDialog}
     </div>
   );
 }

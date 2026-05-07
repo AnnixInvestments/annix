@@ -14,6 +14,7 @@ export interface ConfirmModalProps {
   variant?: ConfirmModalVariant;
   cancelFocusRingClass?: string;
   loading?: boolean;
+  hideCancel?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -154,15 +155,17 @@ export function ConfirmModal(props: ConfirmModalProps) {
           </div>
         </div>
         <div className="px-6 py-4 bg-gray-50 flex justify-end space-x-3">
-          <button
-            ref={cancelRef}
-            type="button"
-            onClick={onCancel}
-            disabled={loading}
-            className={`px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 ${cancelFocusRingClass} ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
-          >
-            {cancelLabel}
-          </button>
+          {!props.hideCancel && (
+            <button
+              ref={cancelRef}
+              type="button"
+              onClick={onCancel}
+              disabled={loading}
+              className={`px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 ${cancelFocusRingClass} ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
+            >
+              {cancelLabel}
+            </button>
+          )}
           <button
             type="button"
             onClick={props.onConfirm}
