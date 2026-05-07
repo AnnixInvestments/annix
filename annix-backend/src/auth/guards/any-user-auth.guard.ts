@@ -10,19 +10,25 @@ import { SupplierAuthService } from "../../supplier/supplier-auth.service";
 export interface AnyUserJwtPayload {
   sub: number;
   email: string;
-  type: "admin" | "customer" | "supplier";
-  sessionToken: string;
+  type: "admin" | "customer" | "supplier" | "stock-control";
+  sessionToken?: string;
   customerId?: number;
   supplierId?: number;
+  companyId?: number;
+  role?: string;
+  name?: string;
   roles?: string[];
 }
 
 export interface AuthenticatedUser {
   userId: number;
   email: string;
-  type: "admin" | "customer" | "supplier";
+  type: "admin" | "customer" | "supplier" | "stock-control";
   customerId?: number;
   supplierId?: number;
+  companyId?: number;
+  role?: string;
+  name?: string;
   roles?: string[];
 }
 
@@ -63,6 +69,9 @@ export class AnyUserAuthGuard implements CanActivate {
 
   private async validateSessionByType(payload: AnyUserJwtPayload): Promise<AuthenticatedUser> {
     if (payload.type === "admin") {
+      if (!payload.sessionToken) {
+        throw new UnauthorizedException("Missing session token");
+      }
       const user = await this.adminAuthService.validateSession(payload.sessionToken);
       if (!user) {
         throw new UnauthorizedException("Session expired or invalid");
@@ -76,6 +85,9 @@ export class AnyUserAuthGuard implements CanActivate {
     }
 
     if (payload.type === "customer") {
+      if (!payload.sessionToken) {
+        throw new UnauthorizedException("Missing session token");
+      }
       const session = await this.customerAuthService.verifySession(payload.sessionToken);
       if (!session) {
         throw new UnauthorizedException("Session expired or invalid");
@@ -89,6 +101,9 @@ export class AnyUserAuthGuard implements CanActivate {
     }
 
     if (payload.type === "supplier") {
+      if (!payload.sessionToken) {
+        throw new UnauthorizedException("Missing session token");
+      }
       const session = await this.supplierAuthService.verifySession(payload.sessionToken);
       if (!session) {
         throw new UnauthorizedException("Session expired or invalid");
@@ -98,6 +113,23 @@ export class AnyUserAuthGuard implements CanActivate {
         email: payload.email,
         type: "supplier",
         supplierId: payload.supplierId,
+      };
+    }
+
+    if (payload.type === "stock-control") {
+      // Stock Control tokens don't carry a separate session_token — the
+      // JWT itself is the session credential (it's signed by us, has a 1-hour
+      // expiry, and is refreshed via /stock-control/auth/refresh). The
+      // signature + expiry verification done above is sufficient.
+      // Accept and surface the SC-specific fields (companyId, role) so
+      // downstream guards/services can scope to the right tenant.
+      return {
+        userId: payload.sub,
+        email: payload.email,
+        type: "stock-control",
+        companyId: payload.companyId,
+        role: payload.role,
+        name: payload.name,
       };
     }
 
