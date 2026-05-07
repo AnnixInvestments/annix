@@ -1,46 +1,19 @@
 "use client";
 
 import { isObject } from "es-toolkit/compat";
+import { anyPortalAuthHeaders } from "@/app/lib/api/portalTokenStores";
 import { log } from "@/app/lib/logger";
 import { browserBaseUrl } from "@/lib/api-config";
 
 /**
- * Resolves the Authorization header for Nix API calls by trying the
- * known per-portal localStorage token keys in priority order. Same
- * fallback list as the React-Query hook layer (`nixAuthHeaders` in
- * `lib/query/hooks/nix/useNix.ts`) so any portal that can authenticate
- * the user can also call Nix endpoints.
- *
- * Returns an empty object during SSR or when no token is present, so
- * the caller can spread it into a headers object unconditionally.
- *
- * Several legacy nixApi.* methods still inline `localStorage.getItem("token")`
- * — those work for any portal that happens to put a token under "token"
- * but break for portals that don't (e.g. Stock Control stores it under
- * "stockControlAccessToken"). New nixApi methods use this helper, and
- * the legacy ones are candidates to migrate.
+ * Resolves the Authorization header for Nix API calls by delegating to
+ * the canonical PortalTokenStore registry — whichever portal token store
+ * (Stock Control, Customer, Supplier, Admin, etc.) currently holds an
+ * authenticated session wins. Avoids maintaining a parallel list of
+ * localStorage key names that drifts from the source of truth.
  */
-const NIX_TOKEN_KEYS = [
-  "stockControlAccessToken",
-  "customerAccessToken",
-  "supplierAccessToken",
-  "adminAccessToken",
-  "annixRepAccessToken",
-  "authToken",
-  "token",
-] as const;
-
 function resolveNixAuthHeaders(): Record<string, string> {
-  // eslint-disable-next-line no-restricted-syntax -- SSR guard
-  if (typeof window === "undefined") return {};
-  // Check both storages — PortalTokenStore writes to localStorage when the
-  // user ticked "Remember me" at login, sessionStorage otherwise. Either
-  // can hold the active token at any moment so we have to look in both.
-  for (const key of NIX_TOKEN_KEYS) {
-    const value = localStorage.getItem(key) ?? sessionStorage.getItem(key);
-    if (value) return { Authorization: `Bearer ${value}` };
-  }
-  return {};
+  return anyPortalAuthHeaders();
 }
 
 export interface NixExtractedPlateBomRow {

@@ -1,3 +1,4 @@
+import { anyPortalAuthHeaders } from "@/app/lib/api/portalTokenStores";
 import { browserBaseUrl } from "@/lib/api-config";
 import { createMutationHook, createQueryHook } from "../../factories";
 import { nixKeys } from "../../keys/nixKeys";
@@ -5,49 +6,16 @@ import { retryableFetch } from "../../retry";
 
 type PortalContext = "admin" | "customer" | "supplier" | "annix-rep" | "general";
 
-const TOKEN_KEY_MAP: Record<PortalContext, string> = {
-  admin: "adminAccessToken",
-  customer: "customerAccessToken",
-  supplier: "supplierAccessToken",
-  "annix-rep": "annixRepAccessToken",
-  general: "adminAccessToken",
-};
-
-const TOKEN_FALLBACK_ORDER: string[] = [
-  "stockControlAccessToken",
-  "customerAccessToken",
-  "supplierAccessToken",
-  "adminAccessToken",
-  "annixRepAccessToken",
-  "authToken",
-  "token",
-];
-
-const nixAuthHeaders = (portalContext?: PortalContext): Record<string, string> => {
-  // eslint-disable-next-line no-restricted-syntax -- SSR guard; isUndefined(window) would throw
-  if (typeof window === "undefined") return {};
-
-  let token: string | null = null;
-
-  // PortalTokenStore writes the access token to localStorage when the
-  // user ticked "Remember me" at login, sessionStorage otherwise.
-  // Both storages must be checked.
-  const readToken = (key: string): string | null =>
-    localStorage.getItem(key) ?? sessionStorage.getItem(key);
-
-  if (portalContext && portalContext !== "general") {
-    const preferredKey = TOKEN_KEY_MAP[portalContext];
-    token = readToken(preferredKey);
-  }
-
-  if (!token) {
-    for (const key of TOKEN_FALLBACK_ORDER) {
-      token = readToken(key);
-      if (token) break;
-    }
-  }
-
-  return token ? { Authorization: `Bearer ${token}` } : {};
+/**
+ * Resolves Authorization headers for Nix calls by delegating to the
+ * canonical PortalTokenStore registry. Whichever portal token store is
+ * currently authenticated (Stock Control, Customer, Supplier, etc.) wins.
+ * The portalContext argument is ignored today — kept for call-site
+ * compatibility while the lookup is portal-agnostic. (The helper at
+ * `lib/api/portalTokenStores.ts` is the single source of truth.)
+ */
+const nixAuthHeaders = (_portalContext?: PortalContext): Record<string, string> => {
+  return anyPortalAuthHeaders();
 };
 
 export interface ChatSession {
