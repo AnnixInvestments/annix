@@ -1,5 +1,6 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeftRight,
   Check,
@@ -55,6 +56,7 @@ import {
   useAuRubberUploadSupplierCoc,
   useAuRubberUploadSupplierCocWithFiles,
 } from "@/app/lib/query/hooks";
+import { rubberKeys } from "@/app/lib/query/keys";
 import { Breadcrumb } from "../../components/Breadcrumb";
 import { FileDropZone } from "../../components/FileDropZone";
 
@@ -88,6 +90,7 @@ type SortColumn =
 
 export default function SupplierCocsPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { showToast } = useToast();
   const { confirm, ConfirmDialog } = useConfirm();
   const { runBulk: runAdaptiveBulk } = useAdaptiveExtractionProgress();
@@ -699,10 +702,26 @@ export default function SupplierCocsPage() {
     }
   };
 
+  const optimisticallyRemoveFromPendingQueue = (id: number) => {
+    queryClient.setQueryData<
+      Array<RubberSupplierCocDto & { previousVersionCocNumber: string | null }>
+    >(rubberKeys.supplierCocs.pendingAuthorization(), (old) =>
+      (old ?? []).filter((coc) => coc.id !== id),
+    );
+    queryClient.setQueryData<{ count: number }>(
+      rubberKeys.supplierCocs.pendingAuthorizationCount(),
+      (old) => {
+        const previousCount = old ? old.count : 0;
+        return { count: Math.max(0, previousCount - 1) };
+      },
+    );
+  };
+
   const handleAuthorizeVersion = async (id: number) => {
     try {
       setPendingActionId(id);
       await authorizeVersionMutation.mutateAsync({ kind: "supplier-cocs", id });
+      optimisticallyRemoveFromPendingQueue(id);
       showToast("Version authorized successfully", "success");
       cocsQuery.refetch();
       pendingAuthListQuery.refetch();
@@ -718,6 +737,7 @@ export default function SupplierCocsPage() {
     try {
       setPendingActionId(id);
       await rejectVersionMutation.mutateAsync({ kind: "supplier-cocs", id });
+      optimisticallyRemoveFromPendingQueue(id);
       showToast("Version rejected", "success");
       cocsQuery.refetch();
       pendingAuthListQuery.refetch();
