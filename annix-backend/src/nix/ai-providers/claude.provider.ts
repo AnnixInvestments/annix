@@ -4,7 +4,7 @@ import {
   AiExtractionResponse,
   AiProvider,
   AiProviderConfig,
-  EXTRACTION_SYSTEM_PROMPT,
+  DEFAULT_EXTRACTION_SYSTEM_PROMPT,
 } from "./ai-provider.interface";
 
 @Injectable()
@@ -33,6 +33,7 @@ export class ClaudeProvider implements AiProvider {
     }
 
     const userPrompt = this.buildUserPrompt(request);
+    const systemPrompt = request.systemPrompt ?? DEFAULT_EXTRACTION_SYSTEM_PROMPT;
 
     try {
       const response = await fetch(`${this.baseUrl}/messages`, {
@@ -46,7 +47,7 @@ export class ClaudeProvider implements AiProvider {
           model: this.model,
           max_tokens: 8192,
           temperature: 0.1,
-          system: EXTRACTION_SYSTEM_PROMPT,
+          system: systemPrompt,
           messages: [
             {
               role: "user",

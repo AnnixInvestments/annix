@@ -73,6 +73,7 @@ export class AiExtractionService implements OnModuleInit {
     documentName?: string,
     providerOverride?: AiProviderType,
     productTypes?: string[],
+    systemPrompt?: string,
   ): Promise<{
     items: ExtractedItem[];
     specificationCells: SpecificationCellData[];
@@ -94,7 +95,9 @@ export class AiExtractionService implements OnModuleInit {
       };
     }
 
-    this.logger.log(`Using AI provider: ${provider.name} for document: ${documentName}`);
+    this.logger.log(
+      `Using AI provider: ${provider.name} for document: ${documentName}${systemPrompt ? " (custom system prompt)" : ""}`,
+    );
 
     const expectedItemTypes = this.expectedItemTypesFromProducts(productTypes);
 
@@ -104,6 +107,7 @@ export class AiExtractionService implements OnModuleInit {
       hints: {
         expectedItemTypes,
       },
+      systemPrompt,
     };
 
     const response = await withRetry(

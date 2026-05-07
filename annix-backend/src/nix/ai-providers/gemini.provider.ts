@@ -4,7 +4,7 @@ import {
   AiExtractionResponse,
   AiProvider,
   AiProviderConfig,
-  EXTRACTION_SYSTEM_PROMPT,
+  DEFAULT_EXTRACTION_SYSTEM_PROMPT,
 } from "./ai-provider.interface";
 
 @Injectable()
@@ -32,6 +32,7 @@ export class GeminiProvider implements AiProvider {
     }
 
     const userPrompt = this.buildUserPrompt(request);
+    const systemPrompt = request.systemPrompt ?? DEFAULT_EXTRACTION_SYSTEM_PROMPT;
 
     try {
       const response = await fetch(
@@ -44,7 +45,7 @@ export class GeminiProvider implements AiProvider {
           body: JSON.stringify({
             contents: [
               {
-                parts: [{ text: EXTRACTION_SYSTEM_PROMPT }, { text: userPrompt }],
+                parts: [{ text: systemPrompt }, { text: userPrompt }],
               },
             ],
             generationConfig: {

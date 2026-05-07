@@ -89,6 +89,11 @@ export class NixService {
 
     await this.extractionRepo.save(extraction);
 
+    const profileHandler = extractionProfile
+      ? this.profileRegistry.handler(extractionProfile)
+      : null;
+    const profileSystemPrompt = profileHandler?.systemPrompt?.();
+
     try {
       let extractedData: Record<string, any>;
       let extractedItems: Array<any> = [];
@@ -100,6 +105,7 @@ export class NixService {
             dto.documentPath,
             dto.documentName,
             dto.productTypes,
+            profileSystemPrompt,
           ));
           break;
         case DocumentType.EXCEL:
@@ -134,10 +140,9 @@ export class NixService {
           : ExtractionStatus.COMPLETED;
 
       if (extractionProfile) {
-        const handler = this.profileRegistry.handler(extractionProfile);
-        if (handler) {
+        if (profileHandler) {
           try {
-            const profileResult = await handler.postExtract(extraction, {
+            const profileResult = await profileHandler.postExtract(extraction, {
               documentName: extraction.documentName,
               documentPath: extraction.documentPath,
               extractedItems: relevantItems,
@@ -295,6 +300,7 @@ export class NixService {
     documentPath: string,
     documentName?: string,
     productTypes?: string[],
+    systemPrompt?: string,
   ): Promise<{
     extractedData: Record<string, any>;
     extractedItems: Array<any>;
@@ -323,6 +329,7 @@ export class NixService {
           documentName || documentPath.split("/").pop(),
           undefined,
           productTypes,
+          systemPrompt,
         );
 
         this.logger.log(

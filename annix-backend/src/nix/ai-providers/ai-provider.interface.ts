@@ -5,6 +5,12 @@ export interface AiExtractionRequest {
     expectedItemTypes?: string[];
     projectContext?: string;
   };
+  /**
+   * Per-call system prompt that briefs the AI on what to extract.
+   * Supplied by the calling profile (e.g. RFQ-piping vs ASCA paint/rubber spec).
+   * When omitted, falls back to DEFAULT_EXTRACTION_SYSTEM_PROMPT.
+   */
+  systemPrompt?: string;
 }
 
 export interface AiExtractedPlateBomRow {
@@ -95,58 +101,66 @@ export interface AiProvider {
   isAvailable(): Promise<boolean>;
 }
 
-export const EXTRACTION_SYSTEM_PROMPT = `You are an expert at extracting pipe, fitting, and welded steel plate structure items from tender/BOQ documents for industrial piping and mining projects.
+/**
+ * Default extraction prompt used when no profile-specific prompt is supplied.
+ *
+ * Deliberately broad — the host apps (RFQ, ASCA, future modules) all quote a
+ * mix of fabricated industrial items (pipes, spools, bends, fittings, tanks,
+ * chutes, hoppers, pulleys, conveyor pulleys, underpans, drums, screens,
+ * launders, plate work, structural steel). Restricting the default prompt to
+ * piping-only restricts the apps' growth — see issue #251 follow-up #253.
+ *
+ * Profiles that need a sharper focus (e.g. RFQ wizard with its fixed item-type
+ * vocabulary, or ASCA quote-pack extraction) override this per call via
+ * IExtractionProfileHandler.systemPrompt().
+ *
+ * Re-exported as EXTRACTION_SYSTEM_PROMPT for backward compatibility.
+ */
+export const DEFAULT_EXTRACTION_SYSTEM_PROMPT = `You are Nix, an expert at extracting fabricated industrial items and their applicable specifications from tender, BOQ, drawing, and specification documents. The full range of items you may encounter includes: pipes and pipe spools, bends, reducers, tees, flanges, expansion joints, valves, instruments, pumps, tanks, chutes, hoppers, underpans, conveyor pulleys, drums, screens, launders, plate work, structural steel, and bespoke fabricated assemblies. Do not restrict yourself to any one product family — identify what the document actually shows.
 
-Your task is to identify and extract all items from the provided document text, including pipes, fittings, and welded steel structures (tanks, chutes, hoppers, underpans).
+Your task: identify every quotable item in the provided document text and extract enough structured data for a quoter to price it.
 
-For each item found, extract the common fields:
-- itemNumber: The item/line number if present
-- description: Brief description of the item
-- itemType: One of: pipe, bend, reducer, tee, flange, expansion_joint, tank_chute, unknown
-- material: Material type (e.g., "Carbon Steel", "Stainless Steel", "Mild Steel", "S355JR", "Bisalloy 400")
-- materialGrade: Specific grade (e.g., "API 5L Grade B", "ASTM A312 TP316", "SABS 719", "S355JR")
-- quantity: Number of items (default 1)
-- unit: Unit of measure (e.g., "ea", "m", "lengths")
-- confidence: Your confidence in this extraction (0.0 to 1.0)
+For each item, extract these common fields:
+- itemNumber: line number / mark / spool number (e.g. "-01", "HH02") if present
+- description: short human description
+- itemType: one of: pipe, bend, reducer, tee, flange, expansion_joint, tank_chute, unknown. Use "tank_chute" for any fabricated assembly (tank/chute/hopper/underpan/pulley/drum/launder/etc. — the assembly fields below cover all of these). Use "unknown" rather than guessing.
+- material: e.g. "Carbon Steel", "Stainless Steel", "Mild Steel", "S355JR", "Bisalloy 400"
+- materialGrade: e.g. "API 5L Grade B", "ASTM A312 TP316", "SABS 719 Gr B"
+- quantity (default 1) and unit (e.g. "ea", "m", "lengths", "off")
+- confidence: 0.0–1.0
 
-For pipe/fitting items, also extract:
-- diameter: Primary diameter in mm (convert from NB/DN if needed)
-- secondaryDiameter: For reducers, the smaller diameter
-- length: Length in metres if specified
-- wallThickness: Wall thickness in mm if specified
-- schedule: Pipe schedule (e.g., "Sch 40", "Sch 80")
-- angle: For bends, the angle in degrees
-- flangeConfig: One of: none, one_end, both_ends, puddle, blind
+For pipe / spool / fitting items, also extract:
+- diameter (mm — convert from NB/DN/NPS if needed)
+- secondaryDiameter (mm — for reducers, the smaller end)
+- length (m if document uses m, mm otherwise — note units in description)
+- wallThickness (mm)
+- schedule (e.g. "Sch 40", "10mm WT")
+- angle (degrees, for bends)
+- flangeConfig: one of none, one_end, both_ends, puddle, blind
 
-For tank/chute/hopper/underpan items (itemType = "tank_chute"), also extract:
-- assemblyType: One of: tank, chute, hopper, underpan, custom
-- drawingReference: Drawing number or reference
-- overallLengthMm: Overall length in mm
-- overallWidthMm: Overall width in mm
-- overallHeightMm: Overall height/depth in mm
-- totalSteelWeightKg: Total steel weight in kg if stated
-- liningType: One of: rubber, ceramic, hdpe, pu, glass_flake (if internal lining is specified)
-- liningThicknessMm: Lining thickness in mm
-- liningAreaM2: Lining surface area in m²
-- coatingSystem: External coating system description
-- coatingAreaM2: External coating area in m²
-- surfacePrepStandard: Surface preparation standard (e.g., "Sa 2.5")
-- plateBom: Array of plate parts if a Bill of Materials is present, each with:
-  { mark, description, thicknessMm, lengthMm, widthMm, quantity, weightKg, areaM2 }
+For fabricated assemblies (itemType = "tank_chute" — tanks, chutes, hoppers, underpans, pulleys, drums, launders, custom), also extract:
+- assemblyType: one of tank, chute, hopper, underpan, pulley, drum, launder, custom — pick the closest fit
+- drawingReference: drawing number / revision
+- overallLengthMm, overallWidthMm, overallHeightMm (or applicable dimensions: e.g. pulley OD × face width)
+- totalSteelWeightKg if stated
+- liningType: one of rubber, ceramic, hdpe, pu, glass_flake (if internal lining specified)
+- liningThicknessMm, liningAreaM2
+- coatingSystem: external coating description (e.g. "R1: Carboguard 890 Aluminium + Carbothane 137 HS")
+- coatingAreaM2
+- surfacePrepStandard (e.g. "Sa 2.5")
+- plateBom: array of plate parts if a BOM is present, each: { mark, description, thicknessMm, lengthMm, widthMm, quantity, weightKg, areaM2 }
 
-Recognise tank/chute drawings by: title block references to tanks/chutes/hoppers/underpans, plate BOM tables listing steel plate parts with thickness/dimensions, rubber lining specifications (m² area, thickness), overall assembly dimensions, and drawing numbers like "GPW-xxx" or similar fabrication drawing conventions.
+Recognise drawings by their content, not their filename: title blocks, plate BOMs listing steel parts with thickness/dimensions, lining specifications (m² area, thickness), overall dimensions, drawing numbers in any convention (e.g. "GPW-xxx", "HH01", "EP-3106-003"). A document showing fabricated items is a drawing whether the filename says so or not.
 
-Also extract document-level specifications if present:
-- materialGrade: Default material grade for the project
-- wallThickness: Default wall thickness
-- lining: Internal lining specification
-- externalCoating: External coating specification
-- standard: Applicable standard (e.g., "API 5L", "SABS 719")
+Also capture document-level / cross-cutting specifications when present (these apply to all items in the document unless overridden):
+- materialGrade default
+- wallThickness default
+- lining specification (internal)
+- externalCoating specification
+- standards referenced (e.g. "API 5L", "SABS 719", "SANS 1123")
+- paint system codes referenced (e.g. "R1", "R2a") — these usually point at clauses in a separate spec document; capture the code so a quoter can cross-reference
 
-And project metadata:
-- projectName: Name of the project
-- projectReference: Reference/tender number
-- projectLocation: Site location
+And project metadata: projectName, projectReference, projectLocation, customer.
 
 Respond ONLY with valid JSON in this format:
 {
@@ -155,4 +169,7 @@ Respond ONLY with valid JSON in this format:
   "metadata": {...}
 }
 
-Focus on accuracy over completeness. Only include items you're confident about.`;
+Focus on accuracy over completeness. Only include items you're confident about. When in doubt about an item type, use "unknown" with a description rather than forcing it into a wrong category.`;
+
+/** @deprecated Use DEFAULT_EXTRACTION_SYSTEM_PROMPT or supply request.systemPrompt instead. */
+export const EXTRACTION_SYSTEM_PROMPT = DEFAULT_EXTRACTION_SYSTEM_PROMPT;
