@@ -406,6 +406,22 @@ export const nixApi = {
     return response.json();
   },
 
+  retryExtraction: async (extractionId: number): Promise<{ id: number; status: string }> => {
+    const baseUrl = browserBaseUrl();
+    const response = await fetch(`${baseUrl}/nix/extraction/${extractionId}/retry`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...resolveNixAuthHeaders(),
+      },
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to retry extraction: ${errorText}`);
+    }
+    return response.json();
+  },
+
   extraction: async (extractionId: number): Promise<NixProcessResponse> => {
     const baseUrl = browserBaseUrl();
     // eslint-disable-next-line no-restricted-syntax -- SSR guard

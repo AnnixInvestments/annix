@@ -174,6 +174,131 @@ export class NixService {
     return this.s3StorageService.presignedUrl(extraction.storagePath, expiresInSeconds);
   }
 
+  /**
+   * Re-runs extraction against an existing extraction's stored source. Used by
+   * the draft review UI's per-row 'Retry' button — the original upload may
+   * have failed (Word extractor crash, prompt mismatch, transient API error),
+   * or the prompt has since been improved and the user wants to re-extract
+   * against the persisted source without uploading the same file again.
+   *
+   * Reuses the same extraction record — does NOT create a duplicate row, so
+   * the draft view stays clean. Requires storagePath; legacy rows persisted
+   * before #253 task E can't be retried via this path (no source on file).
+   */
+  async retryExtraction(extractionId: number): Promise<NixExtraction> {
+    const extraction = await this.extractionRepo.findOne({ where: { id: extractionId } });
+    if (!extraction) {
+      throw new Error("Extraction not found");
+    }
+    if (!extraction.storagePath) {
+      throw new Error(
+        "No source document on file for this extraction (predates S3 persistence). Re-upload the file instead.",
+      );
+    }
+
+    const buffer = await this.s3StorageService.download(extraction.storagePath);
+    const tempPath = `${process.env.TEMP || process.env.TMPDIR || "/tmp"}/nix-retry-${extractionId}-${Date.now()}-${extraction.documentName}`;
+    fs.writeFileSync(tempPath, buffer);
+
+    extraction.status = ExtractionStatus.PROCESSING;
+    extraction.errorMessage = undefined;
+    await this.extractionRepo.save(extraction);
+
+    const startTime = Date.now();
+    const documentType = this.detectDocumentType(extraction.documentName);
+    const profileHandler = extraction.extractionProfile
+      ? this.profileRegistry.handler(extraction.extractionProfile)
+      : null;
+    const sessionSiblings = await this.findSessionSiblings(
+      extraction.sessionId,
+      extraction.sourceModule,
+      extraction.sourceId,
+      extraction.id,
+    );
+    const profileSystemPrompt = profileHandler?.systemPrompt
+      ? profileHandler.systemPrompt({
+          role: extraction.documentRole,
+          siblings: sessionSiblings,
+        })
+      : undefined;
+
+    try {
+      let extractedData: Record<string, any> = {};
+      let extractedItems: any[] = [];
+      let specificationCells: SpecificationCellData[] = [];
+
+      switch (documentType) {
+        case DocumentType.PDF:
+          ({ extractedData, extractedItems, specificationCells } = await this.extractFromPdf(
+            tempPath,
+            extraction.documentName,
+            undefined,
+            profileSystemPrompt,
+            extraction.documentRole,
+          ));
+          break;
+        case DocumentType.WORD:
+          ({ extractedData, extractedItems, specificationCells } =
+            await this.extractFromWord(tempPath));
+          break;
+        case DocumentType.EXCEL:
+          ({ extractedData, extractedItems, specificationCells } =
+            await this.extractFromExcel(tempPath));
+          break;
+        default:
+          throw new Error(`Unsupported document type for retry: ${documentType}`);
+      }
+
+      const relevanceFiltered = await this.filterByRelevance(extractedItems, undefined);
+      const relevantItems = this.dropPseudoItemsForSpec(relevanceFiltered, extraction.documentRole);
+
+      extraction.extractedData = extractedData;
+      extraction.extractedItems = relevantItems;
+      extraction.relevanceScore = this.calculateOverallRelevance(relevantItems);
+      extraction.processingTimeMs = Date.now() - startTime;
+      extraction.status = ExtractionStatus.COMPLETED;
+      extraction.errorMessage = undefined;
+
+      if (profileHandler) {
+        try {
+          await profileHandler.postExtract(extraction, {
+            documentName: extraction.documentName,
+            documentPath: tempPath,
+            documentRole: extraction.documentRole,
+            extractedItems: relevantItems,
+            specificationCells,
+            sourceModule: extraction.sourceModule,
+            sourceId: extraction.sourceId,
+            sessionSiblings,
+          });
+        } catch (err) {
+          this.logger.error(
+            `Profile postExtract failed during retry for #${extractionId}: ${err instanceof Error ? err.message : "unknown"}`,
+          );
+        }
+      }
+
+      await this.extractionRepo.save(extraction);
+      this.logger.log(
+        `Retried extraction #${extractionId} successfully — ${relevantItems.length} items in ${extraction.processingTimeMs}ms`,
+      );
+      return extraction;
+    } catch (err) {
+      extraction.status = ExtractionStatus.FAILED;
+      extraction.errorMessage = err instanceof Error ? err.message : "Unknown error";
+      extraction.processingTimeMs = Date.now() - startTime;
+      await this.extractionRepo.save(extraction);
+      this.logger.error(`Retry of extraction #${extractionId} failed: ${extraction.errorMessage}`);
+      throw err;
+    } finally {
+      try {
+        fs.unlinkSync(tempPath);
+      } catch {
+        // Temp cleanup is best-effort; OS will reclaim eventually.
+      }
+    }
+  }
+
   async processDocument(dto: ProcessDocumentDto): Promise<ProcessDocumentResponseDto> {
     const startTime = Date.now();
     this.logger.log(`Processing document: ${dto.documentPath} (${dto.documentName})`);
@@ -247,6 +372,11 @@ export class NixService {
           break;
         case DocumentType.EXCEL:
           ({ extractedData, extractedItems, specificationCells } = await this.extractFromExcel(
+            dto.documentPath,
+          ));
+          break;
+        case DocumentType.WORD:
+          ({ extractedData, extractedItems, specificationCells } = await this.extractFromWord(
             dto.documentPath,
           ));
           break;
@@ -913,6 +1043,35 @@ export class NixService {
     const result = await this.excelExtractor.extractFromExcel(documentPath);
 
     this.logger.log(`Extracted ${result.items.length} items from sheet "${result.sheetName}"`);
+    this.logger.log(`Items needing clarification: ${result.clarificationsNeeded}`);
+    this.logger.log(`Found ${result.specificationCells.length} specification headers`);
+
+    return {
+      extractedData: {
+        sheetName: result.sheetName,
+        totalRows: result.totalRows,
+        itemCount: result.items.length,
+        clarificationsNeeded: result.clarificationsNeeded,
+        metadata: result.metadata,
+        specificationCells: result.specificationCells,
+      },
+      extractedItems: result.items,
+      specificationCells: result.specificationCells,
+    };
+  }
+
+  private async extractFromWord(documentPath: string): Promise<{
+    extractedData: Record<string, any>;
+    extractedItems: Array<any>;
+    specificationCells: SpecificationCellData[];
+  }> {
+    this.logger.log(`Word extraction starting for: ${documentPath}`);
+
+    const result = await this.wordExtractor.extractFromWord(documentPath);
+
+    this.logger.log(
+      `Extracted ${result.items.length} items from Word document "${result.sheetName}"`,
+    );
     this.logger.log(`Items needing clarification: ${result.clarificationsNeeded}`);
     this.logger.log(`Found ${result.specificationCells.length} specification headers`);
 

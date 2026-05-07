@@ -1,14 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useCallback, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import { DocumentBucket, type PendingDocument } from "@/app/components/uploads";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import { useAdaptiveExtractionProgress } from "@/app/lib/hooks/useAdaptiveExtractionProgress";
 import { type NixDocumentRole, nixApi } from "@/app/lib/nix";
-import { type NixExtractionSessionDto, useCreateNixExtractionSession } from "@/app/lib/query/hooks";
+import {
+  type NixExtractionSessionDto,
+  useCreateNixExtractionSession,
+  useNixExtractionSession,
+} from "@/app/lib/query/hooks";
 
 const ASCA_PROFILE_KEY = "asca-quote-documents";
 const ASCA_SOURCE_MODULE = "asca";
@@ -31,10 +35,26 @@ export default function QuoteFromDocumentsPage() {
   const { showToast } = useToast();
   const userId = auth.user?.id;
 
+  const searchParams = useSearchParams();
+  const sessionParam = searchParams?.get("session");
+  const parsedExistingSessionId = sessionParam ? Number.parseInt(sessionParam, 10) : Number.NaN;
+  const existingSessionId = Number.isFinite(parsedExistingSessionId)
+    ? parsedExistingSessionId
+    : null;
+
   const [drawings, setDrawings] = useState<BucketState>(emptyBucket);
   const [specs, setSpecs] = useState<BucketState>(emptyBucket);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [session, setSession] = useState<NixExtractionSessionDto | null>(null);
+
+  const existingSessionQuery = useNixExtractionSession(existingSessionId);
+
+  useEffect(() => {
+    const fetched = existingSessionQuery.data;
+    if (fetched && (session === null || session.id !== fetched.id)) {
+      setSession(fetched);
+    }
+  }, [existingSessionQuery.data, session]);
 
   const createSessionMutation = useCreateNixExtractionSession();
   const { runBulk } = useAdaptiveExtractionProgress();

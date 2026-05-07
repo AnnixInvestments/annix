@@ -51,6 +51,24 @@ export default function NixExtractionDraftPage() {
   }, [sessionExtractions]);
 
   const pdfPreview = usePdfPreview();
+  const [retryingId, setRetryingId] = useState<number | null>(null);
+
+  const handleRetry = useCallback(
+    async (extraction: NixExtractionSummary) => {
+      try {
+        setRetryingId(extraction.id);
+        showToast(`Retrying extraction for ${extraction.documentName}...`, "info");
+        await nixApi.retryExtraction(extraction.id);
+        await sessionQuery.refetch();
+        showToast(`Retry of ${extraction.documentName} complete.`, "success");
+      } catch (err) {
+        showToast(err instanceof Error ? err.message : "Retry failed", "error");
+      } finally {
+        setRetryingId(null);
+      }
+    },
+    [showToast, sessionQuery],
+  );
 
   const handleViewOriginal = useCallback(
     async (extraction: NixExtractionSummary) => {
@@ -185,6 +203,8 @@ export default function NixExtractionDraftPage() {
         tone="blue"
         extractions={drawingExtractions}
         onViewOriginal={handleViewOriginal}
+        onRetry={handleRetry}
+        retryingId={retryingId}
         emptyMessage="No drawings uploaded into this session yet."
       />
 
@@ -194,6 +214,8 @@ export default function NixExtractionDraftPage() {
         tone="purple"
         extractions={specExtractions}
         onViewOriginal={handleViewOriginal}
+        onRetry={handleRetry}
+        retryingId={retryingId}
         emptyMessage="No specification documents uploaded into this session yet."
         showSpecifications
       />
@@ -205,7 +227,20 @@ export default function NixExtractionDraftPage() {
           tone="gray"
           extractions={otherExtractions}
           onViewOriginal={handleViewOriginal}
+          onRetry={handleRetry}
+          retryingId={retryingId}
         />
+      )}
+
+      {session.status !== "promoted" && session.status !== "archived" && (
+        <div className="flex items-center justify-center pt-2">
+          <Link
+            href={`/stock-control/portal/quotations/new-from-documents?session=${session.id}`}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium shadow-sm hover:bg-blue-700"
+          >
+            Add more documents to this draft
+          </Link>
+        </div>
       )}
 
       <PdfPreviewModal state={pdfPreview.state} onClose={pdfPreview.close} />
@@ -240,13 +275,24 @@ interface ExtractionGroupProps {
   tone: "blue" | "purple" | "gray";
   extractions: NixExtractionSummary[];
   onViewOriginal: (extraction: NixExtractionSummary) => void;
+  onRetry: (extraction: NixExtractionSummary) => void;
+  retryingId: number | null;
   emptyMessage?: string;
   showSpecifications?: boolean;
 }
 
 function ExtractionGroup(props: ExtractionGroupProps) {
-  const { title, subtitle, tone, extractions, onViewOriginal, emptyMessage, showSpecifications } =
-    props;
+  const {
+    title,
+    subtitle,
+    tone,
+    extractions,
+    onViewOriginal,
+    onRetry,
+    retryingId,
+    emptyMessage,
+    showSpecifications,
+  } = props;
 
   let toneClasses = "bg-gray-50 border-gray-200";
   if (tone === "blue") toneClasses = "bg-blue-50 border-blue-200";
@@ -271,6 +317,8 @@ function ExtractionGroup(props: ExtractionGroupProps) {
               key={extraction.id}
               extraction={extraction}
               onViewOriginal={onViewOriginal}
+              onRetry={onRetry}
+              retryingId={retryingId}
               showSpecifications={showSpecifications}
             />
           ))}
@@ -283,11 +331,13 @@ function ExtractionGroup(props: ExtractionGroupProps) {
 interface ExtractionCardProps {
   extraction: NixExtractionSummary;
   onViewOriginal: (extraction: NixExtractionSummary) => void;
+  onRetry: (extraction: NixExtractionSummary) => void;
+  retryingId: number | null;
   showSpecifications?: boolean;
 }
 
 function ExtractionCard(props: ExtractionCardProps) {
-  const { extraction, onViewOriginal, showSpecifications } = props;
+  const { extraction, onViewOriginal, onRetry, retryingId, showSpecifications } = props;
   const rawItems = extraction.extractedItems;
   const items = (rawItems ? rawItems : []) as Array<Record<string, unknown>>;
   const rawData = extraction.extractedData;
@@ -295,6 +345,8 @@ function ExtractionCard(props: ExtractionCardProps) {
   const rawSpecs = data.specifications;
   const specifications = (rawSpecs ? rawSpecs : {}) as Record<string, unknown>;
   const specKeys = keys(specifications);
+  const isRetrying = retryingId === extraction.id;
+  const canRetry = Boolean(extraction.storagePath) && !isRetrying;
 
   return (
     <div className="bg-white rounded border border-gray-200 p-3">
@@ -306,13 +358,28 @@ function ExtractionCard(props: ExtractionCardProps) {
             {extraction.storagePath && " • saved to S3"}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => onViewOriginal(extraction)}
-          className="text-xs text-blue-600 hover:text-blue-800 underline whitespace-nowrap"
-        >
-          View original
-        </button>
+        <div className="flex items-center gap-3 whitespace-nowrap">
+          <button
+            type="button"
+            onClick={() => onRetry(extraction)}
+            disabled={!canRetry}
+            className="text-xs text-orange-600 hover:text-orange-800 underline disabled:text-gray-400 disabled:no-underline disabled:cursor-not-allowed"
+            title={
+              extraction.storagePath
+                ? "Re-run extraction against the stored source"
+                : "No stored source — re-upload the file from the upload page"
+            }
+          >
+            {isRetrying ? "Retrying..." : "Retry"}
+          </button>
+          <button
+            type="button"
+            onClick={() => onViewOriginal(extraction)}
+            className="text-xs text-blue-600 hover:text-blue-800 underline"
+          >
+            View original
+          </button>
+        </div>
       </div>
 
       {items.length > 0 && (

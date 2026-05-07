@@ -270,6 +270,30 @@ export class NixController {
     return { url, expiresInSeconds };
   }
 
+  @Post("extraction/:id/retry")
+  @UseGuards(AnyUserAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: "Re-run extraction against the existing S3-stored source document.",
+  })
+  @ApiResponse({ status: 200, description: "Updated extraction", type: NixExtraction })
+  async retryExtraction(
+    @Param("id", ParseIntPipe) id: number,
+    @Req() req: Request,
+  ): Promise<NixExtraction> {
+    const authUser = req["authUser"] as AuthenticatedUser;
+    const extraction = await this.nixService.extraction(id);
+    if (!extraction) {
+      throw new BadRequestException("Extraction not found");
+    }
+    const isOwner = extraction.userId === authUser.userId;
+    const isAdmin = authUser.type === "admin";
+    if (!isOwner && !isAdmin) {
+      throw new ForbiddenException("Not allowed to retry this extraction");
+    }
+    return this.nixService.retryExtraction(id);
+  }
+
   @Get("extraction/:id/clarifications")
   @UseGuards(AnyUserAuthGuard)
   @ApiBearerAuth()
