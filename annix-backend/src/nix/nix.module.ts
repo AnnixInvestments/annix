@@ -32,6 +32,7 @@ import { NixLearning } from "./entities/nix-learning.entity";
 import { NixUserPreference } from "./entities/nix-user-preference.entity";
 import { NixController } from "./nix.controller";
 import { NixService } from "./nix.service";
+import { NixExtractionProfileRegistry, RfqPipingProfileHandler } from "./profiles";
 import { AutoApprovalService } from "./services/auto-approval.service";
 import { CustomFieldService } from "./services/custom-field.service";
 import { DocumentAnnotationService } from "./services/document-annotation.service";
@@ -89,6 +90,8 @@ import { WordExtractorService } from "./services/word-extractor.service";
   providers: [
     DocumentAnnotationService,
     CustomFieldService,
+    NixExtractionProfileRegistry,
+    RfqPipingProfileHandler,
     NixService,
     NixChatService,
     NixChatItemService,
@@ -116,6 +119,7 @@ import { WordExtractorService } from "./services/word-extractor.service";
     AutoApprovalService,
     DocumentAnnotationService,
     CustomFieldService,
+    NixExtractionProfileRegistry,
   ],
 })
 export class NixModule {}

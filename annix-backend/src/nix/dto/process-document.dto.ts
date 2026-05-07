@@ -16,10 +16,33 @@ export class ProcessDocumentDto {
   @IsOptional()
   userId?: number;
 
-  @ApiPropertyOptional({ description: "RFQ ID to associate extraction with" })
+  @ApiPropertyOptional({
+    description: "RFQ ID to associate extraction with (legacy — prefer sourceModule/sourceId)",
+  })
   @IsNumber()
   @IsOptional()
   rfqId?: number;
+
+  @ApiPropertyOptional({
+    description:
+      "Owning module key for polymorphic source linkage (e.g. 'rfq', 'asca'). When 'rfq' is supplied alongside rfqId, sourceId is automatically backfilled.",
+  })
+  @IsString()
+  @IsOptional()
+  sourceModule?: string;
+
+  @ApiPropertyOptional({ description: "Source entity ID within the owning module." })
+  @IsNumber()
+  @IsOptional()
+  sourceId?: number;
+
+  @ApiPropertyOptional({
+    description:
+      "Extraction profile key driving prompt + post-extraction handler (e.g. 'rfq-piping', 'asca-quote-documents'). Resolved via NixExtractionProfileRegistry. Defaults to 'rfq-piping' when an rfqId is supplied without an explicit profile.",
+  })
+  @IsString()
+  @IsOptional()
+  extractionProfile?: string;
 
   @ApiPropertyOptional({ description: "Product/service types to filter for" })
   @IsArray()

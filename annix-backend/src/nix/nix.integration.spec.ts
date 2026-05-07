@@ -14,6 +14,7 @@ import { DocumentType, ExtractionStatus, NixExtraction } from "./entities/nix-ex
 import { NixLearning } from "./entities/nix-learning.entity";
 import { NixUserPreference } from "./entities/nix-user-preference.entity";
 import { NixService } from "./nix.service";
+import { NixExtractionProfileRegistry } from "./profiles";
 import {
   ExcelExtractorService,
   ExtractedItem,
@@ -178,6 +179,14 @@ describe("NixService Integration Tests", () => {
         { provide: AiExtractionService, useValue: mockAiExtractor },
         { provide: SecureDocumentsService, useValue: mockSecureDocumentsService },
         { provide: S3StorageService, useValue: mockS3StorageService },
+        {
+          provide: NixExtractionProfileRegistry,
+          useValue: {
+            handler: jest.fn().mockReturnValue(null),
+            isRegistered: jest.fn().mockReturnValue(false),
+            registeredProfiles: jest.fn().mockReturnValue([]),
+          },
+        },
       ],
     }).compile();
 

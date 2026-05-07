@@ -20,6 +20,7 @@ import {
 import { DocumentType, ExtractionStatus, NixExtraction } from "./entities/nix-extraction.entity";
 import { LearningSource, LearningType, NixLearning } from "./entities/nix-learning.entity";
 import { NixUserPreference } from "./entities/nix-user-preference.entity";
+import { NixExtractionProfileRegistry } from "./profiles";
 import {
   ExcelExtractorService,
   ExtractedItem,
@@ -49,13 +50,30 @@ export class NixService {
     @Inject(forwardRef(() => SecureDocumentsService))
     private readonly secureDocumentsService: SecureDocumentsService,
     private readonly s3StorageService: S3StorageService,
+    private readonly profileRegistry: NixExtractionProfileRegistry,
   ) {}
+
+  private resolveSourceLinkage(dto: ProcessDocumentDto): {
+    sourceModule?: string;
+    sourceId?: number;
+    extractionProfile?: string;
+  } {
+    const sourceModule = dto.sourceModule ? dto.sourceModule : dto.rfqId ? "rfq" : undefined;
+    const sourceId = dto.sourceId ? dto.sourceId : dto.rfqId;
+    const extractionProfile = dto.extractionProfile
+      ? dto.extractionProfile
+      : sourceModule === "rfq"
+        ? "rfq-piping"
+        : undefined;
+    return { sourceModule, sourceId, extractionProfile };
+  }
 
   async processDocument(dto: ProcessDocumentDto): Promise<ProcessDocumentResponseDto> {
     const startTime = Date.now();
     this.logger.log(`Processing document: ${dto.documentPath} (${dto.documentName})`);
 
     const documentType = this.detectDocumentType(dto.documentName || dto.documentPath);
+    const { sourceModule, sourceId, extractionProfile } = this.resolveSourceLinkage(dto);
 
     const extraction = this.extractionRepo.create({
       documentName: dto.documentName || dto.documentPath.split("/").pop() || "unknown",
@@ -64,6 +82,9 @@ export class NixService {
       status: ExtractionStatus.PROCESSING,
       userId: dto.userId,
       rfqId: dto.rfqId,
+      sourceModule,
+      sourceId,
+      extractionProfile,
     });
 
     await this.extractionRepo.save(extraction);
@@ -111,6 +132,40 @@ export class NixService {
         clarifications.length > 0
           ? ExtractionStatus.NEEDS_CLARIFICATION
           : ExtractionStatus.COMPLETED;
+
+      if (extractionProfile) {
+        const handler = this.profileRegistry.handler(extractionProfile);
+        if (handler) {
+          try {
+            const profileResult = await handler.postExtract(extraction, {
+              documentName: extraction.documentName,
+              documentPath: extraction.documentPath,
+              extractedItems: relevantItems,
+              specificationCells,
+              sourceModule,
+              sourceId,
+              userId: dto.userId,
+              productTypes: dto.productTypes,
+            });
+            if (profileResult.metadata) {
+              extraction.extractedData = {
+                ...(extraction.extractedData || {}),
+                profileMetadata: profileResult.metadata,
+              };
+            }
+          } catch (handlerError) {
+            this.logger.error(
+              `Extraction profile "${extractionProfile}" postExtract threw: ${
+                handlerError instanceof Error ? handlerError.message : "unknown"
+              }`,
+            );
+          }
+        } else {
+          this.logger.warn(
+            `Extraction profile "${extractionProfile}" requested but no handler registered; skipping post-extract.`,
+          );
+        }
+      }
 
       await this.extractionRepo.save(extraction);
 

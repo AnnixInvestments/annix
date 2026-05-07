@@ -116,6 +116,29 @@ export class NixExtraction {
   @Column({ name: "rfq_id", nullable: true })
   rfqId?: number;
 
+  @ApiProperty({
+    description:
+      "Owning module key for polymorphic source linkage (e.g. 'rfq', 'asca'). Replaces direct rfq_id FK going forward.",
+    required: false,
+  })
+  @Column({ name: "source_module", type: "varchar", length: 64, nullable: true })
+  sourceModule?: string;
+
+  @ApiProperty({
+    description: "Source entity ID within the owning module (e.g. RFQ ID, ASCA quote ID).",
+    required: false,
+  })
+  @Column({ name: "source_id", type: "int", nullable: true })
+  sourceId?: number;
+
+  @ApiProperty({
+    description:
+      "Extraction profile key driving prompt + post-extraction handler (e.g. 'rfq-piping', 'asca-quote-documents'). Resolved against NixExtractionProfileRegistry.",
+    required: false,
+  })
+  @Column({ name: "extraction_profile", type: "varchar", length: 64, nullable: true })
+  extractionProfile?: string;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

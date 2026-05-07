@@ -100,6 +100,9 @@ export class NixController {
         file: { type: "string", format: "binary" },
         userId: { type: "number" },
         rfqId: { type: "number" },
+        sourceModule: { type: "string" },
+        sourceId: { type: "number" },
+        extractionProfile: { type: "string" },
         productTypes: { type: "array", items: { type: "string" } },
       },
     },
@@ -112,6 +115,9 @@ export class NixController {
     @UploadedFile() file: Express.Multer.File,
     @Body("userId") userId?: string,
     @Body("rfqId") rfqId?: string,
+    @Body("sourceModule") sourceModule?: string,
+    @Body("sourceId") sourceId?: string,
+    @Body("extractionProfile") extractionProfile?: string,
     @Body("productTypes") productTypes?: string,
   ): Promise<ProcessDocumentResponseDto> {
     if (!file) {
@@ -132,6 +138,9 @@ export class NixController {
       documentName: file.originalname,
       userId: userId ? parseInt(userId, 10) : undefined,
       rfqId: rfqId ? parseInt(rfqId, 10) : undefined,
+      sourceModule: sourceModule || undefined,
+      sourceId: sourceId ? parseInt(sourceId, 10) : undefined,
+      extractionProfile: extractionProfile || undefined,
       productTypes: parsedProductTypes,
     };
 

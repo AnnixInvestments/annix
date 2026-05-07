@@ -14,6 +14,7 @@ import { DocumentType, ExtractionStatus, NixExtraction } from "./entities/nix-ex
 import { LearningSource, LearningType, NixLearning } from "./entities/nix-learning.entity";
 import { NixUserPreference } from "./entities/nix-user-preference.entity";
 import { NixService } from "./nix.service";
+import { NixExtractionProfileRegistry } from "./profiles";
 import { ExcelExtractorService } from "./services/excel-extractor.service";
 import { PdfExtractorService } from "./services/pdf-extractor.service";
 import { WordExtractorService } from "./services/word-extractor.service";
@@ -136,6 +137,14 @@ describe("NixService", () => {
         { provide: AiExtractionService, useValue: mockAiExtractor },
         { provide: SecureDocumentsService, useValue: mockSecureDocuments },
         { provide: S3StorageService, useValue: mockS3Storage },
+        {
+          provide: NixExtractionProfileRegistry,
+          useValue: {
+            handler: jest.fn().mockReturnValue(null),
+            isRegistered: jest.fn().mockReturnValue(false),
+            registeredProfiles: jest.fn().mockReturnValue([]),
+          },
+        },
       ],
     }).compile();
 
