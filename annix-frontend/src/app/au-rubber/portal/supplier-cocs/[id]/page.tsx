@@ -213,7 +213,7 @@ export default function SupplierCocDetailPage() {
       setIsApproving(true);
       await auRubberApiClient.approveSupplierCoc(cocId);
       showToast("CoC approved", "success");
-      router.push("/au-rubber/portal/supplier-cocs");
+      router.replace("/au-rubber/portal/supplier-cocs");
     } catch (err) {
       toastError(showToast, err, "Failed to approve CoC");
       setIsApproving(false);
