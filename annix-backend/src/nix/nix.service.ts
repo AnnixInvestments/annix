@@ -242,6 +242,7 @@ export class NixService {
             dto.documentName,
             dto.productTypes,
             profileSystemPrompt,
+            dto.documentRole,
           ));
           break;
         case DocumentType.EXCEL:
@@ -490,6 +491,7 @@ export class NixService {
     documentName?: string,
     productTypes?: string[],
     systemPrompt?: string,
+    documentRole?: DocumentRole,
   ): Promise<{
     extractedData: Record<string, any>;
     extractedItems: Array<any>;
@@ -530,12 +532,18 @@ export class NixService {
 
         // Engineering drawings are typically image-based — pdf-parse returns
         // little to no text and the text-only Gemini call extracts nothing.
-        // When we hit that case (very little text OR zero items returned),
-        // retry with the multimodal vision API (chatWithImage with PDF media
-        // type) so Gemini reads the rendered pages directly. We keep the
-        // text-first path because it's faster and cheaper when text IS
-        // available, falling back to vision only when needed.
-        const visionWorthRetrying = pdfText.trim().length < 200 || aiResult.items.length === 0;
+        // When we hit that case, retry with the multimodal vision API
+        // (chatWithImage with PDF media type) so Gemini reads the rendered
+        // pages directly. Text-first stays as the fast path when text is
+        // available; vision fallback only triggers when we need it.
+        //
+        // For specifications role, items=[] is the CORRECT answer (clauses
+        // go under specifications, not items) — do NOT trigger vision retry
+        // there, it's a 60-90s waste per spec.
+        const isImageOnlyPdf = pdfText.trim().length < 200;
+        const drawingWithNoItems =
+          documentRole === DocumentRole.DRAWING && aiResult.items.length === 0;
+        const visionWorthRetrying = isImageOnlyPdf || drawingWithNoItems;
         if (visionWorthRetrying) {
           this.logger.log(
             `Text extraction yielded ${pdfText.trim().length} chars / ${aiResult.items.length} items — retrying via vision (chatWithImage, application/pdf).`,
