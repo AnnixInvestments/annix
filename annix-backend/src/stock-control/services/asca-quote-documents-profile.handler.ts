@@ -77,8 +77,8 @@ CRITICAL — schema rules (must follow exactly):
    - flangeConfig (string — verbatim drawing wording, e.g. "P.E.", "F.B.E. F/F", "F/PE")
    - liningType (string or null — internal lining material, e.g. "Linatex Linard 60", or null if none)
    - liningThicknessMm (number or null)
-   - coatingSystem (string — external paint system code only, e.g. "R1", "R2a")
-   - materialClass (string — material class code only, e.g. "SC1", "1000/3")
+   - coatingSystem (string or null — external paint system code, e.g. "R1", "R2a")
+   - materialClass (string or null — material class code, e.g. "SC1", "1000/3")
    - banding (number — count of identification bands shown per item)
    - deviations (array of strings — handwritten/red-pen/coloured-pen client deviations from the printed spec; surface SEPARATELY here, do NOT silently merge into the printed values)
    - drawingReference (string)
@@ -86,6 +86,14 @@ CRITICAL — schema rules (must follow exactly):
 3. EVERY item MUST have description, itemType, and itemNumber populated. Never omit description.
 4. Use null (not empty string, not omitted) when a value is genuinely unknown.
 5. Do NOT define what the codes mean (R1, R2a, SC1 etc.) — just capture them. The spec extraction step resolves the codes.
+
+CRITICAL — coating, lining and class assignment rules (the model has been getting these wrong):
+- ONLY assign coatingSystem / liningType / materialClass when the drawing EXPLICITLY tags THIS specific item or spool mark with that code, either via a per-item column, an arrow leader to the item, or a "this mark gets X" annotation.
+- Do NOT propagate a code from one mark to another mark just because they appear on the same drawing. Each mark is independent.
+- Plain End (P.E.) pipes are very often UNCOATED. If the drawing does NOT explicitly tag a P.E. item with a coating code, set coatingSystem = null. Never default to "R1" or any other code.
+- Same rule for lining: if the drawing doesn't show internal lining for this mark, liningType = null. Don't carry over LINATEX from a different mark.
+- If a single drawing note says "applies to all marks" or "all items receive R1", THAT is grounds for assigning the code to every mark. Without such a blanket statement, the code only applies where the drawing explicitly marks it.
+- When uncertain, prefer null and add a deviations entry like "uncertain whether mark -03 receives R1 — drawing does not show explicit tag" so the user can confirm. Never guess in the field itself.
 
 Also extract drawing-level metadata: project, customer, drawing number, sheet of, revision, date, drawn-by.
 
@@ -162,19 +170,49 @@ CRITICAL — items array rules for specification documents:
 - A single specification document with 30 clauses should produce 30 entries under 'specifications', not 30 'items'.
 - If you are unsure whether the document has a real BOM, return items=[] — the cross-linker will work fine without it.
 
-Specifications shape — every clause-level fact goes here, keyed by its code or short title:
+CRITICAL — specifications object rules (this is what the quoter actually needs from a spec document):
+- The 'specifications' object MUST be populated for every spec document. Returning '{}' on a real specification means the document was wasted.
+- Use the clause code (R1, R2a, SC1, 1000/3, 4000/3, etc.) or a short, stable identifier as the KEY — NOT the full sentence.
+- For EVERY referenced code in the drawing pack, attempt to find its definition in this document. If a code is defined here, write it as a key with the full breakdown.
+- If a code from the drawing pack is NOT found in this document, do NOT add a stub for it — only document codes this spec actually defines.
+- For each spec entry, populate 'details' with structured sub-fields a quoter can read directly: e.g. for a paint system: { "primer": "...", "intermediate": "...", "topcoat": "...", "dftMicrons": ..., "surfacePrep": "Sa 2.5" }.
+- 'applicableScope' = "all" if the clause applies to every mark on the drawings; "items" if it applies only to specific marks (then list them in 'applicableMarks').
+
+Worked example — a paint-systems specification document might produce:
+{
+  "items": [],
+  "specifications": {
+    "R1": {
+      "description": "Standard external paint system for non-immersed steelwork",
+      "details": { "primer": "Zinc-rich epoxy 75µm", "intermediate": "MIO epoxy 100µm", "topcoat": "Polyurethane 50µm", "totalDftMicrons": 225, "surfacePrep": "Sa 2.5" },
+      "applicableScope": "all"
+    },
+    "R2a": {
+      "description": "Heavy-duty external paint system for splash zones",
+      "details": { "primer": "Zinc-rich epoxy 75µm", "intermediate": "MIO epoxy 150µm", "topcoat": "Polyurethane 75µm", "totalDftMicrons": 300, "surfacePrep": "Sa 2.5" },
+      "applicableScope": "items",
+      "applicableMarks": ["-01"]
+    },
+    "SC1": {
+      "description": "Carbon steel material class for low-pressure water service",
+      "details": { "pipeStandard": "SANS 719 Gr.B", "fittingStandard": "ASTM A234 WPB", "flangeStandard": "BS EN 1092 PN10", "rating": "PN10" },
+      "applicableScope": "all"
+    }
+  },
+  "metadata": { "documentTitle": "...", "revision": "...", "date": "..." }
+}
 
 Respond ONLY with valid JSON of the shape:
 {
   "items": [],
   "specifications": {
-    "<code or short title>": { "description": "...", "details": {...}, "applicableScope": "all" | "items", "applicableMarks": [...], "applicableItemTypes": [...] },
+    "<code or short identifier>": { "description": "...", "details": { ... structured fields ... }, "applicableScope": "all" | "items", "applicableMarks": [...], "applicableItemTypes": [...] },
     ...
   },
   "metadata": {...}
 }
 
-Mark any uncertain value with confidence < 0.7. Reminder: items=[] is the correct default for a specification document — only deviate if you find a real BOM.`;
+Mark any uncertain value with confidence < 0.7. Both rules are equally important: items=[] is the correct default for a spec, AND specifications={...} must be populated with the clauses you find. An empty specifications object on a real specification document is a bug.`;
 }
 
 /**
