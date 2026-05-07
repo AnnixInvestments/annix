@@ -95,7 +95,8 @@ const coatDefaults = (
     return { product: "", batchNumber: "", minUm: "", maxUm: "" };
   }
   const extCoats = coatingAnalysis.coats.filter((c) => c.area === "external");
-  const coat = extCoats.find((c) => c.coatRole === coatType) || extCoats[0] || null;
+  const firstExtCoat = extCoats[0];
+  const coat = extCoats.find((c) => c.coatRole === coatType) || firstExtCoat || null;
   if (coat) {
     const batchByProduct = matchBatchByProduct(batchRecords, coat.product);
     const batchNumber =

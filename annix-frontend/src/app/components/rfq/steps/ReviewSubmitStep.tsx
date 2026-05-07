@@ -99,7 +99,8 @@ export default function ReviewSubmitStep(props: {
 
     allItems.forEach((entry: any) => {
       const rawCalculatedPipeCount = entry.calculation?.calculatedPipeCount;
-      const qty = rawCalculatedPipeCount || entry.specs?.quantityValue || 1;
+      const specsQuantityValue = entry.specs?.quantityValue;
+      const qty = rawCalculatedPipeCount || specsQuantityValue || 1;
 
       if (entry.itemType === "bend") {
         // Bend surface area calculation
@@ -144,7 +145,8 @@ export default function ReviewSubmitStep(props: {
         const rawBranchNominalDiameterMm = entry.specs?.branchNominalDiameterMm;
         const branchNb = rawBranchNominalDiameterMm || nb;
         const rawWallThicknessMm2 = entry.specs?.wallThicknessMm;
-        const wt = rawWallThicknessMm2 || entry.calculation?.wallThicknessMm || 6;
+        const calcWallThicknessMm = entry.calculation?.wallThicknessMm;
+        const wt = rawWallThicknessMm2 || calcWallThicknessMm || 6;
         const rawPipeLengthAMm2 = entry.specs?.pipeLengthAMm;
         const lengthA = rawPipeLengthAMm2 || 0;
         const rawPipeLengthBMm2 = entry.specs?.pipeLengthBMm;
@@ -172,7 +174,8 @@ export default function ReviewSubmitStep(props: {
 
         if (nb && (lengthA || lengthB || teeHeight)) {
           const rawOutsideDiameterMm = entry.calculation?.outsideDiameterMm;
-          const mainOd = rawOutsideDiameterMm || nbToOdMap[nb] || nb * 1.1;
+          const nbOd = nbToOdMap[nb];
+          const mainOd = rawOutsideDiameterMm || nbOd || nb * 1.1;
           const rawBranchNb = nbToOdMap[branchNb];
           const branchOd = rawBranchNb || branchNb * 1.1;
           const mainId = mainOd - 2 * wt;

@@ -45,7 +45,8 @@ function StatusBadgeComponent(props: StatusBadgeProps) {
   const className = rawClassName || "";
   const badgeClass = useMemo(() => {
     const statusLower = status.toLowerCase();
-    const resolvedVariant = variant ?? STATUS_COLORS[statusLower] ?? "neutral";
+    const colorVariant = STATUS_COLORS[statusLower];
+    const resolvedVariant = variant ?? colorVariant ?? "neutral";
     return VARIANT_CLASSES[resolvedVariant];
   }, [status, variant]);
 

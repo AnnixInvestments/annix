@@ -135,7 +135,8 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
 
   const resolvedOutcomes = useCallback((step: WorkflowStepConfig): StepOutcome[] | null => {
     const stepOutcomes = step.stepOutcomes;
-    return stepOutcomes || DEFAULT_STEP_OUTCOMES[step.key] || null;
+    const defaultOutcomes = DEFAULT_STEP_OUTCOMES[step.key];
+    return stepOutcomes || defaultOutcomes || null;
   }, []);
 
   const allSteps = useMemo(

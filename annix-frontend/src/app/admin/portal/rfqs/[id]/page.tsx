@@ -441,7 +441,8 @@ function BendSpecs({ specs, calculation, weightPerItem, globalSpecs }: any) {
   })();
   const od = (() => {
     const rawOutsideDiameterMm = calculation.outsideDiameterMm;
-    return rawOutsideDiameterMm || nbToOdMap[nb] || nb * 1.05;
+    const nbOd = nbToOdMap[nb];
+    return rawOutsideDiameterMm || nbOd || nb * 1.05;
   })();
   const wt = (() => {
     const rawWallThicknessMm = specs.wallThicknessMm;
@@ -555,7 +556,8 @@ function FittingSpecs({ specs, calculation, weightPerItem, globalSpecs }: any) {
   })();
   const od = (() => {
     const rawOutsideDiameterMm = calculation.outsideDiameterMm;
-    return rawOutsideDiameterMm || nbToOdMap[nb] || nb * 1.05;
+    const nbOd = nbToOdMap[nb];
+    return rawOutsideDiameterMm || nbOd || nb * 1.05;
   })();
   const wt = (() => {
     const rawWallThicknessMm = specs.wallThicknessMm;
@@ -653,7 +655,8 @@ function PipeSpecs({ specs, calculation, weightPerItem, globalSpecs }: any) {
   })();
   const od = (() => {
     const rawOutsideDiameterMm = calculation.outsideDiameterMm;
-    return rawOutsideDiameterMm || nbToOdMap[nb] || nb * 1.05;
+    const nbOd = nbToOdMap[nb];
+    return rawOutsideDiameterMm || nbOd || nb * 1.05;
   })();
   const wt = (() => {
     const rawWallThicknessMm = specs.wallThicknessMm;

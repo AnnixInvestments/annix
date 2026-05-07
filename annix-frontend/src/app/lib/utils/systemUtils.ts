@@ -67,7 +67,8 @@ export function generateClientItemNumber(customerName: string, itemIndex: number
       .split("")
       .filter((char) => /[BCDFGHJKLMNPQRSTVWXYZ]/.test(char) && char !== firstWord[0]);
     const rawItem0 = consonants[0];
-    prefix = words[0][0] + words[1][0] + (rawItem0 || firstWord[1] || "X");
+    const firstWordSecondChar = firstWord[1];
+    prefix = words[0][0] + words[1][0] + (rawItem0 || firstWordSecondChar || "X");
   } else {
     const rawItem02 = words[0];
     // Single word - take first 3 consonants, fallback to first 3 letters

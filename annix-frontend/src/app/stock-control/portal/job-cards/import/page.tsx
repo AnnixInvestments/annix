@@ -568,8 +568,8 @@ function savedMappingToRegions(
 
   const regions: Record<string, CellRegion | null> = {
     jobNumber: toRegion(config.jobNumber),
-    jcNumber: toRegion(config.jcNumber ?? null),
-    pageNumber: toRegion(config.pageNumber ?? null),
+    jcNumber: toRegion(configJcNumber ?? null),
+    pageNumber: toRegion(configPageNumber ?? null),
     jobName: toRegion(config.jobName),
     customerName: toRegion(config.customerName),
     description: toRegion(config.description),
@@ -2075,10 +2075,10 @@ export default function JobCardImportPage() {
                               {rowPageNumber || "-"}
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                              {row.jcNumber || "-"}
+                              {rowJcNumber || "-"}
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                              {row.pageNumber || "-"}
+                              {rowPageNumber || "-"}
                             </td>
                             <td
                               className={`px-4 py-3 whitespace-nowrap text-sm ${!rowJobName ? "text-red-500 font-medium" : "text-gray-900"}`}
