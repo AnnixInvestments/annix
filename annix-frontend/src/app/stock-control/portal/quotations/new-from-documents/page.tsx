@@ -185,17 +185,34 @@ export default function QuoteFromDocumentsPage() {
       />
 
       {reviewReady && session && (
-        <div className="bg-white border border-gray-200 rounded-lg p-3">
-          <h3 className="text-sm font-semibold text-gray-900 mb-2">Session #{session.id} ready</h3>
-          <p className="text-xs text-gray-600 mb-2">
-            Continue to the draft review page to see what Nix found and build the quote.
-          </p>
+        <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border-2 border-emerald-300 rounded-lg p-4 flex items-center justify-between gap-4 shadow-sm">
+          <div>
+            <h3 className="text-base font-bold text-gray-900">Session #{session.id} ready</h3>
+            <p className="text-sm text-gray-700 mt-1">
+              Nix has finished reading. Continue to the draft review page to see the extracted items
+              and build the quote.
+            </p>
+          </div>
           <button
             type="button"
             onClick={() => router.push(`/stock-control/portal/quotations/drafts/${session.id}`)}
-            className="text-sm text-blue-600 hover:text-blue-800 underline"
+            className="inline-flex items-center gap-2 px-5 py-3 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-lg shadow-md hover:shadow-lg transition-all whitespace-nowrap"
           >
-            Continue to draft review →
+            Continue to draft review
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M13 7l5 5m0 0l-5 5m5-5H6"
+              />
+            </svg>
           </button>
         </div>
       )}
