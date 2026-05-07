@@ -8,6 +8,12 @@ import {
   TextContent,
 } from "./claude-chat.provider";
 
+export interface ChatGenerationOptions {
+  temperature?: number;
+  maxOutputTokens?: number;
+  responseFormat?: "json" | "text";
+}
+
 @Injectable()
 export class GeminiChatProvider {
   readonly name = "gemini-chat";
@@ -148,6 +154,7 @@ export class GeminiChatProvider {
   async chat(
     messages: ChatMessage[],
     systemPrompt?: string,
+    options?: ChatGenerationOptions,
   ): Promise<{ content: string; tokensUsed?: number }> {
     if (!this.apiKey) {
       throw new Error("Gemini API key not configured");
@@ -160,6 +167,14 @@ export class GeminiChatProvider {
         parts: this.toGeminiParts(msg.content),
       }));
 
+    const generationConfig: Record<string, unknown> = {
+      temperature: options?.temperature ?? this.temperature,
+      maxOutputTokens: options?.maxOutputTokens ?? this.maxTokens,
+    };
+    if (options?.responseFormat === "json") {
+      generationConfig.responseMimeType = "application/json";
+    }
+
     const response = await fetch(
       `${this.baseUrl}/models/${this.model}:generateContent?key=${this.apiKey}`,
       {
@@ -168,10 +183,7 @@ export class GeminiChatProvider {
         body: JSON.stringify({
           systemInstruction: systemPrompt ? { parts: [{ text: systemPrompt }] } : undefined,
           contents: geminiContents,
-          generationConfig: {
-            temperature: this.temperature,
-            maxOutputTokens: this.maxTokens,
-          },
+          generationConfig,
         }),
       },
     );
@@ -194,6 +206,7 @@ export class GeminiChatProvider {
     mediaType: "image/jpeg" | "image/png" | "image/gif" | "image/webp" | "application/pdf",
     prompt: string,
     systemPrompt?: string,
+    options?: ChatGenerationOptions,
   ): Promise<{ content: string; tokensUsed?: number }> {
     const fileContent: ImageContent | DocumentContent =
       mediaType === "application/pdf"
@@ -225,7 +238,7 @@ export class GeminiChatProvider {
       ],
     };
 
-    return this.chat([message], systemPrompt);
+    return this.chat([message], systemPrompt, options);
   }
 
   private toGeminiParts(

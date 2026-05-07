@@ -619,6 +619,47 @@ export class NixService {
   }
 
   /**
+   * Parse a JSON extraction response defensively. With responseFormat: 'json'
+   * the model SHOULD return a clean JSON document, but vision responses can
+   * still get truncated when an item-rich drawing approaches the output cap.
+   * If JSON.parse fails we fall back to truncating at the last comma boundary
+   * we can trust and re-trying — a partial result with N items beats throwing
+   * the whole extraction away.
+   */
+  private parseExtractionJson(raw: string): Record<string, unknown> | null {
+    if (!raw || raw.trim().length === 0) return null;
+    const cleaned = raw
+      .replace(/```json\s*/g, "")
+      .replace(/```\s*/g, "")
+      .trim();
+    try {
+      return JSON.parse(cleaned);
+    } catch {
+      // truncated response — find the last `}` we can parse to and try
+      const lastBrace = cleaned.lastIndexOf("}");
+      if (lastBrace > 0) {
+        const trimmed = `${cleaned.slice(0, lastBrace + 1)}`;
+        try {
+          return JSON.parse(trimmed);
+        } catch {
+          // still bad — try slicing to the last closed item in `items: [...]`
+          const itemsClose = cleaned.lastIndexOf("]");
+          if (itemsClose > 0) {
+            const itemsOnly = `${cleaned.slice(0, itemsClose + 1)}}`;
+            try {
+              return JSON.parse(itemsOnly);
+            } catch {
+              return null;
+            }
+          }
+          return null;
+        }
+      }
+      return null;
+    }
+  }
+
+  /**
    * Vision-based PDF extraction. Sends the raw PDF to Gemini's multimodal
    * API (chatWithImage with media_type "application/pdf") so it OCRs the
    * rendered pages directly — needed for image-based engineering drawings
@@ -647,13 +688,9 @@ export class NixService {
         "application/pdf",
         userPrompt,
         systemPrompt,
+        { temperature: 0.1, maxOutputTokens: 32_768, responseFormat: "json" },
       );
-      const cleaned = result.content
-        .replace(/```json\s*/g, "")
-        .replace(/```\s*/g, "")
-        .trim();
-      const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
-      const parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
+      const parsed = this.parseExtractionJson(result.content);
       if (!parsed) {
         this.logger.warn(
           `Vision extraction returned no parseable JSON for ${documentName}; raw length=${result.content.length}`,

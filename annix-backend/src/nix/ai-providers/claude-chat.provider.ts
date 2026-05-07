@@ -204,6 +204,7 @@ export class ClaudeChatProvider {
   async chat(
     messages: ChatMessage[],
     systemPrompt?: string,
+    _options?: { temperature?: number; maxOutputTokens?: number; responseFormat?: "json" | "text" },
   ): Promise<{ content: string; tokensUsed?: number }> {
     const chunks: string[] = [];
     let tokensUsed: number | undefined;

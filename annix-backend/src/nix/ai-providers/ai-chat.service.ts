@@ -6,8 +6,10 @@ import {
   ImageContent,
   StreamChunk,
 } from "./claude-chat.provider";
-import { GeminiChatProvider } from "./gemini-chat.provider";
+import { type ChatGenerationOptions, GeminiChatProvider } from "./gemini-chat.provider";
 import { withRetry } from "./retry";
+
+export type { ChatGenerationOptions };
 
 export type AiChatProviderType = "gemini" | "auto";
 
@@ -18,6 +20,7 @@ interface ChatProvider {
   chat(
     messages: ChatMessage[],
     systemPrompt?: string,
+    options?: ChatGenerationOptions,
   ): Promise<{ content: string; tokensUsed?: number }>;
 }
 
@@ -93,6 +96,7 @@ export class AiChatService implements OnModuleInit {
     messages: ChatMessage[],
     systemPrompt?: string,
     providerOverride?: AiChatProviderType,
+    options?: ChatGenerationOptions,
   ): Promise<{ content: string; providerUsed: string; tokensUsed?: number }> {
     const providerToUse = providerOverride || this.preferredProvider;
     const { provider, usedFallback } = await this.selectProviderWithFallback(providerToUse);
@@ -110,7 +114,7 @@ export class AiChatService implements OnModuleInit {
     this.logger.log(`Using chat provider: ${provider.name}`);
 
     try {
-      const result = await this.chatWithRetry(provider, messages, systemPrompt);
+      const result = await this.chatWithRetry(provider, messages, systemPrompt, options);
       return {
         content: result.content,
         providerUsed: provider.name,
@@ -123,7 +127,12 @@ export class AiChatService implements OnModuleInit {
       if (fallbackProvider) {
         this.logger.log(`Attempting fallback to: ${fallbackProvider.name}`);
         try {
-          const result = await this.chatWithRetry(fallbackProvider, messages, systemPrompt);
+          const result = await this.chatWithRetry(
+            fallbackProvider,
+            messages,
+            systemPrompt,
+            options,
+          );
           return {
             content: result.content,
             providerUsed: fallbackProvider.name,
@@ -146,6 +155,7 @@ export class AiChatService implements OnModuleInit {
     mediaType: "image/jpeg" | "image/png" | "image/gif" | "image/webp" | "application/pdf",
     prompt: string,
     systemPrompt?: string,
+    options?: ChatGenerationOptions,
   ): Promise<{ content: string; providerUsed: string; tokensUsed?: number }> {
     const fileContent: ImageContent | DocumentContent =
       mediaType === "application/pdf"
@@ -177,7 +187,7 @@ export class AiChatService implements OnModuleInit {
       ],
     };
 
-    return this.chat([message], systemPrompt);
+    return this.chat([message], systemPrompt, undefined, options);
   }
 
   async *streamChat(
@@ -290,7 +300,12 @@ export class AiChatService implements OnModuleInit {
     provider: ChatProvider,
     messages: ChatMessage[],
     systemPrompt?: string,
+    options?: ChatGenerationOptions,
   ): Promise<{ content: string; tokensUsed?: number }> {
-    return withRetry(() => provider.chat(messages, systemPrompt), provider.name, this.logger);
+    return withRetry(
+      () => provider.chat(messages, systemPrompt, options),
+      provider.name,
+      this.logger,
+    );
   }
 }
