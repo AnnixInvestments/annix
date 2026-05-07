@@ -4,6 +4,42 @@ import { isObject } from "es-toolkit/compat";
 import { log } from "@/app/lib/logger";
 import { browserBaseUrl } from "@/lib/api-config";
 
+/**
+ * Resolves the Authorization header for Nix API calls by trying the
+ * known per-portal localStorage token keys in priority order. Same
+ * fallback list as the React-Query hook layer (`nixAuthHeaders` in
+ * `lib/query/hooks/nix/useNix.ts`) so any portal that can authenticate
+ * the user can also call Nix endpoints.
+ *
+ * Returns an empty object during SSR or when no token is present, so
+ * the caller can spread it into a headers object unconditionally.
+ *
+ * Several legacy nixApi.* methods still inline `localStorage.getItem("token")`
+ * — those work for any portal that happens to put a token under "token"
+ * but break for portals that don't (e.g. Stock Control stores it under
+ * "stockControlAccessToken"). New nixApi methods use this helper, and
+ * the legacy ones are candidates to migrate.
+ */
+const NIX_TOKEN_KEYS = [
+  "stockControlAccessToken",
+  "customerAccessToken",
+  "supplierAccessToken",
+  "adminAccessToken",
+  "annixRepAccessToken",
+  "authToken",
+  "token",
+] as const;
+
+function resolveNixAuthHeaders(): Record<string, string> {
+  // eslint-disable-next-line no-restricted-syntax -- SSR guard
+  if (typeof window === "undefined") return {};
+  for (const key of NIX_TOKEN_KEYS) {
+    const value = localStorage.getItem(key);
+    if (value) return { Authorization: `Bearer ${value}` };
+  }
+  return {};
+}
+
 export interface NixExtractedPlateBomRow {
   mark?: string;
   description?: string;
@@ -324,13 +360,11 @@ export const nixApi = {
     extractionId: number,
   ): Promise<{ url: string | null; expiresInSeconds: number }> => {
     const baseUrl = browserBaseUrl();
-    // eslint-disable-next-line no-restricted-syntax -- SSR guard
-    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
     const response = await fetch(`${baseUrl}/nix/extraction/${extractionId}/document-url`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...resolveNixAuthHeaders(),
       },
     });
     if (!response.ok) {

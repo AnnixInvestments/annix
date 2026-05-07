@@ -14,6 +14,7 @@ const TOKEN_KEY_MAP: Record<PortalContext, string> = {
 };
 
 const TOKEN_FALLBACK_ORDER: string[] = [
+  "stockControlAccessToken",
   "customerAccessToken",
   "supplierAccessToken",
   "adminAccessToken",

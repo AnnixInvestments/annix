@@ -26,12 +26,25 @@ export async function POST(request: NextRequest) {
 
     const backendFormData = new FormData();
     if (file) backendFormData.append("file", file);
-    const userId = formData.get("userId");
-    if (userId) backendFormData.append("userId", userId as string);
-    const rfqId = formData.get("rfqId");
-    if (rfqId) backendFormData.append("rfqId", rfqId as string);
-    const productTypes = formData.get("productTypes");
-    if (productTypes) backendFormData.append("productTypes", productTypes as string);
+    // Forward every multipart field the backend's /nix/upload accepts.
+    // Adding a new field on the backend means appending it here too —
+    // unforwarded fields are silently dropped by this proxy.
+    const FORWARDED_FIELDS = [
+      "userId",
+      "rfqId",
+      "sourceModule",
+      "sourceId",
+      "extractionProfile",
+      "documentRole",
+      "sessionId",
+      "productTypes",
+    ] as const;
+    for (const field of FORWARDED_FIELDS) {
+      const value = formData.get(field);
+      if (value !== null && value !== undefined) {
+        backendFormData.append(field, value as string);
+      }
+    }
 
     log.info("[API Route] Forwarding to backend:", `${BACKEND_URL}/nix/upload`);
     const response = await fetch(`${BACKEND_URL}/nix/upload`, {
