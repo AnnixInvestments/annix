@@ -124,19 +124,27 @@ Capture clause-level facts a quoter cares about:
 - warranty / guarantee periods on coatings or lining
 - explicitly listed exclusions ("not in supplier scope")
 
-DO NOT try to extract line items from a specification document — they are mostly clauses, not items. If the document does happen to contain a BOM table, capture it under 'items' so it isn't lost, but expect 'specifications' to be where most of the value lives.
+CRITICAL — items array rules for specification documents:
+- The 'items' array MUST be empty ([]) UNLESS the document contains an explicit Bill of Materials TABLE with quantity columns and identifiable line items.
+- Do NOT treat individual clauses, sentences, or paragraphs as items.
+- Do NOT assign synthetic mark numbers (PDF-1, PDF-2 etc.) to clauses — that is wrong.
+- Do NOT fragment a clause into multiple items at sentence boundaries.
+- A single specification document with 30 clauses should produce 30 entries under 'specifications', not 30 'items'.
+- If you are unsure whether the document has a real BOM, return items=[] — the cross-linker will work fine without it.
+
+Specifications shape — every clause-level fact goes here, keyed by its code or short title:
 
 Respond ONLY with valid JSON of the shape:
 {
-  "items": [...],
+  "items": [],
   "specifications": {
-    "<code>": { "description": "...", "details": {...}, "applicableScope": "all" | "items", "applicableMarks": [...], "applicableItemTypes": [...] },
+    "<code or short title>": { "description": "...", "details": {...}, "applicableScope": "all" | "items", "applicableMarks": [...], "applicableItemTypes": [...] },
     ...
   },
   "metadata": {...}
 }
 
-Mark any uncertain value with confidence < 0.7.`;
+Mark any uncertain value with confidence < 0.7. Reminder: items=[] is the correct default for a specification document — only deviate if you find a real BOM.`;
 }
 
 /**

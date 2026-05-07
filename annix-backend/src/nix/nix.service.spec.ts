@@ -3,6 +3,7 @@ import { getRepositoryToken } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { SecureDocumentsService } from "../secure-documents/secure-documents.service";
 import { S3StorageService } from "../storage/s3-storage.service";
+import { AiChatService } from "./ai-providers/ai-chat.service";
 import { AiExtractionService } from "./ai-providers/ai-extraction.service";
 import {
   ClarificationStatus,
@@ -115,6 +116,11 @@ describe("NixService", () => {
       extractWithAi: jest.fn(),
     };
 
+    const mockAiChatService = {
+      chatWithImage: jest.fn(),
+      chat: jest.fn(),
+    };
+
     const mockSecureDocuments = {
       create: jest.fn(),
       findAll: jest.fn(),
@@ -135,6 +141,7 @@ describe("NixService", () => {
         { provide: ExcelExtractorService, useValue: mockExcelExtractor },
         { provide: WordExtractorService, useValue: mockWordExtractor },
         { provide: AiExtractionService, useValue: mockAiExtractor },
+        { provide: AiChatService, useValue: mockAiChatService },
         { provide: SecureDocumentsService, useValue: mockSecureDocuments },
         { provide: S3StorageService, useValue: mockS3Storage },
         {

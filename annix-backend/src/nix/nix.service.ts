@@ -6,7 +6,9 @@ import { bufferToMulterFile, documentPath } from "../lib/app-storage-helper";
 import { SecureDocumentsService } from "../secure-documents/secure-documents.service";
 import { S3StorageService } from "../storage/s3-storage.service";
 import { StorageArea } from "../storage/storage.interface";
+import { AiChatService } from "./ai-providers/ai-chat.service";
 import { AiExtractionService } from "./ai-providers/ai-extraction.service";
+import { DEFAULT_EXTRACTION_SYSTEM_PROMPT } from "./ai-providers/ai-provider.interface";
 import { ProcessDocumentDto, ProcessDocumentResponseDto } from "./dto/process-document.dto";
 import {
   SubmitClarificationDto,
@@ -17,7 +19,12 @@ import {
   ClarificationType,
   NixClarification,
 } from "./entities/nix-clarification.entity";
-import { DocumentType, ExtractionStatus, NixExtraction } from "./entities/nix-extraction.entity";
+import {
+  DocumentRole,
+  DocumentType,
+  ExtractionStatus,
+  NixExtraction,
+} from "./entities/nix-extraction.entity";
 import { LearningSource, LearningType, NixLearning } from "./entities/nix-learning.entity";
 import { NixUserPreference } from "./entities/nix-user-preference.entity";
 import { NixExtractionProfileRegistry } from "./profiles";
@@ -47,6 +54,7 @@ export class NixService {
     private readonly pdfExtractor: PdfExtractorService,
     private readonly wordExtractor: WordExtractorService,
     private readonly aiExtractor: AiExtractionService,
+    private readonly aiChatService: AiChatService,
     @Inject(forwardRef(() => SecureDocumentsService))
     private readonly secureDocumentsService: SecureDocumentsService,
     private readonly s3StorageService: S3StorageService,
@@ -245,7 +253,8 @@ export class NixService {
           throw new Error(`Unsupported document type: ${documentType}`);
       }
 
-      const relevantItems = await this.filterByRelevance(extractedItems, dto.productTypes);
+      const relevanceFiltered = await this.filterByRelevance(extractedItems, dto.productTypes);
+      const relevantItems = this.dropPseudoItemsForSpec(relevanceFiltered, dto.documentRole);
       const specClarifications = await this.generateSpecificationClarifications(
         extraction,
         specificationCells,
@@ -519,6 +528,46 @@ export class NixService {
           `Tokens used: ${aiResult.tokensUsed}, Processing time: ${aiResult.processingTimeMs}ms`,
         );
 
+        // Engineering drawings are typically image-based — pdf-parse returns
+        // little to no text and the text-only Gemini call extracts nothing.
+        // When we hit that case (very little text OR zero items returned),
+        // retry with the multimodal vision API (chatWithImage with PDF media
+        // type) so Gemini reads the rendered pages directly. We keep the
+        // text-first path because it's faster and cheaper when text IS
+        // available, falling back to vision only when needed.
+        const visionWorthRetrying = pdfText.trim().length < 200 || aiResult.items.length === 0;
+        if (visionWorthRetrying) {
+          this.logger.log(
+            `Text extraction yielded ${pdfText.trim().length} chars / ${aiResult.items.length} items — retrying via vision (chatWithImage, application/pdf).`,
+          );
+          const visionResult = await this.extractFromPdfWithVision(
+            dataBuffer,
+            documentName || documentPath.split("/").pop() || "document.pdf",
+            systemPrompt,
+          );
+          if (visionResult && visionResult.items.length > aiResult.items.length) {
+            this.logger.log(
+              `Vision extraction won: ${visionResult.items.length} items (vs text's ${aiResult.items.length}).`,
+            );
+            return {
+              extractedData: {
+                totalLines: pdfInfo.numPages || 0,
+                itemCount: visionResult.items.length,
+                clarificationsNeeded: visionResult.items.filter((i) => i.needsClarification).length,
+                metadata: visionResult.metadata,
+                specificationCells: visionResult.specificationCells,
+                hasText: pdfText.trim().length > 0,
+                hasTables: false,
+                hasImages: true,
+                aiProvider: `${visionResult.providerUsed} (vision)`,
+                aiProcessingTimeMs: visionResult.processingTimeMs,
+              },
+              extractedItems: visionResult.items,
+              specificationCells: visionResult.specificationCells,
+            };
+          }
+        }
+
         const clarificationsNeeded = aiResult.items.filter((i) => i.needsClarification).length;
 
         return {
@@ -567,6 +616,167 @@ export class NixService {
       extractedItems: result.items,
       specificationCells: result.specificationCells,
     };
+  }
+
+  /**
+   * Vision-based PDF extraction. Sends the raw PDF to Gemini's multimodal
+   * API (chatWithImage with media_type "application/pdf") so it OCRs the
+   * rendered pages directly — needed for image-based engineering drawings
+   * where pdf-parse returns nothing useful. Returns null if the response
+   * can't be parsed as JSON in the expected shape.
+   */
+  private async extractFromPdfWithVision(
+    pdfBuffer: Buffer,
+    documentName: string,
+    profileSystemPrompt?: string,
+  ): Promise<{
+    items: ExtractedItem[];
+    specificationCells: SpecificationCellData[];
+    metadata: Record<string, unknown>;
+    providerUsed: string;
+    processingTimeMs: number;
+  } | null> {
+    const start = Date.now();
+    const base64 = pdfBuffer.toString("base64");
+    const userPrompt = `Document: ${documentName}\n\nExtract every quotable line item AND every cross-cutting specification clause you can see, following the JSON shape in the system prompt. Read the PDF visually — title blocks, dimensioned drawings, BOM tables, handwritten markups all count.`;
+    const systemPrompt = profileSystemPrompt ?? DEFAULT_EXTRACTION_SYSTEM_PROMPT;
+
+    try {
+      const result = await this.aiChatService.chatWithImage(
+        base64,
+        "application/pdf",
+        userPrompt,
+        systemPrompt,
+      );
+      const cleaned = result.content
+        .replace(/```json\s*/g, "")
+        .replace(/```\s*/g, "")
+        .trim();
+      const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+      const parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
+      if (!parsed) {
+        this.logger.warn(
+          `Vision extraction returned no parseable JSON for ${documentName}; raw length=${result.content.length}`,
+        );
+        return null;
+      }
+      const rawItems = Array.isArray(parsed.items) ? parsed.items : [];
+      const items: ExtractedItem[] = rawItems.map((item: Record<string, unknown>) =>
+        this.normaliseVisionItem(item),
+      );
+      const specificationCells: SpecificationCellData[] = Array.isArray(parsed.specifications)
+        ? (parsed.specifications as SpecificationCellData[])
+        : [];
+      return {
+        items,
+        specificationCells,
+        metadata: (parsed.metadata as Record<string, unknown>) ?? {},
+        providerUsed: result.providerUsed,
+        processingTimeMs: Date.now() - start,
+      };
+    } catch (err) {
+      this.logger.error(
+        `Vision extraction threw for ${documentName}: ${
+          err instanceof Error ? err.message : "unknown"
+        }`,
+      );
+      return null;
+    }
+  }
+
+  /**
+   * Discards "items" produced by AI extraction when the source document is a
+   * specification, the AI ignored our instruction to leave items empty, and
+   * the items are clearly clause fragments rather than real BOM rows.
+   *
+   * Heuristics for "this is a fragment, not a BOM row":
+   * - description longer than 120 chars (clauses are sentences; line items
+   *   are short)
+   * - no quantity > 1 AND no diameter / wall thickness / length / itemType
+   *   that maps to a recognised pipe/fitting type
+   *
+   * If after filtering the items array is empty AND the document had any
+   * fragments to begin with, the spec correctly produced zero items — exactly
+   * what the role-aware prompt asked for, just enforced post-hoc against an
+   * unreliable model.
+   */
+  private dropPseudoItemsForSpec<T extends Record<string, unknown>>(
+    items: T[],
+    role: DocumentRole | undefined,
+  ): T[] {
+    if (role !== DocumentRole.SPECIFICATION) return items;
+    const FRAGMENT_LEN = 120;
+    const realItemTypes = new Set([
+      "pipe",
+      "bend",
+      "reducer",
+      "tee",
+      "flange",
+      "expansion_joint",
+      "tank_chute",
+    ]);
+    const kept = items.filter((item) => {
+      const description = typeof item.description === "string" ? (item.description as string) : "";
+      const itemType = typeof item.itemType === "string" ? (item.itemType as string) : "";
+      const qty = typeof item.quantity === "number" ? (item.quantity as number) : 1;
+      const hasDimension =
+        item.diameter !== null && item.diameter !== undefined && item.diameter !== "";
+      const hasLength = item.length !== null && item.length !== undefined && item.length !== "";
+      const looksLikeBomRow = qty > 1 || hasDimension || hasLength || realItemTypes.has(itemType);
+      const looksLikeFragment = description.length > FRAGMENT_LEN && !looksLikeBomRow;
+      return !looksLikeFragment;
+    });
+    if (kept.length < items.length) {
+      this.logger.log(
+        `Dropped ${items.length - kept.length} fragment "items" from a specification document (kept ${kept.length})`,
+      );
+    }
+    return kept;
+  }
+
+  /**
+   * Coerces a Gemini-vision-returned item into our internal ExtractedItem
+   * shape. Vision responses are looser than the strictly-structured text
+   * extraction path, so we apply lenient mapping with sensible defaults
+   * rather than throwing on schema drift.
+   */
+  private normaliseVisionItem(item: Record<string, unknown>): ExtractedItem {
+    const num = (k: string): number | null => {
+      const v = item[k];
+      if (typeof v === "number") return v;
+      if (typeof v === "string" && v.trim().length > 0) {
+        const parsed = Number.parseFloat(v);
+        return Number.isFinite(parsed) ? parsed : null;
+      }
+      return null;
+    };
+    const str = (k: string): string | null => {
+      const v = item[k];
+      return typeof v === "string" && v.trim().length > 0 ? v : null;
+    };
+    const description = str("description") ?? "";
+    return {
+      rowNumber: num("rowNumber") ?? 0,
+      itemNumber: str("itemNumber") ?? str("mark") ?? null,
+      description,
+      itemType: (str("itemType") as ExtractedItem["itemType"]) ?? "unknown",
+      material: str("material"),
+      materialGrade: str("materialGrade"),
+      diameter: num("diameter"),
+      diameterUnit: (str("diameterUnit") as ExtractedItem["diameterUnit"]) ?? "mm",
+      secondaryDiameter: num("secondaryDiameter"),
+      length: num("length"),
+      wallThickness: num("wallThickness"),
+      schedule: str("schedule"),
+      angle: num("angle"),
+      flangeConfig: (str("flangeConfig") as ExtractedItem["flangeConfig"]) ?? null,
+      quantity: num("quantity") ?? 1,
+      unit: str("unit") ?? "ea",
+      confidence: num("confidence") ?? 0.7,
+      needsClarification: false,
+      clarificationReason: null,
+      rawData: item as Record<string, unknown>,
+    } as ExtractedItem;
   }
 
   private async extractFromExcel(documentPath: string): Promise<{
