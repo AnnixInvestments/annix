@@ -15,6 +15,10 @@ export const nixKeys = {
     documentUrl: (extractionId: number) =>
       ["nix", "extractions", "document-url", extractionId] as const,
   },
+  extractionSessions: {
+    all: ["nix", "extraction-sessions"] as const,
+    detail: (sessionId: number) => ["nix", "extraction-sessions", "detail", sessionId] as const,
+  },
   validation: {
     all: ["nix", "validation"] as const,
     item: (item: unknown) => ["nix", "validation", "item", item] as const,

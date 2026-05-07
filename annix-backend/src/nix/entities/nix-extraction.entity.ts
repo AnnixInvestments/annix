@@ -10,6 +10,7 @@ import {
 } from "typeorm";
 import { Rfq } from "../../rfq/entities/rfq.entity";
 import { User } from "../../user/entities/user.entity";
+import { NixExtractionSession } from "./nix-extraction-session.entity";
 
 export enum ExtractionStatus {
   PENDING = "pending",
@@ -201,6 +202,22 @@ export class NixExtraction {
   })
   @Column({ name: "storage_mime_type", type: "varchar", length: 128, nullable: true })
   storageMimeType?: string;
+
+  @ManyToOne(
+    () => NixExtractionSession,
+    (session) => session.extractions,
+    { nullable: true },
+  )
+  @JoinColumn({ name: "session_id" })
+  session?: NixExtractionSession;
+
+  @ApiProperty({
+    description:
+      "FK to the NixExtractionSession this extraction belongs to. Null for one-off uploads (legacy / standalone /nix/upload calls).",
+    required: false,
+  })
+  @Column({ name: "session_id", type: "int", nullable: true })
+  sessionId?: number;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

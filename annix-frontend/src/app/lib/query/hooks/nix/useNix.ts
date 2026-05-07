@@ -366,6 +366,84 @@ export const useNixExtractionDocumentUrl = createQueryHook(
   },
 );
 
+/* ------------------------------------------------------------------
+ * Nix extraction sessions (#253 task B)
+ *
+ * A session groups multiple uploads (drawings + specs) into a single
+ * quote pack so the cross-document orchestrator can pass earlier
+ * extractions as context when later documents arrive.
+ * ------------------------------------------------------------------ */
+
+export interface NixExtractionSummary {
+  id: number;
+  documentName: string;
+  documentRole?: "drawing" | "specification" | "other";
+  status: string;
+  extractedItems?: unknown[];
+  extractedData?: Record<string, unknown>;
+  storagePath?: string;
+  createdAt: string;
+}
+
+export interface NixExtractionSessionDto {
+  id: number;
+  sourceModule: string;
+  sourceId: number | null;
+  extractionProfile: string;
+  status: "draft" | "reviewing" | "promoted" | "archived";
+  title: string | null;
+  externalReference: string | null;
+  promotedRef: string | null;
+  ownerUserId: number | null;
+  extractions?: NixExtractionSummary[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const useNixExtractionSession = createQueryHook(
+  (sessionId: number | null) => nixKeys.extractionSessions.detail(sessionId ?? 0),
+  (sessionId: number | null) =>
+    nixRequest<NixExtractionSessionDto>(`/nix/sessions/${sessionId}`, {
+      errorLabel: "Failed to fetch extraction session",
+    }),
+  { enabled: (sessionId: number | null) => sessionId !== null && sessionId > 0 },
+);
+
+export const useCreateNixExtractionSession = createMutationHook<
+  NixExtractionSessionDto,
+  {
+    sourceModule: string;
+    extractionProfile: string;
+    title?: string;
+    externalReference?: string;
+  }
+>(
+  (body) =>
+    nixRequest<NixExtractionSessionDto>("/nix/sessions", {
+      method: "POST",
+      body,
+      errorLabel: "Failed to create extraction session",
+    }),
+  (data) => [nixKeys.extractionSessions.all, nixKeys.extractionSessions.detail(data.id)],
+);
+
+export const useSetNixExtractionSessionStatus = createMutationHook<
+  NixExtractionSessionDto,
+  {
+    sessionId: number;
+    status: "draft" | "reviewing" | "promoted" | "archived";
+    promotedRef?: string;
+  }
+>(
+  ({ sessionId, status, promotedRef }) =>
+    nixRequest<NixExtractionSessionDto>(`/nix/sessions/${sessionId}/status`, {
+      method: "POST",
+      body: { status, promotedRef },
+      errorLabel: "Failed to update session status",
+    }),
+  (_data, vars) => [nixKeys.extractionSessions.detail(vars.sessionId)],
+);
+
 export const useValidateNixRfq = createMutationHook<
   {
     valid: boolean;

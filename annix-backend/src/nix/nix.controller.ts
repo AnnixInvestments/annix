@@ -52,10 +52,15 @@ import {
 } from "./dto/verify-registration-document.dto";
 import { NixClarification } from "./entities/nix-clarification.entity";
 import { DocumentRole, NixExtraction } from "./entities/nix-extraction.entity";
+import {
+  NixExtractionSession,
+  NixExtractionSessionStatus,
+} from "./entities/nix-extraction-session.entity";
 import { NixLearning } from "./entities/nix-learning.entity";
 import { NixService } from "./nix.service";
 import { CustomFieldService } from "./services/custom-field.service";
 import { DocumentAnnotationService } from "./services/document-annotation.service";
+import { NixExtractionSessionService } from "./services/nix-extraction-session.service";
 import {
   ExpectedCompanyData,
   RegistrationDocumentType,
@@ -67,6 +72,7 @@ import {
 export class NixController {
   constructor(
     private readonly nixService: NixService,
+    private readonly sessionService: NixExtractionSessionService,
     private readonly registrationVerifier: RegistrationDocumentVerifierService,
     private readonly documentAnnotationService: DocumentAnnotationService,
     private readonly customFieldService: CustomFieldService,
@@ -104,6 +110,7 @@ export class NixController {
         sourceId: { type: "number" },
         extractionProfile: { type: "string" },
         documentRole: { type: "string", enum: ["drawing", "specification", "other"] },
+        sessionId: { type: "number" },
         productTypes: { type: "array", items: { type: "string" } },
       },
     },
@@ -120,6 +127,7 @@ export class NixController {
     @Body("sourceId") sourceId?: string,
     @Body("extractionProfile") extractionProfile?: string,
     @Body("documentRole") documentRole?: string,
+    @Body("sessionId") sessionId?: string,
     @Body("productTypes") productTypes?: string,
   ): Promise<ProcessDocumentResponseDto> {
     if (!file) {
@@ -146,10 +154,77 @@ export class NixController {
       sourceId: sourceId ? parseInt(sourceId, 10) : undefined,
       extractionProfile: extractionProfile || undefined,
       documentRole: role,
+      sessionId: sessionId ? parseInt(sessionId, 10) : undefined,
       productTypes: parsedProductTypes,
     };
 
     return this.nixService.processDocument(dto);
+  }
+
+  @Post("sessions")
+  @UseGuards(AnyUserAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary:
+      "Create a new NixExtractionSession for grouping multiple uploads (drawings + specs) into a single quote pack.",
+  })
+  @ApiResponse({ status: 201, type: NixExtractionSession })
+  async createSession(
+    @Body()
+    body: {
+      sourceModule: string;
+      extractionProfile: string;
+      title?: string;
+      externalReference?: string;
+    },
+    @Req() req: Request,
+  ): Promise<NixExtractionSession> {
+    const authUser = req["authUser"] as AuthenticatedUser;
+    if (!body?.sourceModule || !body?.extractionProfile) {
+      throw new BadRequestException("sourceModule and extractionProfile are required");
+    }
+    return this.sessionService.create({
+      sourceModule: body.sourceModule,
+      extractionProfile: body.extractionProfile,
+      title: body.title,
+      externalReference: body.externalReference,
+      ownerUserId: authUser.userId,
+    });
+  }
+
+  @Get("sessions/:id")
+  @UseGuards(AnyUserAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Get a NixExtractionSession including its extractions." })
+  @ApiResponse({ status: 200, type: NixExtractionSession })
+  async session(
+    @Param("id", ParseIntPipe) id: number,
+    @Req() req: Request,
+  ): Promise<NixExtractionSession> {
+    const authUser = req["authUser"] as AuthenticatedUser;
+    return this.sessionService.findOneForUser(id, authUser.userId, authUser.type === "admin");
+  }
+
+  @Post("sessions/:id/status")
+  @UseGuards(AnyUserAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Update a session's status (draft → reviewing → promoted/archived)." })
+  @ApiResponse({ status: 200, type: NixExtractionSession })
+  async setSessionStatus(
+    @Param("id", ParseIntPipe) id: number,
+    @Body() body: { status: NixExtractionSessionStatus; promotedRef?: string },
+    @Req() req: Request,
+  ): Promise<NixExtractionSession> {
+    const authUser = req["authUser"] as AuthenticatedUser;
+    await this.sessionService.findOneForUser(id, authUser.userId, authUser.type === "admin");
+    if (
+      body.status === NixExtractionSessionStatus.PROMOTED &&
+      typeof body.promotedRef === "string" &&
+      body.promotedRef.length > 0
+    ) {
+      return this.sessionService.promote(id, body.promotedRef);
+    }
+    return this.sessionService.setStatus(id, body.status);
   }
 
   @Get("extraction/:id")

@@ -211,6 +211,32 @@ export interface RegionExtractionResult {
 
 export type NixDocumentRole = "drawing" | "specification" | "other";
 
+export type NixExtractionSessionStatus = "draft" | "reviewing" | "promoted" | "archived";
+
+export interface NixExtractionSessionDto {
+  id: number;
+  sourceModule: string;
+  sourceId: number | null;
+  extractionProfile: string;
+  status: NixExtractionSessionStatus;
+  title: string | null;
+  externalReference: string | null;
+  promotedRef: string | null;
+  ownerUserId: number | null;
+  createdAt: string;
+  updatedAt: string;
+  extractions?: Array<{
+    id: number;
+    documentName: string;
+    documentRole?: NixDocumentRole;
+    status: string;
+    extractedItems?: unknown[];
+    extractedData?: Record<string, unknown>;
+    storagePath?: string;
+    createdAt: string;
+  }>;
+}
+
 export interface NixUploadOptions {
   userId?: number;
   rfqId?: number;
@@ -223,6 +249,12 @@ export interface NixUploadOptions {
    * drawings-first → specs-with-context ordering.
    */
   documentRole?: NixDocumentRole;
+  /**
+   * NixExtractionSession id. When supplied, sibling extractions in the
+   * same session are passed to the role-aware system prompt as Gemini
+   * context — this is the cross-document linker's primary lookup path.
+   */
+  sessionId?: number;
   productTypes?: string[];
 }
 
@@ -267,6 +299,7 @@ export const nixApi = {
     if (opts.sourceId) formData.append("sourceId", opts.sourceId.toString());
     if (opts.extractionProfile) formData.append("extractionProfile", opts.extractionProfile);
     if (opts.documentRole) formData.append("documentRole", opts.documentRole);
+    if (opts.sessionId) formData.append("sessionId", opts.sessionId.toString());
     if (opts.productTypes && opts.productTypes.length > 0) {
       formData.append("productTypes", JSON.stringify(opts.productTypes));
     }

@@ -184,6 +184,7 @@ export class NixService {
       sourceId,
       extractionProfile,
       documentRole: dto.documentRole,
+      sessionId: dto.sessionId,
     });
 
     await this.extractionRepo.save(extraction);
@@ -203,12 +204,18 @@ export class NixService {
       ? this.profileRegistry.handler(extractionProfile)
       : null;
 
-    // Sibling extractions inside the same (sourceModule, sourceId) — used by
-    // role-aware prompts (e.g. specification prompt cross-references
-    // already-extracted drawings) and by post-extract handlers. Returns []
-    // when source linkage isn't supplied. Task B (#253) replaces this with
-    // a session-scoped lookup once sessions exist.
-    const sessionSiblings = await this.findSessionSiblings(sourceModule, sourceId, extraction.id);
+    // Sibling extractions used by role-aware prompts (e.g. specification
+    // prompt cross-references already-extracted drawings) and by
+    // post-extract handlers. Prefers session_id when supplied (#253 task B
+    // primary path), falls back to (sourceModule, sourceId) for callers
+    // that haven't created a session yet. Returns [] when neither is
+    // available, so legacy callers stay unchanged.
+    const sessionSiblings = await this.findSessionSiblings(
+      dto.sessionId,
+      sourceModule,
+      sourceId,
+      extraction.id,
+    );
 
     const profileSystemPrompt = profileHandler?.systemPrompt?.({
       role: dto.documentRole,
@@ -324,30 +331,46 @@ export class NixService {
   }
 
   /**
-   * Returns sibling extractions inside the same (sourceModule, sourceId)
-   * tuple, excluding the current extraction. Used by role-aware system
-   * prompts (the specification prompt cross-references already-extracted
-   * drawings) and by post-extract handlers.
+   * Returns sibling extractions used by role-aware system prompts (the
+   * specification prompt cross-references already-extracted drawings) and
+   * by post-extract handlers. Excludes the current extraction.
    *
-   * Returns an empty array when source linkage isn't supplied. Task B
-   * (#253) introduces nix_extraction_sessions and switches this to a
-   * session-scoped lookup; for now we group by source tuple, which is
-   * effectively per-quote/per-RFQ.
+   * Lookup order:
+   *   1. By session_id when supplied — the post-#253-task-B primary path,
+   *      maps directly to the user's quote-pack upload session.
+   *   2. By (source_module, source_id) tuple — fallback for callers that
+   *      haven't created a session (e.g. one-off RFQ wizard uploads).
+   *   3. Empty array when neither linkage is available.
+   *
+   * Only returns siblings whose extraction has reached a useful state —
+   * COMPLETED or NEEDS_CLARIFICATION. In-flight siblings are ignored so
+   * the prompt isn't misled by partial data.
    */
   private async findSessionSiblings(
+    sessionId: number | undefined,
     sourceModule: string | undefined,
     sourceId: number | undefined,
     excludeExtractionId: number,
   ): Promise<NixExtraction[]> {
+    const completedStatuses = [ExtractionStatus.COMPLETED, ExtractionStatus.NEEDS_CLARIFICATION];
+
+    if (sessionId) {
+      return this.extractionRepo
+        .createQueryBuilder("extraction")
+        .where("extraction.session_id = :sessionId", { sessionId })
+        .andWhere("extraction.id <> :excludeId", { excludeId: excludeExtractionId })
+        .andWhere("extraction.status IN (:...completedStatuses)", { completedStatuses })
+        .orderBy("extraction.created_at", "ASC")
+        .getMany();
+    }
+
     if (!sourceModule || !sourceId) return [];
     return this.extractionRepo
       .createQueryBuilder("extraction")
       .where("extraction.source_module = :sourceModule", { sourceModule })
       .andWhere("extraction.source_id = :sourceId", { sourceId })
       .andWhere("extraction.id <> :excludeId", { excludeId: excludeExtractionId })
-      .andWhere("extraction.status IN (:...completedStatuses)", {
-        completedStatuses: [ExtractionStatus.COMPLETED, ExtractionStatus.NEEDS_CLARIFICATION],
-      })
+      .andWhere("extraction.status IN (:...completedStatuses)", { completedStatuses })
       .orderBy("extraction.created_at", "ASC")
       .getMany();
   }

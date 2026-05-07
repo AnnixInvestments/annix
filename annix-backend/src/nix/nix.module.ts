@@ -28,6 +28,7 @@ import { NixChatSession } from "./entities/nix-chat-session.entity";
 import { NixClarification } from "./entities/nix-clarification.entity";
 import { NixExtraction } from "./entities/nix-extraction.entity";
 import { NixExtractionRegion } from "./entities/nix-extraction-region.entity";
+import { NixExtractionSession } from "./entities/nix-extraction-session.entity";
 import { NixLearning } from "./entities/nix-learning.entity";
 import { NixUserPreference } from "./entities/nix-user-preference.entity";
 import { NixController } from "./nix.controller";
@@ -40,6 +41,7 @@ import { DocumentVerificationService } from "./services/document-verification.se
 import { ExcelExtractorService } from "./services/excel-extractor.service";
 import { NixChatService } from "./services/nix-chat.service";
 import { NixChatItemService } from "./services/nix-chat-item.service";
+import { NixExtractionSessionService } from "./services/nix-extraction-session.service";
 import { NixItemParserService } from "./services/nix-item-parser.service";
 import { NixValidationService } from "./services/nix-validation.service";
 import { PdfExtractorService } from "./services/pdf-extractor.service";
@@ -50,6 +52,7 @@ import { WordExtractorService } from "./services/word-extractor.service";
   imports: [
     TypeOrmModule.forFeature([
       NixExtraction,
+      NixExtractionSession,
       NixLearning,
       NixUserPreference,
       NixClarification,
@@ -93,6 +96,7 @@ import { WordExtractorService } from "./services/word-extractor.service";
     NixExtractionProfileRegistry,
     RfqPipingProfileHandler,
     NixService,
+    NixExtractionSessionService,
     NixChatService,
     NixChatItemService,
     NixItemParserService,
@@ -109,6 +113,7 @@ import { WordExtractorService } from "./services/word-extractor.service";
   ],
   exports: [
     NixService,
+    NixExtractionSessionService,
     NixChatService,
     NixItemParserService,
     NixValidationService,

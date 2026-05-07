@@ -5,7 +5,7 @@ import { type RefObject, useEffect, useRef } from "react";
 const STORAGE_PREFIX = "scroll:";
 
 function findScrollContainer(el: HTMLElement | null): HTMLElement | Window {
-  if (!el || !el.parentElement) return window;
+  if (!el?.parentElement) return window;
   const parent = el.parentElement;
   const overflowY = window.getComputedStyle(parent).overflowY;
   if (overflowY === "auto" || overflowY === "scroll") return parent;

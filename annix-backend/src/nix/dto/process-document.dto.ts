@@ -54,6 +54,14 @@ export class ProcessDocumentDto {
   @IsOptional()
   documentRole?: DocumentRole;
 
+  @ApiPropertyOptional({
+    description:
+      "ID of the NixExtractionSession this document belongs to. When supplied, prior session siblings (typically previously-uploaded drawings) are passed to the role-aware system prompt as Gemini context — that's how a specification upload can cross-link its clauses to the items the drawings reference.",
+  })
+  @IsNumber()
+  @IsOptional()
+  sessionId?: number;
+
   @ApiPropertyOptional({ description: "Product/service types to filter for" })
   @IsArray()
   @IsString({ each: true })
