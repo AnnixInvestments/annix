@@ -320,6 +320,26 @@ export const nixApi = {
     return response.json();
   },
 
+  extractionDocumentUrl: async (
+    extractionId: number,
+  ): Promise<{ url: string | null; expiresInSeconds: number }> => {
+    const baseUrl = browserBaseUrl();
+    // eslint-disable-next-line no-restricted-syntax -- SSR guard
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    const response = await fetch(`${baseUrl}/nix/extraction/${extractionId}/document-url`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to fetch document URL: ${errorText}`);
+    }
+    return response.json();
+  },
+
   extraction: async (extractionId: number): Promise<NixProcessResponse> => {
     const baseUrl = browserBaseUrl();
     // eslint-disable-next-line no-restricted-syntax -- SSR guard

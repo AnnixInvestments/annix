@@ -7,6 +7,7 @@ import { useToast } from "@/app/components/Toast";
 import { DocumentBucket, type PendingDocument } from "@/app/components/uploads";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import { type NixDocumentRole, nixApi } from "@/app/lib/nix";
+import { type NixExtractionSessionDto, useCreateNixExtractionSession } from "@/app/lib/query/hooks";
 
 const ASCA_PROFILE_KEY = "asca-quote-documents";
 const ASCA_SOURCE_MODULE = "asca";
@@ -31,8 +32,20 @@ export default function QuoteFromDocumentsPage() {
 
   const [drawings, setDrawings] = useState<BucketState>(emptyBucket);
   const [specs, setSpecs] = useState<BucketState>(emptyBucket);
-  const [extractionIds, setExtractionIds] = useState<number[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [session, setSession] = useState<NixExtractionSessionDto | null>(null);
+
+  const createSessionMutation = useCreateNixExtractionSession();
+
+  const ensureSession = useCallback(async (): Promise<NixExtractionSessionDto> => {
+    if (session) return session;
+    const created = await createSessionMutation.mutateAsync({
+      sourceModule: ASCA_SOURCE_MODULE,
+      extractionProfile: ASCA_PROFILE_KEY,
+    });
+    setSession(created);
+    return created;
+  }, [session, createSessionMutation]);
 
   const addDocumentTo = useCallback(
     (set: typeof setDrawings) => (file: File) => {
@@ -58,29 +71,29 @@ export default function QuoteFromDocumentsPage() {
   );
 
   const processBucket = useCallback(
-    async (bucket: BucketState, role: NixDocumentRole, profileLabel: string): Promise<number[]> => {
-      const ids: number[] = [];
+    async (bucket: BucketState, role: NixDocumentRole, label: string): Promise<void> => {
+      const activeSession = await ensureSession();
+      let processedCount = 0;
       for (const doc of bucket.documents) {
-        const result = await nixApi.uploadAndProcess(doc.file, {
+        await nixApi.uploadAndProcess(doc.file, {
           userId,
           sourceModule: ASCA_SOURCE_MODULE,
           extractionProfile: ASCA_PROFILE_KEY,
           documentRole: role,
+          sessionId: activeSession.id,
         });
-        if (result.extractionId) ids.push(result.extractionId);
+        processedCount += 1;
       }
-      showToast(`${profileLabel}: processed ${ids.length} document${ids.length === 1 ? "" : "s"}`);
-      return ids;
+      showToast(`${label}: processed ${processedCount} document${processedCount === 1 ? "" : "s"}`);
     },
-    [userId, showToast],
+    [userId, showToast, ensureSession],
   );
 
   const handleConfirmDrawings = useCallback(async () => {
     setErrorMessage(null);
     setDrawings((prev) => ({ ...prev, confirmed: true, processing: true }));
     try {
-      const ids = await processBucket(drawings, "drawing", "Drawings");
-      setExtractionIds((prev) => [...prev, ...ids]);
+      await processBucket(drawings, "drawing", "Drawings");
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : "Drawing upload failed");
       setDrawings((prev) => ({ ...prev, confirmed: false }));
@@ -93,8 +106,7 @@ export default function QuoteFromDocumentsPage() {
     setErrorMessage(null);
     setSpecs((prev) => ({ ...prev, confirmed: true, processing: true }));
     try {
-      const ids = await processBucket(specs, "specification", "Specifications");
-      setExtractionIds((prev) => [...prev, ...ids]);
+      await processBucket(specs, "specification", "Specifications");
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : "Specification upload failed");
       setSpecs((prev) => ({ ...prev, confirmed: false }));
@@ -107,14 +119,19 @@ export default function QuoteFromDocumentsPage() {
     setErrorMessage("Add at least one document before confirming.");
   }, []);
 
+  const drawingsConfirmed = drawings.confirmed;
+  const specsConfirmed = specs.confirmed;
+  const reviewReady = session !== null && (drawingsConfirmed || specsConfirmed);
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">New quote from documents</h1>
           <p className="text-sm text-gray-600 mt-1">
-            Drop customer drawings and specifications separately. Nix extracts line items and
-            applicable spec references against the ASCA quote profile.
+            Drop customer drawings and specifications separately. Drawings extract first;
+            specifications extract second with the drawings' items as Nix's context, so paint codes
+            / material classes get cross-linked to the spec clauses that define them.
           </p>
         </div>
         <Link
@@ -134,7 +151,7 @@ export default function QuoteFromDocumentsPage() {
       <DocumentBucket
         id="asca-drawings"
         title="Drawings"
-        subtitle="Workshop sheets, BOQ, isometrics"
+        subtitle="Workshop sheets, BOQ, isometrics — extracted first"
         tone="blue"
         documents={drawings.documents}
         onAddDocument={addDocumentTo(setDrawings)}
@@ -153,7 +170,7 @@ export default function QuoteFromDocumentsPage() {
       <DocumentBucket
         id="asca-specs"
         title="Specifications"
-        subtitle="Painting, rubber lining, fabrication, scope"
+        subtitle="Painting, rubber lining, fabrication, scope — cross-linked to drawing items"
         tone="purple"
         documents={specs.documents}
         onAddDocument={addDocumentTo(setSpecs)}
@@ -167,18 +184,18 @@ export default function QuoteFromDocumentsPage() {
         confirmLabel="Send specs to Nix"
       />
 
-      {extractionIds.length > 0 && (
+      {reviewReady && session && (
         <div className="bg-white border border-gray-200 rounded-lg p-3">
-          <h3 className="text-sm font-semibold text-gray-900 mb-2">
-            Extracted {extractionIds.length} document{extractionIds.length === 1 ? "" : "s"}
-          </h3>
-          <p className="text-xs text-gray-600 mb-2">Extraction IDs: {extractionIds.join(", ")}</p>
+          <h3 className="text-sm font-semibold text-gray-900 mb-2">Session #{session.id} ready</h3>
+          <p className="text-xs text-gray-600 mb-2">
+            Continue to the draft review page to see what Nix found and build the quote.
+          </p>
           <button
             type="button"
-            onClick={() => router.push("/stock-control/portal/quotations")}
+            onClick={() => router.push(`/stock-control/portal/quotations/drafts/${session.id}`)}
             className="text-sm text-blue-600 hover:text-blue-800 underline"
           >
-            Continue to quote builder →
+            Continue to draft review →
           </button>
         </div>
       )}
