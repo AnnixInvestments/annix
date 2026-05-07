@@ -8,7 +8,7 @@ import AddMineModal from "@/app/components/rfq/modals/AddMineModal";
 import { AutoFilledInput } from "@/app/components/rfq/shared/AutoFilledField";
 import EnvironmentalIntelligenceSection from "@/app/components/rfq/steps/EnvironmentalIntelligenceSection";
 import { useToast } from "@/app/components/Toast";
-import { DocumentDropzone } from "@/app/components/uploads";
+import { DocumentBucket } from "@/app/components/uploads";
 import { useOptionalAdminAuth } from "@/app/context/AdminAuthContext";
 import { useOptionalCustomerAuth } from "@/app/context/CustomerAuthContext";
 import { useFeatureFlags } from "@/app/hooks/useFeatureFlags";
@@ -659,12 +659,6 @@ export default function ProjectDetailsStep() {
   const isEnvironmentalLocked = environmentalConfirmed && !isEditingEnvironmental;
 
   const rawCustomerRfqReference = rfqData.customerRfqReference;
-  const rawLength = pendingDocuments?.length;
-  const rawLength2 = pendingDocuments?.length;
-  const rawLength3 = pendingDocuments?.length;
-  const rawLength4 = pendingDocuments?.length;
-  const rawLength5 = pendingTenderDocuments?.length;
-  const rawLength6 = pendingTenderDocuments?.length;
 
   return (
     <div>
@@ -1209,149 +1203,25 @@ export default function ProjectDetailsStep() {
 
         {/* Document Upload - Moved above Project Location when Nix is enabled */}
         {useNix && (
-          <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg p-3 border border-purple-200">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="p-1.5 bg-purple-600 rounded">
-                <svg
-                  className="w-4 h-4 text-white"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                  />
-                </svg>
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-gray-900">Upload Documents for Nix</h3>
-                <p className="text-xs text-gray-600">
-                  Tender documents and drawings for AI analysis
-                </p>
-              </div>
-            </div>
-
-            {!documentsConfirmed ? (
-              <>
-                <DocumentDropzone
-                  documents={pendingDocuments || []}
-                  onAddDocument={onAddDocument}
-                  onRemoveDocument={onRemoveDocument}
-                  maxDocuments={10}
-                  maxFileSizeMB={50}
-                />
-
-                <div className="mt-3 pt-2 border-t border-purple-200">
-                  <button
-                    type="button"
-                    disabled={isNixProcessing}
-                    onClick={() => {
-                      if (!pendingDocuments || pendingDocuments.length === 0) {
-                        setShowNoDocumentsPopup(true);
-                      } else {
-                        setDocumentsConfirmed(true);
-                        nixProcessDocuments(showToast);
-                      }
-                    }}
-                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-semibold flex items-center gap-2 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isNixProcessing ? (
-                      <>
-                        <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                          <circle
-                            className="opacity-25"
-                            cx="12"
-                            cy="12"
-                            r="10"
-                            stroke="currentColor"
-                            strokeWidth="4"
-                          />
-                          <path
-                            className="opacity-75"
-                            fill="currentColor"
-                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                          />
-                        </svg>
-                        Nix is reading...
-                      </>
-                    ) : (
-                      <>
-                        <svg
-                          className="w-4 h-4"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M5 13l4 4L19 7"
-                          />
-                        </svg>
-                        Confirm & Let Nix Read
-                      </>
-                    )}
-                  </button>
-                </div>
-              </>
-            ) : (
-              <div className="bg-green-50 border border-green-400 rounded-lg p-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-green-700 font-semibold text-sm">
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                      <path
-                        fillRule="evenodd"
-                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    Confirmed ({rawLength || 0} file
-                    {(rawLength2 || 0) !== 1 ? "s" : ""})
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setDocumentsConfirmed(false)}
-                    className="text-blue-600 hover:text-blue-800 text-xs font-medium underline"
-                  >
-                    Edit
-                  </button>
-                </div>
-                {pendingDocuments && pendingDocuments.length > 0 && (
-                  <div className="mt-1 flex flex-wrap gap-1">
-                    {pendingDocuments.map((doc: any, idx: number) => {
-                      const rawName = doc.name;
-
-                      return (
-                        <span
-                          key={idx}
-                          className="text-xs text-green-700 bg-green-100 px-2 py-0.5 rounded flex items-center gap-1"
-                        >
-                          <svg
-                            className="w-3 h-3"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
-                            />
-                          </svg>
-                          {(rawName || doc.file?.name)?.substring(0, 20)}...
-                        </span>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+          <DocumentBucket
+            id="rfq-nix-documents"
+            title="Upload Documents for Nix"
+            subtitle="Tender documents and drawings for AI analysis"
+            tone="purple"
+            documents={pendingDocuments || []}
+            onAddDocument={onAddDocument}
+            onRemoveDocument={onRemoveDocument}
+            isConfirmed={documentsConfirmed}
+            onConfirm={() => {
+              setDocumentsConfirmed(true);
+              nixProcessDocuments(showToast);
+            }}
+            onUnconfirm={() => setDocumentsConfirmed(false)}
+            onConfirmEmpty={() => setShowNoDocumentsPopup(true)}
+            isProcessing={isNixProcessing}
+            processingLabel="Nix is reading..."
+            confirmLabel="Confirm & Let Nix Read"
+          />
         )}
 
         {/* Project Location - Compact */}
@@ -1728,126 +1598,19 @@ export default function ProjectDetailsStep() {
                 </div>
               </div>
             ) : (
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-3 border border-blue-200">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="p-1.5 bg-blue-600 rounded">
-                    <svg
-                      className="w-4 h-4 text-white"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                      />
-                    </svg>
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-gray-900">
-                      BOQ & Drawing Documents Only
-                    </h3>
-                    <p className="text-xs text-gray-600">
-                      Bills of quantities and technical drawings
-                    </p>
-                  </div>
-                </div>
-
-                {!documentsConfirmed ? (
-                  <>
-                    <DocumentDropzone
-                      documents={pendingDocuments || []}
-                      onAddDocument={onAddDocument}
-                      onRemoveDocument={onRemoveDocument}
-                      maxDocuments={10}
-                      maxFileSizeMB={50}
-                    />
-
-                    <div className="mt-3 pt-2 border-t border-blue-200">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (!pendingDocuments || pendingDocuments.length === 0) {
-                            setShowNoDocumentsPopup(true);
-                          } else {
-                            setDocumentsConfirmed(true);
-                          }
-                        }}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold flex items-center gap-2 transition-colors text-sm"
-                      >
-                        <svg
-                          className="w-4 h-4"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M5 13l4 4L19 7"
-                          />
-                        </svg>
-                        Confirm
-                      </button>
-                    </div>
-                  </>
-                ) : (
-                  <div className="bg-green-50 border border-green-400 rounded-lg p-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-green-700 font-semibold text-sm">
-                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                          <path
-                            fillRule="evenodd"
-                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                        Confirmed ({rawLength3 || 0} file
-                        {(rawLength4 || 0) !== 1 ? "s" : ""})
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setDocumentsConfirmed(false)}
-                        className="text-blue-600 hover:text-blue-800 text-xs font-medium underline"
-                      >
-                        Edit
-                      </button>
-                    </div>
-                    {pendingDocuments && pendingDocuments.length > 0 && (
-                      <div className="mt-1 flex flex-wrap gap-1">
-                        {pendingDocuments.map((doc: any, idx: number) => {
-                          const rawName2 = doc.name;
-
-                          return (
-                            <span
-                              key={idx}
-                              className="text-xs text-green-700 bg-green-100 px-2 py-0.5 rounded flex items-center gap-1"
-                            >
-                              <svg
-                                className="w-3 h-3"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
-                                />
-                              </svg>
-                              {(rawName2 || doc.file?.name)?.substring(0, 20)}...
-                            </span>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
+              <DocumentBucket
+                id="rfq-boq-drawings"
+                title="BOQ & Drawing Documents Only"
+                subtitle="Bills of quantities and technical drawings"
+                tone="blue"
+                documents={pendingDocuments || []}
+                onAddDocument={onAddDocument}
+                onRemoveDocument={onRemoveDocument}
+                isConfirmed={documentsConfirmed}
+                onConfirm={() => setDocumentsConfirmed(true)}
+                onUnconfirm={() => setDocumentsConfirmed(false)}
+                onConfirmEmpty={() => setShowNoDocumentsPopup(true)}
+              />
             )}
 
             {/* Tender Specification Documents */}
@@ -1905,124 +1668,19 @@ export default function ProjectDetailsStep() {
                 </div>
               </div>
             ) : (
-              <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg p-3 border border-purple-200">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="p-1.5 bg-purple-600 rounded">
-                    <svg
-                      className="w-4 h-4 text-white"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                      />
-                    </svg>
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-gray-900">
-                      Tender Specification Documents Only
-                    </h3>
-                    <p className="text-xs text-gray-600">Tender specs and requirements</p>
-                  </div>
-                </div>
-
-                {!tenderDocumentsConfirmed ? (
-                  <>
-                    <DocumentDropzone
-                      documents={pendingTenderDocuments || []}
-                      onAddDocument={onAddTenderDocument}
-                      onRemoveDocument={onRemoveTenderDocument}
-                      maxDocuments={10}
-                      maxFileSizeMB={50}
-                    />
-
-                    <div className="mt-3 pt-2 border-t border-purple-200">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (!pendingTenderDocuments || pendingTenderDocuments.length === 0) {
-                            setShowNoTenderDocumentsPopup(true);
-                          } else {
-                            setTenderDocumentsConfirmed(true);
-                          }
-                        }}
-                        className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-semibold flex items-center gap-2 transition-colors text-sm"
-                      >
-                        <svg
-                          className="w-4 h-4"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M5 13l4 4L19 7"
-                          />
-                        </svg>
-                        Confirm
-                      </button>
-                    </div>
-                  </>
-                ) : (
-                  <div className="bg-green-50 border border-green-400 rounded-lg p-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-green-700 font-semibold text-sm">
-                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                          <path
-                            fillRule="evenodd"
-                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                        Confirmed ({rawLength5 || 0} file
-                        {(rawLength6 || 0) !== 1 ? "s" : ""})
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setTenderDocumentsConfirmed(false)}
-                        className="text-blue-600 hover:text-blue-800 text-xs font-medium underline"
-                      >
-                        Edit
-                      </button>
-                    </div>
-                    {pendingTenderDocuments && pendingTenderDocuments.length > 0 && (
-                      <div className="mt-1 flex flex-wrap gap-1">
-                        {pendingTenderDocuments.map((doc: any, idx: number) => {
-                          const rawName3 = doc.name;
-
-                          return (
-                            <span
-                              key={idx}
-                              className="text-xs text-green-700 bg-green-100 px-2 py-0.5 rounded flex items-center gap-1"
-                            >
-                              <svg
-                                className="w-3 h-3"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
-                                />
-                              </svg>
-                              {(rawName3 || doc.file?.name)?.substring(0, 20)}...
-                            </span>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
+              <DocumentBucket
+                id="rfq-tender-specs"
+                title="Tender Specification Documents Only"
+                subtitle="Tender specs and requirements"
+                tone="purple"
+                documents={pendingTenderDocuments || []}
+                onAddDocument={onAddTenderDocument}
+                onRemoveDocument={onRemoveTenderDocument}
+                isConfirmed={tenderDocumentsConfirmed}
+                onConfirm={() => setTenderDocumentsConfirmed(true)}
+                onUnconfirm={() => setTenderDocumentsConfirmed(false)}
+                onConfirmEmpty={() => setShowNoTenderDocumentsPopup(true)}
+              />
             )}
           </div>
         </div>
