@@ -224,7 +224,7 @@ export default function SupplierCocDetailPage() {
     try {
       await authorizeVersionMutation.mutateAsync({ kind: "supplier-cocs", id: cocId });
       showToast("Version authorized — previous version superseded", "success");
-      fetchData();
+      router.replace("/au-rubber/portal/supplier-cocs");
     } catch (err) {
       toastError(showToast, err, "Failed to authorize version");
     }
@@ -243,7 +243,7 @@ export default function SupplierCocDetailPage() {
     try {
       await rejectVersionMutation.mutateAsync({ kind: "supplier-cocs", id: cocId });
       showToast("Version rejected", "success");
-      router.push("/au-rubber/portal/supplier-cocs");
+      router.replace("/au-rubber/portal/supplier-cocs");
     } catch (err) {
       toastError(showToast, err, "Failed to reject version");
     }
