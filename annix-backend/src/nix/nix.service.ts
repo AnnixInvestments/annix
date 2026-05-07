@@ -693,6 +693,7 @@ export class NixService {
                 itemCount: visionResult.items.length,
                 clarificationsNeeded: visionResult.items.filter((i) => i.needsClarification).length,
                 metadata: visionResult.metadata,
+                specifications: visionResult.specifications ?? {},
                 specificationCells: visionResult.specificationCells,
                 hasText: pdfText.trim().length > 0,
                 hasTables: false,
@@ -714,6 +715,7 @@ export class NixService {
             itemCount: aiResult.items.length,
             clarificationsNeeded,
             metadata: aiResult.metadata,
+            specifications: aiResult.specifications ?? {},
             specificationCells: aiResult.specificationCells,
             hasText: true,
             hasTables: false,
@@ -810,6 +812,7 @@ export class NixService {
     profileSystemPrompt?: string,
   ): Promise<{
     items: ExtractedItem[];
+    specifications: Record<string, unknown>;
     specificationCells: SpecificationCellData[];
     metadata: Record<string, unknown>;
     providerUsed: string;
@@ -846,11 +849,21 @@ export class NixService {
       const items: ExtractedItem[] = rawItems.map((item: Record<string, unknown>) =>
         this.normaliseVisionItem(item),
       );
-      const specificationCells: SpecificationCellData[] = Array.isArray(parsed.specifications)
-        ? (parsed.specifications as SpecificationCellData[])
+      // 'specifications' may be an object keyed by clause code (the canonical
+      // shape since #253 prompt rewrite) OR an array of cells from older
+      // pipeline runs. Handle both so the dict goes to specifications and
+      // the array goes to specificationCells.
+      const rawSpecs = parsed.specifications;
+      const specifications: Record<string, unknown> =
+        rawSpecs && typeof rawSpecs === "object" && !Array.isArray(rawSpecs)
+          ? (rawSpecs as Record<string, unknown>)
+          : {};
+      const specificationCells: SpecificationCellData[] = Array.isArray(rawSpecs)
+        ? (rawSpecs as SpecificationCellData[])
         : [];
       return {
         items,
+        specifications,
         specificationCells,
         metadata: (parsed.metadata as Record<string, unknown>) ?? {},
         providerUsed: result.providerUsed,
@@ -1317,6 +1330,88 @@ export class NixService {
       where: { source: LearningSource.ADMIN_SEEDED },
       order: { createdAt: "DESC" },
     });
+  }
+
+  /**
+   * Updates a single field on a single item inside an extraction's
+   * extractedItems array, persisted in place. When the value actually
+   * changes, also feeds the diff into the Nix learning system via
+   * recordCorrection — so identical drawings that get re-extracted in
+   * future runs benefit from the user's correction without us needing
+   * to keep tightening the prompt.
+   *
+   * Identifies the row by item.itemNumber when present (preferred —
+   * survives re-ordering), falling back to the array index. Empty-string
+   * values are normalised to null so the user can clear coatingSystem
+   * etc. with an empty input.
+   */
+  async patchExtractionItem(
+    extractionId: number,
+    rowKey: { itemNumber?: string; index?: number },
+    field: string,
+    rawValue: string | number | boolean | null,
+  ): Promise<NixExtraction> {
+    const extraction = await this.extractionRepo.findOne({ where: { id: extractionId } });
+    if (!extraction) {
+      throw new Error("Extraction not found");
+    }
+    const items = (extraction.extractedItems ?? []) as Array<Record<string, unknown>>;
+    let targetIndex = -1;
+    if (rowKey.itemNumber) {
+      targetIndex = items.findIndex((it) => it.itemNumber === rowKey.itemNumber);
+    }
+    if (targetIndex < 0 && typeof rowKey.index === "number") {
+      targetIndex = rowKey.index;
+    }
+    if (targetIndex < 0 || targetIndex >= items.length) {
+      throw new Error(
+        `Item not found in extraction #${extractionId} (itemNumber=${rowKey.itemNumber ?? "n/a"}, index=${rowKey.index ?? "n/a"})`,
+      );
+    }
+    const target = items[targetIndex];
+    const oldValue = target[field] ?? null;
+    const normalisedValue =
+      typeof rawValue === "string" && rawValue.trim().length === 0 ? null : rawValue;
+
+    const updatedItems = items.map((it, idx) =>
+      idx === targetIndex ? { ...it, [field]: normalisedValue } : it,
+    );
+    // The strict type on extractedItems is from the Excel pipeline shape,
+    // but in practice it stores any JSON the AI returns — we cast to keep
+    // the heterogeneous map-of-fields shape that drawings/specs produce.
+    extraction.extractedItems = updatedItems as unknown as NixExtraction["extractedItems"];
+    await this.extractionRepo.save(extraction);
+
+    const oldString = oldValue == null ? null : String(oldValue);
+    const newString = normalisedValue == null ? null : String(normalisedValue);
+    if (oldString !== newString) {
+      const description = (target.description as string | undefined) ?? "";
+      const itemNumber = (target.itemNumber as string | undefined) ?? "";
+      const itemDescription =
+        description.length > 0
+          ? description
+          : itemNumber.length > 0
+            ? `mark ${itemNumber}`
+            : `extraction ${extractionId} item ${targetIndex}`;
+      try {
+        await this.recordCorrection({
+          extractionId,
+          itemDescription,
+          fieldName: field,
+          originalValue: oldString,
+          correctedValue: newString ?? "",
+          userId: extraction.userId,
+        });
+      } catch (err) {
+        this.logger.error(
+          `Failed to record learning correction for #${extractionId} ${field}: ${
+            err instanceof Error ? err.message : "unknown"
+          }`,
+        );
+      }
+    }
+
+    return extraction;
   }
 
   async recordCorrection(correction: {

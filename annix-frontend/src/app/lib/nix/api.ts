@@ -406,6 +406,28 @@ export const nixApi = {
     return response.json();
   },
 
+  patchExtractionItem: async (
+    extractionId: number,
+    rowKey: { itemNumber?: string; index?: number },
+    field: string,
+    value: string | number | boolean | null,
+  ): Promise<{ id: number; status: string }> => {
+    const baseUrl = browserBaseUrl();
+    const response = await fetch(`${baseUrl}/nix/extraction/${extractionId}/items`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        ...resolveNixAuthHeaders(),
+      },
+      body: JSON.stringify({ ...rowKey, field, value }),
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to update item: ${errorText}`);
+    }
+    return response.json();
+  },
+
   retryExtraction: async (extractionId: number): Promise<{ id: number; status: string }> => {
     const baseUrl = browserBaseUrl();
     const response = await fetch(`${baseUrl}/nix/extraction/${extractionId}/retry`, {

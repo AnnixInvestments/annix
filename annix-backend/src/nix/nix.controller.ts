@@ -9,6 +9,7 @@ import {
   Inject,
   Param,
   ParseIntPipe,
+  Patch,
   Post,
   Req,
   UploadedFile,
@@ -268,6 +269,46 @@ export class NixController {
     const expiresInSeconds = 600;
     const url = await this.nixService.extractionDocumentUrl(extraction, expiresInSeconds);
     return { url, expiresInSeconds };
+  }
+
+  @Patch("extraction/:id/items")
+  @UseGuards(AnyUserAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary:
+      "Edit a single field on a single item inside an extraction. Auto-records the diff as a learning correction so future extractions improve.",
+  })
+  @ApiResponse({ status: 200, description: "Updated extraction", type: NixExtraction })
+  async patchExtractionItem(
+    @Param("id", ParseIntPipe) id: number,
+    @Body()
+    body: {
+      itemNumber?: string;
+      index?: number;
+      field: string;
+      value: string | number | boolean | null;
+    },
+    @Req() req: Request,
+  ): Promise<NixExtraction> {
+    const authUser = req["authUser"] as AuthenticatedUser;
+    const extraction = await this.nixService.extraction(id);
+    if (!extraction) {
+      throw new BadRequestException("Extraction not found");
+    }
+    const isOwner = extraction.userId === authUser.userId;
+    const isAdmin = authUser.type === "admin";
+    if (!isOwner && !isAdmin) {
+      throw new ForbiddenException("Not allowed to edit this extraction");
+    }
+    if (!body.field || typeof body.field !== "string") {
+      throw new BadRequestException("Missing 'field' in body");
+    }
+    return this.nixService.patchExtractionItem(
+      id,
+      { itemNumber: body.itemNumber, index: body.index },
+      body.field,
+      body.value,
+    );
   }
 
   @Post("extraction/:id/retry")

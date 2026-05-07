@@ -354,6 +354,7 @@ describe("NixService", () => {
             needsClarification: false,
           },
         ] as any,
+        specifications: {},
         specificationCells: [],
         metadata: {
           projectReference: null,

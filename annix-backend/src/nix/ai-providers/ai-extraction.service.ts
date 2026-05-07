@@ -76,6 +76,7 @@ export class AiExtractionService implements OnModuleInit {
     systemPrompt?: string,
   ): Promise<{
     items: ExtractedItem[];
+    specifications: Record<string, unknown>;
     specificationCells: SpecificationCellData[];
     metadata: Record<string, any>;
     providerUsed: string;
@@ -89,6 +90,7 @@ export class AiExtractionService implements OnModuleInit {
       this.logger.warn("No AI provider available, returning empty result");
       return {
         items: [],
+        specifications: {},
         specificationCells: [],
         metadata: {},
         providerUsed: "none",
@@ -133,8 +135,15 @@ export class AiExtractionService implements OnModuleInit {
       contextInfo: documentName ? { documentName } : undefined,
     });
 
+    const rawSpecs = response.specifications;
+    const specifications: Record<string, unknown> =
+      rawSpecs && typeof rawSpecs === "object" && !Array.isArray(rawSpecs)
+        ? (rawSpecs as Record<string, unknown>)
+        : {};
+
     return {
       items,
+      specifications,
       specificationCells,
       metadata: {
         ...response.metadata,

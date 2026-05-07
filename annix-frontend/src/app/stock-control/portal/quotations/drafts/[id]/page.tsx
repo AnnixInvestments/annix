@@ -76,6 +76,10 @@ export default function NixExtractionDraftPage() {
     [showToast, sessionQuery, showExtraction, hideExtraction],
   );
 
+  const handleItemSaved = useCallback(() => {
+    sessionQuery.refetch();
+  }, [sessionQuery]);
+
   const handleViewOriginal = useCallback(
     async (extraction: NixExtractionSummary) => {
       try {
@@ -210,6 +214,7 @@ export default function NixExtractionDraftPage() {
         extractions={drawingExtractions}
         onViewOriginal={handleViewOriginal}
         onRetry={handleRetry}
+        onItemSaved={handleItemSaved}
         retryingId={retryingId}
         emptyMessage="No drawings uploaded into this session yet."
       />
@@ -221,6 +226,7 @@ export default function NixExtractionDraftPage() {
         extractions={specExtractions}
         onViewOriginal={handleViewOriginal}
         onRetry={handleRetry}
+        onItemSaved={handleItemSaved}
         retryingId={retryingId}
         emptyMessage="No specification documents uploaded into this session yet."
         showSpecifications
@@ -234,6 +240,7 @@ export default function NixExtractionDraftPage() {
           extractions={otherExtractions}
           onViewOriginal={handleViewOriginal}
           onRetry={handleRetry}
+          onItemSaved={handleItemSaved}
           retryingId={retryingId}
         />
       )}
@@ -282,6 +289,7 @@ interface ExtractionGroupProps {
   extractions: NixExtractionSummary[];
   onViewOriginal: (extraction: NixExtractionSummary) => void;
   onRetry: (extraction: NixExtractionSummary) => void;
+  onItemSaved: () => void;
   retryingId: number | null;
   emptyMessage?: string;
   showSpecifications?: boolean;
@@ -295,6 +303,7 @@ function ExtractionGroup(props: ExtractionGroupProps) {
     extractions,
     onViewOriginal,
     onRetry,
+    onItemSaved,
     retryingId,
     emptyMessage,
     showSpecifications,
@@ -324,6 +333,7 @@ function ExtractionGroup(props: ExtractionGroupProps) {
               extraction={extraction}
               onViewOriginal={onViewOriginal}
               onRetry={onRetry}
+              onItemSaved={onItemSaved}
               retryingId={retryingId}
               showSpecifications={showSpecifications}
             />
@@ -338,12 +348,14 @@ interface ExtractionCardProps {
   extraction: NixExtractionSummary;
   onViewOriginal: (extraction: NixExtractionSummary) => void;
   onRetry: (extraction: NixExtractionSummary) => void;
+  onItemSaved: () => void;
   retryingId: number | null;
   showSpecifications?: boolean;
 }
 
 function ExtractionCard(props: ExtractionCardProps) {
-  const { extraction, onViewOriginal, onRetry, retryingId, showSpecifications } = props;
+  const { extraction, onViewOriginal, onRetry, onItemSaved, retryingId, showSpecifications } =
+    props;
   const rawItems = extraction.extractedItems;
   const items = (rawItems ? rawItems : []) as Array<Record<string, unknown>>;
   const rawData = extraction.extractedData;
@@ -402,7 +414,13 @@ function ExtractionCard(props: ExtractionCardProps) {
             </thead>
             <tbody>
               {items.map((item, idx) => (
-                <ItemRow key={idx} item={item} />
+                <ItemRow
+                  key={idx}
+                  item={item}
+                  index={idx}
+                  extractionId={extraction.id}
+                  onSaved={onItemSaved}
+                />
               ))}
             </tbody>
           </table>
@@ -423,13 +441,19 @@ function ExtractionCard(props: ExtractionCardProps) {
   );
 }
 
-function ItemRow(props: { item: Record<string, unknown> }) {
-  const { item } = props;
+function ItemRow(props: {
+  item: Record<string, unknown>;
+  index: number;
+  extractionId: number;
+  onSaved: () => void;
+}) {
+  const { item, index, extractionId, onSaved } = props;
   const itemNumber = item.itemNumber;
   const itemMark = item.mark;
   let mark: string = "—";
   if (isString(itemNumber) && itemNumber.length > 0) mark = itemNumber;
   else if (isString(itemMark) && itemMark.length > 0) mark = itemMark;
+  const itemNumberKey = isString(itemNumber) && itemNumber.length > 0 ? itemNumber : undefined;
 
   const rawDescription = item.description;
   const description = isString(rawDescription) ? rawDescription : "";
@@ -463,26 +487,259 @@ function ItemRow(props: { item: Record<string, unknown> }) {
   if (length !== undefined && length !== null) dimensionParts.push(`L ${String(length)}`);
   const dimensions = dimensionParts.join(" × ");
 
-  const codeCandidates = [
-    item.coatingSystem,
-    item.paintSystem,
-    item.liningType,
-    item.lining,
-    item.materialClass,
-    item.flangeConfig,
-  ];
-  const codes = codeCandidates.filter(
-    (value): value is string => isString(value) && value.length > 0,
-  );
+  const rowKey = { itemNumber: itemNumberKey, index };
+
+  const coating = isString(item.coatingSystem) ? (item.coatingSystem as string) : "";
+  const lining = isString(item.liningType) ? (item.liningType as string) : "";
+  const materialClass = isString(item.materialClass) ? (item.materialClass as string) : "";
+  const flangeConfig = isString(item.flangeConfig) ? (item.flangeConfig as string) : "";
+  const codeParts = [coating, lining, materialClass, flangeConfig].filter((p) => p.length > 0);
+  const codesDisplay = codeParts.length > 0 ? codeParts.join(" / ") : "—";
 
   return (
     <tr className="border-b border-gray-100">
       <td className="py-1 pr-3 font-mono text-gray-700">{mark}</td>
-      <td className="py-1 pr-3 text-gray-900 max-w-md truncate">{description}</td>
-      <td className="py-1 pr-3 text-gray-900">{quantity}</td>
+      <td className="py-1 pr-3 text-gray-900 max-w-md">
+        <EditableCell
+          extractionId={extractionId}
+          rowKey={rowKey}
+          field="description"
+          value={description}
+          onSaved={onSaved}
+        />
+      </td>
+      <td className="py-1 pr-3 text-gray-900">
+        <EditableCell
+          extractionId={extractionId}
+          rowKey={rowKey}
+          field="quantity"
+          value={String(quantity)}
+          onSaved={onSaved}
+          numeric
+        />
+      </td>
       <td className="py-1 pr-3 text-gray-700">{dimensions || "—"}</td>
-      <td className="py-1 pr-3 text-gray-700">{codes.length > 0 ? codes.join(" / ") : "—"}</td>
+      <td className="py-1 pr-3 text-gray-700">
+        <CodesEditor
+          extractionId={extractionId}
+          rowKey={rowKey}
+          coating={coating}
+          lining={lining}
+          materialClass={materialClass}
+          flangeConfig={flangeConfig}
+          display={codesDisplay}
+          onSaved={onSaved}
+        />
+      </td>
     </tr>
+  );
+}
+
+function EditableCell(props: {
+  extractionId: number;
+  rowKey: { itemNumber?: string; index?: number };
+  field: string;
+  value: string;
+  onSaved: () => void;
+  numeric?: boolean;
+}) {
+  const { extractionId, rowKey, field, value, onSaved, numeric } = props;
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+  const [saving, setSaving] = useState(false);
+
+  const startEdit = () => {
+    setDraft(value);
+    setEditing(true);
+  };
+
+  const cancelEdit = () => {
+    setDraft(value);
+    setEditing(false);
+  };
+
+  const commit = async () => {
+    if (draft === value) {
+      setEditing(false);
+      return;
+    }
+    setSaving(true);
+    try {
+      const payload: string | number | null =
+        numeric && draft.length > 0 ? Number(draft) : draft.length === 0 ? null : draft;
+      await nixApi.patchExtractionItem(extractionId, rowKey, field, payload);
+      onSaved();
+    } catch {
+      // toast not necessary — surface failure by reverting and a brief shake later
+    } finally {
+      setSaving(false);
+      setEditing(false);
+    }
+  };
+
+  if (editing) {
+    return (
+      <input
+        type={numeric ? "number" : "text"}
+        value={draft}
+        autoFocus
+        disabled={saving}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") commit();
+          else if (e.key === "Escape") cancelEdit();
+        }}
+        className="w-full px-1 py-0.5 border border-blue-400 rounded text-xs"
+      />
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={startEdit}
+      className="text-left w-full hover:bg-blue-50 rounded px-1 py-0.5 truncate"
+      title="Click to edit"
+    >
+      {value || <span className="text-gray-400">—</span>}
+    </button>
+  );
+}
+
+function CodesEditor(props: {
+  extractionId: number;
+  rowKey: { itemNumber?: string; index?: number };
+  coating: string;
+  lining: string;
+  materialClass: string;
+  flangeConfig: string;
+  display: string;
+  onSaved: () => void;
+}) {
+  const { extractionId, rowKey, coating, lining, materialClass, flangeConfig, display, onSaved } =
+    props;
+  const [open, setOpen] = useState(false);
+  const [c, setC] = useState(coating);
+  const [l, setL] = useState(lining);
+  const [m, setM] = useState(materialClass);
+  const [f, setF] = useState(flangeConfig);
+  const [saving, setSaving] = useState(false);
+
+  const cancel = () => {
+    setC(coating);
+    setL(lining);
+    setM(materialClass);
+    setF(flangeConfig);
+    setOpen(false);
+  };
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const ops: Array<[string, string]> = [
+        ["coatingSystem", c],
+        ["liningType", l],
+        ["materialClass", m],
+        ["flangeConfig", f],
+      ];
+      const original: Record<string, string> = {
+        coatingSystem: coating,
+        liningType: lining,
+        materialClass: materialClass,
+        flangeConfig: flangeConfig,
+      };
+      for (const [field, val] of ops) {
+        if (val !== original[field]) {
+          await nixApi.patchExtractionItem(
+            extractionId,
+            rowKey,
+            field,
+            val.length === 0 ? null : val,
+          );
+        }
+      }
+      onSaved();
+      setOpen(false);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="text-left hover:bg-blue-50 rounded px-1 py-0.5"
+        title="Click to edit codes"
+      >
+        {display}
+      </button>
+    );
+  }
+  return (
+    <div className="grid grid-cols-2 gap-1 p-2 bg-blue-50 border border-blue-200 rounded">
+      <label className="flex flex-col gap-0.5 text-[10px] text-gray-600">
+        Coating
+        <input
+          type="text"
+          value={c}
+          disabled={saving}
+          onChange={(e) => setC(e.target.value)}
+          placeholder="(empty = uncoated)"
+          className="px-1 py-0.5 border border-gray-300 rounded text-xs"
+        />
+      </label>
+      <label className="flex flex-col gap-0.5 text-[10px] text-gray-600">
+        Lining
+        <input
+          type="text"
+          value={l}
+          disabled={saving}
+          onChange={(e) => setL(e.target.value)}
+          placeholder="(empty = unlined)"
+          className="px-1 py-0.5 border border-gray-300 rounded text-xs"
+        />
+      </label>
+      <label className="flex flex-col gap-0.5 text-[10px] text-gray-600">
+        Material class
+        <input
+          type="text"
+          value={m}
+          disabled={saving}
+          onChange={(e) => setM(e.target.value)}
+          className="px-1 py-0.5 border border-gray-300 rounded text-xs"
+        />
+      </label>
+      <label className="flex flex-col gap-0.5 text-[10px] text-gray-600">
+        Flange / ends
+        <input
+          type="text"
+          value={f}
+          disabled={saving}
+          onChange={(e) => setF(e.target.value)}
+          className="px-1 py-0.5 border border-gray-300 rounded text-xs"
+        />
+      </label>
+      <div className="col-span-2 flex justify-end gap-2 mt-1">
+        <button
+          type="button"
+          onClick={cancel}
+          disabled={saving}
+          className="text-xs text-gray-600 hover:text-gray-900"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          onClick={save}
+          disabled={saving}
+          className="text-xs px-2 py-0.5 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+        >
+          {saving ? "Saving..." : "Save"}
+        </button>
+      </div>
+    </div>
   );
 }
 
