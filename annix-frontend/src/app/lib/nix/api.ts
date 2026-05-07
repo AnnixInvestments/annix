@@ -1,5 +1,6 @@
 "use client";
 
+import { isObject } from "es-toolkit/compat";
 import { log } from "@/app/lib/logger";
 import { browserBaseUrl } from "@/lib/api-config";
 
@@ -208,10 +209,19 @@ export interface RegionExtractionResult {
   confidence: number;
 }
 
+export interface NixUploadOptions {
+  userId?: number;
+  rfqId?: number;
+  sourceModule?: string;
+  sourceId?: number;
+  extractionProfile?: string;
+  productTypes?: string[];
+}
+
 export const nixApi = {
   uploadAndProcess: async (
     file: File,
-    userId?: number,
+    userIdOrOptions?: number | NixUploadOptions,
     rfqId?: number,
     productTypes?: string[],
   ): Promise<NixProcessResponse> => {
@@ -222,6 +232,14 @@ export const nixApi = {
     if (file.size === 0) {
       throw new Error("Cannot upload empty file to Nix");
     }
+
+    const opts: NixUploadOptions = isObject(userIdOrOptions)
+      ? (userIdOrOptions as NixUploadOptions)
+      : {
+          userId: userIdOrOptions,
+          rfqId,
+          productTypes,
+        };
 
     let fileData: ArrayBuffer;
     try {
@@ -235,10 +253,13 @@ export const nixApi = {
     const blob = new Blob([fileData], { type: file.type });
     const formData = new FormData();
     formData.append("file", blob, file.name);
-    if (userId) formData.append("userId", userId.toString());
-    if (rfqId) formData.append("rfqId", rfqId.toString());
-    if (productTypes && productTypes.length > 0) {
-      formData.append("productTypes", JSON.stringify(productTypes));
+    if (opts.userId) formData.append("userId", opts.userId.toString());
+    if (opts.rfqId) formData.append("rfqId", opts.rfqId.toString());
+    if (opts.sourceModule) formData.append("sourceModule", opts.sourceModule);
+    if (opts.sourceId) formData.append("sourceId", opts.sourceId.toString());
+    if (opts.extractionProfile) formData.append("extractionProfile", opts.extractionProfile);
+    if (opts.productTypes && opts.productTypes.length > 0) {
+      formData.append("productTypes", JSON.stringify(opts.productTypes));
     }
 
     const uploadUrl = "/api/nix/upload";

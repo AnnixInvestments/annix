@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 const MOCK_QUOTES = [
   {
     id: 1,
@@ -85,13 +87,21 @@ export default function QuotationsPage() {
             Quotes and RFQ responses issued to customers.
           </p>
         </div>
-        <button
-          type="button"
-          disabled
-          className="inline-flex items-center px-4 py-2 bg-[#323288] text-white rounded-md text-sm font-medium shadow-sm disabled:opacity-50"
-        >
-          New Quotation
-        </button>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/stock-control/portal/quotations/new-from-documents"
+            className="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-md text-sm font-medium shadow-sm hover:bg-purple-700"
+          >
+            New from documents (Nix)
+          </Link>
+          <button
+            type="button"
+            disabled
+            className="inline-flex items-center px-4 py-2 bg-[#323288] text-white rounded-md text-sm font-medium shadow-sm disabled:opacity-50"
+          >
+            New Quotation
+          </button>
+        </div>
       </div>
 
       <div className="mb-4 rounded-md bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800">

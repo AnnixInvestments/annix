@@ -120,6 +120,7 @@ import { StockControlOnboardingGuard } from "./guards/stock-control-onboarding.g
 import { StockControlRoleGuard } from "./guards/stock-control-role.guard";
 import { QcModule } from "./qc/qc.module";
 import { ActionPermissionService } from "./services/action-permission.service";
+import { AscaQuoteDocumentsProfileHandler } from "./services/asca-quote-documents-profile.handler";
 import { StockControlAuthService } from "./services/auth.service";
 import { BackgroundStepService } from "./services/background-step.service";
 import { BrandingScraperService } from "./services/branding-scraper.service";
@@ -379,6 +380,7 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
     RubberCuttingTrainingService,
     StockAllocationService,
     SageJcDumpService,
+    AscaQuoteDocumentsProfileHandler,
   ],
   exports: [StockControlAuthService],
 })
