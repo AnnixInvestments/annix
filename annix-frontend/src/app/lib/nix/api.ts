@@ -1,6 +1,7 @@
 "use client";
 
 import { isObject } from "es-toolkit/compat";
+import { sessionExpiredEvent } from "@/app/components/SessionExpiredModal";
 import { anyPortalAuthHeaders } from "@/app/lib/api/portalTokenStores";
 import { log } from "@/app/lib/logger";
 import { browserBaseUrl } from "@/lib/api-config";
@@ -14,6 +15,23 @@ import { browserBaseUrl } from "@/lib/api-config";
  */
 function resolveNixAuthHeaders(): Record<string, string> {
   return anyPortalAuthHeaders();
+}
+
+/**
+ * Standardised error handler for nixApi fetch responses. On 401 it fires
+ * the global sessionExpiredEvent so the SessionExpiredModal in the root
+ * layout shows a branded "session expired — please sign in again" prompt
+ * instead of every caller surfacing a cryptic toast like
+ * `{"message":"Invalid token","statusCode":401}`. Throws a typed Error
+ * so React Query / try/catch handlers can still react.
+ */
+async function failNixResponse(response: Response, action: string): Promise<never> {
+  const errorText = await response.text();
+  if (response.status === 401) {
+    sessionExpiredEvent.emit();
+    throw new Error(`Session expired — please sign in again to ${action}.`);
+  }
+  throw new Error(`Failed to ${action}: ${errorText}`);
 }
 
 export interface NixExtractedPlateBomRow {
@@ -399,10 +417,7 @@ export const nixApi = {
         ...resolveNixAuthHeaders(),
       },
     });
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Failed to fetch document URL: ${errorText}`);
-    }
+    if (!response.ok) await failNixResponse(response, "fetch document URL");
     return response.json();
   },
 
@@ -421,10 +436,7 @@ export const nixApi = {
       },
       body: JSON.stringify({ ...rowKey, field, value }),
     });
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Failed to update item: ${errorText}`);
-    }
+    if (!response.ok) await failNixResponse(response, "update item");
     return response.json();
   },
 
@@ -437,10 +449,7 @@ export const nixApi = {
         ...resolveNixAuthHeaders(),
       },
     });
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Failed to retry extraction: ${errorText}`);
-    }
+    if (!response.ok) await failNixResponse(response, "retry extraction");
     return response.json();
   },
 

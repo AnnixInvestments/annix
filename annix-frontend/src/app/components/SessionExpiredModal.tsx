@@ -19,22 +19,50 @@ export const sessionExpiredEvent = {
 };
 
 interface SessionExpiredModalProps {
-  /** Custom redirect URL (defaults to /customer/login) */
+  /**
+   * Optional explicit redirect URL. If omitted, the modal infers the portal
+   * from the current pathname (e.g. /stock-control/... → /stock-control/login,
+   * /au-rubber/... → /au-rubber/login) so SC / AU-Rubber / RFQ users are sent
+   * to the right portal's login screen instead of always /customer/login.
+   */
   loginUrl?: string;
+}
+
+const PORTAL_LOGIN_ROUTES: Array<{ prefix: string; login: string }> = [
+  { prefix: "/stock-control", login: "/stock-control/login" },
+  { prefix: "/au-rubber", login: "/au-rubber/login" },
+  { prefix: "/admin", login: "/admin/login" },
+  { prefix: "/supplier", login: "/supplier/login" },
+  { prefix: "/cv-assistant", login: "/cv-assistant/login" },
+  { prefix: "/annix-rep", login: "/annix-rep/login" },
+];
+
+function inferLoginUrl(): string {
+  // eslint-disable-next-line no-restricted-syntax -- SSR guard
+  if (typeof window === "undefined") return "/customer/login";
+  const path = window.location.pathname;
+  const match = PORTAL_LOGIN_ROUTES.find((p) => path.startsWith(p.prefix));
+  return match ? match.login : "/customer/login";
 }
 
 /**
  * Session Expired Modal
  *
- * Displays a branded modal when the user's session has expired.
- * Include this component in your root layout to enable global session expiry handling.
+ * Branded modal that appears when any 401 fires through the global
+ * sessionExpiredEvent. Offers two recovery paths:
+ *  - "Refresh page" — primary; just reloads, letting the portal's auth
+ *    context try a token refresh on mount. Recovers seamlessly when the
+ *    session is still valid on the server but the access token has merely
+ *    rotated.
+ *  - "Sign in again" — secondary; clears tokens and routes to the active
+ *    portal's login (Stock Control, AU-Rubber, etc.) when refresh isn't
+ *    enough.
  *
- * Usage:
- * 1. Add <SessionExpiredModal /> to your layout
- * 2. Call sessionExpiredEvent.emit() when a 401 error occurs
+ * Mount once in the root layout. Trigger via `sessionExpiredEvent.emit()`
+ * from any 401 handler.
  */
 export default function SessionExpiredModal(props: SessionExpiredModalProps) {
-  const { loginUrl = "/customer/login" } = props;
+  const explicitLoginUrl = props.loginUrl;
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
@@ -46,8 +74,14 @@ export default function SessionExpiredModal(props: SessionExpiredModalProps) {
     };
   }, []);
 
+  const handleRefresh = () => {
+    // eslint-disable-next-line no-restricted-syntax -- SSR guard
+    if (typeof window !== "undefined") {
+      window.location.reload();
+    }
+  };
+
   const handleLogin = () => {
-    // Clear all auth tokens
     // eslint-disable-next-line no-restricted-syntax -- SSR guard
     if (typeof window !== "undefined") {
       localStorage.removeItem("customerAccessToken");
@@ -56,10 +90,12 @@ export default function SessionExpiredModal(props: SessionExpiredModalProps) {
       localStorage.removeItem("supplierRefreshToken");
       localStorage.removeItem("adminAccessToken");
       localStorage.removeItem("adminRefreshToken");
+      localStorage.removeItem("stockControlAccessToken");
+      localStorage.removeItem("stockControlRefreshToken");
       localStorage.removeItem("authToken");
     }
-    // Redirect to login
-    window.location.href = loginUrl;
+    const target = explicitLoginUrl ?? inferLoginUrl();
+    window.location.href = target;
   };
 
   if (!isVisible) return null;
@@ -100,23 +136,36 @@ export default function SessionExpiredModal(props: SessionExpiredModalProps) {
             </svg>
           </div>
 
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Session Expired</h2>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Your session has timed out</h2>
 
           <p className="text-gray-600 mb-6">
-            Your session has expired for security reasons. Please log in again to continue using the
-            application.
+            Sessions expire after a period of inactivity for security. Refreshing the page is
+            usually enough to get you back in — your work on this page will be reloaded, and any
+            saved changes are safe.
           </p>
 
-          {/* Login button */}
+          {/* Primary: refresh — usually recovers via the portal's auth refresh on mount */}
           <button
-            onClick={handleLogin}
+            type="button"
+            onClick={handleRefresh}
             className="w-full py-3 px-6 rounded-lg font-semibold text-white transition-all duration-200 hover:opacity-90 hover:shadow-lg active:scale-[0.98]"
             style={{ backgroundColor: "#FFA500" }}
           >
-            Log In Again
+            Refresh page
           </button>
 
-          <p className="mt-4 text-xs text-gray-400">Your unsaved changes may have been lost</p>
+          {/* Secondary: full sign-in if refresh isn't enough */}
+          <button
+            type="button"
+            onClick={handleLogin}
+            className="mt-3 w-full py-2 px-6 rounded-lg font-medium text-gray-700 border border-gray-300 hover:bg-gray-50 transition-colors"
+          >
+            Sign in again
+          </button>
+
+          <p className="mt-4 text-xs text-gray-400">
+            Click Refresh first — it almost always works without losing context.
+          </p>
         </div>
 
         <div className="h-1.5" style={{ backgroundColor: "#FFA500" }} />

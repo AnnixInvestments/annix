@@ -1,3 +1,4 @@
+import { sessionExpiredEvent } from "@/app/components/SessionExpiredModal";
 import { anyPortalAuthHeaders } from "@/app/lib/api/portalTokenStores";
 import { browserBaseUrl } from "@/lib/api-config";
 import { createMutationHook, createQueryHook } from "../../factories";
@@ -152,6 +153,13 @@ async function nixRequest<TResponse>(
   });
 
   if (!response.ok) {
+    if (response.status === 401) {
+      // Fire the global session-expired event so the SessionExpiredModal
+      // shows a branded "please sign in again" prompt instead of the page
+      // rendering "Could not load session — it may have been deleted".
+      sessionExpiredEvent.emit();
+      throw new Error("Session expired — please sign in again.");
+    }
     if (options.parseErrorBody) {
       const body = await response.json().catch(() => null);
       const rawError = body?.error;
