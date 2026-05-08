@@ -674,6 +674,8 @@ export type {
   ValidationIssue,
 } from "./nix/useNix";
 export {
+  type NixApp,
+  type NixCapability,
   type NixExtractionDocumentUrlResponse,
   type NixExtractionSessionDto,
   type NixExtractionSummary,
@@ -681,6 +683,8 @@ export {
   useCreateNixItems,
   useCreateNixSession,
   useEndNixSession,
+  useNixApps,
+  useNixCapabilities,
   useNixExtractionDocumentUrl,
   useNixExtractionSession,
   useNixHistory,

@@ -196,6 +196,15 @@ Host-app-agnostic React module. Consumed by Stock Control (via `app/stock-contro
 | Theme | `modules/stock-management/theme/` | Default tokens + `StockManagementThemeTokens` type |
 | i18n | `modules/stock-management/i18n/` | Default English labels + override mechanism |
 
+### Nix per-app context (`app/lib/nix/context/`) — Phase 2 of #262
+
+| Concept | Path | Use for |
+|---|---|---|
+| `<NixAppProvider appCode="..." />` | `lib/nix/context/NixAppContext.tsx` | Per-app provider that fetches the app's registered backend capabilities and exposes them to `<NixAssistant />` and any future Nix surfaces. Each app's portal layout wraps its tree once. |
+| `useNixApp()` / `useNixAppStrict()` | same file | Read the current app context. Strict variant throws if no provider mounted; non-strict returns null (safe for legacy callers). |
+| `useNixCapabilities(appCode?)` | `lib/query/hooks/nix/useNix.ts` | TanStack Query hook fetching `GET /nix/capabilities[?appCode=]`. Re-exported from `@/app/lib/query/hooks`. |
+| `useNixApps()` | same file | TanStack Query hook fetching `GET /nix/capabilities/apps` — list of apps with at least one registered Nix capability. |
+
 ### Nix shared UI (`app/lib/nix/components/`)
 
 | Concept | Path | Use for |

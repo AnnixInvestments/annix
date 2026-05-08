@@ -24,4 +24,9 @@ export const nixKeys = {
     item: (item: unknown) => ["nix", "validation", "item", item] as const,
     rfq: (items: unknown[]) => ["nix", "validation", "rfq", items] as const,
   },
+  capabilities: {
+    all: ["nix", "capabilities"] as const,
+    list: (appCode?: string) => ["nix", "capabilities", "list", appCode ?? "all"] as const,
+    apps: ["nix", "capabilities", "apps"] as const,
+  },
 } as const;

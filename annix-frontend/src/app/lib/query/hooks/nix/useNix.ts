@@ -441,3 +441,52 @@ export const useValidateNixRfq = createMutationHook<
     errorLabel: "Failed to validate RFQ",
   }),
 );
+
+/* ------------------------------------------------------------------
+ * Nix capabilities (ref #262 Phase 2)
+ *
+ * The frontend NixAppProvider reads this to know which intents,
+ * guide-slugs, and walkthrough-availability flags to surface in chat.
+ * Backend authoritative routing reads from the same registry; this is
+ * the read-only mirror frontend code consumes.
+ * ------------------------------------------------------------------ */
+
+export interface NixCapability {
+  key: string;
+  appCode: string;
+  label: string;
+  description: string;
+  intents?: string[];
+  guideSlug?: string;
+  hasWalkthrough: boolean;
+  hasExtractionProfile: boolean;
+}
+
+export interface NixApp {
+  appCode: string;
+  capabilityCount: number;
+}
+
+export const useNixCapabilities = createQueryHook(
+  (appCode: string | undefined) => nixKeys.capabilities.list(appCode),
+  (appCode: string | undefined) => {
+    const query = appCode ? `?appCode=${encodeURIComponent(appCode)}` : "";
+    return nixRequest<NixCapability[]>(`/nix/capabilities${query}`, {
+      errorLabel: "Failed to fetch Nix capabilities",
+    });
+  },
+  {
+    staleTime: 5 * 60 * 1000,
+  },
+);
+
+export const useNixApps = createQueryHook(
+  () => nixKeys.capabilities.apps,
+  () =>
+    nixRequest<NixApp[]>("/nix/capabilities/apps", {
+      errorLabel: "Failed to fetch Nix apps",
+    }),
+  {
+    staleTime: 5 * 60 * 1000,
+  },
+);
