@@ -123,6 +123,12 @@ CRITICAL — specifications object rules (this is what the quoter actually needs
 - Use the clause code (R1, R2a, SC1, 1000/3, 4000/3, etc.) or a short, stable identifier as the KEY — NOT the full sentence.
 - For EVERY referenced code in the drawing pack, attempt to find its definition in this document. If a code is defined here, write it as a key with the full breakdown.
 - If a code from the drawing pack is NOT found in this document, do NOT add a stub for it — only document codes this spec actually defines.
+
+CRITICAL — cross-reference rule (the model has been getting this wrong: it promotes references to other files into clauses ON the current file, which clutters the wrong document):
+- If a clause in THIS document merely REFERENCES another sibling document by name or document number (e.g. "Internal rubber lining per LHM-0000-EP-2701-012-00", "see external corrosion spec LHU-0000-EJ-2701-001-03", "as per painting spec EP-2701-009"), DO NOT include it as a clause here.
+- Pointer clauses without their own definition belong on the document being referenced, NOT on this one. The cross-linker resolves them to the right place when the user uploads that other document.
+- A clause is a real definition (and SHOULD be included here) only when this document gives the actual values: thicknesses, materials, DFT, hardness, NDT %, etc. If all the document says is "see X for the rubber lining requirements", that's a pointer — skip it.
+- A scope-of-work / index document that's nothing but pointers can correctly produce specifications={}. The cross-linker still resolves the references against the sibling extractions.
 - For each spec entry, populate 'details' with structured sub-fields a quoter can read directly: e.g. for a paint system: { "primer": "...", "intermediate": "...", "topcoat": "...", "dftMicrons": ..., "surfacePrep": "Sa 2.5" }.
 - 'applicableScope' = "all" if the clause applies to every mark on the drawings; "items" if it applies only to specific marks (then list them in 'applicableMarks').
 - 'pageReference' (number, REQUIRED) = the page number in THIS PDF where the clause appears, so the user can click the clause and jump straight to that page to verify. If the clause spans multiple pages, give the page where the heading / definition starts.
