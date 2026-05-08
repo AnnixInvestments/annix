@@ -40,7 +40,6 @@ export const PRODUCTS_AND_SERVICES: ProductService[] = [
     icon: React.createElement(SurfaceProtectionIcon, { size: 20 }),
     category: "service",
     flagKey: "RFQ_PRODUCT_SURFACE_PROTECTION",
-    comingSoon: true,
   },
   {
     value: "hdpe",
@@ -65,7 +64,6 @@ export const PRODUCTS_AND_SERVICES: ProductService[] = [
     icon: React.createElement(StructuralSteelIcon, { size: 20 }),
     category: "product",
     flagKey: "RFQ_PRODUCT_STRUCTURAL_STEEL",
-    comingSoon: true,
   },
   {
     value: "pumps",
@@ -74,7 +72,6 @@ export const PRODUCTS_AND_SERVICES: ProductService[] = [
     icon: React.createElement(IndustrialPumpIcon, { size: 20 }),
     category: "product",
     flagKey: "RFQ_PRODUCT_PUMPS",
-    comingSoon: true,
   },
   {
     value: "valves_meters_instruments",
@@ -83,7 +80,6 @@ export const PRODUCTS_AND_SERVICES: ProductService[] = [
     icon: React.createElement(IndustrialValveIcon, { size: 20 }),
     category: "product",
     flagKey: "RFQ_PRODUCT_VALVES_METERS",
-    comingSoon: true,
   },
   {
     value: "transport_install",
@@ -92,7 +88,6 @@ export const PRODUCTS_AND_SERVICES: ProductService[] = [
     icon: "🚚",
     category: "service",
     flagKey: "RFQ_PRODUCT_TRANSPORT_INSTALL",
-    comingSoon: true,
   },
   {
     value: "pipe_steel_work",
@@ -101,7 +96,6 @@ export const PRODUCTS_AND_SERVICES: ProductService[] = [
     icon: "🔧",
     category: "product",
     flagKey: "RFQ_PRODUCT_PIPE_STEEL_WORK",
-    comingSoon: true,
   },
   {
     value: "tanks_chutes",
