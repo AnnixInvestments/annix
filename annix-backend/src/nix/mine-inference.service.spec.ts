@@ -25,9 +25,13 @@ function fakeMine(partial: Partial<SaMine> = {}): SaMine {
   };
 }
 
-function fakeExtraction(metadata: Record<string, unknown>): NixExtraction {
+function fakeExtraction(
+  metadata: Record<string, unknown>,
+  documentName = "test.pdf",
+): NixExtraction {
   return {
     id: 42,
+    documentName,
     extractedData: { metadata },
   } as unknown as NixExtraction;
 }
@@ -118,6 +122,38 @@ describe("MineInferenceService", () => {
     );
     expect(result?.mineId).toBe(8);
     expect(result?.documentRevision).toBe("Rev C");
+  });
+
+  it("falls back to the filename for documentNumber when metadata is empty", async () => {
+    mineRepo.find.mockResolvedValue([fakeMine({ id: 1, mineName: "Tharisa" })]);
+    const result = await service.infer(
+      fakeExtraction({ aiProvider: "gemini" }, "LHU-0000-EP-2701-012-00.pdf"),
+    );
+    expect(result?.documentNumber).toBe("LHU-0000-EP-2701-012-00");
+  });
+
+  it("captures revision from a 'Rev XX' filename pattern", async () => {
+    mineRepo.find.mockResolvedValue([fakeMine({ id: 1, mineName: "Tharisa" })]);
+    const result = await service.infer(
+      fakeExtraction({}, "2201-0000-EP-2203-0004 Rev AF - Piping Design Criteria.pdf"),
+    );
+    expect(result?.documentNumber).toBe("2201-0000-EP-2203-0004");
+    expect(result?.documentRevision).toBe("AF");
+  });
+
+  it("metadata documentNumber wins over filename when both are present", async () => {
+    mineRepo.find.mockResolvedValue([fakeMine({ id: 1, mineName: "Tharisa" })]);
+    const result = await service.infer(
+      fakeExtraction({ documentNumber: "META-1234-001-00", revision: "B" }, "FILENAME-9999-99.pdf"),
+    );
+    expect(result?.documentNumber).toBe("META-1234-001-00");
+    expect(result?.documentRevision).toBe("B");
+  });
+
+  it("ignores trivial filename hyphens that aren't real doc numbers", async () => {
+    mineRepo.find.mockResolvedValue([fakeMine({ id: 1, mineName: "Tharisa" })]);
+    const result = await service.infer(fakeExtraction({}, "MPS Pipe-Detail.pdf"));
+    expect(result).toBeNull();
   });
 
   it("picks the highest-confidence match when multiple mines could match", async () => {

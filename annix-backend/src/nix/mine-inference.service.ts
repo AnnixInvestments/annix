@@ -67,13 +67,12 @@ export class MineInferenceService {
       "clientName",
       "operatingCompany",
     ]);
-    const documentNumber = stringField(metadata, [
-      "documentNumber",
-      "documentNo",
-      "docNumber",
-      "drawingNumber",
-    ]);
-    const documentRevision = stringField(metadata, ["revision", "rev", "documentRevision"]);
+    const fromFilename = extractFromFilename(extraction.documentName);
+    const documentNumber =
+      stringField(metadata, ["documentNumber", "documentNo", "docNumber", "drawingNumber"]) ??
+      fromFilename.documentNumber;
+    const documentRevision =
+      stringField(metadata, ["revision", "rev", "documentRevision"]) ?? fromFilename.revision;
     const documentTitle = stringField(metadata, ["documentTitle", "title"]);
 
     // Doc-number prefix gives us a short code (e.g. 'LHU' from 'LHU-0000-EP-...')
@@ -83,6 +82,15 @@ export class MineInferenceService {
 
     const haystack = normalise(`${project ?? ""} ${customer ?? ""} ${documentTitle ?? ""}`);
     if (haystack.length === 0 && !docPrefix) {
+      if (documentNumber) {
+        return {
+          mineId: 0,
+          confidence: 0,
+          reason: "no mine signals — filename doc number only",
+          documentNumber,
+          documentRevision: documentRevision ?? null,
+        };
+      }
       this.logger.debug(
         `Mine inference for extraction #${extraction.id}: no metadata signals available`,
       );
@@ -216,6 +224,22 @@ function extractPrefix(documentNumber: string): string | null {
   // before the first non-letter character. Filters out trivial prefixes.
   const match = documentNumber.match(/^([A-Za-z]{2,8})[-_/0-9]/);
   return match ? match[1] : null;
+}
+
+function extractFromFilename(filename: string | null | undefined): {
+  documentNumber: string | null;
+  revision: string | null;
+} {
+  if (!filename) return { documentNumber: null, revision: null };
+  const stem = filename.replace(/\.[A-Za-z0-9]+$/, "");
+  const candidates = stem.match(/[A-Z0-9]+(?:-[A-Z0-9]+)+/gi) ?? [];
+  const documentNumber =
+    candidates
+      .filter((c) => c.length >= 6 && /[0-9]/.test(c))
+      .sort((a, b) => b.length - a.length)[0] ?? null;
+  const revMatch = stem.match(/\bRev\.?\s+([A-Z0-9]{1,4})\b/i);
+  const revision = revMatch ? revMatch[1] : null;
+  return { documentNumber, revision };
 }
 
 function wordOverlapScore(haystack: string, needle: string): number {
