@@ -45,84 +45,118 @@ export function ExtractionCard(props: {
   const isRetrying = retryingId === extraction.id;
   const canRetry = Boolean(extraction.storagePath) && !isRetrying;
 
+  // Role-tone colour: blue rail/header for drawings, purple for specs, gray
+  // for everything else. The rail is the visual cue tying every clause /
+  // item row to its source file even when the user has scrolled past the
+  // file's header — the entire card has a 4px coloured rail down the left.
+  const role = extraction.documentRole;
+  let railClass = "bg-gray-300";
+  let railTintClass = "bg-gray-50";
+  let railHeaderTintClass = "bg-gray-100";
+  if (role === "drawing") {
+    railClass = "bg-blue-500";
+    railTintClass = "bg-blue-50/40";
+    railHeaderTintClass = "bg-blue-50";
+  } else if (role === "specification") {
+    railClass = "bg-purple-500";
+    railTintClass = "bg-purple-50/40";
+    railHeaderTintClass = "bg-purple-50";
+  }
+
   return (
-    <div className="bg-white rounded border border-gray-200 p-3">
-      <div className="flex items-start justify-between mb-2">
-        <div>
-          <p className="text-sm font-semibold text-gray-900">{extraction.documentName}</p>
-          <p className="text-xs text-gray-500">
-            Status: {extraction.status} • {items.length} item{items.length === 1 ? "" : "s"}
-            {extraction.storagePath && " • saved to S3"}
-          </p>
-        </div>
-        <div className="flex items-center gap-3 whitespace-nowrap">
-          <button
-            type="button"
-            onClick={() => onRetry(extraction)}
-            disabled={!canRetry}
-            className="text-xs text-orange-600 hover:text-orange-800 underline disabled:text-gray-400 disabled:no-underline disabled:cursor-not-allowed"
-            title={
-              extraction.storagePath
-                ? "Re-run extraction against the stored source"
-                : "No stored source — re-upload the file from the upload page"
-            }
-          >
-            {isRetrying ? "Retrying..." : "Retry"}
-          </button>
-          <button
-            type="button"
-            onClick={() => onViewOriginal(extraction)}
-            className="text-xs text-blue-600 hover:text-blue-800 underline"
-          >
-            View original
-          </button>
-        </div>
-      </div>
-
-      {items.length > 0 && (
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-xs">
-            <thead>
-              <tr className="border-b border-gray-200 text-left text-gray-500">
-                <th className="py-1 pr-3 font-medium">Mark / #</th>
-                <th className="py-1 pr-3 font-medium">Description</th>
-                <th className="py-1 pr-3 font-medium">Qty</th>
-                <th className="py-1 pr-3 font-medium">Dimensions</th>
-                <th className="py-1 pr-3 font-medium">Linings / Codes</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((item, idx) => (
-                <ItemRow
-                  key={idx}
-                  item={item}
-                  index={idx}
-                  extractionId={extraction.id}
-                  specLookup={specLookup}
-                  onSaved={onItemSaved}
-                  onJumpToSpec={onJumpToSpec}
-                />
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {showSpecifications && specKeys.length > 0 && (
-        <div className="mt-3 pt-2 border-t border-gray-200">
-          <h4 className="text-xs font-semibold text-gray-700 mb-1">Specification clauses</h4>
-          <div className="space-y-2">
-            {entries(specifications).map(([clauseKey, clauseValue]) => (
-              <SpecificationCard
-                key={clauseKey}
-                clauseKey={clauseKey}
-                value={clauseValue}
-                onJumpToPage={(page) => onJumpToPage(extraction, page)}
-              />
-            ))}
+    <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden flex">
+      {/* Left rail — keeps the visual link between header and any deep
+          stack of clauses below it, even on long specs. */}
+      <div className={`w-1 flex-shrink-0 ${railClass}`} aria-hidden="true" />
+      <div className="flex-1 min-w-0">
+        <div
+          className={`flex items-start justify-between gap-3 px-3 py-2 ${railHeaderTintClass} border-b border-gray-200`}
+        >
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-gray-900 truncate">
+              {extraction.documentName}
+            </p>
+            <p className="text-xs text-gray-500">
+              Status: {extraction.status} • {items.length} item{items.length === 1 ? "" : "s"}
+              {extraction.storagePath && " • saved to S3"}
+            </p>
+          </div>
+          <div className="flex items-center gap-3 whitespace-nowrap">
+            <button
+              type="button"
+              onClick={() => onRetry(extraction)}
+              disabled={!canRetry}
+              className="text-xs text-orange-600 hover:text-orange-800 underline disabled:text-gray-400 disabled:no-underline disabled:cursor-not-allowed"
+              title={
+                extraction.storagePath
+                  ? "Re-run extraction against the stored source"
+                  : "No stored source — re-upload the file from the upload page"
+              }
+            >
+              {isRetrying ? "Retrying..." : "Retry"}
+            </button>
+            <button
+              type="button"
+              onClick={() => onViewOriginal(extraction)}
+              className="text-xs text-blue-600 hover:text-blue-800 underline"
+            >
+              View original
+            </button>
           </div>
         </div>
-      )}
+
+        {items.length > 0 && (
+          <div className="overflow-x-auto px-3 py-2">
+            <table className="min-w-full text-xs">
+              <thead>
+                <tr className="border-b border-gray-200 text-left text-gray-500">
+                  <th className="py-1 pr-3 font-medium">Mark / #</th>
+                  <th className="py-1 pr-3 font-medium">Description</th>
+                  <th className="py-1 pr-3 font-medium">Qty</th>
+                  <th className="py-1 pr-3 font-medium">Dimensions</th>
+                  <th className="py-1 pr-3 font-medium">Linings / Codes</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((item, idx) => (
+                  <ItemRow
+                    key={idx}
+                    item={item}
+                    index={idx}
+                    extractionId={extraction.id}
+                    specLookup={specLookup}
+                    onSaved={onItemSaved}
+                    onJumpToSpec={onJumpToSpec}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {showSpecifications && specKeys.length > 0 && (
+          <div className={`px-3 py-3 ${railTintClass}`}>
+            <div className="flex items-baseline gap-2 mb-2">
+              <h4 className="text-xs font-bold text-gray-800 uppercase tracking-wider">
+                Specification clauses
+              </h4>
+              <span className="text-[10px] text-gray-500 truncate">
+                from {extraction.documentName}
+              </span>
+            </div>
+            <div className="space-y-2">
+              {entries(specifications).map(([clauseKey, clauseValue]) => (
+                <SpecificationCard
+                  key={clauseKey}
+                  clauseKey={clauseKey}
+                  value={clauseValue}
+                  onJumpToPage={(page) => onJumpToPage(extraction, page)}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
