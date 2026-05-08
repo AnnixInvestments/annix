@@ -572,6 +572,15 @@ export interface RfqFormData {
    * today; admin reviewing the RFQ sees the full list to route follow-ups.
    */
   additionalContacts?: string;
+  /**
+   * True once the customer has accepted a Nix BOQ extraction popup. The
+   * orchestrator's Next/Previous handlers skip Step 2 (Specifications)
+   * when this is set, since each extracted item already carries its own
+   * specs (pressureClass / sdr / wallThickness / material / flangeConfig)
+   * and the global defaults Step 2 collects don't apply. Stepper clicks
+   * still let the customer visit Step 2 manually if they want.
+   */
+  boqExtractionAccepted?: boolean;
   requiredDate: string;
   requiredProducts: string[];
   notes: string;

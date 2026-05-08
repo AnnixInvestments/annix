@@ -619,6 +619,10 @@ export default function ProjectDetailsStep() {
         if (bundle.items.length > 0) {
           applyNixItemsToRfq(bundle.items);
         }
+        // Mark the extraction as accepted so the orchestrator's Next/Previous
+        // handlers skip Step 2 (Specifications) — extracted items already
+        // carry their own specs.
+        onUpdate("boqExtractionAccepted", true);
         const rawSubject = parsed.metadata.subject;
         const rawBody = parsed.metadata.bodyText;
         const subjectText = rawSubject || "";

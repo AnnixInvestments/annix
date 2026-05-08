@@ -2012,7 +2012,15 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
       if (currentStep === 1) {
         draftSaveAndSendRecoveryEmail(isAuthenticated);
       }
-      originalNextStep();
+      // Skip Step 2 (Specifications) when the customer accepted a BOQ
+      // extraction — every extracted item already carries its own specs,
+      // so Step 2's global defaults don't apply. Stepper navigation still
+      // lets them visit Step 2 manually if they want to review.
+      if (currentStep === 1 && rfqData.boqExtractionAccepted) {
+        setCurrentStep(3);
+      } else {
+        originalNextStep();
+      }
       scrollToTop();
     } else {
       // Scroll to the first field with an error
@@ -2021,9 +2029,14 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
     }
   };
 
-  // Previous step function with scroll to top
+  // Previous step function with scroll to top — also skips Step 2 backward
+  // when the customer accepted a BOQ extraction.
   const handlePrevStep = () => {
-    prevStep();
+    if (currentStep === 3 && rfqData.boqExtractionAccepted) {
+      setCurrentStep(1);
+    } else {
+      prevStep();
+    }
     scrollToTop();
   };
 
