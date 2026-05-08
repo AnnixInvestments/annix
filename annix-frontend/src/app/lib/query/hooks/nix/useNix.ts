@@ -490,3 +490,135 @@ export const useNixApps = createQueryHook(
     staleTime: 5 * 60 * 1000,
   },
 );
+
+/* ------------------------------------------------------------------
+ * Nix walkthrough mode (ref #262 Phase 4)
+ *
+ * Drives the per-session walkthrough lifecycle:
+ *   useStartWalkthrough → useAdvance/Back/Skip → useStopWalkthrough
+ * Plus useWalkthroughState / useWalkthroughCurrentStep for read-side.
+ * ------------------------------------------------------------------ */
+
+export type WalkthroughEndReason = "completed" | "abandoned" | "stopped";
+
+export interface WalkthroughStepView {
+  step: number;
+  totalSteps: number;
+  title: string;
+  body: string;
+  isLast: boolean;
+  capabilityLabel: string;
+}
+
+export interface WalkthroughState {
+  capabilityKey: string;
+  guideSlug: string | null;
+  startedAt: string;
+  currentStep: number;
+  totalSteps: number;
+  stepHistory: Array<{
+    step: number;
+    title: string;
+    completedAt: string;
+    action: "advanced" | "back" | "skipped" | "stuck";
+  }>;
+  endedAt?: string;
+  endReason?: WalkthroughEndReason;
+}
+
+export const useStartWalkthrough = createMutationHook<
+  WalkthroughStepView,
+  { sessionId: number; capabilityKey: string }
+>(
+  ({ sessionId, capabilityKey }) =>
+    nixRequest<WalkthroughStepView>(`/nix/walkthrough/${sessionId}/start`, {
+      method: "POST",
+      body: { capabilityKey },
+      errorLabel: "Failed to start walkthrough",
+    }),
+  (_data, vars) => [
+    nixKeys.walkthrough.state(vars.sessionId),
+    nixKeys.walkthrough.currentStep(vars.sessionId),
+  ],
+);
+
+export const useAdvanceWalkthrough = createMutationHook<
+  WalkthroughStepView | null,
+  { sessionId: number }
+>(
+  ({ sessionId }) =>
+    nixRequest<WalkthroughStepView | null>(`/nix/walkthrough/${sessionId}/advance`, {
+      method: "POST",
+      errorLabel: "Failed to advance walkthrough",
+    }),
+  (_data, vars) => [
+    nixKeys.walkthrough.state(vars.sessionId),
+    nixKeys.walkthrough.currentStep(vars.sessionId),
+  ],
+);
+
+export const useBackWalkthrough = createMutationHook<
+  WalkthroughStepView | null,
+  { sessionId: number }
+>(
+  ({ sessionId }) =>
+    nixRequest<WalkthroughStepView | null>(`/nix/walkthrough/${sessionId}/back`, {
+      method: "POST",
+      errorLabel: "Failed to step back in walkthrough",
+    }),
+  (_data, vars) => [
+    nixKeys.walkthrough.state(vars.sessionId),
+    nixKeys.walkthrough.currentStep(vars.sessionId),
+  ],
+);
+
+export const useSkipWalkthrough = createMutationHook<
+  WalkthroughStepView | null,
+  { sessionId: number }
+>(
+  ({ sessionId }) =>
+    nixRequest<WalkthroughStepView | null>(`/nix/walkthrough/${sessionId}/skip`, {
+      method: "POST",
+      errorLabel: "Failed to skip walkthrough step",
+    }),
+  (_data, vars) => [
+    nixKeys.walkthrough.state(vars.sessionId),
+    nixKeys.walkthrough.currentStep(vars.sessionId),
+  ],
+);
+
+export const useStopWalkthrough = createMutationHook<
+  { ok: true },
+  { sessionId: number; reason?: WalkthroughEndReason }
+>(
+  ({ sessionId, reason }) =>
+    nixRequest<{ ok: true }>(`/nix/walkthrough/${sessionId}/stop`, {
+      method: "POST",
+      body: reason ? { reason } : undefined,
+      errorLabel: "Failed to stop walkthrough",
+    }),
+  (_data, vars) => [
+    nixKeys.walkthrough.state(vars.sessionId),
+    nixKeys.walkthrough.currentStep(vars.sessionId),
+  ],
+);
+
+export const useWalkthroughState = createQueryHook(
+  (sessionId: number | null) => nixKeys.walkthrough.state(sessionId ?? 0),
+  (sessionId: number | null) =>
+    nixRequest<WalkthroughState | null>(`/nix/walkthrough/${sessionId}/state`, {
+      method: "POST",
+      errorLabel: "Failed to fetch walkthrough state",
+    }),
+  { enabled: (sessionId: number | null) => sessionId !== null && sessionId > 0 },
+);
+
+export const useWalkthroughCurrentStep = createQueryHook(
+  (sessionId: number | null) => nixKeys.walkthrough.currentStep(sessionId ?? 0),
+  (sessionId: number | null) =>
+    nixRequest<WalkthroughStepView | null>(`/nix/walkthrough/${sessionId}/current-step`, {
+      method: "POST",
+      errorLabel: "Failed to fetch current walkthrough step",
+    }),
+  { enabled: (sessionId: number | null) => sessionId !== null && sessionId > 0 },
+);

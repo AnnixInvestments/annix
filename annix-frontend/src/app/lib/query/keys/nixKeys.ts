@@ -29,4 +29,9 @@ export const nixKeys = {
     list: (appCode?: string) => ["nix", "capabilities", "list", appCode ?? "all"] as const,
     apps: ["nix", "capabilities", "apps"] as const,
   },
+  walkthrough: {
+    all: ["nix", "walkthrough"] as const,
+    state: (sessionId: number) => ["nix", "walkthrough", "state", sessionId] as const,
+    currentStep: (sessionId: number) => ["nix", "walkthrough", "current-step", sessionId] as const,
+  },
 } as const;
