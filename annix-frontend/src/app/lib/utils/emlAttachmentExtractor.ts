@@ -16,6 +16,10 @@ export interface EmailMetadata {
   fromPhone: string | null;
   toName: string | null;
   toEmail: string | null;
+  ccList: string[];
+  bccList: string[];
+  signatureEmails: string[];
+  signaturePhones: string[];
   subject: string | null;
   date: string | null;
   bodyText: string | null;
@@ -72,13 +76,29 @@ export async function parseEmail(emlFile: File): Promise<EmailParseResult> {
   const toName = toAddress ? toAddress.name : null;
   const toEmail = toAddress ? toAddress.email : null;
 
+  const ccList = parseAddressListHeader(topHeaders, "cc");
+  const bccList = parseAddressListHeader(topHeaders, "bcc");
+  const allBodyEmails = extractEmailsFromText(bodyText);
+  const allBodyPhones = extractPhonesFromText(bodyText);
+
+  // Strip the from/to/cc/bcc addresses out of the body-derived emails so
+  // we only surface NEW addresses found in the signature.
+  const knownEmails = new Set(
+    [fromEmail, toEmail, ...ccList, ...bccList].filter((e): e is string => !!e),
+  );
+  const signatureEmails = allBodyEmails.filter((email) => !knownEmails.has(email));
+
   return {
     metadata: {
       fromName,
       fromEmail,
-      fromPhone: extractPhoneFromText(bodyText),
+      fromPhone: allBodyPhones.length > 0 ? allBodyPhones[0] : null,
       toName,
       toEmail,
+      ccList,
+      bccList,
+      signatureEmails,
+      signaturePhones: allBodyPhones,
       subject,
       date,
       bodyText,
@@ -271,17 +291,55 @@ function decodeBase64(base64: string): Uint8Array | null {
   }
 }
 
-function extractPhoneFromText(body: string | null): string | null {
-  if (!body) return null;
-  const patterns = [
-    /\+27\s*\(?0?\)?\s*\d{2}\s*\d{3}\s*\d{4}/,
-    /\b0\d{2}\s*\d{3}\s*\d{4}\b/,
-    /\(0\d{2}\)\s*\d{3}[-\s]?\d{4}/,
-    /\+\d{1,3}\s*\d{2,3}\s*\d{3,4}\s*\d{3,4}/,
-  ];
-  for (const pattern of patterns) {
-    const match = body.match(pattern);
-    if (match) return match[0].replace(/\s+/g, " ").trim();
+function extractPhonesFromText(body: string | null): string[] {
+  if (!body) return [];
+  const combined =
+    /(\+27\s*\(?0?\)?\s*\d{2}\s*\d{3}\s*\d{4}|\(0\d{2}\)\s*\d{3}[-\s]?\d{4}|\b0\d{2}\s*\d{3}\s*\d{4}\b|\+\d{1,3}\s*\d{2,3}\s*\d{3,4}\s*\d{3,4})/g;
+  const matches = body.match(combined);
+  if (!matches) return [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of matches) {
+    const normalised = raw.replace(/\s+/g, " ").trim();
+    const dedupKey = normalised.replace(/\D/g, "");
+    if (dedupKey.length >= 9 && !seen.has(dedupKey)) {
+      seen.add(dedupKey);
+      out.push(normalised);
+    }
   }
-  return null;
+  return out;
+}
+
+function extractEmailsFromText(body: string | null): string[] {
+  if (!body) return [];
+  const matches = body.match(/[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}/g);
+  if (!matches) return [];
+  const seen = new Set<string>();
+  return matches.filter((email) => {
+    const lower = email.toLowerCase();
+    if (seen.has(lower)) return false;
+    seen.add(lower);
+    return true;
+  });
+}
+
+function parseAddressListHeader(rawHeaders: string, name: string): string[] {
+  const value = parseSimpleHeader(rawHeaders, name);
+  if (!value) return [];
+  // Split on commas that aren't inside angle brackets or quotes. A simple
+  // split is good enough for nearly all real-world headers; the email
+  // addresses themselves are then extracted via regex.
+  const segments = value.split(/,(?![^<>]*>)/);
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const segment of segments) {
+    const match = segment.match(/[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}/);
+    if (!match) continue;
+    const email = match[0];
+    const lower = email.toLowerCase();
+    if (seen.has(lower)) continue;
+    seen.add(lower);
+    out.push(email);
+  }
+  return out;
 }

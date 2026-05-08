@@ -3,6 +3,7 @@
 import { isNumber, keys } from "es-toolkit/compat";
 import Link from "next/link";
 import React, { useCallback, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import GoogleMapLocationPicker from "@/app/components/GoogleMapLocationPicker";
 import AddMineModal from "@/app/components/rfq/modals/AddMineModal";
@@ -161,6 +162,13 @@ export default function ProjectDetailsStep() {
   } = useOptionalCustomerAuth();
   const { isAuthenticated: isAdminAuthenticated, isLoading: isAdminAuthLoading } =
     useOptionalAdminAuth();
+
+  // Surface from the latest email drop so a follow-up useEffect can run
+  // mine-name detection once the mines list has loaded. Decoupled from
+  // onAddDocument so we don't have to re-memoise the callback when mines
+  // load asynchronously after first render.
+  const [emailLocationSearchText, setEmailLocationSearchText] = useState<string | null>(null);
+  const [showLocationRequiredModal, setShowLocationRequiredModal] = useState(false);
 
   const [boqExtractionSummary, setBoqExtractionSummary] = useState<{
     fileName: string;
@@ -420,6 +428,15 @@ export default function ProjectDetailsStep() {
 
       const customerApplied = applyEmailMetadataToCustomerFields(parsed.metadata);
 
+      // Hand the email's text off to the mine-detection useEffect. It runs
+      // once mines have loaded; if a single mine matches it auto-selects,
+      // otherwise opens the LocationRequiredModal.
+      const rawSubject = parsed.metadata.subject;
+      const rawBody = parsed.metadata.bodyText;
+      const subjectText = rawSubject || "";
+      const bodyText = rawBody || "";
+      setEmailLocationSearchText(`${subjectText}\n${bodyText}`);
+
       const emlId = `eml-${generateUniqueId()}-${Math.random().toString(36).substr(2, 9)}`;
       storeAddDocument({ file: incoming, id: emlId });
 
@@ -497,6 +514,28 @@ export default function ProjectDetailsStep() {
       if (customerLines.length > 0) {
         lines.push("");
         lines.push(`Form fields auto-filled from sender: ${customerLines.join(", ")}.`);
+      }
+
+      const ccList = parsed.metadata.ccList;
+      const signatureEmails = parsed.metadata.signatureEmails;
+      const signaturePhones = parsed.metadata.signaturePhones;
+      const additionalContactLines: string[] = [];
+      if (ccList.length > 0) {
+        additionalContactLines.push(`CC: ${ccList.join(", ")}`);
+      }
+      if (signatureEmails.length > 0) {
+        additionalContactLines.push(`Other emails in signature: ${signatureEmails.join(", ")}`);
+      }
+      if (signaturePhones.length > 1) {
+        const additionalPhones = signaturePhones.slice(1);
+        additionalContactLines.push(
+          `Additional phone${additionalPhones.length === 1 ? "" : "s"} in signature: ${additionalPhones.join(", ")}`,
+        );
+      }
+      if (additionalContactLines.length > 0) {
+        lines.push("");
+        lines.push("Additional contacts captured (preserved on the .eml on S3):");
+        additionalContactLines.forEach((line) => lines.push(`• ${line}`));
       }
 
       if (newlySelectedProducts.length > 0) {
@@ -825,6 +864,43 @@ export default function ProjectDetailsStep() {
       setMineDataLoading(false);
     }
   };
+
+  // After an .eml drop, search the email's subject + body for any SaMine
+  // name. If exactly one mine matches, auto-select it (re-using the same
+  // handleMineSelect path that fills lat/lng/region/etc.). If no match —
+  // and no location field has been touched yet — open the
+  // LocationRequiredModal as a forcing prompt.
+  useEffect(() => {
+    if (!emailLocationSearchText) return;
+    if (mines.length === 0) return;
+
+    const haystack = emailLocationSearchText.toLowerCase();
+    const matches = mines.filter((mine) => {
+      const name = mine.mineName.toLowerCase();
+      if (name.length < 4) return false;
+      return haystack.includes(name);
+    });
+
+    const rawLatitude = rfqData.latitude;
+    const rawLongitude = rfqData.longitude;
+    const rawSiteAddress = rfqData.siteAddress;
+    const hasLocation = rawLatitude || rawLongitude || rawSiteAddress;
+
+    if (matches.length === 1 && !hasLocation && !selectedMineId) {
+      handleMineSelect(matches[0].id);
+    } else if (matches.length === 0 && !hasLocation && !selectedMineId) {
+      setShowLocationRequiredModal(true);
+    }
+
+    setEmailLocationSearchText(null);
+  }, [
+    emailLocationSearchText,
+    mines,
+    rfqData.latitude,
+    rfqData.longitude,
+    rfqData.siteAddress,
+    selectedMineId,
+  ]);
 
   // Handle new mine created from modal
   const handleMineCreated = (newMine: SaMine) => {
@@ -2242,6 +2318,108 @@ export default function ProjectDetailsStep() {
       {/* Restriction Popup for Unregistered Customers */}
       {restrictionPopup && <RestrictionTooltip position={restrictionPopup} />}
       {ConfirmDialog}
+      {showLocationRequiredModal &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="location-required-title"
+          >
+            <div className="fixed inset-0 bg-black/30 backdrop-blur-md" />
+            <div className="relative bg-white rounded-xl shadow-2xl max-w-lg w-full overflow-hidden">
+              <div className="p-6">
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+                    <svg
+                      className="w-6 h-6 text-amber-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                      />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <h3
+                      id="location-required-title"
+                      className="text-base font-semibold text-gray-900"
+                    >
+                      Project location needed
+                    </h3>
+                    <p className="text-sm text-gray-600 mt-1">
+                      We couldn't detect a project location from your email or BOQ. Pick a SA mine
+                      from the list (auto-fills latitude / longitude / region / address) — or close
+                      this and use the manual fields and Pick on Map button further down.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-5">
+                  <label
+                    htmlFor="location-required-mine-select"
+                    className="block text-xs font-semibold text-gray-900 mb-1"
+                  >
+                    Quick select: SA Mine
+                  </label>
+                  <select
+                    id="location-required-mine-select"
+                    value={selectedMineId ?? ""}
+                    onChange={async (e) => {
+                      const rawValue = e.target.value;
+                      const mineId = rawValue ? Number.parseInt(rawValue, 10) : null;
+                      if (mineId) {
+                        await handleMineSelect(mineId);
+                        setShowLocationRequiredModal(false);
+                      }
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">-- Select a mine --</option>
+                    {mines.map((mine) => (
+                      <option key={mine.id} value={mine.id}>
+                        {mine.mineName}
+                        {mine.operatingCompany ? ` (${mine.operatingCompany})` : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="px-6 py-4 bg-gray-50 flex justify-between items-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowLocationRequiredModal(false);
+                    setShowAddMineModal(true);
+                  }}
+                  className="text-xs text-blue-600 hover:text-blue-800 underline"
+                >
+                  Mine not in the list? Add it
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowLocationRequiredModal(false)}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                >
+                  I'll fill location manually
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }
