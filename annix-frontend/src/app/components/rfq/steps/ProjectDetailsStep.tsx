@@ -87,6 +87,19 @@ const rawNEXT_PUBLIC_GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_A
 
 const GOOGLE_MAPS_API_KEY = rawNEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 
+// Picks a PROJECT_TYPES value from an email's subject + body. Conservative:
+// only the explicit tender keywords route to the heavier flows; everything
+// else (RFQ, enquiry, quote request, plain spreadsheet, etc.) falls through
+// to "standard" so the customer doesn't accidentally land in the Nix tender
+// pipeline meant for formal Phase-1 / Re-Tender / Feasibility studies.
+function detectProjectTypeFromEmail(subject: string | null, bodyText: string | null): string {
+  const haystack = `${subject ?? ""}\n${bodyText ?? ""}`.toLowerCase();
+  if (/\bphase\s*[i1]\b/.test(haystack)) return "phase1";
+  if (/\bre[-\s]?tender\b/.test(haystack)) return "retender";
+  if (/\bfeasibility\b/.test(haystack)) return "feasibility";
+  return "standard";
+}
+
 // Maps RfqPipingProfileHandler supplier-bundle keys to PRODUCTS_AND_SERVICES
 // checkbox values. Coming-soon products are still mapped — the customer can
 // deselect, but we want to flag that those items DID show up in the BOQ so
@@ -240,8 +253,15 @@ export default function ProjectDetailsStep() {
       email: boolean;
       phone: boolean;
       description: boolean;
+      projectType: string | null;
     } => {
-      const applied = { name: false, email: false, phone: false, description: false };
+      const applied = {
+        name: false,
+        email: false,
+        phone: false,
+        description: false,
+        projectType: null as string | null,
+      };
 
       // Profile defaults — overwriting these is safe because they're auto-fill
       // from the logged-in user, not anything the customer manually typed.
@@ -300,6 +320,18 @@ export default function ProjectDetailsStep() {
         applied.description = true;
       }
 
+      const currentProjectType = rfqData.projectType;
+      if (!currentProjectType) {
+        const detectedType = detectProjectTypeFromEmail(metadata.subject, metadata.bodyText);
+        // Set the value but DON'T trigger the useNix flip the radio's onChange
+        // does — we already ran our own extraction via the BOQ dropzone, so
+        // we don't want to also push the user into the heavier nixProcessDocuments
+        // tender flow. If they later click a different radio manually, that
+        // handler still fires and can flip useNix.
+        onUpdate("projectType", detectedType);
+        applied.projectType = detectedType;
+      }
+
       const appliedName = applied.name;
       const appliedEmail = applied.email;
       const appliedPhone = applied.phone;
@@ -325,6 +357,7 @@ export default function ProjectDetailsStep() {
       rfqData.customerEmail,
       rfqData.customerPhone,
       rfqData.description,
+      rfqData.projectType,
       customerAutoFilled.customerName,
       customerAutoFilled.customerEmail,
       customerAutoFilled.customerPhone,
@@ -456,6 +489,11 @@ export default function ProjectDetailsStep() {
       if (customerApplied.email) customerLines.push("Customer Email");
       if (customerApplied.phone) customerLines.push("Customer Phone");
       if (customerApplied.description) customerLines.push("RFQ Description");
+      if (customerApplied.projectType) {
+        const typeLabel = PROJECT_TYPES.find((t) => t.value === customerApplied.projectType);
+        const labelText = typeLabel ? typeLabel.label : customerApplied.projectType;
+        customerLines.push(`Project Type → ${labelText}`);
+      }
       if (customerLines.length > 0) {
         lines.push("");
         lines.push(`Form fields auto-filled from sender: ${customerLines.join(", ")}.`);
