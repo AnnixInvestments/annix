@@ -58,33 +58,43 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
       );
     }
 
-    // 2. Fetch the file server-side (no CORS in Node) and stream the bytes.
-    const fileResponse = await fetch(url);
+    // 2. Fetch the file server-side (no CORS in Node) and buffer the bytes.
+    // Buffering instead of streaming because Next.js App Router's
+    // ReadableStream forwarding has been flaky on Windows + Node 22 dev
+    // server — the buffered approach is reliable for the PDFs we deal with
+    // here (almost all under 5 MB).
+    let fileResponse: Response;
+    try {
+      fileResponse = await fetch(url);
+    } catch (fetchErr) {
+      const cause = fetchErr instanceof Error ? fetchErr : new Error("unknown fetch failure");
+      const detail =
+        cause.message + (cause.cause ? ` (cause: ${JSON.stringify(cause.cause)})` : "");
+      log.error("[nix proxy] S3 fetch threw:", detail, "url:", url.slice(0, 120));
+      return NextResponse.json({ error: `Could not reach storage: ${detail}` }, { status: 502 });
+    }
     if (!fileResponse.ok) {
-      log.error("[nix proxy] S3 fetch failed:", fileResponse.status);
+      const errorBody = await fileResponse.text().catch(() => "");
+      log.error("[nix proxy] S3 returned not-ok:", fileResponse.status, errorBody.slice(0, 200));
       return NextResponse.json(
         { error: `S3 fetch failed: ${fileResponse.status}` },
         { status: fileResponse.status },
       );
     }
     const contentType = fileResponse.headers.get("content-type") ?? "application/pdf";
-    const contentLength = fileResponse.headers.get("content-length") ?? undefined;
-    const body = fileResponse.body;
-    if (!body) {
-      return NextResponse.json({ error: "Empty response from S3" }, { status: 502 });
-    }
-
-    const headers: Record<string, string> = {
-      "Content-Type": contentType,
-      "Cache-Control": "private, max-age=300",
-    };
-    if (contentLength) headers["Content-Length"] = contentLength;
-    return new NextResponse(body, { status: 200, headers });
+    const buffer = Buffer.from(await fileResponse.arrayBuffer());
+    return new NextResponse(buffer, {
+      status: 200,
+      headers: {
+        "Content-Type": contentType,
+        "Content-Length": String(buffer.length),
+        "Cache-Control": "private, max-age=300",
+      },
+    });
   } catch (err) {
-    log.error("[nix proxy] failed:", err instanceof Error ? err.message : "unknown");
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Unknown error" },
-      { status: 500 },
-    );
+    const cause = err instanceof Error ? err : new Error("unknown");
+    const detail = cause.message + (cause.cause ? ` (cause: ${JSON.stringify(cause.cause)})` : "");
+    log.error("[nix proxy] failed:", detail);
+    return NextResponse.json({ error: detail }, { status: 500 });
   }
 }
