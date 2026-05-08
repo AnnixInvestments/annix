@@ -1515,8 +1515,22 @@ export default function ProjectDetailsStep() {
                       onAddDocument={onAddDocument}
                       onRemoveDocument={onRemoveDocument}
                       isConfirmed={documentsConfirmed}
-                      onConfirm={() => setDocumentsConfirmed(true)}
-                      onUnconfirm={() => setDocumentsConfirmed(false)}
+                      onConfirm={() => {
+                        setDocumentsConfirmed(true);
+                        // BOQ Confirm is the explicit "yes, this is the right
+                        // BOQ — proceed" commit. Mark the extraction as
+                        // accepted so the orchestrator's Next handler skips
+                        // Step 2 (Specifications). Either this OR the
+                        // Email-processed popup's Accept arm the same flag.
+                        onUpdate("boqExtractionAccepted", true);
+                      }}
+                      onUnconfirm={() => {
+                        setDocumentsConfirmed(false);
+                        // Reverting Confirm should also revert the Step-2
+                        // skip — the customer is signalling they want to
+                        // re-review or change documents.
+                        onUpdate("boqExtractionAccepted", false);
+                      }}
                       onConfirmEmpty={() => setShowNoDocumentsPopup(true)}
                     />
                     {boqExtractionSummary && (
