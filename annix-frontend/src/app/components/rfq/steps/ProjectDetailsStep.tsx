@@ -667,17 +667,23 @@ export default function ProjectDetailsStep() {
         return;
       }
 
-      // Second reject — bail to Step 3 - Items so the customer can
-      // correct individual lines. Their edits feed Nix's learning loop.
-      await confirm({
-        title: "Switching to Items step",
+      // Second reject — load the items anyway (otherwise Step 3 is empty
+      // and there's nothing for the customer to correct, contradicting the
+      // popup's own promise). Then offer a choice: stay on Step 1 to
+      // review the auto-filled customer/project fields first, or jump
+      // straight to Step 3.
+      acceptExtraction(extractionBundle);
+      const goToItemsNow = await confirm({
+        title: "We've loaded the items for you to review",
         message:
-          "Nix didn't get this right twice. We're taking you to Step 3 - Items where you can review and correct each extracted line. Your edits there will be captured as feedback so Nix learns for next time.",
+          "Nix didn't get this right twice — but we've loaded all extracted lines into Step 3 - Items so you can correct individual rows. Your edits there will be captured as feedback so Nix learns for next time.\n\nReview the auto-filled fields on this page first, or jump to the items list now?",
         variant: "warning",
-        confirmLabel: "Go to Items",
-        hideCancel: true,
+        confirmLabel: "Go to Items now",
+        cancelLabel: "Stay here and review",
       });
-      setWizardCurrentStep(3);
+      if (goToItemsNow) {
+        setWizardCurrentStep(3);
+      }
     },
     [
       storeAddDocument,
