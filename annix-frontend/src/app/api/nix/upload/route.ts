@@ -1,14 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { log } from "@/app/lib/logger";
 
+// Use 127.0.0.1 instead of localhost so Node 24's undici doesn't try IPv6
+// (::1) first against an IPv4-only NestJS listener and get ECONNREFUSED.
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL?.startsWith("/")
-  ? `http://localhost:${(() => {
+  ? `http://127.0.0.1:${(() => {
       const rawPORT = process.env.PORT;
       return rawPORT || "4000";
     })()}${process.env.NEXT_PUBLIC_API_URL}`
   : (() => {
       const rawNEXT_PUBLIC_API_URL = process.env.NEXT_PUBLIC_API_URL;
-      return rawNEXT_PUBLIC_API_URL || "http://localhost:4001/api";
+      return rawNEXT_PUBLIC_API_URL || "http://127.0.0.1:4001/api";
     })();
 
 export async function POST(request: NextRequest) {
