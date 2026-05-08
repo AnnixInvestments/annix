@@ -27,7 +27,12 @@ import { useEnvironmentalIntelligence } from "@/app/lib/hooks/useEnvironmentalIn
 import { log } from "@/app/lib/logger";
 import { type NixRfqPipingProfileMetadata, nixApi } from "@/app/lib/nix/api";
 import { useRfqWizardStore } from "@/app/lib/store/rfqWizardStore";
-import { extractXlsxFromEml, isEmlFile } from "@/app/lib/utils/emlAttachmentExtractor";
+import {
+  type EmailAttachment,
+  type EmailMetadata,
+  isEmlFile,
+  parseEmail,
+} from "@/app/lib/utils/emlAttachmentExtractor";
 import { generateSystemReferenceNumber } from "@/app/lib/utils/systemUtils";
 import {
   buildFallbackEnvironmentalSpecs,
@@ -117,113 +122,249 @@ export default function ProjectDetailsStep() {
     drawingRefCount: number;
   } | null>(null);
 
+  // Track which customer fields were auto-filled (declared early because
+  // onAddDocument's email-metadata branch overwrites them). Mirror state is
+  // updated again below from the logged-in-user useEffect.
+  const [customerAutoFilled, setCustomerAutoFilled] = useState<{
+    customerName: boolean;
+    customerEmail: boolean;
+    customerPhone: boolean;
+  }>({
+    customerName: false,
+    customerEmail: false,
+    customerPhone: false,
+  });
+
   const isExcelFile = (file: File) =>
     /\.xlsx?$/i.test(file.name) || file.type.includes("spreadsheet") || file.type.includes("excel");
 
-  const onAddDocument = useCallback(
-    async (incoming: File) => {
-      let workingFile = incoming;
-
-      if (isEmlFile(incoming)) {
-        const extracted = await extractXlsxFromEml(incoming).catch(() => null);
-        if (extracted) {
-          workingFile = extracted;
-          showToast(`Found ${extracted.name} attached to ${incoming.name} — extracting…`, "info");
-        } else {
-          showToast(
-            `Couldn't find an Excel attachment in ${incoming.name}. Save the .xlsx from your email client and drop that instead.`,
-            "warning",
-          );
-        }
-      }
-
-      storeAddDocument({
-        file: workingFile,
-        id: `doc-${generateUniqueId()}-${Math.random().toString(36).substr(2, 9)}`,
+  const runNixBoqExtraction = useCallback(
+    async (file: File): Promise<NixRfqPipingProfileMetadata | null> => {
+      showExtraction({
+        brand: "rfq",
+        label: `Nix is reading ${file.name} and splitting it into line items…`,
+        estimatedDurationMs: 30_000,
       });
-
-      if (!isExcelFile(workingFile)) return;
-
       try {
-        showExtraction({
-          brand: "rfq",
-          label: `Nix is reading ${workingFile.name} and splitting it into line items…`,
-          estimatedDurationMs: 30_000,
-        });
-        const result = await nixApi.uploadAndProcess(workingFile, {
+        const result = await nixApi.uploadAndProcess(file, {
           extractionProfile: "rfq-piping",
           documentRole: "drawing",
           rfqId: currentDraftId ?? undefined,
           sourceModule: "rfq",
         });
         hideExtraction();
-
         if (result.error) {
           await confirm({
             title: "Nix extraction failed",
-            message: `Couldn't extract ${workingFile.name}.\n\n${result.error}`,
+            message: `Couldn't extract ${file.name}.\n\n${result.error}`,
             variant: "warning",
             confirmLabel: "Got it",
             hideCancel: true,
           });
-          return;
+          return null;
         }
-
         const rawProfile = result.profileMetadata as NixRfqPipingProfileMetadata | undefined;
         const profile = rawProfile ?? null;
         const items = result.items;
         const itemCount = items ? items.length : 0;
-        const bundles = profile ? profile.supplierBundles : undefined;
+        const bundles = profile ? profile.supplierBundles : null;
         const bundleCount = bundles ? bundles.length : 0;
-        const duplicates = profile ? profile.duplicates : undefined;
+        const duplicates = profile ? profile.duplicates : null;
         const duplicateCount = duplicates ? duplicates.length : 0;
-        const drawingRefs = profile ? profile.drawingReferences : undefined;
+        const drawingRefs = profile ? profile.drawingReferences : null;
         const drawingRefCount = drawingRefs ? drawingRefs.length : 0;
-
         setBoqExtractionSummary({
-          fileName: workingFile.name,
+          fileName: file.name,
           itemCount,
           bundleCount,
           duplicateCount,
           drawingRefCount,
         });
-
-        const messageLines = [
-          `Nix extracted ${itemCount} line item${itemCount === 1 ? "" : "s"} from ${workingFile.name}.`,
-          "",
-          `• Split into ${bundleCount} supplier bundle${bundleCount === 1 ? "" : "s"}`,
-        ];
-        if (duplicateCount > 0) {
-          messageLines.push(
-            `• ${duplicateCount} duplicate group${duplicateCount === 1 ? "" : "s"} flagged for review`,
-          );
-        }
-        if (drawingRefCount > 0) {
-          messageLines.push(
-            `• ${drawingRefCount} drawing reference${drawingRefCount === 1 ? "" : "s"} captured`,
-          );
-        }
-
-        await confirm({
-          title: "BOQ extraction complete",
-          message: messageLines.join("\n"),
-          variant: "info",
-          confirmLabel: "Got it",
-          hideCancel: true,
-        });
+        return profile;
       } catch (err) {
         hideExtraction();
         log.error("Nix BOQ extraction failed:", err);
         await confirm({
           title: "Couldn't auto-extract this BOQ",
-          message: `${workingFile.name} is still uploaded — admin can extract it manually after submission.`,
+          message: `${file.name} is still uploaded — admin can extract it manually after submission.`,
           variant: "warning",
           confirmLabel: "Got it",
           hideCancel: true,
         });
+        return null;
       }
     },
-    [storeAddDocument, showExtraction, hideExtraction, showToast, confirm, currentDraftId],
+    [showExtraction, hideExtraction, confirm, currentDraftId],
+  );
+
+  const applyEmailMetadataToCustomerFields = useCallback(
+    (metadata: EmailMetadata): { name: boolean; email: boolean; phone: boolean } => {
+      const applied = { name: false, email: false, phone: false };
+      const canOverwrite = (current: string | undefined, autoFlag: boolean) => !current || autoFlag;
+
+      const fromName = metadata.fromName;
+      if (fromName && canOverwrite(rfqData.customerName, customerAutoFilled.customerName)) {
+        onUpdate("customerName", fromName);
+        applied.name = true;
+      }
+      const fromEmail = metadata.fromEmail;
+      if (fromEmail && canOverwrite(rfqData.customerEmail, customerAutoFilled.customerEmail)) {
+        onUpdate("customerEmail", fromEmail);
+        applied.email = true;
+      }
+      const fromPhone = metadata.fromPhone;
+      if (fromPhone && canOverwrite(rfqData.customerPhone, customerAutoFilled.customerPhone)) {
+        onUpdate("customerPhone", fromPhone);
+        applied.phone = true;
+      }
+      const subject = metadata.subject;
+      if (subject && !rfqData.rfqDescription) {
+        onUpdate("rfqDescription", subject);
+      }
+
+      const appliedName = applied.name;
+      const appliedEmail = applied.email;
+      const appliedPhone = applied.phone;
+      const anyApplied = appliedName || appliedEmail || appliedPhone;
+      if (anyApplied) {
+        setCustomerAutoFilled((prev) => {
+          const prevName = prev.customerName;
+          const prevEmail = prev.customerEmail;
+          const prevPhone = prev.customerPhone;
+          return {
+            ...prev,
+            customerName: appliedName || prevName,
+            customerEmail: appliedEmail || prevEmail,
+            customerPhone: appliedPhone || prevPhone,
+          };
+        });
+      }
+      return applied;
+    },
+    [
+      onUpdate,
+      rfqData.customerName,
+      rfqData.customerEmail,
+      rfqData.customerPhone,
+      rfqData.rfqDescription,
+      customerAutoFilled.customerName,
+      customerAutoFilled.customerEmail,
+      customerAutoFilled.customerPhone,
+    ],
+  );
+
+  const onAddDocument = useCallback(
+    async (incoming: File) => {
+      if (!isEmlFile(incoming)) {
+        storeAddDocument({
+          file: incoming,
+          id: `doc-${generateUniqueId()}-${Math.random().toString(36).substr(2, 9)}`,
+        });
+        if (!isExcelFile(incoming)) return;
+        await runNixBoqExtraction(incoming);
+        return;
+      }
+
+      const parsed = await parseEmail(incoming).catch(() => null);
+      if (!parsed) {
+        await confirm({
+          title: "Couldn't read this email",
+          message: `${incoming.name} doesn't look like a valid .eml file. Save the email out of your client and try again, or drop the attachments individually.`,
+          variant: "warning",
+          confirmLabel: "Got it",
+          hideCancel: true,
+        });
+        return;
+      }
+
+      const customerApplied = applyEmailMetadataToCustomerFields(parsed.metadata);
+
+      const emlId = `eml-${generateUniqueId()}-${Math.random().toString(36).substr(2, 9)}`;
+      storeAddDocument({ file: incoming, id: emlId });
+
+      const routeAttachment = (attachment: EmailAttachment) => {
+        const idPrefix = attachment.kind === "tender" ? "tender" : "doc";
+        const id = `${idPrefix}-${generateUniqueId()}-${Math.random().toString(36).substr(2, 9)}`;
+        if (attachment.kind === "tender") {
+          storeAddTenderDocument({ file: attachment.file, id });
+        } else {
+          storeAddDocument({ file: attachment.file, id });
+        }
+      };
+      parsed.attachments.forEach(routeAttachment);
+
+      const xlsxAttachments = parsed.attachments.filter((att) => isExcelFile(att.file));
+      const profiles: NixRfqPipingProfileMetadata[] = [];
+      for (const attachment of xlsxAttachments) {
+        const profile = await runNixBoqExtraction(attachment.file);
+        if (profile) profiles.push(profile);
+      }
+
+      const totalItems = profiles.reduce((sum, p) => {
+        const supplyCount = p.supplyItemCount;
+        return sum + (supplyCount ?? 0);
+      }, 0);
+      const totalBundles = new Set(profiles.flatMap((p) => p.supplierBundles.map((b) => b.key)))
+        .size;
+      const totalDuplicates = profiles.reduce((sum, p) => {
+        const dupes = p.duplicates;
+        return sum + (dupes ? dupes.length : 0);
+      }, 0);
+
+      const lines: string[] = [];
+      lines.push(
+        `Saved ${parsed.attachments.length + 1} document${parsed.attachments.length === 0 ? "" : "s"} from ${incoming.name}:`,
+      );
+      lines.push("");
+      lines.push("• Original email kept as source-of-truth");
+      const boqCount = parsed.attachments.filter((a) => a.kind === "boq").length;
+      const tenderCount = parsed.attachments.filter((a) => a.kind === "tender").length;
+      const otherCount = parsed.attachments.length - boqCount - tenderCount;
+      if (boqCount > 0)
+        lines.push(`• ${boqCount} spreadsheet${boqCount === 1 ? "" : "s"} → BOQ bucket`);
+      if (tenderCount > 0)
+        lines.push(
+          `• ${tenderCount} document${tenderCount === 1 ? "" : "s"} → Tender Specs bucket`,
+        );
+      if (otherCount > 0)
+        lines.push(`• ${otherCount} other attachment${otherCount === 1 ? "" : "s"} → BOQ bucket`);
+
+      if (xlsxAttachments.length > 0 && totalItems > 0) {
+        lines.push("");
+        lines.push(
+          `Nix extracted ${totalItems} line item${totalItems === 1 ? "" : "s"} across ${totalBundles} supplier bundle${totalBundles === 1 ? "" : "s"}.`,
+        );
+        if (totalDuplicates > 0) {
+          lines.push(
+            `${totalDuplicates} duplicate group${totalDuplicates === 1 ? "" : "s"} flagged for review.`,
+          );
+        }
+      }
+
+      const customerLines: string[] = [];
+      if (customerApplied.name) customerLines.push("Customer Name");
+      if (customerApplied.email) customerLines.push("Customer Email");
+      if (customerApplied.phone) customerLines.push("Customer Phone");
+      if (customerLines.length > 0) {
+        lines.push("");
+        lines.push(`Customer details auto-filled from sender: ${customerLines.join(", ")}.`);
+      }
+
+      await confirm({
+        title: "Email processed",
+        message: lines.join("\n"),
+        variant: "info",
+        confirmLabel: "Got it",
+        hideCancel: true,
+      });
+    },
+    [
+      storeAddDocument,
+      storeAddTenderDocument,
+      confirm,
+      applyEmailMetadataToCustomerFields,
+      runNixBoqExtraction,
+    ],
   );
 
   const onAddTenderDocument = useCallback(
@@ -708,17 +849,6 @@ export default function ProjectDetailsStep() {
   const hideRestrictionTooltip = useCallback(() => {
     setRestrictionPopup(null);
   }, []);
-
-  // Track which customer fields were auto-filled
-  const [customerAutoFilled, setCustomerAutoFilled] = useState<{
-    customerName: boolean;
-    customerEmail: boolean;
-    customerPhone: boolean;
-  }>({
-    customerName: false,
-    customerEmail: false,
-    customerPhone: false,
-  });
 
   // Auto-fill customer fields when logged in (but not when loading a draft)
   useEffect(() => {
