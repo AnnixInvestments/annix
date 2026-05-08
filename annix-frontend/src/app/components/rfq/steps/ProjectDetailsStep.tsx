@@ -169,6 +169,10 @@ export default function ProjectDetailsStep() {
   // load asynchronously after first render.
   const [emailLocationSearchText, setEmailLocationSearchText] = useState<string | null>(null);
   const [showLocationRequiredModal, setShowLocationRequiredModal] = useState(false);
+  // Pending mine choice inside LocationRequiredModal — the dropdown only
+  // stages a selection here; the "Accept this location" button is what
+  // actually commits via handleMineSelect.
+  const [pendingMineSelection, setPendingMineSelection] = useState<number | null>(null);
 
   const [boqExtractionSummary, setBoqExtractionSummary] = useState<{
     fileName: string;
@@ -2376,14 +2380,11 @@ export default function ProjectDetailsStep() {
                   </label>
                   <select
                     id="location-required-mine-select"
-                    value={selectedMineId ?? ""}
-                    onChange={async (e) => {
+                    value={pendingMineSelection ?? ""}
+                    onChange={(e) => {
                       const rawValue = e.target.value;
                       const mineId = rawValue ? Number.parseInt(rawValue, 10) : null;
-                      if (mineId) {
-                        await handleMineSelect(mineId);
-                        setShowLocationRequiredModal(false);
-                      }
+                      setPendingMineSelection(mineId);
                     }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
@@ -2395,25 +2396,47 @@ export default function ProjectDetailsStep() {
                       </option>
                     ))}
                   </select>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowLocationRequiredModal(false);
+                      setPendingMineSelection(null);
+                      setShowAddMineModal(true);
+                    }}
+                    className="mt-2 text-xs text-blue-600 hover:text-blue-800 underline"
+                  >
+                    Mine not in the list? Add it
+                  </button>
                 </div>
               </div>
-              <div className="px-6 py-4 bg-gray-50 flex justify-between items-center">
+              <div className="px-6 py-4 bg-gray-50 flex justify-end gap-3">
                 <button
                   type="button"
                   onClick={() => {
                     setShowLocationRequiredModal(false);
-                    setShowAddMineModal(true);
+                    setPendingMineSelection(null);
                   }}
-                  className="text-xs text-blue-600 hover:text-blue-800 underline"
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-300"
                 >
-                  Mine not in the list? Add it
+                  Fill in manually
                 </button>
                 <button
                   type="button"
-                  onClick={() => setShowLocationRequiredModal(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                  disabled={pendingMineSelection === null}
+                  onClick={async () => {
+                    const mineId = pendingMineSelection;
+                    if (mineId === null) return;
+                    setShowLocationRequiredModal(false);
+                    setPendingMineSelection(null);
+                    await handleMineSelect(mineId);
+                  }}
+                  className={`px-4 py-2 text-sm font-medium text-white rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
+                    pendingMineSelection === null
+                      ? "bg-blue-300 cursor-not-allowed"
+                      : "bg-blue-600 hover:bg-blue-700"
+                  }`}
                 >
-                  I'll fill location manually
+                  Accept this location
                 </button>
               </div>
             </div>
