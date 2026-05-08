@@ -846,13 +846,20 @@ function SpecificationRow(props: {
   else if (applicableMarks.length > 0) scopeText = `Applies to items ${applicableMarks.join(", ")}`;
 
   return (
-    <details className="text-xs bg-white border border-gray-200 rounded p-2">
-      <summary className="cursor-pointer space-y-0.5">
-        <span className="font-semibold text-gray-900">{clauseKey}</span>
-        {headlineText.length > 0 && <div className="text-gray-700 font-normal">{headlineText}</div>}
-        {(scopeText.length > 0 || pageReference !== null) && (
-          <div className="text-[11px] text-gray-500 font-normal flex items-center gap-2 flex-wrap">
-            {scopeText.length > 0 && <span>{scopeText}</span>}
+    <details className="group bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow open:shadow-md">
+      <summary className="cursor-pointer list-none px-4 py-3 flex items-start gap-3">
+        <svg
+          className="w-4 h-4 mt-0.5 text-gray-400 transition-transform group-open:rotate-90 flex-shrink-0"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+        </svg>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-baseline justify-between gap-3 flex-wrap">
+            <h3 className="text-sm font-bold text-gray-900">{clauseKey}</h3>
             {pageReference !== null && (
               <button
                 type="button"
@@ -861,109 +868,252 @@ function SpecificationRow(props: {
                   e.stopPropagation();
                   onJumpToPage(pageReference);
                 }}
-                className="text-blue-600 hover:text-blue-800 underline"
+                className="inline-flex items-center gap-1 text-[11px] text-blue-700 hover:text-blue-900 hover:underline font-medium whitespace-nowrap"
               >
-                View page {pageReference}
+                <svg
+                  className="w-3 h-3"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                  />
+                </svg>
+                Page {pageReference}
               </button>
             )}
           </div>
-        )}
+          {headlineText.length > 0 && (
+            <p className="mt-1 text-xs text-gray-700 leading-snug">{headlineText}</p>
+          )}
+          {(applicableScope === "all" || applicableMarks.length > 0) && (
+            <div className="mt-2 flex items-center gap-1.5 flex-wrap">
+              <span className="text-[10px] uppercase tracking-wider font-semibold text-gray-500">
+                {applicableScope === "all" ? "Applies to" : "Items"}
+              </span>
+              {applicableScope === "all" ? (
+                <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[11px] font-medium border border-emerald-200">
+                  All items
+                </span>
+              ) : (
+                applicableMarks.map((mark) => (
+                  <span
+                    key={mark}
+                    className="px-2 py-0.5 rounded-full bg-purple-50 text-purple-800 text-[11px] font-mono border border-purple-200"
+                  >
+                    {mark}
+                  </span>
+                ))
+              )}
+            </div>
+          )}
+        </div>
       </summary>
-      <div className="mt-2">
-        {detailsObj ? (
+      {detailsObj && (
+        <div className="px-4 pb-4 border-t border-gray-100">
           <DetailsBlock details={detailsObj} />
-        ) : (
-          <pre className="whitespace-pre-wrap text-gray-700 bg-gray-50 rounded p-2">
+        </div>
+      )}
+      {!detailsObj && (
+        <div className="px-4 pb-4 border-t border-gray-100">
+          <pre className="mt-3 whitespace-pre-wrap text-[11px] text-gray-700 bg-gray-50 rounded p-2">
             {JSON.stringify(value, null, 2)}
           </pre>
-        )}
-      </div>
+        </div>
+      )}
     </details>
   );
 }
 
-function humaniseKey(key: string): string {
+interface ParsedKey {
+  label: string;
+  unit: string | null;
+}
+
+function parseKey(key: string): ParsedKey {
   let body = key;
-  let suffix = "";
-  // Recognise common unit suffixes and lift them out of the label so we
-  // can render them as a unit hint rather than splitting them as words.
+  let unit: string | null = null;
   const unitMatch = body.match(/_(mm|m|kg|kPa|MPa|µm|um|hrs|hours|percent|degC|degF)$/i);
   if (unitMatch) {
-    const unit = unitMatch[1];
-    suffix = unit === "percent" ? " (%)" : ` (${unit})`;
+    const u = unitMatch[1];
+    if (u === "percent") unit = "%";
+    else if (u === "hours") unit = "hrs";
+    else if (u === "degC") unit = "°C";
+    else if (u === "degF") unit = "°F";
+    else if (u === "um") unit = "µm";
+    else unit = u;
     body = body.slice(0, -unitMatch[0].length);
   }
-  // Split snake_case + camelCase into words.
   const words = body
     .replace(/([a-z])([A-Z])/g, "$1 $2")
     .replace(/[_-]+/g, " ")
     .trim()
     .split(/\s+/);
-  const titled = words
+  const label = words
     .map((w, i) => {
       if (w.length === 0) return w;
-      // Keep ALL-CAPS acronyms intact (NDT, ISO, etc.).
       if (w === w.toUpperCase() && /[A-Z]/.test(w)) return w;
-      // Lower-case all words after the first; only the first is capitalised.
       const lower = w.toLowerCase();
       return i === 0 ? lower.charAt(0).toUpperCase() + lower.slice(1) : lower;
     })
     .join(" ");
-  return `${titled}${suffix}`;
+  return { label, unit };
+}
+
+function humaniseKey(key: string): string {
+  const { label, unit } = parseKey(key);
+  return unit ? `${label} (${unit})` : label;
+}
+
+function isPureNumber(value: unknown): value is number {
+  return isNumber(value) && Number.isFinite(value);
+}
+
+function looksLikeNumberWithUnit(value: unknown): boolean {
+  if (isPureNumber(value)) return true;
+  if (isString(value)) {
+    const trimmed = value.trim();
+    return /^-?\d+(\.\d+)?\s*(?:°[CF]|µm|um|mm|cm|m|MPa|kPa|N\/mm|IRHD|%|hrs|hours|kg)?$/i.test(
+      trimmed,
+    );
+  }
+  return false;
+}
+
+function tryRangeString(nested: Record<string, unknown>, unit: string): string | null {
+  // Collapse { min: -40, max: 75 } into "-40 to 75 °C".
+  const minRaw = nested.min;
+  const minimumRaw = nested.minimum;
+  const lowerRaw = nested.lower;
+  const maxRaw = nested.max;
+  const maximumRaw = nested.maximum;
+  const upperRaw = nested.upper;
+  const min = minRaw ?? minimumRaw ?? lowerRaw;
+  const max = maxRaw ?? maximumRaw ?? upperRaw;
+  if (min === undefined || max === undefined) return null;
+  if (!isPureNumber(min) || !isPureNumber(max)) return null;
+  return `${min} to ${max} ${unit}`.trim();
+}
+
+function StatCard(props: { label: string; value: string; unit: string | null }) {
+  const { label, value, unit } = props;
+  return (
+    <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5">
+      <div className="text-[10px] uppercase tracking-wider font-semibold text-gray-500">
+        {label}
+      </div>
+      <div className="mt-0.5 flex items-baseline gap-1">
+        <span className="text-base font-bold text-gray-900 tabular-nums">{value}</span>
+        {unit && <span className="text-xs text-gray-500">{unit}</span>}
+      </div>
+    </div>
+  );
 }
 
 function DetailsBlock(props: { details: Record<string, unknown> }) {
   const { details } = props;
-  const rows = entries(details);
-  if (rows.length === 0) return null;
-  return (
-    <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-xs">
-      {rows.map(([k, v]) => (
-        <DetailRow key={k} label={humaniseKey(k)} value={v} />
-      ))}
-    </dl>
+  const rows = entries(details).filter(
+    ([, v]) =>
+      v !== null && v !== undefined && v !== "" && !(isArray(v) && (v as unknown[]).length === 0),
   );
-}
+  if (rows.length === 0) return null;
 
-function DetailRow(props: { label: string; value: unknown }) {
-  const { label, value } = props;
-  if (value === null || value === undefined || value === "") return null;
-  if (isObject(value) && !isArray(value)) {
-    const nested = value as Record<string, unknown>;
-    return (
-      <div className="sm:col-span-2 mt-1">
-        <div className="text-[11px] font-semibold text-gray-700">{label}</div>
-        <div className="mt-0.5 ml-2 border-l-2 border-gray-200 pl-2">
-          <DetailsBlock details={nested} />
-        </div>
-      </div>
-    );
+  const stats: { key: string; label: string; value: string; unit: string | null }[] = [];
+  const texts: { key: string; label: string; display: string }[] = [];
+  const arrays: { key: string; label: string; items: string[] }[] = [];
+  const sections: { key: string; label: string; nested: Record<string, unknown> }[] = [];
+
+  for (const [k, v] of rows) {
+    const { label, unit } = parseKey(k);
+
+    if (isObject(v) && !isArray(v)) {
+      const nested = v as Record<string, unknown>;
+      // Try to collapse { min, max } into a range stat
+      const range = tryRangeString(nested, unit ?? "");
+      if (range) {
+        stats.push({ key: k, label, value: range, unit: null });
+        continue;
+      }
+      sections.push({ key: k, label, nested });
+      continue;
+    }
+
+    if (isArray(v)) {
+      const items = (v as unknown[])
+        .filter((entry) => entry !== null && entry !== undefined && entry !== "")
+        .map((entry) =>
+          isString(entry) || isNumber(entry) ? String(entry) : JSON.stringify(entry),
+        );
+      if (items.length > 0) arrays.push({ key: k, label, items });
+      continue;
+    }
+
+    if (looksLikeNumberWithUnit(v) && (unit || isPureNumber(v))) {
+      const numValue = isPureNumber(v) ? String(v) : (v as string).trim();
+      stats.push({ key: k, label, value: numValue, unit });
+      continue;
+    }
+
+    let display: string;
+    if (isString(v)) display = v;
+    else if (isPureNumber(v)) display = String(v);
+    else if (isBoolean(v)) display = v ? "Yes" : "No";
+    else display = JSON.stringify(v);
+    texts.push({ key: k, label: unit ? `${label} (${unit})` : label, display });
   }
-  if (isArray(value)) {
-    const items = (value as unknown[]).filter((v) => v !== null && v !== undefined && v !== "");
-    if (items.length === 0) return null;
-    return (
-      <div className="sm:col-span-2 mt-1">
-        <div className="text-[11px] font-semibold text-gray-700">{label}</div>
-        <ul className="list-disc ml-6 text-gray-700">
-          {items.map((entry, idx) => (
-            <li key={idx}>
-              {isString(entry) || isNumber(entry) ? String(entry) : JSON.stringify(entry)}
-            </li>
-          ))}
-        </ul>
-      </div>
-    );
-  }
-  let display: string;
-  if (isString(value)) display = value;
-  else if (isNumber(value)) display = String(value);
-  else if (isBoolean(value)) display = value ? "Yes" : "No";
-  else display = JSON.stringify(value);
+
   return (
-    <div className="flex flex-col">
-      <dt className="text-[11px] font-semibold text-gray-700">{label}</dt>
-      <dd className="text-gray-800 break-words">{display}</dd>
+    <div className="mt-3 space-y-3">
+      {stats.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+          {stats.map((s) => (
+            <StatCard key={s.key} label={s.label} value={s.value} unit={s.unit} />
+          ))}
+        </div>
+      )}
+
+      {texts.length > 0 && (
+        <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
+          {texts.map((t) => (
+            <div key={t.key} className="min-w-0">
+              <dt className="text-[10px] uppercase tracking-wider font-semibold text-gray-500">
+                {t.label}
+              </dt>
+              <dd className="mt-0.5 text-sm text-gray-800 break-words">{t.display}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+
+      {arrays.map((a) => (
+        <div key={a.key}>
+          <div className="text-[10px] uppercase tracking-wider font-semibold text-gray-500 mb-1">
+            {a.label}
+          </div>
+          <ul className="space-y-1 text-sm text-gray-700">
+            {a.items.map((item, idx) => (
+              <li key={idx} className="flex items-start gap-2">
+                <span className="mt-1.5 w-1 h-1 rounded-full bg-gray-400 flex-shrink-0" />
+                <span className="break-words">{item}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+
+      {sections.map((s) => (
+        <div key={s.key} className="rounded-lg border border-gray-200 bg-white p-3">
+          <div className="text-xs font-bold text-gray-800 mb-1 pb-1 border-b border-gray-100">
+            {s.label}
+          </div>
+          <DetailsBlock details={s.nested} />
+        </div>
+      ))}
     </div>
   );
 }
