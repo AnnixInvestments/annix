@@ -5,6 +5,7 @@ import { Suspense, useEffect } from "react";
 import { FeedbackWidget } from "@/app/components/FeedbackWidget";
 import PortalToolbar, { type NavItem } from "@/app/components/PortalToolbar";
 import { useCvAssistantAuth } from "@/app/context/CvAssistantAuthContext";
+import { NixAppProvider, NixAssistant } from "@/app/lib/nix";
 import { CV_ASSISTANT_VERSION } from "../config/version";
 
 const companyNavItems: NavItem[] = [
@@ -151,6 +152,10 @@ function PortalContent({ children }: { children: React.ReactNode }) {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">{children}</main>
       <FeedbackWidget authContext="cv-assistant" />
+      <NixAssistant
+        context="general"
+        pageContext={{ currentPage: "CV Assistant", portalContext: "general" }}
+      />
     </div>
   );
 }
@@ -165,7 +170,9 @@ export default function PortalLayout(props: { children: React.ReactNode }) {
         </div>
       }
     >
-      <PortalContent>{children}</PortalContent>
+      <NixAppProvider appCode="cv-assistant">
+        <PortalContent>{children}</PortalContent>
+      </NixAppProvider>
     </Suspense>
   );
 }

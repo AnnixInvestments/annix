@@ -14,6 +14,7 @@ import { AppRole } from "../rbac/entities/app-role.entity";
 import { UserAppAccess } from "../rbac/entities/user-app-access.entity";
 import { StorageModule } from "../storage/storage.module";
 import { User } from "../user/entities/user.entity";
+import { CvAssistantCapabilities } from "./capabilities/cv-assistant.capabilities";
 import { AdminEeTargetsController } from "./controllers/admin-ee-targets.controller";
 import { AnalyticsController } from "./controllers/analytics.controller";
 import { CvAssistantAuthController } from "./controllers/auth.controller";
@@ -215,6 +216,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     TestCandidateSeederService,
     EmailTemplateService,
     InterviewBookingService,
+    CvAssistantCapabilities,
   ],
   exports: [CvAssistantAuthService],
 })
