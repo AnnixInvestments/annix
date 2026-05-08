@@ -5,6 +5,11 @@ import { AiUsageService } from "../../ai-usage/ai-usage.service";
 import { AiApp, AiProvider } from "../../ai-usage/entities/ai-usage-log.entity";
 import { AiChatService } from "../ai-providers/ai-chat.service";
 import { ChatMessage } from "../ai-providers/claude-chat.provider";
+import {
+  NixCapabilityRegistry,
+  WalkthroughEngine,
+  type WalkthroughStepView,
+} from "../capabilities";
 import { NixChatMessage } from "../entities/nix-chat-message.entity";
 import { NixChatSession } from "../entities/nix-chat-session.entity";
 import { GUIDED_MODE_INSTRUCTIONS, PIPING_DOMAIN_KNOWLEDGE } from "../prompts/piping-domain.prompt";
@@ -62,6 +67,8 @@ export class NixChatService {
     private readonly itemParserService: NixItemParserService,
     private readonly aiChatService: AiChatService,
     private readonly aiUsageService: AiUsageService,
+    private readonly walkthroughEngine: WalkthroughEngine,
+    private readonly capabilityRegistry: NixCapabilityRegistry,
   ) {}
 
   async createSession(dto: CreateSessionDto): Promise<NixChatSession> {
@@ -134,9 +141,43 @@ export class NixChatService {
       };
     }
 
+    const walkthroughResult = await this.interceptWalkthrough(dto.sessionId, session, dto.message);
+    if (walkthroughResult?.kind === "handled") {
+      const userMsg = await this.saveMessage(dto.sessionId, "user", dto.message);
+      const assistantMsg = await this.saveMessage(
+        dto.sessionId,
+        "assistant",
+        walkthroughResult.response,
+        { intent: "walkthrough" },
+      );
+      const refreshedSession = await this.session(dto.sessionId);
+      refreshedSession.conversationHistory = [
+        ...refreshedSession.conversationHistory,
+        { role: "user" as const, content: dto.message, timestamp: new Date().toISOString() },
+        {
+          role: "assistant" as const,
+          content: walkthroughResult.response,
+          timestamp: new Date().toISOString(),
+        },
+      ].slice(-this.maxHistoryLength);
+      refreshedSession.lastInteractionAt = new Date();
+      await this.sessionRepository.save(refreshedSession);
+      void userMsg;
+      return {
+        sessionId: dto.sessionId,
+        messageId: assistantMsg.id,
+        content: walkthroughResult.response,
+        metadata: { intent: "walkthrough" },
+      };
+    }
+
     const userMessage: ChatMessage = { role: "user", content: dto.message };
     const conversationHistory = this.buildConversationHistory(session, userMessage);
-    const systemPrompt = this.buildSystemPrompt(session);
+    const baseSystemPrompt = this.buildSystemPrompt(session);
+    const systemPrompt =
+      walkthroughResult?.kind === "stuck"
+        ? `${baseSystemPrompt}${walkthroughResult.systemPromptAddendum}`
+        : baseSystemPrompt;
 
     const startTime = Date.now();
 
@@ -222,9 +263,43 @@ export class NixChatService {
       };
     }
 
+    const walkthroughResult = await this.interceptWalkthrough(dto.sessionId, session, dto.message);
+    if (walkthroughResult?.kind === "handled") {
+      yield { type: "message_start", metadata: { intent: "walkthrough" } };
+      yield { type: "content_delta", delta: walkthroughResult.response };
+      await this.saveMessage(dto.sessionId, "user", dto.message);
+      const assistantMsg = await this.saveMessage(
+        dto.sessionId,
+        "assistant",
+        walkthroughResult.response,
+        { intent: "walkthrough" },
+      );
+      const refreshedSession = await this.session(dto.sessionId);
+      refreshedSession.conversationHistory = [
+        ...refreshedSession.conversationHistory,
+        { role: "user" as const, content: dto.message, timestamp: new Date().toISOString() },
+        {
+          role: "assistant" as const,
+          content: walkthroughResult.response,
+          timestamp: new Date().toISOString(),
+        },
+      ].slice(-this.maxHistoryLength);
+      refreshedSession.lastInteractionAt = new Date();
+      await this.sessionRepository.save(refreshedSession);
+      yield {
+        type: "message_stop",
+        metadata: { messageId: assistantMsg.id, intent: "walkthrough" },
+      };
+      return;
+    }
+
     const userMessage: ChatMessage = { role: "user", content: dto.message };
     const conversationHistory = this.buildConversationHistory(session, userMessage);
-    const systemPrompt = this.buildSystemPrompt(session);
+    const baseSystemPrompt = this.buildSystemPrompt(session);
+    const systemPrompt =
+      walkthroughResult?.kind === "stuck"
+        ? `${baseSystemPrompt}${walkthroughResult.systemPromptAddendum}`
+        : baseSystemPrompt;
 
     const startTime = Date.now();
     let fullContent = "";
@@ -451,5 +526,141 @@ Instead, directly help them with their request based on this context.`;
     });
 
     return this.messageRepository.save(message);
+  }
+
+  /**
+   * Walkthrough interceptor — runs at the start of sendMessage / streamMessage.
+   *
+   * Returns:
+   *   - `{ kind: "handled", response }`: the engine processed the user's
+   *     message directly (start, advance, back, skip, stop). The chat
+   *     service should bypass the AI call and return `response` as the
+   *     assistant content.
+   *   - `{ kind: "stuck", systemPromptAddendum }`: an active walkthrough is
+   *     running and the user asked a free-form question — the chat service
+   *     should call the AI as usual but prepend the addendum to the system
+   *     prompt so Gemini answers in the context of the current step.
+   *   - `null`: no walkthrough involvement; pass through unchanged.
+   *
+   * Phase 4 of issue #262.
+   */
+  private async interceptWalkthrough(
+    sessionId: number,
+    session: NixChatSession,
+    message: string,
+  ): Promise<
+    { kind: "handled"; response: string } | { kind: "stuck"; systemPromptAddendum: string } | null
+  > {
+    const lowered = message.toLowerCase().trim();
+    const activeState = session.walkthroughState;
+    const hasActiveWalkthrough = activeState !== null && activeState.endedAt === undefined;
+
+    if (!hasActiveWalkthrough) {
+      const triggerMatch = this.capabilityRegistry.matchWalkthroughIntent(message);
+      if (!triggerMatch) return null;
+      const view = await this.walkthroughEngine.start(sessionId, triggerMatch.capability.key);
+      return { kind: "handled", response: this.formatStepResponse(view, "started") };
+    }
+
+    if (this.matchesAdvanceVerb(lowered)) {
+      const view = await this.walkthroughEngine.advance(sessionId);
+      return {
+        kind: "handled",
+        response: view ? this.formatStepResponse(view, "advanced") : this.completionMessage(),
+      };
+    }
+
+    if (this.matchesBackVerb(lowered)) {
+      const view = await this.walkthroughEngine.back(sessionId);
+      return {
+        kind: "handled",
+        response: view
+          ? this.formatStepResponse(view, "back")
+          : "Walkthrough already at the start.",
+      };
+    }
+
+    if (this.matchesSkipVerb(lowered)) {
+      const view = await this.walkthroughEngine.skip(sessionId);
+      return {
+        kind: "handled",
+        response: view ? this.formatStepResponse(view, "skipped") : this.completionMessage(),
+      };
+    }
+
+    if (this.matchesStopVerb(lowered)) {
+      await this.walkthroughEngine.stop(sessionId, "abandoned");
+      return {
+        kind: "handled",
+        response: "Walkthrough stopped. Ping me again if you'd like to resume.",
+      };
+    }
+
+    if (this.matchesStuckVerb(lowered)) {
+      const ctx = await this.walkthroughEngine.stuckContext(sessionId);
+      if (!ctx) return null;
+      const guideBody = ctx.guide?.body ?? "";
+      const addendum = [
+        "\n\n## Current walkthrough step",
+        `Capability: ${ctx.step.capabilityLabel}`,
+        `Step ${ctx.step.step} of ${ctx.step.totalSteps}: ${ctx.step.title}`,
+        "",
+        ctx.step.body,
+        guideBody ? `\n\n## Full guide for context\n\n${guideBody}` : "",
+      ].join("\n");
+      return { kind: "stuck", systemPromptAddendum: addendum };
+    }
+
+    return null;
+  }
+
+  private matchesAdvanceVerb(lowered: string): boolean {
+    return /^(next|done|continue|advance|ok|okay|yes|got it|completed)$/.test(lowered);
+  }
+
+  private matchesBackVerb(lowered: string): boolean {
+    return /^(back|previous|prev|undo|go back)$/.test(lowered);
+  }
+
+  private matchesSkipVerb(lowered: string): boolean {
+    return /^(skip|skip this|next one|move on)$/.test(lowered);
+  }
+
+  private matchesStopVerb(lowered: string): boolean {
+    return /^(stop|cancel|exit|quit|abort|end walkthrough)$/.test(lowered);
+  }
+
+  private matchesStuckVerb(lowered: string): boolean {
+    return (
+      /^(stuck|help|confused|i'?m stuck|i don'?t understand|what (do|does)|how (do|does))/.test(
+        lowered,
+      ) || lowered.endsWith("?")
+    );
+  }
+
+  private formatStepResponse(view: WalkthroughStepView, action: string): string {
+    const intro =
+      action === "started"
+        ? `Starting walkthrough: **${view.capabilityLabel}**.`
+        : action === "back"
+          ? "Going back."
+          : action === "skipped"
+            ? "Skipped."
+            : "";
+    const lines = [
+      intro ? `${intro}\n` : "",
+      `**Step ${view.step} of ${view.totalSteps} — ${view.title}**`,
+      "",
+      view.body,
+      "",
+      view.isLast
+        ? "_Reply 'done' when finished, or 'back' / 'skip' / 'stop' / 'stuck' as needed._"
+        : "_Reply 'next' to continue, or 'back' / 'skip' / 'stop' / 'stuck' as needed._",
+    ];
+    return lines.filter((l) => l !== "").join("\n");
+  }
+
+  private completionMessage(): string {
+    return "Walkthrough complete. Nice work — ping me if you'd like to walk through anything else.";
   }
 }

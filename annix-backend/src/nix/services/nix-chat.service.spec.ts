@@ -4,6 +4,7 @@ import { getRepositoryToken } from "@nestjs/typeorm";
 import { IsNull, Repository } from "typeorm";
 import { AiUsageService } from "../../ai-usage/ai-usage.service";
 import { AiChatService } from "../ai-providers/ai-chat.service";
+import { NixCapabilityRegistry, WalkthroughEngine } from "../capabilities";
 import { NixChatMessage } from "../entities/nix-chat-message.entity";
 import { NixChatSession } from "../entities/nix-chat-session.entity";
 import { NixChatService } from "./nix-chat.service";
@@ -67,6 +68,20 @@ describe("NixChatService", () => {
       availableProviders: jest.fn().mockResolvedValue(["gemini"]),
     };
 
+    const mockWalkthroughEngine = {
+      start: jest.fn(),
+      advance: jest.fn(),
+      back: jest.fn(),
+      skip: jest.fn(),
+      stop: jest.fn(),
+      state: jest.fn(),
+      currentStepView: jest.fn(),
+      stuckContext: jest.fn(),
+    };
+    const mockCapabilityRegistry = {
+      matchWalkthroughIntent: jest.fn().mockReturnValue(null),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         NixChatService,
@@ -75,6 +90,8 @@ describe("NixChatService", () => {
         { provide: NixItemParserService, useValue: mockItemParserService },
         { provide: AiChatService, useValue: mockAiChatService },
         { provide: AiUsageService, useValue: { log: jest.fn() } },
+        { provide: WalkthroughEngine, useValue: mockWalkthroughEngine },
+        { provide: NixCapabilityRegistry, useValue: mockCapabilityRegistry },
       ],
     }).compile();
 
@@ -190,6 +207,8 @@ describe("NixChatService", () => {
         {} as any,
         mockAiChatServiceUnavailable as any,
         { log: jest.fn() } as any,
+        {} as any,
+        {} as any,
       );
 
       await expect(
@@ -283,6 +302,8 @@ describe("NixChatService", () => {
         {} as any,
         mockAiChatServiceUnavailable as any,
         { log: jest.fn() } as any,
+        {} as any,
+        {} as any,
       );
 
       const generator = serviceWithoutProvider.streamMessage({ sessionId: 1, message: "Hello" });
