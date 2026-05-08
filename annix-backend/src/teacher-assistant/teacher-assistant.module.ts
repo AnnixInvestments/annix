@@ -5,6 +5,7 @@ import { MetricsModule } from "../metrics/metrics.module";
 import { NixModule } from "../nix/nix.module";
 import { SharedModule } from "../shared/shared.module";
 import { StorageModule } from "../storage/storage.module";
+import { TeacherAssistantCapabilities } from "./capabilities/teacher-assistant.capabilities";
 import { TeacherAssistantUser } from "./entities/teacher-assistant-user.entity";
 import { TeacherAssistantAuthGuard } from "./guards/teacher-assistant-auth.guard";
 import { AssignmentDocxService } from "./services/assignment-docx.service";
@@ -36,6 +37,7 @@ import { TeacherAssistantAuthController } from "./teacher-assistant-auth.control
     SubjectTemplateService,
     TeacherAssistantAuthService,
     TeacherAssistantAuthGuard,
+    TeacherAssistantCapabilities,
   ],
   exports: [
     AssignmentGeneratorService,

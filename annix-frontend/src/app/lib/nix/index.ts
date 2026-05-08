@@ -30,6 +30,14 @@ export { default as NixFloatingAvatar } from "./components/NixFloatingAvatar";
 export { default as NixProcessingPopup } from "./components/NixProcessingPopup";
 export { ParsedItemsConfirmation } from "./components/ParsedItemsConfirmation";
 export {
+  bestIntent,
+  classifyIntent,
+  type NixAppContextValue,
+  NixAppProvider,
+  useNixApp,
+  useNixAppStrict,
+} from "./context";
+export {
   type AttachmentKind,
   type EmailAttachment,
   type EmailMetadata,

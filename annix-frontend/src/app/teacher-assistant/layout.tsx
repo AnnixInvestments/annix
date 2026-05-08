@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { NixAppProvider, NixAssistant } from "@/app/lib/nix";
 import { TeacherAssistantAuthProvider } from "./context/TeacherAssistantAuthContext";
 
 export const metadata: Metadata = {
@@ -11,5 +12,18 @@ export const metadata: Metadata = {
 
 export default function TeacherAssistantLayout(props: { children: React.ReactNode }) {
   const { children } = props;
-  return <TeacherAssistantAuthProvider>{children}</TeacherAssistantAuthProvider>;
+  return (
+    <TeacherAssistantAuthProvider>
+      <NixAppProvider appCode="teacher-assistant">
+        {children}
+        <NixAssistant
+          context="general"
+          pageContext={{
+            currentPage: "Teacher Assistant",
+            portalContext: "general",
+          }}
+        />
+      </NixAppProvider>
+    </TeacherAssistantAuthProvider>
+  );
 }
