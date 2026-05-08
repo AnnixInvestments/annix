@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { NixAppProvider, NixAssistant } from "@/app/lib/nix";
 import AnnixRepLayoutClient from "./AnnixRepLayoutClient";
 
 export const metadata: Metadata = {
@@ -12,5 +13,13 @@ export const metadata: Metadata = {
 
 export default function AnnixRepLayout(props: { children: React.ReactNode }) {
   const { children } = props;
-  return <AnnixRepLayoutClient>{children}</AnnixRepLayoutClient>;
+  return (
+    <NixAppProvider appCode="annix-rep">
+      <AnnixRepLayoutClient>{children}</AnnixRepLayoutClient>
+      <NixAssistant
+        context="general"
+        pageContext={{ currentPage: "Annix Rep", portalContext: "general" }}
+      />
+    </NixAppProvider>
+  );
 }

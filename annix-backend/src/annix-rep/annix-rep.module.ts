@@ -1,11 +1,13 @@
-import { Module } from "@nestjs/common";
+import { forwardRef, Module } from "@nestjs/common";
 import { ScheduleModule } from "@nestjs/schedule";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { AdminModule } from "../admin/admin.module";
 import { EmailModule } from "../email/email.module";
+import { NixModule } from "../nix/nix.module";
 import { StorageModule } from "../storage/storage.module";
 import { User } from "../user/entities/user.entity";
 import { AnnixRepAuthModule } from "./auth";
+import { AnnixRepCapabilities } from "./capabilities/annix-rep.capabilities";
 import {
   AnalyticsController,
   BookingController,
@@ -147,6 +149,7 @@ import {
     RepProfileModule,
     AnnixRepAuthModule,
     DiscoveryModule,
+    forwardRef(() => NixModule),
   ],
   controllers: [
     AnalyticsController,
@@ -224,6 +227,7 @@ import {
     TeamActivityService,
     ProspectHandoffService,
     TeamAnalyticsService,
+    AnnixRepCapabilities,
   ],
   exports: [
     ProspectService,
