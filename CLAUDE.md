@@ -45,6 +45,32 @@ For complex discovery, invoke the `Explore` subagent with a thorough setting ins
 
 When you add new shared code, update `docs/shared-registry.md` in the same commit. The pre-push hook rejects PRs that add shared code without updating the registry.
 
+### Nix UI is shared — never define Nix primitives in app folders
+
+The Nix module (AI document extraction + draft review) is heavily shared across apps. Stock Control, RFQ, Comply-SA and any future app that consumes Nix all use the same UI primitives. Concretely:
+
+| Nix surface | Canonical home | App pages do |
+|---|---|---|
+| Backend extraction | `annix-backend/src/nix/` | nothing — use the registered profile pattern (`profiles/`) |
+| Per-app extraction profile | `annix-backend/src/<app>/services/<app>-quote-documents-profile.handler.ts` | register an `IExtractionProfileHandler` against `NixExtractionProfileRegistry` |
+| Frontend API client | `annix-frontend/src/app/lib/nix/api.ts` | import `nixApi` |
+| Frontend query hooks | `annix-frontend/src/app/lib/query/hooks/nix/` | import the hook |
+| Frontend chat UI | `annix-frontend/src/app/lib/nix/components/Nix*.tsx` | mount `<NixAssistant />`, `<NixChatPanel />`, etc. |
+| Frontend draft review UI | `annix-frontend/src/app/lib/nix/components/draft/` | mount `<NixDraftReview session={...} brand={...} onSessionChanged={...} />` |
+
+**Forbidden** — the pre-push hook rejects these:
+- A file with an unambiguously-Nix filename — `SpecificationCard.tsx`, `CodesEditor.tsx`, `CodesCell.tsx`, `CodeChip.tsx`, `ExtractionCard.tsx`, `ExtractionGroup.tsx`, `NixDraftReview.tsx`, `useSpecLookup.ts`, `Nix*.tsx` — **anywhere inside an app folder** (`stock-control/`, `au-rubber/`, `cv-assistant/`, `annix-rep/`, `comply-sa/`, `fieldflow/`).
+- An app file that defines a `function SpecificationCard(...)` / `function ExtractionCard(...)` / `function ExtractionGroup(...)` / `function NixDraftReview(...)` / `function CodesEditor(...)` etc. inline — even if the filename is different.
+
+(Generic names like `StatCard`, `DetailsBlock`, `ItemRow`, `EditableCell` are intentionally NOT flagged — apps legitimately have their own non-Nix versions of these. But if you're adding one for **Nix data**, it belongs in `lib/nix/components/draft/`.)
+
+**The rule:** if you find yourself reaching for `useState` to manage Nix extraction state inside an app page, stop and extend the shared component instead. App pages are thin shells that mount `<NixDraftReview />` and pass branding + session data; everything else is shared.
+
+**To add a new feature to the Nix draft view (e.g. a new column, a new spec field renderer):**
+1. Edit the file in `lib/nix/components/draft/` (e.g. `SpecificationCard.tsx`).
+2. Update `docs/shared-registry.md` if a new top-level export was added.
+3. Every app picks up the change automatically — Stock Control, RFQ, Comply-SA — without any app-page edits.
+
 ## Code Style
 - **No comments in code**: use self-documenting method names instead of inline comments
 - **Follow project lint/biome**: obey existing Biome formatting (double quotes per biome.json) and ESLint custom rules

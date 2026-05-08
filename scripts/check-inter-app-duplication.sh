@@ -103,6 +103,47 @@ for f in $FILTERED_FILES; do
     echo "  Reference: docs/shared-registry.md §Red-flag locations"
     WARNINGS=$((WARNINGS + 1))
   fi
+
+  # Rule 5: Nix UI placed in an app folder (hard error). Every Nix UI primitive
+  # must live in annix-frontend/src/app/lib/nix/components/ so all apps share
+  # one implementation — Stock Control, RFQ, Comply-SA, etc.
+  #
+  # Names listed here are unambiguously Nix concepts (SpecificationCard,
+  # ExtractionCard, NixDraftReview, etc.). Generic names like StatCard /
+  # DetailsBlock / ItemRow / EditableCell are deliberately NOT flagged because
+  # other apps legitimately have their own (e.g. annix-rep dashboard StatCards).
+  if echo "$f" | grep -qE "$APP_PATTERN/"; then
+    BASE_NAME=$(basename "$f")
+    case "$BASE_NAME" in
+      NixDraftReview.tsx|SpecificationCard.tsx|CodesEditor.tsx|CodesCell.tsx| \
+      CodeChip.tsx|ExtractionCard.tsx|ExtractionGroup.tsx|useSpecLookup.ts| \
+      NixAssistant.tsx|NixChatPanel.tsx|NixClarificationPopup.tsx| \
+      NixDocumentAnnotator.tsx|NixProcessingPopup.tsx|NixAiPopup.tsx| \
+      NixErrorBoundary.tsx|NixFloatingAvatar.tsx|NixRegistrationVerifier.tsx)
+        echo -e "${RED}ERROR${NC} $f"
+        echo "  Nix UI primitive placed in an app folder."
+        echo "  Nix UI MUST live in annix-frontend/src/app/lib/nix/components/ so all apps"
+        echo "  share one implementation. App pages mount <NixDraftReview/>, <NixAssistant/>"
+        echo "  etc. — they do NOT define their own Spec / Item / Extraction renderers."
+        echo "  See CLAUDE.md §'Nix UI is shared' and docs/shared-registry.md §'Nix shared UI'."
+        ERRORS=$((ERRORS + 1))
+        ;;
+    esac
+  fi
+
+  # Rule 6: app file containing Nix-specific function names. Limited to the
+  # unambiguously-Nix names so generic dashboard StatCards / ItemRows in other
+  # apps don't trip — only redefining the Nix domain primitives is forbidden.
+  if echo "$f" | grep -qE "$APP_PATTERN/.*\\.tsx$"; then
+    if grep -qE '^\s*function\s+(SpecificationCard|SpecificationRow|ExtractionCard|ExtractionGroup|CodesEditor|CodesCell|CodeChip|NixDraftReview)\s*\(' "$f" 2>/dev/null; then
+      echo -e "${RED}ERROR${NC} $f"
+      echo "  App file defines a Nix UI primitive that already exists in"
+      echo "  annix-frontend/src/app/lib/nix/components/draft/."
+      echo "  Import the shared component instead of redefining it."
+      echo "  See CLAUDE.md §'Nix UI is shared' and docs/shared-registry.md §'Nix shared UI'."
+      ERRORS=$((ERRORS + 1))
+    fi
+  fi
 done
 
 # Rule 5: check for new files in canonical shared locations without a registry update
