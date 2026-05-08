@@ -14,6 +14,7 @@ import {
 import { DocumentType, ExtractionStatus, NixExtraction } from "./entities/nix-extraction.entity";
 import { LearningSource, LearningType, NixLearning } from "./entities/nix-learning.entity";
 import { NixUserPreference } from "./entities/nix-user-preference.entity";
+import { MineInferenceService } from "./mine-inference.service";
 import { NixService } from "./nix.service";
 import { NixExtractionProfileRegistry } from "./profiles";
 import { ExcelExtractorService } from "./services/excel-extractor.service";
@@ -150,6 +151,13 @@ describe("NixService", () => {
             handler: jest.fn().mockReturnValue(null),
             isRegistered: jest.fn().mockReturnValue(false),
             registeredProfiles: jest.fn().mockReturnValue([]),
+          },
+        },
+        {
+          provide: MineInferenceService,
+          useValue: {
+            infer: jest.fn().mockResolvedValue(null),
+            findExistingForMine: jest.fn().mockResolvedValue(null),
           },
         },
       ],

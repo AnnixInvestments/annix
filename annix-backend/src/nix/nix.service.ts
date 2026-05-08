@@ -27,6 +27,7 @@ import {
 } from "./entities/nix-extraction.entity";
 import { LearningSource, LearningType, NixLearning } from "./entities/nix-learning.entity";
 import { NixUserPreference } from "./entities/nix-user-preference.entity";
+import { MineInferenceService } from "./mine-inference.service";
 import { NixExtractionProfileRegistry } from "./profiles";
 import {
   ExcelExtractorService,
@@ -59,6 +60,7 @@ export class NixService {
     private readonly secureDocumentsService: SecureDocumentsService,
     private readonly s3StorageService: S3StorageService,
     private readonly profileRegistry: NixExtractionProfileRegistry,
+    private readonly mineInferenceService: MineInferenceService,
   ) {}
 
   private resolveSourceLinkage(dto: ProcessDocumentDto): {
@@ -137,6 +139,39 @@ export class NixService {
         `Failed to persist extraction #${extraction.id} source to S3: ${
           err instanceof Error ? err.message : "unknown"
         }. Extraction will continue against the temp file but the source will not be available for later audit.`,
+      );
+    }
+  }
+
+  /**
+   * Issue #264 Phase 1 — auto-tag a completed extraction to a mine using
+   * the title-block metadata Gemini wrote into extractedData. Mutates the
+   * extraction in place; the caller saves it.
+   *
+   * Errors are caught and logged — mine tagging is opportunistic, never
+   * blocks a successful extraction from being persisted. The columns stay
+   * null when no signal yields a confident match.
+   */
+  private async attachMineInference(extraction: NixExtraction): Promise<void> {
+    try {
+      const inference = await this.mineInferenceService.infer(extraction);
+      if (!inference) return;
+
+      // Always persist the canonical doc number / revision when present, even
+      // if no mine matched — supports global cross-quote lookup later.
+      extraction.documentNumber = inference.documentNumber ?? extraction.documentNumber;
+      extraction.documentRevision = inference.documentRevision ?? extraction.documentRevision;
+
+      if (inference.mineId > 0 && inference.confidence > 0) {
+        extraction.mineId = inference.mineId;
+        extraction.mineInferenceConfidence = inference.confidence;
+        extraction.mineInferenceReason = inference.reason;
+      }
+    } catch (err) {
+      this.logger.error(
+        `Mine inference failed for extraction #${extraction.id}: ${
+          err instanceof Error ? err.message : "unknown"
+        }`,
       );
     }
   }
@@ -282,6 +317,8 @@ export class NixService {
           );
         }
       }
+
+      await this.attachMineInference(extraction);
 
       await this.extractionRepo.save(extraction);
       this.logger.log(
@@ -472,6 +509,8 @@ export class NixService {
           );
         }
       }
+
+      await this.attachMineInference(extraction);
 
       await this.extractionRepo.save(extraction);
 

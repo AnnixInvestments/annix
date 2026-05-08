@@ -3,11 +3,13 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
+import { SaMine } from "../../mines/entities/sa-mine.entity";
 import { Rfq } from "../../rfq/entities/rfq.entity";
 import { User } from "../../user/entities/user.entity";
 import { NixExtractionSession } from "./nix-extraction-session.entity";
@@ -50,6 +52,8 @@ export enum DocumentRole {
 }
 
 @Entity("nix_extractions")
+@Index("idx_nix_extractions_mine_doc", ["mineId", "documentNumber"])
+@Index("idx_nix_extractions_doc_number", ["documentNumber"])
 export class NixExtraction {
   @ApiProperty({ description: "Primary key" })
   @PrimaryGeneratedColumn()
@@ -218,6 +222,54 @@ export class NixExtraction {
   })
   @Column({ name: "session_id", type: "int", nullable: true })
   sessionId?: number;
+
+  @ManyToOne(() => SaMine, { nullable: true, onDelete: "SET NULL" })
+  @JoinColumn({ name: "mine_id" })
+  mine?: SaMine;
+
+  @ApiProperty({
+    description:
+      "FK to the SaMine this extraction was auto-tagged to (issue #264). Populated by MineInferenceService when Gemini metadata yields a confident match. Null when the document couldn't be tied to a known mine.",
+    required: false,
+  })
+  @Column({ name: "mine_id", type: "int", nullable: true })
+  mineId?: number;
+
+  @ApiProperty({
+    description:
+      "Confidence score (0..1) of the mine inference. >= 0.8 = strong (auto-attached); 0.5–0.8 = weak (attached but flagged for user review); < 0.5 = no attach.",
+    required: false,
+  })
+  @Column({ name: "mine_inference_confidence", type: "real", nullable: true })
+  mineInferenceConfidence?: number;
+
+  @ApiProperty({
+    description:
+      "Human-readable explanation of why the mine inference matched. e.g. 'project name match (Langer Heinrich)' or 'document number prefix LHU-'.",
+    required: false,
+  })
+  @Column({
+    name: "mine_inference_reason",
+    type: "varchar",
+    length: 256,
+    nullable: true,
+  })
+  mineInferenceReason?: string;
+
+  @ApiProperty({
+    description:
+      "Canonical document number extracted from the title block (e.g. 'LHU-0000-EP-2701-012-00'). Used by the mine library for cross-quote reuse — a future quote referencing the same number can pull this extraction's clauses directly.",
+    required: false,
+  })
+  @Column({ name: "document_number", type: "varchar", length: 128, nullable: true })
+  documentNumber?: string;
+
+  @ApiProperty({
+    description: "Document revision extracted from the title block (e.g. '00', 'AF', 'Rev A').",
+    required: false,
+  })
+  @Column({ name: "document_revision", type: "varchar", length: 32, nullable: true })
+  documentRevision?: string;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

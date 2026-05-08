@@ -14,6 +14,7 @@ import {
 import { DocumentType, ExtractionStatus, NixExtraction } from "./entities/nix-extraction.entity";
 import { NixLearning } from "./entities/nix-learning.entity";
 import { NixUserPreference } from "./entities/nix-user-preference.entity";
+import { MineInferenceService } from "./mine-inference.service";
 import { NixService } from "./nix.service";
 import { NixExtractionProfileRegistry } from "./profiles";
 import {
@@ -214,6 +215,20 @@ describe("NixService Integration Tests", () => {
         { provide: SecureDocumentsService, useValue: mockSecureDocumentsService },
         { provide: S3StorageService, useValue: mockS3StorageService },
         { provide: NixExtractionProfileRegistry, useValue: mockProfileRegistry },
+        {
+          provide: AiChatService,
+          useValue: {
+            chatWithImage: jest.fn(),
+            chat: jest.fn(),
+          },
+        },
+        {
+          provide: MineInferenceService,
+          useValue: {
+            infer: jest.fn().mockResolvedValue(null),
+            findExistingForMine: jest.fn().mockResolvedValue(null),
+          },
+        },
       ],
     }).compile();
 

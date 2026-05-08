@@ -12,6 +12,7 @@ import { CustomerDocument } from "../customer/entities/customer-document.entity"
 import { CustomerOnboarding } from "../customer/entities/customer-onboarding.entity";
 import { CustomerProfile } from "../customer/entities/customer-profile.entity";
 import { EmailModule } from "../email/email.module";
+import { SaMine } from "../mines/entities/sa-mine.entity";
 import { RfqModule } from "../rfq/rfq.module";
 import { SecureDocumentsModule } from "../secure-documents/secure-documents.module";
 import { StorageModule } from "../storage/storage.module";
@@ -34,6 +35,7 @@ import { NixExtractionRegion } from "./entities/nix-extraction-region.entity";
 import { NixExtractionSession } from "./entities/nix-extraction-session.entity";
 import { NixLearning } from "./entities/nix-learning.entity";
 import { NixUserPreference } from "./entities/nix-user-preference.entity";
+import { MineInferenceService } from "./mine-inference.service";
 import { NixController } from "./nix.controller";
 import { NixService } from "./nix.service";
 import { NixExtractionProfileRegistry, RfqPipingProfileHandler } from "./profiles";
@@ -69,6 +71,7 @@ import { WordExtractorService } from "./services/word-extractor.service";
       SupplierDocument,
       SupplierProfile,
       SupplierOnboarding,
+      SaMine,
     ]),
     MulterModule.register({
       storage: diskStorage({
@@ -106,6 +109,7 @@ import { WordExtractorService } from "./services/word-extractor.service";
     NixGuideLoader,
     WalkthroughEngine,
     RfqPipingProfileHandler,
+    MineInferenceService,
     NixService,
     NixExtractionSessionService,
     NixChatService,
@@ -139,6 +143,7 @@ import { WordExtractorService } from "./services/word-extractor.service";
     NixCapabilityRegistry,
     NixGuideLoader,
     WalkthroughEngine,
+    MineInferenceService,
   ],
 })
 export class NixModule {}
