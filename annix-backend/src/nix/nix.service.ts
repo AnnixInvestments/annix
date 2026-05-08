@@ -338,6 +338,28 @@ export class NixService {
       );
     }
 
+    // Archive-only mode: caller just wants the file mirrored to S3 (e.g.
+    // the .eml itself, a tender-spec PDF without an extraction profile,
+    // an image). Skip the extractor + profile handler and return early
+    // so the file is persisted immediately on upload rather than only at
+    // RFQ submission time.
+    if (dto.skipExtraction) {
+      extraction.extractedData = { archiveOnly: true };
+      extraction.extractedItems = [];
+      extraction.processingTimeMs = Date.now() - startTime;
+      extraction.status = ExtractionStatus.COMPLETED;
+      await this.extractionRepo.save(extraction);
+      this.logger.log(
+        `Document archive-only completed for extraction #${extraction.id}: ${extraction.documentName} (${extraction.storageSizeBytes ?? "?"} bytes)`,
+      );
+      return {
+        extractionId: extraction.id,
+        status: extraction.status,
+        items: [],
+        pendingClarifications: [],
+      };
+    }
+
     const profileHandler = extractionProfile
       ? this.profileRegistry.handler(extractionProfile)
       : null;

@@ -342,6 +342,15 @@ export interface NixUploadOptions {
    */
   sessionId?: number;
   productTypes?: string[];
+  /**
+   * Archive-only mode. When true, the backend mirrors the file to S3
+   * via Nix's persistToObjectStorage path but skips the extractor + the
+   * profile handler. Used to persist supporting documents (the .eml
+   * itself, tender-spec PDFs that don't yet have an extraction profile,
+   * images, etc.) immediately on upload instead of waiting for RFQ
+   * submission.
+   */
+  skipExtraction?: boolean;
 }
 
 export const nixApi = {
@@ -389,6 +398,7 @@ export const nixApi = {
     if (opts.productTypes && opts.productTypes.length > 0) {
       formData.append("productTypes", JSON.stringify(opts.productTypes));
     }
+    if (opts.skipExtraction) formData.append("skipExtraction", "true");
 
     const uploadUrl = "/api/nix/upload";
     log.debug("[Nix] Uploading via API route:", uploadUrl, "File:", file.name, "Size:", file.size);

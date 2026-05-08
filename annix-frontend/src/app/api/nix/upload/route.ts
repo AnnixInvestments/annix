@@ -47,6 +47,7 @@ export async function POST(request: NextRequest) {
       "documentRole",
       "sessionId",
       "productTypes",
+      "skipExtraction",
     ] as const;
     for (const field of FORWARDED_FIELDS) {
       const value = formData.get(field);

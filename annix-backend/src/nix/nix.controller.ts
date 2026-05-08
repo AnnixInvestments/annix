@@ -113,6 +113,7 @@ export class NixController {
         documentRole: { type: "string", enum: ["drawing", "specification", "other"] },
         sessionId: { type: "number" },
         productTypes: { type: "array", items: { type: "string" } },
+        skipExtraction: { type: "boolean" },
       },
     },
   })
@@ -130,6 +131,7 @@ export class NixController {
     @Body("documentRole") documentRole?: string,
     @Body("sessionId") sessionId?: string,
     @Body("productTypes") productTypes?: string,
+    @Body("skipExtraction") skipExtraction?: string,
   ): Promise<ProcessDocumentResponseDto> {
     if (!file) {
       throw new BadRequestException("No file uploaded");
@@ -157,6 +159,7 @@ export class NixController {
       documentRole: role,
       sessionId: sessionId ? parseInt(sessionId, 10) : undefined,
       productTypes: parsedProductTypes,
+      skipExtraction: skipExtraction === "true" || skipExtraction === "1",
     };
 
     return this.nixService.processDocument(dto);

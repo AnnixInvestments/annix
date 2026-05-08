@@ -67,6 +67,13 @@ export class ProcessDocumentDto {
   @IsString({ each: true })
   @IsOptional()
   productTypes?: string[];
+
+  @ApiPropertyOptional({
+    description:
+      "When true, skip the extractor + profile handler entirely — just mirror the source file to S3 and return success. Used to archive documents that aren't BOQ/spec extraction targets (e.g. the .eml itself, tender-spec PDFs not yet supported by an extraction profile, images) so the file is persisted immediately on upload rather than only at RFQ submission. The NixExtraction record is created with status COMPLETED and empty items.",
+  })
+  @IsOptional()
+  skipExtraction?: boolean;
 }
 
 export class ProcessDocumentResponseDto {

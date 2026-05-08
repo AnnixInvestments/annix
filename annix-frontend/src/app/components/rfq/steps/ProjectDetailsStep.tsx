@@ -28,6 +28,7 @@ import { useEnvironmentalIntelligence } from "@/app/lib/hooks/useEnvironmentalIn
 import { log } from "@/app/lib/logger";
 import { type EmailAttachment, type EmailMetadata, isEmlFile, parseEmail } from "@/app/lib/nix";
 import {
+  type NixDocumentRole,
   type NixExtractedItem,
   type NixExtractionMetadata,
   type NixRfqPipingProfileMetadata,
@@ -445,6 +446,29 @@ export default function ProjectDetailsStep() {
     [onUpdate, rfqData.requiredProducts],
   );
 
+  // Persist a non-extracted file to S3 immediately via Nix's archive-only
+  // mode. Ensures supporting docs (the .eml itself, tender PDFs, images,
+  // anything that's not the Excel BOQ) survive a tab close / session
+  // expiry instead of being held in pendingDocuments memory until
+  // submission.
+  const archiveToS3 = useCallback(
+    async (file: File, role: NixDocumentRole) => {
+      try {
+        await nixApi.uploadAndProcess(file, {
+          skipExtraction: true,
+          documentRole: role,
+          rfqId: currentDraftId ?? undefined,
+          sourceModule: "rfq",
+        });
+      } catch (err) {
+        // Non-blocking: file stays in pendingDocuments and gets uploaded
+        // again at RFQ submission. The customer doesn't see this failure.
+        log.warn(`[RFQ] Failed to archive ${file.name} to S3 — will retry at submission`, err);
+      }
+    },
+    [currentDraftId],
+  );
+
   const onAddDocument = useCallback(
     async (incoming: File) => {
       if (!isEmlFile(incoming)) {
@@ -452,8 +476,15 @@ export default function ProjectDetailsStep() {
           file: incoming,
           id: `doc-${generateUniqueId()}-${Math.random().toString(36).substr(2, 9)}`,
         });
-        if (!isExcelFile(incoming)) return;
-        await runNixBoqExtraction(incoming);
+        if (isExcelFile(incoming)) {
+          // Nix BOQ extraction also mirrors the file to S3 — no need to
+          // archive separately.
+          await runNixBoqExtraction(incoming);
+        } else {
+          // Non-Excel file — archive immediately so it survives session
+          // loss.
+          archiveToS3(incoming, "drawing");
+        }
         return;
       }
 
@@ -473,6 +504,8 @@ export default function ProjectDetailsStep() {
 
       const emlId = `eml-${generateUniqueId()}-${Math.random().toString(36).substr(2, 9)}`;
       storeAddDocument({ file: incoming, id: emlId });
+      // Persist the .eml itself immediately — it's the source-of-truth.
+      archiveToS3(incoming, "other");
 
       const routeAttachment = (attachment: EmailAttachment) => {
         const idPrefix = attachment.kind === "tender" ? "tender" : "doc";
@@ -481,6 +514,12 @@ export default function ProjectDetailsStep() {
           storeAddTenderDocument({ file: attachment.file, id });
         } else {
           storeAddDocument({ file: attachment.file, id });
+        }
+        // Excel attachments are archived through runNixBoqExtraction.
+        // Everything else gets archived here.
+        if (!isExcelFile(attachment.file)) {
+          const role: NixDocumentRole = attachment.kind === "tender" ? "specification" : "other";
+          archiveToS3(attachment.file, role);
         }
       };
       parsed.attachments.forEach(routeAttachment);
@@ -695,6 +734,7 @@ export default function ProjectDetailsStep() {
       applyNixItemsToRfq,
       runNixBoqExtraction,
       setWizardCurrentStep,
+      archiveToS3,
     ],
   );
 
@@ -704,8 +744,9 @@ export default function ProjectDetailsStep() {
         file,
         id: `tender-${generateUniqueId()}-${Math.random().toString(36).substr(2, 9)}`,
       });
+      archiveToS3(file, "specification");
     },
-    [storeAddTenderDocument],
+    [storeAddTenderDocument, archiveToS3],
   );
   const [additionalNotes, setAdditionalNotes] = useState<string[]>([]);
   const [showMapPicker, setShowMapPicker] = useState(false);
