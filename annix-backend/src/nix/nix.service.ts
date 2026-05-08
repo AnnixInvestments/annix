@@ -238,8 +238,13 @@ export class NixService {
           ));
           break;
         case DocumentType.WORD:
-          ({ extractedData, extractedItems, specificationCells } =
-            await this.extractFromWord(tempPath));
+          ({ extractedData, extractedItems, specificationCells } = await this.extractFromWord(
+            tempPath,
+            extraction.documentName,
+            undefined,
+            profileSystemPrompt,
+            extraction.documentRole,
+          ));
           break;
         case DocumentType.EXCEL:
           ({ extractedData, extractedItems, specificationCells } =
@@ -378,6 +383,10 @@ export class NixService {
         case DocumentType.WORD:
           ({ extractedData, extractedItems, specificationCells } = await this.extractFromWord(
             dto.documentPath,
+            dto.documentName,
+            dto.productTypes,
+            profileSystemPrompt,
+            dto.documentRole,
           ));
           break;
         default:
@@ -1074,33 +1083,102 @@ export class NixService {
     };
   }
 
-  private async extractFromWord(documentPath: string): Promise<{
+  /**
+   * Word document extraction. Mammoth pulls plain text out of the .docx,
+   * then we route the same way as the PDF text path: Gemini extraction
+   * with the role-aware system prompt, returning items + the structured
+   * specifications dict the draft UI cross-links to drawing items.
+   *
+   * Falls back to the regex-based WordExtractorService if Gemini fails
+   * or no AI provider is configured — better to surface the legacy
+   * pseudo-items than nothing.
+   */
+  private async extractFromWord(
+    documentPath: string,
+    documentName?: string,
+    productTypes?: string[],
+    systemPrompt?: string,
+    documentRole?: DocumentRole,
+  ): Promise<{
     extractedData: Record<string, any>;
     extractedItems: Array<any>;
     specificationCells: SpecificationCellData[];
   }> {
     this.logger.log(`Word extraction starting for: ${documentPath}`);
 
-    const result = await this.wordExtractor.extractFromWord(documentPath);
+    const wordResult = await this.wordExtractor.extractFromWord(documentPath);
+    const rawText = wordResult.rawText ?? "";
 
-    this.logger.log(
-      `Extracted ${result.items.length} items from Word document "${result.sheetName}"`,
-    );
-    this.logger.log(`Items needing clarification: ${result.clarificationsNeeded}`);
-    this.logger.log(`Found ${result.specificationCells.length} specification headers`);
+    const availableProviders = await this.aiExtractor.getAvailableProviders();
+    if (availableProviders.length === 0 || rawText.trim().length === 0) {
+      this.logger.log(
+        `Falling back to regex word extraction (providers=${availableProviders.length}, textLength=${rawText.length})`,
+      );
+      return {
+        extractedData: {
+          sheetName: wordResult.sheetName,
+          totalRows: wordResult.totalRows,
+          itemCount: wordResult.items.length,
+          clarificationsNeeded: wordResult.clarificationsNeeded,
+          metadata: wordResult.metadata,
+          specifications: {},
+          specificationCells: wordResult.specificationCells,
+        },
+        extractedItems: wordResult.items,
+        specificationCells: wordResult.specificationCells,
+      };
+    }
 
-    return {
-      extractedData: {
-        sheetName: result.sheetName,
-        totalRows: result.totalRows,
-        itemCount: result.items.length,
-        clarificationsNeeded: result.clarificationsNeeded,
-        metadata: result.metadata,
-        specificationCells: result.specificationCells,
-      },
-      extractedItems: result.items,
-      specificationCells: result.specificationCells,
-    };
+    try {
+      const aiResult = await this.aiExtractor.extractWithAi(
+        rawText,
+        documentName ?? documentPath.split(/[/\\]/).pop(),
+        undefined,
+        productTypes,
+        systemPrompt,
+      );
+      this.logger.log(
+        `Word AI extraction returned ${aiResult.items.length} items, ${
+          Object.keys(aiResult.specifications ?? {}).length
+        } specification clauses (provider=${aiResult.providerUsed})`,
+      );
+      return {
+        extractedData: {
+          sheetName: wordResult.sheetName,
+          totalRows: wordResult.totalRows,
+          itemCount: aiResult.items.length,
+          clarificationsNeeded: aiResult.items.filter((i) => i.needsClarification).length,
+          metadata: { ...wordResult.metadata, ...aiResult.metadata },
+          specifications: aiResult.specifications ?? {},
+          specificationCells: aiResult.specificationCells,
+          aiProvider: aiResult.providerUsed,
+          tokensUsed: aiResult.tokensUsed,
+          aiProcessingTimeMs: aiResult.processingTimeMs,
+          documentRole,
+        },
+        extractedItems: aiResult.items,
+        specificationCells: aiResult.specificationCells,
+      };
+    } catch (err) {
+      this.logger.warn(
+        `Word AI extraction failed, falling back to regex extractor: ${
+          err instanceof Error ? err.message : "unknown"
+        }`,
+      );
+      return {
+        extractedData: {
+          sheetName: wordResult.sheetName,
+          totalRows: wordResult.totalRows,
+          itemCount: wordResult.items.length,
+          clarificationsNeeded: wordResult.clarificationsNeeded,
+          metadata: wordResult.metadata,
+          specifications: {},
+          specificationCells: wordResult.specificationCells,
+        },
+        extractedItems: wordResult.items,
+        specificationCells: wordResult.specificationCells,
+      };
+    }
   }
 
   private async filterByRelevance(
