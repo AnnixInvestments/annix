@@ -1,15 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
+import { anyPortalAuthHeaders } from "@/app/lib/api/portalTokenStores";
 
 pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 export interface NixSpecViewerOpts {
-  url: string;
+  /** Extraction id — viewer streams the source PDF through /api/nix/extraction/:id/document. */
+  extractionId: number;
   filename: string;
   /** Page (1-indexed) to scroll to on open. */
   page?: number | null;
@@ -107,8 +109,20 @@ export function NixSpecViewerModal(props: { state: NixSpecViewerState; onClose: 
     [opts],
   );
 
+  // file= prop for react-pdf — uses our same-origin proxy route so PDF.js
+  // can fetch the bytes without S3 CORS preflight failing. Auth header is
+  // resolved fresh on open via the canonical PortalTokenStore registry.
+  const fileOption = useMemo(() => {
+    if (!opts) return null;
+    return {
+      url: `/api/nix/extraction/${opts.extractionId}/document`,
+      httpHeaders: anyPortalAuthHeaders(),
+      withCredentials: false,
+    };
+  }, [opts]);
+
   const isOpen = state.isOpen;
-  if (!isOpen || !opts) return null;
+  if (!isOpen || !opts || !fileOption) return null;
 
   return createPortal(
     <div className="fixed inset-0 z-[9999]">
@@ -126,7 +140,7 @@ export function NixSpecViewerModal(props: { state: NixSpecViewerState; onClose: 
           </div>
           <div className="flex items-center gap-1.5">
             <a
-              href={opts.url}
+              href={`/api/nix/extraction/${opts.extractionId}/document`}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-white/10 hover:bg-white/20 rounded transition-colors"
@@ -159,7 +173,7 @@ export function NixSpecViewerModal(props: { state: NixSpecViewerState; onClose: 
             </div>
           ) : (
             <Document
-              file={opts.url}
+              file={fileOption}
               onLoadSuccess={handleDocumentLoad}
               onLoadError={(err) => {
                 const msg = err.message;

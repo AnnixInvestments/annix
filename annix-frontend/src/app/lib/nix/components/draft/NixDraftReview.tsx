@@ -103,32 +103,20 @@ export function NixDraftReview(props: {
   );
 
   const handleJumpToPage = useCallback(
-    async (extraction: NixExtractionSummary, page: number) => {
-      try {
-        const { url } = await nixApi.extractionDocumentUrl(extraction.id);
-        if (!url) {
-          showToast(
-            "No source document on file for this extraction (predates S3 persistence).",
-            "info",
-          );
-          return;
-        }
-        const safePage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1;
-        // Use the react-pdf-based NixSpecViewer so the page jump is reliable
-        // across browsers — Chrome's iframe-based PDF viewer respects #page=N
-        // but renders from the very top of the page; we want the user to land
-        // inside the clause body via programmatic scroll.
-        specViewer.open({
-          url,
-          filename: extraction.documentName,
-          page: safePage,
-          searchHint: null,
-        });
-      } catch (err) {
-        showToast(err instanceof Error ? err.message : "Failed to open document", "error");
-      }
+    (extraction: NixExtractionSummary, page: number) => {
+      const safePage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1;
+      // NixSpecViewer fetches via /api/nix/extraction/:id/document so the
+      // react-pdf library doesn't hit S3 CORS — react-pdf uses fetch()
+      // unlike the iframe-based PdfPreviewModal which loads cross-origin
+      // without preflight.
+      specViewer.open({
+        extractionId: extraction.id,
+        filename: extraction.documentName,
+        page: safePage,
+        searchHint: null,
+      });
     },
-    [showToast, specViewer],
+    [specViewer],
   );
 
   // Used by drawing-row code chips: given a sourceExtractionId from the
@@ -139,28 +127,20 @@ export function NixDraftReview(props: {
   // view — so the user lands directly on the clause body, not the page
   // header.
   const handleJumpToSpec = useCallback(
-    async (sourceExtractionId: number, page: number | null, searchHint: string | null) => {
+    (sourceExtractionId: number, page: number | null, searchHint: string | null) => {
       const target = specExtractions.find((s) => s.id === sourceExtractionId);
       if (!target) {
         showToast("Spec source no longer in this draft.", "info");
         return;
       }
-      try {
-        const { url } = await nixApi.extractionDocumentUrl(target.id);
-        if (!url) {
-          showToast("No source document on file for this extraction.", "info");
-          return;
-        }
-        const safePage = Number.isFinite(page ?? 0) && (page ?? 0) > 0 ? Math.floor(page ?? 1) : 1;
-        specViewer.open({
-          url,
-          filename: target.documentName,
-          page: safePage,
-          searchHint,
-        });
-      } catch (err) {
-        showToast(err instanceof Error ? err.message : "Failed to open document", "error");
-      }
+      const rawPage = page ?? 1;
+      const safePage = Number.isFinite(rawPage) && rawPage > 0 ? Math.floor(rawPage) : 1;
+      specViewer.open({
+        extractionId: target.id,
+        filename: target.documentName,
+        page: safePage,
+        searchHint,
+      });
     },
     [specExtractions, showToast, specViewer],
   );
