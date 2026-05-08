@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
+import { ipv4LocalhostUrl } from "@/lib/api-config";
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 const port = process.env.PORT;
-// Use 127.0.0.1 instead of localhost so Node 24's undici doesn't try IPv6
-// (::1) first against an IPv4-only NestJS listener and get ECONNREFUSED.
-const BACKEND_URL = apiUrl?.startsWith("/")
-  ? `http://127.0.0.1:${port || "4000"}${apiUrl}`
-  : apiUrl || "http://127.0.0.1:4001/api";
+// ipv4LocalhostUrl rewrites any "localhost" to "127.0.0.1" so undici
+// doesn't IPv6-first against an IPv4-only NestJS listener — required
+// because env-var values inline at compile-time and override our
+// in-code fallback.
+const BACKEND_URL = ipv4LocalhostUrl(
+  apiUrl?.startsWith("/")
+    ? `http://127.0.0.1:${port || "4000"}${apiUrl}`
+    : apiUrl || "http://127.0.0.1:4001/api",
+);
 
 export async function GET(
   _request: NextRequest,

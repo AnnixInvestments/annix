@@ -1,5 +1,20 @@
 const FALLBACK_BASE_URL = "http://localhost:4001/api";
 
+/**
+ * Rewrite any "localhost" inside a URL to "127.0.0.1" for server-side
+ * fetches. Node 24's undici resolves "localhost" to ::1 first and can
+ * ECONNREFUSED against an IPv4-only NestJS listener; the loopback IP
+ * sidesteps the resolution race. Browser-side fetches don't have this
+ * problem (the browser uses the OS DNS stack, not undici), so this
+ * helper is only needed by API routes / server actions.
+ *
+ * Idempotent: passing through an already-127.0.0.1 URL is a no-op.
+ * Leaves non-loopback hostnames (e.g. annix-backend.fly.dev) untouched.
+ */
+export function ipv4LocalhostUrl(url: string): string {
+  return url.replace(/\blocalhost\b/g, "127.0.0.1");
+}
+
 const normalizeOrigin = (origin?: string | null) => {
   if (!origin) {
     const vercelUrl = process.env.VERCEL_URL;

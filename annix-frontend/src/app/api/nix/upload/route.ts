@@ -1,17 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { log } from "@/app/lib/logger";
+import { ipv4LocalhostUrl } from "@/lib/api-config";
 
-// Use 127.0.0.1 instead of localhost so Node 24's undici doesn't try IPv6
-// (::1) first against an IPv4-only NestJS listener and get ECONNREFUSED.
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL?.startsWith("/")
-  ? `http://127.0.0.1:${(() => {
-      const rawPORT = process.env.PORT;
-      return rawPORT || "4000";
-    })()}${process.env.NEXT_PUBLIC_API_URL}`
-  : (() => {
-      const rawNEXT_PUBLIC_API_URL = process.env.NEXT_PUBLIC_API_URL;
-      return rawNEXT_PUBLIC_API_URL || "http://127.0.0.1:4001/api";
-    })();
+// Server-side fetch from a Next.js API route to NestJS. Using "localhost"
+// here trips Node 24's undici, which tries ::1 first and gets
+// ECONNREFUSED against an IPv4-only listener. ipv4LocalhostUrl rewrites
+// any "localhost" to "127.0.0.1" so the resolution race never happens
+// regardless of what NEXT_PUBLIC_API_URL holds (env vars override our
+// in-code fallback at compile time).
+const BACKEND_URL = ipv4LocalhostUrl(
+  process.env.NEXT_PUBLIC_API_URL?.startsWith("/")
+    ? `http://127.0.0.1:${(() => {
+        const rawPORT = process.env.PORT;
+        return rawPORT || "4000";
+      })()}${process.env.NEXT_PUBLIC_API_URL}`
+    : (() => {
+        const rawNEXT_PUBLIC_API_URL = process.env.NEXT_PUBLIC_API_URL;
+        return rawNEXT_PUBLIC_API_URL || "http://127.0.0.1:4001/api";
+      })(),
+);
 
 export async function POST(request: NextRequest) {
   log.info("[API Route] Nix upload starting, backend URL:", BACKEND_URL);
