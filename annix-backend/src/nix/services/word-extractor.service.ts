@@ -278,6 +278,7 @@ export class WordExtractorService {
       flangeConfig: null,
       pressureClass: null,
       sdr: null,
+      productType: null,
       quantity: 1,
       unit: "ea",
       confidence: needsClarification ? 0.6 : 0.85,

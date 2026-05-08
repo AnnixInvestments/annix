@@ -6,6 +6,7 @@ export {
   type NixExtractedItem,
   type NixExtractionMetadata,
   type NixProcessResponse,
+  type NixProductType,
   type NixUploadOptions,
   nixApi,
 } from "./api";

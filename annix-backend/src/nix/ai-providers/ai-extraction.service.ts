@@ -200,6 +200,7 @@ export class AiExtractionService implements OnModuleInit {
       flangeConfig: item.flangeConfig || null,
       pressureClass: null,
       sdr: null,
+      productType: null,
       actionType: "supply",
       quantity: item.quantity || 1,
       unit: item.unit || "ea",

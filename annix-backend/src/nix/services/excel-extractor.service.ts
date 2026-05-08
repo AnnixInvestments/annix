@@ -23,6 +23,13 @@ export type ExtractedItemType =
 
 export type ExtractedItemAction = "supply" | "install" | "dismantle" | "supply_install";
 
+// Product family used by the frontend converter to decide which entry
+// shape to build (HDPE/PVC/UPVC entries store SDR + grade + PN; steel
+// entries store Schedule + WT + steel-spec). Inferred from material
+// keywords in the description; null when nothing distinguishes the
+// item.
+export type ExtractedProductType = "steel" | "hdpe" | "pvc" | "upvc" | null;
+
 export interface ExtractedItem {
   rowNumber: number;
   itemNumber: string;
@@ -41,6 +48,7 @@ export interface ExtractedItem {
   flangeConfig: "none" | "one_end" | "both_ends" | "puddle" | "blind" | null;
   pressureClass: string | null;
   sdr: string | null;
+  productType: ExtractedProductType;
   quantity: number;
   unit: string;
   confidence: number;
@@ -115,35 +123,100 @@ export interface ExtractionResult {
 export class ExcelExtractorService {
   private readonly logger = new Logger(ExcelExtractorService.name);
 
-  private readonly materialPatterns = [
+  private readonly materialPatterns: Array<{
+    pattern: RegExp;
+    material: string;
+    grade: string | null;
+    productType: ExtractedProductType;
+  }> = [
+    // Plastics first — HDPE/PE patterns must precede the generic steel
+    // ones because BOQs often pair "HDPE" with bracketed steel-style
+    // standards (e.g. "HDPE PE100 to ISO 4427") and we want the plastic
+    // identification to win.
+    {
+      pattern: /\bHDPE\b/i,
+      material: "HDPE",
+      grade: "PE100",
+      productType: "hdpe",
+    },
+    {
+      pattern: /\bPE\s*100\b/i,
+      material: "HDPE",
+      grade: "PE100",
+      productType: "hdpe",
+    },
+    {
+      pattern: /\bPE\s*80\b/i,
+      material: "HDPE",
+      grade: "PE80",
+      productType: "hdpe",
+    },
+    {
+      pattern: /\bMDPE\b/i,
+      material: "MDPE",
+      grade: "PE80",
+      productType: "hdpe",
+    },
+    {
+      pattern: /\bu[-\s]?PVC\b|\bPVCu\b|\bunplasticised\s*PVC\b/i,
+      material: "uPVC",
+      grade: null,
+      productType: "upvc",
+    },
+    {
+      pattern: /\bPVC\b/i,
+      material: "PVC",
+      grade: null,
+      productType: "pvc",
+    },
     {
       pattern: /\bS\.?S\.?\b|\bstainless\s*steel\b/i,
       material: "Stainless Steel",
       grade: "316",
+      productType: "steel",
     },
     {
       pattern: /\bM\.?S\.?\b|\bmild\s*steel\b/i,
       material: "Mild Steel",
       grade: null,
+      productType: "steel",
     },
     {
       pattern: /\bAPI\s*5L[-\s]?[A-Z]?\b/i,
       material: "Carbon Steel",
       grade: "API 5L",
+      productType: "steel",
     },
     {
       pattern: /\bSABS\s*719\b/i,
       material: "Stainless Steel",
       grade: "SABS 719",
+      productType: "steel",
     },
-    { pattern: /\bcarbon\s*steel\b/i, material: "Carbon Steel", grade: null },
+    {
+      pattern: /\bcarbon\s*steel\b/i,
+      material: "Carbon Steel",
+      grade: null,
+      productType: "steel",
+    },
     {
       pattern: /\bASTM\s*A234\s*WPB\b/i,
       material: "Carbon Steel",
       grade: "A234 WPB",
+      productType: "steel",
     },
-    { pattern: /\bASTM\s*A105\b/i, material: "Carbon Steel", grade: "A105" },
-    { pattern: /\bERW\b/i, material: "Carbon Steel", grade: "ERW" },
+    {
+      pattern: /\bASTM\s*A105\b/i,
+      material: "Carbon Steel",
+      grade: "A105",
+      productType: "steel",
+    },
+    {
+      pattern: /\bERW\b/i,
+      material: "Carbon Steel",
+      grade: "ERW",
+      productType: "steel",
+    },
   ];
 
   // Order matters: the first pattern that matches wins, so the most specific
@@ -639,6 +712,7 @@ export class ExcelExtractorService {
     const itemType = this.detectItemType(description);
     const material = this.extractMaterial(description);
     const materialGrade = this.extractMaterialGrade(description);
+    const productType = this.extractProductType(description);
     const diameter = this.extractDiameter(description);
     const secondaryDiameter = this.extractSecondaryDiameter(description);
     const angle = this.extractAngle(description);
@@ -685,6 +759,7 @@ export class ExcelExtractorService {
       flangeConfig,
       pressureClass,
       sdr,
+      productType,
       quantity,
       unit: uom || "No",
       confidence,
@@ -1356,6 +1431,7 @@ export class ExcelExtractorService {
       flangeConfig,
       pressureClass: this.extractPressureClass(description),
       sdr: this.extractSdr(description),
+      productType: this.extractProductType(description),
       quantity,
       unit: rowData.unit?.toString() || "No",
       confidence,
@@ -1394,6 +1470,21 @@ export class ExcelExtractorService {
         return mp.grade;
       }
     }
+    return null;
+  }
+
+  // Product family inference. Material patterns are the primary signal;
+  // when no material keyword matches we look for SDR (always plastic)
+  // or schedule (always steel) as a secondary signal. The frontend
+  // converter uses this to pick the entry shape.
+  private extractProductType(description: string): ExtractedProductType {
+    for (const mp of this.materialPatterns) {
+      if (mp.pattern.test(description)) {
+        return mp.productType;
+      }
+    }
+    if (/\bSDR\s*\d+/i.test(description)) return "hdpe";
+    if (/\bSch(?:edule)?\s*\d+/i.test(description)) return "steel";
     return null;
   }
 

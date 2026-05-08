@@ -23,7 +23,12 @@ import type {
   ValveEntry,
 } from "@/app/lib/hooks/useRfqForm";
 import { log } from "@/app/lib/logger";
-import { type NixClarificationDto, type NixExtractedItem, nixApi } from "@/app/lib/nix";
+import {
+  type NixClarificationDto,
+  type NixExtractedItem,
+  type NixProductType,
+  nixApi,
+} from "@/app/lib/nix";
 import type { ScheduleData } from "@/app/lib/store/rfqUiStore";
 import type { ItemIssue } from "@/app/lib/utils/itemDiagnostics";
 import { generateClientItemNumber } from "@/app/lib/utils/systemUtils";
@@ -338,10 +343,70 @@ export type RfqWizardStore = RfqWizardState & RfqWizardActions;
 export const useRfqWizardStore = create<RfqWizardStore>()(
   devtools(
     (set, get) => {
+      // Map Nix's wider productType union onto the form's narrower
+      // PipeMaterialType. UPVC is treated as PVC for routing purposes —
+      // the form has a single PVC path and surfaces uPVC via PvcType
+      // inside the global PVC specs.
+      const nixProductTypeToMaterialType = (
+        productType: NixProductType,
+      ): "steel" | "hdpe" | "pvc" => {
+        if (productType === "hdpe") return "hdpe";
+        if (productType === "pvc" || productType === "upvc") return "pvc";
+        return "steel";
+      };
+
+      // Parse "SDR6", "SDR 11", "SDR13.6" into a number (no validation
+      // against the HdpeSdr enum — out-of-enum values still surface to
+      // the user as a free-text hint via the description rather than
+      // silently being dropped).
+      const parseSdrNumber = (sdr: string | null): number | null => {
+        const rawSdr = sdr;
+        if (!rawSdr) return null;
+        const match = rawSdr.match(/(\d+(?:\.\d+)?)/);
+        return match ? parseFloat(match[1]) : null;
+      };
+
+      // Pick the most-specific HDPE grade out of the materialGrade text.
+      // Defaults to PE100 (the modern industry default) when nothing
+      // else matches, since the user's BOQ almost never says "PE63".
+      const resolveHdpeGrade = (materialGrade: string | null): "PE80" | "PE100" | "PE100_RC" => {
+        const rawGrade = materialGrade || "";
+        const grade = rawGrade.toUpperCase().replace(/\s/g, "");
+        if (grade.includes("PE100RC") || grade.includes("PE100_RC")) return "PE100_RC";
+        if (grade.includes("PE80")) return "PE80";
+        return "PE100";
+      };
+
       const convertNixItemsToRfqItems = (nixItems: NixExtractedItem[]) => {
-        const { rfqData, updateRfqField } = get();
+        const { rfqData, updateGlobalSpecs, updateRfqField } = get();
         const rawCustomerName = rfqData.customerName;
         const customerName = rawCustomerName || "NIX";
+
+        // Pre-scan extracted items to seed global HDPE/PVC specs from
+        // the first plastic item we see. Without this the entry shows
+        // "HDPE Pipe" but the form's HDPE specs panel stays empty and
+        // weight calc has nothing to work with. We merge into the
+        // existing globalSpecs so any user-set fields stick.
+        const firstHdpe = nixItems.find((it) => it.productType === "hdpe");
+        if (firstHdpe) {
+          const rawGlobalSpecs = rfqData.globalSpecs;
+          const existingSpecs = rawGlobalSpecs || {};
+          const rawHdpeGrade = existingSpecs.hdpeGrade;
+          const rawHdpeSdr = existingSpecs.hdpeSdr;
+          const rawHdpePressureRating = existingSpecs.hdpePressureRating;
+          const sdrNum = parseSdrNumber(firstHdpe.sdr);
+          const rawPressureClass = firstHdpe.pressureClass;
+          updateGlobalSpecs({
+            ...existingSpecs,
+            hdpeGrade: rawHdpeGrade || resolveHdpeGrade(firstHdpe.materialGrade),
+            // Cast — parseSdrNumber may return a number outside the
+            // HdpeSdr enum (e.g. SDR6 from the test BOQ). The form
+            // surfaces a validation hint when that happens rather than
+            // dropping the value silently.
+            hdpeSdr: rawHdpeSdr || (sdrNum as never),
+            hdpePressureRating: rawHdpePressureRating || rawPressureClass || undefined,
+          });
+        }
 
         const flangeMap: Record<string, "FBE" | "FOE" | "PE"> = {
           one_end: "FOE",
@@ -386,9 +451,11 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
             const rawQuantity = item.quantity;
             const rawWorkingPressureBar = rfqData.globalSpecs?.workingPressureBar;
             const rawWorkingTemperatureC = rfqData.globalSpecs?.workingTemperatureC;
+            const materialType = nixProductTypeToMaterialType(item.productType);
             const pipeEntry: StraightPipeEntry = {
               id: generateUniqueId(),
               itemType: "straight_pipe" as const,
+              materialType,
               clientItemNumber: rawItemNumber || generateClientItemNumber(customerName, itemIndex),
               description: item.description,
               specs: {
@@ -409,7 +476,8 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
                 quantityValue: rawQuantity || 1,
                 workingPressureBar: rawWorkingPressureBar || 16,
                 workingTemperatureC: rawWorkingTemperatureC || 20,
-                steelSpecificationId: rfqData.globalSpecs?.steelSpecificationId,
+                steelSpecificationId:
+                  materialType === "steel" ? rfqData.globalSpecs?.steelSpecificationId : undefined,
               },
               notes: nixNote,
             };
@@ -423,9 +491,11 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
             const rawQuantity2 = item.quantity;
             const rawWorkingPressureBar2 = rfqData.globalSpecs?.workingPressureBar;
             const rawWorkingTemperatureC2 = rfqData.globalSpecs?.workingTemperatureC;
+            const bendMaterialType = nixProductTypeToMaterialType(item.productType);
             const bendEntry: BendEntry = {
               id: generateUniqueId(),
               itemType: "bend" as const,
+              materialType: bendMaterialType,
               clientItemNumber: rawItemNumber2 || generateClientItemNumber(customerName, itemIndex),
               description: item.description,
               specs: {
@@ -440,7 +510,10 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
                 quantityType: "number_of_items" as const,
                 workingPressureBar: rawWorkingPressureBar2 || 16,
                 workingTemperatureC: rawWorkingTemperatureC2 || 20,
-                steelSpecificationId: rfqData.globalSpecs?.steelSpecificationId,
+                steelSpecificationId:
+                  bendMaterialType === "steel"
+                    ? rfqData.globalSpecs?.steelSpecificationId
+                    : undefined,
               },
               notes: nixNote,
             };

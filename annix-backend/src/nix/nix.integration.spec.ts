@@ -62,6 +62,7 @@ describe("NixService Integration Tests", () => {
     flangeConfig: null,
     pressureClass: null,
     sdr: null,
+    productType: null,
     quantity: 1,
     unit: "ea",
     confidence: 0.9,

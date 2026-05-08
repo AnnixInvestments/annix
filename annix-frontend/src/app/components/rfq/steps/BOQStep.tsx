@@ -80,6 +80,16 @@ export default function BOQStep(props: {
     return `${weight.toFixed(2)} kg`;
   };
 
+  // Round a quantity to 2 dp without dragging trailing zeros on whole
+  // numbers. Summing per-row qty in floating-point produces values like
+  // 13257.1000000000002 and 13977.599999999999; show them as 13257.1
+  // and 13977.6 instead.
+  const formatQty = (qty: number | undefined) => {
+    if (qty === undefined || qty === null || Number.isNaN(qty)) return "0";
+    const rounded = Math.round(qty * 100) / 100;
+    return Number.isInteger(rounded) ? rounded.toString() : rounded.toString();
+  };
+
   // Get flange spec string
   const getFlangeSpec = (entry: any) => {
     const rawFlangeStandardId = entry.specs?.flangeStandardId;
@@ -105,6 +115,93 @@ export default function BOQStep(props: {
       (s: any) => s.id === steelSpecId,
     )?.steelSpecName;
     return steelSpecId && masterData?.steelSpecs ? rawSteelSpecName || "Steel" : "Steel";
+  };
+
+  // Material density (kg/m³) for the cross-sectional weight formula
+  // mass/m = (OD - WT) × WT × π × ρ / 1e6 = (OD - WT) × WT × k where k
+  // is the per-material constant below. The steel value matches the
+  // 0.02466 constant used in calculateLocalPipeResult.
+  const PIPE_WEIGHT_K_BY_PRODUCT_TYPE = {
+    steel: 0.02466,
+    hdpe: 0.003016,
+    pvc: 0.004398,
+    upvc: 0.004398,
+  } as const;
+
+  // Default SDR fallback when the customer hasn't set a global SDR yet
+  // — SDR11 is the most common HDPE pressure pipe in the field.
+  const DEFAULT_HDPE_SDR = 11;
+
+  // Build the consolidated row description for a pipe, branching on the
+  // entry's materialType. Avoids the previous bug where every BOQ row
+  // said "...Steel Pipe..." even for HDPE/PVC entries.
+  const pipeRowDescription = (
+    entry: any,
+    nb: number,
+    schedule: string,
+    pipeLength: number,
+    steelSpec: string,
+    hdpeGrade: string | undefined,
+    sdrNumber: number | undefined,
+    pvcType: string | undefined,
+    pressureClass: string | undefined,
+  ): string => {
+    const materialType = entry.materialType;
+    if (materialType === "hdpe") {
+      const grade = hdpeGrade || "PE100";
+      const sdrLabel = sdrNumber ? ` SDR${sdrNumber}` : "";
+      const pnLabel = pressureClass ? ` ${pressureClass}` : "";
+      return `${nb}OD ${grade}${sdrLabel}${pnLabel} HDPE Pipe x${pipeLength}m`.trim();
+    }
+    if (materialType === "pvc") {
+      const typeLabel = pvcType ? ` ${pvcType}` : "";
+      const pnLabel = pressureClass ? ` ${pressureClass}` : "";
+      return `${nb}OD${typeLabel} PVC Pipe${pnLabel} x${pipeLength}m`.trim();
+    }
+    return `${nb}NB ${schedule ? `Sch${schedule.replace("Sch", "")}` : ""} ${steelSpec} Pipe x${pipeLength}m`.trim();
+  };
+
+  // Compute per-row pipe weight when the entry's calculation block is
+  // empty (typical for Nix-extracted items where Step 2's auto-calc
+  // never fired). Uses the same hollow-cylinder formula as the steel
+  // calc but with the right density constant per material. For HDPE,
+  // the wall thickness is derived from SDR (WT = OD/SDR); the customer
+  // can still override by setting an explicit WT on the entry.
+  const fallbackPipeWeight = (
+    entry: any,
+    nb: number,
+    pipeLength: number,
+    pipeQty: number,
+  ): number => {
+    const cachedWeight = entry.calculation?.totalPipeWeight;
+    if (cachedWeight) return cachedWeight;
+
+    const rawMaterialType = entry.materialType;
+    const materialType = rawMaterialType || "steel";
+    const productKey: keyof typeof PIPE_WEIGHT_K_BY_PRODUCT_TYPE =
+      materialType === "hdpe" ? "hdpe" : materialType === "pvc" ? "pvc" : "steel";
+    const k = PIPE_WEIGHT_K_BY_PRODUCT_TYPE[productKey];
+
+    const rawOutsideDiameter = entry.specs?.outsideDiameterMm;
+    let od = rawOutsideDiameter || nb;
+    let wt = entry.specs?.wallThicknessMm;
+
+    if (productKey === "hdpe") {
+      const rawSdr = globalSpecs?.hdpeSdr;
+      const sdr = rawSdr || DEFAULT_HDPE_SDR;
+      // For HDPE the customer-facing dimension is OD = nominalBoreMm.
+      const rawNb = entry.specs?.nominalBoreMm;
+      od = rawNb || od;
+      if (!wt) wt = od / Number(sdr);
+    } else if (!wt) {
+      // No WT and no schedule lookup — give up rather than report a
+      // misleading 0kg. Returning 0 here keeps the existing UX.
+      return 0;
+    }
+
+    const perMetre = (od - wt) * wt * k;
+    const totalLength = pipeLength * pipeQty;
+    return perMetre * totalLength;
   };
 
   // ======================
@@ -229,7 +326,8 @@ export default function BOQStep(props: {
     const rawClientItemNumber = entry.clientItemNumber;
     const itemNumber = rawClientItemNumber || entry.id;
     const rawQuantityValue = entry.specs?.quantityValue;
-    const qty = rawQuantityValue || entry.calculation?.calculatedPipeCount || 1;
+    const rawCalculatedPipeCountForQty = entry.calculation?.calculatedPipeCount;
+    const qty = rawQuantityValue || rawCalculatedPipeCountForQty || 1;
     const steelSpec = getSteelSpecName(entry);
     const flangeSpec = getFlangeSpec(entry);
 
@@ -240,7 +338,8 @@ export default function BOQStep(props: {
       const rawBendDegrees = entry.specs?.bendDegrees;
       const angle = rawBendDegrees || 90;
       const rawBendRadiusType = entry.specs?.bendRadiusType;
-      const bendType = rawBendRadiusType || entry.specs?.bendType || "1.5D";
+      const rawSpecsBendType = entry.specs?.bendType;
+      const bendType = rawBendRadiusType || rawSpecsBendType || "1.5D";
       const rawScheduleNumber = entry.specs?.scheduleNumber;
       const schedule = rawScheduleNumber || "";
 
@@ -263,9 +362,10 @@ export default function BOQStep(props: {
       const mitreWeldLength = mitreWelds * qty * ((Math.PI * od) / 1000);
 
       const rawBendType = entry.specs?.bendType;
+      const rawSpecsBendRadiusType = entry.specs?.bendRadiusType;
 
       // Calculate bend surface areas from specs (like ReviewSubmitStep)
-      const bendRadiusType = rawBendType || entry.specs?.bendRadiusType || "1.5D";
+      const bendRadiusType = rawBendType || rawSpecsBendRadiusType || "1.5D";
       const radiusFactor = parseFloat(bendRadiusType.replace("D", "")) || 1.5;
       const bendRadiusMm = nb * radiusFactor;
       const bendAngleRad = (angle * Math.PI) / 180;
@@ -542,10 +642,12 @@ export default function BOQStep(props: {
       }
     } else if (entry.itemType === "fitting") {
       const rawNominalDiameterMm = entry.specs?.nominalDiameterMm;
+      const rawSpecsNominalBoreMm = entry.specs?.nominalBoreMm;
       // FITTING
-      const nb = rawNominalDiameterMm || entry.specs?.nominalBoreMm || 100;
+      const nb = rawNominalDiameterMm || rawSpecsNominalBoreMm || 100;
       const rawBranchNominalDiameterMm = entry.specs?.branchNominalDiameterMm;
-      const branchNb = rawBranchNominalDiameterMm || entry.specs?.branchNominalBoreMm || nb;
+      const rawSpecsBranchNominalBoreMm = entry.specs?.branchNominalBoreMm;
+      const branchNb = rawBranchNominalDiameterMm || rawSpecsBranchNominalBoreMm || nb;
       const rawFittingType = entry.specs?.fittingType;
       const fittingType = rawFittingType || "TEE";
       const rawScheduleNumber2 = entry.specs?.scheduleNumber;
@@ -554,7 +656,8 @@ export default function BOQStep(props: {
       const key = `FITTING_${fittingType}_${nb}_${branchNb}_${steelSpec}_${schedule}`;
       const existing = consolidatedFittings.get(key);
       const rawTotalWeight2 = entry.calculation?.totalWeight;
-      const fittingWeight = rawTotalWeight2 || entry.calculation?.fittingWeight || 0;
+      const rawCalcFittingWeight = entry.calculation?.fittingWeight;
+      const fittingWeight = rawTotalWeight2 || rawCalcFittingWeight || 0;
 
       // Format fitting type for display
       let displayType = fittingType
@@ -602,7 +705,8 @@ export default function BOQStep(props: {
       const rawPipeLengthBMm = entry.specs?.pipeLengthBMm;
       const lengthB = rawPipeLengthBMm || 0;
       const rawTeeHeightMm = entry.specs?.teeHeightMm;
-      const teeHeight = rawTeeHeightMm || entry.calculation?.teeHeightMm || branchNb * 2;
+      const rawCalcTeeHeightMm = entry.calculation?.teeHeightMm;
+      const teeHeight = rawTeeHeightMm || rawCalcTeeHeightMm || branchNb * 2;
 
       // Run length = Section A + Section B
       const runLengthM = (lengthA + lengthB) / 1000;
@@ -903,10 +1007,24 @@ export default function BOQStep(props: {
       const rawCalculatedPipeCount = entry.calculation?.calculatedPipeCount;
       const pipeQty = rawCalculatedPipeCount || qty;
 
-      const key = `PIPE_${nb}_${schedule}_${steelSpec}_${pipeLength}`;
+      // Product-type-aware key + description so HDPE/PVC pipes don't
+      // accidentally consolidate with steel rows of the same NB. The
+      // fallback weight kicks in for any entry where Step-2 auto-calc
+      // hasn't run — typical for Nix-extracted items.
+      const rawEntryMaterialType = entry.materialType;
+      const materialType = rawEntryMaterialType || "steel";
+      const rawHdpeGrade = globalSpecs?.hdpeGrade;
+      const rawHdpeSdr = globalSpecs?.hdpeSdr;
+      const sdrNumber = rawHdpeSdr ? Number(rawHdpeSdr) : undefined;
+      const rawHdpePressureRating = globalSpecs?.hdpePressureRating;
+      const rawPvcType = globalSpecs?.pvcType;
+      const rawPvcPressureClass = globalSpecs?.pvcPressureClass;
+      const pressureClassLabel =
+        materialType === "hdpe" ? rawHdpePressureRating : rawPvcPressureClass?.toString();
+
+      const key = `PIPE_${materialType}_${nb}_${schedule}_${steelSpec}_${pipeLength}`;
       const existing = consolidatedPipes.get(key);
-      const rawTotalPipeWeight = entry.calculation?.totalPipeWeight;
-      const pipeWeight = rawTotalPipeWeight || 0;
+      const pipeWeight = fallbackPipeWeight(entry, nb, pipeLength, pipeQty);
 
       const rawPipeEndConfiguration2 = entry.specs?.pipeEndConfiguration;
 
@@ -960,8 +1078,17 @@ export default function BOQStep(props: {
         existing.extAreaM2 = (rawExtAreaM25 || 0) + extAreaM2;
       } else {
         consolidatedPipes.set(key, {
-          description:
-            `${nb}NB ${schedule ? `Sch${schedule.replace("Sch", "")}` : ""} ${steelSpec} Pipe x${pipeLength}m`.trim(),
+          description: pipeRowDescription(
+            entry,
+            nb,
+            schedule,
+            pipeLength,
+            steelSpec,
+            rawHdpeGrade,
+            sdrNumber,
+            rawPvcType,
+            pressureClassLabel,
+          ),
           qty: pipeQty,
           unit: "Each",
           weight: pipeWeight,
@@ -1267,10 +1394,10 @@ export default function BOQStep(props: {
                     >
                       {item.description}
                     </td>
-                    <td className="py-2 px-2 text-center font-medium text-gray-900 dark:text-gray-100">
-                      {item.qty}
+                    <td className="py-2 px-2 text-center font-medium text-gray-900 dark:text-gray-100 whitespace-nowrap">
+                      {formatQty(item.qty)}
                     </td>
-                    <td className="py-2 px-2 text-center text-gray-700 dark:text-gray-300">
+                    <td className="py-2 px-2 text-center text-gray-700 dark:text-gray-300 whitespace-nowrap">
                       {item.unit}
                     </td>
                     {showWeldColumns && (

@@ -432,6 +432,7 @@ export class PdfExtractorService {
       flangeConfig,
       pressureClass: null,
       sdr: null,
+      productType: null,
       quantity: quantity.value,
       unit: quantity.unit,
       confidence: needsClarification ? 0.6 : 0.85,

@@ -67,6 +67,13 @@ export type NixExtractedItemType =
 
 export type NixExtractedItemAction = "supply" | "install" | "dismantle" | "supply_install";
 
+// Product family inferred by Nix from material keywords / SDR / Sch
+// signals. Drives the frontend converter's choice of entry shape:
+// "hdpe"/"pvc"/"upvc" pipes use SDR + grade + PN, "steel" pipes use
+// Schedule + WT + steel-spec, null falls back to steel for backwards
+// compatibility.
+export type NixProductType = "steel" | "hdpe" | "pvc" | "upvc" | null;
+
 export interface NixExtractedItem {
   rowNumber: number;
   itemNumber: string;
@@ -85,6 +92,7 @@ export interface NixExtractedItem {
   flangeConfig: "none" | "one_end" | "both_ends" | "puddle" | "blind" | null;
   pressureClass: string | null;
   sdr: string | null;
+  productType: NixProductType;
   quantity: number;
   unit: string;
   confidence: number;
