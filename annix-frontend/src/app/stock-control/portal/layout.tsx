@@ -4,6 +4,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import React, { Suspense, useEffect, useLayoutEffect, useState } from "react";
 import { FeedbackWidget } from "@/app/components/FeedbackWidget";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
+import { NixAppProvider, NixAssistant } from "@/app/lib/nix";
 import { ChatPanel } from "../components/ChatPanel";
 import { HubBreadcrumb } from "../components/HubBreadcrumb";
 import { StockControlHeader } from "../components/StockControlHeader";
@@ -198,6 +199,13 @@ function PortalContent({ children }: { children: React.ReactNode }) {
                   <ChatPanel />
                 </div>
                 <StockControlFeedbackWidget />
+                <NixAssistant
+                  context="general"
+                  pageContext={{
+                    currentPage: "Stock Control",
+                    portalContext: "general",
+                  }}
+                />
               </div>
             </GlossaryProvider>
           </ViewAsProvider>
@@ -260,7 +268,9 @@ export default function StockControlPortalLayout(props: { children: React.ReactN
         </div>
       }
     >
-      <ProtectedLayout>{children}</ProtectedLayout>
+      <NixAppProvider appCode="stock-control">
+        <ProtectedLayout>{children}</ProtectedLayout>
+      </NixAppProvider>
     </Suspense>
   );
 }

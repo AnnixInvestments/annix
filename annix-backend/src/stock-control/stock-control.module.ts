@@ -19,6 +19,7 @@ import { SharedModule } from "../shared/shared.module";
 import { StaffLeaveModule } from "../staff-leave/staff-leave.module";
 import { StorageModule } from "../storage/storage.module";
 import { User } from "../user/entities/user.entity";
+import { StockControlCapabilities } from "./capabilities/stock-control.capabilities";
 import { StockControlAuthController } from "./controllers/auth.controller";
 import { CertificateController } from "./controllers/certificate.controller";
 import { ChatController } from "./controllers/chat.controller";
@@ -381,6 +382,7 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
     StockAllocationService,
     SageJcDumpService,
     AscaQuoteDocumentsProfileHandler,
+    StockControlCapabilities,
   ],
   exports: [StockControlAuthService],
 })
