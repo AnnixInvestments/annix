@@ -9,7 +9,7 @@ import { ErrorBoundary } from "@/app/components/ui/ErrorBoundary";
 import { useCustomerAuth } from "@/app/context/CustomerAuthContext";
 import { useFeatureFlags } from "@/app/hooks/useFeatureFlags";
 import { RFQ_VERSION } from "@/app/lib/config/rfq/version";
-import { NixAssistant } from "@/app/lib/nix";
+import { NixAppProvider, NixAssistant } from "@/app/lib/nix";
 
 const navItems = [
   {
@@ -138,7 +138,9 @@ export default function CustomerPortalLayout(props: { children: React.ReactNode 
         </div>
       }
     >
-      <ProtectedLayout>{children}</ProtectedLayout>
+      <NixAppProvider appCode="customer">
+        <ProtectedLayout>{children}</ProtectedLayout>
+      </NixAppProvider>
     </Suspense>
   );
 }

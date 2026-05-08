@@ -9,7 +9,7 @@ import { useAdminAuth } from "@/app/context/AdminAuthContext";
 import { LayoutProvider } from "@/app/context/LayoutContext";
 import { useFeatureFlags } from "@/app/hooks/useFeatureFlags";
 import { RFQ_VERSION } from "@/app/lib/config/rfq/version";
-import { NixAssistant } from "@/app/lib/nix";
+import { NixAppProvider, NixAssistant } from "@/app/lib/nix";
 
 const navItems = [
   {
@@ -126,7 +126,9 @@ export default function AdminPortalLayout(props: { children: React.ReactNode }) 
         </div>
       }
     >
-      <ProtectedLayout>{children}</ProtectedLayout>
+      <NixAppProvider appCode="admin">
+        <ProtectedLayout>{children}</ProtectedLayout>
+      </NixAppProvider>
     </Suspense>
   );
 }

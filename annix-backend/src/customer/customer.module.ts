@@ -19,6 +19,7 @@ import { User } from "../user/entities/user.entity";
 // External modules
 import { UserModule } from "../user/user.module";
 import { UserRole } from "../user-roles/entities/user-role.entity";
+import { CustomerCapabilities } from "./capabilities/customer.capabilities";
 import { CustomerController } from "./customer.controller";
 import { CustomerService } from "./customer.service";
 import { CustomerAdminController } from "./customer-admin.controller";
@@ -110,6 +111,7 @@ import { CertificateExpiryService } from "./services/certificate-expiry.service"
     DocumentOcrService,
     CertificateExpiryService,
     CustomerAuthGuard,
+    CustomerCapabilities,
   ],
   exports: [
     CustomerAuthService,

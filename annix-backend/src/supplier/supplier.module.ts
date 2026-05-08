@@ -20,6 +20,7 @@ import { User } from "../user/entities/user.entity";
 // External modules
 import { UserModule } from "../user/user.module";
 import { UserRole } from "../user-roles/entities/user-role.entity";
+import { SupplierCapabilities } from "./capabilities/supplier.capabilities";
 // Entities
 import {
   SupplierCapability,
@@ -92,7 +93,13 @@ import { SupplierPumpQuoteController } from "./supplier-pump-quote.controller";
     SupplierMessagingController,
     SupplierPumpQuoteController,
   ],
-  providers: [SupplierAuthService, SupplierService, SupplierAdminService, SupplierAuthGuard],
+  providers: [
+    SupplierAuthService,
+    SupplierService,
+    SupplierAdminService,
+    SupplierAuthGuard,
+    SupplierCapabilities,
+  ],
   exports: [
     SupplierAuthService,
     SupplierService,
