@@ -1,6 +1,6 @@
 "use client";
 
-import { toPairs as entries, isArray, isNumber, isString, keys } from "es-toolkit/compat";
+import { toPairs as entries, isArray, isNumber, isObject, isString, keys } from "es-toolkit/compat";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
@@ -92,6 +92,27 @@ export default function NixExtractionDraftPage() {
           return;
         }
         pdfPreview.open(url, extraction.documentName);
+      } catch (err) {
+        showToast(err instanceof Error ? err.message : "Failed to open document", "error");
+      }
+    },
+    [showToast, pdfPreview],
+  );
+
+  const handleJumpToPage = useCallback(
+    async (extraction: NixExtractionSummary, page: number) => {
+      try {
+        const { url } = await nixApi.extractionDocumentUrl(extraction.id);
+        if (!url) {
+          showToast(
+            "No source document on file for this extraction (predates S3 persistence).",
+            "info",
+          );
+          return;
+        }
+        const safePage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1;
+        const separator = url.includes("#") ? "&" : "#";
+        pdfPreview.open(`${url}${separator}page=${safePage}`, extraction.documentName);
       } catch (err) {
         showToast(err instanceof Error ? err.message : "Failed to open document", "error");
       }
@@ -213,6 +234,7 @@ export default function NixExtractionDraftPage() {
         tone="blue"
         extractions={drawingExtractions}
         onViewOriginal={handleViewOriginal}
+        onJumpToPage={handleJumpToPage}
         onRetry={handleRetry}
         onItemSaved={handleItemSaved}
         retryingId={retryingId}
@@ -225,6 +247,7 @@ export default function NixExtractionDraftPage() {
         tone="purple"
         extractions={specExtractions}
         onViewOriginal={handleViewOriginal}
+        onJumpToPage={handleJumpToPage}
         onRetry={handleRetry}
         onItemSaved={handleItemSaved}
         retryingId={retryingId}
@@ -239,6 +262,7 @@ export default function NixExtractionDraftPage() {
           tone="gray"
           extractions={otherExtractions}
           onViewOriginal={handleViewOriginal}
+          onJumpToPage={handleJumpToPage}
           onRetry={handleRetry}
           onItemSaved={handleItemSaved}
           retryingId={retryingId}
@@ -288,6 +312,7 @@ interface ExtractionGroupProps {
   tone: "blue" | "purple" | "gray";
   extractions: NixExtractionSummary[];
   onViewOriginal: (extraction: NixExtractionSummary) => void;
+  onJumpToPage: (extraction: NixExtractionSummary, page: number) => void;
   onRetry: (extraction: NixExtractionSummary) => void;
   onItemSaved: () => void;
   retryingId: number | null;
@@ -302,6 +327,7 @@ function ExtractionGroup(props: ExtractionGroupProps) {
     tone,
     extractions,
     onViewOriginal,
+    onJumpToPage,
     onRetry,
     onItemSaved,
     retryingId,
@@ -332,6 +358,7 @@ function ExtractionGroup(props: ExtractionGroupProps) {
               key={extraction.id}
               extraction={extraction}
               onViewOriginal={onViewOriginal}
+              onJumpToPage={onJumpToPage}
               onRetry={onRetry}
               onItemSaved={onItemSaved}
               retryingId={retryingId}
@@ -347,6 +374,7 @@ function ExtractionGroup(props: ExtractionGroupProps) {
 interface ExtractionCardProps {
   extraction: NixExtractionSummary;
   onViewOriginal: (extraction: NixExtractionSummary) => void;
+  onJumpToPage: (extraction: NixExtractionSummary, page: number) => void;
   onRetry: (extraction: NixExtractionSummary) => void;
   onItemSaved: () => void;
   retryingId: number | null;
@@ -354,8 +382,15 @@ interface ExtractionCardProps {
 }
 
 function ExtractionCard(props: ExtractionCardProps) {
-  const { extraction, onViewOriginal, onRetry, onItemSaved, retryingId, showSpecifications } =
-    props;
+  const {
+    extraction,
+    onViewOriginal,
+    onJumpToPage,
+    onRetry,
+    onItemSaved,
+    retryingId,
+    showSpecifications,
+  } = props;
   const rawItems = extraction.extractedItems;
   const items = (rawItems ? rawItems : []) as Array<Record<string, unknown>>;
   const rawData = extraction.extractedData;
@@ -432,7 +467,12 @@ function ExtractionCard(props: ExtractionCardProps) {
           <h4 className="text-xs font-semibold text-gray-700 mb-1">Specification clauses</h4>
           <div className="space-y-2">
             {entries(specifications).map(([clauseKey, clauseValue]) => (
-              <SpecificationRow key={clauseKey} clauseKey={clauseKey} value={clauseValue} />
+              <SpecificationRow
+                key={clauseKey}
+                clauseKey={clauseKey}
+                value={clauseValue}
+                onJumpToPage={(page) => onJumpToPage(extraction, page)}
+              />
             ))}
           </div>
         </div>
@@ -743,8 +783,12 @@ function CodesEditor(props: {
   );
 }
 
-function SpecificationRow(props: { clauseKey: string; value: unknown }) {
-  const { clauseKey, value } = props;
+function SpecificationRow(props: {
+  clauseKey: string;
+  value: unknown;
+  onJumpToPage: (page: number) => void;
+}) {
+  const { clauseKey, value, onJumpToPage } = props;
   if (clauseKey === "referencedCodes" && isArray(value)) {
     return (
       <p className="text-xs text-gray-600">
@@ -753,13 +797,71 @@ function SpecificationRow(props: { clauseKey: string; value: unknown }) {
     );
   }
 
-  const display = isString(value) ? value : JSON.stringify(value, null, 2);
+  if (isString(value)) {
+    return (
+      <details className="text-xs">
+        <summary className="cursor-pointer text-gray-800">
+          <span className="font-semibold">{clauseKey}</span>
+        </summary>
+        <pre className="mt-1 whitespace-pre-wrap text-gray-700 bg-gray-50 rounded p-2">{value}</pre>
+      </details>
+    );
+  }
+
+  const obj = (value ?? {}) as Record<string, unknown>;
+  const summary = isString(obj.summary) ? (obj.summary as string) : null;
+  const description = isString(obj.description) ? (obj.description as string) : null;
+  const headlineText = summary ?? description ?? "";
+  const rawApplicableMarks = obj.applicableMarks;
+  const applicableMarks = isArray(rawApplicableMarks)
+    ? (rawApplicableMarks as unknown[]).filter(isString)
+    : [];
+  const applicableScope = isString(obj.applicableScope) ? (obj.applicableScope as string) : null;
+  const rawPage = obj.pageReference;
+  let pageReference: number | null = null;
+  if (isNumber(rawPage)) pageReference = rawPage;
+  else if (isString(rawPage)) {
+    const parsed = Number.parseInt(rawPage, 10);
+    pageReference = Number.isFinite(parsed) ? parsed : null;
+  }
+  const rawDetails = obj.details;
+  const detailsObj = isObject(rawDetails) ? (rawDetails as Record<string, unknown>) : null;
+  const detailsJson = detailsObj ? JSON.stringify(detailsObj, null, 2) : null;
+  const fullJson = JSON.stringify(value, null, 2);
+
+  let scopeText = "";
+  if (applicableScope === "all") scopeText = "Applies to all marks";
+  else if (applicableScope === "items" && applicableMarks.length > 0)
+    scopeText = `Applies to ${applicableMarks.join(", ")}`;
+  else if (applicableMarks.length > 0) scopeText = `Applies to ${applicableMarks.join(", ")}`;
+
   return (
-    <details className="text-xs">
-      <summary className="cursor-pointer text-gray-800">
-        <span className="font-semibold">{clauseKey}</span>
+    <details className="text-xs bg-white border border-gray-200 rounded p-2">
+      <summary className="cursor-pointer space-y-0.5">
+        <span className="font-semibold text-gray-900">{clauseKey}</span>
+        {headlineText.length > 0 && <div className="text-gray-700 font-normal">{headlineText}</div>}
+        {(scopeText.length > 0 || pageReference !== null) && (
+          <div className="text-[11px] text-gray-500 font-normal flex items-center gap-2 flex-wrap">
+            {scopeText.length > 0 && <span>{scopeText}</span>}
+            {pageReference !== null && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onJumpToPage(pageReference);
+                }}
+                className="text-blue-600 hover:text-blue-800 underline"
+              >
+                View page {pageReference}
+              </button>
+            )}
+          </div>
+        )}
       </summary>
-      <pre className="mt-1 whitespace-pre-wrap text-gray-700 bg-gray-50 rounded p-2">{display}</pre>
+      <pre className="mt-2 whitespace-pre-wrap text-gray-700 bg-gray-50 rounded p-2">
+        {detailsJson ?? fullJson}
+      </pre>
     </details>
   );
 }

@@ -189,26 +189,34 @@ CRITICAL — specifications object rules (this is what the quoter actually needs
 - If a code from the drawing pack is NOT found in this document, do NOT add a stub for it — only document codes this spec actually defines.
 - For each spec entry, populate 'details' with structured sub-fields a quoter can read directly: e.g. for a paint system: { "primer": "...", "intermediate": "...", "topcoat": "...", "dftMicrons": ..., "surfacePrep": "Sa 2.5" }.
 - 'applicableScope' = "all" if the clause applies to every mark on the drawings; "items" if it applies only to specific marks (then list them in 'applicableMarks').
+- 'pageReference' (number, REQUIRED) = the page number in THIS PDF where the clause appears, so the user can click the clause and jump straight to that page to verify. If the clause spans multiple pages, give the page where the heading / definition starts.
+- 'summary' (string, REQUIRED, ≤ 100 chars) = a one-line plain-English summary the user can read at a glance without expanding the details — e.g. for rubber lining: "6 mm bore, 3 mm flange face, hot-bonded, autoclave-vulcanised". Lead with the numbers/values that matter most for quoting.
 
 Worked example — a paint-systems specification document might produce:
 {
   "items": [],
   "specifications": {
     "R1": {
+      "summary": "Primer Sa 2.5 + MIO + PU topcoat, 225µm DFT total",
       "description": "Standard external paint system for non-immersed steelwork",
       "details": { "primer": "Zinc-rich epoxy 75µm", "intermediate": "MIO epoxy 100µm", "topcoat": "Polyurethane 50µm", "totalDftMicrons": 225, "surfacePrep": "Sa 2.5" },
-      "applicableScope": "all"
+      "applicableScope": "all",
+      "pageReference": 3
     },
     "R2a": {
+      "summary": "Heavy-duty splash-zone system, 300µm DFT total, on -01 only",
       "description": "Heavy-duty external paint system for splash zones",
       "details": { "primer": "Zinc-rich epoxy 75µm", "intermediate": "MIO epoxy 150µm", "topcoat": "Polyurethane 75µm", "totalDftMicrons": 300, "surfacePrep": "Sa 2.5" },
       "applicableScope": "items",
-      "applicableMarks": ["-01"]
+      "applicableMarks": ["-01"],
+      "pageReference": 4
     },
     "SC1": {
+      "summary": "PN10 carbon steel — SANS 719 Gr.B / A234 WPB / EN 1092",
       "description": "Carbon steel material class for low-pressure water service",
       "details": { "pipeStandard": "SANS 719 Gr.B", "fittingStandard": "ASTM A234 WPB", "flangeStandard": "BS EN 1092 PN10", "rating": "PN10" },
-      "applicableScope": "all"
+      "applicableScope": "all",
+      "pageReference": 7
     }
   },
   "metadata": { "documentTitle": "...", "revision": "...", "date": "..." }
