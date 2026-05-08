@@ -112,7 +112,11 @@ export default function NixExtractionDraftPage() {
         }
         const safePage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1;
         const separator = url.includes("#") ? "&" : "#";
-        pdfPreview.open(`${url}${separator}page=${safePage}`, extraction.documentName);
+        // page=N jumps to the page; view=FitH fits the page horizontally so
+        // the user sees the full width without manual zoom (better default
+        // than the browser's 'auto' on first open). Both params are honoured
+        // by Chrome / Edge / Firefox built-in PDF viewers.
+        pdfPreview.open(`${url}${separator}page=${safePage}&view=FitH`, extraction.documentName);
       } catch (err) {
         showToast(err instanceof Error ? err.message : "Failed to open document", "error");
       }
@@ -830,10 +834,10 @@ function SpecificationRow(props: {
   const fullJson = JSON.stringify(value, null, 2);
 
   let scopeText = "";
-  if (applicableScope === "all") scopeText = "Applies to all marks";
+  if (applicableScope === "all") scopeText = "Applies to all items";
   else if (applicableScope === "items" && applicableMarks.length > 0)
-    scopeText = `Applies to ${applicableMarks.join(", ")}`;
-  else if (applicableMarks.length > 0) scopeText = `Applies to ${applicableMarks.join(", ")}`;
+    scopeText = `Applies to items ${applicableMarks.join(", ")}`;
+  else if (applicableMarks.length > 0) scopeText = `Applies to items ${applicableMarks.join(", ")}`;
 
   return (
     <details className="text-xs bg-white border border-gray-200 rounded p-2">
