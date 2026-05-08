@@ -366,6 +366,12 @@ export interface NixExtractionSummary {
   extractedData?: Record<string, unknown>;
   storagePath?: string;
   createdAt: string;
+  mineId?: number | null;
+  mineName?: string | null;
+  mineInferenceConfidence?: number | null;
+  mineInferenceReason?: string | null;
+  documentNumber?: string | null;
+  documentRevision?: string | null;
 }
 
 export interface NixExtractionSessionDto {

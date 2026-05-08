@@ -36,6 +36,8 @@ import { NixExtractionSession } from "./entities/nix-extraction-session.entity";
 import { NixLearning } from "./entities/nix-learning.entity";
 import { NixUserPreference } from "./entities/nix-user-preference.entity";
 import { MineInferenceService } from "./mine-inference.service";
+import { MineLibraryController } from "./mine-library/mine-library.controller";
+import { MineLibraryService } from "./mine-library/mine-library.service";
 import { NixController } from "./nix.controller";
 import { NixService } from "./nix.service";
 import { NixExtractionProfileRegistry, RfqPipingProfileHandler } from "./profiles";
@@ -100,6 +102,7 @@ import { WordExtractorService } from "./services/word-extractor.service";
     NixChatController,
     NixCapabilitiesController,
     NixWalkthroughController,
+    MineLibraryController,
   ],
   providers: [
     DocumentAnnotationService,
@@ -110,6 +113,7 @@ import { WordExtractorService } from "./services/word-extractor.service";
     WalkthroughEngine,
     RfqPipingProfileHandler,
     MineInferenceService,
+    MineLibraryService,
     NixService,
     NixExtractionSessionService,
     NixChatService,

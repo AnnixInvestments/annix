@@ -663,6 +663,14 @@ export {
   useUploadDrawing,
   useUploadDrawingVersion,
 } from "./drawing/useDrawings";
+export {
+  useClearExtractionMine,
+  useCreateMineLibraryMine,
+  useDocNumberSearch,
+  useMineLibraryExtractions,
+  useMineLibraryMines,
+  useRetagExtractionMine,
+} from "./nix/useMineLibrary";
 export type {
   ChatMessage,
   ChatSession,

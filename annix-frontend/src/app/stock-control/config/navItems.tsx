@@ -831,6 +831,23 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     ),
   },
   {
+    key: "nix-mines",
+    href: "/stock-control/portal/library/mines",
+    label: "Mine Library",
+    defaultRoles: ["*"],
+    trailing: true,
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M3 7l9-4 9 4M3 17l9 4 9-4M3 12l9 4 9-4"
+        />
+      </svg>
+    ),
+  },
+  {
     key: "settings",
     href: "/stock-control/portal/settings",
     label: "Settings",

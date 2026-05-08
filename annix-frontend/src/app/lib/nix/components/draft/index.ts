@@ -26,6 +26,7 @@ export {
   tryRangeString,
 } from "./humanise";
 export { ItemRow } from "./ItemRow";
+export { MineInferenceBadge } from "./MineInferenceBadge";
 export { NixDraftReview } from "./NixDraftReview";
 export {
   NixSpecViewerModal,

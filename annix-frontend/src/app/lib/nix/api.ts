@@ -789,4 +789,124 @@ export const nixApi = {
 
     return response.json();
   },
+
+  listMineLibraryMines: async (q?: string): Promise<MineLibraryMine[]> => {
+    const baseUrl = browserBaseUrl();
+    const params = q && q.trim().length > 0 ? `?q=${encodeURIComponent(q.trim())}` : "";
+    const response = await fetch(`${baseUrl}/nix/mine-library/mines${params}`, {
+      method: "GET",
+      headers: { "Content-Type": "application/json", ...resolveNixAuthHeaders() },
+    });
+    if (!response.ok) await failNixResponse(response, "list mines");
+    return response.json();
+  },
+
+  listMineLibraryExtractions: async (mineId: number): Promise<MineLibraryExtractionRow[]> => {
+    const baseUrl = browserBaseUrl();
+    const response = await fetch(`${baseUrl}/nix/mine-library/mines/${mineId}/extractions`, {
+      method: "GET",
+      headers: { "Content-Type": "application/json", ...resolveNixAuthHeaders() },
+    });
+    if (!response.ok) await failNixResponse(response, "list mine extractions");
+    return response.json();
+  },
+
+  searchMineLibraryByDocNumber: async (
+    q: string,
+    options?: { mineId?: number | null; limit?: number },
+  ): Promise<DocNumberSearchRow[]> => {
+    const baseUrl = browserBaseUrl();
+    const params = new URLSearchParams({ q });
+    if (options?.mineId !== null && options?.mineId !== undefined) {
+      params.set("mineId", String(options.mineId));
+    }
+    if (options?.limit) params.set("limit", String(options.limit));
+    const response = await fetch(
+      `${baseUrl}/nix/mine-library/extractions/by-doc-number?${params.toString()}`,
+      {
+        method: "GET",
+        headers: { "Content-Type": "application/json", ...resolveNixAuthHeaders() },
+      },
+    );
+    if (!response.ok) await failNixResponse(response, "search by doc number");
+    return response.json();
+  },
+
+  createMineLibraryMine: async (input: CreateMineLibraryMineInput): Promise<CreateMineResponse> => {
+    const baseUrl = browserBaseUrl();
+    const response = await fetch(`${baseUrl}/nix/mine-library/mines`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...resolveNixAuthHeaders() },
+      body: JSON.stringify(input),
+    });
+    if (!response.ok) await failNixResponse(response, "create mine");
+    return response.json();
+  },
+
+  retagExtractionMine: async (
+    extractionId: number,
+    mineId: number,
+  ): Promise<MineLibraryExtractionRow> => {
+    const baseUrl = browserBaseUrl();
+    const response = await fetch(`${baseUrl}/nix/mine-library/extractions/${extractionId}/mine`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...resolveNixAuthHeaders() },
+      body: JSON.stringify({ mineId }),
+    });
+    if (!response.ok) await failNixResponse(response, "retag extraction mine");
+    return response.json();
+  },
+
+  clearExtractionMine: async (extractionId: number): Promise<{ ok: true }> => {
+    const baseUrl = browserBaseUrl();
+    const response = await fetch(`${baseUrl}/nix/mine-library/extractions/${extractionId}/mine`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json", ...resolveNixAuthHeaders() },
+    });
+    if (!response.ok) await failNixResponse(response, "clear extraction mine");
+    return response.json();
+  },
 };
+
+export interface MineLibraryMine {
+  id: number;
+  mineName: string;
+  operatingCompany: string;
+  province: string;
+  extractionCount: number;
+}
+
+export interface MineLibraryExtractionRow {
+  id: number;
+  documentNumber: string | null;
+  documentRevision: string | null;
+  documentTitle: string | null;
+  sourceFilename: string | null;
+  status: string;
+  mineInferenceConfidence: number | null;
+  mineInferenceReason: string | null;
+  createdAt: string;
+}
+
+export interface DocNumberSearchRow {
+  extractionId: number;
+  documentNumber: string;
+  documentRevision: string | null;
+  documentTitle: string | null;
+  mineId: number | null;
+  mineName: string | null;
+  createdAt: string;
+}
+
+export interface CreateMineLibraryMineInput {
+  mineName: string;
+  operatingCompany: string;
+  commodityId?: number;
+  province?: string;
+  retagExtractionId?: number;
+}
+
+export interface CreateMineResponse {
+  mine: MineLibraryMine;
+  retaggedExtractionId: number | null;
+}

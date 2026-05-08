@@ -3,6 +3,7 @@
 import { toPairs as entries, isArray, keys } from "es-toolkit/compat";
 import type { NixExtractionSummary } from "@/app/lib/query/hooks";
 import { ItemRow } from "./ItemRow";
+import { MineInferenceBadge } from "./MineInferenceBadge";
 import { SpecificationCard } from "./SpecificationCard";
 import type { SpecLookup } from "./useSpecLookup";
 
@@ -80,6 +81,7 @@ export function ExtractionCard(props: {
               Status: {extraction.status} • {items.length} item{items.length === 1 ? "" : "s"}
               {extraction.storagePath && " • saved to S3"}
             </p>
+            <MineInferenceBadge extraction={extraction} />
           </div>
           <div className="flex items-center gap-3 whitespace-nowrap">
             <button

@@ -8,6 +8,7 @@ import { DocumentBucket, type PendingDocument } from "@/app/components/uploads";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import { useAdaptiveExtractionProgress } from "@/app/lib/hooks/useAdaptiveExtractionProgress";
 import { type NixDocumentRole, nixApi } from "@/app/lib/nix";
+import { DocNumberAutocomplete } from "@/app/lib/nix/components/library";
 import {
   type NixExtractionSessionDto,
   useCreateNixExtractionSession,
@@ -46,6 +47,7 @@ export default function QuoteFromDocumentsPage() {
   const [specs, setSpecs] = useState<BucketState>(emptyBucket);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [session, setSession] = useState<NixExtractionSessionDto | null>(null);
+  const [docNumberQuery, setDocNumberQuery] = useState("");
 
   const existingSessionQuery = useNixExtractionSession(existingSessionId);
 
@@ -182,6 +184,30 @@ export default function QuoteFromDocumentsPage() {
           {errorMessage}
         </div>
       )}
+
+      <div className="bg-blue-50 border border-blue-100 rounded-lg p-3">
+        <p className="text-xs text-blue-900 font-medium mb-1">Already have the doc number?</p>
+        <p className="text-xs text-blue-800 mb-2">
+          Search the mine library — if Nix has extracted it before for the same mine, jump straight
+          to the existing extraction instead of re-uploading.
+        </p>
+        <DocNumberAutocomplete
+          value={docNumberQuery}
+          onChange={setDocNumberQuery}
+          onUseExisting={(row) => {
+            if (row.mineId) {
+              router.push(`/stock-control/portal/library/mines/${row.mineId}`);
+            } else {
+              showToast(
+                `Existing extraction #${row.extractionId} found, but no mine attached. Tag it from the draft view.`,
+                "info",
+              );
+            }
+          }}
+          placeholder="e.g. LHU-0000-EP-2701-012-00"
+          className="max-w-md"
+        />
+      </div>
 
       <DocumentBucket
         id="asca-drawings"

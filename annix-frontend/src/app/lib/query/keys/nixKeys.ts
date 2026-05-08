@@ -34,4 +34,12 @@ export const nixKeys = {
     state: (sessionId: number) => ["nix", "walkthrough", "state", sessionId] as const,
     currentStep: (sessionId: number) => ["nix", "walkthrough", "current-step", sessionId] as const,
   },
+  mineLibrary: {
+    all: ["nix", "mine-library"] as const,
+    mines: (q?: string) => ["nix", "mine-library", "mines", q ?? ""] as const,
+    extractionsForMine: (mineId: number) =>
+      ["nix", "mine-library", "mine-extractions", mineId] as const,
+    docNumberSearch: (q: string, mineId: number | null) =>
+      ["nix", "mine-library", "doc-number-search", q, mineId ?? "any"] as const,
+  },
 } as const;
