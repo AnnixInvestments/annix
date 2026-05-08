@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, ReactNode, useCallback, useContext, useEffect, useState } from "react";
+import { ApiError } from "@/app/lib/api/apiError";
 import { CustomerProfileResponse, customerApiClient } from "@/app/lib/api/customerApi";
 import { log } from "@/app/lib/logger";
 
@@ -77,28 +78,64 @@ export function CustomerAuthProvider(props: { children: ReactNode }) {
       const profile = await customerApiClient.getProfile();
       setAuthenticatedWithProfile(profile);
     } catch (error) {
-      // Profile fetch failed - try refreshing the token before giving up
-      log.debug("[CustomerAuth] Profile fetch failed, attempting token refresh...");
-      const refreshed = await customerApiClient.refreshAccessToken();
+      // Distinguish a genuine auth failure (401/403 from a real backend
+      // response) from a transient network error (backend restarting,
+      // ECONNREFUSED, fetch failed, 5xx). Treating a network hiccup as
+      // "not authenticated" boots the user to login on every backend
+      // restart, even though their token is perfectly valid — see the
+      // 6-times-this-morning regression that prompted this fix.
+      const isAuthFailure = error instanceof ApiError && error.isAuthFailure();
 
-      if (refreshed) {
-        // Token refreshed successfully - retry profile fetch
-        try {
-          const profile = await customerApiClient.getProfile();
-          setAuthenticatedWithProfile(profile);
-          return;
-        } catch {
-          // Still failed after refresh - clear tokens
-          log.debug("[CustomerAuth] Profile fetch failed even after token refresh");
+      if (isAuthFailure) {
+        // 401/403 — token is genuinely no good. Try refreshing once
+        // before giving up.
+        log.debug("[CustomerAuth] Profile fetch failed (auth), attempting token refresh…");
+        const refreshed = await customerApiClient.refreshAccessToken();
+        if (refreshed) {
+          try {
+            const profile = await customerApiClient.getProfile();
+            setAuthenticatedWithProfile(profile);
+            return;
+          } catch (retryError) {
+            const stillAuthFailure = retryError instanceof ApiError && retryError.isAuthFailure();
+            if (!stillAuthFailure) {
+              // Refresh worked but the retry hit a non-auth error — keep
+              // session active.
+              log.warn(
+                "[CustomerAuth] Profile retry hit a transient error; keeping session",
+                retryError,
+              );
+              setState({
+                isAuthenticated: true,
+                isLoading: false,
+                customer: null,
+                profile: null,
+              });
+              return;
+            }
+            log.debug("[CustomerAuth] Profile fetch still 401/403 after token refresh");
+          }
+        } else {
+          log.debug("[CustomerAuth] Token refresh failed (auth flow)");
         }
-      } else {
-        log.debug("[CustomerAuth] Token refresh failed");
+        // Genuine auth failure — clear tokens
+        customerApiClient.clearTokens();
+        setState({
+          isAuthenticated: false,
+          isLoading: false,
+          customer: null,
+          profile: null,
+        });
+        return;
       }
 
-      // Both attempts failed - user is not authenticated
-      customerApiClient.clearTokens();
+      // Transient error — keep tokens, keep "authenticated" since the
+      // token IS still valid. Just complete the loading state so the UI
+      // can render. The next API call will surface a real 401 if the
+      // session has actually expired.
+      log.warn("[CustomerAuth] Profile fetch failed with non-auth error; keeping session", error);
       setState({
-        isAuthenticated: false,
+        isAuthenticated: true,
         isLoading: false,
         customer: null,
         profile: null,
@@ -139,8 +176,11 @@ export function CustomerAuthProvider(props: { children: ReactNode }) {
           firstName: profile.firstName,
           lastName: profile.lastName,
           companyName: (() => {
-            const rawTradingName = profile.company?.tradingName;
-            return rawTradingName || profile.company?.legalName || response.companyName;
+            const profileCompany = profile.company;
+            const rawTradingName = profileCompany ? profileCompany.tradingName : null;
+            const rawLegalName = profileCompany ? profileCompany.legalName : null;
+            const responseCompanyName = response.companyName;
+            return rawTradingName || rawLegalName || responseCompanyName;
           })(),
           accountStatus: profile.accountStatus,
         },

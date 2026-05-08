@@ -1,11 +1,13 @@
 "use client";
 
 import { createContext, ReactNode, useCallback, useContext, useEffect, useState } from "react";
+import { ApiError } from "@/app/lib/api/apiError";
 import {
   StockControlUser,
   StockControlUserProfile,
   stockControlApiClient,
 } from "@/app/lib/api/stockControlApi";
+import { log } from "@/app/lib/logger";
 
 interface StockControlAuthState {
   isAuthenticated: boolean;
@@ -76,10 +78,26 @@ export function StockControlAuthProvider(props: { children: ReactNode }) {
         },
         profile,
       });
-    } catch {
-      stockControlApiClient.clearTokens();
+    } catch (error) {
+      // Only clear tokens on genuine 401/403 — see CustomerAuthContext
+      // for the full network-error-tolerance rationale.
+      const isAuthFailure = error instanceof ApiError && error.isAuthFailure();
+      if (isAuthFailure) {
+        stockControlApiClient.clearTokens();
+        setState({
+          isAuthenticated: false,
+          isLoading: false,
+          user: null,
+          profile: null,
+        });
+        return;
+      }
+      log.warn(
+        "[StockControlAuth] Profile fetch failed with non-auth error; keeping session",
+        error,
+      );
       setState({
-        isAuthenticated: false,
+        isAuthenticated: true,
         isLoading: false,
         user: null,
         profile: null,

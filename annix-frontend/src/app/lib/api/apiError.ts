@@ -34,6 +34,18 @@ export class ApiError extends Error {
     return this.status === 403;
   }
 
+  /**
+   * True only when the server explicitly told us the caller is not
+   * authorised — i.e. 401 or 403. Network errors, 5xx, fetch failures,
+   * etc. are NOT auth failures even though they make a profile fetch
+   * throw. Auth contexts must NOT clear tokens / log the user out on
+   * non-auth-failures, otherwise every backend hiccup boots them to
+   * the login screen.
+   */
+  isAuthFailure(): boolean {
+    return this.status === 401 || this.status === 403;
+  }
+
   isNotFound(): boolean {
     return this.status === 404;
   }

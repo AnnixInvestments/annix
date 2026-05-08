@@ -2,6 +2,8 @@
 
 import { createContext, ReactNode, useCallback, useContext, useEffect, useState } from "react";
 import { AdminUser, AdminUserProfile, adminApiClient } from "@/app/lib/api/adminApi";
+import { ApiError } from "@/app/lib/api/apiError";
+import { log } from "@/app/lib/logger";
 
 interface AdminAuthState {
   isAuthenticated: boolean;
@@ -52,10 +54,25 @@ export function AdminAuthProvider(props: { children: ReactNode }) {
         },
         profile,
       });
-    } catch {
-      adminApiClient.clearTokens();
+    } catch (error) {
+      // Only clear tokens on genuine 401/403 — network errors / 5xx
+      // must NOT log the admin out, otherwise every backend restart
+      // boots them to login (see CustomerAuthContext for the full fix
+      // rationale).
+      const isAuthFailure = error instanceof ApiError && error.isAuthFailure();
+      if (isAuthFailure) {
+        adminApiClient.clearTokens();
+        setState({
+          isAuthenticated: false,
+          isLoading: false,
+          admin: null,
+          profile: null,
+        });
+        return;
+      }
+      log.warn("[AdminAuth] Profile fetch failed with non-auth error; keeping session", error);
       setState({
-        isAuthenticated: false,
+        isAuthenticated: true,
         isLoading: false,
         admin: null,
         profile: null,

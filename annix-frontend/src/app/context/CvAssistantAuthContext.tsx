@@ -1,11 +1,13 @@
 "use client";
 
 import { createContext, ReactNode, useCallback, useContext, useEffect, useState } from "react";
+import { ApiError } from "@/app/lib/api/apiError";
 import {
   CvAssistantUser,
   CvAssistantUserProfile,
   cvAssistantApiClient,
 } from "@/app/lib/api/cvAssistantApi";
+import { log } from "@/app/lib/logger";
 
 interface CvAssistantAuthState {
   isAuthenticated: boolean;
@@ -56,10 +58,26 @@ export function CvAssistantAuthProvider(props: { children: ReactNode }) {
         },
         profile,
       });
-    } catch {
-      cvAssistantApiClient.clearTokens();
+    } catch (error) {
+      // Only clear tokens on genuine 401/403 — see CustomerAuthContext
+      // for the full network-error-tolerance rationale.
+      const isAuthFailure = error instanceof ApiError && error.isAuthFailure();
+      if (isAuthFailure) {
+        cvAssistantApiClient.clearTokens();
+        setState({
+          isAuthenticated: false,
+          isLoading: false,
+          user: null,
+          profile: null,
+        });
+        return;
+      }
+      log.warn(
+        "[CvAssistantAuth] Profile fetch failed with non-auth error; keeping session",
+        error,
+      );
       setState({
-        isAuthenticated: false,
+        isAuthenticated: true,
         isLoading: false,
         user: null,
         profile: null,
