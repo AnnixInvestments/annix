@@ -4,6 +4,7 @@ import { toPairs as entries, isArray, keys } from "es-toolkit/compat";
 import type { NixExtractionSummary } from "@/app/lib/query/hooks";
 import { ItemRow } from "./ItemRow";
 import { SpecificationCard } from "./SpecificationCard";
+import type { SpecLookup } from "./useSpecLookup";
 
 /**
  * Renders one extracted document inside a draft session: the file
@@ -14,8 +15,10 @@ import { SpecificationCard } from "./SpecificationCard";
  */
 export function ExtractionCard(props: {
   extraction: NixExtractionSummary;
+  specLookup: SpecLookup;
   onViewOriginal: (extraction: NixExtractionSummary) => void;
   onJumpToPage: (extraction: NixExtractionSummary, page: number) => void;
+  onJumpToSpec: (extractionId: number, page: number | null) => void;
   onRetry: (extraction: NixExtractionSummary) => void;
   onItemSaved: () => void;
   retryingId: number | null;
@@ -23,8 +26,10 @@ export function ExtractionCard(props: {
 }) {
   const {
     extraction,
+    specLookup,
     onViewOriginal,
     onJumpToPage,
+    onJumpToSpec,
     onRetry,
     onItemSaved,
     retryingId,
@@ -93,7 +98,9 @@ export function ExtractionCard(props: {
                   item={item}
                   index={idx}
                   extractionId={extraction.id}
+                  specLookup={specLookup}
                   onSaved={onItemSaved}
+                  onJumpToSpec={onJumpToSpec}
                 />
               ))}
             </tbody>

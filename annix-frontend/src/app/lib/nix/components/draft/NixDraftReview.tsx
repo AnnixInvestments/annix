@@ -10,6 +10,7 @@ import { useToast } from "@/app/components/Toast";
 import { nixApi } from "@/app/lib/nix";
 import type { NixExtractionSessionDto, NixExtractionSummary } from "@/app/lib/query/hooks";
 import { ExtractionGroup } from "./ExtractionGroup";
+import { useSpecLookup } from "./useSpecLookup";
 
 /**
  * Top-level draft-review block — drawings + specs + other groups,
@@ -52,6 +53,8 @@ export function NixDraftReview(props: {
         extraction.documentRole !== "drawing" && extraction.documentRole !== "specification",
     );
   }, [sessionExtractions]);
+
+  const specLookup = useSpecLookup(specExtractions);
 
   const handleRetry = useCallback(
     async (extraction: NixExtractionSummary) => {
@@ -121,6 +124,21 @@ export function NixDraftReview(props: {
     [showToast, pdfPreview],
   );
 
+  // Used by drawing-row code chips: given a sourceExtractionId from the
+  // SpecLookup map, find the spec extraction and jump straight to its
+  // resolved-clause page in the PDF preview.
+  const handleJumpToSpec = useCallback(
+    (sourceExtractionId: number, page: number | null) => {
+      const target = specExtractions.find((s) => s.id === sourceExtractionId);
+      if (!target) {
+        showToast("Spec source no longer in this draft.", "info");
+        return;
+      }
+      handleJumpToPage(target, page ?? 1);
+    },
+    [specExtractions, showToast, handleJumpToPage],
+  );
+
   const isMutable = session.status !== "promoted" && session.status !== "archived";
 
   return (
@@ -130,8 +148,10 @@ export function NixDraftReview(props: {
         subtitle="Line items extracted from workshop sheets / drawings"
         tone="blue"
         extractions={drawingExtractions}
+        specLookup={specLookup}
         onViewOriginal={handleViewOriginal}
         onJumpToPage={handleJumpToPage}
+        onJumpToSpec={handleJumpToSpec}
         onRetry={handleRetry}
         onItemSaved={handleItemSaved}
         retryingId={retryingId}
@@ -143,8 +163,10 @@ export function NixDraftReview(props: {
         subtitle="Clause-level facts; cross-linked codes from the drawings highlighted below"
         tone="purple"
         extractions={specExtractions}
+        specLookup={specLookup}
         onViewOriginal={handleViewOriginal}
         onJumpToPage={handleJumpToPage}
+        onJumpToSpec={handleJumpToSpec}
         onRetry={handleRetry}
         onItemSaved={handleItemSaved}
         retryingId={retryingId}
@@ -158,8 +180,10 @@ export function NixDraftReview(props: {
           subtitle="Documents Nix couldn't classify as drawings or specs"
           tone="gray"
           extractions={otherExtractions}
+          specLookup={specLookup}
           onViewOriginal={handleViewOriginal}
           onJumpToPage={handleJumpToPage}
+          onJumpToSpec={handleJumpToSpec}
           onRetry={handleRetry}
           onItemSaved={handleItemSaved}
           retryingId={retryingId}

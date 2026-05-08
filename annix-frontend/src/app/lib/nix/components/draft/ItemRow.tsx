@@ -1,20 +1,27 @@
 "use client";
 
 import { isNumber, isString } from "es-toolkit/compat";
-import { CodesEditor } from "./CodesEditor";
+import { CodesCell } from "./CodesCell";
 import { EditableCell } from "./EditableCell";
+import type { SpecLookup } from "./useSpecLookup";
 
 /**
  * Renders a single drawing-extracted item as a table row with
- * click-to-edit cells for description / quantity / codes.
+ * click-to-edit cells for description / quantity / codes. The codes
+ * column resolves each code (R1, SC1, "Linatex Linard 60") against
+ * the session's spec extractions via the SpecLookup, surfacing the
+ * spec summary inline and making each code clickable to jump to the
+ * defining spec page.
  */
 export function ItemRow(props: {
   item: Record<string, unknown>;
   index: number;
   extractionId: number;
+  specLookup: SpecLookup;
   onSaved: () => void;
+  onJumpToSpec: (extractionId: number, page: number | null) => void;
 }) {
-  const { item, index, extractionId, onSaved } = props;
+  const { item, index, extractionId, specLookup, onSaved, onJumpToSpec } = props;
   const itemNumber = item.itemNumber;
   const itemMark = item.mark;
   let mark: string = "—";
@@ -60,8 +67,6 @@ export function ItemRow(props: {
   const lining = isString(item.liningType) ? (item.liningType as string) : "";
   const materialClass = isString(item.materialClass) ? (item.materialClass as string) : "";
   const flangeConfig = isString(item.flangeConfig) ? (item.flangeConfig as string) : "";
-  const codeParts = [coating, lining, materialClass, flangeConfig].filter((p) => p.length > 0);
-  const codesDisplay = codeParts.length > 0 ? codeParts.join(" / ") : "—";
 
   return (
     <tr className="border-b border-gray-100">
@@ -87,15 +92,16 @@ export function ItemRow(props: {
       </td>
       <td className="py-1 pr-3 text-gray-700">{dimensions || "—"}</td>
       <td className="py-1 pr-3 text-gray-700">
-        <CodesEditor
+        <CodesCell
           extractionId={extractionId}
           rowKey={rowKey}
           coating={coating}
           lining={lining}
           materialClass={materialClass}
           flangeConfig={flangeConfig}
-          display={codesDisplay}
+          specLookup={specLookup}
           onSaved={onSaved}
+          onJumpToSpec={onJumpToSpec}
         />
       </td>
     </tr>

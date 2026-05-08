@@ -2,6 +2,7 @@
 
 import type { NixExtractionSummary } from "@/app/lib/query/hooks";
 import { ExtractionCard } from "./ExtractionCard";
+import type { SpecLookup } from "./useSpecLookup";
 
 /**
  * A coloured section grouping extractions by role (drawings, specs,
@@ -14,8 +15,10 @@ export function ExtractionGroup(props: {
   subtitle: string;
   tone: "blue" | "purple" | "gray";
   extractions: NixExtractionSummary[];
+  specLookup: SpecLookup;
   onViewOriginal: (extraction: NixExtractionSummary) => void;
   onJumpToPage: (extraction: NixExtractionSummary, page: number) => void;
+  onJumpToSpec: (extractionId: number, page: number | null) => void;
   onRetry: (extraction: NixExtractionSummary) => void;
   onItemSaved: () => void;
   retryingId: number | null;
@@ -27,8 +30,10 @@ export function ExtractionGroup(props: {
     subtitle,
     tone,
     extractions,
+    specLookup,
     onViewOriginal,
     onJumpToPage,
+    onJumpToSpec,
     onRetry,
     onItemSaved,
     retryingId,
@@ -58,8 +63,10 @@ export function ExtractionGroup(props: {
             <ExtractionCard
               key={extraction.id}
               extraction={extraction}
+              specLookup={specLookup}
               onViewOriginal={onViewOriginal}
               onJumpToPage={onJumpToPage}
+              onJumpToSpec={onJumpToSpec}
               onRetry={onRetry}
               onItemSaved={onItemSaved}
               retryingId={retryingId}

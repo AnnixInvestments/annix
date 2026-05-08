@@ -19,10 +19,25 @@ export function CodesEditor(props: {
   flangeConfig: string;
   display: string;
   onSaved: () => void;
+  /** Optional cancel callback for callers that own the open state. */
+  onCancel?: () => void;
 }) {
-  const { extractionId, rowKey, coating, lining, materialClass, flangeConfig, display, onSaved } =
-    props;
-  const [open, setOpen] = useState(false);
+  const {
+    extractionId,
+    rowKey,
+    coating,
+    lining,
+    materialClass,
+    flangeConfig,
+    display,
+    onSaved,
+    onCancel,
+  } = props;
+  // When the caller passes onCancel they own the open state, so render the
+  // editor immediately. When they don't, we behave like a self-contained
+  // toggle (legacy callers).
+  const isControlled = Boolean(onCancel);
+  const [open, setOpen] = useState(isControlled);
   const [c, setC] = useState(coating);
   const [l, setL] = useState(lining);
   const [m, setM] = useState(materialClass);
@@ -34,7 +49,8 @@ export function CodesEditor(props: {
     setL(lining);
     setM(materialClass);
     setF(flangeConfig);
-    setOpen(false);
+    if (onCancel) onCancel();
+    else setOpen(false);
   };
 
   const save = async () => {
@@ -63,13 +79,13 @@ export function CodesEditor(props: {
         }
       }
       onSaved();
-      setOpen(false);
+      if (!isControlled) setOpen(false);
     } finally {
       setSaving(false);
     }
   };
 
-  if (!open) {
+  if (!open && !isControlled) {
     return (
       <button
         type="button"

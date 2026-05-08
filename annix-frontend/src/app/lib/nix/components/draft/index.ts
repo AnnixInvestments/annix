@@ -10,6 +10,8 @@
 // compose its own layout (e.g. inline a single SpecificationCard
 // outside the drawing/spec grouping).
 
+export { CodeChip } from "./CodeChip";
+export { CodesCell } from "./CodesCell";
 export { CodesEditor } from "./CodesEditor";
 export { DetailsBlock } from "./DetailsBlock";
 export { EditableCell } from "./EditableCell";
@@ -27,3 +29,4 @@ export { ItemRow } from "./ItemRow";
 export { NixDraftReview } from "./NixDraftReview";
 export { SpecificationCard } from "./SpecificationCard";
 export { StatCard } from "./StatCard";
+export { type ResolvedCode, type SpecLookup, useSpecLookup } from "./useSpecLookup";
