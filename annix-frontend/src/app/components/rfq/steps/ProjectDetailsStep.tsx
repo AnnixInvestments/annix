@@ -266,6 +266,7 @@ export default function ProjectDetailsStep() {
       email: boolean;
       phone: boolean;
       description: boolean;
+      projectName: boolean;
       projectType: string | null;
     } => {
       const applied = {
@@ -273,6 +274,7 @@ export default function ProjectDetailsStep() {
         email: false,
         phone: false,
         description: false,
+        projectName: false,
         projectType: null as string | null,
       };
 
@@ -333,6 +335,17 @@ export default function ProjectDetailsStep() {
         applied.description = true;
       }
 
+      // Project Name — overwrite when empty OR still showing the auto-gen
+      // RFQ-YYYY-NNN placeholder set by the auto-generate useEffect.
+      const currentProjectName = rfqData.projectName;
+      const isAutoGenProjectName = currentProjectName
+        ? /^RFQ-\d{4}-\d+$/.test(currentProjectName)
+        : true;
+      if (cleanedSubject && (!currentProjectName || isAutoGenProjectName)) {
+        onUpdate("projectName", cleanedSubject);
+        applied.projectName = true;
+      }
+
       const currentProjectType = rfqData.projectType;
       if (!currentProjectType) {
         const detectedType = detectProjectTypeFromEmail(metadata.subject, metadata.bodyText);
@@ -370,6 +383,7 @@ export default function ProjectDetailsStep() {
       rfqData.customerEmail,
       rfqData.customerPhone,
       rfqData.description,
+      rfqData.projectName,
       rfqData.projectType,
       customerAutoFilled.customerName,
       customerAutoFilled.customerEmail,
@@ -512,6 +526,7 @@ export default function ProjectDetailsStep() {
           if (customerApplied.email) customerLines.push("Customer Email");
           if (customerApplied.phone) customerLines.push("Customer Phone");
           if (customerApplied.description) customerLines.push("RFQ Description");
+          if (customerApplied.projectName) customerLines.push("Project Name");
           if (customerApplied.projectType) {
             const typeLabel = PROJECT_TYPES.find((t) => t.value === customerApplied.projectType);
             const labelText = typeLabel ? typeLabel.label : customerApplied.projectType;
@@ -999,16 +1014,27 @@ export default function ProjectDetailsStep() {
     loadMines();
   }, []);
 
-  // Auto-generate RFQ number if field is empty (but not when loading a draft)
+  // Auto-generate RFQ reference number + project-name fallback when fields
+  // are empty (but not when loading a draft; the draft restore provides
+  // both). The customer-facing RFQ Reference is the system reference; the
+  // Project Name is overwritten by the email subject in
+  // applyEmailMetadataToCustomerFields if a .eml is dropped — until then
+  // it shares the system reference as a placeholder so the field is never
+  // visibly blank.
   useEffect(() => {
-    // Skip auto-generation if we're loading a draft - the draft will provide the projectName
+    // Skip auto-generation if we're loading a draft - the draft will provide the data
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get("draft") || urlParams.get("draftId") || urlParams.get("recover")) return;
 
-    if (!rfqData.projectName || rfqData.projectName.trim() === "") {
-      const autoGenNumber = generateSystemReferenceNumber();
-      onUpdate("projectName", autoGenNumber);
-    }
+    const rawProjectName = rfqData.projectName;
+    const rawRfqRef = rfqData.customerRfqReference;
+    const projectNameEmpty = !rawProjectName || rawProjectName.trim() === "";
+    const rfqRefEmpty = !rawRfqRef || rawRfqRef.trim() === "";
+    if (!projectNameEmpty && !rfqRefEmpty) return;
+
+    const autoGenNumber = generateSystemReferenceNumber();
+    if (rfqRefEmpty) onUpdate("customerRfqReference", autoGenNumber);
+    if (projectNameEmpty) onUpdate("projectName", autoGenNumber);
   }, []);
 
   const addNote = (note: string) => {
