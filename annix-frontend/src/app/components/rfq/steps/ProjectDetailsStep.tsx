@@ -87,6 +87,29 @@ const rawNEXT_PUBLIC_GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_A
 
 const GOOGLE_MAPS_API_KEY = rawNEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 
+// Maps RfqPipingProfileHandler supplier-bundle keys to PRODUCTS_AND_SERVICES
+// checkbox values. Coming-soon products are still mapped — the customer can
+// deselect, but we want to flag that those items DID show up in the BOQ so
+// the right team gets routed.
+const BUNDLE_KEY_TO_PRODUCT: Record<string, string> = {
+  "hdpe-pipe-fittings": "hdpe",
+  "hdpe-puddle-pipes": "hdpe",
+  "hdpe-boots": "hdpe",
+  "rubber-lined-steel": "fabricated_steel",
+  "mild-steel": "fabricated_steel",
+  "valves-pinch": "valves_meters_instruments",
+  "valves-gate": "valves_meters_instruments",
+  "valves-other": "valves_meters_instruments",
+  "valve-accessories": "valves_meters_instruments",
+  "consumables-gaskets": "fasteners_gaskets",
+  "consumables-bolts": "fasteners_gaskets",
+  "consumables-other": "fasteners_gaskets",
+  "consumables-coating": "surface_protection",
+  "pipe-wrapping": "surface_protection",
+  "upvc-specials": "pvc",
+  "fabricated-skids": "pipe_steel_work",
+};
+
 export type { PendingDocument } from "@/app/lib/store/rfqWizardStore";
 
 export default function ProjectDetailsStep() {
@@ -114,6 +137,18 @@ export default function ProjectDetailsStep() {
   const { showToast } = useToast();
   const { showExtraction, hideExtraction } = useExtractionProgress();
   const { confirm, ConfirmDialog } = useConfirm();
+  // Hoisted up here (was further down) so onAddDocument's email-metadata
+  // auto-fill branch can compare current customer-field values against the
+  // logged-in user's profile defaults.
+  const {
+    isAuthenticated: isCustomerAuthenticated,
+    isLoading: isCustomerAuthLoading,
+    customer,
+    profile,
+  } = useOptionalCustomerAuth();
+  const { isAuthenticated: isAdminAuthenticated, isLoading: isAdminAuthLoading } =
+    useOptionalAdminAuth();
+
   const [boqExtractionSummary, setBoqExtractionSummary] = useState<{
     fileName: string;
     itemCount: number;
@@ -198,28 +233,71 @@ export default function ProjectDetailsStep() {
   );
 
   const applyEmailMetadataToCustomerFields = useCallback(
-    (metadata: EmailMetadata): { name: boolean; email: boolean; phone: boolean } => {
-      const applied = { name: false, email: false, phone: false };
-      const canOverwrite = (current: string | undefined, autoFlag: boolean) => !current || autoFlag;
+    (
+      metadata: EmailMetadata,
+    ): {
+      name: boolean;
+      email: boolean;
+      phone: boolean;
+      description: boolean;
+    } => {
+      const applied = { name: false, email: false, phone: false, description: false };
+
+      // Profile defaults — overwriting these is safe because they're auto-fill
+      // from the logged-in user, not anything the customer manually typed.
+      const profileFirst = profile ? profile.firstName : null;
+      const profileLast = profile ? profile.lastName : null;
+      const profileFullName = [profileFirst, profileLast].filter(Boolean).join(" ");
+      const profileEmailRaw = profile ? profile.email : null;
+      const profileEmail = profileEmailRaw || "";
+      const profileMobile = profile ? profile.mobilePhone : null;
+      const profileDirect = profile ? profile.directPhone : null;
+      const profileCompany = profile ? profile.company : null;
+      const profileCompanyPhone = profileCompany ? profileCompany.primaryPhone : null;
+      const profilePhone = profileMobile || profileDirect || profileCompanyPhone || "";
+
+      const canOverwrite = (
+        current: string | undefined,
+        autoFlag: boolean,
+        profileDefault: string,
+      ): boolean => {
+        if (!current) return true;
+        if (autoFlag) return true;
+        if (profileDefault && current === profileDefault) return true;
+        return false;
+      };
 
       const fromName = metadata.fromName;
-      if (fromName && canOverwrite(rfqData.customerName, customerAutoFilled.customerName)) {
+      if (
+        fromName &&
+        canOverwrite(rfqData.customerName, customerAutoFilled.customerName, profileFullName)
+      ) {
         onUpdate("customerName", fromName);
         applied.name = true;
       }
       const fromEmail = metadata.fromEmail;
-      if (fromEmail && canOverwrite(rfqData.customerEmail, customerAutoFilled.customerEmail)) {
+      if (
+        fromEmail &&
+        canOverwrite(rfqData.customerEmail, customerAutoFilled.customerEmail, profileEmail)
+      ) {
         onUpdate("customerEmail", fromEmail);
         applied.email = true;
       }
       const fromPhone = metadata.fromPhone;
-      if (fromPhone && canOverwrite(rfqData.customerPhone, customerAutoFilled.customerPhone)) {
+      if (
+        fromPhone &&
+        canOverwrite(rfqData.customerPhone, customerAutoFilled.customerPhone, profilePhone)
+      ) {
         onUpdate("customerPhone", fromPhone);
         applied.phone = true;
       }
+
       const subject = metadata.subject;
-      if (subject && !rfqData.rfqDescription) {
-        onUpdate("rfqDescription", subject);
+      const cleanedSubject = subject ? subject.replace(/\.[a-z0-9]{1,5}$/i, "").trim() : "";
+      const currentDescription = rfqData.description;
+      if (cleanedSubject && !currentDescription) {
+        onUpdate("description", cleanedSubject);
+        applied.description = true;
       }
 
       const appliedName = applied.name;
@@ -246,11 +324,41 @@ export default function ProjectDetailsStep() {
       rfqData.customerName,
       rfqData.customerEmail,
       rfqData.customerPhone,
-      rfqData.rfqDescription,
+      rfqData.description,
       customerAutoFilled.customerName,
       customerAutoFilled.customerEmail,
       customerAutoFilled.customerPhone,
+      profile,
     ],
+  );
+
+  const applyProductSelectionsFromProfiles = useCallback(
+    (profiles: NixRfqPipingProfileMetadata[]): string[] => {
+      const detected = new Set<string>();
+      for (const profile of profiles) {
+        for (const bundle of profile.supplierBundles) {
+          const productValue = BUNDLE_KEY_TO_PRODUCT[bundle.key];
+          if (productValue) detected.add(productValue);
+        }
+      }
+      if (detected.size === 0) return [];
+
+      const rawRequiredProducts = rfqData.requiredProducts;
+      const existing = rawRequiredProducts || [];
+      const merged = new Set<string>(existing);
+      const newlyAdded: string[] = [];
+      detected.forEach((value) => {
+        if (!merged.has(value)) {
+          merged.add(value);
+          newlyAdded.push(value);
+        }
+      });
+      if (newlyAdded.length > 0) {
+        onUpdate("requiredProducts", Array.from(merged));
+      }
+      return newlyAdded;
+    },
+    [onUpdate, rfqData.requiredProducts],
   );
 
   const onAddDocument = useCallback(
@@ -300,6 +408,8 @@ export default function ProjectDetailsStep() {
         if (profile) profiles.push(profile);
       }
 
+      const newlySelectedProducts = applyProductSelectionsFromProfiles(profiles);
+
       const totalItems = profiles.reduce((sum, p) => {
         const supplyCount = p.supplyItemCount;
         return sum + (supplyCount ?? 0);
@@ -345,9 +455,19 @@ export default function ProjectDetailsStep() {
       if (customerApplied.name) customerLines.push("Customer Name");
       if (customerApplied.email) customerLines.push("Customer Email");
       if (customerApplied.phone) customerLines.push("Customer Phone");
+      if (customerApplied.description) customerLines.push("RFQ Description");
       if (customerLines.length > 0) {
         lines.push("");
-        lines.push(`Customer details auto-filled from sender: ${customerLines.join(", ")}.`);
+        lines.push(`Form fields auto-filled from sender: ${customerLines.join(", ")}.`);
+      }
+
+      if (newlySelectedProducts.length > 0) {
+        const productLabels = newlySelectedProducts.map((value) => {
+          const product = PRODUCTS_AND_SERVICES.find((p) => p.value === value);
+          return product ? product.label : value;
+        });
+        lines.push("");
+        lines.push(`Required products auto-selected from BOQ: ${productLabels.join(", ")}.`);
       }
 
       await confirm({
@@ -363,6 +483,7 @@ export default function ProjectDetailsStep() {
       storeAddTenderDocument,
       confirm,
       applyEmailMetadataToCustomerFields,
+      applyProductSelectionsFromProfiles,
       runNixBoqExtraction,
     ],
   );
@@ -820,15 +941,7 @@ export default function ProjectDetailsStep() {
     setIsEditingEnvironmental(true);
   };
 
-  // Customer auth for auto-filling customer fields (optional - may be used in admin context)
-  const {
-    isAuthenticated: isCustomerAuthenticated,
-    isLoading: isCustomerAuthLoading,
-    customer,
-    profile,
-  } = useOptionalCustomerAuth();
-  const { isAuthenticated: isAdminAuthenticated, isLoading: isAdminAuthLoading } =
-    useOptionalAdminAuth();
+  // (auth hooks hoisted to top — see early useOptionalCustomerAuth call)
 
   // Unregistered customer restrictions - when not authenticated as customer or admin, limit available options
   // Don't apply restrictions while auth is still loading to prevent flash of restricted state
