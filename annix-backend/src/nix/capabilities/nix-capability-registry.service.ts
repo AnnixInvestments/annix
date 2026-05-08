@@ -83,4 +83,68 @@ export class NixCapabilityRegistry {
     }
     return Array.from(apps).sort();
   }
+
+  /**
+   * Detect a walkthrough trigger phrase and return the capability the user
+   * wants walking through, if any. Recognises:
+   *   "walk me through X" / "walkthrough X" / "step by step X"
+   *   "guide me through X" / "guide me X"
+   *   "help me with X" / "show me how to X"
+   *
+   * Strips the trigger prefix, then matches the remainder against capability
+   * intents AND label substrings, but only across capabilities that have a
+   * walkthrough sub-role (i.e. either inline steps or a guideSlug).
+   *
+   * Returns null if no trigger phrase is present or no matching capability
+   * has a walkthrough available.
+   */
+  matchWalkthroughIntent(
+    message: string,
+  ): { capability: INixCapability; remainder: string } | null {
+    const lowered = message.toLowerCase().trim();
+    if (!lowered) return null;
+
+    const triggers = [
+      "walk me through",
+      "walkthrough",
+      "step by step",
+      "step-by-step",
+      "guide me through",
+      "guide me",
+      "show me how to",
+      "show me how",
+      "help me with",
+      "hold my hand",
+    ];
+    const matchedTrigger = triggers.find((t) => lowered.includes(t));
+    if (!matchedTrigger) return null;
+
+    const remainder = lowered
+      .slice(lowered.indexOf(matchedTrigger) + matchedTrigger.length)
+      .trim()
+      .replace(/^[:,—-]\s*/, "");
+    if (!remainder) return null;
+
+    const walkthroughCapable = this.all().filter(
+      (c) => c.walkthrough !== undefined || c.guideSlug !== undefined,
+    );
+
+    const matchingByIntent = walkthroughCapable.find((c) => {
+      const intents = c.intents;
+      if (!intents) return false;
+      return intents.some((intent) => remainder.includes(intent.toLowerCase()));
+    });
+    if (matchingByIntent) {
+      return { capability: matchingByIntent, remainder };
+    }
+
+    const matchingByLabel = walkthroughCapable.find((c) =>
+      remainder.includes(c.label.toLowerCase()),
+    );
+    if (matchingByLabel) {
+      return { capability: matchingByLabel, remainder };
+    }
+
+    return null;
+  }
 }

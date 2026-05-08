@@ -24,6 +24,7 @@ import { AiExtractionService } from "./ai-providers/ai-extraction.service";
 import { NixCapabilityRegistry, NixGuideLoader, WalkthroughEngine } from "./capabilities";
 import { NixCapabilitiesController } from "./controllers/nix-capabilities.controller";
 import { NixChatController } from "./controllers/nix-chat.controller";
+import { NixWalkthroughController } from "./controllers/nix-walkthrough.controller";
 import { CustomFieldValue } from "./entities/custom-field-value.entity";
 import { NixChatMessage } from "./entities/nix-chat-message.entity";
 import { NixChatSession } from "./entities/nix-chat-session.entity";
@@ -91,7 +92,12 @@ import { WordExtractorService } from "./services/word-extractor.service";
     AuditModule,
     forwardRef(() => RfqModule),
   ],
-  controllers: [NixController, NixChatController, NixCapabilitiesController],
+  controllers: [
+    NixController,
+    NixChatController,
+    NixCapabilitiesController,
+    NixWalkthroughController,
+  ],
   providers: [
     DocumentAnnotationService,
     CustomFieldService,

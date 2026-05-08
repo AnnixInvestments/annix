@@ -133,4 +133,56 @@ describe("NixCapabilityRegistry", () => {
     registry.register(fakeStockControl);
     expect(registry.all()).toHaveLength(2);
   });
+
+  describe("matchWalkthroughIntent", () => {
+    it("detects 'walk me through X' and matches a capability with walkthrough/guide", () => {
+      registry.register(fakeStockControl);
+      const match = registry.matchWalkthroughIntent("walk me through create job card");
+      expect(match).not.toBeNull();
+      expect(match?.capability.key).toBe(fakeStockControl.key);
+      expect(match?.remainder).toBe("create job card");
+    });
+
+    it("recognises multiple trigger phrasings", () => {
+      registry.register(fakeStockControl);
+
+      expect(registry.matchWalkthroughIntent("step by step create job card")).not.toBeNull();
+      expect(registry.matchWalkthroughIntent("guide me through create job card")).not.toBeNull();
+      expect(registry.matchWalkthroughIntent("show me how to make a job card")).not.toBeNull();
+      expect(registry.matchWalkthroughIntent("hold my hand new jc")).not.toBeNull();
+    });
+
+    it("excludes capabilities with no walkthrough/guideSlug", () => {
+      registry.register(fakeRfq);
+      const match = registry.matchWalkthroughIntent("walk me through extract boq");
+      expect(match).toBeNull();
+    });
+
+    it("falls back to label substring match when intents do not match", () => {
+      registry.register(fakeCvAssistant);
+      const match = registry.matchWalkthroughIntent("walk me through post a job");
+      expect(match?.capability.key).toBe(fakeCvAssistant.key);
+    });
+
+    it("returns null when no trigger phrase is present", () => {
+      registry.register(fakeStockControl);
+      expect(registry.matchWalkthroughIntent("how do I create a job card")).toBeNull();
+    });
+
+    it("returns null when no remainder follows the trigger", () => {
+      registry.register(fakeStockControl);
+      expect(registry.matchWalkthroughIntent("walk me through")).toBeNull();
+    });
+
+    it("returns null when remainder matches no capability", () => {
+      registry.register(fakeStockControl);
+      expect(registry.matchWalkthroughIntent("walk me through baking a cake")).toBeNull();
+    });
+
+    it("is case-insensitive", () => {
+      registry.register(fakeStockControl);
+      const match = registry.matchWalkthroughIntent("WALK ME THROUGH CREATE JOB CARD");
+      expect(match).not.toBeNull();
+    });
+  });
 });
