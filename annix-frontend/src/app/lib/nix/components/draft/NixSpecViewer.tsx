@@ -149,13 +149,72 @@ export function NixSpecViewerModal(props: { state: NixSpecViewerState; onClose: 
             )}
           </div>
           <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => downloadProxiedPdf(opts.extractionId, opts.filename)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-white/10 hover:bg-white/20 rounded transition-colors"
+              title="Download PDF"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                />
+              </svg>
+              Download
+            </button>
+            <button
+              type="button"
+              onClick={() => printProxiedPdf(opts.extractionId)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-white/10 hover:bg-white/20 rounded transition-colors"
+              title="Print PDF"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
+                />
+              </svg>
+              Print
+            </button>
             <a
               href={`/api/nix/extraction/${opts.extractionId}/document`}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-white/10 hover:bg-white/20 rounded transition-colors"
+              title="Open in new tab"
             >
-              Open in new tab
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                />
+              </svg>
+              New tab
             </a>
             <button
               type="button"
@@ -203,6 +262,7 @@ export function NixSpecViewerModal(props: { state: NixSpecViewerState; onClose: 
                     renderTextLayer
                     renderAnnotationLayer={false}
                     onRenderSuccess={handlePageRender}
+                    onRenderTextLayerSuccess={handlePageRender}
                   />
                 </div>
               ))}
@@ -286,6 +346,76 @@ function normaliseForMatch(s: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
+}
+
+/**
+ * Triggers a download of the proxied PDF. Hits /api/nix/extraction/:id/
+ * document with the user's auth header (the route returns the bytes as a
+ * Blob), then converts to an object URL and clicks an anchor with download
+ * attribute so the file lands in the user's Downloads folder with the
+ * original filename.
+ */
+async function downloadProxiedPdf(extractionId: number, filename: string): Promise<void> {
+  try {
+    const response = await fetch(`/api/nix/extraction/${extractionId}/document`, {
+      method: "GET",
+      headers: anyPortalAuthHeaders(),
+    });
+    if (!response.ok) return;
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = objectUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    globalThis.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+  } catch {
+    // Network error — modal stays open so the user can retry or use New tab.
+  }
+}
+
+/**
+ * Triggers the browser print dialog for the proxied PDF. Renders the PDF
+ * into a hidden iframe so window.print() targets the document directly,
+ * giving the user a clean print preview without leaving the modal.
+ */
+async function printProxiedPdf(extractionId: number): Promise<void> {
+  try {
+    const response = await fetch(`/api/nix/extraction/${extractionId}/document`, {
+      method: "GET",
+      headers: anyPortalAuthHeaders(),
+    });
+    if (!response.ok) return;
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const iframe = document.createElement("iframe");
+    iframe.style.position = "fixed";
+    iframe.style.right = "0";
+    iframe.style.bottom = "0";
+    iframe.style.width = "0";
+    iframe.style.height = "0";
+    iframe.style.border = "0";
+    iframe.src = objectUrl;
+    iframe.onload = () => {
+      const contentWindow = iframe.contentWindow;
+      if (contentWindow) contentWindow.print();
+      // Leave the iframe mounted while the print dialog is open; tear it
+      // down on a long timeout so the dialog doesn't lose its source.
+      globalThis.setTimeout(() => {
+        try {
+          document.body.removeChild(iframe);
+          URL.revokeObjectURL(objectUrl);
+        } catch {
+          // already cleaned up
+        }
+      }, 60_000);
+    };
+    document.body.appendChild(iframe);
+  } catch {
+    // Network error — the user can fall back to Open in new tab + browser print.
+  }
 }
 
 function flashHighlight(el: HTMLElement) {
