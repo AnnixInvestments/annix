@@ -6,3 +6,4 @@ export type {
   WalkthroughStep,
   WalkthroughStepKind,
 } from "./walkthrough-definition.interface";
+export { WalkthroughEngine, type WalkthroughStepView } from "./walkthrough-engine.service";

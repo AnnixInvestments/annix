@@ -21,7 +21,7 @@ import { SupplierProfile } from "../supplier/entities/supplier-profile.entity";
 import { SupplierModule } from "../supplier/supplier.module";
 import { AiChatService } from "./ai-providers/ai-chat.service";
 import { AiExtractionService } from "./ai-providers/ai-extraction.service";
-import { NixCapabilityRegistry, NixGuideLoader } from "./capabilities";
+import { NixCapabilityRegistry, NixGuideLoader, WalkthroughEngine } from "./capabilities";
 import { NixCapabilitiesController } from "./controllers/nix-capabilities.controller";
 import { NixChatController } from "./controllers/nix-chat.controller";
 import { CustomFieldValue } from "./entities/custom-field-value.entity";
@@ -98,6 +98,7 @@ import { WordExtractorService } from "./services/word-extractor.service";
     NixExtractionProfileRegistry,
     NixCapabilityRegistry,
     NixGuideLoader,
+    WalkthroughEngine,
     RfqPipingProfileHandler,
     NixService,
     NixExtractionSessionService,
@@ -131,6 +132,7 @@ import { WordExtractorService } from "./services/word-extractor.service";
     NixExtractionProfileRegistry,
     NixCapabilityRegistry,
     NixGuideLoader,
+    WalkthroughEngine,
   ],
 })
 export class NixModule {}

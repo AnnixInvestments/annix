@@ -22,6 +22,7 @@ describe("NixChatService", () => {
     conversationHistory: [],
     userPreferences: { learningEnabled: true },
     sessionContext: {},
+    walkthroughState: null,
     lastInteractionAt: new Date(),
     createdAt: new Date(),
     updatedAt: new Date(),

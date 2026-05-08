@@ -21,6 +21,7 @@ describe("NixChatController", () => {
     isActive: true,
     userPreferences: { learningEnabled: true },
     sessionContext: {},
+    walkthroughState: null,
     lastInteractionAt: new Date("2024-01-15T10:00:00Z"),
     createdAt: new Date("2024-01-15T09:00:00Z"),
     updatedAt: new Date("2024-01-15T10:00:00Z"),

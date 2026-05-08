@@ -6,6 +6,24 @@ import {
   UpdateDateColumn,
 } from "typeorm";
 
+export type WalkthroughEndReason = "completed" | "abandoned" | "stopped";
+
+export interface WalkthroughState {
+  capabilityKey: string;
+  guideSlug: string | null;
+  startedAt: string;
+  currentStep: number;
+  totalSteps: number;
+  stepHistory: Array<{
+    step: number;
+    title: string;
+    completedAt: string;
+    action: "advanced" | "back" | "skipped" | "stuck";
+  }>;
+  endedAt?: string;
+  endReason?: WalkthroughEndReason;
+}
+
 @Entity("nix_chat_sessions")
 export class NixChatSession {
   @PrimaryGeneratedColumn()
@@ -59,6 +77,9 @@ export class NixChatSession {
       skippedFields: string[];
     };
   };
+
+  @Column({ type: "jsonb", name: "walkthrough_state", nullable: true })
+  walkthroughState: WalkthroughState | null;
 
   @Column({ name: "is_active", default: true })
   isActive: boolean;
