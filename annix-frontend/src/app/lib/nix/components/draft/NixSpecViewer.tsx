@@ -80,34 +80,44 @@ export function NixSpecViewerModal(props: { state: NixSpecViewerState; onClose: 
     setError(null);
   }, []);
 
-  // Fires after each page renders. We use it to scroll to the target page
-  // once IT has rendered — text-layer queries before render return nothing.
-  const handlePageRender = useCallback(
-    (pageNumber: number) => {
-      if (!opts || !containerRef.current) return;
-      const optsPage = opts.page;
-      const targetPage = optsPage ?? 1;
-      if (pageNumber !== targetPage) return;
+  // Fires after each page renders. Re-runs the scroll on every render —
+  // continuous-scroll mode renders pages 1..N in parallel, and each
+  // subsequent page increases the document height, shifting the matched
+  // span. scrollIntoView is idempotent so re-running until the doc fully
+  // loads converges on the right resting position. We highlight only once
+  // (first hit) so the flash doesn't keep retriggering.
+  const highlightedRef = useRef(false);
+  const handlePageRender = useCallback(() => {
+    if (!opts || !containerRef.current) return;
+    const optsPage = opts.page;
+    const targetPage = optsPage ?? 1;
 
-      const pageNode = containerRef.current.querySelector<HTMLElement>(
-        `[data-page-number="${targetPage}"]`,
-      );
-      if (!pageNode) return;
+    const pageNode = containerRef.current.querySelector<HTMLElement>(
+      `[data-page-number="${targetPage}"]`,
+    );
+    if (!pageNode) return;
 
-      const rawHint = opts.searchHint;
-      const hint = rawHint ? rawHint.trim() : "";
-      if (hint.length >= 3) {
-        const hit = findTextMatch(pageNode, hint);
-        if (hit) {
-          hit.scrollIntoView({ behavior: "smooth", block: "center" });
+    const rawHint = opts.searchHint;
+    const hint = rawHint ? rawHint.trim() : "";
+    if (hint.length >= 3) {
+      const hit = findTextMatch(pageNode, hint);
+      if (hit) {
+        hit.scrollIntoView({ behavior: "auto", block: "center" });
+        if (!highlightedRef.current) {
           flashHighlight(hit);
-          return;
+          highlightedRef.current = true;
         }
+        return;
       }
-      pageNode.scrollIntoView({ behavior: "smooth", block: "start" });
-    },
-    [opts],
-  );
+    }
+    pageNode.scrollIntoView({ behavior: "auto", block: "start" });
+  }, [opts]);
+
+  // Reset the once-only highlight flag whenever a new opts arrives so a
+  // second click (different clause) flashes again.
+  useEffect(() => {
+    highlightedRef.current = false;
+  }, [opts]);
 
   // file= prop for react-pdf — uses our same-origin proxy route so PDF.js
   // can fetch the bytes without S3 CORS preflight failing. Auth header is
@@ -192,7 +202,7 @@ export function NixSpecViewerModal(props: { state: NixSpecViewerState; onClose: 
                     width={pageWidth}
                     renderTextLayer
                     renderAnnotationLayer={false}
-                    onRenderSuccess={() => handlePageRender(i + 1)}
+                    onRenderSuccess={handlePageRender}
                   />
                 </div>
               ))}
@@ -207,31 +217,75 @@ export function NixSpecViewerModal(props: { state: NixSpecViewerState; onClose: 
 
 /**
  * Walks a page's text-layer for the first span whose text contains the hint.
- * Case-insensitive, whitespace-collapsed match, prefix-match-friendly so a
- * 6-word hint still finds the clause heading even if line wrapping splits it.
+ *
+ * Both sides are aggressively normalised before comparing:
+ *  - lowercased
+ *  - all non-alphanumerics replaced with single spaces
+ *  - whitespace collapsed
+ *
+ * This handles trademark / copyright glyphs (Linatex Linard® 60 → "linatex
+ * linard 60"), em-dashes, line breaks, hyphens between words, and any other
+ * separator the PDF text-layer happens to insert. PDFs from CAD tools often
+ * split "Linatex Linard® 60" into multiple <span>s — we also fall back to
+ * matching against the concatenation of the first ~120 chars of all spans.
  */
 function findTextMatch(pageNode: HTMLElement, hint: string): HTMLElement | null {
   const textLayer = pageNode.querySelector<HTMLElement>(".react-pdf__Page__textContent");
   if (!textLayer) return null;
-  const needle = hint.toLowerCase().replace(/\s+/g, " ").trim();
+  const needle = normaliseForMatch(hint);
   if (needle.length === 0) return null;
-  const spans = textLayer.querySelectorAll<HTMLElement>("span");
-  for (const span of Array.from(spans)) {
-    const rawText = span.textContent;
-    const text = (rawText ?? "").toLowerCase().replace(/\s+/g, " ").trim();
-    if (text.length === 0) continue;
-    if (text.includes(needle) || needle.includes(text)) return span;
-  }
-  // Looser prefix match on the first 4 words of the hint.
+  const spans = Array.from(textLayer.querySelectorAll<HTMLElement>("span"));
+
+  const normalisedSpans = spans.map((span) => {
+    const raw = span.textContent;
+    return { span, text: normaliseForMatch(raw ?? "") };
+  });
+
+  // Pass 1: per-span containment — works when the entire hint sits in one span.
+  const directHit = normalisedSpans.find(
+    ({ text }) => text.length > 0 && (text.includes(needle) || needle.includes(text)),
+  );
+  if (directHit) return directHit.span;
+
+  // Pass 2: looser prefix match on the first 4 words of the hint (handles
+  // line-wrapped clause headings where only the first words sit in one span).
   const prefix = needle.split(" ").slice(0, 4).join(" ");
   if (prefix.length >= 4 && prefix !== needle) {
-    for (const span of Array.from(spans)) {
-      const rawText = span.textContent;
-      const text = (rawText ?? "").toLowerCase().replace(/\s+/g, " ").trim();
-      if (text.length > 0 && text.includes(prefix)) return span;
-    }
+    const prefixHit = normalisedSpans.find(({ text }) => text.length > 0 && text.includes(prefix));
+    if (prefixHit) return prefixHit.span;
   }
-  return null;
+
+  // Pass 3: needle spans multiple <span> nodes. Walk a sliding window of
+  // adjacent spans, concatenate their normalised text, and match the needle
+  // against the joined string. Return the span where the needle starts.
+  return findInWindow(normalisedSpans, needle, prefix);
+}
+
+function findInWindow(
+  normalisedSpans: { span: HTMLElement; text: string }[],
+  needle: string,
+  prefix: string,
+): HTMLElement | null {
+  return normalisedSpans.reduce<HTMLElement | null>((found, _, i, arr) => {
+    if (found) return found;
+    const window = arr.slice(i, i + 6);
+    const joined = window
+      .map((entry) => entry.text)
+      .filter((t) => t.length > 0)
+      .join(" ");
+    if (joined.length === 0 || joined.length > 400) return null;
+    if (joined.includes(needle) || (prefix.length > 0 && joined.includes(prefix))) {
+      return arr[i].span;
+    }
+    return null;
+  }, null);
+}
+
+function normaliseForMatch(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
 }
 
 function flashHighlight(el: HTMLElement) {
