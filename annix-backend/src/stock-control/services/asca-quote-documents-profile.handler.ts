@@ -6,6 +6,7 @@ import type {
   IExtractionProfileHandler,
 } from "../../nix/profiles";
 import { NixExtractionProfileRegistry } from "../../nix/profiles";
+import { composeDrawingPrompt } from "../../nix/prompts/drawing-item-schema.prompt";
 
 @Injectable()
 export class AscaQuoteDocumentsProfileHandler implements IExtractionProfileHandler, OnModuleInit {
@@ -57,85 +58,20 @@ export class AscaQuoteDocumentsProfileHandler implements IExtractionProfileHandl
 }
 
 /**
- * Drawing-role prompt — focused on extracting line items + the spec codes
- * (R1, R2a, SC1, etc.) that the drawing references but doesn't define.
+ * Drawing-role prompt — composes ASCA-specific framing around the SHARED
+ * Nix drawing schema rules (per-app schema would drift; the canonical
+ * drawing-item-schema.prompt is the single source of truth used by every
+ * app's drawing extractor).
  */
-const ASCA_DRAWING_PROMPT = `You are Nix, extracting line items from an ASCA (AU Industries Stock Control) workshop / spool / fabrication drawing. The user will upload spec documents separately, so do NOT try to define the paint or lining systems here — just capture the codes the drawing references and the item-level data.
+const ASCA_DRAWING_PROMPT = composeDrawingPrompt({
+  intro:
+    "You are Nix, extracting line items from an ASCA (AU Industries Stock Control) workshop / spool / fabrication drawing. The user will upload spec documents separately, so do NOT try to define the paint or lining systems here — just capture the codes the drawing references and the item-level data.",
+  itemTypesGuidance:
+    "Items may be any fabricated industrial product: pipes/spools, bends, fittings, flanges, tanks, chutes, hoppers, conveyor pulleys, drums, screens, launders, underpans, plate work, structural assemblies. Identify what the drawing actually shows — do not force everything into a pipes-only shape.",
+  closing: `Also extract drawing-level metadata: project, customer, drawing number, sheet of, revision, date, drawn-by.
 
-Items may be any fabricated industrial product: pipes/spools, bends, fittings, flanges, tanks, chutes, hoppers, conveyor pulleys, drums, screens, launders, underpans, plate work, structural assemblies. Identify what the drawing actually shows — do not force everything into a pipes-only shape.
-
-CRITICAL — schema rules (must follow exactly):
-1. Each item MUST be a FLAT object — no nested 'dimensions' / 'paint' / 'lining' sub-objects. Every property is at the top level of the item.
-2. Use these EXACT field names (camelCase, no aliases, no variants):
-   - itemNumber (string, e.g. "-01", "HH01", "P1") — the mark / spool / item number
-   - description (string, REQUIRED, what the item is, e.g. "Pipe", "90° Bend", "Reducer", "Tank chute")
-   - itemType (one of: pipe | bend | reducer | tee | flange | expansion_joint | tank_chute | other)
-   - quantity (number)
-   - diameter (number, mm — nominal bore for pipe-shaped items)
-   - wallThickness (number, mm)
-   - length (number, mm)
-   - flangeConfig (string — verbatim drawing wording, e.g. "P.E.", "F.B.E. F/F", "F/PE")
-   - liningType (string or null — internal lining material, e.g. "Linatex Linard 60", or null if none)
-   - liningThicknessMm (number or null)
-   - coatingSystem (string or null — external paint system code, e.g. "R1", "R2a")
-   - materialClass (string or null — material class code, e.g. "SC1", "1000/3")
-   - banding (number — count of identification bands shown per item)
-   - deviations (array of strings — handwritten/red-pen/coloured-pen client deviations from the printed spec; surface SEPARATELY here, do NOT silently merge into the printed values)
-   - drawingReference (string)
-   - revision (string)
-3. EVERY item MUST have description, itemType, and itemNumber populated. Never omit description.
-4. Use null (not empty string, not omitted) when a value is genuinely unknown.
-5. Do NOT define what the codes mean (R1, R2a, SC1 etc.) — just capture them. The spec extraction step resolves the codes.
-
-CRITICAL — coating, lining and class assignment rules (the model has been getting these wrong, last attempt over-applied R1 to every Plain End pipe in the test pack — DO NOT repeat this):
-
-The drawing's title block / general-notes block often shows a default coating like "External Paint: R1". DO NOT propagate that default to per-item rows. The per-item BOM table is the authoritative source — read THAT, not the title block.
-
-Per-item rules:
-- For each row in the per-item BOM table, look at the SPECIFIC coating / lining / class CELL for that row.
-- If the cell contains an explicit code (R1, R2a, SC1, 1000/3, etc.) — use that code.
-- If the cell is BLANK, contains "—", "-", "N/A", "NA", "uncoated", "none", "no coating", or equivalent shorthand — set coatingSystem (or liningType / materialClass) to null. DO NOT fall back to a title-block default.
-- If the row's flange config is "P.E." (Plain End) and the coating cell is anything other than an explicit code — assume coatingSystem = null. P.E. items are uncoated by convention unless the per-item cell EXPLICITLY shows a coating code.
-- Do NOT carry a code from one mark to another. Each mark's cell is read independently.
-
-Blanket-rule exception:
-- If a separately-numbered drawing note says something like "All items receive R1 unless otherwise stated" AND a per-item cell is blank, you MAY use the blanket default — but only after confirming there is NO per-item cell that overrides it (an explicit "—" or "uncoated" in the per-item cell ALWAYS wins over the blanket default).
-- Mention which note you applied in the deviations field: "Applied note 4 'all items R1 unless stated' to mark -10".
-
-When uncertain, prefer null + deviations note. Example:
-{ "itemNumber": "-03", ..., "flangeConfig": "P.E.", "coatingSystem": null, "liningType": null, "materialClass": "SC1", "deviations": ["coating cell blank for mark -03 — assumed uncoated as P.E."] }
-
-Same rules apply for liningType, liningThicknessMm and materialClass — read the per-item cell, treat blank/dash/N/A as null, never propagate from another mark or a title-block default.
-
-Also extract drawing-level metadata: project, customer, drawing number, sheet of, revision, date, drawn-by.
-
-Respond ONLY with valid JSON of this exact shape:
-{
-  "items": [
-    {
-      "itemNumber": "-01",
-      "description": "Pipe",
-      "itemType": "pipe",
-      "quantity": 6,
-      "diameter": 1000,
-      "wallThickness": 16,
-      "length": 6000,
-      "flangeConfig": "F.B.E. F/F",
-      "liningType": null,
-      "liningThicknessMm": null,
-      "coatingSystem": "R2a",
-      "materialClass": "1000/3",
-      "banding": 0,
-      "deviations": [],
-      "drawingReference": "HH01",
-      "revision": "Sheet 1 Of 9"
-    }
-  ],
-  "specifications": { "referencedCodes": ["R1", "R2a", "1000/3"] },
-  "metadata": { "project": "...", "customer": "...", "drawingNumber": "...", "revision": "...", "date": "...", "drawnBy": "..." }
-}
-
-'referencedCodes' is the list of paint / material-class / lining codes the drawing cites without defining (so the spec extraction step can resolve them). Mark any uncertain value with confidence < 0.7.`;
+'referencedCodes' is the list of paint / material-class / lining codes the drawing cites without defining (so the spec extraction step can resolve them). Mark any uncertain value with confidence < 0.7.`,
+});
 
 /**
  * Specification-role prompt — focused on extracting clause-level facts and,

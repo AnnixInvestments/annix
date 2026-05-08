@@ -54,10 +54,14 @@ export function ItemRow(props: {
   const itemOverallLengthMm = item.overallLengthMm;
   const length = itemLength ? itemLength : itemLengthMm ? itemLengthMm : itemOverallLengthMm;
 
+  const itemSchedule = item.schedule;
+  const schedule = isString(itemSchedule) && itemSchedule.length > 0 ? itemSchedule : null;
+
   const dimensionParts: string[] = [];
   if (diameter !== undefined && diameter !== null) dimensionParts.push(`NB ${String(diameter)}`);
   if (wallThickness !== undefined && wallThickness !== null)
     dimensionParts.push(`WT ${String(wallThickness)}`);
+  if (schedule) dimensionParts.push(schedule);
   if (length !== undefined && length !== null) dimensionParts.push(`L ${String(length)}`);
   const dimensions = dimensionParts.join(" × ");
 
