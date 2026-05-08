@@ -109,9 +109,12 @@ export function NixDraftReview(props: {
         fallbackPerItemMs: 45_000,
         run: async (extraction) => {
           await nixApi.retryExtraction(extraction.id);
+          // Refetch the session after each successful retry so the file
+          // list updates from 'processing' → 'completed' in real time
+          // while the bulk continues with the next file.
+          await onSessionChanged();
         },
       });
-      await onSessionChanged();
       const succeeded = result.succeeded.length;
       const failed = result.failed.length;
       if (failed === 0) {
@@ -188,9 +191,54 @@ export function NixDraftReview(props: {
 
   const isMutable = session.status !== "promoted" && session.status !== "archived";
 
+  // Count how many of the retryable extractions are currently in-flight
+  // (status === processing). Lets the persistent banner show 'X of N still
+  // processing' so the user can tell at a glance whether the bulk has
+  // finished, even if the centred progress modal gets dismissed.
+  const stillProcessing = useMemo(() => {
+    const list = sessionExtractions || [];
+    return list.filter((extraction) => extraction.status === "processing").length;
+  }, [sessionExtractions]);
+
   return (
     <div className="space-y-4">
-      {isMutable && retryableExtractions.length > 1 && (
+      {/* Persistent banner — stays visible the entire time the bulk runs,
+          even if the centred progress modal somehow gets dismissed (HMR,
+          accidental navigation, etc.). The user can always see at the top
+          of the page that work is still ongoing. */}
+      {bulkRetrying && (
+        <div className="sticky top-0 z-20 flex items-center gap-3 px-4 py-3 bg-amber-100 border-2 border-amber-400 rounded-lg shadow-md">
+          <svg
+            className="w-5 h-5 text-amber-700 animate-spin flex-shrink-0"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <circle
+              cx="12"
+              cy="12"
+              r="10"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeDasharray="50"
+              strokeDashoffset="20"
+            />
+          </svg>
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-bold text-amber-900">
+              Re-extracting all {retryableExtractions.length} documents…
+            </div>
+            <div className="text-xs text-amber-800">
+              {stillProcessing > 0
+                ? `${stillProcessing} document${stillProcessing === 1 ? "" : "s"} still processing — please don't close this tab. Each PDF takes 30–60 seconds through Gemini.`
+                : "Finalising — almost done."}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isMutable && retryableExtractions.length > 1 && !bulkRetrying && (
         <div className="flex items-center justify-between gap-3 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
           <div className="text-xs text-amber-800">
             <span className="font-semibold">Re-extract all</span> runs every document in this draft
@@ -217,9 +265,7 @@ export function NixDraftReview(props: {
                 d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
               />
             </svg>
-            {bulkRetrying
-              ? "Re-extracting…"
-              : `Re-extract all ${retryableExtractions.length} documents`}
+            Re-extract all {retryableExtractions.length} documents
           </button>
         </div>
       )}
