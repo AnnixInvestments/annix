@@ -424,32 +424,54 @@ export class NixService {
       let extractedItems: Array<any> = [];
       let specificationCells: SpecificationCellData[] = [];
 
-      switch (documentType) {
-        case DocumentType.PDF:
-          ({ extractedData, extractedItems, specificationCells } = await this.extractFromPdf(
-            dto.documentPath,
-            dto.documentName,
-            dto.productTypes,
-            profileSystemPrompt,
-            dto.documentRole,
-          ));
-          break;
-        case DocumentType.EXCEL:
-          ({ extractedData, extractedItems, specificationCells } = await this.extractFromExcel(
-            dto.documentPath,
-          ));
-          break;
-        case DocumentType.WORD:
-          ({ extractedData, extractedItems, specificationCells } = await this.extractFromWord(
-            dto.documentPath,
-            dto.documentName,
-            dto.productTypes,
-            profileSystemPrompt,
-            dto.documentRole,
-          ));
-          break;
-        default:
-          throw new Error(`Unsupported document type: ${documentType}`);
+      const reuse = await this.mineInferenceService.findReuseTargetForUpload(
+        extraction.documentName,
+      );
+
+      if (reuse) {
+        this.logger.log(
+          `[#264 Phase 3] Reusing extraction #${reuse.source.id} for "${extraction.documentName}" (doc ${reuse.documentNumber} rev ${reuse.documentRevision ?? "?"}) — Gemini call skipped`,
+        );
+        extractedData = (reuse.source.extractedData ?? {}) as Record<string, any>;
+        extractedItems = (reuse.source.extractedItems ?? []) as Array<any>;
+        specificationCells = [];
+        extraction.rawText = reuse.source.rawText;
+        extraction.pageCount = reuse.source.pageCount;
+        extraction.documentNumber = reuse.documentNumber;
+        extraction.documentRevision = reuse.documentRevision ?? undefined;
+        extraction.mineId = reuse.mineId ?? undefined;
+        extraction.mineInferenceConfidence = reuse.source.mineInferenceConfidence ?? undefined;
+        extraction.mineInferenceReason = reuse.source.mineInferenceReason
+          ? `reused from extraction #${reuse.source.id}: ${reuse.source.mineInferenceReason}`
+          : `reused from extraction #${reuse.source.id}`;
+      } else {
+        switch (documentType) {
+          case DocumentType.PDF:
+            ({ extractedData, extractedItems, specificationCells } = await this.extractFromPdf(
+              dto.documentPath,
+              dto.documentName,
+              dto.productTypes,
+              profileSystemPrompt,
+              dto.documentRole,
+            ));
+            break;
+          case DocumentType.EXCEL:
+            ({ extractedData, extractedItems, specificationCells } = await this.extractFromExcel(
+              dto.documentPath,
+            ));
+            break;
+          case DocumentType.WORD:
+            ({ extractedData, extractedItems, specificationCells } = await this.extractFromWord(
+              dto.documentPath,
+              dto.documentName,
+              dto.productTypes,
+              profileSystemPrompt,
+              dto.documentRole,
+            ));
+            break;
+          default:
+            throw new Error(`Unsupported document type: ${documentType}`);
+        }
       }
 
       const relevanceFiltered = await this.filterByRelevance(extractedItems, dto.productTypes);
@@ -510,7 +532,9 @@ export class NixService {
         }
       }
 
-      await this.attachMineInference(extraction);
+      if (!reuse) {
+        await this.attachMineInference(extraction);
+      }
 
       await this.extractionRepo.save(extraction);
 

@@ -2,7 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { SaMine } from "../mines/entities/sa-mine.entity";
-import type { NixExtraction } from "./entities/nix-extraction.entity";
+import { ExtractionStatus, NixExtraction } from "./entities/nix-extraction.entity";
 
 /**
  * Result of inferring which mine a Nix extraction belongs to. Null when no
@@ -48,6 +48,8 @@ export class MineInferenceService {
   constructor(
     @InjectRepository(SaMine)
     private readonly mineRepo: Repository<SaMine>,
+    @InjectRepository(NixExtraction)
+    private readonly extractionRepo: Repository<NixExtraction>,
   ) {}
 
   /**
@@ -188,18 +190,83 @@ export class MineInferenceService {
   }
 
   /**
-   * Look up extractions already in the library for a given mine + document
-   * number. Used by Phase 3's cross-quote reuse — when a new RFQ references
-   * a known doc number, the cross-linker pulls the existing extraction's
-   * specifications dict instead of re-running Gemini.
+   * High-level convenience: given an upload's filename, derive a candidate
+   * document number and look up any matching completed extraction. Returns
+   * the full source row so callers can clone its extractedData / items /
+   * rawText into the new extraction (the actual Phase 3 reuse).
+   *
+   * Returns null when the filename has no doc-number-shaped token, or when
+   * no completed extraction matches that doc number.
+   */
+  async findReuseTargetForUpload(
+    documentName: string | null | undefined,
+    mineId: number | null = null,
+  ): Promise<{
+    source: NixExtraction;
+    documentNumber: string;
+    documentRevision: string | null;
+    mineId: number | null;
+  } | null> {
+    if (!documentName) return null;
+    const { documentNumber } = extractFromFilename(documentName);
+    if (!documentNumber) return null;
+    const lookup = await this.findExistingForMine(mineId, documentNumber);
+    if (!lookup) return null;
+    const source = await this.extractionRepo.findOne({ where: { id: lookup.extractionId } });
+    if (!source) return null;
+    return {
+      source,
+      documentNumber,
+      documentRevision: lookup.revision,
+      mineId: lookup.mineId,
+    };
+  }
+
+  /**
+   * Look up an existing completed extraction by document number, optionally
+   * scoped to a known mine. Used by Phase 3's cross-quote reuse — when a
+   * new RFQ references a known doc number, the cross-linker pulls the
+   * existing extraction's specifications dict instead of re-running Gemini.
+   *
+   * mineId null/0 = global lookup (any mine). Most-recent revision wins;
+   * when revisions tie, newest createdAt breaks the tie. Only completed
+   * extractions are returned — half-finished or failed extractions can't
+   * be reused.
    */
   async findExistingForMine(
-    mineId: number,
+    mineId: number | null,
     documentNumber: string,
-  ): Promise<{ extractionId: number; revision: string | null } | null> {
-    // Implemented in Phase 3. The signature lives here so callers can wire
-    // up lookups now and we just flesh out the body when it's needed.
-    return Promise.resolve({ extractionId: mineId, revision: documentNumber }).then(() => null);
+  ): Promise<{
+    extractionId: number;
+    revision: string | null;
+    mineId: number | null;
+  } | null> {
+    if (!documentNumber) return null;
+
+    const qb = this.extractionRepo
+      .createQueryBuilder("e")
+      .where("e.documentNumber = :documentNumber", { documentNumber })
+      .andWhere("e.status = :status", { status: ExtractionStatus.COMPLETED })
+      .orderBy("e.documentRevision", "DESC", "NULLS LAST")
+      .addOrderBy("e.createdAt", "DESC")
+      .limit(1);
+
+    if (mineId && mineId > 0) {
+      qb.andWhere("e.mineId = :mineId", { mineId });
+    }
+
+    const found = await qb.getOne();
+    if (!found) return null;
+
+    this.logger.log(
+      `findExistingForMine hit: mine=${mineId ?? "any"} doc=${documentNumber} → extraction #${found.id} (rev ${found.documentRevision ?? "?"})`,
+    );
+
+    return {
+      extractionId: found.id,
+      revision: found.documentRevision ?? null,
+      mineId: found.mineId ?? null,
+    };
   }
 }
 

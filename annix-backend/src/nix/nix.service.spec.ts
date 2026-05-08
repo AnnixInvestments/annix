@@ -158,6 +158,7 @@ describe("NixService", () => {
           useValue: {
             infer: jest.fn().mockResolvedValue(null),
             findExistingForMine: jest.fn().mockResolvedValue(null),
+            findReuseTargetForUpload: jest.fn().mockResolvedValue(null),
           },
         },
       ],
