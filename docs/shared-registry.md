@@ -193,6 +193,13 @@ Host-app-agnostic React module. Consumed by Stock Control (via `app/stock-contro
 | Theme | `modules/stock-management/theme/` | Default tokens + `StockManagementThemeTokens` type |
 | i18n | `modules/stock-management/i18n/` | Default English labels + override mechanism |
 
+### Nix shared UI (`app/lib/nix/components/`)
+
+| Concept | Path | Use for |
+|---|---|---|
+| Nix chat / clarification / assistant | `lib/nix/components/Nix*.tsx` | All Nix in-page assistant UI — chat panel, clarification popup, processing indicator, document annotator. |
+| **Draft review primitives** | `lib/nix/components/draft/` | **Every app's Nix-extraction draft page** (Stock Control quote drafts, RFQ BOQ review, Comply-SA spec audits). Mount `<NixDraftReview session={...} brand={...} onSessionChanged={refetch} addMoreDocumentsHref={...} />` for the full drawings + specs + other groups, per-row Retry, click-to-edit cells, spec-clause cards with stat-cards / pill chips / page-jump button, and the in-app PdfPreviewModal. Lower-level primitives (`SpecificationCard`, `ItemRow`, `ExtractionCard`, `ExtractionGroup`, `DetailsBlock`, `StatCard`, `EditableCell`, `CodesEditor`) are exported individually for apps that want to compose their own layout. Helper functions `humaniseKey`, `parseKey`, `tryRangeString` for key/unit parsing. |
+
 ### Frontend utilities (`app/lib/`)
 
 | Concept | Path | Use for |
