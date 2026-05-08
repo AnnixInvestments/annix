@@ -1,6 +1,14 @@
 "use client";
 
-import { toPairs as entries, isArray, isNumber, isObject, isString, keys } from "es-toolkit/compat";
+import {
+  toPairs as entries,
+  isArray,
+  isBoolean,
+  isNumber,
+  isObject,
+  isString,
+  keys,
+} from "es-toolkit/compat";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
@@ -830,8 +838,6 @@ function SpecificationRow(props: {
   }
   const rawDetails = obj.details;
   const detailsObj = isObject(rawDetails) ? (rawDetails as Record<string, unknown>) : null;
-  const detailsJson = detailsObj ? JSON.stringify(detailsObj, null, 2) : null;
-  const fullJson = JSON.stringify(value, null, 2);
 
   let scopeText = "";
   if (applicableScope === "all") scopeText = "Applies to all items";
@@ -863,9 +869,101 @@ function SpecificationRow(props: {
           </div>
         )}
       </summary>
-      <pre className="mt-2 whitespace-pre-wrap text-gray-700 bg-gray-50 rounded p-2">
-        {detailsJson ?? fullJson}
-      </pre>
+      <div className="mt-2">
+        {detailsObj ? (
+          <DetailsBlock details={detailsObj} />
+        ) : (
+          <pre className="whitespace-pre-wrap text-gray-700 bg-gray-50 rounded p-2">
+            {JSON.stringify(value, null, 2)}
+          </pre>
+        )}
+      </div>
     </details>
+  );
+}
+
+function humaniseKey(key: string): string {
+  let body = key;
+  let suffix = "";
+  // Recognise common unit suffixes and lift them out of the label so we
+  // can render them as a unit hint rather than splitting them as words.
+  const unitMatch = body.match(/_(mm|m|kg|kPa|MPa|µm|um|hrs|hours|percent|degC|degF)$/i);
+  if (unitMatch) {
+    const unit = unitMatch[1];
+    suffix = unit === "percent" ? " (%)" : ` (${unit})`;
+    body = body.slice(0, -unitMatch[0].length);
+  }
+  // Split snake_case + camelCase into words.
+  const words = body
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/[_-]+/g, " ")
+    .trim()
+    .split(/\s+/);
+  const titled = words
+    .map((w, i) => {
+      if (w.length === 0) return w;
+      // Keep ALL-CAPS acronyms intact (NDT, ISO, etc.).
+      if (w === w.toUpperCase() && /[A-Z]/.test(w)) return w;
+      // Lower-case all words after the first; only the first is capitalised.
+      const lower = w.toLowerCase();
+      return i === 0 ? lower.charAt(0).toUpperCase() + lower.slice(1) : lower;
+    })
+    .join(" ");
+  return `${titled}${suffix}`;
+}
+
+function DetailsBlock(props: { details: Record<string, unknown> }) {
+  const { details } = props;
+  const rows = entries(details);
+  if (rows.length === 0) return null;
+  return (
+    <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-xs">
+      {rows.map(([k, v]) => (
+        <DetailRow key={k} label={humaniseKey(k)} value={v} />
+      ))}
+    </dl>
+  );
+}
+
+function DetailRow(props: { label: string; value: unknown }) {
+  const { label, value } = props;
+  if (value === null || value === undefined || value === "") return null;
+  if (isObject(value) && !isArray(value)) {
+    const nested = value as Record<string, unknown>;
+    return (
+      <div className="sm:col-span-2 mt-1">
+        <div className="text-[11px] font-semibold text-gray-700">{label}</div>
+        <div className="mt-0.5 ml-2 border-l-2 border-gray-200 pl-2">
+          <DetailsBlock details={nested} />
+        </div>
+      </div>
+    );
+  }
+  if (isArray(value)) {
+    const items = (value as unknown[]).filter((v) => v !== null && v !== undefined && v !== "");
+    if (items.length === 0) return null;
+    return (
+      <div className="sm:col-span-2 mt-1">
+        <div className="text-[11px] font-semibold text-gray-700">{label}</div>
+        <ul className="list-disc ml-6 text-gray-700">
+          {items.map((entry, idx) => (
+            <li key={idx}>
+              {isString(entry) || isNumber(entry) ? String(entry) : JSON.stringify(entry)}
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  }
+  let display: string;
+  if (isString(value)) display = value;
+  else if (isNumber(value)) display = String(value);
+  else if (isBoolean(value)) display = value ? "Yes" : "No";
+  else display = JSON.stringify(value);
+  return (
+    <div className="flex flex-col">
+      <dt className="text-[11px] font-semibold text-gray-700">{label}</dt>
+      <dd className="text-gray-800 break-words">{display}</dd>
+    </div>
   );
 }
