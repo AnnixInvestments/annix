@@ -29,3 +29,11 @@ export { NixErrorBoundary } from "./components/NixErrorBoundary";
 export { default as NixFloatingAvatar } from "./components/NixFloatingAvatar";
 export { default as NixProcessingPopup } from "./components/NixProcessingPopup";
 export { ParsedItemsConfirmation } from "./components/ParsedItemsConfirmation";
+export {
+  type AttachmentKind,
+  type EmailAttachment,
+  type EmailMetadata,
+  type EmailParseResult,
+  isEmlFile,
+  parseEmail,
+} from "./emlAttachmentExtractor";

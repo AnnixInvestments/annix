@@ -26,14 +26,9 @@ import { generateUniqueId } from "@/app/lib/datetime";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import { useEnvironmentalIntelligence } from "@/app/lib/hooks/useEnvironmentalIntelligence";
 import { log } from "@/app/lib/logger";
+import { type EmailAttachment, type EmailMetadata, isEmlFile, parseEmail } from "@/app/lib/nix";
 import { type NixRfqPipingProfileMetadata, nixApi } from "@/app/lib/nix/api";
 import { useRfqWizardStore } from "@/app/lib/store/rfqWizardStore";
-import {
-  type EmailAttachment,
-  type EmailMetadata,
-  isEmlFile,
-  parseEmail,
-} from "@/app/lib/utils/emlAttachmentExtractor";
 import { generateSystemReferenceNumber } from "@/app/lib/utils/systemUtils";
 import {
   buildFallbackEnvironmentalSpecs,
