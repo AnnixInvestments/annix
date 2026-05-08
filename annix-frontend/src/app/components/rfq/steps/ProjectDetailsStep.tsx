@@ -146,6 +146,7 @@ export default function ProjectDetailsStep() {
   const { flags: featureFlags } = useFeatureFlags();
   const onRemoveTenderDocument = useRfqWizardStore((s) => s.removeTenderDocument);
   const currentDraftId = useRfqWizardStore((s) => s.currentDraftId);
+  const setWizardCurrentStep = useRfqWizardStore((s) => s.setCurrentStep);
   const globalSpecs = rfqData.globalSpecs;
   const useNix = rfqData.useNix;
   const { showToast } = useToast();
@@ -432,15 +433,6 @@ export default function ProjectDetailsStep() {
 
       const customerApplied = applyEmailMetadataToCustomerFields(parsed.metadata);
 
-      // Hand the email's text off to the mine-detection useEffect. It runs
-      // once mines have loaded; if a single mine matches it auto-selects,
-      // otherwise opens the LocationRequiredModal.
-      const rawSubject = parsed.metadata.subject;
-      const rawBody = parsed.metadata.bodyText;
-      const subjectText = rawSubject || "";
-      const bodyText = rawBody || "";
-      setEmailLocationSearchText(`${subjectText}\n${bodyText}`);
-
       const emlId = `eml-${generateUniqueId()}-${Math.random().toString(36).substr(2, 9)}`;
       storeAddDocument({ file: incoming, id: emlId });
 
@@ -456,116 +448,178 @@ export default function ProjectDetailsStep() {
       parsed.attachments.forEach(routeAttachment);
 
       const xlsxAttachments = parsed.attachments.filter((att) => isExcelFile(att.file));
-      const profiles: NixRfqPipingProfileMetadata[] = [];
-      for (const attachment of xlsxAttachments) {
-        const profile = await runNixBoqExtraction(attachment.file);
-        if (profile) profiles.push(profile);
-      }
+      const runAllExtractions = async (): Promise<NixRfqPipingProfileMetadata[]> => {
+        const collected: NixRfqPipingProfileMetadata[] = [];
+        for (const attachment of xlsxAttachments) {
+          const profile = await runNixBoqExtraction(attachment.file);
+          if (profile) collected.push(profile);
+        }
+        return collected;
+      };
 
+      let profiles = await runAllExtractions();
       const newlySelectedProducts = applyProductSelectionsFromProfiles(profiles);
 
-      const totalItems = profiles.reduce((sum, p) => {
-        const supplyCount = p.supplyItemCount;
-        return sum + (supplyCount ?? 0);
-      }, 0);
-      const totalBundles = new Set(profiles.flatMap((p) => p.supplierBundles.map((b) => b.key)))
-        .size;
-      const totalDuplicates = profiles.reduce((sum, p) => {
-        const dupes = p.duplicates;
-        return sum + (dupes ? dupes.length : 0);
-      }, 0);
+      const buildPopupMessage = (
+        attemptProfiles: NixRfqPipingProfileMetadata[],
+        isRetry: boolean,
+      ): string[] => {
+        const totalItems = attemptProfiles.reduce((sum, p) => {
+          const supplyCount = p.supplyItemCount;
+          return sum + (supplyCount ?? 0);
+        }, 0);
+        const totalBundles = new Set(
+          attemptProfiles.flatMap((p) => p.supplierBundles.map((b) => b.key)),
+        ).size;
+        const totalDuplicates = attemptProfiles.reduce((sum, p) => {
+          const dupes = p.duplicates;
+          return sum + (dupes ? dupes.length : 0);
+        }, 0);
 
-      const lines: string[] = [];
-      lines.push(
-        `Saved ${parsed.attachments.length + 1} document${parsed.attachments.length === 0 ? "" : "s"} from ${incoming.name}:`,
-      );
-      lines.push("");
-      lines.push("• Original email kept as source-of-truth");
-      const boqCount = parsed.attachments.filter((a) => a.kind === "boq").length;
-      const tenderCount = parsed.attachments.filter((a) => a.kind === "tender").length;
-      const otherCount = parsed.attachments.length - boqCount - tenderCount;
-      if (boqCount > 0)
-        lines.push(`• ${boqCount} spreadsheet${boqCount === 1 ? "" : "s"} → BOQ bucket`);
-      if (tenderCount > 0)
+        const lines: string[] = [];
         lines.push(
-          `• ${tenderCount} document${tenderCount === 1 ? "" : "s"} → Tender Specs bucket`,
+          `Saved ${parsed.attachments.length + 1} document${parsed.attachments.length === 0 ? "" : "s"} from ${incoming.name}:`,
         );
-      if (otherCount > 0)
-        lines.push(`• ${otherCount} other attachment${otherCount === 1 ? "" : "s"} → BOQ bucket`);
-
-      if (xlsxAttachments.length > 0 && totalItems > 0) {
         lines.push("");
-        lines.push(
-          `Nix extracted ${totalItems} line item${totalItems === 1 ? "" : "s"} across ${totalBundles} supplier bundle${totalBundles === 1 ? "" : "s"}.`,
-        );
-        if (totalDuplicates > 0) {
+        lines.push("• Original email kept as source-of-truth");
+        const boqCount = parsed.attachments.filter((a) => a.kind === "boq").length;
+        const tenderCount = parsed.attachments.filter((a) => a.kind === "tender").length;
+        const otherCount = parsed.attachments.length - boqCount - tenderCount;
+        if (boqCount > 0)
+          lines.push(`• ${boqCount} spreadsheet${boqCount === 1 ? "" : "s"} → BOQ bucket`);
+        if (tenderCount > 0)
           lines.push(
-            `${totalDuplicates} duplicate group${totalDuplicates === 1 ? "" : "s"} flagged for review.`,
+            `• ${tenderCount} document${tenderCount === 1 ? "" : "s"} → Tender Specs bucket`,
+          );
+        if (otherCount > 0)
+          lines.push(`• ${otherCount} other attachment${otherCount === 1 ? "" : "s"} → BOQ bucket`);
+
+        if (xlsxAttachments.length > 0 && totalItems > 0) {
+          lines.push("");
+          lines.push(
+            `Nix extracted ${totalItems} line item${totalItems === 1 ? "" : "s"} across ${totalBundles} supplier bundle${totalBundles === 1 ? "" : "s"}.`,
+          );
+          if (totalDuplicates > 0) {
+            lines.push(
+              `${totalDuplicates} duplicate group${totalDuplicates === 1 ? "" : "s"} flagged for review.`,
+            );
+          }
+        }
+
+        if (!isRetry) {
+          const customerLines: string[] = [];
+          if (customerApplied.name) customerLines.push("Customer Name");
+          if (customerApplied.email) customerLines.push("Customer Email");
+          if (customerApplied.phone) customerLines.push("Customer Phone");
+          if (customerApplied.description) customerLines.push("RFQ Description");
+          if (customerApplied.projectType) {
+            const typeLabel = PROJECT_TYPES.find((t) => t.value === customerApplied.projectType);
+            const labelText = typeLabel ? typeLabel.label : customerApplied.projectType;
+            customerLines.push(`Project Type → ${labelText}`);
+          }
+          if (customerLines.length > 0) {
+            lines.push("");
+            lines.push(`Form fields auto-filled from sender: ${customerLines.join(", ")}.`);
+          }
+
+          const ccList = parsed.metadata.ccList;
+          const signatureEmails = parsed.metadata.signatureEmails;
+          const signaturePhones = parsed.metadata.signaturePhones;
+          const additionalContactLines: string[] = [];
+          if (ccList.length > 0) {
+            additionalContactLines.push(`CC: ${ccList.join(", ")}`);
+          }
+          if (signatureEmails.length > 0) {
+            additionalContactLines.push(`Other emails in signature: ${signatureEmails.join(", ")}`);
+          }
+          if (signaturePhones.length > 1) {
+            const additionalPhones = signaturePhones.slice(1);
+            additionalContactLines.push(
+              `Additional phone${additionalPhones.length === 1 ? "" : "s"} in signature: ${additionalPhones.join(", ")}`,
+            );
+          }
+          if (additionalContactLines.length > 0) {
+            lines.push("");
+            lines.push("Additional contacts captured (preserved on the .eml on S3):");
+            additionalContactLines.forEach((line) => lines.push(`• ${line}`));
+          }
+
+          if (newlySelectedProducts.length > 0) {
+            const productLabels = newlySelectedProducts.map((value) => {
+              const product = PRODUCTS_AND_SERVICES.find((p) => p.value === value);
+              return product ? product.label : value;
+            });
+            lines.push("");
+            lines.push(`Required products auto-selected from BOQ: ${productLabels.join(", ")}.`);
+          }
+        } else {
+          lines.push("");
+          lines.push(
+            "If this still isn't right, click Reject and we'll switch to Step 3 - Items where you can review and correct each line. Your edits are captured as feedback for Nix.",
           );
         }
-      }
+        return lines;
+      };
 
-      const customerLines: string[] = [];
-      if (customerApplied.name) customerLines.push("Customer Name");
-      if (customerApplied.email) customerLines.push("Customer Email");
-      if (customerApplied.phone) customerLines.push("Customer Phone");
-      if (customerApplied.description) customerLines.push("RFQ Description");
-      if (customerApplied.projectType) {
-        const typeLabel = PROJECT_TYPES.find((t) => t.value === customerApplied.projectType);
-        const labelText = typeLabel ? typeLabel.label : customerApplied.projectType;
-        customerLines.push(`Project Type → ${labelText}`);
-      }
-      if (customerLines.length > 0) {
-        lines.push("");
-        lines.push(`Form fields auto-filled from sender: ${customerLines.join(", ")}.`);
-      }
+      const triggerLocationDetection = () => {
+        const rawSubject = parsed.metadata.subject;
+        const rawBody = parsed.metadata.bodyText;
+        const subjectText = rawSubject || "";
+        const bodyText = rawBody || "";
+        setEmailLocationSearchText(`${subjectText}\n${bodyText}`);
+      };
 
-      const ccList = parsed.metadata.ccList;
-      const signatureEmails = parsed.metadata.signatureEmails;
-      const signaturePhones = parsed.metadata.signaturePhones;
-      const additionalContactLines: string[] = [];
-      if (ccList.length > 0) {
-        additionalContactLines.push(`CC: ${ccList.join(", ")}`);
-      }
-      if (signatureEmails.length > 0) {
-        additionalContactLines.push(`Other emails in signature: ${signatureEmails.join(", ")}`);
-      }
-      if (signaturePhones.length > 1) {
-        const additionalPhones = signaturePhones.slice(1);
-        additionalContactLines.push(
-          `Additional phone${additionalPhones.length === 1 ? "" : "s"} in signature: ${additionalPhones.join(", ")}`,
-        );
-      }
-      if (additionalContactLines.length > 0) {
-        lines.push("");
-        lines.push("Additional contacts captured (preserved on the .eml on S3):");
-        additionalContactLines.forEach((line) => lines.push(`• ${line}`));
-      }
-
-      if (newlySelectedProducts.length > 0) {
-        const productLabels = newlySelectedProducts.map((value) => {
-          const product = PRODUCTS_AND_SERVICES.find((p) => p.value === value);
-          return product ? product.label : value;
-        });
-        lines.push("");
-        lines.push(`Required products auto-selected from BOQ: ${productLabels.join(", ")}.`);
-      }
-
-      await confirm({
+      // First attempt — full extraction summary with auto-fill detail.
+      const acceptedFirst = await confirm({
         title: "Email processed",
-        message: lines.join("\n"),
+        message: buildPopupMessage(profiles, false).join("\n"),
         variant: "info",
-        confirmLabel: "Got it",
+        confirmLabel: "Accept",
+        cancelLabel: "Reject",
+      });
+      if (acceptedFirst) {
+        triggerLocationDetection();
+        return;
+      }
+
+      // First reject — re-run Nix on every xlsx and let the customer compare.
+      showToast("Re-running Nix extraction so it can take another pass…", "info");
+      profiles = await runAllExtractions();
+      applyProductSelectionsFromProfiles(profiles);
+
+      const acceptedSecond = await confirm({
+        title: "Email processed (re-extracted)",
+        message: buildPopupMessage(profiles, true).join("\n"),
+        variant: "info",
+        confirmLabel: "Accept",
+        cancelLabel: "Reject",
+      });
+      if (acceptedSecond) {
+        triggerLocationDetection();
+        return;
+      }
+
+      // Second reject — bail to Step 3 - Items so the customer can
+      // correct individual lines. Their edits feed Nix's learning loop.
+      await confirm({
+        title: "Switching to Items step",
+        message:
+          "Nix didn't get this right twice. We're taking you to Step 3 - Items where you can review and correct each extracted line. Your edits there will be captured as feedback so Nix learns for next time.",
+        variant: "warning",
+        confirmLabel: "Go to Items",
         hideCancel: true,
       });
+      setWizardCurrentStep(3);
     },
     [
       storeAddDocument,
       storeAddTenderDocument,
       confirm,
+      showToast,
       applyEmailMetadataToCustomerFields,
       applyProductSelectionsFromProfiles,
       runNixBoqExtraction,
+      setWizardCurrentStep,
     ],
   );
 
