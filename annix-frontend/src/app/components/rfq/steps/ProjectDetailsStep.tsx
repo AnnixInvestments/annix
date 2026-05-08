@@ -278,6 +278,7 @@ export default function ProjectDetailsStep() {
       description: boolean;
       projectName: boolean;
       projectType: string | null;
+      additionalContacts: boolean;
     } => {
       const applied = {
         name: false,
@@ -286,6 +287,7 @@ export default function ProjectDetailsStep() {
         description: false,
         projectName: false,
         projectType: null as string | null,
+        additionalContacts: false,
       };
 
       // Profile defaults — overwriting these is safe because they're auto-fill
@@ -368,6 +370,17 @@ export default function ProjectDetailsStep() {
         applied.projectType = detectedType;
       }
 
+      // Additional Contacts field — populate from CC list + signature alt
+      // emails when the customer hasn't already typed something in.
+      const ccList = metadata.ccList;
+      const signatureAlts = metadata.signatureEmails;
+      const allAdditional = [...ccList, ...signatureAlts];
+      const currentAdditional = rfqData.additionalContacts;
+      if (allAdditional.length > 0 && !currentAdditional) {
+        onUpdate("additionalContacts", allAdditional.join(", "));
+        applied.additionalContacts = true;
+      }
+
       const appliedName = applied.name;
       const appliedEmail = applied.email;
       const appliedPhone = applied.phone;
@@ -395,6 +408,7 @@ export default function ProjectDetailsStep() {
       rfqData.description,
       rfqData.projectName,
       rfqData.projectType,
+      rfqData.additionalContacts,
       customerAutoFilled.customerName,
       customerAutoFilled.customerEmail,
       customerAutoFilled.customerPhone,
@@ -548,6 +562,7 @@ export default function ProjectDetailsStep() {
           if (customerApplied.phone) customerLines.push("Customer Phone");
           if (customerApplied.description) customerLines.push("RFQ Description");
           if (customerApplied.projectName) customerLines.push("Project Name");
+          if (customerApplied.additionalContacts) customerLines.push("Additional Contacts (CC)");
           if (customerApplied.projectType) {
             const typeLabel = PROJECT_TYPES.find((t) => t.value === customerApplied.projectType);
             const labelText = typeLabel ? typeLabel.label : customerApplied.projectType;
@@ -1390,6 +1405,28 @@ export default function ProjectDetailsStep() {
               )}
             </div>
           </div>
+
+          {(() => {
+            const rawAdditionalContacts = rfqData.additionalContacts;
+            const additionalContactsValue = rawAdditionalContacts || "";
+            return (
+              <div className="mt-2" data-field="additionalContacts">
+                <label className="block text-xs font-semibold text-gray-900 mb-1">
+                  Additional Contacts (CC)
+                  <span className="ml-1 font-normal text-gray-500">
+                    — comma-separated emails of anyone who should be copied on follow-ups
+                  </span>
+                </label>
+                <input
+                  type="text"
+                  value={additionalContactsValue}
+                  onChange={(e) => onUpdate("additionalContacts", e.target.value)}
+                  className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 text-sm"
+                  placeholder="e.g., attie@example.com, ops@example.com"
+                />
+              </div>
+            );
+          })()}
         </div>
 
         {/* Drop email/BOQ first — Nix auto-fills the rest of the form. Only when the Nix tender flow is NOT enabled via project type. */}

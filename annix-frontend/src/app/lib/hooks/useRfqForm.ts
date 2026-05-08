@@ -565,6 +565,13 @@ export interface RfqFormData {
   customerName: string;
   customerEmail: string;
   customerPhone: string;
+  /**
+   * Additional contacts (CC'd recipients on the source email, alternative
+   * sender emails found in the signature). Comma-separated for now —
+   * persisted to backend as a single text column. Frontend-only field
+   * today; admin reviewing the RFQ sees the full list to route follow-ups.
+   */
+  additionalContacts?: string;
   requiredDate: string;
   requiredProducts: string[];
   notes: string;

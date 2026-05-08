@@ -103,6 +103,7 @@ const initialRfqData = (): RfqFormData => ({
   customerName: "",
   customerEmail: "",
   customerPhone: "",
+  additionalContacts: "",
   requiredDate: addDaysFromNowISODate(30),
   requiredProducts: [],
   notes: "",

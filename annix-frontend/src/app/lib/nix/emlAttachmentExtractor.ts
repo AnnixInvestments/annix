@@ -71,10 +71,14 @@ export async function parseEmail(emlFile: File): Promise<EmailParseResult> {
     bodyText = text.substring(bodyStart);
   }
 
-  const fromName = fromAddress ? fromAddress.name : null;
+  const fromHeaderName = fromAddress ? fromAddress.name : null;
   const fromEmail = fromAddress ? fromAddress.email : null;
   const toName = toAddress ? toAddress.name : null;
   const toEmail = toAddress ? toAddress.email : null;
+  // Fall back to the body sign-off ("Regards, Udvir Ragubeer") when the
+  // From header is bare. Common for gmail/outlook/yahoo accounts where
+  // the sender is just "udvirr@gmail.com" with no display name.
+  const fromName = fromHeaderName || extractSignatureName(bodyText, fromEmail);
 
   const ccList = parseAddressListHeader(topHeaders, "cc");
   const bccList = parseAddressListHeader(topHeaders, "bcc");
@@ -308,6 +312,46 @@ function extractPhonesFromText(body: string | null): string[] {
     }
   }
   return out;
+}
+
+/**
+ * Best-effort signature-name parse from the plain-text body. Looks for a
+ * standard email sign-off ("Regards", "Best regards", "Kind regards",
+ * "Thanks", "Sincerely", "Cheers", "Yours truly") followed by 1–2 lines
+ * containing what looks like a person's name (2–4 capitalised words).
+ *
+ * Falls back to the email's local part ("udvirr@gmail.com" → "Udvirr") if
+ * no sign-off pattern matches but a fromEmail is provided.
+ *
+ * Returns null when nothing plausible found.
+ */
+function extractSignatureName(body: string | null, fromEmail: string | null): string | null {
+  if (body) {
+    const signOffPattern =
+      /\b(?:Regards|Best regards|Best wishes|Kind regards|Warm regards|Many thanks|Thanks(?:\s+(?:in\s+advance|again))?|Sincerely|Yours sincerely|Yours faithfully|Yours truly|Cheers)[,.]?\s*\r?\n+\s*([A-Z][\w'-]+(?:\s+[A-Z][\w'-]+){0,3})/i;
+    const match = body.match(signOffPattern);
+    if (match) {
+      const candidate = match[1].trim();
+      // Exclude obvious non-names (single short words, all-caps tokens
+      // longer than 8 chars likely a company acronym, etc.)
+      if (candidate.length >= 2 && candidate.split(/\s+/).every((part) => part.length >= 2)) {
+        return candidate;
+      }
+    }
+  }
+  if (fromEmail) {
+    const localPart = fromEmail.split("@")[0];
+    if (localPart && /^[a-z][a-z0-9._-]*$/i.test(localPart)) {
+      const cleaned = localPart
+        .replace(/[._-]+/g, " ")
+        .split(" ")
+        .filter(Boolean)
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+        .join(" ");
+      if (cleaned.length >= 2) return cleaned;
+    }
+  }
+  return null;
 }
 
 function extractEmailsFromText(body: string | null): string[] {
