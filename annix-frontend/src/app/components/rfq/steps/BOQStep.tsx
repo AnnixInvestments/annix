@@ -132,6 +132,34 @@ export default function BOQStep(props: {
   // — SDR11 is the most common HDPE pressure pipe in the field.
   const DEFAULT_HDPE_SDR = 11;
 
+  // Append a flange/stub indicator to a piping description when the
+  // entry has flanged ends. For steel/PVC: " — Flanged FBE/FOE
+  // (PN16)". For HDPE/PVC: " — Stub Ends FBE/FOE w/ Backing Flanges
+  // (PN16)" — HDPE doesn't bolt directly to a flange, it gets a
+  // butt-fused stub end with a separate steel backing flange. The
+  // separate stub + backing-flange line items are emitted by
+  // v1.1.35; v1.1.34 surfaces the configuration in the description
+  // so the customer can verify it before pricing.
+  const flangeConfigSuffix = (
+    config: string | null | undefined,
+    materialType: string,
+    flangeSpec: string,
+  ): string => {
+    if (!config || config === "PE") return "";
+    const endsLabel =
+      config === "FBE"
+        ? "Both Ends"
+        : config === "FOE"
+          ? "One End"
+          : config === "FBE_BLIND"
+            ? "Both Ends (Blind)"
+            : config;
+    if (materialType === "hdpe" || materialType === "pvc") {
+      return ` — Stub ${endsLabel} w/ Backing Flange ${flangeSpec}`;
+    }
+    return ` — Flanged ${endsLabel} ${flangeSpec}`;
+  };
+
   // Build the consolidated row description for a pipe, branching on the
   // entry's materialType. Avoids the previous bug where every BOQ row
   // said "...Steel Pipe..." even for HDPE/PVC entries.
@@ -145,20 +173,24 @@ export default function BOQStep(props: {
     sdrNumber: number | undefined,
     pvcType: string | undefined,
     pressureClass: string | undefined,
+    flangeSpec: string,
   ): string => {
-    const materialType = entry.materialType;
+    const rawMatType = entry.materialType;
+    const materialType = rawMatType || "steel";
+    const rawPipeEnd = entry.specs?.pipeEndConfiguration;
+    const flangeSuffix = flangeConfigSuffix(rawPipeEnd, materialType, flangeSpec);
     if (materialType === "hdpe") {
       const grade = hdpeGrade || "PE100";
       const sdrLabel = sdrNumber ? ` SDR${sdrNumber}` : "";
       const pnLabel = pressureClass ? ` ${pressureClass}` : "";
-      return `${nb}OD ${grade}${sdrLabel}${pnLabel} HDPE Pipe x${pipeLength}m`.trim();
+      return `${nb}OD ${grade}${sdrLabel}${pnLabel} HDPE Pipe x${pipeLength}m${flangeSuffix}`.trim();
     }
     if (materialType === "pvc") {
       const typeLabel = pvcType ? ` ${pvcType}` : "";
       const pnLabel = pressureClass ? ` ${pressureClass}` : "";
-      return `${nb}OD${typeLabel} PVC Pipe${pnLabel} x${pipeLength}m`.trim();
+      return `${nb}OD${typeLabel} PVC Pipe${pnLabel} x${pipeLength}m${flangeSuffix}`.trim();
     }
-    return `${nb}NB ${schedule ? `Sch${schedule.replace("Sch", "")}` : ""} ${steelSpec} Pipe x${pipeLength}m`.trim();
+    return `${nb}NB ${schedule ? `Sch${schedule.replace("Sch", "")}` : ""} ${steelSpec} Pipe x${pipeLength}m${flangeSuffix}`.trim();
   };
 
   // Compute per-row pipe weight when the entry's calculation block is
@@ -200,8 +232,96 @@ export default function BOQStep(props: {
     }
 
     const perMetre = (od - wt) * wt * k;
-    const totalLength = pipeLength * pipeQty;
+    // For Nix-extracted entries the unit is often metres of total
+    // pipe (quantityType === "total_length"), in which case
+    // entry.specs.quantityValue IS the total length and multiplying
+    // by pipeLength would over-count. Fall back to pipeLength × qty
+    // for number_of_pipes mode.
+    const rawQuantityType = entry.specs?.quantityType;
+    const rawSpecsQuantityValue = entry.specs?.quantityValue;
+    const totalLength =
+      rawQuantityType === "total_length"
+        ? rawSpecsQuantityValue || pipeLength * pipeQty
+        : pipeLength * pipeQty;
     return perMetre * totalLength;
+  };
+
+  // Per-BEND weight (no qty multiplier — caller multiplies by qty when
+  // accumulating into a consolidated row). Models a bend as an arc of
+  // pipe — arc length = bendRadius × angle (in radians) — times the
+  // per-metre pipe weight for the material. Same density constant per
+  // material as fallbackPipeWeight. Doesn't account for tangent
+  // extensions; those add a small fraction of a pipe length.
+  const fallbackBendWeight = (entry: any, nb: number): number => {
+    const cachedTotalWeight = entry.calculation?.totalWeight;
+    const cachedBendWeight = entry.calculation?.bendWeight;
+    if (cachedTotalWeight) return cachedTotalWeight;
+    if (cachedBendWeight) return cachedBendWeight;
+
+    const rawMaterialType = entry.materialType;
+    const materialType = rawMaterialType || "steel";
+    const productKey: keyof typeof PIPE_WEIGHT_K_BY_PRODUCT_TYPE =
+      materialType === "hdpe" ? "hdpe" : materialType === "pvc" ? "pvc" : "steel";
+    const k = PIPE_WEIGHT_K_BY_PRODUCT_TYPE[productKey];
+
+    const rawOutsideDiameter = entry.specs?.outsideDiameterMm;
+    const od = rawOutsideDiameter || nb;
+    let wt = entry.specs?.wallThicknessMm;
+    if (productKey === "hdpe" && !wt) {
+      const rawSdr = globalSpecs?.hdpeSdr;
+      const sdr = rawSdr || DEFAULT_HDPE_SDR;
+      wt = od / Number(sdr);
+    } else if (!wt) {
+      return 0;
+    }
+
+    const rawBendDegrees = entry.specs?.bendDegrees;
+    const angleDeg = rawBendDegrees || 90;
+    const rawBendRadiusType = entry.specs?.bendType;
+    const radiusFactor = parseFloat((rawBendRadiusType || "1.5D").replace("D", "")) || 1.5;
+    const bendRadiusMetres = (nb * radiusFactor) / 1000;
+    const arcLength = bendRadiusMetres * ((angleDeg * Math.PI) / 180);
+
+    const perMetre = (od - wt) * wt * k;
+    return perMetre * arcLength;
+  };
+
+  // Per-FITTING weight (no qty multiplier — caller multiplies by qty
+  // when accumulating). For tees and reducers the dominant mass is
+  // the pipe-equivalent body — tee approx = run length + branch
+  // length × per-metre. For reducers we average run + branch ODs.
+  // Crude but consistent with the bend approach and far better than
+  // reporting 0kg.
+  const fallbackFittingWeight = (entry: any, nb: number, branchNb: number): number => {
+    const cachedFittingWeight = entry.calculation?.fittingWeight;
+    const cachedTotalWeight = entry.calculation?.totalWeight;
+    if (cachedFittingWeight) return cachedFittingWeight;
+    if (cachedTotalWeight) return cachedTotalWeight;
+
+    const rawMaterialType = entry.materialType;
+    const materialType = rawMaterialType || "steel";
+    const productKey: keyof typeof PIPE_WEIGHT_K_BY_PRODUCT_TYPE =
+      materialType === "hdpe" ? "hdpe" : materialType === "pvc" ? "pvc" : "steel";
+    const k = PIPE_WEIGHT_K_BY_PRODUCT_TYPE[productKey];
+
+    const od = nb;
+    const branchOd = branchNb || nb;
+    let wt = entry.specs?.wallThicknessMm;
+    if (productKey === "hdpe" && !wt) {
+      const rawSdr = globalSpecs?.hdpeSdr;
+      const sdr = rawSdr || DEFAULT_HDPE_SDR;
+      wt = od / Number(sdr);
+    } else if (!wt) {
+      return 0;
+    }
+
+    // Run length: 2 × OD as a rule of thumb for an equal tee body
+    // length. Branch length: OD as a single branch nipple.
+    const runLengthM = (2 * od) / 1000;
+    const branchLengthM = branchOd / 1000;
+    const perMetreRun = (od - wt) * wt * k;
+    const perMetreBranch = (branchOd - wt) * wt * k;
+    return perMetreRun * runLengthM + perMetreBranch * branchLengthM;
   };
 
   // ======================
@@ -229,6 +349,11 @@ export default function BOQStep(props: {
   const consolidatedBnwSets: Map<string, ConsolidatedItem> = new Map();
   const consolidatedGaskets: Map<string, ConsolidatedItem> = new Map();
   const consolidatedBlankFlanges: Map<string, ConsolidatedItem> = new Map();
+  // Catch-all for valves, bolts, gaskets, uPVC, skids, wrappings,
+  // pumps — anything Nix extracted that doesn't fit the steel-piping
+  // shape. Without this section those line items vanish silently from
+  // the BOQ even though they sit in the items array.
+  const consolidatedMisc: Map<string, ConsolidatedItem> = new Map();
 
   // Helper to get PHYSICAL flange count from end configuration (includes loose flanges)
   // Returns: { fixed: number of weld-neck flanges, loose: number of loose/slip-on flanges, rotating: number of rotating flanges }
@@ -343,12 +468,18 @@ export default function BOQStep(props: {
       const rawScheduleNumber = entry.specs?.scheduleNumber;
       const schedule = rawScheduleNumber || "";
 
-      const key = `BEND_${nb}_${angle}_${bendType}_${steelSpec}_${schedule}`;
+      // Material-aware key so HDPE bends don't merge with steel bends
+      // of the same NB. Falls through to the existing steel-only key
+      // shape when materialType is undefined.
+      const rawBendMaterialType = entry.materialType;
+      const bendMaterialType = rawBendMaterialType || "steel";
+      const key = `BEND_${bendMaterialType}_${nb}_${angle}_${bendType}_${steelSpec}_${schedule}`;
       const existing = consolidatedBends.get(key);
       const rawTotalWeight = entry.calculation?.totalWeight;
       const rawBendWeight = entry.calculation?.bendWeight;
       const rawTangentWeight = entry.calculation?.tangentWeight;
-      const bendWeight = rawTotalWeight || (rawBendWeight || 0) + (rawTangentWeight || 0);
+      const cachedBendWeight = rawTotalWeight || (rawBendWeight || 0) + (rawTangentWeight || 0);
+      const bendWeight = cachedBendWeight || fallbackBendWeight(entry, nb);
 
       const rawNumberOfSegments = entry.specs?.numberOfSegments;
 
@@ -422,9 +553,16 @@ export default function BOQStep(props: {
         const rawExtAreaM2 = existing.extAreaM2;
         existing.extAreaM2 = (rawExtAreaM2 || 0) + extAreaM2;
       } else {
+        // Material-aware label — HDPE bends say "HDPE Bend", PVC say
+        // "PVC Bend", steel falls back to the steel spec name from
+        // getSteelSpecName (resolved earlier from materialGrade).
+        const bendMaterialLabel =
+          bendMaterialType === "hdpe" ? "HDPE" : bendMaterialType === "pvc" ? "PVC" : steelSpec;
+        const rawBendEndConfig = entry.specs?.pipeEndConfiguration;
+        const bendFlangeSuffix = flangeConfigSuffix(rawBendEndConfig, bendMaterialType, flangeSpec);
         consolidatedBends.set(key, {
           description:
-            `${nb}NB ${angle}° ${bendType} Bend ${steelSpec} ${schedule ? `Sch${schedule.replace("Sch", "")}` : ""}`.trim(),
+            `${nb}NB ${angle}° ${bendType} Bend ${bendMaterialLabel} ${schedule ? `Sch${schedule.replace("Sch", "")}` : ""}${bendFlangeSuffix}`.trim(),
           qty: qty,
           unit: "Each",
           weight: bendWeight * qty,
@@ -657,7 +795,8 @@ export default function BOQStep(props: {
       const existing = consolidatedFittings.get(key);
       const rawTotalWeight2 = entry.calculation?.totalWeight;
       const rawCalcFittingWeight = entry.calculation?.fittingWeight;
-      const fittingWeight = rawTotalWeight2 || rawCalcFittingWeight || 0;
+      const cachedFittingWeight = rawTotalWeight2 || rawCalcFittingWeight || 0;
+      const fittingWeight = cachedFittingWeight || fallbackFittingWeight(entry, nb, branchNb);
 
       // Format fitting type for display
       let displayType = fittingType
@@ -776,9 +915,22 @@ export default function BOQStep(props: {
         const rawExtAreaM23 = existing.extAreaM2;
         existing.extAreaM2 = (rawExtAreaM23 || 0) + extAreaM2;
       } else {
+        const rawFittingMaterialType = entry.materialType;
+        const fittingMaterialType = rawFittingMaterialType || "steel";
+        const fittingMaterialLabel =
+          fittingMaterialType === "hdpe"
+            ? "HDPE"
+            : fittingMaterialType === "pvc"
+              ? "PVC"
+              : steelSpec;
+        const fittingFlangeSuffix = flangeConfigSuffix(
+          fittingEndConfig,
+          fittingMaterialType,
+          flangeSpec,
+        );
         consolidatedFittings.set(key, {
           description:
-            `${nb}NB${branchNb !== nb ? `x${branchNb}NB` : ""} ${displayType} ${steelSpec} ${schedule ? `Sch${schedule.replace("Sch", "")}` : ""}`.trim(),
+            `${nb}NB${branchNb !== nb ? `x${branchNb}NB` : ""} ${displayType} ${fittingMaterialLabel} ${schedule ? `Sch${schedule.replace("Sch", "")}` : ""}${fittingFlangeSuffix}`.trim(),
           qty: qty,
           unit: "Each",
           weight: fittingWeight * qty,
@@ -996,6 +1148,33 @@ export default function BOQStep(props: {
           });
         }
       }
+    } else if (entry.itemType === "misc") {
+      // Catch-all for valves, bolts, gaskets, uPVC, skids, wrappings,
+      // pumps — anything Nix surfaced that doesn't fit the steel
+      // piping shape. These rows skip weight calc and just appear in
+      // the BOQ's Other Items section so they aren't lost.
+      const rawEntrySpecs = entry.specs;
+      const rawSpecs = rawEntrySpecs || {};
+      const rawEntryDescription = entry.description;
+      const miscDescription = rawEntryDescription || "Item";
+      const rawSpecsQuantityValueMisc = rawSpecs.quantityValue;
+      const miscQty = rawSpecsQuantityValueMisc || qty || 1;
+      const rawSpecsUnit = rawSpecs.unit;
+      const miscUnit = rawSpecsUnit || "Each";
+      const miscKey = `MISC_${miscDescription}_${miscUnit}`;
+      const existingMisc = consolidatedMisc.get(miscKey);
+      if (existingMisc) {
+        existingMisc.qty += miscQty;
+        existingMisc.entries.push(itemNumber);
+      } else {
+        consolidatedMisc.set(miscKey, {
+          description: miscDescription,
+          qty: miscQty,
+          unit: miscUnit,
+          weight: 0,
+          entries: [itemNumber],
+        });
+      }
     } else {
       const rawNominalBoreMm2 = entry.specs?.nominalBoreMm;
       // STRAIGHT PIPE
@@ -1088,6 +1267,7 @@ export default function BOQStep(props: {
             sdrNumber,
             rawPvcType,
             pressureClassLabel,
+            flangeSpec,
           ),
           qty: pipeQty,
           unit: "Each",
@@ -1363,7 +1543,9 @@ export default function BOQStep(props: {
                     </th>
                   </>
                 )}
-                <th className={`text-right py-2 px-2 font-semibold ${textColor} ${darkText} w-24`}>
+                <th
+                  className={`text-right py-2 px-2 font-semibold ${textColor} ${darkText} w-32 whitespace-nowrap`}
+                >
                   Weight
                 </th>
               </tr>
@@ -1415,7 +1597,7 @@ export default function BOQStep(props: {
                         </td>
                       </>
                     )}
-                    <td className="py-2 px-2 text-right text-gray-900 dark:text-gray-100">
+                    <td className="py-2 px-2 text-right text-gray-900 dark:text-gray-100 tabular-nums whitespace-nowrap">
                       {formatWeight(item.weight)}
                     </td>
                   </tr>
@@ -1512,6 +1694,7 @@ export default function BOQStep(props: {
     addToCombined(consolidatedBlankFlanges, "Blank Flanges");
     addToCombined(consolidatedBnwSets, "BNW Sets");
     addToCombined(consolidatedGaskets, "Gaskets");
+    addToCombined(consolidatedMisc, "Other Items");
 
     // Add Combined BOQ as first sheet
     if (combinedData.length > 0) {
@@ -1853,6 +2036,20 @@ export default function BOQStep(props: {
             consolidatedGaskets,
             "bg-teal-50",
             "text-teal-700",
+            false,
+            false,
+          )}
+
+        {/* Other Items — valves, bolts, gaskets, uPVC, skids,
+            wrappings, pumps. Anything Nix surfaced that doesn't fit
+            the steel piping shape. No weight calc — these items
+            price out via supplier bundles. */}
+        {consolidatedMisc.size > 0 &&
+          renderConsolidatedTable(
+            "Other Items (Valves, Fasteners, PVC, Misc)",
+            consolidatedMisc,
+            "bg-amber-50",
+            "text-amber-700",
             false,
             false,
           )}

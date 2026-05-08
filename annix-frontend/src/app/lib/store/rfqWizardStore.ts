@@ -377,10 +377,41 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
         return "PE100";
       };
 
+      // Match Nix's free-text materialGrade ("API 5L", "A234 WPB",
+      // "A105") against the loaded steelSpecs master list and return
+      // the matching id. Without this every Nix-extracted steel pipe
+      // ends up with steelSpecificationId=undefined → BOQ description
+      // says just "Steel" and weight calc has no spec to anchor on.
+      const resolveSteelSpecId = (
+        material: string | null,
+        materialGrade: string | null,
+        steelSpecs: Array<{ id: number; steelSpecName: string }>,
+      ): number | undefined => {
+        if (steelSpecs.length === 0) return undefined;
+        const haystack = `${material || ""} ${materialGrade || ""}`.trim().toLowerCase();
+        if (!haystack) return undefined;
+        const normalize = (s: string) => s.toLowerCase().replace(/\s+/g, " ").trim();
+        // Try strongest match first: exact-substring of the steel
+        // spec's full name in the haystack, then haystack in spec name.
+        // Score by length so "API 5L X42" beats a generic "API".
+        let best: { id: number; score: number } | null = null;
+        for (const spec of steelSpecs) {
+          const name = normalize(spec.steelSpecName);
+          if (!name) continue;
+          if (haystack.includes(name) || normalize(haystack).includes(name)) {
+            const score = name.length;
+            if (!best || score > best.score) best = { id: spec.id, score };
+          }
+        }
+        return best ? best.id : undefined;
+      };
+
       const convertNixItemsToRfqItems = (nixItems: NixExtractedItem[]) => {
-        const { rfqData, updateGlobalSpecs, updateRfqField } = get();
+        const { rfqData, masterData, updateGlobalSpecs, updateRfqField } = get();
         const rawCustomerName = rfqData.customerName;
         const customerName = rawCustomerName || "NIX";
+        const rawSteelSpecsList = masterData?.steelSpecs;
+        const steelSpecsList = rawSteelSpecsList || [];
 
         // Pre-scan extracted items to seed global HDPE/PVC specs from
         // the first plastic item we see. Without this the entry shows
@@ -468,7 +499,11 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
                 scheduleNumber: rawSchedule || undefined,
                 wallThicknessMm: rawWallThickness || undefined,
                 pipeEndConfiguration: rawVal || "PE",
-                individualPipeLength: isMetersUnit ? 6000 : rawLength || 6000,
+                // Pipe length in METRES — the rest of the pricing /
+                // weight pipeline assumes metres. The previous 6000
+                // reading was a units bug (mm) and made every
+                // downstream weight calc 1000x too large.
+                individualPipeLength: isMetersUnit ? 6 : rawLength || 6,
                 lengthUnit: "meters" as const,
                 quantityType: isMetersUnit
                   ? ("total_length" as const)
@@ -477,7 +512,10 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
                 workingPressureBar: rawWorkingPressureBar || 16,
                 workingTemperatureC: rawWorkingTemperatureC || 20,
                 steelSpecificationId:
-                  materialType === "steel" ? rfqData.globalSpecs?.steelSpecificationId : undefined,
+                  materialType === "steel"
+                    ? resolveSteelSpecId(item.material, item.materialGrade, steelSpecsList) ||
+                      rfqData.globalSpecs?.steelSpecificationId
+                    : undefined,
               },
               notes: nixNote,
             };
@@ -512,7 +550,8 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
                 workingTemperatureC: rawWorkingTemperatureC2 || 20,
                 steelSpecificationId:
                   bendMaterialType === "steel"
-                    ? rfqData.globalSpecs?.steelSpecificationId
+                    ? resolveSteelSpecId(item.material, item.materialGrade, steelSpecsList) ||
+                      rfqData.globalSpecs?.steelSpecificationId
                     : undefined,
               },
               notes: nixNote,
@@ -537,9 +576,11 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
             const rawWorkingPressureBar3 = rfqData.globalSpecs?.workingPressureBar;
             const rawWorkingTemperatureC3 = rfqData.globalSpecs?.workingTemperatureC;
 
+            const fittingMaterialType = nixProductTypeToMaterialType(item.productType);
             const fittingEntry: FittingEntry = {
               id: generateUniqueId(),
               itemType: "fitting" as const,
+              materialType: fittingMaterialType,
               clientItemNumber: rawItemNumber3 || generateClientItemNumber(customerName, itemIndex),
               description: item.description,
               specs: {
@@ -551,7 +592,11 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
                 quantityType: "number_of_items" as const,
                 workingPressureBar: rawWorkingPressureBar3 || 16,
                 workingTemperatureC: rawWorkingTemperatureC3 || 20,
-                steelSpecificationId: rfqData.globalSpecs?.steelSpecificationId,
+                steelSpecificationId:
+                  fittingMaterialType === "steel"
+                    ? resolveSteelSpecId(item.material, item.materialGrade, steelSpecsList) ||
+                      rfqData.globalSpecs?.steelSpecificationId
+                    : undefined,
               },
               notes: nixNote,
             };
@@ -622,6 +667,38 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
               notes: nixNote,
             };
             return [tankChuteEntry];
+          }
+          // Unmapped Nix item types (valve, pump, boot, wrapping,
+          // consumable, upvc, skid, lateral, end_cap, puddle_pipe,
+          // expansion_joint, unknown) get a passthrough into a
+          // generic "misc" entry that the BOQ step renders in its
+          // Other Items section. Without this, valves / bolts / PVC
+          // items the customer extracted just disappear from the BOQ
+          // entirely. Kept as deliberately loose typing — the form
+          // pages for valves/fasteners aren't expected to deep-edit
+          // these auto-extracted rows; price-out happens via supplier
+          // bundles instead.
+          const rawDiameterMisc = item.diameter;
+          if (rawDiameterMisc || item.itemType === "consumable") {
+            const rawItemNumber5 = item.itemNumber;
+            const rawItemQuantityMisc = item.quantity;
+            const rawItemUnitMisc = item.unit;
+            const miscEntry = {
+              id: generateUniqueId(),
+              itemType: "misc" as const,
+              clientItemNumber: rawItemNumber5 || generateClientItemNumber(customerName, itemIndex),
+              description: item.description,
+              specs: {
+                quantityValue: rawItemQuantityMisc || 1,
+                unit: rawItemUnitMisc || "Each",
+                nixItemType: item.itemType,
+                productType: item.productType,
+                material: item.material,
+                materialGrade: item.materialGrade,
+              },
+              notes: nixNote,
+            };
+            return [miscEntry as unknown as PipeItem];
           }
           return [];
         });
