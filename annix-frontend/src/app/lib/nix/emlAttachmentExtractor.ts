@@ -10,6 +10,77 @@ const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingm
 
 export type AttachmentKind = "boq" | "tender" | "image" | "other";
 
+// Classification used by the unified dropzone (and re-used by the .eml
+// parser internally). Returns the category the dropped file should be
+// routed into. "eml" triggers the email parser; "boq" triggers Nix
+// extraction; "drawing"/"tender" route into the corresponding pending
+// list. PDF/Word filename heuristics decide tender vs drawing — the
+// default for ambiguous PDFs is "tender" since tender packs are far
+// more common than standalone drawings on customer drops.
+export type DroppedFileKind = "eml" | "boq" | "tender" | "drawing" | "image" | "other";
+
+const DRAWING_FILENAME_PATTERNS = [
+  /\bdrawing(s)?\b/i,
+  /\bdwg\b/i,
+  /\bdxf\b/i,
+  /\bgeneral[-_ ]?arrangement\b/i,
+  /\bGA\b/,
+  /\bisometric\b/i,
+  /\bplan(s)?\b/i,
+  /\bsection(s)?\b/i,
+  /\bdetail(s)?\b/i,
+  /\bsketch(es)?\b/i,
+  /-rev[-_ ]?[A-Z0-9]{1,3}\b/i,
+  /\b[A-Z]\d{2,4}-\d{2,5}-\d{2,5}\b/,
+];
+
+const TENDER_FILENAME_PATTERNS = [
+  /\btender\b/i,
+  /\bspec(ification)?s?\b/i,
+  /\bRFQ\b/i,
+  /\benquiry\b/i,
+  /\binquiry\b/i,
+  /\bscope\b/i,
+  /\brequirement(s)?\b/i,
+  /\bconditions?\b/i,
+  /\bRFP\b/i,
+  /\bSOW\b/i,
+  /\bdatasheet\b/i,
+];
+
+export function classifyDroppedFile(file: File): DroppedFileKind {
+  const rawType = file.type;
+  const name = file.name.toLowerCase();
+  const mime = rawType || "";
+
+  if (isEmlFile(file)) return "eml";
+
+  if (
+    mime.includes("spreadsheet") ||
+    mime === XLS_MIME ||
+    mime === "text/csv" ||
+    /\.(xlsx?|csv)$/i.test(name)
+  ) {
+    return "boq";
+  }
+
+  if (mime.startsWith("image/")) return "image";
+
+  if (/\.(dwg|dxf)$/i.test(name)) return "drawing";
+
+  const isPdfOrDoc =
+    mime === PDF_MIME || mime === DOC_MIME || mime === DOCX_MIME || /\.(pdf|docx?)$/i.test(name);
+
+  if (isPdfOrDoc) {
+    const baseName = file.name;
+    if (DRAWING_FILENAME_PATTERNS.some((p) => p.test(baseName))) return "drawing";
+    if (TENDER_FILENAME_PATTERNS.some((p) => p.test(baseName))) return "tender";
+    return "tender";
+  }
+
+  return "other";
+}
+
 export interface EmailMetadata {
   fromName: string | null;
   fromEmail: string | null;

@@ -26,7 +26,12 @@ import { generateUniqueId } from "@/app/lib/datetime";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import { useEnvironmentalIntelligence } from "@/app/lib/hooks/useEnvironmentalIntelligence";
 import { log } from "@/app/lib/logger";
-import { type EmailAttachment, type EmailMetadata, isEmlFile, parseEmail } from "@/app/lib/nix";
+import {
+  classifyDroppedFile,
+  type EmailAttachment,
+  type EmailMetadata,
+  parseEmail,
+} from "@/app/lib/nix";
 import {
   type NixDocumentRole,
   type NixExtractedItem,
@@ -41,6 +46,7 @@ import {
   FALLBACK_ENVIRONMENTAL_AUTO_FILLED_FIELDS,
   fallbackMines,
 } from "./projectDetailsFallbackData";
+import { UnifiedRfqDocumentBucket } from "./UnifiedRfqDocumentBucket";
 
 interface RestrictionPopupPosition {
   x: number;
@@ -471,18 +477,27 @@ export default function ProjectDetailsStep() {
 
   const onAddDocument = useCallback(
     async (incoming: File) => {
-      if (!isEmlFile(incoming)) {
-        storeAddDocument({
-          file: incoming,
-          id: `doc-${generateUniqueId()}-${Math.random().toString(36).substr(2, 9)}`,
-        });
-        if (isExcelFile(incoming)) {
-          // Nix BOQ extraction also mirrors the file to S3 — no need to
+      const kind = classifyDroppedFile(incoming);
+
+      if (kind !== "eml") {
+        // Smart routing: tender-like PDFs/docs go into the tender list
+        // (so they're submitted with role=specification); everything
+        // else goes into the BOQ/drawings list. The classifier uses
+        // filename heuristics for PDFs since we can't read content
+        // here — customer can still re-categorise via the inline
+        // "Move to..." menu in the unified list below.
+        const tenderId = `tender-${generateUniqueId()}-${Math.random().toString(36).substr(2, 9)}`;
+        const docId = `doc-${generateUniqueId()}-${Math.random().toString(36).substr(2, 9)}`;
+        if (kind === "tender") {
+          storeAddTenderDocument({ file: incoming, id: tenderId });
+          archiveToS3(incoming, "specification");
+        } else if (kind === "boq") {
+          storeAddDocument({ file: incoming, id: docId });
+          // BOQ extraction also mirrors the file to S3 — no need to
           // archive separately.
           await runNixBoqExtraction(incoming);
         } else {
-          // Non-Excel file — archive immediately so it survives session
-          // loss.
+          storeAddDocument({ file: incoming, id: docId });
           archiveToS3(incoming, "drawing");
         }
         return;
@@ -738,16 +753,6 @@ export default function ProjectDetailsStep() {
     ],
   );
 
-  const onAddTenderDocument = useCallback(
-    (file: File) => {
-      storeAddTenderDocument({
-        file,
-        id: `tender-${generateUniqueId()}-${Math.random().toString(36).substr(2, 9)}`,
-      });
-      archiveToS3(file, "specification");
-    },
-    [storeAddTenderDocument, archiveToS3],
-  );
   const [additionalNotes, setAdditionalNotes] = useState<string[]>([]);
   const [showMapPicker, setShowMapPicker] = useState(false);
   const hasProjectTypeError = Boolean(errors.projectType);
@@ -760,7 +765,6 @@ export default function ProjectDetailsStep() {
   const [documentsConfirmed, setDocumentsConfirmed] = useState(false);
   const [tenderDocumentsConfirmed, setTenderDocumentsConfirmed] = useState(false);
   const [showNoDocumentsPopup, setShowNoDocumentsPopup] = useState(false);
-  const [showNoTenderDocumentsPopup, setShowNoTenderDocumentsPopup] = useState(false);
 
   // SA Mines state
   const [mines, setMines] = useState<SaMine[]>([]);
@@ -1490,200 +1494,139 @@ export default function ProjectDetailsStep() {
               confirm the rest.
             </p>
             <div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* BOQ & Drawing Documents */}
-                {isUnregisteredCustomer ? (
-                  <div
-                    onMouseEnter={showRestrictionTooltip}
-                    onMouseLeave={hideRestrictionTooltip}
-                    className="bg-gray-100 rounded-lg p-3 border border-gray-300 opacity-60 cursor-not-allowed"
-                  >
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="p-1.5 bg-gray-400 rounded">
-                        <svg
-                          className="w-4 h-4 text-white"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                          />
-                        </svg>
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-bold text-gray-500">BOQ & Drawing Documents</h3>
-                        <p className="text-xs text-gray-400">
-                          Bills of quantities and technical drawings
-                        </p>
-                      </div>
-                      <div className="ml-auto">
-                        <span className="text-xs bg-gray-200 text-gray-500 px-2 py-1 rounded-full font-medium">
-                          Registered Users Only
-                        </span>
-                      </div>
+              {isUnregisteredCustomer ? (
+                <div
+                  onMouseEnter={showRestrictionTooltip}
+                  onMouseLeave={hideRestrictionTooltip}
+                  className="bg-gray-100 rounded-lg p-3 border border-gray-300 opacity-60 cursor-not-allowed"
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="p-1.5 bg-gray-400 rounded">
+                      <svg
+                        className="w-4 h-4 text-white"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                        />
+                      </svg>
                     </div>
-                    <div className="bg-gray-200 rounded-lg p-4 border-2 border-dashed border-gray-300">
-                      <div className="text-center text-gray-400">
-                        <svg
-                          className="w-8 h-8 mx-auto mb-2"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                          />
-                        </svg>
-                        <p className="text-xs">Document upload available for registered users</p>
-                      </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-gray-500">RFQ Documents</h3>
+                      <p className="text-xs text-gray-400">Email, BOQ, drawings and tender specs</p>
+                    </div>
+                    <div className="ml-auto">
+                      <span className="text-xs bg-gray-200 text-gray-500 px-2 py-1 rounded-full font-medium">
+                        Registered Users Only
+                      </span>
                     </div>
                   </div>
-                ) : (
-                  <div>
-                    <DocumentBucket
-                      id="rfq-boq-drawings"
-                      title="BOQ & Drawing Documents Only"
-                      subtitle="Bills of quantities and technical drawings"
-                      tone="blue"
-                      documents={pendingDocuments || []}
-                      onAddDocument={onAddDocument}
-                      onRemoveDocument={onRemoveDocument}
-                      isConfirmed={documentsConfirmed}
-                      onConfirm={() => {
-                        setDocumentsConfirmed(true);
-                        // BOQ Confirm is the explicit "yes, this is the right
-                        // BOQ — proceed" commit. Mark the extraction as
-                        // accepted so the orchestrator's Next handler skips
-                        // Step 2 (Specifications). Either this OR the
-                        // Email-processed popup's Accept arm the same flag.
-                        onUpdate("boqExtractionAccepted", true);
-                      }}
-                      onUnconfirm={() => {
-                        setDocumentsConfirmed(false);
-                        // Reverting Confirm should also revert the Step-2
-                        // skip — the customer is signalling they want to
-                        // re-review or change documents.
-                        onUpdate("boqExtractionAccepted", false);
-                      }}
-                      onConfirmEmpty={() => setShowNoDocumentsPopup(true)}
-                    />
-                    {boqExtractionSummary && (
-                      <div className="mt-2 bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs">
-                        <div className="flex items-start gap-2">
-                          <svg
-                            className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
-                            />
-                          </svg>
-                          <div className="flex-1">
-                            <p className="font-semibold text-blue-900">
-                              Nix extracted {boqExtractionSummary.itemCount} line item
-                              {boqExtractionSummary.itemCount === 1 ? "" : "s"} from{" "}
-                              {boqExtractionSummary.fileName}
-                            </p>
-                            <p className="text-blue-800 mt-0.5">
-                              Split into {boqExtractionSummary.bundleCount} supplier bundle
-                              {boqExtractionSummary.bundleCount === 1 ? "" : "s"}
-                              {boqExtractionSummary.duplicateCount > 0
-                                ? `; ${boqExtractionSummary.duplicateCount} duplicate group${boqExtractionSummary.duplicateCount === 1 ? "" : "s"} flagged for review`
-                                : ""}
-                              {boqExtractionSummary.drawingRefCount > 0
-                                ? `; ${boqExtractionSummary.drawingRefCount} drawing reference${boqExtractionSummary.drawingRefCount === 1 ? "" : "s"} captured`
-                                : ""}
-                              .
-                            </p>
-                          </div>
+                  <div className="bg-gray-200 rounded-lg p-4 border-2 border-dashed border-gray-300">
+                    <div className="text-center text-gray-400">
+                      <svg
+                        className="w-8 h-8 mx-auto mb-2"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                        />
+                      </svg>
+                      <p className="text-xs">Document upload available for registered users</p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <UnifiedRfqDocumentBucket
+                    pendingDocuments={pendingDocuments || []}
+                    pendingTenderDocuments={pendingTenderDocuments || []}
+                    onAddDocument={onAddDocument}
+                    onRemoveDocument={onRemoveDocument}
+                    onRemoveTenderDocument={onRemoveTenderDocument}
+                    onMoveDocumentToTender={(id) => {
+                      const doc = pendingDocuments.find((d) => d.id === id);
+                      if (!doc) return;
+                      onRemoveDocument(id);
+                      storeAddTenderDocument(doc);
+                    }}
+                    onMoveTenderDocumentToBoq={(id) => {
+                      const doc = pendingTenderDocuments.find((d) => d.id === id);
+                      if (!doc) return;
+                      onRemoveTenderDocument(id);
+                      storeAddDocument(doc);
+                    }}
+                    isConfirmed={documentsConfirmed && tenderDocumentsConfirmed}
+                    onConfirm={() => {
+                      setDocumentsConfirmed(true);
+                      setTenderDocumentsConfirmed(true);
+                      // The unified Confirm is the explicit "yes, these
+                      // are the right documents — proceed" commit. Mark
+                      // the BOQ extraction as accepted so the
+                      // orchestrator's Next handler skips Step 2
+                      // (Specifications). Either this OR the
+                      // Email-processed popup's Accept arm the same
+                      // flag.
+                      onUpdate("boqExtractionAccepted", true);
+                    }}
+                    onUnconfirm={() => {
+                      setDocumentsConfirmed(false);
+                      setTenderDocumentsConfirmed(false);
+                      // Reverting Confirm should also revert the Step-2
+                      // skip — the customer is signalling they want to
+                      // re-review or change documents.
+                      onUpdate("boqExtractionAccepted", false);
+                    }}
+                    onConfirmEmpty={() => setShowNoDocumentsPopup(true)}
+                  />
+                  {boqExtractionSummary && (
+                    <div className="mt-2 bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs">
+                      <div className="flex items-start gap-2">
+                        <svg
+                          className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+                          />
+                        </svg>
+                        <div className="flex-1">
+                          <p className="font-semibold text-blue-900">
+                            Nix extracted {boqExtractionSummary.itemCount} line item
+                            {boqExtractionSummary.itemCount === 1 ? "" : "s"} from{" "}
+                            {boqExtractionSummary.fileName}
+                          </p>
+                          <p className="text-blue-800 mt-0.5">
+                            Split into {boqExtractionSummary.bundleCount} supplier bundle
+                            {boqExtractionSummary.bundleCount === 1 ? "" : "s"}
+                            {boqExtractionSummary.duplicateCount > 0
+                              ? `; ${boqExtractionSummary.duplicateCount} duplicate group${boqExtractionSummary.duplicateCount === 1 ? "" : "s"} flagged for review`
+                              : ""}
+                            {boqExtractionSummary.drawingRefCount > 0
+                              ? `; ${boqExtractionSummary.drawingRefCount} drawing reference${boqExtractionSummary.drawingRefCount === 1 ? "" : "s"} captured`
+                              : ""}
+                            .
+                          </p>
                         </div>
                       </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Tender Specification Documents */}
-                {isUnregisteredCustomer ? (
-                  <div
-                    onMouseEnter={showRestrictionTooltip}
-                    onMouseLeave={hideRestrictionTooltip}
-                    className="bg-gray-100 rounded-lg p-3 border border-gray-300 opacity-60 cursor-not-allowed"
-                  >
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="p-1.5 bg-gray-400 rounded">
-                        <svg
-                          className="w-4 h-4 text-white"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                          />
-                        </svg>
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-bold text-gray-500">
-                          Tender Specification Documents
-                        </h3>
-                        <p className="text-xs text-gray-400">Tender specs and requirements</p>
-                      </div>
-                      <div className="ml-auto">
-                        <span className="text-xs bg-gray-200 text-gray-500 px-2 py-1 rounded-full font-medium">
-                          Registered Users Only
-                        </span>
-                      </div>
                     </div>
-                    <div className="bg-gray-200 rounded-lg p-4 border-2 border-dashed border-gray-300">
-                      <div className="text-center text-gray-400">
-                        <svg
-                          className="w-8 h-8 mx-auto mb-2"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                          />
-                        </svg>
-                        <p className="text-xs">Document upload available for registered users</p>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <DocumentBucket
-                    id="rfq-tender-specs"
-                    title="Tender Specification Documents Only"
-                    subtitle="Tender specs and requirements"
-                    tone="purple"
-                    documents={pendingTenderDocuments || []}
-                    onAddDocument={onAddTenderDocument}
-                    onRemoveDocument={onRemoveTenderDocument}
-                    isConfirmed={tenderDocumentsConfirmed}
-                    onConfirm={() => setTenderDocumentsConfirmed(true)}
-                    onUnconfirm={() => setTenderDocumentsConfirmed(false)}
-                    onConfirmEmpty={() => setShowNoTenderDocumentsPopup(true)}
-                  />
-                )}
-              </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -2469,59 +2412,6 @@ export default function ProjectDetailsStep() {
               <button
                 type="button"
                 onClick={() => setShowNoDocumentsPopup(false)}
-                className="flex-1 px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-semibold transition-colors"
-              >
-                Upload Documents
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      {/* No Tender Documents Confirmation Popup */}
-      {showNoTenderDocumentsPopup && (
-        <div className="fixed inset-0 bg-black/10 backdrop-blur-md flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 bg-amber-100 rounded-full">
-                <svg
-                  className="w-6 h-6 text-amber-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                  />
-                </svg>
-              </div>
-              <h3 className="text-lg font-bold text-gray-900">No Tender Documents Uploaded</h3>
-            </div>
-            <p className="text-gray-600 mb-6">
-              You haven't uploaded any tender specification documents. These documents help
-              suppliers understand the full tender requirements and specifications.
-            </p>
-            <p className="text-gray-700 font-medium mb-4">
-              Would you like to proceed without uploading tender documents?
-            </p>
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  log.debug("📄 User confirmed: Skip tender documents");
-                  setShowNoTenderDocumentsPopup(false);
-                  setTenderDocumentsConfirmed(true);
-                  onUpdate("skipTenderDocuments", true);
-                }}
-                className="flex-1 px-4 py-3 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 font-semibold transition-colors"
-              >
-                Proceed Without Documents
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowNoTenderDocumentsPopup(false)}
                 className="flex-1 px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-semibold transition-colors"
               >
                 Upload Documents

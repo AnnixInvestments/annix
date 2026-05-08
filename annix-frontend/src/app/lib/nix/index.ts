@@ -39,6 +39,8 @@ export {
 } from "./context";
 export {
   type AttachmentKind,
+  classifyDroppedFile,
+  type DroppedFileKind,
   type EmailAttachment,
   type EmailMetadata,
   type EmailParseResult,
