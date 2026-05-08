@@ -27,7 +27,12 @@ import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import { useEnvironmentalIntelligence } from "@/app/lib/hooks/useEnvironmentalIntelligence";
 import { log } from "@/app/lib/logger";
 import { type EmailAttachment, type EmailMetadata, isEmlFile, parseEmail } from "@/app/lib/nix";
-import { type NixRfqPipingProfileMetadata, nixApi } from "@/app/lib/nix/api";
+import {
+  type NixExtractedItem,
+  type NixExtractionMetadata,
+  type NixRfqPipingProfileMetadata,
+  nixApi,
+} from "@/app/lib/nix/api";
 import { useRfqWizardStore } from "@/app/lib/store/rfqWizardStore";
 import { generateSystemReferenceNumber } from "@/app/lib/utils/systemUtils";
 import {
@@ -142,6 +147,7 @@ export default function ProjectDetailsStep() {
   const onRemoveTenderDocument = useRfqWizardStore((s) => s.removeTenderDocument);
   const currentDraftId = useRfqWizardStore((s) => s.currentDraftId);
   const setWizardCurrentStep = useRfqWizardStore((s) => s.setCurrentStep);
+  const applyNixItemsToRfq = useRfqWizardStore((s) => s.applyNixItemsToRfq);
   const globalSpecs = rfqData.globalSpecs;
   const useNix = rfqData.useNix;
   const { showToast } = useToast();
@@ -195,7 +201,13 @@ export default function ProjectDetailsStep() {
     /\.xlsx?$/i.test(file.name) || file.type.includes("spreadsheet") || file.type.includes("excel");
 
   const runNixBoqExtraction = useCallback(
-    async (file: File): Promise<NixRfqPipingProfileMetadata | null> => {
+    async (
+      file: File,
+    ): Promise<{
+      profile: NixRfqPipingProfileMetadata | null;
+      items: NixExtractedItem[];
+      metadata: NixExtractionMetadata | null;
+    } | null> => {
       showExtraction({
         brand: "rfq",
         label: `Nix is reading ${file.name} and splitting it into line items…`,
@@ -221,8 +233,11 @@ export default function ProjectDetailsStep() {
         }
         const rawProfile = result.profileMetadata as NixRfqPipingProfileMetadata | undefined;
         const profile = rawProfile ?? null;
-        const items = result.items;
-        const itemCount = items ? items.length : 0;
+        const rawItems = result.items;
+        const items = rawItems || [];
+        const itemCount = items.length;
+        const rawMetadata = result.metadata;
+        const metadata = rawMetadata ?? null;
         const bundles = profile ? profile.supplierBundles : null;
         const bundleCount = bundles ? bundles.length : 0;
         const duplicates = profile ? profile.duplicates : null;
@@ -236,7 +251,7 @@ export default function ProjectDetailsStep() {
           duplicateCount,
           drawingRefCount,
         });
-        return profile;
+        return { profile, items, metadata };
       } catch (err) {
         hideExtraction();
         log.error("Nix BOQ extraction failed:", err);
@@ -457,16 +472,27 @@ export default function ProjectDetailsStep() {
       parsed.attachments.forEach(routeAttachment);
 
       const xlsxAttachments = parsed.attachments.filter((att) => isExcelFile(att.file));
-      const runAllExtractions = async (): Promise<NixRfqPipingProfileMetadata[]> => {
-        const collected: NixRfqPipingProfileMetadata[] = [];
+      type ExtractionResultBundle = {
+        profiles: NixRfqPipingProfileMetadata[];
+        items: NixExtractedItem[];
+        metadatas: NixExtractionMetadata[];
+      };
+      const runAllExtractions = async (): Promise<ExtractionResultBundle> => {
+        const profiles: NixRfqPipingProfileMetadata[] = [];
+        const items: NixExtractedItem[] = [];
+        const metadatas: NixExtractionMetadata[] = [];
         for (const attachment of xlsxAttachments) {
-          const profile = await runNixBoqExtraction(attachment.file);
-          if (profile) collected.push(profile);
+          const result = await runNixBoqExtraction(attachment.file);
+          if (!result) continue;
+          if (result.profile) profiles.push(result.profile);
+          items.push(...result.items);
+          if (result.metadata) metadatas.push(result.metadata);
         }
-        return collected;
+        return { profiles, items, metadatas };
       };
 
-      let profiles = await runAllExtractions();
+      let extractionBundle = await runAllExtractions();
+      let profiles = extractionBundle.profiles;
       const newlySelectedProducts = applyProductSelectionsFromProfiles(profiles);
 
       const buildPopupMessage = (
@@ -571,12 +597,24 @@ export default function ProjectDetailsStep() {
         return lines;
       };
 
-      const triggerLocationDetection = () => {
+      // Push extracted items into the wizard's Step 3 items list AND build
+      // the location-search haystack from email body + every BOQ's
+      // projectLocation/projectName header (task A + C).
+      const acceptExtraction = (bundle: ExtractionResultBundle) => {
+        if (bundle.items.length > 0) {
+          applyNixItemsToRfq(bundle.items);
+        }
         const rawSubject = parsed.metadata.subject;
         const rawBody = parsed.metadata.bodyText;
         const subjectText = rawSubject || "";
         const bodyText = rawBody || "";
-        setEmailLocationSearchText(`${subjectText}\n${bodyText}`);
+        const boqLocationHints = bundle.metadatas
+          .flatMap((m) => [m.projectLocation, m.projectName])
+          .filter((s): s is string => !!s)
+          .join("\n");
+        setEmailLocationSearchText(
+          [subjectText, bodyText, boqLocationHints].filter(Boolean).join("\n"),
+        );
       };
 
       // First attempt — full extraction summary with auto-fill detail.
@@ -588,13 +626,14 @@ export default function ProjectDetailsStep() {
         cancelLabel: "Reject",
       });
       if (acceptedFirst) {
-        triggerLocationDetection();
+        acceptExtraction(extractionBundle);
         return;
       }
 
       // First reject — re-run Nix on every xlsx and let the customer compare.
       showToast("Re-running Nix extraction so it can take another pass…", "info");
-      profiles = await runAllExtractions();
+      extractionBundle = await runAllExtractions();
+      profiles = extractionBundle.profiles;
       applyProductSelectionsFromProfiles(profiles);
 
       const acceptedSecond = await confirm({
@@ -605,7 +644,7 @@ export default function ProjectDetailsStep() {
         cancelLabel: "Reject",
       });
       if (acceptedSecond) {
-        triggerLocationDetection();
+        acceptExtraction(extractionBundle);
         return;
       }
 
@@ -628,6 +667,7 @@ export default function ProjectDetailsStep() {
       showToast,
       applyEmailMetadataToCustomerFields,
       applyProductSelectionsFromProfiles,
+      applyNixItemsToRfq,
       runNixBoqExtraction,
       setWizardCurrentStep,
     ],

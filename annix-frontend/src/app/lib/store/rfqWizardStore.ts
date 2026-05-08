@@ -283,6 +283,13 @@ interface RfqWizardActions {
   nixProcessDocuments: (
     showToast: (msg: string, type: "success" | "error" | "info") => void,
   ) => Promise<void>;
+  /**
+   * Convert NixExtractedItem[] (from any backend extraction — eml-drop, Nix
+   * tender flow, etc.) into the wizard's typed item shape and append them
+   * to rfqData.items. Wraps the same internal helper that nixProcessDocuments
+   * has used since the original Nix tender flow shipped.
+   */
+  applyNixItemsToRfq: (items: NixExtractedItem[]) => void;
   nixSubmitClarification: (
     clarificationId: number,
     response: string,
@@ -1528,6 +1535,8 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
             }, 300);
           }
         },
+
+        applyNixItemsToRfq: (items) => convertNixItemsToRfqItems(items),
 
         nixProcessDocuments: async (showToast) => {
           const { pendingDocuments, rfqData, updateRfqField, setCurrentStep } = get();
