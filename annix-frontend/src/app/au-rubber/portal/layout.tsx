@@ -6,6 +6,7 @@ import { FeedbackWidget } from "@/app/components/FeedbackWidget";
 import { useAuRubberAuth } from "@/app/context/AuRubberAuthContext";
 import { useAuRubberBranding } from "@/app/context/AuRubberBrandingContext";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
+import { NixAppProvider, NixAssistant } from "@/app/lib/nix";
 import { AuHeader } from "../components/AuHeader";
 
 function MainContent({ children }: { children: React.ReactNode }) {
@@ -65,6 +66,10 @@ function PortalContent({ children }: { children: React.ReactNode }) {
       <AuHeader />
       <MainContent>{children}</MainContent>
       <FeedbackWidget authContext="au-rubber" />
+      <NixAssistant
+        context="general"
+        pageContext={{ currentPage: "AU Rubber", portalContext: "general" }}
+      />
     </div>
   );
 }
@@ -113,7 +118,9 @@ export default function AuRubberPortalLayout(props: { children: React.ReactNode 
         </div>
       }
     >
-      <ProtectedLayout>{children}</ProtectedLayout>
+      <NixAppProvider appCode="au-rubber">
+        <ProtectedLayout>{children}</ProtectedLayout>
+      </NixAppProvider>
     </Suspense>
   );
 }

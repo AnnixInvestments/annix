@@ -14,6 +14,7 @@ import { JobCard } from "../stock-control/entities/job-card.entity";
 import { JobCardLineItem } from "../stock-control/entities/job-card-line-item.entity";
 import { BlogPostsController } from "./blog-posts.controller";
 import { BlogPostsService } from "./blog-posts.service";
+import { AuRubberCapabilities } from "./capabilities/au-rubber.capabilities";
 import { BlogPost } from "./entities/blog-post.entity";
 import { RubberAccountSignOff } from "./entities/rubber-account-sign-off.entity";
 import { RubberAppProfile } from "./entities/rubber-app-profile.entity";
@@ -231,6 +232,7 @@ import { WebsitePagesService } from "./website-pages.service";
     RubberAccountingPdfService,
     RubberAccountingService,
     RubberStatementReconciliationService,
+    AuRubberCapabilities,
   ],
   exports: [
     RubberLiningService,
