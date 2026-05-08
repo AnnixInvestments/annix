@@ -10,6 +10,7 @@ import { useToast } from "@/app/components/Toast";
 import { nixApi } from "@/app/lib/nix";
 import type { NixExtractionSessionDto, NixExtractionSummary } from "@/app/lib/query/hooks";
 import { ExtractionGroup } from "./ExtractionGroup";
+import { NixSpecViewerModal, useNixSpecViewer } from "./NixSpecViewer";
 import { useSpecLookup } from "./useSpecLookup";
 
 /**
@@ -34,6 +35,7 @@ export function NixDraftReview(props: {
   const { session, brand, onSessionChanged, addMoreDocumentsHref } = props;
   const { showToast } = useToast();
   const pdfPreview = usePdfPreview();
+  const specViewer = useNixSpecViewer();
   const { showExtraction, hideExtraction } = useExtractionProgress();
   const [retryingId, setRetryingId] = useState<number | null>(null);
 
@@ -112,24 +114,30 @@ export function NixDraftReview(props: {
           return;
         }
         const safePage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1;
-        const separator = url.includes("#") ? "&" : "#";
-        // page=N jumps to the page; view=FitH fits the page horizontally so
-        // the user sees the full width without manual zoom. Both params are
-        // honoured by Chrome / Edge / Firefox built-in PDF viewers.
-        pdfPreview.open(`${url}${separator}page=${safePage}&view=FitH`, extraction.documentName);
+        // Use the react-pdf-based NixSpecViewer so the page jump is reliable
+        // across browsers — Chrome's iframe-based PDF viewer respects #page=N
+        // but renders from the very top of the page; we want the user to land
+        // inside the clause body via programmatic scroll.
+        specViewer.open({
+          url,
+          filename: extraction.documentName,
+          page: safePage,
+          searchHint: null,
+        });
       } catch (err) {
         showToast(err instanceof Error ? err.message : "Failed to open document", "error");
       }
     },
-    [showToast, pdfPreview],
+    [showToast, specViewer],
   );
 
   // Used by drawing-row code chips: given a sourceExtractionId from the
   // SpecLookup map, find the spec extraction and jump straight to its
   // resolved-clause page in the PDF preview. The searchHint (clause key,
-  // first words of the description) is appended to the URL so the PDF
-  // viewer also text-searches and scrolls past the page header to the
-  // actual clause body, not just the top of the page.
+  // first words of the description) is passed to NixSpecViewer which walks
+  // the rendered page's text layer for a match and scrolls THAT span into
+  // view — so the user lands directly on the clause body, not the page
+  // header.
   const handleJumpToSpec = useCallback(
     async (sourceExtractionId: number, page: number | null, searchHint: string | null) => {
       const target = specExtractions.find((s) => s.id === sourceExtractionId);
@@ -144,21 +152,17 @@ export function NixDraftReview(props: {
           return;
         }
         const safePage = Number.isFinite(page ?? 0) && (page ?? 0) > 0 ? Math.floor(page ?? 1) : 1;
-        const separator = url.includes("#") ? "&" : "#";
-        const searchParam =
-          searchHint && searchHint.length > 0 ? `&search=${encodeURIComponent(searchHint)}` : "";
-        // page=N jumps to the page; view=FitH fits horizontally; search=text
-        // text-searches the doc post-load so the viewer scrolls past the page
-        // header to the first match (works in Chrome / Edge built-in viewer).
-        pdfPreview.open(
-          `${url}${separator}page=${safePage}&view=FitH${searchParam}`,
-          target.documentName,
-        );
+        specViewer.open({
+          url,
+          filename: target.documentName,
+          page: safePage,
+          searchHint,
+        });
       } catch (err) {
         showToast(err instanceof Error ? err.message : "Failed to open document", "error");
       }
     },
-    [specExtractions, showToast, pdfPreview],
+    [specExtractions, showToast, specViewer],
   );
 
   const isMutable = session.status !== "promoted" && session.status !== "archived";
@@ -224,6 +228,7 @@ export function NixDraftReview(props: {
       )}
 
       <PdfPreviewModal state={pdfPreview.state} onClose={pdfPreview.close} />
+      <NixSpecViewerModal state={specViewer.state} onClose={specViewer.close} />
     </div>
   );
 }

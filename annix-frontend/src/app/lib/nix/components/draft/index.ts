@@ -27,6 +27,11 @@ export {
 } from "./humanise";
 export { ItemRow } from "./ItemRow";
 export { NixDraftReview } from "./NixDraftReview";
+export {
+  NixSpecViewerModal,
+  type NixSpecViewerOpts,
+  useNixSpecViewer,
+} from "./NixSpecViewer";
 export { SpecificationCard } from "./SpecificationCard";
 export { StatCard } from "./StatCard";
 export { type ResolvedCode, type SpecLookup, useSpecLookup } from "./useSpecLookup";
