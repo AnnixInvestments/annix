@@ -18,7 +18,7 @@ export function ExtractionGroup(props: {
   specLookup: SpecLookup;
   onViewOriginal: (extraction: NixExtractionSummary) => void;
   onJumpToPage: (extraction: NixExtractionSummary, page: number) => void;
-  onJumpToSpec: (extractionId: number, page: number | null) => void;
+  onJumpToSpec: (extractionId: number, page: number | null, searchHint: string | null) => void;
   onRetry: (extraction: NixExtractionSummary) => void;
   onItemSaved: () => void;
   retryingId: number | null;

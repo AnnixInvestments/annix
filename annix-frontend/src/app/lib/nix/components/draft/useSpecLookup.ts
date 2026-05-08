@@ -24,6 +24,12 @@ export interface ResolvedCode {
   sourceExtractionId: number;
   /** Source filename (for UI tooltips). */
   sourceDocumentName: string;
+  /**
+   * Best text fragment to text-search the PDF for after the page jump,
+   * so the viewer scrolls past the page header to the actual clause.
+   * Falls back through clauseKey → first sentence of description.
+   */
+  searchHint: string | null;
 }
 
 export interface SpecLookup {
@@ -69,6 +75,7 @@ export function useSpecLookup(specExtractions: NixExtractionSummary[]): SpecLook
           pageReference,
           sourceExtractionId: extraction.id,
           sourceDocumentName: extraction.documentName,
+          searchHint: pickSearchHint(code, description, summary),
         };
         map.set(normaliseCode(code), resolved);
       }
@@ -85,4 +92,36 @@ export function useSpecLookup(specExtractions: NixExtractionSummary[]): SpecLook
 
 function normaliseCode(code: string): string {
   return code.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+/**
+ * Picks the best text fragment for the PDF viewer's #search= parameter so
+ * after the page jump it scrolls past the page header to the actual clause.
+ *
+ * Preference order:
+ *  1. The clause key itself if it's reasonably specific (≥4 chars, contains
+ *     a letter — skips numeric-only keys like "1000/3" that match too widely).
+ *  2. The first ~6 words of the description — almost always lands inside
+ *     the clause body and avoids matching the heading on every page.
+ *  3. The summary, if neither of the above qualifies.
+ *
+ * Returns null when no usable hint can be derived.
+ */
+function pickSearchHint(
+  clauseKey: string,
+  description: string | null,
+  summary: string | null,
+): string | null {
+  if (clauseKey.length >= 4 && /[a-zA-Z]/.test(clauseKey)) {
+    return clauseKey;
+  }
+  if (description && description.length > 0) {
+    const firstWords = description.trim().split(/\s+/).slice(0, 6).join(" ");
+    if (firstWords.length >= 8) return firstWords;
+  }
+  if (summary && summary.length > 0) {
+    const firstWords = summary.trim().split(/\s+/).slice(0, 6).join(" ");
+    if (firstWords.length >= 8) return firstWords;
+  }
+  return null;
 }

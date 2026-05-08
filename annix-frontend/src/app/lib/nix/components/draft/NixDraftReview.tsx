@@ -126,17 +126,39 @@ export function NixDraftReview(props: {
 
   // Used by drawing-row code chips: given a sourceExtractionId from the
   // SpecLookup map, find the spec extraction and jump straight to its
-  // resolved-clause page in the PDF preview.
+  // resolved-clause page in the PDF preview. The searchHint (clause key,
+  // first words of the description) is appended to the URL so the PDF
+  // viewer also text-searches and scrolls past the page header to the
+  // actual clause body, not just the top of the page.
   const handleJumpToSpec = useCallback(
-    (sourceExtractionId: number, page: number | null) => {
+    async (sourceExtractionId: number, page: number | null, searchHint: string | null) => {
       const target = specExtractions.find((s) => s.id === sourceExtractionId);
       if (!target) {
         showToast("Spec source no longer in this draft.", "info");
         return;
       }
-      handleJumpToPage(target, page ?? 1);
+      try {
+        const { url } = await nixApi.extractionDocumentUrl(target.id);
+        if (!url) {
+          showToast("No source document on file for this extraction.", "info");
+          return;
+        }
+        const safePage = Number.isFinite(page ?? 0) && (page ?? 0) > 0 ? Math.floor(page ?? 1) : 1;
+        const separator = url.includes("#") ? "&" : "#";
+        const searchParam =
+          searchHint && searchHint.length > 0 ? `&search=${encodeURIComponent(searchHint)}` : "";
+        // page=N jumps to the page; view=FitH fits horizontally; search=text
+        // text-searches the doc post-load so the viewer scrolls past the page
+        // header to the first match (works in Chrome / Edge built-in viewer).
+        pdfPreview.open(
+          `${url}${separator}page=${safePage}&view=FitH${searchParam}`,
+          target.documentName,
+        );
+      } catch (err) {
+        showToast(err instanceof Error ? err.message : "Failed to open document", "error");
+      }
     },
-    [specExtractions, showToast, handleJumpToPage],
+    [specExtractions, showToast, pdfPreview],
   );
 
   const isMutable = session.status !== "promoted" && session.status !== "archived";

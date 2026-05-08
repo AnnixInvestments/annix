@@ -19,7 +19,7 @@ export function ItemRow(props: {
   extractionId: number;
   specLookup: SpecLookup;
   onSaved: () => void;
-  onJumpToSpec: (extractionId: number, page: number | null) => void;
+  onJumpToSpec: (extractionId: number, page: number | null, searchHint: string | null) => void;
 }) {
   const { item, index, extractionId, specLookup, onSaved, onJumpToSpec } = props;
   const itemNumber = item.itemNumber;

@@ -24,7 +24,7 @@ export function CodesCell(props: {
   flangeConfig: string;
   specLookup: SpecLookup;
   onSaved: () => void;
-  onJumpToSpec: (extractionId: number, page: number | null) => void;
+  onJumpToSpec: (extractionId: number, page: number | null, searchHint: string | null) => void;
 }) {
   const {
     extractionId,

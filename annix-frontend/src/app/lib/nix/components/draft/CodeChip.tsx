@@ -12,7 +12,7 @@ export function CodeChip(props: {
   code: string;
   resolved: ResolvedCode | null;
   kind: "coating" | "lining" | "materialClass" | "flangeConfig";
-  onJumpToSpec: (extractionId: number, page: number | null) => void;
+  onJumpToSpec: (extractionId: number, page: number | null, searchHint: string | null) => void;
 }) {
   const { code, resolved, kind, onJumpToSpec } = props;
 
@@ -34,7 +34,9 @@ export function CodeChip(props: {
   return (
     <button
       type="button"
-      onClick={() => onJumpToSpec(resolved.sourceExtractionId, resolved.pageReference)}
+      onClick={() =>
+        onJumpToSpec(resolved.sourceExtractionId, resolved.pageReference, resolved.searchHint)
+      }
       title={tooltip}
       className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded border ${tone.bg} ${tone.text} ${tone.border} hover:brightness-95 hover:underline cursor-pointer text-left`}
     >
