@@ -29,6 +29,7 @@ import { LearningSource, LearningType, NixLearning } from "./entities/nix-learni
 import { NixUserPreference } from "./entities/nix-user-preference.entity";
 import { MineInferenceService } from "./mine-inference.service";
 import { NixExtractionProfileRegistry } from "./profiles";
+import { RevisionTrackingService, type SupersessionVerdict } from "./revision-tracking.service";
 import {
   ExcelExtractorService,
   ExtractedItem,
@@ -61,6 +62,7 @@ export class NixService {
     private readonly s3StorageService: S3StorageService,
     private readonly profileRegistry: NixExtractionProfileRegistry,
     private readonly mineInferenceService: MineInferenceService,
+    private readonly revisionTrackingService: RevisionTrackingService,
   ) {}
 
   private resolveSourceLinkage(dto: ProcessDocumentDto): {
@@ -322,6 +324,17 @@ export class NixService {
       await this.attachMineInference(extraction);
 
       await this.extractionRepo.save(extraction);
+
+      try {
+        await this.revisionTrackingService.processIncomingExtraction(extraction);
+      } catch (revErr) {
+        this.logger.error(
+          `Revision tracking failed during retry for #${extractionId}: ${
+            revErr instanceof Error ? revErr.message : "unknown"
+          }`,
+        );
+      }
+
       this.logger.log(
         `Retried extraction #${extractionId} successfully — ${relevantItems.length} items in ${extraction.processingTimeMs}ms`,
       );
@@ -544,6 +557,20 @@ export class NixService {
         (extraction.extractedData?.profileMetadata as Record<string, unknown> | undefined) ??
         undefined;
 
+      let revisionVerdict: SupersessionVerdict = { action: "first" };
+      if (extraction.status === ExtractionStatus.COMPLETED) {
+        try {
+          revisionVerdict =
+            await this.revisionTrackingService.processIncomingExtraction(extraction);
+        } catch (revErr) {
+          this.logger.error(
+            `Revision tracking failed for #${extraction.id}: ${
+              revErr instanceof Error ? revErr.message : "unknown"
+            }`,
+          );
+        }
+      }
+
       return {
         extractionId: extraction.id,
         status: extraction.status,
@@ -554,6 +581,7 @@ export class NixService {
           context: c.context || {},
         })),
         ...(profileMetadata ? { profileMetadata } : {}),
+        revisionVerdict,
       };
     } catch (error) {
       extraction.status = ExtractionStatus.FAILED;

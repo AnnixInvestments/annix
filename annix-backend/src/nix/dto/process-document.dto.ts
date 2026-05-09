@@ -108,4 +108,20 @@ export class ProcessDocumentResponseDto {
 
   @ApiPropertyOptional({ description: "Error message if failed" })
   error?: string;
+
+  @ApiPropertyOptional({
+    description:
+      "Outcome of the revision-supersession check (issue #264). 'first' = no prior version on file. 'same' = same revision already extracted. 'newer' = this upload supersedes an older canonical version. 'older' = an older revision was uploaded while a newer one is on file (frontend should warn). 'unknown' = revisions can't be ordered (frontend should prompt).",
+  })
+  revisionVerdict?: {
+    action: "first" | "same" | "newer" | "older" | "unknown";
+    canonicalExtractionId?: number;
+    canonicalRevision?: string | null;
+    previousCanonicalExtractionId?: number;
+    previousCanonicalRevision?: string | null;
+    latestExtractionId?: number;
+    latestRevision?: string | null;
+    otherExtractionId?: number;
+    otherRevision?: string | null;
+  };
 }

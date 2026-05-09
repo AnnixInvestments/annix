@@ -17,6 +17,7 @@ import { NixUserPreference } from "./entities/nix-user-preference.entity";
 import { MineInferenceService } from "./mine-inference.service";
 import { NixService } from "./nix.service";
 import { NixExtractionProfileRegistry } from "./profiles";
+import { RevisionTrackingService } from "./revision-tracking.service";
 import { ExcelExtractorService } from "./services/excel-extractor.service";
 import { PdfExtractorService } from "./services/pdf-extractor.service";
 import { WordExtractorService } from "./services/word-extractor.service";
@@ -42,6 +43,7 @@ describe("NixService", () => {
     extractedItems: [],
     relevanceScore: 0,
     processingTimeMs: 0,
+    isLatestRevision: true,
     createdAt: new Date(),
     updatedAt: new Date(),
   } as NixExtraction;
@@ -159,6 +161,13 @@ describe("NixService", () => {
             infer: jest.fn().mockResolvedValue(null),
             findExistingForMine: jest.fn().mockResolvedValue(null),
             findReuseTargetForUpload: jest.fn().mockResolvedValue(null),
+          },
+        },
+        {
+          provide: RevisionTrackingService,
+          useValue: {
+            compareRevisions: jest.fn().mockReturnValue("same"),
+            processIncomingExtraction: jest.fn().mockResolvedValue({ action: "first" }),
           },
         },
       ],

@@ -254,6 +254,7 @@ export class MineInferenceService {
       .createQueryBuilder("e")
       .where("e.documentNumber = :documentNumber", { documentNumber })
       .andWhere("e.status = :status", { status: ExtractionStatus.COMPLETED })
+      .andWhere("e.isLatestRevision = :latest", { latest: true })
       .orderBy("e.documentRevision", "DESC", "NULLS LAST")
       .addOrderBy("e.createdAt", "DESC")
       .limit(1);

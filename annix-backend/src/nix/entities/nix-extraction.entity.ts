@@ -274,6 +274,21 @@ export class NixExtraction {
   @Column({ name: "document_revision", type: "varchar", length: 32, nullable: true })
   documentRevision?: string;
 
+  @ApiProperty({
+    description:
+      "Denormalised flag set false when a higher-revision extraction has been added to the library for the same (mineCountry, mineId, documentNumber). Inference / cross-quote reuse only return rows where this is true. Defaults true for first-time uploads.",
+  })
+  @Column({ name: "is_latest_revision", type: "boolean", default: true })
+  isLatestRevision: boolean;
+
+  @ApiProperty({
+    description:
+      "When this extraction is no longer the latest revision (is_latest_revision = false), points to the newer-rev extraction that superseded it so the UI can render a 'see latest →' link.",
+    required: false,
+  })
+  @Column({ name: "superseded_by_extraction_id", type: "int", nullable: true })
+  supersededByExtractionId?: number;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

@@ -41,6 +41,7 @@ import { MineLibraryService } from "./mine-library/mine-library.service";
 import { NixController } from "./nix.controller";
 import { NixService } from "./nix.service";
 import { NixExtractionProfileRegistry, RfqPipingProfileHandler } from "./profiles";
+import { RevisionTrackingService } from "./revision-tracking.service";
 import { AutoApprovalService } from "./services/auto-approval.service";
 import { CustomFieldService } from "./services/custom-field.service";
 import { DocumentAnnotationService } from "./services/document-annotation.service";
@@ -114,6 +115,7 @@ import { WordExtractorService } from "./services/word-extractor.service";
     RfqPipingProfileHandler,
     MineInferenceService,
     MineLibraryService,
+    RevisionTrackingService,
     NixService,
     NixExtractionSessionService,
     NixChatService,
@@ -148,6 +150,7 @@ import { WordExtractorService } from "./services/word-extractor.service";
     NixGuideLoader,
     WalkthroughEngine,
     MineInferenceService,
+    RevisionTrackingService,
   ],
 })
 export class NixModule {}
