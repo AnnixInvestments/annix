@@ -2,6 +2,7 @@ export * from "./dimensions";
 export * from "./fittings";
 export * from "./grades";
 export * from "./pricing";
+export * from "./sans1123-mapping";
 export * from "./sdr-ratings";
 export * from "./standards";
 export * from "./temperature-derating";

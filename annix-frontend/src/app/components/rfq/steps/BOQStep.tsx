@@ -1,5 +1,12 @@
 "use client";
 
+import {
+  type HdpeNominalSize,
+  pipeDimensions as hdpePipeDimensions,
+  type SdrValue,
+  sans1123StubAssemblyDescription,
+  selectSdrForPressure,
+} from "@annix/product-data/hdpe";
 import { FLANGE_OD } from "@annix/product-data/pipe";
 import { isString, keys, values } from "es-toolkit/compat";
 import React, { useCallback, useMemo, useState } from "react";
@@ -356,6 +363,30 @@ export default function BOQStep(props: {
     return perMetreRun * runLengthM + perMetreBranch * branchLengthM;
   };
 
+  // HDPE dim resolver — when an HDPE entry's calculation block lacks
+  // OD / WT (the backend's calc service is steel-only and skips HDPE
+  // entries), look the values up from the canonical PE100 table in
+  // @annix/product-data/hdpe so the BOQ can still populate Weld(m),
+  // Int m², Ext m² columns. Falls back to the formula `WT = OD/SDR`
+  // when the (DN, SDR) combo isn't in the table.
+  //
+  // SDR is derived in priority order:
+  //   1. entry.specs.hdpeSdr        — per-row override
+  //   2. globalSpecs.hdpeSdr        — wizard-level setting
+  //   3. selectSdrForPressure(PN)   — when only PN is known
+  //   4. DEFAULT_HDPE_SDR (= 11)    — PN16/SDR11 mining default
+  const resolveHdpeDims = (nb: number, entry: any): { od: number; wt: number; sdr: SdrValue } => {
+    const rawEntrySdr = entry.specs?.hdpeSdr;
+    const rawGlobalSdr = globalSpecs?.hdpeSdr;
+    const rawGlobalPn = globalSpecs?.hdpePressureRating;
+    const pnNumber = rawGlobalPn ? Number(rawGlobalPn) : null;
+    const sdrFromPn = pnNumber ? selectSdrForPressure(pnNumber, "PE100") : null;
+    const sdrCandidate = rawEntrySdr || rawGlobalSdr || sdrFromPn || DEFAULT_HDPE_SDR;
+    const sdr = Number(sdrCandidate) as SdrValue;
+    const dims = hdpePipeDimensions(nb as HdpeNominalSize, sdr, "PE100");
+    return { od: dims.odMm, wt: dims.wallMm, sdr };
+  };
+
   // ======================
   // CONSOLIDATION LOGIC
   // ======================
@@ -547,9 +578,15 @@ export default function BOQStep(props: {
       const segments = rawNumberOfSegments || 5;
       const mitreWelds = segments - 1;
       const rawOutsideDiameterMm = entry.calculation?.outsideDiameterMm;
-      const od = rawOutsideDiameterMm || 0;
       const rawWallThicknessMm = entry.calculation?.wallThicknessMm;
-      const wt = rawWallThicknessMm || 0;
+      const hdpeDims =
+        bendMaterialType === "hdpe" && (!rawOutsideDiameterMm || !rawWallThicknessMm)
+          ? resolveHdpeDims(nb, entry)
+          : null;
+      const hdpeDimsOd = hdpeDims ? hdpeDims.od : 0;
+      const hdpeDimsWt = hdpeDims ? hdpeDims.wt : 0;
+      const od = rawOutsideDiameterMm || hdpeDimsOd;
+      const wt = rawWallThicknessMm || hdpeDimsWt;
       const mitreWeldLength = mitreWelds * qty * ((Math.PI * od) / 1000);
 
       const rawBendType = entry.specs?.bendType;
@@ -620,9 +657,23 @@ export default function BOQStep(props: {
           bendMaterialType === "hdpe" ? "HDPE" : bendMaterialType === "pvc" ? "PVC" : steelSpec;
         const rawBendEndConfig = entry.specs?.pipeEndConfiguration;
         const bendFlangeSuffix = flangeConfigSuffix(rawBendEndConfig, bendMaterialType, flangeSpec);
+        // SANS 1123 stub-end + backing-flange annotation for HDPE
+        // bends with a flanged end config. The PN drives the table
+        // number; SDR labels the wall thickness so the supplier
+        // knows what pipe class to source against.
+        const hdpeBendStubAssembly =
+          bendMaterialType === "hdpe" &&
+          rawBendEndConfig &&
+          rawBendEndConfig !== "PE" &&
+          globalSpecs?.hdpePressureRating
+            ? sans1123StubAssemblyDescription(Number(globalSpecs.hdpePressureRating))
+            : null;
+        const hdpeBendSdrLabel =
+          bendMaterialType === "hdpe" && hdpeDims ? ` PE100 SDR${hdpeDims.sdr}` : "";
+        const hdpeBendStubSuffix = hdpeBendStubAssembly ? `, ${hdpeBendStubAssembly}` : "";
         consolidatedBends.set(key, {
           description:
-            `${nb}NB ${angle}° ${bendType} Bend ${bendMaterialLabel} ${schedule ? `Sch${schedule.replace("Sch", "")}` : ""}${bendFlangeSuffix}`.trim(),
+            `${nb}NB ${angle}° ${bendType} Bend ${bendMaterialLabel}${hdpeBendSdrLabel} ${schedule ? `Sch${schedule.replace("Sch", "")}` : ""}${bendFlangeSuffix}${hdpeBendStubSuffix}`.trim(),
           qty: qty,
           unit: "Each",
           weight: bendWeight * qty,
@@ -871,21 +922,40 @@ export default function BOQStep(props: {
       }
 
       const rawOutsideDiameterMm2 = entry.calculation?.outsideDiameterMm;
+      const rawWallThicknessMm2 = entry.calculation?.wallThicknessMm;
+      const rawFittingMaterialTypeForDims = entry.materialType;
+      const fittingMaterialTypeForDims = rawFittingMaterialTypeForDims || "steel";
+      const hdpeFittingDims =
+        fittingMaterialTypeForDims === "hdpe" && (!rawOutsideDiameterMm2 || !rawWallThicknessMm2)
+          ? resolveHdpeDims(nb, entry)
+          : null;
+      const hdpeFittingDimsOd = hdpeFittingDims ? hdpeFittingDims.od : 0;
+      const hdpeFittingDimsWt = hdpeFittingDims ? hdpeFittingDims.wt : 0;
 
       // Calculate fitting weld lengths and surface areas
-      const od = rawOutsideDiameterMm2 || 0;
-      const rawWallThicknessMm2 = entry.calculation?.wallThicknessMm;
-      const wt = rawWallThicknessMm2 || 0;
+      const od = rawOutsideDiameterMm2 || hdpeFittingDimsOd;
+      const wt = rawWallThicknessMm2 || hdpeFittingDimsWt;
       const rawPipeEndConfiguration = entry.specs?.pipeEndConfiguration;
       const fittingEndConfig = rawPipeEndConfiguration || "PE";
       const fittingFlangeCount = getFlangeCountFromConfig(fittingEndConfig, "fitting");
 
       const rawBranchOutsideDiameterMm = entry.calculation?.branchOutsideDiameterMm;
+      const rawBranchWallThicknessMm = entry.calculation?.branchWallThicknessMm;
+      // For HDPE reducing tees / laterals, branch dims come from the
+      // PE100 table at the branch NB. For equal-branch fittings the
+      // main and branch resolve to the same row so the lookup is a
+      // no-op cost — clarity wins.
+      const hdpeFittingBranchDims =
+        fittingMaterialTypeForDims === "hdpe" &&
+        (!rawBranchOutsideDiameterMm || !rawBranchWallThicknessMm)
+          ? resolveHdpeDims(branchNb, entry)
+          : null;
+      const hdpeFittingBranchOd = hdpeFittingBranchDims ? hdpeFittingBranchDims.od : 0;
+      const hdpeFittingBranchWt = hdpeFittingBranchDims ? hdpeFittingBranchDims.wt : 0;
 
       // Branch dimensions
-      const branchOd = rawBranchOutsideDiameterMm || od;
-      const rawBranchWallThicknessMm = entry.calculation?.branchWallThicknessMm;
-      const branchWt = rawBranchWallThicknessMm || wt;
+      const branchOd = rawBranchOutsideDiameterMm || hdpeFittingBranchOd || od;
+      const branchWt = rawBranchWallThicknessMm || hdpeFittingBranchWt || wt;
 
       // Calculate fitting welds (tee weld + flange welds)
       // One tee weld per fitting
@@ -989,9 +1059,23 @@ export default function BOQStep(props: {
           fittingMaterialType,
           flangeSpec,
         );
+        // SANS 1123 stub-end + backing-flange annotation for HDPE
+        // fittings with a flanged end config. Mirrors the bend logic.
+        const hdpeFittingStubAssembly =
+          fittingMaterialType === "hdpe" &&
+          fittingEndConfig &&
+          fittingEndConfig !== "PE" &&
+          globalSpecs?.hdpePressureRating
+            ? sans1123StubAssemblyDescription(Number(globalSpecs.hdpePressureRating))
+            : null;
+        const hdpeFittingSdrLabel =
+          fittingMaterialType === "hdpe" && hdpeFittingDims
+            ? ` PE100 SDR${hdpeFittingDims.sdr}`
+            : "";
+        const hdpeFittingStubSuffix = hdpeFittingStubAssembly ? `, ${hdpeFittingStubAssembly}` : "";
         consolidatedFittings.set(key, {
           description:
-            `${nb}NB${branchNb !== nb ? `x${branchNb}NB` : ""} ${displayType} ${fittingMaterialLabel} ${schedule ? `Sch${schedule.replace("Sch", "")}` : ""}${fittingFlangeSuffix}`.trim(),
+            `${nb}NB${branchNb !== nb ? `x${branchNb}NB` : ""} ${displayType} ${fittingMaterialLabel}${hdpeFittingSdrLabel} ${schedule ? `Sch${schedule.replace("Sch", "")}` : ""}${fittingFlangeSuffix}${hdpeFittingStubSuffix}`.trim(),
           qty: qty,
           unit: "Each",
           weight: fittingWeight * qty,
@@ -1312,7 +1396,14 @@ export default function BOQStep(props: {
       const rawPipeWeldsPerUnit = entry.calculation?.pipeWeldsPerUnit;
       const pipeWeldCount = rawPipeWeldsPerUnit || 0;
       const rawOutsideDiameterMm3 = entry.calculation?.outsideDiameterMm;
-      const od = rawOutsideDiameterMm3 || 0;
+      const rawWallThicknessMm3 = entry.calculation?.wallThicknessMm;
+      const hdpePipeDims =
+        materialType === "hdpe" && (!rawOutsideDiameterMm3 || !rawWallThicknessMm3)
+          ? resolveHdpeDims(nb, entry)
+          : null;
+      const hdpePipeDimsOd = hdpePipeDims ? hdpePipeDims.od : 0;
+      const hdpePipeDimsWt = hdpePipeDims ? hdpePipeDims.wt : 0;
+      const od = rawOutsideDiameterMm3 || hdpePipeDimsOd;
       // circumference per weld
       const pipeWeldLength = pipeWeldCount * pipeQty * ((Math.PI * od) / 1000);
 
@@ -1320,8 +1411,7 @@ export default function BOQStep(props: {
 
       // Calculate surface areas
       const totalLength = rawCalculatedTotalLength || pipeLength * pipeQty;
-      const rawWallThicknessMm3 = entry.calculation?.wallThicknessMm;
-      const wt = rawWallThicknessMm3 || 0;
+      const wt = rawWallThicknessMm3 || hdpePipeDimsWt;
       const odM = od / 1000;
       const idM = (od - 2 * wt) / 1000;
       const extAreaM2 = Math.PI * odM * totalLength;
@@ -2420,6 +2510,14 @@ export default function BOQStep(props: {
                 "bg-blue-50",
                 "text-blue-700",
               )}
+              <p className="mt-3 text-xs text-blue-900/80 dark:text-blue-200/80 italic leading-snug">
+                <strong>HDPE assumptions:</strong> dimensions (OD, wall, weld length, surface area)
+                derived from PE100 pipe spec for the line's PN rating, per SANS ISO 4427
+                manufacturer data (Flo-Tek / Marley / Sinvac equivalent). Where end config is
+                flanged, a stub end + SANS 1123 Type 1 (full-face) backing flange is assumed unless
+                the tender document specifies an alternative. Final HDPE OD / wall thickness to be
+                rationalised by the supplier at quote against the project pressure class.
+              </p>
             </section>
           );
         })()}
