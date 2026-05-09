@@ -408,6 +408,26 @@ class ApiClient {
     return this.request(`/rfq/${id}`);
   }
 
+  // Pre-quote clarification email — backend wraps EmailService.
+  // Called from PreQuoteClarificationsStep after the customer
+  // reviews / edits the auto-drafted body.
+  async sendRfqClarificationEmail(payload: {
+    to: string;
+    cc?: string;
+    subject?: string;
+    customerName?: string;
+    projectName?: string;
+    rfqReference?: string;
+    customNote?: string;
+    missingDrawings: Array<{ ref: string; itemNumbers: string[] }>;
+    valveSpecGaps: Array<{ itemNumber: string; description: string; missingFields: string[] }>;
+  }): Promise<{ success: boolean; error?: string }> {
+    return this.request("/rfq/clarification-email", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  }
+
   // RFQ Document endpoints
   async uploadRfqDocument(rfqId: number, file: File): Promise<RfqDocument> {
     const url = `${this.baseURL}/rfq/${rfqId}/documents`;
@@ -1256,6 +1276,8 @@ export const rfqApi = {
   create: (data: CreateStraightPipeRfqWithItemDto) => apiClient.createStraightPipeRfq(data),
   getAll: () => apiClient.getRfqs(),
   getById: (id: number) => apiClient.getRfqById(id),
+  sendClarificationEmail: (payload: Parameters<typeof apiClient.sendRfqClarificationEmail>[0]) =>
+    apiClient.sendRfqClarificationEmail(payload),
 };
 
 export const bendRfqApi = {
