@@ -2,7 +2,7 @@
 
 import { FLANGE_OD } from "@annix/product-data/pipe";
 import { isString, keys, values } from "es-toolkit/compat";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import * as XLSX from "xlsx";
 import { useOptionalAdminAuth } from "@/app/context/AdminAuthContext";
 import { useOptionalCustomerAuth } from "@/app/context/CustomerAuthContext";
@@ -22,6 +22,7 @@ import {
   useAllFlangeTypeWeights,
   useAllGasketWeights,
 } from "@/app/lib/query/hooks";
+import { detectClarificationRequirements } from "@/app/lib/rfq/preQuoteRequirements";
 import { useRfqWizardStore } from "@/app/lib/store/rfqWizardStore";
 
 export default function BOQStep(props: {
@@ -29,36 +30,46 @@ export default function BOQStep(props: {
   onSubmit?: () => void;
   onResubmit?: () => void;
   isEditing?: boolean;
-  // Flagged item ids — these rows skip BOQ consolidation because
-  // their referenced drawings haven't been uploaded yet. Set by
-  // the PreQuoteClarificationsStep upstream. Optional so the
-  // existing edit-by-admin flow (no clarifications step) works
-  // unchanged.
-  omittedItemIds?: Set<string>;
   // True when the customer chose Skip on the clarifications step.
-  // Drives the warning banner — items are still omitted but the
-  // customer was made aware.
+  // Drives the warning banner styling — amber when skipped (we
+  // told the customer the items are missing and they pressed on
+  // anyway), neutral when the customer hasn't yet visited Step 5
+  // (jumped here via the step pill).
   clarificationsSkipped?: boolean;
 }) {
-  const { onPrevStep, onSubmit, onResubmit, isEditing, omittedItemIds, clarificationsSkipped } =
-    props;
+  const { onPrevStep, onSubmit, onResubmit, isEditing, clarificationsSkipped } = props;
   const rfqData = useRfqWizardStore((s) => s.rfqData);
   const masterData = useRfqWizardStore((s) => s.masterData);
   const loading = useRfqWizardStore((s) => s.isSubmitting);
+  const pendingDocuments = useRfqWizardStore((s) => s.pendingDocuments);
+  const pendingTenderDocuments = useRfqWizardStore((s) => s.pendingTenderDocuments);
   const { data: allWeights = [] } = useAllFlangeTypeWeights();
   const { data: allBnwSets = [] } = useAllBnwSetWeights();
   const { data: allGaskets = [] } = useAllGasketWeights();
   const allEntries: any[] = rfqData.items.length > 0 ? rfqData.items : rfqData.straightPipeEntries;
+  // Detection runs at render time off the live items + uploaded
+  // filenames. The PreQuoteClarificationsStep does the same compute
+  // but the BOQ step doing it independently means jumping straight
+  // to BOQ via the step pill still applies the omissions — no need
+  // to threaad omittedItemIds through props.
+  const omittedItemIds = useMemo(() => {
+    const pendingDocsArray = pendingDocuments || [];
+    const pendingTenderArray = pendingTenderDocuments || [];
+    const filenames = [...pendingDocsArray, ...pendingTenderArray].map((d) => d.file.name);
+    const requirements = detectClarificationRequirements(
+      allEntries,
+      filenames,
+      rfqData.globalSpecs,
+    );
+    return requirements.flaggedItemIds;
+  }, [allEntries, pendingDocuments, pendingTenderDocuments, rfqData.globalSpecs]);
+
   // Skip flagged rows from consolidation — they're listed in the
   // "Items omitted — pending drawings" panel above the BOQ tables
   // instead so the customer sees what's missing without polluting
   // the supplier-bound output.
-  const entries: any[] = omittedItemIds
-    ? allEntries.filter((entry) => !omittedItemIds.has(entry.id))
-    : allEntries;
-  const omittedEntries: any[] = omittedItemIds
-    ? allEntries.filter((entry) => omittedItemIds.has(entry.id))
-    : [];
+  const entries: any[] = allEntries.filter((entry) => !omittedItemIds.has(entry.id));
+  const omittedEntries: any[] = allEntries.filter((entry) => omittedItemIds.has(entry.id));
   const globalSpecs = rfqData.globalSpecs;
   const rawRequiredProducts = rfqData.requiredProducts;
   const requiredProducts = rawRequiredProducts || [];

@@ -2761,16 +2761,16 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
   // State for save progress feedback
   const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
 
-  // Pre-quote clarifications: PreQuoteClarificationsStep populates
-  // these on Send/Skip and the BOQ step reads them. Empty Set means
-  // "nothing to omit" — the customer either had nothing to clarify
-  // or clarified everything.
-  const [omittedItemIds, setOmittedItemIds] = useState<Set<string>>(new Set());
+  // Pre-quote clarifications metadata. BOQStep computes omitted ids
+  // independently from the live items + uploaded files (so jumping
+  // straight to BOQ via the step pill still applies the omissions),
+  // but it reads clarificationsSkipped from this state to drive the
+  // banner styling — amber when the customer explicitly skipped,
+  // neutral when they jumped here without visiting Step 5.
   const [clarificationsSkipped, setClarificationsSkipped] = useState(false);
 
   const handleClarificationsProceed = useCallback(
-    (ids: Set<string>, skipped: boolean) => {
-      setOmittedItemIds(ids);
+    (_ids: Set<string>, skipped: boolean) => {
       setClarificationsSkipped(skipped);
       handleNextStep();
     },
@@ -3203,7 +3203,6 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
               onSubmit={handleSubmit}
               onResubmit={handleResubmit}
               isEditing={isEditing}
-              omittedItemIds={omittedItemIds}
               clarificationsSkipped={clarificationsSkipped}
             />
           );
@@ -3244,7 +3243,6 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
               onSubmit={handleSubmit}
               onResubmit={handleResubmit}
               isEditing={isEditing}
-              omittedItemIds={omittedItemIds}
               clarificationsSkipped={clarificationsSkipped}
             />
           );
