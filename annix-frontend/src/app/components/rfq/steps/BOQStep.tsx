@@ -328,7 +328,11 @@ export default function BOQStep(props: {
   // CONSOLIDATION LOGIC
   // ======================
 
-  // Extended type for consolidated items with weld and surface area data
+  // Extended type for consolidated items with weld and surface area data.
+  // The optional material tag is set by each consolidated set() call so
+  // the render layer can partition rows into HDPE / Steel / PVC
+  // material groups without re-deriving from descriptions.
+  type MaterialKey = "hdpe" | "steel" | "pvc";
   type ConsolidatedItem = {
     description: string;
     qty: number;
@@ -339,9 +343,27 @@ export default function BOQStep(props: {
     welds?: Record<string, number>;
     intAreaM2?: number;
     extAreaM2?: number;
+    material?: MaterialKey;
   };
 
-  // Maps to store consolidated items
+  // Material derivation — pipe/bend/fitting entries carry materialType
+  // directly; misc entries store productType in specs. Defaults to
+  // steel for legacy / undefined entries since pre-Nix flows assumed
+  // a steel pipeline.
+  const materialOfEntry = (entry: any): MaterialKey => {
+    const rawSpecs = entry.specs;
+    const rawProductType = rawSpecs?.productType;
+    const rawMaterialType = entry.materialType;
+    const candidate = rawMaterialType || rawProductType;
+    if (candidate === "hdpe") return "hdpe";
+    if (candidate === "pvc" || candidate === "upvc") return "pvc";
+    return "steel";
+  };
+
+  // Maps to store consolidated items. The legacy single-map
+  // architecture is kept and partitioned by material at render time
+  // so each consolidated row keeps its qty/weight accumulation logic
+  // intact.
   const consolidatedPipes: Map<string, ConsolidatedItem> = new Map();
   const consolidatedBends: Map<string, ConsolidatedItem> = new Map();
   const consolidatedFittings: Map<string, ConsolidatedItem> = new Map();
@@ -349,12 +371,18 @@ export default function BOQStep(props: {
   const consolidatedBnwSets: Map<string, ConsolidatedItem> = new Map();
   const consolidatedGaskets: Map<string, ConsolidatedItem> = new Map();
   const consolidatedBlankFlanges: Map<string, ConsolidatedItem> = new Map();
-  // Catch-all for valves, bolts, gaskets, uPVC, skids, wrappings,
-  // pumps — anything Nix extracted that doesn't fit the steel-piping
-  // shape. Without this section those line items vanish silently from
-  // the BOQ even though they sit in the items array.
-  const consolidatedMisc: Map<string, ConsolidatedItem> = new Map();
-
+  // Standalone groups not partitioned by material — valves get their
+  // own table because a steel-bodied gate valve and an HDPE-stub-end
+  // pinch valve are sourced from the same supplier category. Same
+  // for fasteners (bolts/nuts/gaskets ship as a bundle regardless of
+  // pipeline material). Unidentified holds anything where Nix could
+  // not infer a productType.
+  const consolidatedValves: Map<string, ConsolidatedItem> = new Map();
+  const consolidatedFasteners: Map<string, ConsolidatedItem> = new Map();
+  const consolidatedUnidentified: Map<string, ConsolidatedItem> = new Map();
+  const consolidatedHdpeOther: Map<string, ConsolidatedItem> = new Map();
+  const consolidatedSteelOther: Map<string, ConsolidatedItem> = new Map();
+  const consolidatedPvcOther: Map<string, ConsolidatedItem> = new Map();
   // Helper to get PHYSICAL flange count from end configuration (includes loose flanges)
   // Returns: { fixed: number of weld-neck flanges, loose: number of loose/slip-on flanges, rotating: number of rotating flanges }
   const getPhysicalFlangeCount = (
@@ -570,6 +598,7 @@ export default function BOQStep(props: {
           welds: keys(welds).length > 0 ? welds : undefined,
           intAreaM2: intAreaM2 > 0 ? intAreaM2 : undefined,
           extAreaM2: extAreaM2 > 0 ? extAreaM2 : undefined,
+          material: materialOfEntry(entry),
         });
       }
 
@@ -935,6 +964,7 @@ export default function BOQStep(props: {
           unit: "Each",
           weight: fittingWeight * qty,
           entries: [itemNumber],
+          material: materialOfEntry(entry),
           welds: keys(welds).length > 0 ? welds : undefined,
           intAreaM2: intAreaM2 > 0 ? intAreaM2 : undefined,
           extAreaM2: extAreaM2 > 0 ? extAreaM2 : undefined,
@@ -1149,10 +1179,12 @@ export default function BOQStep(props: {
         }
       }
     } else if (entry.itemType === "misc") {
-      // Catch-all for valves, bolts, gaskets, uPVC, skids, wrappings,
-      // pumps — anything Nix surfaced that doesn't fit the steel
-      // piping shape. These rows skip weight calc and just appear in
-      // the BOQ's Other Items section so they aren't lost.
+      // Misc items are split into one of: valves (any description
+      // matching valve patterns goes there regardless of material),
+      // fasteners (bolts/nuts/gaskets/washers), or material-specific
+      // "other" buckets (HDPE end caps, laterals, puddle pipes; PVC
+      // fittings; steel offcuts). Items with no productType land in
+      // unidentified at the very bottom of the BOQ.
       const rawEntrySpecs = entry.specs;
       const rawSpecs = rawEntrySpecs || {};
       const rawEntryDescription = entry.description;
@@ -1161,18 +1193,52 @@ export default function BOQStep(props: {
       const miscQty = rawSpecsQuantityValueMisc || qty || 1;
       const rawSpecsUnit = rawSpecs.unit;
       const miscUnit = rawSpecsUnit || "Each";
-      const miscKey = `MISC_${miscDescription}_${miscUnit}`;
-      const existingMisc = consolidatedMisc.get(miscKey);
+      const rawSpecsProductType = rawSpecs.productType;
+      const rawSpecsNixItemType = rawSpecs.nixItemType;
+      const descLower = miscDescription.toLowerCase();
+      const isValveDescription =
+        rawSpecsNixItemType === "valve" ||
+        /\b(valve|RSV|pinch\s*valve|gate\s*valve|globe\s*valve|ball\s*valve|butterfly\s*valve|check\s*valve|knife\s*valve|hand\s*pump|hydraulic\s*pump)\b/i.test(
+          miscDescription,
+        );
+      const isFastenerDescription =
+        rawSpecsNixItemType === "consumable" ||
+        /\b(bolt|nut|washer|stud|gasket|fastener|jointing\s*ring)s?\b/i.test(miscDescription);
+
+      const miscKey = `MISC_${descLower}_${miscUnit}`;
+      // Pick destination map. Valves first (covers cross-material),
+      // then fasteners, then per-material "other", then unidentified.
+      let dest: Map<string, ConsolidatedItem>;
+      let mat: MaterialKey | undefined;
+      if (isValveDescription) {
+        dest = consolidatedValves;
+      } else if (isFastenerDescription) {
+        dest = consolidatedFasteners;
+      } else if (rawSpecsProductType === "hdpe") {
+        dest = consolidatedHdpeOther;
+        mat = "hdpe";
+      } else if (rawSpecsProductType === "pvc" || rawSpecsProductType === "upvc") {
+        dest = consolidatedPvcOther;
+        mat = "pvc";
+      } else if (rawSpecsProductType === "steel") {
+        dest = consolidatedSteelOther;
+        mat = "steel";
+      } else {
+        dest = consolidatedUnidentified;
+      }
+
+      const existingMisc = dest.get(miscKey);
       if (existingMisc) {
         existingMisc.qty += miscQty;
         existingMisc.entries.push(itemNumber);
       } else {
-        consolidatedMisc.set(miscKey, {
+        dest.set(miscKey, {
           description: miscDescription,
           qty: miscQty,
           unit: miscUnit,
           weight: 0,
           entries: [itemNumber],
+          material: mat,
         });
       }
     } else {
@@ -1273,6 +1339,7 @@ export default function BOQStep(props: {
           unit: "Each",
           weight: pipeWeight,
           entries: [itemNumber],
+          material: materialOfEntry(entry),
           welds: keys(welds).length > 0 ? welds : undefined,
           intAreaM2: intAreaM2 > 0 ? intAreaM2 : undefined,
           extAreaM2: extAreaM2 > 0 ? extAreaM2 : undefined,
@@ -1435,6 +1502,225 @@ export default function BOQStep(props: {
     "text-teal-700": "dark:text-teal-300",
   };
 
+  // Filter a consolidated map to only items tagged with the given
+  // material. Untagged items are skipped — flanges/BNW/gaskets always
+  // sit in the Steel section in v1.1.35; v1.1.36 will introduce
+  // proper HDPE-stub-end + steel-backing-flange line items so they
+  // route correctly per supplier.
+  const filterByMaterial = (
+    map: Map<string, ConsolidatedItem>,
+    material: MaterialKey,
+  ): Map<string, ConsolidatedItem> => {
+    const result = new Map<string, ConsolidatedItem>();
+    map.forEach((item, key) => {
+      if (item.material === material) result.set(key, item);
+    });
+    return result;
+  };
+
+  // Helper that decides whether to render a consolidated section
+  // table only if it has any rows, then forwards to the existing
+  // renderer. Trims the JSX clutter from the material-grouped
+  // layout below.
+  const maybeRenderTable = (
+    title: string,
+    map: Map<string, ConsolidatedItem>,
+    bgColor: string,
+    textColor: string,
+    showWeldColumns: boolean = false,
+    showAreaColumns: boolean = false,
+  ): React.ReactNode => {
+    if (map.size === 0) return null;
+    return renderConsolidatedTable(
+      title,
+      map,
+      bgColor,
+      textColor,
+      showWeldColumns,
+      showAreaColumns,
+    );
+  };
+
+  // Convert a consolidated map into a flat array of plain row
+  // objects — re-used by all four export formats per section.
+  const consolidatedToRows = (
+    items: Map<string, ConsolidatedItem>,
+    showWeldColumns: boolean,
+    showAreaColumns: boolean,
+  ): Array<Record<string, string | number>> => {
+    const allWeldTypes = new Set<string>();
+    if (showWeldColumns) {
+      items.forEach((item) => {
+        if (item.welds) keys(item.welds).forEach((wt) => allWeldTypes.add(wt));
+      });
+    }
+    const weldTypesList = Array.from(allWeldTypes);
+    let rowNum = 1;
+    return Array.from(items.values()).map((item) => {
+      const row: Record<string, string | number> = {
+        "From Items": item.entries.join(", "),
+        "#": rowNum++,
+        Description: item.description,
+        Qty: item.qty,
+        Unit: item.unit,
+      };
+      if (showWeldColumns) {
+        weldTypesList.forEach((wt) => {
+          const w = item.welds?.[wt];
+          row[`${wt} (m)`] = w !== undefined ? w.toFixed(2) : "";
+        });
+      }
+      if (showAreaColumns) {
+        const intAreaM2 = item.intAreaM2;
+        const extAreaM2 = item.extAreaM2;
+        row["Int m²"] = intAreaM2 !== undefined ? intAreaM2.toFixed(2) : "";
+        row["Ext m²"] = extAreaM2 !== undefined ? extAreaM2.toFixed(2) : "";
+      }
+      row["Weight (kg)"] = item.weight.toFixed(2);
+      return row;
+    });
+  };
+
+  // Trigger download of `data` as `filename` with the given MIME
+  // type. Browser Blob + ObjectURL pattern.
+  const triggerDownload = (data: string | Blob, filename: string, mime: string) => {
+    const blob = data instanceof Blob ? data : new Blob([data], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  // Per-section exporters. `safeFilename` strips characters that
+  // browsers / Windows refuse on download. The section name is used
+  // both as the filename stem and the sheet name in xlsx.
+  const safeFilename = (title: string): string =>
+    title
+      .replace(/[^a-z0-9]+/gi, "-")
+      .replace(/^-+|-+$/g, "")
+      .toLowerCase() || "section";
+
+  const exportSection = (
+    format: "excel" | "csv" | "pdf" | "word",
+    title: string,
+    items: Map<string, ConsolidatedItem>,
+    showWeldColumns: boolean,
+    showAreaColumns: boolean,
+  ) => {
+    const rows = consolidatedToRows(items, showWeldColumns, showAreaColumns);
+    if (rows.length === 0) return;
+    const stem = safeFilename(title);
+
+    if (format === "excel") {
+      const workbook = XLSX.utils.book_new();
+      const sheet = XLSX.utils.json_to_sheet(rows);
+      XLSX.utils.book_append_sheet(workbook, sheet, title.substring(0, 31));
+      XLSX.writeFile(workbook, `${stem}.xlsx`);
+      return;
+    }
+
+    if (format === "csv") {
+      const rawHeaders = rows[0];
+      const headers = keys(rawHeaders);
+      const escapeCell = (v: string | number) => {
+        const s = String(v ?? "");
+        return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+      };
+      const csv = [
+        headers.join(","),
+        ...rows.map((r) => headers.map((h) => escapeCell(r[h])).join(",")),
+      ].join("\n");
+      triggerDownload(csv, `${stem}.csv`, "text/csv;charset=utf-8");
+      return;
+    }
+
+    // PDF + Word both serialise to HTML; PDF opens a print window so
+    // the customer's browser handles the PDF rendering, Word saves a
+    // .doc file that Word opens directly.
+    const rawHeaders2 = rows[0];
+    const headers = keys(rawHeaders2);
+    const tableRows = rows
+      .map(
+        (r) =>
+          `<tr>${headers
+            .map((h) => `<td style="border:1px solid #ccc;padding:4px 6px;">${r[h]}</td>`)
+            .join("")}</tr>`,
+      )
+      .join("");
+    const headerRow = `<tr>${headers.map((h) => `<th style="border:1px solid #ccc;padding:6px 8px;background:#f3f4f6;text-align:left;">${h}</th>`).join("")}</tr>`;
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title></head><body style="font-family:sans-serif;font-size:12px"><h2>${title}</h2><table style="border-collapse:collapse;width:100%">${headerRow}${tableRows}</table></body></html>`;
+
+    if (format === "word") {
+      // .doc files open as Word HTML. application/msword tells Windows.
+      triggerDownload(html, `${stem}.doc`, "application/msword");
+      return;
+    }
+
+    // PDF — open a hidden iframe and trigger the print dialog. The
+    // customer chooses "Save as PDF" from the print options. This
+    // beats pulling in a heavy PDF library for a feature most
+    // browsers cover natively.
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+  };
+
+  // Render the four export buttons that appear in each section
+  // header — Excel / CSV / PDF / Word for the section's items only.
+  const renderSectionExports = (
+    title: string,
+    items: Map<string, ConsolidatedItem>,
+    showWeldColumns: boolean,
+    showAreaColumns: boolean,
+  ) => {
+    if (items.size === 0) return null;
+    const buttonClass =
+      "text-[10px] px-1.5 py-0.5 rounded border border-gray-300 bg-white hover:bg-gray-100 text-gray-700 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700";
+    return (
+      <div className="flex items-center gap-1">
+        <button
+          type="button"
+          className={buttonClass}
+          onClick={() => exportSection("excel", title, items, showWeldColumns, showAreaColumns)}
+          title="Download just this section as Excel"
+        >
+          Excel
+        </button>
+        <button
+          type="button"
+          className={buttonClass}
+          onClick={() => exportSection("csv", title, items, showWeldColumns, showAreaColumns)}
+          title="Download just this section as CSV"
+        >
+          CSV
+        </button>
+        <button
+          type="button"
+          className={buttonClass}
+          onClick={() => exportSection("pdf", title, items, showWeldColumns, showAreaColumns)}
+          title="Print or save just this section as PDF"
+        >
+          PDF
+        </button>
+        <button
+          type="button"
+          className={buttonClass}
+          onClick={() => exportSection("word", title, items, showWeldColumns, showAreaColumns)}
+          title="Download just this section as Word (.doc)"
+        >
+          Word
+        </button>
+      </div>
+    );
+  };
+
   // Render consolidated BOQ table with consistent columns
   const renderConsolidatedTable = (
     title: string,
@@ -1489,16 +1775,17 @@ export default function BOQStep(props: {
 
     return (
       <div className="mb-6">
-        <h4
-          className={`text-md font-semibold ${textColor} ${darkText} mb-2 flex items-center justify-between`}
-        >
-          <span>
+        <div className="mb-2 flex items-center justify-between gap-2 flex-wrap">
+          <h4 className={`text-md font-semibold ${textColor} ${darkText}`}>
             {title} ({sectionTotalQty} total, {items.size} {items.size === 1 ? "type" : "types"})
-          </span>
-          <span className="text-sm font-normal text-gray-500 dark:text-gray-400">
-            Section Weight: {formatWeight(sectionWeight)}
-          </span>
-        </h4>
+          </h4>
+          <div className="flex items-center gap-3">
+            {renderSectionExports(title, items, showWeldColumns, showAreaColumns)}
+            <span className="text-sm font-normal text-gray-500 dark:text-gray-400">
+              Section Weight: {formatWeight(sectionWeight)}
+            </span>
+          </div>
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm border-collapse table-fixed">
             <thead>
@@ -1694,7 +1981,12 @@ export default function BOQStep(props: {
     addToCombined(consolidatedBlankFlanges, "Blank Flanges");
     addToCombined(consolidatedBnwSets, "BNW Sets");
     addToCombined(consolidatedGaskets, "Gaskets");
-    addToCombined(consolidatedMisc, "Other Items");
+    addToCombined(consolidatedHdpeOther, "HDPE Other");
+    addToCombined(consolidatedSteelOther, "Steel Other");
+    addToCombined(consolidatedPvcOther, "PVC Other");
+    addToCombined(consolidatedValves, "Valves");
+    addToCombined(consolidatedFasteners, "Fasteners");
+    addToCombined(consolidatedUnidentified, "Unidentified");
 
     // Add Combined BOQ as first sheet
     if (combinedData.length > 0) {
@@ -1964,95 +2256,186 @@ export default function BOQStep(props: {
           Consolidated Bill of Quantities
         </h3>
 
-        {/* Pipes - show weld and area columns */}
-        {renderConsolidatedTable(
-          "Straight Pipes",
-          consolidatedPipes,
-          "bg-blue-50",
-          "text-blue-700",
-          true,
-          true,
+        {/* HDPE group — pipes / bends / fittings / other tagged hdpe.
+            Backing flanges + their bolts/gaskets stay in the Steel
+            section for v1.1.35; v1.1.36 will introduce proper stub +
+            backing-flange line items here. */}
+        {(() => {
+          const pipes = filterByMaterial(consolidatedPipes, "hdpe");
+          const bends = filterByMaterial(consolidatedBends, "hdpe");
+          const fittings = filterByMaterial(consolidatedFittings, "hdpe");
+          const hasContent =
+            pipes.size > 0 || bends.size > 0 || fittings.size > 0 || consolidatedHdpeOther.size > 0;
+          if (!hasContent) return null;
+          return (
+            <section className="mb-8 bg-blue-50/30 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+              <h3 className="text-base font-bold text-blue-900 dark:text-blue-200 mb-3 pb-2 border-b border-blue-200 dark:border-blue-800">
+                HDPE — supplier section
+              </h3>
+              {maybeRenderTable("HDPE Pipes", pipes, "bg-blue-50", "text-blue-700", true, true)}
+              {maybeRenderTable("HDPE Bends", bends, "bg-blue-50", "text-blue-700", true, true)}
+              {maybeRenderTable(
+                "HDPE Fittings (Tees, Laterals, Reducers)",
+                fittings,
+                "bg-blue-50",
+                "text-blue-700",
+                true,
+                true,
+              )}
+              {maybeRenderTable(
+                "HDPE Other (End Caps, Puddle Pipes, Boots, Stub Ends)",
+                consolidatedHdpeOther,
+                "bg-blue-50",
+                "text-blue-700",
+              )}
+            </section>
+          );
+        })()}
+
+        {/* Steel group — pipes / bends / fittings / flanges /
+            blank-flanges / BNW / gaskets / other tagged steel. The
+            flange-related sub-sections are not partitioned by
+            material in v1.1.35 because they're physically steel
+            components; HDPE backing-flange entries land here too. */}
+        {(() => {
+          const pipes = filterByMaterial(consolidatedPipes, "steel");
+          const bends = filterByMaterial(consolidatedBends, "steel");
+          const fittings = filterByMaterial(consolidatedFittings, "steel");
+          const showFlangeAccessories =
+            requiredProducts.includes("fasteners_gaskets") ||
+            consolidatedFlanges.size > 0 ||
+            consolidatedBlankFlanges.size > 0;
+          const hasContent =
+            pipes.size > 0 ||
+            bends.size > 0 ||
+            fittings.size > 0 ||
+            consolidatedFlanges.size > 0 ||
+            consolidatedBlankFlanges.size > 0 ||
+            (showFlangeAccessories &&
+              (consolidatedBnwSets.size > 0 || consolidatedGaskets.size > 0)) ||
+            consolidatedSteelOther.size > 0;
+          if (!hasContent) return null;
+          return (
+            <section className="mb-8 bg-slate-50/30 dark:bg-slate-900/10 border border-slate-200 dark:border-slate-800 rounded-lg p-4">
+              <h3 className="text-base font-bold text-slate-900 dark:text-slate-200 mb-3 pb-2 border-b border-slate-200 dark:border-slate-800">
+                Steel — supplier section
+              </h3>
+              {maybeRenderTable("Steel Pipes", pipes, "bg-slate-50", "text-slate-700", true, true)}
+              {maybeRenderTable("Steel Bends", bends, "bg-slate-50", "text-slate-700", true, true)}
+              {maybeRenderTable(
+                "Steel Fittings (Tees, Laterals, Reducers)",
+                fittings,
+                "bg-slate-50",
+                "text-slate-700",
+                true,
+                true,
+              )}
+              {maybeRenderTable("Flanges", consolidatedFlanges, "bg-cyan-50", "text-cyan-700")}
+              {maybeRenderTable(
+                "Blank Flanges",
+                consolidatedBlankFlanges,
+                "bg-gray-50",
+                "text-gray-700",
+                false,
+                true,
+              )}
+              {showFlangeAccessories &&
+                maybeRenderTable(
+                  "Bolt, Nut & Washer Sets",
+                  consolidatedBnwSets,
+                  "bg-orange-50",
+                  "text-orange-700",
+                )}
+              {showFlangeAccessories &&
+                maybeRenderTable("Gaskets", consolidatedGaskets, "bg-teal-50", "text-teal-700")}
+              {maybeRenderTable(
+                "Steel Other",
+                consolidatedSteelOther,
+                "bg-slate-50",
+                "text-slate-700",
+              )}
+            </section>
+          );
+        })()}
+
+        {/* PVC / uPVC group — pipes / bends / fittings / other
+            tagged pvc. uPVC items land here too for now;
+            v1.1.36 will split uPVC out as a separate top-level
+            group once the form supports a uPVC material type. */}
+        {(() => {
+          const pipes = filterByMaterial(consolidatedPipes, "pvc");
+          const bends = filterByMaterial(consolidatedBends, "pvc");
+          const fittings = filterByMaterial(consolidatedFittings, "pvc");
+          const hasContent =
+            pipes.size > 0 || bends.size > 0 || fittings.size > 0 || consolidatedPvcOther.size > 0;
+          if (!hasContent) return null;
+          return (
+            <section className="mb-8 bg-purple-50/30 dark:bg-purple-900/10 border border-purple-200 dark:border-purple-800 rounded-lg p-4">
+              <h3 className="text-base font-bold text-purple-900 dark:text-purple-200 mb-3 pb-2 border-b border-purple-200 dark:border-purple-800">
+                PVC / uPVC — supplier section
+              </h3>
+              {maybeRenderTable("PVC Pipes", pipes, "bg-purple-50", "text-purple-700", true, true)}
+              {maybeRenderTable("PVC Bends", bends, "bg-purple-50", "text-purple-700", true, true)}
+              {maybeRenderTable(
+                "PVC Fittings",
+                fittings,
+                "bg-purple-50",
+                "text-purple-700",
+                true,
+                true,
+              )}
+              {maybeRenderTable(
+                "PVC Other",
+                consolidatedPvcOther,
+                "bg-purple-50",
+                "text-purple-700",
+              )}
+            </section>
+          );
+        })()}
+
+        {/* Cross-material groups — valves get their own table since
+            a steel-bodied gate valve and an HDPE-flanged pinch valve
+            ship from the same valve supplier category. Same for
+            fasteners (bolts/nuts/gaskets that aren't tied to a
+            specific pipeline material). Unidentified is the last
+            stop for items where Nix could not infer a productType. */}
+        {consolidatedValves.size > 0 && (
+          <section className="mb-8 bg-rose-50/30 dark:bg-rose-900/10 border border-rose-200 dark:border-rose-800 rounded-lg p-4">
+            <h3 className="text-base font-bold text-rose-900 dark:text-rose-200 mb-3 pb-2 border-b border-rose-200 dark:border-rose-800">
+              Valves — supplier section
+            </h3>
+            {renderConsolidatedTable("Valves", consolidatedValves, "bg-rose-50", "text-rose-700")}
+          </section>
         )}
 
-        {/* Bends - show weld and area columns */}
-        {renderConsolidatedTable(
-          "Bends",
-          consolidatedBends,
-          "bg-purple-50",
-          "text-purple-700",
-          true,
-          true,
+        {consolidatedFasteners.size > 0 && (
+          <section className="mb-8 bg-amber-50/30 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+            <h3 className="text-base font-bold text-amber-900 dark:text-amber-200 mb-3 pb-2 border-b border-amber-200 dark:border-amber-800">
+              Bolts, Nuts &amp; Gaskets — supplier section
+            </h3>
+            {renderConsolidatedTable(
+              "Fasteners (Bolts, Nuts, Gaskets)",
+              consolidatedFasteners,
+              "bg-amber-50",
+              "text-amber-700",
+            )}
+          </section>
         )}
 
-        {/* Fittings - show weld and area columns */}
-        {renderConsolidatedTable(
-          "Fittings (Tees, Laterals, Reducers)",
-          consolidatedFittings,
-          "bg-green-50",
-          "text-green-700",
-          true,
-          true,
+        {consolidatedUnidentified.size > 0 && (
+          <section className="mb-8 bg-gray-50/30 dark:bg-gray-900/10 border border-gray-300 dark:border-gray-700 rounded-lg p-4">
+            <h3 className="text-base font-bold text-gray-900 dark:text-gray-200 mb-3 pb-2 border-b border-gray-300 dark:border-gray-700">
+              Unidentified — system could not classify these items
+            </h3>
+            {renderConsolidatedTable(
+              "Unidentified Items",
+              consolidatedUnidentified,
+              "bg-gray-50",
+              "text-gray-700",
+            )}
+          </section>
         )}
-
-        {/* Flanges */}
-        {renderConsolidatedTable(
-          "Flanges",
-          consolidatedFlanges,
-          "bg-cyan-50",
-          "text-cyan-700",
-          false,
-          false,
-        )}
-
-        {/* Blank Flanges - show area columns */}
-        {renderConsolidatedTable(
-          "Blank Flanges",
-          consolidatedBlankFlanges,
-          "bg-gray-50",
-          "text-gray-700",
-          false,
-          true,
-        )}
-
-        {/* BNW Sets - always show if there are flanges */}
-        {(requiredProducts.includes("fasteners_gaskets") ||
-          consolidatedFlanges.size > 0 ||
-          consolidatedBlankFlanges.size > 0) &&
-          renderConsolidatedTable(
-            "Bolt, Nut & Washer Sets",
-            consolidatedBnwSets,
-            "bg-orange-50",
-            "text-orange-700",
-            false,
-            false,
-          )}
-
-        {/* Gaskets - always show if there are flanges */}
-        {(requiredProducts.includes("fasteners_gaskets") ||
-          consolidatedFlanges.size > 0 ||
-          consolidatedBlankFlanges.size > 0) &&
-          renderConsolidatedTable(
-            "Gaskets",
-            consolidatedGaskets,
-            "bg-teal-50",
-            "text-teal-700",
-            false,
-            false,
-          )}
-
-        {/* Other Items — valves, bolts, gaskets, uPVC, skids,
-            wrappings, pumps. Anything Nix surfaced that doesn't fit
-            the steel piping shape. No weight calc — these items
-            price out via supplier bundles. */}
-        {consolidatedMisc.size > 0 &&
-          renderConsolidatedTable(
-            "Other Items (Valves, Fasteners, PVC, Misc)",
-            consolidatedMisc,
-            "bg-amber-50",
-            "text-amber-700",
-            false,
-            false,
-          )}
 
         {/* Total Weight Summary */}
         <div className="mt-6 pt-4 border-t border-gray-200">
