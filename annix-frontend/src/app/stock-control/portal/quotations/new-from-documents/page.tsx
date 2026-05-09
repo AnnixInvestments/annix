@@ -330,6 +330,11 @@ function surfaceRevisionVerdicts(
         `${filename}: revision differs from rev ${otherRev} on file but order is unclear — please check the badge`,
         "warning",
       );
+    } else if (verdict.action === "duplicate-in-session") {
+      showToast(
+        `${filename}: already in this draft — kept the existing extraction, no duplicate added`,
+        "warning",
+      );
     }
   }
 }

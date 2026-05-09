@@ -211,7 +211,7 @@ export interface NixProcessResponse {
  * user to confirm whether to use an older revision they just uploaded.
  */
 export interface NixRevisionVerdict {
-  action: "first" | "same" | "newer" | "older" | "unknown";
+  action: "first" | "same" | "duplicate-in-session" | "newer" | "older" | "unknown";
   canonicalExtractionId?: number;
   canonicalRevision?: string | null;
   previousCanonicalExtractionId?: number;

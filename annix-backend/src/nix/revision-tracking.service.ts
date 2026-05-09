@@ -31,6 +31,11 @@ export type SupersessionVerdict =
   | { action: "first" }
   | { action: "same"; canonicalExtractionId: number; canonicalRevision: string | null }
   | {
+      action: "duplicate-in-session";
+      canonicalExtractionId: number;
+      canonicalRevision: string | null;
+    }
+  | {
       action: "newer";
       previousCanonicalExtractionId: number;
       previousCanonicalRevision: string | null;

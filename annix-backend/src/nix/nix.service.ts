@@ -1,7 +1,7 @@
 import * as fs from "node:fs";
 import { forwardRef, Inject, Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { Not, Repository } from "typeorm";
 import { bufferToMulterFile, documentPath } from "../lib/app-storage-helper";
 import { SecureDocumentsService } from "../secure-documents/secure-documents.service";
 import { S3StorageService } from "../storage/s3-storage.service";
@@ -361,9 +361,44 @@ export class NixService {
 
     const documentType = this.detectDocumentType(dto.documentName || dto.documentPath);
     const { sourceModule, sourceId, extractionProfile } = this.resolveSourceLinkage(dto);
+    const resolvedDocumentName = dto.documentName || dto.documentPath.split("/").pop() || "unknown";
+
+    // Same-session dedupe: when uploading into an existing draft session,
+    // if a row already exists with the same filename and isn't a failed
+    // attempt, return that row instead of creating a duplicate. The user
+    // typically hits this by accidentally drag-dropping the same file
+    // twice, or by re-running 'Send to Nix' on a bucket that already
+    // has half its docs processed. Failed extractions are excluded so
+    // a legitimate retry-after-failure still succeeds.
+    if (dto.sessionId) {
+      const existing = await this.extractionRepo.findOne({
+        where: {
+          sessionId: dto.sessionId,
+          documentName: resolvedDocumentName,
+          status: Not(ExtractionStatus.FAILED),
+        },
+        order: { id: "DESC" },
+      });
+      if (existing) {
+        this.logger.log(
+          `Same-session dedupe: '${resolvedDocumentName}' already in session #${dto.sessionId} as extraction #${existing.id}; returning existing row`,
+        );
+        return {
+          extractionId: existing.id,
+          status: existing.status,
+          items: (existing.extractedItems ?? []) as ProcessDocumentResponseDto["items"],
+          pendingClarifications: [],
+          revisionVerdict: {
+            action: "duplicate-in-session",
+            canonicalExtractionId: existing.id,
+            canonicalRevision: existing.documentRevision ?? null,
+          } as SupersessionVerdict,
+        };
+      }
+    }
 
     const extraction = this.extractionRepo.create({
-      documentName: dto.documentName || dto.documentPath.split("/").pop() || "unknown",
+      documentName: resolvedDocumentName,
       documentPath: dto.documentPath,
       documentType,
       status: ExtractionStatus.PROCESSING,
