@@ -279,18 +279,24 @@ async function applyMergeForGroup(client, group, plan) {
     }
 
     for (const def of FK_TABLES_WITH_CONFLICT) {
-      const onClause = def.naturalKey
-        .map((c) => `lhs.${c} IS NOT DISTINCT FROM rhs.${c}`)
-        .join(" AND ");
+      const partitionCols = def.naturalKey.join(", ");
       await client.query(
-        `DELETE FROM ${def.table} lhs
-         WHERE lhs.job_card_id = ANY($1::int[])
-           AND EXISTS (
-             SELECT 1 FROM ${def.table} rhs
-             WHERE rhs.job_card_id = $2
-               AND ${onClause}
-           )`,
-        [loserIds, winnerId],
+        `WITH involved AS (
+           SELECT id, job_card_id
+           FROM ${def.table}
+           WHERE job_card_id = $1 OR job_card_id = ANY($2::int[])
+         ),
+         ranked AS (
+           SELECT t.id, ROW_NUMBER() OVER (
+             PARTITION BY ${partitionCols}
+             ORDER BY (t.job_card_id = $1) DESC, t.id DESC
+           ) AS rn
+           FROM ${def.table} t
+           WHERE t.id IN (SELECT id FROM involved)
+         )
+         DELETE FROM ${def.table}
+         WHERE id IN (SELECT id FROM ranked WHERE rn > 1)`,
+        [winnerId, loserIds],
       );
       await client.query(
         `UPDATE ${def.table} SET job_card_id = $1 WHERE job_card_id = ANY($2::int[])`,
