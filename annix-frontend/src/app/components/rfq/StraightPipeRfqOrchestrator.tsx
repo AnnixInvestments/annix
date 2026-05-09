@@ -771,10 +771,15 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
     setIsLoadingDraft,
   ]);
 
-  // Check for existing localStorage draft on mount (for unregistered users)
+  // Check for existing localStorage draft on mount.
+  // Applies to BOTH unregistered AND authenticated users — the
+  // dev-server hot reload regression (info lost between commits)
+  // was caused by gating this on isAuthenticated. localStorage is
+  // the per-browser fallback while the wizard is mid-flight; if the
+  // user already has a server draft, the URL ?draft= path takes
+  // priority and skips this effect.
   useEffect(() => {
     if (hasCheckedLocalDraft) return;
-    if (isAuthenticated) return;
     if (isLoadingDraft) return;
     if (editRfqId) return;
 
@@ -793,7 +798,6 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
       setShowDraftRestorePrompt(true);
     }
   }, [
-    isAuthenticated,
     isLoadingDraft,
     editRfqId,
     searchParams,
@@ -804,9 +808,14 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
     setShowDraftRestorePrompt,
   ]);
 
-  // Auto-save to localStorage for unregistered users
+  // Auto-save to localStorage on every meaningful field change.
+  // Applies to BOTH authenticated and unregistered users — the
+  // localStorage copy is the per-browser fallback that survives
+  // dev-server hot reloads, accidental tab closes, and crashes.
+  // Authenticated users still graduate to the server draft when
+  // they hit Save Progress; this just prevents data loss in
+  // between manual saves.
   useEffect(() => {
-    if (isAuthenticated) return;
     if (isLoadingDraft) return;
     if (!hasCheckedLocalDraft) return;
 
@@ -848,7 +857,6 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
       customerEmail: rfqData.customerEmail,
     });
   }, [
-    isAuthenticated,
     isLoadingDraft,
     rfqData.projectName,
     rfqData.projectType,

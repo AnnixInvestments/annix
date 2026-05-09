@@ -1,9 +1,10 @@
-import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { Boq } from "../boq/entities/boq.entity";
 import { BoqSupplierAccess, SupplierBoqStatus } from "../boq/entities/boq-supplier-access.entity";
-import { now } from "../lib/datetime";
+import { EmailService } from "../email/email.service";
+import { formatDateZA, now } from "../lib/datetime";
 import { User } from "../user/entities/user.entity";
 import { RfqDraftFullResponseDto, RfqDraftResponseDto, SaveRfqDraftDto } from "./dto/rfq-draft.dto";
 import { RfqStatus } from "./entities/rfq.entity";
@@ -20,6 +21,8 @@ import { RfqDraft } from "./entities/rfq-draft.entity";
  */
 @Injectable()
 export class RfqDraftService {
+  private readonly logger = new Logger(RfqDraftService.name);
+
   constructor(
     @InjectRepository(RfqDraft)
     private rfqDraftRepository: Repository<RfqDraft>,
@@ -29,6 +32,7 @@ export class RfqDraftService {
     private boqRepository: Repository<Boq>,
     @InjectRepository(BoqSupplierAccess)
     private boqSupplierAccessRepository: Repository<BoqSupplierAccess>,
+    private emailService: EmailService,
   ) {}
 
   private async generateDraftNumber(): Promise<string> {
@@ -96,7 +100,52 @@ export class RfqDraftService {
 
     const savedDraft = await this.rfqDraftRepository.save(draft);
 
+    void this.sendDraftSavedNotification(savedDraft, user, !dto.draftId);
+
     return this.mapDraftToResponse(savedDraft);
+  }
+
+  /**
+   * Notify info@annix.co.za on every draft save so the team has
+   * visibility on which RFQs are mid-flight (and so the user
+   * triggering the save sees a confirmation in their inbox if
+   * they're cc'd via the platform fallback). Fire-and-forget — a
+   * mail-server hiccup must not block the wizard.
+   */
+  private async sendDraftSavedNotification(
+    draft: RfqDraft,
+    user: User,
+    isFirstSave: boolean,
+  ): Promise<void> {
+    try {
+      const customerLine = user.email ? `${user.email}` : "(unknown user)";
+      const projectLine = draft.projectName || "(unnamed project)";
+      const action = isFirstSave ? "started" : "updated";
+      const subject = `RFQ draft ${action}: ${draft.draftNumber} — ${projectLine}`;
+      const html = `
+        <p>An RFQ draft was just <strong>${action}</strong> on the platform.</p>
+        <table style="border-collapse:collapse;margin:12px 0;">
+          <tr><td style="padding:4px 12px 4px 0;color:#6b7280;">Draft number</td><td style="padding:4px 0;font-family:monospace;">${draft.draftNumber}</td></tr>
+          <tr><td style="padding:4px 12px 4px 0;color:#6b7280;">Project</td><td style="padding:4px 0;">${projectLine}</td></tr>
+          <tr><td style="padding:4px 12px 4px 0;color:#6b7280;">Customer ref</td><td style="padding:4px 0;">${draft.customerRfqReference || "—"}</td></tr>
+          <tr><td style="padding:4px 12px 4px 0;color:#6b7280;">Step</td><td style="padding:4px 0;">${draft.currentStep} of 5 (${this.completionPercentageForStep(draft.currentStep)}%)</td></tr>
+          <tr><td style="padding:4px 12px 4px 0;color:#6b7280;">Saved by</td><td style="padding:4px 0;">${customerLine}</td></tr>
+          <tr><td style="padding:4px 12px 4px 0;color:#6b7280;">Saved at</td><td style="padding:4px 0;">${formatDateZA(draft.updatedAt)}</td></tr>
+        </table>
+        <p style="font-size:12px;color:#6b7280;">Resume link: <a href="${process.env.FRONTEND_URL || "https://annix-app.fly.dev"}/rfq?draft=${draft.id}">${process.env.FRONTEND_URL || "https://annix-app.fly.dev"}/rfq?draft=${draft.id}</a></p>
+      `;
+      const text = `RFQ draft ${action}: ${draft.draftNumber}\n\nProject: ${projectLine}\nCustomer ref: ${draft.customerRfqReference || "—"}\nStep: ${draft.currentStep}/5\nSaved by: ${customerLine}\nSaved at: ${formatDateZA(draft.updatedAt)}\n\nResume: ${process.env.FRONTEND_URL || "https://annix-app.fly.dev"}/rfq?draft=${draft.id}`;
+      await this.emailService.sendEmail({
+        to: "info@annix.co.za",
+        subject,
+        html,
+        text,
+      });
+    } catch (error) {
+      this.logger.warn(
+        `Failed to send draft-saved notification for draft ${draft.id}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
   }
 
   async drafts(userId: number): Promise<RfqDraftResponseDto[]> {

@@ -38,6 +38,7 @@ export default function PreQuoteClarificationsStep(props: PreQuoteClarifications
   // through a tolerant cast is the cleanest way to avoid widening
   // the public type just for this label.
   const draftNumber = useRfqWizardStore((s) => s.draftNumber);
+  const currentDraftId = useRfqWizardStore((s) => s.currentDraftId);
   const rfqReference = useMemo(() => {
     const rawData = rfqData as unknown as Record<string, unknown>;
     const customerRef = rawData.customerRfqReference;
@@ -126,6 +127,7 @@ export default function PreQuoteClarificationsStep(props: PreQuoteClarifications
         projectName: rawProjectName || undefined,
         rfqReference: rfqReference || undefined,
         customNote: body,
+        rfqDraftId: currentDraftId || undefined,
         missingDrawings: requirements.missingDrawings,
         valveSpecGaps: requirements.valveSpecGaps.map((gap) => ({
           itemNumber: gap.itemNumber,

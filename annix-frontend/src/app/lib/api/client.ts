@@ -419,6 +419,8 @@ class ApiClient {
     projectName?: string;
     rfqReference?: string;
     customNote?: string;
+    clarificationFormBaseUrl?: string;
+    rfqDraftId?: number;
     missingDrawings: Array<{ ref: string; itemNumbers: string[] }>;
     valveSpecGaps: Array<{ itemNumber: string; description: string; missingFields: string[] }>;
   }): Promise<{ success: boolean; error?: string }> {

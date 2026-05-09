@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { IsArray, IsEmail, IsOptional, IsString, ValidateNested } from "class-validator";
+import { IsArray, IsEmail, IsInt, IsOptional, IsString, ValidateNested } from "class-validator";
 
 export class MissingDrawingDto {
   @ApiProperty({
@@ -89,6 +89,14 @@ export class SendRfqClarificationEmailDto {
   @IsString()
   @IsOptional()
   clarificationFormBaseUrl?: string;
+
+  @ApiPropertyOptional({
+    description:
+      "Owning RfqDraft id. When supplied, the customer's submitted clarification responses are written back to that draft's straightPipeEntries[].specs so the BOQ auto-completes the next time the team opens the wizard. Optional — unregistered tender drops with no draft simply skip the patch step.",
+  })
+  @IsInt()
+  @IsOptional()
+  rfqDraftId?: number;
 
   @ApiProperty({
     description: "Drawing references missing from the upload set",

@@ -222,7 +222,28 @@ export default function ClarificationFormPage() {
         return res.json();
       })
       .then((payload: ClarificationFetch) => {
-        setData(payload);
+        // Defensive id fill — older test payloads (and any caller
+        // that builds the requirements without entry.id) omit
+        // itemId; we synthesise a stable index-based fallback so
+        // React keys stay unique and the response payload still
+        // round-trips per-valve.
+        const rawValveSpecGaps = payload.requirements.valveSpecGaps;
+        const sourceValves = rawValveSpecGaps || [];
+        const filledValves: ValveSpecGap[] = sourceValves.map((v, idx) => {
+          const rawItemId = v.itemId;
+          return {
+            ...v,
+            itemId: rawItemId || `valve-${idx}`,
+          };
+        });
+        const normalisedPayload: ClarificationFetch = {
+          ...payload,
+          requirements: {
+            ...payload.requirements,
+            valveSpecGaps: filledValves,
+          },
+        };
+        setData(normalisedPayload);
         if (payload.respondedAt) setSubmitted(true);
         const initialDrawings: Record<string, DrawingStatus> = {};
         const rawMissingDrawings = payload.requirements.missingDrawings;
@@ -232,9 +253,7 @@ export default function ClarificationFormPage() {
         });
         setDrawingStatuses(initialDrawings);
         const initialValves: Record<string, ValveResponse> = {};
-        const rawValveSpecGaps = payload.requirements.valveSpecGaps;
-        const valvesList = rawValveSpecGaps || [];
-        valvesList.forEach((v) => {
+        filledValves.forEach((v) => {
           initialValves[v.itemId] = emptyValve();
         });
         setValveResponses(initialValves);
@@ -448,10 +467,19 @@ export default function ClarificationFormPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
         <div className="bg-white rounded-xl shadow border border-gray-200 p-8 max-w-md w-full text-center">
           <h1 className="text-xl font-semibold text-green-700 mb-2">Thanks — we've got it</h1>
-          <p className="text-sm text-gray-600">
-            Your responses are recorded. Our team will re-run the take-off and email the full
-            quotation through shortly.
+          <p className="text-sm text-gray-600 mb-2">
+            Your responses are recorded against the RFQ and the Annix team has been notified.
           </p>
+          <p className="text-sm text-gray-600 mb-6">
+            We'll re-run the take-off with your answers and email the full quotation through
+            shortly. You don't need to do anything else.
+          </p>
+          <a
+            href="https://annix.co.za"
+            className="inline-block px-5 py-2 rounded-md bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors"
+          >
+            Return to annix.co.za
+          </a>
         </div>
       </div>
     );

@@ -1642,6 +1642,7 @@ export class RfqService {
       const persistedRequest = await this.rfqClarificationRequestRepository.save(
         this.rfqClarificationRequestRepository.create({
           token,
+          rfqDraftId: dto.rfqDraftId ?? undefined,
           customerEmail: dto.to,
           projectName: dto.projectName ?? undefined,
           rfqReference: dto.rfqReference ?? undefined,
@@ -1780,6 +1781,12 @@ export class RfqService {
     found.respondedAt = new Date();
     await this.rfqClarificationRequestRepository.save(found);
 
+    // Apply the customer's answers back to the source RFQ draft so
+    // the BOQ auto-completes the next time the team opens it. Safe
+    // no-op if the request has no draft id (unregistered tender
+    // drop) or the draft is already converted to an RFQ.
+    const draftPatchResult = await this.applyClarificationResponsesToDraft(found, responses);
+
     // Notify info@annix.co.za with the structured answers. Keep the
     // body simple — the team can pull the full record from the
     // rfq_clarification_requests table if they need to dig in.
@@ -1810,7 +1817,129 @@ export class RfqService {
       );
     }
 
-    this.logger.log(`Clarification responses received for token ${token}`);
+    this.logger.log(
+      `Clarification responses received for token ${token} — draft patch: ${draftPatchResult.summary}`,
+    );
     return { success: true };
+  }
+
+  /**
+   * Translate the customer's submitted clarification responses into
+   * patches on the source RfqDraft. Once applied, the BOQ's
+   * detection pass (which reads each entry's specs.<key>) will no
+   * longer flag those fields as missing, and previously-omitted
+   * items will appear in the supplier sections again.
+   *
+   * No-op when the request has no rfq_draft_id, the draft is gone,
+   * or the draft is already converted to an RFQ.
+   */
+  private async applyClarificationResponsesToDraft(
+    request: RfqClarificationRequest,
+    responses: Record<string, unknown>,
+  ): Promise<{ patched: number; summary: string }> {
+    const draftId = request.rfqDraftId;
+    if (!draftId) {
+      return { patched: 0, summary: "no draft linked" };
+    }
+    const draft = await this.rfqDraftRepository.findOne({ where: { id: draftId } });
+    if (!draft) {
+      return { patched: 0, summary: `draft ${draftId} not found` };
+    }
+    if (draft.isConverted) {
+      return { patched: 0, summary: `draft ${draftId} already converted to RFQ` };
+    }
+
+    const valves = (responses.valves as Record<string, Record<string, string>> | undefined) ?? {};
+    const valveItemIds = Object.keys(valves);
+    if (valveItemIds.length === 0) {
+      return { patched: 0, summary: "no valve answers in payload" };
+    }
+
+    const yesNo = (v: string | undefined): boolean | undefined => {
+      if (v === "yes") return true;
+      if (v === "no") return false;
+      return undefined;
+    };
+    const text = (v: string | undefined): string | undefined => {
+      if (typeof v !== "string") return undefined;
+      const trimmed = v.trim();
+      return trimmed.length > 0 ? trimmed : undefined;
+    };
+
+    const patchSpecs = (
+      existing: Record<string, unknown>,
+      answers: Record<string, string>,
+    ): Record<string, unknown> => {
+      const next = { ...existing };
+      const setIfPresent = (key: string, value: string | number | boolean | undefined): void => {
+        if (value !== undefined) next[key] = value;
+      };
+      setIfPresent("operatingMedia", text(answers.media));
+      setIfPresent("isSlurry", yesNo(answers.isSlurry));
+      setIfPresent("solidsConcentrationPercent", text(answers.solidsPct));
+      setIfPresent("particleSizeMm", text(answers.particleMm));
+      setIfPresent("specificGravity", text(answers.sg));
+      setIfPresent("ph", text(answers.ph));
+      setIfPresent("operatingTemperatureC", text(answers.tempC));
+      setIfPresent("chlorideConcentrationPpm", text(answers.chlorides));
+      setIfPresent("oxidisersPresent", yesNo(answers.oxidisers));
+      setIfPresent("minFlowM3h", text(answers.minFlow));
+      setIfPresent("normalFlowM3h", text(answers.normalFlow));
+      setIfPresent("maxFlowM3h", text(answers.maxFlow));
+      setIfPresent("shutoffDeltaPBar", text(answers.shutoffDp));
+      setIfPresent("flangeStandard", text(answers.flangeSpec));
+      setIfPresent("faceToFaceStandard", text(answers.faceToFace));
+      setIfPresent("bodyMaterial", text(answers.body));
+      setIfPresent("elastomer", text(answers.seat));
+      setIfPresent("flowDirection", text(answers.flowDir));
+      setIfPresent("mountingOrientation", text(answers.mounting));
+      setIfPresent("reversePressureExpected", yesNo(answers.reverseP));
+      setIfPresent("actuatorType", text(answers.actuation));
+      setIfPresent("actuatorFailPosition", text(answers.failPos));
+      setIfPresent("actuatorPowerSupply", text(answers.voltage));
+      setIfPresent("dutyType", text(answers.duty));
+      setIfPresent("cycleFrequency", text(answers.cycle));
+      setIfPresent("dischargeToAtmosphere", yesNo(answers.dischargeAtm));
+      setIfPresent("waterHammerExpected", yesNo(answers.waterHammer));
+      setIfPresent("leakageClass", text(answers.leakage));
+      setIfPresent("mhsaSection21Required", yesNo(answers.mhsa));
+      setIfPresent("sans347PedRequired", yesNo(answers.sans347));
+      const customerNote = text(answers.notes);
+      if (customerNote) {
+        const existingNote =
+          typeof next.customerClarificationNote === "string" ? next.customerClarificationNote : "";
+        next.customerClarificationNote = existingNote
+          ? `${existingNote}\n\n${customerNote}`
+          : customerNote;
+      }
+      return next;
+    };
+
+    const entries =
+      (draft.straightPipeEntries as unknown as Array<{
+        id: string;
+        specs?: Record<string, unknown>;
+      }>) ?? [];
+    let patched = 0;
+    const nextEntries = entries.map((entry) => {
+      const answers = valves[entry.id];
+      if (!answers) return entry;
+      patched += 1;
+      return {
+        ...entry,
+        specs: patchSpecs(entry.specs ?? {}, answers),
+      };
+    });
+
+    if (patched === 0) {
+      return { patched: 0, summary: `no entry ids matched valve ids on draft ${draftId}` };
+    }
+
+    draft.straightPipeEntries = nextEntries as never;
+    await this.rfqDraftRepository.save(draft);
+    return {
+      patched,
+      summary: `patched ${patched}/${entries.length} entries on draft ${draftId}`,
+    };
   }
 }
