@@ -29,15 +29,36 @@ export default function BOQStep(props: {
   onSubmit?: () => void;
   onResubmit?: () => void;
   isEditing?: boolean;
+  // Flagged item ids — these rows skip BOQ consolidation because
+  // their referenced drawings haven't been uploaded yet. Set by
+  // the PreQuoteClarificationsStep upstream. Optional so the
+  // existing edit-by-admin flow (no clarifications step) works
+  // unchanged.
+  omittedItemIds?: Set<string>;
+  // True when the customer chose Skip on the clarifications step.
+  // Drives the warning banner — items are still omitted but the
+  // customer was made aware.
+  clarificationsSkipped?: boolean;
 }) {
-  const { onPrevStep, onSubmit, onResubmit, isEditing } = props;
+  const { onPrevStep, onSubmit, onResubmit, isEditing, omittedItemIds, clarificationsSkipped } =
+    props;
   const rfqData = useRfqWizardStore((s) => s.rfqData);
   const masterData = useRfqWizardStore((s) => s.masterData);
   const loading = useRfqWizardStore((s) => s.isSubmitting);
   const { data: allWeights = [] } = useAllFlangeTypeWeights();
   const { data: allBnwSets = [] } = useAllBnwSetWeights();
   const { data: allGaskets = [] } = useAllGasketWeights();
-  const entries: any[] = rfqData.items.length > 0 ? rfqData.items : rfqData.straightPipeEntries;
+  const allEntries: any[] = rfqData.items.length > 0 ? rfqData.items : rfqData.straightPipeEntries;
+  // Skip flagged rows from consolidation — they're listed in the
+  // "Items omitted — pending drawings" panel above the BOQ tables
+  // instead so the customer sees what's missing without polluting
+  // the supplier-bound output.
+  const entries: any[] = omittedItemIds
+    ? allEntries.filter((entry) => !omittedItemIds.has(entry.id))
+    : allEntries;
+  const omittedEntries: any[] = omittedItemIds
+    ? allEntries.filter((entry) => omittedItemIds.has(entry.id))
+    : [];
   const globalSpecs = rfqData.globalSpecs;
   const rawRequiredProducts = rfqData.requiredProducts;
   const requiredProducts = rawRequiredProducts || [];
@@ -2274,6 +2295,68 @@ export default function BOQStep(props: {
         <h3 className="text-lg font-semibold text-gray-900 mb-4 border-b border-gray-200 pb-2">
           Consolidated Bill of Quantities
         </h3>
+
+        {/* Items omitted — pending drawings. Surfaced at the top of
+            the BOQ so the customer can see what's been skipped before
+            scrolling through the supplier sections. The
+            PreQuoteClarificationsStep upstream is what populated
+            omittedItemIds; the warning banner shows when the
+            customer chose Skip on that step rather than supplying
+            the drawings. */}
+        {omittedEntries.length > 0 && (
+          <div
+            className={`mb-6 border rounded-lg p-4 ${
+              clarificationsSkipped
+                ? "bg-amber-50 border-amber-300 dark:bg-amber-900/10 dark:border-amber-800"
+                : "bg-gray-50 border-gray-300 dark:bg-gray-900/10 dark:border-gray-700"
+            }`}
+          >
+            <div className="flex items-start gap-2">
+              <svg
+                className={`w-5 h-5 flex-shrink-0 mt-0.5 ${clarificationsSkipped ? "text-amber-600 dark:text-amber-400" : "text-gray-600 dark:text-gray-400"}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                />
+              </svg>
+              <div className="flex-1">
+                <h4 className="font-semibold text-gray-900 dark:text-gray-100">
+                  {omittedEntries.length} item{omittedEntries.length === 1 ? "" : "s"} omitted —
+                  drawings not provided
+                </h4>
+                <p className="text-sm text-gray-700 dark:text-gray-300 mt-1">
+                  {clarificationsSkipped
+                    ? "You chose to skip the clarification step. The items below reference drawings that haven't been uploaded yet — they're left out of the BOQ until the drawings are received."
+                    : "These items reference drawings that haven't been uploaded. They're omitted from the supplier sections below — pricing will resume once the drawings arrive."}
+                </p>
+                <ul className="mt-3 space-y-1 text-xs text-gray-700 dark:text-gray-300">
+                  {omittedEntries.map((entry) => {
+                    const rawClient = entry.clientItemNumber;
+                    const numberLabel = rawClient || entry.id;
+                    const rawDescription = entry.description;
+                    return (
+                      <li key={entry.id} className="flex gap-2">
+                        <span className="font-medium font-mono text-gray-500 dark:text-gray-400 min-w-[60px]">
+                          {numberLabel}
+                        </span>
+                        <span className="flex-1 truncate" title={rawDescription || undefined}>
+                          {rawDescription || "(no description)"}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* HDPE group — pipes / bends / fittings / other tagged hdpe.
             Backing flanges + their bolts/gaskets stay in the Steel
