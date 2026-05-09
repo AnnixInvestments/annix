@@ -28,7 +28,7 @@ function baseSageRows(overrides?: {
   const customer = overrides?.customerName || "MINING PRESSURE SYSTEMS (PTY) LTD";
   const jobFileNo = overrides?.jobFileNo || "P9972";
   const orderDesc = overrides?.orderDesc || "HARMONY - 32304E / A82609";
-  const docNumber = overrides?.docNumber || "DOC001";
+  const docNumber = overrides?.docNumber || "JC025694";
   return [
     ["JOB CARD AND MATERIAL MOVEMENT", "", "", "", "", "", "", ""],
     ["CUSTOMER", customer, "", "", "", "CUST001", "", ""],
@@ -353,7 +353,7 @@ describe("SageJcDumpService", () => {
       );
     });
 
-    it("handles multi-page Sage dumps", async () => {
+    it("handles multi-page Sage dumps when both pages match the CPO JC suffix", async () => {
       cpoRepo.findOne.mockResolvedValue(makeCpo());
       const page1 = [
         ...baseSageRows(),
@@ -362,7 +362,16 @@ describe("SageJcDumpService", () => {
       const page2 = [
         ["JOB CARD AND MATERIAL MOVEMENT", "", "", "", "", "", "", ""],
         ["CUSTOMER", "MINING PRESSURE SYSTEMS (PTY) LTD", "", "", "", "CUST001", "", ""],
-        ["ORDER NO", "HARMONY - 32304E / A82609", "", "", "JOB FILE NO", "P9972", "Doc", "DOC001"],
+        [
+          "ORDER NO",
+          "HARMONY - 32304E / A82609",
+          "",
+          "",
+          "JOB FILE NO",
+          "P9972",
+          "Doc",
+          "JC025694",
+        ],
         ["", "", "", "", "", "", "", ""],
         ["Item Code", "Item Description", "", "", "Item No", "Qty", "JT No", ""],
         ["PIPE-002", "8in CS pipe", "", "", "002", 5, "JT002", ""],
@@ -374,10 +383,52 @@ describe("SageJcDumpService", () => {
       expect(Object.keys(result.jtGroups)).toEqual(expect.arrayContaining(["JT001", "JT002"]));
     });
 
-    it("skips JT numbers that already exist as child job cards", async () => {
+    it("filters out pages whose documentNumber does not match the CPO JC suffix", async () => {
       cpoRepo.findOne.mockResolvedValue(makeCpo());
-      jobCardRepo.findOne.mockResolvedValue({ id: 50, jtDnNumber: null });
-      jobCardRepo.find.mockResolvedValue([{ jtDnNumber: "JT001" }]);
+      const matchingPage = [
+        ...baseSageRows({ docNumber: "JC025694" }),
+        ["PIPE-001", "6in CS pipe", "", "", "001", 10, "JT001", ""],
+      ];
+      const otherPage = [
+        ["JOB CARD AND MATERIAL MOVEMENT", "", "", "", "", "", "", ""],
+        ["CUSTOMER", "MINING PRESSURE SYSTEMS (PTY) LTD", "", "", "", "CUST001", "", ""],
+        [
+          "ORDER NO",
+          "HARMONY - 32304E / A82609",
+          "",
+          "",
+          "JOB FILE NO",
+          "P9972",
+          "Doc",
+          "JC025679",
+        ],
+        ["", "", "", "", "", "", "", ""],
+        ["Item Code", "Item Description", "", "", "Item No", "Qty", "JT No", ""],
+        ["PIPE-002", "8in CS pipe", "", "", "002", 5, "JT002", ""],
+      ];
+      const buffer = buildSageExcel([...matchingPage, ...otherPage]);
+
+      const result = await service.parseSageJcDump(buffer, COMPANY_ID, 1);
+
+      expect(result.jtGroups["JT001"]).toHaveLength(1);
+      expect(result.jtGroups["JT002"]).toBeUndefined();
+    });
+
+    it("throws when no parsed page matches the CPO JC suffix", async () => {
+      cpoRepo.findOne.mockResolvedValue(makeCpo());
+      const buffer = buildSageExcel([
+        ...baseSageRows({ docNumber: "JC999999" }),
+        ["PIPE-001", "6in CS pipe", "", "", "001", 10, "JT001", ""],
+      ]);
+
+      await expect(service.parseSageJcDump(buffer, COMPANY_ID, 1)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it("flags JT numbers as merged when they already exist on a sibling CPO of the same Sage job", async () => {
+      cpoRepo.findOne.mockResolvedValue(makeCpo());
+      jobCardRepo.find.mockResolvedValue([{ id: 200, jtDnNumber: "JT001" }]);
 
       const rows = [
         ...baseSageRows(),
@@ -388,8 +439,8 @@ describe("SageJcDumpService", () => {
 
       const result = await service.parseSageJcDump(buffer, COMPANY_ID, 1);
 
-      expect(result.skippedJtNumbers).toContain("JT001");
-      expect(result.jtGroups["JT001"]).toBeUndefined();
+      expect(result.mergedJtNumbers).toContain("JT001");
+      expect(result.jtGroups["JT001"]).toHaveLength(1);
       expect(result.jtGroups["JT002"]).toHaveLength(1);
     });
 
@@ -437,8 +488,8 @@ describe("SageJcDumpService", () => {
       expect(cpo.coatingSpecs).toBe("PAINT EXT : RED OXIDE");
     });
 
-    it("extracts document number from header rows", async () => {
-      cpoRepo.findOne.mockResolvedValue(makeCpo());
+    it("extracts document number from header rows when CPO has no JC suffix (filter bypassed)", async () => {
+      cpoRepo.findOne.mockResolvedValue(makeCpo({ cpoNumber: "CPO-P9972" }));
       const rows = [
         ...baseSageRows({ docNumber: "INV-12345" }),
         ["PIPE-001", "6in CS pipe", "", "", "001", 10, "JT001", ""],

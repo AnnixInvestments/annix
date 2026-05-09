@@ -1745,19 +1745,34 @@ export default function CpoDetailPage() {
                     </ul>
                   </div>
                 )}
-                {sageImportResult.skippedJtNumbers.length > 0 && (
-                  <p className="text-sm text-green-600 mt-2">
-                    Skipped {sageImportResult.skippedJtNumbers.length} already-imported JT
-                    {sageImportResult.skippedJtNumbers.length === 1 ? "" : "s"}:{" "}
-                    {sageImportResult.skippedJtNumbers.join(", ")}
+                {sageImportResult.mergedJobCards.length > 0 && (
+                  <div className="mt-2">
+                    <p className="text-sm text-green-700 mb-1">
+                      Pooled {sageImportResult.totalMerged} JT
+                      {sageImportResult.totalMerged === 1 ? "" : "s"} into existing job card
+                      {sageImportResult.totalMerged === 1 ? "" : "s"}:
+                    </p>
+                    <ul className="list-disc list-inside text-sm text-green-700 ml-2">
+                      {sageImportResult.mergedJobCards.map((jc) => (
+                        <li key={jc.id}>
+                          <Link
+                            href={`/stock-control/portal/job-cards/${jc.id}`}
+                            className="text-green-800 underline hover:text-green-900"
+                          >
+                            {jc.jtNumber}
+                          </Link>{" "}
+                          (+{jc.addedItemCount} item
+                          {jc.addedItemCount === 1 ? "" : "s"})
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {sageImportResult.totalCreated === 0 && sageImportResult.totalMerged === 0 && (
+                  <p className="text-sm text-green-700 mt-1">
+                    No new job cards to create from this dump.
                   </p>
                 )}
-                {sageImportResult.totalCreated === 0 &&
-                  sageImportResult.skippedJtNumbers.length === 0 && (
-                    <p className="text-sm text-green-700 mt-1">
-                      No new job cards to create from this dump.
-                    </p>
-                  )}
               </div>
               <button
                 onClick={() => setSageImportResult(null)}
@@ -1782,17 +1797,21 @@ export default function CpoDetailPage() {
             <div className="text-sm text-amber-700 space-y-1">
               <p>
                 {(() => {
-                  const jtGroupKeys = keys(sageParseResult.jtGroups);
-                  const jtGroupList = jtGroupKeys.join(", ");
+                  const allJtKeys = keys(sageParseResult.jtGroups);
+                  const mergedSet = new Set(sageParseResult.mergedJtNumbers);
+                  const newJtKeys = allJtKeys.filter((k) => !mergedSet.has(k));
+                  const newJtList = newJtKeys.join(", ");
                   return (
                     <>
-                      New JT groups: {jtGroupKeys.length} ({jtGroupList || "none"})
+                      New JT groups: {newJtKeys.length} ({newJtList || "none"})
                     </>
                   );
                 })()}
               </p>
-              {sageParseResult.skippedJtNumbers.length > 0 && (
-                <p>Skipped (already imported): {sageParseResult.skippedJtNumbers.join(", ")}</p>
+              {sageParseResult.mergedJtNumbers.length > 0 && (
+                <p>
+                  Will be pooled into existing JCs: {sageParseResult.mergedJtNumbers.join(", ")}
+                </p>
               )}
               <p>Undelivered items: {sageParseResult.undeliveredItems.length}</p>
               {sageParseResult.asteriskItems.length > 0 && (
@@ -1838,6 +1857,7 @@ export default function CpoDetailPage() {
           asteriskItems={sageParseResult.asteriskItems}
           autoJtCount={keys(sageParseResult.jtGroups).length}
           autoJtNumbers={keys(sageParseResult.jtGroups)}
+          mergedJtNumbers={sageParseResult.mergedJtNumbers}
           submitting={sageConfirming}
         />
       )}

@@ -2889,7 +2889,7 @@ export interface SageJcDumpParseResult {
   specNotes: string | null;
   jtGroups: Record<string, SageJcDumpParsedItem[]>;
   asteriskItems: AsteriskItem[];
-  skippedJtNumbers: string[];
+  mergedJtNumbers: string[];
   undeliveredItems: SageJcDumpParsedItem[];
 }
 
@@ -2906,6 +2906,7 @@ export interface SageJcDumpConfirmRequest {
 
 export interface SageJcDumpImportResult {
   createdJobCards: Array<{ id: number; jtNumber: string; itemCount: number }>;
-  skippedJtNumbers: string[];
+  mergedJobCards: Array<{ id: number; jtNumber: string; addedItemCount: number }>;
   totalCreated: number;
+  totalMerged: number;
 }

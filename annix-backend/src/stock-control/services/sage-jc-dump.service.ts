@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { DataSource, IsNull, Repository } from "typeorm";
+import { DataSource, IsNull, Not, Repository } from "typeorm";
 import * as XLSX from "xlsx";
 import { CpoStatus, CustomerPurchaseOrder } from "../entities/customer-purchase-order.entity";
 import { CustomerPurchaseOrderItem } from "../entities/customer-purchase-order-item.entity";
@@ -64,7 +64,7 @@ export interface SageJcDumpParseResult {
   specNotes: string | null;
   jtGroups: Record<string, SageJcDumpParsedItem[]>;
   asteriskItems: AsteriskItem[];
-  skippedJtNumbers: string[];
+  mergedJtNumbers: string[];
   undeliveredItems: SageJcDumpParsedItem[];
 }
 
@@ -81,8 +81,9 @@ export interface SageJcDumpConfirmRequest {
 
 export interface SageJcDumpImportResult {
   createdJobCards: Array<{ id: number; jtNumber: string; itemCount: number }>;
-  skippedJtNumbers: string[];
+  mergedJobCards: Array<{ id: number; jtNumber: string; addedItemCount: number }>;
   totalCreated: number;
+  totalMerged: number;
 }
 
 interface ParsedPage {
@@ -189,9 +190,24 @@ export class SageJcDumpService {
       throw new NotFoundException("CPO not found");
     }
 
-    const pages = this.parseExcelPages(buffer);
-    if (pages.length === 0) {
+    const allPages = this.parseExcelPages(buffer);
+    if (allPages.length === 0) {
       throw new BadRequestException("No pages found in the uploaded file");
+    }
+
+    const cpoJcNumber = this.extractJcNumber(cpo.cpoNumber);
+    const pages = cpoJcNumber ? allPages.filter((p) => p.documentNumber === cpoJcNumber) : allPages;
+
+    if (pages.length === 0) {
+      throw new BadRequestException(
+        `Sage dump contains no delivery pages matching ${cpoJcNumber}. Make sure you're uploading the dump for this CPO's delivery sheet.`,
+      );
+    }
+
+    if (allPages.length > pages.length) {
+      this.logger.log(
+        `Filtered Sage dump pages by documentNumber=${cpoJcNumber}: kept ${pages.length} of ${allPages.length} parsed page(s)`,
+      );
     }
 
     const firstPage = pages[0];
@@ -278,29 +294,22 @@ export class SageJcDumpService {
       this.logger.log(`JT ${jt}: ${items.length} item(s)`);
     });
 
-    const parentJc = await this.jobCardRepo.findOne({
-      where: { companyId, cpoId: cpo.id, parentJobCardId: IsNull() },
-    });
-
-    const existingJtNumbers = parentJc
-      ? await this.jobCardRepo
-          .find({
-            where: { companyId, parentJobCardId: parentJc.id },
-            select: ["jtDnNumber"],
-          })
-          .then((jcs) => jcs.map((jc) => jc.jtDnNumber).filter((jt): jt is string => jt !== null))
-      : [];
+    const existingJtNumbers = await this.jobCardRepo
+      .find({
+        where: {
+          companyId,
+          jobNumber: cpo.jobNumber,
+          parentJobCardId: Not(IsNull()),
+        },
+        select: ["jtDnNumber"],
+      })
+      .then((jcs) => jcs.map((jc) => jc.jtDnNumber).filter((jt): jt is string => jt !== null));
 
     const existingJtSet = new Set(existingJtNumbers.map((jt) => jt.toUpperCase()));
 
-    const skippedJtNumbers = Object.keys(jtGroups).filter((jt) =>
+    const mergedJtNumbers = Object.keys(jtGroups).filter((jt) =>
       existingJtSet.has(jt.toUpperCase()),
     );
-    const newJtGroups = Object.keys(jtGroups)
-      .filter((jt) => !existingJtSet.has(jt.toUpperCase()))
-      .reduce<Record<string, SageJcDumpParsedItem[]>>((acc, jt) => {
-        return { ...acc, [jt]: jtGroups[jt] };
-      }, {});
 
     const asteriskItems = this.buildAsteriskItems(asteriskRawItems, jtItems, cpo);
 
@@ -311,9 +320,9 @@ export class SageJcDumpService {
       customerName,
       documentNumber,
       specNotes: specNotesText,
-      jtGroups: newJtGroups,
+      jtGroups,
       asteriskItems,
-      skippedJtNumbers,
+      mergedJtNumbers,
       undeliveredItems,
     };
   }
@@ -373,16 +382,20 @@ export class SageJcDumpService {
 
     const parentJcId = parentJc.id;
 
-    const existingJcs = await this.jobCardRepo.find({
-      where: { companyId, parentJobCardId: parentJcId },
-      select: ["jtDnNumber"],
+    const existingChildJcs = await this.jobCardRepo.find({
+      where: {
+        companyId,
+        jobNumber: parentJc.jobNumber,
+        parentJobCardId: Not(IsNull()),
+      },
+      select: ["id", "jtDnNumber"],
     });
-    const existingJtSet = new Set(
-      existingJcs
-        .map((jc) => jc.jtDnNumber)
-        .filter((jt): jt is string => jt !== null)
-        .map((jt) => jt.toUpperCase()),
-    );
+    const existingJtMap = new Map<string, number>();
+    existingChildJcs.forEach((jc) => {
+      if (jc.jtDnNumber) {
+        existingJtMap.set(jc.jtDnNumber.toUpperCase(), jc.id);
+      }
+    });
 
     const mergedGroups = { ...request.jtGroups };
 
@@ -408,8 +421,8 @@ export class SageJcDumpService {
       });
     });
 
-    const skippedJtNumbers: string[] = [];
     const createdJobCards: Array<{ id: number; jtNumber: string; itemCount: number }> = [];
+    const mergedJobCards: Array<{ id: number; jtNumber: string; addedItemCount: number }> = [];
 
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
@@ -419,8 +432,34 @@ export class SageJcDumpService {
       const jtEntries = Object.entries(mergedGroups);
 
       for (const [jtNumber, items] of jtEntries) {
-        if (existingJtSet.has(jtNumber.toUpperCase())) {
-          skippedJtNumbers.push(jtNumber);
+        const existingJcId = existingJtMap.get(jtNumber.toUpperCase());
+        if (existingJcId) {
+          const priorItemCount = await queryRunner.manager.count(JobCardLineItem, {
+            where: { jobCardId: existingJcId },
+          });
+          const appendedLineItems = items.map((item, idx) =>
+            this.lineItemRepo.create({
+              jobCardId: existingJcId,
+              itemCode: item.itemCode || null,
+              itemDescription: item.itemDescription || null,
+              itemNo: item.itemNo || null,
+              quantity: item.quantity,
+              jtNo: jtNumber,
+              sortOrder: priorItemCount + idx,
+              companyId,
+              notes: item.specNotes || null,
+            }),
+          );
+          await queryRunner.manager.save(JobCardLineItem, appendedLineItems);
+          this.updateCpoFulfillment(items, cpo, queryRunner);
+          mergedJobCards.push({
+            id: existingJcId,
+            jtNumber,
+            addedItemCount: items.length,
+          });
+          this.logger.log(
+            `Pooled ${items.length} item(s) into existing JC #${existingJcId} for JT ${jtNumber} (job ${parentJc.jobNumber})`,
+          );
           continue;
         }
 
@@ -540,8 +579,9 @@ export class SageJcDumpService {
 
       return {
         createdJobCards,
-        skippedJtNumbers,
+        mergedJobCards,
         totalCreated: createdJobCards.length,
+        totalMerged: mergedJobCards.length,
       };
     } catch (error) {
       await queryRunner.rollbackTransaction();

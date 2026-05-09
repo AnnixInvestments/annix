@@ -23,14 +23,23 @@ interface AsteriskAllocationModalProps {
   asteriskItems: AsteriskItem[];
   autoJtCount: number;
   autoJtNumbers: string[];
+  mergedJtNumbers: string[];
   submitting: boolean;
 }
 
 const EMPTY_ROW: AllocationRow = { jtNumber: "", quantity: "" };
 
 export function AsteriskAllocationModal(props: AsteriskAllocationModalProps) {
-  const { isOpen, onClose, onConfirm, asteriskItems, autoJtCount, autoJtNumbers, submitting } =
-    props;
+  const {
+    isOpen,
+    onClose,
+    onConfirm,
+    asteriskItems,
+    autoJtCount,
+    autoJtNumbers,
+    mergedJtNumbers,
+    submitting,
+  } = props;
 
   const [itemStates, setItemStates] = useState<ItemAllocationState[]>(() =>
     asteriskItems.map((item) => ({
@@ -162,12 +171,27 @@ export function AsteriskAllocationModal(props: AsteriskAllocationModalProps) {
               >
                 Allocate Deliveries
               </h2>
-              {autoJtCount > 0 && (
-                <p className="text-sm text-green-600 mt-0.5">
-                  {autoJtCount} JT{autoJtCount === 1 ? "" : "s"} will be auto-created:{" "}
-                  {autoJtNumbers.join(", ")}
-                </p>
-              )}
+              {(() => {
+                const mergedSet = new Set(mergedJtNumbers);
+                const newJts = autoJtNumbers.filter((jt) => !mergedSet.has(jt));
+                return (
+                  <>
+                    {newJts.length > 0 && (
+                      <p className="text-sm text-green-600 mt-0.5">
+                        {newJts.length} JT{newJts.length === 1 ? "" : "s"} will be auto-created:{" "}
+                        {newJts.join(", ")}
+                      </p>
+                    )}
+                    {mergedJtNumbers.length > 0 && (
+                      <p className="text-sm text-green-700 mt-0.5">
+                        {mergedJtNumbers.length} JT
+                        {mergedJtNumbers.length === 1 ? "" : "s"} will be pooled into existing job
+                        cards: {mergedJtNumbers.join(", ")}
+                      </p>
+                    )}
+                  </>
+                );
+              })()}
               <p className="text-sm text-gray-500 mt-0.5">
                 The items below were marked with *** in the Sage dump. Allocate JT numbers and
                 quantities for any new deliveries, or leave blank if nothing new has arrived.
