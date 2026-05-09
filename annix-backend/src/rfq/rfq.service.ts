@@ -9,6 +9,7 @@ import {
   buildRfqClarificationEmailHtml,
   buildRfqClarificationEmailText,
 } from "../email/templates/rfq-clarification";
+import { buildRfqClarificationPdf } from "../email/templates/rfq-clarification-pdf";
 import { FlangeDimension } from "../flange-dimension/entities/flange-dimension.entity";
 import { fromISO, now } from "../lib/datetime";
 import { NbNpsLookup } from "../nb-nps-lookup/entities/nb-nps-lookup.entity";
@@ -1672,6 +1673,38 @@ export class RfqService {
         clarificationToken: token,
       });
 
+      // Fillable PDF attachment — same field set as the public web
+      // form. Customer can pick whichever route suits them. PDF
+      // generation is best-effort: if it throws (corrupted pdf-lib
+      // dep, runaway memory, etc.) we still send the email with the
+      // web form link; the customer can use that route while we
+      // dig into the PDF failure.
+      let pdfAttachment: Buffer | null = null;
+      try {
+        pdfAttachment = await buildRfqClarificationPdf({
+          customerName: dto.customerName ?? null,
+          projectName: dto.projectName ?? null,
+          rfqReference: dto.rfqReference ?? null,
+          missingDrawings: dto.missingDrawings,
+          valveSpecGaps: dto.valveSpecGaps.map((gap) => ({
+            itemNumber: gap.itemNumber,
+            description: gap.description,
+          })),
+        });
+      } catch (pdfErr) {
+        const pdfErrorMessage = pdfErr instanceof Error ? pdfErr.message : String(pdfErr);
+        this.logger.warn(
+          `Failed to generate clarification PDF for token ${token}: ${pdfErrorMessage} — sending email without attachment`,
+        );
+      }
+
+      const pdfFilename = (() => {
+        const projectStem = dto.projectName
+          ? dto.projectName.replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-+|-+$/g, "")
+          : "rfq";
+        return `clarifications-${projectStem || "rfq"}.pdf`;
+      })();
+
       const success = await this.emailService.sendEmail({
         to: dto.to,
         cc: dto.cc,
@@ -1680,6 +1713,15 @@ export class RfqService {
         html,
         text,
         isTransactional: true,
+        attachments: pdfAttachment
+          ? [
+              {
+                filename: pdfFilename,
+                content: pdfAttachment,
+                contentType: "application/pdf",
+              },
+            ]
+          : undefined,
       });
 
       if (!success) {
