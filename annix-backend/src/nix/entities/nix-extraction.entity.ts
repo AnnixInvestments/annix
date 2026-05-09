@@ -9,7 +9,6 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
-import { SaMine } from "../../mines/entities/sa-mine.entity";
 import { Rfq } from "../../rfq/entities/rfq.entity";
 import { User } from "../../user/entities/user.entity";
 import { NixExtractionSession } from "./nix-extraction-session.entity";
@@ -223,17 +222,21 @@ export class NixExtraction {
   @Column({ name: "session_id", type: "int", nullable: true })
   sessionId?: number;
 
-  @ManyToOne(() => SaMine, { nullable: true, onDelete: "SET NULL" })
-  @JoinColumn({ name: "mine_id" })
-  mine?: SaMine;
-
   @ApiProperty({
     description:
-      "FK to the SaMine this extraction was auto-tagged to (issue #264). Populated by MineInferenceService when Gemini metadata yields a confident match. Null when the document couldn't be tied to a known mine.",
+      "ID of the matched mine within its country table (issue #264). Disambiguated by mineCountry — one of botswana_mines / namibia_mines / sa_mines / zimbabwe_mines / zambia_mines / mozambique_mines. Populated by MineInferenceService when Gemini metadata yields a confident match. Null when the document couldn't be tied to a known mine.",
     required: false,
   })
   @Column({ name: "mine_id", type: "int", nullable: true })
   mineId?: number;
+
+  @ApiProperty({
+    description:
+      "Country whose mine table mineId references — 'South Africa', 'Botswana', 'Namibia', 'Zimbabwe', 'Zambia', or 'Mozambique'. Required to dereference mineId because the FK constraint was dropped when international mine tables were added.",
+    required: false,
+  })
+  @Column({ name: "mine_country", type: "varchar", length: 64, nullable: true })
+  mineCountry?: string;
 
   @ApiProperty({
     description:

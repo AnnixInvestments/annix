@@ -164,6 +164,7 @@ export class NixService {
 
       if (inference.mineId > 0 && inference.confidence > 0) {
         extraction.mineId = inference.mineId;
+        extraction.mineCountry = inference.mineCountry ?? undefined;
         extraction.mineInferenceConfidence = inference.confidence;
         extraction.mineInferenceReason = inference.reason;
       }
@@ -440,6 +441,7 @@ export class NixService {
         extraction.documentNumber = reuse.documentNumber;
         extraction.documentRevision = reuse.documentRevision ?? undefined;
         extraction.mineId = reuse.mineId ?? undefined;
+        extraction.mineCountry = reuse.source.mineCountry ?? undefined;
         extraction.mineInferenceConfidence = reuse.source.mineInferenceConfidence ?? undefined;
         extraction.mineInferenceReason = reuse.source.mineInferenceReason
           ? `reused from extraction #${reuse.source.id}: ${reuse.source.mineInferenceReason}`

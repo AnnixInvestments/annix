@@ -1,26 +1,21 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
-import { MineType, OperationalStatus, SaMine } from "../mines/entities/sa-mine.entity";
+import { type MineRecord, MineRegistryService } from "../mines/mine-registry.service";
 import { ExtractionStatus, NixExtraction } from "./entities/nix-extraction.entity";
 import { MineInferenceService } from "./mine-inference.service";
 
-function fakeMine(partial: Partial<SaMine> = {}): SaMine {
+function fakeMine(partial: Partial<MineRecord> = {}): MineRecord {
   return {
+    country: "South Africa",
     id: 1,
     mineName: "",
     operatingCompany: "",
-    commodity: undefined as unknown as SaMine["commodity"],
-    commodityId: 0,
-    province: "Gauteng",
+    region: "Gauteng",
     district: null,
+    nearestTown: null,
     physicalAddress: null,
-    mineType: MineType.UNDERGROUND,
-    operationalStatus: OperationalStatus.ACTIVE,
     latitude: null,
     longitude: null,
-    createdAt: new Date(),
-    updatedAt: new Date(),
     ...partial,
   };
 }
@@ -38,7 +33,7 @@ function fakeExtraction(
 
 describe("MineInferenceService", () => {
   let service: MineInferenceService;
-  let mineRepo: jest.Mocked<Repository<SaMine>>;
+  let mineRegistry: { allMines: jest.Mock };
   let extractionRepo: { createQueryBuilder: jest.Mock };
   let qbResult: NixExtraction | null;
 
@@ -53,14 +48,12 @@ describe("MineInferenceService", () => {
       getOne: jest.fn().mockImplementation(() => Promise.resolve(qbResult)),
     };
     extractionRepo = { createQueryBuilder: jest.fn().mockReturnValue(qb) };
+    mineRegistry = { allMines: jest.fn().mockResolvedValue([]) };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         MineInferenceService,
-        {
-          provide: getRepositoryToken(SaMine),
-          useValue: { find: jest.fn() },
-        },
+        { provide: MineRegistryService, useValue: mineRegistry },
         {
           provide: getRepositoryToken(NixExtraction),
           useValue: extractionRepo,
@@ -68,11 +61,10 @@ describe("MineInferenceService", () => {
       ],
     }).compile();
     service = module.get<MineInferenceService>(MineInferenceService);
-    mineRepo = module.get(getRepositoryToken(SaMine));
   });
 
   it("matches a mine when project name contains the mine name", async () => {
-    mineRepo.find.mockResolvedValue([
+    mineRegistry.allMines.mockResolvedValue([
       fakeMine({ id: 7, mineName: "Sibanye Driefontein", operatingCompany: "Sibanye-Stillwater" }),
     ]);
     const result = await service.infer(
@@ -83,7 +75,7 @@ describe("MineInferenceService", () => {
   });
 
   it("matches on operating company when mine name doesn't appear", async () => {
-    mineRepo.find.mockResolvedValue([
+    mineRegistry.allMines.mockResolvedValue([
       fakeMine({ id: 5, mineName: "Wonderkop", operatingCompany: "Anglo American Platinum" }),
     ]);
     const result = await service.infer(
@@ -94,7 +86,7 @@ describe("MineInferenceService", () => {
   });
 
   it("falls back to no mine when nothing matches with sufficient confidence", async () => {
-    mineRepo.find.mockResolvedValue([
+    mineRegistry.allMines.mockResolvedValue([
       fakeMine({ id: 1, mineName: "Tharisa", operatingCompany: "Tharisa Minerals" }),
     ]);
     const result = await service.infer(
@@ -104,7 +96,7 @@ describe("MineInferenceService", () => {
   });
 
   it("still returns the document number when no mine matches, so global lookup is preserved", async () => {
-    mineRepo.find.mockResolvedValue([
+    mineRegistry.allMines.mockResolvedValue([
       fakeMine({ id: 1, mineName: "Tharisa", operatingCompany: "Tharisa Minerals" }),
     ]);
     const result = await service.infer(
@@ -121,13 +113,13 @@ describe("MineInferenceService", () => {
   });
 
   it("returns null when neither metadata nor doc number is available", async () => {
-    mineRepo.find.mockResolvedValue([fakeMine({ id: 1, mineName: "Tharisa" })]);
+    mineRegistry.allMines.mockResolvedValue([fakeMine({ id: 1, mineName: "Tharisa" })]);
     const result = await service.infer(fakeExtraction({}));
     expect(result).toBeNull();
   });
 
   it("captures the document revision into the result", async () => {
-    mineRepo.find.mockResolvedValue([
+    mineRegistry.allMines.mockResolvedValue([
       fakeMine({ id: 8, mineName: "Mogalakwena", operatingCompany: "Anglo American Platinum" }),
     ]);
     const result = await service.infer(
@@ -142,7 +134,7 @@ describe("MineInferenceService", () => {
   });
 
   it("falls back to the filename for documentNumber when metadata is empty", async () => {
-    mineRepo.find.mockResolvedValue([fakeMine({ id: 1, mineName: "Tharisa" })]);
+    mineRegistry.allMines.mockResolvedValue([fakeMine({ id: 1, mineName: "Tharisa" })]);
     const result = await service.infer(
       fakeExtraction({ aiProvider: "gemini" }, "LHU-0000-EP-2701-012-00.pdf"),
     );
@@ -150,7 +142,7 @@ describe("MineInferenceService", () => {
   });
 
   it("captures revision from a 'Rev XX' filename pattern", async () => {
-    mineRepo.find.mockResolvedValue([fakeMine({ id: 1, mineName: "Tharisa" })]);
+    mineRegistry.allMines.mockResolvedValue([fakeMine({ id: 1, mineName: "Tharisa" })]);
     const result = await service.infer(
       fakeExtraction({}, "2201-0000-EP-2203-0004 Rev AF - Piping Design Criteria.pdf"),
     );
@@ -159,7 +151,7 @@ describe("MineInferenceService", () => {
   });
 
   it("metadata documentNumber wins over filename when both are present", async () => {
-    mineRepo.find.mockResolvedValue([fakeMine({ id: 1, mineName: "Tharisa" })]);
+    mineRegistry.allMines.mockResolvedValue([fakeMine({ id: 1, mineName: "Tharisa" })]);
     const result = await service.infer(
       fakeExtraction({ documentNumber: "META-1234-001-00", revision: "B" }, "FILENAME-9999-99.pdf"),
     );
@@ -168,7 +160,7 @@ describe("MineInferenceService", () => {
   });
 
   it("ignores trivial filename hyphens that aren't real doc numbers", async () => {
-    mineRepo.find.mockResolvedValue([fakeMine({ id: 1, mineName: "Tharisa" })]);
+    mineRegistry.allMines.mockResolvedValue([fakeMine({ id: 1, mineName: "Tharisa" })]);
     const result = await service.infer(fakeExtraction({}, "MPS Pipe-Detail.pdf"));
     expect(result).toBeNull();
   });
@@ -229,7 +221,7 @@ describe("MineInferenceService", () => {
   });
 
   it("picks the highest-confidence match when multiple mines could match", async () => {
-    mineRepo.find.mockResolvedValue([
+    mineRegistry.allMines.mockResolvedValue([
       fakeMine({ id: 11, mineName: "Sibanye", operatingCompany: "Sibanye-Stillwater" }),
       fakeMine({ id: 12, mineName: "Sibanye Driefontein", operatingCompany: "Sibanye-Stillwater" }),
     ]);

@@ -1,7 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { SaMine } from "../mines/entities/sa-mine.entity";
+import { MineRegistryService } from "../mines/mine-registry.service";
 import { ExtractionStatus, NixExtraction } from "./entities/nix-extraction.entity";
 
 /**
@@ -13,6 +13,7 @@ import { ExtractionStatus, NixExtraction } from "./entities/nix-extraction.entit
  */
 export interface MineInferenceResult {
   mineId: number;
+  mineCountry: string | null;
   confidence: number;
   reason: string;
   documentNumber: string | null;
@@ -46,8 +47,7 @@ export class MineInferenceService {
   private readonly logger = new Logger(MineInferenceService.name);
 
   constructor(
-    @InjectRepository(SaMine)
-    private readonly mineRepo: Repository<SaMine>,
+    private readonly mineRegistry: MineRegistryService,
     @InjectRepository(NixExtraction)
     private readonly extractionRepo: Repository<NixExtraction>,
   ) {}
@@ -87,6 +87,7 @@ export class MineInferenceService {
       if (documentNumber) {
         return {
           mineId: 0,
+          mineCountry: null,
           confidence: 0,
           reason: "no mine signals — filename doc number only",
           documentNumber,
@@ -99,8 +100,12 @@ export class MineInferenceService {
       return null;
     }
 
-    const mines = await this.mineRepo.find();
-    let best: { mine: SaMine; confidence: number; reason: string } | null = null;
+    const mines = await this.mineRegistry.allMines();
+    let best: {
+      mine: { id: number; mineName: string; operatingCompany: string; country: string };
+      confidence: number;
+      reason: string;
+    } | null = null;
 
     for (const mine of mines) {
       const candidates: { confidence: number; reason: string }[] = [];
@@ -168,6 +173,7 @@ export class MineInferenceService {
       if (documentNumber) {
         return {
           mineId: 0,
+          mineCountry: null,
           confidence: 0,
           reason: "no mine match",
           documentNumber,
@@ -178,10 +184,11 @@ export class MineInferenceService {
     }
 
     this.logger.log(
-      `Mine inference for extraction #${extraction.id}: matched mine #${best.mine.id} '${best.mine.mineName}' (${(best.confidence * 100).toFixed(0)}% — ${best.reason})`,
+      `Mine inference for extraction #${extraction.id}: matched ${best.mine.country} mine #${best.mine.id} '${best.mine.mineName}' (${(best.confidence * 100).toFixed(0)}% — ${best.reason})`,
     );
     return {
       mineId: best.mine.id,
+      mineCountry: best.mine.country,
       confidence: best.confidence,
       reason: best.reason,
       documentNumber: documentNumber ?? null,
