@@ -117,7 +117,18 @@ interface ClarificationFetch {
   respondedAt: string | null;
 }
 
-type DrawingStatus = "willAttach" | "notAvailable" | "";
+// Drawing state — three possibilities:
+//   ""             — untouched; customer hasn't decided
+//   "uploaded"     — customer attached a file; metadata in
+//                    drawingUploads[ref]
+//   "notAvailable" — customer ticked the opt-out
+type DrawingStatus = "uploaded" | "notAvailable" | "";
+
+interface DrawingUpload {
+  filename: string;
+  sizeBytes: number;
+  extractionId: number | null;
+}
 type YesNo = "yes" | "no" | "";
 
 interface ValveResponse {
@@ -196,6 +207,8 @@ export default function ClarificationFormPage() {
   const [data, setData] = useState<ClarificationFetch | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [drawingStatuses, setDrawingStatuses] = useState<Record<string, DrawingStatus>>({});
+  const [drawingUploads, setDrawingUploads] = useState<Record<string, DrawingUpload>>({});
+  const [drawingUploading, setDrawingUploading] = useState<Record<string, boolean>>({});
   const [valveResponses, setValveResponses] = useState<Record<string, ValveResponse>>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -329,6 +342,57 @@ export default function ClarificationFormPage() {
     });
   };
 
+  // Upload a drawing file via the existing /nix/upload endpoint
+  // (no auth required — already public). skipExtraction:true means
+  // it's archived to S3 immediately without running the extraction
+  // pipeline. v1.3.3 will flip this to false and pre-fill the
+  // valve fields from anything Nix can pull out of the drawing.
+  const uploadDrawing = async (ref: string, file: File) => {
+    if (!token) return;
+    setDrawingUploading((prev) => ({ ...prev, [ref]: true }));
+    setError(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("documentRole", "drawing");
+      formData.append("sourceModule", "rfq-clarification");
+      formData.append("skipExtraction", "true");
+      const res = await fetch(`${API_BASE_URL}/nix/upload`, {
+        method: "POST",
+        body: formData,
+      });
+      if (!res.ok) {
+        const json = await res.json().catch(() => null);
+        const candidate = json && isString(json.message) ? json.message : null;
+        throw new Error(candidate || `Upload failed (${res.status})`);
+      }
+      const payload = (await res.json()) as { extractionId?: number };
+      const rawExtractionId = payload.extractionId;
+      setDrawingUploads((prev) => ({
+        ...prev,
+        [ref]: {
+          filename: file.name,
+          sizeBytes: file.size,
+          extractionId: rawExtractionId ?? null,
+        },
+      }));
+      setDrawingStatuses((prev) => ({ ...prev, [ref]: "uploaded" }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Drawing upload failed");
+    } finally {
+      setDrawingUploading((prev) => ({ ...prev, [ref]: false }));
+    }
+  };
+
+  const removeDrawingUpload = (ref: string) => {
+    setDrawingUploads((prev) => {
+      const next = { ...prev };
+      delete next[ref];
+      return next;
+    });
+    setDrawingStatuses((prev) => ({ ...prev, [ref]: "" }));
+  };
+
   const submit = async () => {
     if (!token || !data) return;
     setSubmitting(true);
@@ -340,6 +404,7 @@ export default function ClarificationFormPage() {
         body: JSON.stringify({
           responses: {
             drawings: drawingStatuses,
+            drawingUploads,
             valves: valveResponses,
           },
         }),
@@ -418,36 +483,96 @@ export default function ClarificationFormPage() {
           <section className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
             <h2 className="text-lg font-semibold text-gray-900 mb-3">Drawings required</h2>
             <p className="text-xs text-gray-500 mb-4">
-              For each drawing, tell us whether you'll attach it to your reply or whether it's not
-              available so we know to omit those items.
+              For each drawing, attach the file directly here OR tick "Not available" so we know to
+              omit those items from the quote.
             </p>
             <div className="space-y-3">
-              {drawings.map((d) => (
-                <div key={d.ref} className="border border-gray-200 rounded-lg p-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-mono text-sm font-semibold">{d.ref}</span>
-                    <span className="text-xs text-gray-500">items {d.itemNumbers.join(", ")}</span>
-                  </div>
-                  <div className="flex flex-wrap gap-3 text-sm">
-                    {(["willAttach", "notAvailable"] as DrawingStatus[]).map((opt) => (
-                      <label key={opt} className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          name={`drawing.${d.ref}`}
-                          checked={drawingStatuses[d.ref] === opt}
-                          onChange={() => setDrawingStatuses((prev) => ({ ...prev, [d.ref]: opt }))}
-                          className="w-4 h-4"
-                        />
-                        <span>
-                          {opt === "willAttach"
-                            ? "Will attach to reply"
-                            : "Not available — please omit affected items"}
+              {drawings.map((d) => {
+                const rawStatus = drawingStatuses[d.ref];
+                const status = rawStatus || "";
+                const upload = drawingUploads[d.ref];
+                const uploading = drawingUploading[d.ref];
+                return (
+                  <div key={d.ref} className="border border-gray-200 rounded-lg p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-mono text-sm font-semibold">{d.ref}</span>
+                      <span className="text-xs text-gray-500">
+                        items {d.itemNumbers.join(", ")}
+                      </span>
+                    </div>
+                    {status === "uploaded" && upload ? (
+                      <div className="flex items-center justify-between gap-2 bg-green-50 border border-green-200 rounded p-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <svg
+                            className="w-4 h-4 text-green-600 flex-shrink-0"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                            />
+                          </svg>
+                          <span className="text-sm text-green-900 truncate">{upload.filename}</span>
+                          <span className="text-xs text-green-700 flex-shrink-0">
+                            {(upload.sizeBytes / 1024).toFixed(0)} KB
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeDrawingUpload(d.ref)}
+                          className="text-xs text-red-600 hover:text-red-800 underline flex-shrink-0"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ) : status === "notAvailable" ? (
+                      <div className="flex items-center justify-between gap-2 bg-amber-50 border border-amber-200 rounded p-2">
+                        <span className="text-sm text-amber-900">
+                          Marked not available — items will be omitted from the quote
                         </span>
-                      </label>
-                    ))}
+                        <button
+                          type="button"
+                          onClick={() => setDrawingStatuses((prev) => ({ ...prev, [d.ref]: "" }))}
+                          className="text-xs text-amber-700 hover:text-amber-900 underline flex-shrink-0"
+                        >
+                          Undo
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex flex-wrap items-center gap-3 text-sm">
+                        <label className="inline-flex items-center gap-2 cursor-pointer px-3 py-1.5 bg-blue-50 border border-blue-200 text-blue-700 rounded hover:bg-blue-100">
+                          <input
+                            type="file"
+                            className="hidden"
+                            accept=".pdf,.dwg,.dxf,.png,.jpg,.jpeg,.tif,.tiff"
+                            disabled={uploading}
+                            onChange={(e) => {
+                              const f = e.target.files?.[0];
+                              if (f) uploadDrawing(d.ref, f);
+                              e.target.value = "";
+                            }}
+                          />
+                          {uploading ? "Uploading…" : "📎 Attach drawing file"}
+                        </label>
+                        <span className="text-xs text-gray-500">or</span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setDrawingStatuses((prev) => ({ ...prev, [d.ref]: "notAvailable" }))
+                          }
+                          className="text-xs text-amber-700 underline hover:text-amber-900"
+                        >
+                          Not available — please omit affected items
+                        </button>
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </section>
         )}
