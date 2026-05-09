@@ -80,9 +80,7 @@ const WORKFLOW_RANK = {
 
 function rankOf(status) {
   if (status == null) return -1;
-  return Object.prototype.hasOwnProperty.call(WORKFLOW_RANK, status)
-    ? WORKFLOW_RANK[status]
-    : 5;
+  return Object.hasOwn(WORKFLOW_RANK, status) ? WORKFLOW_RANK[status] : 5;
 }
 
 function logLine(line) {
@@ -139,9 +137,7 @@ const FK_TABLES_WITH_CONFLICT = [
 
 const FK_SELF_REFS = [{ table: "job_cards", column: "superseded_by_id" }];
 
-const FK_OTHER = [
-  { table: "stock_items", column: "source_job_card_id" },
-];
+const FK_OTHER = [{ table: "stock_items", column: "source_job_card_id" }];
 
 async function findDuplicateGroups(client) {
   const params = jobFilter ? [jobFilter] : [];
@@ -214,7 +210,9 @@ async function summarisePlanForGroup(client, group) {
   for (const def of FK_TABLES_WITH_CONFLICT) {
     const naturalKeyCols = def.naturalKey.map((c) => `lhs.${c}`).join(", ");
     const winnerKeyCols = def.naturalKey.map((c) => `rhs.${c}`).join(", ");
-    const onClause = def.naturalKey.map((c) => `lhs.${c} IS NOT DISTINCT FROM rhs.${c}`).join(" AND ");
+    const onClause = def.naturalKey
+      .map((c) => `lhs.${c} IS NOT DISTINCT FROM rhs.${c}`)
+      .join(" AND ");
     const totalRes = await client.query(
       `SELECT COUNT(*)::int AS n FROM ${def.table} WHERE job_card_id = ANY($1::int[])`,
       [loserIds],
@@ -274,10 +272,10 @@ async function applyMergeForGroup(client, group, plan) {
   await client.query("SAVEPOINT group_merge");
   try {
     for (const t of FK_TABLES_PLAIN) {
-      await client.query(
-        `UPDATE ${t} SET job_card_id = $1 WHERE job_card_id = ANY($2::int[])`,
-        [winnerId, loserIds],
-      );
+      await client.query(`UPDATE ${t} SET job_card_id = $1 WHERE job_card_id = ANY($2::int[])`, [
+        winnerId,
+        loserIds,
+      ]);
     }
 
     for (const def of FK_TABLES_WITH_CONFLICT) {
@@ -315,10 +313,7 @@ async function applyMergeForGroup(client, group, plan) {
       );
     }
 
-    await client.query(
-      `DELETE FROM job_cards WHERE id = ANY($1::int[])`,
-      [loserIds],
-    );
+    await client.query("DELETE FROM job_cards WHERE id = ANY($1::int[])", [loserIds]);
 
     await client.query("RELEASE SAVEPOINT group_merge");
   } catch (err) {
@@ -334,9 +329,7 @@ function formatPlan(group, plan) {
     `  Winner: JC#${plan.winner.id} (${plan.winner.jc_number}, ${plan.winner.workflow_status}, page ${plan.winner.created_at instanceof Date ? plan.winner.created_at.toISOString().slice(0, 10) : plan.winner.created_at})`,
   );
   for (const l of plan.losers) {
-    lines.push(
-      `  Loser : JC#${l.id} (${l.jc_number}, ${l.workflow_status}) -> merge into winner`,
-    );
+    lines.push(`  Loser : JC#${l.id} (${l.jc_number}, ${l.workflow_status}) -> merge into winner`);
   }
   const plainSummary = Object.entries(plan.plainCounts)
     .filter(([, n]) => n > 0)
@@ -412,7 +405,7 @@ async function main() {
 
       if (apply) {
         await applyMergeForGroup(client, group, plan);
-        logLine(`  ✓ applied`);
+        logLine("  ✓ applied");
       }
     }
 

@@ -33,6 +33,7 @@ export {
   type NixSpecViewerOpts,
   useNixSpecViewer,
 } from "./NixSpecViewer";
+export { RevisionBadge } from "./RevisionBadge";
 export { SpecificationCard } from "./SpecificationCard";
 export { StatCard } from "./StatCard";
 export { type ResolvedCode, type SpecLookup, useSpecLookup } from "./useSpecLookup";

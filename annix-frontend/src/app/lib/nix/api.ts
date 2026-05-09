@@ -201,6 +201,25 @@ export interface NixProcessResponse {
   metadata?: NixExtractionMetadata;
   profileMetadata?: NixRfqPipingProfileMetadata | Record<string, unknown>;
   error?: string;
+  revisionVerdict?: NixRevisionVerdict;
+}
+
+/**
+ * Outcome of the supersession check the backend runs after every successful
+ * Nix extraction. Frontend uses this to decide whether to silently accept the
+ * upload, surface a 'newer rev replaced' toast, or open a modal asking the
+ * user to confirm whether to use an older revision they just uploaded.
+ */
+export interface NixRevisionVerdict {
+  action: "first" | "same" | "newer" | "older" | "unknown";
+  canonicalExtractionId?: number;
+  canonicalRevision?: string | null;
+  previousCanonicalExtractionId?: number;
+  previousCanonicalRevision?: string | null;
+  latestExtractionId?: number;
+  latestRevision?: string | null;
+  otherExtractionId?: number;
+  otherRevision?: string | null;
 }
 
 export interface NixCorrectionPayload {

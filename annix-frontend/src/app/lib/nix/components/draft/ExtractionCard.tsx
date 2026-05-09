@@ -4,6 +4,7 @@ import { toPairs as entries, isArray, keys } from "es-toolkit/compat";
 import type { NixExtractionSummary } from "@/app/lib/query/hooks";
 import { ItemRow } from "./ItemRow";
 import { MineInferenceBadge } from "./MineInferenceBadge";
+import { RevisionBadge } from "./RevisionBadge";
 import { SpecificationCard } from "./SpecificationCard";
 import type { SpecLookup } from "./useSpecLookup";
 
@@ -65,7 +66,10 @@ export function ExtractionCard(props: {
   }
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden flex">
+    <div
+      id={`extraction-${extraction.id}`}
+      className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden flex scroll-mt-24"
+    >
       {/* Left rail — keeps the visual link between header and any deep
           stack of clauses below it, even on long specs. */}
       <div className={`w-1 flex-shrink-0 ${railClass}`} aria-hidden="true" />
@@ -82,6 +86,7 @@ export function ExtractionCard(props: {
               {extraction.storagePath && " • saved to S3"}
             </p>
             <MineInferenceBadge extraction={extraction} />
+            <RevisionBadge extraction={extraction} />
           </div>
           <div className="flex items-center gap-3 whitespace-nowrap">
             <button

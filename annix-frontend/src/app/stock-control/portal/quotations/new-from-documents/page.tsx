@@ -97,6 +97,12 @@ export default function QuoteFromDocumentsPage() {
   const processBucket = useCallback(
     async (bucket: BucketState, role: NixDocumentRole, label: string): Promise<void> => {
       const activeSession = await ensureSession();
+      const verdicts: Array<{
+        filename: string;
+        verdict: NonNullable<
+          Awaited<ReturnType<typeof nixApi.uploadAndProcess>>["revisionVerdict"]
+        >;
+      }> = [];
       const result = await runBulk({
         brand: "stock-control",
         metricCategory: "asca-quote-extract",
@@ -106,13 +112,16 @@ export default function QuoteFromDocumentsPage() {
         itemLabel: (doc, i, t) =>
           `Reading ${role === "drawing" ? "drawing" : "specification"} ${i + 1} of ${t}: ${doc.file.name}`,
         run: async (doc) => {
-          await nixApi.uploadAndProcess(doc.file, {
+          const response = await nixApi.uploadAndProcess(doc.file, {
             userId,
             sourceModule: ASCA_SOURCE_MODULE,
             extractionProfile: ASCA_PROFILE_KEY,
             documentRole: role,
             sessionId: activeSession.id,
           });
+          if (response.revisionVerdict) {
+            verdicts.push({ filename: doc.file.name, verdict: response.revisionVerdict });
+          }
         },
       });
       const succeeded = result.succeeded.length;
@@ -122,6 +131,7 @@ export default function QuoteFromDocumentsPage() {
       } else {
         showToast(`${label}: ${succeeded} succeeded, ${failed} failed`);
       }
+      surfaceRevisionVerdicts(verdicts, showToast);
     },
     [userId, showToast, ensureSession, runBulk],
   );
@@ -279,4 +289,47 @@ export default function QuoteFromDocumentsPage() {
       )}
     </div>
   );
+}
+
+type RevisionVerdict = NonNullable<
+  Awaited<ReturnType<typeof nixApi.uploadAndProcess>>["revisionVerdict"]
+>;
+
+/**
+ * Issues per-doc toasts summarising the revision-supersession verdicts that
+ * came back from the bulk upload. Silent for 'first' / 'same'. 'newer' is
+ * a positive — green confirmation that the system replaced an older copy.
+ * 'older' / 'unknown' are warnings — the user uploaded something that's
+ * out of date or can't be ordered against what's on file. The per-card
+ * RevisionBadge already surfaces the persistent state; the toast here is
+ * an at-the-moment alert so the user doesn't miss it.
+ */
+function surfaceRevisionVerdicts(
+  verdicts: Array<{ filename: string; verdict: RevisionVerdict }>,
+  showToast: (msg: string, kind?: "success" | "error" | "warning") => void,
+): void {
+  for (const { filename, verdict } of verdicts) {
+    if (verdict.action === "newer") {
+      const previous = verdict.previousCanonicalRevision;
+      const oldRev = previous ?? "?";
+      showToast(
+        `${filename}: replaced rev ${oldRev} with new revision — old version archived`,
+        "success",
+      );
+    } else if (verdict.action === "older") {
+      const latest = verdict.latestRevision;
+      const latestRev = latest ?? "?";
+      showToast(
+        `${filename}: rev ${latestRev} is already on file — uploaded copy is older`,
+        "warning",
+      );
+    } else if (verdict.action === "unknown") {
+      const other = verdict.otherRevision;
+      const otherRev = other ?? "?";
+      showToast(
+        `${filename}: revision differs from rev ${otherRev} on file but order is unclear — please check the badge`,
+        "warning",
+      );
+    }
+  }
 }
