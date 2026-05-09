@@ -41,5 +41,7 @@ export const nixKeys = {
       ["nix", "mine-library", "mine-extractions", mineId] as const,
     docNumberSearch: (q: string, mineId: number | null) =>
       ["nix", "mine-library", "doc-number-search", q, mineId ?? "any"] as const,
+    documentRevisions: (documentNumber: string, mineId: number | null) =>
+      ["nix", "mine-library", "document-revisions", documentNumber, mineId ?? "any"] as const,
   },
 } as const;

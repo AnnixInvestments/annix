@@ -102,4 +102,27 @@ export class MineLibraryController {
     await this.mineLibraryService.clearMine(extractionId);
     return { ok: true };
   }
+
+  @Get("documents/:documentNumber/revisions")
+  @ApiOperation({
+    summary:
+      "Lists every Nix extraction known for a document number — canonical (is_latest_revision = true) first, then superseded older versions. Powers the mine-document archive page.",
+  })
+  async listRevisionsForDocument(
+    @Param("documentNumber") documentNumber: string,
+    @Query("mineId") mineIdRaw?: string,
+  ): Promise<MineExtractionRowDto[]> {
+    const trimmed = (documentNumber ?? "").trim();
+    if (trimmed.length === 0) {
+      throw new BadRequestException("documentNumber is required");
+    }
+    const mineId = mineIdRaw ? Number.parseInt(mineIdRaw, 10) : null;
+    if (mineIdRaw && Number.isNaN(mineId)) {
+      throw new BadRequestException("mineId must be a number");
+    }
+    return this.mineLibraryService.listRevisionsForDocument(
+      trimmed,
+      mineId !== null && !Number.isNaN(mineId) ? mineId : null,
+    );
+  }
 }

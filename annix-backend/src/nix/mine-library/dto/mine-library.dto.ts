@@ -44,6 +44,19 @@ export class MineExtractionRowDto {
   @ApiProperty({ nullable: true })
   mineInferenceReason: string | null;
 
+  @ApiProperty({
+    description:
+      "Whether this row is the canonical record for its (mineCountry, mineId, documentNumber). The archive page uses this to highlight the latest revision and grey out superseded ones.",
+  })
+  isLatestRevision: boolean;
+
+  @ApiProperty({
+    nullable: true,
+    description:
+      "When isLatestRevision = false, the extraction id that superseded this one (so the UI can render 'see latest →').",
+  })
+  supersededByExtractionId: number | null;
+
   @ApiProperty()
   createdAt: Date;
 }

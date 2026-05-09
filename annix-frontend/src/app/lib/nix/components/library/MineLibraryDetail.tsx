@@ -7,10 +7,17 @@ import { useMineLibraryExtractions, useMineLibraryMines } from "@/app/lib/query/
 export interface MineLibraryDetailProps {
   mineId: number;
   backHref: string;
+  /**
+   * Optional builder for the per-document revisions archive URL. Hosts that
+   * mount this component in a portal with a documents/[docNumber] route
+   * supply this to make the Doc # cell clickable; without it the cell
+   * stays read-only.
+   */
+  documentRevisionsHref?: (documentNumber: string, mineId: number) => string;
 }
 
 export function MineLibraryDetail(props: MineLibraryDetailProps) {
-  const { mineId, backHref } = props;
+  const { mineId, backHref, documentRevisionsHref } = props;
   const minesQuery = useMineLibraryMines();
   const extractionsQuery = useMineLibraryExtractions(mineId);
   const [filter, setFilter] = useState("");
@@ -95,9 +102,20 @@ export function MineLibraryDetail(props: MineLibraryDetailProps) {
                     ? "—"
                     : `${Math.round(confValue * 100)}%`;
                 const captured = fromISO(e.createdAt).toFormat("dd MMM yyyy");
+                const docNumberCell =
+                  docNumberValue && documentRevisionsHref ? (
+                    <a
+                      href={documentRevisionsHref(docNumberValue, mineId)}
+                      className="text-blue-600 hover:text-blue-800 underline"
+                    >
+                      {docNumberValue}
+                    </a>
+                  ) : (
+                    docNumber
+                  );
                 return (
                   <tr key={e.id} className="hover:bg-gray-50">
-                    <td className="px-3 py-2 font-mono text-xs">{docNumber}</td>
+                    <td className="px-3 py-2 font-mono text-xs">{docNumberCell}</td>
                     <td className="px-3 py-2 font-mono text-xs">{rev}</td>
                     <td className="px-3 py-2">{titleOrFilename}</td>
                     <td className="px-3 py-2 text-xs text-gray-600">{confidence}</td>

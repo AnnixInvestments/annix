@@ -1,6 +1,8 @@
 export { CreateMineModal } from "./CreateMineModal";
 export type { DocNumberAutocompleteProps } from "./DocNumberAutocomplete";
 export { DocNumberAutocomplete } from "./DocNumberAutocomplete";
+export type { MineDocumentRevisionsProps } from "./MineDocumentRevisions";
+export { MineDocumentRevisions } from "./MineDocumentRevisions";
 export type { MineLibraryDetailProps } from "./MineLibraryDetail";
 export { MineLibraryDetail } from "./MineLibraryDetail";
 export type { MineLibraryIndexProps } from "./MineLibraryIndex";

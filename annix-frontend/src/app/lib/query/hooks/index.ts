@@ -667,6 +667,7 @@ export {
   useClearExtractionMine,
   useCreateMineLibraryMine,
   useDocNumberSearch,
+  useMineDocumentRevisions,
   useMineLibraryExtractions,
   useMineLibraryMines,
   useRetagExtractionMine,

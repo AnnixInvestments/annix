@@ -885,6 +885,27 @@ export const nixApi = {
     if (!response.ok) await failNixResponse(response, "clear extraction mine");
     return response.json();
   },
+
+  listMineDocumentRevisions: async (
+    documentNumber: string,
+    options?: { mineId?: number | null },
+  ): Promise<MineLibraryExtractionRow[]> => {
+    const baseUrl = browserBaseUrl();
+    const params = new URLSearchParams();
+    if (options?.mineId !== null && options?.mineId !== undefined) {
+      params.set("mineId", String(options.mineId));
+    }
+    const qs = params.toString();
+    const response = await fetch(
+      `${baseUrl}/nix/mine-library/documents/${encodeURIComponent(documentNumber)}/revisions${qs ? `?${qs}` : ""}`,
+      {
+        method: "GET",
+        headers: { "Content-Type": "application/json", ...resolveNixAuthHeaders() },
+      },
+    );
+    if (!response.ok) await failNixResponse(response, "list document revisions");
+    return response.json();
+  },
 };
 
 export interface MineLibraryMine {
@@ -904,6 +925,8 @@ export interface MineLibraryExtractionRow {
   status: string;
   mineInferenceConfidence: number | null;
   mineInferenceReason: string | null;
+  isLatestRevision: boolean;
+  supersededByExtractionId: number | null;
   createdAt: string;
 }
 

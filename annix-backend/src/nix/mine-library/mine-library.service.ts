@@ -203,6 +203,26 @@ export class MineLibraryService {
     return this.toExtractionRow(saved);
   }
 
+  /**
+   * Returns every extraction known for a given document number — current
+   * canonical (is_latest_revision = true) at the top, superseded older
+   * versions below, sorted by createdAt DESC within each group. Powers the
+   * mine-document archive page so the user can audit what's been replaced
+   * by what.
+   */
+  async listRevisionsForDocument(
+    documentNumber: string,
+    mineId: number | null,
+  ): Promise<MineExtractionRowDto[]> {
+    const where: Record<string, unknown> = { documentNumber };
+    if (mineId !== null) where.mineId = mineId;
+    const rows = await this.extractionRepo.find({
+      where,
+      order: { isLatestRevision: "DESC", createdAt: "DESC" },
+    });
+    return rows.map((e) => this.toExtractionRow(e));
+  }
+
   async clearMine(extractionId: number): Promise<void> {
     const result = await this.extractionRepo.update(
       { id: extractionId, mineId: Not(IsNull()) },
@@ -231,6 +251,8 @@ export class MineLibraryService {
       status: e.status,
       mineInferenceConfidence: confidence,
       mineInferenceReason: e.mineInferenceReason ?? null,
+      isLatestRevision: e.isLatestRevision,
+      supersededByExtractionId: e.supersededByExtractionId ?? null,
       createdAt: e.createdAt,
     };
   }

@@ -74,6 +74,24 @@ export function useRetagExtractionMine() {
   });
 }
 
+export function useMineDocumentRevisions(
+  documentNumber: string | null,
+  options?: { mineId?: number | null },
+) {
+  const trimmed = documentNumber ? documentNumber.trim() : "";
+  const optMineId = options?.mineId;
+  const mineIdKey = optMineId === null || optMineId === undefined ? null : optMineId;
+  return useQuery<MineLibraryExtractionRow[]>({
+    queryKey: nixKeys.mineLibrary.documentRevisions(trimmed, mineIdKey),
+    queryFn: () => {
+      if (trimmed.length === 0) return Promise.resolve([] as MineLibraryExtractionRow[]);
+      return nixApi.listMineDocumentRevisions(trimmed, { mineId: options?.mineId });
+    },
+    enabled: trimmed.length > 0,
+    staleTime: 30 * 1000,
+  });
+}
+
 export function useClearExtractionMine() {
   const queryClient = useQueryClient();
   return useMutation<{ ok: true }, Error, number>({

@@ -11,5 +11,13 @@ export default function StockControlMineLibraryDetailPage() {
   if (Number.isNaN(idValue)) {
     return <div className="p-6 text-sm text-red-600">Invalid mine id.</div>;
   }
-  return <MineLibraryDetail mineId={idValue} backHref="/stock-control/portal/library/mines" />;
+  return (
+    <MineLibraryDetail
+      mineId={idValue}
+      backHref="/stock-control/portal/library/mines"
+      documentRevisionsHref={(documentNumber, mineId) =>
+        `/stock-control/portal/library/documents/${encodeURIComponent(documentNumber)}?mineId=${mineId}`
+      }
+    />
+  );
 }
