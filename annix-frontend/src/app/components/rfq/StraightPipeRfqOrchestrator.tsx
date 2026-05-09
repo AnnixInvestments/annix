@@ -2013,12 +2013,16 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
       if (currentStep === 1) {
         draftSaveAndSendRecoveryEmail(isAuthenticated);
       }
-      // Skip Step 2 (Specifications) when the customer accepted a BOQ
-      // extraction — every extracted item already carries its own specs,
-      // so Step 2's global defaults don't apply. Stepper navigation still
-      // lets them visit Step 2 manually if they want to review.
+      // When the customer accepted a BOQ extraction (or hit Confirm
+      // on the unified document bucket), the wizard collapses to
+      // three logical stops: Project Details → Clarifications → BOQ.
+      // Steps 2 (Specs), 3 (Items) and 4 (Review) are skipped because
+      // every extracted item already carries its own specs and the
+      // BOQ page is the canonical review surface. Step pills still
+      // let the customer detour into 2/3/4 manually if they want.
+      const clarStep = rfqData.useNix ? 4 : 5;
       if (currentStep === 1 && rfqData.boqExtractionAccepted) {
-        setCurrentStep(3);
+        setCurrentStep(clarStep);
       } else {
         originalNextStep();
       }
@@ -2030,10 +2034,16 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
     }
   };
 
-  // Previous step function with scroll to top — also skips Step 2 backward
-  // when the customer accepted a BOQ extraction.
+  // Previous step function with scroll to top — symmetric with the
+  // forward skip above. Going Back from the Clarifications page
+  // jumps straight to Step 1 when the wizard is in collapsed mode.
   const handlePrevStep = () => {
-    if (currentStep === 3 && rfqData.boqExtractionAccepted) {
+    const clarStep = rfqData.useNix ? 4 : 5;
+    if (currentStep === clarStep && rfqData.boqExtractionAccepted) {
+      setCurrentStep(1);
+    } else if (currentStep === 3 && rfqData.boqExtractionAccepted) {
+      // Customer manually detoured back into Step 3 — keep the
+      // legacy 3 → 1 jump so they don't get trapped on Specs.
       setCurrentStep(1);
     } else {
       prevStep();
@@ -3133,7 +3143,14 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
     }
   };
 
-  const steps = rfqData.useNix
+  // When the customer has accepted a BOQ extraction the wizard
+  // collapses to a 3-pill toolbar: Project Details, Clarifications,
+  // BOQ. The underlying step numbers still match the full flow
+  // (1, 4 or 5, 5 or 6) so all the existing case statements keep
+  // working — only the toolbar display changes. Stepper clicks
+  // still let the customer detour into the hidden steps if they
+  // want to.
+  const fullSteps = rfqData.useNix
     ? [
         {
           number: 1,
@@ -3169,6 +3186,18 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
         },
         { number: 6, title: "BOQ", description: "Bill of Quantities summary" },
       ];
+
+  const steps = rfqData.boqExtractionAccepted
+    ? fullSteps.filter((s) => {
+        // Keep Project Details, Clarifications and BOQ. Drop Specs,
+        // Items and Review — they're redundant when the document
+        // drop already extracted everything.
+        if (s.number === 1) return true;
+        const clarStep = rfqData.useNix ? 4 : 5;
+        const boqStep = rfqData.useNix ? 5 : 6;
+        return s.number === clarStep || s.number === boqStep;
+      })
+    : fullSteps;
 
   const renderCurrentStep = () => {
     if (rfqData.useNix) {
@@ -3717,65 +3746,73 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
 
           {/* Center - Step Navigation Icons */}
           <div className="flex items-center gap-3">
-            {steps.map((step, idx) => (
-              <div key={step.number} className="flex items-center">
-                <button
-                  onClick={() => handleStepClick(step.number)}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg transition-all"
-                  style={{
-                    backgroundColor:
-                      step.number === currentStep
-                        ? "#FFA500"
-                        : step.number < currentStep
-                          ? "#4a4da3"
-                          : "transparent",
-                    border:
-                      step.number === currentStep
-                        ? "2px solid #FFA500"
-                        : step.number < currentStep
-                          ? "1px solid #4CAF50"
-                          : "1px solid rgba(255, 165, 0, 0.3)",
-                  }}
-                >
-                  <div
-                    className="w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold"
+            {steps.map((step, idx) => {
+              // Display number = loop index + 1 so the toolbar shows
+              // 1, 2, 3 even when the canonical step numbers are
+              // [1, 5, 6] (collapsed mode after BOQ extraction
+              // accepted). Internal navigation still uses
+              // step.number so case statements stay correct.
+              const displayNumber = idx + 1;
+              return (
+                <div key={step.number} className="flex items-center">
+                  <button
+                    onClick={() => handleStepClick(step.number)}
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg transition-all"
                     style={{
                       backgroundColor:
                         step.number === currentStep
-                          ? "#323288"
+                          ? "#FFA500"
                           : step.number < currentStep
-                            ? "#4CAF50"
-                            : "rgba(255, 165, 0, 0.3)",
-                      color: "#FFFFFF",
-                    }}
-                  >
-                    {step.number < currentStep ? "✓" : step.number}
-                  </div>
-                  <span
-                    className="text-sm font-medium hidden md:inline"
-                    style={{
-                      color:
+                            ? "#4a4da3"
+                            : "transparent",
+                      border:
                         step.number === currentStep
-                          ? "#323288"
+                          ? "2px solid #FFA500"
                           : step.number < currentStep
-                            ? "#4CAF50"
-                            : "rgba(255, 165, 0, 0.6)",
+                            ? "1px solid #4CAF50"
+                            : "1px solid rgba(255, 165, 0, 0.3)",
                     }}
                   >
-                    {step.title}
-                  </span>
-                </button>
-                {idx < steps.length - 1 && (
-                  <div
-                    className="w-8 h-0.5 mx-1"
-                    style={{
-                      backgroundColor:
-                        step.number < currentStep ? "#4CAF50" : "rgba(255, 165, 0, 0.3)",
-                    }}
-                  />
-                )}
-              </div>
-            ))}
+                    <div
+                      className="w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold"
+                      style={{
+                        backgroundColor:
+                          step.number === currentStep
+                            ? "#323288"
+                            : step.number < currentStep
+                              ? "#4CAF50"
+                              : "rgba(255, 165, 0, 0.3)",
+                        color: "#FFFFFF",
+                      }}
+                    >
+                      {step.number < currentStep ? "✓" : displayNumber}
+                    </div>
+                    <span
+                      className="text-sm font-medium hidden md:inline"
+                      style={{
+                        color:
+                          step.number === currentStep
+                            ? "#323288"
+                            : step.number < currentStep
+                              ? "#4CAF50"
+                              : "rgba(255, 165, 0, 0.6)",
+                      }}
+                    >
+                      {step.title}
+                    </span>
+                  </button>
+                  {idx < steps.length - 1 && (
+                    <div
+                      className="w-8 h-0.5 mx-1"
+                      style={{
+                        backgroundColor:
+                          step.number < currentStep ? "#4CAF50" : "rgba(255, 165, 0, 0.3)",
+                      }}
+                    />
+                  )}
+                </div>
+              );
+            })}
           </div>
 
           {/* Right side - Save Progress & Next/Submit buttons */}
