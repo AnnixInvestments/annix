@@ -29,19 +29,19 @@ export function CodeChip(props: {
   const tooltip = `${tooltipParts.join(" — ")}\nFrom: ${resolved.sourceDocumentName}${
     resolved.pageReference !== null ? ` (page ${resolved.pageReference})` : ""
   }`;
-  // Prefer concrete brand-name products inline — they're what the quoter
-  // needs to spec / order ('Carboguard 890 Aluminium @ 100-150μm,
-  // Carbothane 137 HS @ 50-100μm'). The summary is more verbose and
-  // would crowd out the products under the chip's truncation cap.
-  // Fall through to the summary only when products has nothing useful:
-  // null (no paint systems / placeholder text filtered everything), or
-  // only a colour with no actual product names ('colour: Red' on a
-  // Linatex spec where Gemini didn't extract a compound brand).
-  // Tooltip carries everything so hovering shows full detail.
+  // Pick what to show inline based on the code's kind. Paint coatings
+  // (R1, R2a) — show the brand-name products since 'Carboguard 890
+  // Aluminium @ 100-150μm' is what the quoter needs to spec. Rubber
+  // linings (Linatex Linard 60) and material classes (4000/3, SABS62)
+  // — show the summary since the headline numbers ('6 mm bore, 3 mm
+  // flange face, hot-bonded, autoclave vulcanised') matter more than
+  // the brand. Tooltip carries everything so hovering shows full
+  // detail either way.
   const products = resolved.productDescriptors;
   const summaryText = resolved.summary;
   const productsHasBrands = products !== null && !/^colour: /i.test(products.trim());
-  const inlineText = productsHasBrands ? (products as string) : (summaryText ?? products ?? "");
+  const preferProducts = productsHasBrands && kind === "coating";
+  const inlineText = preferProducts ? (products as string) : (summaryText ?? products ?? "");
 
   return (
     <button
