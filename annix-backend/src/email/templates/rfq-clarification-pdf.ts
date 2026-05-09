@@ -425,12 +425,9 @@ export async function buildRfqClarificationPdf(
     yesNoRow("MHSA Section 21 CoC required?", "mhsa");
     yesNoRow("SANS 347 PED equivalent required?", "sans347");
 
-    // Section 5 — commercial
-    sectionHeader("5. Commercial");
-    textRow("Required delivery date", "deliveryDate");
-    textRow("Site / location", "siteLocation");
-    textRow("Existing supplier / brand", "existingBrand");
-    textRow("Budget target", "budget");
+    // Commercial info (delivery date, site location, etc.) is
+    // captured on Step 1 of the wizard form — no need to repeat
+    // here per valve.
 
     // Notes — bigger field for free-form input.
     sectionHeader("Notes");

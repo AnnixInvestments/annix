@@ -1,9 +1,86 @@
 "use client";
 
-import { isArray, isString } from "es-toolkit/compat";
+import { isArray, isString, keys, toPairs } from "es-toolkit/compat";
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { API_BASE_URL } from "@/lib/api-config";
+
+// Mining-slurry common range presets — one dropdown per text field
+// so the customer can pick from a list instead of typing free-text.
+// Selecting a preset fills the matching text input; the customer
+// can still override by typing afterwards.
+const RANGE_PRESETS = {
+  ph: [
+    "<2 (acid leach)",
+    "2–4 (acidic)",
+    "4–6 (mildly acidic)",
+    "6–8 (neutral)",
+    "8–10 (alkaline)",
+    "10–12 (caustic / lime)",
+    ">12 (highly caustic)",
+  ],
+  tempC: [
+    "<10 (chilled)",
+    "10–30 (ambient)",
+    "30–60 (warm process)",
+    "60–90 (hot)",
+    "90–120 (very hot)",
+    ">120 (high temp)",
+  ],
+  solidsPct: [
+    "<5 (dilute)",
+    "5–15 (low)",
+    "15–30 (medium tailings)",
+    "30–50 (thick)",
+    "50–70 (paste)",
+    ">70 (very thick paste)",
+  ],
+  particleMm: [
+    "<0.1 (fine)",
+    "0.1–1",
+    "1–5 (coarse)",
+    "5–25 (large)",
+    "25–50 (very large)",
+    ">50 (lumps)",
+  ],
+  sg: [
+    "1.0 (water)",
+    "1.0–1.2 (light slurry)",
+    "1.2–1.5 (medium)",
+    "1.5–2.0 (heavy)",
+    ">2.0 (very heavy)",
+  ],
+  chlorides: [
+    "<50 (low)",
+    "50–200 (moderate)",
+    "200–1000 (elevated)",
+    "1000–10000 (high — duplex)",
+    ">10000 (super-duplex)",
+  ],
+  flow: ["<10 m³/h", "10–50 m³/h", "50–200 m³/h", "200–500 m³/h", "500–1000 m³/h", ">1000 m³/h"],
+  shutoffDp: ["<2 bar", "2–6 bar", "6–10 bar", "10–16 bar", "16–25 bar", ">25 bar"],
+  cycle: ["<1/day (rare)", "1–10/day", "10–100/day", "100–1000/day", ">1000/day (continuous)"],
+} as const;
+
+// Valve category extracted from description for the
+// apply-to-similar-valves heuristic. Keys are ordered so the most
+// specific keyword wins (pinch valve before valve, hand pump before
+// pump).
+const valveCategory = (description: string): string => {
+  const text = description.toLowerCase();
+  if (/\bpinch\s*valve\b/.test(text)) return "pinch-valve";
+  if (/\bgate\s*valve\b|\brsv\b/.test(text)) return "gate-valve";
+  if (/\bglobe\s*valve\b/.test(text)) return "globe-valve";
+  if (/\bball\s*valve\b/.test(text)) return "ball-valve";
+  if (/\bbutterfly\s*valve\b/.test(text)) return "butterfly-valve";
+  if (/\bcheck\s*valve\b/.test(text)) return "check-valve";
+  if (/\bknife\s*(gate\s*)?valve\b/.test(text)) return "knife-valve";
+  if (/\bhand\s*pump\b/.test(text)) return "hand-pump";
+  if (/\bhydraulic\s*pump\b/.test(text)) return "hydraulic-pump";
+  if (/\bpump\b/.test(text)) return "pump";
+  if (/\bvalve\b/.test(text)) return "valve";
+  return "other";
+};
 
 // Public, token-gated clarification form. Customer follows the link
 // from the email; no login required.
@@ -74,10 +151,6 @@ interface ValveResponse {
   leakage: string;
   mhsa: YesNo;
   sans347: YesNo;
-  deliveryDate: string;
-  siteLocation: string;
-  existingBrand: string;
-  budget: string;
   notes: string;
 }
 
@@ -112,10 +185,6 @@ const emptyValve = (): ValveResponse => ({
   leakage: "",
   mhsa: "",
   sans347: "",
-  deliveryDate: "",
-  siteLocation: "",
-  existingBrand: "",
-  budget: "",
   notes: "",
 });
 
@@ -162,11 +231,101 @@ export default function ClarificationFormPage() {
       });
   }, [token]);
 
+  // Per-valve refs so the Apply-to-similar handler can scroll the
+  // next un-filled valve into view (or the Submit button if every
+  // valve is now complete).
+  const valveRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const submitRef = useRef<HTMLButtonElement | null>(null);
+
   const updateValve = (id: string, key: keyof ValveResponse, value: string) => {
     setValveResponses((prev) => {
       const rawCurrent = prev[id];
       const current = rawCurrent || emptyValve();
       return { ...prev, [id]: { ...current, [key]: value } };
+    });
+  };
+
+  // Heuristic: a valve is "filled" if it has at least three answers
+  // beyond the initial empty state. Used to decide where to scroll
+  // after an Apply-to-similar click.
+  const valveIsFilled = (resp: ValveResponse | undefined): boolean => {
+    if (!resp) return false;
+    const filledCount = toPairs(resp).filter((pair: [string, unknown]) => {
+      const [pairKey, pairValue] = pair;
+      if (pairKey === "notes") return false;
+      return isString(pairValue) && pairValue.trim().length > 0;
+    }).length;
+    return filledCount >= 3;
+  };
+
+  // Merge srcResp into a fresh copy of targetResp, but only for
+  // fields that are empty on the target. Keeps any values the
+  // customer has already typed on the downstream valve.
+  const mergeFillEmptyOnly = (srcResp: ValveResponse, targetResp: ValveResponse): ValveResponse => {
+    const merged: ValveResponse = { ...targetResp };
+    keys(srcResp).forEach((key) => {
+      const typedKey = key as keyof ValveResponse;
+      const sv = srcResp[typedKey];
+      const tv = targetResp[typedKey];
+      if (isString(sv) && sv.trim().length > 0 && (!isString(tv) || tv.trim().length === 0)) {
+        (merged as unknown as Record<string, string>)[typedKey] = sv;
+      }
+    });
+    return merged;
+  };
+
+  // Copy this valve's filled answers across every subsequent valve
+  // sharing the same valveCategory. Skips fields that are already
+  // filled on the target so the customer doesn't lose downstream
+  // edits. After the copy we scroll to the next un-filled valve
+  // OR the Submit button if everything's complete.
+  const applyToSimilarValves = (sourceItemId: string) => {
+    if (!data) return;
+    const rawValveSpecGaps = data.requirements.valveSpecGaps;
+    const valves = rawValveSpecGaps || [];
+    const sourceIdx = valves.findIndex((v) => v.itemId === sourceItemId);
+    if (sourceIdx < 0) return;
+    const sourceCategory = valveCategory(valves[sourceIdx].description);
+    const sourceResp = valveResponses[sourceItemId];
+    if (!sourceResp) return;
+
+    // Subset of valves below the source that share its category —
+    // these are the ones we'll fill.
+    const targets = valves
+      .slice(sourceIdx + 1)
+      .filter((v) => valveCategory(v.description) === sourceCategory);
+
+    setValveResponses((prev) => {
+      const next = { ...prev };
+      targets.forEach((target) => {
+        const rawTargetResp = next[target.itemId];
+        const targetResp = rawTargetResp || emptyValve();
+        next[target.itemId] = mergeFillEmptyOnly(sourceResp, targetResp);
+      });
+      return next;
+    });
+
+    // Defer the scroll so the state update + re-render happens first.
+    // Re-derive the post-merge state for the scroll target check —
+    // valveResponses is still the pre-state inside this closure.
+    requestAnimationFrame(() => {
+      const projected = { ...valveResponses };
+      targets.forEach((target) => {
+        const rawTargetResp2 = projected[target.itemId];
+        const targetResp2 = rawTargetResp2 || emptyValve();
+        projected[target.itemId] = mergeFillEmptyOnly(sourceResp, targetResp2);
+      });
+      const nextUnfilled = valves.find(
+        (v, idx) => idx > sourceIdx && !valveIsFilled(projected[v.itemId]),
+      );
+      if (nextUnfilled) {
+        valveRefs.current[nextUnfilled.itemId]?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      } else {
+        submitRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
     });
   };
 
@@ -304,11 +463,24 @@ export default function ClarificationFormPage() {
               — we'll come back with the gaps.
             </p>
             <div className="space-y-6">
-              {valves.map((valve) => {
+              {valves.map((valve, valveIdx) => {
                 const rawValveResponse = valveResponses[valve.itemId];
                 const r = rawValveResponse || emptyValve();
+                // Identify how many subsequent valves share this
+                // category — drives whether to render the
+                // Apply-to-similar shortcut.
+                const thisCategory = valveCategory(valve.description);
+                const similarBelow = valves
+                  .slice(valveIdx + 1)
+                  .filter((other) => valveCategory(other.description) === thisCategory).length;
                 return (
-                  <div key={valve.itemId} className="border border-gray-200 rounded-lg p-4">
+                  <div
+                    key={valve.itemId}
+                    ref={(el) => {
+                      valveRefs.current[valve.itemId] = el;
+                    }}
+                    className="border border-gray-200 rounded-lg p-4 scroll-mt-4"
+                  >
                     <h3 className="font-semibold text-sm text-gray-900 mb-1">
                       Item {valve.itemNumber}
                     </h3>
@@ -331,16 +503,19 @@ export default function ClarificationFormPage() {
                             label="Solids concentration (%)"
                             value={r.solidsPct}
                             onChange={(v) => updateValve(valve.itemId, "solidsPct", v)}
+                            presets={RANGE_PRESETS.solidsPct}
                           />
                           <Text
                             label="Maximum particle size (mm)"
                             value={r.particleMm}
                             onChange={(v) => updateValve(valve.itemId, "particleMm", v)}
+                            presets={RANGE_PRESETS.particleMm}
                           />
                           <Text
                             label="Specific gravity / density"
                             value={r.sg}
                             onChange={(v) => updateValve(valve.itemId, "sg", v)}
+                            presets={RANGE_PRESETS.sg}
                           />
                         </>
                       )}
@@ -348,16 +523,19 @@ export default function ClarificationFormPage() {
                         label="pH"
                         value={r.ph}
                         onChange={(v) => updateValve(valve.itemId, "ph", v)}
+                        presets={RANGE_PRESETS.ph}
                       />
                       <Text
                         label="Operating temperature (°C)"
                         value={r.tempC}
                         onChange={(v) => updateValve(valve.itemId, "tempC", v)}
+                        presets={RANGE_PRESETS.tempC}
                       />
                       <Text
                         label="Chloride concentration (ppm)"
                         value={r.chlorides}
                         onChange={(v) => updateValve(valve.itemId, "chlorides", v)}
+                        presets={RANGE_PRESETS.chlorides}
                       />
                       <YesNoField
                         label="Dissolved O₂ / oxidisers present?"
@@ -368,21 +546,25 @@ export default function ClarificationFormPage() {
                         label="Min flow (m³/h)"
                         value={r.minFlow}
                         onChange={(v) => updateValve(valve.itemId, "minFlow", v)}
+                        presets={RANGE_PRESETS.flow}
                       />
                       <Text
                         label="Normal flow (m³/h)"
                         value={r.normalFlow}
                         onChange={(v) => updateValve(valve.itemId, "normalFlow", v)}
+                        presets={RANGE_PRESETS.flow}
                       />
                       <Text
                         label="Max flow (m³/h)"
                         value={r.maxFlow}
                         onChange={(v) => updateValve(valve.itemId, "maxFlow", v)}
+                        presets={RANGE_PRESETS.flow}
                       />
                       <Text
                         label="Shut-off ΔP (bar)"
                         value={r.shutoffDp}
                         onChange={(v) => updateValve(valve.itemId, "shutoffDp", v)}
+                        presets={RANGE_PRESETS.shutoffDp}
                       />
                     </ValveSection>
 
@@ -460,6 +642,7 @@ export default function ClarificationFormPage() {
                         label="Cycle frequency (cycles/day or year)"
                         value={r.cycle}
                         onChange={(v) => updateValve(valve.itemId, "cycle", v)}
+                        presets={RANGE_PRESETS.cycle}
                       />
                       <YesNoField
                         label="Discharge to atmosphere?"
@@ -492,29 +675,6 @@ export default function ClarificationFormPage() {
                       />
                     </ValveSection>
 
-                    <ValveSection title="5. Commercial">
-                      <Text
-                        label="Required delivery date"
-                        value={r.deliveryDate}
-                        onChange={(v) => updateValve(valve.itemId, "deliveryDate", v)}
-                      />
-                      <Text
-                        label="Site / location"
-                        value={r.siteLocation}
-                        onChange={(v) => updateValve(valve.itemId, "siteLocation", v)}
-                      />
-                      <Text
-                        label="Existing supplier / brand"
-                        value={r.existingBrand}
-                        onChange={(v) => updateValve(valve.itemId, "existingBrand", v)}
-                      />
-                      <Text
-                        label="Budget target"
-                        value={r.budget}
-                        onChange={(v) => updateValve(valve.itemId, "budget", v)}
-                      />
-                    </ValveSection>
-
                     <div className="mt-3">
                       <label className="block text-xs font-semibold text-gray-700 mb-1">
                         Notes for this valve
@@ -526,6 +686,27 @@ export default function ClarificationFormPage() {
                         className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
                       />
                     </div>
+
+                    {/* Apply-to-similar shortcut. Only renders when
+                        there's at least one similar valve still
+                        below this one in the list. After click we
+                        scroll to the next un-filled valve (or the
+                        Submit button if all filled). */}
+                    {similarBelow > 0 && (
+                      <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between gap-3 flex-wrap">
+                        <p className="text-xs text-gray-600">
+                          Got {similarBelow} more {thisCategory.replace(/-/g, " ")}
+                          {similarBelow === 1 ? "" : "s"} below with similar specs?
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => applyToSimilarValves(valve.itemId)}
+                          className="px-3 py-1.5 text-xs font-medium rounded border border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100"
+                        >
+                          Apply this valve's answers to similar items below ↓
+                        </button>
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -538,6 +719,7 @@ export default function ClarificationFormPage() {
             Submitting this form notifies the Annix team automatically.
           </p>
           <button
+            ref={submitRef}
             type="button"
             onClick={submit}
             disabled={submitting}
@@ -563,16 +745,44 @@ function ValveSection(props: { title: string; children: React.ReactNode }) {
   );
 }
 
-function Text(props: { label: string; value: string; onChange: (v: string) => void }) {
+function Text(props: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  // Optional quick-pick range presets — when supplied, a small
+  // dropdown sits next to the text input. Selecting a preset fills
+  // the field; the customer can still edit / override.
+  presets?: readonly string[];
+}) {
+  const presets = props.presets;
   return (
     <label className="block">
       <span className="text-xs text-gray-700">{props.label}</span>
-      <input
-        type="text"
-        value={props.value}
-        onChange={(e) => props.onChange(e.target.value)}
-        className="mt-0.5 w-full px-2 py-1 border border-gray-300 rounded text-sm"
-      />
+      <div className="mt-0.5 flex gap-1">
+        <input
+          type="text"
+          value={props.value}
+          onChange={(e) => props.onChange(e.target.value)}
+          className="flex-1 min-w-0 px-2 py-1 border border-gray-300 rounded text-sm"
+        />
+        {presets && presets.length > 0 && (
+          <select
+            value=""
+            onChange={(e) => {
+              if (e.target.value) props.onChange(e.target.value);
+            }}
+            title="Pick a typical range"
+            className="px-1.5 py-1 border border-gray-300 rounded text-xs bg-blue-50 text-blue-700 cursor-pointer max-w-[110px]"
+          >
+            <option value="">Quick pick…</option>
+            {presets.map((p) => (
+              <option key={p} value={p}>
+                {p}
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
     </label>
   );
 }

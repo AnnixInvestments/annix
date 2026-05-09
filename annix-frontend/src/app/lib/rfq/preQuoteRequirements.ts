@@ -202,22 +202,9 @@ export const MINING_VALVE_DATASHEET_FIELDS: Array<{
     scope: "entry",
     section: "standards",
   },
-
-  // Section 6 — commercial
-  {
-    key: "requiredDeliveryDate",
-    label: "Required delivery date",
-    scope: "global",
-    section: "commercial",
-  },
-  { key: "siteLocation", label: "Site / location", scope: "global", section: "commercial" },
-  {
-    key: "existingSupplierBrand",
-    label: "Existing supplier / brand",
-    scope: "entry",
-    section: "commercial",
-  },
-  { key: "budgetTarget", label: "Budget target", scope: "entry", section: "commercial" },
+  // Commercial section (required delivery date, site location, etc.)
+  // is collected on Step 1 of the wizard — no need to repeat it on
+  // the per-valve clarification form.
 ];
 
 const isFilled = (value: unknown): boolean => {
