@@ -147,65 +147,79 @@ export function useSpecLookup(
 }
 
 /**
- * Mines concrete product names from a spec clause's nested details. Looks for
- * any sub-object that carries primer / topcoat / product / compound / brand
- * fields (paint systems, lining compounds) and concatenates the values into
- * a comma/slash-separated phrase. Returns null when nothing product-shaped
- * exists at the first nesting level — keeps the lookup cheap.
+ * Mines concrete product-by-product breakdowns from a spec clause's nested
+ * details. For each paint-system sub-object (paintSystemGeneric,
+ * paintSystemStoncor, paintSystemCorrocoat, etc.) produces:
  *
- * Example shapes recognised:
- *   { paintSystemStoncor: { primer: "...", topcoat: "..." } }    → "primer / topcoat"
- *   { details: { paintSystemStoncor: { primer, topcoat } } }     → also recognised (one nesting deep)
- *   { compound: "RSCA40" }                                       → "RSCA40"
+ *   "Stoncor: Carboguard 890 Aluminium @ 100-150μm, Carbothane 137 HS @ 50-100μm"
  *
- * Values are de-duplicated so two identical primers across systems don't
- * appear twice. Truncated to 120 chars before returning.
+ * Each product name is paired with its <name>DftMicrons sibling (e.g. primer
+ * pairs with primerDftMicrons, barrierCoat with barrierCoatDftMicrons). When
+ * the system carries a topcoatColour / RAL / finalColour field, that's
+ * appended at the end. Multiple systems for one clause are joined with ' • '.
+ *
+ * Branded systems (Stoncor, Corrocoat, Hempel, Jotun…) are preferred — the
+ * generic / un-branded reference system is dropped from the inline summary
+ * because it just describes 'two component polyurethane' instead of a real
+ * orderable product. The full generic system is still visible inside the
+ * expanded card via DetailsBlock. Returns null when no system is present
+ * (linings without compound names, material classes, flange configs).
  */
 export function extractProductDescriptors(spec: unknown): string | null {
   if (!isObject(spec)) return null;
-  const seen = new Set<string>();
+  const obj = spec as Record<string, unknown>;
+  const details = isObject(obj.details) ? (obj.details as Record<string, unknown>) : obj;
   const phrases: string[] = [];
-  collectProductPhrases(spec as Record<string, unknown>, seen, phrases, 0);
+  for (const [key, value] of entries(details)) {
+    if (!isObject(value) || isArray(value)) continue;
+    if (/generic/i.test(key)) continue;
+    const phrase = describeSystem(key, value as Record<string, unknown>);
+    if (phrase) phrases.push(phrase);
+  }
+  if (phrases.length === 0) {
+    // Fall back to a single-product spec (e.g. lining { compound: "RSCA40" })
+    const fallback = describeSystem("", details);
+    if (fallback) phrases.push(fallback);
+  }
   if (phrases.length === 0) return null;
   let result = phrases.join(" • ");
-  if (result.length > 120) result = `${result.slice(0, 119)}…`;
+  if (result.length > 200) result = `${result.slice(0, 199)}…`;
   return result;
 }
 
-const PRODUCT_FIELD_KEYS = new Set([
-  "primer",
-  "topcoat",
-  "product",
-  "compound",
-  "brand",
-  "supplier",
-  "manufacturer",
-]);
+const PRODUCT_PREFIX_PATTERN =
+  /^(primer|topcoat|intermediate|barrierCoat|finishingCoat|finishingCoatAboveWaterline|compound|product|brand|paint|lining|coat)/i;
+const COLOUR_KEYS = ["topcoatColour", "finalColour", "colour", "color", "RAL", "ralNumber"];
 
-function collectProductPhrases(
-  obj: Record<string, unknown>,
-  seen: Set<string>,
-  phrases: string[],
-  depth: number,
-): void {
-  if (depth > 2) return;
-  const localParts: string[] = [];
-  for (const [key, value] of entries(obj)) {
-    const lowerKey = key.toLowerCase();
-    if (PRODUCT_FIELD_KEYS.has(lowerKey) && isString(value) && value.trim().length > 0) {
-      const trimmed = value.trim();
-      const dedupeKey = trimmed.toLowerCase();
-      if (!seen.has(dedupeKey)) {
-        seen.add(dedupeKey);
-        localParts.push(trimmed);
-      }
-      continue;
-    }
-    if (isObject(value) && !isArray(value)) {
-      collectProductPhrases(value as Record<string, unknown>, seen, phrases, depth + 1);
+function describeSystem(systemKey: string, system: Record<string, unknown>): string | null {
+  const productParts: string[] = [];
+  for (const [k, v] of entries(system)) {
+    if (!isString(v) || v.trim().length === 0) continue;
+    if (/Microns?$/i.test(k)) continue;
+    if (!PRODUCT_PREFIX_PATTERN.test(k)) continue;
+    const dftValue = system[`${k}DftMicrons`];
+    if (isString(dftValue) || isNumber(dftValue)) {
+      productParts.push(`${v.trim()} @ ${dftValue}μm`);
+    } else {
+      productParts.push(v.trim());
     }
   }
-  if (localParts.length > 0) phrases.push(localParts.join(" / "));
+  let colour: string | null = null;
+  for (const ck of COLOUR_KEYS) {
+    const v = system[ck];
+    if (isString(v) && v.trim().length > 0) {
+      colour = v.trim();
+      break;
+    } else if (isNumber(v)) {
+      colour = String(v);
+      break;
+    }
+  }
+  if (productParts.length === 0 && !colour) return null;
+  const body = productParts.join(", ");
+  const withColour = colour ? `${body}${body ? ", " : ""}colour: ${colour}` : body;
+  const label = systemKey.match(/^paintSystem(.+)$/i)?.[1];
+  return label ? `${label}: ${withColour}` : withColour;
 }
 
 function rememberKind(kindMap: Map<string, CodeKind>, value: unknown, kind: CodeKind): void {
