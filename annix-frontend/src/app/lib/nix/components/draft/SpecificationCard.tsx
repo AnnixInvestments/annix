@@ -27,7 +27,7 @@ export function SpecificationCard(props: {
   const { clauseKey, value, kind, onJumpToPage } = props;
   const headingTone = kind ? CODE_KIND_TONE[kind] : null;
   const headingClass = headingTone
-    ? `inline-flex items-center px-2 py-0.5 rounded border text-sm font-bold ${headingTone.bg} ${headingTone.text} ${headingTone.border}`
+    ? `inline-flex items-baseline gap-1.5 px-2 py-0.5 rounded border text-sm ${headingTone.bg} ${headingTone.text} ${headingTone.border}`
     : "text-sm font-bold text-gray-900";
 
   if (clauseKey === "referencedCodes" && isArray(value)) {
@@ -82,7 +82,14 @@ export function SpecificationCard(props: {
         </svg>
         <div className="flex-1 min-w-0">
           <div className="flex items-baseline justify-between gap-3 flex-wrap">
-            <h3 className={headingClass}>{clauseKey}</h3>
+            <h3 className={headingClass}>
+              <span className="font-bold">{clauseKey}</span>
+              {headingTone && headlineText.length > 0 && (
+                <span className="font-normal text-[11px] opacity-90 leading-snug">
+                  — {headlineText}
+                </span>
+              )}
+            </h3>
             {pageReference !== null && (
               <button
                 type="button"
@@ -111,7 +118,7 @@ export function SpecificationCard(props: {
               </button>
             )}
           </div>
-          {headlineText.length > 0 && (
+          {!headingTone && headlineText.length > 0 && (
             <p className="mt-1 text-xs text-gray-700 leading-snug">{headlineText}</p>
           )}
           {(applicableScope === "all" || applicableMarks.length > 0) && (
