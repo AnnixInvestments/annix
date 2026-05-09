@@ -826,9 +826,9 @@ export default function ClarificationFormPage() {
                         <button
                           type="button"
                           onClick={() => applyToSimilarValves(valve.itemId)}
-                          className="px-3 py-1.5 text-xs font-medium rounded border border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100"
+                          className="px-4 py-2 text-xs font-semibold rounded border-2 border-emerald-700 bg-emerald-600 text-white shadow-sm hover:bg-emerald-700 hover:border-emerald-800 transition-colors"
                         >
-                          Apply this valve's answers to similar items below ↓
+                          ✓ Apply this valve's answers to similar items below ↓
                         </button>
                       </div>
                     )}
