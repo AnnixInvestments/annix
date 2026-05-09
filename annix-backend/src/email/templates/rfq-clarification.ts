@@ -32,15 +32,38 @@ export interface RfqClarificationEmailOptions {
   clarificationFormBaseUrl?: string | null;
 }
 
-// Web origin for the clarification form link. FRONTEND_URL is the
-// canonical env var used across this codebase (set to
-// https://annix-app.fly.dev in fly.toml; http://localhost:3000 in
-// local dev .env). The per-request override on the options wins
-// when supplied so callers can preview the prod link from a dev
-// backend.
+// Web origin for the clarification form link.
+//
+// Customers receiving this email are on the public internet — a
+// link pointing at http://localhost:3000 is a dead link in their
+// inbox, and we burned a real customer twice with that exact bug
+// (5 May 2026). Defence-in-depth: if FRONTEND_URL is a localhost /
+// 127.0.0.1 / private-IP value (i.e. a dev backend), we ignore it
+// and always render the prod hostname. The per-request override
+// still wins, but only when EXPLICITLY supplied — that's the
+// escape hatch for a developer who really does want a local link
+// (e.g. testing the form route on their laptop).
+const PROD_FORM_BASE_URL = "https://annix-app.fly.dev";
+
+const isDevHostUrl = (url: string): boolean => {
+  const lower = url.toLowerCase();
+  return (
+    lower.includes("localhost") ||
+    lower.includes("127.0.0.1") ||
+    lower.includes("0.0.0.0") ||
+    lower.includes("://192.168.") ||
+    lower.includes("://10.") ||
+    lower.startsWith("http://[") // IPv6 dev
+  );
+};
+
 const resolveFormBaseUrl = (override?: string | null): string => {
   if (override && override.trim().length > 0) return override.trim();
-  return process.env.FRONTEND_URL || "https://annix-app.fly.dev";
+  const envUrl = process.env.FRONTEND_URL;
+  if (envUrl && envUrl.trim().length > 0 && !isDevHostUrl(envUrl)) {
+    return envUrl.trim();
+  }
+  return PROD_FORM_BASE_URL;
 };
 
 const renderDrawingsTable = (rows: MissingDrawingEmailRow[]): string => {
