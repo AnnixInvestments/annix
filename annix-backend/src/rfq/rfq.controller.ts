@@ -1075,4 +1075,74 @@ export class RfqController {
   ): Promise<SendRfqClarificationEmailResponseDto> {
     return this.rfqService.sendClarificationEmail(dto);
   }
+
+  // -----------------------------------------------------------------
+  // Public token-gated endpoints — no auth so the customer can open
+  // the form link from their email client. Token entropy
+  // (32 hex chars from crypto.randomBytes(16)) is the only gate.
+  // -----------------------------------------------------------------
+  @Get("clarifications/:token")
+  @ApiOperation({
+    summary: "Fetch a pre-quote clarification request by token",
+    description:
+      "Public — token-gated. Returns the requirements snapshot the customer needs to fill in (missing drawings + valve datasheet rows). Used by the public /customer/clarifications/{token} page.",
+  })
+  @ApiParam({ name: "token", description: "32-char hex token", type: String })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: "Request found",
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: "Token unknown or expired",
+  })
+  async fetchClarification(@Param("token") token: string): Promise<{
+    token: string;
+    customerEmail: string | null;
+    projectName: string | null;
+    rfqReference: string | null;
+    requirements: Record<string, unknown>;
+    respondedAt: string | null;
+  }> {
+    const found = await this.rfqService.clarificationRequestByToken(token);
+    if (!found) {
+      throw new ForbiddenException("Token unknown or expired");
+    }
+    return {
+      token: found.token,
+      customerEmail: found.customerEmail ?? null,
+      projectName: found.projectName ?? null,
+      rfqReference: found.rfqReference ?? null,
+      requirements: found.requirements,
+      respondedAt: found.respondedAt ? found.respondedAt.toISOString() : null,
+    };
+  }
+
+  @Post("clarifications/:token/submit")
+  @ApiOperation({
+    summary: "Submit responses to a pre-quote clarification request",
+    description:
+      "Public — token-gated. Accepts the customer's structured answers (drawings status + per-valve datasheet values) and persists them. Fires a notification to info@annix.co.za with the JSON payload so the team can apply the answers to the open quote.",
+  })
+  @ApiParam({ name: "token", description: "32-char hex token", type: String })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: "Responses recorded",
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: "Token unknown or expired",
+  })
+  async submitClarificationResponses(
+    @Param("token") token: string,
+    @Body() body: { responses: Record<string, unknown> },
+  ): Promise<{ success: boolean; error?: string }> {
+    const result = await this.rfqService.submitClarificationResponses(token, body.responses ?? {});
+    if (!result.success) {
+      // 403 keeps the public surface tight — we don't disclose
+      // whether the token was missing vs already-submitted.
+      throw new ForbiddenException(result.error ?? "Submission failed");
+    }
+    return result;
+  }
 }
