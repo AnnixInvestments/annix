@@ -26,6 +26,17 @@ export interface TeeDims {
   branchFaceToCentreMm: number;
 }
 
+export interface LateralDims {
+  // Run face-to-face (mm).
+  runFaceToFaceMm: number;
+  // Branch length (mm) — from branch face to the run-axis midpoint
+  // along the branch.
+  branchLengthMm: number;
+  // Branch face-to-centre (mm) — perpendicular drop from branch face
+  // to the run centreline.
+  branchFaceToCentreMm: number;
+}
+
 const ELBOW_90_DIMS: Record<number, ElbowDims> = {
   50: { faceToFaceMm: 120, centreToFaceMm: 66 },
   63: { faceToFaceMm: 133, centreToFaceMm: 63 },
@@ -244,4 +255,70 @@ export const hdpeTeeDimensions = (
 ): TeeDims | null => {
   const branch = branchDnMm ?? mainDnMm;
   return reducingTeeDimensions(mainDnMm, branch);
+};
+
+// 45° lateral / wye-tee dimensions. Sparse open-catalogue coverage:
+// only DN 63-160 are openly published (Sunplast / HdpePolyfittings).
+// For DN ≥ 180 (most of the SA mining range) and all 60° laterals,
+// no open metric source exists — SA fabricators size to drawing.
+// Caller falls back to entry.specs.lateralHeightMm in those cases
+// rather than fabricating a value.
+const LATERAL_45_DIMS: Record<number, LateralDims> = {
+  63: { runFaceToFaceMm: 257, branchLengthMm: 65, branchFaceToCentreMm: 65 },
+  75: { runFaceToFaceMm: 280, branchLengthMm: 65, branchFaceToCentreMm: 70 },
+  90: { runFaceToFaceMm: 338, branchLengthMm: 90, branchFaceToCentreMm: 80 },
+  110: { runFaceToFaceMm: 392, branchLengthMm: 100, branchFaceToCentreMm: 90 },
+  125: { runFaceToFaceMm: 404, branchLengthMm: 90, branchFaceToCentreMm: 85 },
+  140: { runFaceToFaceMm: 404, branchLengthMm: 75, branchFaceToCentreMm: 75 },
+  160: { runFaceToFaceMm: 420, branchLengthMm: 75, branchFaceToCentreMm: 75 },
+};
+
+export const lateralDimensions = (angleDeg: number, dnMm: number): LateralDims | null => {
+  if (angleDeg === 45) return LATERAL_45_DIMS[dnMm] ?? null;
+  // 60° laterals and any other angle: no open metric source.
+  return null;
+};
+
+// HDPE moulded butt-fusion end cap (dome cap / blanked end) overall
+// length, mm. Distance from spigot weld face to dome face. Long-
+// pattern values (the SA-stocked default — longer tangent = easier
+// butt-fusion weld). Sources: HdpePolyfittings PE100 SDR11
+// SDR11/SDR17 long-pattern table, cross-checked against DEF Pipe
+// (~10% lower for short-pattern; supplier rationalises at quote).
+//
+// Pipe boots (mechanical accessory: SS clamp + neoprene gland) are
+// NOT in this table — they're sized empirically by clamp choice and
+// have no catalogue length.
+//
+// Blank flanges are ALSO not in this table — they're flat plates
+// with only a flange OD + thickness, surfaced via the Flanges
+// section of the BOQ rather than as end-cap items.
+const END_CAP_LENGTH_MM: Record<number, number> = {
+  50: 45,
+  63: 58,
+  75: 62,
+  90: 94,
+  110: 190,
+  125: 225,
+  140: 240,
+  160: 245,
+  180: 280,
+  200: 280,
+  225: 320,
+  250: 335,
+  280: 380,
+  315: 355,
+  355: 370,
+  400: 390,
+  450: 450,
+  500: 480,
+  560: 520,
+  630: 560,
+  710: 690,
+  800: 720,
+};
+
+export const hdpeEndCapLength = (dnMm: number): number | null => {
+  const length = END_CAP_LENGTH_MM[dnMm];
+  return length ?? null;
 };

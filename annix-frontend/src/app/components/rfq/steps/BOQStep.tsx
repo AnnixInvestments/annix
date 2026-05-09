@@ -2,9 +2,11 @@
 
 import {
   type HdpeNominalSize,
+  hdpeEndCapLength,
   pipeDimensions as hdpePipeDimensions,
   hdpeReducerLength,
   hdpeTeeDimensions,
+  lateralDimensions,
   pnClassForSdr,
   type SdrValue,
   sans1123StubAssemblyDescription,
@@ -1456,13 +1458,51 @@ export default function BOQStep(props: {
         dest = consolidatedUnidentified;
       }
 
+      // HDPE misc-item description enrichment: end caps and laterals
+      // are NOT classified as fittings by Nix (they land in
+      // consolidatedHdpeOther via the misc bucket), but we still
+      // know their catalogue geometry from packages/product-data/hdpe.
+      // Append the canonical dim to the description here so the
+      // supplier sees consistent take-off data across every HDPE row,
+      // not just the ones that round-tripped through the manual form.
+      //
+      // DN is parsed in priority order:
+      //   1. entry.specs.nominalBoreMm  (set when Nix recognised the size)
+      //   2. /(?:DN|OD)\s*(\d{2,4})/    (fallback regex on description)
+      const enrichedMiscDescription = ((): string => {
+        if (rawSpecsProductType !== "hdpe") return miscDescription;
+        const isEndCap = /\bend[\s-]?caps?\b/i.test(miscDescription);
+        const lateralAngleMatch = miscDescription.match(
+          /\b(45|60|22\.5|11\.25)\s*(?:deg|°)\s*later/i,
+        );
+        const isLateral = !!lateralAngleMatch || /\blaterals?\b/i.test(miscDescription);
+        if (!isEndCap && !isLateral) return miscDescription;
+        const rawSpecsDn = rawSpecs.nominalBoreMm;
+        const specsDn = rawSpecsDn ? Number(rawSpecsDn) : null;
+        const dnRegexMatch = miscDescription.match(/(?:DN|OD)\s*(\d{2,4})/i);
+        const regexDn = dnRegexMatch ? Number(dnRegexMatch[1]) : null;
+        const dn = specsDn || regexDn;
+        if (!dn || !Number.isFinite(dn)) return miscDescription;
+        if (/,\s*\d+mm\s+L\b/.test(miscDescription)) return miscDescription;
+        if (/,\s*\d+×\d+mm\b/.test(miscDescription)) return miscDescription;
+        if (isEndCap) {
+          const length = hdpeEndCapLength(dn);
+          if (!length) return miscDescription;
+          return `${miscDescription}, ${length}mm L`;
+        }
+        const angleDeg = lateralAngleMatch ? Number(lateralAngleMatch[1]) : 45;
+        const dims = lateralDimensions(angleDeg, dn);
+        if (!dims) return miscDescription;
+        return `${miscDescription}, ${dims.runFaceToFaceMm}×${dims.branchFaceToCentreMm}mm`;
+      })();
+
       const existingMisc = dest.get(miscKey);
       if (existingMisc) {
         existingMisc.qty += miscQty;
         existingMisc.entries.push(itemNumber);
       } else {
         dest.set(miscKey, {
-          description: miscDescription,
+          description: enrichedMiscDescription,
           qty: miscQty,
           unit: miscUnit,
           weight: 0,
