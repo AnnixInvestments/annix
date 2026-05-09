@@ -171,7 +171,22 @@ export function extractProductDescriptors(spec: unknown): string | null {
   const details = isObject(obj.details) ? (obj.details as Record<string, unknown>) : obj;
   const phrases: string[] = [];
   for (const [key, value] of entries(details)) {
-    if (!isObject(value) || isArray(value)) continue;
+    // Gemini sometimes returns paintSystems as an array of system objects
+    // each carrying a 'type' label ('Stoncor', 'Corrocoat', 'Generic System'),
+    // and sometimes returns them as sibling keys (paintSystemStoncor etc.).
+    // Walk both shapes.
+    if (isArray(value)) {
+      for (const item of value as unknown[]) {
+        if (!isObject(item)) continue;
+        const itemObj = item as Record<string, unknown>;
+        const itemType = isString(itemObj.type) ? (itemObj.type as string) : "";
+        if (/generic/i.test(itemType)) continue;
+        const phrase = describeSystem("", itemObj);
+        if (phrase) phrases.push(phrase);
+      }
+      continue;
+    }
+    if (!isObject(value)) continue;
     if (/generic/i.test(key)) continue;
     const phrase = describeSystem(key, value as Record<string, unknown>);
     if (phrase) phrases.push(phrase);
@@ -245,7 +260,13 @@ function describeSystem(systemKey: string, system: Record<string, unknown>): str
   const labelMatch = systemKey.match(/^(?:paintSystem(.+)|(.+)System)$/i);
   const matchOne = labelMatch ? labelMatch[1] : null;
   const matchTwo = labelMatch ? labelMatch[2] : null;
-  const labelText = matchOne ?? matchTwo ?? "";
+  // When the system was an array element with a 'type' field ('Stoncor',
+  // 'Corrocoat', 'Generic System'), use that as the label since systemKey
+  // is empty. Strip a trailing ' System' so we get 'Stoncor' not
+  // 'Stoncor System'.
+  const typeRaw = isString(system.type) ? (system.type as string).trim() : null;
+  const typeFromSystem = typeRaw ? typeRaw.replace(/\s+system\s*$/i, "").trim() : null;
+  const labelText = matchOne ?? matchTwo ?? typeFromSystem ?? "";
   return labelText ? `${capitalise(labelText)}: ${withColour}` : withColour;
 }
 
