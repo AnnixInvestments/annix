@@ -1661,6 +1661,7 @@ export class RfqService {
         valveSpecGaps: dto.valveSpecGaps,
         customNote: dto.customNote ?? null,
         clarificationToken: token,
+        clarificationFormBaseUrl: dto.clarificationFormBaseUrl ?? null,
       });
 
       const text = buildRfqClarificationEmailText({
@@ -1671,6 +1672,7 @@ export class RfqService {
         valveSpecGaps: dto.valveSpecGaps,
         customNote: dto.customNote ?? null,
         clarificationToken: token,
+        clarificationFormBaseUrl: dto.clarificationFormBaseUrl ?? null,
       });
 
       // Fillable PDF attachment — same field set as the public web

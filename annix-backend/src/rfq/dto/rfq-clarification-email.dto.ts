@@ -81,6 +81,15 @@ export class SendRfqClarificationEmailDto {
   @IsOptional()
   customNote?: string;
 
+  @ApiPropertyOptional({
+    description:
+      "Optional override for the clarification form's base URL (e.g. https://annix-app.fly.dev). Useful for previewing prod-style links from a dev backend whose FRONTEND_URL is set to localhost. Falls back to the FRONTEND_URL env var, then to the prod Fly.io hostname.",
+    example: "https://annix-app.fly.dev",
+  })
+  @IsString()
+  @IsOptional()
+  clarificationFormBaseUrl?: string;
+
   @ApiProperty({
     description: "Drawing references missing from the upload set",
     type: [MissingDrawingDto],

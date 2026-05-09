@@ -24,13 +24,24 @@ export interface RfqClarificationEmailOptions {
   // tables. Older callers that omit the token get the legacy
   // (verbose) layout for backwards compatibility.
   clarificationToken?: string | null;
+  // Optional per-request override of the form's base URL. Useful
+  // for previewing what a customer would see (prod link) while
+  // running against a local dev backend whose FRONTEND_URL is set
+  // to localhost. Falls back to FRONTEND_URL env, then to the prod
+  // Fly.io hostname.
+  clarificationFormBaseUrl?: string | null;
 }
 
-// Web origin for the clarification form link. Set
-// PUBLIC_FRONTEND_URL in the backend env to override (e.g.
-// https://annix.co.za in production). Falls back to localhost:3000
-// for dev.
-const publicFrontendUrl = (): string => process.env.PUBLIC_FRONTEND_URL || "http://localhost:3000";
+// Web origin for the clarification form link. FRONTEND_URL is the
+// canonical env var used across this codebase (set to
+// https://annix-app.fly.dev in fly.toml; http://localhost:3000 in
+// local dev .env). The per-request override on the options wins
+// when supplied so callers can preview the prod link from a dev
+// backend.
+const resolveFormBaseUrl = (override?: string | null): string => {
+  if (override && override.trim().length > 0) return override.trim();
+  return process.env.FRONTEND_URL || "https://annix-app.fly.dev";
+};
 
 const renderDrawingsTable = (rows: MissingDrawingEmailRow[]): string => {
   if (rows.length === 0) return "";
@@ -104,7 +115,7 @@ export function buildRfqClarificationEmailHtml(options: RfqClarificationEmailOpt
   // the email entirely; PDF attachment (phase 2) covers offline
   // workflows.
   if (options.clarificationToken) {
-    const url = `${publicFrontendUrl()}/customer/clarifications/${options.clarificationToken}`;
+    const url = `${resolveFormBaseUrl(options.clarificationFormBaseUrl)}/customer/clarifications/${options.clarificationToken}`;
     const drawingsCount = options.missingDrawings.length;
     const valvesCount = options.valveSpecGaps.length;
     const summaryFragments: string[] = [];
@@ -181,7 +192,7 @@ export function buildRfqClarificationEmailText(options: RfqClarificationEmailOpt
 
   // v1.3.0 brief layout when a token is present.
   if (options.clarificationToken) {
-    const url = `${publicFrontendUrl()}/customer/clarifications/${options.clarificationToken}`;
+    const url = `${resolveFormBaseUrl(options.clarificationFormBaseUrl)}/customer/clarifications/${options.clarificationToken}`;
     const drawingsCount = options.missingDrawings.length;
     const valvesCount = options.valveSpecGaps.length;
     const summaryFragments: string[] = [];
