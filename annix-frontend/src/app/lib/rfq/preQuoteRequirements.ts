@@ -392,61 +392,38 @@ export interface ClarificationEmailContext {
 // a textarea. The backend re-renders this into the branded HTML when
 // sending — the customer's edits flow through as the body's
 // customNote OR as the subject override.
+// v1.3.0 — drafts a short personal note the customer can edit
+// before sending. The backend handles the boilerplate body
+// (greeting, summary, CTA button to the form, link to PDF) so
+// this textarea is now optional context the customer wants to
+// add — not a full email draft. Most customers will leave it
+// blank and just hit Send.
 export function buildClarificationEmailDraft(
   context: ClarificationEmailContext,
 ): ClarificationEmailDraft {
-  const rawCustomerName = context.customerName;
-  const greetingName = rawCustomerName || "there";
-  const projectLabel = context.projectName ? ` for ${context.projectName}` : "";
   const refLabel = context.rfqReference ? ` (${context.rfqReference})` : "";
-
   const subject = `Pre-quote clarifications required${
     context.projectName ? ` — ${context.projectName}` : ""
   }${refLabel}`;
 
-  const drawingsBlock =
-    context.missingDrawings.length > 0
-      ? [
-          "",
-          "Drawings required before quotation",
-          "------------------------------------",
-          "The following items in your tender reference drawings we have not received. Please send them so we can finalise the take-off and pricing — those items will be omitted from the quote until the drawings are submitted.",
-          "",
-          ...context.missingDrawings.map(
-            (d) => `  • ${d.ref}  →  items ${d.itemNumbers.join(", ")}`,
-          ),
-        ].join("\n")
-      : "";
+  const summaryFragments: string[] = [];
+  if (context.missingDrawings.length > 0) {
+    summaryFragments.push(
+      `${context.missingDrawings.length} drawing reference${context.missingDrawings.length === 1 ? "" : "s"}`,
+    );
+  }
+  if (context.valveSpecGaps.length > 0) {
+    summaryFragments.push(
+      `${context.valveSpecGaps.length} valve item${context.valveSpecGaps.length === 1 ? "" : "s"} needing mining-grade specifications`,
+    );
+  }
+  const summary = summaryFragments.length > 0 ? summaryFragments.join(" and ") : "a few items";
 
-  const valvesBlock =
-    context.valveSpecGaps.length > 0
-      ? [
-          "",
-          "Valve specifications required",
-          "------------------------------",
-          'For mining-grade valve duties (slurry, tailings, lime, acid leach, cyclone feed) we cannot price on a "size + PN" alone — the elastomer / body alloy / actuator selection swings the price by 5x or more depending on duty. Please complete the missing fields below for each valve item, or attach your project engineer\'s valve datasheet if simpler.',
-          "",
-          ...context.valveSpecGaps.map(
-            (g) =>
-              `  ${g.itemNumber}  ${g.description}\n    Missing: ${g.missingFields.join(", ")}`,
-          ),
-        ].join("\n")
-      : "";
-
-  const body = [
-    `Hello ${greetingName},`,
-    "",
-    `Thank you for the tender${projectLabel}${refLabel}. We're working through the bill of quantities and have noticed items where we need additional information before we can put a meaningful price together.`,
-    drawingsBlock,
-    valvesBlock,
-    "",
-    "As soon as we receive these we'll re-run the take-off and send the full quotation. Please reply directly to this email with the drawings and answers — or copy your project engineer in if it's faster.",
-    "",
-    "Kind regards,",
-    "The Annix Quotation Team",
-  ]
-    .filter((line, idx, arr) => !(line === "" && arr[idx - 1] === ""))
-    .join("\n");
+  // Default body is a one-paragraph summary the customer can edit
+  // (or replace entirely). The backend's branded template adds the
+  // greeting, CTA button, PDF mention and sign-off — what the
+  // customer types here flows through as a personal note.
+  const body = `We're working through your tender and need clarification on ${summary} before we can put a meaningful price together. The link in this email opens a one-page form — should take a couple of minutes. (A fillable PDF is attached too if you'd rather work offline.)`;
 
   return { subject, body };
 }
