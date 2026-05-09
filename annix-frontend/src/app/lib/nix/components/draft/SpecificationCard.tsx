@@ -2,6 +2,7 @@
 
 import { isArray, isNumber, isObject, isString } from "es-toolkit/compat";
 import { DetailsBlock } from "./DetailsBlock";
+import { CODE_KIND_TONE, type CodeKind } from "./useSpecLookup";
 
 /**
  * Renders a single Nix-extracted specification clause as an expandable
@@ -11,13 +12,23 @@ import { DetailsBlock } from "./DetailsBlock";
  * onJumpToPage callback that the host wires to its PDF preview modal.
  * Used by every app that consumes Nix specifications (ASCA quote draft,
  * RFQ BOQ review, future Comply-SA spec audits).
+ *
+ * The optional `kind` prop colours the heading pill to match the chip
+ * styling drawing rows use for the same code — amber for coating, blue
+ * for lining, emerald for material class, gray for flange config. Null
+ * kind = no item references this code, so the heading stays neutral.
  */
 export function SpecificationCard(props: {
   clauseKey: string;
   value: unknown;
+  kind?: CodeKind | null;
   onJumpToPage: (page: number) => void;
 }) {
-  const { clauseKey, value, onJumpToPage } = props;
+  const { clauseKey, value, kind, onJumpToPage } = props;
+  const headingTone = kind ? CODE_KIND_TONE[kind] : null;
+  const headingClass = headingTone
+    ? `inline-flex items-center px-2 py-0.5 rounded border text-sm font-bold ${headingTone.bg} ${headingTone.text} ${headingTone.border}`
+    : "text-sm font-bold text-gray-900";
 
   if (clauseKey === "referencedCodes" && isArray(value)) {
     return (
@@ -31,7 +42,7 @@ export function SpecificationCard(props: {
     return (
       <details className="text-xs">
         <summary className="cursor-pointer text-gray-800">
-          <span className="font-semibold">{clauseKey}</span>
+          <span className={headingClass}>{clauseKey}</span>
         </summary>
         <pre className="mt-1 whitespace-pre-wrap text-gray-700 bg-gray-50 rounded p-2">{value}</pre>
       </details>
@@ -71,7 +82,7 @@ export function SpecificationCard(props: {
         </svg>
         <div className="flex-1 min-w-0">
           <div className="flex items-baseline justify-between gap-3 flex-wrap">
-            <h3 className="text-sm font-bold text-gray-900">{clauseKey}</h3>
+            <h3 className={headingClass}>{clauseKey}</h3>
             {pageReference !== null && (
               <button
                 type="button"

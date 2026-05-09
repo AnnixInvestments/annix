@@ -1,6 +1,6 @@
 "use client";
 
-import type { ResolvedCode } from "./useSpecLookup";
+import { CODE_KIND_TONE, type CodeKind, type ResolvedCode } from "./useSpecLookup";
 
 /**
  * Renders one drawing-item code (R1, SC1, "Linatex Linard 60") as a chip.
@@ -11,7 +11,7 @@ import type { ResolvedCode } from "./useSpecLookup";
 export function CodeChip(props: {
   code: string;
   resolved: ResolvedCode | null;
-  kind: "coating" | "lining" | "materialClass" | "flangeConfig";
+  kind: CodeKind;
   onJumpToSpec: (extractionId: number, page: number | null, searchHint: string | null) => void;
 }) {
   const { code, resolved, kind, onJumpToSpec } = props;
@@ -22,7 +22,7 @@ export function CodeChip(props: {
     return <span className="text-gray-700">{code}</span>;
   }
 
-  const tone = TONE[kind];
+  const tone = CODE_KIND_TONE[kind];
   const tooltip = resolved.summary
     ? `${resolved.code} — ${resolved.summary}\nFrom: ${resolved.sourceDocumentName}${
         resolved.pageReference !== null ? ` (page ${resolved.pageReference})` : ""
@@ -47,13 +47,3 @@ export function CodeChip(props: {
     </button>
   );
 }
-
-const TONE: Record<
-  "coating" | "lining" | "materialClass" | "flangeConfig",
-  { bg: string; text: string; border: string }
-> = {
-  coating: { bg: "bg-orange-50", text: "text-orange-800", border: "border-orange-200" },
-  lining: { bg: "bg-blue-50", text: "text-blue-800", border: "border-blue-200" },
-  materialClass: { bg: "bg-emerald-50", text: "text-emerald-800", border: "border-emerald-200" },
-  flangeConfig: { bg: "bg-gray-50", text: "text-gray-700", border: "border-gray-200" },
-};

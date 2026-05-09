@@ -152,6 +152,7 @@ export function ExtractionCard(props: {
                   key={clauseKey}
                   clauseKey={clauseKey}
                   value={clauseValue}
+                  kind={specLookup.kindFor(clauseKey)}
                   onJumpToPage={(page) => onJumpToPage(extraction, page)}
                 />
               ))}

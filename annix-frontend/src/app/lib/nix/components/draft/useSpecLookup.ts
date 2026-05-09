@@ -1,8 +1,28 @@
 "use client";
 
-import { toPairs as entries, isNumber, isObject, isString } from "es-toolkit/compat";
+import { toPairs as entries, isArray, isNumber, isObject, isString } from "es-toolkit/compat";
 import { useMemo } from "react";
 import type { NixExtractionSummary } from "@/app/lib/query/hooks";
+
+/**
+ * Classification of a code based on which item field references it. Used by
+ * SpecificationCard so a clause heading is rendered with the same colour
+ * pill the drawing-row chip uses (amber for coating, blue for lining, etc.).
+ */
+export type CodeKind = "coating" | "lining" | "materialClass" | "flangeConfig";
+
+/**
+ * Single source of truth for code-kind colour tokens. Drawing-row chips
+ * (CodeChip) and spec-clause headings (SpecificationCard) both pull from
+ * here so they always match — if a row chip is amber, the spec heading
+ * for the same code is amber too.
+ */
+export const CODE_KIND_TONE: Record<CodeKind, { bg: string; text: string; border: string }> = {
+  coating: { bg: "bg-orange-50", text: "text-orange-800", border: "border-orange-200" },
+  lining: { bg: "bg-blue-50", text: "text-blue-800", border: "border-blue-200" },
+  materialClass: { bg: "bg-emerald-50", text: "text-emerald-800", border: "border-emerald-200" },
+  flangeConfig: { bg: "bg-gray-50", text: "text-gray-700", border: "border-gray-200" },
+};
 
 /**
  * Resolved spec data for a single code (R1, SC1, "Linatex Linard 60", etc.)
@@ -34,6 +54,12 @@ export interface ResolvedCode {
 
 export interface SpecLookup {
   resolve(code: string | null | undefined): ResolvedCode | null;
+  /**
+   * Returns how a code is referenced by drawing items in this session. Lets
+   * the spec section colour-code clause headings to match the corresponding
+   * chips in the drawing rows. Returns null when no item references the code.
+   */
+  kindFor(code: string | null | undefined): CodeKind | null;
 }
 
 /**
@@ -43,7 +69,10 @@ export interface SpecLookup {
  * variations. Returns a stable lookup object so callers can pass it down the
  * tree without re-rendering when the session ref doesn't change.
  */
-export function useSpecLookup(specExtractions: NixExtractionSummary[]): SpecLookup {
+export function useSpecLookup(
+  specExtractions: NixExtractionSummary[],
+  drawingExtractions: NixExtractionSummary[] = [],
+): SpecLookup {
   return useMemo(() => {
     const map = new Map<string, ResolvedCode>();
 
@@ -81,13 +110,37 @@ export function useSpecLookup(specExtractions: NixExtractionSummary[]): SpecLook
       }
     }
 
+    const kindMap = new Map<string, CodeKind>();
+    for (const extraction of drawingExtractions) {
+      const items = extraction.extractedItems;
+      if (!isArray(items)) continue;
+      for (const raw of items as unknown[]) {
+        if (!isObject(raw)) continue;
+        const item = raw as Record<string, unknown>;
+        rememberKind(kindMap, item.coatingSystem, "coating");
+        rememberKind(kindMap, item.liningType, "lining");
+        rememberKind(kindMap, item.materialClass, "materialClass");
+        rememberKind(kindMap, item.flangeConfig, "flangeConfig");
+      }
+    }
+
     return {
       resolve(code) {
         if (!isString(code) || code.length === 0) return null;
         return map.get(normaliseCode(code)) ?? null;
       },
+      kindFor(code) {
+        if (!isString(code) || code.length === 0) return null;
+        return kindMap.get(normaliseCode(code)) ?? null;
+      },
     };
-  }, [specExtractions]);
+  }, [specExtractions, drawingExtractions]);
+}
+
+function rememberKind(kindMap: Map<string, CodeKind>, value: unknown, kind: CodeKind): void {
+  if (!isString(value) || value.length === 0) return;
+  const key = normaliseCode(value);
+  if (!kindMap.has(key)) kindMap.set(key, kind);
 }
 
 function normaliseCode(code: string): string {

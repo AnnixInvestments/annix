@@ -59,7 +59,7 @@ export function NixDraftReview(props: {
     );
   }, [sessionExtractions]);
 
-  const specLookup = useSpecLookup(specExtractions);
+  const specLookup = useSpecLookup(specExtractions, drawingExtractions);
 
   const handleRetry = useCallback(
     async (extraction: NixExtractionSummary) => {
