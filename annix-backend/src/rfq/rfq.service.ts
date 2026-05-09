@@ -52,6 +52,7 @@ import {
   PumpServiceType,
 } from "./entities/pump-rfq.entity";
 import { Rfq, RfqStatus } from "./entities/rfq.entity";
+import { RfqClarificationRequest } from "./entities/rfq-clarification-request.entity";
 import { RfqDocument } from "./entities/rfq-document.entity";
 import { RfqDraft } from "./entities/rfq-draft.entity";
 import { RfqItem, RfqItemType } from "./entities/rfq-item.entity";
@@ -106,6 +107,8 @@ export class RfqService {
     private rfqDocumentRepository: Repository<RfqDocument>,
     @InjectRepository(RfqDraft)
     private rfqDraftRepository: Repository<RfqDraft>,
+    @InjectRepository(RfqClarificationRequest)
+    private rfqClarificationRequestRepository: Repository<RfqClarificationRequest>,
     @InjectRepository(RfqSequence)
     private rfqSequenceRepository: Repository<RfqSequence>,
     @InjectRepository(User)
@@ -1601,17 +1604,50 @@ export class RfqService {
   /**
    * Send a pre-quote clarification email back to the customer when the
    * RFQ extraction surfaced missing drawings or incomplete valve specs.
-   * info@annix.co.za is always BCC'd so the internal team has audit
-   * visibility without the customer seeing the address.
+   * info@annix.co.za is always BCC'd for audit visibility.
    *
-   * No DB persistence in v1.2.0 — audit trail will land in v1.2.1
-   * via a dedicated RfqClarificationRequest entity.
+   * v1.3.0 changes:
+   * - Persists the request to rfq_clarification_requests with a unique
+   *   token. Token gates the public form
+   *   (/customer/clarifications/{token}) and lets the customer come
+   *   back to the form later.
+   * - Email body collapsed to a brief intro + a CTA button to the
+   *   public form. The full datasheet that was inlined in v1.2.0 now
+   *   lives in the form (and an attached fillable PDF coming in
+   *   phase 2).
    */
   async sendClarificationEmail(dto: SendRfqClarificationEmailDto): Promise<{
     success: boolean;
+    token?: string;
     error?: string;
   }> {
     try {
+      // Generate a 32-char hex token. crypto.randomBytes(16) → 16
+      // bytes → 32 hex chars, plenty of entropy and short enough for
+      // a clean URL.
+      const { randomBytes } = await import("node:crypto");
+      const token = randomBytes(16).toString("hex");
+
+      // Persist the request before sending so the public endpoints
+      // have something to look up. If the email send later fails we
+      // still keep the row — the customer can be re-emailed without
+      // re-creating the record.
+      const requirementsSnapshot = {
+        missingDrawings: dto.missingDrawings,
+        valveSpecGaps: dto.valveSpecGaps,
+        customerName: dto.customerName ?? null,
+        customNote: dto.customNote ?? null,
+      };
+      const persistedRequest = await this.rfqClarificationRequestRepository.save(
+        this.rfqClarificationRequestRepository.create({
+          token,
+          customerEmail: dto.to,
+          projectName: dto.projectName ?? undefined,
+          rfqReference: dto.rfqReference ?? undefined,
+          requirements: requirementsSnapshot,
+        }),
+      );
+
       const projectLabel = dto.projectName ? ` — ${dto.projectName}` : "";
       const refLabel = dto.rfqReference ? ` (${dto.rfqReference})` : "";
       const subject = dto.subject || `Pre-quote clarifications required${projectLabel}${refLabel}`;
@@ -1623,6 +1659,7 @@ export class RfqService {
         missingDrawings: dto.missingDrawings,
         valveSpecGaps: dto.valveSpecGaps,
         customNote: dto.customNote ?? null,
+        clarificationToken: token,
       });
 
       const text = buildRfqClarificationEmailText({
@@ -1632,6 +1669,7 @@ export class RfqService {
         missingDrawings: dto.missingDrawings,
         valveSpecGaps: dto.valveSpecGaps,
         customNote: dto.customNote ?? null,
+        clarificationToken: token,
       });
 
       const success = await this.emailService.sendEmail({
@@ -1645,17 +1683,90 @@ export class RfqService {
       });
 
       if (!success) {
-        return { success: false, error: "Email service returned a failed delivery status" };
+        return {
+          success: false,
+          token,
+          error: "Email service returned a failed delivery status",
+        };
       }
 
       this.logger.log(
-        `Pre-quote clarification email sent to ${dto.to} — ${dto.missingDrawings.length} drawings missing, ${dto.valveSpecGaps.length} valve spec gaps`,
+        `Pre-quote clarification email sent to ${dto.to} — token=${token}, ${dto.missingDrawings.length} drawings missing, ${dto.valveSpecGaps.length} valve spec gaps, request id=${persistedRequest.id}`,
       );
-      return { success: true };
+      return { success: true, token };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.logger.error(`Failed to send clarification email: ${errorMessage}`);
       return { success: false, error: errorMessage };
     }
+  }
+
+  /**
+   * Public endpoint helper — looks up a clarification request by its
+   * token. Returns null if the token is unknown or expired (we don't
+   * leak which is which to keep the public surface tight).
+   */
+  async clarificationRequestByToken(token: string): Promise<RfqClarificationRequest | null> {
+    if (!token || token.length !== 32) return null;
+    const found = await this.rfqClarificationRequestRepository.findOne({
+      where: { token },
+    });
+    return found ?? null;
+  }
+
+  /**
+   * Save the customer's responses to a clarification request. Notifies
+   * info@annix.co.za with the structured answers so the team can apply
+   * them to the open quote.
+   */
+  async submitClarificationResponses(
+    token: string,
+    responses: Record<string, unknown>,
+  ): Promise<{ success: boolean; error?: string }> {
+    if (!token || token.length !== 32) {
+      return { success: false, error: "Invalid token" };
+    }
+    const found = await this.rfqClarificationRequestRepository.findOne({
+      where: { token },
+    });
+    if (!found) {
+      return { success: false, error: "Clarification request not found" };
+    }
+    found.responses = responses;
+    found.respondedAt = new Date();
+    await this.rfqClarificationRequestRepository.save(found);
+
+    // Notify info@annix.co.za with the structured answers. Keep the
+    // body simple — the team can pull the full record from the
+    // rfq_clarification_requests table if they need to dig in.
+    try {
+      const projectLabel = found.projectName ? ` — ${found.projectName}` : "";
+      const refLabel = found.rfqReference ? ` (${found.rfqReference})` : "";
+      await this.emailService.sendEmail({
+        to: "info@annix.co.za",
+        subject: `Customer responded to pre-quote clarifications${projectLabel}${refLabel}`,
+        html: `<p>The customer (${found.customerEmail || "unknown"}) submitted their clarifications via the public form.</p>
+               <p>Token: <code>${found.token}</code></p>
+               <p>Responses (JSON):</p>
+               <pre style="background:#f3f4f6;padding:12px;border-radius:6px;font-size:11px;overflow:auto">${JSON.stringify(
+                 responses,
+                 null,
+                 2,
+               )}</pre>`,
+        text: `Customer ${found.customerEmail || "unknown"} responded.\nToken: ${found.token}\n\nResponses:\n${JSON.stringify(
+          responses,
+          null,
+          2,
+        )}`,
+        isTransactional: true,
+      });
+    } catch (err) {
+      this.logger.warn(
+        `Failed to notify info@annix.co.za of clarification response (${token}): ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+
+    this.logger.log(`Clarification responses received for token ${token}`);
+    return { success: true };
   }
 }

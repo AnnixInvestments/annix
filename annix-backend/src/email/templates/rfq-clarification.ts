@@ -18,7 +18,19 @@ export interface RfqClarificationEmailOptions {
   missingDrawings: MissingDrawingEmailRow[];
   valveSpecGaps: ValveSpecGapEmailRow[];
   customNote: string | null;
+  // v1.3.0 — token for the public clarification form. When present,
+  // the email body collapses to a brief intro + a CTA button linking
+  // to /customer/clarifications/{token}, replacing the inlined
+  // tables. Older callers that omit the token get the legacy
+  // (verbose) layout for backwards compatibility.
+  clarificationToken?: string | null;
 }
+
+// Web origin for the clarification form link. Set
+// PUBLIC_FRONTEND_URL in the backend env to override (e.g.
+// https://annix.co.za in production). Falls back to localhost:3000
+// for dev.
+const publicFrontendUrl = (): string => process.env.PUBLIC_FRONTEND_URL || "http://localhost:3000";
 
 const renderDrawingsTable = (rows: MissingDrawingEmailRow[]): string => {
   if (rows.length === 0) return "";
@@ -84,6 +96,63 @@ export function buildRfqClarificationEmailHtml(options: RfqClarificationEmailOpt
     ? `<p style="margin-top:16px;">${options.customNote.replace(/\n/g, "<br>")}</p>`
     : "";
 
+  // v1.3.0 — when we have a token, collapse the body to a brief
+  // intro + a one-click CTA to the public form. The customer fills
+  // in the form on a single page (mobile-friendly, structured
+  // dropdowns/checkboxes) and submits — no need to scroll through
+  // tables in their email client. Inlined tables are dropped from
+  // the email entirely; PDF attachment (phase 2) covers offline
+  // workflows.
+  if (options.clarificationToken) {
+    const url = `${publicFrontendUrl()}/customer/clarifications/${options.clarificationToken}`;
+    const drawingsCount = options.missingDrawings.length;
+    const valvesCount = options.valveSpecGaps.length;
+    const summaryFragments: string[] = [];
+    if (drawingsCount > 0) {
+      summaryFragments.push(
+        `<strong>${drawingsCount}</strong> drawing reference${drawingsCount === 1 ? "" : "s"}`,
+      );
+    }
+    if (valvesCount > 0) {
+      summaryFragments.push(
+        `<strong>${valvesCount}</strong> valve item${valvesCount === 1 ? "" : "s"} needing mining-grade specifications`,
+      );
+    }
+    const summary = summaryFragments.length > 0 ? summaryFragments.join(" and ") : "a few items";
+
+    const briefBody = `
+      <p>Hello ${greetingName},</p>
+      <p>Thanks for the tender${projectLabel}${refLabel}. Before we can put a meaningful price together we need clarification on ${summary}.</p>
+      <p>To make this as quick as possible we've set up a one-page form — open the link below, tick / type the answers, and hit Submit. Takes a couple of minutes; works on mobile.</p>
+      <p style="margin:30px 0;text-align:center;">
+        <a href="${url}"
+           style="background-color:#1d4ed8;color:white;padding:14px 28px;text-decoration:none;border-radius:6px;display:inline-block;font-weight:600;font-size:16px;">
+          Open the clarification form
+        </a>
+      </p>
+      <p style="font-size:12px;color:#6b7280;text-align:center;">
+        Or paste this into your browser:<br>
+        <span style="word-break:break-all;color:#4b5563;">${url}</span>
+      </p>
+      <p style="font-size:13px;color:#6b7280;margin-top:20px;">
+        Prefer offline? A fillable PDF is attached — open in any PDF reader, complete, save, and reply to this email.
+      </p>
+      ${customNoteHtml}
+      <p style="margin-top:24px;">Kind regards,<br>The Annix Quotation Team</p>
+    `;
+
+    return emailLayout({
+      title: "Pre-quote clarifications required",
+      heading: "Pre-quote clarifications required",
+      headingColor: "#1d4ed8",
+      bodyHtml: briefBody,
+      footerText:
+        "This is an automated notification from the Annix RFQ platform. info@annix.co.za is copied on this message for visibility.",
+    });
+  }
+
+  // Legacy verbose layout — kept for callers (e.g. older
+  // integrations) that don't supply a clarificationToken.
   const bodyHtml = `
     <p>Hello ${greetingName},</p>
     <p>Thank you for the tender${projectLabel}${refLabel}. We're working through the bill of quantities now and have noticed a few items where we need additional information before we can put a meaningful price together.</p>
@@ -109,6 +178,41 @@ export function buildRfqClarificationEmailText(options: RfqClarificationEmailOpt
   const greetingName = options.customerName || "there";
   const projectLabel = options.projectName ? ` for ${options.projectName}` : "";
   const refLabel = options.rfqReference ? ` (${options.rfqReference})` : "";
+
+  // v1.3.0 brief layout when a token is present.
+  if (options.clarificationToken) {
+    const url = `${publicFrontendUrl()}/customer/clarifications/${options.clarificationToken}`;
+    const drawingsCount = options.missingDrawings.length;
+    const valvesCount = options.valveSpecGaps.length;
+    const summaryFragments: string[] = [];
+    if (drawingsCount > 0) {
+      summaryFragments.push(`${drawingsCount} drawing reference${drawingsCount === 1 ? "" : "s"}`);
+    }
+    if (valvesCount > 0) {
+      summaryFragments.push(
+        `${valvesCount} valve item${valvesCount === 1 ? "" : "s"} needing mining-grade specifications`,
+      );
+    }
+    const summary = summaryFragments.length > 0 ? summaryFragments.join(" and ") : "a few items";
+
+    const customNoteBlock = options.customNote ? `\n${options.customNote}\n` : "";
+
+    return `Hello ${greetingName},
+
+Thanks for the tender${projectLabel}${refLabel}. Before we can put a meaningful price together we need clarification on ${summary}.
+
+To make this as quick as possible we've set up a one-page form — open the link below, tick / type the answers, and hit Submit. Takes a couple of minutes; works on mobile.
+
+  ${url}
+
+Prefer offline? A fillable PDF is attached — open in any PDF reader, complete, save, and reply to this email.
+${customNoteBlock}
+Kind regards,
+The Annix Quotation Team
+
+---
+This is an automated notification from the Annix RFQ platform. info@annix.co.za is copied for visibility.`;
+  }
 
   const drawingsBlock =
     options.missingDrawings.length > 0

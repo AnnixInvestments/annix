@@ -21,6 +21,7 @@ import { FittingRfq } from "./entities/fitting-rfq.entity";
 import { InstrumentRfq } from "./entities/instrument-rfq.entity";
 import { PumpRfq } from "./entities/pump-rfq.entity";
 import { Rfq } from "./entities/rfq.entity";
+import { RfqClarificationRequest } from "./entities/rfq-clarification-request.entity";
 import { RfqDocument } from "./entities/rfq-document.entity";
 import { RfqDraft } from "./entities/rfq-draft.entity";
 import { RfqItem } from "./entities/rfq-item.entity";
@@ -86,6 +87,14 @@ describe("RfqService", () => {
   };
 
   const mockRfqDraftRepo = {
+    create: jest.fn(),
+    save: jest.fn(),
+    find: jest.fn(),
+    findOne: jest.fn(),
+    remove: jest.fn(),
+  };
+
+  const mockRfqClarificationRequestRepo = {
     create: jest.fn(),
     save: jest.fn(),
     find: jest.fn(),
@@ -278,6 +287,10 @@ describe("RfqService", () => {
           useValue: mockRfqDocumentRepo,
         },
         { provide: getRepositoryToken(RfqDraft), useValue: mockRfqDraftRepo },
+        {
+          provide: getRepositoryToken(RfqClarificationRequest),
+          useValue: mockRfqClarificationRequestRepo,
+        },
         {
           provide: getRepositoryToken(RfqSequence),
           useValue: mockRfqSequenceRepo,
