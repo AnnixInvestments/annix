@@ -547,7 +547,14 @@ export class NixService {
         }
       }
 
-      if (!reuse) {
+      // Mine inference always runs — for fresh extractions it works off
+      // Gemini's title-block metadata, for cross-quote reuses it works off
+      // the cloned metadata + filename. Without this re-run, an extraction
+      // whose source had no mine attached would inherit 'no mine' forever
+      // (every reuse-of-a-reuse stays unsupervised). Skipping was a
+      // premature optimisation that traded correctness for a single repo
+      // round-trip.
+      if (!extraction.mineId) {
         await this.attachMineInference(extraction);
       }
 
