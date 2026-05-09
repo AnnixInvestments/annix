@@ -1131,9 +1131,45 @@ export default function BOQStep(props: {
             ? ` PE100 SDR${hdpeFittingSdrValue}`
             : "";
         const hdpeFittingStubSuffix = hdpeFittingStubAssembly ? `, ${hdpeFittingStubAssembly}` : "";
+        // Fitting body dimensions on the description, sourced from the
+        // same specs the manual RFQ form binds to:
+        //   - Tees / laterals: pipeLengthAMm × pipeLengthBMm  (run × branch)
+        //     e.g. "220×110mm". For laterals where the branch height
+        //     lives on lateralHeightMm, fall through to that.
+        //   - Reducers: reducerLengthMm  (end-to-end length)
+        //     e.g. "350mm L"
+        // Falls silent if the underlying spec values aren't populated
+        // — better to omit than to fabricate a number.
+        const isReducerType = ["CON_REDUCER", "ECCENTRIC_REDUCER"].includes(fittingType);
+        const isLateralType = ["LATERAL", "Y_PIECE", "REDUCING_LATERAL"].includes(fittingType);
+        const isTeeFamily = fittingType.includes("TEE");
+        const rawSpecsLengthA = entry.specs?.pipeLengthAMm;
+        const rawSpecsLengthB = entry.specs?.pipeLengthBMm;
+        const rawSpecsReducerLength = entry.specs?.reducerLengthMm;
+        const rawSpecsLateralHeight = entry.specs?.lateralHeightMm;
+        const lengthA = rawSpecsLengthA ? Math.round(Number(rawSpecsLengthA)) : null;
+        const lengthB = rawSpecsLengthB ? Math.round(Number(rawSpecsLengthB)) : null;
+        const reducerLength = rawSpecsReducerLength
+          ? Math.round(Number(rawSpecsReducerLength))
+          : null;
+        const lateralHeight = rawSpecsLateralHeight
+          ? Math.round(Number(rawSpecsLateralHeight))
+          : null;
+        let fittingDimSuffix = "";
+        if (isReducerType && reducerLength) {
+          fittingDimSuffix = `, ${reducerLength}mm L`;
+        } else if (isTeeFamily && lengthA && lengthB) {
+          fittingDimSuffix = `, ${lengthA}×${lengthB}mm`;
+        } else if (isLateralType) {
+          if (lengthA && lengthB) {
+            fittingDimSuffix = `, ${lengthA}×${lengthB}mm`;
+          } else if (lengthA && lateralHeight) {
+            fittingDimSuffix = `, ${lengthA}×${lateralHeight}mm`;
+          }
+        }
         consolidatedFittings.set(key, {
           description:
-            `${nb}NB${branchNb !== nb ? `x${branchNb}NB` : ""} ${displayType} ${fittingMaterialLabel}${hdpeFittingSdrLabel} ${schedule ? `Sch${schedule.replace("Sch", "")}` : ""}${fittingFlangeSuffix}${hdpeFittingStubSuffix}`.trim(),
+            `${nb}NB${branchNb !== nb ? `x${branchNb}NB` : ""} ${displayType} ${fittingMaterialLabel}${hdpeFittingSdrLabel} ${schedule ? `Sch${schedule.replace("Sch", "")}` : ""}${fittingFlangeSuffix}${fittingDimSuffix}${hdpeFittingStubSuffix}`.trim(),
           qty: qty,
           unit: "Each",
           weight: fittingWeight * qty,
