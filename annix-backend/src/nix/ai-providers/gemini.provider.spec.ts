@@ -145,7 +145,7 @@ describe("GeminiProvider", () => {
 
       const body = JSON.parse(mockFetch.mock.calls[0][1].body);
       expect(body.generationConfig.temperature).toBe(0.1);
-      expect(body.generationConfig.maxOutputTokens).toBe(8192);
+      expect(body.generationConfig.maxOutputTokens).toBe(32768);
       expect(body.generationConfig.responseMimeType).toBe("application/json");
     });
 
