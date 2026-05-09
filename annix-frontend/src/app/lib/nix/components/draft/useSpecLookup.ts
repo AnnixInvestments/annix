@@ -177,14 +177,29 @@ export function extractProductDescriptors(spec: unknown): string | null {
     if (phrase) phrases.push(phrase);
   }
   if (phrases.length === 0) {
-    // Fall back to a single-product spec (e.g. lining { compound: "RSCA40" })
     const fallback = describeSystem("", details);
     if (fallback) phrases.push(fallback);
   }
+  // Top-level colour (sits as a sibling of the system objects rather than
+  // inside one — Gemini puts it at this level when the spec has a single
+  // colour applying to all systems).
+  const detailColour = pickColour(details);
+  if (detailColour && !phrases.some((p) => p.toLowerCase().includes("colour"))) {
+    phrases.push(`colour: ${detailColour}`);
+  }
   if (phrases.length === 0) return null;
   let result = phrases.join(" • ");
-  if (result.length > 200) result = `${result.slice(0, 199)}…`;
+  if (result.length > 240) result = `${result.slice(0, 239)}…`;
   return result;
+}
+
+function pickColour(obj: Record<string, unknown>): string | null {
+  for (const k of COLOUR_KEYS) {
+    const v = obj[k];
+    if (isString(v) && v.trim().length > 0) return v.trim();
+    if (isNumber(v) && Number.isFinite(v)) return String(v);
+  }
+  return null;
 }
 
 const PRODUCT_PREFIX_PATTERN =
@@ -204,22 +219,20 @@ function describeSystem(systemKey: string, system: Record<string, unknown>): str
       productParts.push(v.trim());
     }
   }
-  let colour: string | null = null;
-  for (const ck of COLOUR_KEYS) {
-    const v = system[ck];
-    if (isString(v) && v.trim().length > 0) {
-      colour = v.trim();
-      break;
-    } else if (isNumber(v)) {
-      colour = String(v);
-      break;
-    }
-  }
+  const colour = pickColour(system);
   if (productParts.length === 0 && !colour) return null;
   const body = productParts.join(", ");
   const withColour = colour ? `${body}${body ? ", " : ""}colour: ${colour}` : body;
-  const label = systemKey.match(/^paintSystem(.+)$/i)?.[1];
-  return label ? `${label}: ${withColour}` : withColour;
+  const labelMatch = systemKey.match(/^(?:paintSystem(.+)|(.+)System)$/i);
+  const matchOne = labelMatch ? labelMatch[1] : null;
+  const matchTwo = labelMatch ? labelMatch[2] : null;
+  const labelText = matchOne ?? matchTwo ?? "";
+  return labelText ? `${capitalise(labelText)}: ${withColour}` : withColour;
+}
+
+function capitalise(s: string): string {
+  if (s.length === 0) return s;
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
 function rememberKind(kindMap: Map<string, CodeKind>, value: unknown, kind: CodeKind): void {

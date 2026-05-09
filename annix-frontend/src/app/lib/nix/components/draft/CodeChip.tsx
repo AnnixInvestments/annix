@@ -29,8 +29,13 @@ export function CodeChip(props: {
   const tooltip = `${tooltipParts.join(" — ")}\nFrom: ${resolved.sourceDocumentName}${
     resolved.pageReference !== null ? ` (page ${resolved.pageReference})` : ""
   }`;
-  const inlineParts = [resolved.summary, resolved.productDescriptors].filter(Boolean) as string[];
-  const inlineText = inlineParts.join(" • ");
+  // Prefer concrete products inline — they're what the quoter needs (brand
+  // names + DFTs + colour). Summary stays in the tooltip when products fit.
+  // When a spec has no product detail (linings, material classes) the
+  // summary is the only inline option.
+  const products = resolved.productDescriptors;
+  const summaryText = resolved.summary;
+  const inlineText = products ?? summaryText ?? "";
 
   return (
     <button
@@ -43,7 +48,7 @@ export function CodeChip(props: {
     >
       <span className="font-medium">{code}</span>
       {inlineText.length > 0 && (
-        <span className="text-[10px] opacity-75 truncate max-w-[36ch]">— {inlineText}</span>
+        <span className="text-[10px] opacity-75 truncate max-w-[60ch]">— {inlineText}</span>
       )}
     </button>
   );
