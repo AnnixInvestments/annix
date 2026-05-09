@@ -694,6 +694,7 @@ export {
   useCreateNixExtractionSession,
   useCreateNixItems,
   useCreateNixSession,
+  useDeleteNixExtractionSession,
   useEndNixSession,
   useNixApps,
   useNixCapabilities,

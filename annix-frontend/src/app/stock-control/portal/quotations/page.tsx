@@ -1,8 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { fromISO } from "@/app/lib/datetime";
-import { quoteRefForSession, useNixExtractionSessions } from "@/app/lib/query/hooks";
+import {
+  quoteRefForSession,
+  useDeleteNixExtractionSession,
+  useNixExtractionSessions,
+} from "@/app/lib/query/hooks";
+import { useConfirm } from "@/app/stock-control/hooks/useConfirm";
 
 const MOCK_QUOTES = [
   {
@@ -83,6 +89,61 @@ export default function QuotationsPage() {
   const draftsQuery = useNixExtractionSessions({ sourceModule: "asca", status: "draft" });
   const draftsData = draftsQuery.data;
   const drafts = draftsData ?? [];
+  const deleteMutation = useDeleteNixExtractionSession();
+  const { confirm, ConfirmDialog } = useConfirm();
+
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const allChecked = drafts.length > 0 && drafts.every((s) => selectedIds.has(s.id));
+  const someChecked = selectedIds.size > 0;
+
+  const toggleOne = (id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    setSelectedIds((prev) => {
+      if (drafts.every((s) => prev.has(s.id))) return new Set();
+      return new Set(drafts.map((s) => s.id));
+    });
+  };
+
+  const handleDeleteDraft = async (sessionId: number, ref: string) => {
+    const ok = await confirm({
+      title: "Delete this draft?",
+      message: `${ref} will be removed from your drafts. Any documents extracted under it stay available for cross-quote reuse — only the draft listing is deleted. This can't be undone.`,
+      confirmLabel: "Delete draft",
+      cancelLabel: "Keep it",
+      variant: "danger",
+    });
+    if (!ok) return;
+    await deleteMutation.mutateAsync(sessionId);
+    await draftsQuery.refetch();
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    const refs = drafts.filter((s) => selectedIds.has(s.id)).map((s) => quoteRefForSession(s));
+    const ok = await confirm({
+      title: `Delete ${refs.length} draft${refs.length === 1 ? "" : "s"}?`,
+      message: `${refs.join(", ")} will be removed. Any documents extracted under these drafts stay available for cross-quote reuse — only the draft listings are deleted. This can't be undone.`,
+      confirmLabel: `Delete ${refs.length} draft${refs.length === 1 ? "" : "s"}`,
+      cancelLabel: "Keep them",
+      variant: "danger",
+    });
+    if (!ok) return;
+    const ids = Array.from(selectedIds);
+    await Promise.all(ids.map((id) => deleteMutation.mutateAsync(id)));
+    setSelectedIds(new Set());
+    await draftsQuery.refetch();
+  };
 
   return (
     <div className="max-w-7xl mx-auto p-6">
@@ -116,9 +177,35 @@ export default function QuotationsPage() {
       </div>
 
       <section className="mb-6">
-        <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
-          In-progress drafts
-        </h2>
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+            In-progress drafts
+          </h2>
+          {someChecked && (
+            <button
+              type="button"
+              onClick={() => void handleBulkDelete()}
+              disabled={deleteMutation.isPending}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-600 text-white rounded-md text-xs font-medium shadow-sm hover:bg-red-700 disabled:opacity-50"
+            >
+              <svg
+                className="w-3.5 h-3.5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                />
+              </svg>
+              Delete {selectedIds.size} selected
+            </button>
+          )}
+        </div>
         {draftsQuery.isLoading ? (
           <p className="text-sm text-gray-500">Loading…</p>
         ) : drafts.length === 0 ? (
@@ -137,6 +224,15 @@ export default function QuotationsPage() {
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
               <thead className="bg-gray-50 dark:bg-gray-900/20">
                 <tr>
+                  <th className="px-3 py-2 w-8">
+                    <input
+                      type="checkbox"
+                      checked={allChecked}
+                      onChange={toggleAll}
+                      aria-label="Select all drafts"
+                      className="rounded border-gray-300"
+                    />
+                  </th>
                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
                     Quote #
                   </th>
@@ -152,6 +248,9 @@ export default function QuotationsPage() {
                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
                     Last edit
                   </th>
+                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+                    <span className="sr-only">Actions</span>
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -162,10 +261,16 @@ export default function QuotationsPage() {
                   const updatedAt = fromISO(s.updatedAt).toFormat("dd MMM yyyy HH:mm");
                   const titleText = s.title ? s.title : `Draft from documents — session #${s.id}`;
                   return (
-                    <tr
-                      key={s.id}
-                      className="hover:bg-gray-50 dark:hover:bg-gray-900/30 cursor-pointer"
-                    >
+                    <tr key={s.id} className="hover:bg-gray-50 dark:hover:bg-gray-900/30">
+                      <td className="px-3 py-3 w-8">
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(s.id)}
+                          onChange={() => toggleOne(s.id)}
+                          aria-label={`Select ${ref}`}
+                          className="rounded border-gray-300"
+                        />
+                      </td>
                       <td className="px-4 py-3 text-sm font-mono">
                         <Link
                           href={`/stock-control/portal/quotations/drafts/${s.id}`}
@@ -190,6 +295,31 @@ export default function QuotationsPage() {
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
                         {updatedAt}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <button
+                          type="button"
+                          onClick={() => void handleDeleteDraft(s.id, ref)}
+                          disabled={deleteMutation.isPending}
+                          className="text-gray-400 hover:text-red-600 disabled:opacity-30"
+                          aria-label={`Delete draft ${ref}`}
+                          title="Delete this draft (extractions stay available for reuse)"
+                        >
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                            aria-hidden="true"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                            />
+                          </svg>
+                        </button>
                       </td>
                     </tr>
                   );
@@ -321,6 +451,8 @@ export default function QuotationsPage() {
           <li>Pipeline value, win rate and aged pipeline on dashboard</li>
         </ul>
       </div>
+
+      {ConfirmDialog}
     </div>
   );
 }

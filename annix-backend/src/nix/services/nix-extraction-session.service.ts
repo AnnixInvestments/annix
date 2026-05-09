@@ -108,6 +108,21 @@ export class NixExtractionSessionService extends BaseCrudService<
     return this.update(id, { status });
   }
 
+  /**
+   * Deletes a draft session, but unlinks (rather than deletes) its
+   * extractions so they remain available for cross-quote reuse — a doc
+   * extracted for draft A can still be reused by draft B even after A
+   * is deleted. The session row goes; the extraction rows stay with
+   * session_id set to null. Phase 3's findExistingForMine query
+   * doesn't filter on session_id so it'll find these orphaned rows
+   * just fine.
+   */
+  async deleteSessionPreservingExtractions(id: number): Promise<void> {
+    const manager = this.repo.manager;
+    await manager.query("UPDATE nix_extractions SET session_id = NULL WHERE session_id = $1", [id]);
+    await this.remove(id);
+  }
+
   async promote(id: number, promotedRef: string): Promise<NixExtractionSession> {
     return this.update(id, {
       status: NixExtractionSessionStatus.PROMOTED,

@@ -232,6 +232,24 @@ export class NixController {
     return this.sessionService.findOneForUser(id, authUser.userId, authUser.type === "admin");
   }
 
+  @Delete("sessions/:id")
+  @UseGuards(AnyUserAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary:
+      "Delete a NixExtractionSession. The session row is removed but its extractions are unlinked (session_id = null) rather than deleted, so they remain available for cross-quote reuse via the doc-number lookup.",
+  })
+  @ApiResponse({ status: 200, schema: { properties: { ok: { type: "boolean" } } } })
+  async deleteSession(
+    @Param("id", ParseIntPipe) id: number,
+    @Req() req: Request,
+  ): Promise<{ ok: true }> {
+    const authUser = req["authUser"] as AuthenticatedUser;
+    await this.sessionService.findOneForUser(id, authUser.userId, authUser.type === "admin");
+    await this.sessionService.deleteSessionPreservingExtractions(id);
+    return { ok: true };
+  }
+
   @Post("sessions/:id/status")
   @UseGuards(AnyUserAuthGuard)
   @ApiBearerAuth()

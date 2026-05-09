@@ -133,7 +133,7 @@ export interface CreateItemsResponse {
 async function nixRequest<TResponse>(
   path: string,
   options: {
-    method?: "GET" | "POST";
+    method?: "GET" | "POST" | "DELETE" | "PATCH" | "PUT";
     body?: unknown;
     portalContext?: PortalContext;
     errorLabel: string;
@@ -414,6 +414,15 @@ export const useNixExtractionSessions = createQueryHook(
       errorLabel: "Failed to list extraction sessions",
     });
   },
+);
+
+export const useDeleteNixExtractionSession = createMutationHook<{ ok: true }, number>(
+  (sessionId) =>
+    nixRequest<{ ok: true }>(`/nix/sessions/${sessionId}`, {
+      method: "DELETE",
+      errorLabel: "Failed to delete extraction session",
+    }),
+  () => [nixKeys.extractionSessions.all],
 );
 
 /**
