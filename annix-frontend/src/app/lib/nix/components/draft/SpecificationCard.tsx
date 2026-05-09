@@ -2,7 +2,7 @@
 
 import { isArray, isNumber, isObject, isString } from "es-toolkit/compat";
 import { DetailsBlock } from "./DetailsBlock";
-import { CODE_KIND_TONE, type CodeKind } from "./useSpecLookup";
+import { CODE_KIND_TONE, type CodeKind, extractProductDescriptors } from "./useSpecLookup";
 
 /**
  * Renders a single Nix-extracted specification clause as an expandable
@@ -53,6 +53,10 @@ export function SpecificationCard(props: {
   const summary = isString(obj.summary) ? (obj.summary as string) : null;
   const description = isString(obj.description) ? (obj.description as string) : null;
   const headlineText = summary ?? description ?? "";
+  const productDescriptors = extractProductDescriptors(obj);
+  const inlineHeadingText = [headlineText.length > 0 ? headlineText : null, productDescriptors]
+    .filter(Boolean)
+    .join(" • ");
   const rawApplicableMarks = obj.applicableMarks;
   const applicableMarks = isArray(rawApplicableMarks)
     ? (rawApplicableMarks as unknown[]).filter(isString)
@@ -84,9 +88,9 @@ export function SpecificationCard(props: {
           <div className="flex items-baseline justify-between gap-3 flex-wrap">
             <h3 className={headingClass}>
               <span className="font-bold">{clauseKey}</span>
-              {headingTone && headlineText.length > 0 && (
+              {headingTone && inlineHeadingText.length > 0 && (
                 <span className="font-normal text-[11px] opacity-90 leading-snug">
-                  — {headlineText}
+                  — {inlineHeadingText}
                 </span>
               )}
             </h3>

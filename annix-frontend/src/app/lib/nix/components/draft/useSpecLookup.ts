@@ -38,6 +38,14 @@ export interface ResolvedCode {
   summary: string | null;
   /** Long-form description from the spec extraction. */
   description: string | null;
+  /**
+   * Concrete primer / topcoat product names mined from the spec's nested
+   * details (e.g. 'Carboguard 890 Aluminium / Carbothane 137 HS'). Lets a
+   * drawing chip show what's actually being quoted, not just the spec
+   * category. Multiple systems are joined with ' • '. Null when the
+   * spec doesn't carry product-level detail (linings, material classes).
+   */
+  productDescriptors: string | null;
   /** Page in the source spec PDF where the clause was extracted. */
   pageReference: number | null;
   /** Source extraction id, so the host can open the right PDF. */
@@ -101,6 +109,7 @@ export function useSpecLookup(
           code,
           summary,
           description,
+          productDescriptors: extractProductDescriptors(obj),
           pageReference,
           sourceExtractionId: extraction.id,
           sourceDocumentName: extraction.documentName,
@@ -135,6 +144,68 @@ export function useSpecLookup(
       },
     };
   }, [specExtractions, drawingExtractions]);
+}
+
+/**
+ * Mines concrete product names from a spec clause's nested details. Looks for
+ * any sub-object that carries primer / topcoat / product / compound / brand
+ * fields (paint systems, lining compounds) and concatenates the values into
+ * a comma/slash-separated phrase. Returns null when nothing product-shaped
+ * exists at the first nesting level — keeps the lookup cheap.
+ *
+ * Example shapes recognised:
+ *   { paintSystemStoncor: { primer: "...", topcoat: "..." } }    → "primer / topcoat"
+ *   { details: { paintSystemStoncor: { primer, topcoat } } }     → also recognised (one nesting deep)
+ *   { compound: "RSCA40" }                                       → "RSCA40"
+ *
+ * Values are de-duplicated so two identical primers across systems don't
+ * appear twice. Truncated to 120 chars before returning.
+ */
+export function extractProductDescriptors(spec: unknown): string | null {
+  if (!isObject(spec)) return null;
+  const seen = new Set<string>();
+  const phrases: string[] = [];
+  collectProductPhrases(spec as Record<string, unknown>, seen, phrases, 0);
+  if (phrases.length === 0) return null;
+  let result = phrases.join(" • ");
+  if (result.length > 120) result = `${result.slice(0, 119)}…`;
+  return result;
+}
+
+const PRODUCT_FIELD_KEYS = new Set([
+  "primer",
+  "topcoat",
+  "product",
+  "compound",
+  "brand",
+  "supplier",
+  "manufacturer",
+]);
+
+function collectProductPhrases(
+  obj: Record<string, unknown>,
+  seen: Set<string>,
+  phrases: string[],
+  depth: number,
+): void {
+  if (depth > 2) return;
+  const localParts: string[] = [];
+  for (const [key, value] of entries(obj)) {
+    const lowerKey = key.toLowerCase();
+    if (PRODUCT_FIELD_KEYS.has(lowerKey) && isString(value) && value.trim().length > 0) {
+      const trimmed = value.trim();
+      const dedupeKey = trimmed.toLowerCase();
+      if (!seen.has(dedupeKey)) {
+        seen.add(dedupeKey);
+        localParts.push(trimmed);
+      }
+      continue;
+    }
+    if (isObject(value) && !isArray(value)) {
+      collectProductPhrases(value as Record<string, unknown>, seen, phrases, depth + 1);
+    }
+  }
+  if (localParts.length > 0) phrases.push(localParts.join(" / "));
 }
 
 function rememberKind(kindMap: Map<string, CodeKind>, value: unknown, kind: CodeKind): void {
