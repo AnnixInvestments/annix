@@ -12,6 +12,7 @@ import { CustomerDocument } from "../customer/entities/customer-document.entity"
 import { CustomerOnboarding } from "../customer/entities/customer-onboarding.entity";
 import { CustomerProfile } from "../customer/entities/customer-profile.entity";
 import { EmailModule } from "../email/email.module";
+import { SaMine } from "../mines/entities/sa-mine.entity";
 import { MinesModule } from "../mines/mines.module";
 import { RfqModule } from "../rfq/rfq.module";
 import { SecureDocumentsModule } from "../secure-documents/secure-documents.module";
@@ -74,6 +75,7 @@ import { WordExtractorService } from "./services/word-extractor.service";
       SupplierDocument,
       SupplierProfile,
       SupplierOnboarding,
+      SaMine,
     ]),
     MinesModule,
     MulterModule.register({
