@@ -1,4 +1,5 @@
 export * from "./dimensions";
+export * from "./fitting-dimensions";
 export * from "./fittings";
 export * from "./grades";
 export * from "./pricing";

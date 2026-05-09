@@ -3,6 +3,8 @@
 import {
   type HdpeNominalSize,
   pipeDimensions as hdpePipeDimensions,
+  hdpeReducerLength,
+  hdpeTeeDimensions,
   pnClassForSdr,
   type SdrValue,
   sans1123StubAssemblyDescription,
@@ -1147,14 +1149,31 @@ export default function BOQStep(props: {
         const rawSpecsLengthB = entry.specs?.pipeLengthBMm;
         const rawSpecsReducerLength = entry.specs?.reducerLengthMm;
         const rawSpecsLateralHeight = entry.specs?.lateralHeightMm;
-        const lengthA = rawSpecsLengthA ? Math.round(Number(rawSpecsLengthA)) : null;
-        const lengthB = rawSpecsLengthB ? Math.round(Number(rawSpecsLengthB)) : null;
-        const reducerLength = rawSpecsReducerLength
+        const specsLengthA = rawSpecsLengthA ? Math.round(Number(rawSpecsLengthA)) : null;
+        const specsLengthB = rawSpecsLengthB ? Math.round(Number(rawSpecsLengthB)) : null;
+        const specsReducerLength = rawSpecsReducerLength
           ? Math.round(Number(rawSpecsReducerLength))
           : null;
-        const lateralHeight = rawSpecsLateralHeight
+        const specsLateralHeight = rawSpecsLateralHeight
           ? Math.round(Number(rawSpecsLateralHeight))
           : null;
+
+        // HDPE catalogue fallback — only consulted when the entry is
+        // HDPE and the entry.specs path returns null. Catalogue
+        // values come from manufacturer brochures (PE100 SDR 11
+        // butt-fusion) via @annix/product-data/hdpe. Steel and PVC
+        // fittings rely on entry.specs only — no catalogue fallback.
+        const isHdpeFitting = fittingMaterialType === "hdpe";
+        const tableTeeDims = isHdpeFitting && isTeeFamily ? hdpeTeeDimensions(nb, branchNb) : null;
+        const tableReducerLength =
+          isHdpeFitting && isReducerType ? hdpeReducerLength(nb, branchNb) : null;
+        const tableLengthA = tableTeeDims ? tableTeeDims.runFaceToFaceMm : null;
+        const tableLengthB = tableTeeDims ? tableTeeDims.branchFaceToCentreMm : null;
+
+        const lengthA = specsLengthA || tableLengthA;
+        const lengthB = specsLengthB || tableLengthB;
+        const reducerLength = specsReducerLength || tableReducerLength;
+
         let fittingDimSuffix = "";
         if (isReducerType && reducerLength) {
           fittingDimSuffix = `, ${reducerLength}mm L`;
@@ -1163,8 +1182,8 @@ export default function BOQStep(props: {
         } else if (isLateralType) {
           if (lengthA && lengthB) {
             fittingDimSuffix = `, ${lengthA}×${lengthB}mm`;
-          } else if (lengthA && lateralHeight) {
-            fittingDimSuffix = `, ${lengthA}×${lateralHeight}mm`;
+          } else if (lengthA && specsLateralHeight) {
+            fittingDimSuffix = `, ${lengthA}×${specsLateralHeight}mm`;
           }
         }
         consolidatedFittings.set(key, {
