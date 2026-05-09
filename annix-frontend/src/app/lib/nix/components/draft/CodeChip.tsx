@@ -29,18 +29,19 @@ export function CodeChip(props: {
   const tooltip = `${tooltipParts.join(" — ")}\nFrom: ${resolved.sourceDocumentName}${
     resolved.pageReference !== null ? ` (page ${resolved.pageReference})` : ""
   }`;
-  // Show summary AND products together — the quoter needs the headline
-  // ('6mm bore, 3mm flange face') AND the brand specifics ('Carboguard
-  // 890 @ 100-150μm') side by side. When products is empty (lining
-  // specs without compound brand names, or paint specs where Gemini
-  // could only extract a colour), the summary stands alone. When the
-  // product extractor filtered all the values as placeholders (Varies
-  // per item/service / Refer to Tables…), products will be null and
-  // the summary still surfaces correctly.
+  // Prefer concrete brand-name products inline — they're what the quoter
+  // needs to spec / order ('Carboguard 890 Aluminium @ 100-150μm,
+  // Carbothane 137 HS @ 50-100μm'). The summary is more verbose and
+  // would crowd out the products under the chip's truncation cap.
+  // Fall through to the summary only when products has nothing useful:
+  // null (no paint systems / placeholder text filtered everything), or
+  // only a colour with no actual product names ('colour: Red' on a
+  // Linatex spec where Gemini didn't extract a compound brand).
+  // Tooltip carries everything so hovering shows full detail.
   const products = resolved.productDescriptors;
   const summaryText = resolved.summary;
-  const inlineParts = [summaryText, products].filter(Boolean) as string[];
-  const inlineText = inlineParts.join(" • ");
+  const productsHasBrands = products !== null && !/^colour: /i.test(products.trim());
+  const inlineText = productsHasBrands ? (products as string) : (summaryText ?? products ?? "");
 
   return (
     <button
