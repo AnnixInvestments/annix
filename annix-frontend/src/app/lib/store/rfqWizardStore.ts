@@ -562,19 +562,41 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
             item.itemType === "reducer" ||
             item.itemType === "expansion_joint"
           ) {
+            // Distinguish concentric vs eccentric reducer from the
+            // free-text description. Defaults to concentric — the
+            // overwhelmingly most common type. Keys must match the
+            // canonical fittingType constants the wizard form +
+            // BOQStep both expect (CON_REDUCER, NOT CONCENTRIC_REDUCER).
+            const rawItemDescription = item.description;
+            const descLower = (rawItemDescription || "").toLowerCase();
+            const isEccentricReducer =
+              item.itemType === "reducer" && /\b(eccentric|ecc\.?|e\/e|ee|ec)\b/i.test(descLower);
             const fittingType =
               item.itemType === "tee"
                 ? "EQUAL_TEE"
                 : item.itemType === "reducer"
-                  ? "CONCENTRIC_REDUCER"
+                  ? isEccentricReducer
+                    ? "ECCENTRIC_REDUCER"
+                    : "CON_REDUCER"
                   : "EXPANSION_LOOP";
 
             const rawItemNumber3 = item.itemNumber;
             const rawDiameter3 = item.diameter;
+            const rawSecondaryDiameter = item.secondaryDiameter;
             const rawSchedule3 = item.schedule;
             const rawQuantity3 = item.quantity;
             const rawWorkingPressureBar3 = rfqData.globalSpecs?.workingPressureBar;
             const rawWorkingTemperatureC3 = rfqData.globalSpecs?.workingTemperatureC;
+
+            // Branch / smaller-end NB. Reducers ALWAYS need this to
+            // be a real reducer (otherwise the BOQ row degenerates
+            // to "355NB Concentric Reducer" with no reduction info
+            // and the catalogue lookup returns null). Tees only need
+            // it for reducing tees — equal tees leave it undefined.
+            const branchNominalDiameter =
+              rawSecondaryDiameter && rawSecondaryDiameter !== rawDiameter3
+                ? rawSecondaryDiameter
+                : undefined;
 
             const fittingMaterialType = nixProductTypeToMaterialType(item.productType);
             const fittingEntry: FittingEntry = {
@@ -587,6 +609,7 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
                 fittingStandard: "SABS719",
                 fittingType: fittingType,
                 nominalDiameterMm: rawDiameter3 || 0,
+                branchNominalDiameterMm: branchNominalDiameter,
                 scheduleNumber: rawSchedule3 || undefined,
                 quantityValue: rawQuantity3 || 1,
                 quantityType: "number_of_items" as const,

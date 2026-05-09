@@ -94,10 +94,13 @@ export interface FittingEntry {
     fittingStandard?: "SABS62" | "SABS719";
     fittingType?: string;
     nominalDiameterMm?: number;
+    branchNominalDiameterMm?: number;
     scheduleNumber?: string;
     angleRange?: string;
     pipeLengthAMm?: number;
     pipeLengthBMm?: number;
+    reducerLengthMm?: number;
+    lateralHeightMm?: number;
     stubLocation?: string;
     degrees?: number;
     steelSpecificationId?: number;

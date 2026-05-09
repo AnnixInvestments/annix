@@ -131,12 +131,27 @@ For each item, extract these common fields:
 
 For pipe / spool / fitting items, also extract:
 - diameter (mm — convert from NB/DN/NPS if needed)
-- secondaryDiameter (mm — for reducers, the smaller end)
+- secondaryDiameter (mm — for reducers AND reducing tees AND laterals, the smaller / branch end). REQUIRED for any reducer or reducing-tee row — these items ALWAYS have two diameters by definition. If you can't find the second diameter, log low confidence and put a clear note in the description so the user can fill it in. DO NOT default the second diameter to the main diameter — that produces a non-reducer.
 - length (m if document uses m, mm otherwise — note units in description)
 - wallThickness (mm)
 - schedule (e.g. "Sch 40", "10mm WT")
-- angle (degrees, for bends)
+- angle (degrees, for bends AND laterals — laterals are typically 45° or 60°)
 - flangeConfig: one of none, one_end, both_ends, puddle, blind
+
+Reducer / reducing-tee diameter extraction patterns to recognise (the
+BOQ doc author may use any of these conventions for the reduction
+pair — read both numbers, not just the first one):
+- "200mm × 150mm Concentric Reducer" → diameter 200, secondaryDiameter 150
+- "200/150 reducer" or "200x150 reducer" → diameter 200, secondaryDiameter 150
+- "200 to 150 reducer" / "Reducer 200 to 150" → diameter 200, secondaryDiameter 150
+- "Reducing Tee 200x150x200" or "Tee 200×150" → diameter 200 (run), secondaryDiameter 150 (branch)
+- "DN 200/DN 150 conc reducer" → diameter 200, secondaryDiameter 150
+- "8" × 6" reducer" → diameter 200, secondaryDiameter 150 (convert from inches)
+
+A line that says only "200NB Concentric Reducer" without a second
+diameter is INCOMPLETE — emit it with secondaryDiameter: null and a
+clear note in the description field indicating the reduction pair is
+missing, so the quoter sees the gap.
 
 For fabricated assemblies (itemType = "tank_chute" — tanks, chutes, hoppers, underpans, pulleys, drums, launders, custom), also extract:
 - assemblyType: one of tank, chute, hopper, underpan, pulley, drum, launder, custom — pick the closest fit
