@@ -29,13 +29,18 @@ export function CodeChip(props: {
   const tooltip = `${tooltipParts.join(" — ")}\nFrom: ${resolved.sourceDocumentName}${
     resolved.pageReference !== null ? ` (page ${resolved.pageReference})` : ""
   }`;
-  // Prefer concrete products inline — they're what the quoter needs (brand
-  // names + DFTs + colour). Summary stays in the tooltip when products fit.
-  // When a spec has no product detail (linings, material classes) the
-  // summary is the only inline option.
+  // Show summary AND products together — the quoter needs the headline
+  // ('6mm bore, 3mm flange face') AND the brand specifics ('Carboguard
+  // 890 @ 100-150μm') side by side. When products is empty (lining
+  // specs without compound brand names, or paint specs where Gemini
+  // could only extract a colour), the summary stands alone. When the
+  // product extractor filtered all the values as placeholders (Varies
+  // per item/service / Refer to Tables…), products will be null and
+  // the summary still surfaces correctly.
   const products = resolved.productDescriptors;
   const summaryText = resolved.summary;
-  const inlineText = products ?? summaryText ?? "";
+  const inlineParts = [summaryText, products].filter(Boolean) as string[];
+  const inlineText = inlineParts.join(" • ");
 
   return (
     <button

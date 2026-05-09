@@ -39,12 +39,14 @@ export function CodesCell(props: {
   } = props;
   const [editing, setEditing] = useState(false);
 
+  // flangeConfig (F.B.E F/F, P.E. etc.) renders alongside the description
+  // in ItemRow now — these are end-condition annotations, not 'codes' the
+  // spec docs define, so they don't deserve a chip in the codes cell.
   const chips: { code: string; kind: "coating" | "lining" | "materialClass" | "flangeConfig" }[] =
     [];
   if (coating.length > 0) chips.push({ code: coating, kind: "coating" });
   if (lining.length > 0) chips.push({ code: lining, kind: "lining" });
   if (materialClass.length > 0) chips.push({ code: materialClass, kind: "materialClass" });
-  if (flangeConfig.length > 0) chips.push({ code: flangeConfig, kind: "flangeConfig" });
 
   if (editing) {
     return (

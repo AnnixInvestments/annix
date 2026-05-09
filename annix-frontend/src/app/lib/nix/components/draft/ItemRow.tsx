@@ -76,13 +76,18 @@ export function ItemRow(props: {
     <tr className="border-b border-gray-100">
       <td className="py-1 pr-3 font-mono text-gray-700">{mark}</td>
       <td className="py-1 pr-3 text-gray-900 max-w-md">
-        <EditableCell
-          extractionId={extractionId}
-          rowKey={rowKey}
-          field="description"
-          value={description}
-          onSaved={onSaved}
-        />
+        <div className="flex items-baseline gap-2">
+          <EditableCell
+            extractionId={extractionId}
+            rowKey={rowKey}
+            field="description"
+            value={description}
+            onSaved={onSaved}
+          />
+          {flangeConfig.length > 0 && (
+            <span className="text-[11px] text-gray-500 whitespace-nowrap">{flangeConfig}</span>
+          )}
+        </div>
       </td>
       <td className="py-1 pr-3 text-gray-900">
         <EditableCell

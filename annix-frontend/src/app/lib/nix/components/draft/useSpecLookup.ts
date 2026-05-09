@@ -196,7 +196,11 @@ export function extractProductDescriptors(spec: unknown): string | null {
 function pickColour(obj: Record<string, unknown>): string | null {
   for (const k of COLOUR_KEYS) {
     const v = obj[k];
-    if (isString(v) && v.trim().length > 0) return v.trim();
+    if (isString(v) && v.trim().length > 0) {
+      const trimmed = v.trim();
+      if (isPlaceholderText(trimmed)) continue;
+      return trimmed;
+    }
     if (isNumber(v) && Number.isFinite(v)) return String(v);
   }
   return null;
@@ -206,12 +210,27 @@ const PRODUCT_PREFIX_PATTERN =
   /^(primer|topcoat|intermediate|barrierCoat|finishingCoat|finishingCoatAboveWaterline|compound|product|brand|paint|lining|coat)/i;
 const COLOUR_KEYS = ["topcoatColour", "finalColour", "colour", "color", "RAL", "ralNumber"];
 
+/**
+ * Detects placeholder / 'see elsewhere' text Gemini sometimes returns in
+ * a primer / topcoat / colour field instead of a real product name —
+ * 'Varies per item/service', 'Refer to Tables 12-1 and 12-2', 'TBC',
+ * 'See Section 4', 'N/A'. These aren't useful in the chip / pill display
+ * and pollute productDescriptors so the summary fallback never fires.
+ */
+function isPlaceholderText(value: string): boolean {
+  const trimmed = value.trim();
+  return /^(varies|refer to|see (table|section|figure|spec|appendix|note)|tbc|tba|tbd|n\/?a|to be (advised|confirmed|determined))/i.test(
+    trimmed,
+  );
+}
+
 function describeSystem(systemKey: string, system: Record<string, unknown>): string | null {
   const productParts: string[] = [];
   for (const [k, v] of entries(system)) {
     if (!isString(v) || v.trim().length === 0) continue;
     if (/Microns?$/i.test(k)) continue;
     if (!PRODUCT_PREFIX_PATTERN.test(k)) continue;
+    if (isPlaceholderText(v)) continue;
     const dftValue = system[`${k}DftMicrons`];
     if (isString(dftValue) || isNumber(dftValue)) {
       productParts.push(`${v.trim()} @ ${dftValue}μm`);
