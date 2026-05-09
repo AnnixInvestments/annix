@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { fromISO } from "@/app/lib/datetime";
+import { quoteRefForSession, useNixExtractionSessions } from "@/app/lib/query/hooks";
 
 const MOCK_QUOTES = [
   {
@@ -78,6 +80,10 @@ function formatZar(value: number): string {
 }
 
 export default function QuotationsPage() {
+  const draftsQuery = useNixExtractionSessions({ sourceModule: "asca", status: "draft" });
+  const draftsData = draftsQuery.data;
+  const drafts = draftsData ?? [];
+
   return (
     <div className="max-w-7xl mx-auto p-6">
       <div className="flex items-start justify-between mb-6">
@@ -105,8 +111,94 @@ export default function QuotationsPage() {
       </div>
 
       <div className="mb-4 rounded-md bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800">
-        Preview — this page shows scaffold content. Backend wiring pending.
+        Preview — issued quotes table below shows scaffold content. The in-progress drafts section
+        above is real.
       </div>
+
+      <section className="mb-6">
+        <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
+          In-progress drafts
+        </h2>
+        {draftsQuery.isLoading ? (
+          <p className="text-sm text-gray-500">Loading…</p>
+        ) : drafts.length === 0 ? (
+          <p className="text-sm text-gray-500">
+            No drafts in progress. Start one with{" "}
+            <Link
+              href="/stock-control/portal/quotations/new-from-documents"
+              className="text-blue-600 hover:text-blue-800 underline"
+            >
+              New from documents (Nix)
+            </Link>
+            .
+          </p>
+        ) : (
+          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead className="bg-gray-50 dark:bg-gray-900/20">
+                <tr>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                    Quote #
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                    Title
+                  </th>
+                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+                    Documents
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                    Started
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                    Last edit
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                {drafts.map((s) => {
+                  const ref = quoteRefForSession(s);
+                  const docCount = s.extractions ? s.extractions.length : 0;
+                  const startedAt = fromISO(s.createdAt).toFormat("dd MMM yyyy");
+                  const updatedAt = fromISO(s.updatedAt).toFormat("dd MMM yyyy HH:mm");
+                  const titleText = s.title ? s.title : `Draft from documents — session #${s.id}`;
+                  return (
+                    <tr
+                      key={s.id}
+                      className="hover:bg-gray-50 dark:hover:bg-gray-900/30 cursor-pointer"
+                    >
+                      <td className="px-4 py-3 text-sm font-mono">
+                        <Link
+                          href={`/stock-control/portal/quotations/drafts/${s.id}`}
+                          className="text-[#323288] hover:underline"
+                        >
+                          {ref}
+                        </Link>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
+                        <Link
+                          href={`/stock-control/portal/quotations/drafts/${s.id}`}
+                          className="hover:underline"
+                        >
+                          {titleText}
+                        </Link>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-right text-gray-700 dark:text-gray-300">
+                        {docCount}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                        {startedAt}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                        {updatedAt}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
 
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">

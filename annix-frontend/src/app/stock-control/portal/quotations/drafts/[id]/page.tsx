@@ -7,12 +7,18 @@ import { useCallback, useState } from "react";
 import { FormModal } from "@/app/components/modals/FormModal";
 import { useToast } from "@/app/components/Toast";
 import { NixDraftReview } from "@/app/lib/nix/components/draft";
-import { useNixExtractionSession, useSetNixExtractionSessionStatus } from "@/app/lib/query/hooks";
+import {
+  quoteRefForSession,
+  useNixExtractionSession,
+  useSetNixExtractionSessionStatus,
+} from "@/app/lib/query/hooks";
+import { useConfirm } from "@/app/stock-control/hooks/useConfirm";
 
 export default function NixExtractionDraftPage() {
   const params = useParams();
   const router = useRouter();
   const { showToast } = useToast();
+  const { confirm, ConfirmDialog } = useConfirm();
   const rawParam = params?.id;
   const sessionIdParam = rawParam;
   let parsedSessionId: number = Number.NaN;
@@ -74,10 +80,21 @@ export default function NixExtractionDraftPage() {
   // at all times. This button just gives the user an explicit affordance
   // to leave with confidence and return to the quotes list. Status stays
   // 'draft', so picking up later resumes from the same review state.
-  const handleSaveAndExit = useCallback(() => {
-    showToast("Draft saved — pick up where you left off from the Quotations list.", "success");
+  const handleSaveAndExit = useCallback(async () => {
+    if (!session) {
+      router.push("/stock-control/portal/quotations");
+      return;
+    }
+    const ref = quoteRefForSession(session);
+    await confirm({
+      title: "Draft saved",
+      message: `Saved as ${ref}. You'll find it under 'In-progress drafts' on the Quotations page — click the reference to come back to where you left off.`,
+      confirmLabel: "Go to Quotations",
+      hideCancel: true,
+      variant: "info",
+    });
     router.push("/stock-control/portal/quotations");
-  }, [showToast, router]);
+  }, [session, confirm, router]);
 
   if (!validSessionId) {
     return (
@@ -104,6 +121,7 @@ export default function NixExtractionDraftPage() {
   const sessionTitle = session.title;
   const titleText = sessionTitle ? sessionTitle : `Draft from documents — session #${session.id}`;
   const promotedRefText = session.promotedRef;
+  const quoteRef = quoteRefForSession(session);
 
   return (
     <div className="space-y-4">
@@ -114,7 +132,7 @@ export default function NixExtractionDraftPage() {
               Quotations
             </Link>
             <span>›</span>
-            <span>Draft #{session.id}</span>
+            <span className="font-mono text-[#323288]">{quoteRef}</span>
           </div>
           <h1 className="text-2xl font-bold text-gray-900">{titleText}</h1>
           <p className="text-sm text-gray-600 mt-1">
@@ -188,6 +206,8 @@ export default function NixExtractionDraftPage() {
           className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
         />
       </FormModal>
+
+      {ConfirmDialog}
     </div>
   );
 }

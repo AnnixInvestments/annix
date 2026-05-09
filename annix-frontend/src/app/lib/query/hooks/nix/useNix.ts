@@ -1,5 +1,6 @@
 import { sessionExpiredEvent } from "@/app/components/SessionExpiredModal";
 import { anyPortalAuthHeaders } from "@/app/lib/api/portalTokenStores";
+import { fromISO } from "@/app/lib/datetime";
 import { browserBaseUrl } from "@/lib/api-config";
 import { createMutationHook, createQueryHook } from "../../factories";
 import { nixKeys } from "../../keys/nixKeys";
@@ -400,6 +401,31 @@ export const useNixExtractionSession = createQueryHook(
     }),
   { enabled: (sessionId: number | null) => sessionId !== null && sessionId > 0 },
 );
+
+export const useNixExtractionSessions = createQueryHook(
+  (filter: { sourceModule?: string; status?: string } | undefined) =>
+    nixKeys.extractionSessions.list(filter?.sourceModule, filter?.status),
+  (filter: { sourceModule?: string; status?: string } | undefined) => {
+    const params = new URLSearchParams();
+    if (filter?.sourceModule) params.set("sourceModule", filter.sourceModule);
+    if (filter?.status) params.set("status", filter.status);
+    const qs = params.toString();
+    return nixRequest<NixExtractionSessionDto[]>(`/nix/sessions${qs ? `?${qs}` : ""}`, {
+      errorLabel: "Failed to list extraction sessions",
+    });
+  },
+);
+
+/**
+ * Computes the display quote reference for a Nix extraction session —
+ * `QUO-{YYYY}-{id padded to 4 digits}` — derived deterministically from the
+ * session's createdAt year and id, no DB write required. Stable across
+ * reloads (same session always renders the same ref).
+ */
+export function quoteRefForSession(session: { id: number; createdAt: string }): string {
+  const year = fromISO(session.createdAt).year;
+  return `QUO-${year}-${session.id.toString().padStart(4, "0")}`;
+}
 
 export const useCreateNixExtractionSession = createMutationHook<
   NixExtractionSessionDto,

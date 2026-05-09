@@ -18,6 +18,8 @@ export const nixKeys = {
   extractionSessions: {
     all: ["nix", "extraction-sessions"] as const,
     detail: (sessionId: number) => ["nix", "extraction-sessions", "detail", sessionId] as const,
+    list: (sourceModule?: string, status?: string) =>
+      ["nix", "extraction-sessions", "list", sourceModule ?? "any", status ?? "any"] as const,
   },
   validation: {
     all: ["nix", "validation"] as const,

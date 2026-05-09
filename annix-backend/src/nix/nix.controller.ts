@@ -11,6 +11,7 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Query,
   Req,
   UploadedFile,
   UploadedFiles,
@@ -193,6 +194,28 @@ export class NixController {
       title: body.title,
       externalReference: body.externalReference,
       ownerUserId: authUser.userId,
+    });
+  }
+
+  @Get("sessions")
+  @UseGuards(AnyUserAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary:
+      "List the current user's Nix extraction sessions, optionally filtered by source module and/or status. Used by the Quotations list page to surface in-progress drafts above the issued quotes table so the user can resume from where they left off.",
+  })
+  @ApiResponse({ status: 200, type: [NixExtractionSession] })
+  async listSessions(
+    @Req() req: Request,
+    @Query("sourceModule") sourceModule?: string,
+    @Query("status") status?: NixExtractionSessionStatus,
+  ): Promise<NixExtractionSession[]> {
+    const authUser = req["authUser"] as AuthenticatedUser;
+    const all = await this.sessionService.sessionsForOwner(authUser.userId);
+    return all.filter((s) => {
+      if (sourceModule && s.sourceModule !== sourceModule) return false;
+      if (status && s.status !== status) return false;
+      return true;
     });
   }
 
