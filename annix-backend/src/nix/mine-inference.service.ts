@@ -70,11 +70,16 @@ export class MineInferenceService {
       "operatingCompany",
     ]);
     const fromFilename = extractFromFilename(extraction.documentName);
+    // Sanitise metadata first; if Gemini hallucinated a filename-shaped
+    // value the sanitiser drops it and we fall back to the filename helper
+    // (which already extracts a doc-number-shaped substring).
     const documentNumber =
-      stringField(metadata, ["documentNumber", "documentNo", "docNumber", "drawingNumber"]) ??
-      fromFilename.documentNumber;
+      sanitiseDocNumber(
+        stringField(metadata, ["documentNumber", "documentNo", "docNumber", "drawingNumber"]),
+      ) ?? sanitiseDocNumber(fromFilename.documentNumber);
     const documentRevision =
-      stringField(metadata, ["revision", "rev", "documentRevision"]) ?? fromFilename.revision;
+      sanitiseRevision(stringField(metadata, ["revision", "rev", "documentRevision"])) ??
+      sanitiseRevision(fromFilename.revision);
     const documentTitle = stringField(metadata, ["documentTitle", "title"]);
 
     // Doc-number prefix gives us a short code (e.g. 'LHU' from 'LHU-0000-EP-...')
@@ -304,6 +309,42 @@ function extractPrefix(documentNumber: string): string | null {
   // before the first non-letter character. Filters out trivial prefixes.
   const match = documentNumber.match(/^([A-Za-z]{2,8})[-_/0-9]/);
   return match ? match[1] : null;
+}
+
+/**
+ * Strips title-block noise that Gemini sometimes mis-classifies as a real
+ * document number (e.g. the full filename, sheet titles with spaces, or a
+ * 'Drawing No: TBC' placeholder). A genuine doc number is a compact
+ * alphanumeric token, optionally with hyphens / underscores / slashes — no
+ * spaces, no file extensions, no descriptive words.
+ *
+ * Returns null when the candidate fails the shape check so the supersession
+ * + cross-quote-reuse logic don't false-positive on filename-shaped strings.
+ */
+function sanitiseDocNumber(num: string | null | undefined): string | null {
+  if (!num) return null;
+  const trimmed = num.trim();
+  if (trimmed.length === 0) return null;
+  if (trimmed.includes(" ")) return null;
+  if (/\.(pdf|docx?|xlsx?|jpe?g|png|tiff?|dwg|dxf|cad|sldprt|sldasm)$/i.test(trimmed)) return null;
+  if (!/^[A-Za-z0-9][A-Za-z0-9._/-]{2,}$/.test(trimmed)) return null;
+  return trimmed;
+}
+
+/**
+ * Filters revision strings to those that look like actual revisions —
+ * compact alphanumerics like '00', '03', 'AF', 'B', optionally with a
+ * 'Rev ' / 'Rev. ' / 'Revision ' prefix. Rejects 'MTO: 01', 'Multiple
+ * Sheets', 'Sheet 1 Of 9' and similar title-block noise that Gemini
+ * sometimes returns for revision when no actual rev field exists.
+ */
+function sanitiseRevision(rev: string | null | undefined): string | null {
+  if (!rev) return null;
+  const trimmed = rev.trim();
+  if (trimmed.length === 0) return null;
+  const stripped = trimmed.replace(/^rev(?:ision)?\.?\s+/i, "").trim();
+  if (!/^[A-Za-z0-9]{1,6}$/.test(stripped)) return null;
+  return trimmed;
 }
 
 function extractFromFilename(filename: string | null | undefined): {

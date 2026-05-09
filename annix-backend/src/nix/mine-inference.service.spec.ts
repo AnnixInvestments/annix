@@ -165,6 +165,27 @@ describe("MineInferenceService", () => {
     expect(result).toBeNull();
   });
 
+  it("rejects filename-shaped 'document numbers' Gemini hallucinated", async () => {
+    mineRegistry.allMines.mockResolvedValue([fakeMine({ id: 1, mineName: "Tharisa" })]);
+    const result = await service.infer(
+      fakeExtraction(
+        { documentNumber: "DOC060526-002 MPS Pipe detail.pdf", revision: "Multiple Sheets" },
+        "DOC060526-002 MPS Pipe detail.pdf",
+      ),
+    );
+    expect(result?.documentNumber).toBe("DOC060526-002");
+    expect(result?.documentRevision).toBeNull();
+  });
+
+  it("rejects revision strings with colons or descriptive text", async () => {
+    mineRegistry.allMines.mockResolvedValue([fakeMine({ id: 1, mineName: "Tharisa" })]);
+    const result = await service.infer(
+      fakeExtraction({ documentNumber: "ABC-1234", revision: "MTO: 01" }, "ABC-1234.pdf"),
+    );
+    expect(result?.documentNumber).toBe("ABC-1234");
+    expect(result?.documentRevision).toBeNull();
+  });
+
   describe("findExistingForMine", () => {
     it("returns null when documentNumber is empty", async () => {
       const result = await service.findExistingForMine(1, "");
