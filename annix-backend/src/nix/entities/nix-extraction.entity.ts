@@ -238,6 +238,15 @@ export class NixExtraction {
   @Column({ name: "mine_country", type: "varchar", length: 64, nullable: true })
   mineCountry?: string;
 
+  /**
+   * Virtual — not persisted. NixExtractionSessionService populates this
+   * with the friendly mine name (resolved via MineRegistryService against
+   * the country table referenced by mineCountry) when a session is loaded,
+   * so the frontend MineInferenceBadge can render 'Tagged: Langer Heinrich
+   * Uranium Mine' instead of 'Tagged: Mine #2'.
+   */
+  mineName?: string;
+
   @ApiProperty({
     description:
       "Confidence score (0..1) of the mine inference. >= 0.8 = strong (auto-attached); 0.5–0.8 = weak (attached but flagged for user review); < 0.5 = no attach.",

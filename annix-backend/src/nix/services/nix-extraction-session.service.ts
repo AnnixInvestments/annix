@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { BaseCrudService } from "../../lib/base-crud.service";
+import { MineRegistryService } from "../../mines/mine-registry.service";
 import {
   NixExtractionSession,
   NixExtractionSessionStatus,
@@ -32,11 +33,48 @@ export class NixExtractionSessionService extends BaseCrudService<
   constructor(
     @InjectRepository(NixExtractionSession)
     repo: Repository<NixExtractionSession>,
+    private readonly mineRegistry: MineRegistryService,
   ) {
     super(repo, {
       entityName: "NixExtractionSession",
       defaultRelations: ["extractions"],
     });
+  }
+
+  /**
+   * Joins each extraction in the session with its mine name, resolved
+   * across the relevant country table. The badge UI relies on
+   * `extraction.mineName` to render 'Tagged: Langer Heinrich Uranium
+   * Mine (80%)' instead of 'Tagged: Mine #2 (80%)'. Without this
+   * post-processing the badge has only `mine_id` + `mine_country` and
+   * can't resolve the friendly name.
+   *
+   * Batched: one allMines() round-trip regardless of session size, then
+   * an in-memory lookup per extraction. Cheap.
+   */
+  private async enrichExtractionMineNames(
+    session: NixExtractionSession,
+  ): Promise<NixExtractionSession> {
+    const extractions = session.extractions ?? [];
+    const needsResolve = extractions.some((e) => e.mineId != null && e.mineCountry != null);
+    if (!needsResolve) return session;
+    const allMines = await this.mineRegistry.allMines();
+    const lookup = new Map<string, string>();
+    for (const m of allMines) {
+      lookup.set(`${m.country}:${m.id}`, m.mineName);
+    }
+    for (const ex of extractions) {
+      if (ex.mineId != null && ex.mineCountry != null) {
+        const name = lookup.get(`${ex.mineCountry}:${ex.mineId}`);
+        if (name) ex.mineName = name;
+      }
+    }
+    return session;
+  }
+
+  override async findOne(id: number): Promise<NixExtractionSession> {
+    const session = await super.findOne(id);
+    return this.enrichExtractionMineNames(session);
   }
 
   /**

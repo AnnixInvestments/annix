@@ -69,6 +69,16 @@ export default function NixExtractionDraftPage() {
     }
   }, [validSessionId, setStatus, showToast, router]);
 
+  // Save & exit — every cell edit / retry / re-extract already persists
+  // the moment the user makes the change, so the draft is implicitly saved
+  // at all times. This button just gives the user an explicit affordance
+  // to leave with confidence and return to the quotes list. Status stays
+  // 'draft', so picking up later resumes from the same review state.
+  const handleSaveAndExit = useCallback(() => {
+    showToast("Draft saved — pick up where you left off from the Quotations list.", "success");
+    router.push("/stock-control/portal/quotations");
+  }, [showToast, router]);
+
   if (!validSessionId) {
     return (
       <div className="p-6">
@@ -118,6 +128,16 @@ export default function NixExtractionDraftPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {session.status === "draft" && (
+            <button
+              type="button"
+              onClick={handleSaveAndExit}
+              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium shadow-sm hover:bg-blue-700"
+              title="Every edit on this page is saved as you make it. This button just takes you back to the quotes list — pick up later from there."
+            >
+              Save & exit
+            </button>
+          )}
           {session.status !== "promoted" && (
             <button
               type="button"
