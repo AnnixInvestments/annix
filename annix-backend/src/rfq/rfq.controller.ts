@@ -38,6 +38,10 @@ import { CreatePumpRfqWithItemDto } from "./dto/create-pump-rfq-with-item.dto";
 import { CreateStraightPipeRfqWithItemDto } from "./dto/create-rfq-item.dto";
 import { CreateUnifiedRfqDto } from "./dto/create-unified-rfq.dto";
 import { PumpCalculationResultDto } from "./dto/pump-calculation-result.dto";
+import {
+  SendRfqClarificationEmailDto,
+  SendRfqClarificationEmailResponseDto,
+} from "./dto/rfq-clarification-email.dto";
 import { RfqDocumentResponseDto } from "./dto/rfq-document.dto";
 import { RfqDraftFullResponseDto, RfqDraftResponseDto, SaveRfqDraftDto } from "./dto/rfq-draft.dto";
 import {
@@ -1048,5 +1052,27 @@ export class RfqController {
     @Param("id", ParseIntPipe) rfqId: number,
   ): Promise<{ suppliersNotified: number; suppliersSkipped: number }> {
     return this.rfqService.notifySuppliersOfRfqUpdate(rfqId);
+  }
+
+  @Post("clarification-email")
+  @ApiOperation({
+    summary: "Send pre-quote clarification email to the customer",
+    description:
+      "Sends a branded email to the customer (To) with the project's CC list (cc) and info@annix.co.za on BCC. The email lists missing drawing references and valve specifications that must be provided before quotation. Public — does not require customer auth so unregistered tender drops can also trigger it.",
+  })
+  @ApiBody({ type: SendRfqClarificationEmailDto })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: "Email queued for delivery",
+    type: SendRfqClarificationEmailResponseDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: "Email failed to send",
+  })
+  async sendClarificationEmail(
+    @Body() dto: SendRfqClarificationEmailDto,
+  ): Promise<SendRfqClarificationEmailResponseDto> {
+    return this.rfqService.sendClarificationEmail(dto);
   }
 }

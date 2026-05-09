@@ -5,6 +5,10 @@ import { BoltMass } from "../bolt-mass/entities/bolt-mass.entity";
 import { Boq } from "../boq/entities/boq.entity";
 import { BoqSupplierAccess, SupplierBoqStatus } from "../boq/entities/boq-supplier-access.entity";
 import { EmailService } from "../email/email.service";
+import {
+  buildRfqClarificationEmailHtml,
+  buildRfqClarificationEmailText,
+} from "../email/templates/rfq-clarification";
 import { FlangeDimension } from "../flange-dimension/entities/flange-dimension.entity";
 import { fromISO, now } from "../lib/datetime";
 import { NbNpsLookup } from "../nb-nps-lookup/entities/nb-nps-lookup.entity";
@@ -22,6 +26,7 @@ import { CreatePumpRfqWithItemDto } from "./dto/create-pump-rfq-with-item.dto";
 import { CreateStraightPipeRfqWithItemDto } from "./dto/create-rfq-item.dto";
 import { CreateUnifiedRfqDto, UnifiedStraightPipeDto } from "./dto/create-unified-rfq.dto";
 import { PumpCalculationResultDto } from "./dto/pump-calculation-result.dto";
+import { SendRfqClarificationEmailDto } from "./dto/rfq-clarification-email.dto";
 import {
   PaginatedRfqResponseDto,
   RfqPaginationQueryDto,
@@ -1591,5 +1596,66 @@ export class RfqService {
     );
 
     return { suppliersNotified: counts.notified, suppliersSkipped: counts.skipped };
+  }
+
+  /**
+   * Send a pre-quote clarification email back to the customer when the
+   * RFQ extraction surfaced missing drawings or incomplete valve specs.
+   * info@annix.co.za is always BCC'd so the internal team has audit
+   * visibility without the customer seeing the address.
+   *
+   * No DB persistence in v1.2.0 — audit trail will land in v1.2.1
+   * via a dedicated RfqClarificationRequest entity.
+   */
+  async sendClarificationEmail(dto: SendRfqClarificationEmailDto): Promise<{
+    success: boolean;
+    error?: string;
+  }> {
+    try {
+      const projectLabel = dto.projectName ? ` — ${dto.projectName}` : "";
+      const refLabel = dto.rfqReference ? ` (${dto.rfqReference})` : "";
+      const subject = dto.subject || `Pre-quote clarifications required${projectLabel}${refLabel}`;
+
+      const html = buildRfqClarificationEmailHtml({
+        customerName: dto.customerName ?? null,
+        projectName: dto.projectName ?? null,
+        rfqReference: dto.rfqReference ?? null,
+        missingDrawings: dto.missingDrawings,
+        valveSpecGaps: dto.valveSpecGaps,
+        customNote: dto.customNote ?? null,
+      });
+
+      const text = buildRfqClarificationEmailText({
+        customerName: dto.customerName ?? null,
+        projectName: dto.projectName ?? null,
+        rfqReference: dto.rfqReference ?? null,
+        missingDrawings: dto.missingDrawings,
+        valveSpecGaps: dto.valveSpecGaps,
+        customNote: dto.customNote ?? null,
+      });
+
+      const success = await this.emailService.sendEmail({
+        to: dto.to,
+        cc: dto.cc,
+        bcc: "info@annix.co.za",
+        subject,
+        html,
+        text,
+        isTransactional: true,
+      });
+
+      if (!success) {
+        return { success: false, error: "Email service returned a failed delivery status" };
+      }
+
+      this.logger.log(
+        `Pre-quote clarification email sent to ${dto.to} — ${dto.missingDrawings.length} drawings missing, ${dto.valveSpecGaps.length} valve spec gaps`,
+      );
+      return { success: true };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Failed to send clarification email: ${errorMessage}`);
+      return { success: false, error: errorMessage };
+    }
   }
 }
