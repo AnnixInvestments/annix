@@ -3,6 +3,7 @@
 import {
   type HdpeNominalSize,
   pipeDimensions as hdpePipeDimensions,
+  pnClassForSdr,
   type SdrValue,
   sans1123StubAssemblyDescription,
   selectSdrForPressure,
@@ -222,7 +223,28 @@ export default function BOQStep(props: {
       const grade = hdpeGrade || "PE100";
       const sdrLabel = sdrNumber ? ` SDR${sdrNumber}` : "";
       const pnLabel = pressureClass ? ` ${pressureClass}` : "";
-      return `${nb}OD ${grade}${sdrLabel}${pnLabel} HDPE Pipe x${pipeLength}m${flangeSuffix}`.trim();
+      // HDPE pipework terminates against valves / pumps / steel mains
+      // via stub end + backing flange. We surface the SANS 1123 spec
+      // unconditionally so the supplier knows what flange to drop in
+      // — PN is taken from globalSpecs first, then derived from the
+      // SDR via the PE100 SDR↔PN table, then from the parsed
+      // pressureClass label as a last resort.
+      const rawPnFromGlobal = globalSpecs?.hdpePressureRating;
+      const pnFromGlobal = rawPnFromGlobal ? Number(rawPnFromGlobal) : null;
+      const pnFromSdrLookup =
+        sdrNumber != null ? pnClassForSdr(sdrNumber as SdrValue, "PE100") : null;
+      const pnFromLabel = pressureClass
+        ? Number(String(pressureClass).replace(/[^\d.]/g, ""))
+        : null;
+      const pnNumberForStub =
+        pnFromGlobal ||
+        pnFromSdrLookup ||
+        (pnFromLabel && Number.isFinite(pnFromLabel) ? pnFromLabel : null);
+      const stubAssembly = pnNumberForStub
+        ? sans1123StubAssemblyDescription(pnNumberForStub)
+        : null;
+      const stubSuffix = stubAssembly ? `, ${stubAssembly}` : "";
+      return `${nb}OD ${grade}${sdrLabel}${pnLabel} HDPE Pipe x${pipeLength}m${flangeSuffix}${stubSuffix}`.trim();
     }
     if (materialType === "pvc") {
       const typeLabel = pvcType ? ` ${pvcType}` : "";
@@ -385,6 +407,34 @@ export default function BOQStep(props: {
     const sdr = Number(sdrCandidate) as SdrValue;
     const dims = hdpePipeDimensions(nb as HdpeNominalSize, sdr, "PE100");
     return { od: dims.odMm, wt: dims.wallMm, sdr };
+  };
+
+  // Effective HDPE PN for the row's stub-flange spec. Priority:
+  // 1. globalSpecs.hdpePressureRating (explicit project-level pick)
+  // 2. derived from the resolved SDR via PE100 SDR↔PN table
+  // (e.g. SDR 11 → PN16, SDR 17 → PN10, SDR 6 → PN25). Returns null
+  // only when neither input is available — caller suppresses the
+  // suffix in that case.
+  const resolveHdpePn = (sdr: SdrValue): number | null => {
+    const rawGlobalPn = globalSpecs?.hdpePressureRating;
+    if (rawGlobalPn) {
+      const pn = Number(rawGlobalPn);
+      if (Number.isFinite(pn) && pn > 0) return pn;
+    }
+    const pnFromSdr = pnClassForSdr(sdr, "PE100");
+    return pnFromSdr ?? null;
+  };
+
+  // Bend centre-to-face (mm). Uses the standard fabricated-bend
+  // formula C/F = R × tan(θ/2) where R = NB × bend-ratio multiplier
+  // (e.g. 1.5 for 1.5D). Matches the convention BOQ engineers
+  // expect on the row description so the supplier can verify
+  // dimensional fit at quote stage.
+  const bendCenterToFaceMm = (nb: number, angleDeg: number, bendType: string): number => {
+    const radiusFactor = parseFloat((bendType || "1.5D").replace("D", "")) || 1.5;
+    const radius = nb * radiusFactor;
+    const halfAngleRad = (angleDeg * Math.PI) / 180 / 2;
+    return Math.round(radius * Math.tan(halfAngleRad));
   };
 
   // ======================
@@ -658,22 +708,29 @@ export default function BOQStep(props: {
         const rawBendEndConfig = entry.specs?.pipeEndConfiguration;
         const bendFlangeSuffix = flangeConfigSuffix(rawBendEndConfig, bendMaterialType, flangeSpec);
         // SANS 1123 stub-end + backing-flange annotation for HDPE
-        // bends with a flanged end config. The PN drives the table
-        // number; SDR labels the wall thickness so the supplier
-        // knows what pipe class to source against.
+        // bends. Always emitted for HDPE rows — termination against
+        // valves / pumps / steel mains is the assumed jointing
+        // method unless the project is explicitly butt-fusion-only.
+        // PN derived from globalSpecs first, then from the resolved
+        // SDR via the PE100 SDR↔PN table (so a project that only
+        // specified an SDR still gets the right backing-flange spec).
+        const hdpeBendSdr = hdpeDims ? hdpeDims.sdr : null;
+        const hdpeBendPn = hdpeBendSdr ? resolveHdpePn(hdpeBendSdr) : null;
         const hdpeBendStubAssembly =
-          bendMaterialType === "hdpe" &&
-          rawBendEndConfig &&
-          rawBendEndConfig !== "PE" &&
-          globalSpecs?.hdpePressureRating
-            ? sans1123StubAssemblyDescription(Number(globalSpecs.hdpePressureRating))
+          bendMaterialType === "hdpe" && hdpeBendPn
+            ? sans1123StubAssemblyDescription(hdpeBendPn)
             : null;
         const hdpeBendSdrLabel =
-          bendMaterialType === "hdpe" && hdpeDims ? ` PE100 SDR${hdpeDims.sdr}` : "";
+          bendMaterialType === "hdpe" && hdpeBendSdr ? ` PE100 SDR${hdpeBendSdr}` : "";
         const hdpeBendStubSuffix = hdpeBendStubAssembly ? `, ${hdpeBendStubAssembly}` : "";
+        // Centre-to-face dimension on the bend description — gives
+        // the supplier the take-off geometry without needing to
+        // open the bend table.
+        const bendCfMm = bendCenterToFaceMm(nb, angle, bendType);
+        const bendCfSuffix = bendCfMm > 0 ? `, ${bendCfMm}mm C/F` : "";
         consolidatedBends.set(key, {
           description:
-            `${nb}NB ${angle}° ${bendType} Bend ${bendMaterialLabel}${hdpeBendSdrLabel} ${schedule ? `Sch${schedule.replace("Sch", "")}` : ""}${bendFlangeSuffix}${hdpeBendStubSuffix}`.trim(),
+            `${nb}NB ${angle}° ${bendType} Bend ${bendMaterialLabel}${hdpeBendSdrLabel} ${schedule ? `Sch${schedule.replace("Sch", "")}` : ""}${bendFlangeSuffix}${bendCfSuffix}${hdpeBendStubSuffix}`.trim(),
           qty: qty,
           unit: "Each",
           weight: bendWeight * qty,
@@ -1060,17 +1117,18 @@ export default function BOQStep(props: {
           flangeSpec,
         );
         // SANS 1123 stub-end + backing-flange annotation for HDPE
-        // fittings with a flanged end config. Mirrors the bend logic.
+        // fittings — always emitted (mirrors the bend logic). PN
+        // derived from globalSpecs first, then from the resolved
+        // SDR via the PE100 SDR↔PN table.
+        const hdpeFittingSdrValue = hdpeFittingDims ? hdpeFittingDims.sdr : null;
+        const hdpeFittingPn = hdpeFittingSdrValue ? resolveHdpePn(hdpeFittingSdrValue) : null;
         const hdpeFittingStubAssembly =
-          fittingMaterialType === "hdpe" &&
-          fittingEndConfig &&
-          fittingEndConfig !== "PE" &&
-          globalSpecs?.hdpePressureRating
-            ? sans1123StubAssemblyDescription(Number(globalSpecs.hdpePressureRating))
+          fittingMaterialType === "hdpe" && hdpeFittingPn
+            ? sans1123StubAssemblyDescription(hdpeFittingPn)
             : null;
         const hdpeFittingSdrLabel =
-          fittingMaterialType === "hdpe" && hdpeFittingDims
-            ? ` PE100 SDR${hdpeFittingDims.sdr}`
+          fittingMaterialType === "hdpe" && hdpeFittingSdrValue
+            ? ` PE100 SDR${hdpeFittingSdrValue}`
             : "";
         const hdpeFittingStubSuffix = hdpeFittingStubAssembly ? `, ${hdpeFittingStubAssembly}` : "";
         consolidatedFittings.set(key, {
@@ -1394,7 +1452,12 @@ export default function BOQStep(props: {
       const rawTotalFlangeWeldLength = entry.calculation?.totalFlangeWeldLength;
       const flangeWeldLength = rawTotalFlangeWeldLength || 0;
       const rawPipeWeldsPerUnit = entry.calculation?.pipeWeldsPerUnit;
-      const pipeWeldCount = rawPipeWeldsPerUnit || 0;
+      // For HDPE pipes the steel-only calc service never sets
+      // pipeWeldsPerUnit. Fall back to "1 butt-fusion weld per pipe
+      // segment" — counts the joint between this pipe and the next
+      // run-of-pipe item. Steel keeps the original behaviour because
+      // its calc service populates pipeWeldsPerUnit explicitly.
+      const pipeWeldCount = rawPipeWeldsPerUnit || (materialType === "hdpe" ? 1 : 0);
       const rawOutsideDiameterMm3 = entry.calculation?.outsideDiameterMm;
       const rawWallThicknessMm3 = entry.calculation?.wallThicknessMm;
       const hdpePipeDims =
