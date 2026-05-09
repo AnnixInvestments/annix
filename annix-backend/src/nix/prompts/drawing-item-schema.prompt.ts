@@ -111,7 +111,7 @@ export const DRAWING_ITEM_SCHEMA_EXAMPLE = `{
     }
   ],
   "specifications": { "referencedCodes": ["R1", "R2a", "1000/3", "SABS62"] },
-  "metadata": { "project": "...", "customer": "...", "drawingNumber": "...", "revision": "...", "date": "...", "drawnBy": "..." }
+  "metadata": { "project": "...", "customer": "...", "client": "Langer Heinrich Uranium", "operatingCompany": "Paladin Energy", "drawingNumber": "...", "revision": "...", "date": "...", "drawnBy": "..." }
 }`;
 
 /**

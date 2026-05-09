@@ -68,7 +68,13 @@ const ASCA_DRAWING_PROMPT = composeDrawingPrompt({
     "You are Nix, extracting line items from an ASCA (AU Industries Stock Control) workshop / spool / fabrication drawing. The user will upload spec documents separately, so do NOT try to define the paint or lining systems here — just capture the codes the drawing references and the item-level data.",
   itemTypesGuidance:
     "Items may be any fabricated industrial product: pipes/spools, bends, fittings, flanges, tanks, chutes, hoppers, conveyor pulleys, drums, screens, launders, underpans, plate work, structural assemblies. Identify what the drawing actually shows — do not force everything into a pipes-only shape.",
-  closing: `Also extract drawing-level metadata: project, customer, drawing number, sheet of, revision, date, drawn-by.
+  closing: `Also extract drawing-level metadata: project, customer, drawing number, sheet of, revision, date, drawn-by, client, operatingCompany.
+
+CLIENT / MINE / OPERATING COMPANY metadata — read carefully:
+- 'client' is the END CUSTOMER / MINE / project owner (e.g. "Langer Heinrich Uranium", "Anglo American Platinum Mogalakwena Mine", "Sibanye Driefontein"). It is NOT the supplier or fabricator (NOT "Mining Pressure Systems", "Steel Africa", etc.).
+- 'operatingCompany' is the mining group that runs the mine (e.g. "Paladin Energy" for Langer Heinrich Uranium, "Anglo American" for Mogalakwena).
+- Even if the title block doesn't have an explicit "Client:" label, the mine name is often displayed prominently at the top of the page (large header, sometimes a logo). Capture it. e.g. "LANGER HEINRICH URANIUM" appearing as the page header IS the client/mine name.
+- Use null when the mine isn't identifiable from the page.
 
 'referencedCodes' is the list of paint / material-class / lining codes the drawing cites without defining (so the spec extraction step can resolve them). Mark any uncertain value with confidence < 0.7.`,
 });
@@ -164,8 +170,14 @@ Worked example — a paint-systems specification document might produce:
       "pageReference": 7
     }
   },
-  "metadata": { "documentTitle": "...", "revision": "...", "date": "..." }
+  "metadata": { "documentTitle": "...", "documentNumber": "...", "revision": "...", "date": "...", "client": "Langer Heinrich Uranium", "operatingCompany": "Paladin Energy" }
 }
+
+CLIENT / MINE / OPERATING COMPANY metadata in the response — read carefully:
+- 'client' is the END CUSTOMER / MINE / project owner (e.g. "Langer Heinrich Uranium", "Anglo American Platinum Mogalakwena Mine", "Sibanye Driefontein"). It is who the spec is FOR — usually the entity whose logo / name dominates the title page.
+- 'operatingCompany' is the mining group that owns the mine (e.g. "Paladin Energy" for Langer Heinrich, "Anglo American" for Mogalakwena).
+- The mine name is often displayed prominently as the page header even when there's no explicit "Client:" label. e.g. "LANGER HEINRICH URANIUM" appearing in large type at the top of the cover page IS the client/mine name — capture it.
+- Use null when the mine isn't identifiable.
 
 Respond ONLY with valid JSON of the shape:
 {
