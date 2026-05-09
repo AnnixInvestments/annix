@@ -59,6 +59,7 @@ import {
 import { browserBaseUrl } from "@/lib/api-config";
 import BOQStep from "./steps/BOQStep";
 import ItemUploadStep from "./steps/ItemUploadStep";
+import PreQuoteClarificationsStep from "./steps/PreQuoteClarificationsStep";
 import ProjectDetailsStep from "./steps/ProjectDetailsStep";
 import ReviewSubmitStep from "./steps/ReviewSubmitStep";
 import SpecificationsStep from "./steps/SpecificationsStep";
@@ -2760,6 +2761,22 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
   // State for save progress feedback
   const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
 
+  // Pre-quote clarifications: PreQuoteClarificationsStep populates
+  // these on Send/Skip and the BOQ step reads them. Empty Set means
+  // "nothing to omit" — the customer either had nothing to clarify
+  // or clarified everything.
+  const [omittedItemIds, setOmittedItemIds] = useState<Set<string>>(new Set());
+  const [clarificationsSkipped, setClarificationsSkipped] = useState(false);
+
+  const handleClarificationsProceed = useCallback(
+    (ids: Set<string>, skipped: boolean) => {
+      setOmittedItemIds(ids);
+      setClarificationsSkipped(skipped);
+      handleNextStep();
+    },
+    [handleNextStep],
+  );
+
   // Save progress handler - saves current RFQ data to server
   const handleSaveProgress = async () => {
     log.debug("💾 handleSaveProgress called");
@@ -3125,7 +3142,12 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
         },
         { number: 2, title: "Items", description: "Add pipes, bends, and fittings" },
         { number: 3, title: "Review & Submit", description: "Final review and submission" },
-        { number: 4, title: "BOQ", description: "Bill of Quantities summary" },
+        {
+          number: 4,
+          title: "Pre-Quote Clarifications",
+          description: "Missing drawings + mining valve specs",
+        },
+        { number: 5, title: "BOQ", description: "Bill of Quantities summary" },
       ]
     : [
         {
@@ -3140,7 +3162,12 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
         },
         { number: 3, title: "Items", description: "Add pipes, bends, and fittings" },
         { number: 4, title: "Review & Submit", description: "Final review and submission" },
-        { number: 5, title: "BOQ", description: "Bill of Quantities summary" },
+        {
+          number: 5,
+          title: "Pre-Quote Clarifications",
+          description: "Missing drawings + mining valve specs",
+        },
+        { number: 6, title: "BOQ", description: "Bill of Quantities summary" },
       ];
 
   const renderCurrentStep = () => {
@@ -3164,11 +3191,20 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
           return <ReviewSubmitStep onNextStep={handleNextStep} onPrevStep={handlePrevStep} />;
         case 4:
           return (
+            <PreQuoteClarificationsStep
+              onPrevStep={handlePrevStep}
+              onProceed={handleClarificationsProceed}
+            />
+          );
+        case 5:
+          return (
             <BOQStep
               onPrevStep={handlePrevStep}
               onSubmit={handleSubmit}
               onResubmit={handleResubmit}
               isEditing={isEditing}
+              omittedItemIds={omittedItemIds}
+              clarificationsSkipped={clarificationsSkipped}
             />
           );
         default:
@@ -3196,11 +3232,20 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
           return <ReviewSubmitStep onNextStep={handleNextStep} onPrevStep={handlePrevStep} />;
         case 5:
           return (
+            <PreQuoteClarificationsStep
+              onPrevStep={handlePrevStep}
+              onProceed={handleClarificationsProceed}
+            />
+          );
+        case 6:
+          return (
             <BOQStep
               onPrevStep={handlePrevStep}
               onSubmit={handleSubmit}
               onResubmit={handleResubmit}
               isEditing={isEditing}
+              omittedItemIds={omittedItemIds}
+              clarificationsSkipped={clarificationsSkipped}
             />
           );
         default:
@@ -3780,23 +3825,45 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
                 </>
               )}
             </button>
-            {currentStep < 4 ? (
-              <button
-                onClick={nextStep}
-                className="px-4 py-2 rounded-lg font-medium text-sm transition-all hover:opacity-90"
-                style={{ backgroundColor: "#FFA500", color: "#323288" }}
-              >
-                Next →
-              </button>
-            ) : currentStep === 4 ? (
-              <button
-                onClick={handleNextStep}
-                className="px-4 py-2 rounded-lg font-medium text-sm transition-all hover:opacity-90"
-                style={{ backgroundColor: "#4CAF50", color: "#FFFFFF" }}
-              >
-                Submit RFQ →
-              </button>
-            ) : null}
+            {(() => {
+              // Footer Next/Submit button rules — split out per
+              // mode because Nix mode skips the Specs step. Keys:
+              //
+              //   <last-non-action-step  → "Next →" (orange)
+              //   === clarifications     → null (the clarifications
+              //                             step uses its own
+              //                             Send/Skip buttons)
+              //   === BOQ                → null (BOQ has its own
+              //                             Submit button)
+              const isNix = rfqData.useNix;
+              const reviewStep = isNix ? 3 : 4;
+              const clarStep = isNix ? 4 : 5;
+              const boqStep = isNix ? 5 : 6;
+              if (currentStep < reviewStep) {
+                return (
+                  <button
+                    onClick={nextStep}
+                    className="px-4 py-2 rounded-lg font-medium text-sm transition-all hover:opacity-90"
+                    style={{ backgroundColor: "#FFA500", color: "#323288" }}
+                  >
+                    Next →
+                  </button>
+                );
+              }
+              if (currentStep === reviewStep) {
+                return (
+                  <button
+                    onClick={handleNextStep}
+                    className="px-4 py-2 rounded-lg font-medium text-sm transition-all hover:opacity-90"
+                    style={{ backgroundColor: "#FFA500", color: "#323288" }}
+                  >
+                    Next →
+                  </button>
+                );
+              }
+              if (currentStep === clarStep || currentStep === boqStep) return null;
+              return null;
+            })()}
           </div>
         </div>
       </div>
