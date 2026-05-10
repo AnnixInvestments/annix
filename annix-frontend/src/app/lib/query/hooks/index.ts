@@ -692,6 +692,7 @@ export type {
   ValidationIssue,
 } from "./nix/useNix";
 export {
+  extractProductSpecFromDataSheet,
   type NixApp,
   type NixCapability,
   type NixExtractionDocumentUrlResponse,

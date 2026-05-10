@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { fromISO } from "@/app/lib/datetime";
 import {
@@ -89,6 +90,7 @@ function formatZar(value: number): string {
 }
 
 export default function QuotationsPage() {
+  const router = useRouter();
   const nixQuoteFlag = useFeatureFlagEnabled(NIX_QUOTE_FROM_DOCS_FLAG);
   const isNixEnabled = nixQuoteFlag.enabled;
   const draftsQuery = useNixExtractionSessions(
@@ -96,6 +98,11 @@ export default function QuotationsPage() {
   );
   const draftsData = draftsQuery.data;
   const drafts = isNixEnabled && draftsData ? draftsData : [];
+  const promotedQuery = useNixExtractionSessions(
+    isNixEnabled ? { sourceModule: "asca", status: "promoted" } : undefined,
+  );
+  const promotedData = promotedQuery.data;
+  const promotedSessions = isNixEnabled && promotedData ? promotedData : [];
   const deleteMutation = useDeleteNixExtractionSession();
   const { confirm, ConfirmDialog } = useConfirm();
 
@@ -181,8 +188,8 @@ export default function QuotationsPage() {
       </div>
 
       <div className="mb-4 rounded-md bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800">
-        Preview — issued quotes table below shows scaffold content. The in-progress drafts section
-        above is real.
+        Preview — issued quotes table at the bottom of this page is still scaffold content. The
+        in-progress drafts and promoted quotes sections above it are real.
       </div>
 
       {isNixEnabled && (
@@ -270,9 +277,29 @@ export default function QuotationsPage() {
                     const startedAt = fromISO(s.createdAt).toFormat("dd MMM yyyy");
                     const updatedAt = fromISO(s.updatedAt).toFormat("dd MMM yyyy HH:mm");
                     const titleText = s.title ? s.title : `Draft from documents — session #${s.id}`;
+                    const draftHref = `/stock-control/portal/quotations/drafts/${s.id}`;
+                    const openDraft = () => router.push(draftHref);
+                    const onRowKeyDown = (event: React.KeyboardEvent<HTMLTableRowElement>) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        openDraft();
+                      }
+                    };
                     return (
-                      <tr key={s.id} className="hover:bg-gray-50 dark:hover:bg-gray-900/30">
-                        <td className="px-3 py-3 w-8">
+                      <tr
+                        key={s.id}
+                        onClick={openDraft}
+                        onKeyDown={onRowKeyDown}
+                        role="button"
+                        tabIndex={0}
+                        aria-label={`Open ${ref} — ${titleText}`}
+                        className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900/30 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-[#323288]/40"
+                      >
+                        <td
+                          className="px-3 py-3 w-8"
+                          onClick={(e) => e.stopPropagation()}
+                          onKeyDown={(e) => e.stopPropagation()}
+                        >
                           <input
                             type="checkbox"
                             checked={selectedIds.has(s.id)}
@@ -281,21 +308,9 @@ export default function QuotationsPage() {
                             className="rounded border-gray-300"
                           />
                         </td>
-                        <td className="px-4 py-3 text-sm font-mono">
-                          <Link
-                            href={`/stock-control/portal/quotations/drafts/${s.id}`}
-                            className="text-[#323288] hover:underline"
-                          >
-                            {ref}
-                          </Link>
-                        </td>
+                        <td className="px-4 py-3 text-sm font-mono text-[#323288]">{ref}</td>
                         <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
-                          <Link
-                            href={`/stock-control/portal/quotations/drafts/${s.id}`}
-                            className="hover:underline"
-                          >
-                            {titleText}
-                          </Link>
+                          {titleText}
                         </td>
                         <td className="px-4 py-3 text-sm text-right text-gray-700 dark:text-gray-300">
                           {docCount}
@@ -306,7 +321,11 @@ export default function QuotationsPage() {
                         <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
                           {updatedAt}
                         </td>
-                        <td className="px-4 py-3 text-right">
+                        <td
+                          className="px-4 py-3 text-right"
+                          onClick={(e) => e.stopPropagation()}
+                          onKeyDown={(e) => e.stopPropagation()}
+                        >
                           <button
                             type="button"
                             onClick={() => void handleDeleteDraft(s.id, ref)}
@@ -330,6 +349,84 @@ export default function QuotationsPage() {
                               />
                             </svg>
                           </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )}
+
+      {isNixEnabled && (
+        <section className="mb-6">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+              Promoted quotes (from documents)
+            </h2>
+          </div>
+          {promotedQuery.isLoading ? (
+            <p className="text-sm text-gray-500">Loading…</p>
+          ) : promotedSessions.length === 0 ? (
+            <p className="text-sm text-gray-500">
+              Quotes you promote from a draft will appear here, with all items pooled by their
+              coating + lining specification.
+            </p>
+          ) : (
+            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead className="bg-gray-50 dark:bg-gray-900/20">
+                  <tr>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                      Quote #
+                    </th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                      Title
+                    </th>
+                    <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+                      Documents
+                    </th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                      Promoted
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {promotedSessions.map((s) => {
+                    const promoted = s.promotedRef;
+                    const ref = promoted ? promoted : quoteRefForSession(s);
+                    const docCount = s.extractions ? s.extractions.length : 0;
+                    const promotedAt = fromISO(s.updatedAt).toFormat("dd MMM yyyy HH:mm");
+                    const titleText = s.title ? s.title : `Quote from documents — session #${s.id}`;
+                    const quoteHref = `/stock-control/portal/quotations/quotes/${s.id}`;
+                    const openQuote = () => router.push(quoteHref);
+                    const onRowKeyDown = (event: React.KeyboardEvent<HTMLTableRowElement>) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        openQuote();
+                      }
+                    };
+                    return (
+                      <tr
+                        key={s.id}
+                        onClick={openQuote}
+                        onKeyDown={onRowKeyDown}
+                        role="button"
+                        tabIndex={0}
+                        aria-label={`Open ${ref} — ${titleText}`}
+                        className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900/30 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-[#323288]/40"
+                      >
+                        <td className="px-4 py-3 text-sm font-mono text-[#323288]">{ref}</td>
+                        <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
+                          {titleText}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-right text-gray-700 dark:text-gray-300">
+                          {docCount}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                          {promotedAt}
                         </td>
                       </tr>
                     );

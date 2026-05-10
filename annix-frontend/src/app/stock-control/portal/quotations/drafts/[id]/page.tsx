@@ -3,8 +3,7 @@
 import { isArray, isString } from "es-toolkit/compat";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useCallback, useState } from "react";
-import { FormModal } from "@/app/components/modals/FormModal";
+import { useCallback } from "react";
 import { useToast } from "@/app/components/Toast";
 import { NixDraftReview } from "@/app/lib/nix/components/draft";
 import {
@@ -43,30 +42,30 @@ export default function NixExtractionDraftPage() {
     await sessionQuery.refetch();
   }, [sessionQuery]);
 
-  const [promoteOpen, setPromoteOpen] = useState(false);
-  const [promoteRef, setPromoteRef] = useState("");
-
-  const handlePromoteOpen = useCallback(() => {
-    setPromoteRef("");
-    setPromoteOpen(true);
-  }, []);
-
-  const handlePromoteSubmit = useCallback(async () => {
-    if (!validSessionId) return;
+  const handlePromote = useCallback(async () => {
+    if (!validSessionId || !session) return;
+    const ref = quoteRefForSession(session);
+    const extractions = session.extractions;
+    const drawingExtractions = extractions ? extractions : [];
+    const drawingCount = drawingExtractions.filter((e) => e.documentRole === "drawing").length;
+    const proceed = await confirm({
+      title: `Promote ${ref}?`,
+      message: `This will build a customer-facing quote from ${drawingCount} drawing extraction${drawingCount === 1 ? "" : "s"} — items pooled by coating + lining spec — and lock the draft. You'll still be able to view the draft, but further edits will need to be made on the quote.`,
+      confirmLabel: "Promote to quote",
+      variant: "info",
+    });
+    if (!proceed) return;
     try {
-      const trimmed = promoteRef.trim();
       await setStatus.mutateAsync({
         sessionId: validSessionId,
         status: "promoted",
-        promotedRef: trimmed.length > 0 ? trimmed : undefined,
+        promotedRef: ref,
       });
-      setPromoteOpen(false);
-      showToast("Session promoted to quote.", "success");
-      router.push("/stock-control/portal/quotations");
+      router.push(`/stock-control/portal/quotations/quotes/${validSessionId}`);
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to promote session", "error");
     }
-  }, [validSessionId, setStatus, showToast, router, promoteRef]);
+  }, [validSessionId, session, confirm, setStatus, router, showToast]);
 
   const handleArchive = useCallback(async () => {
     if (!validSessionId) return;
@@ -184,12 +183,20 @@ export default function NixExtractionDraftPage() {
           {session.status !== "promoted" && (
             <button
               type="button"
-              onClick={handlePromoteOpen}
+              onClick={handlePromote}
               disabled={setStatus.isPending}
               className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium shadow-sm hover:bg-green-700 disabled:opacity-50"
             >
               Promote to quote
             </button>
+          )}
+          {session.status === "promoted" && (
+            <Link
+              href={`/stock-control/portal/quotations/quotes/${session.id}`}
+              className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium shadow-sm hover:bg-green-700"
+            >
+              View quote
+            </Link>
           )}
           {session.status !== "archived" && session.status !== "promoted" && (
             <button
@@ -210,27 +217,6 @@ export default function NixExtractionDraftPage() {
         onSessionChanged={handleSessionChanged}
         addMoreDocumentsHref={`/stock-control/portal/quotations/new-from-documents?session=${session.id}`}
       />
-
-      <FormModal
-        isOpen={promoteOpen}
-        onClose={() => setPromoteOpen(false)}
-        onSubmit={handlePromoteSubmit}
-        title="Promote session to quote"
-        submitLabel="Promote"
-        loading={setStatus.isPending}
-      >
-        <p className="text-sm text-gray-700 mb-3">
-          Optionally enter the reference of the quote this session was used to create. Leave blank
-          to promote without a reference.
-        </p>
-        <input
-          type="text"
-          value={promoteRef}
-          onChange={(event) => setPromoteRef(event.target.value)}
-          placeholder="e.g. QUO-2026-0193"
-          className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
-        />
-      </FormModal>
 
       {ConfirmDialog}
     </div>

@@ -1,3 +1,4 @@
+import { isString } from "es-toolkit/compat";
 import { sessionExpiredEvent } from "@/app/components/SessionExpiredModal";
 import { anyPortalAuthHeaders } from "@/app/lib/api/portalTokenStores";
 import { fromISO } from "@/app/lib/datetime";
@@ -349,6 +350,53 @@ export const useNixExtractionDocumentUrl = createQueryHook(
     staleTime: 5 * 60 * 1000,
   },
 );
+
+/**
+ * Reads a single product data sheet (PDF / image) and asks Gemini to extract
+ * a quoter-friendly `brand` + `description` formatted for the
+ * QuoteSpecsEditor supplier-row layout. Used by the 'Upload data sheet'
+ * affordance on each custom supplier row to auto-fill the description.
+ *
+ * Multipart upload, so we hand-roll the request rather than going through
+ * `nixRequest` (which assumes JSON bodies).
+ */
+export async function extractProductSpecFromDataSheet(
+  file: File,
+  kind: "coating" | "lining",
+  portalContext?: PortalContext,
+): Promise<{ brand: string | null; description: string | null }> {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("kind", kind);
+
+  const headers: Record<string, string> = { ...nixAuthHeaders(portalContext) };
+  const response = await retryableFetch(`${browserBaseUrl()}/nix/extract-product-spec`, {
+    method: "POST",
+    headers,
+    body: formData,
+  });
+  if (!response.ok) {
+    if (response.status === 401) {
+      sessionExpiredEvent.emit();
+      throw new Error("Session expired — please sign in again.");
+    }
+    const body = await response.json().catch(() => null);
+    const bodyMessage = body ? body.message : null;
+    const bodyError = body ? body.error : null;
+    const serverMessage = isString(bodyMessage)
+      ? bodyMessage
+      : isString(bodyError)
+        ? bodyError
+        : null;
+    const detail = serverMessage ? ` — ${serverMessage}` : "";
+    console.warn(
+      `[extractProductSpecFromDataSheet] ${response.status} ${response.statusText}${detail}`,
+      body,
+    );
+    throw new Error(`Failed to extract product spec: ${response.statusText}${detail}`);
+  }
+  return response.json();
+}
 
 /* ------------------------------------------------------------------
  * Nix extraction sessions (#253 task B)

@@ -1046,6 +1046,78 @@ export class NixController {
     const region = await this.documentAnnotationService.saveExtractionRegion(dto, undefined);
     return { success: true, id: region.id };
   }
+
+  @Post("extract-product-spec")
+  @UseGuards(AnyUserAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary:
+      "Extract brand + description from a product data sheet PDF/image — feeds the QuoteSpecsEditor auto-fill.",
+  })
+  @ApiConsumes("multipart/form-data")
+  @ApiBody({
+    schema: {
+      type: "object",
+      properties: {
+        file: { type: "string", format: "binary" },
+        kind: { type: "string", enum: ["coating", "lining"] },
+      },
+      required: ["file", "kind"],
+    },
+  })
+  @ApiResponse({
+    status: 201,
+    description: "Extracted brand + description, both nullable.",
+    schema: {
+      type: "object",
+      properties: {
+        brand: { type: "string", nullable: true },
+        description: { type: "string", nullable: true },
+      },
+    },
+  })
+  @UseInterceptors(FileInterceptor("file"))
+  async extractProductSpecFromUpload(
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: Record<string, unknown>,
+    @Req() req: { body?: Record<string, unknown> },
+  ): Promise<{ brand: string | null; description: string | null }> {
+    const reqAny = req as { body?: Record<string, unknown> };
+    const reqBody = reqAny.body;
+    const candidateKind: unknown = body?.kind ?? reqBody?.kind ?? undefined;
+    console.log(
+      `[extract-product-spec] file=${file ? `${file.originalname} (${file.size}B, ${file.mimetype}, path=${file.path ? "yes" : "no"})` : "MISSING"}, ` +
+        `body=${JSON.stringify(body)}, ` +
+        `req.body=${JSON.stringify(reqBody)}, ` +
+        `candidateKind=${JSON.stringify(candidateKind)}`,
+    );
+    if (!file) {
+      throw new BadRequestException(
+        `No file provided. body keys=${JSON.stringify(Object.keys(body || {}))}`,
+      );
+    }
+    if (!file.path) {
+      throw new BadRequestException(
+        `File path is empty. File: ${file.originalname}, size: ${file.size}, mimetype: ${file.mimetype}`,
+      );
+    }
+    const rawKind = typeof candidateKind === "string" ? candidateKind : undefined;
+    if (rawKind !== "coating" && rawKind !== "lining") {
+      throw new BadRequestException(
+        `kind must be 'coating' or 'lining'; received body keys=${JSON.stringify(Object.keys(body || {}))}, kind=${JSON.stringify(rawKind)}`,
+      );
+    }
+    try {
+      const buffer = fs.readFileSync(file.path);
+      return await this.nixService.extractProductSpec(buffer, file.mimetype, rawKind);
+    } finally {
+      try {
+        fs.unlinkSync(file.path);
+      } catch {
+        // ignore — multer cleans up after the request anyway
+      }
+    }
+  }
 }
 
 function parseDocumentRole(input?: string): DocumentRole | undefined {
