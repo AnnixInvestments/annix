@@ -735,7 +735,15 @@ export default function BOQStep(props: {
         //     e.g. "350mm L"
         // Falls silent if the underlying spec values aren't populated
         // — better to omit than to fabricate a number.
-        const isReducerType = ["CON_REDUCER", "ECCENTRIC_REDUCER"].includes(fittingType);
+        // CONCENTRIC_REDUCER is the legacy fittingType written by the
+        // Nix → wizard mapping before v1.5.2 swapped it for the
+        // canonical CON_REDUCER constant. Existing drafts created
+        // before the fix still carry the legacy value, so match both
+        // here. Same shape applies to RfqWizardStore + FittingForm —
+        // they should also accept the legacy variant when reading.
+        const isReducerType = ["CON_REDUCER", "CONCENTRIC_REDUCER", "ECCENTRIC_REDUCER"].includes(
+          fittingType,
+        );
         const isLateralType = ["LATERAL", "Y_PIECE", "REDUCING_LATERAL"].includes(fittingType);
         const isTeeFamily = fittingType.includes("TEE");
         const rawSpecsLengthA = entry.specs?.pipeLengthAMm;
