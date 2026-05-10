@@ -237,7 +237,7 @@ export class CvNotificationService {
               { ids: jobPostingIds },
             )
             .andWhere("match.overall_score >= 0.7")
-            .orderBy("match.overall_score", "DESC")
+            .orderBy("match.overallScore", "DESC")
             .take(10)
             .getMany();
 
@@ -286,7 +286,7 @@ export class CvNotificationService {
             .where("match.candidate_id = :candidateId", { candidateId: candidate.id })
             .andWhere("match.created_at > :since", { since: oneDayAgo })
             .andWhere("match.overall_score >= 0.6")
-            .orderBy("match.overall_score", "DESC")
+            .orderBy("match.overallScore", "DESC")
             .take(5)
             .getMany();
 

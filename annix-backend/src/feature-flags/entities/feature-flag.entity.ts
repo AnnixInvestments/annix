@@ -12,7 +12,7 @@ export class FeatureFlag {
   @Column({ name: "enabled", type: "boolean", default: false })
   enabled: boolean;
 
-  @Column({ type: "varchar", length: 255, nullable: true })
+  @Column({ type: "text", nullable: true })
   description: string | null;
 
   @UpdateDateColumn({ name: "updated_at" })

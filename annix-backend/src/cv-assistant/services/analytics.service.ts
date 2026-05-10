@@ -532,7 +532,7 @@ export class AnalyticsService {
         "ee.disability_status AS disability_status",
         "ee.nationality_status AS nationality_status",
       ])
-      .orderBy("c.created_at", "DESC")
+      .orderBy("c.createdAt", "DESC")
       .limit(FAIRNESS_WINDOW)
       .getRawMany<{
         candidate_id: number;

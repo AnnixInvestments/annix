@@ -107,7 +107,7 @@ export class CandidateJobMatchingService {
       .createQueryBuilder("match")
       .leftJoinAndSelect("match.externalJob", "job")
       .where("match.candidate_id = :candidateId", { candidateId })
-      .orderBy("match.overall_score", "DESC")
+      .orderBy("match.overallScore", "DESC")
       .take(TOP_MATCHES_LIMIT);
 
     if (!options.includeDismissed) {
@@ -125,7 +125,7 @@ export class CandidateJobMatchingService {
       .leftJoinAndSelect("match.candidate", "candidate")
       .where("match.external_job_id = :externalJobId", { externalJobId })
       .andWhere("match.dismissed = false")
-      .orderBy("match.overall_score", "DESC")
+      .orderBy("match.overallScore", "DESC")
       .take(TOP_MATCHES_LIMIT)
       .getMany() as Promise<Array<CandidateJobMatch & { candidate: Candidate }>>;
   }

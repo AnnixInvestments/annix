@@ -224,7 +224,7 @@ export class MarketInsightsService {
       .select("job.extracted_skills", "skills")
       .where("job.source_id IN (:...sourceIds)", { sourceIds })
       .andWhere("jsonb_array_length(job.extracted_skills) > 0")
-      .orderBy("job.created_at", "DESC")
+      .orderBy("job.createdAt", "DESC")
       .limit(500)
       .getRawMany();
 

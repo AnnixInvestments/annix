@@ -153,7 +153,7 @@ export class JobIngestionService {
       });
     }
 
-    qb.orderBy("job.posted_at", "DESC", "NULLS LAST")
+    qb.orderBy("job.postedAt", "DESC", "NULLS LAST")
       .skip((page - 1) * limit)
       .take(limit);
 
@@ -192,7 +192,7 @@ export class JobIngestionService {
         search: `%${options.search}%`,
       });
     }
-    qb.orderBy("job.posted_at", "DESC", "NULLS LAST");
+    qb.orderBy("job.postedAt", "DESC", "NULLS LAST");
     const externals = await qb.getMany();
     const externalPublic = externals.map(toPublicJob);
 
@@ -227,7 +227,7 @@ export class JobIngestionService {
         search: `%${options.search}%`,
       });
     }
-    const jobs = await qb.orderBy("job.activated_at", "DESC", "NULLS LAST").getMany();
+    const jobs = await qb.orderBy("job.activatedAt", "DESC", "NULLS LAST").getMany();
     if (jobs.length === 0) return [];
     const companyIds = [...new Set(jobs.map((j) => j.companyId))];
     const companies = await this.companyRepo.find({ where: { id: In(companyIds) } });
