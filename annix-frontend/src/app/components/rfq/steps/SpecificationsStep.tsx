@@ -1,7 +1,6 @@
 "use client";
 
 import { isNumber } from "es-toolkit/compat";
-import Link from "next/link";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { HdpeSpecificationsSection } from "@/app/components/rfq/specifications/HdpeSpecificationsSection";
 import { PvcSpecificationsSection } from "@/app/components/rfq/specifications/PvcSpecificationsSection";
@@ -45,150 +44,14 @@ import {
   isFlangeStandardAllowedForUnregistered,
   isSteelSpecAllowedForUnregistered,
 } from "@/app/lib/utils/rfq/registrationRestrictions";
-
-interface RestrictionPopupPosition {
-  x: number;
-  y: number;
-}
-
-function RestrictionPopup({
-  position,
-  onClose,
-}: {
-  position: RestrictionPopupPosition;
-  onClose: () => void;
-}) {
-  return (
-    <div
-      className="fixed z-[100] bg-slate-800 text-white px-4 py-3 rounded-lg shadow-xl border border-slate-600 max-w-xs"
-      style={{
-        left: Math.min(position.x, window.innerWidth - 300),
-        top: position.y + 10,
-      }}
-      onMouseLeave={onClose}
-    >
-      <div className="flex items-start gap-2">
-        <svg
-          className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M12 15v2m0 0v2m0-2h2m-2 0H10m11-7a9 9 0 11-18 0 9 9 0 0118 0z"
-          />
-        </svg>
-        <div>
-          <p className="text-sm font-medium">This option is restricted</p>
-          <p className="text-xs text-gray-300 mt-1">
-            Available on other pricing tiers.{" "}
-            <Link
-              href="/pricing"
-              className="text-blue-400 hover:text-blue-300 underline"
-              onClick={onClose}
-            >
-              View pricing
-            </Link>
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-type FeatureType = "coating-assistant" | "lining-assistant";
-
-interface FeatureRestrictionPopupProps {
-  feature: FeatureType;
-  position: RestrictionPopupPosition;
-  onClose: () => void;
-}
-
-const FEATURE_DESCRIPTIONS: Record<
-  FeatureType,
-  { title: string; description: string; benefits: string[] }
-> = {
-  "coating-assistant": {
-    title: "External Coating Assistant",
-    description:
-      "An intelligent coating recommendation system based on ISO 12944 and ISO 21809 standards.",
-    benefits: [
-      "Analyzes atmospheric conditions including marine influence, industrial pollution, and UV exposure",
-      "Profiles installation environments (above ground, buried, submerged, splash zone)",
-      "Recommends optimal coating systems based on corrosivity category",
-      "Provides durability classifications and system specifications",
-    ],
-  },
-  "lining-assistant": {
-    title: "Internal Lining Assistant",
-    description:
-      "A comprehensive lining recommendation system for material transfer applications based on ASTM and ISO standards.",
-    benefits: [
-      "Analyzes material properties including particle size, hardness, and silica content",
-      "Evaluates chemical environment (pH levels, chloride exposure, operating temperatures)",
-      "Considers flow characteristics (velocity, solids percentage, impact angles)",
-      "Recommends appropriate lining systems (rubber, ceramic, polyurethane, HDPE) with thickness specifications",
-    ],
-  },
-};
-
-function FeatureRestrictionPopup({ feature, position, onClose }: FeatureRestrictionPopupProps) {
-  const info = FEATURE_DESCRIPTIONS[feature];
-  return (
-    <div
-      className="fixed z-[100] bg-slate-800 text-white px-4 py-4 rounded-lg shadow-xl border border-slate-600 max-w-md"
-      style={{
-        left: Math.min(position.x - 150, window.innerWidth - 450),
-        top: Math.min(position.y + 10, window.innerHeight - 300),
-      }}
-      onMouseLeave={onClose}
-    >
-      <div className="flex items-start gap-3">
-        <svg
-          className="w-6 h-6 text-amber-400 flex-shrink-0 mt-0.5"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M12 15v2m0 0v2m0-2h2m-2 0H10m11-7a9 9 0 11-18 0 9 9 0 0118 0z"
-          />
-        </svg>
-        <div className="flex-1">
-          <p className="text-sm font-semibold text-amber-400">{info.title}</p>
-          <p className="text-xs text-gray-300 mt-1">{info.description}</p>
-          <ul className="mt-2 space-y-1">
-            {info.benefits.map((benefit, idx) => (
-              <li key={idx} className="text-xs text-gray-400 flex items-start gap-1.5">
-                <span className="text-emerald-400 mt-0.5">•</span>
-                <span>{benefit}</span>
-              </li>
-            ))}
-          </ul>
-          <div className="mt-3 pt-2 border-t border-slate-600">
-            <p className="text-xs text-gray-300">
-              This feature is available to registered users.{" "}
-              <Link
-                href="/register"
-                className="text-blue-400 hover:text-blue-300 underline"
-                onClick={onClose}
-              >
-                Create an account
-              </Link>{" "}
-              to access this assistant.
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+import {
+  autoFilledClass,
+  deriveTemperatureCategory,
+  extractPressureNumeric,
+  serviceLifeToDurability,
+} from "./specifications/helpers";
+import { FeatureRestrictionPopup, RestrictionPopup } from "./specifications/RestrictionPopup";
+import type { FeatureType, RestrictionPopupPosition } from "./specifications/types";
 
 export default function SpecificationsStep(props: {
   fetchAndSelectPressureClass: (
@@ -378,13 +241,6 @@ export default function SpecificationsStep(props: {
     setAutoPressureClassId(null);
   }, [globalSpecs?.flangeStandardId]);
 
-  // Helper to extract numeric value from pressure class designation for comparison
-  const extractPressureNumeric = (designation: string | null): number => {
-    if (!designation) return 0;
-    const match = designation.match(/^(\d+)/);
-    return match ? parseInt(match[1], 10) : 0;
-  };
-
   // Determine pressure class override status
   const pressureClassOverrideStatus = (() => {
     const currentId = globalSpecs?.flangePressureClassId;
@@ -489,28 +345,6 @@ export default function SpecificationsStep(props: {
   const rawEcpMechanicalRisk = globalSpecs?.ecpMechanicalRisk;
   const effectiveMechanicalRisk = rawEcpMechanicalRisk || derivedMechanicalRisk;
   const isMechanicalRiskAutoFilled = !globalSpecs?.ecpMechanicalRisk && !!derivedMechanicalRisk;
-
-  // Helper for auto-filled field styling
-  const autoFilledClass = (isAutoFilled: boolean) =>
-    isAutoFilled
-      ? "border-2 border-emerald-500 bg-emerald-50 text-emerald-900 font-semibold"
-      : "border border-gray-300 text-gray-900";
-
-  // Map Service Life to ISO 12944-5 durability codes
-  const serviceLifeToDurability = (serviceLife: string | null): "L" | "M" | "H" | "VH" | null => {
-    switch (serviceLife) {
-      case "Short":
-        return "L";
-      case "Medium":
-        return "M";
-      case "Long":
-        return "H";
-      case "Extended":
-        return "VH";
-      default:
-        return null;
-    }
-  };
 
   const effectiveDurability = serviceLifeToDurability(globalSpecs?.ecpServiceLife);
 
@@ -7668,15 +7502,4 @@ export default function SpecificationsStep(props: {
       </div>
     </div>
   );
-}
-
-function deriveTemperatureCategory(tempC: number | null): string | null {
-  if (tempC == null) return null;
-  if (tempC < -20 || tempC > 60) {
-    if (tempC >= 60 && tempC <= 120) return "Elevated";
-    if (tempC > 120 && tempC <= 200) return "High";
-    if (tempC > 200) return "High";
-    return "Ambient";
-  }
-  return "Ambient";
 }
