@@ -39,13 +39,17 @@ import { detectClarificationRequirements } from "@/app/lib/rfq/preQuoteRequireme
 import { useRfqWizardStore } from "@/app/lib/store/rfqWizardStore";
 import { DEFAULT_HDPE_SDR, PIPE_WEIGHT_K_BY_PRODUCT_TYPE } from "./boq/constants";
 import {
+  bendCenterToFaceMm,
   flangeConfigSuffix,
   formatQty,
   formatWeight,
+  getFlangeCountFromConfig,
   getFlangeTypeName,
+  materialOfEntry,
   safeFilename,
   triggerDownload,
 } from "./boq/helpers";
+import type { ConsolidatedItem, MaterialKey } from "./boq/types";
 
 export default function BOQStep(props: {
   onPrevStep?: () => void;
@@ -373,53 +377,9 @@ export default function BOQStep(props: {
     return pnFromSdr ?? null;
   };
 
-  // Bend centre-to-face (mm). Uses the standard fabricated-bend
-  // formula C/F = R × tan(θ/2) where R = NB × bend-ratio multiplier
-  // (e.g. 1.5 for 1.5D). Matches the convention BOQ engineers
-  // expect on the row description so the supplier can verify
-  // dimensional fit at quote stage.
-  const bendCenterToFaceMm = (nb: number, angleDeg: number, bendType: string): number => {
-    const radiusFactor = parseFloat((bendType || "1.5D").replace("D", "")) || 1.5;
-    const radius = nb * radiusFactor;
-    const halfAngleRad = (angleDeg * Math.PI) / 180 / 2;
-    return Math.round(radius * Math.tan(halfAngleRad));
-  };
-
   // ======================
   // CONSOLIDATION LOGIC
   // ======================
-
-  // Extended type for consolidated items with weld and surface area data.
-  // The optional material tag is set by each consolidated set() call so
-  // the render layer can partition rows into HDPE / Steel / PVC
-  // material groups without re-deriving from descriptions.
-  type MaterialKey = "hdpe" | "steel" | "pvc";
-  type ConsolidatedItem = {
-    description: string;
-    qty: number;
-    unit: string;
-    weight: number;
-    entries: string[];
-    // e.g., { "Pipe Weld": 2.5, "Flange Weld": 1.2 }
-    welds?: Record<string, number>;
-    intAreaM2?: number;
-    extAreaM2?: number;
-    material?: MaterialKey;
-  };
-
-  // Material derivation — pipe/bend/fitting entries carry materialType
-  // directly; misc entries store productType in specs. Defaults to
-  // steel for legacy / undefined entries since pre-Nix flows assumed
-  // a steel pipeline.
-  const materialOfEntry = (entry: any): MaterialKey => {
-    const rawSpecs = entry.specs;
-    const rawProductType = rawSpecs?.productType;
-    const rawMaterialType = entry.materialType;
-    const candidate = rawMaterialType || rawProductType;
-    if (candidate === "hdpe") return "hdpe";
-    if (candidate === "pvc" || candidate === "upvc") return "pvc";
-    return "steel";
-  };
 
   // Maps to store consolidated items. The legacy single-map
   // architecture is kept and partitioned by material at render time
@@ -444,90 +404,6 @@ export default function BOQStep(props: {
   const consolidatedHdpeOther: Map<string, ConsolidatedItem> = new Map();
   const consolidatedSteelOther: Map<string, ConsolidatedItem> = new Map();
   const consolidatedPvcOther: Map<string, ConsolidatedItem> = new Map();
-  // Helper to get PHYSICAL flange count from end configuration (includes loose flanges)
-  // Returns: { fixed: number of weld-neck flanges, loose: number of loose/slip-on flanges, rotating: number of rotating flanges }
-  const getPhysicalFlangeCount = (
-    config: string,
-    itemType: string,
-  ): { fixed: number; loose: number; rotating: number } => {
-    // Pipe and Bend configurations
-    if (itemType === "bend" || itemType === "straight_pipe" || !itemType) {
-      switch (config) {
-        case "PE":
-          return { fixed: 0, loose: 0, rotating: 0 };
-        case "FOE":
-          return { fixed: 1, loose: 0, rotating: 0 };
-        case "FBE":
-          return { fixed: 2, loose: 0, rotating: 0 };
-        case "FOE_LF":
-          // 1 fixed + 1 loose = 2 physical flanges
-          return { fixed: 1, loose: 1, rotating: 0 };
-        case "FOE_RF":
-          // 1 fixed + 1 rotating = 2 physical flanges
-          return { fixed: 1, loose: 0, rotating: 1 };
-        case "2X_RF":
-          // 2 rotating flanges
-          return { fixed: 0, loose: 0, rotating: 2 };
-        case "2xLF":
-          // 2 stub-on + 2 loose backing flanges = 4 flanges
-          return { fixed: 0, loose: 4, rotating: 0 };
-        default:
-          return { fixed: 0, loose: 0, rotating: 0 };
-      }
-    }
-    // Fitting configurations
-    if (itemType === "fitting") {
-      switch (config) {
-        case "PE":
-          return { fixed: 0, loose: 0, rotating: 0 };
-        case "FAE":
-          // Flanged All Ends (3 fixed)
-          return { fixed: 3, loose: 0, rotating: 0 };
-        case "F2E":
-          return { fixed: 2, loose: 0, rotating: 0 };
-        case "F2E_LF":
-          // 2 fixed + 1 loose
-          return { fixed: 2, loose: 1, rotating: 0 };
-        case "F2E_RF":
-          // 2 fixed + 1 rotating
-          return { fixed: 2, loose: 0, rotating: 1 };
-        case "3X_RF":
-          // 3 rotating
-          return { fixed: 0, loose: 0, rotating: 3 };
-        case "2X_RF_FOE":
-          // 1 fixed + 2 rotating
-          return { fixed: 1, loose: 0, rotating: 2 };
-        default:
-          return { fixed: 0, loose: 0, rotating: 0 };
-      }
-    }
-    return { fixed: 0, loose: 0, rotating: 0 };
-  };
-
-  // Legacy helper for backward compatibility - returns total main flanges
-  const getFlangeCountFromConfig = (
-    config: string,
-    itemType: string,
-  ): { main: number; branch: number } => {
-    const counts = getPhysicalFlangeCount(config, itemType);
-    const totalMain = counts.fixed + counts.loose + counts.rotating;
-    // For fittings, branch flanges are handled separately
-    if (itemType === "fitting") {
-      if (config === "FAE" || config === "3X_RF" || config === "2X_RF_FOE") {
-        // Main run has 2 flanges, branch has 1
-        return { main: 2, branch: 1 };
-      }
-      if (config === "F2E_LF" || config === "F2E_RF") {
-        // 1 main flange + 1 branch flange (loose/rotating)
-        return { main: 1, branch: 1 };
-      }
-      if (config === "F2E") return { main: 2, branch: 0 };
-      if (config === "PE") return { main: 0, branch: 0 };
-      return { main: totalMain, branch: 0 };
-    }
-    return { main: totalMain, branch: 0 };
-  };
-
   // Process each entry
   entries.forEach((entry) => {
     const rawClientItemNumber = entry.clientItemNumber;

@@ -1,5 +1,6 @@
 import { isString } from "es-toolkit/compat";
 import { formatDateLongZA, fromJSDate } from "@/app/lib/datetime";
+import type { FlangeCountByLocation, FlangeCountByPhysicalKind, MaterialKey } from "./types";
 
 export const formatDate = (date: Date | string | undefined): string => {
   if (!date) return "Not specified";
@@ -77,4 +78,116 @@ export const triggerDownload = (data: string | Blob, filename: string, mime: str
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
+};
+
+// Bend centre-to-face (mm). Uses the standard fabricated-bend
+// formula C/F = R × tan(θ/2) where R = NB × bend-ratio multiplier
+// (e.g. 1.5 for 1.5D). Matches the convention BOQ engineers
+// expect on the row description so the supplier can verify
+// dimensional fit at quote stage.
+export const bendCenterToFaceMm = (nb: number, angleDeg: number, bendType: string): number => {
+  const radiusFactor = parseFloat((bendType || "1.5D").replace("D", "")) || 1.5;
+  const radius = nb * radiusFactor;
+  const halfAngleRad = (angleDeg * Math.PI) / 180 / 2;
+  return Math.round(radius * Math.tan(halfAngleRad));
+};
+
+// Material derivation — pipe/bend/fitting entries carry materialType
+// directly; misc entries store productType in specs. Defaults to
+// steel for legacy / undefined entries since pre-Nix flows assumed
+// a steel pipeline.
+export const materialOfEntry = (entry: any): MaterialKey => {
+  const rawSpecs = entry.specs;
+  const rawProductType = rawSpecs?.productType;
+  const rawMaterialType = entry.materialType;
+  const candidate = rawMaterialType || rawProductType;
+  if (candidate === "hdpe") return "hdpe";
+  if (candidate === "pvc" || candidate === "upvc") return "pvc";
+  return "steel";
+};
+
+// Physical flange count from end configuration (includes loose flanges).
+// Returns counts grouped by physical kind:
+//   fixed     — weld-neck flanges
+//   loose     — slip-on / lap / backing flanges
+//   rotating  — rotating raised-face flanges
+export const getPhysicalFlangeCount = (
+  config: string,
+  itemType: string,
+): FlangeCountByPhysicalKind => {
+  if (itemType === "bend" || itemType === "straight_pipe" || !itemType) {
+    switch (config) {
+      case "PE":
+        return { fixed: 0, loose: 0, rotating: 0 };
+      case "FOE":
+        return { fixed: 1, loose: 0, rotating: 0 };
+      case "FBE":
+        return { fixed: 2, loose: 0, rotating: 0 };
+      case "FOE_LF":
+        // 1 fixed + 1 loose = 2 physical flanges
+        return { fixed: 1, loose: 1, rotating: 0 };
+      case "FOE_RF":
+        // 1 fixed + 1 rotating = 2 physical flanges
+        return { fixed: 1, loose: 0, rotating: 1 };
+      case "2X_RF":
+        // 2 rotating flanges
+        return { fixed: 0, loose: 0, rotating: 2 };
+      case "2xLF":
+        // 2 stub-on + 2 loose backing flanges = 4 flanges
+        return { fixed: 0, loose: 4, rotating: 0 };
+      default:
+        return { fixed: 0, loose: 0, rotating: 0 };
+    }
+  }
+  if (itemType === "fitting") {
+    switch (config) {
+      case "PE":
+        return { fixed: 0, loose: 0, rotating: 0 };
+      case "FAE":
+        // Flanged All Ends (3 fixed)
+        return { fixed: 3, loose: 0, rotating: 0 };
+      case "F2E":
+        return { fixed: 2, loose: 0, rotating: 0 };
+      case "F2E_LF":
+        // 2 fixed + 1 loose
+        return { fixed: 2, loose: 1, rotating: 0 };
+      case "F2E_RF":
+        // 2 fixed + 1 rotating
+        return { fixed: 2, loose: 0, rotating: 1 };
+      case "3X_RF":
+        // 3 rotating flanges
+        return { fixed: 0, loose: 0, rotating: 3 };
+      case "2X_RF_FOE":
+        // 2 rotating + 1 fixed
+        return { fixed: 1, loose: 0, rotating: 2 };
+      default:
+        return { fixed: 0, loose: 0, rotating: 0 };
+    }
+  }
+  return { fixed: 0, loose: 0, rotating: 0 };
+};
+
+// Legacy flange-count shape — main-run + branch totals. Used by the
+// older flange consolidation pass that doesn't distinguish physical
+// kind. Keep until the consolidation pass is migrated.
+export const getFlangeCountFromConfig = (
+  config: string,
+  itemType: string,
+): FlangeCountByLocation => {
+  const counts = getPhysicalFlangeCount(config, itemType);
+  const totalMain = counts.fixed + counts.loose + counts.rotating;
+  if (itemType === "fitting") {
+    if (config === "FAE" || config === "3X_RF" || config === "2X_RF_FOE") {
+      // Main run has 2 flanges, branch has 1
+      return { main: 2, branch: 1 };
+    }
+    if (config === "F2E_LF" || config === "F2E_RF") {
+      // 1 main flange + 1 branch flange (loose/rotating)
+      return { main: 1, branch: 1 };
+    }
+    if (config === "F2E") return { main: 2, branch: 0 };
+    if (config === "PE") return { main: 0, branch: 0 };
+    return { main: totalMain, branch: 0 };
+  }
+  return { main: totalMain, branch: 0 };
 };
