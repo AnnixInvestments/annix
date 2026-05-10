@@ -286,8 +286,9 @@ export class CalibrationCertificateService {
       )
       .catch((err) => this.logger.warn(`Push notification failed: ${err.message}`));
 
+    const emailRecipients = recipients.filter((user) => user.emailNotificationsEnabled !== false);
     await Promise.all(
-      recipients.map((user) =>
+      emailRecipients.map((user) =>
         this.sendCalibrationExpiryEmail(companyId, user.email, user.name, cert, isExpired),
       ),
     );

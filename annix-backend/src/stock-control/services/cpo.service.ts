@@ -851,19 +851,26 @@ export class CpoService {
   async uninvoicedArrivalCheck(): Promise<void> {
     this.logger.log("Running daily CPO uninvoiced arrival check...");
 
-    const twentyOneDaysAgo = now().minus({ days: 21 }).toJSDate();
+    const nowDate = now();
+    const twentyOneDaysAgo = nowDate.minus({ days: 21 }).toJSDate();
+    const sevenDaysAgo = nowDate.minus({ days: 7 }).toJSDate();
+
+    const baseConditions = {
+      status: CalloffStatus.DELIVERED,
+      deliveredAt: LessThanOrEqual(twentyOneDaysAgo),
+      invoicedAt: IsNull(),
+    };
 
     const overdueRecords = await this.calloffRepo.find({
-      where: {
-        status: CalloffStatus.DELIVERED,
-        deliveredAt: LessThanOrEqual(twentyOneDaysAgo),
-        invoicedAt: IsNull(),
-      },
+      where: [
+        { ...baseConditions, lastInvoiceReminderAt: IsNull() },
+        { ...baseConditions, lastInvoiceReminderAt: LessThanOrEqual(sevenDaysAgo) },
+      ],
       relations: ["cpo", "jobCard"],
     });
 
     if (overdueRecords.length === 0) {
-      this.logger.log("No overdue uninvoiced CPO items found");
+      this.logger.log("No overdue uninvoiced CPO items needing reminder");
       return;
     }
 
@@ -875,6 +882,7 @@ export class CpoService {
       {},
     );
 
+    const reminderTimestamp = nowDate.toJSDate();
     await Promise.all(
       Object.entries(recordsByCpo).map(async ([cpoIdStr, records]) => {
         const cpoId = Number(cpoIdStr);
@@ -882,11 +890,16 @@ export class CpoService {
         if (!cpo) return;
 
         await this.notificationService.notifyCpoInvoiceOverdue(cpo.companyId, cpo, records);
+
+        await this.calloffRepo.update(
+          records.map((r) => r.id),
+          { lastInvoiceReminderAt: reminderTimestamp },
+        );
       }),
     );
 
     this.logger.log(
-      `Sent overdue invoice notifications for ${Object.keys(recordsByCpo).length} CPO(s), ${overdueRecords.length} record(s)`,
+      `Sent overdue invoice reminders for ${Object.keys(recordsByCpo).length} CPO(s), ${overdueRecords.length} record(s); next reminder for these in 7 days`,
     );
   }
 

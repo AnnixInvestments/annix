@@ -76,6 +76,9 @@ export class CpoCalloffRecord {
   @Column({ name: "invoiced_at", type: "timestamp", nullable: true })
   invoicedAt: Date | null;
 
+  @Column({ name: "last_invoice_reminder_at", type: "timestamp", nullable: true })
+  lastInvoiceReminderAt: Date | null;
+
   @Column({ type: "text", nullable: true })
   notes: string | null;
 
