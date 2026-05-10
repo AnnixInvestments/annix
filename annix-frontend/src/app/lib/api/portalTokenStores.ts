@@ -58,37 +58,43 @@ export const ALL_PORTAL_TOKEN_STORES: readonly PortalTokenStore[] = [
 ];
 
 /**
- * Returns Authorization (and any other auth-related) headers for the first
- * portal token store with an active access token. Empty object when none
- * are authenticated. Used by Nix client code so a Stock Control session,
- * an Admin session, an AU Rubber session, etc. can all hit Nix endpoints
- * without each client re-implementing the storage-key lookup.
+ * Maps the first segment of the current URL pathname to the portal token
+ * store that owns that surface. Lets cross-cutting clients (Nix) prefer
+ * the *current portal's* token over a stale one left behind by an earlier
+ * login to a different portal — which used to surface as a stray 401 →
+ * SessionExpiredModal pop-up the moment a user signed back into a portal
+ * they hadn't used most recently.
+ */
+const PORTAL_ROUTE_TO_STORE: ReadonlyArray<{ prefix: string; store: PortalTokenStore }> = [
+  { prefix: "/stock-control", store: stockControlTokenStore },
+  { prefix: "/au-rubber", store: auRubberTokenStore },
+  { prefix: "/cv-assistant", store: cvAssistantTokenStore },
+  { prefix: "/admin", store: adminTokenStore },
+  { prefix: "/supplier", store: supplierTokenStore },
+  { prefix: "/customer", store: customerTokenStore },
+  { prefix: "/annix-rep", store: annixRepTokenStore },
+  { prefix: "/teacher-assistant", store: teacherAssistantTokenStore },
+];
+
+/**
+ * Returns Authorization (and any other auth-related) headers for the most
+ * appropriate portal token store. Prefers the store matching the current
+ * URL prefix; falls back to the first authenticated store if no prefix
+ * match is found. Empty object when nothing is authenticated.
  */
 export function anyPortalAuthHeaders(): Record<string, string> {
-  // eslint-disable-next-line no-restricted-syntax -- temporary diagnostic for #253 debug, will remove
+  // eslint-disable-next-line no-restricted-syntax -- SSR guard
   if (typeof window !== "undefined") {
-    const summary = ALL_PORTAL_TOKEN_STORES.map((s) => ({
-      keyName: (s as unknown as { keys: { accessToken: string } }).keys.accessToken,
-      authed: s.isAuthenticated(),
-    }));
-    // eslint-disable-next-line no-restricted-syntax -- temporary diagnostic
-    console.warn("[anyPortalAuthHeaders] store states:", summary);
+    const path = window.location.pathname;
+    const match = PORTAL_ROUTE_TO_STORE.find((p) => path.startsWith(p.prefix));
+    if (match?.store.isAuthenticated()) {
+      return match.store.authHeaders();
+    }
   }
   for (const store of ALL_PORTAL_TOKEN_STORES) {
     if (store.isAuthenticated()) {
-      const headers = store.authHeaders();
-      // eslint-disable-next-line no-restricted-syntax -- temporary diagnostic
-      if (typeof window !== "undefined")
-        console.warn(
-          "[anyPortalAuthHeaders] using store:",
-          (store as unknown as { keys: { accessToken: string } }).keys.accessToken,
-          "headerKeys:",
-          Object.keys(headers),
-        );
-      return headers;
+      return store.authHeaders();
     }
   }
-  // eslint-disable-next-line no-restricted-syntax -- temporary diagnostic
-  if (typeof window !== "undefined") console.warn("[anyPortalAuthHeaders] NO authenticated store");
   return {};
 }

@@ -10,7 +10,7 @@ import { SupplierAuthService } from "../../supplier/supplier-auth.service";
 export interface AnyUserJwtPayload {
   sub: number;
   email: string;
-  type: "admin" | "customer" | "supplier" | "stock-control";
+  type: "admin" | "customer" | "supplier" | "stock-control" | "cv-assistant";
   sessionToken?: string;
   customerId?: number;
   supplierId?: number;
@@ -23,7 +23,7 @@ export interface AnyUserJwtPayload {
 export interface AuthenticatedUser {
   userId: number;
   email: string;
-  type: "admin" | "customer" | "supplier" | "stock-control";
+  type: "admin" | "customer" | "supplier" | "stock-control" | "cv-assistant";
   customerId?: number;
   supplierId?: number;
   companyId?: number;
@@ -127,6 +127,21 @@ export class AnyUserAuthGuard implements CanActivate {
         userId: payload.sub,
         email: payload.email,
         type: "stock-control",
+        companyId: payload.companyId,
+        role: payload.role,
+        name: payload.name,
+      };
+    }
+
+    if (payload.type === "cv-assistant") {
+      // Same model as stock-control: the JWT itself is the credential
+      // (1h expiry, refreshed via /cv-assistant/auth/refresh). Surface the
+      // CV-Assistant payload fields so cross-cutting guards (Nix, etc.)
+      // can scope to the right user/company.
+      return {
+        userId: payload.sub,
+        email: payload.email,
+        type: "cv-assistant",
         companyId: payload.companyId,
         role: payload.role,
         name: payload.name,
