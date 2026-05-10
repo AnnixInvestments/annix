@@ -33,6 +33,11 @@ export class SeekerJobsController {
     };
   }
 
+  @Get("stats")
+  async stats(@Request() req: SeekerAuthRequest) {
+    return this.feedService.statsForSeeker(req.user.email);
+  }
+
   @Post(":matchId/dismiss")
   async dismiss(
     @Request() req: SeekerAuthRequest,

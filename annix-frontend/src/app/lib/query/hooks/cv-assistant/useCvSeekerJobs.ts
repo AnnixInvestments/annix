@@ -1,10 +1,20 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   cvAssistantApiClient,
+  type SeekerJobStats,
   type SeekerRecommendedJobsResponse,
   type SeekerRematchResponse,
 } from "@/app/lib/api/cvAssistantApi";
 import { cvAssistantKeys } from "../../keys";
+
+export function useCvSeekerJobStats(enabled: boolean = true) {
+  return useQuery<SeekerJobStats>({
+    queryKey: cvAssistantKeys.seekerJobs.stats(),
+    queryFn: () => cvAssistantApiClient.seekerJobStats(),
+    enabled,
+    staleTime: 2 * 60 * 1000,
+  });
+}
 
 export function useCvSeekerRecommendedJobs(enabled: boolean = true) {
   return useQuery<SeekerRecommendedJobsResponse>({

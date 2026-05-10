@@ -1814,6 +1814,16 @@ class CvAssistantApiClient {
   async withdrawSeekerMatching(): Promise<{ candidatesAffected: number; matchesCleared: number }> {
     return this.request("/cv-assistant/seeker/jobs/withdraw-matching", { method: "POST" });
   }
+
+  async seekerJobStats(): Promise<SeekerJobStats> {
+    return this.request("/cv-assistant/seeker/jobs/stats");
+  }
+}
+
+export interface SeekerJobStats {
+  hasCandidate: boolean;
+  totalMatches: number;
+  matchesLast7Days: number;
 }
 
 export type SeekerRematchResponse =

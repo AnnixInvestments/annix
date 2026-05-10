@@ -3,12 +3,17 @@
 import Link from "next/link";
 import { useCvAssistantAuth } from "@/app/context/CvAssistantAuthContext";
 import { formatDateLongZA } from "@/app/lib/datetime";
-import { useCvMyInterviewInvites, useCvMyProfileStatus } from "@/app/lib/query/hooks";
+import {
+  useCvMyInterviewInvites,
+  useCvMyProfileStatus,
+  useCvSeekerJobStats,
+} from "@/app/lib/query/hooks";
 
 export default function SeekerDashboardPage() {
   const { user } = useCvAssistantAuth();
   const statusQuery = useCvMyProfileStatus();
   const invitesQuery = useCvMyInterviewInvites();
+  const jobStatsQuery = useCvSeekerJobStats();
   const userName = user?.name;
   const firstNameToken = userName ? userName.split(" ")[0] : null;
   const firstName = firstNameToken ? firstNameToken : "there";
@@ -21,6 +26,11 @@ export default function SeekerDashboardPage() {
   const invites = invitesData ? invitesData : [];
   const openInvites = invites.filter((invite) => invite.usedAt === null);
 
+  const jobStats = jobStatsQuery.data;
+  const showJobStats = jobStats ? jobStats.hasCandidate : false;
+  const matchesLast7Days = jobStats ? jobStats.matchesLast7Days : 0;
+  const totalMatches = jobStats ? jobStats.totalMatches : 0;
+
   return (
     <div className="space-y-6">
       <div>
@@ -29,6 +39,29 @@ export default function SeekerDashboardPage() {
           Your CV Assistant job seeker workspace. We will be adding more here soon.
         </p>
       </div>
+
+      {showJobStats ? (
+        <Link
+          href="/cv-assistant/seeker/jobs"
+          className="block bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow"
+        >
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm text-gray-500">Matched jobs</p>
+              <p className="mt-1 text-3xl font-semibold text-gray-900">
+                {matchesLast7Days}
+                <span className="ml-2 text-sm font-normal text-gray-500">new this week</span>
+              </p>
+              <p className="text-xs text-gray-400 mt-1">
+                {totalMatches} active match{totalMatches === 1 ? "" : "es"} in total
+              </p>
+            </div>
+            <span className="px-4 py-2 text-sm font-medium rounded-lg bg-blue-50 text-blue-700 group-hover:bg-blue-100">
+              Browse jobs →
+            </span>
+          </div>
+        </Link>
+      ) : null}
 
       {openInvites.length > 0 ? (
         <div className="bg-gradient-to-br from-[#FFA500] to-[#FFB733] rounded-xl shadow-lg p-5">

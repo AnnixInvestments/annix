@@ -1,7 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { nowMillis } from "../../lib/datetime";
+import { DateTime, nowMillis } from "../../lib/datetime";
 import { Candidate } from "../entities/candidate.entity";
 import { CandidateJobMatch, MatchDetails } from "../entities/candidate-job-match.entity";
 import { ExternalJob } from "../entities/external-job.entity";
@@ -179,6 +179,32 @@ export class SeekerJobFeedService {
       candidatesAffected: candidateIds.length,
       matchesCleared: deleteResult.affected ?? 0,
     };
+  }
+
+  async statsForSeeker(
+    email: string | null,
+  ): Promise<{ hasCandidate: boolean; totalMatches: number; matchesLast7Days: number }> {
+    const candidates = await this.candidatesForSeeker(email);
+    if (candidates.length === 0) {
+      return { hasCandidate: false, totalMatches: 0, matchesLast7Days: 0 };
+    }
+    const candidateIds = candidates.map((c) => c.id);
+
+    const totalQb = this.matchRepo
+      .createQueryBuilder("match")
+      .where("match.candidate_id IN (:...ids)", { ids: candidateIds })
+      .andWhere("match.dismissed = false");
+    const totalMatches = await totalQb.getCount();
+
+    const sevenDaysAgo = DateTime.now().minus({ days: 7 }).toJSDate();
+    const recentQb = this.matchRepo
+      .createQueryBuilder("match")
+      .where("match.candidate_id IN (:...ids)", { ids: candidateIds })
+      .andWhere("match.dismissed = false")
+      .andWhere("match.created_at >= :sevenDaysAgo", { sevenDaysAgo });
+    const matchesLast7Days = await recentQb.getCount();
+
+    return { hasCandidate: true, totalMatches, matchesLast7Days };
   }
 
   async dismissForSeeker(email: string | null, matchId: number): Promise<boolean> {
