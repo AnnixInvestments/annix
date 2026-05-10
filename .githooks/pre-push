@@ -48,16 +48,15 @@ biome_check() {
 }
 
 product_data_build() {
+  if [ "$PRODUCT_DATA_CHANGED" = "0" ]; then
+    echo "  (skipped — packages/product-data unchanged)"
+    return 0
+  fi
   if ! pnpm --filter @annix/product-data build; then
     echo ""
     echo "@annix/product-data build failed. Fix the TypeScript errors above and re-push."
     return 1
   fi
-}
-
-run_tests() {
-  rm -rf "$ROOT_DIR/annix-frontend/.next/dev"
-  pnpm test:all
 }
 
 pull_rebase() {
@@ -94,72 +93,163 @@ timed_step "legal risk check" legal_risk_check
 timed_step "duplication check" duplication_check
 timed_step "how-to freshness" how_to_freshness_check
 timed_step "git pull --rebase" pull_rebase
+
+# ──────────────────────────────────────────────────────────────────────────
+# Path-based scoping: only run test/build for workspaces actually touched
+# by the commits being pushed. Runs AFTER pull_rebase so the diff uses an
+# up-to-date origin/main.
+#
+# Override: PRE_PUSH_FULL=1 forces the full gauntlet.
+# ──────────────────────────────────────────────────────────────────────────
+
+# `A...B` (three dots): files changed on B since the merge-base with A.
+# That's exactly the set of files in the commits being pushed.
+CHANGED_FILES=$(git diff --name-only origin/main...HEAD 2>/dev/null || true)
+
+has_change_in() {
+  local pattern="$1"
+  printf "%s\n" "$CHANGED_FILES" | grep -qE "$pattern"
+}
+
+if [ "${PRE_PUSH_FULL:-0}" = "1" ]; then
+  echo "Scope: PRE_PUSH_FULL=1 — running full gauntlet"
+  BACKEND_CHANGED=1
+  FRONTEND_CHANGED=1
+  PRODUCT_DATA_CHANGED=1
+elif [ -z "$CHANGED_FILES" ]; then
+  echo "Scope: no changed files vs origin/main — running full gauntlet"
+  BACKEND_CHANGED=1
+  FRONTEND_CHANGED=1
+  PRODUCT_DATA_CHANGED=1
+else
+  BACKEND_CHANGED=0
+  FRONTEND_CHANGED=0
+  PRODUCT_DATA_CHANGED=0
+  has_change_in '^annix-backend/' && BACKEND_CHANGED=1
+  has_change_in '^annix-frontend/' && FRONTEND_CHANGED=1
+  has_change_in '^packages/product-data/' && PRODUCT_DATA_CHANGED=1
+
+  # Root configs / lockfile / hooks / shared scripts — affect everything.
+  # tsconfig pattern matches `tsconfig.json` AND `tsconfig.base.json` etc.
+  if has_change_in '^(package\.json|pnpm-lock\.yaml|pnpm-workspace\.yaml|biome\.json)$' \
+    || has_change_in '^tsconfig(\.[a-z]+)*\.json$' \
+    || has_change_in '^\.githooks/' \
+    || has_change_in '^scripts/'; then
+    echo "Scope: root config / hooks / shared scripts changed — running full gauntlet"
+    BACKEND_CHANGED=1
+    FRONTEND_CHANGED=1
+    PRODUCT_DATA_CHANGED=1
+  fi
+
+  # product-data is a workspace dep — if it changed, both apps must
+  # rebuild and re-test against the new dist.
+  if [ "$PRODUCT_DATA_CHANGED" = "1" ]; then
+    BACKEND_CHANGED=1
+    FRONTEND_CHANGED=1
+  fi
+
+  # Other packages/* deps imply both apps rebuild too.
+  if has_change_in '^packages/' && [ "$PRODUCT_DATA_CHANGED" = "0" ]; then
+    echo "Scope: workspace package outside product-data changed — running full gauntlet"
+    BACKEND_CHANGED=1
+    FRONTEND_CHANGED=1
+    PRODUCT_DATA_CHANGED=1
+  fi
+
+  echo "Scope: backend=$BACKEND_CHANGED frontend=$FRONTEND_CHANGED product-data=$PRODUCT_DATA_CHANGED"
+fi
+
 timed_step "biome check" biome_check
 timed_step "product-data build" product_data_build
 
-# Run tests and builds in parallel (they are independent)
+# ──────────────────────────────────────────────────────────────────────────
+# Run tests + builds in parallel. Each is gated by what actually changed;
+# skipped steps don't appear in the timing summary.
+# ──────────────────────────────────────────────────────────────────────────
+
 TEST_LOG=$(mktemp)
 BUILD_BE_LOG=$(mktemp)
 BUILD_FE_LOG=$(mktemp)
 trap 'rm -f "$TEST_LOG" "$BUILD_BE_LOG" "$BUILD_FE_LOG"' EXIT
 
+# ── Test suite (jest backend + tsc frontend) ───────────────────────────
+TEST_PID=""
 test_start=$(_timer_ms)
-( cd "$ROOT_DIR" && pnpm test:all > "$TEST_LOG" 2>&1 ) &
-TEST_PID=$!
+if [ "$BACKEND_CHANGED" = "1" ] || [ "$FRONTEND_CHANGED" = "1" ]; then
+  (
+    cd "$ROOT_DIR"
+    set -e
+    if [ "$BACKEND_CHANGED" = "1" ]; then pnpm test:backend; fi
+    if [ "$FRONTEND_CHANGED" = "1" ]; then pnpm test:frontend; fi
+  ) > "$TEST_LOG" 2>&1 &
+  TEST_PID=$!
+fi
 
+# ── Backend build ──────────────────────────────────────────────────────
+BUILD_BE_PID=""
 build_be_start=$(_timer_ms)
-( cd "$ROOT_DIR/annix-backend" && pnpm run build > "$BUILD_BE_LOG" 2>&1 ) &
-BUILD_BE_PID=$!
+if [ "$BACKEND_CHANGED" = "1" ]; then
+  ( cd "$ROOT_DIR/annix-backend" && pnpm run build > "$BUILD_BE_LOG" 2>&1 ) &
+  BUILD_BE_PID=$!
+fi
 
+# ── Frontend build ─────────────────────────────────────────────────────
+BUILD_FE_PID=""
 build_fe_start=$(_timer_ms)
-( cd "$ROOT_DIR/annix-frontend" && rm -f .next/lock && pnpm run build > "$BUILD_FE_LOG" 2>&1 ) &
-BUILD_FE_PID=$!
-
-TEST_EXIT=0
-BUILD_BE_EXIT=0
-BUILD_FE_EXIT=0
-
-wait $TEST_PID || TEST_EXIT=$?
-test_end=$(_timer_ms)
-test_elapsed=$((test_end - test_start))
-if [ "$TEST_EXIT" -ne 0 ]; then
-  TIMED_STEPS+=("test suite|${test_elapsed}|failed")
-  echo ""
-  echo ">> test suite output:"
-  cat "$TEST_LOG"
-  print_timing_summary
-  print_wall_time
-  exit 1
+if [ "$FRONTEND_CHANGED" = "1" ]; then
+  ( cd "$ROOT_DIR/annix-frontend" && rm -f .next/lock && pnpm run build > "$BUILD_FE_LOG" 2>&1 ) &
+  BUILD_FE_PID=$!
 fi
-TIMED_STEPS+=("test suite|${test_elapsed}|ok")
 
-wait $BUILD_BE_PID || BUILD_BE_EXIT=$?
-build_be_end=$(_timer_ms)
-build_be_elapsed=$((build_be_end - build_be_start))
-if [ "$BUILD_BE_EXIT" -ne 0 ]; then
-  TIMED_STEPS+=("backend build|${build_be_elapsed}|failed")
-  echo ""
-  echo ">> backend build output:"
-  cat "$BUILD_BE_LOG"
-  print_timing_summary
-  print_wall_time
-  exit 1
-fi
-TIMED_STEPS+=("backend build|${build_be_elapsed}|ok")
+# ── Wait + record (skipped steps don't get a row) ──────────────────────
 
-wait $BUILD_FE_PID || BUILD_FE_EXIT=$?
-build_fe_end=$(_timer_ms)
-build_fe_elapsed=$((build_fe_end - build_fe_start))
-if [ "$BUILD_FE_EXIT" -ne 0 ]; then
-  TIMED_STEPS+=("frontend build|${build_fe_elapsed}|failed")
-  echo ""
-  echo ">> frontend build output:"
-  cat "$BUILD_FE_LOG"
-  print_timing_summary
-  print_wall_time
-  exit 1
+if [ -n "$TEST_PID" ]; then
+  TEST_EXIT=0
+  wait "$TEST_PID" || TEST_EXIT=$?
+  test_elapsed=$(($(_timer_ms) - test_start))
+  if [ "$TEST_EXIT" -ne 0 ]; then
+    TIMED_STEPS+=("test suite|${test_elapsed}|failed")
+    echo ""
+    echo ">> test suite output:"
+    cat "$TEST_LOG"
+    print_timing_summary
+    print_wall_time
+    exit 1
+  fi
+  TIMED_STEPS+=("test suite|${test_elapsed}|ok")
 fi
-TIMED_STEPS+=("frontend build|${build_fe_elapsed}|ok")
+
+if [ -n "$BUILD_BE_PID" ]; then
+  BUILD_BE_EXIT=0
+  wait "$BUILD_BE_PID" || BUILD_BE_EXIT=$?
+  build_be_elapsed=$(($(_timer_ms) - build_be_start))
+  if [ "$BUILD_BE_EXIT" -ne 0 ]; then
+    TIMED_STEPS+=("backend build|${build_be_elapsed}|failed")
+    echo ""
+    echo ">> backend build output:"
+    cat "$BUILD_BE_LOG"
+    print_timing_summary
+    print_wall_time
+    exit 1
+  fi
+  TIMED_STEPS+=("backend build|${build_be_elapsed}|ok")
+fi
+
+if [ -n "$BUILD_FE_PID" ]; then
+  BUILD_FE_EXIT=0
+  wait "$BUILD_FE_PID" || BUILD_FE_EXIT=$?
+  build_fe_elapsed=$(($(_timer_ms) - build_fe_start))
+  if [ "$BUILD_FE_EXIT" -ne 0 ]; then
+    TIMED_STEPS+=("frontend build|${build_fe_elapsed}|failed")
+    echo ""
+    echo ">> frontend build output:"
+    cat "$BUILD_FE_LOG"
+    print_timing_summary
+    print_wall_time
+    exit 1
+  fi
+  TIMED_STEPS+=("frontend build|${build_fe_elapsed}|ok")
+fi
 
 print_timing_summary
 print_wall_time
