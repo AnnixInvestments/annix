@@ -1,6 +1,6 @@
 # Shared Module Registry
 
-**Last updated:** 2026-05-07
+**Last updated:** 2026-05-10
 
 This is the canonical index of shared modules across the Annix monorepo. Every Claude session MUST consult this file before writing new constants, components, services, or utilities (see `CLAUDE.md` §"Discovery-first protocol").
 
@@ -237,6 +237,7 @@ Host-app-agnostic React module. Consumed by Stock Control (via `app/stock-contro
 | Company profile hook | `lib/query/hooks/useAnnixCompanyProfile` | Annix legal/contact info. Never hardcode. |
 | Feature flags | `lib/query/hooks/useFeatureFlags` | Feature flag queries. |
 | Nix module barrel | `lib/nix/` (re-exported via `lib/nix/index.ts`) | All Nix-related frontend code. Includes `nixApi` client, all extraction types (`NixExtractedItem`, `NixSupplierBundle`, `NixDuplicateGroup`, `NixProcessResponse`), Nix UI components (`NixAiPopup`, `NixAssistant`, `NixChatPanel`, `NixClarificationPopup`, `NixProcessingPopup`, `NixFloatingAvatar`, `ParsedItemsConfirmation`), and the `.eml` parser (`parseEmail`, `isEmlFile`, `EmailMetadata`, `EmailAttachment`). Any frontend code that touches the Nix flow imports from `@/app/lib/nix`. |
+| CV Assistant seeker job card | `lib/cv-assistant/components/SeekerJobCard.tsx` | Card component for the seeker Browse Jobs feed. Renders title, company, location, source-attribution badge ("via Adzuna" / "via Jooble" / "via Remotive"), match-score bar with reasoning, matched/missing skills chips, dismiss + apply actions. Imported from the seeker `jobs/page.tsx` thin shell. (ref #268) |
 | Email/attachment parser | `lib/nix/emlAttachmentExtractor.ts` (re-exported from `lib/nix`) | `parseEmail(file)` returns `{ metadata, attachments }` from a dropped `.eml`: `metadata` includes from/to/cc/bcc, signature emails + phones, subject, date, body; `attachments[]` is the full attachment list with each `kind = "boq" \| "tender" \| "image" \| "other"` decided by content-type and filename. App-agnostic — used today by RFQ's customer-create wizard, but Stock Control / AU Rubber / etc. should reuse for their own document-drop flows. |
 | Nix architectural rule | — | **Anything app-agnostic that touches the Nix flow** (parsers, client, types, common UI) belongs in `lib/nix/`. **App-specific mappings** (RFQ's `BUNDLE_KEY_TO_PRODUCT`, `detectProjectTypeFromEmail`, `applyEmailMetadataToCustomerFields`, `LocationRequiredModal`; ASCA's quote-pack form auto-fill; etc.) stay in their app folder and import the agnostic pieces. Don't pre-extract orchestration hooks until a second consumer actually needs them. |
 

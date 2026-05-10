@@ -98,4 +98,9 @@ export const cvAssistantKeys = {
     eeReport: (dateFrom: string, dateTo: string) =>
       ["cv-assistant", "compliance", "ee-report", dateFrom, dateTo] as const,
   },
+
+  seekerJobs: {
+    all: ["cv-assistant", "seeker", "jobs"] as const,
+    recommended: () => ["cv-assistant", "seeker", "jobs", "recommended"] as const,
+  },
 } as const;

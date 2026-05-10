@@ -1798,6 +1798,59 @@ class CvAssistantApiClient {
     const query = new URLSearchParams({ dateFrom, dateTo });
     return `${API_BASE_URL}/cv-assistant/compliance/ee-report.pdf?${query.toString()}`;
   }
+
+  async seekerRecommendedJobs(): Promise<SeekerRecommendedJobsResponse> {
+    return this.request("/cv-assistant/seeker/jobs/recommended");
+  }
+
+  async dismissSeekerMatch(matchId: number): Promise<{ success: boolean }> {
+    return this.request(`/cv-assistant/seeker/jobs/${matchId}/dismiss`, { method: "POST" });
+  }
+}
+
+export interface SeekerJobMatchDetails {
+  embeddingSimilarity: number;
+  skillsOverlap: number;
+  skillsMatched: string[];
+  skillsMissing: string[];
+  experienceMatch: number;
+  locationMatch: number;
+  reasoning: string;
+}
+
+export interface SeekerRecommendedJob {
+  matchId: number;
+  candidateId: number;
+  externalJobId: number;
+  overallScore: number;
+  similarityScore: number;
+  structuredScore: number;
+  matchDetails: SeekerJobMatchDetails | null;
+  job: {
+    id: number;
+    title: string;
+    company: string | null;
+    country: string;
+    locationRaw: string | null;
+    locationArea: string | null;
+    salaryMin: number | null;
+    salaryMax: number | null;
+    salaryCurrency: string | null;
+    description: string | null;
+    extractedSkills: string[];
+    category: string | null;
+    sourceUrl: string | null;
+    postedAt: string | null;
+    expiresAt: string | null;
+    sourceProvider: string | null;
+    sourceName: string | null;
+  };
+}
+
+export interface SeekerRecommendedJobsResponse {
+  matches: SeekerRecommendedJob[];
+  candidateIds: number[];
+  hasCandidate: boolean;
 }
 
 export const cvAssistantApiClient = new CvAssistantApiClient();
