@@ -35,6 +35,7 @@ import { PublicJobMarketController } from "./controllers/public-job-market.contr
 import { PublicJobPostingController } from "./controllers/public-job-posting.controller";
 import { ReferenceFeedbackController } from "./controllers/reference-feedback.controller";
 import { ReferencesController } from "./controllers/references.controller";
+import { SeekerJobsController } from "./controllers/seeker-jobs.controller";
 import { SettingsController } from "./controllers/settings.controller";
 import { Candidate } from "./entities/candidate.entity";
 import { CandidateJobMatch } from "./entities/candidate-job-match.entity";
@@ -98,6 +99,7 @@ import { PortalPostingRetryService } from "./services/portal-posting-retry.servi
 import { ReferenceService } from "./services/reference.service";
 import { RemotiveService } from "./services/remotive.service";
 import { SalaryBenchmarkService } from "./services/salary-benchmark.service";
+import { SeekerJobFeedService } from "./services/seeker-job-feed.service";
 import { SettingsService } from "./services/settings.service";
 import { TestCandidateSeederService } from "./services/test-candidate-seeder.service";
 import { WorkflowAutomationService } from "./services/workflow-automation.service";
@@ -177,6 +179,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     PublicEeDisclosureController,
     ComplianceController,
     AdminEeTargetsController,
+    SeekerJobsController,
   ],
   providers: [
     CvAssistantAuthGuard,
@@ -221,6 +224,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     EmailTemplateService,
     InterviewBookingService,
     CvAssistantCapabilities,
+    SeekerJobFeedService,
   ],
   exports: [CvAssistantAuthService],
 })
