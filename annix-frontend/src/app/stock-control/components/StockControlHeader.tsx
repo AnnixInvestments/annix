@@ -31,7 +31,16 @@ export function StockControlHeader() {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const mobileNavRef = useRef<HTMLDivElement>(null);
   const { colors, logoUrl } = useStockControlBranding();
-  const { user, logout } = useStockControlAuth();
+  const { user, logout, isAuthenticated, isLoading: authLoading, profile } = useStockControlAuth();
+  // Degraded auth: backend is reachable enough that our token isn't being
+  // rejected (so we stay 'authenticated'), but the /me fetch failed with a
+  // non-auth error so we have no profile. In that state we render default
+  // 'ASCA' branding and 'SC' initials, which looks like a regression. Surface
+  // a banner so the user knows it's a temporary connectivity issue, not a
+  // real branding loss. (See feedback_user_facing_error_ui.md — silent
+  // defaults that look intentional are the same anti-pattern as raw stack
+  // traces.)
+  const isProfileDegraded = isAuthenticated && !authLoading && !profile;
   const { rbacConfig } = useStockControlRbac();
   const { effectiveRole, isPreviewActive, companyRoles, viewAsUser } = useViewAs();
 
@@ -450,6 +459,29 @@ export function StockControlHeader() {
           </div>
         </div>
       </header>
+
+      {isProfileDegraded && (
+        <div className="bg-amber-50 border-b border-amber-200 px-4 py-1.5 flex items-center justify-center gap-2">
+          <svg
+            className="w-4 h-4 text-amber-600"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+            />
+          </svg>
+          <span className="text-xs font-medium text-amber-700">
+            Couldn't reach the server to load your account — your custom branding and details will
+            reappear once the connection recovers. You can keep working in the meantime.
+          </span>
+        </div>
+      )}
 
       {isPreviewActive &&
         (() => {

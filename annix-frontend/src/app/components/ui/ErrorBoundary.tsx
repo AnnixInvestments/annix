@@ -1,11 +1,21 @@
 "use client";
 
 import { Component, type ReactNode } from "react";
+import { BrandedErrorScreen } from "@/app/components/BrandedErrorScreen";
 import { attemptChunkErrorRecovery, isChunkLoadError } from "@/app/lib/chunkErrorRecovery";
 
 interface ErrorBoundaryProps {
   children: ReactNode;
   fallback?: ReactNode;
+  /**
+   * Human label of the area for the user-facing error screen — shown as
+   * 'We hit a snag in {area}.' Defaults to 'this section'.
+   */
+  area?: string;
+  /** Where the 'Back' button should link. Defaults to '/'. */
+  backHref?: string;
+  backLabel?: string;
+  brandButtonClass?: string;
   onError?: (error: Error, errorInfo: React.ErrorInfo) => void;
 }
 
@@ -33,42 +43,33 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     }
   }
 
+  handleReset = (): void => {
+    this.setState({ hasError: false, error: null });
+  };
+
   render(): ReactNode {
     if (this.state.hasError) {
       if (this.props.fallback) {
         return this.props.fallback;
       }
 
-      const rawMessage = this.state.error?.message;
+      const error = this.state.error;
+      if (!error) return null;
+
+      const area = this.props.area ? this.props.area : "this section";
+      const backHref = this.props.backHref ? this.props.backHref : "/";
+      const backLabel = this.props.backLabel;
+      const brandButtonClass = this.props.brandButtonClass;
 
       return (
-        <div className="min-h-[200px] flex items-center justify-center">
-          <div className="text-center p-6 bg-red-50 rounded-lg border border-red-200 max-w-md">
-            <svg
-              className="mx-auto h-12 w-12 text-red-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-              />
-            </svg>
-            <h3 className="mt-2 text-sm font-medium text-red-800">Something went wrong</h3>
-            <p className="mt-1 text-sm text-red-600">
-              {rawMessage || "An unexpected error occurred"}
-            </p>
-            <button
-              onClick={() => this.setState({ hasError: false, error: null })}
-              className="mt-4 inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-            >
-              Try again
-            </button>
-          </div>
-        </div>
+        <BrandedErrorScreen
+          area={area}
+          error={error}
+          reset={this.handleReset}
+          backHref={backHref}
+          backLabel={backLabel}
+          brandButtonClass={brandButtonClass}
+        />
       );
     }
 

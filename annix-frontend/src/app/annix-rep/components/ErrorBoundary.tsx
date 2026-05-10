@@ -1,11 +1,14 @@
 "use client";
 
 import { Component, type ReactNode } from "react";
+import { BrandedErrorScreen } from "@/app/components/BrandedErrorScreen";
 import { attemptChunkErrorRecovery, isChunkLoadError } from "@/app/lib/chunkErrorRecovery";
 
 interface ErrorBoundaryProps {
   children: ReactNode;
   fallback?: ReactNode;
+  area?: string;
+  backHref?: string;
   onError?: (error: Error, errorInfo: React.ErrorInfo) => void;
 }
 
@@ -38,66 +41,21 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
   render(): ReactNode {
     if (this.state.hasError) {
-      if (this.props.fallback) {
-        return this.props.fallback;
-      }
-
+      if (this.props.fallback) return this.props.fallback;
+      const error = this.state.error;
+      if (!error) return null;
+      const area = this.props.area ? this.props.area : "Annix Rep";
+      const backHref = this.props.backHref ? this.props.backHref : "/annix-rep";
       return (
-        <div className="min-h-[400px] flex items-center justify-center">
-          <div className="text-center p-8 max-w-md">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
-              <svg
-                className="w-8 h-8 text-red-600 dark:text-red-400"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={1.5}
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"
-                />
-              </svg>
-            </div>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-              Something went wrong
-            </h2>
-            <p className="text-gray-600 dark:text-gray-400 mb-6">
-              We encountered an unexpected error. Please try again or contact support if the problem
-              persists.
-            </p>
-            <div className="flex gap-3 justify-center">
-              <button
-                onClick={this.handleRetry}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                Try again
-              </button>
-              <button
-                onClick={() => window.location.reload()}
-                className="px-4 py-2 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
-              >
-                Reload page
-              </button>
-            </div>
-            {process.env.NODE_ENV === "development" && this.state.error && (
-              <details className="mt-6 text-left">
-                <summary className="text-sm text-gray-500 dark:text-gray-400 cursor-pointer hover:text-gray-700 dark:hover:text-gray-200">
-                  Error details (dev only)
-                </summary>
-                <pre className="mt-2 p-3 bg-gray-100 dark:bg-slate-800 rounded-lg text-xs text-red-600 dark:text-red-400 overflow-auto max-h-40">
-                  {this.state.error.message}
-                  {"\n\n"}
-                  {this.state.error.stack}
-                </pre>
-              </details>
-            )}
-          </div>
-        </div>
+        <BrandedErrorScreen
+          area={area}
+          error={error}
+          reset={this.handleRetry}
+          backHref={backHref}
+          brandButtonClass="bg-blue-600 hover:bg-blue-700"
+        />
       );
     }
-
     return this.props.children;
   }
 }
@@ -105,67 +63,33 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 interface PageErrorFallbackProps {
   error?: Error | null;
   reset?: () => void;
+  /**
+   * Kept for backwards compatibility. The branded error screen ignores
+   * `title` / `message` and renders its own consistent copy with a
+   * support code — but call sites that pass them won't break.
+   */
   title?: string;
   message?: string;
+  area?: string;
+  backHref?: string;
 }
 
 export function PageErrorFallback(props: PageErrorFallbackProps) {
-  const {
-    error,
-    reset,
-    title = "Unable to load this page",
-    message = "There was a problem loading the content. Please try again.",
-  } = props;
+  const { error, reset } = props;
+  const area = props.area ? props.area : "Annix Rep";
+  const backHref = props.backHref ? props.backHref : "/annix-rep";
+  const safeError: Error & { digest?: string } = error
+    ? (error as Error & { digest?: string })
+    : new Error("Unknown error");
+  const handleReset = reset ? reset : () => window.location.reload();
   return (
-    <div className="min-h-[400px] flex items-center justify-center">
-      <div className="text-center p-8 max-w-md">
-        <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
-          <svg
-            className="w-8 h-8 text-red-600 dark:text-red-400"
-            fill="none"
-            viewBox="0 0 24 24"
-            strokeWidth={1.5}
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"
-            />
-          </svg>
-        </div>
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">{title}</h2>
-        <p className="text-gray-600 dark:text-gray-400 mb-6">{message}</p>
-        <div className="flex gap-3 justify-center">
-          {reset && (
-            <button
-              onClick={reset}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              Try again
-            </button>
-          )}
-          <button
-            onClick={() => window.location.reload()}
-            className="px-4 py-2 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
-          >
-            Reload page
-          </button>
-        </div>
-        {process.env.NODE_ENV === "development" && error && (
-          <details className="mt-6 text-left">
-            <summary className="text-sm text-gray-500 dark:text-gray-400 cursor-pointer hover:text-gray-700 dark:hover:text-gray-200">
-              Error details (dev only)
-            </summary>
-            <pre className="mt-2 p-3 bg-gray-100 dark:bg-slate-800 rounded-lg text-xs text-red-600 dark:text-red-400 overflow-auto max-h-40">
-              {error.message}
-              {"\n\n"}
-              {error.stack}
-            </pre>
-          </details>
-        )}
-      </div>
-    </div>
+    <BrandedErrorScreen
+      area={area}
+      error={safeError}
+      reset={handleReset}
+      backHref={backHref}
+      brandButtonClass="bg-blue-600 hover:bg-blue-700"
+    />
   );
 }
 

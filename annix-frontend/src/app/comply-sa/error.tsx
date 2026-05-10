@@ -1,28 +1,34 @@
 "use client";
 
-import { AlertCircle } from "lucide-react";
+import { useEffect } from "react";
+import { AppUpdateNotice } from "@/app/components/AppUpdateNotice";
+import { BrandedErrorScreen } from "@/app/components/BrandedErrorScreen";
+import { attemptChunkErrorRecovery, isChunkLoadError } from "@/app/lib/chunkErrorRecovery";
 
-export default function ComplySaError({
-  error,
-  reset,
-}: {
+export default function ComplySaError(props: {
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const { error, reset } = props;
+
+  useEffect(() => {
+    console.error("Comply-SA error:", error);
+    if (isChunkLoadError(error)) {
+      attemptChunkErrorRecovery();
+    }
+  }, [error]);
+
+  if (isChunkLoadError(error)) {
+    return <AppUpdateNotice brandButtonClass="bg-teal-500 hover:bg-teal-600" />;
+  }
+
   return (
-    <div className="min-h-screen bg-slate-900 flex items-center justify-center px-4">
-      <div className="w-full max-w-md text-center">
-        <AlertCircle className="h-12 w-12 text-red-400 mx-auto mb-4" />
-        <h2 className="text-xl font-bold text-white mb-2">Something went wrong</h2>
-        <p className="text-sm text-slate-400 mb-6">{error.message}</p>
-        <button
-          type="button"
-          onClick={reset}
-          className="bg-teal-500 hover:bg-teal-600 text-white font-medium px-6 py-2.5 rounded-lg text-sm transition-colors"
-        >
-          Try again
-        </button>
-      </div>
-    </div>
+    <BrandedErrorScreen
+      area="Comply-SA"
+      error={error}
+      reset={reset}
+      backHref="/comply-sa"
+      brandButtonClass="bg-teal-500 hover:bg-teal-600"
+    />
   );
 }

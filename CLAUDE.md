@@ -195,6 +195,16 @@ Quick rules every change must respect:
 - Prefer small, targeted try/catch close to the failing operation.
 - For browser evaluation (Puppeteer), capture messages and surface them to the Node logger after evaluation.
 
+### User-Facing Error UI (Frontend Only — MANDATORY)
+**End users must NEVER see raw `error.message`, `error.stack`, or any other internal exception detail.** Real customers don't know what `ReferenceError: useState is not defined` means and the only thing they take away is "this app is broken". Every React error boundary, every `error.tsx`, every fallback UI must use the shared branded screen.
+
+- **Use `BrandedErrorScreen`** from `@/app/components/BrandedErrorScreen` for every per-route `error.tsx` and every `<ErrorBoundary>` fallback. It renders a friendly headline, a short explanation, a stable **support code** the user can quote when reporting, and a "Try again" / "Back" button pair. Stack traces are gated behind `process.env.NODE_ENV !== "production"` and collapsed by default.
+- **Use `AppUpdateNotice`** from `@/app/components/AppUpdateNotice` for the chunk-load-error branch (always means a stale tab against a new build).
+- **Global last-resort**: `app/global-error.tsx` uses inline styles (it renders the html shell) but follows the same rules — friendly copy + support code, no raw error.
+- **Never** add `{error.message}` or `<pre>{error.stack}</pre>` to a user-facing page. ESLint will flag it (rule planned). If you genuinely need to inspect the error in dev, the `Show technical details (dev only)` disclosure inside `BrandedErrorScreen` is the only acceptable place — don't reinvent it.
+- **Toast / inline error messages from API failures**: surface the server-provided friendly message (the `error` field on the JSON body, when `parseErrorBody: true` in `nixRequest` / equivalent), NOT the raw `Error.message` produced from `response.statusText`. If the server didn't send a friendly message, show "Something went wrong — please try again." plus the support code on the underlying error if possible.
+- **Backend exception → frontend display rule of thumb**: the user should always see *what* failed (plain English), never *how* it failed (function names, stack frames, library internals).
+
 ### Legal Risk Prevention (ref #149)
 The pre-push hook runs `scripts/check-legal-risks.sh`, but catch these at authoring time — do not rely on the hook alone.
 
@@ -241,7 +251,12 @@ The pre-push hook runs `scripts/check-legal-risks.sh`, but catch these at author
 ### Branching
 - **No pull requests**: commit directly to `main`.
 - **No feature branches** unless explicitly requested for worktree-based parallel work.
-- **Worktrees**: cherry-pick the result onto `main` and clean up.
+- **Worktrees** — cherry-pick **every commit** to `main` immediately, not at the end of the session:
+    1. After `git commit` lands on the worktree branch, run `git -C <main-checkout> cherry-pick <sha>` straight away.
+    2. The dev swarm runs against `main`, so an un-cherry-picked commit means the swarm is serving stale code and any "test on localhost" the user does will silently miss your change.
+    3. Cherry-pick **per commit**, not at end-of-session — the user must be able to test work-in-progress without waiting for a batch sync.
+    4. If a cherry-pick conflicts (parallel session touched the same file), resolve it before the next commit so you never have a backlog of un-synced commits.
+    5. At end-of-session, the worktree branch is fully reflected on `main`, so cleanup is just `git worktree remove`.
 - **Never use `EnterWorktree` in `@annix/claude-swarm` worktrees**: if branch starts with `claude/`, work directly on the current branch — `@annix/claude-swarm` manages the worktree lifecycle, nesting puts commits on the wrong branch.
 
 ### Commit Process
