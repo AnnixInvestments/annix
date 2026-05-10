@@ -6,11 +6,13 @@ import { DateTime, fromISO } from "../../lib/datetime";
 import { isCvAssistantCronEnabled } from "../cv-assistant-cron.config";
 import { CvAssistantCompany } from "../entities/cv-assistant-company.entity";
 import { ExternalJob } from "../entities/external-job.entity";
-import { JobMarketSource } from "../entities/job-market-source.entity";
+import { JobMarketSource, JobSourceProvider } from "../entities/job-market-source.entity";
 import { JobPosting, JobPostingStatus } from "../entities/job-posting.entity";
-import { AdzunaJobResult, AdzunaService } from "./adzuna.service";
+import { AdzunaService } from "./adzuna.service";
 import { CandidateJobMatchingService } from "./candidate-job-matching.service";
 import { EmbeddingService } from "./embedding.service";
+import { IngestedJobResult } from "./ingested-job.types";
+import { JoobleService } from "./jooble.service";
 
 @Injectable()
 export class JobIngestionService {
@@ -26,6 +28,7 @@ export class JobIngestionService {
     @InjectRepository(CvAssistantCompany)
     private readonly companyRepo: Repository<CvAssistantCompany>,
     private readonly adzunaService: AdzunaService,
+    private readonly joobleService: JoobleService,
     private readonly embeddingService: EmbeddingService,
     private readonly candidateJobMatchingService: CandidateJobMatchingService,
   ) {}
@@ -59,7 +62,7 @@ export class JobIngestionService {
       return { ingested: 0, skipped: 0 };
     }
 
-    if (!source.apiId || !source.apiKeyEncrypted) {
+    if (!this.hasRequiredCredentials(source)) {
       this.logger.warn(`Source ${source.name} missing API credentials`);
       return { ingested: 0, skipped: 0 };
     }
@@ -77,16 +80,7 @@ export class JobIngestionService {
         }
 
         try {
-          const { jobs } = await this.adzunaService.searchJobs(
-            source.apiId!,
-            source.apiKeyEncrypted!,
-            country,
-            {
-              category: category ?? undefined,
-              maxDaysOld: 7,
-              resultsPerPage: 50,
-            },
-          );
+          const jobs = await this.fetchJobsFromProvider(source, country, category ?? null);
 
           source.requestsToday += 1;
 
@@ -289,8 +283,44 @@ export class JobIngestionService {
     };
   }
 
+  private hasRequiredCredentials(source: JobMarketSource): boolean {
+    if (source.provider === JobSourceProvider.REMOTIVE) {
+      return true;
+    }
+    if (source.provider === JobSourceProvider.JOOBLE) {
+      return Boolean(source.apiKeyEncrypted);
+    }
+    return Boolean(source.apiId && source.apiKeyEncrypted);
+  }
+
+  private async fetchJobsFromProvider(
+    source: JobMarketSource,
+    country: string,
+    category: string | null,
+  ): Promise<IngestedJobResult[]> {
+    if (source.provider === JobSourceProvider.JOOBLE) {
+      const { jobs } = await this.joobleService.searchJobs(source.apiKeyEncrypted!, {
+        keywords: category ?? undefined,
+        location: joobleLocationForCountry(country),
+        resultsPerPage: 50,
+      });
+      return jobs;
+    }
+    const { jobs } = await this.adzunaService.searchJobs(
+      source.apiId!,
+      source.apiKeyEncrypted!,
+      country,
+      {
+        category: category ?? undefined,
+        maxDaysOld: 7,
+        resultsPerPage: 50,
+      },
+    );
+    return jobs;
+  }
+
   private async upsertJobs(
-    jobs: AdzunaJobResult[],
+    jobs: IngestedJobResult[],
     source: JobMarketSource,
     country: string,
   ): Promise<{ ingested: number; skipped: number }> {
@@ -321,7 +351,7 @@ export class JobIngestionService {
           sourceExternalId: job.id,
           sourceUrl: job.redirectUrl,
           postedAt: job.created ? fromISO(job.created).toJSDate() : null,
-          expiresAt: this.adzunaService.estimateExpiry(job.created),
+          expiresAt: this.estimateExpiryForSource(source, job.created),
           sourceId: source.id,
         });
         return this.externalJobRepo.save(externalJob);
@@ -343,6 +373,13 @@ export class JobIngestionService {
     });
 
     return { ingested: savedJobs.length, skipped: jobs.length - newJobs.length };
+  }
+
+  private estimateExpiryForSource(source: JobMarketSource, postedDate: string | null): Date | null {
+    if (source.provider === JobSourceProvider.JOOBLE) {
+      return this.joobleService.estimateExpiry(postedDate);
+    }
+    return this.adzunaService.estimateExpiry(postedDate);
   }
 
   private isDueForIngestion(source: JobMarketSource): boolean {
@@ -409,6 +446,16 @@ function toPublicJob(job: ExternalJob): PublicJob {
     postedAt: job.postedAt ? job.postedAt.toISOString() : null,
     expiresAt: job.expiresAt ? job.expiresAt.toISOString() : null,
   };
+}
+
+function joobleLocationForCountry(country: string): string {
+  const code = country.toLowerCase();
+  if (code === "za") return "South Africa";
+  if (code === "gb" || code === "uk") return "United Kingdom";
+  if (code === "us") return "United States";
+  if (code === "ca") return "Canada";
+  if (code === "au") return "Australia";
+  return country;
 }
 
 function annixJobToPublic(job: JobPosting, companyName: string | null): PublicJob {

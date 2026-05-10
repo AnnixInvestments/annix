@@ -87,6 +87,7 @@ import { JobIngestionService } from "./services/job-ingestion.service";
 import { JobMarketSourceService } from "./services/job-market-source.service";
 import { JobMatchService } from "./services/job-match.service";
 import { JobPostingService } from "./services/job-posting.service";
+import { JoobleService } from "./services/jooble.service";
 import { MarketInsightsService } from "./services/market-insights.service";
 import { NixJobAssistService } from "./services/nix-job-assist.service";
 import { NixSeekerAssistService } from "./services/nix-seeker-assist.service";
@@ -193,6 +194,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     WorkflowAutomationService,
     SettingsService,
     AdzunaService,
+    JoobleService,
     JobIngestionService,
     JobMarketSourceService,
     EmbeddingService,
