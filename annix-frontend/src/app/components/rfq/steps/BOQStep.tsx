@@ -1,17 +1,12 @@
 "use client";
 
 import {
-  type HdpeNominalSize,
   hdpeEndCapLength,
-  pipeDimensions as hdpePipeDimensions,
   hdpeReducerLength,
   hdpeTeeDimensions,
   inferReducerBranchDn,
   lateralDimensions,
-  pnClassForSdr,
-  type SdrValue,
   sans1123StubAssemblyDescription,
-  selectSdrForPressure,
 } from "@annix/product-data/hdpe";
 import { FLANGE_OD } from "@annix/product-data/pipe";
 import { keys, values } from "es-toolkit/compat";
@@ -37,7 +32,14 @@ import {
 } from "@/app/lib/query/hooks";
 import { detectClarificationRequirements } from "@/app/lib/rfq/preQuoteRequirements";
 import { useRfqWizardStore } from "@/app/lib/store/rfqWizardStore";
-import { DEFAULT_HDPE_SDR, PIPE_WEIGHT_K_BY_PRODUCT_TYPE } from "./boq/constants";
+import {
+  fallbackBendWeight,
+  fallbackFittingWeight,
+  fallbackPipeWeight,
+  resolveHdpeDims,
+  resolveHdpePn,
+} from "./boq/calc";
+import { pipeRowDescription } from "./boq/description";
 import {
   bendCenterToFaceMm,
   flangeConfigSuffix,
@@ -49,6 +51,7 @@ import {
   safeFilename,
   triggerDownload,
 } from "./boq/helpers";
+import { getFlangeSpec, getSteelSpecName } from "./boq/spec";
 import type { ConsolidatedItem, MaterialKey } from "./boq/types";
 
 export default function BOQStep(props: {
@@ -125,257 +128,27 @@ export default function BOQStep(props: {
     },
     [],
   );
-  // Get flange spec string
-  const getFlangeSpec = (entry: any) => {
-    const rawFlangeStandardId = entry.specs?.flangeStandardId;
-    const flangeStandardId = rawFlangeStandardId || globalSpecs?.flangeStandardId;
-    const rawFlangePressureClassId = entry.specs?.flangePressureClassId;
-    const flangePressureClassId = rawFlangePressureClassId || globalSpecs?.flangePressureClassId;
-    const flangeStandard =
-      flangeStandardId && masterData?.flangeStandards
-        ? masterData.flangeStandards.find((s: any) => s.id === flangeStandardId)?.code
-        : "";
-    const pressureClass =
-      flangePressureClassId && masterData?.pressureClasses
-        ? masterData.pressureClasses.find((p: any) => p.id === flangePressureClassId)?.designation
-        : "";
-    return flangeStandard && pressureClass ? `${flangeStandard} ${pressureClass}` : "PN16";
+  // Lookups passed to the extracted spec helpers — keeps BOQStep
+  // call sites concise and the helpers honest about their deps.
+  const flangeSpecLookup = {
+    globalFlangeStandardId: globalSpecs?.flangeStandardId,
+    globalFlangePressureClassId: globalSpecs?.flangePressureClassId,
+    flangeStandards: masterData?.flangeStandards,
+    pressureClasses: masterData?.pressureClasses,
   };
-
-  // Get steel spec name
-  const getSteelSpecName = (entry: any) => {
-    const rawSteelSpecificationId = entry.specs?.steelSpecificationId;
-    const steelSpecId = rawSteelSpecificationId || globalSpecs?.steelSpecificationId;
-    const rawSteelSpecName = masterData.steelSpecs.find(
-      (s: any) => s.id === steelSpecId,
-    )?.steelSpecName;
-    return steelSpecId && masterData?.steelSpecs ? rawSteelSpecName || "Steel" : "Steel";
+  const steelSpecLookup = {
+    globalSteelSpecificationId: globalSpecs?.steelSpecificationId,
+    steelSpecs: masterData?.steelSpecs,
   };
+  const globalHdpeSdr = globalSpecs?.hdpeSdr;
+  const globalHdpePressureRating = globalSpecs?.hdpePressureRating;
 
-  // Build the consolidated row description for a pipe, branching on the
-  // entry's materialType. Avoids the previous bug where every BOQ row
-  // said "...Steel Pipe..." even for HDPE/PVC entries.
-  const pipeRowDescription = (
-    entry: any,
-    nb: number,
-    schedule: string,
-    pipeLength: number,
-    steelSpec: string,
-    hdpeGrade: string | undefined,
-    sdrNumber: number | undefined,
-    pvcType: string | undefined,
-    pressureClass: string | undefined,
-    flangeSpec: string,
-  ): string => {
-    const rawMatType = entry.materialType;
-    const materialType = rawMatType || "steel";
-    const rawPipeEnd = entry.specs?.pipeEndConfiguration;
-    const flangeSuffix = flangeConfigSuffix(rawPipeEnd, materialType, flangeSpec);
-    if (materialType === "hdpe") {
-      const grade = hdpeGrade || "PE100";
-      const sdrLabel = sdrNumber ? ` SDR${sdrNumber}` : "";
-      const pnLabel = pressureClass ? ` ${pressureClass}` : "";
-      // HDPE pipework terminates against valves / pumps / steel mains
-      // via stub end + backing flange. We surface the SANS 1123 spec
-      // unconditionally so the supplier knows what flange to drop in
-      // — PN is taken from globalSpecs first, then derived from the
-      // SDR via the PE100 SDR↔PN table, then from the parsed
-      // pressureClass label as a last resort.
-      const rawPnFromGlobal = globalSpecs?.hdpePressureRating;
-      const pnFromGlobal = rawPnFromGlobal ? Number(rawPnFromGlobal) : null;
-      const pnFromSdrLookup =
-        sdrNumber != null ? pnClassForSdr(sdrNumber as SdrValue, "PE100") : null;
-      const pnFromLabel = pressureClass
-        ? Number(String(pressureClass).replace(/[^\d.]/g, ""))
-        : null;
-      const pnNumberForStub =
-        pnFromGlobal ||
-        pnFromSdrLookup ||
-        (pnFromLabel && Number.isFinite(pnFromLabel) ? pnFromLabel : null);
-      const stubAssembly = pnNumberForStub
-        ? sans1123StubAssemblyDescription(pnNumberForStub)
-        : null;
-      const stubSuffix = stubAssembly ? `, ${stubAssembly}` : "";
-      return `${nb}OD ${grade}${sdrLabel}${pnLabel} HDPE Pipe x${pipeLength}m${flangeSuffix}${stubSuffix}`.trim();
-    }
-    if (materialType === "pvc") {
-      const typeLabel = pvcType ? ` ${pvcType}` : "";
-      const pnLabel = pressureClass ? ` ${pressureClass}` : "";
-      return `${nb}OD${typeLabel} PVC Pipe${pnLabel} x${pipeLength}m${flangeSuffix}`.trim();
-    }
-    return `${nb}NB ${schedule ? `Sch${schedule.replace("Sch", "")}` : ""} ${steelSpec} Pipe x${pipeLength}m${flangeSuffix}`.trim();
-  };
-
-  // Compute per-row pipe weight when the entry's calculation block is
-  // empty (typical for Nix-extracted items where Step 2's auto-calc
-  // never fired). Uses the same hollow-cylinder formula as the steel
-  // calc but with the right density constant per material. For HDPE,
-  // the wall thickness is derived from SDR (WT = OD/SDR); the customer
-  // can still override by setting an explicit WT on the entry.
-  const fallbackPipeWeight = (
-    entry: any,
-    nb: number,
-    pipeLength: number,
-    pipeQty: number,
-  ): number => {
-    const cachedWeight = entry.calculation?.totalPipeWeight;
-    if (cachedWeight) return cachedWeight;
-
-    const rawMaterialType = entry.materialType;
-    const materialType = rawMaterialType || "steel";
-    const productKey: keyof typeof PIPE_WEIGHT_K_BY_PRODUCT_TYPE =
-      materialType === "hdpe" ? "hdpe" : materialType === "pvc" ? "pvc" : "steel";
-    const k = PIPE_WEIGHT_K_BY_PRODUCT_TYPE[productKey];
-
-    const rawOutsideDiameter = entry.specs?.outsideDiameterMm;
-    let od = rawOutsideDiameter || nb;
-    let wt = entry.specs?.wallThicknessMm;
-
-    if (productKey === "hdpe") {
-      const rawSdr = globalSpecs?.hdpeSdr;
-      const sdr = rawSdr || DEFAULT_HDPE_SDR;
-      // For HDPE the customer-facing dimension is OD = nominalBoreMm.
-      const rawNb = entry.specs?.nominalBoreMm;
-      od = rawNb || od;
-      if (!wt) wt = od / Number(sdr);
-    } else if (!wt) {
-      // No WT and no schedule lookup — give up rather than report a
-      // misleading 0kg. Returning 0 here keeps the existing UX.
-      return 0;
-    }
-
-    const perMetre = (od - wt) * wt * k;
-    // For Nix-extracted entries the unit is often metres of total
-    // pipe (quantityType === "total_length"), in which case
-    // entry.specs.quantityValue IS the total length and multiplying
-    // by pipeLength would over-count. Fall back to pipeLength × qty
-    // for number_of_pipes mode.
-    const rawQuantityType = entry.specs?.quantityType;
-    const rawSpecsQuantityValue = entry.specs?.quantityValue;
-    const totalLength =
-      rawQuantityType === "total_length"
-        ? rawSpecsQuantityValue || pipeLength * pipeQty
-        : pipeLength * pipeQty;
-    return perMetre * totalLength;
-  };
-
-  // Per-BEND weight (no qty multiplier — caller multiplies by qty when
-  // accumulating into a consolidated row). Models a bend as an arc of
-  // pipe — arc length = bendRadius × angle (in radians) — times the
-  // per-metre pipe weight for the material. Same density constant per
-  // material as fallbackPipeWeight. Doesn't account for tangent
-  // extensions; those add a small fraction of a pipe length.
-  const fallbackBendWeight = (entry: any, nb: number): number => {
-    const cachedTotalWeight = entry.calculation?.totalWeight;
-    const cachedBendWeight = entry.calculation?.bendWeight;
-    if (cachedTotalWeight) return cachedTotalWeight;
-    if (cachedBendWeight) return cachedBendWeight;
-
-    const rawMaterialType = entry.materialType;
-    const materialType = rawMaterialType || "steel";
-    const productKey: keyof typeof PIPE_WEIGHT_K_BY_PRODUCT_TYPE =
-      materialType === "hdpe" ? "hdpe" : materialType === "pvc" ? "pvc" : "steel";
-    const k = PIPE_WEIGHT_K_BY_PRODUCT_TYPE[productKey];
-
-    const rawOutsideDiameter = entry.specs?.outsideDiameterMm;
-    const od = rawOutsideDiameter || nb;
-    let wt = entry.specs?.wallThicknessMm;
-    if (productKey === "hdpe" && !wt) {
-      const rawSdr = globalSpecs?.hdpeSdr;
-      const sdr = rawSdr || DEFAULT_HDPE_SDR;
-      wt = od / Number(sdr);
-    } else if (!wt) {
-      return 0;
-    }
-
-    const rawBendDegrees = entry.specs?.bendDegrees;
-    const angleDeg = rawBendDegrees || 90;
-    const rawBendRadiusType = entry.specs?.bendType;
-    const radiusFactor = parseFloat((rawBendRadiusType || "1.5D").replace("D", "")) || 1.5;
-    const bendRadiusMetres = (nb * radiusFactor) / 1000;
-    const arcLength = bendRadiusMetres * ((angleDeg * Math.PI) / 180);
-
-    const perMetre = (od - wt) * wt * k;
-    return perMetre * arcLength;
-  };
-
-  // Per-FITTING weight (no qty multiplier — caller multiplies by qty
-  // when accumulating). For tees and reducers the dominant mass is
-  // the pipe-equivalent body — tee approx = run length + branch
-  // length × per-metre. For reducers we average run + branch ODs.
-  // Crude but consistent with the bend approach and far better than
-  // reporting 0kg.
-  const fallbackFittingWeight = (entry: any, nb: number, branchNb: number): number => {
-    const cachedFittingWeight = entry.calculation?.fittingWeight;
-    const cachedTotalWeight = entry.calculation?.totalWeight;
-    if (cachedFittingWeight) return cachedFittingWeight;
-    if (cachedTotalWeight) return cachedTotalWeight;
-
-    const rawMaterialType = entry.materialType;
-    const materialType = rawMaterialType || "steel";
-    const productKey: keyof typeof PIPE_WEIGHT_K_BY_PRODUCT_TYPE =
-      materialType === "hdpe" ? "hdpe" : materialType === "pvc" ? "pvc" : "steel";
-    const k = PIPE_WEIGHT_K_BY_PRODUCT_TYPE[productKey];
-
-    const od = nb;
-    const branchOd = branchNb || nb;
-    let wt = entry.specs?.wallThicknessMm;
-    if (productKey === "hdpe" && !wt) {
-      const rawSdr = globalSpecs?.hdpeSdr;
-      const sdr = rawSdr || DEFAULT_HDPE_SDR;
-      wt = od / Number(sdr);
-    } else if (!wt) {
-      return 0;
-    }
-
-    // Run length: 2 × OD as a rule of thumb for an equal tee body
-    // length. Branch length: OD as a single branch nipple.
-    const runLengthM = (2 * od) / 1000;
-    const branchLengthM = branchOd / 1000;
-    const perMetreRun = (od - wt) * wt * k;
-    const perMetreBranch = (branchOd - wt) * wt * k;
-    return perMetreRun * runLengthM + perMetreBranch * branchLengthM;
-  };
-
-  // HDPE dim resolver — when an HDPE entry's calculation block lacks
-  // OD / WT (the backend's calc service is steel-only and skips HDPE
-  // entries), look the values up from the canonical PE100 table in
-  // @annix/product-data/hdpe so the BOQ can still populate Weld(m),
-  // Int m², Ext m² columns. Falls back to the formula `WT = OD/SDR`
-  // when the (DN, SDR) combo isn't in the table.
-  //
-  // SDR is derived in priority order:
-  //   1. entry.specs.hdpeSdr        — per-row override
-  //   2. globalSpecs.hdpeSdr        — wizard-level setting
-  //   3. selectSdrForPressure(PN)   — when only PN is known
-  //   4. DEFAULT_HDPE_SDR (= 11)    — PN16/SDR11 mining default
-  const resolveHdpeDims = (nb: number, entry: any): { od: number; wt: number; sdr: SdrValue } => {
-    const rawEntrySdr = entry.specs?.hdpeSdr;
-    const rawGlobalSdr = globalSpecs?.hdpeSdr;
-    const rawGlobalPn = globalSpecs?.hdpePressureRating;
-    const pnNumber = rawGlobalPn ? Number(rawGlobalPn) : null;
-    const sdrFromPn = pnNumber ? selectSdrForPressure(pnNumber, "PE100") : null;
-    const sdrCandidate = rawEntrySdr || rawGlobalSdr || sdrFromPn || DEFAULT_HDPE_SDR;
-    const sdr = Number(sdrCandidate) as SdrValue;
-    const dims = hdpePipeDimensions(nb as HdpeNominalSize, sdr, "PE100");
-    return { od: dims.odMm, wt: dims.wallMm, sdr };
-  };
-
-  // Effective HDPE PN for the row's stub-flange spec. Priority:
-  // 1. globalSpecs.hdpePressureRating (explicit project-level pick)
-  // 2. derived from the resolved SDR via PE100 SDR↔PN table
-  // (e.g. SDR 11 → PN16, SDR 17 → PN10, SDR 6 → PN25). Returns null
-  // only when neither input is available — caller suppresses the
-  // suffix in that case.
-  const resolveHdpePn = (sdr: SdrValue): number | null => {
-    const rawGlobalPn = globalSpecs?.hdpePressureRating;
-    if (rawGlobalPn) {
-      const pn = Number(rawGlobalPn);
-      if (Number.isFinite(pn) && pn > 0) return pn;
-    }
-    const pnFromSdr = pnClassForSdr(sdr, "PE100");
-    return pnFromSdr ?? null;
-  };
+  // ======================
+  // PIPE / WEIGHT HELPERS
+  // ======================
+  // Extracted to boq/calc.ts and boq/description.ts. Closure-bound
+  // values (globalSpecs.hdpeSdr / hdpePressureRating) are now passed
+  // explicitly so the helpers are unit-testable.
 
   // ======================
   // CONSOLIDATION LOGIC
@@ -411,8 +184,8 @@ export default function BOQStep(props: {
     const rawQuantityValue = entry.specs?.quantityValue;
     const rawCalculatedPipeCountForQty = entry.calculation?.calculatedPipeCount;
     const qty = rawQuantityValue || rawCalculatedPipeCountForQty || 1;
-    const steelSpec = getSteelSpecName(entry);
-    const flangeSpec = getFlangeSpec(entry);
+    const steelSpec = getSteelSpecName(entry, steelSpecLookup);
+    const flangeSpec = getFlangeSpec(entry, flangeSpecLookup);
 
     if (entry.itemType === "bend") {
       const rawNominalBoreMm = entry.specs?.nominalBoreMm;
@@ -437,7 +210,7 @@ export default function BOQStep(props: {
       const rawBendWeight = entry.calculation?.bendWeight;
       const rawTangentWeight = entry.calculation?.tangentWeight;
       const cachedBendWeight = rawTotalWeight || (rawBendWeight || 0) + (rawTangentWeight || 0);
-      const bendWeight = cachedBendWeight || fallbackBendWeight(entry, nb);
+      const bendWeight = cachedBendWeight || fallbackBendWeight(entry, nb, globalHdpeSdr);
 
       const rawNumberOfSegments = entry.specs?.numberOfSegments;
 
@@ -448,7 +221,7 @@ export default function BOQStep(props: {
       const rawWallThicknessMm = entry.calculation?.wallThicknessMm;
       const hdpeDims =
         bendMaterialType === "hdpe" && (!rawOutsideDiameterMm || !rawWallThicknessMm)
-          ? resolveHdpeDims(nb, entry)
+          ? resolveHdpeDims(nb, entry, globalHdpeSdr, globalHdpePressureRating)
           : null;
       const hdpeDimsOd = hdpeDims ? hdpeDims.od : 0;
       const hdpeDimsWt = hdpeDims ? hdpeDims.wt : 0;
@@ -532,7 +305,9 @@ export default function BOQStep(props: {
         // SDR via the PE100 SDR↔PN table (so a project that only
         // specified an SDR still gets the right backing-flange spec).
         const hdpeBendSdr = hdpeDims ? hdpeDims.sdr : null;
-        const hdpeBendPn = hdpeBendSdr ? resolveHdpePn(hdpeBendSdr) : null;
+        const hdpeBendPn = hdpeBendSdr
+          ? resolveHdpePn(hdpeBendSdr, globalHdpePressureRating)
+          : null;
         const hdpeBendStubAssembly =
           bendMaterialType === "hdpe" && hdpeBendPn
             ? sans1123StubAssemblyDescription(hdpeBendPn)
@@ -782,7 +557,8 @@ export default function BOQStep(props: {
       const rawTotalWeight2 = entry.calculation?.totalWeight;
       const rawCalcFittingWeight = entry.calculation?.fittingWeight;
       const cachedFittingWeight = rawTotalWeight2 || rawCalcFittingWeight || 0;
-      const fittingWeight = cachedFittingWeight || fallbackFittingWeight(entry, nb, branchNb);
+      const fittingWeight =
+        cachedFittingWeight || fallbackFittingWeight(entry, nb, branchNb, globalHdpeSdr);
 
       // Format fitting type for display
       let displayType = fittingType
@@ -801,7 +577,7 @@ export default function BOQStep(props: {
       const fittingMaterialTypeForDims = rawFittingMaterialTypeForDims || "steel";
       const hdpeFittingDims =
         fittingMaterialTypeForDims === "hdpe" && (!rawOutsideDiameterMm2 || !rawWallThicknessMm2)
-          ? resolveHdpeDims(nb, entry)
+          ? resolveHdpeDims(nb, entry, globalHdpeSdr, globalHdpePressureRating)
           : null;
       const hdpeFittingDimsOd = hdpeFittingDims ? hdpeFittingDims.od : 0;
       const hdpeFittingDimsWt = hdpeFittingDims ? hdpeFittingDims.wt : 0;
@@ -822,7 +598,7 @@ export default function BOQStep(props: {
       const hdpeFittingBranchDims =
         fittingMaterialTypeForDims === "hdpe" &&
         (!rawBranchOutsideDiameterMm || !rawBranchWallThicknessMm)
-          ? resolveHdpeDims(branchNb, entry)
+          ? resolveHdpeDims(branchNb, entry, globalHdpeSdr, globalHdpePressureRating)
           : null;
       const hdpeFittingBranchOd = hdpeFittingBranchDims ? hdpeFittingBranchDims.od : 0;
       const hdpeFittingBranchWt = hdpeFittingBranchDims ? hdpeFittingBranchDims.wt : 0;
@@ -938,7 +714,9 @@ export default function BOQStep(props: {
         // derived from globalSpecs first, then from the resolved
         // SDR via the PE100 SDR↔PN table.
         const hdpeFittingSdrValue = hdpeFittingDims ? hdpeFittingDims.sdr : null;
-        const hdpeFittingPn = hdpeFittingSdrValue ? resolveHdpePn(hdpeFittingSdrValue) : null;
+        const hdpeFittingPn = hdpeFittingSdrValue
+          ? resolveHdpePn(hdpeFittingSdrValue, globalHdpePressureRating)
+          : null;
         const hdpeFittingStubAssembly =
           fittingMaterialType === "hdpe" && hdpeFittingPn
             ? sans1123StubAssemblyDescription(hdpeFittingPn)
@@ -1391,7 +1169,7 @@ export default function BOQStep(props: {
 
       const key = `PIPE_${materialType}_${nb}_${schedule}_${steelSpec}_${pipeLength}`;
       const existing = consolidatedPipes.get(key);
-      const pipeWeight = fallbackPipeWeight(entry, nb, pipeLength, pipeQty);
+      const pipeWeight = fallbackPipeWeight(entry, nb, pipeLength, pipeQty, globalHdpeSdr);
 
       const rawPipeEndConfiguration2 = entry.specs?.pipeEndConfiguration;
 
@@ -1410,7 +1188,7 @@ export default function BOQStep(props: {
       const rawWallThicknessMm3 = entry.calculation?.wallThicknessMm;
       const hdpePipeDims =
         materialType === "hdpe" && (!rawOutsideDiameterMm3 || !rawWallThicknessMm3)
-          ? resolveHdpeDims(nb, entry)
+          ? resolveHdpeDims(nb, entry, globalHdpeSdr, globalHdpePressureRating)
           : null;
       const hdpePipeDimsOd = hdpePipeDims ? hdpePipeDims.od : 0;
       const hdpePipeDimsWt = hdpePipeDims ? hdpePipeDims.wt : 0;
@@ -1467,6 +1245,7 @@ export default function BOQStep(props: {
             rawPvcType,
             pressureClassLabel,
             flangeSpec,
+            globalHdpePressureRating,
           ),
           qty: pipeQty,
           unit: "Each",
