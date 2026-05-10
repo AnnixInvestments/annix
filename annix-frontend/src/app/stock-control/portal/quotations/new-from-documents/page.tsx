@@ -12,8 +12,11 @@ import { DocNumberAutocomplete } from "@/app/lib/nix/components/library";
 import {
   type NixExtractionSessionDto,
   useCreateNixExtractionSession,
+  useFeatureFlagEnabled,
   useNixExtractionSession,
 } from "@/app/lib/query/hooks";
+
+const NIX_QUOTE_FROM_DOCS_FLAG = "STOCK_MGMT_NIX_QUOTE_FROM_DOCUMENTS";
 
 const ASCA_PROFILE_KEY = "asca-quote-documents";
 const ASCA_SOURCE_MODULE = "asca";
@@ -34,6 +37,7 @@ export default function QuoteFromDocumentsPage() {
   const router = useRouter();
   const auth = useStockControlAuth();
   const { showToast } = useToast();
+  const nixQuoteFlag = useFeatureFlagEnabled(NIX_QUOTE_FROM_DOCS_FLAG);
   const userId = auth.user?.id;
 
   const searchParams = useSearchParams();
@@ -169,6 +173,32 @@ export default function QuoteFromDocumentsPage() {
   const drawingsConfirmed = drawings.confirmed;
   const specsConfirmed = specs.confirmed;
   const reviewReady = session !== null && (drawingsConfirmed || specsConfirmed);
+
+  // Gate: this whole flow is the 'Nix quote from documents' add-on. When
+  // the feature flag is off (base-tier deployment), redirect users back
+  // to the Quotations list rather than letting them upload to a feature
+  // they haven't paid for. Loading state shows nothing — avoids a flash
+  // of the upload page before the flag resolves.
+  if (nixQuoteFlag.isLoading) {
+    return <div className="p-6 text-sm text-gray-500">Loading…</div>;
+  }
+  if (!nixQuoteFlag.enabled) {
+    return (
+      <div className="p-6 max-w-xl">
+        <h1 className="text-xl font-semibold text-gray-900">Add-on not enabled</h1>
+        <p className="text-sm text-gray-600 mt-2">
+          The 'New quote from documents' AI feature isn't enabled on this deployment. Contact your
+          Annix account manager if you'd like it activated.
+        </p>
+        <Link
+          href="/stock-control/portal/quotations"
+          className="inline-block mt-4 text-sm text-blue-600 hover:text-blue-800 underline"
+        >
+          ← Back to quotations
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">

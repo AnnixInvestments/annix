@@ -9,16 +9,20 @@ import { useToast } from "@/app/components/Toast";
 import { NixDraftReview } from "@/app/lib/nix/components/draft";
 import {
   quoteRefForSession,
+  useFeatureFlagEnabled,
   useNixExtractionSession,
   useSetNixExtractionSessionStatus,
 } from "@/app/lib/query/hooks";
 import { useConfirm } from "@/app/stock-control/hooks/useConfirm";
+
+const NIX_QUOTE_FROM_DOCS_FLAG = "STOCK_MGMT_NIX_QUOTE_FROM_DOCUMENTS";
 
 export default function NixExtractionDraftPage() {
   const params = useParams();
   const router = useRouter();
   const { showToast } = useToast();
   const { confirm, ConfirmDialog } = useConfirm();
+  const nixQuoteFlag = useFeatureFlagEnabled(NIX_QUOTE_FROM_DOCS_FLAG);
   const rawParam = params?.id;
   const sessionIdParam = rawParam;
   let parsedSessionId: number = Number.NaN;
@@ -100,6 +104,27 @@ export default function NixExtractionDraftPage() {
     return (
       <div className="p-6">
         <p className="text-red-600">Invalid session id.</p>
+      </div>
+    );
+  }
+
+  if (nixQuoteFlag.isLoading) {
+    return <div className="p-6 text-sm text-gray-500">Loading…</div>;
+  }
+  if (!nixQuoteFlag.enabled) {
+    return (
+      <div className="p-6 max-w-xl">
+        <h1 className="text-xl font-semibold text-gray-900">Add-on not enabled</h1>
+        <p className="text-sm text-gray-600 mt-2">
+          The 'New quote from documents' AI feature isn't enabled on this deployment. Contact your
+          Annix account manager if you'd like it activated.
+        </p>
+        <Link
+          href="/stock-control/portal/quotations"
+          className="inline-block mt-4 text-sm text-blue-600 hover:text-blue-800 underline"
+        >
+          ← Back to quotations
+        </Link>
       </div>
     );
   }

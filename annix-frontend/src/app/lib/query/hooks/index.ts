@@ -1124,3 +1124,4 @@ export {
   useRegenerateSection,
   useSuggestObjectives,
 } from "./teacher-assistant/useTeacherAssistant";
+export { useFeatureFlagEnabled } from "./useFeatureFlagEnabled";

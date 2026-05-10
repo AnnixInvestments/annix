@@ -6,9 +6,12 @@ import { fromISO } from "@/app/lib/datetime";
 import {
   quoteRefForSession,
   useDeleteNixExtractionSession,
+  useFeatureFlagEnabled,
   useNixExtractionSessions,
 } from "@/app/lib/query/hooks";
 import { useConfirm } from "@/app/stock-control/hooks/useConfirm";
+
+const NIX_QUOTE_FROM_DOCS_FLAG = "STOCK_MGMT_NIX_QUOTE_FROM_DOCUMENTS";
 
 const MOCK_QUOTES = [
   {
@@ -86,9 +89,13 @@ function formatZar(value: number): string {
 }
 
 export default function QuotationsPage() {
-  const draftsQuery = useNixExtractionSessions({ sourceModule: "asca", status: "draft" });
+  const nixQuoteFlag = useFeatureFlagEnabled(NIX_QUOTE_FROM_DOCS_FLAG);
+  const isNixEnabled = nixQuoteFlag.enabled;
+  const draftsQuery = useNixExtractionSessions(
+    isNixEnabled ? { sourceModule: "asca", status: "draft" } : undefined,
+  );
   const draftsData = draftsQuery.data;
-  const drafts = draftsData ?? [];
+  const drafts = isNixEnabled && draftsData ? draftsData : [];
   const deleteMutation = useDeleteNixExtractionSession();
   const { confirm, ConfirmDialog } = useConfirm();
 
@@ -155,12 +162,14 @@ export default function QuotationsPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Link
-            href="/stock-control/portal/quotations/new-from-documents"
-            className="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-md text-sm font-medium shadow-sm hover:bg-purple-700"
-          >
-            New from documents (Nix)
-          </Link>
+          {isNixEnabled && (
+            <Link
+              href="/stock-control/portal/quotations/new-from-documents"
+              className="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-md text-sm font-medium shadow-sm hover:bg-purple-700"
+            >
+              New from documents (Nix)
+            </Link>
+          )}
           <button
             type="button"
             disabled
@@ -176,159 +185,161 @@ export default function QuotationsPage() {
         above is real.
       </div>
 
-      <section className="mb-6">
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-            In-progress drafts
-          </h2>
-          {someChecked && (
-            <button
-              type="button"
-              onClick={() => void handleBulkDelete()}
-              disabled={deleteMutation.isPending}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-600 text-white rounded-md text-xs font-medium shadow-sm hover:bg-red-700 disabled:opacity-50"
-            >
-              <svg
-                className="w-3.5 h-3.5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                aria-hidden="true"
+      {isNixEnabled && (
+        <section className="mb-6">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+              In-progress drafts
+            </h2>
+            {someChecked && (
+              <button
+                type="button"
+                onClick={() => void handleBulkDelete()}
+                disabled={deleteMutation.isPending}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-600 text-white rounded-md text-xs font-medium shadow-sm hover:bg-red-700 disabled:opacity-50"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                />
-              </svg>
-              Delete {selectedIds.size} selected
-            </button>
-          )}
-        </div>
-        {draftsQuery.isLoading ? (
-          <p className="text-sm text-gray-500">Loading…</p>
-        ) : drafts.length === 0 ? (
-          <p className="text-sm text-gray-500">
-            No drafts in progress. Start one with{" "}
-            <Link
-              href="/stock-control/portal/quotations/new-from-documents"
-              className="text-blue-600 hover:text-blue-800 underline"
-            >
-              New from documents (Nix)
-            </Link>
-            .
-          </p>
-        ) : (
-          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-              <thead className="bg-gray-50 dark:bg-gray-900/20">
-                <tr>
-                  <th className="px-3 py-2 w-8">
-                    <input
-                      type="checkbox"
-                      checked={allChecked}
-                      onChange={toggleAll}
-                      aria-label="Select all drafts"
-                      className="rounded border-gray-300"
-                    />
-                  </th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                    Quote #
-                  </th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                    Title
-                  </th>
-                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">
-                    Documents
-                  </th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                    Started
-                  </th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                    Last edit
-                  </th>
-                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">
-                    <span className="sr-only">Actions</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {drafts.map((s) => {
-                  const ref = quoteRefForSession(s);
-                  const docCount = s.extractions ? s.extractions.length : 0;
-                  const startedAt = fromISO(s.createdAt).toFormat("dd MMM yyyy");
-                  const updatedAt = fromISO(s.updatedAt).toFormat("dd MMM yyyy HH:mm");
-                  const titleText = s.title ? s.title : `Draft from documents — session #${s.id}`;
-                  return (
-                    <tr key={s.id} className="hover:bg-gray-50 dark:hover:bg-gray-900/30">
-                      <td className="px-3 py-3 w-8">
-                        <input
-                          type="checkbox"
-                          checked={selectedIds.has(s.id)}
-                          onChange={() => toggleOne(s.id)}
-                          aria-label={`Select ${ref}`}
-                          className="rounded border-gray-300"
-                        />
-                      </td>
-                      <td className="px-4 py-3 text-sm font-mono">
-                        <Link
-                          href={`/stock-control/portal/quotations/drafts/${s.id}`}
-                          className="text-[#323288] hover:underline"
-                        >
-                          {ref}
-                        </Link>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
-                        <Link
-                          href={`/stock-control/portal/quotations/drafts/${s.id}`}
-                          className="hover:underline"
-                        >
-                          {titleText}
-                        </Link>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-right text-gray-700 dark:text-gray-300">
-                        {docCount}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
-                        {startedAt}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
-                        {updatedAt}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <button
-                          type="button"
-                          onClick={() => void handleDeleteDraft(s.id, ref)}
-                          disabled={deleteMutation.isPending}
-                          className="text-gray-400 hover:text-red-600 disabled:opacity-30"
-                          aria-label={`Delete draft ${ref}`}
-                          title="Delete this draft (extractions stay available for reuse)"
-                        >
-                          <svg
-                            className="w-4 h-4"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                            aria-hidden="true"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                            />
-                          </svg>
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                <svg
+                  className="w-3.5 h-3.5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                  />
+                </svg>
+                Delete {selectedIds.size} selected
+              </button>
+            )}
           </div>
-        )}
-      </section>
+          {draftsQuery.isLoading ? (
+            <p className="text-sm text-gray-500">Loading…</p>
+          ) : drafts.length === 0 ? (
+            <p className="text-sm text-gray-500">
+              No drafts in progress. Start one with{" "}
+              <Link
+                href="/stock-control/portal/quotations/new-from-documents"
+                className="text-blue-600 hover:text-blue-800 underline"
+              >
+                New from documents (Nix)
+              </Link>
+              .
+            </p>
+          ) : (
+            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead className="bg-gray-50 dark:bg-gray-900/20">
+                  <tr>
+                    <th className="px-3 py-2 w-8">
+                      <input
+                        type="checkbox"
+                        checked={allChecked}
+                        onChange={toggleAll}
+                        aria-label="Select all drafts"
+                        className="rounded border-gray-300"
+                      />
+                    </th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                      Quote #
+                    </th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                      Title
+                    </th>
+                    <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+                      Documents
+                    </th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                      Started
+                    </th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                      Last edit
+                    </th>
+                    <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+                      <span className="sr-only">Actions</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {drafts.map((s) => {
+                    const ref = quoteRefForSession(s);
+                    const docCount = s.extractions ? s.extractions.length : 0;
+                    const startedAt = fromISO(s.createdAt).toFormat("dd MMM yyyy");
+                    const updatedAt = fromISO(s.updatedAt).toFormat("dd MMM yyyy HH:mm");
+                    const titleText = s.title ? s.title : `Draft from documents — session #${s.id}`;
+                    return (
+                      <tr key={s.id} className="hover:bg-gray-50 dark:hover:bg-gray-900/30">
+                        <td className="px-3 py-3 w-8">
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.has(s.id)}
+                            onChange={() => toggleOne(s.id)}
+                            aria-label={`Select ${ref}`}
+                            className="rounded border-gray-300"
+                          />
+                        </td>
+                        <td className="px-4 py-3 text-sm font-mono">
+                          <Link
+                            href={`/stock-control/portal/quotations/drafts/${s.id}`}
+                            className="text-[#323288] hover:underline"
+                          >
+                            {ref}
+                          </Link>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
+                          <Link
+                            href={`/stock-control/portal/quotations/drafts/${s.id}`}
+                            className="hover:underline"
+                          >
+                            {titleText}
+                          </Link>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-right text-gray-700 dark:text-gray-300">
+                          {docCount}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                          {startedAt}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                          {updatedAt}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <button
+                            type="button"
+                            onClick={() => void handleDeleteDraft(s.id, ref)}
+                            disabled={deleteMutation.isPending}
+                            className="text-gray-400 hover:text-red-600 disabled:opacity-30"
+                            aria-label={`Delete draft ${ref}`}
+                            title="Delete this draft (extractions stay available for reuse)"
+                          >
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                              aria-hidden="true"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                              />
+                            </svg>
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">

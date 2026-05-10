@@ -414,6 +414,7 @@ export const useNixExtractionSessions = createQueryHook(
       errorLabel: "Failed to list extraction sessions",
     });
   },
+  { enabled: (filter) => filter !== undefined },
 );
 
 export const useDeleteNixExtractionSession = createMutationHook<{ ok: true }, number>(

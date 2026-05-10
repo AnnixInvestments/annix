@@ -9,6 +9,14 @@ export interface NavItemDef {
   trailing?: boolean;
   requiresQc?: boolean;
   requiresStaffLeave?: boolean;
+  /**
+   * Optional feature-flag gate. When set, the toolbar / sidebar / mobile
+   * nav hides this entry whenever the public `/feature-flags` endpoint
+   * returns the flag as disabled. Lets us ship sellable add-on features
+   * (Nix quote-from-documents, Mine Library) so a base-tier deployment
+   * never sees the entry point.
+   */
+  requiresFeatureFlag?: string;
 }
 
 export const NAV_GROUP_ORDER = [
@@ -836,6 +844,7 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     label: "Mine Library",
     defaultRoles: ["*"],
     trailing: true,
+    requiresFeatureFlag: "STOCK_MGMT_NIX_QUOTE_FROM_DOCUMENTS",
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path

@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ThemeToggle } from "@/app/components/ThemeToggle";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
+import { useFeatureFlagEnabled } from "@/app/lib/query/hooks";
 import {
   ALL_NAV_ITEMS,
   isNavItemAllowedForRole,
@@ -66,9 +67,19 @@ export function StockControlHeader() {
 
   const isAdmin = user?.role === "admin";
 
-  const visibleNavItems = ALL_NAV_ITEMS.filter((item) =>
-    isNavItemAllowedForRole(item, effectiveRole, rbacConfig),
-  );
+  const nixQuoteFlag = useFeatureFlagEnabled("STOCK_MGMT_NIX_QUOTE_FROM_DOCUMENTS");
+  const isNixQuoteEnabled = nixQuoteFlag.enabled;
+
+  const visibleNavItems = ALL_NAV_ITEMS.filter((item) => {
+    if (!isNavItemAllowedForRole(item, effectiveRole, rbacConfig)) return false;
+    // Hide nav items gated behind a feature flag when their flag is off.
+    // Only one flag is wired here today (Nix quote-from-documents add-on);
+    // extend this map if more sellable add-ons get nav entries.
+    if (item.requiresFeatureFlag === "STOCK_MGMT_NIX_QUOTE_FROM_DOCUMENTS") {
+      return isNixQuoteEnabled;
+    }
+    return true;
+  });
 
   const isActive = (href: string) => {
     if (href === "/stock-control/portal/dashboard") {
