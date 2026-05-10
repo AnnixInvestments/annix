@@ -163,9 +163,9 @@ export const FEATURE_FLAG_DESCRIPTIONS: Record<FeatureFlagKey, string> = {
   STOCK_MGMT_VARIANCE_REPORTING: "Stock management module — variance archive and trend reporting",
   STOCK_MGMT_VALUATION_EXPORTS: "Stock management module — PDF/Excel/Word valuation exports",
   STOCK_MGMT_NIX_QUOTE_FROM_DOCUMENTS:
-    "Stock management module — Nix-powered 'New quote from documents' add-on. Sellable extra: customer drops drawings + specs, Nix auto-extracts items / paint codes / lining specs / mine tagging / revision tracking, and assembles a draft quote with cross-document links. Includes the Mine Library, in-progress drafts list with auto QUO refs, and the cross-quote document reuse pipeline. Gates the upload page, draft review page, Mine Library nav, and the drafts section on the Quotations list.",
+    "Stock management module — sellable add-on: Nix 'New quote from documents'. Drop drawings + specs, auto-extract items + codes, mine library + revision tracking, cross-quote reuse.",
   CV_ASSISTANT_EE_COMPLIANCE_ENABLED:
-    "CV Assistant — Employment Equity Act 55/1998 compliance feature (EE disclosure flow, fairness monitoring, EEA2/EEA4 reporting). Default off. Per-customer activation also requires the customer's is_designated_employer + eea_reporting_enabled company flags AND a signed DPIA per docs/privacy/cv-assistant-ee-dpia.md.",
+    "CV Assistant — EE Act 55/1998 compliance (disclosure flow, fairness monitoring, EEA2/EEA4 reports). Default off; per-customer activation requires is_designated_employer + signed DPIA.",
 };
 
 export const FEATURE_FLAG_DEFAULTS: Record<FeatureFlagKey, boolean> = {
