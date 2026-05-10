@@ -640,6 +640,7 @@ export {
   useCvDismissSeekerMatch,
   useCvSeekerRecommendedJobs,
   useCvSeekerRematch,
+  useCvWithdrawSeekerMatching,
 } from "./cv-assistant/useCvSeekerJobs";
 export {
   useCvNotificationPreferences,

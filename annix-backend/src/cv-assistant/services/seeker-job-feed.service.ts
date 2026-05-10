@@ -151,6 +151,36 @@ export class SeekerJobFeedService {
     return { triggered: true, rematchedCandidates: candidates.map((c) => c.id) };
   }
 
+  async withdrawMatchingForSeeker(
+    email: string | null,
+  ): Promise<{ candidatesAffected: number; matchesCleared: number }> {
+    const candidates = await this.candidatesForSeeker(email);
+    if (candidates.length === 0) {
+      return { candidatesAffected: 0, matchesCleared: 0 };
+    }
+    const candidateIds = candidates.map((c) => c.id);
+
+    const deleteResult = await this.matchRepo
+      .createQueryBuilder()
+      .delete()
+      .where("candidate_id IN (:...ids)", { ids: candidateIds })
+      .execute();
+
+    await this.candidateRepo
+      .createQueryBuilder()
+      .update()
+      .set({ embedding: null, jobAlertsOptIn: false })
+      .where("id IN (:...ids)", { ids: candidateIds })
+      .execute();
+
+    candidateIds.forEach((id) => this.lastRematchByCandidate.delete(id));
+
+    return {
+      candidatesAffected: candidateIds.length,
+      matchesCleared: deleteResult.affected ?? 0,
+    };
+  }
+
   async dismissForSeeker(email: string | null, matchId: number): Promise<boolean> {
     const candidates = await this.candidatesForSeeker(email);
     if (candidates.length === 0) return false;

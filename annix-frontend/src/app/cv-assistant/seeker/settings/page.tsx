@@ -8,6 +8,7 @@ import {
   useCvRequestMyAccountDeletion,
   useCvUpdateMyNotificationPreferences,
   useCvWithdrawMyConsent,
+  useCvWithdrawSeekerMatching,
 } from "@/app/lib/query/hooks";
 
 export default function SeekerSettingsPage() {
@@ -16,6 +17,7 @@ export default function SeekerSettingsPage() {
   const updatePrefs = useCvUpdateMyNotificationPreferences();
   const requestDeletion = useCvRequestMyAccountDeletion();
   const withdrawConsent = useCvWithdrawMyConsent();
+  const withdrawMatching = useCvWithdrawSeekerMatching();
 
   const [threshold, setThreshold] = useState(80);
   const [digestEnabled, setDigestEnabled] = useState(true);
@@ -23,6 +25,7 @@ export default function SeekerSettingsPage() {
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [consentMessage, setConsentMessage] = useState<string | null>(null);
+  const [matchingMessage, setMatchingMessage] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [deletionRequestedFor, setDeletionRequestedFor] = useState<string | null>(null);
 
@@ -88,6 +91,33 @@ export default function SeekerSettingsPage() {
       setDeletionRequestedFor(result.email);
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : "Could not request deletion");
+    }
+  };
+
+  const handleWithdrawMatching = async () => {
+    setErrorMessage(null);
+    setMatchingMessage(null);
+    const confirmed = await confirm({
+      title: "Stop matching me to jobs?",
+      message:
+        "We'll clear the embeddings used to match your CV against external jobs, delete your existing match list, and turn off job alerts. Your CV and account stay — you can re-enable matching anytime by re-uploading or saving your CV.",
+      confirmLabel: "Stop matching",
+      cancelLabel: "Keep matching",
+      variant: "warning",
+    });
+    if (!confirmed) return;
+
+    try {
+      const result = await withdrawMatching.mutateAsync();
+      if (result.candidatesAffected === 0) {
+        setMatchingMessage("Nothing to clear — no candidate records on file.");
+      } else {
+        setMatchingMessage(
+          `Matching turned off for ${result.candidatesAffected} record${result.candidatesAffected === 1 ? "" : "s"}; ${result.matchesCleared} match${result.matchesCleared === 1 ? "" : "es"} removed.`,
+        );
+      }
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : "Could not stop matching");
     }
   };
 
@@ -205,6 +235,31 @@ export default function SeekerSettingsPage() {
               {isExporting ? "Preparing..." : "Download data"}
             </button>
           </div>
+
+          <div className="border-t border-gray-100 pt-4 flex items-start justify-between gap-4">
+            <div>
+              <h3 className="text-sm font-medium text-amber-700">Stop matching me to jobs</h3>
+              <p className="text-xs text-gray-500 mt-1">
+                Clears the embedding used to match your CV against external jobs, deletes your
+                current match list, and turns off job alerts. Your account, CV, and applications
+                stay. Re-enable any time by re-saving your CV.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleWithdrawMatching}
+              disabled={withdrawMatching.isPending}
+              className="bg-white text-amber-700 border border-amber-300 px-4 py-2 rounded-lg text-sm font-medium hover:bg-amber-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+            >
+              {withdrawMatching.isPending ? "Stopping…" : "Stop matching"}
+            </button>
+          </div>
+
+          {matchingMessage !== null && (
+            <div className="bg-amber-50 border border-amber-200 text-amber-900 px-4 py-3 rounded-lg text-sm">
+              {matchingMessage}
+            </div>
+          )}
 
           <div className="border-t border-gray-100 pt-4 flex items-start justify-between gap-4">
             <div>

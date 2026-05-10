@@ -34,3 +34,13 @@ export function useCvSeekerRematch() {
     },
   });
 }
+
+export function useCvWithdrawSeekerMatching() {
+  const queryClient = useQueryClient();
+  return useMutation<{ candidatesAffected: number; matchesCleared: number }, Error, void>({
+    mutationFn: () => cvAssistantApiClient.withdrawSeekerMatching(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: cvAssistantKeys.seekerJobs.all });
+    },
+  });
+}

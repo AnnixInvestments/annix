@@ -45,6 +45,11 @@ export class SeekerJobsController {
     return { success: true };
   }
 
+  @Post("withdraw-matching")
+  async withdrawMatching(@Request() req: SeekerAuthRequest) {
+    return this.feedService.withdrawMatchingForSeeker(req.user.email);
+  }
+
   @Post("rematch")
   async rematch(@Request() req: SeekerAuthRequest) {
     const result = await this.feedService.rematchForSeeker(req.user.email);

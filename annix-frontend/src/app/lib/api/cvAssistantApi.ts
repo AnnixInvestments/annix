@@ -1810,6 +1810,10 @@ class CvAssistantApiClient {
   async triggerSeekerRematch(): Promise<SeekerRematchResponse> {
     return this.request("/cv-assistant/seeker/jobs/rematch", { method: "POST" });
   }
+
+  async withdrawSeekerMatching(): Promise<{ candidatesAffected: number; matchesCleared: number }> {
+    return this.request("/cv-assistant/seeker/jobs/withdraw-matching", { method: "POST" });
+  }
 }
 
 export type SeekerRematchResponse =
