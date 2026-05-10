@@ -6,6 +6,7 @@ import { DateTime, fromISO } from "../../lib/datetime";
 import { isCvAssistantCronEnabled } from "../cv-assistant-cron.config";
 import { CvAssistantCompany } from "../entities/cv-assistant-company.entity";
 import { ExternalJob } from "../entities/external-job.entity";
+import { ExternalJobAlternate } from "../entities/external-job-alternate.entity";
 import { JobMarketSource, JobSourceProvider } from "../entities/job-market-source.entity";
 import { JobPosting, JobPostingStatus } from "../entities/job-posting.entity";
 import { AdzunaService } from "./adzuna.service";
@@ -24,6 +25,8 @@ export class JobIngestionService {
     private readonly sourceRepo: Repository<JobMarketSource>,
     @InjectRepository(ExternalJob)
     private readonly externalJobRepo: Repository<ExternalJob>,
+    @InjectRepository(ExternalJobAlternate)
+    private readonly alternateRepo: Repository<ExternalJobAlternate>,
     @InjectRepository(JobPosting)
     private readonly jobPostingRepo: Repository<JobPosting>,
     @InjectRepository(CvAssistantCompany)
@@ -334,18 +337,55 @@ export class JobIngestionService {
     country: string,
   ): Promise<{ ingested: number; skipped: number }> {
     const externalIds = jobs.map((job) => job.id);
+    if (externalIds.length === 0) {
+      return { ingested: 0, skipped: 0 };
+    }
 
     const existingJobs = await this.externalJobRepo.find({
       where: { sourceExternalId: In(externalIds), sourceId: source.id },
       select: ["sourceExternalId"],
     });
+    const existingAlternates = await this.alternateRepo.find({
+      where: { sourceExternalId: In(externalIds), sourceId: source.id },
+      select: ["sourceExternalId"],
+    });
 
-    const existingExternalIds = new Set(existingJobs.map((j) => j.sourceExternalId));
+    const alreadyKnown = new Set<string>();
+    existingJobs.forEach((j) => alreadyKnown.add(j.sourceExternalId));
+    existingAlternates.forEach((a) => alreadyKnown.add(a.sourceExternalId));
 
-    const newJobs = jobs.filter((job) => !existingExternalIds.has(job.id));
+    const candidates = jobs.filter((job) => !alreadyKnown.has(job.id));
+
+    const dedupResults = await Promise.all(
+      candidates.map(async (job) => {
+        const duplicate = await this.findDuplicateCanonicalJob(job, source, country);
+        return { job, duplicate };
+      }),
+    );
+
+    const alternates = dedupResults.filter((r) => r.duplicate !== null);
+    const fresh = dedupResults.filter((r) => r.duplicate === null).map((r) => r.job);
+
+    if (alternates.length > 0) {
+      await Promise.all(
+        alternates.map(({ job, duplicate }) =>
+          this.alternateRepo.save(
+            this.alternateRepo.create({
+              canonicalExternalJobId: duplicate!.id,
+              sourceId: source.id,
+              sourceExternalId: job.id,
+              sourceUrl: job.redirectUrl,
+              title: job.title,
+              company: job.company,
+              locationArea: job.locationArea,
+            }),
+          ),
+        ),
+      );
+    }
 
     const savedJobs = await Promise.all(
-      newJobs.map((job) => {
+      fresh.map((job) => {
         const externalJob = this.externalJobRepo.create({
           title: job.title,
           company: job.company,
@@ -381,7 +421,43 @@ export class JobIngestionService {
         });
     });
 
-    return { ingested: savedJobs.length, skipped: jobs.length - newJobs.length };
+    const skipped = alreadyKnown.size + alternates.length;
+    return { ingested: savedJobs.length, skipped };
+  }
+
+  private async findDuplicateCanonicalJob(
+    candidate: IngestedJobResult,
+    source: JobMarketSource,
+    country: string,
+  ): Promise<ExternalJob | null> {
+    const title = candidate.title?.trim();
+    if (!title || title.length < 3) {
+      return null;
+    }
+    const normalisedCompany = normaliseCompanyName(candidate.company);
+    const normalisedLocation = (candidate.locationArea ?? "").trim().toLowerCase();
+
+    const result = await this.externalJobRepo.query(
+      `
+      SELECT j.id
+      FROM cv_assistant_external_jobs j
+      WHERE LOWER(j.country) = LOWER($1)
+        AND j.source_id <> $2
+        AND similarity(LOWER(j.title), LOWER($3)) > 0.6
+        AND (
+          ($4 = '' OR LOWER(COALESCE(j.location_area, '')) = $4)
+          OR ($5 = '' OR LOWER(COALESCE(j.company, '')) LIKE '%' || $5 || '%')
+        )
+      ORDER BY similarity(LOWER(j.title), LOWER($3)) DESC
+      LIMIT 1
+      `,
+      [country, source.id, title, normalisedLocation, normalisedCompany],
+    );
+
+    if (!result || result.length === 0) {
+      return null;
+    }
+    return this.externalJobRepo.findOne({ where: { id: result[0].id } });
   }
 
   private estimateExpiryForSource(source: JobMarketSource, postedDate: string | null): Date | null {
@@ -458,6 +534,21 @@ function toPublicJob(job: ExternalJob): PublicJob {
     postedAt: job.postedAt ? job.postedAt.toISOString() : null,
     expiresAt: job.expiresAt ? job.expiresAt.toISOString() : null,
   };
+}
+
+function normaliseCompanyName(raw: string | null): string {
+  if (!raw) return "";
+  const stripped = raw
+    .toLowerCase()
+    .replace(/\(pty\)\s*ltd\.?$/u, "")
+    .replace(/\bpty\s*ltd\.?$/u, "")
+    .replace(/\blimited$/u, "")
+    .replace(/\bltd\.?$/u, "")
+    .replace(/\bllc$/u, "")
+    .replace(/\binc\.?$/u, "")
+    .replace(/[\s.,'"]+$/u, "")
+    .trim();
+  return stripped;
 }
 
 function joobleLocationForCountry(country: string): string {

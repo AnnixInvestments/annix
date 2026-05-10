@@ -51,6 +51,7 @@ import { CvAssistantProfile } from "./entities/cv-assistant-profile.entity";
 import { CvAssistantUser } from "./entities/cv-assistant-user.entity";
 import { CvPushSubscription } from "./entities/cv-push-subscription.entity";
 import { ExternalJob } from "./entities/external-job.entity";
+import { ExternalJobAlternate } from "./entities/external-job-alternate.entity";
 import { InterviewBooking } from "./entities/interview-booking.entity";
 import { InterviewInvite } from "./entities/interview-invite.entity";
 import { InterviewSlot } from "./entities/interview-slot.entity";
@@ -118,6 +119,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
       CandidateReference,
       JobMarketSource,
       ExternalJob,
+      ExternalJobAlternate,
       CandidateJobMatch,
       CvPushSubscription,
       CvAssistantUser,
