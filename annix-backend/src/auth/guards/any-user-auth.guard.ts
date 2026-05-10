@@ -5,6 +5,7 @@ import { Request } from "express";
 
 import { AdminAuthService } from "../../admin/admin-auth.service";
 import { CustomerAuthService } from "../../customer/customer-auth.service";
+import { CV_ASSISTANT_JWT_SECRET_DEFAULT } from "../../cv-assistant/cv-assistant.constants";
 import { SupplierAuthService } from "../../supplier/supplier-auth.service";
 
 export interface AnyUserJwtPayload {
@@ -51,9 +52,7 @@ export class AnyUserAuthGuard implements CanActivate {
     }
 
     try {
-      const payload = await this.jwtService.verifyAsync<AnyUserJwtPayload>(token, {
-        secret: this.configService.get<string>("JWT_SECRET"),
-      });
+      const payload = await this.verifyWithKnownSecrets(token);
 
       const authUser = await this.validateSessionByType(payload);
       request["authUser"] = authUser;
@@ -65,6 +64,30 @@ export class AnyUserAuthGuard implements CanActivate {
       }
       throw new UnauthorizedException("Invalid token");
     }
+  }
+
+  /**
+   * Tries each portal's signing secret in turn so the guard can accept
+   * tokens issued by any of admin/customer/supplier/stock-control (signed
+   * with JWT_SECRET) AND cv-assistant (signed with CV_ASSISTANT_JWT_SECRET).
+   * Returns the decoded payload from whichever secret verified, or throws
+   * UnauthorizedException when none of them did.
+   */
+  private async verifyWithKnownSecrets(token: string): Promise<AnyUserJwtPayload> {
+    const secrets = [
+      this.configService.get<string>("JWT_SECRET"),
+      this.configService.get<string>("CV_ASSISTANT_JWT_SECRET", CV_ASSISTANT_JWT_SECRET_DEFAULT),
+    ].filter((s): s is string => Boolean(s));
+
+    let lastError: unknown = null;
+    for (const secret of secrets) {
+      try {
+        return await this.jwtService.verifyAsync<AnyUserJwtPayload>(token, { secret });
+      } catch (err) {
+        lastError = err;
+      }
+    }
+    throw lastError instanceof Error ? lastError : new UnauthorizedException("Invalid token");
   }
 
   private async validateSessionByType(payload: AnyUserJwtPayload): Promise<AuthenticatedUser> {
