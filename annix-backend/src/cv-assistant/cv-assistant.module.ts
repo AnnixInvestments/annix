@@ -96,6 +96,7 @@ import { PortalAdapterRegistry } from "./services/portal-adapter-registry.servic
 import { PortalPostingOrchestrator } from "./services/portal-posting-orchestrator.service";
 import { PortalPostingRetryService } from "./services/portal-posting-retry.service";
 import { ReferenceService } from "./services/reference.service";
+import { RemotiveService } from "./services/remotive.service";
 import { SalaryBenchmarkService } from "./services/salary-benchmark.service";
 import { SettingsService } from "./services/settings.service";
 import { TestCandidateSeederService } from "./services/test-candidate-seeder.service";
@@ -195,6 +196,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     SettingsService,
     AdzunaService,
     JoobleService,
+    RemotiveService,
     JobIngestionService,
     JobMarketSourceService,
     EmbeddingService,

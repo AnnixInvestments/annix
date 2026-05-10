@@ -13,6 +13,7 @@ import { CandidateJobMatchingService } from "./candidate-job-matching.service";
 import { EmbeddingService } from "./embedding.service";
 import { IngestedJobResult } from "./ingested-job.types";
 import { JoobleService } from "./jooble.service";
+import { RemotiveService } from "./remotive.service";
 
 @Injectable()
 export class JobIngestionService {
@@ -29,6 +30,7 @@ export class JobIngestionService {
     private readonly companyRepo: Repository<CvAssistantCompany>,
     private readonly adzunaService: AdzunaService,
     private readonly joobleService: JoobleService,
+    private readonly remotiveService: RemotiveService,
     private readonly embeddingService: EmbeddingService,
     private readonly candidateJobMatchingService: CandidateJobMatchingService,
   ) {}
@@ -306,6 +308,13 @@ export class JobIngestionService {
       });
       return jobs;
     }
+    if (source.provider === JobSourceProvider.REMOTIVE) {
+      const { jobs } = await this.remotiveService.searchJobs({
+        category: category ?? undefined,
+        resultsPerPage: 50,
+      });
+      return jobs;
+    }
     const { jobs } = await this.adzunaService.searchJobs(
       source.apiId!,
       source.apiKeyEncrypted!,
@@ -378,6 +387,9 @@ export class JobIngestionService {
   private estimateExpiryForSource(source: JobMarketSource, postedDate: string | null): Date | null {
     if (source.provider === JobSourceProvider.JOOBLE) {
       return this.joobleService.estimateExpiry(postedDate);
+    }
+    if (source.provider === JobSourceProvider.REMOTIVE) {
+      return this.remotiveService.estimateExpiry(postedDate);
     }
     return this.adzunaService.estimateExpiry(postedDate);
   }
