@@ -5,7 +5,7 @@ category: Job Search
 roles: [seeker, individual]
 order: 2
 tags: [jobs, matching, seeker, adzuna, jooble, remotive]
-lastUpdated: 2026-05-10
+lastUpdated: 2026-05-11
 summary: How CV Assistant pulls and ranks jobs from external sources against the CV you uploaded.
 readingMinutes: 4
 relatedPaths: [annix-frontend/src/app/cv-assistant/seeker/jobs, annix-frontend/src/app/lib/cv-assistant/components/SeekerJobCard.tsx, annix-backend/src/cv-assistant/services/seeker-job-feed.service.ts, annix-backend/src/cv-assistant/controllers/seeker-jobs.controller.ts, annix-backend/src/cv-assistant/services/jooble.service.ts, annix-backend/src/cv-assistant/services/remotive.service.ts]
@@ -50,6 +50,29 @@ location compared.
 6. Click **View &amp; apply** on any card to open the job at the source and
    apply there.
 7. Click **Not for me** to dismiss a match — it won't show again.
+
+## Filtering matches
+
+The filter row above the cards lets you narrow the list:
+
+- **Search** — title, company, or location free-text.
+- **Province / City** — dependent dropdowns. Pick a province first; the city
+  dropdown then shows only cities in that province.
+- **Category** — populated from the categories actually present in your
+  current match list (Adzuna / Jooble / Remotive each tag jobs differently).
+- **Source** — filter by Adzuna / Jooble / Remotive / DPSA when more than
+  one source is active for your account.
+- **Min salary (ZAR / yr)** — drops jobs whose published salary range is
+  below this threshold. Jobs with no salary data are kept regardless.
+
+## Consent
+
+Before we match jobs to your CV, the page asks for explicit POPIA consent
+to (a) embed your CV, (b) store match scores against external listings on
+our servers, and (c) confirm we don't share your CV with the source until
+you click **View &amp; apply**. Decline and the page shows a "consent
+required" view with a button to re-prompt; accept and the matches load.
+Withdraw any time from **Settings → Privacy → Stop matching me to jobs**.
 
 ## What we do and don't share
 

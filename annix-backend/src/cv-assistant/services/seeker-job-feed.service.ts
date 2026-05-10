@@ -59,6 +59,43 @@ export class SeekerJobFeedService {
     return this.candidateRepo.find({ where: { email } });
   }
 
+  async consentStatusForSeeker(
+    email: string | null,
+  ): Promise<{ hasCandidate: boolean; consented: boolean; consentedAt: string | null }> {
+    const candidates = await this.candidatesForSeeker(email);
+    if (candidates.length === 0) {
+      return { hasCandidate: false, consented: false, consentedAt: null };
+    }
+    const consented = candidates.every((c) => c.popiaConsent);
+    const consentedAt = candidates
+      .map((c) => c.popiaConsentedAt)
+      .filter((d): d is Date => d !== null)
+      .sort((a, b) => b.getTime() - a.getTime())[0];
+    return {
+      hasCandidate: true,
+      consented,
+      consentedAt: consentedAt ? consentedAt.toISOString() : null,
+    };
+  }
+
+  async grantMatchingConsentForSeeker(
+    email: string | null,
+  ): Promise<{ candidatesAffected: number }> {
+    const candidates = await this.candidatesForSeeker(email);
+    if (candidates.length === 0) {
+      return { candidatesAffected: 0 };
+    }
+    const candidateIds = candidates.map((c) => c.id);
+    const consentedAt = DateTime.now().toJSDate();
+    await this.candidateRepo
+      .createQueryBuilder()
+      .update()
+      .set({ popiaConsent: true, popiaConsentedAt: consentedAt, jobAlertsOptIn: true })
+      .where("id IN (:...ids)", { ids: candidateIds })
+      .execute();
+    return { candidatesAffected: candidateIds.length };
+  }
+
   async recommendedForSeeker(
     email: string | null,
     options: { includeDismissed?: boolean } = {},

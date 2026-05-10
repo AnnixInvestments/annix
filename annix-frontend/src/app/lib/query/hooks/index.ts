@@ -638,7 +638,9 @@ export {
 export { useCvReferences } from "./cv-assistant/useCvReferences";
 export {
   useCvDismissSeekerMatch,
+  useCvGrantSeekerMatchingConsent,
   useCvSeekerJobStats,
+  useCvSeekerMatchingConsent,
   useCvSeekerRecommendedJobs,
   useCvSeekerRematch,
   useCvWithdrawSeekerMatching,

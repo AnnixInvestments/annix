@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   cvAssistantApiClient,
   type SeekerJobStats,
+  type SeekerMatchingConsentStatus,
   type SeekerRecommendedJobsResponse,
   type SeekerRematchResponse,
 } from "@/app/lib/api/cvAssistantApi";
@@ -49,6 +50,25 @@ export function useCvWithdrawSeekerMatching() {
   const queryClient = useQueryClient();
   return useMutation<{ candidatesAffected: number; matchesCleared: number }, Error, void>({
     mutationFn: () => cvAssistantApiClient.withdrawSeekerMatching(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: cvAssistantKeys.seekerJobs.all });
+    },
+  });
+}
+
+export function useCvSeekerMatchingConsent(enabled: boolean = true) {
+  return useQuery<SeekerMatchingConsentStatus>({
+    queryKey: cvAssistantKeys.seekerJobs.consent(),
+    queryFn: () => cvAssistantApiClient.seekerMatchingConsent(),
+    enabled,
+    staleTime: 60 * 1000,
+  });
+}
+
+export function useCvGrantSeekerMatchingConsent() {
+  const queryClient = useQueryClient();
+  return useMutation<{ candidatesAffected: number }, Error, void>({
+    mutationFn: () => cvAssistantApiClient.grantSeekerMatchingConsent(),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: cvAssistantKeys.seekerJobs.all });
     },

@@ -103,5 +103,6 @@ export const cvAssistantKeys = {
     all: ["cv-assistant", "seeker", "jobs"] as const,
     recommended: () => ["cv-assistant", "seeker", "jobs", "recommended"] as const,
     stats: () => ["cv-assistant", "seeker", "jobs", "stats"] as const,
+    consent: () => ["cv-assistant", "seeker", "jobs", "consent"] as const,
   },
 } as const;

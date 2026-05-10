@@ -38,6 +38,16 @@ export class SeekerJobsController {
     return this.feedService.statsForSeeker(req.user.email);
   }
 
+  @Get("consent")
+  async consent(@Request() req: SeekerAuthRequest) {
+    return this.feedService.consentStatusForSeeker(req.user.email);
+  }
+
+  @Post("consent")
+  async grantConsent(@Request() req: SeekerAuthRequest) {
+    return this.feedService.grantMatchingConsentForSeeker(req.user.email);
+  }
+
   @Post(":matchId/dismiss")
   async dismiss(
     @Request() req: SeekerAuthRequest,

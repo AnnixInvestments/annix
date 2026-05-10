@@ -1818,12 +1818,26 @@ class CvAssistantApiClient {
   async seekerJobStats(): Promise<SeekerJobStats> {
     return this.request("/cv-assistant/seeker/jobs/stats");
   }
+
+  async seekerMatchingConsent(): Promise<SeekerMatchingConsentStatus> {
+    return this.request("/cv-assistant/seeker/jobs/consent");
+  }
+
+  async grantSeekerMatchingConsent(): Promise<{ candidatesAffected: number }> {
+    return this.request("/cv-assistant/seeker/jobs/consent", { method: "POST" });
+  }
 }
 
 export interface SeekerJobStats {
   hasCandidate: boolean;
   totalMatches: number;
   matchesLast7Days: number;
+}
+
+export interface SeekerMatchingConsentStatus {
+  hasCandidate: boolean;
+  consented: boolean;
+  consentedAt: string | null;
 }
 
 export type SeekerRematchResponse =
