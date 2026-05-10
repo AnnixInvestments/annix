@@ -5,12 +5,17 @@ import { useMemo, useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import type { SeekerRecommendedJob } from "@/app/lib/api/cvAssistantApi";
 import { SeekerJobCard } from "@/app/lib/cv-assistant/components/SeekerJobCard";
-import { useCvDismissSeekerMatch, useCvSeekerRecommendedJobs } from "@/app/lib/query/hooks";
+import {
+  useCvDismissSeekerMatch,
+  useCvSeekerRecommendedJobs,
+  useCvSeekerRematch,
+} from "@/app/lib/query/hooks";
 
 export default function SeekerJobsPage() {
   const { showToast } = useToast();
   const recommendedQuery = useCvSeekerRecommendedJobs();
   const dismissMutation = useCvDismissSeekerMatch();
+  const rematchMutation = useCvSeekerRematch();
   const [providerFilter, setProviderFilter] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState<string>("");
 
@@ -63,6 +68,23 @@ export default function SeekerJobsPage() {
     });
   };
 
+  const handleRematch = () => {
+    rematchMutation.mutate(undefined, {
+      onSuccess: (result) => {
+        if (result.triggered) {
+          showToast("Rematch started — refresh in a minute or two", "success");
+        } else if (result.reason === "rate-limited") {
+          showToast(`Rematch on cooldown — try again in ${result.retryAfterSeconds}s`, "info");
+        } else {
+          showToast("Upload a CV first to rematch", "error");
+        }
+      },
+      onError: () => {
+        showToast("Couldn't trigger rematch right now", "error");
+      },
+    });
+  };
+
   if (recommendedQuery.isLoading) {
     return (
       <div className="space-y-6">
@@ -108,7 +130,7 @@ export default function SeekerJobsPage() {
   if (matches.length === 0) {
     return (
       <div className="space-y-6">
-        <PageHeader />
+        <PageHeader showRematch onRematch={handleRematch} rematching={rematchMutation.isPending} />
         <div className="bg-white rounded-xl border border-dashed border-gray-300 p-12 text-center">
           <h2 className="text-lg font-semibold text-gray-900">No matches yet</h2>
           <p className="text-gray-600 mt-2 max-w-md mx-auto">
@@ -122,7 +144,7 @@ export default function SeekerJobsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader />
+      <PageHeader showRematch onRematch={handleRematch} rematching={rematchMutation.isPending} />
 
       <div className="bg-white rounded-xl border border-gray-200 p-4 flex flex-col sm:flex-row gap-3">
         <input
@@ -171,11 +193,31 @@ export default function SeekerJobsPage() {
   );
 }
 
-function PageHeader() {
+interface PageHeaderProps {
+  showRematch?: boolean;
+  onRematch?: () => void;
+  rematching?: boolean;
+}
+
+function PageHeader(props: PageHeaderProps) {
+  const showRematch = props.showRematch === true;
+  const rematching = props.rematching === true;
   return (
-    <div>
-      <h1 className="text-3xl font-bold text-white">Browse Jobs</h1>
-      <p className="text-white/70 mt-2">Opportunities ranked against your CV.</p>
+    <div className="flex items-start justify-between gap-3">
+      <div>
+        <h1 className="text-3xl font-bold text-white">Browse Jobs</h1>
+        <p className="text-white/70 mt-2">Opportunities ranked against your CV.</p>
+      </div>
+      {showRematch ? (
+        <button
+          type="button"
+          onClick={props.onRematch}
+          disabled={rematching}
+          className="px-3 py-2 text-sm rounded-lg bg-white/10 text-white hover:bg-white/20 disabled:opacity-50"
+        >
+          {rematching ? "Rematching…" : "Rematch now"}
+        </button>
+      ) : null}
     </div>
   );
 }

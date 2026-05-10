@@ -1,11 +1,14 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
+import { nowMillis } from "../../lib/datetime";
 import { Candidate } from "../entities/candidate.entity";
 import { CandidateJobMatch, MatchDetails } from "../entities/candidate-job-match.entity";
 import { ExternalJob } from "../entities/external-job.entity";
 import { JobMarketSource } from "../entities/job-market-source.entity";
 import { CandidateJobMatchingService } from "./candidate-job-matching.service";
+
+const REMATCH_COOLDOWN_MS = 5 * 60 * 1000;
 
 export interface SeekerJobMatch {
   matchId: number;
@@ -39,6 +42,7 @@ export interface SeekerJobMatch {
 @Injectable()
 export class SeekerJobFeedService {
   private readonly logger = new Logger(SeekerJobFeedService.name);
+  private readonly lastRematchByCandidate = new Map<number, number>();
 
   constructor(
     @InjectRepository(Candidate)
@@ -102,6 +106,49 @@ export class SeekerJobFeedService {
       toSeekerMatch(match, sourceById.get(match.externalJob.sourceId) ?? null),
     );
     return { matches, candidateIds: candidates.map((c) => c.id) };
+  }
+
+  async rematchForSeeker(
+    email: string | null,
+  ): Promise<
+    | { triggered: true; rematchedCandidates: number[] }
+    | { triggered: false; reason: "no-candidate" }
+    | { triggered: false; reason: "rate-limited"; retryAfterSeconds: number }
+  > {
+    const candidates = await this.candidatesForSeeker(email);
+    if (candidates.length === 0) {
+      return { triggered: false, reason: "no-candidate" };
+    }
+
+    const now = nowMillis();
+    const earliestNextAllowed = candidates.reduce<number | null>((acc, candidate) => {
+      const last = this.lastRematchByCandidate.get(candidate.id);
+      if (last == null) return acc;
+      const next = last + REMATCH_COOLDOWN_MS;
+      if (acc == null) return next;
+      return Math.max(acc, next);
+    }, null);
+
+    if (earliestNextAllowed != null && earliestNextAllowed > now) {
+      const retryAfterSeconds = Math.ceil((earliestNextAllowed - now) / 1000);
+      return { triggered: false, reason: "rate-limited", retryAfterSeconds };
+    }
+
+    candidates.forEach((c) => this.lastRematchByCandidate.set(c.id, now));
+
+    void Promise.all(
+      candidates.map((candidate) =>
+        this.matchingService
+          .matchCandidateToJobs(candidate.id)
+          .catch((err) =>
+            this.logger.warn(
+              `Manual rematch failed for candidate ${candidate.id}: ${err instanceof Error ? err.message : String(err)}`,
+            ),
+          ),
+      ),
+    );
+
+    return { triggered: true, rematchedCandidates: candidates.map((c) => c.id) };
   }
 
   async dismissForSeeker(email: string | null, matchId: number): Promise<boolean> {

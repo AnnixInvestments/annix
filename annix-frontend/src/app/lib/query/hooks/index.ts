@@ -639,6 +639,7 @@ export { useCvReferences } from "./cv-assistant/useCvReferences";
 export {
   useCvDismissSeekerMatch,
   useCvSeekerRecommendedJobs,
+  useCvSeekerRematch,
 } from "./cv-assistant/useCvSeekerJobs";
 export {
   useCvNotificationPreferences,

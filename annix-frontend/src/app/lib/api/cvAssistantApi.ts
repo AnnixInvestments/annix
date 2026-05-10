@@ -1806,7 +1806,16 @@ class CvAssistantApiClient {
   async dismissSeekerMatch(matchId: number): Promise<{ success: boolean }> {
     return this.request(`/cv-assistant/seeker/jobs/${matchId}/dismiss`, { method: "POST" });
   }
+
+  async triggerSeekerRematch(): Promise<SeekerRematchResponse> {
+    return this.request("/cv-assistant/seeker/jobs/rematch", { method: "POST" });
+  }
 }
+
+export type SeekerRematchResponse =
+  | { triggered: true; rematchedCandidates: number[] }
+  | { triggered: false; reason: "no-candidate" }
+  | { triggered: false; reason: "rate-limited"; retryAfterSeconds: number };
 
 export interface SeekerJobMatchDetails {
   embeddingSimilarity: number;

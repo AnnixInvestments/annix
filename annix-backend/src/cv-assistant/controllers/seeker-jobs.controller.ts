@@ -1,6 +1,9 @@
 import {
+  BadRequestException,
   Controller,
   Get,
+  HttpException,
+  HttpStatus,
   NotFoundException,
   Param,
   ParseIntPipe,
@@ -40,5 +43,26 @@ export class SeekerJobsController {
       throw new NotFoundException("Match not found or not owned by user");
     }
     return { success: true };
+  }
+
+  @Post("rematch")
+  async rematch(@Request() req: SeekerAuthRequest) {
+    const result = await this.feedService.rematchForSeeker(req.user.email);
+    if (!result.triggered) {
+      if (result.reason === "no-candidate") {
+        throw new BadRequestException("Upload a CV before requesting a rematch");
+      }
+      if (result.reason === "rate-limited") {
+        throw new HttpException(
+          {
+            statusCode: HttpStatus.TOO_MANY_REQUESTS,
+            message: `Rematch already triggered recently. Try again in ${result.retryAfterSeconds}s.`,
+            retryAfterSeconds: result.retryAfterSeconds,
+          },
+          HttpStatus.TOO_MANY_REQUESTS,
+        );
+      }
+    }
+    return result;
   }
 }

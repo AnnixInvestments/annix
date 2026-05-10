@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   cvAssistantApiClient,
   type SeekerRecommendedJobsResponse,
+  type SeekerRematchResponse,
 } from "@/app/lib/api/cvAssistantApi";
 import { cvAssistantKeys } from "../../keys";
 
@@ -18,6 +19,16 @@ export function useCvDismissSeekerMatch() {
   const queryClient = useQueryClient();
   return useMutation<{ success: boolean }, Error, number>({
     mutationFn: (matchId) => cvAssistantApiClient.dismissSeekerMatch(matchId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: cvAssistantKeys.seekerJobs.all });
+    },
+  });
+}
+
+export function useCvSeekerRematch() {
+  const queryClient = useQueryClient();
+  return useMutation<SeekerRematchResponse, Error, void>({
+    mutationFn: () => cvAssistantApiClient.triggerSeekerRematch(),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: cvAssistantKeys.seekerJobs.all });
     },
