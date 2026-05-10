@@ -13,6 +13,7 @@ export enum JobSourceProvider {
   ADZUNA = "adzuna",
   JOOBLE = "jooble",
   REMOTIVE = "remotive",
+  DPSA = "dpsa",
 }
 
 @Entity("cv_assistant_job_market_sources")

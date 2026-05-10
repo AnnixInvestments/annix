@@ -79,6 +79,7 @@ import { CvEmailAdapterService } from "./services/cv-email-adapter.service";
 import { CvExtractionService } from "./services/cv-extraction.service";
 import { CvNotificationService } from "./services/cv-notification.service";
 import { CvScreeningService } from "./services/cv-screening.service";
+import { DpsaCircularService } from "./services/dpsa-circular.service";
 import { EeDisclosureService } from "./services/ee-disclosure.service";
 import { EeReportService } from "./services/ee-report.service";
 import { EmailTemplateService } from "./services/email-template.service";
@@ -202,6 +203,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     AdzunaService,
     JoobleService,
     RemotiveService,
+    DpsaCircularService,
     JobIngestionService,
     JobMarketSourceService,
     EmbeddingService,
