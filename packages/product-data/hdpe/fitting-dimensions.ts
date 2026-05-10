@@ -211,8 +211,14 @@ const reducerKey = (largerDn: number, smallerDn: number): string =>
 // at DN 200. The take-off should prefer the catalogue value for
 // moulded sizes and fall through to the formula for fabricated ones.
 export const moulededHdpeElbowDimensions = (angleDeg: number, dnMm: number): ElbowDims | null => {
-  if (angleDeg === 90) return ELBOW_90_DIMS[dnMm] ?? null;
-  if (angleDeg === 45) return ELBOW_45_DIMS[dnMm] ?? null;
+  if (angleDeg === 90) {
+    const dims = ELBOW_90_DIMS[dnMm];
+    return dims ?? null;
+  }
+  if (angleDeg === 45) {
+    const dims = ELBOW_45_DIMS[dnMm];
+    return dims ?? null;
+  }
   return null;
 };
 
@@ -274,7 +280,10 @@ const LATERAL_45_DIMS: Record<number, LateralDims> = {
 };
 
 export const lateralDimensions = (angleDeg: number, dnMm: number): LateralDims | null => {
-  if (angleDeg === 45) return LATERAL_45_DIMS[dnMm] ?? null;
+  if (angleDeg === 45) {
+    const dims = LATERAL_45_DIMS[dnMm];
+    return dims ?? null;
+  }
   // 60° laterals and any other angle: no open metric source.
   return null;
 };
