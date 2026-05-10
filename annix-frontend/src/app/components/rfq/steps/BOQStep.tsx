@@ -6,6 +6,7 @@ import {
   pipeDimensions as hdpePipeDimensions,
   hdpeReducerLength,
   hdpeTeeDimensions,
+  inferReducerBranchDn,
   lateralDimensions,
   pnClassForSdr,
   type SdrValue,
@@ -13,7 +14,7 @@ import {
   selectSdrForPressure,
 } from "@annix/product-data/hdpe";
 import { FLANGE_OD } from "@annix/product-data/pipe";
-import { isString, keys, values } from "es-toolkit/compat";
+import { keys, values } from "es-toolkit/compat";
 import React, { useCallback, useMemo, useState } from "react";
 import * as XLSX from "xlsx";
 import { useOptionalAdminAuth } from "@/app/context/AdminAuthContext";
@@ -24,7 +25,7 @@ import {
   boltSetCountPerFitting,
   boltSetCountPerPipe,
 } from "@/app/lib/config/rfq/pipeEndOptions";
-import { formatDateLongZA, fromJSDate, nowISO } from "@/app/lib/datetime";
+import { nowISO } from "@/app/lib/datetime";
 import {
   blankFlangeSurfaceArea,
   bnwSetInfo,
@@ -36,6 +37,15 @@ import {
 } from "@/app/lib/query/hooks";
 import { detectClarificationRequirements } from "@/app/lib/rfq/preQuoteRequirements";
 import { useRfqWizardStore } from "@/app/lib/store/rfqWizardStore";
+import { DEFAULT_HDPE_SDR, PIPE_WEIGHT_K_BY_PRODUCT_TYPE } from "./boq/constants";
+import {
+  flangeConfigSuffix,
+  formatQty,
+  formatWeight,
+  getFlangeTypeName,
+  safeFilename,
+  triggerDownload,
+} from "./boq/helpers";
 
 export default function BOQStep(props: {
   onPrevStep?: () => void;
@@ -111,29 +121,6 @@ export default function BOQStep(props: {
     },
     [],
   );
-  const formatDate = (date: Date | string | undefined) => {
-    if (!date) return "Not specified";
-    if (isString(date)) {
-      return formatDateLongZA(date);
-    }
-    return fromJSDate(date).toLocaleString({ year: "numeric", month: "long", day: "numeric" });
-  };
-
-  const formatWeight = (weight: number | undefined) => {
-    if (!weight || Number.isNaN(weight)) return "0.00 kg";
-    return `${weight.toFixed(2)} kg`;
-  };
-
-  // Round a quantity to 2 dp without dragging trailing zeros on whole
-  // numbers. Summing per-row qty in floating-point produces values like
-  // 13257.1000000000002 and 13977.599999999999; show them as 13257.1
-  // and 13977.6 instead.
-  const formatQty = (qty: number | undefined) => {
-    if (qty === undefined || qty === null || Number.isNaN(qty)) return "0";
-    const rounded = Math.round(qty * 100) / 100;
-    return Number.isInteger(rounded) ? rounded.toString() : rounded.toString();
-  };
-
   // Get flange spec string
   const getFlangeSpec = (entry: any) => {
     const rawFlangeStandardId = entry.specs?.flangeStandardId;
@@ -159,49 +146,6 @@ export default function BOQStep(props: {
       (s: any) => s.id === steelSpecId,
     )?.steelSpecName;
     return steelSpecId && masterData?.steelSpecs ? rawSteelSpecName || "Steel" : "Steel";
-  };
-
-  // Material density (kg/m³) for the cross-sectional weight formula
-  // mass/m = (OD - WT) × WT × π × ρ / 1e6 = (OD - WT) × WT × k where k
-  // is the per-material constant below. The steel value matches the
-  // 0.02466 constant used in calculateLocalPipeResult.
-  const PIPE_WEIGHT_K_BY_PRODUCT_TYPE = {
-    steel: 0.02466,
-    hdpe: 0.003016,
-    pvc: 0.004398,
-    upvc: 0.004398,
-  } as const;
-
-  // Default SDR fallback when the customer hasn't set a global SDR yet
-  // — SDR11 is the most common HDPE pressure pipe in the field.
-  const DEFAULT_HDPE_SDR = 11;
-
-  // Append a flange/stub indicator to a piping description when the
-  // entry has flanged ends. For steel/PVC: " — Flanged FBE/FOE
-  // (PN16)". For HDPE/PVC: " — Stub Ends FBE/FOE w/ Backing Flanges
-  // (PN16)" — HDPE doesn't bolt directly to a flange, it gets a
-  // butt-fused stub end with a separate steel backing flange. The
-  // separate stub + backing-flange line items are emitted by
-  // v1.1.35; v1.1.34 surfaces the configuration in the description
-  // so the customer can verify it before pricing.
-  const flangeConfigSuffix = (
-    config: string | null | undefined,
-    materialType: string,
-    flangeSpec: string,
-  ): string => {
-    if (!config || config === "PE") return "";
-    const endsLabel =
-      config === "FBE"
-        ? "Both Ends"
-        : config === "FOE"
-          ? "One End"
-          : config === "FBE_BLIND"
-            ? "Both Ends (Blind)"
-            : config;
-    if (materialType === "hdpe" || materialType === "pvc") {
-      return ` — Stub ${endsLabel} w/ Backing Flange ${flangeSpec}`;
-    }
-    return ` — Flanged ${endsLabel} ${flangeSpec}`;
   };
 
   // Build the consolidated row description for a pipe, branching on the
@@ -582,13 +526,6 @@ export default function BOQStep(props: {
       return { main: totalMain, branch: 0 };
     }
     return { main: totalMain, branch: 0 };
-  };
-
-  const getFlangeTypeName = (config: string): string => {
-    if (!config || config === "PE") return "Slip On";
-    if (config.includes("LF") || config.includes("_L")) return "Slip On";
-    if (config.includes("RF") || config.includes("_R")) return "Rotating";
-    return "Slip On";
   };
 
   // Process each entry
@@ -1167,8 +1104,26 @@ export default function BOQStep(props: {
         // fittings rely on entry.specs only — no catalogue fallback.
         const isHdpeFitting = fittingMaterialType === "hdpe";
         const tableTeeDims = isHdpeFitting && isTeeFamily ? hdpeTeeDimensions(nb, branchNb) : null;
+        // Reducer branch resolution. Three sources, in priority order:
+        //   1. Real branchNb from entry.specs (Nix found the smaller end
+        //      in the BOQ doc, e.g. "355x250 reducer")
+        //   2. Inferred branchNb from the catalogue when the source doc
+        //      gave only the main NB (e.g. "355NB Concentric Reducer").
+        //      Picks the largest standard reduction available — the
+        //      most-flexible choice for the supplier to source.
+        //   3. null (no catalogue → no suffix)
+        // The inferred branch gets a "*" marker on the description so
+        // the quoter knows the reduction pair wasn't in the source.
+        const reducerHasExplicitBranch = isReducerType && branchNb !== nb;
+        const inferredReducerBranch =
+          isHdpeFitting && isReducerType && !reducerHasExplicitBranch
+            ? inferReducerBranchDn(nb)
+            : null;
+        const effectiveReducerBranchNb = reducerHasExplicitBranch
+          ? branchNb
+          : (inferredReducerBranch ?? branchNb);
         const tableReducerLength =
-          isHdpeFitting && isReducerType ? hdpeReducerLength(nb, branchNb) : null;
+          isHdpeFitting && isReducerType ? hdpeReducerLength(nb, effectiveReducerBranchNb) : null;
         const tableLengthA = tableTeeDims ? tableTeeDims.runFaceToFaceMm : null;
         const tableLengthB = tableTeeDims ? tableTeeDims.branchFaceToCentreMm : null;
 
@@ -1178,7 +1133,16 @@ export default function BOQStep(props: {
 
         let fittingDimSuffix = "";
         if (isReducerType && reducerLength) {
-          fittingDimSuffix = `, ${reducerLength}mm L`;
+          // Show the (possibly inferred) reduction pair in the suffix
+          // so the supplier knows which reducer this is. Asterisk
+          // indicates the branch was inferred from catalogue rather
+          // than supplied in the source BOQ.
+          const inferredMarker = inferredReducerBranch != null ? "*" : "";
+          const branchLabel =
+            effectiveReducerBranchNb && effectiveReducerBranchNb !== nb
+              ? `${nb}×${effectiveReducerBranchNb}NB${inferredMarker}, `
+              : "";
+          fittingDimSuffix = `, ${branchLabel}${reducerLength}mm L`;
         } else if (isTeeFamily && lengthA && lengthB) {
           fittingDimSuffix = `, ${lengthA}×${lengthB}mm`;
         } else if (isLateralType) {
@@ -1479,8 +1443,18 @@ export default function BOQStep(props: {
         if (!isEndCap && !isLateral) return miscDescription;
         const rawSpecsDn = rawSpecs.nominalBoreMm;
         const specsDn = rawSpecsDn ? Number(rawSpecsDn) : null;
-        const dnRegexMatch = miscDescription.match(/(?:DN|OD)\s*(\d{2,4})/i);
-        const regexDn = dnRegexMatch ? Number(dnRegexMatch[1]) : null;
+        // Resolution order: explicit DN/OD prefix → "X mm diameter"
+        // pattern (some BOQ authors write "355 mm diameter" instead
+        // of "DN355") → null. Without this second pattern, rows like
+        // "HDPE PE100 PN 25 (SDR 7.4) pipe end caps / 1) 355 mm
+        // diameter" never resolve and stay un-enriched.
+        const dnPrefixMatch = miscDescription.match(/(?:DN|OD)\s*(\d{2,4})/i);
+        const dnDiameterMatch = miscDescription.match(/(\d{2,4})\s*mm\s*(?:diameter|dia\.?|Ø)/i);
+        const regexDn = dnPrefixMatch
+          ? Number(dnPrefixMatch[1])
+          : dnDiameterMatch
+            ? Number(dnDiameterMatch[1])
+            : null;
         const dn = specsDn || regexDn;
         if (!dn || !Number.isFinite(dn)) return miscDescription;
         if (/,\s*\d+mm\s+L\b/.test(miscDescription)) return miscDescription;
@@ -1493,7 +1467,10 @@ export default function BOQStep(props: {
         const angleDeg = lateralAngleMatch ? Number(lateralAngleMatch[1]) : 45;
         const dims = lateralDimensions(angleDeg, dn);
         if (!dims) return miscDescription;
-        return `${miscDescription}, ${dims.runFaceToFaceMm}×${dims.branchFaceToCentreMm}mm`;
+        // Estimated values get an asterisk so the supplier knows the
+        // dim is interpolated/extrapolated rather than catalogue.
+        const estimatedFlag = dims.source === "estimated" ? "*" : "";
+        return `${miscDescription}, ${dims.runFaceToFaceMm}×${dims.branchFaceToCentreMm}mm${estimatedFlag}`;
       })();
 
       const existingMisc = dest.get(miscKey);
@@ -1863,27 +1840,8 @@ export default function BOQStep(props: {
 
   // Trigger download of `data` as `filename` with the given MIME
   // type. Browser Blob + ObjectURL pattern.
-  const triggerDownload = (data: string | Blob, filename: string, mime: string) => {
-    const blob = data instanceof Blob ? data : new Blob([data], { type: mime });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  };
-
-  // Per-section exporters. `safeFilename` strips characters that
-  // browsers / Windows refuse on download. The section name is used
-  // both as the filename stem and the sheet name in xlsx.
-  const safeFilename = (title: string): string =>
-    title
-      .replace(/[^a-z0-9]+/gi, "-")
-      .replace(/^-+|-+$/g, "")
-      .toLowerCase() || "section";
-
+  // Per-section exporters. The section name is used both as the
+  // filename stem (via safeFilename) and the sheet name in xlsx.
   type ExportableSubsection = {
     title: string;
     items: Map<string, ConsolidatedItem>;
@@ -2674,7 +2632,11 @@ export default function BOQStep(props: {
                 manufacturer data (Flo-Tek / Marley / Sinvac equivalent). Where end config is
                 flanged, a stub end + SANS 1123 Type 1 (full-face) backing flange is assumed unless
                 the tender document specifies an alternative. Final HDPE OD / wall thickness to be
-                rationalised by the supplier at quote against the project pressure class.
+                rationalised by the supplier at quote against the project pressure class. Values
+                marked with <strong>*</strong> were not given by the source BOQ — laterals
+                interpolated/extrapolated between catalogued anchor points (DN 200, 250, 315 from
+                Strongbridge); reducer branch NBs inferred from the catalogue when the source only
+                gave the main end. Supplier to confirm at quote.
               </p>
             </section>
           );
