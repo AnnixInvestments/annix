@@ -1,7 +1,6 @@
 "use client";
 
 import { isNumber, keys } from "es-toolkit/compat";
-import Link from "next/link";
 import React, { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
@@ -41,95 +40,16 @@ import {
 } from "@/app/lib/nix/api";
 import { useRfqWizardStore } from "@/app/lib/store/rfqWizardStore";
 import { generateSystemReferenceNumber } from "@/app/lib/utils/systemUtils";
+import { BUNDLE_KEY_TO_PRODUCT, GOOGLE_MAPS_API_KEY } from "./project-details/constants";
+import { detectProjectTypeFromEmail, isExcelFile } from "./project-details/helpers";
+import { RestrictionTooltip } from "./project-details/RestrictionTooltip";
+import type { RestrictionPopupPosition } from "./project-details/types";
 import {
   buildFallbackEnvironmentalSpecs,
   FALLBACK_ENVIRONMENTAL_AUTO_FILLED_FIELDS,
   fallbackMines,
 } from "./projectDetailsFallbackData";
 import { UnifiedRfqDocumentBucket } from "./UnifiedRfqDocumentBucket";
-
-interface RestrictionPopupPosition {
-  x: number;
-  y: number;
-}
-
-function RestrictionTooltip({ position }: { position: RestrictionPopupPosition }) {
-  return (
-    <div
-      className="fixed z-50 bg-gray-900 dark:bg-gray-800 text-white rounded-md shadow-lg px-3 py-2 max-w-xs pointer-events-none"
-      style={{
-        left: Math.min(position.x, window.innerWidth - 280),
-        top: position.y + 10,
-      }}
-    >
-      <div className="flex items-center gap-2">
-        <svg
-          className="w-4 h-4 text-amber-400 flex-shrink-0"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-          />
-        </svg>
-        <span className="text-xs">
-          Restricted feature.{" "}
-          <Link href="/pricing" className="text-blue-400 hover:text-blue-300 underline">
-            View pricing tiers
-          </Link>
-        </span>
-      </div>
-      <div
-        className="absolute -top-1 left-4 w-2 h-2 bg-gray-900 dark:bg-gray-800 rotate-45"
-        style={{ transform: "translateY(-50%) rotate(45deg)" }}
-      />
-    </div>
-  );
-}
-
-const rawNEXT_PUBLIC_GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-
-const GOOGLE_MAPS_API_KEY = rawNEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
-
-// Picks a PROJECT_TYPES value from an email's subject + body. Conservative:
-// only the explicit tender keywords route to the heavier flows; everything
-// else (RFQ, enquiry, quote request, plain spreadsheet, etc.) falls through
-// to "standard" so the customer doesn't accidentally land in the Nix tender
-// pipeline meant for formal Phase-1 / Re-Tender / Feasibility studies.
-function detectProjectTypeFromEmail(subject: string | null, bodyText: string | null): string {
-  const haystack = `${subject ?? ""}\n${bodyText ?? ""}`.toLowerCase();
-  if (/\bphase\s*[i1]\b/.test(haystack)) return "phase1";
-  if (/\bre[-\s]?tender\b/.test(haystack)) return "retender";
-  if (/\bfeasibility\b/.test(haystack)) return "feasibility";
-  return "standard";
-}
-
-// Maps RfqPipingProfileHandler supplier-bundle keys to PRODUCTS_AND_SERVICES
-// checkbox values. Coming-soon products are still mapped — the customer can
-// deselect, but we want to flag that those items DID show up in the BOQ so
-// the right team gets routed.
-const BUNDLE_KEY_TO_PRODUCT: Record<string, string> = {
-  "hdpe-pipe-fittings": "hdpe",
-  "hdpe-puddle-pipes": "hdpe",
-  "hdpe-boots": "hdpe",
-  "rubber-lined-steel": "fabricated_steel",
-  "mild-steel": "fabricated_steel",
-  "valves-pinch": "valves_meters_instruments",
-  "valves-gate": "valves_meters_instruments",
-  "valves-other": "valves_meters_instruments",
-  "valve-accessories": "valves_meters_instruments",
-  "consumables-gaskets": "fasteners_gaskets",
-  "consumables-bolts": "fasteners_gaskets",
-  "consumables-other": "fasteners_gaskets",
-  "consumables-coating": "surface_protection",
-  "pipe-wrapping": "surface_protection",
-  "upvc-specials": "pvc",
-  "fabricated-skids": "pipe_steel_work",
-};
 
 export type { PendingDocument } from "@/app/lib/store/rfqWizardStore";
 
@@ -203,9 +123,6 @@ export default function ProjectDetailsStep() {
     customerEmail: false,
     customerPhone: false,
   });
-
-  const isExcelFile = (file: File) =>
-    /\.xlsx?$/i.test(file.name) || file.type.includes("spreadsheet") || file.type.includes("excel");
 
   const runNixBoqExtraction = useCallback(
     async (
