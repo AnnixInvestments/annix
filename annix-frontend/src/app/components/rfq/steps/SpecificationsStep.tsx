@@ -46,8 +46,11 @@ import {
 } from "@/app/lib/utils/rfq/registrationRestrictions";
 import {
   autoFilledClass,
+  isPressureClassMissingPTData as computePressureClassMissingPTData,
+  isPressureClassUnsuitable as computePressureClassUnsuitable,
+  deriveMiningUvExposure,
+  derivePressureClassOverrideStatus,
   deriveTemperatureCategory,
-  extractPressureNumeric,
   serviceLifeToDurability,
 } from "./specifications/helpers";
 import { FeatureRestrictionPopup, RestrictionPopup } from "./specifications/RestrictionPopup";
@@ -241,47 +244,21 @@ export default function SpecificationsStep(props: {
     setAutoPressureClassId(null);
   }, [globalSpecs?.flangeStandardId]);
 
-  // Determine pressure class override status
-  const pressureClassOverrideStatus = (() => {
-    const currentId = globalSpecs?.flangePressureClassId;
-    const autoId = autoPressureClassId;
-
-    if (!currentId || !autoId || currentId === autoId) {
-      return { isOverride: false, isHigher: false, isLower: false };
-    }
-
-    const currentClass = availablePressureClasses?.find((pc: any) => pc.id === currentId);
-    const autoClass = availablePressureClasses?.find((pc: any) => pc.id === autoId);
-
-    if (!currentClass || !autoClass) {
-      return { isOverride: true, isHigher: false, isLower: false };
-    }
-
-    const currentNumeric = extractPressureNumeric(currentClass.designation);
-    const autoNumeric = extractPressureNumeric(autoClass.designation);
-
-    return {
-      isOverride: true,
-      isHigher: currentNumeric > autoNumeric,
-      isLower: currentNumeric < autoNumeric,
-    };
-  })();
-
-  // Check if current pressure class is unsuitable for P-T rating
-  const isPressureClassUnsuitable = (() => {
-    const currentId = globalSpecs?.flangePressureClassId;
-    if (!currentId) return false;
-    const classInfo = pressureClassInfoMap.get(currentId);
-    return classInfo ? !classInfo.isAdequate : false;
-  })();
-
-  // Check if P-T data is missing for the selected pressure class
-  const isPressureClassMissingPTData = (() => {
-    const currentId = globalSpecs?.flangePressureClassId;
-    if (!currentId || !ptRecommendations) return false;
-    const classInfo = pressureClassInfoMap.get(currentId);
-    return !classInfo && ptRecommendations.validPressureClasses.length > 0;
-  })();
+  const currentPressureClassId = globalSpecs?.flangePressureClassId;
+  const pressureClassOverrideStatus = derivePressureClassOverrideStatus(
+    currentPressureClassId,
+    autoPressureClassId,
+    availablePressureClasses,
+  );
+  const isPressureClassUnsuitable = computePressureClassUnsuitable(
+    currentPressureClassId,
+    pressureClassInfoMap,
+  );
+  const isPressureClassMissingPTData = computePressureClassMissingPTData(
+    currentPressureClassId,
+    pressureClassInfoMap,
+    ptRecommendations,
+  );
 
   // Derive temperature category from working temperature if not manually set
   const derivedTempCategory = deriveTemperatureCategory(gsWorkingTemperatureC);
@@ -321,21 +298,10 @@ export default function SpecificationsStep(props: {
   const isInstallationTypeAutoFilled =
     !globalSpecs?.ecpInstallationType && !!derivedInstallationType;
 
-  // UV Exposure: Derive from ISO 12944 category or mining environment
-  const deriveUvExposure = (): string | null => {
-    // If mine is selected, mining environments typically have high UV exposure (outdoor operations)
-    if (globalSpecs?.mineSelected) {
-      // If we have ISO 12944, use it to refine
-      const iso = effectiveIso12944;
-      if (iso === "C5" || iso === "CX") return "High";
-      if (iso === "C3" || iso === "C4") return "Moderate";
-      if (iso === "C1" || iso === "C2") return "Moderate";
-      // Default for mining is High (outdoor)
-      return "High";
-    }
-    return null;
-  };
-  const derivedUvExposure = deriveUvExposure();
+  const derivedUvExposure = deriveMiningUvExposure(
+    Boolean(globalSpecs?.mineSelected),
+    effectiveIso12944 ?? null,
+  );
   const rawEcpUvExposure = globalSpecs?.ecpUvExposure;
   const effectiveUvExposure = rawEcpUvExposure || derivedUvExposure;
   const isUvExposureAutoFilled = !globalSpecs?.ecpUvExposure && !!derivedUvExposure;
