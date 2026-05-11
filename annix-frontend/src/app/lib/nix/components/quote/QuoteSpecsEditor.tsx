@@ -50,7 +50,13 @@ export interface QuoteSpecsEditorProps {
   rates: SpecRates;
   attachments: DataSheetAttachments;
   onOverridesChange: (next: SpecOverrides) => void;
-  onRatesChange: (next: SpecRates) => void;
+  /**
+   * Accepts a `SetStateAction<SpecRates>` so rapid keystrokes between the
+   * lining card's R/Rm and R/m² inputs don't race on the closure-captured
+   * `rates` value: handleRateChange below uses the functional updater form
+   * to read the latest state for each call.
+   */
+  onRatesChange: React.Dispatch<React.SetStateAction<SpecRates>>;
   onAttachmentsChange: (next: DataSheetAttachments) => void;
   /** When provided, '+ Add coating' / '+ Add lining' buttons are shown. */
   onAddSpec?: (kind: SpecKind) => void;
@@ -110,7 +116,7 @@ export function QuoteSpecsEditor(props: QuoteSpecsEditorProps) {
                 onOverridesChange(withSelectedSupplier(spec, overrides, supplierId))
               }
               onRateChange={(field, value) =>
-                handleRateChange(rates, onRatesChange, spec.code, field, value)
+                handleRateChange(onRatesChange, spec.code, field, value)
               }
               onAttachmentChange={(entryId, attachment) =>
                 handleAttachmentChange(attachments, onAttachmentsChange, entryId, attachment)
@@ -150,27 +156,39 @@ export function QuoteSpecsEditor(props: QuoteSpecsEditorProps) {
   );
 }
 
+/**
+ * Bug fix 2026-05-11: lining cards have TWO rate inputs (R/Rm + R/m²) on the
+ * same render. Typing in one then quickly switching focus to the other
+ * caused the second call to read a closure-stale `rates` snapshot — the
+ * first update hadn't propagated yet — which silently overwrote the first
+ * rate with 0. Paint cards have only one input so couldn't hit the race.
+ *
+ * Fix: use the functional setState updater so each call reads the latest
+ * state. `onChange` is now typed as `Dispatch<SetStateAction<SpecRates>>`
+ * so both `setSpecRates` directly and any equivalent dispatcher work.
+ */
 function handleRateChange(
-  rates: SpecRates,
-  onChange: (next: SpecRates) => void,
+  onChange: React.Dispatch<React.SetStateAction<SpecRates>>,
   code: string,
   field: "perM2" | "perRm",
   raw: string,
 ): void {
-  const existing = rates[code] ? rates[code] : { perM2: 0, perRm: 0 };
   const parsed = raw === "" ? 0 : Number(raw);
   const safe = Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
-  const nextEntry: SpecRate = {
-    perM2: field === "perM2" ? safe : existing.perM2,
-    perRm: field === "perRm" ? safe : existing.perRm,
-  };
-  const next = { ...rates };
-  if (nextEntry.perM2 === 0 && nextEntry.perRm === 0) {
-    delete next[code];
-  } else {
-    next[code] = nextEntry;
-  }
-  onChange(next);
+  onChange((prev) => {
+    const existing = prev[code] ? prev[code] : { perM2: 0, perRm: 0 };
+    const nextEntry: SpecRate = {
+      perM2: field === "perM2" ? safe : existing.perM2,
+      perRm: field === "perRm" ? safe : existing.perRm,
+    };
+    const next = { ...prev };
+    if (nextEntry.perM2 === 0 && nextEntry.perRm === 0) {
+      delete next[code];
+    } else {
+      next[code] = nextEntry;
+    }
+    return next;
+  });
 }
 
 function handleAttachmentChange(
