@@ -250,16 +250,37 @@ export function suppliersForCustomerFooter(
 
 /**
  * Renders the joined 'Brand: Products' string for the section footer based
- * on the override-aware supplier list. Coatings join with ' • ', linings
- * use the single supplier's description directly.
+ * on the override-aware supplier list. Custom entries (user-typed or user-
+ * added rows, marked isCustom = true) take precedence over the parsed
+ * defaults — if the user has gone to the trouble of nominating a specific
+ * supplier's product for this quote, the customer-facing footer must
+ * reflect that, NOT the original spec-line text.
+ *
+ * Rules:
+ * - If any custom entries exist, they alone drive the line (defaults are
+ *   dropped). This applies to both kinds.
+ * - Linings join multiple customs with ' or ' (single-product convention).
+ *   Coatings join with ' • ' to keep alternatives readable in the footer.
+ * - When no customs exist, falls back to the previous behaviour: first
+ *   supplier for linings, all suppliers joined with ' • ' for coatings.
  */
 export function joinSuppliersForFooter(suppliers: SupplierEntry[], kind: SpecKind): string {
   if (suppliers.length === 0) return "";
+
+  const customs = suppliers.filter((s) => s.isCustom);
+  const pool = customs.length > 0 ? customs : suppliers;
+
   if (kind === "lining") {
-    const first = suppliers[0];
-    return first.description;
+    if (pool.length === 1) {
+      return pool[0].description;
+    }
+    return pool
+      .map((s) => s.description)
+      .filter((p) => p.length > 0)
+      .join(" or ");
   }
-  return suppliers
+
+  return pool
     .map((s) => {
       if (s.brand && s.description) return `${s.brand}: ${s.description}`;
       if (s.brand) return s.brand;
