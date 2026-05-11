@@ -699,6 +699,8 @@ export {
   type NixExtractionSessionDto,
   type NixExtractionSummary,
   quoteRefForSession,
+  type UploadProductDataSheetResult,
+  uploadProductDataSheet,
   useAdvanceWalkthrough,
   useBackWalkthrough,
   useCreateNixExtractionSession,

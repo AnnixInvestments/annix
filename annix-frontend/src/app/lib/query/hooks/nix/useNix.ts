@@ -359,6 +359,9 @@ export const useNixExtractionDocumentUrl = createQueryHook(
  *
  * Multipart upload, so we hand-roll the request rather than going through
  * `nixRequest` (which assumes JSON bodies).
+ *
+ * Superseded by `uploadProductDataSheet` below, which also registers the
+ * sheet in the shared library — kept for callers that only need extraction.
  */
 export async function extractProductSpecFromDataSheet(
   file: File,
@@ -394,6 +397,72 @@ export async function extractProductSpecFromDataSheet(
       body,
     );
     throw new Error(`Failed to extract product spec: ${response.statusText}${detail}`);
+  }
+  return response.json();
+}
+
+/**
+ * Uploads a product data sheet to the shared org-wide library AND returns the
+ * Gemini-extracted brand + description for auto-filling the supplier row.
+ * Mirrors the mine-spec versioning pattern: if a quote in any future app
+ * uploads the same (manufacturer, product) again, this endpoint reuses the
+ * existing row (same printed revision) or supersedes it (higher revision).
+ *
+ * Outcomes:
+ *  - 'new'        — first time this manufacturer + product reached the library.
+ *  - 'reused'     — incoming revision matched the current latest; no new
+ *                   S3 object was written.
+ *  - 'superseded' — incoming revision was newer; the old current row is now
+ *                   archived (is_latest = false) and this is the new latest.
+ */
+export interface UploadProductDataSheetResult {
+  dataSheetId: number;
+  manufacturer: string;
+  productName: string;
+  kind: "coating" | "lining";
+  version: number;
+  publishedRevision: string | null;
+  publishedDate: string | null;
+  brand: string | null;
+  description: string | null;
+  outcome: "new" | "reused" | "superseded";
+  supersededFromRevision: string | null;
+}
+
+export async function uploadProductDataSheet(
+  file: File,
+  kind: "coating" | "lining",
+  portalContext?: PortalContext,
+): Promise<UploadProductDataSheetResult> {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("kind", kind);
+
+  const headers: Record<string, string> = { ...nixAuthHeaders(portalContext) };
+  const response = await retryableFetch(`${browserBaseUrl()}/nix/product-data-sheets/upload`, {
+    method: "POST",
+    headers,
+    body: formData,
+  });
+  if (!response.ok) {
+    if (response.status === 401) {
+      sessionExpiredEvent.emit();
+      throw new Error("Session expired — please sign in again.");
+    }
+    const body = await response.json().catch(() => null);
+    const bodyMessage = body ? body.message : null;
+    const bodyError = body ? body.error : null;
+    const serverMessage = isString(bodyMessage)
+      ? bodyMessage
+      : isString(bodyError)
+        ? bodyError
+        : null;
+    const detail = serverMessage ? ` — ${serverMessage}` : "";
+    console.warn(
+      `[uploadProductDataSheet] ${response.status} ${response.statusText}${detail}`,
+      body,
+    );
+    throw new Error(`Failed to upload data sheet: ${response.statusText}${detail}`);
   }
   return response.json();
 }

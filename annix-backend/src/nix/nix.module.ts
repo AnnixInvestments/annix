@@ -36,11 +36,14 @@ import { NixExtractionRegion } from "./entities/nix-extraction-region.entity";
 import { NixExtractionSession } from "./entities/nix-extraction-session.entity";
 import { NixLearning } from "./entities/nix-learning.entity";
 import { NixUserPreference } from "./entities/nix-user-preference.entity";
+import { ProductDataSheet } from "./entities/product-data-sheet.entity";
 import { MineInferenceService } from "./mine-inference.service";
 import { MineLibraryController } from "./mine-library/mine-library.controller";
 import { MineLibraryService } from "./mine-library/mine-library.service";
 import { NixController } from "./nix.controller";
 import { NixService } from "./nix.service";
+import { ProductDataSheetsController } from "./product-data-sheets/product-data-sheets.controller";
+import { ProductDataSheetsService } from "./product-data-sheets/product-data-sheets.service";
 import { NixExtractionProfileRegistry, RfqPipingProfileHandler } from "./profiles";
 import { RevisionTrackingService } from "./revision-tracking.service";
 import { AutoApprovalService } from "./services/auto-approval.service";
@@ -69,6 +72,7 @@ import { WordExtractorService } from "./services/word-extractor.service";
       NixChatSession,
       NixChatMessage,
       CustomFieldValue,
+      ProductDataSheet,
       CustomerDocument,
       CustomerProfile,
       CustomerOnboarding,
@@ -106,6 +110,7 @@ import { WordExtractorService } from "./services/word-extractor.service";
     NixCapabilitiesController,
     NixWalkthroughController,
     MineLibraryController,
+    ProductDataSheetsController,
   ],
   providers: [
     DocumentAnnotationService,
@@ -118,6 +123,7 @@ import { WordExtractorService } from "./services/word-extractor.service";
     MineInferenceService,
     MineLibraryService,
     RevisionTrackingService,
+    ProductDataSheetsService,
     NixService,
     NixExtractionSessionService,
     NixChatService,

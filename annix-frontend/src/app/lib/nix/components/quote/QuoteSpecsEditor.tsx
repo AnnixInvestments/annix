@@ -2,7 +2,7 @@
 
 import { keys } from "es-toolkit/compat";
 import { useState } from "react";
-import { extractProductSpecFromDataSheet } from "@/app/lib/query/hooks";
+import { type UploadProductDataSheetResult, uploadProductDataSheet } from "@/app/lib/query/hooks";
 import {
   countMissingDataSheets,
   type DataSheetAttachment,
@@ -389,6 +389,28 @@ function SpecCard(props: SpecCardProps) {
   );
 }
 
+/**
+ * Renders the short library status note shown below the upload row after
+ * Gemini extraction + library registration. Surfaces whether the upload
+ * matched an existing version, created a new one, or superseded the prior
+ * latest so the quoter trusts that their upload landed somewhere useful.
+ */
+function formatLibraryNote(result: UploadProductDataSheetResult): string {
+  const productLabel = `${result.manufacturer} ${result.productName}`.trim();
+  const revLabel = result.publishedRevision ? ` ${result.publishedRevision}` : "";
+  switch (result.outcome) {
+    case "reused":
+      return `Matched existing ${productLabel}${revLabel} in the library — nothing new uploaded.`;
+    case "superseded":
+      return result.supersededFromRevision
+        ? `Saved as the new ${productLabel}${revLabel} — supersedes ${result.supersededFromRevision} in the library.`
+        : `Saved as the new ${productLabel}${revLabel} — supersedes the previous version in the library.`;
+    case "new":
+    default:
+      return `Saved ${productLabel}${revLabel} to the shared library (first version).`;
+  }
+}
+
 interface SupplierRowProps {
   supplier: SupplierEntry;
   kind: SpecKind;
@@ -421,24 +443,35 @@ function SupplierRow(props: SupplierRowProps) {
   const [autoFillState, setAutoFillState] = useState<
     "idle" | "extracting" | "applied" | "no-match" | "error"
   >("idle");
+  const [libraryNote, setLibraryNote] = useState<string | null>(null);
 
   /**
-   * When the user uploads a data sheet on a custom supplier row, the
-   * attachment is recorded immediately AND the file is sent to Gemini for
-   * structured extraction. The brand + description are auto-filled into
-   * empty fields only — we never overwrite text the quoter has typed, since
-   * their override always wins. After 4s the 'Auto-filled from data sheet'
-   * confirmation fades to plain '✓ Attached' so the row stays calm.
+   * When the user uploads a data sheet on a custom supplier row, the file is
+   * sent to the shared product data sheet library:
+   *
+   *   1. Gemini extracts manufacturer + product + revision + brand +
+   *      description in one pass.
+   *   2. The library either creates a new row, matches an existing version
+   *      (same printed revision), or supersedes the prior current revision.
+   *   3. The brand + description come back for auto-filling THIS quote's
+   *      supplier row — but only into empty fields, so the quoter's typed
+   *      override always wins.
+   *
+   * The library outcome is shown as a short note below the row ('matched
+   * existing Linard 60 Rev 03' / 'supersedes Rev 03') and clears after 6s
+   * so the row stays calm.
    */
   const handleAttachmentChange = async (next: DataSheetAttachment | null) => {
     onAttachmentChange(next);
     if (!next) {
       setAutoFillState("idle");
+      setLibraryNote(null);
       return;
     }
     setAutoFillState("extracting");
+    setLibraryNote(null);
     try {
-      const result = await extractProductSpecFromDataSheet(next.file, kind);
+      const result = await uploadProductDataSheet(next.file, kind);
       const supplierBrand = supplier.brand;
       const supplierDescription = supplier.description;
       const brandIsEmpty = !supplierBrand || supplierBrand.trim().length === 0;
@@ -449,13 +482,17 @@ function SupplierRow(props: SupplierRowProps) {
       if (keys(partial).length > 0) {
         onChange(partial);
         setAutoFillState("applied");
-        setTimeout(() => setAutoFillState("idle"), 4000);
       } else {
         setAutoFillState("no-match");
-        setTimeout(() => setAutoFillState("idle"), 4000);
       }
+      setLibraryNote(formatLibraryNote(result));
+      setTimeout(() => {
+        setAutoFillState("idle");
+        setLibraryNote(null);
+      }, 6000);
     } catch {
       setAutoFillState("error");
+      setLibraryNote(null);
       setTimeout(() => setAutoFillState("idle"), 4000);
     }
   };
@@ -565,30 +602,35 @@ function SupplierRow(props: SupplierRowProps) {
         </button>
       </div>
       {isCustom && (
-        <div className="mt-2 flex items-center justify-between gap-2 flex-wrap">
-          <span
-            className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider font-semibold text-amber-800"
-            title="A data sheet must accompany this quote"
-          >
-            <span className="bg-amber-200/60 px-1.5 py-0.5 rounded">Custom</span>
-            <span className="font-normal normal-case text-amber-900/80">
-              {autoFillState === "extracting"
-                ? "Reading data sheet…"
-                : autoFillState === "applied"
-                  ? "✓ Auto-filled from data sheet — review and edit if needed"
-                  : autoFillState === "no-match"
-                    ? "Couldn't read product details — please type them in"
-                    : autoFillState === "error"
-                      ? "Auto-fill failed — please type the product details in"
-                      : "data sheet must accompany the quote"}
+        <div className="mt-2 flex flex-col gap-1">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <span
+              className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider font-semibold text-amber-800"
+              title="A data sheet must accompany this quote"
+            >
+              <span className="bg-amber-200/60 px-1.5 py-0.5 rounded">Custom</span>
+              <span className="font-normal normal-case text-amber-900/80">
+                {autoFillState === "extracting"
+                  ? "Reading data sheet…"
+                  : autoFillState === "applied"
+                    ? "✓ Auto-filled from data sheet — review and edit if needed"
+                    : autoFillState === "no-match"
+                      ? "Couldn't read product details — please type them in"
+                      : autoFillState === "error"
+                        ? "Auto-fill failed — please type the product details in"
+                        : "data sheet must accompany the quote"}
+              </span>
             </span>
-          </span>
-          <DataSheetUpload
-            entryId={supplier.id}
-            attachment={attachment}
-            isExtracting={autoFillState === "extracting"}
-            onChange={handleAttachmentChange}
-          />
+            <DataSheetUpload
+              entryId={supplier.id}
+              attachment={attachment}
+              isExtracting={autoFillState === "extracting"}
+              onChange={handleAttachmentChange}
+            />
+          </div>
+          {libraryNote && (
+            <span className="text-[11px] text-emerald-800/80 italic">📚 {libraryNote}</span>
+          )}
         </div>
       )}
     </div>
