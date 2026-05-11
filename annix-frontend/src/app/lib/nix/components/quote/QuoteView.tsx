@@ -41,6 +41,51 @@ function formatZar(value: number): string {
 }
 
 /**
+ * South African VAT rate as a fraction (15%). Quote totals split out the
+ * VAT line explicitly: subtotal ex VAT, VAT @ 15%, total inc VAT. Centralised
+ * so a future SARS rate change is a one-line edit.
+ */
+const SOUTH_AFRICA_VAT_RATE = 0.15;
+
+/**
+ * Per-item unit price (one unit, ex VAT) in ZAR, computed from the same
+ * pricing schedule as the pool totals:
+ *  - Coating contribution: per-pipe external m² × R/m².
+ *  - Lining contribution, split by item type:
+ *      • Pipe ≥ 3 m → effective running metres (length + 0.1 m × flange count)
+ *        × R/Rm.
+ *      • Plate / fitting / pipe < 3 m → per-pipe internal m² × R/m².
+ *  - Both contributions sum for items that are coated AND lined.
+ *
+ * Returns 0 when no relevant rate is set or the item is missing dimensions.
+ * Multiplying by item.quantity gives the line total ex VAT — and summing those
+ * line totals matches the existing pool cost (verified against
+ * liningCostForPool + coatingCost in PoolSection).
+ */
+function unitPriceForItem(
+  item: QuoteItem,
+  area: ItemSurfaceArea | null,
+  pool: QuotePool,
+  coatingRate: SpecRate,
+  liningRate: SpecRate,
+): number {
+  let unit = 0;
+  if (pool.coating && coatingRate.perM2 > 0 && area) {
+    unit += area.perPipe.totalExternalAreaM2 * coatingRate.perM2;
+  }
+  if (pool.lining) {
+    if (isLongPipeForLiningPricing(item)) {
+      if (liningRate.perRm > 0) {
+        unit += effectiveLiningLengthM(item) * liningRate.perRm;
+      }
+    } else if (area && liningRate.perM2 > 0) {
+      unit += area.perPipe.totalInternalAreaM2 * liningRate.perM2;
+    }
+  }
+  return unit;
+}
+
+/**
  * 'Coverage kind' for a pool — drives which m² figure (external for
  * coating, internal for lining, total for both, none for unscoped) is the
  * relevant one to render in the m² column header / row / footer total.
@@ -316,17 +361,35 @@ export function QuoteView(props: QuoteViewProps) {
 function GrandTotalCard(props: { total: number; hasAnyRate: boolean }) {
   const { total, hasAnyRate } = props;
   if (!hasAnyRate) return null;
+  const vat = total * SOUTH_AFRICA_VAT_RATE;
+  const totalIncVat = total + vat;
+  const vatPercent = (SOUTH_AFRICA_VAT_RATE * 100).toFixed(0);
   return (
-    <section className="bg-emerald-50 border border-emerald-300 rounded-lg p-4 flex items-baseline justify-between">
-      <div>
+    <section className="bg-emerald-50 border border-emerald-300 rounded-lg p-4">
+      <header className="flex items-baseline justify-between border-b border-emerald-200/60 pb-2 mb-2">
         <h2 className="text-xs uppercase tracking-wider text-emerald-700 font-semibold">
           Quote total
         </h2>
-        <p className="text-xs text-emerald-700/80 mt-0.5">
+        <p className="text-xs text-emerald-700/80">
           Coating m² × R/m² + lining items split: pipes ≥ 3 m at R/Rm, everything else at R/m².
         </p>
+      </header>
+      <div className="space-y-1 font-mono">
+        <div className="flex items-baseline justify-between text-sm text-emerald-900">
+          <span className="text-emerald-800/90 font-sans">Subtotal (ex VAT)</span>
+          <span>{formatZar(total)}</span>
+        </div>
+        <div className="flex items-baseline justify-between text-sm text-emerald-900">
+          <span className="text-emerald-800/90 font-sans">VAT @ {vatPercent}%</span>
+          <span>{formatZar(vat)}</span>
+        </div>
+        <div className="flex items-baseline justify-between border-t border-emerald-300 pt-1.5 mt-1.5">
+          <span className="text-emerald-900 font-sans font-semibold uppercase tracking-wider text-xs">
+            Total (inc VAT)
+          </span>
+          <span className="text-2xl font-bold text-emerald-900">{formatZar(totalIncVat)}</span>
+        </div>
       </div>
-      <div className="text-2xl font-bold text-emerald-900 font-mono">{formatZar(total)}</div>
     </section>
   );
 }
@@ -367,6 +430,16 @@ function PoolSection(props: {
   );
   const poolCost = coatingCost + liningBreakdown.total;
   const showCost = poolCost > 0;
+  const showPricingColumns =
+    (pool.coating !== null && coatingRate.perM2 > 0) ||
+    (pool.lining !== null && (liningRate.perM2 > 0 || liningRate.perRm > 0));
+  const unitPrices = useMemo(
+    () =>
+      pool.items.map((item, idx) =>
+        unitPriceForItem(item, itemAreas[idx], pool, coatingRate, liningRate),
+      ),
+    [pool.items, itemAreas, pool, coatingRate, liningRate],
+  );
 
   return (
     <section className="bg-white border border-gray-200 rounded-lg overflow-hidden">
@@ -397,6 +470,18 @@ function PoolSection(props: {
                 </th>
               </>
             )}
+            {showPricingColumns && (
+              <>
+                <th className="px-3 py-2 font-medium text-right whitespace-nowrap">
+                  Unit price
+                  <span className="block text-[10px] font-normal text-gray-400">ex VAT</span>
+                </th>
+                <th className="px-3 py-2 font-medium text-right whitespace-nowrap">
+                  Line total
+                  <span className="block text-[10px] font-normal text-gray-400">ex VAT</span>
+                </th>
+              </>
+            )}
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-100">
@@ -408,6 +493,8 @@ function PoolSection(props: {
               showAreaColumn={showAreaColumn}
               coverageKind={coverageKind}
               isAreaReady={isAreaReady}
+              unitPrice={unitPrices[idx]}
+              showPricingColumns={showPricingColumns}
             />
           ))}
         </tbody>
@@ -464,8 +551,11 @@ function ItemRow(props: {
   showAreaColumn: boolean;
   coverageKind: CoverageKind;
   isAreaReady: boolean;
+  unitPrice: number;
+  showPricingColumns: boolean;
 }) {
-  const { item, area, showAreaColumn, coverageKind, isAreaReady } = props;
+  const { item, area, showAreaColumn, coverageKind, isAreaReady, unitPrice, showPricingColumns } =
+    props;
   const dimensionParts: string[] = [];
   if (item.diameter !== null) dimensionParts.push(`NB ${item.diameter}`);
   if (item.wallThickness !== null) dimensionParts.push(`WT ${item.wallThickness}`);
@@ -508,6 +598,16 @@ function ItemRow(props: {
           </td>
           <td className="px-3 py-2 text-right text-gray-900 font-mono text-xs whitespace-nowrap">
             {lineTotalCellText}
+          </td>
+        </>
+      )}
+      {showPricingColumns && (
+        <>
+          <td className="px-3 py-2 text-right text-gray-700 font-mono text-xs whitespace-nowrap">
+            {unitPrice > 0 ? formatZar(unitPrice) : "—"}
+          </td>
+          <td className="px-3 py-2 text-right text-gray-900 font-mono text-xs whitespace-nowrap">
+            {unitPrice > 0 && item.quantity > 0 ? formatZar(unitPrice * item.quantity) : "—"}
           </td>
         </>
       )}
