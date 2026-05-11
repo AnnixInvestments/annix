@@ -99,6 +99,21 @@ export default function BOQStep(props: {
   // the supplier-bound output.
   const entries: any[] = allEntries.filter((entry) => !omittedItemIds.has(entry.id));
   const omittedEntries: any[] = allEntries.filter((entry) => omittedItemIds.has(entry.id));
+  // Admin-only traceability: map each clientItemNumber back to the
+  // source sheet + row the item was extracted from so the BOQ
+  // tables can show a "Source" column. Manual entries (no Nix
+  // extraction) won't appear in this map and render as "—".
+  const sourceLookup = useMemo(() => {
+    const lookup = new Map<string, string>();
+    allEntries.forEach((entry) => {
+      const rawClient = entry.clientItemNumber;
+      const sourceLocation = entry.sourceLocation;
+      if (!rawClient || !sourceLocation) return;
+      const sheetPrefix = sourceLocation.sheetName ? `${sourceLocation.sheetName}!` : "";
+      lookup.set(rawClient, `${sheetPrefix}R${sourceLocation.rowNumber}`);
+    });
+    return lookup;
+  }, [allEntries]);
   const globalSpecs = rfqData.globalSpecs;
   const rawRequiredProducts = rfqData.requiredProducts;
   const requiredProducts = rawRequiredProducts || [];
@@ -1717,6 +1732,13 @@ export default function BOQStep(props: {
                 >
                   From
                 </th>
+                {isAdminAuthenticated && (
+                  <th
+                    className={`text-left py-2 px-2 font-semibold text-xs ${textColor} ${darkText} w-24`}
+                  >
+                    Source
+                  </th>
+                )}
                 <th className={`text-center py-2 px-2 font-semibold ${textColor} ${darkText} w-10`}>
                   #
                 </th>
@@ -1763,6 +1785,11 @@ export default function BOQStep(props: {
                   ? values(item.welds).reduce((sum, v) => sum + v, 0)
                   : 0;
                 const rowBg = idx % 2 === 0 ? "bg-transparent" : "bg-gray-50 dark:bg-gray-800/30";
+                const sourceLabels = item.entries
+                  .map((clientItemNumber) => sourceLookup.get(clientItemNumber))
+                  .filter((label): label is string => Boolean(label))
+                  .join(", ");
+                const sourceCell = sourceLabels || "—";
                 return (
                   <tr
                     key={idx}
@@ -1774,6 +1801,14 @@ export default function BOQStep(props: {
                     >
                       {item.entries.join(", ")}
                     </td>
+                    {isAdminAuthenticated && (
+                      <td
+                        className="py-2 px-2 text-xs text-gray-600 dark:text-gray-400 truncate font-mono"
+                        title={sourceCell}
+                      >
+                        {sourceCell}
+                      </td>
+                    )}
                     <td className="py-2 px-2 text-center text-gray-900 dark:text-gray-100">
                       {idx + 1}
                     </td>

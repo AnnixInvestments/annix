@@ -23,6 +23,15 @@ import type {
 
 export type PipeMaterialType = "steel" | "hdpe" | "pvc";
 
+// Traceability hook: when an item is extracted by Nix from a Excel /
+// PDF / Word BOQ, we capture the original sheet + row so the admin
+// BOQ view can render a "Source" column. Plain manually-entered rows
+// leave this undefined.
+export interface PipeItemSourceLocation {
+  rowNumber: number;
+  sheetName?: string;
+}
+
 export interface StraightPipeEntry {
   id: string;
   itemType: "straight_pipe";
@@ -35,6 +44,7 @@ export interface StraightPipeEntry {
   calculationError?: string | null;
   calculatedPipes?: number;
   notes?: string;
+  sourceLocation?: PipeItemSourceLocation;
   isScheduleOverridden?: boolean;
   minimumSchedule?: string;
   minimumWallThickness?: number;
@@ -81,6 +91,7 @@ export interface BendEntry {
   calculation?: BendCalculationResult;
   calculationError?: string | null;
   notes?: string;
+  sourceLocation?: PipeItemSourceLocation;
 }
 
 export interface FittingEntry {
@@ -115,6 +126,7 @@ export interface FittingEntry {
   calculation?: Record<string, unknown>;
   calculationError?: string | null;
   notes?: string;
+  sourceLocation?: PipeItemSourceLocation;
 }
 
 export interface PipeSteelWorkEntry {

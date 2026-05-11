@@ -465,6 +465,10 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
             : "";
           const wallNote = item.wallThickness ? ` | Wall: ${item.wallThickness}mm` : "";
           const nixNote = `Extracted by Nix from Row ${item.rowNumber} (${Math.round(item.confidence * 100)}% confidence)${materialNote}${wallNote}`;
+          const sourceLocation = {
+            rowNumber: item.rowNumber,
+            sheetName: item.sheetName,
+          };
 
           log.debug(
             `Converting Nix item ${item.rowNumber}: material=${item.material}, wallThickness=${item.wallThickness}, unit=${item.unit}, isMeters=${isMetersUnit}`,
@@ -518,6 +522,7 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
                     : undefined,
               },
               notes: nixNote,
+              sourceLocation,
             };
             return [pipeEntry];
           } else if (item.itemType === "bend") {
@@ -555,6 +560,7 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
                     : undefined,
               },
               notes: nixNote,
+              sourceLocation,
             };
             return [bendEntry];
           } else if (
@@ -622,6 +628,7 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
                     : undefined,
               },
               notes: nixNote,
+              sourceLocation,
             };
             return [fittingEntry];
           } else if (item.itemType === "tank_chute") {
