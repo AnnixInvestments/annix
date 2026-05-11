@@ -801,5 +801,18 @@ function describeFromSpec(
   const customerFacing = suppliersForCustomerFooter(allSuppliers, selected);
   if (customerFacing.length === 0) return `${code} — (no products specified)`;
   const detail = joinSuppliersForFooter(customerFacing, spec.kind);
+
+  // For linings, the "spec code" is itself a product name that Nix
+  // extracted from the drawings (e.g. "Linatex Linard 60"). Once the
+  // quoter has added a custom product (e.g. "AU Industries 60 Shore
+  // Red…"), the extracted name is redundant and confusing — the
+  // customer-facing line should read just the chosen product. Drop the
+  // "<code> — " prefix when ANY supplier on a lining is a custom entry.
+  // Coatings keep their prefix because R1 / R2a are real spec-class
+  // identifiers, not product names.
+  const hasCustomOverride = customerFacing.some((s) => s.isCustom);
+  if (spec.kind === "lining" && hasCustomOverride && detail) {
+    return detail;
+  }
   return detail ? `${code} — ${detail}` : code;
 }
