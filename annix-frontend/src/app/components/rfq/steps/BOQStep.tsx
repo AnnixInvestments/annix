@@ -103,15 +103,21 @@ export default function BOQStep(props: {
   // source sheet + row the item was extracted from so the BOQ
   // tables can show a "Source" column. Manual entries (no Nix
   // extraction) won't appear in this map and render as "—".
+  // Lookup keyed by entry.id (unique per item) rather than
+  // clientItemNumber (which collides across sheets — the same "a.1"
+  // can appear on three different enquiry tabs and resolve to three
+  // different rows). The consolidation pipeline tracks entryIds in
+  // parallel to entries so the render can pull each source out
+  // independently.
   const sourceLookup = useMemo(() => {
     const lookup = new Map<string, string>();
     allEntries.forEach((entry) => {
-      const rawClient = entry.clientItemNumber;
-      if (!rawClient) return;
+      const entryId = entry.id;
+      if (!entryId) return;
       const sourceLocation = entry.sourceLocation;
       if (sourceLocation) {
         const sheetPrefix = sourceLocation.sheetName ? `${sourceLocation.sheetName}!` : "";
-        lookup.set(rawClient, `${sheetPrefix}R${sourceLocation.rowNumber}`);
+        lookup.set(entryId, `${sheetPrefix}R${sourceLocation.rowNumber}`);
         return;
       }
       // Legacy fallback for RFQs extracted before v1.5.28 added a
@@ -126,7 +132,7 @@ export default function BOQStep(props: {
       const matchedRow = match?.[2];
       if (matchedRow) {
         const sheetPrefix = matchedSheet ? `${matchedSheet}!` : "";
-        lookup.set(rawClient, `${sheetPrefix}R${matchedRow}`);
+        lookup.set(entryId, `${sheetPrefix}R${matchedRow}`);
       }
     });
     return lookup;
@@ -309,6 +315,7 @@ export default function BOQStep(props: {
         existing.qty += qty;
         existing.weight += bendWeight * qty;
         existing.entries.push(itemNumber);
+        existing.entryIds.push(entry.id);
         const rawMitreWeld = existing.welds?.["Mitre Weld"];
         // Accumulate welds and areas
         if (mitreWeldLength > 0)
@@ -364,6 +371,7 @@ export default function BOQStep(props: {
           unit: "Each",
           weight: bendWeight * qty,
           entries: [itemNumber],
+          entryIds: [entry.id],
           welds: keys(welds).length > 0 ? welds : undefined,
           intAreaM2: intAreaM2 > 0 ? intAreaM2 : undefined,
           extAreaM2: extAreaM2 > 0 ? extAreaM2 : undefined,
@@ -398,6 +406,7 @@ export default function BOQStep(props: {
           existingFlange.qty += flangeQty;
           existingFlange.weight += flangeWeightKg * flangeQty;
           existingFlange.entries.push(itemNumber);
+          existingFlange.entryIds.push(entry.id);
         } else {
           consolidatedFlanges.set(flangeKey, {
             description: `${nb}NB ${flangeTypeName} Flange ${flangeSpec}`,
@@ -405,6 +414,7 @@ export default function BOQStep(props: {
             unit: "Each",
             weight: flangeWeightKg * flangeQty,
             entries: [itemNumber],
+            entryIds: [entry.id],
           });
         }
 
@@ -419,6 +429,7 @@ export default function BOQStep(props: {
           existingBnw.qty += boltSetQty;
           existingBnw.weight += bnwWeight * boltSetQty;
           existingBnw.entries.push(itemNumber);
+          existingBnw.entryIds.push(entry.id);
         } else {
           consolidatedBnwSets.set(bnwKey, {
             description: `${bnwInfo.boltSize} BNW Set x${bnwInfo.holesPerFlange} for ${nb}NB ${flangeSpec}`,
@@ -426,6 +437,7 @@ export default function BOQStep(props: {
             unit: "sets",
             weight: bnwWeight * boltSetQty,
             entries: [itemNumber],
+            entryIds: [entry.id],
           });
         }
 
@@ -439,6 +451,7 @@ export default function BOQStep(props: {
             existingGasket.qty += flangeQty;
             existingGasket.weight += gasketWeight * flangeQty;
             existingGasket.entries.push(itemNumber);
+            existingGasket.entryIds.push(entry.id);
           } else {
             consolidatedGaskets.set(gasketKey, {
               description: `${globalSpecs.gasketType} Gasket ${nb}NB ${flangeSpec}`,
@@ -446,6 +459,7 @@ export default function BOQStep(props: {
               unit: "Each",
               weight: gasketWeight * flangeQty,
               entries: [itemNumber],
+              entryIds: [entry.id],
             });
           }
         }
@@ -477,6 +491,7 @@ export default function BOQStep(props: {
             existingStubFlange.weight += stubFlangeWeight * qty;
             if (!existingStubFlange.entries.includes(itemNumber)) {
               existingStubFlange.entries.push(itemNumber);
+              existingStubFlange.entryIds.push(entry.id);
             }
           } else {
             consolidatedFlanges.set(stubFlangeKey, {
@@ -485,6 +500,7 @@ export default function BOQStep(props: {
               unit: "Each",
               weight: stubFlangeWeight * qty,
               entries: [itemNumber],
+              entryIds: [entry.id],
             });
           }
 
@@ -499,6 +515,7 @@ export default function BOQStep(props: {
             existingStubBnw.weight += stubBnwWeight * qty;
             if (!existingStubBnw.entries.includes(itemNumber)) {
               existingStubBnw.entries.push(itemNumber);
+              existingStubBnw.entryIds.push(entry.id);
             }
           } else {
             consolidatedBnwSets.set(stubBnwKey, {
@@ -507,6 +524,7 @@ export default function BOQStep(props: {
               unit: "sets",
               weight: stubBnwWeight * qty,
               entries: [itemNumber],
+              entryIds: [entry.id],
             });
           }
 
@@ -521,6 +539,7 @@ export default function BOQStep(props: {
               existingStubGasket.weight += stubGasketWeight * qty;
               if (!existingStubGasket.entries.includes(itemNumber)) {
                 existingStubGasket.entries.push(itemNumber);
+                existingStubGasket.entryIds.push(entry.id);
               }
             } else {
               consolidatedGaskets.set(stubGasketKey, {
@@ -529,6 +548,7 @@ export default function BOQStep(props: {
                 unit: "Each",
                 weight: stubGasketWeight * qty,
                 entries: [itemNumber],
+                entryIds: [entry.id],
               });
             }
           }
@@ -563,6 +583,7 @@ export default function BOQStep(props: {
           existingBlank.intAreaM2 = (rawIntAreaM22 || 0) + blankIntArea;
           if (!existingBlank.entries.includes(itemNumber)) {
             existingBlank.entries.push(itemNumber);
+            existingBlank.entryIds.push(entry.id);
           }
         } else {
           consolidatedBlankFlanges.set(blankFlangeKey, {
@@ -571,6 +592,7 @@ export default function BOQStep(props: {
             unit: "Each",
             weight: blankWeight * blankQty,
             entries: [itemNumber],
+            entryIds: [entry.id],
             extAreaM2: blankExtArea,
             intAreaM2: blankIntArea,
           });
@@ -715,6 +737,7 @@ export default function BOQStep(props: {
         existing.qty += qty;
         existing.weight += fittingWeight * qty;
         existing.entries.push(itemNumber);
+        existing.entryIds.push(entry.id);
         const rawWeldTypeName = existing.welds?.[weldTypeName];
         // Accumulate welds and areas
         if (teeWeldLength > 0)
@@ -858,6 +881,7 @@ export default function BOQStep(props: {
           unit: "Each",
           weight: fittingWeight * qty,
           entries: [itemNumber],
+          entryIds: [entry.id],
           material: materialOfEntry(entry),
           welds: keys(welds).length > 0 ? welds : undefined,
           intAreaM2: intAreaM2 > 0 ? intAreaM2 : undefined,
@@ -896,6 +920,7 @@ export default function BOQStep(props: {
           existingFlange.qty += flangeQty;
           existingFlange.weight += flangeWeightKg * flangeQty;
           existingFlange.entries.push(itemNumber);
+          existingFlange.entryIds.push(entry.id);
         } else {
           consolidatedFlanges.set(flangeKey, {
             description: `${nb}NB ${fittingFlangeTypeName} Flange ${flangeSpec}`,
@@ -903,6 +928,7 @@ export default function BOQStep(props: {
             unit: "Each",
             weight: flangeWeightKg * flangeQty,
             entries: [itemNumber],
+            entryIds: [entry.id],
           });
         }
 
@@ -918,6 +944,7 @@ export default function BOQStep(props: {
             existingBnw.qty += mainBoltSetQty;
             existingBnw.weight += bnwWeight * mainBoltSetQty;
             existingBnw.entries.push(itemNumber);
+            existingBnw.entryIds.push(entry.id);
           } else {
             consolidatedBnwSets.set(bnwKey, {
               description: `${bnwInfo.boltSize} BNW Set x${bnwInfo.holesPerFlange} for ${nb}NB ${flangeSpec}`,
@@ -925,6 +952,7 @@ export default function BOQStep(props: {
               unit: "sets",
               weight: bnwWeight * mainBoltSetQty,
               entries: [itemNumber],
+              entryIds: [entry.id],
             });
           }
         }
@@ -939,6 +967,7 @@ export default function BOQStep(props: {
             existingGasket.qty += flangeQty;
             existingGasket.weight += gasketWeight * flangeQty;
             existingGasket.entries.push(itemNumber);
+            existingGasket.entryIds.push(entry.id);
           } else {
             consolidatedGaskets.set(gasketKey, {
               description: `${globalSpecs.gasketType} Gasket ${nb}NB ${flangeSpec}`,
@@ -946,6 +975,7 @@ export default function BOQStep(props: {
               unit: "Each",
               weight: gasketWeight * flangeQty,
               entries: [itemNumber],
+              entryIds: [entry.id],
             });
           }
         }
@@ -968,6 +998,7 @@ export default function BOQStep(props: {
           existingBranchFlange.qty += branchFlangeQty;
           existingBranchFlange.weight += branchFlangeWeight * branchFlangeQty;
           existingBranchFlange.entries.push(itemNumber);
+          existingBranchFlange.entryIds.push(entry.id);
         } else {
           consolidatedFlanges.set(branchFlangeKey, {
             description: `${branchNb}NB ${fittingFlangeTypeName} Flange ${flangeSpec}`,
@@ -975,6 +1006,7 @@ export default function BOQStep(props: {
             unit: "Each",
             weight: branchFlangeWeight * branchFlangeQty,
             entries: [itemNumber],
+            entryIds: [entry.id],
           });
         }
 
@@ -994,6 +1026,7 @@ export default function BOQStep(props: {
             existingBranchBnw.qty += branchBoltSetQty;
             existingBranchBnw.weight += branchBnwWeight * branchBoltSetQty;
             existingBranchBnw.entries.push(itemNumber);
+            existingBranchBnw.entryIds.push(entry.id);
           } else {
             consolidatedBnwSets.set(branchBnwKey, {
               description: `${branchBnwInfo.boltSize} BNW Set x${branchBnwInfo.holesPerFlange} for ${branchNb}NB ${flangeSpec}`,
@@ -1001,6 +1034,7 @@ export default function BOQStep(props: {
               unit: "sets",
               weight: branchBnwWeight * branchBoltSetQty,
               entries: [itemNumber],
+              entryIds: [entry.id],
             });
           }
         }
@@ -1019,6 +1053,7 @@ export default function BOQStep(props: {
             existingBranchGasket.qty += branchFlangeQty;
             existingBranchGasket.weight += branchGasketWeight * branchFlangeQty;
             existingBranchGasket.entries.push(itemNumber);
+            existingBranchGasket.entryIds.push(entry.id);
           } else {
             consolidatedGaskets.set(branchGasketKey, {
               description: `${globalSpecs.gasketType} Gasket ${branchNb}NB ${flangeSpec}`,
@@ -1026,6 +1061,7 @@ export default function BOQStep(props: {
               unit: "Each",
               weight: branchGasketWeight * branchFlangeQty,
               entries: [itemNumber],
+              entryIds: [entry.id],
             });
           }
         }
@@ -1059,6 +1095,7 @@ export default function BOQStep(props: {
           existingBlank.intAreaM2 = (rawIntAreaM24 || 0) + blankIntArea;
           if (!existingBlank.entries.includes(itemNumber)) {
             existingBlank.entries.push(itemNumber);
+            existingBlank.entryIds.push(entry.id);
           }
         } else {
           consolidatedBlankFlanges.set(blankFlangeKey, {
@@ -1067,6 +1104,7 @@ export default function BOQStep(props: {
             unit: "Each",
             weight: blankWeight * blankQty,
             entries: [itemNumber],
+            entryIds: [entry.id],
             extAreaM2: blankExtArea,
             intAreaM2: blankIntArea,
           });
@@ -1176,6 +1214,7 @@ export default function BOQStep(props: {
       if (existingMisc) {
         existingMisc.qty += miscQty;
         existingMisc.entries.push(itemNumber);
+        existingMisc.entryIds.push(entry.id);
       } else {
         dest.set(miscKey, {
           description: enrichedMiscDescription,
@@ -1183,6 +1222,7 @@ export default function BOQStep(props: {
           unit: miscUnit,
           weight: 0,
           entries: [itemNumber],
+          entryIds: [entry.id],
           material: mat,
         });
       }
@@ -1260,6 +1300,7 @@ export default function BOQStep(props: {
         existing.qty += pipeQty;
         existing.weight += pipeWeight;
         existing.entries.push(itemNumber);
+        existing.entryIds.push(entry.id);
         const rawPipeWeld = existing.welds?.["Pipe Weld"];
         // Accumulate welds and areas
         if (pipeWeldLength > 0)
@@ -1296,6 +1337,7 @@ export default function BOQStep(props: {
           unit: "Each",
           weight: pipeWeight,
           entries: [itemNumber],
+          entryIds: [entry.id],
           material: materialOfEntry(entry),
           welds: keys(welds).length > 0 ? welds : undefined,
           intAreaM2: intAreaM2 > 0 ? intAreaM2 : undefined,
@@ -1330,6 +1372,7 @@ export default function BOQStep(props: {
           existingFlange.qty += flangeQty;
           existingFlange.weight += flangeWeightKg * flangeQty;
           existingFlange.entries.push(itemNumber);
+          existingFlange.entryIds.push(entry.id);
         } else {
           consolidatedFlanges.set(flangeKey, {
             description: `${nb}NB ${pipeFlangeTypeName} Flange ${flangeSpec}`,
@@ -1337,6 +1380,7 @@ export default function BOQStep(props: {
             unit: "Each",
             weight: flangeWeightKg * flangeQty,
             entries: [itemNumber],
+            entryIds: [entry.id],
           });
         }
 
@@ -1352,6 +1396,7 @@ export default function BOQStep(props: {
             existingBnw.qty += pipeBoltSetQty;
             existingBnw.weight += bnwWeight * pipeBoltSetQty;
             existingBnw.entries.push(itemNumber);
+            existingBnw.entryIds.push(entry.id);
           } else {
             consolidatedBnwSets.set(bnwKey, {
               description: `${bnwInfo.boltSize} BNW Set x${bnwInfo.holesPerFlange} for ${nb}NB ${flangeSpec}`,
@@ -1359,6 +1404,7 @@ export default function BOQStep(props: {
               unit: "sets",
               weight: bnwWeight * pipeBoltSetQty,
               entries: [itemNumber],
+              entryIds: [entry.id],
             });
           }
         }
@@ -1373,6 +1419,7 @@ export default function BOQStep(props: {
             existingGasket.qty += flangeQty;
             existingGasket.weight += gasketWeight * flangeQty;
             existingGasket.entries.push(itemNumber);
+            existingGasket.entryIds.push(entry.id);
           } else {
             consolidatedGaskets.set(gasketKey, {
               description: `${globalSpecs.gasketType} Gasket ${nb}NB ${flangeSpec}`,
@@ -1380,6 +1427,7 @@ export default function BOQStep(props: {
               unit: "Each",
               weight: gasketWeight * flangeQty,
               entries: [itemNumber],
+              entryIds: [entry.id],
             });
           }
         }
@@ -1412,6 +1460,7 @@ export default function BOQStep(props: {
           const rawIntAreaM26 = existingBlank.intAreaM2;
           existingBlank.intAreaM2 = (rawIntAreaM26 || 0) + blankIntArea;
           existingBlank.entries.push(itemNumber);
+          existingBlank.entryIds.push(entry.id);
         } else {
           consolidatedBlankFlanges.set(blankFlangeKey, {
             description: `${blankNb}NB Blank Flange ${flangeSpec}`,
@@ -1419,6 +1468,7 @@ export default function BOQStep(props: {
             unit: "Each",
             weight: blankWeight * blankQty,
             entries: [itemNumber],
+            entryIds: [entry.id],
             extAreaM2: blankExtArea,
             intAreaM2: blankIntArea,
           });
@@ -1518,10 +1568,12 @@ export default function BOQStep(props: {
         "From Items": item.entries.join(", "),
       };
       if (hasAnySourceLocations) {
-        const sourceLabels = item.entries
-          .map((clientItemNumber) => sourceLookup.get(clientItemNumber))
-          .filter((label): label is string => Boolean(label))
-          .join(", ");
+        const sourceLabelSet = new Set<string>();
+        item.entryIds.forEach((id) => {
+          const label = sourceLookup.get(id);
+          if (label) sourceLabelSet.add(label);
+        });
+        const sourceLabels = Array.from(sourceLabelSet).join(", ");
         row.Source = sourceLabels || "—";
       }
       row["#"] = rowNum++;
@@ -1689,19 +1741,7 @@ export default function BOQStep(props: {
   // Render consolidated BOQ table with consistent columns
   const renderConsolidatedTable = (
     title: string,
-    items: Map<
-      string,
-      {
-        description: string;
-        qty: number;
-        unit: string;
-        weight: number;
-        entries: string[];
-        welds?: Record<string, number>;
-        intAreaM2?: number;
-        extAreaM2?: number;
-      }
-    >,
+    items: Map<string, ConsolidatedItem>,
     bgColor: string,
     textColor: string,
     showWeldColumns: boolean = false,
@@ -1821,10 +1861,12 @@ export default function BOQStep(props: {
                   ? values(item.welds).reduce((sum, v) => sum + v, 0)
                   : 0;
                 const rowBg = idx % 2 === 0 ? "bg-transparent" : "bg-gray-50 dark:bg-gray-800/30";
-                const sourceLabels = item.entries
-                  .map((clientItemNumber) => sourceLookup.get(clientItemNumber))
-                  .filter((label): label is string => Boolean(label))
-                  .join(", ");
+                const sourceLabelSet = new Set<string>();
+                item.entryIds.forEach((id) => {
+                  const label = sourceLookup.get(id);
+                  if (label) sourceLabelSet.add(label);
+                });
+                const sourceLabels = Array.from(sourceLabelSet).join(", ");
                 const sourceCell = sourceLabels || "—";
                 return (
                   <tr
