@@ -5,6 +5,7 @@ import {
   type CreateStraightPipeRfqDto,
   type StraightPipeCalculationResult,
 } from "@/app/lib/api/client";
+import { DEFAULT_PIPE_LENGTH_M } from "@/app/lib/config/rfq";
 import { addDaysFromNowISODate, generateUniqueId, nowMillis } from "@/app/lib/datetime";
 import type {
   BendEntry,
@@ -510,11 +511,18 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
                 scheduleNumber: rawSchedule || undefined,
                 wallThicknessMm: rawWallThickness || undefined,
                 pipeEndConfiguration: rawVal || "PE",
-                // Pipe length in METRES — the rest of the pricing /
-                // weight pipeline assumes metres. The previous 6000
-                // reading was a units bug (mm) and made every
-                // downstream weight calc 1000x too large.
-                individualPipeLength: isMetersUnit ? 6 : rawLength || 6,
+                // Pipe length in METRES. Defaults to the system-wide
+                // DEFAULT_PIPE_LENGTH_M (12m straight) for both HDPE
+                // and steel — Nix BOQ rows quoted in metres get
+                // converted to pieces via this length downstream. If
+                // the BOQ explicitly stated a per-pipe length use that
+                // instead. The previous 6000 reading was a units bug
+                // (mm) and made every downstream weight calc 1000x
+                // too large; the previous hardcoded 6 didn't match
+                // our standard offering and forced too many joints.
+                individualPipeLength: isMetersUnit
+                  ? DEFAULT_PIPE_LENGTH_M
+                  : rawLength || DEFAULT_PIPE_LENGTH_M,
                 lengthUnit: "meters" as const,
                 quantityType: isMetersUnit
                   ? ("total_length" as const)

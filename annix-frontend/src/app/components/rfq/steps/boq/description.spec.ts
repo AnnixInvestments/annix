@@ -241,4 +241,77 @@ describe("pipeRowDescription", () => {
       expect(desc).toContain("PVC Pipe");
     });
   });
+
+  describe("variant prefix", () => {
+    it("prepends 'Perforated ' to HDPE row description", () => {
+      const desc = pipeRowDescription(
+        { materialType: "hdpe", specs: {} },
+        250,
+        "",
+        6,
+        "",
+        "PE100",
+        6,
+        undefined,
+        "PN34",
+        "",
+        null,
+        "Perforated ",
+      );
+      expect(desc.startsWith("Perforated 250OD")).toBe(true);
+    });
+
+    it("prepends 'Solid ' to HDPE row description", () => {
+      const desc = pipeRowDescription(
+        { materialType: "hdpe", specs: {} },
+        250,
+        "",
+        6,
+        "",
+        "PE100",
+        6,
+        undefined,
+        "PN34",
+        "",
+        null,
+        "Solid ",
+      );
+      expect(desc.startsWith("Solid 250OD")).toBe(true);
+    });
+
+    it("emits no prefix when called without variant", () => {
+      const desc = pipeRowDescription(
+        { materialType: "hdpe", specs: {} },
+        250,
+        "",
+        6,
+        "",
+        "PE100",
+        6,
+        undefined,
+        "PN34",
+        "",
+        null,
+      );
+      expect(desc.startsWith("250OD")).toBe(true);
+    });
+
+    it("prepends prefix on steel rows too", () => {
+      const desc = pipeRowDescription(
+        { materialType: "steel", specs: {} },
+        100,
+        "Sch40",
+        6,
+        "ASTM A106 Gr B",
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        "PN16",
+        null,
+        "Perforated ",
+      );
+      expect(desc.startsWith("Perforated 100NB")).toBe(true);
+    });
+  });
 });

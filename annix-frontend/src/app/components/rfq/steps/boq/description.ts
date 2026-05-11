@@ -20,6 +20,9 @@ export const pipeRowDescription = (
   pressureClass: string | undefined,
   flangeSpec: string,
   globalHdpePressureRating: number | string | null | undefined,
+  // "Perforated " / "Slotted " / "Solid " / "" — empty for standard
+  // pipe. Always pre-pended so the supplier sees the variant first.
+  variantPrefix: string = "",
 ): string => {
   const rawMatType = entry.materialType;
   const materialType = rawMatType || "steel";
@@ -45,12 +48,12 @@ export const pipeRowDescription = (
       (pnFromLabel && Number.isFinite(pnFromLabel) ? pnFromLabel : null);
     const stubAssembly = pnNumberForStub ? sans1123StubAssemblyDescription(pnNumberForStub) : null;
     const stubSuffix = stubAssembly ? `, ${stubAssembly}` : "";
-    return `${nb}OD ${grade}${sdrLabel}${pnLabel} HDPE Pipe x${pipeLength}m${flangeSuffix}${stubSuffix}`.trim();
+    return `${variantPrefix}${nb}OD ${grade}${sdrLabel}${pnLabel} HDPE Pipe x${pipeLength}m${flangeSuffix}${stubSuffix}`.trim();
   }
   if (materialType === "pvc") {
     const typeLabel = pvcType ? ` ${pvcType}` : "";
     const pnLabel = pressureClass ? ` ${pressureClass}` : "";
-    return `${nb}OD${typeLabel} PVC Pipe${pnLabel} x${pipeLength}m${flangeSuffix}`.trim();
+    return `${variantPrefix}${nb}OD${typeLabel} PVC Pipe${pnLabel} x${pipeLength}m${flangeSuffix}`.trim();
   }
-  return `${nb}NB ${schedule ? `Sch${schedule.replace("Sch", "")}` : ""} ${steelSpec} Pipe x${pipeLength}m${flangeSuffix}`.trim();
+  return `${variantPrefix}${nb}NB ${schedule ? `Sch${schedule.replace("Sch", "")}` : ""} ${steelSpec} Pipe x${pipeLength}m${flangeSuffix}`.trim();
 };

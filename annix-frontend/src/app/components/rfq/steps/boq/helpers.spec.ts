@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   bendCenterToFaceMm,
+  detectPipeVariant,
   flangeConfigSuffix,
   formatDate,
   formatQty,
@@ -9,6 +10,7 @@ import {
   getFlangeTypeName,
   getPhysicalFlangeCount,
   materialOfEntry,
+  pipeVariantPrefix,
   safeFilename,
 } from "./helpers";
 
@@ -439,5 +441,47 @@ describe("getFlangeCountFromConfig", () => {
       // unknown → physical 0/0/0 → totalMain 0
       expect(getFlangeCountFromConfig("WEIRD", "fitting")).toEqual({ main: 0, branch: 0 });
     });
+  });
+});
+
+describe("detectPipeVariant", () => {
+  it("returns null for empty / nullish input", () => {
+    expect(detectPipeVariant("")).toBeNull();
+    expect(detectPipeVariant(undefined)).toBeNull();
+    expect(detectPipeVariant(null)).toBeNull();
+  });
+
+  it("returns 'perforated' for perforated drain pipe descriptions", () => {
+    expect(detectPipeVariant("a) Perforated HDPE PE100 PN34 (SDR6) drain pipes:")).toBe(
+      "perforated",
+    );
+    expect(detectPipeVariant("PERFORATED 250mm HDPE")).toBe("perforated");
+  });
+
+  it("returns 'slotted' for slotted variants", () => {
+    expect(detectPipeVariant("Slotted HDPE PE100 drain")).toBe("slotted");
+  });
+
+  it("returns 'solid' only when 'solid' qualifies the pipe", () => {
+    expect(detectPipeVariant("b) Solid HDPE PE100 PN34 (SDR6) drain pipes:")).toBe("solid");
+    expect(detectPipeVariant("Solid PVC pipe")).toBe("solid");
+    expect(detectPipeVariant("Solid weld 360°")).toBeNull();
+  });
+
+  it("returns null for standard pipe with no variant keyword", () => {
+    expect(detectPipeVariant("250OD PE100 SDR6 PN34 HDPE Pipe x12m")).toBeNull();
+    expect(detectPipeVariant("DN 100 mild steel pipe SCH40")).toBeNull();
+  });
+});
+
+describe("pipeVariantPrefix", () => {
+  it("returns title-cased prefix with trailing space for each known variant", () => {
+    expect(pipeVariantPrefix("perforated")).toBe("Perforated ");
+    expect(pipeVariantPrefix("slotted")).toBe("Slotted ");
+    expect(pipeVariantPrefix("solid")).toBe("Solid ");
+  });
+
+  it("returns empty string for null", () => {
+    expect(pipeVariantPrefix(null)).toBe("");
   });
 });

@@ -106,6 +106,36 @@ export const materialOfEntry = (entry: any): MaterialKey => {
   return "steel";
 };
 
+// Pipe variant inferred from the source description. Used by BOQ
+// consolidation so that — for example — perforated and solid 250 mm
+// HDPE drain pipes don't merge into a single supplier row just
+// because they share NB / SDR / PN / flange. Returns null for plain
+// "standard" pipe.
+export type PipeVariant = "perforated" | "slotted" | "solid";
+
+export const detectPipeVariant = (description: string | undefined | null): PipeVariant | null => {
+  if (!description) return null;
+  const text = description.toLowerCase();
+  if (/\bperforated\b/.test(text)) return "perforated";
+  if (/\bslotted\b/.test(text)) return "slotted";
+  // "Solid" only counts when it qualifies the pipe itself, not when
+  // it appears as a generic adjective elsewhere (e.g. "solid weld").
+  if (/\bsolid\s+(?:hdpe|pe\s?100|pvc|upvc|mild\s*steel|steel|drain\s*pipe|pipe)\b/.test(text)) {
+    return "solid";
+  }
+  return null;
+};
+
+// Title-cased variant prefix for the consolidated row description,
+// or an empty string for standard pipe. Always trailing-space when
+// non-empty so it slots cleanly in front of the diameter token.
+export const pipeVariantPrefix = (variant: PipeVariant | null): string => {
+  if (variant === "perforated") return "Perforated ";
+  if (variant === "slotted") return "Slotted ";
+  if (variant === "solid") return "Solid ";
+  return "";
+};
+
 // Physical flange count from end configuration (includes loose flanges).
 // Returns counts grouped by physical kind:
 //   fixed     — weld-neck flanges

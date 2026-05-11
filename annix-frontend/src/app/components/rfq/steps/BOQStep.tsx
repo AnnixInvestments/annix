@@ -42,12 +42,14 @@ import {
 import { pipeRowDescription } from "./boq/description";
 import {
   bendCenterToFaceMm,
+  detectPipeVariant,
   flangeConfigSuffix,
   formatQty,
   formatWeight,
   getFlangeCountFromConfig,
   getFlangeTypeName,
   materialOfEntry,
+  pipeVariantPrefix,
   safeFilename,
   triggerDownload,
 } from "./boq/helpers";
@@ -1245,8 +1247,15 @@ export default function BOQStep(props: {
       const schedule = rawScheduleNumber3 || "";
       const rawIndividualPipeLength = entry.specs?.individualPipeLength;
       const pipeLength = rawIndividualPipeLength || DEFAULT_PIPE_LENGTH_M;
+      // Convert total-length quantities (e.g. Nix imports of "7823.9 m")
+      // into a piece count using the pipe length we're offering. Round
+      // up — you can't buy half a pipe. Items where the BOQ stated a
+      // piece count directly leave qty untouched.
+      const rawQuantityType = entry.specs?.quantityType;
+      const piecesFromMetres =
+        rawQuantityType === "total_length" && pipeLength > 0 ? Math.ceil(qty / pipeLength) : qty;
       const rawCalculatedPipeCount = entry.calculation?.calculatedPipeCount;
-      const pipeQty = rawCalculatedPipeCount || qty;
+      const pipeQty = rawCalculatedPipeCount || piecesFromMetres;
 
       // Product-type-aware key + description so HDPE/PVC pipes don't
       // accidentally consolidate with steel rows of the same NB. The
@@ -1263,7 +1272,14 @@ export default function BOQStep(props: {
       const pressureClassLabel =
         materialType === "hdpe" ? rawHdpePressureRating : rawPvcPressureClass?.toString();
 
-      const key = `PIPE_${materialType}_${nb}_${schedule}_${steelSpec}_${pipeLength}`;
+      // Inspect the source description for variant keywords
+      // (perforated / slotted / solid) so two 250 mm HDPE pipes
+      // with the same NB / SDR / PN don't consolidate into one row
+      // just because one is drilled and the other is a closed wall.
+      const pipeVariant = detectPipeVariant(entry.description);
+      const variantKeyPart = pipeVariant ?? "";
+      const variantPrefix = pipeVariantPrefix(pipeVariant);
+      const key = `PIPE_${materialType}_${nb}_${schedule}_${steelSpec}_${pipeLength}_${variantKeyPart}`;
       const existing = consolidatedPipes.get(key);
       const pipeWeight = fallbackPipeWeight(entry, nb, pipeLength, pipeQty, globalHdpeSdr);
 
@@ -1343,6 +1359,7 @@ export default function BOQStep(props: {
             pressureClassLabel,
             flangeSpec,
             globalHdpePressureRating,
+            variantPrefix,
           ),
           qty: pipeQty,
           unit: "Each",
