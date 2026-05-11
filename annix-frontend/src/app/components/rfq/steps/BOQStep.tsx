@@ -2264,14 +2264,19 @@ export default function BOQStep(props: {
           const hasContent =
             pipes.size > 0 || bends.size > 0 || fittings.size > 0 || consolidatedHdpeOther.size > 0;
           if (!hasContent) return null;
+          // HDPE pipes/bends/fittings are bare polymer — never coated
+          // or lined — so the Int/Ext m² columns are not relevant and
+          // are suppressed. The HDPE-liner-inside-steel case is a
+          // steel-section item (the steel may be coated) and is
+          // handled by the Steel grouping.
           const subsections: ExportableSubsection[] = [
-            { title: "HDPE Pipes", items: pipes, showWeldColumns: true, showAreaColumns: true },
-            { title: "HDPE Bends", items: bends, showWeldColumns: true, showAreaColumns: true },
+            { title: "HDPE Pipes", items: pipes, showWeldColumns: true, showAreaColumns: false },
+            { title: "HDPE Bends", items: bends, showWeldColumns: true, showAreaColumns: false },
             {
               title: "HDPE Fittings (Tees, Laterals, Reducers)",
               items: fittings,
               showWeldColumns: true,
-              showAreaColumns: true,
+              showAreaColumns: false,
             },
             {
               title: "HDPE Other",
@@ -2288,15 +2293,15 @@ export default function BOQStep(props: {
                 </h3>
                 {renderGroupExports("HDPE", subsections)}
               </div>
-              {maybeRenderTable("HDPE Pipes", pipes, "bg-blue-50", "text-blue-700", true, true)}
-              {maybeRenderTable("HDPE Bends", bends, "bg-blue-50", "text-blue-700", true, true)}
+              {maybeRenderTable("HDPE Pipes", pipes, "bg-blue-50", "text-blue-700", true, false)}
+              {maybeRenderTable("HDPE Bends", bends, "bg-blue-50", "text-blue-700", true, false)}
               {maybeRenderTable(
                 "HDPE Fittings (Tees, Laterals, Reducers)",
                 fittings,
                 "bg-blue-50",
                 "text-blue-700",
                 true,
-                true,
+                false,
               )}
               {maybeRenderTable(
                 "HDPE Other (End Caps, Puddle Pipes, Boots, Stub Ends)",
