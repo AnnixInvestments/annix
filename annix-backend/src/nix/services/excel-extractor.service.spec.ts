@@ -704,15 +704,17 @@ describe("ExcelExtractorService", () => {
         expect(result.items[1].sheetName).toBe("HDPE ENQ 2");
       });
 
-      it("emits Supply rows only and drops Install", async () => {
+      it("emits Supply rows only and drops Install, anchoring the source row to the size line", async () => {
+        // buildHierarchicalSheet prepends a header row, so the data
+        // rows below shift up by one — first data row is sheet row 2.
         mockWorkbook.worksheets = [
           buildHierarchicalSheet("Sheet", [
-            ["MEDIUM-PRESSURE PIPELINES", "", 0],
-            ["Supply, lay and bed pipes complete with couplings", "", 0],
-            ["a) Perforated HDPE PE100 PN34 (SDR6) drain pipes:", "", 0],
-            ["1) 250 mm diameter", "", null],
-            ["i) Supply", "m", 7823.9],
-            ["ii) Install", "m", 7823.9],
+            ["MEDIUM-PRESSURE PIPELINES", "", 0], // row 2
+            ["Supply, lay and bed pipes complete with couplings", "", 0], // row 3
+            ["a) Perforated HDPE PE100 PN34 (SDR6) drain pipes:", "", 0], // row 4 (parent)
+            ["1) 250 mm diameter", "", null], // row 5 (size — anchor here)
+            ["i) Supply", "m", 7823.9], // row 6 (action — qty lives here)
+            ["ii) Install", "m", 7823.9], // row 7 (dropped)
           ]),
         ];
 
@@ -721,6 +723,29 @@ describe("ExcelExtractorService", () => {
         expect(result.items).toHaveLength(1);
         expect(result.items[0].actionType).toBe("supply");
         expect(result.items[0].quantity).toBe(7823.9);
+        // Anchored to the size line so the BOQ "Source" column points
+        // at "1) 250 mm diameter", not "i) Supply".
+        expect(result.items[0].rowNumber).toBe(5);
+      });
+
+      it("anchors to the parent row when there is no separate size line", async () => {
+        mockWorkbook.worksheets = [
+          buildHierarchicalSheet("Sheet", [
+            ["MEDIUM-PRESSURE PIPELINES", "", 0], // row 2
+            ["Supply, lay and bed pipes complete with couplings", "", 0], // row 3
+            ["a) DN 110 RSV gate valve for below liner pipes", "", 0], // row 4 (parent — anchor here)
+            ["1) Supply", "No.", 10], // row 5 (implicit-supply with size on the same line)
+          ]),
+        ];
+
+        const result = await service.extractFromExcel("/fake/file.xlsx");
+
+        expect(result.items).toHaveLength(1);
+        expect(result.items[0].actionType).toBe("supply");
+        // No "i) DN xxx" size line — the 1) Supply row carried both
+        // the size identifier and the qty, so we anchor to the parent
+        // (row 4) where the description text lives.
+        expect(result.items[0].rowNumber).toBe(4);
       });
 
       it("flattens parent + size into the line item description", async () => {

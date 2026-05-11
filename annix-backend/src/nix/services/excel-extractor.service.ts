@@ -574,6 +574,15 @@ export class ExcelExtractorService {
     let group: string | null = null;
     let parent: string | null = null;
     let size: string | null = null;
+    // Row numbers of the parent (e.g. "a) ... drain pipes:") and the
+    // size (e.g. "1) 250 mm diameter") lines so each extracted item
+    // anchors to the description that names it, NOT to the
+    // "i) Supply" action row where the quantity happens to live.
+    // Customers verifying the BOQ jump to the source row and need to
+    // see the human-readable item description there, not just
+    // "i) Supply".
+    let parentRow: number | null = null;
+    let sizeRow: number | null = null;
 
     worksheet.eachRow((row, rowNumber) => {
       if (rowNumber === 1) return;
@@ -623,7 +632,13 @@ export class ExcelExtractorService {
         const composedDescription = [parent, size].filter((s): s is string => !!s).join(" / ");
         const finalDescription = composedDescription || desc;
 
-        const item = this.buildHierarchicalItem(rowNumber, finalDescription, uom, qty, action, {
+        // Anchor to the size line (most specific — names the item)
+        // when available, otherwise the parent (category), and only
+        // fall back to the action row's own number if neither has
+        // been seen yet. install / dismantle rows are dropped inside
+        // buildHierarchicalItem.
+        const anchorRow = sizeRow ?? parentRow ?? rowNumber;
+        const item = this.buildHierarchicalItem(anchorRow, finalDescription, uom, qty, action, {
           section,
           group,
           parent,
@@ -638,8 +653,14 @@ export class ExcelExtractorService {
         hasMeasure &&
         (numericPrefixRegex.test(desc) || romanPrefixRegex.test(desc))
       ) {
+        // Implicit supply row — the size + qty are on the same line.
+        // The parent description (if any) is on the row above; anchor
+        // there so the customer can navigate to the readable text.
+        // Otherwise this row IS the description so its own rowNumber
+        // is fine.
         const composedParent = parent ? `${parent} / ${desc}` : desc;
-        const item = this.buildHierarchicalItem(rowNumber, composedParent, uom, qty, "supply", {
+        const anchorRow = parentRow ?? rowNumber;
+        const item = this.buildHierarchicalItem(anchorRow, composedParent, uom, qty, "supply", {
           section,
           group,
           parent,
@@ -655,12 +676,15 @@ export class ExcelExtractorService {
         !hasMeasure
       ) {
         size = desc;
+        sizeRow = rowNumber;
         return;
       }
 
       if (letterPrefixRegex.test(desc) && !isActionRow) {
         parent = desc;
+        parentRow = rowNumber;
         size = null;
+        sizeRow = null;
         return;
       }
     });
