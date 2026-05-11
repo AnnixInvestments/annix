@@ -22,6 +22,7 @@ export interface UpdateNixSessionDto {
   externalReference?: string;
   sourceId?: number;
   promotedRef?: string;
+  quoteEditorState?: Record<string, unknown>;
 }
 
 @Injectable()
@@ -128,6 +129,19 @@ export class NixExtractionSessionService extends BaseCrudService<
       status: NixExtractionSessionStatus.PROMOTED,
       promotedRef,
     });
+  }
+
+  /**
+   * Stores the QuoteSpecsEditor's state bundle (supplier overrides, rates,
+   * attachment metadata) on the session as opaque JSONB. Replaces any prior
+   * state. Shape is owned by the frontend — the backend doesn't introspect
+   * it. Called on every debounced edit from the promoted-quote page.
+   */
+  async setQuoteEditorState(
+    id: number,
+    state: Record<string, unknown> | null,
+  ): Promise<NixExtractionSession> {
+    return this.update(id, { quoteEditorState: state ?? undefined });
   }
 
   /**

@@ -1,8 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { isObject } from "es-toolkit/compat";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSpecLookup } from "@/app/lib/nix/components/draft";
-import { type NixExtractionSessionDto, useNbToOdMap } from "@/app/lib/query/hooks";
+import {
+  type NixExtractionSessionDto,
+  type QuoteEditorStateDto,
+  useNbToOdMap,
+  useSaveQuoteEditorState,
+} from "@/app/lib/query/hooks";
 import { poolItemsBySpec, type QuoteItem, type QuotePool } from "./poolItemsBySpec";
 import { QuoteSpecsEditor } from "./QuoteSpecsEditor";
 import {
@@ -275,6 +281,95 @@ export function QuoteView(props: QuoteViewProps) {
   const [specRates, setSpecRates] = useState<SpecRates>({});
   const [specOverrides, setSpecOverrides] = useState<SpecOverrides>({});
   const [dataSheets, setDataSheets] = useState<DataSheetAttachments>({});
+  const [persistenceStatus, setPersistenceStatus] = useState<"idle" | "saving" | "saved" | "error">(
+    "idle",
+  );
+  /**
+   * Hydrated tracker — flips true once we've loaded the saved bundle into
+   * local state. Save effect is skipped until then so the initial mount
+   * doesn't blow away the persisted bundle with an empty state on first
+   * render before hydration lands.
+   */
+  const hydratedRef = useRef(false);
+
+  // Hydrate from the session's persisted bundle on first render where the
+  // session is available. Runs exactly once per session id.
+  useEffect(() => {
+    if (hydratedRef.current) return;
+    const saved = session.quoteEditorState;
+    if (saved && isObject(saved)) {
+      if (isObject(saved.overrides)) {
+        setSpecOverrides(saved.overrides as SpecOverrides);
+      }
+      if (isObject(saved.rates)) {
+        setSpecRates(saved.rates as SpecRates);
+      }
+      if (isObject(saved.attachments)) {
+        setDataSheets(saved.attachments as DataSheetAttachments);
+      }
+    }
+    hydratedRef.current = true;
+  }, [session.quoteEditorState]);
+
+  // Debounced auto-save: any change to the bundle schedules a 1-s save. If
+  // another change lands in the window, the timer resets — Notion / Google-
+  // Docs-style. Surfaces success / failure via persistenceStatus so the
+  // header chip can render 'Saved' / 'Saving…' / 'Save failed'.
+  const saveStateMutation = useSaveQuoteEditorState();
+  const sessionId = session.id;
+  const bundle: QuoteEditorStateDto = useMemo(
+    () => ({
+      overrides: specOverrides,
+      rates: specRates,
+      attachments: dataSheets,
+    }),
+    [specOverrides, specRates, dataSheets],
+  );
+  // Pending tracker for the beforeunload guard — true while the debounce is
+  // still pending or the request is in flight. Cleared when the save returns.
+  const pendingSaveRef = useRef(false);
+  useEffect(() => {
+    if (!hydratedRef.current) return;
+    pendingSaveRef.current = true;
+    setPersistenceStatus("saving");
+    const handle = window.setTimeout(() => {
+      saveStateMutation.mutate(
+        { sessionId, state: bundle },
+        {
+          onSuccess: () => {
+            pendingSaveRef.current = false;
+            setPersistenceStatus("saved");
+            window.setTimeout(() => {
+              setPersistenceStatus((s) => (s === "saved" ? "idle" : s));
+            }, 1500);
+          },
+          onError: () => {
+            pendingSaveRef.current = false;
+            setPersistenceStatus("error");
+          },
+        },
+      );
+    }, 1000);
+    return () => {
+      window.clearTimeout(handle);
+    };
+  }, [bundle, sessionId, saveStateMutation]);
+
+  // Browser-native unsaved-changes guard: fires on tab close, refresh, or
+  // back-button when the debounced save hasn't flushed yet. We don't try to
+  // sync-flush on unload — the standard prompt is enough to give the quoter
+  // a chance to wait a beat and try again.
+  useEffect(() => {
+    const beforeUnloadHandler = (e: BeforeUnloadEvent) => {
+      if (!pendingSaveRef.current) return;
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", beforeUnloadHandler);
+    return () => {
+      window.removeEventListener("beforeunload", beforeUnloadHandler);
+    };
+  }, []);
 
   const grandTotal = useMemo(() => {
     let total = 0;
@@ -308,6 +403,9 @@ export function QuoteView(props: QuoteViewProps) {
 
   return (
     <div className="space-y-6">
+      <div className="flex justify-end">
+        <PersistenceChip status={persistenceStatus} />
+      </div>
       <QuoteSpecsEditor
         specs={uniqueSpecs}
         overrides={specOverrides}
@@ -355,6 +453,30 @@ export function QuoteView(props: QuoteViewProps) {
         })}
       />
     </div>
+  );
+}
+
+function PersistenceChip(props: { status: "idle" | "saving" | "saved" | "error" }) {
+  const { status } = props;
+  if (status === "idle") return null;
+  const label =
+    status === "saving"
+      ? "Saving…"
+      : status === "saved"
+        ? "✓ Saved"
+        : "Save failed — your edits aren't persisted";
+  const toneClass =
+    status === "error"
+      ? "bg-red-50 border-red-300 text-red-800"
+      : status === "saved"
+        ? "bg-emerald-50 border-emerald-300 text-emerald-800"
+        : "bg-gray-50 border-gray-300 text-gray-600";
+  return (
+    <span
+      className={`inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium rounded border ${toneClass}`}
+    >
+      {label}
+    </span>
   );
 }
 

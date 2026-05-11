@@ -506,9 +506,43 @@ export interface NixExtractionSessionDto {
   promotedRef: string | null;
   ownerUserId: number | null;
   extractions?: NixExtractionSummary[];
+  /**
+   * Opaque-to-the-backend bundle storing the QuoteSpecsEditor's persisted
+   * state for this session — supplier overrides, per-spec rates, and
+   * data-sheet attachment metadata. Frontend owns the shape; the type below
+   * mirrors what the editor writes back.
+   */
+  quoteEditorState?: QuoteEditorStateDto | null;
   createdAt: string;
   updatedAt: string;
 }
+
+/**
+ * Shape of the persisted QuoteSpecsEditor bundle. Mirrors the local in-
+ * memory state on the promoted-quote page so a refresh restores everything
+ * the quoter has done — custom supplier rows, R/m² and R/Rm rates, and
+ * which library data-sheets are attached to which row.
+ *
+ * `attachments` only ever holds the link metadata (dataSheetId + filename);
+ * the actual PDF bytes live on S3 via the product-data-sheet library and
+ * are fetched on-demand via the presigned-URL endpoint.
+ */
+export interface QuoteEditorStateDto {
+  overrides: Record<string, unknown>;
+  rates: Record<string, unknown>;
+  attachments: Record<string, unknown>;
+}
+
+export const useSaveQuoteEditorState = createMutationHook<
+  NixExtractionSessionDto,
+  { sessionId: number; state: QuoteEditorStateDto | null }
+>(({ sessionId, state }) =>
+  nixRequest<NixExtractionSessionDto>(`/nix/sessions/${sessionId}/quote-state`, {
+    method: "POST",
+    body: { quoteEditorState: state },
+    errorLabel: "Failed to save quote editor state",
+  }),
+);
 
 export const useNixExtractionSession = createQueryHook(
   (sessionId: number | null) => nixKeys.extractionSessions.detail(sessionId ?? 0),

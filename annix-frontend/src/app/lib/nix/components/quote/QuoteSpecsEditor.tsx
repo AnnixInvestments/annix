@@ -475,34 +475,30 @@ function SupplierRow(props: SupplierRowProps) {
     "idle" | "extracting" | "applied" | "no-match" | "error"
   >("idle");
   const [libraryNote, setLibraryNote] = useState<string | null>(null);
+  const [uploadingFilename, setUploadingFilename] = useState<string | null>(null);
 
   /**
-   * When the user uploads a data sheet on a custom supplier row, the file is
-   * sent to the shared product data sheet library:
+   * Triggered when the quoter picks a file in DataSheetUpload. The file goes
+   * straight to the shared product-data-sheet library:
    *
    *   1. Gemini extracts manufacturer + product + revision + brand +
    *      description in one pass.
    *   2. The library either creates a new row, matches an existing version
    *      (same printed revision), or supersedes the prior current revision.
-   *   3. The brand + description come back for auto-filling THIS quote's
-   *      supplier row — but only into empty fields, so the quoter's typed
-   *      override always wins.
+   *   3. The serialisable attachment {dataSheetId, filename, sizeBytes, …}
+   *      is recorded on the supplier row so a page reload restores the link.
+   *   4. The brand + description are auto-filled into the supplier row's
+   *      empty fields — the quoter's typed override always wins.
    *
-   * The library outcome is shown as a short note below the row ('matched
-   * existing Linard 60 Rev 03' / 'supersedes Rev 03') and clears after 6s
-   * so the row stays calm.
+   * The library outcome shows as a short note below the row ('matched
+   * existing Linard 60 Rev 03' / 'supersedes Rev 03') and clears after 6 s.
    */
-  const handleAttachmentChange = async (next: DataSheetAttachment | null) => {
-    onAttachmentChange(next);
-    if (!next) {
-      setAutoFillState("idle");
-      setLibraryNote(null);
-      return;
-    }
+  const handleFilePicked = async (file: File) => {
+    setUploadingFilename(file.name);
     setAutoFillState("extracting");
     setLibraryNote(null);
     try {
-      const result = await uploadProductDataSheet(next.file, kind);
+      const result = await uploadProductDataSheet(file, kind);
       const supplierBrand = supplier.brand;
       const supplierDescription = supplier.description;
       const brandIsEmpty = !supplierBrand || supplierBrand.trim().length === 0;
@@ -534,6 +530,16 @@ function SupplierRow(props: SupplierRowProps) {
           partial.description = result.description;
         }
       }
+      onAttachmentChange({
+        specCode: "",
+        entryId: supplier.id,
+        dataSheetId: result.dataSheetId,
+        filename: file.name,
+        sizeBytes: file.size,
+        manufacturer: result.manufacturer,
+        productName: result.productName,
+        publishedRevision: result.publishedRevision,
+      });
       if (keys(partial).length > 0) {
         onChange(partial);
         setAutoFillState("applied");
@@ -549,7 +555,15 @@ function SupplierRow(props: SupplierRowProps) {
       setAutoFillState("error");
       setLibraryNote(null);
       setTimeout(() => setAutoFillState("idle"), 4000);
+    } finally {
+      setUploadingFilename(null);
     }
+  };
+
+  const handleRemoveAttachment = () => {
+    onAttachmentChange(null);
+    setAutoFillState("idle");
+    setLibraryNote(null);
   };
 
   let containerToneClass: string;
@@ -679,8 +693,11 @@ function SupplierRow(props: SupplierRowProps) {
             <DataSheetUpload
               entryId={supplier.id}
               attachment={attachment}
+              uploadingFilename={uploadingFilename}
+              uploadingSizeBytes={null}
               isExtracting={autoFillState === "extracting"}
-              onChange={handleAttachmentChange}
+              onFilePicked={handleFilePicked}
+              onRemove={handleRemoveAttachment}
             />
           </div>
           {libraryNote && (
@@ -695,18 +712,30 @@ function SupplierRow(props: SupplierRowProps) {
 interface DataSheetUploadProps {
   entryId: string;
   attachment: DataSheetAttachment | null;
+  /** Filename being uploaded to the library (transient — clears once the
+   *  library write returns and the saved attachment takes over). */
+  uploadingFilename: string | null;
+  uploadingSizeBytes: number | null;
   isExtracting: boolean;
-  onChange: (attachment: DataSheetAttachment | null) => void;
+  onFilePicked: (file: File) => void;
+  onRemove: () => void;
 }
 
 function DataSheetUpload(props: DataSheetUploadProps) {
-  const { entryId, attachment, isExtracting, onChange } = props;
+  const { entryId, attachment, uploadingFilename, uploadingSizeBytes, isExtracting } = props;
   const inputId = `data-sheet-${entryId}`;
 
-  if (attachment) {
-    const sizeKb = attachment.size / 1024;
+  const displayFilename = attachment ? attachment.filename : uploadingFilename;
+  const displaySize = attachment ? attachment.sizeBytes : uploadingSizeBytes;
+
+  if (displayFilename !== null) {
+    const sizeKb = displaySize !== null ? displaySize / 1024 : 0;
     const sizeLabel =
-      sizeKb >= 1024 ? `${(sizeKb / 1024).toFixed(1)} MB` : `${sizeKb.toFixed(0)} KB`;
+      displaySize === null
+        ? ""
+        : sizeKb >= 1024
+          ? `${(sizeKb / 1024).toFixed(1)} MB`
+          : `${sizeKb.toFixed(0)} KB`;
     return (
       <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-emerald-100 border border-emerald-300 rounded text-xs text-emerald-900">
         {isExtracting ? (
@@ -741,13 +770,13 @@ function DataSheetUpload(props: DataSheetUploadProps) {
             />
           </svg>
         )}
-        <span className="font-medium truncate max-w-[14rem]" title={attachment.filename}>
-          {attachment.filename}
+        <span className="font-medium truncate max-w-[14rem]" title={displayFilename}>
+          {displayFilename}
         </span>
-        <span className="text-emerald-700/70">({sizeLabel})</span>
+        {sizeLabel.length > 0 && <span className="text-emerald-700/70">({sizeLabel})</span>}
         <button
           type="button"
-          onClick={() => onChange(null)}
+          onClick={() => props.onRemove()}
           disabled={isExtracting}
           className="ml-1 text-emerald-700 hover:text-red-600 disabled:opacity-40 disabled:cursor-not-allowed"
           aria-label="Remove data sheet"
@@ -786,13 +815,7 @@ function DataSheetUpload(props: DataSheetUploadProps) {
         onChange={(event) => {
           const file = event.target.files ? event.target.files[0] : null;
           if (!file) return;
-          onChange({
-            specCode: "",
-            entryId,
-            file,
-            filename: file.name,
-            size: file.size,
-          });
+          props.onFilePicked(file);
           event.target.value = "";
         }}
         className="hidden"

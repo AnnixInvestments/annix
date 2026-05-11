@@ -127,6 +127,14 @@ export class NixExtractionSession {
   )
   extractions?: NixExtraction[];
 
+  @ApiProperty({
+    description:
+      "Persisted state of the QuoteSpecsEditor for this session: supplier-row overrides (custom brands / descriptions / data-sheet library links), per-spec rates (R/m², R/Rm), and the customer-facing supplier selection. Loaded on mount and debounce-saved (1 s) on every edit so a refresh / re-open lands the quoter back where they left off. Shape mirrors the frontend's { overrides, rates, attachments } bundle.",
+    required: false,
+  })
+  @Column({ name: "quote_editor_state", type: "jsonb", nullable: true })
+  quoteEditorState?: Record<string, unknown>;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

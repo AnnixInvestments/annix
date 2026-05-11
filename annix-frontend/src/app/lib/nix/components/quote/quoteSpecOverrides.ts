@@ -46,16 +46,26 @@ export interface SpecOverride {
 export type SpecOverrides = Record<string, SpecOverride>;
 
 /**
- * A data sheet uploaded by the quoter to accompany a custom supplier entry.
- * Lives in component memory until quote-send time (the file is attached to
- * the outgoing PDF / email). Persistence to S3 is a follow-up.
+ * Reference to a data sheet uploaded by the quoter and registered in the
+ * shared product-data-sheet library. The actual PDF bytes live on S3 (via
+ * the library); this attachment is only the link from THIS quote's supplier
+ * row to that library entry, so the bundle is fully serialisable and can be
+ * persisted on the Nix session for restore-after-refresh.
+ *
+ * `dataSheetId` is the library row id — use it to fetch a presigned view URL
+ * via `GET /nix/product-data-sheets/:id/url`. The other fields are cached
+ * here so the row's UI ('AU Premium 60 Shore Red.pdf (255 KB)') renders
+ * without an extra round-trip on every page load.
  */
 export interface DataSheetAttachment {
   specCode: string;
   entryId: string;
-  file: File;
+  dataSheetId: number;
   filename: string;
-  size: number;
+  sizeBytes: number;
+  manufacturer: string;
+  productName: string;
+  publishedRevision: string | null;
 }
 
 export type DataSheetAttachments = Record<string, DataSheetAttachment>;

@@ -272,6 +272,24 @@ export class NixController {
     return this.sessionService.setStatus(id, body.status);
   }
 
+  @Post("sessions/:id/quote-state")
+  @UseGuards(AnyUserAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary:
+      "Persist the QuoteSpecsEditor state bundle (supplier overrides, rates, attachment metadata) for this session. Debounce-saved on every edit by the promoted-quote page so a refresh / re-open lands the quoter back where they left off. Body is opaque to the backend — the frontend owns the shape.",
+  })
+  @ApiResponse({ status: 200, type: NixExtractionSession })
+  async setSessionQuoteEditorState(
+    @Param("id", ParseIntPipe) id: number,
+    @Body() body: { quoteEditorState: Record<string, unknown> | null },
+    @Req() req: Request,
+  ): Promise<NixExtractionSession> {
+    const authUser = req["authUser"] as AuthenticatedUser;
+    await this.sessionService.findOneForUser(id, authUser.userId, authUser.type === "admin");
+    return this.sessionService.setQuoteEditorState(id, body.quoteEditorState ?? null);
+  }
+
   @Get("extraction/:id")
   @ApiOperation({ summary: "Get extraction details by ID" })
   @ApiResponse({
