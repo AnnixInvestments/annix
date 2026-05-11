@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { PtRecommendationResult, ValidPressureClassInfo } from "@/app/lib/api/client";
 import {
   autoFilledClass,
+  dedupSortPressureClassesByDisplay,
   deriveMiningUvExposure,
   derivePressureClassOverrideStatus,
   deriveTemperatureCategory,
@@ -9,6 +10,7 @@ import {
   isPressureClassMissingPTData,
   isPressureClassUnsuitable,
   serviceLifeToDurability,
+  sortPressureClassesByNumericDesc,
 } from "./helpers";
 
 const classInfo = (id: number, designation: string, isAdequate = true): ValidPressureClassInfo =>
@@ -266,5 +268,107 @@ describe("deriveMiningUvExposure", () => {
 
   it("returns 'High' for unrecognised ISO values when mine selected", () => {
     expect(deriveMiningUvExposure(true, "anything-else")).toBe("High");
+  });
+});
+
+describe("dedupSortPressureClassesByDisplay", () => {
+  it("returns empty array for empty input", () => {
+    expect(dedupSortPressureClassesByDisplay([])).toEqual([]);
+  });
+
+  it("sorts numerically ascending by leading digit (not lexicographically)", () => {
+    const rows = [
+      { id: 1, designation: "100PN" },
+      { id: 2, designation: "10PN" },
+      { id: 3, designation: "16PN" },
+      { id: 4, designation: "6PN" },
+    ];
+    const result = dedupSortPressureClassesByDisplay(rows);
+    expect(result.map((r) => r.designation)).toEqual(["6PN", "10PN", "16PN", "100PN"]);
+  });
+
+  it("falls back to designation locale-compare when numerics tie", () => {
+    const rows = [
+      { id: 1, designation: "16PN-B" },
+      { id: 2, designation: "16PN-A" },
+    ];
+    const result = dedupSortPressureClassesByDisplay(rows);
+    expect(result.map((r) => r.id)).toEqual([2, 1]);
+  });
+
+  it("strips '/digit' suffix into displayValue but keeps original designation", () => {
+    const rows = [{ id: 1, designation: "150/3" }];
+    const [first] = dedupSortPressureClassesByDisplay(rows);
+    expect(first.displayValue).toBe("150");
+    expect(first.designation).toBe("150/3");
+  });
+
+  it("dedupes by displayValue (first-occurrence wins after sort)", () => {
+    const rows = [
+      { id: 1, designation: "100/2" },
+      { id: 2, designation: "100/3" },
+      { id: 3, designation: "16PN" },
+    ];
+    const result = dedupSortPressureClassesByDisplay(rows);
+    expect(result.map((r) => r.id)).toEqual([3, 1]);
+    expect(result.map((r) => r.displayValue)).toEqual(["16PN", "100"]);
+  });
+
+  it("is non-destructive on the input array", () => {
+    const rows = [
+      { id: 1, designation: "100PN" },
+      { id: 2, designation: "10PN" },
+    ];
+    const snapshot = [...rows];
+    dedupSortPressureClassesByDisplay(rows);
+    expect(rows).toEqual(snapshot);
+  });
+
+  it("preserves extra fields on each row", () => {
+    const rows = [{ id: 1, designation: "16PN", extra: "kept" }];
+    const [first] = dedupSortPressureClassesByDisplay(rows);
+    expect(first.extra).toBe("kept");
+  });
+});
+
+describe("sortPressureClassesByNumericDesc", () => {
+  it("returns empty array for empty input", () => {
+    expect(sortPressureClassesByNumericDesc([])).toEqual([]);
+  });
+
+  it("sorts numerically descending by leading digit", () => {
+    const rows = [
+      { id: 1, designation: "10PN" },
+      { id: 2, designation: "100PN" },
+      { id: 3, designation: "6PN" },
+      { id: 4, designation: "16PN" },
+    ];
+    const result = sortPressureClassesByNumericDesc(rows);
+    expect(result.map((r) => r.designation)).toEqual(["100PN", "16PN", "10PN", "6PN"]);
+  });
+
+  it("treats designations without leading digits as 0", () => {
+    const rows = [
+      { id: 1, designation: "Class 150" },
+      { id: 2, designation: "16PN" },
+    ];
+    const [highest] = sortPressureClassesByNumericDesc(rows);
+    expect(highest.id).toBe(2);
+  });
+
+  it("is non-destructive on the input array", () => {
+    const rows = [
+      { id: 1, designation: "10PN" },
+      { id: 2, designation: "100PN" },
+    ];
+    const snapshot = [...rows];
+    sortPressureClassesByNumericDesc(rows);
+    expect(rows).toEqual(snapshot);
+  });
+});
+
+describe("extractPressureNumeric (undefined handling)", () => {
+  it("returns 0 for undefined input", () => {
+    expect(extractPressureNumeric(undefined)).toBe(0);
   });
 });

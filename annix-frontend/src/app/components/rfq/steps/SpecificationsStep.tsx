@@ -48,10 +48,12 @@ import {
   autoFilledClass,
   isPressureClassMissingPTData as computePressureClassMissingPTData,
   isPressureClassUnsuitable as computePressureClassUnsuitable,
+  dedupSortPressureClassesByDisplay,
   deriveMiningUvExposure,
   derivePressureClassOverrideStatus,
   deriveTemperatureCategory,
   serviceLifeToDurability,
+  sortPressureClassesByNumericDesc,
 } from "./specifications/helpers";
 import { FeatureRestrictionPopup, RestrictionPopup } from "./specifications/RestrictionPopup";
 import type { FeatureType, RestrictionPopupPosition } from "./specifications/types";
@@ -1181,16 +1183,8 @@ export default function SpecificationsStep(props: {
                                     "bar",
                                   );
                                 } else if (availablePressureClasses.length > 0) {
-                                  // Just pick the highest if none are suitable
-                                  const sorted = [...availablePressureClasses].sort(
-                                    (a: any, b: any) => {
-                                      const aMatch = a.designation?.match(/^(\d+)/);
-                                      const bMatch = b.designation?.match(/^(\d+)/);
-                                      const aVal = aMatch ? parseInt(aMatch[1], 10) : 0;
-                                      const bVal = bMatch ? parseInt(bMatch[1], 10) : 0;
-                                      return bVal - aVal;
-                                    },
-                                  );
+                                  const sorted =
+                                    sortPressureClassesByNumericDesc(availablePressureClasses);
                                   newPressureClassId = sorted[0].id;
                                   log.debug(
                                     "[PT-DEBUG] FALLBACK: Selected highest",
@@ -1331,42 +1325,17 @@ export default function SpecificationsStep(props: {
                           >
                             <option value="">Select class...</option>
                             {(() => {
-                              // Deduplicate pressure classes by their display value (after stripping /digit suffix)
-                              // Sort numerically to ensure proper ordering (6, 10, 16, 25... not 10, 100, 16...)
-                              const seen = new Set<string>();
-                              const extractNumeric = (designation: string) => {
-                                const match = designation?.match(/^(\d+)/);
-                                return match ? parseInt(match[1], 10) : 0;
-                              };
-                              const result = [...availablePressureClasses]
-                                .sort((a: any, b: any) => {
-                                  const numA = extractNumeric(a.designation);
-                                  const numB = extractNumeric(b.designation);
-                                  if (numA !== numB) return numA - numB;
-                                  const rawDesignation = a.designation;
-                                  const rawDesignation2 = b.designation;
-                                  return (rawDesignation || "").localeCompare(
-                                    rawDesignation2 || "",
-                                  );
-                                })
-                                .map((pc: any) => {
-                                  const displayValue = pc.designation.replace(/\/\d+$/, "");
-                                  return { ...pc, displayValue };
-                                })
-                                .filter((pc: any) => {
-                                  if (seen.has(pc.displayValue)) return false;
-                                  seen.add(pc.displayValue);
-                                  return true;
-                                });
+                              const result =
+                                dedupSortPressureClassesByDisplay(availablePressureClasses);
                               log.debug(
                                 "[PT-DEBUG] Dropdown options:",
-                                result.map((pc: any) => `${pc.displayValue}(ID ${pc.id})`),
+                                result.map((pc) => `${pc.displayValue}(ID ${pc.id})`),
                               );
                               log.debug(
                                 "[PT-DEBUG] Selected value:",
                                 globalSpecs?.flangePressureClassId,
                               );
-                              return result.map((pc: any) => {
+                              return result.map((pc) => {
                                 const classInfo = pressureClassInfoMap.get(pc.id);
                                 const hasPtData =
                                   ptRecommendations &&
