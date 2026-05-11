@@ -1,5 +1,5 @@
 import { outerDiameterFromNB } from "@/app/lib/query/hooks";
-import { calculateTotalSurfaceArea, type SurfaceAreaResult } from "@/app/lib/utils/pipeSurfaceArea";
+import { getFlangeDimensionsByDn, type SurfaceAreaResult } from "@/app/lib/utils/pipeSurfaceArea";
 import type { QuoteItem } from "./poolItemsBySpec";
 
 export interface ItemSurfaceArea {
@@ -52,36 +52,39 @@ export function surfaceAreaForQuoteItem(
   const flangeCount = countFlangesFromConfig(item.flangeConfig);
   const quantity = item.quantity > 0 ? item.quantity : 1;
 
-  const raw = calculateTotalSurfaceArea({
-    outsideDiameterMm: odMm,
-    insideDiameterMm: idMm,
-    individualPipeLengthM: lengthM,
-    numberOfPipes: quantity,
-    hasFlangeEnd1: flangeCount >= 1,
-    hasFlangeEnd2: flangeCount >= 2,
-    dn,
-  });
-
-  // Stock-control quote convention (user-confirmed 2026-05-11): the 100 mm-
-  // per-flange-end length extension already accounts for the paint / lining
-  // overlap onto the flange face, so adding the back-of-flange annular ring
-  // on top would double-count the same area. Strip the flange-ring fields
-  // from both the per-pipe result and the quantity-multiplied totals so the
-  // quote shows bare-pipe surface area only:
-  //   external = π × OD × (L + 0.1 × flangeCount)
-  //   internal = π × ID × (L + 0.1 × flangeCount)
+  // Stock-control quote convention v2 (user-confirmed 2026-05-11, test pass
+  // 2): use raw pipe length (no 100 mm-per-flange extension) AND add an
+  // explicit flange-face annular contribution per flange end. The flange
+  // face is the steel disc minus the bore hole — same formula for external
+  // (paint on the back face) and internal (lining on the front face) per
+  // the user's spec: π/4 × (flangeOD² − pipeID²) per flange.
   //
-  // The underlying calculator stays untouched because the RFQ surface-
-  // protection export still consumes the flange-ring contributions today —
-  // when they're ready to switch over we'll promote this stripping logic
-  // into a shared `bareLateralAreaOnly` flag on the calculator.
-  const perPipe = {
-    ...raw.perPipe,
-    externalFlangeBackAreaM2: 0,
-    internalFlangeFaceAreaM2: 0,
-    totalExternalAreaM2: raw.perPipe.externalPipeAreaM2,
-    totalInternalAreaM2: raw.perPipe.internalPipeAreaM2,
-    totalSurfaceAreaM2: raw.perPipe.externalPipeAreaM2 + raw.perPipe.internalPipeAreaM2,
+  // For mark -01 (NB1000 × WT16 × L6000 F.B.E F/F, flangeOD=1219, pipeID=984):
+  //   pipe external = π × 1.016 × 6.0       = 19.15 m²
+  //   flange face   = π/4 × (1.219² − 0.984²) × 2
+  //                 = π/4 × 0.5174 × 2      = 0.8126 m²
+  //   per-item ext  = 19.96 m²
+  //
+  // Shared `pipeSurfaceArea` calculator stays untouched — RFQ still uses
+  // its prior convention.
+  const flangeFaceAreaPerEndM2 = flangeFaceAnnularM2(odMm, idMm, dn, flangeCount);
+  const odM = odMm / 1000;
+  const idM = idMm / 1000;
+  const externalPipeAreaM2 = Math.PI * odM * lengthM;
+  const internalPipeAreaM2 = Math.PI * idM * lengthM;
+  const flangeContributionTotalM2 = flangeFaceAreaPerEndM2 * flangeCount;
+  const totalExternalAreaM2 = externalPipeAreaM2 + flangeContributionTotalM2;
+  const totalInternalAreaM2 = internalPipeAreaM2 + flangeContributionTotalM2;
+
+  const perPipe: SurfaceAreaResult = {
+    externalPipeAreaM2,
+    externalFlangeBackAreaM2: flangeContributionTotalM2,
+    totalExternalAreaM2,
+    internalPipeAreaM2,
+    internalFlangeFaceAreaM2: flangeContributionTotalM2,
+    totalInternalAreaM2,
+    totalSurfaceAreaM2: totalExternalAreaM2 + totalInternalAreaM2,
+    flangeDataAvailable: flangeCount > 0 && flangeFaceAreaPerEndM2 > 0,
   };
   return {
     perPipe,
@@ -91,6 +94,34 @@ export function surfaceAreaForQuoteItem(
       totalSurfaceAreaM2: perPipe.totalSurfaceAreaM2 * quantity,
     },
   };
+}
+
+/**
+ * Steel-only annular face area of ONE flange end, in m². Formula per the
+ * user's quote spec: take the flange OD (looked up from the ANSI B16.5
+ * Class 150 table by DN), subtract the bore hole (pipe ID), and treat the
+ * remaining annulus as the paintable / linable steel face:
+ *
+ *   A_face = π/4 × (flangeOD² − pipeID²)        [m²]
+ *
+ * Returns 0 when flangeCount is 0 (no flanges to contribute) or when the
+ * lookup falls through. Lookup falls back to an OD × 1.8 estimate, matching
+ * `pipeSurfaceArea`'s heuristic for DNs not in the table, so weird sizes
+ * still get a sensible figure.
+ */
+function flangeFaceAnnularM2(
+  pipeOdMm: number,
+  pipeIdMm: number,
+  dn: number,
+  flangeCount: number,
+): number {
+  if (flangeCount <= 0) return 0;
+  const flangeDims = getFlangeDimensionsByDn(dn);
+  const flangeOdMm = flangeDims ? flangeDims.flangeOdMm : pipeOdMm * 1.8;
+  if (flangeOdMm <= pipeIdMm) return 0;
+  const flangeOdM = flangeOdMm / 1000;
+  const pipeIdM = pipeIdMm / 1000;
+  return (Math.PI / 4) * (flangeOdM * flangeOdM - pipeIdM * pipeIdM);
 }
 
 /**
@@ -112,24 +143,17 @@ export function sumPoolTotals(rows: (ItemSurfaceArea | null)[]) {
 }
 
 /**
- * Convention used across `pipeSurfaceArea.ts` and our running-metre lining
- * costing: each flanged end adds 100 mm of effective length to account for
- * the rubber / paint overlapping the flange face. Same constant as
- * `SURFACE_AREA_CONSTANTS.FLANGE_ALLOWANCE_M` from `@annix/product-data/pipe`.
- */
-export const FLANGE_LENGTH_ALLOWANCE_M = 0.1;
-
-/**
- * Effective lining length per pipe, in metres — includes the flange overlap
- * allowance. Returns 0 when the item has no length recorded. Used by the
- * rubber-lining 'over 3m → priced per running metre' pricing branch.
+ * Effective lining length per pipe, in metres — bare pipe length only as of
+ * the v2 quote convention (2026-05-11). The previous 100 mm-per-flange
+ * extension is gone: the rubber-lining 'over 3 m → priced per running
+ * metre' pricing branch now uses raw length, and the flange-face steel
+ * area is captured separately by `flangeFaceAnnularM2` in the m² branch.
+ * Returns 0 when the item has no length recorded.
  */
 export function effectiveLiningLengthM(item: QuoteItem): number {
   const lengthMm = item.length;
   if (lengthMm === null || lengthMm <= 0) return 0;
-  const lengthM = lengthMm / 1000;
-  const flangeCount = countFlangesFromConfig(item.flangeConfig);
-  return lengthM + flangeCount * FLANGE_LENGTH_ALLOWANCE_M;
+  return lengthMm / 1000;
 }
 
 /**
