@@ -99,7 +99,6 @@ export default function BOQStep(props: {
   // the supplier-bound output.
   const entries: any[] = allEntries.filter((entry) => !omittedItemIds.has(entry.id));
   const omittedEntries: any[] = allEntries.filter((entry) => omittedItemIds.has(entry.id));
-  const [omittedExpanded, setOmittedExpanded] = useState(false);
   const globalSpecs = rfqData.globalSpecs;
   const rawRequiredProducts = rfqData.requiredProducts;
   const requiredProducts = rawRequiredProducts || [];
@@ -2185,19 +2184,14 @@ export default function BOQStep(props: {
             customer chose Skip on that step rather than supplying
             the drawings. */}
         {omittedEntries.length > 0 && (
-          <div
-            className={`mb-6 border rounded-lg overflow-hidden ${
+          <details
+            className={`mb-6 border rounded-lg overflow-hidden group ${
               clarificationsSkipped
                 ? "bg-amber-50 border-amber-300 dark:bg-amber-900/10 dark:border-amber-800"
                 : "bg-gray-50 border-gray-300 dark:bg-gray-900/10 dark:border-gray-700"
             }`}
           >
-            <button
-              type="button"
-              onClick={() => setOmittedExpanded((prev) => !prev)}
-              aria-expanded={omittedExpanded}
-              className="w-full flex items-start gap-2 p-4 text-left hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
-            >
+            <summary className="flex items-start gap-2 p-4 cursor-pointer list-none hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
               <svg
                 className={`w-5 h-5 flex-shrink-0 mt-0.5 ${clarificationsSkipped ? "text-amber-600 dark:text-amber-400" : "text-gray-600 dark:text-gray-400"}`}
                 fill="none"
@@ -2224,7 +2218,7 @@ export default function BOQStep(props: {
                 </p>
               </div>
               <svg
-                className={`w-5 h-5 flex-shrink-0 mt-0.5 text-gray-500 dark:text-gray-400 transition-transform ${omittedExpanded ? "rotate-180" : ""}`}
+                className="w-5 h-5 flex-shrink-0 mt-0.5 text-gray-500 dark:text-gray-400 transition-transform group-open:rotate-180"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -2237,28 +2231,26 @@ export default function BOQStep(props: {
                   d="M19 9l-7 7-7-7"
                 />
               </svg>
-            </button>
-            {omittedExpanded && (
-              <ul className="px-4 pb-4 space-y-1 text-xs text-gray-700 dark:text-gray-300">
-                {omittedEntries.map((entry) => {
-                  const rawClient = entry.clientItemNumber;
-                  const numberLabel = rawClient || entry.id;
-                  const rawDescription = entry.description;
-                  const descriptionText = rawDescription || "(no description)";
-                  return (
-                    <li key={entry.id} className="flex gap-2 min-w-0">
-                      <span className="font-medium font-mono text-gray-500 dark:text-gray-400 flex-shrink-0 w-16">
-                        {numberLabel}
-                      </span>
-                      <span className="flex-1 min-w-0 truncate" title={descriptionText}>
-                        {descriptionText}
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </div>
+            </summary>
+            <ul className="px-4 pb-4 space-y-1 text-xs text-gray-700 dark:text-gray-300">
+              {omittedEntries.map((entry) => {
+                const rawClient = entry.clientItemNumber;
+                const numberLabel = rawClient || entry.id;
+                const rawDescription = entry.description;
+                const descriptionText = rawDescription || "(no description)";
+                return (
+                  <li key={entry.id} className="flex gap-2 min-w-0">
+                    <span className="font-medium font-mono text-gray-500 dark:text-gray-400 flex-shrink-0 w-16">
+                      {numberLabel}
+                    </span>
+                    <span className="flex-1 min-w-0 truncate" title={descriptionText}>
+                      {descriptionText}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </details>
         )}
 
         {/* HDPE group — pipes / bends / fittings / other tagged hdpe.
