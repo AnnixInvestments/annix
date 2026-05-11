@@ -52,6 +52,7 @@ import {
   deriveMiningUvExposure,
   derivePressureClassOverrideStatus,
   deriveTemperatureCategory,
+  findLowestSuitablePressureClass,
   serviceLifeToDurability,
   sortPressureClassesByNumericDesc,
 } from "./specifications/helpers";
@@ -1157,27 +1158,18 @@ export default function SpecificationsStep(props: {
                                 ? recommendedPressureClassId
                                 : recommendedPressureClassId || globalSpecs?.flangePressureClassId;
 
-                              // FALLBACK: If no class was selected but classes are available, pick the appropriate one
                               if (!newPressureClassId && availablePressureClasses?.length > 0) {
                                 const rawWorkingPressureBar4 = gsWorkingPressureBar;
                                 const targetPressure = rawWorkingPressureBar4 || 10;
-                                // Find the lowest class that can handle the working pressure
-                                const suitable = availablePressureClasses
-                                  .map((pc: any) => {
-                                    const match = pc.designation?.match(/^(\d+)/);
-                                    const rating = match ? parseInt(match[1], 10) : 0;
-                                    // Adjust for SABS 1123 large numbers (600=6bar, 1000=10bar)
-                                    const barRating = rating >= 500 ? rating / 100 : rating;
-                                    return { ...pc, barRating };
-                                  })
-                                  .filter((pc: any) => pc.barRating >= targetPressure)
-                                  .sort((a: any, b: any) => a.barRating - b.barRating);
-
-                                if (suitable.length > 0) {
-                                  newPressureClassId = suitable[0].id;
+                                const lowestSuitable = findLowestSuitablePressureClass(
+                                  availablePressureClasses,
+                                  targetPressure,
+                                );
+                                if (lowestSuitable) {
+                                  newPressureClassId = lowestSuitable.id;
                                   log.debug(
                                     "[PT-DEBUG] FALLBACK: Selected",
-                                    suitable[0].designation,
+                                    lowestSuitable.designation,
                                     "for",
                                     targetPressure,
                                     "bar",

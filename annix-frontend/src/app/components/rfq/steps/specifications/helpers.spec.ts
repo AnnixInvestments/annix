@@ -2,11 +2,13 @@ import { describe, expect, it } from "vitest";
 import type { PtRecommendationResult, ValidPressureClassInfo } from "@/app/lib/api/client";
 import {
   autoFilledClass,
+  computeBarRating,
   dedupSortPressureClassesByDisplay,
   deriveMiningUvExposure,
   derivePressureClassOverrideStatus,
   deriveTemperatureCategory,
   extractPressureNumeric,
+  findLowestSuitablePressureClass,
   isPressureClassMissingPTData,
   isPressureClassUnsuitable,
   serviceLifeToDurability,
@@ -370,5 +372,75 @@ describe("sortPressureClassesByNumericDesc", () => {
 describe("extractPressureNumeric (undefined handling)", () => {
   it("returns 0 for undefined input", () => {
     expect(extractPressureNumeric(undefined)).toBe(0);
+  });
+});
+
+describe("computeBarRating", () => {
+  it("returns 0 for null/undefined/empty", () => {
+    expect(computeBarRating(null)).toBe(0);
+    expect(computeBarRating(undefined)).toBe(0);
+    expect(computeBarRating("")).toBe(0);
+  });
+
+  it("returns the leading numeric for designations < 500", () => {
+    expect(computeBarRating("16PN")).toBe(16);
+    expect(computeBarRating("40PN")).toBe(40);
+    expect(computeBarRating("150 Class")).toBe(150);
+    expect(computeBarRating("499")).toBe(499);
+  });
+
+  it("divides by 100 for SABS 1123 designations >= 500 (600 -> 6, 1000 -> 10)", () => {
+    expect(computeBarRating("600")).toBe(6);
+    expect(computeBarRating("1000")).toBe(10);
+    expect(computeBarRating("2500")).toBe(25);
+  });
+
+  it("treats exactly 500 as a SABS designation (5 bar)", () => {
+    expect(computeBarRating("500")).toBe(5);
+  });
+});
+
+describe("findLowestSuitablePressureClass", () => {
+  const rows = [
+    { id: 1, designation: "10PN" },
+    { id: 2, designation: "16PN" },
+    { id: 3, designation: "25PN" },
+    { id: 4, designation: "40PN" },
+  ];
+
+  it("returns null for empty input", () => {
+    expect(findLowestSuitablePressureClass([], 10)).toBeNull();
+  });
+
+  it("returns null when no class meets the target", () => {
+    expect(findLowestSuitablePressureClass(rows, 100)).toBeNull();
+  });
+
+  it("returns the lowest class that meets or exceeds the target", () => {
+    const result = findLowestSuitablePressureClass(rows, 16);
+    expect(result?.id).toBe(2);
+  });
+
+  it("returns the lowest class above the target when no exact match", () => {
+    const result = findLowestSuitablePressureClass(rows, 20);
+    expect(result?.id).toBe(3);
+  });
+
+  it("respects the SABS 1123 bar-rating adjustment", () => {
+    const sabsRows = [
+      { id: 100, designation: "600" },
+      { id: 101, designation: "1000" },
+      { id: 102, designation: "2500" },
+    ];
+    expect(findLowestSuitablePressureClass(sabsRows, 8)?.id).toBe(101);
+    expect(findLowestSuitablePressureClass(sabsRows, 5)?.id).toBe(100);
+  });
+
+  it("preserves extra fields on the matched row", () => {
+    const result = findLowestSuitablePressureClass(
+      [{ id: 1, designation: "16PN", extra: "kept" }],
+      10,
+    );
+    expect(result?.extra).toBe("kept");
   });
 });

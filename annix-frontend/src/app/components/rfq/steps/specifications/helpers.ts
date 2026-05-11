@@ -57,6 +57,31 @@ export const sortPressureClassesByNumericDesc = <T extends PressureClassRow>(row
     return numB - numA;
   });
 
+// Compute the bar rating implied by a pressure-class designation. SABS
+// 1123 designations >= 500 (e.g. 600, 1000) actually mean 6 bar / 10 bar
+// — divide by 100. Smaller numerics (PN16, PN40, Class 150) are taken
+// at face value.
+export const computeBarRating = (designation: string | null | undefined): number => {
+  const rating = extractPressureNumeric(designation);
+  return rating >= 500 ? rating / 100 : rating;
+};
+
+// Find the lowest pressure class in `rows` whose computed bar rating
+// meets or exceeds `targetBar`. Returns the matching row, or null if
+// every class falls short. Used by the flange-standard dropdown fallback
+// when the P-T engine doesn't return a recommendation.
+export const findLowestSuitablePressureClass = <T extends PressureClassRow>(
+  rows: T[],
+  targetBar: number,
+): T | null => {
+  const ranked = rows
+    .map((pc) => ({ pc, barRating: computeBarRating(pc.designation) }))
+    .filter((entry) => entry.barRating >= targetBar)
+    .sort((a, b) => a.barRating - b.barRating);
+  if (ranked.length === 0) return null;
+  return ranked[0].pc;
+};
+
 // Compare the currently-selected pressure class vs the auto-recommended
 // pressure class and report whether the selection is an override and, if
 // so, whether it is higher or lower than the auto-recommended class.
