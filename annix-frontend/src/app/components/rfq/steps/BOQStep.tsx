@@ -114,6 +114,11 @@ export default function BOQStep(props: {
     });
     return lookup;
   }, [allEntries]);
+  // Render the Source column whenever at least one entry was
+  // extracted from a tender document — covers Nix uploads (admin or
+  // customer) and hides the column for purely manual entry where the
+  // column would just show "—" for every row.
+  const hasAnySourceLocations = sourceLookup.size > 0;
   const globalSpecs = rfqData.globalSpecs;
   const rawRequiredProducts = rfqData.requiredProducts;
   const requiredProducts = rawRequiredProducts || [];
@@ -1732,7 +1737,7 @@ export default function BOQStep(props: {
                 >
                   From
                 </th>
-                {isAdminAuthenticated && (
+                {hasAnySourceLocations && (
                   <th
                     className={`text-left py-2 px-2 font-semibold text-xs ${textColor} ${darkText} w-24`}
                   >
@@ -1801,7 +1806,7 @@ export default function BOQStep(props: {
                     >
                       {item.entries.join(", ")}
                     </td>
-                    {isAdminAuthenticated && (
+                    {hasAnySourceLocations && (
                       <td
                         className="py-2 px-2 text-xs text-gray-600 dark:text-gray-400 truncate font-mono"
                         title={sourceCell}
