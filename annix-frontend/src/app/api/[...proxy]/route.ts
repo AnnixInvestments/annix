@@ -41,8 +41,11 @@ async function proxyRequest(request: NextRequest) {
     forwardHeaders["origin"] = incomingOrigin;
   }
 
-  const bodyText =
-    request.method !== "GET" && request.method !== "HEAD" ? await request.text() : undefined;
+  // Read the body as bytes (not text) so binary uploads — multipart/form-data
+  // with PDFs, images, etc. — survive the proxy hop intact. `request.text()`
+  // decodes as UTF-8 and replaces high bytes with U+FFFD, corrupting the file.
+  const bodyBytes =
+    request.method !== "GET" && request.method !== "HEAD" ? await request.arrayBuffer() : undefined;
 
   const isIdempotent = request.method === "GET" || request.method === "HEAD";
 
@@ -50,7 +53,7 @@ async function proxyRequest(request: NextRequest) {
     fetch(targetUrl, {
       method: request.method,
       headers: forwardHeaders,
-      body: bodyText,
+      body: bodyBytes,
       redirect: "manual",
       cache: "no-store",
     });
