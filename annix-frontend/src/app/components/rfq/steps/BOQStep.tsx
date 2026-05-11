@@ -115,15 +115,18 @@ export default function BOQStep(props: {
         return;
       }
       // Legacy fallback for RFQs extracted before v1.5.28 added a
-      // structured sourceLocation field — the row number was always
-      // baked into the notes ("Extracted by Nix from Row N"). Parse
-      // it so older drafts still get the Source column without
-      // re-uploading the BOQ document.
+      // structured sourceLocation field — the row (and from v1.5.32
+      // the sheet) is baked into the notes string. Parse it so older
+      // drafts still get the Source column without re-uploading the
+      // BOQ document. Format: "Extracted by Nix from[ Sheet 'X'] Row N".
       const rawNotes = entry.notes;
       if (!isString(rawNotes)) return;
-      const match = rawNotes.match(/Extracted by Nix from Row (\d+)/);
-      if (match?.[1]) {
-        lookup.set(rawClient, `R${match[1]}`);
+      const match = rawNotes.match(/Extracted by Nix from(?: Sheet '([^']+)')? Row (\d+)/);
+      const matchedSheet = match?.[1];
+      const matchedRow = match?.[2];
+      if (matchedRow) {
+        const sheetPrefix = matchedSheet ? `${matchedSheet}!` : "";
+        lookup.set(rawClient, `${sheetPrefix}R${matchedRow}`);
       }
     });
     return lookup;
@@ -1761,6 +1764,13 @@ export default function BOQStep(props: {
                 {hasAnySourceLocations && (
                   <th
                     className={`text-left py-2 px-2 font-semibold text-xs ${textColor} ${darkText} w-24`}
+                    title={
+                      "Source location in the uploaded BOQ document.\n" +
+                      "Format: SheetName!Rn (e.g. HDPE ENQ 1!R62).\n" +
+                      "Multiple rows are comma-separated when items consolidate.\n" +
+                      "Note: the row refers to where Nix found the quantity line; " +
+                      "the human-readable item description may sit on the row above it in SANS/SABS-style BOQs."
+                    }
                   >
                     Source
                   </th>

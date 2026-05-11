@@ -464,7 +464,14 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
             ? ` | Material: ${item.material}${item.materialGrade ? ` (${item.materialGrade})` : ""}`
             : "";
           const wallNote = item.wallThickness ? ` | Wall: ${item.wallThickness}mm` : "";
-          const nixNote = `Extracted by Nix from Row ${item.rowNumber} (${Math.round(item.confidence * 100)}% confidence)${materialNote}${wallNote}`;
+          // Embed sheet + row in notes too. The structured
+          // sourceLocation on the entry is the canonical source for
+          // the BOQ "Source" column, but for old RFQs persisted
+          // before that field existed, the BOQ falls back to parsing
+          // this string. Format: "Sheet 'X' Row N" — sheet is
+          // optional (single-sheet workbooks may not set it).
+          const sheetNote = item.sheetName ? ` Sheet '${item.sheetName}'` : "";
+          const nixNote = `Extracted by Nix from${sheetNote} Row ${item.rowNumber} (${Math.round(item.confidence * 100)}% confidence)${materialNote}${wallNote}`;
           const sourceLocation = {
             rowNumber: item.rowNumber,
             sheetName: item.sheetName,
