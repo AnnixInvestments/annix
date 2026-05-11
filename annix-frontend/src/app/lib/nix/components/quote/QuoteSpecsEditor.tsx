@@ -340,6 +340,8 @@ function SpecCard(props: SpecCardProps) {
           suppliers.map((supplier) => {
             const isSelected = selectedId === supplier.id;
             const isDimmed = !isLining && selectedId !== null && !isSelected;
+            const resolved = spec.resolved;
+            const specSummary = resolved ? resolved.summary : null;
             return (
               <SupplierRow
                 key={supplier.id}
@@ -350,6 +352,7 @@ function SpecCard(props: SpecCardProps) {
                 isDimmed={isDimmed}
                 showSelectAffordance={!isLining}
                 attachment={attachments[supplier.id] ? attachments[supplier.id] : null}
+                specSummary={specSummary}
                 onChange={(partial) => updateSupplier(supplier.id, partial)}
                 onDelete={() => deleteSupplier(supplier.id)}
                 onToggleSelect={() => onSelectSupplier(isSelected ? null : supplier.id)}
@@ -419,10 +422,37 @@ interface SupplierRowProps {
   isDimmed: boolean;
   showSelectAffordance: boolean;
   attachment: DataSheetAttachment | null;
+  /**
+   * The parent spec's one-liner summary (e.g. '6 mm bore, 3 mm flange,
+   * hot-bonded, autoclave vulcanised, red'), extracted from the drawings /
+   * spec docs by Nix. The bore + flange thicknesses are mined out of this
+   * string and injected into the auto-filled supplier description so the
+   * customer sees the product identity AND the application thickness in one
+   * line. Null for manually-added specs with no resolved code.
+   */
+  specSummary: string | null;
   onChange: (partial: Partial<SupplierEntry>) => void;
   onDelete: () => void;
   onToggleSelect: () => void;
   onAttachmentChange: (attachment: DataSheetAttachment | null) => void;
+}
+
+/**
+ * Pulls thickness values out of a spec one-liner. Looks for the canonical
+ * '<N> mm bore' and '<N> mm flange' patterns Nix produces. Returns a comma-
+ * separated rendering ('6 mm bore, 3 mm flange') or null when neither is
+ * present. Used to slot the application thickness from the drawings between
+ * the product identity and the data-sheet properties on the auto-filled
+ * supplier description.
+ */
+function extractThicknessesFromSpecSummary(summary: string | null): string | null {
+  if (!summary) return null;
+  const parts: string[] = [];
+  const boreMatch = summary.match(/(\d+(?:\.\d+)?)\s*mm\s*bore/i);
+  if (boreMatch) parts.push(`${boreMatch[1]} mm bore`);
+  const flangeMatch = summary.match(/(\d+(?:\.\d+)?)\s*mm\s*flange/i);
+  if (flangeMatch) parts.push(`${flangeMatch[1]} mm flange`);
+  return parts.length > 0 ? parts.join(", ") : null;
 }
 
 function SupplierRow(props: SupplierRowProps) {
@@ -434,6 +464,7 @@ function SupplierRow(props: SupplierRowProps) {
     isDimmed,
     showSelectAffordance,
     attachment,
+    specSummary,
     onChange,
     onDelete,
     onToggleSelect,
@@ -478,7 +509,25 @@ function SupplierRow(props: SupplierRowProps) {
       const descriptionIsEmpty = !supplierDescription || supplierDescription.trim().length === 0;
       const partial: Partial<SupplierEntry> = {};
       if (brandIsEmpty && result.brand) partial.brand = result.brand;
-      if (descriptionIsEmpty && result.description) partial.description = result.description;
+      if (descriptionIsEmpty) {
+        // Compose the supplier description: '<Manufacturer> <ProductName>,
+        // <thicknesses from drawings>, <data-sheet properties>'. The
+        // thicknesses come from the parent spec's resolved summary (which
+        // Nix extracted from the drawings + signed-off spec docs); the
+        // properties come from Gemini reading the uploaded data sheet.
+        const productLabel = `${result.manufacturer} ${result.productName}`.trim();
+        const thicknesses = extractThicknessesFromSpecSummary(specSummary);
+        const composedDescription = [
+          productLabel || null,
+          thicknesses,
+          result.description ? result.description.trim() : null,
+        ]
+          .filter((piece): piece is string => Boolean(piece && piece.length > 0))
+          .join(", ");
+        if (composedDescription.length > 0) {
+          partial.description = composedDescription;
+        }
+      }
       if (keys(partial).length > 0) {
         onChange(partial);
         setAutoFillState("applied");
