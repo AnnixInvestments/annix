@@ -1,5 +1,5 @@
 import { toPairs as entries, isArray, isString, keys } from "es-toolkit/compat";
-import { throwIfNotOk } from "./apiError";
+import { ApiError, FRIENDLY_BACKEND_UNREACHABLE_MESSAGE, throwIfNotOk } from "./apiError";
 
 export interface ApiClientTokenStore {
   accessToken(): string | null;
@@ -65,9 +65,12 @@ export const createApiClient = (options: ApiClientOptions): ApiClient => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ refreshToken: tokenStore.refreshToken() }),
       });
-      if (!response.ok) {
+      if (response.status === 401 || response.status === 403) {
         tokenStore.clear();
         onUnauthorized?.();
+        return false;
+      }
+      if (!response.ok) {
         return false;
       }
       const data = (await response.json()) as { accessToken?: string };
@@ -77,8 +80,6 @@ export const createApiClient = (options: ApiClientOptions): ApiClient => {
       }
       return false;
     } catch {
-      tokenStore.clear();
-      onUnauthorized?.();
       return false;
     }
   };
@@ -108,6 +109,10 @@ export const createApiClient = (options: ApiClientOptions): ApiClient => {
     };
   };
 
+  const throwTransientUnreachable = (): never => {
+    throw new ApiError({ status: 503, message: FRIENDLY_BACKEND_UNREACHABLE_MESSAGE });
+  };
+
   const request = async <T>(endpoint: string, init: RequestInit = {}): Promise<T> => {
     const url = `${baseURL}${endpoint}`;
     const config = buildConfig(init);
@@ -119,6 +124,9 @@ export const createApiClient = (options: ApiClientOptions): ApiClient => {
         const retryResponse = await fetch(url, buildConfig(init));
         await throwIfNotOk(retryResponse);
         return parseResponse<T>(retryResponse);
+      }
+      if (tokenStore.refreshToken()) {
+        throwTransientUnreachable();
       }
     }
 
@@ -136,6 +144,9 @@ export const createApiClient = (options: ApiClientOptions): ApiClient => {
         const retryResponse = await fetch(url, buildConfig(init));
         await throwIfNotOk(retryResponse);
         return retryResponse.blob();
+      }
+      if (tokenStore.refreshToken()) {
+        throwTransientUnreachable();
       }
     }
 
@@ -179,6 +190,9 @@ export const createApiClient = (options: ApiClientOptions): ApiClient => {
         });
         await throwIfNotOk(retryResponse);
         return parseResponse<T>(retryResponse);
+      }
+      if (tokenStore.refreshToken()) {
+        throwTransientUnreachable();
       }
     }
 

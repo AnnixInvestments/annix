@@ -166,8 +166,11 @@ const customerRefreshHandler = async (): Promise<boolean> => {
       body: JSON.stringify({ refreshToken: currentRefreshToken }),
     });
 
-    if (!result.ok) {
+    if (result.status === 401 || result.status === 403) {
       customerTokenStore.clear();
+      return false;
+    }
+    if (!result.ok) {
       return false;
     }
 
@@ -182,10 +185,8 @@ const customerRefreshHandler = async (): Promise<boolean> => {
       return true;
     }
 
-    customerTokenStore.clear();
     return false;
   } catch {
-    customerTokenStore.clear();
     return false;
   }
 };

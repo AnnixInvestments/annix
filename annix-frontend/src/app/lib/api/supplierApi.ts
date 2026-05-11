@@ -359,8 +359,11 @@ const supplierRefreshHandler = async (): Promise<boolean> => {
       body: JSON.stringify({ refreshToken: currentRefreshToken, deviceFingerprint: fingerprint }),
     });
 
-    if (!result.ok) {
+    if (result.status === 401 || result.status === 403) {
       supplierTokenStore.clear();
+      return false;
+    }
+    if (!result.ok) {
       return false;
     }
 
@@ -372,7 +375,6 @@ const supplierRefreshHandler = async (): Promise<boolean> => {
     );
     return true;
   } catch {
-    supplierTokenStore.clear();
     return false;
   }
 };
