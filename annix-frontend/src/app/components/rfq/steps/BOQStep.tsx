@@ -1513,11 +1513,18 @@ export default function BOQStep(props: {
     return Array.from(items.values()).map((item) => {
       const row: Record<string, string | number> = {
         "From Items": item.entries.join(", "),
-        "#": rowNum++,
-        Description: item.description,
-        Qty: item.qty,
-        Unit: item.unit,
       };
+      if (hasAnySourceLocations) {
+        const sourceLabels = item.entries
+          .map((clientItemNumber) => sourceLookup.get(clientItemNumber))
+          .filter((label): label is string => Boolean(label))
+          .join(", ");
+        row.Source = sourceLabels || "—";
+      }
+      row["#"] = rowNum++;
+      row.Description = item.description;
+      row.Qty = item.qty;
+      row.Unit = item.unit;
       if (showWeldColumns) {
         weldTypesList.forEach((wt) => {
           const w = item.welds?.[wt];
