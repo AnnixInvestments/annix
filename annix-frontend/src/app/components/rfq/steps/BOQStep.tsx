@@ -109,31 +109,42 @@ export default function BOQStep(props: {
   // different rows). The consolidation pipeline tracks entryIds in
   // parallel to entries so the render can pull each source out
   // independently.
+  //
+  // Built in three passes so legacy entries (extracted before v1.5.32
+  // when the sheet name was first written) inherit the sheet from
+  // any newer entry that points to the same row. Without that
+  // backfill, a re-extracted RFQ that left old items in the wizard
+  // state shows duplicate labels: "R6, HDPE ENQ 1!R6" for the same
+  // source row.
   const sourceLookup = useMemo(() => {
-    const lookup = new Map<string, string>();
+    const raw = new Map<string, { row: number; sheet?: string }>();
     allEntries.forEach((entry) => {
       const entryId = entry.id;
       if (!entryId) return;
       const sourceLocation = entry.sourceLocation;
       if (sourceLocation) {
-        const sheetPrefix = sourceLocation.sheetName ? `${sourceLocation.sheetName}!` : "";
-        lookup.set(entryId, `${sheetPrefix}R${sourceLocation.rowNumber}`);
+        raw.set(entryId, { row: sourceLocation.rowNumber, sheet: sourceLocation.sheetName });
         return;
       }
-      // Legacy fallback for RFQs extracted before v1.5.28 added a
-      // structured sourceLocation field — the row (and from v1.5.32
-      // the sheet) is baked into the notes string. Parse it so older
-      // drafts still get the Source column without re-uploading the
-      // BOQ document. Format: "Extracted by Nix from[ Sheet 'X'] Row N".
       const rawNotes = entry.notes;
       if (!isString(rawNotes)) return;
       const match = rawNotes.match(/Extracted by Nix from(?: Sheet '([^']+)')? Row (\d+)/);
       const matchedSheet = match?.[1];
       const matchedRow = match?.[2];
-      if (matchedRow) {
-        const sheetPrefix = matchedSheet ? `${matchedSheet}!` : "";
-        lookup.set(entryId, `${sheetPrefix}R${matchedRow}`);
+      if (!matchedRow) return;
+      raw.set(entryId, { row: Number.parseInt(matchedRow, 10), sheet: matchedSheet });
+    });
+    const sheetByRow = new Map<number, string>();
+    raw.forEach(({ row, sheet }) => {
+      if (sheet && !sheetByRow.has(row)) {
+        sheetByRow.set(row, sheet);
       }
+    });
+    const lookup = new Map<string, string>();
+    raw.forEach(({ row, sheet }, entryId) => {
+      const finalSheet = sheet ?? sheetByRow.get(row);
+      const sheetPrefix = finalSheet ? `${finalSheet}!` : "";
+      lookup.set(entryId, `${sheetPrefix}R${row}`);
     });
     return lookup;
   }, [allEntries]);
