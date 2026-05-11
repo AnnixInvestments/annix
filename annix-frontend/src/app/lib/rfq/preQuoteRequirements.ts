@@ -7,10 +7,20 @@
 // + body the customer can edit before sending.
 //
 // Drawing detection rule: any item description containing a token
-// matching the JK-prefixed reference regex flags the item if no
+// matching the JK-prefixed reference regex contributes the reference
+// to missingDrawings (used by the clarifications email) if no
 // uploaded document filename + no other extracted item carries the
 // same reference. Substring match is case-insensitive so
 // "Drawings_J528-303-110.pdf" counts as having the drawing.
+//
+// Pricing-dependency rule: an item is only added to flaggedItemIds
+// (which the BOQ step omits from supplier pricing) when the drawing
+// is load-bearing for pricing — i.e. the row text alone doesn't
+// describe a priceable item. Straight pipes that cite a drawing for
+// layout context but carry NB / wall thickness / flange spec / length
+// in their description stay in the BOQ. Cast-in puddle pipes,
+// fabricated spools, headers, manifolds and civil items still get
+// omitted. See pricingRequiresDrawing() for the keyword set.
 //
 // Valve detection rule: items where itemType === "valve" OR a misc
 // entry whose nixItemType === "valve" OR description matches valve
@@ -49,6 +59,22 @@ const DRAWING_REF_REGEX = /\b(?:Dwg\s+)?([JK]\d{3,4}[-_/]\d{2,4}[-_/]\d{2,4})\b/
 
 const VALVE_KEYWORD_REGEX =
   /\b(valve|RSV|pinch\s*valve|gate\s*valve|globe\s*valve|ball\s*valve|butterfly\s*valve|check\s*valve|knife\s*valve|hand\s*pump|hydraulic\s*pump)\b/i;
+
+// Markers that indicate an item's pricing genuinely depends on a
+// drawing — geometry, embedment, layout, or fabrication detail that
+// isn't captured by the row's text. If none of these match, the row
+// is assumed priceable from its description (NB / wall / flange /
+// length already stated) and stays in the BOQ even though a drawing
+// is referenced. The drawing still flows into missingDrawings so the
+// clarifications email asks the customer for it.
+const PRICING_NEEDS_DRAWING_REGEX =
+  /\b(cast[\s-]*in|puddle\s*pipe|spool|fabricated|formed\s*to\s*(?:layout|site)|as\s*per\s*(?:layout|site|drawing)|manifold|manhole|wash[\s-]*plate|thrust[\s-]*block|header\s*pipe|saddle\s*plate|field\s*measure)\b/i;
+
+export const pricingRequiresDrawing = (item: PipeItem): boolean => {
+  const description = item.description;
+  if (!description) return false;
+  return PRICING_NEEDS_DRAWING_REGEX.test(description);
+};
 
 // Mining datasheet field list — see CLAUDE.md memory or the v1.2.0
 // commit message for the rationale behind each field. Display labels
@@ -310,14 +336,18 @@ export function detectClarificationRequirements(
   });
 
   const drawingMap = new Map<string, { ref: string; itemNumbers: string[]; itemIds: string[] }>();
+  const flaggedItemIds = new Set<string>();
   items.forEach((item) => {
     const rawItemDescription = item.description;
     const refs = extractDrawingRefs(rawItemDescription || "");
     if (refs.length === 0) return;
-    refs.forEach((ref) => {
-      if (drawingIsCovered(ref, uploadedFilenames, knownExtractionRefs)) return;
+    const uncoveredRefs = refs.filter(
+      (ref) => !drawingIsCovered(ref, uploadedFilenames, knownExtractionRefs),
+    );
+    if (uncoveredRefs.length === 0) return;
+    const itemNumber = valveItemNumber(item);
+    uncoveredRefs.forEach((ref) => {
       const existing = drawingMap.get(ref);
-      const itemNumber = valveItemNumber(item);
       if (existing) {
         if (!existing.itemNumbers.includes(itemNumber)) existing.itemNumbers.push(itemNumber);
         if (!existing.itemIds.includes(item.id)) existing.itemIds.push(item.id);
@@ -329,16 +359,14 @@ export function detectClarificationRequirements(
         });
       }
     });
+    if (pricingRequiresDrawing(item)) {
+      flaggedItemIds.add(item.id);
+    }
   });
 
   const missingDrawings: MissingDrawing[] = Array.from(drawingMap.values())
     .map((entry) => ({ ref: entry.ref, itemNumbers: entry.itemNumbers }))
     .sort((a, b) => a.ref.localeCompare(b.ref));
-
-  const flaggedItemIds = new Set<string>();
-  drawingMap.forEach((entry) => {
-    entry.itemIds.forEach((id) => flaggedItemIds.add(id));
-  });
 
   const valveSpecGaps: ValveSpecGap[] = items
     .filter(isValveItem)

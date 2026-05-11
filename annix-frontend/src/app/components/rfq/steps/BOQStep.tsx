@@ -99,6 +99,7 @@ export default function BOQStep(props: {
   // the supplier-bound output.
   const entries: any[] = allEntries.filter((entry) => !omittedItemIds.has(entry.id));
   const omittedEntries: any[] = allEntries.filter((entry) => omittedItemIds.has(entry.id));
+  const [omittedExpanded, setOmittedExpanded] = useState(false);
   const globalSpecs = rfqData.globalSpecs;
   const rawRequiredProducts = rfqData.requiredProducts;
   const requiredProducts = rawRequiredProducts || [];
@@ -2185,13 +2186,18 @@ export default function BOQStep(props: {
             the drawings. */}
         {omittedEntries.length > 0 && (
           <div
-            className={`mb-6 border rounded-lg p-4 ${
+            className={`mb-6 border rounded-lg overflow-hidden ${
               clarificationsSkipped
                 ? "bg-amber-50 border-amber-300 dark:bg-amber-900/10 dark:border-amber-800"
                 : "bg-gray-50 border-gray-300 dark:bg-gray-900/10 dark:border-gray-700"
             }`}
           >
-            <div className="flex items-start gap-2">
+            <button
+              type="button"
+              onClick={() => setOmittedExpanded((prev) => !prev)}
+              aria-expanded={omittedExpanded}
+              className="w-full flex items-start gap-2 p-4 text-left hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+            >
               <svg
                 className={`w-5 h-5 flex-shrink-0 mt-0.5 ${clarificationsSkipped ? "text-amber-600 dark:text-amber-400" : "text-gray-600 dark:text-gray-400"}`}
                 fill="none"
@@ -2206,35 +2212,52 @@ export default function BOQStep(props: {
                   d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
                 />
               </svg>
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <h4 className="font-semibold text-gray-900 dark:text-gray-100">
                   {omittedEntries.length} item{omittedEntries.length === 1 ? "" : "s"} omitted —
                   drawings not provided
                 </h4>
                 <p className="text-sm text-gray-700 dark:text-gray-300 mt-1">
                   {clarificationsSkipped
-                    ? "You chose to skip the clarification step. The items below reference drawings that haven't been uploaded yet — they're left out of the BOQ until the drawings are received."
-                    : "These items reference drawings that haven't been uploaded. They're omitted from the supplier sections below — pricing will resume once the drawings arrive."}
+                    ? "You skipped the clarification step. Pricing for these items will resume once the drawings arrive."
+                    : "Pricing for these items will resume once the drawings arrive."}
                 </p>
-                <ul className="mt-3 space-y-1 text-xs text-gray-700 dark:text-gray-300">
-                  {omittedEntries.map((entry) => {
-                    const rawClient = entry.clientItemNumber;
-                    const numberLabel = rawClient || entry.id;
-                    const rawDescription = entry.description;
-                    return (
-                      <li key={entry.id} className="flex gap-2">
-                        <span className="font-medium font-mono text-gray-500 dark:text-gray-400 min-w-[60px]">
-                          {numberLabel}
-                        </span>
-                        <span className="flex-1 truncate" title={rawDescription || undefined}>
-                          {rawDescription || "(no description)"}
-                        </span>
-                      </li>
-                    );
-                  })}
-                </ul>
               </div>
-            </div>
+              <svg
+                className={`w-5 h-5 flex-shrink-0 mt-0.5 text-gray-500 dark:text-gray-400 transition-transform ${omittedExpanded ? "rotate-180" : ""}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
+            </button>
+            {omittedExpanded && (
+              <ul className="px-4 pb-4 space-y-1 text-xs text-gray-700 dark:text-gray-300">
+                {omittedEntries.map((entry) => {
+                  const rawClient = entry.clientItemNumber;
+                  const numberLabel = rawClient || entry.id;
+                  const rawDescription = entry.description;
+                  const descriptionText = rawDescription || "(no description)";
+                  return (
+                    <li key={entry.id} className="flex gap-2 min-w-0">
+                      <span className="font-medium font-mono text-gray-500 dark:text-gray-400 flex-shrink-0 w-16">
+                        {numberLabel}
+                      </span>
+                      <span className="flex-1 min-w-0 truncate" title={descriptionText}>
+                        {descriptionText}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
           </div>
         )}
 
