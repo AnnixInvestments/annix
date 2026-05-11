@@ -24,7 +24,6 @@ import { usePtRecommendations } from "@/app/lib/hooks/usePtRecommendations";
 import { log } from "@/app/lib/logger";
 import {
   checkSuitabilityFromCache,
-  findMaterialLimits,
   flangeTypesForStandardCode,
   useAllFlangeTypes,
   useAllMaterialLimits,
@@ -53,8 +52,10 @@ import {
   derivePressureClassOverrideStatus,
   deriveTemperatureCategory,
   findLowestSuitablePressureClass,
+  isSteelSpecSuitable,
   serviceLifeToDurability,
   sortPressureClassesByNumericDesc,
+  steelSpecLimitsLabel,
 } from "./specifications/helpers";
 import { FeatureRestrictionPopup, RestrictionPopup } from "./specifications/RestrictionPopup";
 import type { FeatureType, RestrictionPopupPosition } from "./specifications/types";
@@ -755,24 +756,16 @@ export default function SpecificationsStep(props: {
                       {steelSpecDropdownOpen && (
                         <div className="absolute z-[10000] mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto">
                           {(() => {
-                            const isSpecSuitable = (specName: string): boolean => {
-                              if (!gsWorkingPressureBar && !gsWorkingTemperatureC) return true;
-                              if (!allLimits) return true;
-                              const suitability = checkSuitabilityFromCache(
-                                allLimits,
+                            const isSpecSuitable = (specName: string): boolean =>
+                              isSteelSpecSuitable(
                                 specName,
+                                allLimits,
                                 gsWorkingTemperatureC,
                                 gsWorkingPressureBar,
                               );
-                              return suitability.isSuitable;
-                            };
 
-                            const limitsText = (specName: string): string => {
-                              if (!allLimits) return "";
-                              const limits = findMaterialLimits(allLimits, specName);
-                              if (!limits) return "";
-                              return ` [Max ${limits.maxTemperatureCelsius}°C]`;
-                            };
+                            const limitsText = (specName: string): string =>
+                              steelSpecLimitsLabel(specName, allLimits);
 
                             const handleSpecSelect = async (specId: number) => {
                               let recommendedPressureClassId = globalSpecs?.flangePressureClassId;

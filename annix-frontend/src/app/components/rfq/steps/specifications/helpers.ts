@@ -1,4 +1,9 @@
 import type { PtRecommendationResult, ValidPressureClassInfo } from "@/app/lib/api/client";
+import {
+  checkSuitabilityFromCache,
+  findMaterialLimits,
+  type MaterialLimit,
+} from "@/app/lib/query/hooks";
 
 // Extract the leading numeric value from a pressure-class designation
 // (e.g. "PN16", "Class 150") for ordinal comparison. Used to decide
@@ -80,6 +85,41 @@ export const findLowestSuitablePressureClass = <T extends PressureClassRow>(
     .sort((a, b) => a.barRating - b.barRating);
   if (ranked.length === 0) return null;
   return ranked[0].pc;
+};
+
+// Check whether a steel spec is suitable for the given working
+// pressure / temperature, using the cached material-limits dataset.
+// Returns true (default safe) when no working conditions are set or
+// when the limits cache hasn't loaded yet — those are non-blocking
+// states for the dropdown filter.
+export const isSteelSpecSuitable = (
+  specName: string,
+  allLimits: MaterialLimit[] | null | undefined,
+  workingTemperatureC?: number,
+  workingPressureBar?: number,
+): boolean => {
+  if (!workingPressureBar && !workingTemperatureC) return true;
+  if (!allLimits) return true;
+  const suitability = checkSuitabilityFromCache(
+    allLimits,
+    specName,
+    workingTemperatureC,
+    workingPressureBar,
+  );
+  return suitability.isSuitable;
+};
+
+// Render a short " [Max <N>°C]" label for a steel spec, suitable for
+// appending to the spec name in a "NOT SUITABLE" dropdown row. Returns
+// an empty string when limits are unavailable for the spec.
+export const steelSpecLimitsLabel = (
+  specName: string,
+  allLimits: MaterialLimit[] | null | undefined,
+): string => {
+  if (!allLimits) return "";
+  const limits = findMaterialLimits(allLimits, specName);
+  if (!limits) return "";
+  return ` [Max ${limits.maxTemperatureCelsius}°C]`;
 };
 
 // Compare the currently-selected pressure class vs the auto-recommended

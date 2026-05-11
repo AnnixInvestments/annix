@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { PtRecommendationResult, ValidPressureClassInfo } from "@/app/lib/api/client";
+import type { MaterialLimit } from "@/app/lib/query/hooks";
 import {
   autoFilledClass,
   computeBarRating,
@@ -11,8 +12,10 @@ import {
   findLowestSuitablePressureClass,
   isPressureClassMissingPTData,
   isPressureClassUnsuitable,
+  isSteelSpecSuitable,
   serviceLifeToDurability,
   sortPressureClassesByNumericDesc,
+  steelSpecLimitsLabel,
 } from "./helpers";
 
 const classInfo = (id: number, designation: string, isAdequate = true): ValidPressureClassInfo =>
@@ -442,5 +445,68 @@ describe("findLowestSuitablePressureClass", () => {
       10,
     );
     expect(result?.extra).toBe("kept");
+  });
+});
+
+const limit = (
+  steelSpecName: string,
+  maxTemperatureCelsius: number,
+  maxPressureBar: number,
+  minTemperatureCelsius = -29,
+): MaterialLimit =>
+  ({
+    steelSpecName,
+    maxTemperatureCelsius,
+    minTemperatureCelsius,
+    maxPressureBar,
+  }) as unknown as MaterialLimit;
+
+describe("isSteelSpecSuitable", () => {
+  const limits: MaterialLimit[] = [limit("ASTM A106", 400, 100), limit("AISI 4340 wear", 200, 0)];
+
+  it("returns true when no working pressure or temperature is set", () => {
+    expect(isSteelSpecSuitable("ASTM A106", limits, undefined, undefined)).toBe(true);
+  });
+
+  it("returns true when allLimits is null/undefined (cache not loaded)", () => {
+    expect(isSteelSpecSuitable("ASTM A106", null, 100, 50)).toBe(true);
+    expect(isSteelSpecSuitable("ASTM A106", undefined, 100, 50)).toBe(true);
+  });
+
+  it("returns true when within limits", () => {
+    expect(isSteelSpecSuitable("ASTM A106", limits, 100, 50)).toBe(true);
+  });
+
+  it("returns false when temperature exceeds the spec's max", () => {
+    expect(isSteelSpecSuitable("ASTM A106", limits, 500, 50)).toBe(false);
+  });
+
+  it("returns false for wear-only spec under pressure load", () => {
+    expect(isSteelSpecSuitable("AISI 4340 wear", limits, 100, 50)).toBe(false);
+  });
+
+  it("returns true (default safe) for an unknown spec name", () => {
+    expect(isSteelSpecSuitable("UNKNOWN", limits, 100, 50)).toBe(true);
+  });
+});
+
+describe("steelSpecLimitsLabel", () => {
+  const limits: MaterialLimit[] = [limit("ASTM A106", 400, 100)];
+
+  it("returns empty string when allLimits is null/undefined", () => {
+    expect(steelSpecLimitsLabel("ASTM A106", null)).toBe("");
+    expect(steelSpecLimitsLabel("ASTM A106", undefined)).toBe("");
+  });
+
+  it("returns empty string for an unknown spec", () => {
+    expect(steelSpecLimitsLabel("UNKNOWN", limits)).toBe("");
+  });
+
+  it("returns ' [Max <N>°C]' for a known spec", () => {
+    expect(steelSpecLimitsLabel("ASTM A106", limits)).toBe(" [Max 400°C]");
+  });
+
+  it("matches by partial spec name (specName includes the limit's steelSpecName)", () => {
+    expect(steelSpecLimitsLabel("ASTM A106 Grade B Schedule 40", limits)).toBe(" [Max 400°C]");
   });
 });
