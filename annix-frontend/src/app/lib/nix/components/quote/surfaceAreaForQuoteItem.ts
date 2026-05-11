@@ -52,7 +52,7 @@ export function surfaceAreaForQuoteItem(
   const flangeCount = countFlangesFromConfig(item.flangeConfig);
   const quantity = item.quantity > 0 ? item.quantity : 1;
 
-  const result = calculateTotalSurfaceArea({
+  const raw = calculateTotalSurfaceArea({
     outsideDiameterMm: odMm,
     insideDiameterMm: idMm,
     individualPipeLengthM: lengthM,
@@ -61,7 +61,36 @@ export function surfaceAreaForQuoteItem(
     hasFlangeEnd2: flangeCount >= 2,
     dn,
   });
-  return result;
+
+  // Stock-control quote convention (user-confirmed 2026-05-11): the 100 mm-
+  // per-flange-end length extension already accounts for the paint / lining
+  // overlap onto the flange face, so adding the back-of-flange annular ring
+  // on top would double-count the same area. Strip the flange-ring fields
+  // from both the per-pipe result and the quantity-multiplied totals so the
+  // quote shows bare-pipe surface area only:
+  //   external = π × OD × (L + 0.1 × flangeCount)
+  //   internal = π × ID × (L + 0.1 × flangeCount)
+  //
+  // The underlying calculator stays untouched because the RFQ surface-
+  // protection export still consumes the flange-ring contributions today —
+  // when they're ready to switch over we'll promote this stripping logic
+  // into a shared `bareLateralAreaOnly` flag on the calculator.
+  const perPipe = {
+    ...raw.perPipe,
+    externalFlangeBackAreaM2: 0,
+    internalFlangeFaceAreaM2: 0,
+    totalExternalAreaM2: raw.perPipe.externalPipeAreaM2,
+    totalInternalAreaM2: raw.perPipe.internalPipeAreaM2,
+    totalSurfaceAreaM2: raw.perPipe.externalPipeAreaM2 + raw.perPipe.internalPipeAreaM2,
+  };
+  return {
+    perPipe,
+    total: {
+      totalExternalAreaM2: perPipe.totalExternalAreaM2 * quantity,
+      totalInternalAreaM2: perPipe.totalInternalAreaM2 * quantity,
+      totalSurfaceAreaM2: perPipe.totalSurfaceAreaM2 * quantity,
+    },
+  };
 }
 
 /**
