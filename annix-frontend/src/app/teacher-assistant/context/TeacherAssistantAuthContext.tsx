@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from "react";
+import { ApiError } from "@/app/lib/api/apiError";
 import { teacherAssistantTokenStore } from "@/app/lib/api/portalTokenStores";
 import {
   type LoginTeacherInput,
@@ -33,9 +34,12 @@ export function TeacherAssistantAuthProvider({ children }: { children: ReactNode
     teacherAssistantApi
       .me()
       .then((u) => setUser(u))
-      .catch(() => {
-        teacherAssistantTokenStore.clear();
-        setUser(null);
+      .catch((error) => {
+        const isAuthFailure = error instanceof ApiError && error.isAuthFailure();
+        if (isAuthFailure) {
+          teacherAssistantTokenStore.clear();
+          setUser(null);
+        }
       })
       .finally(() => setIsLoading(false));
   }, []);

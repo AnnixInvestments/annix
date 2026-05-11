@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { ApiError } from "@/app/lib/api/apiError";
 import { VoiceFilterUser, voiceFilterApi } from "../lib/api/voiceFilterApi";
 
 interface VoiceFilterAuthContextValue {
@@ -27,20 +28,18 @@ export function VoiceFilterAuthProvider(props: { children: React.ReactNode }) {
     try {
       const userData = await voiceFilterApi.user();
       setUser(userData);
-    } catch {
-      setUser(null);
+    } catch (error) {
+      const isAuthFailure = error instanceof ApiError && error.isAuthFailure();
+      if (isAuthFailure) {
+        setUser(null);
+      }
     }
   }, []);
 
   useEffect(() => {
     const initAuth = async () => {
-      try {
-        await refreshUser();
-      } catch {
-        setUser(null);
-      } finally {
-        setIsLoading(false);
-      }
+      await refreshUser();
+      setIsLoading(false);
     };
 
     initAuth();

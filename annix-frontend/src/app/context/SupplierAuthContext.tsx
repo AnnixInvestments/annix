@@ -1,11 +1,13 @@
 "use client";
 
 import { createContext, ReactNode, useCallback, useContext, useEffect, useState } from "react";
+import { ApiError } from "@/app/lib/api/apiError";
 import {
   SupplierAuthResponse,
   SupplierDashboardResponse,
   supplierApiClient,
 } from "@/app/lib/api/supplierApi";
+import { log } from "@/app/lib/logger";
 
 interface SupplierAuthState {
   isAuthenticated: boolean;
@@ -65,14 +67,24 @@ export function SupplierAuthProvider(props: { children: ReactNode }) {
         },
         dashboard,
       });
-    } catch {
-      supplierApiClient.clearTokens();
-      setState({
-        isAuthenticated: false,
+    } catch (error) {
+      const isAuthFailure = error instanceof ApiError && error.isAuthFailure();
+      if (isAuthFailure) {
+        supplierApiClient.clearTokens();
+        setState({
+          isAuthenticated: false,
+          isLoading: false,
+          supplier: null,
+          dashboard: null,
+        });
+        return;
+      }
+      log.warn("[SupplierAuth] Dashboard fetch failed with non-auth error; keeping session", error);
+      setState((prev) => ({
+        ...prev,
+        isAuthenticated: true,
         isLoading: false,
-        supplier: null,
-        dashboard: null,
-      });
+      }));
     }
   }, []);
 

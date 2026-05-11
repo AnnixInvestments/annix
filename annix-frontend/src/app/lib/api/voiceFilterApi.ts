@@ -59,9 +59,9 @@ export const voiceFilterApi = {
     return response.ok;
   },
 
-  user: async (): Promise<VoiceFilterUser | null> => {
+  user: async (): Promise<VoiceFilterUser> => {
     const response = await fetchWithCredentials(`${VOICE_FILTER_API_URL}/api/user`);
-    if (!response.ok) return null;
+    await throwIfNotOk(response);
     return response.json();
   },
 

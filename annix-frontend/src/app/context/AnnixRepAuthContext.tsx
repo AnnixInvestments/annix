@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { ApiError } from "@/app/lib/api/apiError";
 import {
   AnnixRepAuthResponse,
   AnnixRepAuthUser,
@@ -39,7 +40,12 @@ export function AnnixRepAuthProvider(props: { children: React.ReactNode }) {
         lastName: profile.lastName,
         setupCompleted: profile.setupCompleted,
       });
-    } catch {
+      return;
+    } catch (error) {
+      const isAuthFailure = error instanceof ApiError && error.isAuthFailure();
+      if (!isAuthFailure) return;
+    }
+    try {
       const refreshed = await annixRepAuthApi.refresh();
       if (refreshed) {
         setUser({
@@ -55,6 +61,11 @@ export function AnnixRepAuthProvider(props: { children: React.ReactNode }) {
       } else {
         setUser(null);
       }
+    } catch (refreshError) {
+      const refreshAuthFailure = refreshError instanceof ApiError && refreshError.isAuthFailure();
+      if (refreshAuthFailure) {
+        setUser(null);
+      }
     }
   }, []);
 
@@ -64,14 +75,8 @@ export function AnnixRepAuthProvider(props: { children: React.ReactNode }) {
         setIsLoading(false);
         return;
       }
-
-      try {
-        await refreshProfile();
-      } catch {
-        setUser(null);
-      } finally {
-        setIsLoading(false);
-      }
+      await refreshProfile();
+      setIsLoading(false);
     };
 
     initAuth();
