@@ -510,22 +510,28 @@ function SupplierRow(props: SupplierRowProps) {
       const partial: Partial<SupplierEntry> = {};
       if (brandIsEmpty && result.brand) partial.brand = result.brand;
       if (descriptionIsEmpty) {
-        // Compose the supplier description: '<Manufacturer> <ProductName>,
-        // <thicknesses from drawings>, <data-sheet properties>'. The
-        // thicknesses come from the parent spec's resolved summary (which
-        // Nix extracted from the drawings + signed-off spec docs); the
-        // properties come from Gemini reading the uploaded data sheet.
-        const productLabel = `${result.manufacturer} ${result.productName}`.trim();
-        const thicknesses = extractThicknessesFromSpecSummary(specSummary);
-        const composedDescription = [
-          productLabel || null,
-          thicknesses,
-          result.description ? result.description.trim() : null,
-        ]
-          .filter((piece): piece is string => Boolean(piece && piece.length > 0))
-          .join(", ");
-        if (composedDescription.length > 0) {
-          partial.description = composedDescription;
+        if (isLining) {
+          // Linings have only a description field (no separate brand column),
+          // so the quoter needs the product identity AND the application
+          // thicknesses inline. Compose: '<Manufacturer> <ProductName>,
+          // <bore + flange from drawings>, <data-sheet properties>'.
+          const productLabel = `${result.manufacturer} ${result.productName}`.trim();
+          const thicknesses = extractThicknessesFromSpecSummary(specSummary);
+          const composedDescription = [
+            productLabel || null,
+            thicknesses,
+            result.description ? result.description.trim() : null,
+          ]
+            .filter((piece): piece is string => Boolean(piece && piece.length > 0))
+            .join(", ");
+          if (composedDescription.length > 0) {
+            partial.description = composedDescription;
+          }
+        } else if (result.description) {
+          // Coatings already carry the manufacturer in the brand field, so
+          // the description is just the data-sheet line '<Product> @ <DFT>'
+          // (e.g. 'Plasite 4550-S @ 600-800μm') as Gemini returns it.
+          partial.description = result.description;
         }
       }
       if (keys(partial).length > 0) {
