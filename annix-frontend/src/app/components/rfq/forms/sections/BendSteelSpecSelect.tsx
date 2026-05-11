@@ -4,9 +4,7 @@ import type { SelectOptionGroup } from "@/app/components/ui/Select";
 import { Select } from "@/app/components/ui/Select";
 import { isNominalBoreValidForSpec, scheduleListForSpec } from "@/app/lib/config/rfq";
 import { calculateMinWallThickness } from "@/app/lib/utils/pipeCalculations";
-import type { SteelSpecItem } from "../shared";
-
-type ScheduleItem = { id: number; scheduleDesignation: string; wallThicknessMm: number };
+import type { ScheduleItem, SteelSpecItem } from "../shared";
 
 interface BendSteelSpecSelectProps {
   entryId: string;

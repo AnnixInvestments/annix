@@ -12,13 +12,7 @@ import {
 import { log } from "@/app/lib/logger";
 import type { GlobalSpecs, MasterData } from "@/app/lib/types/rfqTypes";
 import { getMinWallThicknessForNB } from "@/app/lib/utils/pipeCalculations";
-
-type ScheduleItem = {
-  id: number;
-  scheduleDesignation: string;
-  wallThicknessMm: number;
-  scheduleNumber?: number;
-};
+import type { ScheduleItem } from "../shared";
 
 interface NominalDiameterSelectorProps {
   entry: any;

@@ -153,6 +153,17 @@ Geometry sub-components extracted from `CSGBend3DPreview` (ref #197 Phase B1):
 | `SBendGeometry` | Two 90° bends butt-welded with R/2R triangle dimension lines. Renders when `bendItemType === "S_BEND"`. |
 | `SweepTeeGeometry` | **Currently orphaned** — extraction caused saddle-weld and dimension-line positioning issues; sweep tee geometry remains inline in `CSGBend3DPreview` until root cause is found. |
 
+#### RFQ form shared types & utilities (`components/rfq/forms/shared.tsx`)
+
+Canonical types and small render utilities consumed across BendForm, FittingForm, StraightPipeForm and the form `sections/*` widgets. Always import from here rather than re-declaring inline:
+
+| Export | Use for |
+|---|---|
+| `SteelSpecItem` / `FlangeStandardItem` / `PressureClassItem` / `FlangeTypeItem` | Aliases over `MasterData[...][number]` — use as the typed-row across form components. |
+| `ScheduleItem` | `{ id, scheduleDesignation, wallThicknessMm, scheduleNumber? }` — canonical row shape for schedule/wall-thickness selectors. Optional `scheduleNumber` covers both the BendForm (no number) and FittingForm/section (with number) variants. |
+| `useGroupedSteelOptions` | Memoised grouped-options builder for steel spec selects. |
+| `SurfaceAreaDisplay` / `WeldSummaryCard` | Render-leaf display widgets for fitting/bend forms. |
+
 #### RFQ form hooks (`components/rfq/forms/hooks/`)
 
 Shared hooks extracted from BendForm, FittingForm, and StraightPipeForm (ref #196):

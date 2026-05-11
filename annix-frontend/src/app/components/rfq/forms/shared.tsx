@@ -8,6 +8,13 @@ export type FlangeStandardItem = NonNullable<MasterData["flangeStandards"]>[numb
 export type PressureClassItem = NonNullable<MasterData["pressureClasses"]>[number];
 export type FlangeTypeItem = NonNullable<MasterData["flangeTypes"]>[number];
 
+export type ScheduleItem = {
+  id: number;
+  scheduleDesignation: string;
+  wallThicknessMm: number;
+  scheduleNumber?: number;
+};
+
 export const useGroupedSteelOptions = (masterData: MasterData | null | undefined) =>
   useMemo(
     () => (masterData?.steelSpecs ? groupSteelSpecifications(masterData.steelSpecs) : []),

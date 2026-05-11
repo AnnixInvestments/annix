@@ -4,18 +4,7 @@ import { Select } from "@/app/components/ui/Select";
 import { scheduleListForSpec } from "@/app/lib/config/rfq";
 import type { GlobalSpecs, MasterData } from "@/app/lib/types/rfqTypes";
 import { getMinWallThicknessForNB } from "@/app/lib/utils/pipeCalculations";
-
-type ScheduleItem = {
-  id: number;
-  scheduleDesignation: string;
-  wallThicknessMm: number;
-  scheduleNumber?: number;
-};
-
-interface SteelSpecItem {
-  id: number;
-  steelSpecName: string;
-}
+import type { ScheduleItem, SteelSpecItem } from "../shared";
 
 interface ScheduleWallThicknessSelectorProps {
   entry: any;

@@ -64,14 +64,12 @@ import { FlangeDropdownTriplet } from "./sections/FlangeDropdownTriplet";
 import { NominalDiameterSelector } from "./sections/NominalDiameterSelector";
 import { PslCvnNaceSection } from "./sections/PslCvnNaceSection";
 import { ScheduleWallThicknessSelector } from "./sections/ScheduleWallThicknessSelector";
-import { type FlangeStandardItem, type PressureClassItem, type SteelSpecItem } from "./shared";
-
-type ScheduleItem = {
-  id: number;
-  scheduleDesignation: string;
-  wallThicknessMm: number;
-  scheduleNumber?: number;
-};
+import {
+  type FlangeStandardItem,
+  type PressureClassItem,
+  type ScheduleItem,
+  type SteelSpecItem,
+} from "./shared";
 
 interface StubCalcData {
   stubNB: number;

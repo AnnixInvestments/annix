@@ -56,10 +56,9 @@ import {
   type FlangeStandardItem,
   type FlangeTypeItem,
   type PressureClassItem,
+  type ScheduleItem,
   type SteelSpecItem,
 } from "./shared";
-
-type ScheduleItem = { id: number; scheduleDesignation: string; wallThicknessMm: number };
 
 export interface BendFormProps {
   entry: any;
