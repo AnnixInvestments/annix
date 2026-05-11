@@ -9,7 +9,7 @@ import {
   sans1123StubAssemblyDescription,
 } from "@annix/product-data/hdpe";
 import { FLANGE_OD } from "@annix/product-data/pipe";
-import { keys, values } from "es-toolkit/compat";
+import { isString, keys, values } from "es-toolkit/compat";
 import React, { useCallback, useMemo, useState } from "react";
 import * as XLSX from "xlsx";
 import { useOptionalAdminAuth } from "@/app/context/AdminAuthContext";
@@ -107,10 +107,24 @@ export default function BOQStep(props: {
     const lookup = new Map<string, string>();
     allEntries.forEach((entry) => {
       const rawClient = entry.clientItemNumber;
+      if (!rawClient) return;
       const sourceLocation = entry.sourceLocation;
-      if (!rawClient || !sourceLocation) return;
-      const sheetPrefix = sourceLocation.sheetName ? `${sourceLocation.sheetName}!` : "";
-      lookup.set(rawClient, `${sheetPrefix}R${sourceLocation.rowNumber}`);
+      if (sourceLocation) {
+        const sheetPrefix = sourceLocation.sheetName ? `${sourceLocation.sheetName}!` : "";
+        lookup.set(rawClient, `${sheetPrefix}R${sourceLocation.rowNumber}`);
+        return;
+      }
+      // Legacy fallback for RFQs extracted before v1.5.28 added a
+      // structured sourceLocation field — the row number was always
+      // baked into the notes ("Extracted by Nix from Row N"). Parse
+      // it so older drafts still get the Source column without
+      // re-uploading the BOQ document.
+      const rawNotes = entry.notes;
+      if (!isString(rawNotes)) return;
+      const match = rawNotes.match(/Extracted by Nix from Row (\d+)/);
+      if (match?.[1]) {
+        lookup.set(rawClient, `R${match[1]}`);
+      }
     });
     return lookup;
   }, [allEntries]);
