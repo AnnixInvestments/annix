@@ -430,9 +430,12 @@ function PoolSection(props: {
   );
   const poolCost = coatingCost + liningBreakdown.total;
   const showCost = poolCost > 0;
-  const showPricingColumns =
-    (pool.coating !== null && coatingRate.perM2 > 0) ||
-    (pool.lining !== null && (liningRate.perM2 > 0 || liningRate.perRm > 0));
+  // Show the unit-price + line-total columns whenever the pool has a coating
+  // or lining spec — even before the quoter has entered a rate, so the column
+  // structure is visible and the rows show '—' until the rate is set. The
+  // previous gate ('any rate > 0') hid the columns entirely on a fresh quote
+  // and looked like the feature was missing.
+  const showPricingColumns = pool.coating !== null || pool.lining !== null;
   const unitPrices = useMemo(
     () =>
       pool.items.map((item, idx) =>
