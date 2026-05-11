@@ -53,7 +53,7 @@ const NAV_VISIBILITY_RULES: Record<string, NavVisibilityRule> = {
   staff: { actionKeys: ["staff.manage"] },
   "staff-leave": { actionKeys: ["staff.manage"] },
 
-  deliveries: { actionKeys: ["deliveries.delete"] },
+  deliveries: { alwaysVisible: true },
   "issue-stock": { actionKeys: ["issuance.issue", "issuance.undo"] },
   requisitions: { alwaysVisible: true },
   invoices: {
