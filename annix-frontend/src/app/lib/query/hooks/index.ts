@@ -721,6 +721,7 @@ export {
   useParseNixItems,
   useRecordNixCorrection,
   useSaveQuoteCustomer,
+  useSaveQuoteDeliveryNoteRef,
   useSaveQuoteEditorState,
   useSaveQuoteOrderNumber,
   useSendNixMessage,

@@ -181,9 +181,15 @@ function CustomerBlock(props: { snapshot: QuoteCustomerSnapshot; companyId: numb
   ]
     .filter((p): p is string => Boolean(p && p.length > 0))
     .join(", ");
+  const customerCode = snapshot.customerCode;
   return (
     <div className="text-sm text-gray-800 space-y-0.5">
       <p className="font-semibold text-gray-900">
+        {customerCode && (
+          <span className="mr-2 text-[10px] font-mono font-medium uppercase tracking-wider bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded">
+            {customerCode}
+          </span>
+        )}
         {snapshot.name}
         {companyId === null && (
           <span className="ml-2 text-[10px] font-medium uppercase tracking-wider bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded">
@@ -309,6 +315,7 @@ function NewCustomerForm(props: {
   // value props — the SWC-safe pattern: member access on the left of a
   // logical-fallback operator gets miscompiled, so we read into a local
   // identifier first.
+  const customerCode = form.customerCode;
   const contactPerson = form.contactPerson;
   const email = form.email;
   const phone = form.phone;
@@ -328,6 +335,12 @@ function NewCustomerForm(props: {
           value={form.name}
           onChange={(v) => update("name", v)}
           placeholder="e.g. Mining Pressure Systems (Pty) Ltd"
+        />
+        <Field
+          label="Account code"
+          value={customerCode || ""}
+          onChange={(v) => update("customerCode", v || null)}
+          placeholder="e.g. MIN001"
         />
         <Field
           label="Contact person"
@@ -426,6 +439,7 @@ function EditCustomerForm(props: { customer: QuoteCustomer; onDone: () => void }
 
   // Hoist nullable form fields to local consts before piping into Field
   // value props — the SWC-safe pattern requires a plain local identifier.
+  const customerCode = form.customerCode;
   const contactPerson = form.contactPerson;
   const email = form.email;
   const phone = form.phone;
@@ -448,6 +462,12 @@ function EditCustomerForm(props: { customer: QuoteCustomer; onDone: () => void }
           required
           value={form.name}
           onChange={(v) => update("name", v)}
+        />
+        <Field
+          label="Account code"
+          value={customerCode || ""}
+          onChange={(v) => update("customerCode", v || null)}
+          placeholder="e.g. MIN001"
         />
         <Field
           label="Contact person"
@@ -517,6 +537,7 @@ function EditCustomerForm(props: { customer: QuoteCustomer; onDone: () => void }
 function masterToFormInput(customer: QuoteCustomer): NewCustomerInput {
   return {
     name: customer.name,
+    customerCode: customer.customerCode,
     contactPerson: customer.contactPerson,
     email: customer.email,
     phone: customer.phone,
@@ -561,6 +582,7 @@ function Field(props: {
 function emptyForm(): NewCustomerInput {
   return {
     name: "",
+    customerCode: null,
     contactPerson: null,
     email: null,
     phone: null,
@@ -581,6 +603,7 @@ function customerFromMaster(customer: QuoteCustomer): QuoteCustomerSnapshot {
 function masterToSnapshot(customer: QuoteCustomer): QuoteCustomerSnapshot {
   return {
     name: customer.name,
+    customerCode: customer.customerCode,
     contactPerson: customer.contactPerson,
     email: customer.email,
     phone: customer.phone,
@@ -597,6 +620,7 @@ function masterToSnapshot(customer: QuoteCustomer): QuoteCustomerSnapshot {
 function toSnapshot(input: NewCustomerInput): QuoteCustomerSnapshot {
   return {
     name: input.name,
+    customerCode: input.customerCode,
     contactPerson: input.contactPerson,
     email: input.email,
     phone: input.phone,

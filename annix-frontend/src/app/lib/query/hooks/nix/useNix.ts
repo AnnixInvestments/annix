@@ -516,6 +516,7 @@ export interface NixExtractionSessionDto {
   customerCompanyId?: number | null;
   customerSnapshot?: QuoteCustomerSnapshot | null;
   customerOrderNumber?: string | null;
+  deliveryNoteRef?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -543,6 +544,7 @@ export interface QuoteEditorStateDto {
  */
 export interface QuoteCustomerSnapshot {
   name: string;
+  customerCode?: string | null;
   contactPerson: string | null;
   email: string | null;
   phone: string | null;
@@ -583,6 +585,19 @@ export const useSaveQuoteOrderNumber = createMutationHook<
       method: "POST",
       body: { orderNumber },
       errorLabel: "Failed to save order number",
+    }),
+  (_data, vars) => [nixKeys.extractionSessions.detail(vars.sessionId)],
+);
+
+export const useSaveQuoteDeliveryNoteRef = createMutationHook<
+  NixExtractionSessionDto,
+  { sessionId: number; ref: string | null }
+>(
+  ({ sessionId, ref }) =>
+    nixRequest<NixExtractionSessionDto>(`/nix/sessions/${sessionId}/delivery-note-ref`, {
+      method: "POST",
+      body: { ref },
+      errorLabel: "Failed to save delivery note reference",
     }),
   (_data, vars) => [nixKeys.extractionSessions.detail(vars.sessionId)],
 );

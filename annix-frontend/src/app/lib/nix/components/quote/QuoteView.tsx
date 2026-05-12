@@ -410,10 +410,12 @@ export function QuoteView(props: QuoteViewProps) {
   const sessionCustomerSnapshot = session.customerSnapshot;
   const sessionPromotedRef = session.promotedRef;
   const sessionCustomerOrderNumber = session.customerOrderNumber;
+  const sessionDeliveryNoteRef = session.deliveryNoteRef;
   const savedCustomerCompanyId = sessionCustomerCompanyId ?? null;
   const savedCustomerSnapshot = sessionCustomerSnapshot ?? null;
   const savedPromotedRef = sessionPromotedRef ?? null;
   const savedCustomerOrderNumber = sessionCustomerOrderNumber ?? null;
+  const savedDeliveryNoteRef = sessionDeliveryNoteRef ?? null;
 
   return (
     <div className="space-y-6">
@@ -430,6 +432,7 @@ export function QuoteView(props: QuoteViewProps) {
         createdAt={session.createdAt}
         ourReference={savedPromotedRef}
         customerOrderNumber={savedCustomerOrderNumber}
+        deliveryNoteRef={savedDeliveryNoteRef}
       />
       <QuoteSpecsEditor
         specs={uniqueSpecs}

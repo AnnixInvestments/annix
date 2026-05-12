@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useSaveQuoteOrderNumber } from "@/app/lib/query/hooks";
+import { useSaveQuoteDeliveryNoteRef, useSaveQuoteOrderNumber } from "@/app/lib/query/hooks";
 
 export interface QuoteMetaBarProps {
   sessionId: number;
@@ -11,6 +11,8 @@ export interface QuoteMetaBarProps {
   ourReference: string | null;
   /** Editable — customer's PO / order reference (mirrors the example PDF's "Order No" column). */
   customerOrderNumber: string | null;
+  /** Editable — delivery-note reference. Usually blank on a quote but the column exists on the PDF template. */
+  deliveryNoteRef: string | null;
 }
 
 /**
@@ -24,14 +26,17 @@ export interface QuoteMetaBarProps {
  * Save button.
  */
 export function QuoteMetaBar(props: QuoteMetaBarProps) {
-  const { sessionId, createdAt, ourReference, customerOrderNumber } = props;
+  const { sessionId, createdAt, ourReference, customerOrderNumber, deliveryNoteRef } = props;
   const [orderNumber, setOrderNumber] = useState(customerOrderNumber || "");
-  const lastSavedRef = useRef(customerOrderNumber || "");
+  const [deliveryNote, setDeliveryNote] = useState(deliveryNoteRef || "");
+  const lastSavedOrderRef = useRef(customerOrderNumber || "");
+  const lastSavedDeliveryRef = useRef(deliveryNoteRef || "");
   // Track when we've hydrated from props so the initial sync doesn't fire a
   // round-trip save. (Same pattern QuoteView uses for quoteEditorState.)
   const hydratedRef = useRef(false);
 
   const saveOrderNumber = useSaveQuoteOrderNumber();
+  const saveDeliveryRef = useSaveQuoteDeliveryNoteRef();
 
   // Sync local state back to props if the session re-fetches (e.g. after
   // saving the customer card). Only on first render or when props change
@@ -39,20 +44,22 @@ export function QuoteMetaBar(props: QuoteMetaBarProps) {
   useEffect(() => {
     if (!hydratedRef.current) {
       setOrderNumber(customerOrderNumber || "");
-      lastSavedRef.current = customerOrderNumber || "";
+      setDeliveryNote(deliveryNoteRef || "");
+      lastSavedOrderRef.current = customerOrderNumber || "";
+      lastSavedDeliveryRef.current = deliveryNoteRef || "";
       hydratedRef.current = true;
     }
-  }, [customerOrderNumber]);
+  }, [customerOrderNumber, deliveryNoteRef]);
 
   useEffect(() => {
     if (!hydratedRef.current) return;
-    if (orderNumber === lastSavedRef.current) return;
+    if (orderNumber === lastSavedOrderRef.current) return;
     const handle = window.setTimeout(() => {
       saveOrderNumber.mutate(
         { sessionId, orderNumber: orderNumber.length > 0 ? orderNumber : null },
         {
           onSuccess: () => {
-            lastSavedRef.current = orderNumber;
+            lastSavedOrderRef.current = orderNumber;
           },
         },
       );
@@ -62,29 +69,73 @@ export function QuoteMetaBar(props: QuoteMetaBarProps) {
     };
   }, [orderNumber, sessionId, saveOrderNumber]);
 
+  useEffect(() => {
+    if (!hydratedRef.current) return;
+    if (deliveryNote === lastSavedDeliveryRef.current) return;
+    const handle = window.setTimeout(() => {
+      saveDeliveryRef.mutate(
+        { sessionId, ref: deliveryNote.length > 0 ? deliveryNote : null },
+        {
+          onSuccess: () => {
+            lastSavedDeliveryRef.current = deliveryNote;
+          },
+        },
+      );
+    }, 1000);
+    return () => {
+      window.clearTimeout(handle);
+    };
+  }, [deliveryNote, sessionId, saveDeliveryRef]);
+
   const formattedDate = formatQuoteDate(createdAt);
 
   return (
     <section className="bg-white border border-gray-200 rounded-lg p-3 flex flex-wrap gap-4 items-end">
       <MetaField label="Date" value={formattedDate} />
       <MetaField label="Our Reference" value={ourReference || "—"} />
-      <div className="flex flex-col min-w-[12rem] flex-1">
-        <label
-          htmlFor={`order-no-${sessionId}`}
-          className="text-[10px] uppercase tracking-wider text-gray-500 font-medium mb-0.5"
-        >
-          Order No
-        </label>
-        <input
-          id={`order-no-${sessionId}`}
-          type="text"
-          value={orderNumber}
-          onChange={(event) => setOrderNumber(event.target.value)}
-          placeholder="e.g. STEEL AFRICA - 32452E"
-          className="px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#323288]/30"
-        />
-      </div>
+      <MetaTextInput
+        id={`order-no-${sessionId}`}
+        label="Order No"
+        value={orderNumber}
+        onChange={setOrderNumber}
+        placeholder="e.g. STEEL AFRICA - 32452E"
+      />
+      <MetaTextInput
+        id={`delivery-note-${sessionId}`}
+        label="Delivery Note"
+        value={deliveryNote}
+        onChange={setDeliveryNote}
+        placeholder="usually blank on quote"
+      />
     </section>
+  );
+}
+
+function MetaTextInput(props: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (next: string) => void;
+  placeholder?: string;
+}) {
+  const { id, label, value, onChange, placeholder } = props;
+  return (
+    <div className="flex flex-col min-w-[12rem] flex-1">
+      <label
+        htmlFor={id}
+        className="text-[10px] uppercase tracking-wider text-gray-500 font-medium mb-0.5"
+      >
+        {label}
+      </label>
+      <input
+        id={id}
+        type="text"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        className="px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#323288]/30"
+      />
+    </div>
   );
 }
 

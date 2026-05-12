@@ -35,6 +35,9 @@ export class Company {
   @Column({ name: "registration_number", type: "varchar", length: 50, nullable: true })
   registrationNumber: string | null;
 
+  @Column({ name: "customer_code", type: "varchar", length: 50, nullable: true })
+  customerCode: string | null;
+
   @Column({ name: "vat_number", type: "varchar", length: 50, nullable: true })
   vatNumber: string | null;
 

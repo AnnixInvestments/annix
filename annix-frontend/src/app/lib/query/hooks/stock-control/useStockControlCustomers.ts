@@ -12,6 +12,7 @@ const STOCK_CONTROL_CUSTOMER_KEYS = {
 export interface QuoteCustomer {
   id: number;
   name: string;
+  customerCode: string | null;
   contactPerson: string | null;
   email: string | null;
   phone: string | null;

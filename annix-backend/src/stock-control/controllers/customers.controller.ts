@@ -27,6 +27,7 @@ import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 export interface QuoteCustomerDto {
   id: number;
   name: string;
+  customerCode: string | null;
   contactPerson: string | null;
   email: string | null;
   phone: string | null;
@@ -110,6 +111,7 @@ export class StockControlCustomersController {
       }
       row.name = trimmed;
     }
+    if (body.customerCode !== undefined) row.customerCode = body.customerCode;
     if (body.contactPerson !== undefined) row.contactPerson = body.contactPerson;
     if (body.email !== undefined) row.email = body.email;
     if (body.phone !== undefined) row.phone = body.phone;
@@ -137,6 +139,7 @@ export class StockControlCustomersController {
     const row = this.companyRepo.create({
       name,
       companyType: CompanyType.CUSTOMER,
+      customerCode: body.customerCode ?? null,
       contactPerson: body.contactPerson ?? null,
       email: body.email ?? null,
       phone: body.phone ?? null,
@@ -157,6 +160,7 @@ function toDto(row: Company): QuoteCustomerDto {
   return {
     id: row.id,
     name: row.name,
+    customerCode: row.customerCode,
     contactPerson: row.contactPerson,
     email: row.email,
     phone: row.phone,

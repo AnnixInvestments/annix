@@ -159,6 +159,14 @@ export class NixExtractionSession {
   @Column({ name: "customer_order_number", type: "varchar", length: 255, nullable: true })
   customerOrderNumber?: string;
 
+  @ApiProperty({
+    description:
+      "Delivery-note reference for this quote — usually blank at quote time but the column exists on the customer-facing PDF template (Polymer Liners style).",
+    required: false,
+  })
+  @Column({ name: "delivery_note_ref", type: "varchar", length: 255, nullable: true })
+  deliveryNoteRef?: string;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

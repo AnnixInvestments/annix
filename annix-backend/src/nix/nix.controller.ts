@@ -308,6 +308,23 @@ export class NixController {
     return this.sessionService.setCustomerOrderNumber(id, body.orderNumber ?? null);
   }
 
+  @Post("sessions/:id/delivery-note-ref")
+  @UseGuards(AnyUserAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: "Set the delivery-note reference printed on the quote header. Empty string clears it.",
+  })
+  @ApiResponse({ status: 200, type: NixExtractionSession })
+  async setSessionDeliveryNoteRef(
+    @Param("id", ParseIntPipe) id: number,
+    @Body() body: { ref: string | null },
+    @Req() req: Request,
+  ): Promise<NixExtractionSession> {
+    const authUser = req["authUser"] as AuthenticatedUser;
+    await this.sessionService.findOneForUser(id, authUser.userId, authUser.type === "admin");
+    return this.sessionService.setDeliveryNoteRef(id, body.ref ?? null);
+  }
+
   @Post("sessions/:id/customer")
   @UseGuards(AnyUserAuthGuard)
   @ApiBearerAuth()

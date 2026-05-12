@@ -26,6 +26,7 @@ export interface UpdateNixSessionDto {
   customerCompanyId?: number | null;
   customerSnapshot?: Record<string, unknown> | null;
   customerOrderNumber?: string | null;
+  deliveryNoteRef?: string | null;
 }
 
 @Injectable()
@@ -158,6 +159,11 @@ export class NixExtractionSessionService extends BaseCrudService<
   ): Promise<NixExtractionSession> {
     const trimmed = orderNumber ? orderNumber.trim() : "";
     return this.update(id, { customerOrderNumber: trimmed.length > 0 ? trimmed : null });
+  }
+
+  async setDeliveryNoteRef(id: number, ref: string | null): Promise<NixExtractionSession> {
+    const trimmed = ref ? ref.trim() : "";
+    return this.update(id, { deliveryNoteRef: trimmed.length > 0 ? trimmed : null });
   }
 
   /**
