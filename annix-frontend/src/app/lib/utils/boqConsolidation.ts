@@ -1,4 +1,12 @@
+import {
+  fallbackBendWeight,
+  fallbackFittingWeight,
+  fallbackPipeWeight,
+  resolveHdpeDims,
+} from "@/app/components/rfq/steps/boq/calc";
+import { detectPipeVariant } from "@/app/components/rfq/steps/boq/helpers";
 import { ConsolidatedBoqDataDto, ConsolidatedItemDto } from "@/app/lib/api/client";
+import { DEFAULT_PIPE_LENGTH_M } from "@/app/lib/config/rfq";
 import {
   boltSetCountPerBend,
   boltSetCountPerFitting,
@@ -29,6 +37,13 @@ export interface ConsolidationInput {
     internalRubberType?: string;
     internalRubberThickness?: string;
     internalCeramicType?: string;
+    // HDPE / PVC fields needed by pipe/bend/fitting consolidation —
+    // optional everywhere, read with ?. so legacy callers still work.
+    hdpeSdr?: number | string;
+    hdpeGrade?: string;
+    hdpePressureRating?: number | string;
+    pvcType?: string;
+    pvcPressureClass?: number | string;
   };
   masterData?: {
     flangeStandards?: { id: number; code: string }[];
@@ -50,6 +65,49 @@ interface ConsolidatedItem {
   intAreaM2?: number;
   extAreaM2?: number;
 }
+
+// Weld key → DTO field name mapping. Used both for accumulation
+// inside the consolidation loop and for the mapToDto translation.
+const WELD_TYPES = [
+  "Pipe Weld",
+  "Flange Weld",
+  "Mitre Weld",
+  "Tee Weld",
+  "Gusset Tee Weld",
+  "Lat Weld 45+",
+  "Lat Weld <45",
+] as const;
+
+// Merge new welds + counts onto an existing or new ConsolidatedItem.
+// Returns the same record for chaining. Empty welds are skipped so
+// items with no weld signal don't end up with a `welds: {}` blob.
+const mergeWelds = (
+  item: { welds?: Record<string, number>; weldCounts?: Record<string, number> },
+  welds: Record<string, number>,
+  weldCounts: Record<string, number>,
+): void => {
+  WELD_TYPES.forEach((type) => {
+    const incomingLength = welds[type];
+    const incomingCount = weldCounts[type];
+    if (incomingLength != null && incomingLength > 0) {
+      const existingWelds = item.welds;
+      const existing = existingWelds ?? {};
+      const rawExistingLength = existing[type];
+      const existingLength = rawExistingLength == null ? 0 : rawExistingLength;
+      item.welds = { ...existing, [type]: existingLength + incomingLength };
+    }
+    if (incomingCount != null && incomingCount > 0) {
+      const existingWeldCounts = item.weldCounts;
+      const existing = existingWeldCounts ?? {};
+      const rawExistingCount = existing[type];
+      const existingCount = rawExistingCount == null ? 0 : rawExistingCount;
+      item.weldCounts = { ...existing, [type]: existingCount + incomingCount };
+    }
+  });
+};
+
+// Circumferential weld length per joint in metres.
+const weldCircumferenceM = (odMm: number): number => (Math.PI * odMm) / 1000;
 
 function flangeSpec(
   entry: any,
@@ -182,7 +240,9 @@ export function consolidateBoqData(input: ConsolidationInput): ExtendedConsolida
     if (matType === "hdpe") return true;
     const productType = entry?.specs?.productType;
     if (productType === "hdpe") return true;
-    const description = (entry?.description || "").toLowerCase();
+    const rawDescription = entry?.description;
+    const descriptionRaw = rawDescription || "";
+    const description = descriptionRaw.toLowerCase();
     return /\b(hdpe|pe\s?100|pe\s?80)\b/.test(description);
   };
 
@@ -244,6 +304,90 @@ export function consolidateBoqData(input: ConsolidationInput): ExtendedConsolida
       const bendEndConfig = rawBendEndConfiguration || "PE";
       const flangeCount = getFlangeCountFromConfig(bendEndConfig, "bend");
       const flangeTypeName = getFlangeTypeName(bendEndConfig);
+
+      // ──── Bend row consolidation (Phase 0, issue #288) ────
+      // Populate consolidatedBends with welds + areas so the
+      // supplier portal sees the bend rows. Mirrors the BOQStep
+      // render-time consolidation but lives at submit time too.
+      const rawBendAngle = entry.specs?.bendAngle;
+      const rawBendDegrees = entry.specs?.bendDegrees;
+      const bendAngle = rawBendAngle || rawBendDegrees || 90;
+      const rawBendType = entry.specs?.bendType;
+      const bendTypeLabel = rawBendType || "1.5D";
+      const rawBendScheduleNumber = entry.specs?.scheduleNumber;
+      const bendSchedule = rawBendScheduleNumber || "";
+      const rawBendMaterialType = entry.materialType;
+      const bendMaterialType = rawBendMaterialType || "steel";
+      const bendSteelSpecName = bendMaterialType === "steel" ? `${nb}` : "";
+      const bendKey = `BEND_${bendMaterialType}_${nb}_${bendAngle}_${bendTypeLabel}_${bendSteelSpecName}_${bendSchedule}`;
+      const rawBendCalcOd = entry.calculation?.outsideDiameterMm;
+      const rawBendCalcWt = entry.calculation?.wallThicknessMm;
+      const bendHdpeDims =
+        bendMaterialType === "hdpe" && (!rawBendCalcOd || !rawBendCalcWt)
+          ? resolveHdpeDims(nb, entry, globalSpecs?.hdpeSdr, globalSpecs?.hdpePressureRating)
+          : null;
+      const bendOd = rawBendCalcOd || (bendHdpeDims ? bendHdpeDims.od : nb);
+      const bendWt = rawBendCalcWt || (bendHdpeDims ? bendHdpeDims.wt : 0);
+      const rawBendSegments = entry.specs?.numberOfSegments;
+      const bendSegments = rawBendSegments || 5;
+      const bendMitreCount = Math.max(0, bendSegments - 1);
+      const bendMitreLength = bendMitreCount * qty * weldCircumferenceM(bendOd);
+      const bendFlangeWeldCount = flangeCount.main * qty;
+      const bendFlangeWeldLength =
+        flangeCount.main > 0 ? bendFlangeWeldCount * 2 * weldCircumferenceM(bendOd) : 0;
+      const bendRadiusFactor = parseFloat(bendTypeLabel.replace(/[^\d.]/g, "")) || 1.5;
+      const bendRadiusMm = nb * bendRadiusFactor;
+      const bendArcLengthM = ((bendRadiusMm / 1000) * (bendAngle * Math.PI)) / 180;
+      const rawBendTangents = entry.specs?.tangentLengths;
+      const bendTangents: number[] = rawBendTangents || [];
+      const rawBendTangent0 = bendTangents[0];
+      const rawBendTangent1 = bendTangents[1];
+      const bendTangent0 = rawBendTangent0 || 0;
+      const bendTangent1 = rawBendTangent1 || 0;
+      const bendTangentSumM = (bendTangent0 + bendTangent1) / 1000;
+      const bendTotalLengthM = bendArcLengthM + bendTangentSumM;
+      const bendExtAreaM2 = Math.PI * (bendOd / 1000) * bendTotalLengthM * qty;
+      const bendIntAreaM2 = Math.PI * ((bendOd - 2 * bendWt) / 1000) * bendTotalLengthM * qty;
+      const rawBendCalcWeight = entry.calculation?.totalWeight;
+      const bendWeight = rawBendCalcWeight || fallbackBendWeight(entry, nb, globalSpecs?.hdpeSdr);
+      const bendWelds: Record<string, number> = {};
+      const bendWeldCounts: Record<string, number> = {};
+      if (bendMitreLength > 0) {
+        bendWelds["Mitre Weld"] = bendMitreLength;
+        bendWeldCounts["Mitre Weld"] = bendMitreCount * qty;
+      }
+      if (bendFlangeWeldLength > 0) {
+        bendWelds["Flange Weld"] = bendFlangeWeldLength;
+        bendWeldCounts["Flange Weld"] = bendFlangeWeldCount * 2;
+      }
+      const bendMaterialLabel =
+        bendMaterialType === "hdpe" ? "HDPE" : bendMaterialType === "pvc" ? "PVC" : "Steel";
+      const existingBend = consolidatedBends.get(bendKey);
+      if (existingBend) {
+        existingBend.qty += qty;
+        existingBend.weight += bendWeight * qty;
+        existingBend.entries.push(itemNumber);
+        mergeWelds(existingBend, bendWelds, bendWeldCounts);
+        const existingBendIntArea = existingBend.intAreaM2;
+        const existingBendExtArea = existingBend.extAreaM2;
+        existingBend.intAreaM2 = (existingBendIntArea ?? 0) + bendIntAreaM2;
+        existingBend.extAreaM2 = (existingBendExtArea ?? 0) + bendExtAreaM2;
+      } else {
+        const bendDescription =
+          `${nb}NB ${bendAngle}° ${bendTypeLabel} Bend ${bendMaterialLabel}${bendSchedule ? ` Sch${bendSchedule.replace("Sch", "")}` : ""}`.trim();
+        const bendRecord: ConsolidatedItem = {
+          description: bendDescription,
+          qty,
+          unit: "Each",
+          weight: bendWeight * qty,
+          entries: [itemNumber],
+        };
+        mergeWelds(bendRecord, bendWelds, bendWeldCounts);
+        if (bendIntAreaM2 > 0) bendRecord.intAreaM2 = bendIntAreaM2;
+        if (bendExtAreaM2 > 0) bendRecord.extAreaM2 = bendExtAreaM2;
+        consolidatedBends.set(bendKey, bendRecord);
+      }
+      // ──── end bend row consolidation ────
 
       if (flangeCount.main > 0) {
         const flangeKey = `FLANGE_${nb}_${flangeSpecStr}_${flangeTypeName}`;
@@ -357,6 +501,129 @@ export function consolidateBoqData(input: ConsolidationInput): ExtendedConsolida
       const flangeTypeName = getFlangeTypeName(fittingEndConfig);
       const isEqualBranch = branchNb === nb;
       const fittingBoltSets = boltSetCountPerFitting(fittingEndConfig, isEqualBranch);
+
+      // ──── Fitting row consolidation (Phase 0, issue #288) ────
+      // Tees / reducers / laterals — populate consolidatedFittings
+      // with welds + areas. The DTO split between `tees` and
+      // `reducers` is applied at mapToDto time by inspecting the key.
+      const rawFittingType = entry.specs?.fittingType;
+      const fittingType = rawFittingType || "TEE";
+      const rawFittingScheduleNumber = entry.specs?.scheduleNumber;
+      const fittingSchedule = rawFittingScheduleNumber || "";
+      const fittingKey = `FITTING_${fittingType}_${nb}_${branchNb}_${fittingSchedule}`;
+      const rawFittingMaterialType = entry.materialType;
+      const fittingMaterialType = rawFittingMaterialType || "steel";
+      const rawFittingCalcOd = entry.calculation?.outsideDiameterMm;
+      const rawFittingCalcWt = entry.calculation?.wallThicknessMm;
+      const fittingHdpeDims =
+        fittingMaterialType === "hdpe" && (!rawFittingCalcOd || !rawFittingCalcWt)
+          ? resolveHdpeDims(nb, entry, globalSpecs?.hdpeSdr, globalSpecs?.hdpePressureRating)
+          : null;
+      const fittingOd = rawFittingCalcOd || (fittingHdpeDims ? fittingHdpeDims.od : nb);
+      const fittingWt = rawFittingCalcWt || (fittingHdpeDims ? fittingHdpeDims.wt : 0);
+      const rawFittingBranchCalcOd = entry.calculation?.branchOutsideDiameterMm;
+      const rawFittingBranchCalcWt = entry.calculation?.branchWallThicknessMm;
+      const fittingHdpeBranchDims =
+        fittingMaterialType === "hdpe" && (!rawFittingBranchCalcOd || !rawFittingBranchCalcWt)
+          ? resolveHdpeDims(branchNb, entry, globalSpecs?.hdpeSdr, globalSpecs?.hdpePressureRating)
+          : null;
+      const fittingBranchOd =
+        rawFittingBranchCalcOd || (fittingHdpeBranchDims ? fittingHdpeBranchDims.od : fittingOd);
+      const fittingBranchWt =
+        rawFittingBranchCalcWt || (fittingHdpeBranchDims ? fittingHdpeBranchDims.wt : fittingWt);
+      const fittingTeeWeldCount = qty;
+      const fittingTeeWeldLength = fittingTeeWeldCount * weldCircumferenceM(fittingOd);
+      const fittingFlangeWeldCountMain = flangeCount.main * qty;
+      const fittingFlangeWeldLengthMain =
+        flangeCount.main > 0 ? fittingFlangeWeldCountMain * 2 * weldCircumferenceM(fittingOd) : 0;
+      const fittingFlangeWeldCountBranch = flangeCount.branch * qty;
+      const fittingFlangeWeldLengthBranch =
+        flangeCount.branch > 0
+          ? fittingFlangeWeldCountBranch * 2 * weldCircumferenceM(fittingBranchOd)
+          : 0;
+      const fittingFlangeWeldLength = fittingFlangeWeldLengthMain + fittingFlangeWeldLengthBranch;
+      const fittingFlangeWeldCount =
+        fittingFlangeWeldCountMain * 2 + fittingFlangeWeldCountBranch * 2;
+      const isLateral = ["LATERAL", "REDUCING_LATERAL", "Y_PIECE"].includes(fittingType);
+      const isGussetTee = ["GUSSET_TEE", "UNEQUAL_GUSSET_TEE", "GUSSET_REDUCING_TEE"].includes(
+        fittingType,
+      );
+      const angleRange = entry.specs?.angleRange as string | undefined;
+      const isLateralHighAngle = angleRange === "60-90" || angleRange === "45-59";
+      const isReducer = fittingType.includes("REDUCER") && !fittingType.includes("TEE");
+      const fittingWeldType: string = isLateral
+        ? isLateralHighAngle
+          ? "Lat Weld 45+"
+          : "Lat Weld <45"
+        : isGussetTee
+          ? "Gusset Tee Weld"
+          : "Tee Weld";
+      const rawFittingLengthA = entry.specs?.pipeLengthAMm;
+      const rawFittingLengthB = entry.specs?.pipeLengthBMm;
+      const rawFittingTeeHeight = entry.specs?.teeHeightMm;
+      const fittingRunLengthM = ((rawFittingLengthA || 0) + (rawFittingLengthB || 0)) / 1000;
+      const fittingBranchLengthM = (rawFittingTeeHeight || branchNb * 2) / 1000;
+      const fittingOdM = fittingOd / 1000;
+      const fittingIdM = (fittingOd - 2 * fittingWt) / 1000;
+      const fittingBranchOdM = fittingBranchOd / 1000;
+      const fittingBranchIdM = (fittingBranchOd - 2 * fittingBranchWt) / 1000;
+      const fittingExtAreaM2 =
+        qty *
+        (Math.PI * fittingOdM * fittingRunLengthM +
+          Math.PI * fittingBranchOdM * fittingBranchLengthM);
+      const fittingIntAreaM2 =
+        qty *
+        (Math.PI * fittingIdM * fittingRunLengthM +
+          Math.PI * fittingBranchIdM * fittingBranchLengthM);
+      const rawFittingCalcWeight = entry.calculation?.totalWeight;
+      const fittingWeight =
+        rawFittingCalcWeight || fallbackFittingWeight(entry, nb, branchNb, globalSpecs?.hdpeSdr);
+      const fittingWelds: Record<string, number> = {};
+      const fittingWeldCounts: Record<string, number> = {};
+      // Reducers have no tee weld — just the body, joined to pipe
+      // by the pipe-side weld (which the upstream pipe row counts).
+      if (!isReducer && fittingTeeWeldLength > 0) {
+        fittingWelds[fittingWeldType] = fittingTeeWeldLength;
+        fittingWeldCounts[fittingWeldType] = fittingTeeWeldCount;
+      }
+      if (fittingFlangeWeldLength > 0) {
+        fittingWelds["Flange Weld"] = fittingFlangeWeldLength;
+        fittingWeldCounts["Flange Weld"] = fittingFlangeWeldCount;
+      }
+      const fittingMaterialLabel =
+        fittingMaterialType === "hdpe" ? "HDPE" : fittingMaterialType === "pvc" ? "PVC" : "Steel";
+      const fittingDisplayType = fittingType
+        .replace(/_/g, " ")
+        .toLowerCase()
+        .split(" ")
+        .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(" ");
+      const fittingDescription =
+        `${nb}NB ${fittingDisplayType} ${fittingMaterialLabel}${fittingSchedule ? ` Sch${fittingSchedule.replace("Sch", "")}` : ""}`.trim();
+      const existingFitting = consolidatedFittings.get(fittingKey);
+      if (existingFitting) {
+        existingFitting.qty += qty;
+        existingFitting.weight += fittingWeight * qty;
+        existingFitting.entries.push(itemNumber);
+        mergeWelds(existingFitting, fittingWelds, fittingWeldCounts);
+        const existingFittingIntArea = existingFitting.intAreaM2;
+        const existingFittingExtArea = existingFitting.extAreaM2;
+        existingFitting.intAreaM2 = (existingFittingIntArea ?? 0) + fittingIntAreaM2;
+        existingFitting.extAreaM2 = (existingFittingExtArea ?? 0) + fittingExtAreaM2;
+      } else {
+        const fittingRecord: ConsolidatedItem = {
+          description: fittingDescription,
+          qty,
+          unit: "Each",
+          weight: fittingWeight * qty,
+          entries: [itemNumber],
+        };
+        mergeWelds(fittingRecord, fittingWelds, fittingWeldCounts);
+        if (fittingIntAreaM2 > 0) fittingRecord.intAreaM2 = fittingIntAreaM2;
+        if (fittingExtAreaM2 > 0) fittingRecord.extAreaM2 = fittingExtAreaM2;
+        consolidatedFittings.set(fittingKey, fittingRecord);
+      }
+      // ──── end fitting row consolidation ────
 
       if (flangeCount.main > 0) {
         const flangeKey = `FLANGE_${nb}_${flangeSpecStr}_${flangeTypeName}`;
@@ -719,6 +986,93 @@ export function consolidateBoqData(input: ConsolidationInput): ExtendedConsolida
       const rawCalculatedPipeCount = entry.calculation?.calculatedPipeCount;
       const pipeQty = rawCalculatedPipeCount || qty;
 
+      // ──── Straight-pipe row consolidation (Phase 0, issue #288) ────
+      // Populate consolidatedPipes with welds + areas. Metres-quoted
+      // BOQs (Nix imports) get converted to piece counts using the
+      // individualPipeLength so the supplier sees real pipe counts.
+      const rawPipeSchedule = entry.specs?.scheduleNumber;
+      const pipeSchedule = rawPipeSchedule || "";
+      const rawIndividualPipeLength = entry.specs?.individualPipeLength;
+      const pipeLength = rawIndividualPipeLength || DEFAULT_PIPE_LENGTH_M;
+      const rawQuantityType = entry.specs?.quantityType;
+      const piecesFromMetres =
+        rawQuantityType === "total_length" && pipeLength > 0 ? Math.ceil(qty / pipeLength) : qty;
+      const pipeRowQty = rawCalculatedPipeCount || piecesFromMetres;
+      const rawPipeMaterialType = entry.materialType;
+      const pipeMaterialType = rawPipeMaterialType || "steel";
+      const pipeVariant = detectPipeVariant(entry.description);
+      const pipeVariantKey = pipeVariant ?? "";
+      const pipeKey = `PIPE_${pipeMaterialType}_${nb}_${pipeSchedule}_${pipeLength}_${pipeVariantKey}`;
+      const rawPipeCalcOd = entry.calculation?.outsideDiameterMm;
+      const rawPipeCalcWt = entry.calculation?.wallThicknessMm;
+      const pipeHdpeDims =
+        pipeMaterialType === "hdpe" && (!rawPipeCalcOd || !rawPipeCalcWt)
+          ? resolveHdpeDims(nb, entry, globalSpecs?.hdpeSdr, globalSpecs?.hdpePressureRating)
+          : null;
+      const pipeOd = rawPipeCalcOd || (pipeHdpeDims ? pipeHdpeDims.od : nb);
+      const pipeWt = rawPipeCalcWt || (pipeHdpeDims ? pipeHdpeDims.wt : 0);
+      const rawPipeWeldsPerUnit = entry.calculation?.pipeWeldsPerUnit;
+      // HDPE pipes default to 1 butt-fusion joint per piece (the
+      // weld between this pipe and the next run-of-pipe item); steel
+      // / PVC carry whatever the steel calc service populated.
+      const pipeWeldCount = rawPipeWeldsPerUnit || (pipeMaterialType === "hdpe" ? pipeRowQty : 0);
+      const pipeWeldLength = pipeWeldCount * weldCircumferenceM(pipeOd);
+      const rawTotalFlangeWeldLength = entry.calculation?.totalFlangeWeldLength;
+      const pipeFlangeWeldLength = rawTotalFlangeWeldLength || 0;
+      const pipeFlangeWeldCount = flangeCount.main * pipeRowQty * 2;
+      const rawCalculatedTotalLength = entry.calculation?.calculatedTotalLength;
+      const pipeTotalLengthM = rawCalculatedTotalLength || pipeLength * pipeRowQty;
+      const pipeExtAreaM2 = Math.PI * (pipeOd / 1000) * pipeTotalLengthM;
+      const pipeIntAreaM2 = Math.PI * ((pipeOd - 2 * pipeWt) / 1000) * pipeTotalLengthM;
+      const pipeWeight = fallbackPipeWeight(
+        entry,
+        nb,
+        pipeLength,
+        pipeRowQty,
+        globalSpecs?.hdpeSdr,
+      );
+      const pipeWelds: Record<string, number> = {};
+      const pipeWeldCounts: Record<string, number> = {};
+      if (pipeWeldLength > 0) {
+        pipeWelds["Pipe Weld"] = pipeWeldLength;
+        pipeWeldCounts["Pipe Weld"] = pipeWeldCount;
+      }
+      if (pipeFlangeWeldLength > 0) {
+        pipeWelds["Flange Weld"] = pipeFlangeWeldLength;
+        pipeWeldCounts["Flange Weld"] = pipeFlangeWeldCount;
+      }
+      const pipeMaterialLabel =
+        pipeMaterialType === "hdpe" ? "HDPE" : pipeMaterialType === "pvc" ? "PVC" : "Steel";
+      const pipeVariantPrefixLabel = pipeVariant
+        ? `${pipeVariant.charAt(0).toUpperCase()}${pipeVariant.slice(1)} `
+        : "";
+      const pipeDescription =
+        `${pipeVariantPrefixLabel}${nb}${pipeMaterialType === "steel" ? "NB" : "OD"} ${pipeMaterialLabel}${pipeSchedule ? ` Sch${pipeSchedule.replace("Sch", "")}` : ""} Pipe x${pipeLength}m`.trim();
+      const existingPipe = consolidatedPipes.get(pipeKey);
+      if (existingPipe) {
+        existingPipe.qty += pipeRowQty;
+        existingPipe.weight += pipeWeight;
+        existingPipe.entries.push(itemNumber);
+        mergeWelds(existingPipe, pipeWelds, pipeWeldCounts);
+        const existingPipeIntArea = existingPipe.intAreaM2;
+        const existingPipeExtArea = existingPipe.extAreaM2;
+        existingPipe.intAreaM2 = (existingPipeIntArea ?? 0) + pipeIntAreaM2;
+        existingPipe.extAreaM2 = (existingPipeExtArea ?? 0) + pipeExtAreaM2;
+      } else {
+        const pipeRecord: ConsolidatedItem = {
+          description: pipeDescription,
+          qty: pipeRowQty,
+          unit: "Each",
+          weight: pipeWeight,
+          entries: [itemNumber],
+        };
+        mergeWelds(pipeRecord, pipeWelds, pipeWeldCounts);
+        if (pipeIntAreaM2 > 0) pipeRecord.intAreaM2 = pipeIntAreaM2;
+        if (pipeExtAreaM2 > 0) pipeRecord.extAreaM2 = pipeExtAreaM2;
+        consolidatedPipes.set(pipeKey, pipeRecord);
+      }
+      // ──── end straight-pipe row consolidation ────
+
       if (flangeCount.main > 0) {
         const flangeKey = `FLANGE_${nb}_${flangeSpecStr}_${flangeTypeName}`;
         const existingFlange = consolidatedFlanges.get(flangeKey);
@@ -971,7 +1325,20 @@ export function consolidateBoqData(input: ConsolidationInput): ExtendedConsolida
     });
   };
 
+  // Split fittings into tees vs reducers for the DTO. Suppliers
+  // price them differently (reducer = single-port body, tee = three-
+  // port body with branch weld), so the DTO carries separate
+  // arrays. Tees include equal / short / gusset / lateral families;
+  // reducers include concentric + eccentric.
+  const fittingsArray = Array.from(consolidatedFittings.entries());
+  const teeEntries = new Map(fittingsArray.filter(([k]) => !k.includes("REDUCER")));
+  const reducerEntries = new Map(fittingsArray.filter(([k]) => k.includes("REDUCER")));
+
   return {
+    straightPipes: consolidatedPipes.size > 0 ? mapToDto(consolidatedPipes) : undefined,
+    bends: consolidatedBends.size > 0 ? mapToDto(consolidatedBends) : undefined,
+    tees: teeEntries.size > 0 ? mapToDto(teeEntries) : undefined,
+    reducers: reducerEntries.size > 0 ? mapToDto(reducerEntries) : undefined,
     flanges: consolidatedFlanges.size > 0 ? mapToDto(consolidatedFlanges) : undefined,
     blankFlanges:
       consolidatedBlankFlanges.size > 0 ? mapToDto(consolidatedBlankFlanges) : undefined,
