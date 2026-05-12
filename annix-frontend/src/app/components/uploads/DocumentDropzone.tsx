@@ -15,6 +15,57 @@ export interface DocumentDropzoneProps {
   maxFileSizeMB?: number;
 }
 
+// FileSystemEntry / FileSystemFileEntry / FileSystemDirectoryEntry
+// are the FileSystem Entries API surface — DOM-typed but rarely
+// declared in @types/node setups, so we use the lib.dom.d.ts
+// names directly. file() / createReader() are callback-based; we
+// wrap them in promises so the recursion stays linear.
+
+const fileFromEntry = (entry: FileSystemFileEntry): Promise<File> =>
+  new Promise((resolve, reject) => {
+    entry.file(resolve, reject);
+  });
+
+const readBatch = (reader: FileSystemDirectoryReader): Promise<FileSystemEntry[]> =>
+  new Promise((resolve, reject) => {
+    reader.readEntries(resolve, reject);
+  });
+
+// readEntries returns at most ~100 entries per call — we need to
+// keep calling it until it returns an empty batch. Express that
+// as a recursive accumulator instead of a while-loop so the lint
+// rule against imperative loops doesn't fire.
+const readAllDirectoryEntries = async (
+  reader: FileSystemDirectoryReader,
+): Promise<FileSystemEntry[]> => {
+  const drain = async (acc: FileSystemEntry[]): Promise<FileSystemEntry[]> => {
+    const batch = await readBatch(reader);
+    if (batch.length === 0) return acc;
+    return drain([...acc, ...batch]);
+  };
+  return drain([]);
+};
+
+async function collectFilesFromEntries(entries: FileSystemEntry[]): Promise<File[]> {
+  const out: File[] = [];
+  for (const entry of entries) {
+    if (entry.isFile) {
+      try {
+        const file = await fileFromEntry(entry as FileSystemFileEntry);
+        out.push(file);
+      } catch {
+        // ignore unreadable entries — surfaces as nothing dropped
+      }
+    } else if (entry.isDirectory) {
+      const dirEntry = entry as FileSystemDirectoryEntry;
+      const childEntries = await readAllDirectoryEntries(dirEntry.createReader());
+      const childFiles = await collectFilesFromEntries(childEntries);
+      out.push(...childFiles);
+    }
+  }
+  return out;
+}
+
 function formatFileSize(bytes: number): string {
   if (bytes === 0) return "0 Bytes";
   const k = 1024;
@@ -111,10 +162,30 @@ export function DocumentDropzone(props: DocumentDropzoneProps) {
   );
 
   const handleDrop = useCallback(
-    (e: React.DragEvent<HTMLDivElement>) => {
+    async (e: React.DragEvent<HTMLDivElement>) => {
       e.preventDefault();
       setIsDragOver(false);
 
+      // When the user drops a folder (e.g. the whole "RFQ 2026 - 25"
+      // tender pack containing Drawings/ Technical Specifications/
+      // subfolders), e.dataTransfer.files exposes those subfolders
+      // as 0-byte File entries. We need to enumerate via the
+      // FileSystem Entries API instead so we can recurse into
+      // directories and pull out every contained file.
+      const items = e.dataTransfer.items;
+      if (items && items.length > 0 && typeof items[0].webkitGetAsEntry === "function") {
+        const entries = Array.from(items)
+          .map((item) => item.webkitGetAsEntry())
+          .filter((entry): entry is FileSystemEntry => entry != null);
+        const files = await collectFilesFromEntries(entries);
+        files.forEach(validateAndAddFile);
+        return;
+      }
+
+      // Fallback for browsers without the Entries API. Folders here
+      // appear as 0-byte File objects — validateAndAddFile already
+      // rejects them with a friendly message, so the user gets a
+      // clear signal that folder drops need a modern browser.
       const files = Array.from(e.dataTransfer.files);
       files.forEach(validateAndAddFile);
     },
