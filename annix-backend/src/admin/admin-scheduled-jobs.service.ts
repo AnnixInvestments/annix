@@ -124,6 +124,12 @@ const JOB_METADATA: Record<string, { description: string; module: string; defaul
     module: "CV Assistant",
     defaultCron: "0 2 * * *",
   },
+  "insights:daily-snapshot": {
+    description:
+      "Annix Insights — pull yesterday's OHLCV bars for every active watchlist asset via Yahoo Finance",
+    module: "Annix Insights",
+    defaultCron: "0 6 * * *",
+  },
   "customers:bee-expiry-check": {
     description: "Check B-BEE certificate expiry and send notifications",
     module: "Customers",

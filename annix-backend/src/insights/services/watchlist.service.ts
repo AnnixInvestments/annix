@@ -1,16 +1,20 @@
-import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
+import { ConflictException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import type { AddWatchlistItemDto } from "../dto/add-watchlist-item.dto";
 import type { WatchlistItemResponseDto } from "../dto/watchlist-item-response.dto";
 import { Asset } from "../entities/asset.entity";
 import { WatchlistItem } from "../entities/watchlist-item.entity";
+import { MarketDataIngestionService } from "./market-data-ingestion.service";
 
 @Injectable()
 export class WatchlistService {
+  private readonly logger = new Logger(WatchlistService.name);
+
   constructor(
     @InjectRepository(Asset) private readonly assetRepo: Repository<Asset>,
     @InjectRepository(WatchlistItem) private readonly watchlistRepo: Repository<WatchlistItem>,
+    private readonly ingestion: MarketDataIngestionService,
   ) {}
 
   async list(): Promise<WatchlistItemResponseDto[]> {
@@ -64,6 +68,12 @@ export class WatchlistService {
       targetReason: input.targetReason ?? null,
     });
     const saved = await this.watchlistRepo.save(created);
+
+    this.ingestion.backfillForAsset(asset).catch((error) => {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.warn(`Auto-backfill for ${asset.symbol} failed: ${message}`);
+    });
+
     const reloaded = await this.watchlistRepo.findOneOrFail({
       where: { id: saved.id },
       relations: { asset: true },
