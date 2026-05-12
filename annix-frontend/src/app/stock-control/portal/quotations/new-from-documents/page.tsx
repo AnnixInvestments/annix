@@ -4,6 +4,7 @@ import { isNumber } from "es-toolkit/compat";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { useToast } from "@/app/components/Toast";
 import { DocumentBucket, type PendingDocument } from "@/app/components/uploads";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
@@ -65,6 +66,7 @@ export default function QuoteFromDocumentsPage() {
 
   const createSessionMutation = useCreateNixExtractionSession();
   const { runBulk } = useAdaptiveExtractionProgress();
+  const { showExtraction, hideExtraction } = useExtractionProgress();
 
   const ensureSession = useCallback(async (): Promise<NixExtractionSessionDto> => {
     if (session) return session;
@@ -136,9 +138,13 @@ export default function QuoteFromDocumentsPage() {
       } else {
         showToast(`${label}: ${succeeded} succeeded, ${failed} failed`);
       }
-      surfaceRevisionVerdicts(verdicts, showToast);
+      await surfaceRevisionVerdicts(verdicts, {
+        showToast,
+        showExtraction,
+        hideExtraction,
+      });
     },
-    [userId, showToast, ensureSession, runBulk],
+    [userId, showToast, ensureSession, runBulk, showExtraction, hideExtraction],
   );
 
   const handleConfirmDrawings = useCallback(async () => {
@@ -335,10 +341,19 @@ type RevisionVerdict = NonNullable<
  * RevisionBadge already surfaces the persistent state; the toast here is
  * an at-the-moment alert so the user doesn't miss it.
  */
-function surfaceRevisionVerdicts(
+async function surfaceRevisionVerdicts(
   verdicts: Array<{ filename: string; verdict: RevisionVerdict }>,
-  showToast: (msg: string, kind?: "success" | "error" | "warning") => void,
-): void {
+  callbacks: {
+    showToast: (msg: string, kind?: "success" | "error" | "warning") => void;
+    showExtraction: (input: {
+      brand: "stock-control";
+      label: string;
+      estimatedDurationMs: number;
+    }) => void;
+    hideExtraction: () => void;
+  },
+): Promise<void> {
+  const { showToast, showExtraction, hideExtraction } = callbacks;
   for (const { filename, verdict } of verdicts) {
     if (verdict.action === "newer") {
       const previous = verdict.previousCanonicalRevision;
@@ -363,20 +378,25 @@ function surfaceRevisionVerdicts(
       );
     } else if (verdict.action === "duplicate-in-session") {
       // User re-uploaded the same file (filename match). Auto-retry the
-      // existing extraction so Nix re-reads the document fresh — useful
-      // when the user has updated the drawing or just wants to refresh
-      // the items. The pool-level dedup (poolItemsBySpec) handles any
-      // overlap with other drawings in the session.
+      // existing extraction so Nix re-reads the document fresh, and use
+      // the BRAND extraction-progress modal — not a toast — so the user
+      // sees Nix working through the document end-to-end. Pool-level
+      // dedup (poolItemsBySpec) handles any overlap with other drawings
+      // in the session.
       const canonicalId = verdict.canonicalExtractionId;
-      showToast(
-        `${filename}: already in this draft — re-extracting now so Nix re-reads the whole document`,
-        "warning",
-      );
-      if (isNumber(canonicalId)) {
-        nixApi.retryExtraction(canonicalId).catch((err: unknown) => {
-          const msg = err instanceof Error ? err.message : "re-extract failed";
-          showToast(`${filename}: re-extract failed — ${msg}`, "error");
-        });
+      if (!isNumber(canonicalId)) continue;
+      showExtraction({
+        brand: "stock-control",
+        label: `Re-extracting ${filename} — Nix is re-reading the whole document…`,
+        estimatedDurationMs: 60_000,
+      });
+      try {
+        await nixApi.retryExtraction(canonicalId);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "re-extract failed";
+        showToast(`${filename}: re-extract failed — ${msg}`, "error");
+      } finally {
+        hideExtraction();
       }
     }
   }
