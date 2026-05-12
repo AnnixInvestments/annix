@@ -102,6 +102,13 @@ export const corpId = {
         hover: "#4a4da3",
         active: "#252560",
       },
+      insights: {
+        background: "#1f2937",
+        text: "#FFFFFF",
+        accent: "#D4AF37",
+        hover: "#374151",
+        active: "#111827",
+      },
     },
   },
 
@@ -139,7 +146,8 @@ export type PortalType =
   | "annixRep"
   | "stockControl"
   | "cvAssistant"
-  | "teacherAssistant";
+  | "teacherAssistant"
+  | "insights";
 
 export const portalConfig = {
   admin: {
@@ -181,6 +189,11 @@ export const portalConfig = {
     title: "Teacher Assistant",
     homeHref: "/teacher-assistant",
     loginHref: "/teacher-assistant/login",
+  },
+  insights: {
+    title: "Annix Insights",
+    homeHref: "/insights",
+    loginHref: "/insights/login",
   },
 } as const;
 

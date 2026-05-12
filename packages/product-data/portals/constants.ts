@@ -9,7 +9,8 @@ export type PortalCode =
   | "rfq"
   | "au-rubber"
   | "au-industries"
-  | "teacher-assistant";
+  | "teacher-assistant"
+  | "insights";
 
 export interface PortalHost {
   readonly code: PortalCode;
@@ -108,6 +109,14 @@ export const PORTAL_HOSTS: readonly PortalHost[] = [
     prodHost: "teacherassistant.annix.co.za",
     prodHostAliases: [],
     devHost: "teacherassistant.localhost",
+  },
+  {
+    code: "insights",
+    displayName: "Annix Insights",
+    internalPathPrefix: "/insights",
+    prodHost: "insights.annix.co.za",
+    prodHostAliases: [],
+    devHost: "insights.localhost",
   },
 ];
 
