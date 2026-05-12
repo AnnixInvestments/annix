@@ -14,6 +14,7 @@
 
 export type { QuoteItem, QuotePool } from "./poolItemsBySpec";
 export { poolItemsBySpec } from "./poolItemsBySpec";
+export { QuoteCustomerView } from "./QuoteCustomerView";
 export type { QuoteSpecsEditorProps } from "./QuoteSpecsEditor";
 export { QuoteSpecsEditor } from "./QuoteSpecsEditor";
 export type { QuoteViewProps } from "./QuoteView";

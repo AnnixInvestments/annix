@@ -84,6 +84,12 @@ export default function NixPromotedQuotePage() {
         </div>
         <div className="flex items-center gap-2">
           <Link
+            href={`/stock-control/portal/quotations/quotes/${session.id}/preview`}
+            className="inline-flex items-center px-4 py-2 bg-[#323288] text-white rounded-md text-sm font-medium shadow-sm hover:bg-[#2a2a73]"
+          >
+            Preview customer quote
+          </Link>
+          <Link
             href={`/stock-control/portal/quotations/drafts/${session.id}`}
             className="inline-flex items-center px-4 py-2 bg-gray-200 text-gray-800 rounded-md text-sm font-medium shadow-sm hover:bg-gray-300"
           >
