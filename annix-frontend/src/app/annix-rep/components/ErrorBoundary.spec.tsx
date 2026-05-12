@@ -5,32 +5,32 @@ import { describe, expect, it, vi } from "vitest";
 import { PageErrorFallback, QueryErrorFallback } from "./ErrorBoundary";
 
 describe("PageErrorFallback", () => {
-  it("should render default title and message", () => {
+  it("renders the BrandedErrorScreen for the default area", () => {
     render(<PageErrorFallback />);
-    expect(screen.getByText("Unable to load this page")).toBeInTheDocument();
-    expect(
-      screen.getByText("There was a problem loading the content. Please try again."),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/We hit a snag in Annix Rep/)).toBeInTheDocument();
   });
 
-  it("should render custom title and message", () => {
-    render(<PageErrorFallback title="Custom Title" message="Custom message text" />);
-    expect(screen.getByText("Custom Title")).toBeInTheDocument();
-    expect(screen.getByText("Custom message text")).toBeInTheDocument();
+  it("ignores legacy title/message props and renders the branded screen for the configured area", () => {
+    render(
+      <PageErrorFallback title="Custom Title" message="Custom message text" area="Quotations" />,
+    );
+    expect(screen.getByText(/We hit a snag in Quotations/)).toBeInTheDocument();
+    expect(screen.queryByText("Custom Title")).not.toBeInTheDocument();
+    expect(screen.queryByText("Custom message text")).not.toBeInTheDocument();
   });
 
-  it("should show retry button when reset is provided", () => {
+  it("renders the Try again button when reset is provided", () => {
     const reset = vi.fn();
     render(<PageErrorFallback reset={reset} />);
     expect(screen.getByText("Try again")).toBeInTheDocument();
   });
 
-  it("should hide retry button when no reset is provided", () => {
+  it("renders the Try again button even without reset (falls back to window.location.reload)", () => {
     render(<PageErrorFallback />);
-    expect(screen.queryByText("Try again")).not.toBeInTheDocument();
+    expect(screen.getByText("Try again")).toBeInTheDocument();
   });
 
-  it("should call reset when retry button is clicked", async () => {
+  it("calls reset when the Try again button is clicked", async () => {
     const user = userEvent.setup();
     const reset = vi.fn();
     render(<PageErrorFallback reset={reset} />);
