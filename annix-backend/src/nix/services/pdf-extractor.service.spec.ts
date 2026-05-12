@@ -528,6 +528,126 @@ describe("PdfExtractorService", () => {
       });
     });
 
+    describe("hydrotest hold time extraction", () => {
+      it("extracts hold time in minutes directly", async () => {
+        setupMockPdf("Hydrotest held for 30 minutes at 1.5× design.");
+
+        const result = await service.extractFromPdf("/fake/path.pdf");
+
+        expect(result.metadata.hydrotestHoldMinutes).toBe(30);
+      });
+
+      it("converts a hold time stated in hours to minutes", async () => {
+        setupMockPdf("Hydrostatic test pressure held for 2 hours.");
+
+        const result = await service.extractFromPdf("/fake/path.pdf");
+
+        expect(result.metadata.hydrotestHoldMinutes).toBe(120);
+      });
+
+      it("returns null when hold time is not stated", async () => {
+        setupMockPdf("Hydrotest at 1.5× design pressure.");
+
+        const result = await service.extractFromPdf("/fake/path.pdf");
+
+        expect(result.metadata.hydrotestHoldMinutes).toBeNull();
+      });
+    });
+
+    describe("NACE compliance extraction", () => {
+      it("detects NACE MR0175", async () => {
+        setupMockPdf("All materials shall comply with NACE MR0175.");
+
+        const result = await service.extractFromPdf("/fake/path.pdf");
+
+        expect(result.metadata.naceCompliance).toBe("NACE MR0175");
+      });
+
+      it("detects NACE MR0103", async () => {
+        setupMockPdf("Refining service per NACE MR0103.");
+
+        const result = await service.extractFromPdf("/fake/path.pdf");
+
+        expect(result.metadata.naceCompliance).toBe("NACE MR0103");
+      });
+
+      it("detects ISO 15156", async () => {
+        setupMockPdf("Sour service per ISO 15156-2.");
+
+        const result = await service.extractFromPdf("/fake/path.pdf");
+
+        expect(result.metadata.naceCompliance).toBe("ISO 15156");
+      });
+
+      it("returns null when no NACE clause", async () => {
+        setupMockPdf("Generic spec with no compliance mentioned.");
+
+        const result = await service.extractFromPdf("/fake/path.pdf");
+
+        expect(result.metadata.naceCompliance).toBeNull();
+      });
+    });
+
+    describe("sour service detection", () => {
+      it("flags sour service when H2S is mentioned", async () => {
+        setupMockPdf("Service contains H2S — sour service piping required.");
+
+        const result = await service.extractFromPdf("/fake/path.pdf");
+
+        expect(result.metadata.sourService).toBe(true);
+      });
+
+      it("flags sour service when 'hydrogen sulphide' is mentioned", async () => {
+        setupMockPdf("Process gas contains hydrogen sulphide.");
+
+        const result = await service.extractFromPdf("/fake/path.pdf");
+
+        expect(result.metadata.sourService).toBe(true);
+      });
+
+      it("returns null when service type is not declared", async () => {
+        setupMockPdf("Water main project — no aggressive fluids.");
+
+        const result = await service.extractFromPdf("/fake/path.pdf");
+
+        expect(result.metadata.sourService).toBeNull();
+      });
+    });
+
+    describe("gasket type extraction", () => {
+      it("detects spiral-wound", async () => {
+        setupMockPdf("Flanges fitted with spiral-wound gaskets per ASME B16.20.");
+
+        const result = await service.extractFromPdf("/fake/path.pdf");
+
+        expect(result.metadata.gasketType).toBe("Spiral-wound");
+      });
+
+      it("detects RTJ", async () => {
+        setupMockPdf("Ring Type Joint flanges required.");
+
+        const result = await service.extractFromPdf("/fake/path.pdf");
+
+        expect(result.metadata.gasketType).toBe("Ring Type Joint (RTJ)");
+      });
+
+      it("detects EPDM gasket", async () => {
+        setupMockPdf("Water service uses EPDM gasket between flanges.");
+
+        const result = await service.extractFromPdf("/fake/path.pdf");
+
+        expect(result.metadata.gasketType).toBe("EPDM");
+      });
+
+      it("returns null when no gasket type stated", async () => {
+        setupMockPdf("Generic flange spec.");
+
+        const result = await service.extractFromPdf("/fake/path.pdf");
+
+        expect(result.metadata.gasketType).toBeNull();
+      });
+    });
+
     describe("deep-document spec scanning", () => {
       it("finds spec data beyond the first 50 lines (previously truncated)", async () => {
         const filler = Array.from({ length: 120 }, () => "Filler line of boilerplate text.").join(

@@ -348,6 +348,10 @@ export default function ProjectDetailsStep() {
           flangeTableDesignation: metadata.flangeTableDesignation,
           ndtMethods: metadata.ndtMethods,
           hydrotestMultiplier: metadata.hydrotestMultiplier,
+          hydrotestHoldMinutes: metadata.hydrotestHoldMinutes,
+          naceCompliance: metadata.naceCompliance,
+          sourService: metadata.sourService,
+          gasketType: metadata.gasketType,
           valveClauseExcerpt: metadata.valveClauseExcerpt,
           materialGrade: metadata.materialGrade,
         });

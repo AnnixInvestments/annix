@@ -19,6 +19,10 @@ export function AutoExtractedSpecsBanner(props: AutoExtractedSpecsBannerProps) {
   const flangeTableDesignation = globalSpecs.flangeTableDesignation;
   const ndtMethods = globalSpecs.ndtMethods;
   const hydrotestMultiplier = globalSpecs.hydrotestMultiplier;
+  const hydrotestHoldMinutes = globalSpecs.hydrotestHoldMinutes;
+  const naceCompliance = globalSpecs.naceCompliance;
+  const sourService = globalSpecs.sourService;
+  const specPdfGasketType = globalSpecs.specPdfGasketType;
   const valveClauseExcerpt = globalSpecs.valveClauseExcerpt;
   const specPdfMaterialGrade = globalSpecs.specPdfMaterialGrade;
 
@@ -26,7 +30,10 @@ export function AutoExtractedSpecsBanner(props: AutoExtractedSpecsBannerProps) {
   const hasValveStandards = !!(valveStandards && valveStandards.length > 0);
   const hasFlange = !!(flangeStandardName || flangeTableDesignation);
   const hasNdt = !!(ndtMethods && ndtMethods.length > 0);
-  const hasHydrotest = hydrotestMultiplier != null;
+  const hasHydrotest = hydrotestMultiplier != null || hydrotestHoldMinutes != null;
+  const hasNace = !!naceCompliance;
+  const hasSour = sourService === true;
+  const hasGasket = !!specPdfGasketType;
   const hasExcerpt = !!valveClauseExcerpt;
   const hasMaterialGrade = !!specPdfMaterialGrade;
   const hasAnything =
@@ -35,6 +42,9 @@ export function AutoExtractedSpecsBanner(props: AutoExtractedSpecsBannerProps) {
     hasFlange ||
     hasNdt ||
     hasHydrotest ||
+    hasNace ||
+    hasSour ||
+    hasGasket ||
     hasExcerpt ||
     hasMaterialGrade;
 
@@ -92,7 +102,26 @@ export function AutoExtractedSpecsBanner(props: AutoExtractedSpecsBannerProps) {
             )}
             {hasHydrotest && (
               <SpecRow label="Hydrotest">
-                <span>{hydrotestMultiplier}× design pressure</span>
+                <span>
+                  {hydrotestMultiplier != null ? `${hydrotestMultiplier}× design pressure` : null}
+                  {hydrotestMultiplier != null && hydrotestHoldMinutes != null ? ", " : null}
+                  {hydrotestHoldMinutes != null ? `${hydrotestHoldMinutes} min hold` : null}
+                </span>
+              </SpecRow>
+            )}
+            {hasNace && (
+              <SpecRow label="NACE / sour">
+                <span>{naceCompliance}</span>
+              </SpecRow>
+            )}
+            {hasSour && !hasNace && (
+              <SpecRow label="NACE / sour">
+                <span>Sour service / H₂S exposure flagged</span>
+              </SpecRow>
+            )}
+            {hasGasket && (
+              <SpecRow label="Gasket">
+                <span>{specPdfGasketType}</span>
               </SpecRow>
             )}
           </dl>

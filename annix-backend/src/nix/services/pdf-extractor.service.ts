@@ -129,6 +129,10 @@ export class PdfExtractorService {
         flangeTableDesignation: metadata.flangeTableDesignation,
         ndtMethods: metadata.ndtMethods,
         hydrotestMultiplier: metadata.hydrotestMultiplier,
+        hydrotestHoldMinutes: metadata.hydrotestHoldMinutes,
+        naceCompliance: metadata.naceCompliance,
+        sourService: metadata.sourService,
+        gasketType: metadata.gasketType,
         valveClauseExcerpt: metadata.valveClauseExcerpt,
       },
     };
@@ -602,6 +606,10 @@ export class PdfExtractorService {
     flangeTableDesignation: string | null;
     ndtMethods: string[] | null;
     hydrotestMultiplier: number | null;
+    hydrotestHoldMinutes: number | null;
+    naceCompliance: string | null;
+    sourService: boolean | null;
+    gasketType: string | null;
     valveClauseExcerpt: string | null;
   } {
     let projectReference: string | null = null;
@@ -648,6 +656,10 @@ export class PdfExtractorService {
     const flangeSpec = this.extractFlangeSpec(lines);
     const ndtMethods = this.extractNdtMethods(lines);
     const hydrotestMultiplier = this.extractHydrotestMultiplier(lines);
+    const hydrotestHoldMinutes = this.extractHydrotestHoldMinutes(lines);
+    const naceCompliance = this.extractNaceCompliance(lines);
+    const sourService = this.extractSourService(lines);
+    const gasketType = this.extractGasketType(lines);
 
     return {
       projectReference,
@@ -661,6 +673,10 @@ export class PdfExtractorService {
       flangeTableDesignation: flangeSpec.tableDesignation,
       ndtMethods,
       hydrotestMultiplier,
+      hydrotestHoldMinutes,
+      naceCompliance,
+      sourService,
+      gasketType,
       valveClauseExcerpt: valveSpec.clauseExcerpt,
     };
   }
@@ -877,6 +893,94 @@ export class PdfExtractorService {
     );
     if (labelled) {
       return parseFloat(labelled[1]);
+    }
+    return null;
+  }
+
+  // Hold time for the hydrostatic test in minutes. SANS / ASME
+  // both quote either minutes or hours; we normalise to minutes.
+  private extractHydrotestHoldMinutes(lines: string[]): number | null {
+    const text = lines.join("\n");
+    const patterns: Array<{ pattern: RegExp; multiplier: number }> = [
+      {
+        pattern:
+          /\b(?:held|hold|maintained|sustained)\s*(?:for)?\s*(\d+(?:\.\d+)?)\s*(?:hours?|hrs?)\b/i,
+        multiplier: 60,
+      },
+      {
+        pattern:
+          /\b(?:held|hold|maintained|sustained)\s*(?:for)?\s*(\d+(?:\.\d+)?)\s*(?:minutes?|mins?)\b/i,
+        multiplier: 1,
+      },
+      {
+        pattern: /\bhydro(?:static)?\s*test.*?\b(\d+(?:\.\d+)?)\s*(?:hours?|hrs?)\b/i,
+        multiplier: 60,
+      },
+      {
+        pattern: /\bhydro(?:static)?\s*test.*?\b(\d+(?:\.\d+)?)\s*(?:minutes?|mins?)\b/i,
+        multiplier: 1,
+      },
+    ];
+    for (const { pattern, multiplier } of patterns) {
+      const match = text.match(pattern);
+      if (match) {
+        const value = parseFloat(match[1]);
+        if (Number.isFinite(value) && value > 0 && value <= 240) {
+          return Math.round(value * multiplier);
+        }
+      }
+    }
+    return null;
+  }
+
+  // NACE MR0175 / MR0103 compliance for sour-service piping.
+  // Returns the cited standard reference, or null if none found.
+  // Customers buying NACE-compliant pipework pay a 30%+ premium
+  // for material certs + traceability — flagging it ensures
+  // suppliers know to price accordingly.
+  private extractNaceCompliance(lines: string[]): string | null {
+    const text = lines.join("\n");
+    const mr0175 = text.match(/\bNACE\s*MR\s*0175\b/i);
+    if (mr0175) return "NACE MR0175";
+    const mr0103 = text.match(/\bNACE\s*MR\s*0103\b/i);
+    if (mr0103) return "NACE MR0103";
+    const iso15156 = text.match(/\bISO\s*15156(?:-\d)?\b/i);
+    if (iso15156) return "ISO 15156";
+    const generic = text.match(/\bNACE\s*(?:compli(?:ant|ance)|certifi(?:ed|cation))\b/i);
+    if (generic) return "NACE compliance required";
+    return null;
+  }
+
+  // Sour-service indicator — H₂S exposure, sour gas, sour service.
+  // Drives material selection (no free-cutting steels, hardness
+  // capped at 22 HRC for carbon steel etc.). Returns true / false /
+  // null. Null = no signal either way.
+  private extractSourService(lines: string[]): boolean | null {
+    const text = lines.join("\n");
+    if (/\b(?:sour\s*service|sour\s*gas|H[\s-]*2[\s-]*S|hydrogen\s*sulph?ide)\b/i.test(text)) {
+      return true;
+    }
+    return null;
+  }
+
+  // Gasket material called out in the spec. Most common:
+  // "spiral-wound", "metal-jacketed", "graphite", "EPDM", "NBR",
+  // "PTFE", "Klingerit". Returns the first match.
+  private extractGasketType(lines: string[]): string | null {
+    const text = lines.join("\n");
+    const patterns: Array<{ pattern: RegExp; label: string }> = [
+      { pattern: /\bspiral[\s-]*wound\b/i, label: "Spiral-wound" },
+      { pattern: /\bmetal[\s-]*jacket(?:ed)?\b/i, label: "Metal-jacketed" },
+      { pattern: /\bgraphite\s*(?:gasket|sheet)/i, label: "Graphite" },
+      { pattern: /\bring\s*type\s*joint|\bRTJ\b/i, label: "Ring Type Joint (RTJ)" },
+      { pattern: /\bPTFE\s*(?:gasket|envelope)/i, label: "PTFE" },
+      { pattern: /\bEPDM\s*gasket/i, label: "EPDM" },
+      { pattern: /\bNBR\s*gasket|\bnitrile\s*gasket/i, label: "NBR / Nitrile" },
+      { pattern: /\bKlinge?r?it/i, label: "Klingerit" },
+      { pattern: /\bIFG\b|\binsert\s*filled\s*graphite/i, label: "IFG" },
+    ];
+    for (const { pattern, label } of patterns) {
+      if (pattern.test(text)) return label;
     }
     return null;
   }

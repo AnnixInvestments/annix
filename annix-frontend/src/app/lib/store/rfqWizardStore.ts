@@ -204,6 +204,10 @@ interface RfqWizardActions {
     flangeTableDesignation?: string | null;
     ndtMethods?: string[] | null;
     hydrotestMultiplier?: number | null;
+    hydrotestHoldMinutes?: number | null;
+    naceCompliance?: string | null;
+    sourService?: boolean | null;
+    gasketType?: string | null;
     valveClauseExcerpt?: string | null;
     materialGrade?: string | null;
   }) => void;
@@ -910,6 +914,22 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
               const rawHydrotestMultiplier = metadata.hydrotestMultiplier;
               if (rawHydrotestMultiplier != null && next.hydrotestMultiplier == null) {
                 next.hydrotestMultiplier = rawHydrotestMultiplier;
+              }
+              const rawHydrotestHoldMinutes = metadata.hydrotestHoldMinutes;
+              if (rawHydrotestHoldMinutes != null && next.hydrotestHoldMinutes == null) {
+                next.hydrotestHoldMinutes = rawHydrotestHoldMinutes;
+              }
+              const rawNaceCompliance = metadata.naceCompliance;
+              if (rawNaceCompliance && !next.naceCompliance) {
+                next.naceCompliance = rawNaceCompliance;
+              }
+              const rawSourService = metadata.sourService;
+              if (rawSourService != null && next.sourService == null) {
+                next.sourService = rawSourService;
+              }
+              const rawGasketType = metadata.gasketType;
+              if (rawGasketType && !next.specPdfGasketType) {
+                next.specPdfGasketType = rawGasketType;
               }
               const rawClauseExcerpt = metadata.valveClauseExcerpt;
               if (rawClauseExcerpt && !next.valveClauseExcerpt) {

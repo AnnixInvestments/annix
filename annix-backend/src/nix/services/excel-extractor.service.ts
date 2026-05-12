@@ -132,6 +132,10 @@ export interface ExtractionResult {
     flangeTableDesignation?: string | null;
     ndtMethods?: string[] | null;
     hydrotestMultiplier?: number | null;
+    hydrotestHoldMinutes?: number | null;
+    naceCompliance?: string | null;
+    sourService?: boolean | null;
+    gasketType?: string | null;
     valveClauseExcerpt?: string | null;
   };
 }

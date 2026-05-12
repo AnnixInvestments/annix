@@ -413,6 +413,10 @@ export interface GlobalSpecs {
   flangeTableDesignation?: string;
   ndtMethods?: string[];
   hydrotestMultiplier?: number;
+  hydrotestHoldMinutes?: number;
+  naceCompliance?: string;
+  sourService?: boolean;
+  specPdfGasketType?: string;
   valveClauseExcerpt?: string;
   // Raw material-grade text from a tender spec PDF (e.g. "ASTM A106",
   // "SABS 719"). Stored alongside the resolved steelSpecificationId
