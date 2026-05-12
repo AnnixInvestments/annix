@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 // eslint-disable-next-line no-restricted-imports -- AU Industries public quote form; requires new public quote-submission mutation hook. Tracked as tech debt.
 import { browserBaseUrl } from "@/lib/api-config";
 
@@ -14,17 +14,6 @@ export default function AuIndustriesQuotePage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
-
-  useEffect(() => {
-    document.title = "Request a Quote | AU Industries";
-    const metaDesc = document.querySelector('meta[name="description"]');
-    if (metaDesc) {
-      metaDesc.setAttribute(
-        "content",
-        "Request a quote from AU Industries for rubber lining, compound, sheeting, HDPE piping, mining projects and industrial rubber products.",
-      );
-    }
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

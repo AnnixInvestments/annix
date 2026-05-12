@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 // eslint-disable-next-line no-restricted-imports -- AU Industries public contact form; requires new public contact-submission hook. Tracked as tech debt.
 import { browserBaseUrl } from "@/lib/api-config";
 import { AU_INDUSTRIES_CONTACT } from "../auIndustriesContact";
@@ -14,17 +14,6 @@ export default function AuIndustriesContactPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
-
-  useEffect(() => {
-    document.title = "Contact Us | AU Industries";
-    const metaDesc = document.querySelector('meta[name="description"]');
-    if (metaDesc) {
-      metaDesc.setAttribute(
-        "content",
-        "Contact AU Industries in Boksburg for rubber lining, rubber sheeting, HDPE piping and mining solutions. Call 072 039 8429 or send us an enquiry.",
-      );
-    }
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

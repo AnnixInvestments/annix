@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect } from "react";
 
 interface GalleryImage {
   src: string;
@@ -241,17 +240,6 @@ function GalleryCard(props: { section: GallerySection }) {
 }
 
 export default function AuIndustriesGalleryPage() {
-  useEffect(() => {
-    document.title = "Project Gallery | AU Industries";
-    const metaDesc = document.querySelector('meta[name="description"]');
-    if (metaDesc) {
-      metaDesc.setAttribute(
-        "content",
-        "Browse AU Industries project gallery showcasing rubber lining, ceramic embedded rubber, HDPE piping and mining solutions across South Africa, Mozambique and Namibia.",
-      );
-    }
-  }, []);
-
   return (
     <div>
       <section
