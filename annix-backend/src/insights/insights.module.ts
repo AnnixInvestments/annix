@@ -8,6 +8,10 @@ import { InsightsAdminController } from "./controllers/insights-admin.controller
 import { InsightsHealthController } from "./controllers/insights-health.controller";
 import { InsightsWatchlistController } from "./controllers/insights-watchlist.controller";
 import { Asset } from "./entities/asset.entity";
+import { PaperHolding } from "./entities/paper-holding.entity";
+import { PaperPortfolio } from "./entities/paper-portfolio.entity";
+import { PaperPortfolioSnapshot } from "./entities/paper-portfolio-snapshot.entity";
+import { PaperTrade } from "./entities/paper-trade.entity";
 import { PriceHistory } from "./entities/price-history.entity";
 import { WatchlistItem } from "./entities/watchlist-item.entity";
 import { InsightsCronService } from "./services/insights-cron.service";
@@ -19,7 +23,15 @@ import { YahooMarketDataService } from "./services/yahoo-market-data.service";
   imports: [
     AuthModule,
     MetricsModule,
-    TypeOrmModule.forFeature([Asset, WatchlistItem, PriceHistory]),
+    TypeOrmModule.forFeature([
+      Asset,
+      WatchlistItem,
+      PriceHistory,
+      PaperPortfolio,
+      PaperHolding,
+      PaperTrade,
+      PaperPortfolioSnapshot,
+    ]),
   ],
   controllers: [InsightsHealthController, InsightsWatchlistController, InsightsAdminController],
   providers: [
