@@ -7,6 +7,7 @@ import { MetricsModule } from "../metrics/metrics.module";
 import { InsightsAdminController } from "./controllers/insights-admin.controller";
 import { InsightsHealthController } from "./controllers/insights-health.controller";
 import { InsightsPaperPortfoliosController } from "./controllers/insights-paper-portfolios.controller";
+import { InsightsSignalsController } from "./controllers/insights-signals.controller";
 import { InsightsWatchlistController } from "./controllers/insights-watchlist.controller";
 import { Asset } from "./entities/asset.entity";
 import { PaperHolding } from "./entities/paper-holding.entity";
@@ -14,12 +15,14 @@ import { PaperPortfolio } from "./entities/paper-portfolio.entity";
 import { PaperPortfolioSnapshot } from "./entities/paper-portfolio-snapshot.entity";
 import { PaperTrade } from "./entities/paper-trade.entity";
 import { PriceHistory } from "./entities/price-history.entity";
+import { SignalSnapshot } from "./entities/signal-snapshot.entity";
 import { WatchlistItem } from "./entities/watchlist-item.entity";
 import { BenchmarkExecutionService } from "./services/benchmark-execution.service";
 import { InsightsCronService } from "./services/insights-cron.service";
 import { MarketDataIngestionService } from "./services/market-data-ingestion.service";
 import { PaperPortfolioService } from "./services/paper-portfolio.service";
 import { PortfolioSnapshotService } from "./services/portfolio-snapshot.service";
+import { SignalEngineService } from "./services/signal-engine.service";
 import { WatchlistService } from "./services/watchlist.service";
 import { YahooMarketDataService } from "./services/yahoo-market-data.service";
 
@@ -35,6 +38,7 @@ import { YahooMarketDataService } from "./services/yahoo-market-data.service";
       PaperHolding,
       PaperTrade,
       PaperPortfolioSnapshot,
+      SignalSnapshot,
     ]),
   ],
   controllers: [
@@ -42,6 +46,7 @@ import { YahooMarketDataService } from "./services/yahoo-market-data.service";
     InsightsWatchlistController,
     InsightsAdminController,
     InsightsPaperPortfoliosController,
+    InsightsSignalsController,
   ],
   providers: [
     JwtAuthGuard,
@@ -52,6 +57,7 @@ import { YahooMarketDataService } from "./services/yahoo-market-data.service";
     PaperPortfolioService,
     BenchmarkExecutionService,
     PortfolioSnapshotService,
+    SignalEngineService,
     InsightsCronService,
   ],
   exports: [],

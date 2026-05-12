@@ -4,6 +4,7 @@ import { BenchmarkExecutionService } from "./benchmark-execution.service";
 import { MarketDataIngestionService } from "./market-data-ingestion.service";
 import { PaperPortfolioService } from "./paper-portfolio.service";
 import { PortfolioSnapshotService } from "./portfolio-snapshot.service";
+import { SignalEngineService } from "./signal-engine.service";
 
 @Injectable()
 export class InsightsCronService {
@@ -14,6 +15,7 @@ export class InsightsCronService {
     private readonly portfolioService: PaperPortfolioService,
     private readonly benchmarkExecution: BenchmarkExecutionService,
     private readonly snapshotService: PortfolioSnapshotService,
+    private readonly signalEngine: SignalEngineService,
   ) {}
 
   @Cron("0 6 * * *", {
@@ -33,6 +35,16 @@ export class InsightsCronService {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       this.logger.error(`Market data ingestion crashed: ${message}`);
+    }
+
+    try {
+      const signals = await this.signalEngine.runDailySnapshot();
+      this.logger.log(
+        `Signal engine: ${signals.scored}/${signals.totalAssets} assets scored, ${signals.skipped} skipped.`,
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Signal engine crashed: ${message}`);
     }
 
     try {
