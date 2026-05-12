@@ -28,8 +28,8 @@ export default function InsightsPaperPortfoliosPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#111827] via-[#1f2937] to-[#111827]">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#D4AF37]" />
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40]">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#FFA500]" />
       </div>
     );
   }
@@ -43,13 +43,14 @@ export default function InsightsPaperPortfoliosPage() {
   const portfolios: PaperPortfolioSummary[] = queryData ?? [];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#111827] via-[#1f2937] to-[#111827] text-white">
+    <div className="min-h-screen bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40] text-white">
       <PortalToolbar
         portalType="insights"
         navItems={NAV_ITEMS}
         user={{ email: user.email }}
         onLogout={logout}
         version={INSIGHTS_VERSION}
+        hideThemeToggle
       />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -57,7 +58,7 @@ export default function InsightsPaperPortfoliosPage() {
           <button
             type="button"
             onClick={() => router.push("/insights")}
-            className="inline-flex items-center gap-1.5 text-sm text-gray-300 hover:text-[#D4AF37] transition-colors"
+            className="inline-flex items-center gap-1.5 text-sm text-gray-300 hover:text-[#FFA500] transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             Back
@@ -73,11 +74,11 @@ export default function InsightsPaperPortfoliosPage() {
 
         {query.isLoading ? (
           <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-12 flex items-center justify-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#D4AF37]" />
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFA500]" />
           </div>
         ) : portfolios.length === 0 ? (
           <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-12 text-center">
-            <Briefcase className="w-10 h-10 text-[#D4AF37] mx-auto mb-3" strokeWidth={1.5} />
+            <Briefcase className="w-10 h-10 text-[#FFA500] mx-auto mb-3" strokeWidth={1.5} />
             <h2 className="text-lg font-semibold">No portfolios seeded yet.</h2>
             <p className="text-sm text-gray-400 mt-1">
               Run migration 1820100000084 to seed the six paper portfolios.
@@ -96,7 +97,7 @@ export default function InsightsPaperPortfoliosPage() {
                 <Link
                   key={p.id}
                   href={`/insights/paper-portfolios/${encodeURIComponent(p.slug)}`}
-                  className="group bg-gray-900/50 border border-gray-800 rounded-2xl p-5 hover:border-[#D4AF37] hover:bg-gray-900/70 transition-colors"
+                  className="group bg-gray-900/50 border border-gray-800 rounded-2xl p-5 hover:border-[#FFA500] hover:bg-gray-900/70 transition-colors"
                 >
                   <div className="flex items-start justify-between mb-3 gap-2">
                     <div>
@@ -137,7 +138,7 @@ export default function InsightsPaperPortfoliosPage() {
                       {totalReturnPct >= 0 ? "+" : ""}
                       {totalReturnPct.toFixed(2)}% total
                     </span>
-                    <ArrowRight className="w-4 h-4 text-gray-500 group-hover:text-[#D4AF37] transition-colors" />
+                    <ArrowRight className="w-4 h-4 text-gray-500 group-hover:text-[#FFA500] transition-colors" />
                   </div>
                 </Link>
               );

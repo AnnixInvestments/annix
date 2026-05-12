@@ -43,8 +43,8 @@ export default function InsightsPaperPortfolioTradesPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#111827] via-[#1f2937] to-[#111827]">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#D4AF37]" />
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40]">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#FFA500]" />
       </div>
     );
   }
@@ -61,13 +61,14 @@ export default function InsightsPaperPortfolioTradesPage() {
     actionFilter === "all" ? allTrades : allTrades.filter((t) => t.action === actionFilter);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#111827] via-[#1f2937] to-[#111827] text-white">
+    <div className="min-h-screen bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40] text-white">
       <PortalToolbar
         portalType="insights"
         navItems={NAV_ITEMS}
         user={{ email: user.email }}
         onLogout={logout}
         version={INSIGHTS_VERSION}
+        hideThemeToggle
       />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -77,7 +78,7 @@ export default function InsightsPaperPortfolioTradesPage() {
             onClick={() =>
               router.push(`/insights/paper-portfolios/${encodeURIComponent(slug ?? "")}`)
             }
-            className="inline-flex items-center gap-1.5 text-sm text-gray-300 hover:text-[#D4AF37] transition-colors"
+            className="inline-flex items-center gap-1.5 text-sm text-gray-300 hover:text-[#FFA500] transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             Portfolio
@@ -113,7 +114,7 @@ export default function InsightsPaperPortfolioTradesPage() {
         <div className="bg-gray-900/50 border border-gray-800 rounded-2xl overflow-hidden">
           {tradesQuery.isLoading ? (
             <div className="h-48 flex items-center justify-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#D4AF37]" />
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFA500]" />
             </div>
           ) : trades.length === 0 ? (
             <div className="py-16 text-center">
@@ -148,7 +149,7 @@ export default function InsightsPaperPortfolioTradesPage() {
                       <td className="px-4 py-3">
                         <ActionBadge action={t.action} />
                       </td>
-                      <td className="px-4 py-3 font-mono text-[#D4AF37]">{symbolDisplay}</td>
+                      <td className="px-4 py-3 font-mono text-[#FFA500]">{symbolDisplay}</td>
                       <td className="px-4 py-3 text-right font-mono text-gray-300">
                         {t.quantity > 0 ? fmtNumber(t.quantity) : "—"}
                       </td>
@@ -183,7 +184,7 @@ function FilterPill(props: { active: boolean; onClick: () => void; label: string
       onClick={props.onClick}
       className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
         props.active
-          ? "bg-[#D4AF37] text-gray-900"
+          ? "bg-[#FFA500] text-gray-900"
           : "bg-gray-900 border border-gray-800 text-gray-300 hover:text-white"
       }`}
     >

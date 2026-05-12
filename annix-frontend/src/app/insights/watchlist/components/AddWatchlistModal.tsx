@@ -128,7 +128,7 @@ export function AddWatchlistModal(props: AddWatchlistModalProps) {
               value={symbol}
               onChange={(e) => setSymbol(e.target.value)}
               placeholder="AGL.JO, SPY, ^J200"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D4AF37] focus:border-transparent uppercase"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FFA500] focus:border-transparent uppercase"
             />
           </div>
           <div>
@@ -142,7 +142,7 @@ export function AddWatchlistModal(props: AddWatchlistModalProps) {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Anglo American"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D4AF37] focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FFA500] focus:border-transparent"
             />
           </div>
         </div>
@@ -158,7 +158,7 @@ export function AddWatchlistModal(props: AddWatchlistModalProps) {
               id="ins-add-exchange"
               value={exchange}
               onChange={(e) => setExchange(e.target.value as InsightsExchange)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D4AF37] focus:border-transparent bg-white"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FFA500] focus:border-transparent bg-white"
             >
               {EXCHANGES.map((ex) => (
                 <option key={ex} value={ex}>
@@ -178,7 +178,7 @@ export function AddWatchlistModal(props: AddWatchlistModalProps) {
               id="ins-add-currency"
               value={currency}
               onChange={(e) => setCurrency(e.target.value as InsightsCurrency)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D4AF37] focus:border-transparent bg-white"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FFA500] focus:border-transparent bg-white"
             >
               {CURRENCIES.map((c) => (
                 <option key={c} value={c}>
@@ -198,7 +198,7 @@ export function AddWatchlistModal(props: AddWatchlistModalProps) {
               id="ins-add-asset-type"
               value={assetType}
               onChange={(e) => setAssetType(e.target.value as InsightsAssetType)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D4AF37] focus:border-transparent bg-white"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FFA500] focus:border-transparent bg-white"
             >
               {ASSET_TYPES.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -218,7 +218,7 @@ export function AddWatchlistModal(props: AddWatchlistModalProps) {
             value={sector}
             onChange={(e) => setSector(e.target.value)}
             placeholder="Diversified mining"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D4AF37] focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FFA500] focus:border-transparent"
           />
         </div>
         <div>
@@ -230,7 +230,7 @@ export function AddWatchlistModal(props: AddWatchlistModalProps) {
             rows={2}
             value={targetReason}
             onChange={(e) => setTargetReason(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D4AF37] focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FFA500] focus:border-transparent"
           />
         </div>
         <div>
@@ -242,7 +242,7 @@ export function AddWatchlistModal(props: AddWatchlistModalProps) {
             rows={2}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D4AF37] focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FFA500] focus:border-transparent"
           />
         </div>
       </div>

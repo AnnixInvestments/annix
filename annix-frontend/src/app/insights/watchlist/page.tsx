@@ -31,8 +31,8 @@ export default function InsightsWatchlistPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#111827] via-[#1f2937] to-[#111827]">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#D4AF37]" />
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40]">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#FFA500]" />
       </div>
     );
   }
@@ -85,13 +85,14 @@ export default function InsightsWatchlistPage() {
   const queryErrorMessage = queryError instanceof Error ? queryError.message : null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#111827] via-[#1f2937] to-[#111827] text-white">
+    <div className="min-h-screen bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40] text-white">
       <PortalToolbar
         portalType="insights"
         navItems={NAV_ITEMS}
         user={{ email: user.email }}
         onLogout={logout}
         version={INSIGHTS_VERSION}
+        hideThemeToggle
       />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -100,7 +101,7 @@ export default function InsightsWatchlistPage() {
             <button
               type="button"
               onClick={() => router.push("/insights")}
-              className="inline-flex items-center gap-1.5 text-sm text-gray-300 hover:text-[#D4AF37] transition-colors"
+              className="inline-flex items-center gap-1.5 text-sm text-gray-300 hover:text-[#FFA500] transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
               Back
@@ -119,7 +120,7 @@ export default function InsightsWatchlistPage() {
               setAddError(null);
               setIsAddOpen(true);
             }}
-            className="inline-flex items-center gap-1.5 bg-[#D4AF37] hover:bg-[#b8902c] text-gray-900 font-semibold px-4 py-2 rounded-lg transition-colors"
+            className="inline-flex items-center gap-1.5 bg-[#FFA500] hover:bg-[#CC8400] text-gray-900 font-semibold px-4 py-2 rounded-lg transition-colors"
           >
             <Plus className="w-4 h-4" />
             Add symbol
@@ -128,7 +129,7 @@ export default function InsightsWatchlistPage() {
 
         {watchlistQuery.isLoading ? (
           <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-12 flex items-center justify-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#D4AF37]" />
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFA500]" />
           </div>
         ) : queryErrorMessage ? (
           <div
@@ -139,7 +140,7 @@ export default function InsightsWatchlistPage() {
           </div>
         ) : items.length === 0 ? (
           <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-12 text-center">
-            <TrendingUp className="w-10 h-10 text-[#D4AF37] mx-auto mb-3" strokeWidth={1.5} />
+            <TrendingUp className="w-10 h-10 text-[#FFA500] mx-auto mb-3" strokeWidth={1.5} />
             <h2 className="text-lg font-semibold">No symbols yet.</h2>
             <p className="text-sm text-gray-400 mt-1 max-w-md mx-auto">
               Add your first symbol to start tracking it. JSE symbols use the `.JO` suffix (e.g.
@@ -171,7 +172,7 @@ export default function InsightsWatchlistPage() {
                       <td className="px-4 py-3 font-mono text-sm">
                         <Link
                           href={`/insights/assets/${encodeURIComponent(item.symbol)}`}
-                          className="text-[#D4AF37] hover:underline"
+                          className="text-[#FFA500] hover:underline"
                         >
                           {item.symbol}
                         </Link>

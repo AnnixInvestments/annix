@@ -35,6 +35,7 @@ export interface PortalToolbarProps {
   statusBadge?: React.ReactNode;
   featureFlags?: Record<string, boolean> | null;
   version?: string;
+  hideThemeToggle?: boolean;
 }
 
 // Descriptive tooltips for navigation items
@@ -186,7 +187,7 @@ export default function PortalToolbar(props: PortalToolbarProps) {
             {statusBadge}
             {additionalActions}
 
-            <ThemeToggle />
+            {props.hideThemeToggle ? null : <ThemeToggle />}
 
             <div className="relative group/user" ref={menuRef}>
               <button

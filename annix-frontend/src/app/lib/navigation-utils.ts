@@ -27,5 +27,9 @@ export const shouldShowGlobalNavigation = (pathname: string): boolean => {
     return false;
   }
 
+  if (pathname.startsWith("/insights")) {
+    return false;
+  }
+
   return true;
 };

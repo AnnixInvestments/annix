@@ -15,8 +15,8 @@ export default function InsightsHomePage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#111827] via-[#1f2937] to-[#111827]">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#D4AF37]" />
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40]">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#FFA500]" />
       </div>
     );
   }
@@ -53,10 +53,10 @@ function InsightsLoginCard() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#111827] via-[#1f2937] to-[#111827] px-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40] px-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[#D4AF37] mb-4">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[#FFA500] mb-4">
             <TrendingUp className="w-7 h-7 text-gray-900" strokeWidth={2.5} />
           </div>
           <h1 className="text-3xl font-bold text-white tracking-tight">Annix Insights</h1>
@@ -77,7 +77,7 @@ function InsightsLoginCard() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D4AF37] focus:border-transparent"
+                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FFA500] focus:border-transparent"
                 autoComplete="email"
               />
             </div>
@@ -92,7 +92,7 @@ function InsightsLoginCard() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-3 py-2 pr-10 bg-gray-800 border border-gray-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D4AF37] focus:border-transparent"
+                  className="w-full px-3 py-2 pr-10 bg-gray-800 border border-gray-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FFA500] focus:border-transparent"
                   autoComplete="current-password"
                 />
                 <button
@@ -118,7 +118,7 @@ function InsightsLoginCard() {
             <button
               type="submit"
               disabled={submitting}
-              className="w-full bg-[#D4AF37] hover:bg-[#b8902c] disabled:bg-gray-700 disabled:cursor-not-allowed text-gray-900 font-semibold py-2.5 rounded-lg transition-colors"
+              className="w-full bg-[#FFA500] hover:bg-[#CC8400] disabled:bg-gray-700 disabled:cursor-not-allowed text-gray-900 font-semibold py-2.5 rounded-lg transition-colors"
             >
               {submitting ? "Signing in…" : "Sign in"}
             </button>
@@ -137,13 +137,14 @@ function InsightsDashboard(props: { userEmail: string }) {
   const { logout } = useInsightsAuth();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#111827] via-[#1f2937] to-[#111827] text-white">
+    <div className="min-h-screen bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40] text-white">
       <PortalToolbar
         portalType="insights"
         navItems={NAV_ITEMS}
         user={{ email: props.userEmail }}
         onLogout={logout}
         version={INSIGHTS_VERSION}
+        hideThemeToggle
       />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -159,11 +160,11 @@ function InsightsDashboard(props: { userEmail: string }) {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
           <Link
             href="/insights/watchlist"
-            className="group bg-gray-900/50 border border-gray-800 rounded-2xl p-6 hover:border-[#D4AF37] hover:bg-gray-900/70 transition-colors"
+            className="group bg-gray-900/50 border border-gray-800 rounded-2xl p-6 hover:border-[#FFA500] hover:bg-gray-900/70 transition-colors"
           >
             <div className="flex items-center justify-between mb-3">
-              <ListChecks className="w-6 h-6 text-[#D4AF37]" strokeWidth={2} />
-              <ArrowRight className="w-4 h-4 text-gray-500 group-hover:text-[#D4AF37] transition-colors" />
+              <ListChecks className="w-6 h-6 text-[#FFA500]" strokeWidth={2} />
+              <ArrowRight className="w-4 h-4 text-gray-500 group-hover:text-[#FFA500] transition-colors" />
             </div>
             <h3 className="text-base font-semibold">Watchlist</h3>
             <p className="text-sm text-gray-400 mt-1">
@@ -172,11 +173,11 @@ function InsightsDashboard(props: { userEmail: string }) {
           </Link>
           <Link
             href="/insights/paper-portfolios"
-            className="group bg-gray-900/50 border border-gray-800 rounded-2xl p-6 hover:border-[#D4AF37] hover:bg-gray-900/70 transition-colors"
+            className="group bg-gray-900/50 border border-gray-800 rounded-2xl p-6 hover:border-[#FFA500] hover:bg-gray-900/70 transition-colors"
           >
             <div className="flex items-center justify-between mb-3">
-              <Briefcase className="w-6 h-6 text-[#D4AF37]" strokeWidth={2} />
-              <ArrowRight className="w-4 h-4 text-gray-500 group-hover:text-[#D4AF37] transition-colors" />
+              <Briefcase className="w-6 h-6 text-[#FFA500]" strokeWidth={2} />
+              <ArrowRight className="w-4 h-4 text-gray-500 group-hover:text-[#FFA500] transition-colors" />
             </div>
             <h3 className="text-base font-semibold">Paper portfolios</h3>
             <p className="text-sm text-gray-400 mt-1">
@@ -186,11 +187,11 @@ function InsightsDashboard(props: { userEmail: string }) {
           </Link>
           <Link
             href="/insights/signals"
-            className="group bg-gray-900/50 border border-gray-800 rounded-2xl p-6 hover:border-[#D4AF37] hover:bg-gray-900/70 transition-colors"
+            className="group bg-gray-900/50 border border-gray-800 rounded-2xl p-6 hover:border-[#FFA500] hover:bg-gray-900/70 transition-colors"
           >
             <div className="flex items-center justify-between mb-3">
-              <Signal className="w-6 h-6 text-[#D4AF37]" strokeWidth={2} />
-              <ArrowRight className="w-4 h-4 text-gray-500 group-hover:text-[#D4AF37] transition-colors" />
+              <Signal className="w-6 h-6 text-[#FFA500]" strokeWidth={2} />
+              <ArrowRight className="w-4 h-4 text-gray-500 group-hover:text-[#FFA500] transition-colors" />
             </div>
             <h3 className="text-base font-semibold">Signals</h3>
             <p className="text-sm text-gray-400 mt-1">

@@ -1,6 +1,8 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import { isString } from "es-toolkit/compat";
 import { In, Repository } from "typeorm";
+import { daysBetween, now, nowISO } from "../../lib/datetime";
 import { Asset } from "../entities/asset.entity";
 import { PaperHolding } from "../entities/paper-holding.entity";
 import {
@@ -65,6 +67,12 @@ export interface PortfolioDecisions {
 
 const STOP_LOSS_THRESHOLD_PCT = -20;
 const MIN_BUY_VALUE = 100;
+const MAX_PRICE_AGE_DAYS = 5;
+
+interface PriceSnapshot {
+  close: number;
+  date: string;
+}
 
 @Injectable()
 export class AllocationRulesEngineService {
@@ -128,16 +136,32 @@ export class AllocationRulesEngineService {
       sectorExposure.set(sector, (sectorExposure.get(sector) ?? 0) + value);
     }
 
+    const todayIso = nowIsoDate();
     for (const holding of holdings) {
       const signal = latestSignals.get(holding.assetId);
-      const price = latestPrices.get(holding.assetId);
-      if (!signal || !price) {
+      const priceSnapshot = latestPrices.get(holding.assetId);
+      if (!signal || !priceSnapshot) {
+        const missingSignal = !signal;
+        const missingPrice = !priceSnapshot;
         skipped.push(
-          `Hold ${holding.asset.symbol}: missing ${!signal ? "signal" : ""}${!signal && !price ? " + " : ""}${!price ? "price" : ""}`,
+          `Hold ${holding.asset.symbol}: missing ${missingSignal ? "signal" : ""}${missingSignal && missingPrice ? " + " : ""}${missingPrice ? "price" : ""}`,
         );
         continue;
       }
-      const sellDecision = await this.evaluateSell(portfolio, rules, holding, signal, price);
+      const staleness = daysBetweenIso(priceSnapshot.date, todayIso);
+      if (staleness > MAX_PRICE_AGE_DAYS) {
+        skipped.push(
+          `Hold ${holding.asset.symbol}: latest price is ${staleness} days old (${priceSnapshot.date}); refusing to evaluate sell off stale data.`,
+        );
+        continue;
+      }
+      const sellDecision = await this.evaluateSell(
+        portfolio,
+        rules,
+        holding,
+        signal,
+        priceSnapshot.close,
+      );
       if (sellDecision) {
         decisions.push(sellDecision);
         simulatedCash += sellDecision.estimatedTradeValue;
@@ -167,14 +191,28 @@ export class AllocationRulesEngineService {
       .filter((asset) => !heldAssetIds.has(asset.id))
       .map((asset) => {
         const signal = latestSignals.get(asset.id);
-        const price = latestPrices.get(asset.id);
-        if (!signal || !price) return null;
+        const priceSnapshot = latestPrices.get(asset.id);
+        if (!signal || !priceSnapshot) return null;
+        const staleness = daysBetweenIso(priceSnapshot.date, todayIso);
+        if (staleness > MAX_PRICE_AGE_DAYS) {
+          skipped.push(
+            `Buy ${asset.symbol}: latest price is ${staleness} days old (${priceSnapshot.date}); excluded from buy candidates.`,
+          );
+          return null;
+        }
         const sectorMatch = asset.sector !== null && tiltSectors.has(asset.sector);
         const sectorBonus = sectorMatch ? tiltBonus : 0;
         const leverageBonus = preferLeveraged && asset.assetType === "leveraged_etf" ? 5 : 0;
         const adjustedScore =
           signal.opportunityScore - signal.riskScore * 0.5 + sectorBonus + leverageBonus;
-        return { asset, signal, price, adjustedScore, sectorBonus, leverageBonus };
+        return {
+          asset,
+          signal,
+          price: priceSnapshot.close,
+          adjustedScore,
+          sectorBonus,
+          leverageBonus,
+        };
       })
       .filter((entry): entry is NonNullable<typeof entry> => entry !== null)
       .filter((entry) => entry.signal.confidenceScore >= rules.confidenceFloor)
@@ -345,19 +383,21 @@ export class AllocationRulesEngineService {
     return null;
   }
 
-  private async latestPrices(assetIds: string[]): Promise<Map<string, number>> {
-    const map = new Map<string, number>();
+  private async latestPrices(assetIds: string[]): Promise<Map<string, PriceSnapshot>> {
+    const map = new Map<string, PriceSnapshot>();
     if (assetIds.length === 0) return map;
     const rows = await this.historyRepo
       .createQueryBuilder("h")
       .select("DISTINCT ON (h.asset_id) h.asset_id", "asset_id")
       .addSelect("h.close", "close")
+      .addSelect("h.date", "date")
       .where({ assetId: In(assetIds) })
       .orderBy("h.asset_id")
       .addOrderBy("h.date", "DESC")
-      .getRawMany<{ asset_id: string; close: string }>();
+      .getRawMany<{ asset_id: string; close: string; date: string | Date }>();
     for (const row of rows) {
-      map.set(row.asset_id, Number(row.close));
+      const date = isString(row.date) ? row.date.slice(0, 10) : row.date.toISOString().slice(0, 10);
+      map.set(row.asset_id, { close: Number(row.close), date });
     }
     return map;
   }
@@ -376,8 +416,7 @@ export class AllocationRulesEngineService {
       map.set(row.assetId, {
         id: row.id,
         assetId: row.assetId,
-        snapshotDate:
-          typeof row.snapshotDate === "string" ? row.snapshotDate.slice(0, 10) : row.snapshotDate,
+        snapshotDate: isString(row.snapshotDate) ? row.snapshotDate.slice(0, 10) : row.snapshotDate,
         opportunityScore: Number(row.opportunityScore),
         riskScore: Number(row.riskScore),
         confidenceScore: Number(row.confidenceScore),
@@ -411,5 +450,13 @@ function topThreeComponents(breakdown: SignalComponentBreakdown): string {
 }
 
 function nowIso(): string {
-  return new Date().toISOString();
+  return nowISO();
+}
+
+function nowIsoDate(): string {
+  return now().toISODate() ?? "";
+}
+
+function daysBetweenIso(earlierIso: string, laterIso: string): number {
+  return Math.max(0, Math.round(daysBetween(earlierIso, laterIso)));
 }

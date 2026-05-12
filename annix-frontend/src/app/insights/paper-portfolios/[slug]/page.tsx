@@ -69,8 +69,8 @@ export default function InsightsPaperPortfolioDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#111827] via-[#1f2937] to-[#111827]">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#D4AF37]" />
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40]">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#FFA500]" />
       </div>
     );
   }
@@ -98,8 +98,8 @@ export default function InsightsPaperPortfolioDetailPage() {
 
   if (portfolioLoading || !portfolio) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#111827] via-[#1f2937] to-[#111827]">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#D4AF37]" />
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40]">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#FFA500]" />
       </div>
     );
   }
@@ -111,13 +111,14 @@ export default function InsightsPaperPortfolioDetailPage() {
   const totalReturnPositive = totalReturnPct >= 0;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#111827] via-[#1f2937] to-[#111827] text-white">
+    <div className="min-h-screen bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40] text-white">
       <PortalToolbar
         portalType="insights"
         navItems={NAV_ITEMS}
         user={{ email: user.email }}
         onLogout={logout}
         version={INSIGHTS_VERSION}
+        hideThemeToggle
       />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -126,7 +127,7 @@ export default function InsightsPaperPortfolioDetailPage() {
             <button
               type="button"
               onClick={() => router.push("/insights/paper-portfolios")}
-              className="inline-flex items-center gap-1.5 text-sm text-gray-300 hover:text-[#D4AF37] transition-colors"
+              className="inline-flex items-center gap-1.5 text-sm text-gray-300 hover:text-[#FFA500] transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
               Portfolios
@@ -261,7 +262,7 @@ export default function InsightsPaperPortfolioDetailPage() {
             </h2>
             {holdingsQuery.isLoading ? (
               <div className="h-32 flex items-center justify-center">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#D4AF37]" />
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#FFA500]" />
               </div>
             ) : holdings.length === 0 ? (
               <div className="text-center py-8">
@@ -286,7 +287,7 @@ export default function InsightsPaperPortfolioDetailPage() {
                     const positive = h.unrealisedGainLossPercent >= 0;
                     return (
                       <tr key={h.id}>
-                        <td className="py-2 font-mono text-[#D4AF37]">{h.symbol}</td>
+                        <td className="py-2 font-mono text-[#FFA500]">{h.symbol}</td>
                         <td className="py-2 text-right font-mono text-gray-300">
                           {fmtNumber(h.quantity)}
                         </td>
@@ -321,14 +322,14 @@ export default function InsightsPaperPortfolioDetailPage() {
             </h2>
             <Link
               href={`/insights/paper-portfolios/${encodeURIComponent(portfolio.slug)}/trades`}
-              className="text-xs text-[#D4AF37] hover:underline"
+              className="text-xs text-[#FFA500] hover:underline"
             >
               View all →
             </Link>
           </div>
           {tradesQuery.isLoading ? (
             <div className="h-32 flex items-center justify-center">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#D4AF37]" />
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#FFA500]" />
             </div>
           ) : trades.length === 0 ? (
             <p className="text-sm text-gray-400 py-4 text-center">
@@ -340,7 +341,7 @@ export default function InsightsPaperPortfolioDetailPage() {
                 <li key={t.id} className="py-2 flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3 min-w-0">
                     <ActionBadge action={t.action} />
-                    {t.symbol ? <span className="font-mono text-[#D4AF37]">{t.symbol}</span> : null}
+                    {t.symbol ? <span className="font-mono text-[#FFA500]">{t.symbol}</span> : null}
                     <span className="text-gray-500 text-xs truncate">{t.appReasoning}</span>
                   </div>
                   <span className="font-mono text-gray-300 text-xs whitespace-nowrap">
@@ -394,7 +395,7 @@ function DecisionsTodayCard(props: DecisionsTodayCardProps) {
       </div>
       {props.isLoading ? (
         <div className="h-24 flex items-center justify-center">
-          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#D4AF37]" />
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#FFA500]" />
         </div>
       ) : props.decisions.length === 0 ? (
         <div>
@@ -474,7 +475,7 @@ function DecisionRow(props: { decision: DecisionDto }) {
           >
             {d.action.toUpperCase()}
           </span>
-          <span className="font-mono text-[#D4AF37] text-sm">{d.symbol}</span>
+          <span className="font-mono text-[#FFA500] text-sm">{d.symbol}</span>
           <span className="text-xs text-gray-500">{d.assetName}</span>
         </div>
         <span className="font-mono text-xs text-gray-300">

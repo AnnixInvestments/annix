@@ -57,8 +57,8 @@ export default function InsightsSignalsPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#111827] via-[#1f2937] to-[#111827]">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#D4AF37]" />
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40]">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#FFA500]" />
       </div>
     );
   }
@@ -78,13 +78,14 @@ export default function InsightsSignalsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#111827] via-[#1f2937] to-[#111827] text-white">
+    <div className="min-h-screen bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40] text-white">
       <PortalToolbar
         portalType="insights"
         navItems={NAV_ITEMS}
         user={{ email: user.email }}
         onLogout={logout}
         version={INSIGHTS_VERSION}
+        hideThemeToggle
       />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -93,7 +94,7 @@ export default function InsightsSignalsPage() {
             <button
               type="button"
               onClick={() => router.push("/insights")}
-              className="inline-flex items-center gap-1.5 text-sm text-gray-300 hover:text-[#D4AF37] transition-colors"
+              className="inline-flex items-center gap-1.5 text-sm text-gray-300 hover:text-[#FFA500] transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
               Back
@@ -111,17 +112,17 @@ export default function InsightsSignalsPage() {
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
             placeholder="Filter by symbol, name, sector…"
-            className="w-64 px-3 py-2 bg-gray-900 border border-gray-800 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#D4AF37] focus:border-transparent"
+            className="w-64 px-3 py-2 bg-gray-900 border border-gray-800 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#FFA500] focus:border-transparent"
           />
         </div>
 
         {query.isLoading ? (
           <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-12 flex items-center justify-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#D4AF37]" />
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFA500]" />
           </div>
         ) : signals.length === 0 ? (
           <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-12 text-center">
-            <Signal className="w-10 h-10 text-[#D4AF37] mx-auto mb-3" strokeWidth={1.5} />
+            <Signal className="w-10 h-10 text-[#FFA500] mx-auto mb-3" strokeWidth={1.5} />
             <h2 className="text-lg font-semibold">No signal snapshots yet.</h2>
             <p className="text-sm text-gray-400 mt-1 max-w-md mx-auto">
               The signal engine runs daily at 06:00 SAST. Wait for the next cron tick, or ensure
@@ -203,7 +204,7 @@ function SortHeader(props: SortHeaderProps) {
       type="button"
       onClick={props.onClick}
       className={`inline-flex items-center gap-1 hover:text-white transition-colors ${
-        props.active ? "text-[#D4AF37]" : ""
+        props.active ? "text-[#FFA500]" : ""
       }`}
     >
       {props.label}
@@ -232,7 +233,7 @@ function RowGroup(props: { sig: SignalSnapshotResponse; expanded: boolean; onTog
           <Link
             href={`/insights/assets/${encodeURIComponent(sig.symbol)}`}
             onClick={(e) => e.stopPropagation()}
-            className="font-mono text-[#D4AF37] hover:underline"
+            className="font-mono text-[#FFA500] hover:underline"
           >
             {sig.symbol}
           </Link>
