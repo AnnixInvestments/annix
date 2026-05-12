@@ -23,14 +23,14 @@ describe("BOQStep (integration via renderRfqWizardComponent)", () => {
     resetRfqWizardStore();
   });
 
+  const EMPTY_WEIGHTS = {
+    flangeTypeWeights: [],
+    bnwSetWeights: [],
+    gasketWeights: [],
+  };
+
   it("renders the BOQ heading on an empty wizard", () => {
-    const { getByRole } = renderRfqWizardComponent(<BOQStep />, {
-      queryCache: {
-        flangeTypeWeights: [],
-        bnwSetWeights: [],
-        gasketWeights: [],
-      },
-    });
+    const { getByRole } = renderRfqWizardComponent(<BOQStep />, { queryCache: EMPTY_WEIGHTS });
     expect(
       getByRole("heading", { level: 2, name: /Bill of Quantities \(BOQ\)/i }),
     ).toBeInTheDocument();
@@ -38,9 +38,63 @@ describe("BOQStep (integration via renderRfqWizardComponent)", () => {
 
   it("does not crash when the React Query cache has no data and the store is at its initial values", () => {
     expect(() =>
-      renderRfqWizardComponent(<BOQStep />, {
-        queryCache: { flangeTypeWeights: [], bnwSetWeights: [], gasketWeights: [] },
-      }),
+      renderRfqWizardComponent(<BOQStep />, { queryCache: EMPTY_WEIGHTS }),
     ).not.toThrow();
   });
+
+  it("renders the project subtitle from the consolidated BOQ description", () => {
+    const { getByText } = renderRfqWizardComponent(<BOQStep />, { queryCache: EMPTY_WEIGHTS });
+    expect(
+      getByText(/Consolidated Material Requirements - Similar items pooled together/i),
+    ).toBeInTheDocument();
+  });
+
+  it("renders the Untitled project marker when no project name is set in the store", () => {
+    const { getByText } = renderRfqWizardComponent(<BOQStep />, { queryCache: EMPTY_WEIGHTS });
+    expect(getByText(/Untitled/)).toBeInTheDocument();
+  });
+
+  it("reflects the project name from the store when seeded", () => {
+    const { getByText } = renderRfqWizardComponent(<BOQStep />, {
+      queryCache: EMPTY_WEIGHTS,
+      storeOverrides: {
+        rfqData: {
+          ...useRfqWizardStoreInitialRfqData(),
+          projectName: "Integration Test Project",
+        },
+      },
+    });
+    expect(getByText("Integration Test Project")).toBeInTheDocument();
+  });
+
+  it("renders the Print BOQ action button (registered-customer affordance is always present in the DOM)", () => {
+    const { getByRole } = renderRfqWizardComponent(<BOQStep />, { queryCache: EMPTY_WEIGHTS });
+    expect(getByRole("button", { name: /Print BOQ/i })).toBeInTheDocument();
+  });
+
+  it("renders the customer label on the project info summary", () => {
+    const { getByText } = renderRfqWizardComponent(<BOQStep />, { queryCache: EMPTY_WEIGHTS });
+    expect(getByText(/^Customer$/)).toBeInTheDocument();
+  });
+});
+
+// Local helper — the store's initialRfqData factory is module-private,
+// so reconstruct the minimum shape the test needs (just project metadata).
+const useRfqWizardStoreInitialRfqData = () => ({
+  projectName: "",
+  projectType: undefined,
+  description: "",
+  customerName: "",
+  customerEmail: "",
+  customerPhone: "",
+  additionalContacts: "",
+  boqExtractionAccepted: false,
+  requiredDate: "2026-06-15",
+  requiredProducts: [],
+  notes: "",
+  globalSpecs: {},
+  items: [],
+  straightPipeEntries: [],
+  useNix: false,
+  nixPopupShown: false,
 });
