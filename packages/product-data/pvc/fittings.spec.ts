@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import { pvcCouplingDimension } from "./coupling-dimensions";
 import { pvcElbowDimension } from "./elbow-dimensions";
 import { pvcEndCapLength } from "./end-cap-dimensions";
+import { pvcFlangeAdapterDimension } from "./flange-adapter-dimensions";
 import { pvcReducerDimension } from "./reducer-dimensions";
+import { pvcSaddleDimension } from "./saddle-dimensions";
 import { pvcTeeDimension } from "./tee-dimensions";
 
 describe("pvcElbowDimension", () => {
@@ -67,5 +69,32 @@ describe("pvcCouplingDimension", () => {
   it("returns null for an unsupported family on a DN", () => {
     // 20 mm doesn't have an RRJ coupling
     expect(pvcCouplingDimension(20, "rrj")).toBeNull();
+  });
+});
+
+describe("pvcSaddleDimension", () => {
+  it("returns threaded-outlet body length for stocked combos", () => {
+    expect(pvcSaddleDimension(110, 25, "threaded_bsp")?.bodyLengthMm).toBe(120);
+  });
+
+  it("returns solvent-socket body length for stocked combos", () => {
+    expect(pvcSaddleDimension(160, 63, "solvent_socket")?.bodyLengthMm).toBe(180);
+  });
+
+  it("returns null when outlet type doesn't match the stocked entry", () => {
+    // 110×25 is threaded only, not solvent-socket
+    expect(pvcSaddleDimension(110, 25, "solvent_socket")).toBeNull();
+  });
+});
+
+describe("pvcFlangeAdapterDimension", () => {
+  it("returns body + face OD for stocked DN", () => {
+    const adapter = pvcFlangeAdapterDimension(110);
+    expect(adapter?.bodyLengthMm).toBe(125);
+    expect(adapter?.flangeFaceOdMm).toBe(240);
+  });
+
+  it("returns null for an unstocked DN", () => {
+    expect(pvcFlangeAdapterDimension(20)).toBeNull();
   });
 });

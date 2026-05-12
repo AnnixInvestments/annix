@@ -25,6 +25,12 @@ export {
   pvcEndCapSource,
 } from "./end-cap-dimensions";
 export {
+  PVC_FLANGE_ADAPTER_DIMENSIONS,
+  type PvcFlangeAdapterDimension,
+  pvcFlangeAdapterDimension,
+  pvcFlangeAdapterSource,
+} from "./flange-adapter-dimensions";
+export {
   calculatePvcJointCount,
   DEFAULT_PVC_PRESSURE_CLASS,
   PVC_COILS_AVAILABLE,
@@ -40,6 +46,13 @@ export {
   pvcReducerDimension,
   pvcReducerSource,
 } from "./reducer-dimensions";
+export {
+  PVC_SADDLE_DIMENSIONS,
+  type PvcSaddleDimension,
+  type PvcSaddleOutletType,
+  pvcSaddleDimension,
+  pvcSaddleSource,
+} from "./saddle-dimensions";
 export {
   PVC_CATALOGUE_SOURCES,
   type PvcCatalogueSource,
