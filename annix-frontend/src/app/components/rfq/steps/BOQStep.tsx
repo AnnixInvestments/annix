@@ -233,6 +233,42 @@ export default function BOQStep(props: {
   const consolidatedHdpeOther: Map<string, ConsolidatedItem> = new Map();
   const consolidatedSteelOther: Map<string, ConsolidatedItem> = new Map();
   const consolidatedPvcOther: Map<string, ConsolidatedItem> = new Map();
+  // HDPE butt-fusion stub-end adapters — one per HDPE flange end.
+  // Populated alongside the backing-flange consolidation so the
+  // customer sees them as their own priceable line items, matching
+  // what boqConsolidation.ts sends to the supplier (issue #288).
+  const consolidatedHdpeStubs: Map<string, ConsolidatedItem> = new Map();
+
+  const addHdpeStubItem = (
+    nb: number,
+    pressureClassLabel: string,
+    sdrValue: number | string | undefined,
+    flangeQty: number,
+    itemNumberArg: string,
+    entryId: string,
+  ): void => {
+    if (flangeQty <= 0) return;
+    const sdrLabel = sdrValue ? `SDR${sdrValue}` : "";
+    const sdrSuffix = sdrLabel ? ` ${sdrLabel}` : "";
+    const pnSuffix = pressureClassLabel ? ` ${pressureClassLabel}` : "";
+    const key = `HDPE_STUB_${nb}_${sdrLabel || "-"}_${pressureClassLabel || "-"}`;
+    const existing = consolidatedHdpeStubs.get(key);
+    if (existing) {
+      existing.qty += flangeQty;
+      existing.entries.push(itemNumberArg);
+      existing.entryIds.push(entryId);
+      return;
+    }
+    consolidatedHdpeStubs.set(key, {
+      description: `${nb}OD HDPE PE100${sdrSuffix}${pnSuffix} Butt-Fusion Stub End`.trim(),
+      qty: flangeQty,
+      unit: "Each",
+      weight: 0,
+      entries: [itemNumberArg],
+      entryIds: [entryId],
+      material: "hdpe",
+    });
+  };
   // Process each entry
   entries.forEach((entry) => {
     const rawClientItemNumber = entry.clientItemNumber;
@@ -429,6 +465,17 @@ export default function BOQStep(props: {
             entries: [itemNumber],
             entryIds: [entry.id],
           });
+        }
+
+        if (materialOfEntry(entry) === "hdpe") {
+          addHdpeStubItem(
+            nb,
+            flangeSpec.split(" ").pop() || "",
+            globalHdpeSdr,
+            flangeQty,
+            itemNumber,
+            entry.id,
+          );
         }
 
         // BNW for bend flanges - use bolt set count (2 same-sized ends = 1 bolt set)
@@ -945,6 +992,17 @@ export default function BOQStep(props: {
           });
         }
 
+        if (materialOfEntry(entry) === "hdpe") {
+          addHdpeStubItem(
+            nb,
+            flangeSpec.split(" ").pop() || "",
+            globalHdpeSdr,
+            flangeQty,
+            itemNumber,
+            entry.id,
+          );
+        }
+
         // BNW for main flanges - use bolt set count (3 same-sized ends = 2 bolt sets)
         const bnwInfo = bnwSetInfo(allBnwSets, nb, flangeSpec.split(" ").pop() || "PN16");
         const bnwKey = `BNW_${bnwInfo.boltSize}_x${bnwInfo.holesPerFlange}_${nb}NB_${flangeSpec}`;
@@ -1021,6 +1079,17 @@ export default function BOQStep(props: {
             entries: [itemNumber],
             entryIds: [entry.id],
           });
+        }
+
+        if (materialOfEntry(entry) === "hdpe") {
+          addHdpeStubItem(
+            branchNb,
+            flangeSpec.split(" ").pop() || "",
+            globalHdpeSdr,
+            branchFlangeQty,
+            itemNumber,
+            entry.id,
+          );
         }
 
         // BNW for branch flanges - use bolt set count for branch (only counts when different size)
@@ -1410,6 +1479,17 @@ export default function BOQStep(props: {
             entries: [itemNumber],
             entryIds: [entry.id],
           });
+        }
+
+        if (materialOfEntry(entry) === "hdpe") {
+          addHdpeStubItem(
+            nb,
+            flangeSpec.split(" ").pop() || "",
+            globalHdpeSdr,
+            flangeQty,
+            itemNumber,
+            entry.id,
+          );
         }
 
         // BNW for pipe flanges - use bolt set count (2 same-sized ends = 1 bolt set)
@@ -2043,6 +2123,7 @@ export default function BOQStep(props: {
     addToCombined(consolidatedBnwSets, "BNW Sets");
     addToCombined(consolidatedGaskets, "Gaskets");
     addToCombined(consolidatedHdpeOther, "HDPE Other");
+    addToCombined(consolidatedHdpeStubs, "HDPE Stub Ends");
     addToCombined(consolidatedSteelOther, "Steel Other");
     addToCombined(consolidatedPvcOther, "PVC Other");
     addToCombined(consolidatedValves, "Valves");
@@ -2403,7 +2484,11 @@ export default function BOQStep(props: {
           const bends = filterByMaterial(consolidatedBends, "hdpe");
           const fittings = filterByMaterial(consolidatedFittings, "hdpe");
           const hasContent =
-            pipes.size > 0 || bends.size > 0 || fittings.size > 0 || consolidatedHdpeOther.size > 0;
+            pipes.size > 0 ||
+            bends.size > 0 ||
+            fittings.size > 0 ||
+            consolidatedHdpeOther.size > 0 ||
+            consolidatedHdpeStubs.size > 0;
           if (!hasContent) return null;
           // HDPE pipes/bends/fittings are bare polymer — never coated
           // or lined — so the Int/Ext m² columns are not relevant and
@@ -2417,6 +2502,12 @@ export default function BOQStep(props: {
               title: "HDPE Fittings (Tees, Laterals, Reducers)",
               items: fittings,
               showWeldColumns: true,
+              showAreaColumns: false,
+            },
+            {
+              title: "HDPE Stub Ends",
+              items: consolidatedHdpeStubs,
+              showWeldColumns: false,
               showAreaColumns: false,
             },
             {
@@ -2445,7 +2536,13 @@ export default function BOQStep(props: {
                 false,
               )}
               {maybeRenderTable(
-                "HDPE Other (End Caps, Puddle Pipes, Boots, Stub Ends)",
+                "HDPE Stub Ends",
+                consolidatedHdpeStubs,
+                "bg-blue-50",
+                "text-blue-700",
+              )}
+              {maybeRenderTable(
+                "HDPE Other (End Caps, Puddle Pipes, Boots)",
                 consolidatedHdpeOther,
                 "bg-blue-50",
                 "text-blue-700",
