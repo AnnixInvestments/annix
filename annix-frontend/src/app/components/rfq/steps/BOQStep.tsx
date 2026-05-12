@@ -2676,10 +2676,13 @@ export default function BOQStep(props: {
           );
         })()}
 
-        {/* PVC / uPVC group — pipes / bends / fittings / other
-            tagged pvc. uPVC items land here too for now;
-            v1.1.36 will split uPVC out as a separate top-level
-            group once the form supports a uPVC material type. */}
+        {/* PVC / uPVC group — pipes / bends / fittings / stubs /
+            couplings / other tagged pvc. Bare PVC is not coated or
+            lined, so Int/Ext m² columns are suppressed (matches the
+            HDPE convention v1.5.34). uPVC items land here too for
+            now; a later version will split uPVC out as its own
+            top-level group once the form supports a uPVC material
+            type. */}
         {(() => {
           const pipes = filterByMaterial(consolidatedPipes, "pvc");
           const bends = filterByMaterial(consolidatedBends, "pvc");
@@ -2688,13 +2691,13 @@ export default function BOQStep(props: {
             pipes.size > 0 || bends.size > 0 || fittings.size > 0 || consolidatedPvcOther.size > 0;
           if (!hasContent) return null;
           const subsections: ExportableSubsection[] = [
-            { title: "PVC Pipes", items: pipes, showWeldColumns: true, showAreaColumns: true },
-            { title: "PVC Bends", items: bends, showWeldColumns: true, showAreaColumns: true },
+            { title: "PVC Pipes", items: pipes, showWeldColumns: true, showAreaColumns: false },
+            { title: "PVC Bends", items: bends, showWeldColumns: true, showAreaColumns: false },
             {
               title: "PVC Fittings",
               items: fittings,
               showWeldColumns: true,
-              showAreaColumns: true,
+              showAreaColumns: false,
             },
             {
               title: "PVC Other",
@@ -2711,15 +2714,15 @@ export default function BOQStep(props: {
                 </h3>
                 {renderGroupExports("PVC", subsections)}
               </div>
-              {maybeRenderTable("PVC Pipes", pipes, "bg-purple-50", "text-purple-700", true, true)}
-              {maybeRenderTable("PVC Bends", bends, "bg-purple-50", "text-purple-700", true, true)}
+              {maybeRenderTable("PVC Pipes", pipes, "bg-purple-50", "text-purple-700", true, false)}
+              {maybeRenderTable("PVC Bends", bends, "bg-purple-50", "text-purple-700", true, false)}
               {maybeRenderTable(
                 "PVC Fittings",
                 fittings,
                 "bg-purple-50",
                 "text-purple-700",
                 true,
-                true,
+                false,
               )}
               {maybeRenderTable(
                 "PVC Other",
