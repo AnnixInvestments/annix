@@ -14,10 +14,10 @@
 // in every supplier catalogue we cite. Class-by-class wall
 // thicknesses come from catalogues only.
 
-import { PVC_WALL_THICKNESS_DATA, type PvcWallThickness } from ".";
 import { isPvcClassValidForGrade, type PvcPressureClass } from "./classes";
 import type { PvcGradeCode } from "./grades";
 import { PVC_GRADES } from "./grades";
+import { PVC_WALL_THICKNESS_DATA, type PvcWallThickness } from "./wall-thickness-data";
 
 export interface PvcPipeDimensions {
   dnMm: number;
