@@ -89,9 +89,7 @@ export function poolItemsBySpec(
       const wt = numberField(item, ["wallThickness"]);
       const flange = stringField(item, ["flangeConfig"]);
       const signature =
-        mark.length > 0
-          ? `${mark}|${diameter ?? ""}|${length ?? ""}|${wt ?? ""}|${flange ?? ""}`
-          : "";
+        mark.length > 0 ? buildItemSignature(mark, diameter, length, wt, flange) : "";
       // Only dedup when the item has a mark — items without marks can't be
       // confidently identified as the "same" item across extractions.
       if (signature.length > 0 && seenSignatures.has(signature)) continue;
@@ -196,7 +194,7 @@ export function findSupersededByDedup(
       const length = numberField(item, ["length"]);
       const wt = numberField(item, ["wallThickness"]);
       const flange = stringField(item, ["flangeConfig"]);
-      const signature = `${mark}|${diameter ?? ""}|${length ?? ""}|${wt ?? ""}|${flange ?? ""}`;
+      const signature = buildItemSignature(mark, diameter, length, wt, flange);
       const owner = sigToExtraction.get(signature);
       if (owner) {
         let row = skipsByExtraction.get(extraction.id);
@@ -219,6 +217,50 @@ export function findSupersededByDedup(
     }
   }
   return Array.from(skipsByExtraction.values());
+}
+
+/**
+ * Builds a normalised dedup signature for an item so cosmetic differences
+ * across two extractions of the same physical item don't defeat the
+ * de-duplication step:
+ *  - mark: trimmed, uppercased, leading dashes/underscores stripped
+ *    ("-01" / "01" / "_01" → "01")
+ *  - flange config: collapsed to its 0 / 1 / 2 count, so "F.B.E F/F" and
+ *    "F.B.E. F/F" both map to "f2"
+ *  - numeric fields: rounded to 2 dp so "6000" and "6000.0" match
+ */
+function buildItemSignature(
+  mark: string,
+  diameter: number | null,
+  length: number | null,
+  wt: number | null,
+  flange: string | null,
+): string {
+  const normalisedMark = mark
+    .trim()
+    .toUpperCase()
+    .replace(/^[-_]+/, "");
+  const flangeCount = flangeCountFromConfig(flange);
+  const d = diameter === null ? "" : Math.round(diameter * 100) / 100;
+  const l = length === null ? "" : Math.round(length * 100) / 100;
+  const w = wt === null ? "" : Math.round(wt * 100) / 100;
+  return `${normalisedMark}|${d}|${l}|${w}|f${flangeCount}`;
+}
+
+/**
+ * Mirrors countFlangesFromConfig in surfaceAreaForQuoteItem.ts. Duplicated
+ * here as a tiny pure helper so poolItemsBySpec doesn't take a dependency
+ * on the surface-area module.
+ */
+function flangeCountFromConfig(config: string | null): number {
+  if (!config) return 0;
+  const normalised = config.trim().toUpperCase();
+  if (/^P\.?E\.?$/.test(normalised)) return 0;
+  if (/^B\.?W\.?$/.test(normalised)) return 0;
+  if (/F\.?B\.?E\.?/.test(normalised)) return 2;
+  if (/F\.?O\.?E\.?/.test(normalised)) return 1;
+  if (/F\/F/.test(normalised)) return 2;
+  return 0;
 }
 
 function stringField(obj: Record<string, unknown>, keys: string[]): string | null {
