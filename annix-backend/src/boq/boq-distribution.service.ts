@@ -72,6 +72,12 @@ export interface ConsolidatedBoqData {
   // HDPE butt-fusion stub-ends paired with backing flanges (one per
   // HDPE-pipe flange end). Priced separately from the flanges.
   hdpeStubs?: ConsolidatedItem[];
+  // PVC stub-flange adapters paired with backing rings — the PVC
+  // analog of HDPE Stub Ends.
+  pvcStubs?: ConsolidatedItem[];
+  // PVC slip / RRJ / repair couplings — priced separately by
+  // suppliers from straight pipe + fittings.
+  pvcCouplings?: ConsolidatedItem[];
   surfaceProtection?: ConsolidatedItem[];
   externalCoating?: ConsolidatedItem[];
   rubberLining?: ConsolidatedItem[];
@@ -116,6 +122,8 @@ const DATA_KEY_TO_SECTION: Record<string, string> = {
   bnwSets: "bnw_sets",
   gaskets: "gaskets",
   hdpeStubs: "hdpe_stubs",
+  pvcStubs: "pvc_stubs",
+  pvcCouplings: "pvc_couplings",
   surfaceProtection: "surface_protection",
   externalCoating: "external_coating",
   rubberLining: "rubber_lining",

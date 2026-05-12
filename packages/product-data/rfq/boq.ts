@@ -47,6 +47,14 @@ export interface ConsolidatedBoqDataDto {
   surfaceProtection?: ConsolidatedItemDto[];
   hdpePipes?: ConsolidatedItemDto[];
   pvcPipes?: ConsolidatedItemDto[];
+  // PVC stub-flange adapters paired with backing rings (the
+  // PVC analog of HDPE Stub Ends). Less common than HDPE stubs
+  // because most PVC flanging is direct slip-on, but kept as a
+  // distinct section for the cases that need it.
+  pvcStubs?: ConsolidatedItemDto[];
+  // PVC slip / RRJ / repair couplings — priced separately by
+  // suppliers from straight pipe + fittings.
+  pvcCouplings?: ConsolidatedItemDto[];
   structuralSteel?: ConsolidatedItemDto[];
   valves?: ConsolidatedItemDto[];
   instruments?: ConsolidatedItemDto[];

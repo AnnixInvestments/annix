@@ -38,6 +38,8 @@ export const BOQ_SECTION_TO_CAPABILITY: Record<string, string> = {
   // PVC Pipes
   pvc_pipes: "pvc",
   pvc_fittings: "pvc",
+  pvc_stubs: "pvc",
+  pvc_couplings: "pvc",
 
   // Structural Steel
   structural_steel: "structural_steel",
@@ -81,7 +83,7 @@ export const CAPABILITY_TO_SECTIONS: Record<string, string[]> = {
     "ceramic_lining",
   ],
   hdpe: ["hdpe_pipes", "hdpe_fittings", "hdpe_stubs"],
-  pvc: ["pvc_pipes", "pvc_fittings"],
+  pvc: ["pvc_pipes", "pvc_fittings", "pvc_stubs", "pvc_couplings"],
   structural_steel: ["structural_steel", "steel_structures"],
   valves_instruments: [
     "valves",
@@ -118,6 +120,8 @@ export const SECTION_TITLES: Record<string, string> = {
   hdpe_stubs: "HDPE Stub Ends",
   pvc_pipes: "PVC Pipes",
   pvc_fittings: "PVC Fittings",
+  pvc_stubs: "PVC Stub-flange Adapters",
+  pvc_couplings: "PVC Couplings",
   structural_steel: "Structural Steel",
   steel_structures: "Steel Structures",
   valves: "Valves",
