@@ -18,7 +18,7 @@
     "env:list": "claude-swarm env list",
     "dev:frontend": "cd annix-frontend && pnpm dev",
     "dev:frontend:clean": "npx kill-port 3000 && cd annix-frontend && rm -rf .next/cache/turbopack .next/cache/swc && pnpm dev",
-    "dev": "claude-swarm start",
+    "dev": "node scripts/check-hooks-installed.mjs && claude-swarm start",
     "stop": "claude-swarm stop",
     "kill-ports": "npx kill-port 3000 4001",
     "dev:clean": "pnpm kill-ports && pnpm dev",
@@ -32,7 +32,7 @@
     "lint:frontend": "cd annix-frontend && pnpm lint",
     "type-check": "cd annix-frontend && pnpm type-check",
     "start:prod": "NEXT_PUBLIC_API_URL=/api pnpm build && cd annix-backend && npx ts-node --project tsconfig.json --transpile-only ./node_modules/typeorm/cli -d ./src/config/data-source.ts migration:run && NODE_ENV=production PORT=4000 FRONTEND_URL=http://localhost:4000 node dist/src/main.js",
-    "prepare": "git config core.hooksPath .githooks 2>/dev/null || true"
+    "prepare": "node scripts/check-hooks-installed.mjs"
   },
   "pnpm": {
     "patchedDependencies": {
