@@ -697,8 +697,13 @@ export class PdfExtractorService {
     standards: string[] | null;
     clauseExcerpt: string | null;
   } {
+    // Section-header regex. Drops the trailing `\b` because pdf-parse
+    // commonly concatenates the header straight into the next word —
+    // "JW-VValves" or "JWV-1SCOPE" (no space, no boundary). The
+    // patterns below match on a left-side word boundary only, which
+    // is enough to anchor the section.
     const sectionHeaderPattern =
-      /\b(JW-?V|section\s+V|particular\s+specification\s*[-–:]\s*valves?|specification\s+for\s+valves?|valve\s+schedule|valve\s+specification|JWV-?\d)\b/i;
+      /\b(JW-?V|JWV-?\d|section\s+V|particular\s+specification\s*[-–:]\s*valves?|specification\s+for\s+valves?|valve\s+schedule|valve\s+specification)/i;
     const inlineValveMention = /\bvalves?\b/i;
 
     const sectionStarts: number[] = [];
@@ -723,29 +728,54 @@ export class PdfExtractorService {
 
     const scanText = scanLines.join("\n");
 
+    // Type patterns — loosened to match how tender specs actually
+    // describe valves. Two patterns where wording usually breaks the
+    // strict regex:
+    //   - "non-return (check) valves" — the parenthetical between
+    //     the prefix and "valves" needs to be allowed.
+    //   - "gate valves (wedge, resilient seal and pinch types)"
+    //     describes pinch / resilient-seal as **types of gate valve**,
+    //     not standalone "pinch valve" phrases. We detect them via
+    //     the enumeration-after-noun pattern below.
     const typePatterns: Array<{ pattern: RegExp; label: string }> = [
-      { pattern: /\b(?:wedge\s+)?gate\s+valve(?!s\s+for\s+water)/i, label: "Gate" },
+      // Trailing `\b` after `valves?` blocks the regex engine from
+      // backtracking — without it, "gate valves for water" would
+      // match by dropping the `s` (engine retries "gate valve" with
+      // "s for water" as the lookahead haystack, which then passes
+      // the negative lookahead). The boundary forces a non-word
+      // char after "valves"/"valve", so backtracking can't satisfy.
+      { pattern: /\b(?:wedge\s+)?gate\s+valves?\b(?!\s+for\s+water)/i, label: "Gate" },
       {
-        pattern: /\bresilient[\s-]*seal(?:ed)?\s+(?:gate\s+)?valve/i,
+        pattern: /\bresilient[\s-]*seal(?:ed)?\b/i,
         label: "Resilient-seal gate",
       },
-      { pattern: /\bpinch\s+valve/i, label: "Pinch" },
-      { pattern: /\bbutterfly\s+valve/i, label: "Butterfly" },
-      { pattern: /\b(?:non[-\s]*return|check|NRV)\s+valve/i, label: "Check / NRV" },
-      { pattern: /\bswing[\s-]*check/i, label: "Swing check" },
-      { pattern: /\bball\s+valve/i, label: "Ball" },
-      { pattern: /\bglobe\s+valve/i, label: "Globe" },
-      { pattern: /\bplug\s+valve/i, label: "Plug" },
-      { pattern: /\bknife[\s-]*gate\s+valve/i, label: "Knife-gate" },
-      { pattern: /\bair\s+(?:release\s+)?valve|\bdual[\s-]*acting\s+air/i, label: "Air valve" },
-      { pattern: /\bscour\s+valve/i, label: "Scour" },
-      { pattern: /\bisolating\s+valve/i, label: "Isolating" },
-      { pattern: /\bpressure[\s-]*reducing\s+valve|\bPRV\b/i, label: "Pressure-reducing" },
+      { pattern: /\bpinch\b(?=[^.]{0,80}(?:valve|type|gate))/i, label: "Pinch" },
+      { pattern: /\bbutterfly\s+valves?/i, label: "Butterfly" },
+      // Allow the parenthetical between "non-return" / "check" and
+      // "valves" — "non-return (check) valves" / "check (non-return)
+      // valves" / "NRV" all hit this.
       {
-        pattern: /\blevel[\s-]*control\s+valve|\baltitude\s+valve/i,
+        pattern:
+          /\b(?:non[-\s]*return|check)\s*(?:\([^)]*\)\s*)?valves?|\bnon[-\s]*return\s*\(\s*check\s*\)|\bNRV\b/i,
+        label: "Check / NRV",
+      },
+      { pattern: /\bswing[\s-]*check/i, label: "Swing check" },
+      { pattern: /\bball\s+valves?/i, label: "Ball" },
+      { pattern: /\bglobe\s+valves?/i, label: "Globe" },
+      { pattern: /\bplug\s+valves?/i, label: "Plug" },
+      { pattern: /\bknife[\s-]*gate\s+valves?/i, label: "Knife-gate" },
+      {
+        pattern: /\bair\s+(?:release\s+)?valves?|\bdual[\s-]*acting\s+air/i,
+        label: "Air valve",
+      },
+      { pattern: /\bscour\s+valves?/i, label: "Scour" },
+      { pattern: /\bisolating\s+valves?/i, label: "Isolating" },
+      { pattern: /\bpressure[\s-]*reducing\s+valves?|\bPRV\b/i, label: "Pressure-reducing" },
+      {
+        pattern: /\blevel[\s-]*control\s+valves?|\baltitude\s+valves?/i,
         label: "Level / altitude control",
       },
-      { pattern: /\bcontrol\s+valve/i, label: "Control" },
+      { pattern: /\bcontrol\s+valves?/i, label: "Control" },
     ];
 
     const standardPatterns: Array<{ pattern: RegExp; label: string }> = [
@@ -771,14 +801,13 @@ export class PdfExtractorService {
     }
 
     // Pull the first substantive valve-mentioning line as a short
-    // excerpt for traceability. Skip pure section headings (matched
-    // by sectionHeaderPattern) so the customer sees the actual clause
-    // text, not the chapter title.
+    // excerpt for traceability. The 30-char floor filters out lines
+    // that are pure heading titles ("JW-V Valves"); we don't filter
+    // OUT lines that match the section header because in practice
+    // pdf-parse runs the header into the next sentence, and that
+    // concatenated line is exactly the most informative excerpt.
     const excerptLine = scanLines.find(
-      (line) =>
-        inlineValveMention.test(line) &&
-        line.trim().length > 30 &&
-        !sectionHeaderPattern.test(line),
+      (line) => inlineValveMention.test(line) && line.trim().length > 30,
     );
     const trimmed = excerptLine ? excerptLine.trim() : null;
     const clauseExcerpt = trimmed ? trimmed.substring(0, 240) : null;

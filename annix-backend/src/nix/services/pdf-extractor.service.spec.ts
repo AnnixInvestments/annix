@@ -451,6 +451,72 @@ describe("PdfExtractorService", () => {
 
         expect(result.metadata.valveTypes).toBeNull();
       });
+
+      // Regression tests against the actual wording in the
+      // Anglo American RFQ 2026-25 SoW (J528 / JW559 / Blinkwater 2 TSF).
+      // pdf-parse output was probed and matches were verified — these
+      // strings are exactly what arrives at extractMetadata().
+      it("matches a JWV-1SCOPE concatenated header (no space, no boundary)", async () => {
+        setupMockPdf(
+          "JWV-1SCOPE This section covers gate valves and butterfly valves for medium-pressure pipelines.",
+        );
+        const result = await service.extractFromPdf("/fake/path.pdf");
+        expect(result.metadata.valveTypes).toEqual(expect.arrayContaining(["Gate", "Butterfly"]));
+      });
+
+      it("detects 'non-return (check) valves' across the parenthetical", async () => {
+        setupMockPdf(
+          "JWV-1SCOPE This section covers gate valves, non-return (check) valves, butterfly valves and ball valves.",
+        );
+        const result = await service.extractFromPdf("/fake/path.pdf");
+        expect(result.metadata.valveTypes).toEqual(
+          expect.arrayContaining(["Gate", "Check / NRV", "Butterfly", "Ball"]),
+        );
+      });
+
+      it("detects 'pinch types' inside a gate-valve enumeration as the Pinch type", async () => {
+        setupMockPdf(
+          "JWV-1SCOPE This section covers gate valves (wedge, resilient seal and pinch types), air valves, non-return (check) valves, butterfly valves, ball valves and level control valves.",
+        );
+        const result = await service.extractFromPdf("/fake/path.pdf");
+        expect(result.metadata.valveTypes).toEqual(
+          expect.arrayContaining([
+            "Gate",
+            "Resilient-seal gate",
+            "Pinch",
+            "Air valve",
+            "Check / NRV",
+            "Butterfly",
+            "Ball",
+            "Level / altitude control",
+          ]),
+        );
+      });
+
+      it("does NOT match 'gate valves for water works' (governing standard list, not a type spec)", async () => {
+        // The SoW also contains "SANS 664 Cast iron gate valves for
+        // water works" as a standards reference. We don't want the
+        // gate-valve type to be claimed solely on the back of that
+        // line — but if the JWV clause also mentions "gate valves"
+        // separately, that's the legitimate signal.
+        setupMockPdf("SANS 664 Cast iron gate valves for water works applies.");
+        const result = await service.extractFromPdf("/fake/path.pdf");
+        // No "Gate" — only the SANS 664 standards reference catches.
+        expect(result.metadata.valveTypes).toBeNull();
+        expect(result.metadata.valveStandards).toEqual(expect.arrayContaining(["SANS 664"]));
+      });
+
+      it("captures the full JW-V section preamble in the clause excerpt", async () => {
+        setupMockPdf(
+          [
+            "JW-VValves, Flow Meters and Density Gauges",
+            "",
+            "JWV-1SCOPE This section covers gate valves (wedge, resilient seal and pinch types), air valves, non-return (check) valves, butterfly valves, ball valves and level control valves for use in medium-pressure pipelines.",
+          ].join("\n"),
+        );
+        const result = await service.extractFromPdf("/fake/path.pdf");
+        expect(result.metadata.valveClauseExcerpt).toContain("gate valves");
+      });
     });
 
     describe("flange standard extraction", () => {
