@@ -1,7 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useSubmitNixQuote } from "@/app/lib/query/hooks";
 
 type SubmitChoice = "print" | "email" | "both" | "save";
@@ -16,8 +17,9 @@ type SubmitChoice = "print" | "email" | "both" | "save";
  *   - Print & Email  → /preview?print=1&email=1
  *   - Just save      → /quotations         (back to the hub)
  *
- * The preview page (`/quotations/quotes/[id]/preview`) handles the auto-
- * trigger semantics so this modal stays a thin dispatcher.
+ * Rendered into a body-level portal so it's not constrained by the
+ * QuoteView's vertical layout. Styling matches the project ConfirmModal
+ * (Stock Control palette + backdrop blur).
  */
 export function SubmitQuoteModal(props: { sessionId: number; onClose: () => void }) {
   const { sessionId, onClose } = props;
@@ -25,6 +27,21 @@ export function SubmitQuoteModal(props: { sessionId: number; onClose: () => void
   const submit = useSubmitNixQuote();
   const [error, setError] = useState<string | null>(null);
   const [busyChoice, setBusyChoice] = useState<SubmitChoice | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  // Portal target only exists post-hydration — defer the createPortal call.
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Esc closes the modal (matches ConfirmModal behaviour).
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && busyChoice === null) onClose();
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [busyChoice, onClose]);
 
   const handleChoice = (choice: SubmitChoice) => {
     setError(null);
@@ -52,22 +69,37 @@ export function SubmitQuoteModal(props: { sessionId: number; onClose: () => void
     );
   };
 
-  return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
-        <header className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-          <h2 className="text-base font-semibold text-gray-900">Submit quote</h2>
+  if (!mounted) return null;
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="submit-quote-title"
+    >
+      <button
+        type="button"
+        aria-label="Close submit dialog"
+        className="fixed inset-0 bg-black/10 backdrop-blur-md cursor-default"
+        onClick={() => busyChoice === null && onClose()}
+      />
+      <div className="relative bg-white rounded-lg shadow-xl max-w-lg w-full overflow-hidden">
+        <header className="px-5 py-4 border-b border-gray-200 flex items-center justify-between bg-[#323288] text-white">
+          <h2 id="submit-quote-title" className="text-base font-semibold tracking-wide">
+            Submit quote
+          </h2>
           <button
             type="button"
             onClick={onClose}
             disabled={busyChoice !== null}
-            className="text-gray-400 hover:text-gray-700 text-xl leading-none disabled:opacity-50"
+            className="text-white/80 hover:text-white text-xl leading-none disabled:opacity-50"
             aria-label="Close"
           >
             ×
           </button>
         </header>
-        <div className="p-4 space-y-3">
+        <div className="p-5 space-y-4">
           <p className="text-sm text-gray-700">
             How would you like to finalise this quote? All options save the quote so it appears in
             the Quotations hub with an Edit button.
@@ -108,18 +140,19 @@ export function SubmitQuoteModal(props: { sessionId: number; onClose: () => void
             </p>
           )}
         </div>
-        <footer className="px-4 py-3 border-t border-gray-200 flex justify-end gap-2">
+        <footer className="px-5 py-3 border-t border-gray-200 bg-gray-50 flex justify-end gap-2">
           <button
             type="button"
             onClick={onClose}
             disabled={busyChoice !== null}
-            className="px-3 py-1.5 text-sm font-medium text-gray-700 hover:text-gray-900 disabled:opacity-50"
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#323288]/40 disabled:opacity-50"
           >
             Cancel
           </button>
         </footer>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -136,9 +169,28 @@ function ChoiceButton(props: {
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="text-left p-3 border border-gray-300 rounded hover:border-[#323288] hover:bg-[#323288]/5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+      className="text-left p-3 border border-gray-300 rounded-md hover:border-[#323288] hover:bg-[#323288]/5 focus:outline-none focus:ring-2 focus:ring-[#323288]/40 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
     >
-      <div className="text-sm font-semibold text-[#323288]">{busy ? `${label}…` : label}</div>
+      <div className="text-sm font-semibold text-[#323288] flex items-center gap-1.5">
+        {busy && (
+          <svg
+            className="w-3.5 h-3.5 animate-spin"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <circle cx="12" cy="12" r="10" strokeWidth={3} className="opacity-25" />
+            <path
+              d="M22 12a10 10 0 00-10-10"
+              strokeWidth={3}
+              strokeLinecap="round"
+              className="opacity-75"
+            />
+          </svg>
+        )}
+        {busy ? `${label}…` : label}
+      </div>
       <div className="text-[11px] text-gray-600 mt-0.5">{hint}</div>
     </button>
   );

@@ -4,6 +4,7 @@ import { isArray, isString } from "es-toolkit/compat";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { QuoteCustomerView } from "@/app/lib/nix/components/quote";
 import {
   type QuotePdfSnapshotDto,
@@ -241,21 +242,49 @@ function EmailQuoteModal(props: {
     );
   };
 
-  return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-lg w-full">
-        <header className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-          <h2 className="text-base font-semibold text-gray-900">Email quotation</h2>
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !emailMutation.isPending) onClose();
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [emailMutation.isPending, onClose]);
+
+  if (!mounted) return null;
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="email-quote-title"
+    >
+      <button
+        type="button"
+        aria-label="Close email dialog"
+        className="fixed inset-0 bg-black/10 backdrop-blur-md cursor-default"
+        onClick={() => !emailMutation.isPending && onClose()}
+      />
+      <div className="relative bg-white rounded-lg shadow-xl max-w-lg w-full overflow-hidden">
+        <header className="px-5 py-4 border-b border-gray-200 flex items-center justify-between bg-[#323288] text-white">
+          <h2 id="email-quote-title" className="text-base font-semibold tracking-wide">
+            Email quotation
+          </h2>
           <button
             type="button"
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-700 text-xl leading-none"
+            disabled={emailMutation.isPending}
+            className="text-white/80 hover:text-white text-xl leading-none disabled:opacity-50"
             aria-label="Close"
           >
             ×
           </button>
         </header>
-        <div className="p-4 space-y-3">
+        <div className="p-5 space-y-3">
           <Field label="To">
             <input
               type="email"
@@ -304,11 +333,11 @@ function EmailQuoteModal(props: {
             </p>
           )}
         </div>
-        <footer className="px-4 py-3 border-t border-gray-200 flex justify-end gap-2">
+        <footer className="px-5 py-3 border-t border-gray-200 bg-gray-50 flex justify-end gap-2">
           <button
             type="button"
             onClick={onClose}
-            className="px-3 py-1.5 text-sm font-medium text-gray-700 hover:text-gray-900"
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#323288]/40"
           >
             {successInfo ? "Close" : "Cancel"}
           </button>
@@ -316,13 +345,14 @@ function EmailQuoteModal(props: {
             type="button"
             onClick={handleSend}
             disabled={emailMutation.isPending}
-            className="px-3 py-1.5 text-sm font-medium bg-[#323288] text-white rounded hover:bg-[#2a2a73] disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 text-sm font-medium bg-[#323288] text-white rounded-md hover:bg-[#2a2a73] focus:outline-none focus:ring-2 focus:ring-[#323288]/40 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {emailMutation.isPending ? "Sending…" : "Send"}
           </button>
         </footer>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
