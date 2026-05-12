@@ -1,5 +1,64 @@
 import { ApiError } from "./apiError";
+import { createApiClient } from "./createApiClient";
 import { insightsTokenStore } from "./portalTokenStores";
+
+export type InsightsExchange =
+  | "JSE"
+  | "NYSE"
+  | "NASDAQ"
+  | "LSE"
+  | "TSX"
+  | "HKEX"
+  | "TSE"
+  | "SSE"
+  | "ASX"
+  | "COMMODITY"
+  | "INDEX"
+  | "FOREX";
+
+export type InsightsAssetType =
+  | "stock"
+  | "etf"
+  | "commodity"
+  | "index"
+  | "crypto"
+  | "forex"
+  | "leveraged_etf";
+
+export type InsightsCurrency =
+  | "ZAR"
+  | "USD"
+  | "GBP"
+  | "EUR"
+  | "JPY"
+  | "CNY"
+  | "AUD"
+  | "CAD"
+  | "HKD";
+
+export interface AddWatchlistItemPayload {
+  symbol: string;
+  name: string;
+  exchange: InsightsExchange;
+  currency: InsightsCurrency;
+  assetType: InsightsAssetType;
+  sector?: string;
+  notes?: string;
+  targetReason?: string;
+}
+
+export interface WatchlistItemResponse {
+  id: string;
+  symbol: string;
+  name: string;
+  exchange: InsightsExchange;
+  currency: InsightsCurrency;
+  assetType: InsightsAssetType;
+  sector: string | null;
+  notes: string | null;
+  targetReason: string | null;
+  addedAt: string;
+}
 
 export interface InsightsLoginInput {
   email: string;
@@ -30,6 +89,13 @@ interface DecodedJwt {
 const envApiUrl = process.env.NEXT_PUBLIC_API_URL;
 const API_BASE = envApiUrl ?? "";
 const INSIGHTS_ROLE = "insights";
+
+const apiClient = createApiClient({
+  baseURL: API_BASE,
+  tokenStore: insightsTokenStore,
+  refreshHandler: async () => false,
+  onUnauthorized: () => insightsTokenStore.clear(),
+});
 
 function decodeJwt(token: string): DecodedJwt | null {
   const parts = token.split(".");
@@ -106,5 +172,17 @@ export const insightsApi = {
 
   logout() {
     insightsTokenStore.clear();
+  },
+
+  watchlist: {
+    list(): Promise<WatchlistItemResponse[]> {
+      return apiClient.get<WatchlistItemResponse[]>("/insights/watchlist");
+    },
+    add(payload: AddWatchlistItemPayload): Promise<WatchlistItemResponse> {
+      return apiClient.post<WatchlistItemResponse>("/insights/watchlist", payload);
+    },
+    remove(id: string): Promise<void> {
+      return apiClient.delete<void>(`/insights/watchlist/${id}`);
+    },
   },
 };

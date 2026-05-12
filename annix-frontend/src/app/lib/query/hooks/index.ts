@@ -673,6 +673,11 @@ export {
   useUploadDrawingVersion,
 } from "./drawing/useDrawings";
 export {
+  useAddToWatchlist,
+  useRemoveFromWatchlist,
+  useWatchlist,
+} from "./insights/useWatchlist";
+export {
   useClearExtractionMine,
   useCreateMineLibraryMine,
   useDocNumberSearch,

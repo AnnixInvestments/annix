@@ -1,6 +1,7 @@
 "use client";
 
-import { Eye, EyeOff, TrendingUp } from "lucide-react";
+import { ArrowRight, Eye, EyeOff, ListChecks, TrendingUp } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 import PortalToolbar, { type NavItem } from "@/app/components/PortalToolbar";
 import { ApiError } from "@/app/lib/api/apiError";
@@ -149,11 +150,26 @@ function InsightsDashboard(props: { userEmail: string }) {
         <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-8">
           <h2 className="text-2xl font-bold tracking-tight">Welcome.</h2>
           <p className="text-gray-400 mt-2 max-w-2xl">
-            This is the Phase 0 scaffolding of Annix Insights — the private investment-intelligence
-            test harness. There is no data here yet. Phase 1 will add the asset watchlist; Phase 2
-            adds historic price ingestion; the six paper portfolios start running at Phase 3.
-            Progress is tracked in GitHub issue #287.
+            Annix Insights is the private investment-intelligence test harness. Phase 1 is live: you
+            can curate the asset watchlist. Phase 2 adds historic price ingestion; the six paper
+            portfolios start running at Phase 3. Progress is tracked in GitHub issue #287.
           </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
+          <Link
+            href="/insights/watchlist"
+            className="group bg-gray-900/50 border border-gray-800 rounded-2xl p-6 hover:border-[#D4AF37] hover:bg-gray-900/70 transition-colors"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <ListChecks className="w-6 h-6 text-[#D4AF37]" strokeWidth={2} />
+              <ArrowRight className="w-4 h-4 text-gray-500 group-hover:text-[#D4AF37] transition-colors" />
+            </div>
+            <h3 className="text-base font-semibold">Watchlist</h3>
+            <p className="text-sm text-gray-400 mt-1">
+              Track the symbols the signal engine will run against.
+            </p>
+          </Link>
         </div>
       </main>
     </div>

@@ -12,6 +12,7 @@ export { drawingKeys } from "./drawingKeys";
 export { featureFlagKeys } from "./featureFlagKeys";
 export { fittingKeys } from "./fittingKeys";
 export { flangeWeightKeys } from "./flangeWeightKeys";
+export { insightsKeys } from "./insightsKeys";
 export { materialValidationKeys } from "./materialValidationKeys";
 export { messagingKeys } from "./messagingKeys";
 export type { NixSessionQueryParams } from "./nixKeys";
