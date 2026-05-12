@@ -232,7 +232,19 @@ export interface ConsolidatedItem {
   unit: string;
   weightKg: number;
   entries: number[];
+  // Total weld length per type in linear metres.
   welds?: {
+    pipeWeld?: number;
+    flangeWeld?: number;
+    mitreWeld?: number;
+    teeWeld?: number;
+    gussetTeeWeld?: number;
+    latWeld45Plus?: number;
+    latWeldUnder45?: number;
+  };
+  // Number of welds per type (parallel to `welds`). Suppliers may
+  // price welding per-metre and per-joint independently.
+  weldCounts?: {
     pipeWeld?: number;
     flangeWeld?: number;
     mitreWeld?: number;

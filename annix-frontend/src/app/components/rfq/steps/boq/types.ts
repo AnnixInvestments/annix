@@ -15,8 +15,12 @@ export type ConsolidatedItem = {
   // collisions of the same number, e.g. an "a.1" on three different
   // enquiry sheets.
   entryIds: string[];
-  // e.g., { "Pipe Weld": 2.5, "Flange Weld": 1.2 }
+  // Total weld length per type in linear metres, e.g. { "Pipe Weld":
+  // 2.5, "Flange Weld": 1.2 }.
   welds?: Record<string, number>;
+  // Integer count of welds per type, parallel to `welds`. Lets the
+  // supplier price both per-metre and per-joint.
+  weldCounts?: Record<string, number>;
   intAreaM2?: number;
   extAreaM2?: number;
   material?: MaterialKey;

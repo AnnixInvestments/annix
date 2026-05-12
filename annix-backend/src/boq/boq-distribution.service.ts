@@ -34,11 +34,25 @@ export interface ConsolidatedItem {
   unit: string;
   weightKg: number;
   entries: number[];
+  // Total weld length per type in linear metres.
   welds?: {
     pipeWeld?: number;
     flangeWeld?: number;
     mitreWeld?: number;
     teeWeld?: number;
+    gussetTeeWeld?: number;
+    latWeld45Plus?: number;
+    latWeldUnder45?: number;
+  };
+  // Number of welds per type (parallel to `welds`).
+  weldCounts?: {
+    pipeWeld?: number;
+    flangeWeld?: number;
+    mitreWeld?: number;
+    teeWeld?: number;
+    gussetTeeWeld?: number;
+    latWeld45Plus?: number;
+    latWeldUnder45?: number;
   };
   areas?: {
     intAreaM2?: number;
@@ -55,6 +69,9 @@ export interface ConsolidatedBoqData {
   blankFlanges?: ConsolidatedItem[];
   bnwSets?: ConsolidatedItem[];
   gaskets?: ConsolidatedItem[];
+  // HDPE butt-fusion stub-ends paired with backing flanges (one per
+  // HDPE-pipe flange end). Priced separately from the flanges.
+  hdpeStubs?: ConsolidatedItem[];
   surfaceProtection?: ConsolidatedItem[];
   externalCoating?: ConsolidatedItem[];
   rubberLining?: ConsolidatedItem[];
@@ -98,6 +115,7 @@ const DATA_KEY_TO_SECTION: Record<string, string> = {
   blankFlanges: "blank_flanges",
   bnwSets: "bnw_sets",
   gaskets: "gaskets",
+  hdpeStubs: "hdpe_stubs",
   surfaceProtection: "surface_protection",
   externalCoating: "external_coating",
   rubberLining: "rubber_lining",

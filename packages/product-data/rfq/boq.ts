@@ -4,7 +4,19 @@ export interface ConsolidatedItemDto {
   unit: string;
   weightKg: number;
   entries: number[];
+  // Total weld length per type in linear metres (count × circumference).
   welds?: {
+    pipeWeld?: number;
+    flangeWeld?: number;
+    mitreWeld?: number;
+    teeWeld?: number;
+    gussetTeeWeld?: number;
+    latWeld45Plus?: number;
+    latWeldUnder45?: number;
+  };
+  // Number of welds per type (integer count, parallel to `welds` lengths).
+  // Suppliers price welding both per-metre (length) AND per-joint (count).
+  weldCounts?: {
     pipeWeld?: number;
     flangeWeld?: number;
     mitreWeld?: number;
@@ -28,6 +40,10 @@ export interface ConsolidatedBoqDataDto {
   blankFlanges?: ConsolidatedItemDto[];
   bnwSets?: ConsolidatedItemDto[];
   gaskets?: ConsolidatedItemDto[];
+  // HDPE butt-fusion stub-ends paired with backing flanges — one per
+  // HDPE-pipe flange end. Suppliers price them separately because
+  // they are a fittings-house item, not a flange-house item.
+  hdpeStubs?: ConsolidatedItemDto[];
   surfaceProtection?: ConsolidatedItemDto[];
   hdpePipes?: ConsolidatedItemDto[];
   pvcPipes?: ConsolidatedItemDto[];

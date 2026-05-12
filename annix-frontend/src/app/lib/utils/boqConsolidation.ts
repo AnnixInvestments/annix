@@ -43,7 +43,10 @@ interface ConsolidatedItem {
   unit: string;
   weight: number;
   entries: number[];
+  // Total weld length per type in linear metres.
   welds?: Record<string, number>;
+  // Number of welds per type (integer count), parallel to `welds`.
+  weldCounts?: Record<string, number>;
   intAreaM2?: number;
   extAreaM2?: number;
 }
@@ -165,6 +168,50 @@ export function consolidateBoqData(input: ConsolidationInput): ExtendedConsolida
   const consolidatedBnwSets: Map<string, ConsolidatedItem> = new Map();
   const consolidatedGaskets: Map<string, ConsolidatedItem> = new Map();
   const consolidatedBlankFlanges: Map<string, ConsolidatedItem> = new Map();
+  // HDPE butt-fusion stub-ends — one per HDPE-pipe flange end. Paired
+  // with the existing backing-flange consolidation so the supplier
+  // sees them as their own priceable line items.
+  const consolidatedHdpeStubs: Map<string, ConsolidatedItem> = new Map();
+
+  // Detect whether an entry is HDPE so we can mirror each HDPE backing
+  // flange into a stub-end line. materialType is the canonical field;
+  // productType / description keywords fall back when older entries
+  // didn't populate it.
+  const isHdpeEntry = (entry: any): boolean => {
+    const matType = entry?.materialType;
+    if (matType === "hdpe") return true;
+    const productType = entry?.specs?.productType;
+    if (productType === "hdpe") return true;
+    const description = (entry?.description || "").toLowerCase();
+    return /\b(hdpe|pe\s?100|pe\s?80)\b/.test(description);
+  };
+
+  const addHdpeStub = (
+    nb: number,
+    pressureClassLabel: string,
+    sdrValue: number | string | undefined,
+    flangeQty: number,
+    entryItemNumber: number,
+  ): void => {
+    if (flangeQty <= 0) return;
+    const sdrLabel = sdrValue ? `SDR${sdrValue}` : "";
+    const sdrSuffix = sdrLabel ? ` ${sdrLabel}` : "";
+    const pnSuffix = pressureClassLabel ? ` ${pressureClassLabel}` : "";
+    const key = `HDPE_STUB_${nb}_${sdrLabel || "-"}_${pressureClassLabel || "-"}`;
+    const existing = consolidatedHdpeStubs.get(key);
+    if (existing) {
+      existing.qty += flangeQty;
+      existing.entries.push(entryItemNumber);
+      return;
+    }
+    consolidatedHdpeStubs.set(key, {
+      description: `${nb}OD HDPE PE100${sdrSuffix}${pnSuffix} Butt-Fusion Stub End`.trim(),
+      qty: flangeQty,
+      unit: "Each",
+      weight: 0,
+      entries: [entryItemNumber],
+    });
+  };
   const consolidatedValves: Map<string, ConsolidatedItem> = new Map();
   const consolidatedInstruments: Map<string, ConsolidatedItem> = new Map();
   const consolidatedPumps: Map<string, ConsolidatedItem> = new Map();
@@ -221,6 +268,10 @@ export function consolidateBoqData(input: ConsolidationInput): ExtendedConsolida
             weight: flangeWeight * flangeQty,
             entries: [itemNumber],
           });
+        }
+
+        if (isHdpeEntry(entry)) {
+          addHdpeStub(nb, pressureClass, undefined, flangeQty, itemNumber);
         }
 
         const bnwInfo = lookups.bnwSetInfo(nb, pressureClass);
@@ -332,6 +383,10 @@ export function consolidateBoqData(input: ConsolidationInput): ExtendedConsolida
           });
         }
 
+        if (isHdpeEntry(entry)) {
+          addHdpeStub(nb, pressureClass, undefined, flangeQty, itemNumber);
+        }
+
         const bnwInfo = lookups.bnwSetInfo(nb, pressureClass);
         const bnwKey = `BNW_${bnwInfo.boltSize}_x${bnwInfo.holesPerFlange}_${nb}NB_${flangeSpecStr}`;
         const existingBnw = consolidatedBnwSets.get(bnwKey);
@@ -398,6 +453,10 @@ export function consolidateBoqData(input: ConsolidationInput): ExtendedConsolida
             weight: branchFlangeWeight * branchFlangeQty,
             entries: [itemNumber],
           });
+        }
+
+        if (isHdpeEntry(entry)) {
+          addHdpeStub(branchNb, pressureClass, undefined, branchFlangeQty, itemNumber);
         }
 
         const branchBnwInfo = lookups.bnwSetInfo(branchNb, pressureClass);
@@ -685,6 +744,10 @@ export function consolidateBoqData(input: ConsolidationInput): ExtendedConsolida
           });
         }
 
+        if (isHdpeEntry(entry)) {
+          addHdpeStub(nb, pressureClass, undefined, flangeQty, itemNumber);
+        }
+
         const bnwInfo = lookups.bnwSetInfo(nb, pressureClass);
         const bnwKey = `BNW_${bnwInfo.boltSize}_x${bnwInfo.holesPerFlange}_${nb}NB_${flangeSpecStr}`;
         const existingBnw = consolidatedBnwSets.get(bnwKey);
@@ -885,6 +948,18 @@ export function consolidateBoqData(input: ConsolidationInput): ExtendedConsolida
             }
           : undefined,
 
+        weldCounts: item.weldCounts
+          ? {
+              pipeWeld: item.weldCounts["Pipe Weld"],
+              flangeWeld: item.weldCounts["Flange Weld"],
+              mitreWeld: item.weldCounts["Mitre Weld"],
+              teeWeld: item.weldCounts["Tee Weld"],
+              gussetTeeWeld: item.weldCounts["Gusset Tee Weld"],
+              latWeld45Plus: item.weldCounts["Lat Weld 45+"],
+              latWeldUnder45: item.weldCounts["Lat Weld <45"],
+            }
+          : undefined,
+
         areas:
           rawIntAreaM22 || item.extAreaM2
             ? {
@@ -902,6 +977,7 @@ export function consolidateBoqData(input: ConsolidationInput): ExtendedConsolida
       consolidatedBlankFlanges.size > 0 ? mapToDto(consolidatedBlankFlanges) : undefined,
     bnwSets: consolidatedBnwSets.size > 0 ? mapToDto(consolidatedBnwSets) : undefined,
     gaskets: consolidatedGaskets.size > 0 ? mapToDto(consolidatedGaskets) : undefined,
+    hdpeStubs: consolidatedHdpeStubs.size > 0 ? mapToDto(consolidatedHdpeStubs) : undefined,
     valves: consolidatedValves.size > 0 ? mapToDto(consolidatedValves) : undefined,
     instruments: consolidatedInstruments.size > 0 ? mapToDto(consolidatedInstruments) : undefined,
     pumps: consolidatedPumps.size > 0 ? mapToDto(consolidatedPumps) : undefined,
