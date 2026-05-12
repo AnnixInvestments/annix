@@ -110,6 +110,32 @@ function defaultBendRadiusMm(nbMm: number): number {
 }
 
 /**
+ * SCH.STD wall-thickness fallback for fittings whose extraction captured the
+ * schedule (e.g. "SCH.STD") but not an explicit wallThickness. Without this,
+ * id = OD (internal area = 0) and the lining contribution to the unit price
+ * silently disappears. Linear fit to ANSI B36.10M SCH.STD across NPS 2–24
+ * (within ~25 % across the range — close enough for quoting purposes).
+ *
+ * The fabrication module still uses the real schedule for cutting; this
+ * fallback only affects the m² shown on the customer quote.
+ */
+function fallbackWallThicknessMm(nbMm: number): number {
+  if (nbMm <= 0) return 0;
+  return Math.max(3, 0.04 * nbMm + 2);
+}
+
+/**
+ * Resolves the wall thickness to use for area math. If the extraction
+ * captured a wallThickness value, prefer it; otherwise fall back to the
+ * SCH.STD approximation above.
+ */
+function effectiveWallMm(item: QuoteItem, nbMm: number): number {
+  const wt = item.wallThickness;
+  if (wt && wt > 0) return wt;
+  return fallbackWallThicknessMm(nbMm);
+}
+
+/**
  * Bend arc length (centerline) for the given total angle in degrees. Caller
  * applies it to π × OD for external area and π × ID for internal area.
  */
@@ -128,11 +154,11 @@ function bendArea(
   nbToOdMap: Record<number, number>,
 ): ItemSurfaceArea | null {
   const nb = item.diameter;
-  const wt = item.wallThickness;
   if (nb === null || nb <= 0) return null;
   const odMm = outerDiameterFromNB(nbToOdMap, nb);
   if (odMm <= 0) return null;
-  const idMm = wt && wt > 0 ? odMm - 2 * wt : 0;
+  const wt = effectiveWallMm(item, nb);
+  const idMm = wt > 0 ? odMm - 2 * wt : 0;
   const explicitLength = item.length;
   // If the drawing gave an actual centerline / overall length, prefer it.
   // Otherwise use 1.5 × NB long-radius default.
@@ -159,9 +185,12 @@ function reducerArea(item: QuoteItem, nbToOdMap: Record<number, number>): ItemSu
   const od1 = outerDiameterFromNB(nbToOdMap, nb1);
   const od2 = nb2 && nb2 > 0 ? outerDiameterFromNB(nbToOdMap, nb2) : od1 * 0.85;
   if (od1 <= 0 || od2 <= 0) return null;
-  const wt = item.wallThickness;
-  const id1 = wt && wt > 0 ? od1 - 2 * wt : 0;
-  const id2 = wt && wt > 0 ? od2 - 2 * wt : 0;
+  // Wall-thickness fallback per end so internal-lining area still computes
+  // when the drawing only printed "SCH.STD" without an explicit WT.
+  const wt1 = effectiveWallMm(item, nb1);
+  const wt2 = effectiveWallMm(item, nb2 && nb2 > 0 ? nb2 : nb1);
+  const id1 = wt1 > 0 ? od1 - 2 * wt1 : 0;
+  const id2 = wt2 > 0 ? od2 - 2 * wt2 : 0;
   const explicitLength = item.length;
   const lengthMm = explicitLength && explicitLength > 0 ? explicitLength : 0.6 * Math.max(od1, od2);
   const r1 = od1 / 2;
@@ -190,9 +219,12 @@ function teeArea(item: QuoteItem, nbToOdMap: Record<number, number>): ItemSurfac
   const odRun = outerDiameterFromNB(nbToOdMap, nbRun);
   const odBranch = outerDiameterFromNB(nbToOdMap, nbBranch);
   if (odRun <= 0 || odBranch <= 0) return null;
-  const wt = item.wallThickness;
-  const idRun = wt && wt > 0 ? odRun - 2 * wt : 0;
-  const idBranch = wt && wt > 0 ? odBranch - 2 * wt : 0;
+  // SCH.STD wall fallback per leg so internal area still computes when the
+  // extraction only captured the schedule label.
+  const wtRun = effectiveWallMm(item, nbRun);
+  const wtBranch = effectiveWallMm(item, nbBranch);
+  const idRun = wtRun > 0 ? odRun - 2 * wtRun : 0;
+  const idBranch = wtBranch > 0 ? odBranch - 2 * wtBranch : 0;
   const cRun = 0.5 * nbRun + 100;
   const cBranch = 0.5 * nbBranch + 100;
   const runLenMm = 2 * cRun;
@@ -245,8 +277,8 @@ function equalYArea(item: QuoteItem, nbToOdMap: Record<number, number>): ItemSur
   if (nb === null || nb <= 0) return null;
   const odMm = outerDiameterFromNB(nbToOdMap, nb);
   if (odMm <= 0) return null;
-  const wt = item.wallThickness;
-  const idMm = wt && wt > 0 ? odMm - 2 * wt : 0;
+  const wt = effectiveWallMm(item, nb);
+  const idMm = wt > 0 ? odMm - 2 * wt : 0;
   const explicitLength = item.length;
   const armLenMm = explicitLength && explicitLength > 0 ? explicitLength : 1.5 * odMm;
   const externalArm = (Math.PI * odMm * armLenMm) / 1e6;
