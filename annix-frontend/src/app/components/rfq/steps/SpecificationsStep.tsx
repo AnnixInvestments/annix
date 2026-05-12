@@ -43,6 +43,7 @@ import {
   isFlangeStandardAllowedForUnregistered,
   isSteelSpecAllowedForUnregistered,
 } from "@/app/lib/utils/rfq/registrationRestrictions";
+import { AutoExtractedSpecsBanner } from "./specifications/AutoExtractedSpecsBanner";
 import {
   autoFilledClass,
   isPressureClassMissingPTData as computePressureClassMissingPTData,
@@ -512,6 +513,7 @@ export default function SpecificationsStep(props: {
       <p className="text-gray-600 text-xs mb-2">
         Define working conditions and material specifications.
       </p>
+      <AutoExtractedSpecsBanner globalSpecs={globalSpecs} />
       {/* Validation Error Banner */}
       {hasErrors && (
         <div className="mb-2 bg-red-50 border-l-4 border-red-500 rounded p-2">
