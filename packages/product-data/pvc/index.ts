@@ -5,6 +5,26 @@
 // `packages/product-data/pvc/*.ts`.
 
 export {
+  PVC_COUPLING_DIMENSIONS,
+  type PvcCouplingDimension,
+  type PvcCouplingFamily,
+  pvcCouplingDimension,
+  pvcCouplingSource,
+} from "./coupling-dimensions";
+export {
+  PVC_ELBOW_DIMENSIONS,
+  type PvcElbowAngle,
+  type PvcElbowDimension,
+  pvcElbowDimension,
+  pvcElbowSource,
+} from "./elbow-dimensions";
+export {
+  PVC_END_CAP_DIMENSIONS,
+  type PvcEndCapDimension,
+  pvcEndCapLength,
+  pvcEndCapSource,
+} from "./end-cap-dimensions";
+export {
   calculatePvcJointCount,
   DEFAULT_PVC_PRESSURE_CLASS,
   PVC_COILS_AVAILABLE,
@@ -15,10 +35,22 @@ export {
   standardPvcPipeLengthForDn,
 } from "./pricing";
 export {
+  PVC_REDUCER_DIMENSIONS,
+  type PvcReducerDimension,
+  pvcReducerDimension,
+  pvcReducerSource,
+} from "./reducer-dimensions";
+export {
   PVC_CATALOGUE_SOURCES,
   type PvcCatalogueSource,
   pvcCatalogueSource,
 } from "./sources";
+export {
+  PVC_TEE_DIMENSIONS,
+  type PvcTeeDimension,
+  pvcTeeDimension,
+  pvcTeeSource,
+} from "./tee-dimensions";
 export {
   type PvcDeratingPoint,
   pvcDeratedWorkingPressure,
