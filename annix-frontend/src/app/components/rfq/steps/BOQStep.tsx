@@ -1726,7 +1726,10 @@ export default function BOQStep(props: {
     );
   };
 
-  const boqSourceContext = { hasAnySourceLocations, sourceLookup };
+  const boqSourceContext = useMemo(
+    () => ({ hasAnySourceLocations, sourceLookup }),
+    [hasAnySourceLocations, sourceLookup],
+  );
 
   // Trigger download of `data` as `filename` with the given MIME
   // type. Browser Blob + ObjectURL pattern.
