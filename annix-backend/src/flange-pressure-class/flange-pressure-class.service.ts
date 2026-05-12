@@ -14,6 +14,9 @@ export class FlangePressureClassService extends BaseCrudService<
   CreateFlangePressureClassDto,
   UpdateFlangePressureClassDto
 > {
+  private findAllCache: FlangePressureClass[] | null = null;
+  private byStandardCache = new Map<number, FlangePressureClass[]>();
+
   constructor(
     @InjectRepository(FlangePressureClass)
     pressureRepo: Repository<FlangePressureClass>,
@@ -24,6 +27,22 @@ export class FlangePressureClassService extends BaseCrudService<
       entityName: "Flange pressure class",
       defaultRelations: ["standard"],
     });
+  }
+
+  private invalidateCache(): void {
+    this.findAllCache = null;
+    this.byStandardCache.clear();
+  }
+
+  async findAll(relations?: string[]): Promise<FlangePressureClass[]> {
+    if (!relations && this.findAllCache) {
+      return this.findAllCache;
+    }
+    const result = await super.findAll(relations);
+    if (!relations) {
+      this.findAllCache = result;
+    }
+    return result;
   }
 
   async create(dto: CreateFlangePressureClassDto): Promise<FlangePressureClass> {
@@ -42,21 +61,42 @@ export class FlangePressureClassService extends BaseCrudService<
       designation: dto.designation,
       standard,
     });
-    return this.repo.save(pressure);
+    const saved = await this.repo.save(pressure);
+    this.invalidateCache();
+    return saved;
+  }
+
+  async update(id: number, dto: UpdateFlangePressureClassDto): Promise<FlangePressureClass> {
+    const updated = await super.update(id, dto);
+    this.invalidateCache();
+    return updated;
+  }
+
+  async remove(id: number): Promise<void> {
+    await super.remove(id);
+    this.invalidateCache();
   }
 
   async getAllByStandard(standardId: number): Promise<FlangePressureClass[]> {
+    const cached = this.byStandardCache.get(standardId);
+    if (cached) {
+      return cached;
+    }
+
     await findOneOrFail(this.standardRepo, { where: { id: standardId } }, "Flange standard");
     const classes = await this.repo.find({
       where: { standard: { id: standardId } },
     });
 
-    return classes.sort((a, b) => {
+    const sorted = classes.sort((a, b) => {
       const numericValue = (designation: string): number => {
         const match = designation?.match(/(\d+)/);
         return match ? parseInt(match[1], 10) : 0;
       };
       return numericValue(a.designation) - numericValue(b.designation);
     });
+
+    this.byStandardCache.set(standardId, sorted);
+    return sorted;
   }
 }

@@ -16,6 +16,9 @@ import { RiskLevel, SlurryProfile } from "./entities/slurry-profile.entity";
 
 @Injectable()
 export class MinesService {
+  private allMinesCache: SaMineDto[] | null = null;
+  private commoditiesCache: CommodityDto[] | null = null;
+
   constructor(
     @InjectRepository(Commodity)
     private commodityRepository: Repository<Commodity>,
@@ -27,11 +30,20 @@ export class MinesService {
     private liningCoatingRuleRepository: Repository<LiningCoatingRule>,
   ) {}
 
+  private invalidateMinesCache(): void {
+    this.allMinesCache = null;
+  }
+
   async getAllCommodities(): Promise<CommodityDto[]> {
+    if (this.commoditiesCache) {
+      return this.commoditiesCache;
+    }
     const commodities = await this.commodityRepository.find({
       order: { commodityName: "ASC" },
     });
-    return commodities.map(this.mapCommodityToDto);
+    const dtos = commodities.map(this.mapCommodityToDto);
+    this.commoditiesCache = dtos;
+    return dtos;
   }
 
   async getAllMines(
@@ -39,6 +51,12 @@ export class MinesService {
     province?: string,
     status?: OperationalStatus,
   ): Promise<SaMineDto[]> {
+    const isUnfiltered = !commodityId && !province && !status;
+
+    if (isUnfiltered && this.allMinesCache) {
+      return this.allMinesCache;
+    }
+
     const query = this.saMineRepository
       .createQueryBuilder("mine")
       .leftJoinAndSelect("mine.commodity", "commodity")
@@ -57,7 +75,13 @@ export class MinesService {
     }
 
     const mines = await query.getMany();
-    return mines.map(this.mapMineToDto);
+    const dtos = mines.map(this.mapMineToDto);
+
+    if (isUnfiltered) {
+      this.allMinesCache = dtos;
+    }
+
+    return dtos;
   }
 
   async getActiveMines(): Promise<SaMineDto[]> {
@@ -188,6 +212,7 @@ export class MinesService {
       relations: ["commodity"],
     });
 
+    this.invalidateMinesCache();
     return this.mapMineToDto(mineWithRelations!);
   }
 

@@ -170,6 +170,27 @@ export default function NixExtractionDraftPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Link
+            href={`/stock-control/portal/quotations/new-from-documents?session=${session.id}`}
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-white text-[#323288] border border-[#323288] rounded-md text-sm font-medium shadow-sm hover:bg-[#323288] hover:text-white"
+            title="Upload additional drawings (revisions, fittings sheets, more pages) into this same session."
+          >
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+              />
+            </svg>
+            Upload more drawings
+          </Link>
           {session.status === "draft" && (
             <button
               type="button"

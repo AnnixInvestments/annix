@@ -12,6 +12,8 @@ export class NominalOutsideDiameterMmService extends BaseCrudService<
   CreateNominalOutsideDiameterMmDto,
   UpdateNominalOutsideDiameterMmDto
 > {
+  private findAllCache: NominalOutsideDiameterMm[] | null = null;
+
   constructor(
     @InjectRepository(NominalOutsideDiameterMm)
     nominalRepo: Repository<NominalOutsideDiameterMm>,
@@ -22,6 +24,21 @@ export class NominalOutsideDiameterMmService extends BaseCrudService<
     });
   }
 
+  private invalidateCache(): void {
+    this.findAllCache = null;
+  }
+
+  async findAll(relations?: string[]): Promise<NominalOutsideDiameterMm[]> {
+    if (!relations && this.findAllCache) {
+      return this.findAllCache;
+    }
+    const result = await super.findAll(relations);
+    if (!relations) {
+      this.findAllCache = result;
+    }
+    return result;
+  }
+
   async create(dto: CreateNominalOutsideDiameterMmDto): Promise<NominalOutsideDiameterMm> {
     await this.checkUnique(
       {
@@ -30,6 +47,22 @@ export class NominalOutsideDiameterMmService extends BaseCrudService<
       },
       "This nominal + outside diameter combination already exists",
     );
-    return super.create(dto);
+    const created = await super.create(dto);
+    this.invalidateCache();
+    return created;
+  }
+
+  async update(
+    id: number,
+    dto: UpdateNominalOutsideDiameterMmDto,
+  ): Promise<NominalOutsideDiameterMm> {
+    const updated = await super.update(id, dto);
+    this.invalidateCache();
+    return updated;
+  }
+
+  async remove(id: number): Promise<void> {
+    await super.remove(id);
+    this.invalidateCache();
   }
 }

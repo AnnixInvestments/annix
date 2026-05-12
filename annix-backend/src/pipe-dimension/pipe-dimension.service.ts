@@ -145,6 +145,9 @@ import { PipeDimension } from "./entities/pipe-dimension.entity";
 
 @Injectable()
 export class PipeDimensionService {
+  private findAllCache: PipeDimension[] | null = null;
+  private bySpecAndNominalCache = new Map<string, PipeDimension[]>();
+
   constructor(
     @InjectRepository(PipeDimension)
     private readonly pipeRepo: Repository<PipeDimension>,
@@ -153,6 +156,11 @@ export class PipeDimensionService {
     @InjectRepository(SteelSpecification)
     private readonly steelRepo: Repository<SteelSpecification>,
   ) {}
+
+  private invalidateCache(): void {
+    this.findAllCache = null;
+    this.bySpecAndNominalCache.clear();
+  }
 
   async create(dto: CreatePipeDimensionDto): Promise<PipeDimension> {
     const nominal = await this.nominalRepo.findOne({
@@ -174,13 +182,20 @@ export class PipeDimensionService {
       steelSpecification: steel,
       ...dto,
     });
-    return this.pipeRepo.save(pipe);
+    const saved = await this.pipeRepo.save(pipe);
+    this.invalidateCache();
+    return saved;
   }
 
   async findAll(): Promise<PipeDimension[]> {
-    return this.pipeRepo.find({
+    if (this.findAllCache) {
+      return this.findAllCache;
+    }
+    const result = await this.pipeRepo.find({
       relations: ["nominalOutsideDiameter", "steelSpecification", "pressures"],
     });
+    this.findAllCache = result;
+    return result;
   }
 
   async findOne(id: number): Promise<PipeDimension> {
@@ -195,12 +210,15 @@ export class PipeDimensionService {
   async update(id: number, dto: UpdatePipeDimensionDto): Promise<PipeDimension> {
     const pipe = await this.findOne(id);
     Object.assign(pipe, dto);
-    return this.pipeRepo.save(pipe);
+    const saved = await this.pipeRepo.save(pipe);
+    this.invalidateCache();
+    return saved;
   }
 
   async remove(id: number): Promise<void> {
     const pipe = await this.findOne(id);
     await this.pipeRepo.remove(pipe);
+    this.invalidateCache();
   }
 
   async getRecommendedSpecs(
@@ -358,6 +376,11 @@ export class PipeDimensionService {
   }
 
   async findAllBySpecAndNominal(steelSpecId: number, nominalId: number): Promise<PipeDimension[]> {
+    const cacheKey = `${steelSpecId}-${nominalId}`;
+    const cached = this.bySpecAndNominalCache.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
     const pipes = await this.pipeRepo.find({
       where: {
         steelSpecification: { id: steelSpecId },
@@ -368,6 +391,7 @@ export class PipeDimensionService {
         wall_thickness_mm: "ASC",
       },
     });
+    this.bySpecAndNominalCache.set(cacheKey, pipes);
     return pipes;
   }
 }

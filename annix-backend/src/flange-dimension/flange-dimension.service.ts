@@ -34,6 +34,8 @@ const ISO_METRIC_THREAD_PITCHES: Record<number, number> = {
 
 @Injectable()
 export class FlangeDimensionService {
+  private findAllCache: FlangeDimension[] | null = null;
+
   constructor(
     @InjectRepository(FlangeDimension)
     private readonly flangeRepo: Repository<FlangeDimension>,
@@ -47,6 +49,10 @@ export class FlangeDimensionService {
     @InjectRepository(BoltMass)
     private readonly boltMassRepo: Repository<BoltMass>,
   ) {}
+
+  private invalidateCache(): void {
+    this.findAllCache = null;
+  }
 
   async create(dto: CreateFlangeDimensionDto): Promise<FlangeDimension> {
     const nominal = await this.nominalRepo.findOne({
@@ -109,13 +115,20 @@ export class FlangeDimensionService {
       mass_kg: dto.mass_kg,
     });
 
-    return this.flangeRepo.save(flange);
+    const saved = await this.flangeRepo.save(flange);
+    this.invalidateCache();
+    return saved;
   }
 
   async findAll(): Promise<FlangeDimension[]> {
-    return this.flangeRepo.find({
+    if (this.findAllCache) {
+      return this.findAllCache;
+    }
+    const result = await this.flangeRepo.find({
       relations: ["nominalOutsideDiameter", "standard", "pressureClass", "bolt"],
     });
+    this.findAllCache = result;
+    return result;
   }
 
   async findOne(id: number): Promise<FlangeDimension> {
@@ -166,12 +179,15 @@ export class FlangeDimensionService {
 
     Object.assign(flange, dto);
 
-    return this.flangeRepo.save(flange);
+    const saved = await this.flangeRepo.save(flange);
+    this.invalidateCache();
+    return saved;
   }
 
   async remove(id: number): Promise<void> {
     const flange = await this.findOne(id);
     await this.flangeRepo.remove(flange);
+    this.invalidateCache();
   }
 
   async findBySpecs(

@@ -1,8 +1,11 @@
-import { Controller, Get, HttpStatus } from "@nestjs/common";
+import { Controller, Get, Header, HttpStatus } from "@nestjs/common";
 import { ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { CURRENCIES, type Currency, DEFAULT_CURRENCY } from "../lib/reference-data/currencies";
 import { PublicStatsDto } from "./dto/public-stats.dto";
 import { PublicService } from "./public.service";
+
+const STATS_CACHE_CONTROL = "public, max-age=300, stale-while-revalidate=600";
+const IMMUTABLE_CACHE_CONTROL = "public, max-age=31536000, immutable";
 
 @ApiTags("Public")
 @Controller("public")
@@ -10,6 +13,7 @@ export class PublicController {
   constructor(private readonly publicService: PublicService) {}
 
   @Get("stats")
+  @Header("Cache-Control", STATS_CACHE_CONTROL)
   @ApiOperation({
     summary: "Get public dashboard statistics",
     description:
@@ -25,6 +29,7 @@ export class PublicController {
   }
 
   @Get("stats/rfq-count")
+  @Header("Cache-Control", STATS_CACHE_CONTROL)
   @ApiOperation({
     summary: "Get total RFQ count",
     description: "Returns the total number of RFQs in the system",
@@ -45,6 +50,7 @@ export class PublicController {
   }
 
   @Get("stats/customer-count")
+  @Header("Cache-Control", STATS_CACHE_CONTROL)
   @ApiOperation({
     summary: "Get total customer count",
     description: "Returns the total number of registered customers",
@@ -65,6 +71,7 @@ export class PublicController {
   }
 
   @Get("stats/supplier-count")
+  @Header("Cache-Control", STATS_CACHE_CONTROL)
   @ApiOperation({
     summary: "Get total supplier count",
     description: "Returns the total number of registered suppliers",
@@ -85,6 +92,7 @@ export class PublicController {
   }
 
   @Get("reference/currencies")
+  @Header("Cache-Control", IMMUTABLE_CACHE_CONTROL)
   @ApiOperation({
     summary: "List global currencies",
     description:

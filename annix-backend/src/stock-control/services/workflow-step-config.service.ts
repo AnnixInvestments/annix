@@ -157,49 +157,87 @@ const DEFAULT_STEPS: ReadonlyArray<{
   },
 ];
 
+interface CompanyCacheEntry {
+  foreground?: WorkflowStepConfig[];
+  background?: WorkflowStepConfig[];
+}
+
 @Injectable()
 export class WorkflowStepConfigService {
   private readonly logger = new Logger(WorkflowStepConfigService.name);
+  private readonly cache = new Map<number, CompanyCacheEntry>();
 
   constructor(
     @InjectRepository(WorkflowStepConfig)
     private readonly repo: Repository<WorkflowStepConfig>,
   ) {}
 
+  private cacheFg(companyId: number, foreground: WorkflowStepConfig[]): void {
+    const entry = this.cache.get(companyId) ?? {};
+    entry.foreground = foreground;
+    this.cache.set(companyId, entry);
+  }
+
+  private cacheBg(companyId: number, background: WorkflowStepConfig[]): void {
+    const entry = this.cache.get(companyId) ?? {};
+    entry.background = background;
+    this.cache.set(companyId, entry);
+  }
+
+  private invalidate(companyId: number): void {
+    this.cache.delete(companyId);
+  }
+
   async orderedSteps(companyId: number): Promise<WorkflowStepConfig[]> {
+    const cached = this.cache.get(companyId)?.foreground;
+    if (cached) {
+      return cached;
+    }
+
     const existing = await this.repo.find({
       where: { companyId, isBackground: false },
       order: { sortOrder: "ASC" },
     });
 
     if (existing.length > 0) {
+      this.cacheFg(companyId, existing);
       return existing;
     }
 
     await this.seedDefaults(companyId);
 
-    return this.repo.find({
+    const seeded = await this.repo.find({
       where: { companyId, isBackground: false },
       order: { sortOrder: "ASC" },
     });
+    this.cacheFg(companyId, seeded);
+    return seeded;
   }
 
   async backgroundSteps(companyId: number): Promise<WorkflowStepConfig[]> {
+    const cached = this.cache.get(companyId)?.background;
+    if (cached) {
+      return cached;
+    }
+
     const existing = await this.repo.find({
       where: { companyId, isBackground: true },
       order: { sortOrder: "ASC", createdAt: "ASC" },
     });
 
     if (existing.length > 0) {
+      this.cacheBg(companyId, existing);
       return existing;
     }
 
     await this.seedDefaults(companyId);
 
-    return this.repo.find({
+    const seeded = await this.repo.find({
       where: { companyId, isBackground: true },
       order: { sortOrder: "ASC", createdAt: "ASC" },
     });
+    this.cacheBg(companyId, seeded);
+    return seeded;
   }
 
   async backgroundStepsForTrigger(
@@ -238,6 +276,8 @@ export class WorkflowStepConfigService {
       .values(entities)
       .orIgnore()
       .execute();
+
+    this.invalidate(companyId);
   }
 
   async updateActionLabel(
@@ -250,6 +290,8 @@ export class WorkflowStepConfigService {
     if (result.affected === 0) {
       throw new NotFoundException(`Step "${stepKey}" not found for this company`);
     }
+
+    this.invalidate(companyId);
   }
 
   async updateLabel(companyId: number, stepKey: string, label: string): Promise<void> {
@@ -258,6 +300,8 @@ export class WorkflowStepConfigService {
     if (result.affected === 0) {
       throw new NotFoundException(`Step "${stepKey}" not found for this company`);
     }
+
+    this.invalidate(companyId);
   }
 
   async updateBranchColor(
@@ -270,6 +314,8 @@ export class WorkflowStepConfigService {
     if (result.affected === 0) {
       throw new NotFoundException(`Step "${stepKey}" not found for this company`);
     }
+
+    this.invalidate(companyId);
   }
 
   async addStep(
@@ -299,7 +345,9 @@ export class WorkflowStepConfigService {
         triggerAfterStep: input.triggerAfterStep ?? null,
       });
 
-      return this.repo.save(newStep);
+      const saved = await this.repo.save(newStep);
+      this.invalidate(companyId);
+      return saved;
     }
 
     const steps = await this.orderedSteps(companyId);
@@ -332,7 +380,9 @@ export class WorkflowStepConfigService {
       triggerAfterStep: null,
     });
 
-    return this.repo.save(newStep);
+    const saved = await this.repo.save(newStep);
+    this.invalidate(companyId);
+    return saved;
   }
 
   async toggleBackground(
@@ -351,7 +401,9 @@ export class WorkflowStepConfigService {
     step.triggerAfterStep = isBackground ? (triggerAfterStep ?? null) : null;
     step.sortOrder = isBackground ? 0 : await this.nextSortOrder(companyId);
 
-    return this.repo.save(step);
+    const saved = await this.repo.save(step);
+    this.invalidate(companyId);
+    return saved;
   }
 
   async updateFollows(
@@ -366,7 +418,9 @@ export class WorkflowStepConfigService {
     }
 
     step.triggerAfterStep = triggerAfterStep;
-    return this.repo.save(step);
+    const saved = await this.repo.save(step);
+    this.invalidate(companyId);
+    return saved;
   }
 
   private async nextSortOrder(companyId: number): Promise<number> {
@@ -395,6 +449,7 @@ export class WorkflowStepConfigService {
     );
 
     await this.repo.remove(step);
+    this.invalidate(companyId);
   }
 
   async reorderStep(companyId: number, stepKey: string, direction: "up" | "down"): Promise<void> {
@@ -417,6 +472,7 @@ export class WorkflowStepConfigService {
 
     await this.repo.update({ id: currentStep.id }, { sortOrder: swapStep.sortOrder });
     await this.repo.update({ id: swapStep.id }, { sortOrder: tempOrder });
+    this.invalidate(companyId);
   }
 
   async bulkReorder(companyId: number, orderedKeys: string[]): Promise<void> {
@@ -437,6 +493,7 @@ export class WorkflowStepConfigService {
     await Promise.all(
       updates.map((update) => this.repo.update({ id: update.id }, { sortOrder: update.sortOrder })),
     );
+    this.invalidate(companyId);
   }
 
   async phasesForFgStep(companyId: number, fgStepKey: string): Promise<PhaseGroup[]> {
@@ -488,6 +545,8 @@ export class WorkflowStepConfigService {
     if (result.affected === 0) {
       throw new NotFoundException(`Step "${stepKey}" not found for this company`);
     }
+
+    this.invalidate(companyId);
   }
 
   async updateStepOutcomes(
@@ -500,6 +559,8 @@ export class WorkflowStepConfigService {
     if (result.affected === 0) {
       throw new NotFoundException(`Step "${stepKey}" not found for this company`);
     }
+
+    this.invalidate(companyId);
   }
 
   async updateBranchType(
@@ -512,6 +573,8 @@ export class WorkflowStepConfigService {
     if (result.affected === 0) {
       throw new NotFoundException(`Step "${stepKey}" not found for this company`);
     }
+
+    this.invalidate(companyId);
   }
 
   async updateRejoinAtStep(
@@ -524,6 +587,8 @@ export class WorkflowStepConfigService {
     if (result.affected === 0) {
       throw new NotFoundException(`Step "${stepKey}" not found for this company`);
     }
+
+    this.invalidate(companyId);
   }
 
   async fgStepConfig(companyId: number, stepKey: string): Promise<WorkflowStepConfig | null> {
