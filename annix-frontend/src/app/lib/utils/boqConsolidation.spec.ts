@@ -255,6 +255,189 @@ describe("consolidateBoqData — Phase 0 pipe / bend / fitting consolidation", (
     expect(result.reducers).toBeUndefined();
   });
 
+  it("populates pvcStubs when a PVC pipe is flanged-both-ends", () => {
+    const result = consolidateBoqData({
+      lookups: stubLookups,
+      entries: [
+        buildPipe({
+          materialType: "pvc",
+          description: "DN 110 uPVC Class 16 pipe",
+          specs: {
+            nominalBoreMm: 110,
+            scheduleNumber: "",
+            pipeEndConfiguration: "FBE",
+            individualPipeLength: 6,
+            quantityValue: 5,
+            quantityType: "number_of_pipes",
+            flangeStandardId: 1,
+            flangePressureClassId: 1,
+          },
+          calculation: { outsideDiameterMm: 110, wallThicknessMm: 8.1, calculatedPipeCount: 5 },
+        }),
+      ],
+      globalSpecs: { pvcType: "uPVC" },
+      masterData: {
+        flangeStandards: [{ id: 1, code: "SANS 1123" }],
+        pressureClasses: [{ id: 1, designation: "T1600/3" }],
+      },
+    });
+
+    expect(result.pvcStubs).toBeDefined();
+    expect(result.pvcStubs).toHaveLength(1);
+    const row = result.pvcStubs?.[0];
+    if (!row) return;
+    expect(row.qty).toBe(10);
+    expect(row.description).toContain("110OD");
+    expect(row.description).toContain("uPVC");
+    expect(row.description).toContain("Stub Flange Adapter");
+  });
+
+  it("does NOT populate pvcCouplings for FBE pipes (flanged ends, no coupling needed)", () => {
+    const result = consolidateBoqData({
+      lookups: stubLookups,
+      entries: [
+        buildPipe({
+          materialType: "pvc",
+          specs: {
+            nominalBoreMm: 110,
+            pipeEndConfiguration: "FBE",
+            individualPipeLength: 6,
+            quantityValue: 5,
+            quantityType: "number_of_pipes",
+          },
+          calculation: { outsideDiameterMm: 110, wallThicknessMm: 8.1, calculatedPipeCount: 5 },
+        }),
+      ],
+      globalSpecs: { pvcJoiningMethod: "solvent_cement" },
+    });
+
+    expect(result.pvcCouplings).toBeUndefined();
+  });
+
+  it("populates pvcCouplings as (pipeQty - 1) for plain-ended PVC pipes (solvent_cement default)", () => {
+    const result = consolidateBoqData({
+      lookups: stubLookups,
+      entries: [
+        buildPipe({
+          materialType: "pvc",
+          specs: {
+            nominalBoreMm: 110,
+            pipeEndConfiguration: "PE",
+            individualPipeLength: 6,
+            quantityValue: 10,
+            quantityType: "number_of_pipes",
+          },
+          calculation: { outsideDiameterMm: 110, wallThicknessMm: 8.1, calculatedPipeCount: 10 },
+        }),
+      ],
+      globalSpecs: { pvcType: "uPVC", pvcPressureClass: 16, pvcJoiningMethod: "solvent_cement" },
+    });
+
+    expect(result.pvcCouplings).toBeDefined();
+    expect(result.pvcCouplings).toHaveLength(1);
+    const row = result.pvcCouplings?.[0];
+    if (!row) return;
+    expect(row.qty).toBe(9);
+    expect(row.description).toContain("Slip Coupling");
+    expect(row.description).toContain("Class 16");
+  });
+
+  it("uses RRJ coupling label when pvcJoiningMethod is rubber_ring", () => {
+    const result = consolidateBoqData({
+      lookups: stubLookups,
+      entries: [
+        buildPipe({
+          materialType: "pvc",
+          specs: {
+            nominalBoreMm: 200,
+            pipeEndConfiguration: "PE",
+            individualPipeLength: 6,
+            quantityValue: 8,
+            quantityType: "number_of_pipes",
+          },
+          calculation: { outsideDiameterMm: 200, wallThicknessMm: 14.7, calculatedPipeCount: 8 },
+        }),
+      ],
+      globalSpecs: { pvcJoiningMethod: "rubber_ring" },
+    });
+
+    const row = result.pvcCouplings?.[0];
+    if (!row) return;
+    expect(row.qty).toBe(7);
+    expect(row.description).toContain("RRJ Coupling");
+  });
+
+  it("does NOT populate pvcCouplings when joining method is threaded or flanged_adaptor", () => {
+    const threaded = consolidateBoqData({
+      lookups: stubLookups,
+      entries: [
+        buildPipe({
+          materialType: "pvc",
+          specs: {
+            nominalBoreMm: 32,
+            pipeEndConfiguration: "PE",
+            individualPipeLength: 6,
+            quantityValue: 5,
+            quantityType: "number_of_pipes",
+          },
+          calculation: { outsideDiameterMm: 32, wallThicknessMm: 2.8, calculatedPipeCount: 5 },
+        }),
+      ],
+      globalSpecs: { pvcJoiningMethod: "threaded" },
+    });
+    expect(threaded.pvcCouplings).toBeUndefined();
+
+    const flangedAdaptor = consolidateBoqData({
+      lookups: stubLookups,
+      entries: [
+        buildPipe({
+          materialType: "pvc",
+          specs: {
+            nominalBoreMm: 110,
+            pipeEndConfiguration: "PE",
+            individualPipeLength: 6,
+            quantityValue: 5,
+            quantityType: "number_of_pipes",
+          },
+          calculation: { outsideDiameterMm: 110, wallThicknessMm: 8.1, calculatedPipeCount: 5 },
+        }),
+      ],
+      globalSpecs: { pvcJoiningMethod: "flanged_adaptor" },
+    });
+    expect(flangedAdaptor.pvcCouplings).toBeUndefined();
+  });
+
+  it("does NOT populate pvcStubs for steel or HDPE flanged pipes", () => {
+    const result = consolidateBoqData({
+      lookups: stubLookups,
+      entries: [
+        buildPipe({
+          materialType: "steel",
+          specs: {
+            nominalBoreMm: 100,
+            scheduleNumber: "Sch40",
+            pipeEndConfiguration: "FBE",
+            individualPipeLength: 6,
+            quantityValue: 5,
+            quantityType: "number_of_pipes",
+            flangeStandardId: 1,
+            flangePressureClassId: 1,
+          },
+          calculation: { outsideDiameterMm: 114.3, wallThicknessMm: 6.0, calculatedPipeCount: 5 },
+        }),
+      ],
+      masterData: {
+        flangeStandards: [{ id: 1, code: "SANS 1123" }],
+        pressureClasses: [{ id: 1, designation: "T1600/3" }],
+      },
+    });
+
+    expect(result.pvcStubs).toBeUndefined();
+    // HDPE stubs path still works for HDPE entries — sanity that we
+    // didn't accidentally route steel through it.
+    expect(result.hdpeStubs).toBeUndefined();
+  });
+
   it("includes weldCounts on flanged pipes", () => {
     const result = consolidateBoqData({
       lookups: stubLookups,

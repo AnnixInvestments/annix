@@ -44,6 +44,12 @@ export interface ConsolidationInput {
     hdpePressureRating?: number | string;
     pvcType?: string;
     pvcPressureClass?: number | string;
+    // Project-wide PVC joining-method preference. Drives the
+    // PVC coupling consolidation: "solvent_cement" → slip couplings,
+    // "rubber_ring" → RRJ couplings, "compression" → compression /
+    // repair couplings, "threaded" / "flanged_adaptor" → no
+    // couplings (different jointing pattern).
+    pvcJoiningMethod?: string;
   };
   masterData?: {
     flangeStandards?: { id: number; code: string }[];
@@ -272,6 +278,105 @@ export function consolidateBoqData(input: ConsolidationInput): ExtendedConsolida
       entries: [entryItemNumber],
     });
   };
+
+  // PVC stub-flange adapters — issue #288 Phase 5. Mirrors the HDPE
+  // stub pattern: one stub-flange adapter per PVC pipe / bend /
+  // fitting flange end. Each adapter pairs with a SANS 1123 backing
+  // ring (which the existing consolidatedFlanges path already
+  // counts). Less common than HDPE stubs because most PVC flanging
+  // uses slip-on adapters directly — kept as its own section so
+  // suppliers price them separately when needed.
+  const consolidatedPvcStubs: Map<string, ConsolidatedItem> = new Map();
+
+  const isPvcEntry = (entry: any): boolean => {
+    const matType = entry?.materialType;
+    if (matType === "pvc") return true;
+    const productType = entry?.specs?.productType;
+    if (productType === "pvc" || productType === "upvc") return true;
+    const rawDescription = entry?.description;
+    const description = (rawDescription || "").toLowerCase();
+    return /\b(upvc|mpvc|pvc-?u|pvc-?m|pvc-?o|cpvc|pvc)\b/.test(description);
+  };
+
+  const addPvcStub = (
+    nb: number,
+    pressureClassLabel: string,
+    pvcGradeLabel: string | undefined,
+    flangeQty: number,
+    entryItemNumber: number,
+  ): void => {
+    if (flangeQty <= 0) return;
+    const gradeLabel = pvcGradeLabel || "uPVC";
+    const pnSuffix = pressureClassLabel ? ` ${pressureClassLabel}` : "";
+    const key = `PVC_STUB_${nb}_${gradeLabel}_${pressureClassLabel || "-"}`;
+    const existing = consolidatedPvcStubs.get(key);
+    if (existing) {
+      existing.qty += flangeQty;
+      existing.entries.push(entryItemNumber);
+      return;
+    }
+    consolidatedPvcStubs.set(key, {
+      description: `${nb}OD ${gradeLabel}${pnSuffix} Stub Flange Adapter`.trim(),
+      qty: flangeQty,
+      unit: "Each",
+      weight: 0,
+      entries: [entryItemNumber],
+    });
+  };
+
+  // PVC pipe couplings — issue #288 Phase 5. Suppliers price slip
+  // (solvent-weld), rubber-ring (RRJ), and compression (repair)
+  // couplings as separate line items per (DN, joining method).
+  // Joining method is taken from globalSpecs.pvcJoiningMethod
+  // (project-wide setting) with a fallback to "solvent_cement".
+  // Threaded and flanged-adapter joining methods don't produce
+  // couplings (threaded uses fittings; flanged uses backing rings).
+  const consolidatedPvcCouplings: Map<string, ConsolidatedItem> = new Map();
+
+  const COUPLING_TYPE_LABEL: Record<string, string> = {
+    solvent_cement: "Slip Coupling (Solvent-Weld)",
+    rubber_ring: "RRJ Coupling (Rubber-Ring)",
+    compression: "Compression / Repair Coupling",
+  };
+  const couplingTypeForJoiningMethod = (method: string | undefined): string | null => {
+    if (!method) return "solvent_cement";
+    if (method === "solvent_cement") return "solvent_cement";
+    if (method === "rubber_ring") return "rubber_ring";
+    if (method === "compression") return "compression";
+    // threaded / flanged_adaptor / other — no coupling line item
+    return null;
+  };
+
+  const addPvcCoupling = (
+    nb: number,
+    pressureClassLabel: string,
+    pvcGradeLabel: string | undefined,
+    couplingQty: number,
+    entryItemNumber: number,
+    joiningMethod: string | undefined,
+  ): void => {
+    if (couplingQty <= 0) return;
+    const couplingType = couplingTypeForJoiningMethod(joiningMethod);
+    if (!couplingType) return;
+    const gradeLabel = pvcGradeLabel || "uPVC";
+    const pnSuffix = pressureClassLabel ? ` ${pressureClassLabel}` : "";
+    const rawCouplingLabel = COUPLING_TYPE_LABEL[couplingType];
+    const couplingLabel = rawCouplingLabel || couplingType;
+    const key = `PVC_COUPLING_${couplingType}_${nb}_${gradeLabel}_${pressureClassLabel || "-"}`;
+    const existing = consolidatedPvcCouplings.get(key);
+    if (existing) {
+      existing.qty += couplingQty;
+      existing.entries.push(entryItemNumber);
+      return;
+    }
+    consolidatedPvcCouplings.set(key, {
+      description: `${nb}OD ${gradeLabel}${pnSuffix} ${couplingLabel}`.trim(),
+      qty: couplingQty,
+      unit: "Each",
+      weight: 0,
+      entries: [entryItemNumber],
+    });
+  };
   const consolidatedValves: Map<string, ConsolidatedItem> = new Map();
   const consolidatedInstruments: Map<string, ConsolidatedItem> = new Map();
   const consolidatedPumps: Map<string, ConsolidatedItem> = new Map();
@@ -416,6 +521,8 @@ export function consolidateBoqData(input: ConsolidationInput): ExtendedConsolida
 
         if (isHdpeEntry(entry)) {
           addHdpeStub(nb, pressureClass, undefined, flangeQty, itemNumber);
+        } else if (isPvcEntry(entry)) {
+          addPvcStub(nb, pressureClass, globalSpecs?.pvcType, flangeQty, itemNumber);
         }
 
         const bnwInfo = lookups.bnwSetInfo(nb, pressureClass);
@@ -652,6 +759,8 @@ export function consolidateBoqData(input: ConsolidationInput): ExtendedConsolida
 
         if (isHdpeEntry(entry)) {
           addHdpeStub(nb, pressureClass, undefined, flangeQty, itemNumber);
+        } else if (isPvcEntry(entry)) {
+          addPvcStub(nb, pressureClass, globalSpecs?.pvcType, flangeQty, itemNumber);
         }
 
         const bnwInfo = lookups.bnwSetInfo(nb, pressureClass);
@@ -724,6 +833,8 @@ export function consolidateBoqData(input: ConsolidationInput): ExtendedConsolida
 
         if (isHdpeEntry(entry)) {
           addHdpeStub(branchNb, pressureClass, undefined, branchFlangeQty, itemNumber);
+        } else if (isPvcEntry(entry)) {
+          addPvcStub(branchNb, pressureClass, globalSpecs?.pvcType, branchFlangeQty, itemNumber);
         }
 
         const branchBnwInfo = lookups.bnwSetInfo(branchNb, pressureClass);
@@ -1071,6 +1182,33 @@ export function consolidateBoqData(input: ConsolidationInput): ExtendedConsolida
         if (pipeExtAreaM2 > 0) pipeRecord.extAreaM2 = pipeExtAreaM2;
         consolidatedPipes.set(pipeKey, pipeRecord);
       }
+
+      // PVC pipe couplings — issue #288 Phase 5. One coupling per
+      // inter-pipe joint when the pipe needs to be field-joined
+      // (plain ends with solvent / RRJ / compression jointing).
+      // Skip FBE pipes entirely — they connect end-to-end via
+      // backing-ring + gasket and the existing consolidatedFlanges
+      // / pvcStubs paths already count those. For N pipes in a
+      // continuous run there are (N-1) inter-pipe joints, so the
+      // coupling count is `pipeRowQty - 1`.
+      if (pipeMaterialType === "pvc") {
+        const rawPvcJoiningMethod = globalSpecs?.pvcJoiningMethod;
+        const joiningMethod = rawPvcJoiningMethod || "solvent_cement";
+        const isFlangedBothEnds = pipeEndConfig === "FBE";
+        const couplingQty = Math.max(0, pipeRowQty - 1);
+        if (!isFlangedBothEnds && couplingQty > 0) {
+          const rawPvcClass = globalSpecs?.pvcPressureClass;
+          const pvcPressureClassLabel = rawPvcClass != null ? `Class ${rawPvcClass}` : "";
+          addPvcCoupling(
+            nb,
+            pvcPressureClassLabel,
+            globalSpecs?.pvcType,
+            couplingQty,
+            itemNumber,
+            joiningMethod,
+          );
+        }
+      }
       // ──── end straight-pipe row consolidation ────
 
       if (flangeCount.main > 0) {
@@ -1100,6 +1238,8 @@ export function consolidateBoqData(input: ConsolidationInput): ExtendedConsolida
 
         if (isHdpeEntry(entry)) {
           addHdpeStub(nb, pressureClass, undefined, flangeQty, itemNumber);
+        } else if (isPvcEntry(entry)) {
+          addPvcStub(nb, pressureClass, globalSpecs?.pvcType, flangeQty, itemNumber);
         }
 
         const bnwInfo = lookups.bnwSetInfo(nb, pressureClass);
@@ -1345,6 +1485,9 @@ export function consolidateBoqData(input: ConsolidationInput): ExtendedConsolida
     bnwSets: consolidatedBnwSets.size > 0 ? mapToDto(consolidatedBnwSets) : undefined,
     gaskets: consolidatedGaskets.size > 0 ? mapToDto(consolidatedGaskets) : undefined,
     hdpeStubs: consolidatedHdpeStubs.size > 0 ? mapToDto(consolidatedHdpeStubs) : undefined,
+    pvcStubs: consolidatedPvcStubs.size > 0 ? mapToDto(consolidatedPvcStubs) : undefined,
+    pvcCouplings:
+      consolidatedPvcCouplings.size > 0 ? mapToDto(consolidatedPvcCouplings) : undefined,
     valves: consolidatedValves.size > 0 ? mapToDto(consolidatedValves) : undefined,
     instruments: consolidatedInstruments.size > 0 ? mapToDto(consolidatedInstruments) : undefined,
     pumps: consolidatedPumps.size > 0 ? mapToDto(consolidatedPumps) : undefined,
