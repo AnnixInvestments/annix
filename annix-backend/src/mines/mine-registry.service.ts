@@ -27,6 +27,11 @@ export interface MineRecord {
   id: number;
   mineName: string;
   operatingCompany: string;
+  // Free-form list of additional identifiers (project names, doc-
+  // number prefixes, colloquial names) that should also bind a Nix
+  // extraction to this mine. Issue #264 Phase 2. Empty array means
+  // "match on mineName / operatingCompany only".
+  aliases: string[];
   region?: string;
   district?: string | null;
   nearestTown?: string | null;
@@ -112,11 +117,13 @@ function toRecord(country: Country, mine: SaMine | CountryMineBase): MineRecord 
   const sa = mine as SaMine;
   const cm = mine as CountryMineBase;
   const region = cm.region ?? sa.province ?? undefined;
+  const rawAliases = mine.aliases;
   return {
     country,
     id: mine.id,
     mineName: mine.mineName,
     operatingCompany: mine.operatingCompany,
+    aliases: rawAliases ?? [],
     region,
     district: cm.district ?? sa.district ?? null,
     nearestTown: cm.nearestTown ?? null,

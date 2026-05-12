@@ -88,17 +88,12 @@ export class MineInferenceService {
     const docPrefix = documentNumber ? extractPrefix(documentNumber) : null;
 
     const haystack = normalise(`${project ?? ""} ${customer ?? ""} ${documentTitle ?? ""}`);
-    if (haystack.length === 0 && !docPrefix) {
-      if (documentNumber) {
-        return {
-          mineId: 0,
-          mineCountry: null,
-          confidence: 0,
-          reason: "no mine signals — filename doc number only",
-          documentNumber,
-          documentRevision: documentRevision ?? null,
-        };
-      }
+    // We still run the mine-matching loop when the haystack is empty
+    // but a documentNumber is present, because aliases can match
+    // against the documentNumber alone (e.g. an empty title block but
+    // a filename of "J528-09-23-JW559" where 'J528' is a Mogalakwena
+    // alias). The early-exit only fires when there's no signal at all.
+    if (haystack.length === 0 && !docPrefix && !documentNumber) {
       this.logger.debug(
         `Mine inference for extraction #${extraction.id}: no metadata signals available`,
       );
@@ -135,6 +130,37 @@ export class MineInferenceService {
           confidence: 0.85,
           reason: `customer / project contains operating company '${mine.operatingCompany}'`,
         });
+      }
+      // Alias matches — admin-configured identifiers (project names,
+      // doc-number prefixes, colloquial names). Scored just below
+      // mineName direct match (0.92) so a clean mine-name hit still
+      // wins when both fire. Issue #264 Phase 2.
+      const rawAliases = mine.aliases;
+      const aliases = rawAliases ?? [];
+      // Doc-number prefix string for prefix-style aliases. We
+      // normalise the full documentNumber rather than relying on
+      // `extractPrefix` (which only catches letter-only prefixes
+      // ≥ 2 chars and so misses "J528" / "JW559"-style tokens).
+      const normalisedDocNumber = documentNumber ? normalise(documentNumber) : null;
+      for (const alias of aliases) {
+        const normalisedAlias = normalise(alias);
+        if (normalisedAlias.length < 3) continue;
+        if (haystack.includes(normalisedAlias)) {
+          candidates.push({
+            confidence: 0.92,
+            reason: `alias '${alias}' present in project / title / customer`,
+          });
+        }
+        // Doc-number-token aliases (e.g. 'J528', 'JW559'). Match
+        // when the alias appears anywhere inside the normalised
+        // document number — that catches both "J528-09-23-JW559"
+        // (prefix) and "MWP1-J528-rev3" (mid-string).
+        if (normalisedDocNumber?.includes(normalisedAlias)) {
+          candidates.push({
+            confidence: 0.92,
+            reason: `document number prefix '${alias}' matches alias '${alias}'`,
+          });
+        }
       }
       // Word-set overlap — good when the project name reorders the mine
       // name's words ('LANGER HEINRICH RESTART PROJECT' vs 'Langer Heinrich Mine').

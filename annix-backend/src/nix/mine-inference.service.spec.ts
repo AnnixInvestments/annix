@@ -10,6 +10,7 @@ function fakeMine(partial: Partial<MineRecord> = {}): MineRecord {
     id: 1,
     mineName: "",
     operatingCompany: "",
+    aliases: [],
     region: "Gauteng",
     district: null,
     nearestTown: null,
@@ -72,6 +73,62 @@ describe("MineInferenceService", () => {
     );
     expect(result?.mineId).toBe(7);
     expect(result?.confidence).toBeGreaterThanOrEqual(0.9);
+  });
+
+  it("matches on alias when the alias appears in project / title", async () => {
+    mineRegistry.allMines.mockResolvedValue([
+      fakeMine({
+        id: 8,
+        mineName: "Mogalakwena Mine",
+        operatingCompany: "Anglo American Platinum",
+        aliases: ["Blinkwater 2", "JW559", "J528"],
+      }),
+    ]);
+    const result = await service.infer(
+      fakeExtraction({
+        project: "Future of Mogalakwena – Blinkwater 2 Tailings Facility",
+      }),
+    );
+    expect(result?.mineId).toBe(8);
+    // mineName "Mogalakwena Mine" + alias "Blinkwater 2" both present — the
+    // 95% mineName match wins on score, but the alias match would have hit
+    // alone too. Confidence stays well above the 0.7 threshold.
+    expect(result?.confidence).toBeGreaterThanOrEqual(0.9);
+  });
+
+  it("matches purely on an alias when the mine name doesn't appear", async () => {
+    mineRegistry.allMines.mockResolvedValue([
+      fakeMine({
+        id: 8,
+        mineName: "Mogalakwena Mine",
+        operatingCompany: "Anglo American Platinum",
+        aliases: ["Blinkwater 2", "JW559", "J528"],
+      }),
+    ]);
+    const result = await service.infer(
+      fakeExtraction({
+        project: "Blinkwater 2 starter wall — Phase 1",
+        customer: "Jones & Wagener",
+      }),
+    );
+    expect(result?.mineId).toBe(8);
+    expect(result?.reason).toMatch(/alias 'Blinkwater 2'/);
+  });
+
+  it("matches a doc-number prefix that equals an alias (e.g. 'J528' filename)", async () => {
+    mineRegistry.allMines.mockResolvedValue([
+      fakeMine({
+        id: 8,
+        mineName: "Mogalakwena Mine",
+        operatingCompany: "Anglo American Platinum",
+        aliases: ["J528"],
+      }),
+    ]);
+    const result = await service.infer(
+      fakeExtraction({ project: "" }, "3.J528-09-23-JW559_r3_SoW_MWP1 Main Civils Contract.pdf"),
+    );
+    expect(result?.mineId).toBe(8);
+    expect(result?.reason).toMatch(/prefix 'J528' matches alias/);
   });
 
   it("matches on operating company when mine name doesn't appear", async () => {

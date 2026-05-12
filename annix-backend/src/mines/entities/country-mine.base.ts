@@ -59,6 +59,13 @@ export abstract class CountryMineBase {
   @Column({ name: "operating_company", type: "varchar", length: 255 })
   operatingCompany: string;
 
+  // Free-form alias list for fuzzy mine-inference (Phase 2 of
+  // issue #264). Each entry is a project name / doc-number prefix /
+  // colloquial identifier that should also match this mine. See
+  // SaMine for the canonical comment.
+  @Column({ name: "aliases", type: "text", array: true, default: () => "ARRAY[]::text[]" })
+  aliases: string[];
+
   @ManyToOne(
     () => Commodity,
     (commodity) => commodity.mines,
