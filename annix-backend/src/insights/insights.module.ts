@@ -6,6 +6,7 @@ import { RolesGuard } from "../auth/roles.guard";
 import { MetricsModule } from "../metrics/metrics.module";
 import { InsightsAdminController } from "./controllers/insights-admin.controller";
 import { InsightsHealthController } from "./controllers/insights-health.controller";
+import { InsightsPaperPortfoliosController } from "./controllers/insights-paper-portfolios.controller";
 import { InsightsWatchlistController } from "./controllers/insights-watchlist.controller";
 import { Asset } from "./entities/asset.entity";
 import { PaperHolding } from "./entities/paper-holding.entity";
@@ -16,6 +17,7 @@ import { PriceHistory } from "./entities/price-history.entity";
 import { WatchlistItem } from "./entities/watchlist-item.entity";
 import { InsightsCronService } from "./services/insights-cron.service";
 import { MarketDataIngestionService } from "./services/market-data-ingestion.service";
+import { PaperPortfolioService } from "./services/paper-portfolio.service";
 import { WatchlistService } from "./services/watchlist.service";
 import { YahooMarketDataService } from "./services/yahoo-market-data.service";
 
@@ -33,13 +35,19 @@ import { YahooMarketDataService } from "./services/yahoo-market-data.service";
       PaperPortfolioSnapshot,
     ]),
   ],
-  controllers: [InsightsHealthController, InsightsWatchlistController, InsightsAdminController],
+  controllers: [
+    InsightsHealthController,
+    InsightsWatchlistController,
+    InsightsAdminController,
+    InsightsPaperPortfoliosController,
+  ],
   providers: [
     JwtAuthGuard,
     RolesGuard,
     WatchlistService,
     YahooMarketDataService,
     MarketDataIngestionService,
+    PaperPortfolioService,
     InsightsCronService,
   ],
   exports: [],

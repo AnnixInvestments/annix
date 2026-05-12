@@ -130,6 +130,12 @@ const JOB_METADATA: Record<string, { description: string; module: string; defaul
     module: "Annix Insights",
     defaultCron: "0 6 * * *",
   },
+  "insights:monthly-contribution": {
+    description:
+      "Annix Insights — credit each paper portfolio's monthly contribution and record a contribution PaperTrade row",
+    module: "Annix Insights",
+    defaultCron: "0 6 1 * *",
+  },
   "customers:bee-expiry-check": {
     description: "Check B-BEE certificate expiry and send notifications",
     module: "Customers",
