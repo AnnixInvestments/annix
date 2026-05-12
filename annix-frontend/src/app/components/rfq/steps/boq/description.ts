@@ -53,7 +53,21 @@ export const pipeRowDescription = (
   if (materialType === "pvc") {
     const typeLabel = pvcType ? ` ${pvcType}` : "";
     const pnLabel = pressureClass ? ` ${pressureClass}` : "";
-    return `${variantPrefix}${nb}OD${typeLabel} PVC Pipe${pnLabel} x${pipeLength}m${flangeSuffix}`.trim();
+    // PVC flanges always: PVC stub-flange adapter + SANS 1123
+    // backing ring drilled to the PVC class equivalent. Class N
+    // bar = SANS 1123 Table N×100/3 (Class 16 → T1600/3). We
+    // surface this when the pipe is flanged so the supplier
+    // knows what backing ring to drop in.
+    const pnNumberForStub = pressureClass
+      ? Number(String(pressureClass).replace(/[^\d.]/g, ""))
+      : null;
+    const stubAssembly =
+      pnNumberForStub && Number.isFinite(pnNumberForStub)
+        ? sans1123StubAssemblyDescription(pnNumberForStub)
+        : null;
+    const isFlanged = !!flangeSuffix && flangeSuffix.length > 0;
+    const stubSuffix = isFlanged && stubAssembly ? `, PVC stub + ${stubAssembly}` : "";
+    return `${variantPrefix}${nb}OD${typeLabel} PVC Pipe${pnLabel} x${pipeLength}m${flangeSuffix}${stubSuffix}`.trim();
   }
   return `${variantPrefix}${nb}NB ${schedule ? `Sch${schedule.replace("Sch", "")}` : ""} ${steelSpec} Pipe x${pipeLength}m${flangeSuffix}`.trim();
 };

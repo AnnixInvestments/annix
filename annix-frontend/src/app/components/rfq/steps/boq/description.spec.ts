@@ -240,6 +240,42 @@ describe("pipeRowDescription", () => {
       expect(desc).not.toContain("uPVC");
       expect(desc).toContain("PVC Pipe");
     });
+
+    it("appends SANS 1123 backing-ring suffix when PVC pipe is flanged", () => {
+      const desc = pipeRowDescription(
+        { materialType: "pvc", specs: { pipeEndConfiguration: "FBE" } },
+        110,
+        "",
+        6,
+        "",
+        undefined,
+        undefined,
+        "uPVC",
+        "Class 16",
+        "PN16",
+        null,
+      );
+      expect(desc).toContain("PVC stub");
+      expect(desc).toContain("SANS 1123");
+    });
+
+    it("omits SANS 1123 backing-ring suffix when PVC pipe is plain-ended", () => {
+      const desc = pipeRowDescription(
+        { materialType: "pvc", specs: {} },
+        110,
+        "",
+        6,
+        "",
+        undefined,
+        undefined,
+        "uPVC",
+        "Class 16",
+        "",
+        null,
+      );
+      expect(desc).not.toContain("PVC stub");
+      expect(desc).not.toContain("SANS 1123");
+    });
   });
 
   describe("variant prefix", () => {
