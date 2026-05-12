@@ -1,5 +1,6 @@
 "use client";
 
+import { isString } from "es-toolkit/compat";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -391,6 +392,12 @@ export default function QuotationsPage() {
                     <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
                       Promoted
                     </th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                      Submitted
+                    </th>
+                    <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -399,6 +406,11 @@ export default function QuotationsPage() {
                     const ref = promoted ? promoted : quoteRefForSession(s);
                     const docCount = s.extractions ? s.extractions.length : 0;
                     const promotedAt = fromISO(s.updatedAt).toFormat("dd MMM yyyy HH:mm");
+                    const submittedAtIso = s.submittedAt;
+                    const submittedAt =
+                      isString(submittedAtIso) && submittedAtIso.length > 0
+                        ? fromISO(submittedAtIso).toFormat("dd MMM yyyy")
+                        : "—";
                     const titleText = s.title ? s.title : `Quote from documents — session #${s.id}`;
                     const quoteHref = `/stock-control/portal/quotations/quotes/${s.id}`;
                     const openQuote = () => router.push(quoteHref);
@@ -427,6 +439,22 @@ export default function QuotationsPage() {
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
                           {promotedAt}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                          {submittedAt}
+                        </td>
+                        <td
+                          className="px-4 py-3 text-sm text-right whitespace-nowrap"
+                          onClick={(e) => e.stopPropagation()}
+                          onKeyDown={(e) => e.stopPropagation()}
+                        >
+                          <button
+                            type="button"
+                            onClick={openQuote}
+                            className="inline-flex items-center px-2.5 py-1 text-xs font-medium border border-[#323288] text-[#323288] rounded hover:bg-[#323288] hover:text-white"
+                          >
+                            Edit
+                          </button>
                         </td>
                       </tr>
                     );

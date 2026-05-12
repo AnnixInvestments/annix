@@ -28,6 +28,7 @@ export interface UpdateNixSessionDto {
   customerOrderNumber?: string | null;
   deliveryNoteRef?: string | null;
   quoteNotes?: Record<string, unknown> | null;
+  submittedAt?: Date | null;
 }
 
 @Injectable()
@@ -178,6 +179,17 @@ export class NixExtractionSessionService extends BaseCrudService<
     notes: Record<string, unknown> | null,
   ): Promise<NixExtractionSession> {
     return this.update(id, { quoteNotes: notes });
+  }
+
+  /**
+   * Stamps the session as submitted by setting submittedAt to NOW().
+   * Used by the "Submit Quote" button on the working quote page. Does
+   * NOT change the session status — the quote stays in 'promoted' and
+   * remains editable via auto-save. The timestamp is purely a display
+   * indicator on the Quotations hub.
+   */
+  async markSubmitted(id: number): Promise<NixExtractionSession> {
+    return this.update(id, { submittedAt: new Date() });
   }
 
   /**

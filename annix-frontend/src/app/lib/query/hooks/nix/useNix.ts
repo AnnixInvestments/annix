@@ -518,6 +518,8 @@ export interface NixExtractionSessionDto {
   customerOrderNumber?: string | null;
   deliveryNoteRef?: string | null;
   quoteNotes?: QuoteNotesDto | null;
+  /** ISO timestamp when the quoter clicked Submit on the working quote page. Null until first submit. */
+  submittedAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -637,6 +639,88 @@ export const useSuggestQuoteOrderNumber = createMutationHook<
     errorLabel: "Failed to suggest order number",
   }),
 );
+
+export interface QuotePdfItemRowDto {
+  mark: string;
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  lineExcl: number;
+  lineTax: number;
+  lineIncl: number;
+}
+
+export interface QuotePdfPoolDto {
+  key: string;
+  coatingLine: string | null;
+  liningLine: string | null;
+  note: string;
+  items: QuotePdfItemRowDto[];
+}
+
+export interface QuotePdfSnapshotDto {
+  pools: QuotePdfPoolDto[];
+  generalNotes: string;
+  subtotalExcl: number;
+  totalTax: number;
+  totalIncl: number;
+}
+
+export const useSubmitNixQuote = createMutationHook<NixExtractionSessionDto, { sessionId: number }>(
+  ({ sessionId }) =>
+    nixRequest<NixExtractionSessionDto>(`/nix/sessions/${sessionId}/submit`, {
+      method: "POST",
+      body: {},
+      errorLabel: "Failed to submit quote",
+    }),
+);
+
+export const useEmailQuoteToCustomer = createMutationHook<
+  { sent: boolean; to: string },
+  {
+    sessionId: number;
+    snapshot: QuotePdfSnapshotDto;
+    to?: string;
+    cc?: string;
+    subject?: string;
+    message?: string;
+  }
+>(({ sessionId, snapshot, to, cc, subject, message }) =>
+  nixRequest<{ sent: boolean; to: string }>(`/nix/sessions/${sessionId}/email-customer`, {
+    method: "POST",
+    body: { snapshot, to, cc, subject, message },
+    errorLabel: "Failed to email quote",
+    parseErrorBody: true,
+  }),
+);
+
+export const useDownloadQuotePdf = createMutationHook<
+  { blob: Blob; filename: string },
+  { sessionId: number; snapshot: QuotePdfSnapshotDto }
+>(async ({ sessionId, snapshot }) => {
+  const headers: Record<string, string> = {
+    ...nixAuthHeaders(),
+    "Content-Type": "application/json",
+  };
+  const response = await retryableFetch(`${browserBaseUrl()}/nix/sessions/${sessionId}/pdf`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ snapshot }),
+  });
+  if (!response.ok) {
+    if (response.status === 401) {
+      sessionExpiredEvent.emit();
+      throw new Error("Session expired — please sign in again.");
+    }
+    throw new Error(`Failed to download quote PDF: ${response.statusText}`);
+  }
+  const blob = await response.blob();
+  const disposition = response.headers.get("content-disposition") || "";
+  const match = disposition.match(/filename="([^"]+)"/);
+  const matchedName = match ? match[1] : null;
+  const filename = matchedName && matchedName.length > 0 ? matchedName : `Quote-${sessionId}.pdf`;
+  return { blob, filename };
+});
 
 export const useSaveQuoteEditorState = createMutationHook<
   NixExtractionSessionDto,

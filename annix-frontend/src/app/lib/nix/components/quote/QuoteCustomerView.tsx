@@ -1,13 +1,16 @@
 "use client";
 
-import { isObject } from "es-toolkit/compat";
-import { useMemo } from "react";
+import { toPairs as entries, isObject, isString } from "es-toolkit/compat";
+import { useEffect, useMemo } from "react";
+import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
+import { fromISO } from "@/app/lib/datetime";
 import { useSpecLookup } from "@/app/lib/nix/components/draft";
 import {
   type NixExtractionSessionDto,
   type QuoteCustomerSnapshot,
   type QuoteEditorStateDto,
   type QuoteNotesDto,
+  type QuotePdfSnapshotDto,
   useNbToOdMap,
 } from "@/app/lib/query/hooks";
 import { useStockControlCustomer } from "@/app/lib/query/hooks/stock-control";
@@ -48,8 +51,16 @@ const SOUTH_AFRICA_VAT_RATE = 0.15;
  *   - Free-text notes per section + general notes
  *   - Totals at bottom right (Excl / Tax / Incl)
  */
-export function QuoteCustomerView(props: { session: NixExtractionSessionDto }) {
-  const { session } = props;
+export function QuoteCustomerView(props: {
+  session: NixExtractionSessionDto;
+  /**
+   * Fires whenever the computed PDF snapshot changes. The preview page
+   * captures the latest snapshot in a ref so the Download / Email buttons
+   * can post it to the backend without re-running the pricing math.
+   */
+  onSnapshotChange?: (snapshot: QuotePdfSnapshotDto) => void;
+}) {
+  const { session, onSnapshotChange } = props;
   const sessionExtractions = session.extractions;
   const drawingExtractions = useMemo(
     () => (sessionExtractions ?? []).filter((e) => e.documentRole === "drawing"),
@@ -145,10 +156,16 @@ export function QuoteCustomerView(props: { session: NixExtractionSessionDto }) {
   const totalIncl = subtotalExcl + totalTax;
 
   // Live customer: prefer the master row (latest) over the snapshot.
-  const customerCompanyId = session.customerCompanyId ?? null;
+  const rawCustomerCompanyId = session.customerCompanyId;
+  const customerCompanyId: number | null =
+    rawCustomerCompanyId === undefined || rawCustomerCompanyId === null
+      ? null
+      : rawCustomerCompanyId;
   const liveCustomer = useStockControlCustomer(customerCompanyId);
   const liveData = liveCustomer.data;
-  const snapshot = session.customerSnapshot ?? null;
+  const rawSnapshot = session.customerSnapshot;
+  const snapshot: QuoteCustomerSnapshot | null =
+    rawSnapshot === undefined || rawSnapshot === null ? null : rawSnapshot;
   const customer: QuoteCustomerSnapshot | null = useMemo(() => {
     if (customerCompanyId !== null && liveData) {
       return {
@@ -174,30 +191,104 @@ export function QuoteCustomerView(props: { session: NixExtractionSessionDto }) {
     if (!raw || !isObject(raw)) return { perPool: {}, generalAfterItems: "" };
     const perPoolRaw = (raw as Partial<QuoteNotesDto>).perPool;
     const perPool: Record<string, string> = {};
-    if (perPoolRaw && typeof perPoolRaw === "object") {
-      for (const [k, v] of Object.entries(perPoolRaw)) {
-        if (typeof v === "string") perPool[k] = v;
+    if (perPoolRaw && isObject(perPoolRaw)) {
+      for (const [k, v] of entries(perPoolRaw)) {
+        if (isString(v)) perPool[k] = v;
       }
     }
     const general = (raw as Partial<QuoteNotesDto>).generalAfterItems;
     return {
       perPool,
-      generalAfterItems: typeof general === "string" ? general : "",
+      generalAfterItems: isString(general) ? general : "",
     };
   }, [session.quoteNotes]);
 
   const formattedDate = formatQuoteDate(session.createdAt);
-  const quoteRef = session.promotedRef ?? "—";
+  const rawPromotedRef = session.promotedRef;
+  const quoteRef = rawPromotedRef ? rawPromotedRef : "—";
+
+  const pdfSnapshot = useMemo<QuotePdfSnapshotDto>(() => {
+    const pools = poolRows.map(({ pool, items }) => {
+      const noteCandidate = notes.perPool[pool.key];
+      const note = isString(noteCandidate) ? noteCandidate : "";
+      return {
+        key: pool.key,
+        coatingLine: describeSpec(pool.coating, specByCode, specOverrides),
+        liningLine: describeSpec(pool.lining, specByCode, specOverrides),
+        note,
+        items: items.map(({ item, unitPrice, lineExcl, lineTax, lineIncl }) => ({
+          mark: String(item.mark),
+          description: itemDescription(item),
+          quantity: item.quantity,
+          unitPrice,
+          lineExcl,
+          lineTax,
+          lineIncl,
+        })),
+      };
+    });
+    return {
+      pools,
+      generalNotes: notes.generalAfterItems,
+      subtotalExcl,
+      totalTax,
+      totalIncl,
+    };
+  }, [poolRows, specByCode, specOverrides, notes, subtotalExcl, totalTax, totalIncl]);
+
+  useEffect(() => {
+    if (onSnapshotChange) onSnapshotChange(pdfSnapshot);
+  }, [pdfSnapshot, onSnapshotChange]);
+
+  const auth = useStockControlAuth();
+  const profile = auth.profile;
+  const letterhead = useMemo<LetterheadInfo>(() => {
+    if (!profile) {
+      return {
+        companyName: null,
+        logoUrl: null,
+        addressLine: null,
+        registrationNumber: null,
+        vatNumber: null,
+        phone: null,
+        email: null,
+      };
+    }
+    const street = profile.streetAddress;
+    const city = profile.city;
+    const postal = profile.postalCode;
+    const addressParts: string[] = [];
+    if (street && street.length > 0) addressParts.push(street);
+    if (city && city.length > 0) addressParts.push(city);
+    if (postal && postal.length > 0) addressParts.push(postal);
+    const addressLine = addressParts.length > 0 ? addressParts.join(", ") : null;
+    return {
+      companyName: profile.companyName,
+      logoUrl: profile.logoUrl,
+      addressLine,
+      registrationNumber: profile.registrationNumber,
+      vatNumber: profile.vatNumber,
+      phone: profile.phone,
+      email: profile.companyEmail,
+    };
+  }, [profile]);
+
+  const accountCode: string | null =
+    customer && customer.customerCode ? customer.customerCode : null;
+  const rawOrderNumber = session.customerOrderNumber;
+  const rawDeliveryNote = session.deliveryNoteRef;
 
   return (
     <article className="bg-white text-gray-900 max-w-[850px] mx-auto p-8 print:p-0 print:max-w-none">
-      <Letterhead quoteRef={quoteRef} />
+      <Letterhead quoteRef={quoteRef} info={letterhead} />
       <CustomerToBlock customer={customer} />
       <HeaderStrip
-        accountCode={customer?.customerCode ?? null}
+        accountCode={accountCode}
         date={formattedDate}
-        orderNumber={session.customerOrderNumber ?? ""}
-        deliveryNote={session.deliveryNoteRef ?? ""}
+        orderNumber={rawOrderNumber === undefined || rawOrderNumber === null ? "" : rawOrderNumber}
+        deliveryNote={
+          rawDeliveryNote === undefined || rawDeliveryNote === null ? "" : rawDeliveryNote
+        }
         ourReference={quoteRef}
       />
       <ItemsTable
@@ -216,26 +307,48 @@ export function QuoteCustomerView(props: { session: NixExtractionSessionDto }) {
   );
 }
 
-function Letterhead(props: { quoteRef: string }) {
+interface LetterheadInfo {
+  companyName: string | null;
+  logoUrl: string | null;
+  addressLine: string | null;
+  registrationNumber: string | null;
+  vatNumber: string | null;
+  phone: string | null;
+  email: string | null;
+}
+
+function Letterhead(props: { quoteRef: string; info: LetterheadInfo }) {
+  const { info } = props;
+  const nameValue = info.companyName;
+  const displayName = nameValue && nameValue.length > 0 ? nameValue : "—";
   return (
     <header className="border-b-2 border-gray-300 pb-4 mb-4 flex items-start justify-between">
       <div className="flex items-start gap-3">
-        <div className="w-16 h-16 bg-gray-200 rounded flex items-center justify-center text-xs text-gray-500">
-          LOGO
-        </div>
+        {info.logoUrl ? (
+          // biome-ignore lint/performance/noImgElement: remote tenant logo URL, no Next domain config
+          <img
+            src={info.logoUrl}
+            alt={`${displayName} logo`}
+            className="w-16 h-16 object-contain rounded"
+          />
+        ) : (
+          <div className="w-16 h-16 bg-gray-200 rounded flex items-center justify-center text-xs text-gray-500">
+            LOGO
+          </div>
+        )}
         <div>
-          <h1 className="text-lg font-bold tracking-wide uppercase">Polymer Lining Systems</h1>
-          <p className="text-xs text-gray-700">Specialists in Rubber Lining &amp; Painting</p>
-          <p className="text-xs text-gray-600 mt-1">8A Paul Smit Street, Boksburg North</p>
+          <h1 className="text-lg font-bold tracking-wide uppercase">{displayName}</h1>
+          {info.addressLine && <p className="text-xs text-gray-600 mt-1">{info.addressLine}</p>}
         </div>
       </div>
       <div className="text-right">
         <h2 className="text-xl font-bold tracking-wide">Quotation {props.quoteRef}</h2>
         <p className="text-xs text-gray-500 mt-1">Page 1 of 1</p>
         <div className="text-[10px] text-gray-600 mt-3 space-y-0.5">
-          <p>Tax Registration: 4240207755</p>
-          <p>Telephone: 011 917 2424</p>
-          <p>Fax: 011 917 5496</p>
+          {info.registrationNumber && <p>Reg: {info.registrationNumber}</p>}
+          {info.vatNumber && <p>Tax Registration: {info.vatNumber}</p>}
+          {info.phone && <p>Telephone: {info.phone}</p>}
+          {info.email && <p>{info.email}</p>}
         </div>
       </div>
     </header>
@@ -433,7 +546,10 @@ function itemDescription(item: QuoteItem): string {
   const parts: string[] = [];
   if (item.diameter !== null) parts.push(`${item.diameter}NB`);
   if (item.length !== null) parts.push(`${item.length}LG`);
-  const typeWord = (item.itemType ?? item.description ?? "Item").toString().toUpperCase();
+  const itemType = item.itemType;
+  const itemDesc = item.description;
+  const itemTypeSource = itemType ? itemType : itemDesc ? itemDesc : "Item";
+  const typeWord = String(itemTypeSource).toUpperCase();
   parts.push(typeWord.includes("PIPE") ? "SPOOLS" : typeWord);
   if (item.flangeConfig) parts.push(item.flangeConfig);
   if (item.materialClass) parts.push(item.materialClass);
@@ -469,12 +585,9 @@ function formatZar(value: number): string {
 }
 
 function formatQuoteDate(iso: string): string {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return iso;
-  const yyyy = date.getFullYear();
-  const mm = String(date.getMonth() + 1).padStart(2, "0");
-  const dd = String(date.getDate()).padStart(2, "0");
-  return `${yyyy}/${mm}/${dd}`;
+  const date = fromISO(iso);
+  if (!date.isValid) return iso;
+  return date.toFormat("yyyy/MM/dd");
 }
 
 // Type-helper so ItemsTable's prop type can refer to the row shape without

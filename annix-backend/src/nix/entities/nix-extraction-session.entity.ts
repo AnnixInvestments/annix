@@ -175,6 +175,14 @@ export class NixExtractionSession {
   @Column({ name: "quote_notes", type: "jsonb", nullable: true })
   quoteNotes?: Record<string, unknown>;
 
+  @ApiProperty({
+    description:
+      "Timestamp when the quoter clicked the 'Submit Quote' button on the working quote page. Display-only — the session stays in 'promoted' status and remains editable via auto-save after submission. Shown on the Quotations hub as 'Submitted YYYY/MM/DD' when set.",
+    required: false,
+  })
+  @Column({ name: "submitted_at", type: "timestamp", nullable: true })
+  submittedAt?: Date;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

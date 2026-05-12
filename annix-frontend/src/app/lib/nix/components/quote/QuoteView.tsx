@@ -1,6 +1,6 @@
 "use client";
 
-import { isObject } from "es-toolkit/compat";
+import { toPairs as entries, isObject, isString } from "es-toolkit/compat";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSpecLookup } from "@/app/lib/nix/components/draft";
 import {
@@ -27,6 +27,7 @@ import {
   selectedSupplierId,
   suppliersForCustomerFooter,
 } from "./quoteSpecOverrides";
+import { SubmitQuoteModal } from "./SubmitQuoteModal";
 import {
   effectiveLiningLengthM,
   type ItemSurfaceArea,
@@ -286,6 +287,7 @@ export function QuoteView(props: QuoteViewProps) {
   const [specOverrides, setSpecOverrides] = useState<SpecOverrides>({});
   const [dataSheets, setDataSheets] = useState<DataSheetAttachments>({});
   const [quoteNotes, setQuoteNotes] = useState<QuoteNotesDto>(emptyNotes);
+  const [showSubmitModal, setShowSubmitModal] = useState(false);
   const lastSavedNotesRef = useRef<string>(JSON.stringify(emptyNotes()));
   const [persistenceStatus, setPersistenceStatus] = useState<"idle" | "saving" | "saved" | "error">(
     "idle",
@@ -488,7 +490,7 @@ export function QuoteView(props: QuoteViewProps) {
           specRates={specRates}
           specOverrides={specOverrides}
           specByCode={specByCode}
-          note={quoteNotes.perPool[pool.key] || ""}
+          note={resolveNote(quoteNotes.perPool, pool.key)}
           onNoteChange={(text) =>
             setQuoteNotes((prev) => ({
               ...prev,
@@ -511,7 +513,7 @@ export function QuoteView(props: QuoteViewProps) {
             specRates={specRates}
             specOverrides={specOverrides}
             specByCode={specByCode}
-            note={quoteNotes.perPool[pool.key] || ""}
+            note={resolveNote(quoteNotes.perPool, pool.key)}
             onNoteChange={(text) =>
               setQuoteNotes((prev) => ({
                 ...prev,
@@ -533,6 +535,20 @@ export function QuoteView(props: QuoteViewProps) {
           return rate.perM2 > 0 || rate.perRm > 0;
         })}
       />
+
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={() => setShowSubmitModal(true)}
+          className="inline-flex items-center px-5 py-2.5 text-sm font-semibold bg-[#323288] text-white rounded-md shadow-sm hover:bg-[#2a2a73]"
+        >
+          Submit quote
+        </button>
+      </div>
+
+      {showSubmitModal && (
+        <SubmitQuoteModal sessionId={session.id} onClose={() => setShowSubmitModal(false)} />
+      )}
     </div>
   );
 }
@@ -544,16 +560,21 @@ function emptyNotes(): QuoteNotesDto {
 function normaliseNotes(raw: Partial<QuoteNotesDto> | Record<string, unknown>): QuoteNotesDto {
   const perPoolRaw = (raw as Partial<QuoteNotesDto>).perPool;
   const perPool: Record<string, string> = {};
-  if (perPoolRaw && typeof perPoolRaw === "object") {
-    for (const [key, value] of Object.entries(perPoolRaw)) {
-      if (typeof value === "string") perPool[key] = value;
+  if (perPoolRaw && isObject(perPoolRaw)) {
+    for (const [key, value] of entries(perPoolRaw)) {
+      if (isString(value)) perPool[key] = value;
     }
   }
   const general = (raw as Partial<QuoteNotesDto>).generalAfterItems;
   return {
     perPool,
-    generalAfterItems: typeof general === "string" ? general : "",
+    generalAfterItems: isString(general) ? general : "",
   };
+}
+
+function resolveNote(perPool: Record<string, string>, key: string): string {
+  const candidate = perPool[key];
+  return candidate ? candidate : "";
 }
 
 function PersistenceChip(props: { status: "idle" | "saving" | "saved" | "error" }) {

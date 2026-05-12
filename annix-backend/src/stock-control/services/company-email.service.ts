@@ -113,6 +113,15 @@ export class CompanyEmailService {
         html: options.html,
         text: options.text,
         messageId,
+        ...(options.attachments && options.attachments.length > 0
+          ? {
+              attachments: options.attachments.map((a) => ({
+                filename: a.filename,
+                content: a.content,
+                contentType: a.contentType,
+              })),
+            }
+          : {}),
         headers: {
           "X-Mailer": "Annix Platform",
           "Message-ID": messageId,

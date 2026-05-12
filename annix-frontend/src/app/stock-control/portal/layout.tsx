@@ -198,14 +198,18 @@ function PortalContent({ children }: { children: React.ReactNode }) {
                 <div className="print:hidden">
                   <ChatPanel />
                 </div>
-                <StockControlFeedbackWidget />
-                <NixAssistant
-                  context="general"
-                  pageContext={{
-                    currentPage: "Stock Control",
-                    portalContext: "general",
-                  }}
-                />
+                <div className="print:hidden">
+                  <StockControlFeedbackWidget />
+                </div>
+                <div className="print:hidden">
+                  <NixAssistant
+                    context="general"
+                    pageContext={{
+                      currentPage: "Stock Control",
+                      portalContext: "general",
+                    }}
+                  />
+                </div>
               </div>
             </GlossaryProvider>
           </ViewAsProvider>

@@ -13,6 +13,7 @@ import {
   Post,
   Query,
   Req,
+  Res,
   UploadedFile,
   UploadedFiles,
   UseGuards,
@@ -28,12 +29,15 @@ import {
   ApiTags,
 } from "@nestjs/swagger";
 import { InjectRepository } from "@nestjs/typeorm";
+import type { Response } from "express";
 import { Repository } from "typeorm";
 import { AdminAuthGuard, AdminRequest } from "../admin/guards/admin-auth.guard";
 import { AnyUserAuthGuard, AuthenticatedUser } from "../auth/guards/any-user-auth.guard";
 import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
 import { CustomerDocument } from "../customer/entities/customer-document.entity";
+import { Company } from "../platform/entities/company.entity";
+import { CompanyEmailService } from "../stock-control/services/company-email.service";
 import { IStorageService, STORAGE_SERVICE } from "../storage/storage.interface";
 import { SupplierDocument } from "../supplier/entities/supplier-document.entity";
 import {
@@ -44,6 +48,7 @@ import {
   SaveExtractionRegionDto,
 } from "./dto/extraction-region.dto";
 import { ProcessDocumentDto, ProcessDocumentResponseDto } from "./dto/process-document.dto";
+import { QuotePdfSnapshotDto } from "./dto/quote-pdf.dto";
 import {
   SubmitClarificationDto,
   SubmitClarificationResponseDto,
@@ -63,6 +68,7 @@ import { NixService } from "./nix.service";
 import { CustomFieldService } from "./services/custom-field.service";
 import { DocumentAnnotationService } from "./services/document-annotation.service";
 import { NixExtractionSessionService } from "./services/nix-extraction-session.service";
+import { QuotePdfService } from "./services/quote-pdf.service";
 import {
   ExpectedCompanyData,
   RegistrationDocumentType,
@@ -84,6 +90,10 @@ export class NixController {
     private readonly customerDocumentRepo: Repository<CustomerDocument>,
     @InjectRepository(SupplierDocument)
     private readonly supplierDocumentRepo: Repository<SupplierDocument>,
+    private readonly quotePdfService: QuotePdfService,
+    private readonly companyEmailService: CompanyEmailService,
+    @InjectRepository(Company)
+    private readonly companyRepo: Repository<Company>,
   ) {}
 
   @Post("process")
@@ -346,6 +356,163 @@ export class NixController {
     const authUser = req["authUser"] as AuthenticatedUser;
     await this.sessionService.findOneForUser(id, authUser.userId, authUser.type === "admin");
     return this.nixService.suggestCustomerOrderNumber(id);
+  }
+
+  @Post("sessions/:id/pdf")
+  @UseGuards(AnyUserAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary:
+      "Render the customer-facing quote PDF for download. The frontend POSTs a pre-computed snapshot (pool rows + unit prices + totals + notes) so the backend can build the HTML template without re-running pricing logic. Returns the PDF as application/pdf.",
+  })
+  async downloadSessionPdf(
+    @Param("id", ParseIntPipe) id: number,
+    @Body() body: { snapshot: QuotePdfSnapshotDto },
+    @Req() req: Request,
+    @Res() res: Response,
+  ): Promise<void> {
+    const authUser = req["authUser"] as AuthenticatedUser;
+    await this.sessionService.findOneForUser(id, authUser.userId, authUser.type === "admin");
+    const companyId = authUser.companyId;
+    if (companyId == null) {
+      throw new BadRequestException(
+        "Quote PDF requires a stock-control authenticated user with a companyId",
+      );
+    }
+    const { buffer, filename } = await this.quotePdfService.generateQuotePdf(
+      id,
+      companyId,
+      body.snapshot,
+    );
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.setHeader("Content-Length", buffer.length.toString());
+    res.end(buffer);
+  }
+
+  @Post("sessions/:id/email-customer")
+  @UseGuards(AnyUserAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary:
+      "Email the customer-facing quote PDF to the customer (or an override recipient). Reuses QuotePdfService to render the PDF, then sends via CompanyEmailService using the tenant's SMTP config. Returns { sent: boolean, to: string }.",
+  })
+  async emailSessionPdf(
+    @Param("id", ParseIntPipe) id: number,
+    @Body()
+    body: {
+      snapshot: QuotePdfSnapshotDto;
+      to?: string;
+      cc?: string;
+      subject?: string;
+      message?: string;
+    },
+    @Req() req: Request,
+  ): Promise<{ sent: boolean; to: string }> {
+    const authUser = req["authUser"] as AuthenticatedUser;
+    const session = await this.sessionService.findOneForUser(
+      id,
+      authUser.userId,
+      authUser.type === "admin",
+    );
+    const companyId = authUser.companyId;
+    if (companyId == null) {
+      throw new BadRequestException(
+        "Quote email requires a stock-control authenticated user with a companyId",
+      );
+    }
+
+    let recipient = (body.to ?? "").trim();
+    if (recipient.length === 0) {
+      recipient = await this.resolveCustomerEmail(session);
+    }
+    if (recipient.length === 0) {
+      throw new BadRequestException(
+        "No recipient email available — pass `to` in the request or set the customer's email on the customer card.",
+      );
+    }
+
+    const { buffer, filename } = await this.quotePdfService.generateQuotePdf(
+      id,
+      companyId,
+      body.snapshot,
+    );
+
+    const quoteRef = session.promotedRef ?? `session-${id}`;
+    const subject =
+      body.subject && body.subject.trim().length > 0
+        ? body.subject.trim()
+        : `Quotation ${quoteRef}`;
+    const messageText =
+      body.message && body.message.trim().length > 0
+        ? body.message.trim()
+        : `Please find attached our quotation ${quoteRef}.`;
+
+    const escapedMessage = messageText
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/\n/g, "<br/>");
+    const html = `<div style="font-family:Arial,sans-serif;font-size:13px;color:#111827;line-height:1.5;">
+  <p>${escapedMessage}</p>
+</div>`;
+
+    const sent = await this.companyEmailService.sendEmail(companyId, {
+      to: recipient,
+      ...(body.cc && body.cc.trim().length > 0 ? { cc: body.cc.trim() } : {}),
+      subject,
+      html,
+      text: messageText,
+      attachments: [
+        {
+          filename,
+          content: buffer,
+          contentType: "application/pdf",
+        },
+      ],
+    });
+
+    if (!sent) {
+      throw new BadRequestException(
+        "Email could not be sent — tenant SMTP is not configured. Configure SMTP under Settings → Email before emailing customers.",
+      );
+    }
+
+    return { sent: true, to: recipient };
+  }
+
+  private async resolveCustomerEmail(session: NixExtractionSession): Promise<string> {
+    const customerCompanyId = session.customerCompanyId;
+    if (customerCompanyId != null) {
+      const live = await this.companyRepo.findOne({ where: { id: customerCompanyId } });
+      const liveEmail = live ? live.email : null;
+      if (liveEmail && liveEmail.trim().length > 0) return liveEmail.trim();
+    }
+    const snap = session.customerSnapshot;
+    if (snap && typeof snap === "object") {
+      const candidate = (snap as Record<string, unknown>).email;
+      if (typeof candidate === "string" && candidate.trim().length > 0) {
+        return candidate.trim();
+      }
+    }
+    return "";
+  }
+
+  @Post("sessions/:id/submit")
+  @UseGuards(AnyUserAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary:
+      "Mark the quote as submitted (stamps submittedAt = NOW()). The session stays in 'promoted' status and remains editable; this is a display-only indicator for the Quotations hub.",
+  })
+  @ApiResponse({ status: 201, type: NixExtractionSession })
+  async submitSession(
+    @Param("id", ParseIntPipe) id: number,
+    @Req() req: Request,
+  ): Promise<NixExtractionSession> {
+    const authUser = req["authUser"] as AuthenticatedUser;
+    await this.sessionService.findOneForUser(id, authUser.userId, authUser.type === "admin");
+    return this.sessionService.markSubmitted(id);
   }
 
   @Post("sessions/:id/notes")
