@@ -1,3 +1,30 @@
+// Re-export the per-concept modules for parity with the HDPE
+// module's barrel layout. Pipe dimensions / pressure classes /
+// joining methods live below in this file (legacy single-file
+// shape); new functionality is split into its own file under
+// `packages/product-data/pvc/*.ts`.
+
+export {
+  calculatePvcJointCount,
+  DEFAULT_PVC_PRESSURE_CLASS,
+  PVC_COILS_AVAILABLE,
+  PVC_STANDARD_PIPE_LENGTHS,
+  type PvcJointCountResult,
+  type PvcPipeLengthInfo,
+  type StandardPvcPipeLength,
+  standardPvcPipeLengthForDn,
+} from "./pricing";
+export {
+  PVC_CATALOGUE_SOURCES,
+  type PvcCatalogueSource,
+  pvcCatalogueSource,
+} from "./sources";
+export {
+  type PvcDeratingPoint,
+  pvcDeratedWorkingPressure,
+  pvcDeratingFactor,
+} from "./temperature-derating";
+
 export type PvcType = "uPVC" | "cPVC" | "PVC_O";
 
 export interface PvcMaterial {
