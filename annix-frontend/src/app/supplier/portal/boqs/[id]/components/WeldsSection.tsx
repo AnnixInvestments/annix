@@ -3,7 +3,7 @@
 import { toPairs as entries } from "es-toolkit/compat";
 import { currencyByCode } from "@/app/lib/currencies";
 import { formatCurrencyZA } from "../lib/boq-helpers";
-import type { ExtractedSpecs, PricingInputs, WeldTotals } from "../lib/types";
+import type { ExtractedSpecs, PricingInputs, WeldCountTotals, WeldTotals } from "../lib/types";
 
 const WELD_TYPE_LABELS: Record<string, string> = {
   flangeWeld: "Flange Weld",
@@ -17,6 +17,10 @@ const WELD_TYPE_LABELS: Record<string, string> = {
 
 interface WeldsSectionProps {
   weldTotals: WeldTotals;
+  // Per-weld-type joint counts. Optional — when undefined or empty,
+  // the "Joints (n)" column doesn't render so we don't show "0" or
+  // "—" everywhere for legacy BOQs that don't carry count data.
+  weldCounts?: WeldCountTotals;
   extractedSpecs: ExtractedSpecs;
   pricingInputs: PricingInputs;
   currencyCode: string;
@@ -26,6 +30,7 @@ interface WeldsSectionProps {
 
 function WeldsSection(props: WeldsSectionProps) {
   const weldTotals = props.weldTotals;
+  const weldCounts = props.weldCounts;
   const extractedSpecs = props.extractedSpecs;
   const pricingInputs = props.pricingInputs;
   const currencyCode = props.currencyCode;
@@ -65,6 +70,24 @@ function WeldsSection(props: WeldsSectionProps) {
     return sum + quantity * unitPrice;
   }, 0);
 
+  // Show the "Joints (n)" column when any of the surfaced weld
+  // types has a count populated. Legacy BOQs (pre-v1.5.62) skip
+  // the column entirely instead of showing 0 / — everywhere.
+  const hasWeldCounts = !!(
+    weldCounts &&
+    weldTypes.some((type) => {
+      const value = weldCounts[type as keyof WeldCountTotals];
+      return value != null && value > 0;
+    })
+  );
+  const totalWeldJoints =
+    hasWeldCounts && weldCounts
+      ? weldTypes.reduce((sum, type) => {
+          const value = weldCounts[type as keyof WeldCountTotals];
+          return sum + (value || 0);
+        }, 0)
+      : 0;
+
   return (
     <div className="mb-8">
       <h3 className="text-md font-medium text-gray-800 mb-3 flex items-center gap-2">
@@ -84,6 +107,11 @@ function WeldsSection(props: WeldsSectionProps) {
               <th className="w-24 px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">
                 Total (Lm)
               </th>
+              {hasWeldCounts && (
+                <th className="w-20 px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+                  Joints (n)
+                </th>
+              )}
               <th className="w-16 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
                 Unit
               </th>
@@ -115,6 +143,14 @@ function WeldsSection(props: WeldsSectionProps) {
                   <td className="w-24 px-3 py-2 text-sm text-gray-900 text-right">
                     {quantity.toFixed(3)}
                   </td>
+                  {hasWeldCounts && (
+                    <td className="w-20 px-3 py-2 text-sm text-gray-900 text-right">
+                      {(() => {
+                        const rawCount = weldCounts?.[weldType as keyof WeldCountTotals];
+                        return rawCount != null && rawCount > 0 ? rawCount : "-";
+                      })()}
+                    </td>
+                  )}
                   <td className="w-16 px-3 py-2 text-sm text-gray-500">Lm</td>
                   <td className="w-32 px-2 py-1">
                     <div className="flex items-center">
@@ -153,6 +189,11 @@ function WeldsSection(props: WeldsSectionProps) {
                   weldTotals.tackWeld
                 ).toFixed(3)}
               </td>
+              {hasWeldCounts && (
+                <td className="w-20 px-3 py-2 text-sm text-gray-900 text-right">
+                  {totalWeldJoints}
+                </td>
+              )}
               <td className="w-16 px-3 py-2 text-sm text-gray-500">Lm</td>
               <td className="w-32 px-3 py-2 text-sm text-gray-500"></td>
               <td className="w-32 px-3 py-2 text-sm text-green-700 text-right font-semibold">

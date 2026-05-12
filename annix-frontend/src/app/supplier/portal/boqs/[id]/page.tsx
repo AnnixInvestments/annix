@@ -24,7 +24,7 @@ import RfqItemsDetailedView, { RfqSectionTable } from "./components/RfqItemsDeta
 import SectionTable from "./components/SectionTable";
 import WeldsSection from "./components/WeldsSection";
 import { extractUniqueSpecs, extractWeldTypesFromRfqItems, statusColors } from "./lib/boq-helpers";
-import type { ExtractedSpecs, PricingInputs, WeldTotals } from "./lib/types";
+import type { ExtractedSpecs, PricingInputs, WeldCountTotals, WeldTotals } from "./lib/types";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -76,6 +76,11 @@ export default function SupplierBoqDetailPage(props: PageProps) {
     latWeld45Plus: 0,
     latWeldUnder45: 0,
   });
+  // Per-weld-type joint count totals. Populated alongside the
+  // per-type lengths so the WeldsSection can show a "Joints (n)"
+  // column for suppliers who price welding per-joint. Issue #288
+  // Phase 6.
+  const [weldCounts, setWeldCounts] = useState<WeldCountTotals>({});
   const [pricingInputs, setPricingInputs] = useState<PricingInputs>(() => {
     // eslint-disable-next-line no-restricted-syntax -- SSR guard; isUndefined(window) would throw
     if (typeof window !== "undefined") {
@@ -242,6 +247,15 @@ export default function SupplierBoqDetailPage(props: PageProps) {
         latWeld45Plus: 0,
         latWeldUnder45: 0,
       };
+      const sectionWeldCountTotals = {
+        pipeWeld: 0,
+        flangeWeld: 0,
+        mitreWeld: 0,
+        teeWeld: 0,
+        gussetTeeWeld: 0,
+        latWeld45Plus: 0,
+        latWeldUnder45: 0,
+      };
 
       boqDetail.sections.forEach((section) => {
         section.items.forEach((item) => {
@@ -273,6 +287,27 @@ export default function SupplierBoqDetailPage(props: PageProps) {
             sectionWeldTypes.latWeldUnder45 = true;
             sectionWeldTotals.latWeldUnder45 += item.welds.latWeldUnder45 * qty;
           }
+          // Joint counts (parallel to lengths, populated by the
+          // submission util as of v1.5.62). Counts are already
+          // stored per consolidated-row total — no need to multiply
+          // by qty here since the submission util already did.
+          const itemWeldCounts = item.weldCounts;
+          if (itemWeldCounts) {
+            const rawPipeWeld = itemWeldCounts.pipeWeld;
+            if (rawPipeWeld) sectionWeldCountTotals.pipeWeld += rawPipeWeld;
+            const rawFlangeWeld = itemWeldCounts.flangeWeld;
+            if (rawFlangeWeld) sectionWeldCountTotals.flangeWeld += rawFlangeWeld;
+            const rawMitreWeld = itemWeldCounts.mitreWeld;
+            if (rawMitreWeld) sectionWeldCountTotals.mitreWeld += rawMitreWeld;
+            const rawTeeWeld = itemWeldCounts.teeWeld;
+            if (rawTeeWeld) sectionWeldCountTotals.teeWeld += rawTeeWeld;
+            const rawGussetTeeWeld = itemWeldCounts.gussetTeeWeld;
+            if (rawGussetTeeWeld) sectionWeldCountTotals.gussetTeeWeld += rawGussetTeeWeld;
+            const rawLatWeld45Plus = itemWeldCounts.latWeld45Plus;
+            if (rawLatWeld45Plus) sectionWeldCountTotals.latWeld45Plus += rawLatWeld45Plus;
+            const rawLatWeldUnder45 = itemWeldCounts.latWeldUnder45;
+            if (rawLatWeldUnder45) sectionWeldCountTotals.latWeldUnder45 += rawLatWeldUnder45;
+          }
         });
       });
 
@@ -285,6 +320,25 @@ export default function SupplierBoqDetailPage(props: PageProps) {
         latWeld45Plus: prev.latWeld45Plus + sectionWeldTotals.latWeld45Plus,
         latWeldUnder45: prev.latWeldUnder45 + sectionWeldTotals.latWeldUnder45,
       }));
+
+      setWeldCounts((prev) => {
+        const prevPipeWeld = prev.pipeWeld;
+        const prevFlangeWeld = prev.flangeWeld;
+        const prevMitreWeld = prev.mitreWeld;
+        const prevTeeWeld = prev.teeWeld;
+        const prevGussetTeeWeld = prev.gussetTeeWeld;
+        const prevLatWeld45Plus = prev.latWeld45Plus;
+        const prevLatWeldUnder45 = prev.latWeldUnder45;
+        return {
+          pipeWeld: (prevPipeWeld || 0) + sectionWeldCountTotals.pipeWeld,
+          flangeWeld: (prevFlangeWeld || 0) + sectionWeldCountTotals.flangeWeld,
+          mitreWeld: (prevMitreWeld || 0) + sectionWeldCountTotals.mitreWeld,
+          teeWeld: (prevTeeWeld || 0) + sectionWeldCountTotals.teeWeld,
+          gussetTeeWeld: (prevGussetTeeWeld || 0) + sectionWeldCountTotals.gussetTeeWeld,
+          latWeld45Plus: (prevLatWeld45Plus || 0) + sectionWeldCountTotals.latWeld45Plus,
+          latWeldUnder45: (prevLatWeldUnder45 || 0) + sectionWeldCountTotals.latWeldUnder45,
+        };
+      });
 
       setExtractedSpecs((prev) => {
         let bnwGrade: string | null = null;
@@ -1022,6 +1076,7 @@ export default function SupplierBoqDetailPage(props: PageProps) {
             {/* Welding Section */}
             <WeldsSection
               weldTotals={weldTotals}
+              weldCounts={weldCounts}
               extractedSpecs={extractedSpecs}
               pricingInputs={pricingInputs}
               currencyCode={supplierCurrency}

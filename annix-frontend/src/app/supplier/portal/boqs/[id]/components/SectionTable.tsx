@@ -44,6 +44,32 @@ function SectionTable(props: SectionTableProps) {
     const latUnder = welds.latWeldUnder45;
     return flange || mitre || tee || gusset || lat45 || latUnder;
   });
+  // Weld counts arrive parallel to weld lengths (added in v1.5.62).
+  // Suppliers price welding both per-metre and per-joint, so when
+  // any item in the section has weldCounts populated we surface a
+  // dedicated "Welds (n)" column showing the per-row joint count.
+  // Issue #288 Phase 6.
+  const itemWeldCountTotal = (item: ConsolidatedItem): number => {
+    const counts = item.weldCounts;
+    if (!counts) return 0;
+    const pipe = counts.pipeWeld;
+    const flange = counts.flangeWeld;
+    const mitre = counts.mitreWeld;
+    const tee = counts.teeWeld;
+    const gusset = counts.gussetTeeWeld;
+    const lat45 = counts.latWeld45Plus;
+    const latUnder = counts.latWeldUnder45;
+    return (
+      (pipe || 0) +
+      (flange || 0) +
+      (mitre || 0) +
+      (tee || 0) +
+      (gusset || 0) +
+      (lat45 || 0) +
+      (latUnder || 0)
+    );
+  };
+  const hasWeldCounts = section.items.some((item) => itemWeldCountTotal(item) > 0);
   const hasAreas = section.items.some((item) => {
     const areas = item.areas;
     if (!areas) return false;
@@ -456,6 +482,7 @@ function SectionTable(props: SectionTableProps) {
       const weldValue = item.welds?.latWeldUnder45;
       return sum + (weldValue ? weldValue : 0);
     }, 0),
+    weldCount: section.items.reduce((sum, item) => sum + itemWeldCountTotal(item), 0),
     intArea: section.items.reduce((sum, item) => {
       const areaValue = item.areas?.intAreaM2;
       return sum + (areaValue ? areaValue : 0);
@@ -518,6 +545,11 @@ function SectionTable(props: SectionTableProps) {
                     Lat &lt;45 (m)
                   </th>
                 </>
+              )}
+              {hasWeldCounts && (
+                <th className="w-20 px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+                  Welds (n)
+                </th>
               )}
               {hasAreas && (
                 <>
@@ -611,6 +643,14 @@ function SectionTable(props: SectionTableProps) {
                         </td>
                       </>
                     )}
+                    {hasWeldCounts && (
+                      <td className="w-20 px-3 py-2 text-sm text-gray-900 text-right">
+                        {(() => {
+                          const total = itemWeldCountTotal(item);
+                          return total > 0 ? total : "-";
+                        })()}
+                      </td>
+                    )}
                     {hasAreas && (
                       <>
                         <td className="w-20 px-3 py-2 text-sm text-gray-900 text-right">
@@ -630,7 +670,9 @@ function SectionTable(props: SectionTableProps) {
                       <td className="w-12"></td>
                       <td
                         className="px-3 py-1 text-xs text-blue-700"
-                        colSpan={hasWelds ? 11 : hasAreas ? 7 : 5}
+                        colSpan={
+                          5 + (hasWelds ? 6 : 0) + (hasWeldCounts ? 1 : 0) + (hasAreas ? 2 : 0)
+                        }
                       >
                         <span className="font-medium">Total Weld Length:</span>{" "}
                         {totalWeldLm.toFixed(3)} Lm
@@ -713,6 +755,11 @@ function SectionTable(props: SectionTableProps) {
                     ).toFixed(3)}
                   </td>
                 </>
+              )}
+              {hasWeldCounts && (
+                <td className="w-20 px-3 py-2 text-sm text-gray-900 text-right">
+                  {totals.weldCount}
+                </td>
               )}
               {hasAreas && (
                 <>

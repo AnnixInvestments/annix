@@ -41,3 +41,18 @@ export interface WeldTotals {
   latWeld45Plus: number;
   latWeldUnder45: number;
 }
+
+// Integer counts of joints per weld type — populated by the
+// submission util alongside the per-type lengths so suppliers can
+// price welding both per-metre AND per-joint. Issue #288 Phase 6.
+// Optional / undefined when the source BOQ pre-dates the weld-
+// counts work (v1.5.62).
+export interface WeldCountTotals {
+  flangeWeld?: number;
+  mitreWeld?: number;
+  teeWeld?: number;
+  pipeWeld?: number;
+  gussetTeeWeld?: number;
+  latWeld45Plus?: number;
+  latWeldUnder45?: number;
+}
