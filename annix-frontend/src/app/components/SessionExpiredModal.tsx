@@ -28,21 +28,113 @@ interface SessionExpiredModalProps {
   loginUrl?: string;
 }
 
-const PORTAL_LOGIN_ROUTES: Array<{ prefix: string; login: string }> = [
-  { prefix: "/stock-control", login: "/stock-control/login" },
-  { prefix: "/au-rubber", login: "/au-rubber/login" },
-  { prefix: "/admin", login: "/admin/login" },
-  { prefix: "/supplier", login: "/supplier/login" },
-  { prefix: "/cv-assistant", login: "/cv-assistant/login" },
-  { prefix: "/annix-rep", login: "/annix-rep/login" },
+interface PortalRoute {
+  prefix: string;
+  login: string;
+  refreshEndpoint: string;
+  refreshTokenKey: string;
+  accessTokenKey: string;
+}
+
+const PORTAL_ROUTES: PortalRoute[] = [
+  {
+    prefix: "/stock-control",
+    login: "/stock-control/login",
+    refreshEndpoint: "/stock-control/auth/refresh",
+    refreshTokenKey: "stockControlRefreshToken",
+    accessTokenKey: "stockControlAccessToken",
+  },
+  {
+    prefix: "/au-rubber",
+    login: "/au-rubber/login",
+    refreshEndpoint: "/au-rubber/auth/refresh",
+    refreshTokenKey: "auRubberRefreshToken",
+    accessTokenKey: "auRubberAccessToken",
+  },
+  {
+    prefix: "/admin",
+    login: "/admin/login",
+    refreshEndpoint: "/admin/auth/refresh",
+    refreshTokenKey: "adminRefreshToken",
+    accessTokenKey: "adminAccessToken",
+  },
+  {
+    prefix: "/supplier",
+    login: "/supplier/login",
+    refreshEndpoint: "/supplier/auth/refresh",
+    refreshTokenKey: "supplierRefreshToken",
+    accessTokenKey: "supplierAccessToken",
+  },
+  {
+    prefix: "/cv-assistant",
+    login: "/cv-assistant/login",
+    refreshEndpoint: "/customer/auth/refresh",
+    refreshTokenKey: "customerRefreshToken",
+    accessTokenKey: "customerAccessToken",
+  },
+  {
+    prefix: "/annix-rep",
+    login: "/annix-rep/login",
+    refreshEndpoint: "/annix-rep/auth/refresh",
+    refreshTokenKey: "annixRepRefreshToken",
+    accessTokenKey: "annixRepAccessToken",
+  },
 ];
 
-function inferLoginUrl(): string {
+const DEFAULT_PORTAL: PortalRoute = {
+  prefix: "/customer",
+  login: "/customer/login",
+  refreshEndpoint: "/customer/auth/refresh",
+  refreshTokenKey: "customerRefreshToken",
+  accessTokenKey: "customerAccessToken",
+};
+
+function currentPortal(): PortalRoute {
   // eslint-disable-next-line no-restricted-syntax -- SSR guard
-  if (typeof window === "undefined") return "/customer/login";
+  if (typeof window === "undefined") return DEFAULT_PORTAL;
   const path = window.location.pathname;
-  const match = PORTAL_LOGIN_ROUTES.find((p) => path.startsWith(p.prefix));
-  return match ? match.login : "/customer/login";
+  const match = PORTAL_ROUTES.find((p) => path.startsWith(p.prefix));
+  return match ?? DEFAULT_PORTAL;
+}
+
+function inferLoginUrl(): string {
+  return currentPortal().login;
+}
+
+// Attempt to refresh the active portal's access token directly from
+// the modal. The global API client's 401 handler already wiped the
+// refresh token before firing sessionExpiredEvent, so this is mostly
+// a courtesy probe — if the user landed in this modal via a real
+// 401 flow it'll return false and the modal will route to login.
+// Returns true if a fresh access token has been written back to
+// localStorage.
+async function tryRefreshActivePortalToken(): Promise<boolean> {
+  // eslint-disable-next-line no-restricted-syntax -- SSR guard
+  if (typeof window === "undefined") return false;
+  const portal = currentPortal();
+  const refreshToken = localStorage.getItem(portal.refreshTokenKey);
+  if (!refreshToken) return false;
+  try {
+    const rawApiBase = process.env.NEXT_PUBLIC_API_URL;
+    const apiBase = rawApiBase || "/api";
+    const response = await fetch(`${apiBase}${portal.refreshEndpoint}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refreshToken }),
+    });
+    if (!response.ok) return false;
+    const data = await response.json();
+    const accessToken = data?.access_token;
+    const newRefreshToken = data?.refresh_token;
+    if (accessToken && newRefreshToken) {
+      localStorage.setItem(portal.accessTokenKey, accessToken);
+      localStorage.setItem(portal.refreshTokenKey, newRefreshToken);
+      return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -64,6 +156,7 @@ function inferLoginUrl(): string {
 export default function SessionExpiredModal(props: SessionExpiredModalProps) {
   const explicitLoginUrl = props.loginUrl;
   const [isVisible, setIsVisible] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
     const unsubscribe = sessionExpiredEvent.subscribe(() => {
@@ -73,13 +166,6 @@ export default function SessionExpiredModal(props: SessionExpiredModalProps) {
       unsubscribe();
     };
   }, []);
-
-  const handleRefresh = () => {
-    // eslint-disable-next-line no-restricted-syntax -- SSR guard
-    if (typeof window !== "undefined") {
-      window.location.reload();
-    }
-  };
 
   const handleLogin = () => {
     // eslint-disable-next-line no-restricted-syntax -- SSR guard
@@ -92,10 +178,34 @@ export default function SessionExpiredModal(props: SessionExpiredModalProps) {
       localStorage.removeItem("adminRefreshToken");
       localStorage.removeItem("stockControlAccessToken");
       localStorage.removeItem("stockControlRefreshToken");
+      localStorage.removeItem("auRubberAccessToken");
+      localStorage.removeItem("auRubberRefreshToken");
+      localStorage.removeItem("annixRepAccessToken");
+      localStorage.removeItem("annixRepRefreshToken");
       localStorage.removeItem("authToken");
     }
     const target = explicitLoginUrl ?? inferLoginUrl();
     window.location.href = target;
+  };
+
+  const handleRefresh = async () => {
+    if (isRefreshing) return;
+    setIsRefreshing(true);
+    const refreshed = await tryRefreshActivePortalToken();
+    // eslint-disable-next-line no-restricted-syntax -- SSR guard
+    if (typeof window === "undefined") return;
+    if (refreshed) {
+      // Fresh access token written back to localStorage. A full
+      // reload re-runs the page's auth-aware data fetching with the
+      // new token and the modal stays gone.
+      window.location.reload();
+      return;
+    }
+    // Refresh token was already burnt by the API client's 401
+    // handler before the modal fired — there's nothing to recover
+    // and a bare reload would re-show this same modal a second
+    // later. Route the user straight to login instead.
+    handleLogin();
   };
 
   if (!isVisible) return null;
@@ -139,33 +249,32 @@ export default function SessionExpiredModal(props: SessionExpiredModalProps) {
           <h2 className="text-xl font-bold text-gray-900 mb-2">Your session has timed out</h2>
 
           <p className="text-gray-600 mb-6">
-            Sessions expire after a period of inactivity for security. Refreshing the page is
-            usually enough to get you back in — your work on this page will be reloaded, and any
-            saved changes are safe.
+            Sessions expire after a period of inactivity for security. Try Refresh first — if your
+            session can still be restored, the page will reload with no loss of work. If it can't,
+            we'll send you straight to sign in again.
           </p>
 
-          {/* Primary: refresh — usually recovers via the portal's auth refresh on mount */}
+          {/* Primary: refresh — attempts a real token refresh and either reloads
+              (success) or routes to login (failure). */}
           <button
             type="button"
             onClick={handleRefresh}
-            className="w-full py-3 px-6 rounded-lg font-semibold text-white transition-all duration-200 hover:opacity-90 hover:shadow-lg active:scale-[0.98]"
+            disabled={isRefreshing}
+            className="w-full py-3 px-6 rounded-lg font-semibold text-white transition-all duration-200 hover:opacity-90 hover:shadow-lg active:scale-[0.98] disabled:opacity-60 disabled:cursor-wait"
             style={{ backgroundColor: "#FFA500" }}
           >
-            Refresh page
+            {isRefreshing ? "Refreshing…" : "Refresh page"}
           </button>
 
-          {/* Secondary: full sign-in if refresh isn't enough */}
+          {/* Secondary: skip the refresh probe and go straight to login */}
           <button
             type="button"
             onClick={handleLogin}
-            className="mt-3 w-full py-2 px-6 rounded-lg font-medium text-gray-700 border border-gray-300 hover:bg-gray-50 transition-colors"
+            disabled={isRefreshing}
+            className="mt-3 w-full py-2 px-6 rounded-lg font-medium text-gray-700 border border-gray-300 hover:bg-gray-50 transition-colors disabled:opacity-60"
           >
             Sign in again
           </button>
-
-          <p className="mt-4 text-xs text-gray-400">
-            Click Refresh first — it almost always works without losing context.
-          </p>
         </div>
 
         <div className="h-1.5" style={{ backgroundColor: "#FFA500" }} />
