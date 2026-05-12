@@ -173,13 +173,23 @@ BUILD_FE_LOG=$(mktemp)
 trap 'rm -f "$TEST_LOG" "$BUILD_BE_LOG" "$BUILD_FE_LOG"' EXIT
 
 # ── Test suite (jest backend + tsc frontend) ───────────────────────────
+# Backend: PRE_PUSH_FULL=1 runs the full jest suite (~3,400 tests).
+# Default: scoped run via `jest --changedSince=origin/main` runs only the
+# tests whose import graph touches a changed file. Falls back to the full
+# suite when CHANGED_FILES is empty (already-up-to-date / no scope info).
 TEST_PID=""
 test_start=$(_timer_ms)
 if [ "$BACKEND_CHANGED" = "1" ] || [ "$FRONTEND_CHANGED" = "1" ]; then
   (
     cd "$ROOT_DIR"
     set -e
-    if [ "$BACKEND_CHANGED" = "1" ]; then pnpm test:backend; fi
+    if [ "$BACKEND_CHANGED" = "1" ]; then
+      if [ "${PRE_PUSH_FULL:-0}" = "1" ] || [ -z "$CHANGED_FILES" ]; then
+        pnpm test:backend
+      else
+        pnpm test:backend:scoped
+      fi
+    fi
     if [ "$FRONTEND_CHANGED" = "1" ]; then pnpm test:frontend; fi
   ) > "$TEST_LOG" 2>&1 &
   TEST_PID=$!
