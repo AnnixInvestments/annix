@@ -157,16 +157,41 @@ export class ExcelExtractorService {
       grade: "PE80",
       productType: "hdpe",
     },
+    // PVC-O / molecularly-oriented PVC — pre-empts the generic
+    // PVC match so high-pressure water mains and mining lines tag
+    // correctly.
+    {
+      pattern: /\bPVC[-\s]?O\b|\bmolecularly\s*oriented\s*PVC\b|\boriented\s*PVC\b/i,
+      material: "PVC-O",
+      grade: "PVC-O",
+      productType: "pvc",
+    },
+    // mPVC / modified PVC — toughened alloy, thinner wall for same
+    // class than uPVC. Common in SA from ~Class 12 upwards.
+    {
+      pattern: /\bm[-\s]?PVC\b|\bPVCm\b|\bmodified\s*PVC\b/i,
+      material: "mPVC",
+      grade: "mPVC",
+      productType: "pvc",
+    },
+    // cPVC / chlorinated PVC — hot-water + industrial chemical use,
+    // not the same family as the pressure-water pipes above.
+    {
+      pattern: /\bc[-\s]?PVC\b|\bPVCc\b|\bchlorinated\s*PVC\b/i,
+      material: "cPVC",
+      grade: "cPVC",
+      productType: "pvc",
+    },
     {
       pattern: /\bu[-\s]?PVC\b|\bPVCu\b|\bunplasticised\s*PVC\b/i,
       material: "uPVC",
-      grade: null,
+      grade: "uPVC",
       productType: "upvc",
     },
     {
       pattern: /\bPVC\b/i,
       material: "PVC",
-      grade: null,
+      grade: "uPVC",
       productType: "pvc",
     },
     {
