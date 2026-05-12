@@ -1,7 +1,9 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
+import { BenchmarkExecutionService } from "./benchmark-execution.service";
 import { MarketDataIngestionService } from "./market-data-ingestion.service";
 import { PaperPortfolioService } from "./paper-portfolio.service";
+import { PortfolioSnapshotService } from "./portfolio-snapshot.service";
 
 @Injectable()
 export class InsightsCronService {
@@ -10,6 +12,8 @@ export class InsightsCronService {
   constructor(
     private readonly ingestion: MarketDataIngestionService,
     private readonly portfolioService: PaperPortfolioService,
+    private readonly benchmarkExecution: BenchmarkExecutionService,
+    private readonly snapshotService: PortfolioSnapshotService,
   ) {}
 
   @Cron("0 6 * * *", {
@@ -19,16 +23,35 @@ export class InsightsCronService {
   async runDailySnapshot(): Promise<void> {
     this.logger.log("Insights daily snapshot starting at 06:00 SAST.");
     try {
-      const result = await this.ingestion.runDailySnapshot();
+      const ingest = await this.ingestion.runDailySnapshot();
       this.logger.log(
-        `Insights daily snapshot finished — ${result.totalInserted} rows inserted across all watchlist assets, ${result.failed.length} symbol(s) failed.`,
+        `Market data: ${ingest.totalInserted} rows inserted, ${ingest.failed.length} symbol(s) failed.`,
       );
-      if (result.failed.length > 0) {
-        this.logger.warn(`Symbols that failed: ${result.failed.join(", ")}`);
+      if (ingest.failed.length > 0) {
+        this.logger.warn(`Symbols that failed: ${ingest.failed.join(", ")}`);
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      this.logger.error(`Insights daily snapshot crashed: ${message}`);
+      this.logger.error(`Market data ingestion crashed: ${message}`);
+    }
+
+    try {
+      const benchmarks = await this.benchmarkExecution.runAll();
+      const executed = benchmarks.filter((r) => r.status === "executed");
+      this.logger.log(
+        `Benchmark execution: ${executed.length}/${benchmarks.length} portfolios deployed cash.`,
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Benchmark execution crashed: ${message}`);
+    }
+
+    try {
+      const snapshots = await this.snapshotService.captureForAll();
+      this.logger.log(`Portfolio snapshots captured for ${snapshots.length} portfolio(s).`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Snapshot capture crashed: ${message}`);
     }
   }
 
