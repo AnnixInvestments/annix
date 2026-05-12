@@ -39,10 +39,13 @@ import {
   resolveHdpeDims,
   resolveHdpePn,
 } from "./boq/calc";
+import { GroupExportsButtons } from "./boq/components/GroupExportsButtons";
 import { pipeRowDescription } from "./boq/description";
 import {
   bendCenterToFaceMm,
+  consolidatedToRows,
   detectPipeVariant,
+  filterByMaterial,
   flangeConfigSuffix,
   formatQty,
   formatWeight,
@@ -54,7 +57,12 @@ import {
   triggerDownload,
 } from "./boq/helpers";
 import { getFlangeSpec, getSteelSpecName } from "./boq/spec";
-import type { ConsolidatedItem, MaterialKey } from "./boq/types";
+import type {
+  ConsolidatedItem,
+  ExportableSubsection,
+  ExportFormat,
+  MaterialKey,
+} from "./boq/types";
 
 export default function BOQStep(props: {
   onPrevStep?: () => void;
@@ -1694,16 +1702,6 @@ export default function BOQStep(props: {
   // sit in the Steel section in v1.1.35; v1.1.36 will introduce
   // proper HDPE-stub-end + steel-backing-flange line items so they
   // route correctly per supplier.
-  const filterByMaterial = (
-    map: Map<string, ConsolidatedItem>,
-    material: MaterialKey,
-  ): Map<string, ConsolidatedItem> => {
-    const result = new Map<string, ConsolidatedItem>();
-    map.forEach((item, key) => {
-      if (item.material === material) result.set(key, item);
-    });
-    return result;
-  };
 
   // Helper that decides whether to render a consolidated section
   // table only if it has any rows, then forwards to the existing
@@ -1728,195 +1726,111 @@ export default function BOQStep(props: {
     );
   };
 
-  // Convert a consolidated map into a flat array of plain row
-  // objects — re-used by all four export formats per section.
-  const consolidatedToRows = (
-    items: Map<string, ConsolidatedItem>,
-    showWeldColumns: boolean,
-    showAreaColumns: boolean,
-  ): Array<Record<string, string | number>> => {
-    const allWeldTypes = new Set<string>();
-    if (showWeldColumns) {
-      items.forEach((item) => {
-        if (item.welds) keys(item.welds).forEach((wt) => allWeldTypes.add(wt));
-      });
-    }
-    const weldTypesList = Array.from(allWeldTypes);
-    let rowNum = 1;
-    return Array.from(items.values()).map((item) => {
-      const row: Record<string, string | number> = {
-        "From Items": item.entries.join(", "),
-      };
-      if (hasAnySourceLocations) {
-        const sourceLabelSet = new Set<string>();
-        item.entryIds.forEach((id) => {
-          const label = sourceLookup.get(id);
-          if (label) sourceLabelSet.add(label);
-        });
-        const sourceLabels = Array.from(sourceLabelSet).join(", ");
-        row.Source = sourceLabels || "—";
-      }
-      row["#"] = rowNum++;
-      row.Description = item.description;
-      row.Qty = item.qty;
-      row.Unit = item.unit;
-      if (showWeldColumns) {
-        weldTypesList.forEach((wt) => {
-          const w = item.welds?.[wt];
-          row[`${wt} (m)`] = w !== undefined ? w.toFixed(2) : "";
-        });
-      }
-      if (showAreaColumns) {
-        const intAreaM2 = item.intAreaM2;
-        const extAreaM2 = item.extAreaM2;
-        row["Int m²"] = intAreaM2 !== undefined ? intAreaM2.toFixed(2) : "";
-        row["Ext m²"] = extAreaM2 !== undefined ? extAreaM2.toFixed(2) : "";
-      }
-      row["Weight (kg)"] = item.weight.toFixed(2);
-      return row;
-    });
-  };
+  const boqSourceContext = { hasAnySourceLocations, sourceLookup };
 
   // Trigger download of `data` as `filename` with the given MIME
   // type. Browser Blob + ObjectURL pattern.
   // Per-section exporters. The section name is used both as the
   // filename stem (via safeFilename) and the sheet name in xlsx.
-  type ExportableSubsection = {
-    title: string;
-    items: Map<string, ConsolidatedItem>;
-    showWeldColumns: boolean;
-    showAreaColumns: boolean;
-  };
 
   // Group exporter — bundles every sub-section of a material/category
   // group into a single download. Excel uses one workbook with a
   // sheet per sub-section. CSV concatenates with section headers and
   // blank-line separators. PDF/Word emit one HTML document with each
   // sub-section as an h2 + table.
-  const exportGroup = (
-    format: "excel" | "csv" | "pdf" | "word",
-    groupName: string,
-    subsections: ExportableSubsection[],
-  ) => {
-    const populated = subsections.filter((s) => s.items.size > 0);
-    if (populated.length === 0) return;
-    const stem = safeFilename(groupName);
+  const exportGroup = useCallback(
+    (format: ExportFormat, groupName: string, subsections: ExportableSubsection[]) => {
+      const populated = subsections.filter((s) => s.items.size > 0);
+      if (populated.length === 0) return;
+      const stem = safeFilename(groupName);
 
-    if (format === "excel") {
-      const workbook = XLSX.utils.book_new();
-      populated.forEach((sub) => {
-        const rows = consolidatedToRows(sub.items, sub.showWeldColumns, sub.showAreaColumns);
-        if (rows.length === 0) return;
-        const sheet = XLSX.utils.json_to_sheet(rows);
-        // Sheet names capped at 31 chars by Excel — strip illegal
-        // chars too (\, /, ?, *, [, ]).
-        const sheetName = sub.title.replace(/[\\/?*[\]:]/g, "-").substring(0, 31);
-        XLSX.utils.book_append_sheet(workbook, sheet, sheetName);
-      });
-      XLSX.writeFile(workbook, `${stem}.xlsx`);
-      return;
-    }
+      if (format === "excel") {
+        const workbook = XLSX.utils.book_new();
+        populated.forEach((sub) => {
+          const rows = consolidatedToRows(
+            sub.items,
+            sub.showWeldColumns,
+            sub.showAreaColumns,
+            boqSourceContext,
+          );
+          if (rows.length === 0) return;
+          const sheet = XLSX.utils.json_to_sheet(rows);
+          // Sheet names capped at 31 chars by Excel — strip illegal
+          // chars too (\, /, ?, *, [, ]).
+          const sheetName = sub.title.replace(/[\\/?*[\]:]/g, "-").substring(0, 31);
+          XLSX.utils.book_append_sheet(workbook, sheet, sheetName);
+        });
+        XLSX.writeFile(workbook, `${stem}.xlsx`);
+        return;
+      }
 
-    if (format === "csv") {
-      const escapeCell = (v: string | number) => {
-        const s = String(v ?? "");
-        return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-      };
-      const blocks = populated.map((sub) => {
-        const rows = consolidatedToRows(sub.items, sub.showWeldColumns, sub.showAreaColumns);
-        if (rows.length === 0) return "";
-        const headers = keys(rows[0]);
-        const lines = [
-          `# ${sub.title}`,
-          headers.join(","),
-          ...rows.map((r) => headers.map((h) => escapeCell(r[h])).join(",")),
-        ];
-        return lines.join("\n");
-      });
-      const csv = blocks.filter((b) => b.length > 0).join("\n\n");
-      triggerDownload(csv, `${stem}.csv`, "text/csv;charset=utf-8");
-      return;
-    }
+      if (format === "csv") {
+        const escapeCell = (v: string | number) => {
+          const s = String(v ?? "");
+          return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+        };
+        const blocks = populated.map((sub) => {
+          const rows = consolidatedToRows(
+            sub.items,
+            sub.showWeldColumns,
+            sub.showAreaColumns,
+            boqSourceContext,
+          );
+          if (rows.length === 0) return "";
+          const headers = keys(rows[0]);
+          const lines = [
+            `# ${sub.title}`,
+            headers.join(","),
+            ...rows.map((r) => headers.map((h) => escapeCell(r[h])).join(",")),
+          ];
+          return lines.join("\n");
+        });
+        const csv = blocks.filter((b) => b.length > 0).join("\n\n");
+        triggerDownload(csv, `${stem}.csv`, "text/csv;charset=utf-8");
+        return;
+      }
 
-    // PDF + Word both serialise to HTML — PDF opens a print window
-    // so the customer's browser handles the rendering; Word saves a
-    // .doc file that Word opens directly.
-    const sectionsHtml = populated
-      .map((sub) => {
-        const rows = consolidatedToRows(sub.items, sub.showWeldColumns, sub.showAreaColumns);
-        if (rows.length === 0) return "";
-        const headers = keys(rows[0]);
-        const tableRows = rows
-          .map(
-            (r) =>
-              `<tr>${headers
-                .map((h) => `<td style="border:1px solid #ccc;padding:4px 6px;">${r[h]}</td>`)
-                .join("")}</tr>`,
-          )
-          .join("");
-        const headerRow = `<tr>${headers.map((h) => `<th style="border:1px solid #ccc;padding:6px 8px;background:#f3f4f6;text-align:left;">${h}</th>`).join("")}</tr>`;
-        return `<h2 style="margin-top:24px">${sub.title}</h2><table style="border-collapse:collapse;width:100%;margin-bottom:16px">${headerRow}${tableRows}</table>`;
-      })
-      .join("");
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${groupName}</title></head><body style="font-family:sans-serif;font-size:12px"><h1>${groupName}</h1>${sectionsHtml}</body></html>`;
+      // PDF + Word both serialise to HTML — PDF opens a print window
+      // so the customer's browser handles the rendering; Word saves a
+      // .doc file that Word opens directly.
+      const sectionsHtml = populated
+        .map((sub) => {
+          const rows = consolidatedToRows(
+            sub.items,
+            sub.showWeldColumns,
+            sub.showAreaColumns,
+            boqSourceContext,
+          );
+          if (rows.length === 0) return "";
+          const headers = keys(rows[0]);
+          const tableRows = rows
+            .map(
+              (r) =>
+                `<tr>${headers
+                  .map((h) => `<td style="border:1px solid #ccc;padding:4px 6px;">${r[h]}</td>`)
+                  .join("")}</tr>`,
+            )
+            .join("");
+          const headerRow = `<tr>${headers.map((h) => `<th style="border:1px solid #ccc;padding:6px 8px;background:#f3f4f6;text-align:left;">${h}</th>`).join("")}</tr>`;
+          return `<h2 style="margin-top:24px">${sub.title}</h2><table style="border-collapse:collapse;width:100%;margin-bottom:16px">${headerRow}${tableRows}</table>`;
+        })
+        .join("");
+      const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${groupName}</title></head><body style="font-family:sans-serif;font-size:12px"><h1>${groupName}</h1>${sectionsHtml}</body></html>`;
 
-    if (format === "word") {
-      triggerDownload(html, `${stem}.doc`, "application/msword");
-      return;
-    }
+      if (format === "word") {
+        triggerDownload(html, `${stem}.doc`, "application/msword");
+        return;
+      }
 
-    const printWindow = window.open("", "_blank");
-    if (!printWindow) return;
-    printWindow.document.write(html);
-    printWindow.document.close();
-    printWindow.focus();
-    printWindow.print();
-  };
-
-  // Render the four export buttons for a material / category group
-  // header. Skips render if the group has no rows at all.
-  const renderGroupExports = (groupName: string, subsections: ExportableSubsection[]) => {
-    const hasContent = subsections.some((s) => s.items.size > 0);
-    if (!hasContent) return null;
-    const buttonClass =
-      "text-xs px-2 py-1 rounded border border-gray-300 bg-white hover:bg-gray-100 text-gray-700 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700 font-medium";
-    return (
-      <div className="flex items-center gap-1.5">
-        <button
-          type="button"
-          className={buttonClass}
-          onClick={() => exportGroup("excel", groupName, subsections)}
-          title={`Download the entire ${groupName} group as one Excel workbook`}
-        >
-          Excel
-        </button>
-        <button
-          type="button"
-          className={buttonClass}
-          onClick={() => exportGroup("csv", groupName, subsections)}
-          title={`Download the entire ${groupName} group as one CSV file`}
-        >
-          CSV
-        </button>
-        <button
-          type="button"
-          className={buttonClass}
-          onClick={() => exportGroup("pdf", groupName, subsections)}
-          title={`Print or save the entire ${groupName} group as PDF`}
-        >
-          PDF
-        </button>
-        <button
-          type="button"
-          className={buttonClass}
-          onClick={() => exportGroup("word", groupName, subsections)}
-          title={`Download the entire ${groupName} group as Word (.doc)`}
-        >
-          Word
-        </button>
-      </div>
-    );
-  };
+      const printWindow = window.open("", "_blank");
+      if (!printWindow) return;
+      printWindow.document.write(html);
+      printWindow.document.close();
+      printWindow.focus();
+      printWindow.print();
+    },
+    [boqSourceContext],
+  );
 
   // Render consolidated BOQ table with consistent columns
   const renderConsolidatedTable = (
@@ -2596,7 +2510,11 @@ export default function BOQStep(props: {
                 <h3 className="text-base font-bold text-blue-900 dark:text-blue-200">
                   HDPE — supplier section
                 </h3>
-                {renderGroupExports("HDPE", subsections)}
+                <GroupExportsButtons
+                  groupName="HDPE"
+                  subsections={subsections}
+                  onExport={exportGroup}
+                />
               </div>
               {maybeRenderTable("HDPE Pipes", pipes, "bg-blue-50", "text-blue-700", true, false)}
               {maybeRenderTable("HDPE Bends", bends, "bg-blue-50", "text-blue-700", true, false)}
@@ -2709,7 +2627,11 @@ export default function BOQStep(props: {
                 <h3 className="text-base font-bold text-slate-900 dark:text-slate-200">
                   Steel — supplier section
                 </h3>
-                {renderGroupExports("Steel", subsections)}
+                <GroupExportsButtons
+                  groupName="Steel"
+                  subsections={subsections}
+                  onExport={exportGroup}
+                />
               </div>
               {maybeRenderTable("Steel Pipes", pipes, "bg-slate-50", "text-slate-700", true, true)}
               {maybeRenderTable("Steel Bends", bends, "bg-slate-50", "text-slate-700", true, true)}
@@ -2795,7 +2717,11 @@ export default function BOQStep(props: {
                 <h3 className="text-base font-bold text-purple-900 dark:text-purple-200">
                   PVC / uPVC — supplier section
                 </h3>
-                {renderGroupExports("PVC", subsections)}
+                <GroupExportsButtons
+                  groupName="PVC"
+                  subsections={subsections}
+                  onExport={exportGroup}
+                />
               </div>
               {maybeRenderTable("PVC Pipes", pipes, "bg-purple-50", "text-purple-700", true, false)}
               {maybeRenderTable("PVC Bends", bends, "bg-purple-50", "text-purple-700", true, false)}
@@ -2835,14 +2761,18 @@ export default function BOQStep(props: {
               <h3 className="text-base font-bold text-rose-900 dark:text-rose-200">
                 Valves — supplier section
               </h3>
-              {renderGroupExports("Valves", [
-                {
-                  title: "Valves",
-                  items: consolidatedValves,
-                  showWeldColumns: false,
-                  showAreaColumns: false,
-                },
-              ])}
+              <GroupExportsButtons
+                groupName="Valves"
+                subsections={[
+                  {
+                    title: "Valves",
+                    items: consolidatedValves,
+                    showWeldColumns: false,
+                    showAreaColumns: false,
+                  },
+                ]}
+                onExport={exportGroup}
+              />
             </div>
             {renderConsolidatedTable("Valves", consolidatedValves, "bg-rose-50", "text-rose-700")}
           </section>
@@ -2854,14 +2784,18 @@ export default function BOQStep(props: {
               <h3 className="text-base font-bold text-amber-900 dark:text-amber-200">
                 Bolts, Nuts &amp; Gaskets — supplier section
               </h3>
-              {renderGroupExports("Bolts, Nuts and Gaskets", [
-                {
-                  title: "Fasteners (Bolts, Nuts, Gaskets)",
-                  items: consolidatedFasteners,
-                  showWeldColumns: false,
-                  showAreaColumns: false,
-                },
-              ])}
+              <GroupExportsButtons
+                groupName="Bolts, Nuts and Gaskets"
+                subsections={[
+                  {
+                    title: "Fasteners (Bolts, Nuts, Gaskets)",
+                    items: consolidatedFasteners,
+                    showWeldColumns: false,
+                    showAreaColumns: false,
+                  },
+                ]}
+                onExport={exportGroup}
+              />
             </div>
             {renderConsolidatedTable(
               "Fasteners (Bolts, Nuts, Gaskets)",
@@ -2878,14 +2812,18 @@ export default function BOQStep(props: {
               <h3 className="text-base font-bold text-gray-900 dark:text-gray-200">
                 Unidentified — system could not classify these items
               </h3>
-              {renderGroupExports("Unidentified Items", [
-                {
-                  title: "Unidentified Items",
-                  items: consolidatedUnidentified,
-                  showWeldColumns: false,
-                  showAreaColumns: false,
-                },
-              ])}
+              <GroupExportsButtons
+                groupName="Unidentified Items"
+                subsections={[
+                  {
+                    title: "Unidentified Items",
+                    items: consolidatedUnidentified,
+                    showWeldColumns: false,
+                    showAreaColumns: false,
+                  },
+                ]}
+                onExport={exportGroup}
+              />
             </div>
             {renderConsolidatedTable(
               "Unidentified Items",

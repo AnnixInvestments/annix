@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   bendCenterToFaceMm,
+  consolidatedToRows,
   detectPipeVariant,
+  filterByMaterial,
   flangeConfigSuffix,
   formatDate,
   formatQty,
@@ -13,6 +15,12 @@ import {
   pipeVariantPrefix,
   safeFilename,
 } from "./helpers";
+import type { ConsolidatedItem } from "./types";
+
+const EMPTY_SOURCE_CONTEXT = {
+  hasAnySourceLocations: false,
+  sourceLookup: new Map<string, string>(),
+};
 
 describe("formatDate", () => {
   it("returns 'Not specified' when date is undefined", () => {
@@ -501,5 +509,150 @@ describe("detectPipeVariant — PVC variants", () => {
 
   it("returns null for pressure PVC with no variant marker", () => {
     expect(detectPipeVariant("DN 110 uPVC Class 16 pressure pipe")).toBeNull();
+  });
+});
+
+const consolidatedItem = (material: ConsolidatedItem["material"]): ConsolidatedItem =>
+  ({
+    description: "test",
+    qty: 1,
+    unit: "ea",
+    weight: 0,
+    entries: [],
+    entryIds: [],
+    material,
+  }) as unknown as ConsolidatedItem;
+
+describe("filterByMaterial", () => {
+  it("returns an empty map for an empty input", () => {
+    const result = filterByMaterial(new Map(), "hdpe");
+    expect(result.size).toBe(0);
+  });
+
+  it("keeps only items matching the requested material", () => {
+    const input = new Map<string, ConsolidatedItem>([
+      ["a", consolidatedItem("hdpe")],
+      ["b", consolidatedItem("steel")],
+      ["c", consolidatedItem("hdpe")],
+      ["d", consolidatedItem("pvc")],
+    ]);
+    const result = filterByMaterial(input, "hdpe");
+    expect(result.size).toBe(2);
+    expect(result.has("a")).toBe(true);
+    expect(result.has("c")).toBe(true);
+    expect(result.has("b")).toBe(false);
+    expect(result.has("d")).toBe(false);
+  });
+
+  it("does not mutate the input map", () => {
+    const input = new Map<string, ConsolidatedItem>([["a", consolidatedItem("steel")]]);
+    filterByMaterial(input, "hdpe");
+    expect(input.size).toBe(1);
+    expect(input.get("a")?.material).toBe("steel");
+  });
+
+  it("preserves the original keys for matching items", () => {
+    const input = new Map<string, ConsolidatedItem>([
+      ["specific-key-x", consolidatedItem("steel")],
+    ]);
+    const result = filterByMaterial(input, "steel");
+    expect(result.has("specific-key-x")).toBe(true);
+  });
+});
+
+const rowItem = (overrides: Partial<ConsolidatedItem> = {}): ConsolidatedItem =>
+  ({
+    description: "Test pipe DN150",
+    qty: 2,
+    unit: "ea",
+    weight: 12.5,
+    entries: ["item-1", "item-2"],
+    entryIds: ["id-1", "id-2"],
+    material: "steel",
+    ...overrides,
+  }) as unknown as ConsolidatedItem;
+
+describe("consolidatedToRows", () => {
+  it("returns an empty array for an empty input map", () => {
+    expect(consolidatedToRows(new Map(), false, false, EMPTY_SOURCE_CONTEXT)).toEqual([]);
+  });
+
+  it("renders a basic row with description, qty, unit, weight, From Items, and # number", () => {
+    const items = new Map<string, ConsolidatedItem>([["a", rowItem()]]);
+    const [row] = consolidatedToRows(items, false, false, EMPTY_SOURCE_CONTEXT);
+    expect(row.Description).toBe("Test pipe DN150");
+    expect(row.Qty).toBe(2);
+    expect(row.Unit).toBe("ea");
+    expect(row["Weight (kg)"]).toBe("12.50");
+    expect(row["From Items"]).toBe("item-1, item-2");
+    expect(row["#"]).toBe(1);
+  });
+
+  it("does NOT include the Source column when hasAnySourceLocations is false", () => {
+    const items = new Map<string, ConsolidatedItem>([["a", rowItem()]]);
+    const [row] = consolidatedToRows(items, false, false, EMPTY_SOURCE_CONTEXT);
+    expect(row).not.toHaveProperty("Source");
+  });
+
+  it("includes a Source column when hasAnySourceLocations is true, joined by ', '", () => {
+    const items = new Map<string, ConsolidatedItem>([["a", rowItem()]]);
+    const sourceLookup = new Map<string, string>([
+      ["id-1", "Tender p.4 row 12"],
+      ["id-2", "Tender p.4 row 13"],
+    ]);
+    const [row] = consolidatedToRows(items, false, false, {
+      hasAnySourceLocations: true,
+      sourceLookup,
+    });
+    expect(row.Source).toBe("Tender p.4 row 12, Tender p.4 row 13");
+  });
+
+  it("renders an em-dash placeholder in Source when no matching labels are found", () => {
+    const items = new Map<string, ConsolidatedItem>([["a", rowItem()]]);
+    const [row] = consolidatedToRows(items, false, false, {
+      hasAnySourceLocations: true,
+      sourceLookup: new Map(),
+    });
+    expect(row.Source).toBe("—");
+  });
+
+  it("includes weld columns when showWeldColumns is true, formatted to 2dp", () => {
+    const items = new Map<string, ConsolidatedItem>([
+      ["a", rowItem({ welds: { butt: 4.123, fillet: 1.987 } } as Partial<ConsolidatedItem>)],
+    ]);
+    const [row] = consolidatedToRows(items, true, false, EMPTY_SOURCE_CONTEXT);
+    expect(row["butt (m)"]).toBe("4.12");
+    expect(row["fillet (m)"]).toBe("1.99");
+  });
+
+  it("leaves the per-row weld cell empty when that row has no value for the weld type", () => {
+    const items = new Map<string, ConsolidatedItem>([
+      ["a", rowItem({ welds: { butt: 4 } } as Partial<ConsolidatedItem>)],
+      ["b", rowItem({ welds: { fillet: 1 } } as Partial<ConsolidatedItem>)],
+    ]);
+    const [rowA, rowB] = consolidatedToRows(items, true, false, EMPTY_SOURCE_CONTEXT);
+    expect(rowA["butt (m)"]).toBe("4.00");
+    expect(rowA["fillet (m)"]).toBe("");
+    expect(rowB["butt (m)"]).toBe("");
+    expect(rowB["fillet (m)"]).toBe("1.00");
+  });
+
+  it("includes area columns when showAreaColumns is true, formatted to 2dp", () => {
+    const items = new Map<string, ConsolidatedItem>([
+      ["a", rowItem({ intAreaM2: 1.234, extAreaM2: 2.456 } as Partial<ConsolidatedItem>)],
+    ]);
+    const [row] = consolidatedToRows(items, false, true, EMPTY_SOURCE_CONTEXT);
+    expect(row["Int m²"]).toBe("1.23");
+    expect(row["Ext m²"]).toBe("2.46");
+  });
+
+  it("numbers rows sequentially starting from 1", () => {
+    const items = new Map<string, ConsolidatedItem>([
+      ["a", rowItem()],
+      ["b", rowItem()],
+      ["c", rowItem()],
+    ]);
+    const rows = consolidatedToRows(items, false, false, EMPTY_SOURCE_CONTEXT);
+    expect(rows.map((r) => r["#"])).toEqual([1, 2, 3]);
   });
 });

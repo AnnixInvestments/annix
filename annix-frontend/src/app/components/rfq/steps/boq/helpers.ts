@@ -1,6 +1,11 @@
-import { isString } from "es-toolkit/compat";
+import { isString, keys } from "es-toolkit/compat";
 import { formatDateLongZA, fromJSDate } from "@/app/lib/datetime";
-import type { FlangeCountByLocation, FlangeCountByPhysicalKind, MaterialKey } from "./types";
+import type {
+  ConsolidatedItem,
+  FlangeCountByLocation,
+  FlangeCountByPhysicalKind,
+  MaterialKey,
+} from "./types";
 
 export const formatDate = (date: Date | string | undefined): string => {
   if (!date) return "Not specified";
@@ -104,6 +109,82 @@ export const materialOfEntry = (entry: any): MaterialKey => {
   if (candidate === "hdpe") return "hdpe";
   if (candidate === "pvc" || candidate === "upvc") return "pvc";
   return "steel";
+};
+
+// Filter a consolidated-item map down to a single material. Used by
+// the BOQ render branches (HDPE / Steel / PVC sections each pull from
+// the global consolidated maps via this filter).
+export const filterByMaterial = (
+  map: Map<string, ConsolidatedItem>,
+  material: MaterialKey,
+): Map<string, ConsolidatedItem> => {
+  const result = new Map<string, ConsolidatedItem>();
+  map.forEach((item, key) => {
+    if (item.material === material) result.set(key, item);
+  });
+  return result;
+};
+
+// Source-of-truth context for the optional "Source" column that
+// appears in BOQ exports when any item has a source location (a
+// pointer back to a row in the originating tender PDF / Excel).
+export interface BoqSourceContext {
+  hasAnySourceLocations: boolean;
+  sourceLookup: Map<string, string>;
+}
+
+// Convert a consolidated-item map into a flat array of plain row
+// objects — re-used by all four export formats per section (xlsx,
+// csv, pdf, word). The `showWeldColumns` / `showAreaColumns` flags
+// gate optional columns per section type. `sourceContext` carries
+// the optional Source-column data so the helper has zero closure
+// capture on the parent component.
+export const consolidatedToRows = (
+  items: Map<string, ConsolidatedItem>,
+  showWeldColumns: boolean,
+  showAreaColumns: boolean,
+  sourceContext: BoqSourceContext,
+): Array<Record<string, string | number>> => {
+  const allWeldTypes = new Set<string>();
+  if (showWeldColumns) {
+    items.forEach((item) => {
+      if (item.welds) keys(item.welds).forEach((wt) => allWeldTypes.add(wt));
+    });
+  }
+  const weldTypesList = Array.from(allWeldTypes);
+  let rowNum = 1;
+  return Array.from(items.values()).map((item) => {
+    const row: Record<string, string | number> = {
+      "From Items": item.entries.join(", "),
+    };
+    if (sourceContext.hasAnySourceLocations) {
+      const sourceLabelSet = new Set<string>();
+      item.entryIds.forEach((id) => {
+        const label = sourceContext.sourceLookup.get(id);
+        if (label) sourceLabelSet.add(label);
+      });
+      const sourceLabels = Array.from(sourceLabelSet).join(", ");
+      row.Source = sourceLabels || "—";
+    }
+    row["#"] = rowNum++;
+    row.Description = item.description;
+    row.Qty = item.qty;
+    row.Unit = item.unit;
+    if (showWeldColumns) {
+      weldTypesList.forEach((wt) => {
+        const w = item.welds?.[wt];
+        row[`${wt} (m)`] = w !== undefined ? w.toFixed(2) : "";
+      });
+    }
+    if (showAreaColumns) {
+      const intAreaM2 = item.intAreaM2;
+      const extAreaM2 = item.extAreaM2;
+      row["Int m²"] = intAreaM2 !== undefined ? intAreaM2.toFixed(2) : "";
+      row["Ext m²"] = extAreaM2 !== undefined ? extAreaM2.toFixed(2) : "";
+    }
+    row["Weight (kg)"] = item.weight.toFixed(2);
+    return row;
+  });
 };
 
 // Pipe variant inferred from the source description. Used by BOQ

@@ -36,3 +36,16 @@ export type FlangeCountByLocation = {
   main: number;
   branch: number;
 };
+
+// One sub-section of an export group, e.g. "HDPE Pipes" within the
+// "HDPE" group. Each sub-section becomes its own sheet in xlsx
+// exports, its own section header in csv, and its own table in
+// pdf / word.
+export type ExportableSubsection = {
+  title: string;
+  items: Map<string, ConsolidatedItem>;
+  showWeldColumns: boolean;
+  showAreaColumns: boolean;
+};
+
+export type ExportFormat = "excel" | "csv" | "pdf" | "word";
