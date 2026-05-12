@@ -208,6 +208,28 @@ export const insightsApi = {
       );
     },
   },
+
+  paperPortfolios: {
+    list(): Promise<PaperPortfolioSummary[]> {
+      return apiClient.get<PaperPortfolioSummary[]>("/insights/paper-portfolios");
+    },
+    detail(slug: string): Promise<PaperPortfolioSummary> {
+      return apiClient.get<PaperPortfolioSummary>(
+        `/insights/paper-portfolios/${encodeURIComponent(slug)}`,
+      );
+    },
+    holdings(slug: string): Promise<PaperHolding[]> {
+      return apiClient.get<PaperHolding[]>(
+        `/insights/paper-portfolios/${encodeURIComponent(slug)}/holdings`,
+      );
+    },
+    trades(slug: string, limit?: number): Promise<PaperTrade[]> {
+      const query = limit ? `?limit=${limit}` : "";
+      return apiClient.get<PaperTrade[]>(
+        `/insights/paper-portfolios/${encodeURIComponent(slug)}/trades${query}`,
+      );
+    },
+  },
 };
 
 export interface PriceBar {
@@ -226,4 +248,79 @@ export interface BackfillResult {
   skipped: number;
   earliestDate: string | null;
   latestDate: string | null;
+}
+
+export type PaperPortfolioSlug =
+  | "benchmark-spy"
+  | "benchmark-jse40"
+  | "signal-conservative"
+  | "signal-balanced"
+  | "signal-commodity-tilt"
+  | "signal-very-high-risk";
+
+export type PaperRiskProfile =
+  | "buy-and-hold"
+  | "conservative"
+  | "balanced"
+  | "commodity-tilt"
+  | "very-high-risk";
+
+export interface PaperAllocationRules {
+  maxPositions: number | null;
+  maxPercentPerPosition: number | null;
+  maxPercentPerSector: number | null;
+  cashFloorPercent: number;
+  confidenceFloor: number;
+  sectorTilt?: { sectors: string[]; bonus: number };
+  preferLeveragedEtfs?: boolean;
+  fixedHolding?: { symbol: string };
+}
+
+export interface PaperPortfolioSummary {
+  id: string;
+  slug: PaperPortfolioSlug;
+  displayName: string;
+  riskProfile: PaperRiskProfile;
+  currency: string;
+  startingCapital: number;
+  monthlyContribution: number;
+  currentCashBalance: number;
+  currentPortfolioValue: number;
+  totalValue: number;
+  holdingsCount: number;
+  isActive: boolean;
+  isPaused: boolean;
+  allocationRules: PaperAllocationRules;
+  createdAt: string;
+}
+
+export interface PaperHolding {
+  id: string;
+  symbol: string;
+  name: string;
+  quantity: number;
+  averageBuyPrice: number;
+  currentPrice: number;
+  marketValue: number;
+  unrealisedGainLoss: number;
+  unrealisedGainLossPercent: number;
+  firstAcquiredAt: string;
+}
+
+export type PaperTradeAction = "buy" | "sell" | "rebalance" | "contribution";
+
+export interface PaperTrade {
+  id: string;
+  symbol: string | null;
+  action: PaperTradeAction;
+  quantity: number;
+  price: number;
+  tradeValue: number;
+  fees: number;
+  appReasoning: string;
+  opportunityScore: number | null;
+  riskScore: number | null;
+  confidenceScore: number | null;
+  marketRegime: string | null;
+  executedAt: string;
 }

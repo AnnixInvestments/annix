@@ -678,6 +678,12 @@ export {
   useInvalidateAssetData,
 } from "./insights/useAssetHistory";
 export {
+  usePaperHoldings,
+  usePaperPortfolio,
+  usePaperPortfolios,
+  usePaperTrades,
+} from "./insights/usePaperPortfolios";
+export {
   useAddToWatchlist,
   useRemoveFromWatchlist,
   useWatchlist,
