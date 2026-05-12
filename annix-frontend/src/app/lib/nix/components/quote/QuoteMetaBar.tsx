@@ -13,6 +13,12 @@ export interface QuoteMetaBarProps {
   customerOrderNumber: string | null;
   /** Editable — delivery-note reference. Usually blank on a quote but the column exists on the PDF template. */
   deliveryNoteRef: string | null;
+  /**
+   * Up to 3 distinct Order-No candidates that Nix extracted from the
+   * session's drawings / specs. Rendered as one-click "Use" chips below
+   * the input when the field is empty. Empty array hides the row entirely.
+   */
+  suggestedOrderNumbers: string[];
 }
 
 /**
@@ -26,7 +32,14 @@ export interface QuoteMetaBarProps {
  * Save button.
  */
 export function QuoteMetaBar(props: QuoteMetaBarProps) {
-  const { sessionId, createdAt, ourReference, customerOrderNumber, deliveryNoteRef } = props;
+  const {
+    sessionId,
+    createdAt,
+    ourReference,
+    customerOrderNumber,
+    deliveryNoteRef,
+    suggestedOrderNumbers,
+  } = props;
   const [orderNumber, setOrderNumber] = useState(customerOrderNumber || "");
   const [deliveryNote, setDeliveryNote] = useState(deliveryNoteRef || "");
   const lastSavedOrderRef = useRef(customerOrderNumber || "");
@@ -99,6 +112,8 @@ export function QuoteMetaBar(props: QuoteMetaBarProps) {
         value={orderNumber}
         onChange={setOrderNumber}
         placeholder="e.g. STEEL AFRICA - 32452E"
+        suggestions={orderNumber.trim().length === 0 ? suggestedOrderNumbers : []}
+        onAcceptSuggestion={(value) => setOrderNumber(value)}
       />
       <MetaTextInput
         id={`delivery-note-${sessionId}`}
@@ -117,8 +132,17 @@ function MetaTextInput(props: {
   value: string;
   onChange: (next: string) => void;
   placeholder?: string;
+  /**
+   * Up to 3 one-click suggestion chips rendered immediately below the
+   * input. Parent decides when they appear (typically only when the field
+   * is empty AND there's something useful to recommend). Empty array =
+   * no chips. Click a chip → onAcceptSuggestion fires with that value.
+   */
+  suggestions?: string[];
+  onAcceptSuggestion?: (value: string) => void;
 }) {
-  const { id, label, value, onChange, placeholder } = props;
+  const { id, label, value, onChange, placeholder, suggestions, onAcceptSuggestion } = props;
+  const chips = suggestions ?? [];
   return (
     <div className="flex flex-col min-w-[12rem] flex-1">
       <label
@@ -135,6 +159,27 @@ function MetaTextInput(props: {
         placeholder={placeholder}
         className="px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#323288]/30"
       />
+      {chips.length > 0 && onAcceptSuggestion && (
+        <div className="mt-1 flex flex-wrap items-center gap-1 text-[11px]">
+          <span className="text-gray-500 shrink-0">
+            {chips.length === 1 ? "Suggested:" : "Suggested from documents:"}
+          </span>
+          {chips.map((chip) => (
+            <button
+              key={chip}
+              type="button"
+              onClick={() => onAcceptSuggestion(chip)}
+              title="Click to use this suggestion"
+              className="inline-flex items-center gap-1 px-1.5 py-0.5 font-mono text-[#323288] bg-[#323288]/5 border border-[#323288]/30 rounded hover:bg-[#323288] hover:text-white transition-colors"
+            >
+              <span className="truncate max-w-[14rem]">{chip}</span>
+              <span className="text-[9px] font-semibold uppercase tracking-wider opacity-70">
+                Use
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
