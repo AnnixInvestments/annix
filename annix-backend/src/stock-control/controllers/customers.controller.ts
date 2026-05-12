@@ -3,7 +3,10 @@ import {
   Body,
   Controller,
   Get,
+  NotFoundException,
+  Param,
   ParseIntPipe,
+  Patch,
   Post,
   Query,
   UseGuards,
@@ -71,12 +74,54 @@ export class StockControlCustomersController {
   }
 
   @Get(":id")
-  @ApiOperation({ summary: "Fetch a single customer company by id." })
-  async findOne(@Query("id", ParseIntPipe) id: number): Promise<QuoteCustomerDto | null> {
+  @ApiOperation({
+    summary:
+      "Fetch a single customer company by id. Used by the CustomerCard to live-render the LATEST master details — so when the quoter enriches the master row later, every working quote that references this customer reflects the new fields without a re-pick.",
+  })
+  async findOne(@Param("id", ParseIntPipe) id: number): Promise<QuoteCustomerDto> {
     const row = await this.companyRepo.findOne({
       where: { id, companyType: CompanyType.CUSTOMER },
     });
-    return row ? toDto(row) : null;
+    if (!row) {
+      throw new NotFoundException(`Customer ${id} not found`);
+    }
+    return toDto(row);
+  }
+
+  @Patch(":id")
+  @ApiOperation({
+    summary:
+      "Update a customer company. Used by the CustomerCard's 'Edit details' affordance to enrich a row that was originally saved with only a name. Every working quote that references this companyId will re-render with the new details on next load (live-render).",
+  })
+  async update(
+    @Param("id", ParseIntPipe) id: number,
+    @Body() body: Partial<QuoteCustomerDto>,
+  ): Promise<QuoteCustomerDto> {
+    const row = await this.companyRepo.findOne({
+      where: { id, companyType: CompanyType.CUSTOMER },
+    });
+    if (!row) {
+      throw new NotFoundException(`Customer ${id} not found`);
+    }
+    if (body.name !== undefined) {
+      const trimmed = body.name.trim();
+      if (trimmed.length === 0) {
+        throw new BadRequestException("Customer name cannot be empty");
+      }
+      row.name = trimmed;
+    }
+    if (body.contactPerson !== undefined) row.contactPerson = body.contactPerson;
+    if (body.email !== undefined) row.email = body.email;
+    if (body.phone !== undefined) row.phone = body.phone;
+    if (body.vatNumber !== undefined) row.vatNumber = body.vatNumber;
+    if (body.registrationNumber !== undefined) row.registrationNumber = body.registrationNumber;
+    if (body.streetAddress !== undefined) row.streetAddress = body.streetAddress;
+    if (body.city !== undefined) row.city = body.city;
+    if (body.province !== undefined) row.province = body.province;
+    if (body.postalCode !== undefined) row.postalCode = body.postalCode;
+    if (body.country !== undefined && body.country.length > 0) row.country = body.country;
+    const saved = await this.companyRepo.save(row);
+    return toDto(saved);
   }
 
   @Post()

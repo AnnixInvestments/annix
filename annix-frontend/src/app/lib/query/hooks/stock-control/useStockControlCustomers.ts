@@ -6,6 +6,7 @@ import { retryableFetch } from "../../retry";
 const STOCK_CONTROL_CUSTOMER_KEYS = {
   all: ["stock-control", "customers"] as const,
   list: (q: string | undefined) => [...STOCK_CONTROL_CUSTOMER_KEYS.all, "list", q ?? ""] as const,
+  detail: (id: number) => [...STOCK_CONTROL_CUSTOMER_KEYS.all, "detail", id] as const,
 };
 
 export interface QuoteCustomer {
@@ -28,7 +29,7 @@ export type NewCustomerInput = Omit<QuoteCustomer, "id">;
 async function stockControlCustomerRequest<TResponse>(
   path: string,
   options: {
-    method?: "GET" | "POST";
+    method?: "GET" | "POST" | "PATCH";
     body?: unknown;
     errorLabel: string;
   },
@@ -73,6 +74,21 @@ export const useStockControlCustomers = createQueryHook(
 );
 
 /**
+ * Live-fetch of a single customer by id. Drives the CustomerCard's display
+ * when the quote has a companyId set — so when the quoter enriches the
+ * master row via "Edit details", every working quote referencing this
+ * customer reflects the new fields on next load.
+ */
+export const useStockControlCustomer = createQueryHook(
+  (id: number | null) => STOCK_CONTROL_CUSTOMER_KEYS.detail(id ?? 0),
+  (id: number | null) =>
+    stockControlCustomerRequest<QuoteCustomer>(`/stock-control/customers/${id}`, {
+      errorLabel: "Failed to fetch customer",
+    }),
+  { enabled: (id: number | null) => id !== null && id > 0 },
+);
+
+/**
  * Creates a customer in the master `companies` table with
  * `companyType = CUSTOMER`. Used by the "Save for future use" tick on the
  * inline new-customer form.
@@ -85,4 +101,23 @@ export const useCreateStockControlCustomer = createMutationHook<QuoteCustomer, N
       errorLabel: "Failed to save customer",
     }),
   () => [STOCK_CONTROL_CUSTOMER_KEYS.all],
+);
+
+/**
+ * Updates the master customer row in place. Returns the saved entity so the
+ * CustomerCard can refresh its display without an extra fetch. Invalidates
+ * both list and detail caches so every other quote/page that's rendering
+ * this customer also re-fetches.
+ */
+export const useUpdateStockControlCustomer = createMutationHook<
+  QuoteCustomer,
+  { id: number; patch: Partial<NewCustomerInput> }
+>(
+  ({ id, patch }) =>
+    stockControlCustomerRequest<QuoteCustomer>(`/stock-control/customers/${id}`, {
+      method: "PATCH",
+      body: patch,
+      errorLabel: "Failed to update customer",
+    }),
+  (_data, vars) => [STOCK_CONTROL_CUSTOMER_KEYS.all, STOCK_CONTROL_CUSTOMER_KEYS.detail(vars.id)],
 );

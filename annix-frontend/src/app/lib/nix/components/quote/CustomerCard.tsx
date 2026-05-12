@@ -6,7 +6,9 @@ import {
   type NewCustomerInput,
   type QuoteCustomer,
   useCreateStockControlCustomer,
+  useStockControlCustomer,
   useStockControlCustomers,
+  useUpdateStockControlCustomer,
 } from "@/app/lib/query/hooks/stock-control";
 
 export interface CustomerCardProps {
@@ -39,8 +41,13 @@ export interface CustomerCardProps {
 export function CustomerCard(props: CustomerCardProps) {
   const { sessionId, customerCompanyId, customerSnapshot } = props;
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [editMode, setEditMode] = useState(false);
 
   const saveCustomer = useSaveQuoteCustomer();
+  // Live-render: when the session has a companyId, the LATEST master row
+  // drives the display. Updates flow through automatically when the user
+  // enriches the master via "Edit details" or via a separate quote.
+  const liveCustomer = useStockControlCustomer(customerCompanyId);
 
   const handleSelectExisting = (customer: QuoteCustomer) => {
     saveCustomer.mutate(
@@ -97,13 +104,37 @@ export function CustomerCard(props: CustomerCardProps) {
     );
   }
 
+  // Snapshot from the session is the historical record. When companyId is
+  // set, prefer the live master fetch (post-enrichment value). Falls back to
+  // the snapshot when the live fetch hasn't returned yet OR when the
+  // customer is one-off (no companyId).
+  const liveCustomerData = liveCustomer.data;
+  const displaySnapshot: QuoteCustomerSnapshot =
+    customerCompanyId !== null && liveCustomerData
+      ? masterToSnapshot(liveCustomerData)
+      : customerSnapshot;
+
+  const canEdit = customerCompanyId !== null && liveCustomerData !== undefined;
+
   return (
     <section className="bg-white border border-gray-200 rounded-lg p-4 space-y-2">
       <header className="flex items-baseline justify-between gap-3">
         <h2 className="text-sm font-semibold text-gray-900">Customer</h2>
         <div className="flex items-center gap-2">
-          {!pickerOpen && (
+          {!pickerOpen && !editMode && (
             <>
+              {canEdit && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setEditMode(true)}
+                    className="text-xs text-[#323288] font-medium hover:underline"
+                  >
+                    Edit details
+                  </button>
+                  <span className="text-gray-300">·</span>
+                </>
+              )}
               <button
                 type="button"
                 onClick={() => setPickerOpen(true)}
@@ -123,15 +154,17 @@ export function CustomerCard(props: CustomerCardProps) {
           )}
         </div>
       </header>
-      {!pickerOpen ? (
-        <CustomerBlock snapshot={customerSnapshot} companyId={customerCompanyId} />
-      ) : (
+      {pickerOpen ? (
         <CustomerPicker
           onSelectExisting={handleSelectExisting}
           onSaveNew={handleSaveNew}
           onCancel={() => setPickerOpen(false)}
           isSaving={saveCustomer.isPending}
         />
+      ) : editMode && customerCompanyId !== null && liveCustomerData ? (
+        <EditCustomerForm customer={liveCustomerData} onDone={() => setEditMode(false)} />
+      ) : (
+        <CustomerBlock snapshot={displaySnapshot} companyId={customerCompanyId} />
       )}
     </section>
   );
@@ -370,6 +403,133 @@ function NewCustomerForm(props: {
   );
 }
 
+function EditCustomerForm(props: { customer: QuoteCustomer; onDone: () => void }) {
+  const { customer, onDone } = props;
+  const [form, setForm] = useState<NewCustomerInput>(masterToFormInput(customer));
+  const updateCustomer = useUpdateStockControlCustomer();
+
+  const update = <K extends keyof NewCustomerInput>(key: K, value: NewCustomerInput[K]) => {
+    setForm((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
+    const trimmedName = form.name.trim();
+    if (trimmedName.length === 0) return;
+    updateCustomer.mutate(
+      { id: customer.id, patch: { ...form, name: trimmedName } },
+      { onSuccess: () => onDone() },
+    );
+  };
+
+  const isPending = updateCustomer.isPending;
+
+  // Hoist nullable form fields to local consts before piping into Field
+  // value props — the SWC-safe pattern requires a plain local identifier.
+  const contactPerson = form.contactPerson;
+  const email = form.email;
+  const phone = form.phone;
+  const vatNumber = form.vatNumber;
+  const registrationNumber = form.registrationNumber;
+  const streetAddress = form.streetAddress;
+  const city = form.city;
+  const province = form.province;
+  const postalCode = form.postalCode;
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-2">
+      <p className="text-xs text-gray-500 italic">
+        Editing the master customer record — changes flow through to every working quote that
+        references this customer.
+      </p>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+        <Field
+          label="Company name"
+          required
+          value={form.name}
+          onChange={(v) => update("name", v)}
+        />
+        <Field
+          label="Contact person"
+          value={contactPerson || ""}
+          onChange={(v) => update("contactPerson", v || null)}
+        />
+        <Field
+          label="Email"
+          type="email"
+          value={email || ""}
+          onChange={(v) => update("email", v || null)}
+        />
+        <Field label="Phone" value={phone || ""} onChange={(v) => update("phone", v || null)} />
+        <Field
+          label="VAT number"
+          value={vatNumber || ""}
+          onChange={(v) => update("vatNumber", v || null)}
+        />
+        <Field
+          label="Registration number"
+          value={registrationNumber || ""}
+          onChange={(v) => update("registrationNumber", v || null)}
+        />
+        <Field
+          label="Street address"
+          value={streetAddress || ""}
+          onChange={(v) => update("streetAddress", v || null)}
+          className="md:col-span-2"
+        />
+        <Field label="City" value={city || ""} onChange={(v) => update("city", v || null)} />
+        <Field
+          label="Province"
+          value={province || ""}
+          onChange={(v) => update("province", v || null)}
+        />
+        <Field
+          label="Postal code"
+          value={postalCode || ""}
+          onChange={(v) => update("postalCode", v || null)}
+        />
+        <Field
+          label="Country"
+          value={form.country}
+          onChange={(v) => update("country", v || "South Africa")}
+        />
+      </div>
+      <div className="flex items-center gap-2 pt-2">
+        <button
+          type="submit"
+          disabled={isPending || form.name.trim().length === 0}
+          className="inline-flex items-center px-3 py-1.5 text-sm font-medium bg-[#323288] text-white rounded hover:bg-[#2a2a73] disabled:opacity-50"
+        >
+          {isPending ? "Saving…" : "Save changes"}
+        </button>
+        <button
+          type="button"
+          onClick={onDone}
+          className="text-sm text-gray-500 hover:text-gray-700"
+        >
+          Cancel
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function masterToFormInput(customer: QuoteCustomer): NewCustomerInput {
+  return {
+    name: customer.name,
+    contactPerson: customer.contactPerson,
+    email: customer.email,
+    phone: customer.phone,
+    vatNumber: customer.vatNumber,
+    registrationNumber: customer.registrationNumber,
+    streetAddress: customer.streetAddress,
+    city: customer.city,
+    province: customer.province,
+    postalCode: customer.postalCode,
+    country: customer.country,
+  };
+}
+
 function Field(props: {
   label: string;
   value: string;
@@ -415,6 +575,10 @@ function emptyForm(): NewCustomerInput {
 }
 
 function customerFromMaster(customer: QuoteCustomer): QuoteCustomerSnapshot {
+  return masterToSnapshot(customer);
+}
+
+function masterToSnapshot(customer: QuoteCustomer): QuoteCustomerSnapshot {
   return {
     name: customer.name,
     contactPerson: customer.contactPerson,

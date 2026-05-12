@@ -33,7 +33,9 @@ export {
   type NewCustomerInput,
   type QuoteCustomer,
   useCreateStockControlCustomer,
+  useStockControlCustomer,
   useStockControlCustomers,
+  useUpdateStockControlCustomer,
 } from "./useStockControlCustomers";
 export {
   useCpoSummary,
