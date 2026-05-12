@@ -1,5 +1,6 @@
 "use client";
 
+import { isNumber } from "es-toolkit/compat";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -361,10 +362,22 @@ function surfaceRevisionVerdicts(
         "warning",
       );
     } else if (verdict.action === "duplicate-in-session") {
+      // User re-uploaded the same file (filename match). Auto-retry the
+      // existing extraction so Nix re-reads the document fresh — useful
+      // when the user has updated the drawing or just wants to refresh
+      // the items. The pool-level dedup (poolItemsBySpec) handles any
+      // overlap with other drawings in the session.
+      const canonicalId = verdict.canonicalExtractionId;
       showToast(
-        `${filename}: already in this draft — kept the existing extraction, no duplicate added`,
+        `${filename}: already in this draft — re-extracting now so Nix re-reads the whole document`,
         "warning",
       );
+      if (isNumber(canonicalId)) {
+        nixApi.retryExtraction(canonicalId).catch((err: unknown) => {
+          const msg = err instanceof Error ? err.message : "re-extract failed";
+          showToast(`${filename}: re-extract failed — ${msg}`, "error");
+        });
+      }
     }
   }
 }
