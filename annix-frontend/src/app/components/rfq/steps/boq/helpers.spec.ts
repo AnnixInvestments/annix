@@ -479,9 +479,27 @@ describe("pipeVariantPrefix", () => {
     expect(pipeVariantPrefix("perforated")).toBe("Perforated ");
     expect(pipeVariantPrefix("slotted")).toBe("Slotted ");
     expect(pipeVariantPrefix("solid")).toBe("Solid ");
+    expect(pipeVariantPrefix("drainage")).toBe("Drainage ");
+    expect(pipeVariantPrefix("electrical")).toBe("Conduit ");
   });
 
   it("returns empty string for null", () => {
     expect(pipeVariantPrefix(null)).toBe("");
+  });
+});
+
+describe("detectPipeVariant — PVC variants", () => {
+  it("returns 'drainage' for gravity/sewer descriptions", () => {
+    expect(detectPipeVariant("DN 110 uPVC sewer main")).toBe("drainage");
+    expect(detectPipeVariant("Gravity drain PVC pipe SANS 791")).toBe("drainage");
+  });
+
+  it("returns 'electrical' for conduit descriptions", () => {
+    expect(detectPipeVariant("PVC electrical conduit DN 25")).toBe("electrical");
+    expect(detectPipeVariant("Conduit PVC to SANS 1602")).toBe("electrical");
+  });
+
+  it("returns null for pressure PVC with no variant marker", () => {
+    expect(detectPipeVariant("DN 110 uPVC Class 16 pressure pipe")).toBeNull();
   });
 });

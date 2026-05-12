@@ -111,13 +111,29 @@ export const materialOfEntry = (entry: any): MaterialKey => {
 // HDPE drain pipes don't merge into a single supplier row just
 // because they share NB / SDR / PN / flange. Returns null for plain
 // "standard" pipe.
-export type PipeVariant = "perforated" | "slotted" | "solid";
+//
+// Extended for PVC parity (#288 Phase 4):
+//  - "pressure" — generic pressure pipe (still consolidates with
+//    plain entries; this is the default and rarely returned)
+//  - "drainage" / "sewer" — non-pressure gravity drainage pipe
+//    (SANS 791 family). Different OD/wall conventions to pressure
+//    pipe; must NOT consolidate with pressure on the same DN.
+//  - "electrical" / "conduit" — electrical-conduit grade PVC
+//    (SANS 1602 / 1660). Thinner wall, lower pressure — never
+//    interchangeable with pressure pipe.
+export type PipeVariant = "perforated" | "slotted" | "solid" | "drainage" | "electrical";
 
 export const detectPipeVariant = (description: string | undefined | null): PipeVariant | null => {
   if (!description) return null;
   const text = description.toLowerCase();
   if (/\bperforated\b/.test(text)) return "perforated";
   if (/\bslotted\b/.test(text)) return "slotted";
+  if (/\bsewer(?:\s*main)?\b|\bgravity\s*(?:drain|sewer)\b|\bsans\s*791\b/.test(text)) {
+    return "drainage";
+  }
+  if (/\belectrical\s*conduit\b|\bconduit\s*pvc\b|\bsans\s*(?:1602|1660)\b/.test(text)) {
+    return "electrical";
+  }
   // "Solid" only counts when it qualifies the pipe itself, not when
   // it appears as a generic adjective elsewhere (e.g. "solid weld").
   if (/\bsolid\s+(?:hdpe|pe\s?100|pvc|upvc|mild\s*steel|steel|drain\s*pipe|pipe)\b/.test(text)) {
@@ -133,6 +149,8 @@ export const pipeVariantPrefix = (variant: PipeVariant | null): string => {
   if (variant === "perforated") return "Perforated ";
   if (variant === "slotted") return "Slotted ";
   if (variant === "solid") return "Solid ";
+  if (variant === "drainage") return "Drainage ";
+  if (variant === "electrical") return "Conduit ";
   return "";
 };
 
