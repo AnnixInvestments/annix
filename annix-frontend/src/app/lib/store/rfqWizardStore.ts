@@ -188,6 +188,16 @@ interface RfqWizardActions {
     value: RfqFormData[K],
   ) => void;
   updateGlobalSpecs: (specs: GlobalSpecs) => void;
+  // Merge Nix-extracted tender-spec metadata into globalSpecs
+  // without clobbering any fields the customer already set. Used by
+  // the tender-PDF auto-extraction flow (#288) so 25 stacked spec
+  // PDFs collectively fill the Specifications step.
+  mergeSpecMetadataIntoGlobalSpecs: (metadata: {
+    workingPressureBar?: number | null;
+    workingTemperatureC?: number | null;
+    coating?: string | null;
+    lining?: string | null;
+  }) => void;
 
   addStraightPipeEntry: (
     description?: string,
@@ -853,6 +863,36 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
             (state) => ({ rfqData: { ...state.rfqData, globalSpecs: specs } }),
             false,
             "updateGlobalSpecs",
+          ),
+
+        mergeSpecMetadataIntoGlobalSpecs: (metadata) =>
+          set(
+            (state) => {
+              const existing = state.rfqData.globalSpecs ?? {};
+              const next = { ...existing };
+              const rawPressure = metadata.workingPressureBar;
+              const rawTemperature = metadata.workingTemperatureC;
+              const rawCoating = metadata.coating;
+              const rawLining = metadata.lining;
+              // First-non-null-wins: only fill fields the customer
+              // hasn't set yet. Subsequent spec PDFs overlay
+              // complementary fields rather than overwriting.
+              if (rawPressure != null && next.workingPressureBar == null) {
+                next.workingPressureBar = rawPressure;
+              }
+              if (rawTemperature != null && next.workingTemperatureC == null) {
+                next.workingTemperatureC = rawTemperature;
+              }
+              if (rawCoating && !next.externalCoatingType) {
+                next.externalCoatingType = rawCoating;
+              }
+              if (rawLining && !next.internalLiningType) {
+                next.internalLiningType = rawLining;
+              }
+              return { rfqData: { ...state.rfqData, globalSpecs: next } };
+            },
+            false,
+            "mergeSpecMetadataIntoGlobalSpecs",
           ),
 
         addStraightPipeEntry: (description, insertAtStart, materialType) => {

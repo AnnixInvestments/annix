@@ -72,6 +72,9 @@ export default function ProjectDetailsStep() {
   const storeAddTenderDocument = useRfqWizardStore((s) => s.addTenderDocument);
   const { flags: featureFlags } = useFeatureFlags();
   const onRemoveTenderDocument = useRfqWizardStore((s) => s.removeTenderDocument);
+  const mergeSpecMetadataIntoGlobalSpecs = useRfqWizardStore(
+    (s) => s.mergeSpecMetadataIntoGlobalSpecs,
+  );
   const currentDraftId = useRfqWizardStore((s) => s.currentDraftId);
   const setWizardCurrentStep = useRfqWizardStore((s) => s.setCurrentStep);
   const applyNixItemsToRfq = useRfqWizardStore((s) => s.applyNixItemsToRfq);
@@ -226,6 +229,62 @@ export default function ProjectDetailsStep() {
       }
     },
     [showExtraction, hideExtraction, confirm, currentDraftId],
+  );
+
+  // Tender-spec extraction. Sends a non-BOQ PDF (specification,
+  // standard, code-of-conduct etc.) through Nix and merges any
+  // metadata it can lift (working pressure, working temperature,
+  // material standard, coating, lining) into rfqData.globalSpecs.
+  // Goes through the same serial queue as BOQ extractions so a
+  // batch drop processes one-at-a-time.
+  const runNixTenderSpecExtraction = useCallback(
+    async (file: File): Promise<void> => {
+      const priorTail = nixExtractionQueueRef.current;
+      let releaseQueueSlot: () => void = () => {};
+      nixExtractionQueueRef.current = new Promise<void>((resolve) => {
+        releaseQueueSlot = resolve;
+      });
+      try {
+        await priorTail;
+      } catch {
+        // ignored — prior task failure doesn't poison this one
+      }
+      showExtraction({
+        brand: "rfq",
+        label: `Nix is reading ${file.name} for specs…`,
+        estimatedDurationMs: 20_000,
+      });
+      try {
+        const result = await nixApi.uploadAndProcess(file, {
+          documentRole: "specification",
+          rfqId: currentDraftId ?? undefined,
+          sourceModule: "rfq",
+        });
+        hideExtraction();
+        if (result.error) {
+          log.warn(`Nix tender-spec extraction returned error for ${file.name}: ${result.error}`);
+          return;
+        }
+        const metadata = result.metadata;
+        if (!metadata) return;
+        mergeSpecMetadataIntoGlobalSpecs({
+          workingPressureBar: metadata.workingPressureBar,
+          workingTemperatureC: metadata.workingTemperatureC,
+          coating: metadata.coating,
+          lining: metadata.lining,
+        });
+      } catch (err) {
+        hideExtraction();
+        // Spec extraction is opportunistic — a failure shouldn't
+        // surface a blocking modal the way BOQ extraction does.
+        // The doc is still uploaded + archived; admin can pull
+        // specs manually if needed.
+        log.warn(`Nix tender-spec extraction failed for ${file.name}:`, err);
+      } finally {
+        releaseQueueSlot();
+      }
+    },
+    [showExtraction, hideExtraction, mergeSpecMetadataIntoGlobalSpecs, currentDraftId],
   );
 
   const applyEmailMetadataToCustomerFields = useCallback(
@@ -443,7 +502,11 @@ export default function ProjectDetailsStep() {
         const docId = `doc-${generateUniqueId()}-${Math.random().toString(36).substr(2, 9)}`;
         if (kind === "tender") {
           storeAddTenderDocument({ file: incoming, id: tenderId });
-          archiveToS3(incoming, "specification");
+          // Spec extraction runs through Nix and mirrors the file
+          // to S3 internally — no separate archive call needed.
+          // Fire-and-forget: the queue serialises the work and
+          // failures don't block the wizard.
+          void runNixTenderSpecExtraction(incoming);
         } else if (kind === "boq") {
           storeAddDocument({ file: incoming, id: docId });
           // BOQ extraction also mirrors the file to S3 — no need to
@@ -480,14 +543,19 @@ export default function ProjectDetailsStep() {
         const id = `${idPrefix}-${generateUniqueId()}-${Math.random().toString(36).substr(2, 9)}`;
         if (attachment.kind === "tender") {
           storeAddTenderDocument({ file: attachment.file, id });
+          // Run Nix spec extraction so tender PDFs surfaced through
+          // an .eml drop pre-populate globalSpecs the same way as a
+          // direct drop does. Fire-and-forget through the queue.
+          if (!isExcelFile(attachment.file)) {
+            void runNixTenderSpecExtraction(attachment.file);
+          }
         } else {
           storeAddDocument({ file: attachment.file, id });
-        }
-        // Excel attachments are archived through runNixBoqExtraction.
-        // Everything else gets archived here.
-        if (!isExcelFile(attachment.file)) {
-          const role: NixDocumentRole = attachment.kind === "tender" ? "specification" : "other";
-          archiveToS3(attachment.file, role);
+          // Excel attachments are archived through runNixBoqExtraction.
+          // Everything else gets archived here.
+          if (!isExcelFile(attachment.file)) {
+            archiveToS3(attachment.file, "other");
+          }
         }
       };
       parsed.attachments.forEach(routeAttachment);

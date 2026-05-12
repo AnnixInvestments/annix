@@ -191,6 +191,11 @@ export interface NixExtractionMetadata {
   lining?: string | null;
   materialGrade?: string | null;
   wallThickness?: string | null;
+  // Tender-spec PDFs surface design / operating values so the
+  // wizard's Specifications step can pre-fill them. Populated by
+  // PdfExtractorService.extractMetadata().
+  workingPressureBar?: number | null;
+  workingTemperatureC?: number | null;
 }
 
 export interface NixProcessResponse {

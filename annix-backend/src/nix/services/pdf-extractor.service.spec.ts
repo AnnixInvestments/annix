@@ -294,5 +294,72 @@ describe("PdfExtractorService", () => {
         expect(result.items.some((i) => i.material === expectedMaterial)).toBe(true);
       });
     });
+
+    describe("tender-spec metadata — working pressure + temperature", () => {
+      it("extracts working pressure stated in bar", async () => {
+        setupMockPdf("Working pressure: 16 bar at design conditions.");
+
+        const result = await service.extractFromPdf("/fake/path.pdf");
+
+        expect(result.metadata.workingPressureBar).toBe(16);
+      });
+
+      it("converts a kPa pressure to bar", async () => {
+        setupMockPdf("Design pressure: 1600 kPa.");
+
+        const result = await service.extractFromPdf("/fake/path.pdf");
+
+        expect(result.metadata.workingPressureBar).toBe(16);
+      });
+
+      it("converts an MPa pressure to bar", async () => {
+        setupMockPdf("Operating pressure 1.6 MPa.");
+
+        const result = await service.extractFromPdf("/fake/path.pdf");
+
+        expect(result.metadata.workingPressureBar).toBe(16);
+      });
+
+      it("falls back to SANS 1123 table designation when no explicit pressure stated", async () => {
+        setupMockPdf("Flanges to SANS 1123 Table 1600/3.");
+
+        const result = await service.extractFromPdf("/fake/path.pdf");
+
+        expect(result.metadata.workingPressureBar).toBe(16);
+      });
+
+      it("extracts working temperature in °C", async () => {
+        setupMockPdf("Working temperature: 80 °C");
+
+        const result = await service.extractFromPdf("/fake/path.pdf");
+
+        expect(result.metadata.workingTemperatureC).toBe(80);
+      });
+
+      it("handles 'deg C' wording too", async () => {
+        setupMockPdf("Design temperature: 65 deg C");
+
+        const result = await service.extractFromPdf("/fake/path.pdf");
+
+        expect(result.metadata.workingTemperatureC).toBe(65);
+      });
+
+      it("handles negative working temperature", async () => {
+        setupMockPdf("Min operating temperature: -5°C");
+
+        const result = await service.extractFromPdf("/fake/path.pdf");
+
+        expect(result.metadata.workingTemperatureC).toBe(-5);
+      });
+
+      it("returns null when no pressure/temperature stated", async () => {
+        setupMockPdf("Generic specification with no pressure or temperature mentioned.");
+
+        const result = await service.extractFromPdf("/fake/path.pdf");
+
+        expect(result.metadata.workingPressureBar).toBeNull();
+        expect(result.metadata.workingTemperatureC).toBeNull();
+      });
+    });
   });
 });

@@ -116,6 +116,8 @@ export class PdfExtractorService {
         projectReference: metadata.projectReference,
         projectLocation: metadata.projectLocation,
         projectName: metadata.projectName,
+        workingPressureBar: metadata.workingPressureBar,
+        workingTemperatureC: metadata.workingTemperatureC,
         standard: specDefaults.standard,
         coating: specDefaults.externalCoating,
         lining: specDefaults.lining,
@@ -580,6 +582,8 @@ export class PdfExtractorService {
     projectReference: string | null;
     projectLocation: string | null;
     projectName: string | null;
+    workingPressureBar: number | null;
+    workingTemperatureC: number | null;
   } {
     let projectReference: string | null = null;
     let projectLocation: string | null = null;
@@ -619,6 +623,57 @@ export class PdfExtractorService {
       }
     }
 
-    return { projectReference, projectLocation, projectName };
+    const workingPressureBar = this.extractWorkingPressureBar(lines);
+    const workingTemperatureC = this.extractWorkingTemperatureC(lines);
+
+    return {
+      projectReference,
+      projectLocation,
+      projectName,
+      workingPressureBar,
+      workingTemperatureC,
+    };
+  }
+
+  // Working / design / operating pressure expressed in bar. Falls
+  // back to kPa or MPa with unit conversion when bar isn't explicit.
+  // Returns the first match — tender PDFs typically state operating
+  // pressure on the cover sheet / process description page.
+  private extractWorkingPressureBar(lines: string[]): number | null {
+    const text = lines.join("\n");
+    const labelled = text.match(
+      /(?:working|design|operating|maximum|max\.?)\s*(?:pressure|press\.?)[:\s]+(\d+(?:\.\d+)?)\s*(bar|kpa|mpa|psi)\b/i,
+    );
+    if (labelled) {
+      const value = parseFloat(labelled[1]);
+      const unit = labelled[2].toLowerCase();
+      if (unit === "bar") return value;
+      if (unit === "kpa") return Math.round((value / 100) * 100) / 100;
+      if (unit === "mpa") return value * 10;
+      if (unit === "psi") return Math.round(value * 0.0689476 * 100) / 100;
+    }
+    // SANS 1123 table designations (1000/3, 1600/3 etc.) encode the
+    // pressure in kPa as the numerator. Surface as bar so the wizard
+    // populates the working-pressure field correctly when the spec
+    // doesn't state pressure explicitly.
+    const sansClass = text.match(/\bSANS\s*1123\s*Table\s*(\d{3,4})\/\d+\b/i);
+    if (sansClass) {
+      const kpa = parseInt(sansClass[1], 10);
+      if (Number.isFinite(kpa)) return Math.round(kpa / 100);
+    }
+    return null;
+  }
+
+  // Working / design / operating temperature in °C. Handles "C",
+  // "°C", "deg C" variants. Pulls the first explicit value.
+  private extractWorkingTemperatureC(lines: string[]): number | null {
+    const text = lines.join("\n");
+    const labelled = text.match(
+      /(?:working|design|operating|maximum|max\.?)\s*(?:temperature|temp\.?)[:\s]+(-?\d+(?:\.\d+)?)\s*(?:°|deg(?:rees?)?\s*)?\s*c\b/i,
+    );
+    if (labelled) {
+      return parseFloat(labelled[1]);
+    }
+    return null;
   }
 }

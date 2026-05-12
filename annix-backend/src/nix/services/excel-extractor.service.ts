@@ -116,6 +116,11 @@ export interface ExtractionResult {
     lining: string | null;
     materialGrade: string | null;
     wallThickness: string | null;
+    // Tender-spec PDFs surface working / design pressure + temp
+    // here so the wizard's globalSpecs can pre-fill these fields
+    // without the customer having to retype them.
+    workingPressureBar?: number | null;
+    workingTemperatureC?: number | null;
   };
 }
 
@@ -372,9 +377,11 @@ export class ExcelExtractorService {
     target: ExtractionResult["metadata"],
     src: ExtractionResult["metadata"],
   ): void {
-    (Object.keys(target) as Array<keyof ExtractionResult["metadata"]>).forEach((k) => {
-      if (target[k] == null && src[k] != null) {
-        target[k] = src[k];
+    const merge = target as Record<string, unknown>;
+    const incoming = src as Record<string, unknown>;
+    Object.keys(merge).forEach((k) => {
+      if (merge[k] == null && incoming[k] != null) {
+        merge[k] = incoming[k];
       }
     });
   }
