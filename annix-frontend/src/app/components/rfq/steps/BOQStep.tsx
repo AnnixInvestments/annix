@@ -269,6 +269,42 @@ export default function BOQStep(props: {
       material: "hdpe",
     });
   };
+
+  // PVC stub-flange adapter (the PVC analog of the HDPE stub-end).
+  // One per PVC-pipe flange end. Less common than HDPE — most PVC
+  // flanging is slip-on + backing ring directly — but consolidated
+  // separately so suppliers price the adapter as its own item.
+  const consolidatedPvcStubs: Map<string, ConsolidatedItem> = new Map();
+
+  const addPvcStubItem = (
+    nb: number,
+    pressureClassLabel: string,
+    pvcGradeLabel: string | undefined,
+    flangeQty: number,
+    itemNumberArg: string,
+    entryId: string,
+  ): void => {
+    if (flangeQty <= 0) return;
+    const gradeLabel = pvcGradeLabel || "uPVC";
+    const pnSuffix = pressureClassLabel ? ` ${pressureClassLabel}` : "";
+    const key = `PVC_STUB_${nb}_${gradeLabel}_${pressureClassLabel || "-"}`;
+    const existing = consolidatedPvcStubs.get(key);
+    if (existing) {
+      existing.qty += flangeQty;
+      existing.entries.push(itemNumberArg);
+      existing.entryIds.push(entryId);
+      return;
+    }
+    consolidatedPvcStubs.set(key, {
+      description: `${nb}OD ${gradeLabel}${pnSuffix} Stub Flange Adapter`.trim(),
+      qty: flangeQty,
+      unit: "Each",
+      weight: 0,
+      entries: [itemNumberArg],
+      entryIds: [entryId],
+      material: "pvc",
+    });
+  };
   // Process each entry
   entries.forEach((entry) => {
     const rawClientItemNumber = entry.clientItemNumber;
@@ -472,6 +508,15 @@ export default function BOQStep(props: {
             nb,
             flangeSpec.split(" ").pop() || "",
             globalHdpeSdr,
+            flangeQty,
+            itemNumber,
+            entry.id,
+          );
+        } else if (materialOfEntry(entry) === "pvc") {
+          addPvcStubItem(
+            nb,
+            flangeSpec.split(" ").pop() || "",
+            globalSpecs?.pvcType,
             flangeQty,
             itemNumber,
             entry.id,
@@ -1001,6 +1046,15 @@ export default function BOQStep(props: {
             itemNumber,
             entry.id,
           );
+        } else if (materialOfEntry(entry) === "pvc") {
+          addPvcStubItem(
+            nb,
+            flangeSpec.split(" ").pop() || "",
+            globalSpecs?.pvcType,
+            flangeQty,
+            itemNumber,
+            entry.id,
+          );
         }
 
         // BNW for main flanges - use bolt set count (3 same-sized ends = 2 bolt sets)
@@ -1086,6 +1140,15 @@ export default function BOQStep(props: {
             branchNb,
             flangeSpec.split(" ").pop() || "",
             globalHdpeSdr,
+            branchFlangeQty,
+            itemNumber,
+            entry.id,
+          );
+        } else if (materialOfEntry(entry) === "pvc") {
+          addPvcStubItem(
+            branchNb,
+            flangeSpec.split(" ").pop() || "",
+            globalSpecs?.pvcType,
             branchFlangeQty,
             itemNumber,
             entry.id,
@@ -1486,6 +1549,15 @@ export default function BOQStep(props: {
             nb,
             flangeSpec.split(" ").pop() || "",
             globalHdpeSdr,
+            flangeQty,
+            itemNumber,
+            entry.id,
+          );
+        } else if (materialOfEntry(entry) === "pvc") {
+          addPvcStubItem(
+            nb,
+            flangeSpec.split(" ").pop() || "",
+            globalSpecs?.pvcType,
             flangeQty,
             itemNumber,
             entry.id,
@@ -2124,6 +2196,7 @@ export default function BOQStep(props: {
     addToCombined(consolidatedGaskets, "Gaskets");
     addToCombined(consolidatedHdpeOther, "HDPE Other");
     addToCombined(consolidatedHdpeStubs, "HDPE Stub Ends");
+    addToCombined(consolidatedPvcStubs, "PVC Stub-flange Adapters");
     addToCombined(consolidatedSteelOther, "Steel Other");
     addToCombined(consolidatedPvcOther, "PVC Other");
     addToCombined(consolidatedValves, "Valves");
@@ -2688,7 +2761,11 @@ export default function BOQStep(props: {
           const bends = filterByMaterial(consolidatedBends, "pvc");
           const fittings = filterByMaterial(consolidatedFittings, "pvc");
           const hasContent =
-            pipes.size > 0 || bends.size > 0 || fittings.size > 0 || consolidatedPvcOther.size > 0;
+            pipes.size > 0 ||
+            bends.size > 0 ||
+            fittings.size > 0 ||
+            consolidatedPvcOther.size > 0 ||
+            consolidatedPvcStubs.size > 0;
           if (!hasContent) return null;
           const subsections: ExportableSubsection[] = [
             { title: "PVC Pipes", items: pipes, showWeldColumns: true, showAreaColumns: false },
@@ -2697,6 +2774,12 @@ export default function BOQStep(props: {
               title: "PVC Fittings",
               items: fittings,
               showWeldColumns: true,
+              showAreaColumns: false,
+            },
+            {
+              title: "PVC Stub-flange Adapters",
+              items: consolidatedPvcStubs,
+              showWeldColumns: false,
               showAreaColumns: false,
             },
             {
@@ -2723,6 +2806,12 @@ export default function BOQStep(props: {
                 "text-purple-700",
                 true,
                 false,
+              )}
+              {maybeRenderTable(
+                "PVC Stub-flange Adapters",
+                consolidatedPvcStubs,
+                "bg-purple-50",
+                "text-purple-700",
               )}
               {maybeRenderTable(
                 "PVC Other",
