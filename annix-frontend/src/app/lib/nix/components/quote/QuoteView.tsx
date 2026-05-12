@@ -6,8 +6,10 @@ import { useSpecLookup } from "@/app/lib/nix/components/draft";
 import {
   type NixExtractionSessionDto,
   type QuoteEditorStateDto,
+  type QuoteNotesDto,
   useNbToOdMap,
   useSaveQuoteEditorState,
+  useSaveQuoteNotes,
 } from "@/app/lib/query/hooks";
 import { CustomerCard } from "./CustomerCard";
 import { poolItemsBySpec, type QuoteItem, type QuotePool } from "./poolItemsBySpec";
@@ -283,6 +285,8 @@ export function QuoteView(props: QuoteViewProps) {
   const [specRates, setSpecRates] = useState<SpecRates>({});
   const [specOverrides, setSpecOverrides] = useState<SpecOverrides>({});
   const [dataSheets, setDataSheets] = useState<DataSheetAttachments>({});
+  const [quoteNotes, setQuoteNotes] = useState<QuoteNotesDto>(emptyNotes);
+  const lastSavedNotesRef = useRef<string>(JSON.stringify(emptyNotes()));
   const [persistenceStatus, setPersistenceStatus] = useState<"idle" | "saving" | "saved" | "error">(
     "idle",
   );
@@ -309,6 +313,12 @@ export function QuoteView(props: QuoteViewProps) {
       if (isObject(saved.attachments)) {
         setDataSheets(saved.attachments as DataSheetAttachments);
       }
+    }
+    const savedNotes = session.quoteNotes;
+    if (savedNotes && isObject(savedNotes)) {
+      const hydratedNotes = normaliseNotes(savedNotes as Partial<QuoteNotesDto>);
+      setQuoteNotes(hydratedNotes);
+      lastSavedNotesRef.current = JSON.stringify(hydratedNotes);
     }
     hydratedRef.current = true;
   }, [session.quoteEditorState]);
@@ -356,6 +366,30 @@ export function QuoteView(props: QuoteViewProps) {
       window.clearTimeout(handle);
     };
   }, [bundle, sessionId, saveStateMutation]);
+
+  // Independent debounce track for free-text notes — saved as a single
+  // JSONB payload via /nix/sessions/:id/notes. Separate from quoteEditorState
+  // because notes change far less often and we don't want a textarea
+  // keystroke to also re-save the entire supplier/rates bundle.
+  const saveNotesMutation = useSaveQuoteNotes();
+  const serialisedNotes = JSON.stringify(quoteNotes);
+  useEffect(() => {
+    if (!hydratedRef.current) return;
+    if (serialisedNotes === lastSavedNotesRef.current) return;
+    const handle = window.setTimeout(() => {
+      saveNotesMutation.mutate(
+        { sessionId, quoteNotes },
+        {
+          onSuccess: () => {
+            lastSavedNotesRef.current = serialisedNotes;
+          },
+        },
+      );
+    }, 1000);
+    return () => {
+      window.clearTimeout(handle);
+    };
+  }, [serialisedNotes, sessionId, saveNotesMutation, quoteNotes]);
 
   // Browser-native unsaved-changes guard: fires on tab close, refresh, or
   // back-button when the debounced save hasn't flushed yet. We don't try to
@@ -454,6 +488,13 @@ export function QuoteView(props: QuoteViewProps) {
           specRates={specRates}
           specOverrides={specOverrides}
           specByCode={specByCode}
+          note={quoteNotes.perPool[pool.key] || ""}
+          onNoteChange={(text) =>
+            setQuoteNotes((prev) => ({
+              ...prev,
+              perPool: { ...prev.perPool, [pool.key]: text },
+            }))
+          }
         />
       ))}
 
@@ -470,8 +511,20 @@ export function QuoteView(props: QuoteViewProps) {
             specRates={specRates}
             specOverrides={specOverrides}
             specByCode={specByCode}
+            note={quoteNotes.perPool[pool.key] || ""}
+            onNoteChange={(text) =>
+              setQuoteNotes((prev) => ({
+                ...prev,
+                perPool: { ...prev.perPool, [pool.key]: text },
+              }))
+            }
           />
         ))}
+
+      <GeneralNotesEditor
+        value={quoteNotes.generalAfterItems}
+        onChange={(text) => setQuoteNotes((prev) => ({ ...prev, generalAfterItems: text }))}
+      />
 
       <GrandTotalCard
         total={grandTotal}
@@ -482,6 +535,25 @@ export function QuoteView(props: QuoteViewProps) {
       />
     </div>
   );
+}
+
+function emptyNotes(): QuoteNotesDto {
+  return { perPool: {}, generalAfterItems: "" };
+}
+
+function normaliseNotes(raw: Partial<QuoteNotesDto> | Record<string, unknown>): QuoteNotesDto {
+  const perPoolRaw = (raw as Partial<QuoteNotesDto>).perPool;
+  const perPool: Record<string, string> = {};
+  if (perPoolRaw && typeof perPoolRaw === "object") {
+    for (const [key, value] of Object.entries(perPoolRaw)) {
+      if (typeof value === "string") perPool[key] = value;
+    }
+  }
+  const general = (raw as Partial<QuoteNotesDto>).generalAfterItems;
+  return {
+    perPool,
+    generalAfterItems: typeof general === "string" ? general : "",
+  };
 }
 
 function PersistenceChip(props: { status: "idle" | "saving" | "saved" | "error" }) {
@@ -552,9 +624,20 @@ function PoolSection(props: {
   specRates: SpecRates;
   specOverrides: SpecOverrides;
   specByCode: Map<string, SpecListing>;
+  note: string;
+  onNoteChange: (text: string) => void;
 }) {
-  const { pool, sectionNumber, nbToOdMap, isAreaReady, specRates, specOverrides, specByCode } =
-    props;
+  const {
+    pool,
+    sectionNumber,
+    nbToOdMap,
+    isAreaReady,
+    specRates,
+    specOverrides,
+    specByCode,
+    note,
+    onNoteChange,
+  } = props;
   const coverageKind = coverageKindForPool(pool);
   const showAreaColumn = coverageKind !== "none";
   const headerLabel = coverageHeaderLabel(coverageKind);
@@ -693,7 +776,57 @@ function PoolSection(props: {
             </span>
           </div>
         )}
+        <PoolNoteEditor value={note} onChange={onNoteChange} />
       </footer>
+    </section>
+  );
+}
+
+/**
+ * Per-section free-text textarea — quoter types banding instructions /
+ * special-spool callouts here ("5 x SPOOLS TO BE BANDED AS FOLLOWS :- /
+ * BAND 1 - GOLDEN YELLOW B49 / BAND 2 - MIDDLE BROWN B07"). The
+ * customer-facing PDF renderer will surface this text under the section
+ * footer.
+ */
+function PoolNoteEditor(props: { value: string; onChange: (text: string) => void }) {
+  const { value, onChange } = props;
+  return (
+    <details className="border-t border-emerald-200/60 pt-1.5 mt-1" open={value.length > 0}>
+      <summary className="cursor-pointer select-none text-[10px] uppercase tracking-wider text-emerald-700 font-medium hover:text-emerald-900">
+        Section notes {value.length > 0 ? "" : "(optional)"}
+      </summary>
+      <textarea
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder="e.g. 5 x SPOOLS TO BE BANDED AS FOLLOWS:&#10;BAND 1 - GOLDEN YELLOW B49&#10;BAND 2 - MIDDLE BROWN B07"
+        rows={3}
+        className="mt-1 w-full px-2 py-1 text-xs border border-emerald-200 rounded bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#323288]/30"
+      />
+    </details>
+  );
+}
+
+/**
+ * The "everything-else" notes block — appears at the very bottom of the
+ * items list, before the totals. Matches the example PDF's general
+ * footnotes (e.g. "ITEMS 10-16 : NO BAND REQUIRED ON THESE SPECIAL
+ * SPOOLS").
+ */
+function GeneralNotesEditor(props: { value: string; onChange: (text: string) => void }) {
+  const { value, onChange } = props;
+  return (
+    <section className="bg-white border border-gray-200 rounded-lg p-3">
+      <label className="text-xs uppercase tracking-wider text-gray-500 font-medium block mb-1">
+        Notes for the customer (after items)
+      </label>
+      <textarea
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder="e.g. ITEMS 10-16 : NO BAND REQUIRED ON THESE SPECIAL SPOOLS"
+        rows={3}
+        className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#323288]/30"
+      />
     </section>
   );
 }

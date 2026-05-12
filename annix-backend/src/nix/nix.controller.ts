@@ -325,6 +325,24 @@ export class NixController {
     return this.sessionService.setDeliveryNoteRef(id, body.ref ?? null);
   }
 
+  @Post("sessions/:id/notes")
+  @UseGuards(AnyUserAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary:
+      "Persist the free-text notes bundle (per-pool + general) for the customer-facing PDF. Debounce-saved by the QuoteView's notes inputs.",
+  })
+  @ApiResponse({ status: 200, type: NixExtractionSession })
+  async setSessionQuoteNotes(
+    @Param("id", ParseIntPipe) id: number,
+    @Body() body: { quoteNotes: Record<string, unknown> | null },
+    @Req() req: Request,
+  ): Promise<NixExtractionSession> {
+    const authUser = req["authUser"] as AuthenticatedUser;
+    await this.sessionService.findOneForUser(id, authUser.userId, authUser.type === "admin");
+    return this.sessionService.setQuoteNotes(id, body.quoteNotes ?? null);
+  }
+
   @Post("sessions/:id/customer")
   @UseGuards(AnyUserAuthGuard)
   @ApiBearerAuth()

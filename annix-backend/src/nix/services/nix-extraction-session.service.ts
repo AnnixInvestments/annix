@@ -27,6 +27,7 @@ export interface UpdateNixSessionDto {
   customerSnapshot?: Record<string, unknown> | null;
   customerOrderNumber?: string | null;
   deliveryNoteRef?: string | null;
+  quoteNotes?: Record<string, unknown> | null;
 }
 
 @Injectable()
@@ -164,6 +165,19 @@ export class NixExtractionSessionService extends BaseCrudService<
   async setDeliveryNoteRef(id: number, ref: string | null): Promise<NixExtractionSession> {
     const trimmed = ref ? ref.trim() : "";
     return this.update(id, { deliveryNoteRef: trimmed.length > 0 ? trimmed : null });
+  }
+
+  /**
+   * Stores the free-text notes bundle (per-pool + general) for the
+   * customer-facing PDF as opaque JSONB. Replaces the prior payload.
+   * Debounce-saved 1 s after the last keystroke from the QuoteView's
+   * notes inputs.
+   */
+  async setQuoteNotes(
+    id: number,
+    notes: Record<string, unknown> | null,
+  ): Promise<NixExtractionSession> {
+    return this.update(id, { quoteNotes: notes });
   }
 
   /**

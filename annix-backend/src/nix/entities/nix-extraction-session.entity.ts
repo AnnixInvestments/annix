@@ -167,6 +167,14 @@ export class NixExtractionSession {
   @Column({ name: "delivery_note_ref", type: "varchar", length: 255, nullable: true })
   deliveryNoteRef?: string;
 
+  @ApiProperty({
+    description:
+      "Free-text notes that appear between item sections on the customer-facing PDF (banding instructions, special-spool callouts, etc.). Shape: { perPool: { [poolKey]: string }, generalAfterItems: string }.",
+    required: false,
+  })
+  @Column({ name: "quote_notes", type: "jsonb", nullable: true })
+  quoteNotes?: Record<string, unknown>;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

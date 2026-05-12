@@ -517,8 +517,20 @@ export interface NixExtractionSessionDto {
   customerSnapshot?: QuoteCustomerSnapshot | null;
   customerOrderNumber?: string | null;
   deliveryNoteRef?: string | null;
+  quoteNotes?: QuoteNotesDto | null;
   createdAt: string;
   updatedAt: string;
+}
+
+/**
+ * Free-text notes that surface in the customer-facing PDF between item
+ * sections. `perPool` keys are pool keys (poolItemsBySpec output); the
+ * matching string renders at the end of that section. `generalAfterItems`
+ * sits at the very bottom of the items list, before the totals.
+ */
+export interface QuoteNotesDto {
+  perPool: Record<string, string>;
+  generalAfterItems: string;
 }
 
 /**
@@ -598,6 +610,19 @@ export const useSaveQuoteDeliveryNoteRef = createMutationHook<
       method: "POST",
       body: { ref },
       errorLabel: "Failed to save delivery note reference",
+    }),
+  (_data, vars) => [nixKeys.extractionSessions.detail(vars.sessionId)],
+);
+
+export const useSaveQuoteNotes = createMutationHook<
+  NixExtractionSessionDto,
+  { sessionId: number; quoteNotes: QuoteNotesDto | null }
+>(
+  ({ sessionId, quoteNotes }) =>
+    nixRequest<NixExtractionSessionDto>(`/nix/sessions/${sessionId}/notes`, {
+      method: "POST",
+      body: { quoteNotes },
+      errorLabel: "Failed to save quote notes",
     }),
   (_data, vars) => [nixKeys.extractionSessions.detail(vars.sessionId)],
 );
