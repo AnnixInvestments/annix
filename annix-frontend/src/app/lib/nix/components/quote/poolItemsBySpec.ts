@@ -64,23 +64,48 @@ export function poolItemsBySpec(
   drawingExtractions: NixExtractionSummary[],
   specLookup: SpecLookup,
 ): QuotePool[] {
+  // Process newest-first so when a revision uploads the same marks as an
+  // older drawing, the newer copy wins and the older copy is dropped as a
+  // duplicate. Signature = mark + diameter + length + wallThickness +
+  // flangeConfig — true revisions match all five; coincidental mark
+  // collisions across unrelated drawings won't.
+  const sortedExtractions = [...drawingExtractions].sort((a, b) => {
+    const aCreated = a.createdAt ? a.createdAt : "";
+    const bCreated = b.createdAt ? b.createdAt : "";
+    return bCreated.localeCompare(aCreated);
+  });
+
   const flattened: QuoteItem[] = [];
-  for (const extraction of drawingExtractions) {
+  const seenSignatures = new Set<string>();
+  for (const extraction of sortedExtractions) {
     const items = extraction.extractedItems;
     if (!isArray(items)) continue;
     for (const raw of items as unknown[]) {
       if (!raw || !isObject(raw)) continue;
       const item = raw as Record<string, unknown>;
+      const mark = stringField(item, ["itemNumber", "mark"]) ?? "";
+      const diameter = numberField(item, ["diameter"]);
+      const length = numberField(item, ["length"]);
+      const wt = numberField(item, ["wallThickness"]);
+      const flange = stringField(item, ["flangeConfig"]);
+      const signature =
+        mark.length > 0
+          ? `${mark}|${diameter ?? ""}|${length ?? ""}|${wt ?? ""}|${flange ?? ""}`
+          : "";
+      // Only dedup when the item has a mark — items without marks can't be
+      // confidently identified as the "same" item across extractions.
+      if (signature.length > 0 && seenSignatures.has(signature)) continue;
+      if (signature.length > 0) seenSignatures.add(signature);
       flattened.push({
-        mark: stringField(item, ["itemNumber", "mark"]) ?? "",
+        mark,
         description: stringField(item, ["description"]) ?? "",
         itemType: stringField(item, ["itemType"]),
         quantity: numberField(item, ["quantity"]) ?? 0,
-        diameter: numberField(item, ["diameter"]),
-        wallThickness: numberField(item, ["wallThickness"]),
+        diameter,
+        wallThickness: wt,
         schedule: stringField(item, ["schedule"]),
-        length: numberField(item, ["length"]),
-        flangeConfig: stringField(item, ["flangeConfig"]),
+        length,
+        flangeConfig: flange,
         coating: stringField(item, ["coatingSystem"]),
         lining: stringField(item, ["liningType"]),
         materialClass: stringField(item, ["materialClass"]),
@@ -88,6 +113,20 @@ export function poolItemsBySpec(
       });
     }
   }
+
+  // Re-sort to keep the natural item order: group by source extraction
+  // (newest first since that's the canonical revision), and within an
+  // extraction sort marks numerically so -01, -02, ..., -16 read in order
+  // for the customer-facing quote.
+  flattened.sort((a, b) => {
+    if (a.sourceExtractionId !== b.sourceExtractionId) {
+      return b.sourceExtractionId - a.sourceExtractionId;
+    }
+    const numA = Number.parseInt(a.mark.replace(/[^0-9]/g, ""), 10);
+    const numB = Number.parseInt(b.mark.replace(/[^0-9]/g, ""), 10);
+    if (Number.isFinite(numA) && Number.isFinite(numB)) return numA - numB;
+    return a.mark.localeCompare(b.mark);
+  });
 
   const pools = new Map<string, QuotePool>();
   for (const item of flattened) {
@@ -116,6 +155,70 @@ export function poolItemsBySpec(
   const scoped = all.filter((p) => !p.isNoScope);
   const noScope = all.filter((p) => p.isNoScope);
   return [...scoped, ...noScope];
+}
+
+/**
+ * Returns one row per older drawing extraction whose items are wholly or
+ * partially superseded by a newer one in the same session, based on the
+ * same signature poolItemsBySpec uses for dedup. UI uses this to surface
+ * a "skipped X items from older revisions" banner so the deduplication
+ * isn't silent.
+ */
+export interface SupersededExtractionSummary {
+  /** id of the older extraction that lost items. */
+  extractionId: number;
+  documentName: string;
+  /** Item count in that extraction that was suppressed by a newer copy. */
+  skippedCount: number;
+  /** Names of the newer documents that took precedence (deduped list). */
+  supersededBy: string[];
+}
+
+export function findSupersededByDedup(
+  drawingExtractions: NixExtractionSummary[],
+): SupersededExtractionSummary[] {
+  const sorted = [...drawingExtractions].sort((a, b) => {
+    const aCreated = a.createdAt ? a.createdAt : "";
+    const bCreated = b.createdAt ? b.createdAt : "";
+    return bCreated.localeCompare(aCreated);
+  });
+  const sigToExtraction = new Map<string, NixExtractionSummary>();
+  const skipsByExtraction = new Map<number, SupersededExtractionSummary>();
+  for (const extraction of sorted) {
+    const items = extraction.extractedItems;
+    if (!isArray(items)) continue;
+    for (const raw of items as unknown[]) {
+      if (!raw || !isObject(raw)) continue;
+      const item = raw as Record<string, unknown>;
+      const mark = stringField(item, ["itemNumber", "mark"]) ?? "";
+      if (mark.length === 0) continue;
+      const diameter = numberField(item, ["diameter"]);
+      const length = numberField(item, ["length"]);
+      const wt = numberField(item, ["wallThickness"]);
+      const flange = stringField(item, ["flangeConfig"]);
+      const signature = `${mark}|${diameter ?? ""}|${length ?? ""}|${wt ?? ""}|${flange ?? ""}`;
+      const owner = sigToExtraction.get(signature);
+      if (owner) {
+        let row = skipsByExtraction.get(extraction.id);
+        if (!row) {
+          row = {
+            extractionId: extraction.id,
+            documentName: extraction.documentName,
+            skippedCount: 0,
+            supersededBy: [],
+          };
+          skipsByExtraction.set(extraction.id, row);
+        }
+        row.skippedCount += 1;
+        if (!row.supersededBy.includes(owner.documentName)) {
+          row.supersededBy.push(owner.documentName);
+        }
+        continue;
+      }
+      sigToExtraction.set(signature, extraction);
+    }
+  }
+  return Array.from(skipsByExtraction.values());
 }
 
 function stringField(obj: Record<string, unknown>, keys: string[]): string | null {

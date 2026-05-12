@@ -12,7 +12,13 @@ import {
   useSaveQuoteNotes,
 } from "@/app/lib/query/hooks";
 import { CustomerCard } from "./CustomerCard";
-import { poolItemsBySpec, type QuoteItem, type QuotePool } from "./poolItemsBySpec";
+import {
+  findSupersededByDedup,
+  poolItemsBySpec,
+  type QuoteItem,
+  type QuotePool,
+  type SupersededExtractionSummary,
+} from "./poolItemsBySpec";
 import { QuoteMetaBar } from "./QuoteMetaBar";
 import { QuoteSpecsEditor } from "./QuoteSpecsEditor";
 import {
@@ -247,6 +253,10 @@ export function QuoteView(props: QuoteViewProps) {
     () => poolItemsBySpec(drawingExtractions, specLookup),
     [drawingExtractions, specLookup],
   );
+  const supersededSummary = useMemo(
+    () => findSupersededByDedup(drawingExtractions),
+    [drawingExtractions],
+  );
 
   const nbToOdQuery = useNbToOdMap();
   const nbToOdData = nbToOdQuery.data;
@@ -458,6 +468,7 @@ export function QuoteView(props: QuoteViewProps) {
       <div className="flex justify-end">
         <PersistenceChip status={persistenceStatus} />
       </div>
+      {supersededSummary.length > 0 && <SupersededRevisionsBanner summary={supersededSummary} />}
       <CustomerCard
         sessionId={session.id}
         customerCompanyId={savedCustomerCompanyId}
@@ -575,6 +586,31 @@ function normaliseNotes(raw: Partial<QuoteNotesDto> | Record<string, unknown>): 
 function resolveNote(perPool: Record<string, string>, key: string): string {
   const candidate = perPool[key];
   return candidate ? candidate : "";
+}
+
+function SupersededRevisionsBanner(props: { summary: SupersededExtractionSummary[] }) {
+  const rows = props.summary;
+  const totalSkipped = rows.reduce((acc, r) => acc + r.skippedCount, 0);
+  return (
+    <section className="bg-amber-50 border border-amber-300 rounded-lg p-3 text-sm text-amber-900">
+      <p className="font-semibold mb-1">
+        Skipped {totalSkipped} duplicate item{totalSkipped === 1 ? "" : "s"} from older drawings
+      </p>
+      <ul className="space-y-0.5 ml-4 list-disc text-[13px]">
+        {rows.map((row) => (
+          <li key={row.extractionId}>
+            <span className="font-medium">{row.documentName}</span> — {row.skippedCount} item
+            {row.skippedCount === 1 ? "" : "s"} superseded by{" "}
+            <span className="font-medium">{row.supersededBy.join(", ")}</span>
+          </li>
+        ))}
+      </ul>
+      <p className="text-[12px] text-amber-800 mt-2">
+        Only the newer revision&apos;s items are counted in the quote. Marks that don&apos;t match
+        between drawings stay separate.
+      </p>
+    </section>
+  );
 }
 
 function PersistenceChip(props: { status: "idle" | "saving" | "saved" | "error" }) {
