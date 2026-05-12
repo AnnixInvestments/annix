@@ -5,12 +5,28 @@
 // `packages/product-data/pvc/*.ts`.
 
 export {
+  isPvcClassValidForGrade,
+  PVC_PRESSURE_CLASS_LIST,
+  PVC_PRESSURE_CLASSES,
+  type PvcClassInfo,
+  type PvcPressureClass as PvcSansPressureClass,
+  recommendedPvcClassForPressure,
+  validPvcPressureClassesForGrade,
+} from "./classes";
+export {
   PVC_COUPLING_DIMENSIONS,
   type PvcCouplingDimension,
   type PvcCouplingFamily,
   pvcCouplingDimension,
   pvcCouplingSource,
 } from "./coupling-dimensions";
+export {
+  PVC_CATALOGUE_DNS,
+  type PvcPipeDimensions,
+  pipeDimensions as pvcPipeDimensions,
+  pvcAvailableSizes,
+  pvcOutsideDiameter,
+} from "./dimensions";
 export {
   PVC_ELBOW_DIMENSIONS,
   type PvcElbowAngle,
@@ -30,6 +46,25 @@ export {
   pvcFlangeAdapterDimension,
   pvcFlangeAdapterSource,
 } from "./flange-adapter-dimensions";
+export {
+  PVC_GRADE_LIST,
+  PVC_GRADES,
+  type PvcApplication,
+  type PvcGrade,
+  type PvcGradeCode,
+  pvcGradeByCode,
+  pvcGradesByApplication,
+  pvcSafetyFactor,
+} from "./grades";
+export {
+  defaultPvcJoiningMethod,
+  PVC_JOINING_METHOD_LIST,
+  PVC_JOINING_METHODS,
+  type PvcJoiningMethod as PvcJoiningMethodCode,
+  type PvcJoiningMethodInfo,
+  pvcJoiningMethodByCode,
+  suitablePvcJoiningMethods,
+} from "./joining-methods";
 export {
   calculatePvcJointCount,
   DEFAULT_PVC_PRESSURE_CLASS,
