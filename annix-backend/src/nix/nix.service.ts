@@ -894,33 +894,73 @@ export class NixService {
           `Tokens used: ${aiResult.tokensUsed}, Processing time: ${aiResult.processingTimeMs}ms`,
         );
 
-        // Engineering drawings are typically image-based — pdf-parse returns
-        // little to no text and the text-only Gemini call extracts nothing.
-        // When we hit that case, retry with the multimodal vision API
+        // Engineering drawings + image-heavy spec PDFs (scanned, table-as-
+        // image) are typically image-based — pdf-parse returns little or
+        // no text and the text-only Gemini call extracts nothing. When we
+        // hit that case, retry with the multimodal vision API
         // (chatWithImage with PDF media type) so Gemini reads the rendered
         // pages directly. Text-first stays as the fast path when text is
         // available; vision fallback only triggers when we need it.
         //
-        // For specifications role, items=[] is the CORRECT answer (clauses
-        // go under specifications, not items) — do NOT trigger vision retry
-        // there, it's a 60-90s waste per spec.
+        // Triggering signals:
+        //   - image-only PDF (pdfText.trim().length < 200) — fires
+        //     regardless of role.
+        //   - drawing role with items=[] — the drawing's BOM table didn't
+        //     come through as text.
+        //   - specification role with text but BOTH zero items AND empty
+        //     metadata/specifications — text exists but Gemini couldn't
+        //     parse anything useful, meaning the scope likely sits in
+        //     table-cell-as-image or scanned figures. Issue #288 Phase 8.
         const isImageOnlyPdf = pdfText.trim().length < 200;
         const drawingWithNoItems =
           documentRole === DocumentRole.DRAWING && aiResult.items.length === 0;
-        const visionWorthRetrying = isImageOnlyPdf || drawingWithNoItems;
+        const rawMetadata = aiResult.metadata;
+        const metadataEmpty =
+          !rawMetadata ||
+          (typeof rawMetadata === "object" && Object.keys(rawMetadata).length === 0);
+        const rawSpecs = aiResult.specifications;
+        const specsEmpty =
+          !rawSpecs || (typeof rawSpecs === "object" && Object.keys(rawSpecs).length === 0);
+        const specWithNoSignal =
+          documentRole === DocumentRole.SPECIFICATION &&
+          aiResult.items.length === 0 &&
+          metadataEmpty &&
+          specsEmpty;
+        const visionWorthRetrying = isImageOnlyPdf || drawingWithNoItems || specWithNoSignal;
         if (visionWorthRetrying) {
           this.logger.log(
-            `Text extraction yielded ${pdfText.trim().length} chars / ${aiResult.items.length} items — retrying via vision (chatWithImage, application/pdf).`,
+            `Text extraction yielded ${pdfText.trim().length} chars / ${aiResult.items.length} items / metadata-empty=${metadataEmpty} / specs-empty=${specsEmpty} — retrying via vision (chatWithImage, application/pdf).`,
           );
           const visionResult = await this.extractFromPdfWithVision(
             dataBuffer,
             documentName || documentPath.split("/").pop() || "document.pdf",
             systemPrompt,
           );
-          if (visionResult && visionResult.items.length > aiResult.items.length) {
-            this.logger.log(
-              `Vision extraction won: ${visionResult.items.length} items (vs text's ${aiResult.items.length}).`,
-            );
+          // Vision wins when it returns MORE items than text OR (for spec
+          // role specifically) when it returns ANY metadata / specifications
+          // richer than text. items.length=0 is the correct outcome for a
+          // pure spec PDF, so the items-count threshold alone misses spec
+          // wins entirely.
+          const visionItems = visionResult?.items ?? [];
+          const visionMetadata = visionResult?.metadata;
+          const visionMetadataPopulated =
+            !!visionMetadata &&
+            typeof visionMetadata === "object" &&
+            Object.keys(visionMetadata).length > 0;
+          const visionSpecs = visionResult?.specifications;
+          const visionSpecsPopulated =
+            !!visionSpecs && typeof visionSpecs === "object" && Object.keys(visionSpecs).length > 0;
+          const visionWonByItems = visionItems.length > aiResult.items.length;
+          const visionWonBySpecData =
+            documentRole === DocumentRole.SPECIFICATION &&
+            (visionMetadataPopulated || visionSpecsPopulated) &&
+            metadataEmpty &&
+            specsEmpty;
+          if (visionResult && (visionWonByItems || visionWonBySpecData)) {
+            const reason = visionWonByItems
+              ? `${visionResult.items.length} items (vs text's ${aiResult.items.length})`
+              : "spec metadata / specifications populated where text returned nothing";
+            this.logger.log(`Vision extraction won: ${reason}.`);
             return {
               extractedData: {
                 totalLines: pdfInfo.numPages || 0,

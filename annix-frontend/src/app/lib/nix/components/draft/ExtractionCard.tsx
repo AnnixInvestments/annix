@@ -1,11 +1,12 @@
 "use client";
 
-import { toPairs as entries, isArray, keys } from "es-toolkit/compat";
+import { toPairs as entries, isArray, isObject, keys } from "es-toolkit/compat";
 import type { NixExtractionSummary } from "@/app/lib/query/hooks";
 import { ItemRow } from "./ItemRow";
 import { MineInferenceBadge } from "./MineInferenceBadge";
 import { RevisionBadge } from "./RevisionBadge";
 import { SpecificationCard } from "./SpecificationCard";
+import { SpecMetadataPanel } from "./SpecMetadataPanel";
 import type { SpecLookup } from "./useSpecLookup";
 
 /**
@@ -44,6 +45,14 @@ export function ExtractionCard(props: {
   const rawSpecs = data.specifications;
   const specifications = (rawSpecs ? rawSpecs : {}) as Record<string, unknown>;
   const specKeys = keys(specifications);
+  // Spec-PDF metadata (working pressure, valve types, NACE, etc.)
+  // lifted by PdfExtractorService.extractMetadata. Surfaced via the
+  // shared SpecMetadataPanel so every Nix-consuming portal renders
+  // it the same way — RFQ wizard, Stock Control quote draft, etc.
+  // Issue #288 Phase 8.
+  const rawMetadata = data.metadata;
+  const metadata =
+    rawMetadata && isObject(rawMetadata) ? (rawMetadata as Record<string, unknown>) : null;
   const isRetrying = retryingId === extraction.id;
   const canRetry = Boolean(extraction.storagePath) && !isRetrying;
 
@@ -140,6 +149,8 @@ export function ExtractionCard(props: {
             </table>
           </div>
         )}
+
+        <SpecMetadataPanel metadata={metadata} />
 
         {showSpecifications && specKeys.length > 0 && (
           <div className={`px-3 py-3 ${railTintClass}`}>
