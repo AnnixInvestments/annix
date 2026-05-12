@@ -1,10 +1,13 @@
 "use client";
 
-import { Eye, EyeOff, LogOut, TrendingUp } from "lucide-react";
+import { Eye, EyeOff, TrendingUp } from "lucide-react";
 import { useState } from "react";
+import PortalToolbar, { type NavItem } from "@/app/components/PortalToolbar";
 import { ApiError } from "@/app/lib/api/apiError";
 import { INSIGHTS_VERSION } from "./config/version";
 import { useInsightsAuth } from "./context/InsightsAuthContext";
+
+const NAV_ITEMS: NavItem[] = [];
 
 export default function InsightsHomePage() {
   const { user, isLoading, isAuthenticated } = useInsightsAuth();
@@ -134,30 +137,13 @@ function InsightsDashboard(props: { userEmail: string }) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#111827] via-[#1f2937] to-[#111827] text-white">
-      <header className="border-b border-gray-800 bg-gray-900/60 backdrop-blur">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-[#D4AF37]">
-              <TrendingUp className="w-5 h-5 text-gray-900" strokeWidth={2.5} />
-            </div>
-            <div>
-              <h1 className="text-base font-semibold">Annix Insights</h1>
-              <p className="text-xs text-gray-400">v{INSIGHTS_VERSION}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-400 hidden sm:inline">{props.userEmail}</span>
-            <button
-              type="button"
-              onClick={logout}
-              className="inline-flex items-center gap-1.5 text-sm text-gray-300 hover:text-[#D4AF37] transition-colors"
-            >
-              <LogOut className="w-4 h-4" />
-              Sign out
-            </button>
-          </div>
-        </div>
-      </header>
+      <PortalToolbar
+        portalType="insights"
+        navItems={NAV_ITEMS}
+        user={{ email: props.userEmail }}
+        onLogout={logout}
+        version={INSIGHTS_VERSION}
+      />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-8">
