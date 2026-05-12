@@ -447,7 +447,6 @@ describe("findLowestSuitablePressureClass", () => {
     expect(result?.extra).toBe("kept");
   });
 });
-
 const limit = (
   steelSpecName: string,
   maxTemperatureCelsius: number,
