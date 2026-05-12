@@ -213,6 +213,74 @@ export class NixService {
   }
 
   /**
+   * On-demand suggestion of the customer's PO / order / job reference for
+   * this quote session. Runs a focused Gemini call against the concatenated
+   * rawText of every extraction in the session, told specifically to look
+   * for labelled PO / Order / Job / Customer Ref fields and to IGNORE
+   * drawing-title-block document numbers (which Nix already captures
+   * separately and which mislead this lookup).
+   *
+   * Returns { suggestion: null } when no relevant reference can be found
+   * with confidence. Email-body context isn't included yet — InboundEmail
+   * doesn't persist body today and has no FK to the session.
+   */
+  async suggestCustomerOrderNumber(sessionId: number): Promise<{ suggestion: string | null }> {
+    const extractions = await this.extractionRepo.find({
+      where: { sessionId },
+      order: { id: "ASC" },
+    });
+    if (extractions.length === 0) return { suggestion: null };
+
+    const MAX_PROMPT_CHARS = 20000;
+    const blocks: string[] = [];
+    let total = 0;
+    for (const ext of extractions) {
+      const text = ext.rawText ? ext.rawText.trim() : "";
+      if (text.length === 0) continue;
+      const role = ext.documentRole ?? "unknown";
+      const name = ext.documentName ?? `extraction ${ext.id}`;
+      const header = `--- ${name} (role: ${role}) ---\n`;
+      const available = MAX_PROMPT_CHARS - total - header.length;
+      if (available <= 200) break;
+      const slice = text.slice(0, Math.min(text.length, available));
+      blocks.push(header + slice);
+      total += header.length + slice.length;
+    }
+    if (blocks.length === 0) return { suggestion: null };
+
+    const systemPrompt = [
+      "You read extracted document text from a customer's quote-request package (drawings, specifications, cover letters, RFQ pages).",
+      "Find the customer's purchase-order / order / job reference for THIS request.",
+      "",
+      'Return STRICT JSON only, no prose: { "suggestion": string | null, "reasoning": string | null }.',
+      "Use null for suggestion when the documents don't contain a clear customer PO / order / job ref. Never invent values.",
+      "",
+      "What counts as a valid reference:",
+      "- Labelled fields: 'PO No: ABC123', 'Order No.: XYZ', 'Job Number: 32452E', 'Customer Reference: ...', 'RFQ Ref: ...'",
+      "- Project / job names that look like the END-CLIENT's job (e.g. 'STEEL AFRICA - 32452E' suggests Steel Africa's job 32452E).",
+      "",
+      "What does NOT count:",
+      "- Drawing-title-block document numbers like 'LHU-0000-EP-2701-009-00' — these are internal drawing codes, not the customer's order ref.",
+      "- Quotation / proposal numbers from the supplier side.",
+      "- Generic document identifiers (revision codes, sheet numbers).",
+    ].join("\n");
+
+    try {
+      const result = await this.aiChatService.chat(
+        [{ role: "user", content: blocks.join("\n\n") }],
+        systemPrompt,
+        undefined,
+        { temperature: 0.1, maxOutputTokens: 256, responseFormat: "json" },
+      );
+      return { suggestion: parseSuggestedOrderNumber(result.content) };
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "unknown";
+      this.logger.warn(`suggestCustomerOrderNumber(${sessionId}) failed: ${msg}`);
+      return { suggestion: null };
+    }
+  }
+
+  /**
    * Re-runs extraction against an existing extraction's stored source. Used by
    * the draft review UI's per-row 'Retry' button — the original upload may
    * have failed (Word extractor crash, prompt mismatch, transient API error),
@@ -2263,5 +2331,22 @@ export class NixService {
       );
       return empty;
     }
+  }
+}
+
+function parseSuggestedOrderNumber(raw: string): string | null {
+  const trimmed = raw
+    .trim()
+    .replace(/^```json\s*/i, "")
+    .replace(/```$/i, "");
+  try {
+    const parsed = JSON.parse(trimmed);
+    const value = (parsed as { suggestion?: unknown }).suggestion;
+    if (typeof value !== "string") return null;
+    const cleaned = value.trim();
+    if (cleaned.length === 0 || cleaned.toLowerCase() === "null") return null;
+    return cleaned;
+  } catch {
+    return null;
   }
 }

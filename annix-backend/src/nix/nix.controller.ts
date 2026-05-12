@@ -325,6 +325,29 @@ export class NixController {
     return this.sessionService.setDeliveryNoteRef(id, body.ref ?? null);
   }
 
+  @Post("sessions/:id/suggest-order-number")
+  @UseGuards(AnyUserAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary:
+      "On-demand suggestion of the customer's PO / Order / Job reference for this session. Runs a focused Gemini call against the concatenated rawText of every extraction. Returns { suggestion: string | null }. Null when no clear customer reference is found in the documents.",
+  })
+  @ApiResponse({
+    status: 201,
+    schema: {
+      type: "object",
+      properties: { suggestion: { type: "string", nullable: true } },
+    },
+  })
+  async suggestSessionOrderNumber(
+    @Param("id", ParseIntPipe) id: number,
+    @Req() req: Request,
+  ): Promise<{ suggestion: string | null }> {
+    const authUser = req["authUser"] as AuthenticatedUser;
+    await this.sessionService.findOneForUser(id, authUser.userId, authUser.type === "admin");
+    return this.nixService.suggestCustomerOrderNumber(id);
+  }
+
   @Post("sessions/:id/notes")
   @UseGuards(AnyUserAuthGuard)
   @ApiBearerAuth()

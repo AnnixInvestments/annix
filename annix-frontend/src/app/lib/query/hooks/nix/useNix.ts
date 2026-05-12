@@ -627,6 +627,17 @@ export const useSaveQuoteNotes = createMutationHook<
   (_data, vars) => [nixKeys.extractionSessions.detail(vars.sessionId)],
 );
 
+export const useSuggestQuoteOrderNumber = createMutationHook<
+  { suggestion: string | null },
+  { sessionId: number }
+>(({ sessionId }) =>
+  nixRequest<{ suggestion: string | null }>(`/nix/sessions/${sessionId}/suggest-order-number`, {
+    method: "POST",
+    body: {},
+    errorLabel: "Failed to suggest order number",
+  }),
+);
+
 export const useSaveQuoteEditorState = createMutationHook<
   NixExtractionSessionDto,
   { sessionId: number; state: QuoteEditorStateDto | null }

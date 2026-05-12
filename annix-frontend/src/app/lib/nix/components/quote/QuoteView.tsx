@@ -450,13 +450,6 @@ export function QuoteView(props: QuoteViewProps) {
   const savedPromotedRef = sessionPromotedRef ?? null;
   const savedCustomerOrderNumber = sessionCustomerOrderNumber ?? null;
   const savedDeliveryNoteRef = sessionDeliveryNoteRef ?? null;
-  // Pull up to 3 distinct Order-No candidates from the session's drawing
-  // extractions — Nix puts the title-block document number on each
-  // extraction, and the customer's PO / project reference is typically what
-  // lands there. A pack of drawings often carries different refs (project
-  // number, sub-job number, customer's RFQ number); we surface them all so
-  // the quoter can pick the right one with one click.
-  const suggestedOrderNumbers = useMemo(() => suggestedOrderNumbersFromSession(session), [session]);
 
   return (
     <div className="space-y-6">
@@ -474,7 +467,6 @@ export function QuoteView(props: QuoteViewProps) {
         ourReference={savedPromotedRef}
         customerOrderNumber={savedCustomerOrderNumber}
         deliveryNoteRef={savedDeliveryNoteRef}
-        suggestedOrderNumbers={suggestedOrderNumbers}
       />
       <QuoteSpecsEditor
         specs={uniqueSpecs}
@@ -547,48 +539,6 @@ export function QuoteView(props: QuoteViewProps) {
 
 function emptyNotes(): QuoteNotesDto {
   return { perPool: {}, generalAfterItems: "" };
-}
-
-/**
- * Scan the session's extractions for up to 3 distinct customer Order-No
- * candidates. Nix populates documentNumber from the title block (e.g.
- * 'STEEL AFRICA - 32452E'). Drawings come first (they typically carry the
- * customer's primary PO reference); specifications are appended after, in
- * case the spec docs have a useful project ref too. De-duplicates so the
- * same number isn't shown twice when multiple drawings share a ref.
- * Returns an empty array when nothing matches.
- */
-function suggestedOrderNumbersFromSession(session: NixExtractionSessionDto): string[] {
-  const extractions = session.extractions;
-  if (!extractions || extractions.length === 0) return [];
-  const ordered = [
-    ...collectDocumentNumbers(extractions, "drawing"),
-    ...collectDocumentNumbers(extractions, "specification"),
-  ];
-  const seen = new Set<string>();
-  const unique: string[] = [];
-  for (const value of ordered) {
-    if (seen.has(value)) continue;
-    seen.add(value);
-    unique.push(value);
-    if (unique.length >= 3) break;
-  }
-  return unique;
-}
-
-function collectDocumentNumbers(
-  extractions: NonNullable<NixExtractionSessionDto["extractions"]>,
-  role: "drawing" | "specification",
-): string[] {
-  const out: string[] = [];
-  for (const ext of extractions) {
-    if (ext.documentRole !== role) continue;
-    const docNumber = ext.documentNumber;
-    if (typeof docNumber === "string" && docNumber.trim().length > 0) {
-      out.push(docNumber.trim());
-    }
-  }
-  return out;
 }
 
 function normaliseNotes(raw: Partial<QuoteNotesDto> | Record<string, unknown>): QuoteNotesDto {

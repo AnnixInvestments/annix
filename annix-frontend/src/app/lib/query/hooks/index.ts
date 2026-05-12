@@ -731,6 +731,7 @@ export {
   useSkipWalkthrough,
   useStartWalkthrough,
   useStopWalkthrough,
+  useSuggestQuoteOrderNumber,
   useUpdateNixPreferences,
   useValidateNixItem,
   useValidateNixRfq,
