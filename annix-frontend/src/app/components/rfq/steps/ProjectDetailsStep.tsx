@@ -146,13 +146,16 @@ export default function ProjectDetailsStep() {
         });
         hideExtraction();
         if (result.error) {
-          await confirm({
+          const wantsRetry = !(await confirm({
             title: "Nix extraction failed",
             message: `Couldn't extract ${file.name}.\n\n${result.error}`,
             variant: "warning",
             confirmLabel: "Got it",
-            hideCancel: true,
-          });
+            cancelLabel: "Retry extraction",
+          }));
+          if (wantsRetry) {
+            return await runNixBoqExtraction(file);
+          }
           return null;
         }
         const rawProfile = result.profileMetadata as NixRfqPipingProfileMetadata | undefined;
@@ -179,13 +182,19 @@ export default function ProjectDetailsStep() {
       } catch (err) {
         hideExtraction();
         log.error("Nix BOQ extraction failed:", err);
-        await confirm({
+        const wantsRetry = !(await confirm({
           title: "Couldn't auto-extract this BOQ",
-          message: `${file.name} is still uploaded — admin can extract it manually after submission.`,
+          message:
+            `${file.name} is still uploaded — admin can extract it manually after submission.\n\n` +
+            "Common cause: the backend was still starting up when the extraction ran. " +
+            "If you've waited a few seconds, hit Retry — your document is still in the upload queue and won't be re-uploaded.",
           variant: "warning",
           confirmLabel: "Got it",
-          hideCancel: true,
-        });
+          cancelLabel: "Retry extraction",
+        }));
+        if (wantsRetry) {
+          return await runNixBoqExtraction(file);
+        }
         return null;
       }
     },
