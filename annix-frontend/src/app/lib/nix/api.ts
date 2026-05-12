@@ -196,6 +196,17 @@ export interface NixExtractionMetadata {
   // PdfExtractorService.extractMetadata().
   workingPressureBar?: number | null;
   workingTemperatureC?: number | null;
+  // Valve scope lifted out of Particular Specification sections.
+  // Without these, customers whose tender pack puts the valve
+  // clause on page 283 of a 311-page SoW end up with a blank
+  // Specifications step and silently under-scope their quote.
+  valveTypes?: string[] | null;
+  valveStandards?: string[] | null;
+  flangeStandard?: string | null;
+  flangeTableDesignation?: string | null;
+  ndtMethods?: string[] | null;
+  hydrotestMultiplier?: number | null;
+  valveClauseExcerpt?: string | null;
 }
 
 export interface NixProcessResponse {

@@ -197,6 +197,13 @@ interface RfqWizardActions {
     workingTemperatureC?: number | null;
     coating?: string | null;
     lining?: string | null;
+    valveTypes?: string[] | null;
+    valveStandards?: string[] | null;
+    flangeStandard?: string | null;
+    flangeTableDesignation?: string | null;
+    ndtMethods?: string[] | null;
+    hydrotestMultiplier?: number | null;
+    valveClauseExcerpt?: string | null;
   }) => void;
 
   addStraightPipeEntry: (
@@ -888,6 +895,51 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
               }
               if (rawLining && !next.internalLiningType) {
                 next.internalLiningType = rawLining;
+              }
+              // Valve / flange / NDT / hydrotest spec data lifted
+              // from tender-spec PDFs. Same first-non-null-wins
+              // semantics — customer-entered values stay; spec-PDF
+              // values fill in the gaps. Arrays merge (union) so a
+              // stack of PDFs collectively covers the scope.
+              const rawValveTypes = metadata.valveTypes;
+              if (rawValveTypes && rawValveTypes.length > 0) {
+                const existingValveTypes = next.valveTypes;
+                const merged = existingValveTypes
+                  ? Array.from(new Set([...existingValveTypes, ...rawValveTypes]))
+                  : rawValveTypes;
+                next.valveTypes = merged;
+              }
+              const rawValveStandards = metadata.valveStandards;
+              if (rawValveStandards && rawValveStandards.length > 0) {
+                const existingValveStandards = next.valveStandards;
+                const merged = existingValveStandards
+                  ? Array.from(new Set([...existingValveStandards, ...rawValveStandards]))
+                  : rawValveStandards;
+                next.valveStandards = merged;
+              }
+              const rawFlangeStandard = metadata.flangeStandard;
+              if (rawFlangeStandard && !next.flangeStandardName) {
+                next.flangeStandardName = rawFlangeStandard;
+              }
+              const rawFlangeTable = metadata.flangeTableDesignation;
+              if (rawFlangeTable && !next.flangeTableDesignation) {
+                next.flangeTableDesignation = rawFlangeTable;
+              }
+              const rawNdtMethods = metadata.ndtMethods;
+              if (rawNdtMethods && rawNdtMethods.length > 0) {
+                const existingNdt = next.ndtMethods;
+                const merged = existingNdt
+                  ? Array.from(new Set([...existingNdt, ...rawNdtMethods]))
+                  : rawNdtMethods;
+                next.ndtMethods = merged;
+              }
+              const rawHydrotestMultiplier = metadata.hydrotestMultiplier;
+              if (rawHydrotestMultiplier != null && next.hydrotestMultiplier == null) {
+                next.hydrotestMultiplier = rawHydrotestMultiplier;
+              }
+              const rawClauseExcerpt = metadata.valveClauseExcerpt;
+              if (rawClauseExcerpt && !next.valveClauseExcerpt) {
+                next.valveClauseExcerpt = rawClauseExcerpt;
               }
               return { rfqData: { ...state.rfqData, globalSpecs: next } };
             },

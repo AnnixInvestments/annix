@@ -402,6 +402,19 @@ export interface GlobalSpecs {
   flangeTypeCode?: string;
   flangeFace?: "RF" | "FF" | "RTJ";
 
+  // Spec-PDF auto-extracted fields (issue #288 Phase 8). Lifted out
+  // of deep clauses in tender PDFs by PdfExtractorService so the
+  // Specifications step pre-fills with scope the customer would
+  // otherwise have to read 300 pages to find. All optional — empty
+  // when the PDF didn't mention them.
+  valveTypes?: string[];
+  valveStandards?: string[];
+  flangeStandardName?: string;
+  flangeTableDesignation?: string;
+  ndtMethods?: string[];
+  hydrotestMultiplier?: number;
+  valveClauseExcerpt?: string;
+
   ecpMarineInfluence?: "None" | "Coastal" | "Offshore";
   ecpIso12944Category?: "C1" | "C2" | "C3" | "C4" | "C5" | "CX";
   ecpIndustrialPollution?: "None" | "Low" | "Moderate" | "High" | "Very High";

@@ -361,5 +361,187 @@ describe("PdfExtractorService", () => {
         expect(result.metadata.workingTemperatureC).toBeNull();
       });
     });
+
+    describe("valve spec extraction", () => {
+      it("detects gate + pinch valves from a JW-V style clause", async () => {
+        setupMockPdf(
+          [
+            "Particular Specification - Valves",
+            "JWV-3.5 Gate valves shall be used for scour branches.",
+            "Pinch valves are required for high-solids slurry service.",
+            "All valves to be tested per API 598.",
+          ].join("\n"),
+        );
+
+        const result = await service.extractFromPdf("/fake/path.pdf");
+
+        expect(result.metadata.valveTypes).toEqual(expect.arrayContaining(["Gate", "Pinch"]));
+        expect(result.metadata.valveStandards).toEqual(expect.arrayContaining(["API 598"]));
+      });
+
+      it("detects multiple valve types in one document", async () => {
+        setupMockPdf(
+          [
+            "Section JW-V Valves",
+            "The Contractor shall supply gate valves, butterfly valves,",
+            "non-return valves and dual-acting air valves for the system.",
+            "Ball valves shall be stainless steel.",
+          ].join("\n"),
+        );
+
+        const result = await service.extractFromPdf("/fake/path.pdf");
+
+        expect(result.metadata.valveTypes).toEqual(
+          expect.arrayContaining(["Gate", "Butterfly", "Check / NRV", "Air valve", "Ball"]),
+        );
+      });
+
+      it("detects valve standards (SANS 664/1849/1551, API 598)", async () => {
+        setupMockPdf(
+          [
+            "Valve Specification",
+            "Gate valves: SANS 664",
+            "Butterfly valves: SANS 1849",
+            "Check valves: SANS 1551 Parts 1 and 2",
+            "Testing: API 598 and BS EN 12266-1",
+          ].join("\n"),
+        );
+
+        const result = await service.extractFromPdf("/fake/path.pdf");
+
+        expect(result.metadata.valveStandards).toEqual(
+          expect.arrayContaining([
+            "SANS 664",
+            "SANS 1849",
+            "SANS 1551",
+            "API 598",
+            "BS EN 12266-1",
+          ]),
+        );
+      });
+
+      it("finds valves deep in a long document (clause on line 800)", async () => {
+        const padding = Array.from({ length: 800 }, () => "Earthworks boilerplate line").join("\n");
+        setupMockPdf(
+          `${padding}\nParticular Specification JW-V\nPinch valves shall be supplied per SANS 1123 T4000.`,
+        );
+
+        const result = await service.extractFromPdf("/fake/path.pdf");
+
+        expect(result.metadata.valveTypes).toEqual(expect.arrayContaining(["Pinch"]));
+      });
+
+      it("captures a clause excerpt for traceability", async () => {
+        setupMockPdf(
+          [
+            "Section V Valves",
+            "All isolating valves shall be wedge gate, double-flanged to SANS 1123 T1600.",
+          ].join("\n"),
+        );
+
+        const result = await service.extractFromPdf("/fake/path.pdf");
+
+        expect(result.metadata.valveClauseExcerpt).toContain("isolating valves");
+      });
+
+      it("returns null when no valves mentioned", async () => {
+        setupMockPdf("Pipe spec only. No valves in scope.");
+
+        const result = await service.extractFromPdf("/fake/path.pdf");
+
+        expect(result.metadata.valveTypes).toBeNull();
+      });
+    });
+
+    describe("flange standard extraction", () => {
+      it("detects SANS 1123 with table designation", async () => {
+        setupMockPdf("Flanges drilled to SANS 1123 Table 2500/3.");
+
+        const result = await service.extractFromPdf("/fake/path.pdf");
+
+        expect(result.metadata.flangeStandard).toBe("SANS 1123");
+        expect(result.metadata.flangeTableDesignation).toBe("T2500");
+      });
+
+      it("detects ASME B16.5", async () => {
+        setupMockPdf("All flanges to ASME B16.5 Class 300.");
+
+        const result = await service.extractFromPdf("/fake/path.pdf");
+
+        expect(result.metadata.flangeStandard).toBe("ASME B16.5");
+      });
+
+      it("detects BS EN 1092", async () => {
+        setupMockPdf("Flange drilling: BS EN 1092-2 PN16.");
+
+        const result = await service.extractFromPdf("/fake/path.pdf");
+
+        expect(result.metadata.flangeStandard).toBe("BS EN 1092");
+      });
+    });
+
+    describe("NDT methods extraction", () => {
+      it("detects RT + UT + MT + PT + VT", async () => {
+        setupMockPdf(
+          "Welds shall be subject to 100% radiographic (RT) examination, ultrasonic (UT) where access is restricted, magnetic particle (MT) on the root, dye penetrant (PT) on stainless, and visual (VT) on all welds.",
+        );
+
+        const result = await service.extractFromPdf("/fake/path.pdf");
+
+        expect(result.metadata.ndtMethods).toEqual(
+          expect.arrayContaining(["RT", "UT", "MT", "PT", "VT"]),
+        );
+      });
+
+      it("returns null when no NDT mentioned", async () => {
+        setupMockPdf("Generic spec with no inspection requirements.");
+
+        const result = await service.extractFromPdf("/fake/path.pdf");
+
+        expect(result.metadata.ndtMethods).toBeNull();
+      });
+    });
+
+    describe("hydrotest multiplier extraction", () => {
+      it("extracts 1.5x design pressure", async () => {
+        setupMockPdf("Hydrostatic test pressure shall be 1.5 x design pressure.");
+
+        const result = await service.extractFromPdf("/fake/path.pdf");
+
+        expect(result.metadata.hydrotestMultiplier).toBe(1.5);
+      });
+
+      it("extracts 1.25x MOP", async () => {
+        setupMockPdf("Pipeline test pressure = 1.25 × MOP held for 4 hours.");
+
+        const result = await service.extractFromPdf("/fake/path.pdf");
+
+        expect(result.metadata.hydrotestMultiplier).toBe(1.25);
+      });
+
+      it("returns null when no hydrotest stated", async () => {
+        setupMockPdf("No test requirements listed.");
+
+        const result = await service.extractFromPdf("/fake/path.pdf");
+
+        expect(result.metadata.hydrotestMultiplier).toBeNull();
+      });
+    });
+
+    describe("deep-document spec scanning", () => {
+      it("finds spec data beyond the first 50 lines (previously truncated)", async () => {
+        const filler = Array.from({ length: 120 }, () => "Filler line of boilerplate text.").join(
+          "\n",
+        );
+        setupMockPdf(
+          `${filler}\nMATERIAL SPECIFICATION\nCarbon Steel API 5L Grade B, 6mm wall thickness, CML lined, polyurethane coated.`,
+        );
+
+        const result = await service.extractFromPdf("/fake/path.pdf");
+
+        expect(result.specificationCells.length).toBeGreaterThan(0);
+        expect(result.metadata.materialGrade).toBeTruthy();
+      });
+    });
   });
 });

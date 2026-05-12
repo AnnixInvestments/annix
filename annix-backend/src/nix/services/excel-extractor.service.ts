@@ -121,6 +121,18 @@ export interface ExtractionResult {
     // without the customer having to retype them.
     workingPressureBar?: number | null;
     workingTemperatureC?: number | null;
+    // Valve scope lifted out of Particular Specification sections
+    // (JW-V style clauses) so the customer's Specifications step
+    // pre-fills with the actual valve types + governing standards
+    // — without these the customer's quote silently misses the
+    // valve scope because the clause sits hundreds of pages deep.
+    valveTypes?: string[] | null;
+    valveStandards?: string[] | null;
+    flangeStandard?: string | null;
+    flangeTableDesignation?: string | null;
+    ndtMethods?: string[] | null;
+    hydrotestMultiplier?: number | null;
+    valveClauseExcerpt?: string | null;
   };
 }
 

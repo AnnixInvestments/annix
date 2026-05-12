@@ -123,6 +123,13 @@ export class PdfExtractorService {
         lining: specDefaults.lining,
         materialGrade: specDefaults.materialGrade,
         wallThickness: specDefaults.wallThickness,
+        valveTypes: metadata.valveTypes,
+        valveStandards: metadata.valveStandards,
+        flangeStandard: metadata.flangeStandard,
+        flangeTableDesignation: metadata.flangeTableDesignation,
+        ndtMethods: metadata.ndtMethods,
+        hydrotestMultiplier: metadata.hydrotestMultiplier,
+        valveClauseExcerpt: metadata.valveClauseExcerpt,
       },
     };
   }
@@ -152,7 +159,12 @@ export class PdfExtractorService {
       /\bSch(?:edule)?\.?\s*\d+/i,
     ];
 
-    lines.slice(0, 50).forEach((line, index) => {
+    // Scan the whole document. Tender PDFs often run 200+ pages
+    // with the actual spec data deep in a Particular Specification
+    // section (e.g. JW-V Valves on p.283). Capping at the first 50
+    // lines silently misses that data — the customer ends up with
+    // a blank Specifications step and an undetected scope gap.
+    lines.forEach((line, index) => {
       const lineText = line.trim();
       if (lineText.length < 15) return;
 
@@ -584,6 +596,13 @@ export class PdfExtractorService {
     projectName: string | null;
     workingPressureBar: number | null;
     workingTemperatureC: number | null;
+    valveTypes: string[] | null;
+    valveStandards: string[] | null;
+    flangeStandard: string | null;
+    flangeTableDesignation: string | null;
+    ndtMethods: string[] | null;
+    hydrotestMultiplier: number | null;
+    valveClauseExcerpt: string | null;
   } {
     let projectReference: string | null = null;
     let projectLocation: string | null = null;
@@ -625,6 +644,10 @@ export class PdfExtractorService {
 
     const workingPressureBar = this.extractWorkingPressureBar(lines);
     const workingTemperatureC = this.extractWorkingTemperatureC(lines);
+    const valveSpec = this.extractValveSpec(lines);
+    const flangeSpec = this.extractFlangeSpec(lines);
+    const ndtMethods = this.extractNdtMethods(lines);
+    const hydrotestMultiplier = this.extractHydrotestMultiplier(lines);
 
     return {
       projectReference,
@@ -632,7 +655,188 @@ export class PdfExtractorService {
       projectName,
       workingPressureBar,
       workingTemperatureC,
+      valveTypes: valveSpec.types,
+      valveStandards: valveSpec.standards,
+      flangeStandard: flangeSpec.standard,
+      flangeTableDesignation: flangeSpec.tableDesignation,
+      ndtMethods,
+      hydrotestMultiplier,
+      valveClauseExcerpt: valveSpec.clauseExcerpt,
     };
+  }
+
+  // Find any section/clause that calls out valves and lift the
+  // valve types + governing standards into structured metadata.
+  //
+  // Tender PDFs typically bury the valve specification deep in a
+  // Particular Specification ("JW-V Valves" / "Section V" /
+  // "SPECIFICATION FOR VALVES" / "VALVE SCHEDULE"). The earlier
+  // 50-line cap on the body scan silently missed these. This pass
+  // scans the whole document, locates the valve section start, and
+  // captures up to 200 lines of surrounding context for type-token
+  // detection — enough to span a multi-page clause without dragging
+  // unrelated paragraphs in.
+  private extractValveSpec(lines: string[]): {
+    types: string[] | null;
+    standards: string[] | null;
+    clauseExcerpt: string | null;
+  } {
+    const sectionHeaderPattern =
+      /\b(JW-?V|section\s+V|particular\s+specification\s*[-–:]\s*valves?|specification\s+for\s+valves?|valve\s+schedule|valve\s+specification|JWV-?\d)\b/i;
+    const inlineValveMention = /\bvalves?\b/i;
+
+    const sectionStarts: number[] = [];
+    lines.forEach((line, index) => {
+      if (sectionHeaderPattern.test(line)) sectionStarts.push(index);
+    });
+
+    // Fallback when no obvious header — collect every line that
+    // mentions a valve, capped to keep scope sane.
+    let scanLines: string[];
+    if (sectionStarts.length > 0) {
+      const segments = sectionStarts.map((start) =>
+        lines.slice(start, Math.min(start + 200, lines.length)),
+      );
+      scanLines = segments.flat();
+    } else {
+      scanLines = lines.filter((line) => inlineValveMention.test(line));
+      if (scanLines.length === 0) {
+        return { types: null, standards: null, clauseExcerpt: null };
+      }
+    }
+
+    const scanText = scanLines.join("\n");
+
+    const typePatterns: Array<{ pattern: RegExp; label: string }> = [
+      { pattern: /\b(?:wedge\s+)?gate\s+valve(?!s\s+for\s+water)/i, label: "Gate" },
+      {
+        pattern: /\bresilient[\s-]*seal(?:ed)?\s+(?:gate\s+)?valve/i,
+        label: "Resilient-seal gate",
+      },
+      { pattern: /\bpinch\s+valve/i, label: "Pinch" },
+      { pattern: /\bbutterfly\s+valve/i, label: "Butterfly" },
+      { pattern: /\b(?:non[-\s]*return|check|NRV)\s+valve/i, label: "Check / NRV" },
+      { pattern: /\bswing[\s-]*check/i, label: "Swing check" },
+      { pattern: /\bball\s+valve/i, label: "Ball" },
+      { pattern: /\bglobe\s+valve/i, label: "Globe" },
+      { pattern: /\bplug\s+valve/i, label: "Plug" },
+      { pattern: /\bknife[\s-]*gate\s+valve/i, label: "Knife-gate" },
+      { pattern: /\bair\s+(?:release\s+)?valve|\bdual[\s-]*acting\s+air/i, label: "Air valve" },
+      { pattern: /\bscour\s+valve/i, label: "Scour" },
+      { pattern: /\bisolating\s+valve/i, label: "Isolating" },
+      { pattern: /\bpressure[\s-]*reducing\s+valve|\bPRV\b/i, label: "Pressure-reducing" },
+      {
+        pattern: /\blevel[\s-]*control\s+valve|\baltitude\s+valve/i,
+        label: "Level / altitude control",
+      },
+      { pattern: /\bcontrol\s+valve/i, label: "Control" },
+    ];
+
+    const standardPatterns: Array<{ pattern: RegExp; label: string }> = [
+      { pattern: /\bSANS\s*664\b/i, label: "SANS 664" },
+      { pattern: /\bSANS\s*1551(?:\s*Parts?\s*1\s*(?:&|and)\s*2)?\b/i, label: "SANS 1551" },
+      { pattern: /\bSANS\s*1849\b/i, label: "SANS 1849" },
+      { pattern: /\bSANS\s*1056(?:-2)?\b/i, label: "SANS 1056-2" },
+      { pattern: /\bAPI\s*598\b/i, label: "API 598" },
+      { pattern: /\bAPI\s*600\b/i, label: "API 600" },
+      { pattern: /\bAPI\s*594\b/i, label: "API 594" },
+      { pattern: /\bAPI\s*609\b/i, label: "API 609" },
+      { pattern: /\bAPI\s*6D\b/i, label: "API 6D" },
+      { pattern: /\bBS\s*EN\s*12266(?:-1)?\b/i, label: "BS EN 12266-1" },
+      { pattern: /\bDIN\s*EN\s*558(?:-1)?\b/i, label: "DIN EN 558-1" },
+      { pattern: /\bEN\s*12050(?:-4)?\b/i, label: "EN 12050-4" },
+    ];
+
+    const types = typePatterns.filter((p) => p.pattern.test(scanText)).map((p) => p.label);
+    const standards = standardPatterns.filter((p) => p.pattern.test(scanText)).map((p) => p.label);
+
+    if (types.length === 0 && standards.length === 0) {
+      return { types: null, standards: null, clauseExcerpt: null };
+    }
+
+    // Pull the first substantive valve-mentioning line as a short
+    // excerpt for traceability. Skip pure section headings (matched
+    // by sectionHeaderPattern) so the customer sees the actual clause
+    // text, not the chapter title.
+    const excerptLine = scanLines.find(
+      (line) =>
+        inlineValveMention.test(line) &&
+        line.trim().length > 30 &&
+        !sectionHeaderPattern.test(line),
+    );
+    const trimmed = excerptLine ? excerptLine.trim() : null;
+    const clauseExcerpt = trimmed ? trimmed.substring(0, 240) : null;
+
+    return {
+      types: types.length > 0 ? types : null,
+      standards: standards.length > 0 ? standards : null,
+      clauseExcerpt,
+    };
+  }
+
+  // Detect the flange standard governing the project and any
+  // specific SANS 1123 table designation (T1000 / T2500 / T4000).
+  // These two pieces of data drive flange pricing, weld counts,
+  // and the supplier's flange section in the BOQ.
+  private extractFlangeSpec(lines: string[]): {
+    standard: string | null;
+    tableDesignation: string | null;
+  } {
+    const text = lines.join("\n");
+
+    let standard: string | null = null;
+    if (/\bSANS\s*1123\b/i.test(text)) standard = "SANS 1123";
+    else if (/\bBS\s*EN\s*1092(?:-\d)?\b/i.test(text)) standard = "BS EN 1092";
+    else if (/\bASME\s*B16\.5\b/i.test(text)) standard = "ASME B16.5";
+    else if (/\bASME\s*B16\.47\b/i.test(text)) standard = "ASME B16.47";
+    else if (/\bDIN\s*2501\b/i.test(text)) standard = "DIN 2501";
+
+    let tableDesignation: string | null = null;
+    const tableMatch = text.match(
+      /\b(?:SANS|SABS)\s*1123\s*(?:Table\s*)?(?:T)?(\d{3,4})\s*\/?\s*\d?/i,
+    );
+    if (tableMatch) {
+      tableDesignation = `T${tableMatch[1]}`;
+    }
+
+    return { standard, tableDesignation };
+  }
+
+  // Surface required NDT methods (radiography, ultrasonic, magnetic
+  // particle, dye penetrant, visual). These determine the QC cost
+  // burden of the project.
+  private extractNdtMethods(lines: string[]): string[] | null {
+    const text = lines.join("\n");
+    const methods: string[] = [];
+
+    if (/\b(?:radiograph(?:ic|y)|RT\b|X-?ray)/i.test(text)) methods.push("RT");
+    if (/\b(?:ultrasonic|UT)\b/i.test(text)) methods.push("UT");
+    if (/\b(?:magnetic\s+particle|MPI?|MT)\b/i.test(text)) methods.push("MT");
+    if (/\b(?:dye\s+penetrant|liquid\s+penetrant|PT|DPI)\b/i.test(text)) methods.push("PT");
+    if (/\b(?:visual\s+(?:inspection|examination)|VT)\b/i.test(text)) methods.push("VT");
+    if (/\bhardness\s+test/i.test(text)) methods.push("Hardness");
+
+    return methods.length > 0 ? methods : null;
+  }
+
+  // Find the hydrotest pressure multiplier (e.g. 1.5× design /
+  // 1.25× MOP). Returns the multiplier as a number — the wizard
+  // can later combine it with workingPressureBar to derive the
+  // actual test pressure.
+  private extractHydrotestMultiplier(lines: string[]): number | null {
+    const text = lines.join("\n");
+    const patterns = [
+      /\b(?:hydro(?:static)?(?:\s+test)?|test\s+pressure)\s*(?:of|=|:|at)?\s*(\d+(?:\.\d+)?)\s*(?:x|×|times)\s*(?:design|MOP|operating|working)/i,
+      /\b(\d+(?:\.\d+)?)\s*(?:x|×|times)\s*(?:design|MOP|operating|working|rated\s+working)\s+pressure/i,
+    ];
+    for (const pattern of patterns) {
+      const match = text.match(pattern);
+      if (match) {
+        const value = parseFloat(match[1]);
+        if (Number.isFinite(value) && value >= 1 && value <= 3) return value;
+      }
+    }
+    return null;
   }
 
   // Working / design / operating pressure expressed in bar. Falls

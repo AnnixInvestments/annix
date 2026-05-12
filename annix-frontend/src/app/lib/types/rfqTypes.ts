@@ -230,6 +230,19 @@ export interface GlobalSpecs {
   flangeTypeCode?: string;
   flangeFace?: "RF" | "FF" | "RTJ";
   pressureClassDesignation?: string;
+  // Spec-PDF auto-extracted fields. Surfaced on the Specifications
+  // step so the customer can confirm scope lifted from deep clauses
+  // (e.g. JW-V on p.283 of a tender SoW). All are string lists or
+  // single strings so the UI can render them as chips.
+  externalCoatingType?: string | null;
+  internalLiningType?: string | null;
+  valveTypes?: string[] | null;
+  valveStandards?: string[] | null;
+  flangeStandardName?: string | null;
+  flangeTableDesignation?: string | null;
+  ndtMethods?: string[] | null;
+  hydrotestMultiplier?: number | null;
+  valveClauseExcerpt?: string | null;
 }
 
 export interface MasterData {

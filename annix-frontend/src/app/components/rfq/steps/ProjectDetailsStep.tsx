@@ -342,6 +342,13 @@ export default function ProjectDetailsStep() {
           workingTemperatureC: metadata.workingTemperatureC,
           coating: metadata.coating,
           lining: metadata.lining,
+          valveTypes: metadata.valveTypes,
+          valveStandards: metadata.valveStandards,
+          flangeStandard: metadata.flangeStandard,
+          flangeTableDesignation: metadata.flangeTableDesignation,
+          ndtMethods: metadata.ndtMethods,
+          hydrotestMultiplier: metadata.hydrotestMultiplier,
+          valveClauseExcerpt: metadata.valveClauseExcerpt,
         });
       } catch (err) {
         hideExtraction();
