@@ -1,7 +1,7 @@
 "use client";
 
 import { isNumber, keys } from "es-toolkit/compat";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import GoogleMapLocationPicker from "@/app/components/GoogleMapLocationPicker";
@@ -124,6 +124,13 @@ export default function ProjectDetailsStep() {
     customerPhone: false,
   });
 
+  // Sequential queue for Nix extractions so multiple Excel files
+  // dropped at once spool through the backend one at a time rather
+  // than firing in parallel and surfacing duplicate progress modals.
+  // The chain tail tracks the in-flight + queued tasks; new arrivals
+  // attach to it and become the new tail.
+  const nixExtractionQueueRef = useRef<Promise<unknown>>(Promise.resolve());
+
   const runNixBoqExtraction = useCallback(
     async (
       file: File,
@@ -132,6 +139,20 @@ export default function ProjectDetailsStep() {
       items: NixExtractedItem[];
       metadata: NixExtractionMetadata | null;
     } | null> => {
+      // Spool: every call grabs the queue's current tail, awaits it,
+      // then replaces the tail with a new promise resolving on its
+      // own completion. End result — Nix extractions run strictly
+      // one-at-a-time even when a customer drops 30 docs at once.
+      const priorTail = nixExtractionQueueRef.current;
+      let releaseQueueSlot: () => void = () => {};
+      nixExtractionQueueRef.current = new Promise<void>((resolve) => {
+        releaseQueueSlot = resolve;
+      });
+      try {
+        await priorTail;
+      } catch {
+        // Don't propagate a prior task's failure into the next task.
+      }
       showExtraction({
         brand: "rfq",
         label: `Nix is reading ${file.name} and splitting it into line items…`,
@@ -154,6 +175,7 @@ export default function ProjectDetailsStep() {
             cancelLabel: "Retry extraction",
           }));
           if (wantsRetry) {
+            releaseQueueSlot();
             return await runNixBoqExtraction(file);
           }
           return null;
@@ -193,9 +215,14 @@ export default function ProjectDetailsStep() {
           cancelLabel: "Retry extraction",
         }));
         if (wantsRetry) {
+          // Release the slot BEFORE re-queueing so the retry doesn't
+          // deadlock waiting on its own ancestor in the chain.
+          releaseQueueSlot();
           return await runNixBoqExtraction(file);
         }
         return null;
+      } finally {
+        releaseQueueSlot();
       }
     },
     [showExtraction, hideExtraction, confirm, currentDraftId],

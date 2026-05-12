@@ -106,7 +106,7 @@ export function UnifiedRfqDocumentBucket(props: UnifiedRfqDocumentBucketProps) {
               const entry = merged.find((e) => e.doc.id === id);
               if (entry) handleRemove(entry);
             }}
-            maxDocuments={20}
+            maxDocuments={100}
             maxFileSizeMB={50}
           />
 
