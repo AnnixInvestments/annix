@@ -12,7 +12,8 @@ export type ExtractionBrand =
   | "fieldflow"
   | "annix-rep"
   | "cv-assistant"
-  | "teacher-assistant";
+  | "teacher-assistant"
+  | "insights";
 
 interface BrandStyle {
   label: string;
@@ -77,6 +78,13 @@ const BRAND_STYLES: Record<ExtractionBrand, BrandStyle> = {
     bar: "bg-amber-600",
     bg: "bg-amber-50",
     text: "text-amber-700",
+    logo: null,
+  },
+  insights: {
+    label: "Annix Insights",
+    bar: "bg-yellow-500",
+    bg: "bg-gray-900",
+    text: "text-yellow-400",
     logo: null,
   },
 };

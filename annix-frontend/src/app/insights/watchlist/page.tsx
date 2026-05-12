@@ -2,6 +2,7 @@
 
 import { isUndefined } from "es-toolkit/compat";
 import { ArrowLeft, Plus, Trash2, TrendingUp } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import PortalToolbar, { type NavItem } from "@/app/components/PortalToolbar";
@@ -10,6 +11,7 @@ import { ApiError } from "@/app/lib/api/apiError";
 import type { AddWatchlistItemPayload, WatchlistItemResponse } from "@/app/lib/api/insightsApi";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import { useAddToWatchlist, useRemoveFromWatchlist, useWatchlist } from "@/app/lib/query/hooks";
+import { Sparkline } from "../components/Sparkline";
 import { INSIGHTS_VERSION } from "../config/version";
 import { useInsightsAuth } from "../context/InsightsAuthContext";
 import { AddWatchlistModal } from "./components/AddWatchlistModal";
@@ -155,6 +157,7 @@ export default function InsightsWatchlistPage() {
                   <th className="px-4 py-3 text-left">Currency</th>
                   <th className="px-4 py-3 text-left">Type</th>
                   <th className="px-4 py-3 text-left">Sector</th>
+                  <th className="px-4 py-3 text-left">30d</th>
                   <th className="px-4 py-3 text-right">&nbsp;</th>
                 </tr>
               </thead>
@@ -162,14 +165,29 @@ export default function InsightsWatchlistPage() {
                 {items.map((item) => {
                   const sectorRaw = item.sector;
                   const sectorDisplay = sectorRaw ?? "—";
+                  const sparkCloses = item.sparkline;
                   return (
                     <tr key={item.id} className="hover:bg-gray-900/40 transition-colors">
-                      <td className="px-4 py-3 font-mono text-sm text-[#D4AF37]">{item.symbol}</td>
+                      <td className="px-4 py-3 font-mono text-sm">
+                        <Link
+                          href={`/insights/assets/${encodeURIComponent(item.symbol)}`}
+                          className="text-[#D4AF37] hover:underline"
+                        >
+                          {item.symbol}
+                        </Link>
+                      </td>
                       <td className="px-4 py-3 text-sm">{item.name}</td>
                       <td className="px-4 py-3 text-sm text-gray-300">{item.exchange}</td>
                       <td className="px-4 py-3 text-sm text-gray-300">{item.currency}</td>
                       <td className="px-4 py-3 text-sm text-gray-300">{item.assetType}</td>
                       <td className="px-4 py-3 text-sm text-gray-400">{sectorDisplay}</td>
+                      <td className="px-4 py-3">
+                        {sparkCloses.length > 1 ? (
+                          <Sparkline closes={sparkCloses} />
+                        ) : (
+                          <span className="text-xs text-gray-600">—</span>
+                        )}
+                      </td>
                       <td className="px-4 py-3 text-right">
                         <button
                           type="button"

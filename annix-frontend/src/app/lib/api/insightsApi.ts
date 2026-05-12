@@ -58,6 +58,7 @@ export interface WatchlistItemResponse {
   notes: string | null;
   targetReason: string | null;
   addedAt: string;
+  sparkline: number[];
 }
 
 export interface InsightsLoginInput {
@@ -185,4 +186,44 @@ export const insightsApi = {
       return apiClient.delete<void>(`/insights/watchlist/${id}`);
     },
   },
+
+  assets: {
+    history(symbol: string, fromIsoDate?: string): Promise<PriceBar[]> {
+      const params = fromIsoDate ? `?from=${encodeURIComponent(fromIsoDate)}` : "";
+      return apiClient.get<PriceBar[]>(
+        `/insights/assets/${encodeURIComponent(symbol)}/history${params}`,
+      );
+    },
+  },
+
+  admin: {
+    backfill(symbol: string, fromIsoDate?: string): Promise<BackfillResult> {
+      const params = new URLSearchParams({ symbol });
+      if (fromIsoDate) params.set("from", fromIsoDate);
+      return apiClient.post<BackfillResult>(`/insights/admin/backfill?${params.toString()}`);
+    },
+    historyCount(symbol: string): Promise<{ symbol: string; rows: number }> {
+      return apiClient.get<{ symbol: string; rows: number }>(
+        `/insights/admin/history/${encodeURIComponent(symbol)}/count`,
+      );
+    },
+  },
 };
+
+export interface PriceBar {
+  date: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  adjClose: number | null;
+  volume: number | null;
+}
+
+export interface BackfillResult {
+  symbol: string;
+  inserted: number;
+  skipped: number;
+  earliestDate: string | null;
+  latestDate: string | null;
+}

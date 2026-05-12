@@ -1,11 +1,14 @@
 import { ConflictException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { In, Repository } from "typeorm";
 import type { AddWatchlistItemDto } from "../dto/add-watchlist-item.dto";
 import type { WatchlistItemResponseDto } from "../dto/watchlist-item-response.dto";
 import { Asset } from "../entities/asset.entity";
+import { PriceHistory } from "../entities/price-history.entity";
 import { WatchlistItem } from "../entities/watchlist-item.entity";
 import { MarketDataIngestionService } from "./market-data-ingestion.service";
+
+const SPARKLINE_DAYS = 30;
 
 @Injectable()
 export class WatchlistService {
@@ -14,6 +17,7 @@ export class WatchlistService {
   constructor(
     @InjectRepository(Asset) private readonly assetRepo: Repository<Asset>,
     @InjectRepository(WatchlistItem) private readonly watchlistRepo: Repository<WatchlistItem>,
+    @InjectRepository(PriceHistory) private readonly historyRepo: Repository<PriceHistory>,
     private readonly ingestion: MarketDataIngestionService,
   ) {}
 
@@ -22,7 +26,8 @@ export class WatchlistService {
       relations: { asset: true },
       order: { addedAt: "DESC" },
     });
-    return items.map(toResponse);
+    const sparklinesByAssetId = await this.sparklinesFor(items.map((i) => i.assetId));
+    return items.map((item) => toResponse(item, sparklinesByAssetId.get(item.assetId) ?? []));
   }
 
   async assetBySymbol(symbol: string): Promise<Asset> {
@@ -78,7 +83,7 @@ export class WatchlistService {
       where: { id: saved.id },
       relations: { asset: true },
     });
-    return toResponse(reloaded);
+    return toResponse(reloaded, []);
   }
 
   async remove(id: string): Promise<void> {
@@ -87,9 +92,36 @@ export class WatchlistService {
       throw new NotFoundException(`Watchlist item ${id} not found.`);
     }
   }
+
+  private async sparklinesFor(assetIds: string[]): Promise<Map<string, number[]>> {
+    const grouped = new Map<string, number[]>();
+    if (assetIds.length === 0) return grouped;
+
+    const rows = await this.historyRepo
+      .createQueryBuilder("h")
+      .select(["h.asset_id AS asset_id", "h.date AS date", "h.close AS close"])
+      .where({ assetId: In(assetIds) })
+      .orderBy("h.date", "DESC")
+      .getRawMany<{ asset_id: string; date: string; close: string }>();
+
+    const buckets = new Map<string, { date: string; close: number }[]>();
+    for (const row of rows) {
+      const list = buckets.get(row.asset_id) ?? [];
+      if (list.length >= SPARKLINE_DAYS) continue;
+      list.push({ date: row.date, close: Number(row.close) });
+      buckets.set(row.asset_id, list);
+    }
+
+    buckets.forEach((list, assetId) => {
+      const oldestToNewest = [...list].reverse().map((r) => r.close);
+      grouped.set(assetId, oldestToNewest);
+    });
+
+    return grouped;
+  }
 }
 
-function toResponse(item: WatchlistItem): WatchlistItemResponseDto {
+function toResponse(item: WatchlistItem, sparkline: number[]): WatchlistItemResponseDto {
   const asset = item.asset;
   return {
     id: item.id,
@@ -102,5 +134,6 @@ function toResponse(item: WatchlistItem): WatchlistItemResponseDto {
     notes: item.notes,
     targetReason: item.targetReason,
     addedAt: item.addedAt.toISOString(),
+    sparkline,
   };
 }

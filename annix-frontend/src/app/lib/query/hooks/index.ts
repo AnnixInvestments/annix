@@ -673,6 +673,11 @@ export {
   useUploadDrawingVersion,
 } from "./drawing/useDrawings";
 export {
+  useAssetHistory,
+  useHistoryCount,
+  useInvalidateAssetData,
+} from "./insights/useAssetHistory";
+export {
   useAddToWatchlist,
   useRemoveFromWatchlist,
   useWatchlist,

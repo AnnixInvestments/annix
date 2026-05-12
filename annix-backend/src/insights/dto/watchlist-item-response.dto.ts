@@ -35,4 +35,10 @@ export class WatchlistItemResponseDto {
 
   @ApiProperty()
   addedAt: string;
+
+  @ApiProperty({
+    description: "Close prices for the last ~30 trading days (oldest → newest)",
+    type: [Number],
+  })
+  sparkline: number[];
 }
