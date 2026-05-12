@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import PortalToolbar, { type NavItem } from "@/app/components/PortalToolbar";
 import type { PaperPortfolioSummary } from "@/app/lib/api/insightsApi";
 import { usePaperPortfolios } from "@/app/lib/query/hooks";
+import { Sparkline } from "../components/Sparkline";
 import { INSIGHTS_VERSION } from "../config/version";
 import { useInsightsAuth } from "../context/InsightsAuthContext";
 import { RiskBadge } from "./components/RiskBadge";
@@ -89,6 +90,8 @@ export default function InsightsPaperPortfoliosPage() {
                 p.startingCapital > 0
                   ? ((p.totalValue - p.startingCapital) / p.startingCapital) * 100
                   : 0;
+              const sparklineCloses = p.valueSparkline;
+              const drawdownPct = p.maxDrawdownPercent;
               return (
                 <Link
                   key={p.id}
@@ -102,26 +105,27 @@ export default function InsightsPaperPortfoliosPage() {
                     </div>
                     <RiskBadge profile={p.riskProfile} />
                   </div>
+                  <div className="mb-3 h-9 flex items-center">
+                    {sparklineCloses.length > 1 ? (
+                      <Sparkline closes={sparklineCloses} width={240} height={36} />
+                    ) : (
+                      <span className="text-xs text-gray-600">No snapshots yet.</span>
+                    )}
+                  </div>
                   <div className="space-y-1.5 mb-3 text-sm">
                     <div className="flex justify-between">
                       <span className="text-gray-400">Total value</span>
                       <span className="font-mono">{fmtCurrency(p.totalValue, p.currency)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-400">Cash</span>
+                      <span className="text-gray-400">Holdings · cash</span>
                       <span className="font-mono text-gray-300">
-                        {fmtCurrency(p.currentCashBalance, p.currency)}
+                        {p.holdingsCount} · {fmtCurrency(p.currentCashBalance, p.currency)}
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-400">Invested</span>
-                      <span className="font-mono text-gray-300">
-                        {fmtCurrency(p.currentPortfolioValue, p.currency)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Holdings</span>
-                      <span className="font-mono text-gray-300">{p.holdingsCount}</span>
+                      <span className="text-gray-400">Max drawdown</span>
+                      <span className="font-mono text-gray-300">−{drawdownPct.toFixed(2)}%</span>
                     </div>
                   </div>
                   <div className="flex items-center justify-between pt-3 border-t border-gray-800">

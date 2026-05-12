@@ -6,8 +6,19 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useMemo } from "react";
 import PortalToolbar, { type NavItem } from "@/app/components/PortalToolbar";
-import type { PaperHolding, PaperPortfolioSummary, PaperTrade } from "@/app/lib/api/insightsApi";
-import { usePaperHoldings, usePaperPortfolio, usePaperTrades } from "@/app/lib/query/hooks";
+import type {
+  PaperHolding,
+  PaperPortfolioSnapshot,
+  PaperPortfolioSummary,
+  PaperTrade,
+} from "@/app/lib/api/insightsApi";
+import {
+  usePaperHoldings,
+  usePaperPortfolio,
+  usePaperSnapshots,
+  usePaperTrades,
+} from "@/app/lib/query/hooks";
+import { Sparkline } from "../../components/Sparkline";
 import { INSIGHTS_VERSION } from "../../config/version";
 import { useInsightsAuth } from "../../context/InsightsAuthContext";
 import { AllocationRulesCard } from "../components/AllocationRulesCard";
@@ -44,6 +55,7 @@ export default function InsightsPaperPortfolioDetailPage() {
   const portfolioQuery = usePaperPortfolio(slug);
   const holdingsQuery = usePaperHoldings(slug);
   const tradesQuery = usePaperTrades(slug, 10);
+  const snapshotsQuery = usePaperSnapshots(slug, 365);
 
   if (isLoading) {
     return (
@@ -63,6 +75,8 @@ export default function InsightsPaperPortfolioDetailPage() {
   const holdings: PaperHolding[] = holdingsData ?? [];
   const tradesData = tradesQuery.data;
   const trades: PaperTrade[] = tradesData ?? [];
+  const snapshotsData = snapshotsQuery.data;
+  const snapshots: PaperPortfolioSnapshot[] = snapshotsData ?? [];
   const portfolioLoading = portfolioQuery.isLoading;
 
   if (portfolioLoading || !portfolio) {
@@ -117,7 +131,7 @@ export default function InsightsPaperPortfolioDetailPage() {
           </Link>
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+        <div className="grid grid-cols-2 lg:grid-cols-6 gap-3 mb-6">
           <Stat label="Total value" value={fmtCurrency(portfolio.totalValue, portfolio.currency)} />
           <Stat
             label="Cash"
@@ -132,6 +146,28 @@ export default function InsightsPaperPortfolioDetailPage() {
             value={`${totalReturnPositive ? "+" : ""}${totalReturnPct.toFixed(2)}%`}
             valueClass={totalReturnPositive ? "text-green-400" : "text-red-400"}
           />
+          <Stat
+            label="Max drawdown"
+            value={`−${portfolio.maxDrawdownPercent.toFixed(2)}%`}
+            valueClass="text-orange-300"
+          />
+          <Stat label="Volatility" value={`${portfolio.volatilityScore.toFixed(2)}%`} />
+        </div>
+
+        <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-4 mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400">
+              Portfolio value over time
+            </h2>
+            <span className="text-xs text-gray-500 font-mono">{snapshots.length} snapshots</span>
+          </div>
+          {snapshots.length > 1 ? (
+            <Sparkline closes={snapshots.map((s) => s.totalValue)} width={1100} height={120} />
+          ) : (
+            <p className="text-sm text-gray-500 py-8 text-center">
+              No snapshot history yet. The first snapshot lands on the next 06:00 SAST cron.
+            </p>
+          )}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">

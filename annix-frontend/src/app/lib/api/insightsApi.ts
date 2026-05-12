@@ -229,6 +229,12 @@ export const insightsApi = {
         `/insights/paper-portfolios/${encodeURIComponent(slug)}/trades${query}`,
       );
     },
+    snapshots(slug: string, limit?: number): Promise<PaperPortfolioSnapshot[]> {
+      const query = limit ? `?limit=${limit}` : "";
+      return apiClient.get<PaperPortfolioSnapshot[]>(
+        `/insights/paper-portfolios/${encodeURIComponent(slug)}/snapshots${query}`,
+      );
+    },
   },
 };
 
@@ -292,6 +298,20 @@ export interface PaperPortfolioSummary {
   isPaused: boolean;
   allocationRules: PaperAllocationRules;
   createdAt: string;
+  valueSparkline: number[];
+  maxDrawdownPercent: number;
+  volatilityScore: number;
+}
+
+export interface PaperPortfolioSnapshot {
+  snapshotDate: string;
+  totalValue: number;
+  cashBalance: number;
+  investedValue: number;
+  dailyReturnPercent: number;
+  totalReturnPercent: number;
+  maxDrawdownPercent: number;
+  volatilityScore: number;
 }
 
 export interface PaperHolding {

@@ -27,6 +27,9 @@ export interface PaperPortfolioSummary {
   isPaused: boolean;
   allocationRules: AllocationRules;
   createdAt: string;
+  valueSparkline: number[];
+  maxDrawdownPercent: number;
+  volatilityScore: number;
 }
 
 export interface PaperHoldingDto {
@@ -40,6 +43,17 @@ export interface PaperHoldingDto {
   unrealisedGainLoss: number;
   unrealisedGainLossPercent: number;
   firstAcquiredAt: string;
+}
+
+export interface PaperPortfolioSnapshotDto {
+  snapshotDate: string;
+  totalValue: number;
+  cashBalance: number;
+  investedValue: number;
+  dailyReturnPercent: number;
+  totalReturnPercent: number;
+  maxDrawdownPercent: number;
+  volatilityScore: number;
 }
 
 export interface PaperTradeDto {
@@ -90,6 +104,29 @@ export class PaperPortfolioService {
     return this.summariseInternal(portfolio);
   }
 
+  async latestSnapshot(slug: string): Promise<PaperPortfolioSnapshotDto | null> {
+    const portfolio = await this.portfolioRepo.findOne({
+      where: { slug: slug as PaperPortfolioSlug },
+    });
+    if (!portfolio) return null;
+    const row = await this.snapshotRepo.findOne({
+      where: { portfolioId: portfolio.id },
+      order: { snapshotDate: "DESC" },
+    });
+    if (!row) return null;
+    return {
+      snapshotDate:
+        typeof row.snapshotDate === "string" ? row.snapshotDate.slice(0, 10) : row.snapshotDate,
+      totalValue: Number(row.totalValue),
+      cashBalance: Number(row.cashBalance),
+      investedValue: Number(row.investedValue),
+      dailyReturnPercent: Number(row.dailyReturnPercent),
+      totalReturnPercent: Number(row.totalReturnPercent),
+      maxDrawdownPercent: Number(row.maxDrawdownPercent),
+      volatilityScore: Number(row.volatilityScore),
+    };
+  }
+
   async holdings(slug: string): Promise<PaperHoldingDto[]> {
     const portfolio = await this.portfolioRepo.findOne({
       where: { slug: slug as PaperPortfolioSlug },
@@ -114,6 +151,33 @@ export class PaperPortfolioService {
       unrealisedGainLossPercent: Number(h.unrealisedGainLossPercent),
       firstAcquiredAt: h.firstAcquiredAt.toISOString(),
     }));
+  }
+
+  async snapshots(slug: string, limit = 365): Promise<PaperPortfolioSnapshotDto[]> {
+    const portfolio = await this.portfolioRepo.findOne({
+      where: { slug: slug as PaperPortfolioSlug },
+    });
+    if (!portfolio) {
+      throw new NotFoundException(`Paper portfolio "${slug}" not found.`);
+    }
+    const rows = await this.snapshotRepo.find({
+      where: { portfolioId: portfolio.id },
+      order: { snapshotDate: "DESC" },
+      take: limit,
+    });
+    return rows
+      .map((s) => ({
+        snapshotDate:
+          typeof s.snapshotDate === "string" ? s.snapshotDate.slice(0, 10) : s.snapshotDate,
+        totalValue: Number(s.totalValue),
+        cashBalance: Number(s.cashBalance),
+        investedValue: Number(s.investedValue),
+        dailyReturnPercent: Number(s.dailyReturnPercent),
+        totalReturnPercent: Number(s.totalReturnPercent),
+        maxDrawdownPercent: Number(s.maxDrawdownPercent),
+        volatilityScore: Number(s.volatilityScore),
+      }))
+      .reverse();
   }
 
   async trades(slug: string, limit = 250): Promise<PaperTradeDto[]> {
@@ -198,6 +262,23 @@ export class PaperPortfolioService {
     const holdingsCount = await this.holdingRepo.count({ where: { portfolioId: portfolio.id } });
     const cash = Number(portfolio.currentCashBalance);
     const invested = Number(portfolio.currentPortfolioValue);
+
+    const sparklineRows = await this.snapshotRepo
+      .createQueryBuilder("s")
+      .select(["s.total_value AS total_value"])
+      .where("s.portfolio_id = :portfolioId", { portfolioId: portfolio.id })
+      .orderBy("s.snapshot_date", "DESC")
+      .limit(SPARKLINE_DAYS)
+      .getRawMany<{ total_value: string }>();
+    const valueSparkline = sparklineRows.map((r) => Number(r.total_value)).reverse();
+
+    const latestSnapshot = await this.snapshotRepo.findOne({
+      where: { portfolioId: portfolio.id },
+      order: { snapshotDate: "DESC" },
+    });
+    const maxDrawdownPercent = latestSnapshot ? Number(latestSnapshot.maxDrawdownPercent) : 0;
+    const volatilityScore = latestSnapshot ? Number(latestSnapshot.volatilityScore) : 0;
+
     return {
       id: portfolio.id,
       slug: portfolio.slug,
@@ -214,6 +295,11 @@ export class PaperPortfolioService {
       isPaused: portfolio.isPaused,
       allocationRules: portfolio.allocationRulesJson,
       createdAt: portfolio.createdAt.toISOString(),
+      valueSparkline,
+      maxDrawdownPercent,
+      volatilityScore,
     };
   }
 }
+
+const SPARKLINE_DAYS = 30;

@@ -681,6 +681,7 @@ export {
   usePaperHoldings,
   usePaperPortfolio,
   usePaperPortfolios,
+  usePaperSnapshots,
   usePaperTrades,
 } from "./insights/usePaperPortfolios";
 export {

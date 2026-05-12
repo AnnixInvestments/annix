@@ -7,6 +7,7 @@ import { INSIGHTS_ROLE } from "../insights.constants";
 import {
   type PaperHoldingDto,
   PaperPortfolioService,
+  type PaperPortfolioSnapshotDto,
   type PaperPortfolioSummary,
   type PaperTradeDto,
 } from "../services/paper-portfolio.service";
@@ -42,5 +43,16 @@ export class InsightsPaperPortfoliosController {
     const parsed = limit ? Number.parseInt(limit, 10) : 250;
     const safe = Number.isFinite(parsed) && parsed > 0 ? Math.min(parsed, 1000) : 250;
     return this.service.trades(slug, safe);
+  }
+
+  @Get(":slug/snapshots")
+  @ApiOperation({ summary: "List daily snapshots for a paper portfolio (oldest first)" })
+  snapshots(
+    @Param("slug") slug: string,
+    @Query("limit") limit?: string,
+  ): Promise<PaperPortfolioSnapshotDto[]> {
+    const parsed = limit ? Number.parseInt(limit, 10) : 365;
+    const safe = Number.isFinite(parsed) && parsed > 0 ? Math.min(parsed, 2000) : 365;
+    return this.service.snapshots(slug, safe);
   }
 }

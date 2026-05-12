@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   insightsApi,
   type PaperHolding,
+  type PaperPortfolioSnapshot,
   type PaperPortfolioSummary,
   type PaperTrade,
 } from "@/app/lib/api/insightsApi";
@@ -45,6 +46,18 @@ export function usePaperTrades(slug: string | null, limit?: number) {
     queryFn: () => {
       if (!slug) return Promise.resolve([]);
       return insightsApi.paperPortfolios.trades(slug, limit);
+    },
+    enabled: slug !== null,
+    staleTime: 60 * 1000,
+  });
+}
+
+export function usePaperSnapshots(slug: string | null, limit?: number) {
+  return useQuery<PaperPortfolioSnapshot[]>({
+    queryKey: insightsKeys.paperSnapshots(slug ?? "", limit),
+    queryFn: () => {
+      if (!slug) return Promise.resolve([]);
+      return insightsApi.paperPortfolios.snapshots(slug, limit);
     },
     enabled: slug !== null,
     staleTime: 60 * 1000,
