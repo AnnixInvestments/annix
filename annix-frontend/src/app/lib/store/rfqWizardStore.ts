@@ -32,6 +32,7 @@ import {
 } from "@/app/lib/nix";
 import type { ScheduleData } from "@/app/lib/store/rfqUiStore";
 import type { ItemIssue } from "@/app/lib/utils/itemDiagnostics";
+import { resolveSteelSpecId } from "@/app/lib/utils/rfq/resolveSteelSpecId";
 import { generateClientItemNumber } from "@/app/lib/utils/systemUtils";
 
 export interface PendingDocument {
@@ -204,6 +205,7 @@ interface RfqWizardActions {
     ndtMethods?: string[] | null;
     hydrotestMultiplier?: number | null;
     valveClauseExcerpt?: string | null;
+    materialGrade?: string | null;
   }) => void;
 
   addStraightPipeEntry: (
@@ -393,35 +395,6 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
         if (grade.includes("PE100RC") || grade.includes("PE100_RC")) return "PE100_RC";
         if (grade.includes("PE80")) return "PE80";
         return "PE100";
-      };
-
-      // Match Nix's free-text materialGrade ("API 5L", "A234 WPB",
-      // "A105") against the loaded steelSpecs master list and return
-      // the matching id. Without this every Nix-extracted steel pipe
-      // ends up with steelSpecificationId=undefined → BOQ description
-      // says just "Steel" and weight calc has no spec to anchor on.
-      const resolveSteelSpecId = (
-        material: string | null,
-        materialGrade: string | null,
-        steelSpecs: Array<{ id: number; steelSpecName: string }>,
-      ): number | undefined => {
-        if (steelSpecs.length === 0) return undefined;
-        const haystack = `${material || ""} ${materialGrade || ""}`.trim().toLowerCase();
-        if (!haystack) return undefined;
-        const normalize = (s: string) => s.toLowerCase().replace(/\s+/g, " ").trim();
-        // Try strongest match first: exact-substring of the steel
-        // spec's full name in the haystack, then haystack in spec name.
-        // Score by length so "API 5L X42" beats a generic "API".
-        let best: { id: number; score: number } | null = null;
-        for (const spec of steelSpecs) {
-          const name = normalize(spec.steelSpecName);
-          if (!name) continue;
-          if (haystack.includes(name) || normalize(haystack).includes(name)) {
-            const score = name.length;
-            if (!best || score > best.score) best = { id: spec.id, score };
-          }
-        }
-        return best ? best.id : undefined;
       };
 
       const convertNixItemsToRfqItems = (nixItems: NixExtractedItem[]) => {
@@ -875,7 +848,8 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
         mergeSpecMetadataIntoGlobalSpecs: (metadata) =>
           set(
             (state) => {
-              const existing = state.rfqData.globalSpecs ?? {};
+              const rawExistingGlobalSpecs = state.rfqData.globalSpecs;
+              const existing = rawExistingGlobalSpecs ?? {};
               const next = { ...existing };
               const rawPressure = metadata.workingPressureBar;
               const rawTemperature = metadata.workingTemperatureC;
@@ -940,6 +914,27 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
               const rawClauseExcerpt = metadata.valveClauseExcerpt;
               if (rawClauseExcerpt && !next.valveClauseExcerpt) {
                 next.valveClauseExcerpt = rawClauseExcerpt;
+              }
+              // Material-grade text (e.g. "ASTM A106", "SABS 719",
+              // "API 5L Gr B") lifted from a spec PDF. Two effects:
+              // 1. Store the raw text on globalSpecs for the banner.
+              // 2. If the steel-specs master list is loaded and the
+              //    customer hasn't already picked a steel spec,
+              //    auto-resolve the matching DB id so the
+              //    Specifications step pre-selects the right
+              //    dropdown entry.
+              const rawMaterialGrade = metadata.materialGrade;
+              if (rawMaterialGrade && !next.specPdfMaterialGrade) {
+                next.specPdfMaterialGrade = rawMaterialGrade;
+              }
+              if (rawMaterialGrade && next.steelSpecificationId == null) {
+                const steelSpecsList = state.masterData?.steelSpecs;
+                if (steelSpecsList && steelSpecsList.length > 0) {
+                  const resolved = resolveSteelSpecId(null, rawMaterialGrade, steelSpecsList);
+                  if (resolved != null) {
+                    next.steelSpecificationId = resolved;
+                  }
+                }
               }
               return { rfqData: { ...state.rfqData, globalSpecs: next } };
             },

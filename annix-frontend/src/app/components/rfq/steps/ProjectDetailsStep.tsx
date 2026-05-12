@@ -349,6 +349,7 @@ export default function ProjectDetailsStep() {
           ndtMethods: metadata.ndtMethods,
           hydrotestMultiplier: metadata.hydrotestMultiplier,
           valveClauseExcerpt: metadata.valveClauseExcerpt,
+          materialGrade: metadata.materialGrade,
         });
       } catch (err) {
         hideExtraction();

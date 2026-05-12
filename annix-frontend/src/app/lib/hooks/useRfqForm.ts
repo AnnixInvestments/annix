@@ -414,6 +414,11 @@ export interface GlobalSpecs {
   ndtMethods?: string[];
   hydrotestMultiplier?: number;
   valveClauseExcerpt?: string;
+  // Raw material-grade text from a tender spec PDF (e.g. "ASTM A106",
+  // "SABS 719"). Stored alongside the resolved steelSpecificationId
+  // so the banner can show the source string even when no master-list
+  // match was found.
+  specPdfMaterialGrade?: string;
 
   ecpMarineInfluence?: "None" | "Coastal" | "Offshore";
   ecpIso12944Category?: "C1" | "C2" | "C3" | "C4" | "C5" | "CX";

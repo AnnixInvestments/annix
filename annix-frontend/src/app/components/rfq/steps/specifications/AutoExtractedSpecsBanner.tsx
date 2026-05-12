@@ -20,6 +20,7 @@ export function AutoExtractedSpecsBanner(props: AutoExtractedSpecsBannerProps) {
   const ndtMethods = globalSpecs.ndtMethods;
   const hydrotestMultiplier = globalSpecs.hydrotestMultiplier;
   const valveClauseExcerpt = globalSpecs.valveClauseExcerpt;
+  const specPdfMaterialGrade = globalSpecs.specPdfMaterialGrade;
 
   const hasValveTypes = !!(valveTypes && valveTypes.length > 0);
   const hasValveStandards = !!(valveStandards && valveStandards.length > 0);
@@ -27,8 +28,15 @@ export function AutoExtractedSpecsBanner(props: AutoExtractedSpecsBannerProps) {
   const hasNdt = !!(ndtMethods && ndtMethods.length > 0);
   const hasHydrotest = hydrotestMultiplier != null;
   const hasExcerpt = !!valveClauseExcerpt;
+  const hasMaterialGrade = !!specPdfMaterialGrade;
   const hasAnything =
-    hasValveTypes || hasValveStandards || hasFlange || hasNdt || hasHydrotest || hasExcerpt;
+    hasValveTypes ||
+    hasValveStandards ||
+    hasFlange ||
+    hasNdt ||
+    hasHydrotest ||
+    hasExcerpt ||
+    hasMaterialGrade;
 
   if (!hasAnything) return null;
 
@@ -54,6 +62,11 @@ export function AutoExtractedSpecsBanner(props: AutoExtractedSpecsBannerProps) {
             anything that doesn't apply before continuing.
           </p>
           <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-1.5 text-blue-900">
+            {hasMaterialGrade && (
+              <SpecRow label="Material spec">
+                <span>{specPdfMaterialGrade}</span>
+              </SpecRow>
+            )}
             {hasValveTypes && (
               <SpecRow label="Valve types">
                 <ChipList items={valveTypes || []} />
