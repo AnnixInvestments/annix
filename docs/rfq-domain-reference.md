@@ -95,3 +95,88 @@ Standard classes: 150, 300, 400, 600, 900, 1500, 2500
 | `hydrotestHoldMin` | All RFQs | int | Hold time in minutes |
 | `ndtMethods` | All RFQs | JSON string[] | ["RT", "UT", "MT", "PT", "VT"] |
 | `lengthType` | Straight pipe only | varchar(10) | "SRL", "DRL", "Custom" |
+
+## PVC Pipe Standards & Fittings (SA)
+
+PVC pressure pipework in South Africa is governed by the SANS 966
+family. Annix references the standards by name only — all embedded
+dimension tables come from manufacturer catalogues (Flo-Tek, Marley,
+Macneil, Sizabantu, Agrico, DPI). See `legal_sans_pvc_reproduction_rights.md`
+for the legal posture; tracked in issue #288.
+
+### Standards covered
+- **SANS 966-1** — uPVC pressure pipe (Class 6 / 9 / 12 / 16 / 20 bar)
+- **SANS 966-2** — mPVC modified PVC (Class 6–25 bar, lighter than uPVC for same class)
+- **SANS 966-3** — PVC-O molecularly-oriented PVC (Class 12 / 16 / 20 / 25 bar)
+- **SANS 1601** — injection-moulded solvent-weld fittings, DN ≤ 160
+- **SANS 1808** — RRJ rubber-ring sockets
+- **SANS 1123** — shared with HDPE; loose backing-flange tables
+
+### Material grades
+
+| Grade | Hoop stress (MPa) | Density (kg/m³) | Max temp (°C) | Notes |
+|---|---|---|---|---|
+| uPVC | 12.5 | 1400 | 60 | Cold water + drainage workhorse |
+| mPVC | 18 | 1400 | 45 | Toughened alloy; thinner wall for same class |
+| PVC-O | 25 | 1400 | 45 | Highest strength/weight; high-pressure mains + mining |
+| cPVC | 13.5 | 1550 | 95 | Hot water + industrial chemical lines |
+
+### Pressure class system
+- Class number = working bar at 20 °C, safety factor 2.0.
+- OD is **constant** across all classes for a given DN — wall
+  thickness changes with class.
+- No SDR convention for PVC (unlike HDPE) — wall is keyed on
+  (DN, class, grade) directly from catalogue tables.
+
+### Standard sizes & lengths
+- DN range: 20 → 630 mm (mPVC up to 630; uPVC commonly to 500;
+  PVC-O narrower 90–630).
+- Effective length: **6.0 m** for DN 20–250, **5.8 m** for DN 315–500.
+- Ends: integrated bell + spigot for RRJ; plain-cut for solvent-weld.
+- No coils — PVC is rigid, straight lengths only.
+
+### Joining methods
+
+| Method | Typical DN | When used |
+|---|---|---|
+| Solvent cement | 20–160 (occasionally 200) | Standard with SANS 1601 fittings |
+| Rubber ring joint (RRJ) | 50–630 | Default for buried mains DN ≥ 110 |
+| Flanged | 50–500 | At pumps, valves, chambers — PVC stub + SANS 1123 backing ring |
+| Threaded (BSP) | ≤ 50 | Adapters only, not pipe-to-pipe |
+| Compression (Plasson / Philmac) | 50–160 | Transition fittings |
+
+### Fittings dimensions
+
+Injection-moulded fittings to SANS 1601 (DN 20–160) are tabulated
+in `packages/product-data/pvc/`:
+- `elbow-dimensions.ts` — 11.25° / 22.5° / 45° / 90° centre-to-face
+- `tee-dimensions.ts` — equal + reducing tees (run + branch C/F)
+- `reducer-dimensions.ts` — concentric reducer overall length
+- `end-cap-dimensions.ts` — blind / socket caps
+- `coupling-dimensions.ts` — slip / RRJ / repair family lengths
+
+Larger fittings (DN ≥ 200) are site-fabricated from cut pipe
+sections; dimensions are job-specific and quoted as fabricated
+items (no canonical tables).
+
+### Temperature derating
+
+Working pressure must be multiplied by a derating factor when
+service temperature is above 20 °C. Curves in `pvc/temperature-derating.ts`:
+- uPVC / mPVC: linear drop, max service 45 °C (above → use cPVC, PVC-O, or step out of PVC).
+- PVC-O: similar to uPVC, slightly tighter curve.
+- cPVC: shallow curve, sustains pressure up to 95 °C.
+
+API: `pvcDeratingFactor(grade, °C)` and `pvcDeratedWorkingPressure(grade, classBar, °C)`.
+
+### BOQ section layout (supplier portal)
+
+When a PVC RFQ is submitted, the consolidation produces these
+sections (mirrors HDPE):
+- `pvc_pipes` — straight pressure pipes consolidated by DN + class + grade
+- `pvc_fittings` — moulded fittings (elbows, tees, reducers, caps)
+- `pvc_stubs` — stub-flange adapters paired with backing rings
+- `pvc_couplings` — slip / RRJ / repair coupling families priced separately
+
+Bare PVC isn't coated or lined, so Int/Ext m² columns are
+suppressed in the BOQ tables (same convention as HDPE).
