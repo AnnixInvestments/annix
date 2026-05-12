@@ -722,6 +722,7 @@ export {
   useRecordNixCorrection,
   useSaveQuoteCustomer,
   useSaveQuoteEditorState,
+  useSaveQuoteOrderNumber,
   useSendNixMessage,
   useSetNixExtractionSessionStatus,
   useSkipWalkthrough,

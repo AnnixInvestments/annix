@@ -25,6 +25,7 @@ export interface UpdateNixSessionDto {
   quoteEditorState?: Record<string, unknown>;
   customerCompanyId?: number | null;
   customerSnapshot?: Record<string, unknown> | null;
+  customerOrderNumber?: string | null;
 }
 
 @Injectable()
@@ -144,6 +145,19 @@ export class NixExtractionSessionService extends BaseCrudService<
     state: Record<string, unknown> | null,
   ): Promise<NixExtractionSession> {
     return this.update(id, { quoteEditorState: state ?? undefined });
+  }
+
+  /**
+   * Stores the customer's order / PO reference for the quote header. Empty
+   * string clears the value (stored as null) — handles the case where the
+   * user blanks the field. Debounce-saved like quoteEditorState.
+   */
+  async setCustomerOrderNumber(
+    id: number,
+    orderNumber: string | null,
+  ): Promise<NixExtractionSession> {
+    const trimmed = orderNumber ? orderNumber.trim() : "";
+    return this.update(id, { customerOrderNumber: trimmed.length > 0 ? trimmed : null });
   }
 
   /**

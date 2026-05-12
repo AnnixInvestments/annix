@@ -151,6 +151,14 @@ export class NixExtractionSession {
   @Column({ name: "customer_snapshot", type: "jsonb", nullable: true })
   customerSnapshot?: Record<string, unknown>;
 
+  @ApiProperty({
+    description:
+      "Customer's PO / order reference as printed on the quote (e.g. 'STEEL AFRICA - 32452E'). Maps to the 'Order No' column on the customer-facing PDF header.",
+    required: false,
+  })
+  @Column({ name: "customer_order_number", type: "varchar", length: 255, nullable: true })
+  customerOrderNumber?: string;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

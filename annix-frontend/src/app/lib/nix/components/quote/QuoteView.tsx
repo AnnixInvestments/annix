@@ -11,6 +11,7 @@ import {
 } from "@/app/lib/query/hooks";
 import { CustomerCard } from "./CustomerCard";
 import { poolItemsBySpec, type QuoteItem, type QuotePool } from "./poolItemsBySpec";
+import { QuoteMetaBar } from "./QuoteMetaBar";
 import { QuoteSpecsEditor } from "./QuoteSpecsEditor";
 import {
   type DataSheetAttachments,
@@ -403,12 +404,16 @@ export function QuoteView(props: QuoteViewProps) {
   }
 
   // Hoist member-access reads off the session DTO before passing to the
-  // CustomerCard — the SWC-safe pattern requires a plain local identifier
-  // on the left of a nullish-fallback operator.
+  // CustomerCard / QuoteMetaBar — the SWC-safe pattern requires a plain
+  // local identifier on the left of a nullish-fallback operator.
   const sessionCustomerCompanyId = session.customerCompanyId;
   const sessionCustomerSnapshot = session.customerSnapshot;
+  const sessionPromotedRef = session.promotedRef;
+  const sessionCustomerOrderNumber = session.customerOrderNumber;
   const savedCustomerCompanyId = sessionCustomerCompanyId ?? null;
   const savedCustomerSnapshot = sessionCustomerSnapshot ?? null;
+  const savedPromotedRef = sessionPromotedRef ?? null;
+  const savedCustomerOrderNumber = sessionCustomerOrderNumber ?? null;
 
   return (
     <div className="space-y-6">
@@ -419,6 +424,12 @@ export function QuoteView(props: QuoteViewProps) {
         sessionId={session.id}
         customerCompanyId={savedCustomerCompanyId}
         customerSnapshot={savedCustomerSnapshot}
+      />
+      <QuoteMetaBar
+        sessionId={session.id}
+        createdAt={session.createdAt}
+        ourReference={savedPromotedRef}
+        customerOrderNumber={savedCustomerOrderNumber}
       />
       <QuoteSpecsEditor
         specs={uniqueSpecs}

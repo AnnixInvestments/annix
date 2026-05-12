@@ -290,6 +290,24 @@ export class NixController {
     return this.sessionService.setQuoteEditorState(id, body.quoteEditorState ?? null);
   }
 
+  @Post("sessions/:id/order-number")
+  @UseGuards(AnyUserAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary:
+      "Set the customer's PO / order-number for the quote header. Empty string clears it. Debounce-saved by the quote-meta input on the promoted-quote page.",
+  })
+  @ApiResponse({ status: 200, type: NixExtractionSession })
+  async setSessionCustomerOrderNumber(
+    @Param("id", ParseIntPipe) id: number,
+    @Body() body: { orderNumber: string | null },
+    @Req() req: Request,
+  ): Promise<NixExtractionSession> {
+    const authUser = req["authUser"] as AuthenticatedUser;
+    await this.sessionService.findOneForUser(id, authUser.userId, authUser.type === "admin");
+    return this.sessionService.setCustomerOrderNumber(id, body.orderNumber ?? null);
+  }
+
   @Post("sessions/:id/customer")
   @UseGuards(AnyUserAuthGuard)
   @ApiBearerAuth()
