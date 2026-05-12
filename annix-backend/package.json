@@ -94,7 +94,8 @@
     "typeorm": "^0.3.26",
     "uuid": "^11.0.3",
     "web-push": "^3.6.7",
-    "xlsx": "^0.18.5"
+    "xlsx": "^0.18.5",
+    "yahoo-finance2": "^3.14.0"
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.0",
