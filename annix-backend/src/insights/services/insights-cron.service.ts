@@ -3,6 +3,7 @@ import { Cron } from "@nestjs/schedule";
 import { BenchmarkExecutionService } from "./benchmark-execution.service";
 import { MarketDataIngestionService } from "./market-data-ingestion.service";
 import { PaperPortfolioService } from "./paper-portfolio.service";
+import { PaperTradeExecutionService } from "./paper-trade-execution.service";
 import { PortfolioSnapshotService } from "./portfolio-snapshot.service";
 import { SignalEngineService } from "./signal-engine.service";
 
@@ -16,6 +17,7 @@ export class InsightsCronService {
     private readonly benchmarkExecution: BenchmarkExecutionService,
     private readonly snapshotService: PortfolioSnapshotService,
     private readonly signalEngine: SignalEngineService,
+    private readonly tradeExecution: PaperTradeExecutionService,
   ) {}
 
   @Cron("0 6 * * *", {
@@ -56,6 +58,21 @@ export class InsightsCronService {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       this.logger.error(`Benchmark execution crashed: ${message}`);
+    }
+
+    try {
+      const exec = await this.tradeExecution.executeAll();
+      const summary = exec
+        .map((r) =>
+          r.skipped
+            ? `${r.portfolioSlug}: skipped (${r.skipReason})`
+            : `${r.portfolioSlug}: ${r.buysExecuted}b/${r.sellsExecuted}s, deployed ${r.cashDeployed.toFixed(0)}, raised ${r.cashRaised.toFixed(0)}`,
+        )
+        .join(" | ");
+      this.logger.log(`Signal-portfolio execution: ${summary || "(no portfolios)"}.`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Signal-portfolio execution crashed: ${message}`);
     }
 
     try {

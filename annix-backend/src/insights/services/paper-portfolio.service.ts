@@ -95,13 +95,18 @@ export class PaperPortfolioService {
   }
 
   async bySlug(slug: string): Promise<PaperPortfolioSummary> {
+    const portfolio = await this.portfolioBySlugRaw(slug);
+    return this.summariseInternal(portfolio);
+  }
+
+  async portfolioBySlugRaw(slug: string): Promise<PaperPortfolio> {
     const portfolio = await this.portfolioRepo.findOne({
       where: { slug: slug as PaperPortfolioSlug },
     });
     if (!portfolio) {
       throw new NotFoundException(`Paper portfolio "${slug}" not found.`);
     }
-    return this.summariseInternal(portfolio);
+    return portfolio;
   }
 
   async latestSnapshot(slug: string): Promise<PaperPortfolioSnapshotDto | null> {
@@ -208,6 +213,18 @@ export class PaperPortfolioService {
       marketRegime: t.marketRegime,
       executedAt: t.executedAt.toISOString(),
     }));
+  }
+
+  async setPaused(slug: string, paused: boolean): Promise<PaperPortfolioSummary> {
+    const portfolio = await this.portfolioRepo.findOne({
+      where: { slug: slug as PaperPortfolioSlug },
+    });
+    if (!portfolio) {
+      throw new NotFoundException(`Paper portfolio "${slug}" not found.`);
+    }
+    await this.portfolioRepo.update({ id: portfolio.id }, { isPaused: paused });
+    const reloaded = await this.portfolioRepo.findOneOrFail({ where: { id: portfolio.id } });
+    return this.summariseInternal(reloaded);
   }
 
   async addMonthlyContributionToAll(): Promise<{ credited: number; portfolios: string[] }> {

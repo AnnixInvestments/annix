@@ -17,10 +17,12 @@ import { PaperTrade } from "./entities/paper-trade.entity";
 import { PriceHistory } from "./entities/price-history.entity";
 import { SignalSnapshot } from "./entities/signal-snapshot.entity";
 import { WatchlistItem } from "./entities/watchlist-item.entity";
+import { AllocationRulesEngineService } from "./services/allocation-rules-engine.service";
 import { BenchmarkExecutionService } from "./services/benchmark-execution.service";
 import { InsightsCronService } from "./services/insights-cron.service";
 import { MarketDataIngestionService } from "./services/market-data-ingestion.service";
 import { PaperPortfolioService } from "./services/paper-portfolio.service";
+import { PaperTradeExecutionService } from "./services/paper-trade-execution.service";
 import { PortfolioSnapshotService } from "./services/portfolio-snapshot.service";
 import { SignalEngineService } from "./services/signal-engine.service";
 import { WatchlistService } from "./services/watchlist.service";
@@ -58,6 +60,8 @@ import { YahooMarketDataService } from "./services/yahoo-market-data.service";
     BenchmarkExecutionService,
     PortfolioSnapshotService,
     SignalEngineService,
+    AllocationRulesEngineService,
+    PaperTradeExecutionService,
     InsightsCronService,
   ],
   exports: [],
