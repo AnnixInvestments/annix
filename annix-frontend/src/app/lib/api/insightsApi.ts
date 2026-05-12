@@ -247,8 +247,65 @@ export const insightsApi = {
         `/insights/paper-portfolios/${encodeURIComponent(slug)}/snapshots${query}`,
       );
     },
+    decisionsToday(slug: string): Promise<PortfolioDecisionsPreview> {
+      return apiClient.get<PortfolioDecisionsPreview>(
+        `/insights/paper-portfolios/${encodeURIComponent(slug)}/decisions/today`,
+      );
+    },
+    pause(slug: string): Promise<PaperPortfolioSummary> {
+      return apiClient.post<PaperPortfolioSummary>(
+        `/insights/paper-portfolios/${encodeURIComponent(slug)}/pause`,
+      );
+    },
+    resume(slug: string): Promise<PaperPortfolioSummary> {
+      return apiClient.post<PaperPortfolioSummary>(
+        `/insights/paper-portfolios/${encodeURIComponent(slug)}/resume`,
+      );
+    },
   },
 };
+
+export interface BuyDecisionDto {
+  action: "buy";
+  portfolioSlug: PaperPortfolioSlug;
+  assetId: string;
+  symbol: string;
+  assetName: string;
+  qty: number;
+  estimatedPrice: number;
+  estimatedTradeValue: number;
+  opportunityScore: number;
+  riskScore: number;
+  confidenceScore: number;
+  adjustedScore: number;
+  reasoning: string;
+  ruleEvaluationTrace: string;
+}
+
+export interface SellDecisionDto {
+  action: "sell";
+  portfolioSlug: PaperPortfolioSlug;
+  symbol: string;
+  assetName: string;
+  qty: number;
+  estimatedPrice: number;
+  estimatedTradeValue: number;
+  opportunityScore: number;
+  riskScore: number;
+  confidenceScore: number;
+  reasonCode: "confidence-dropped" | "stop-loss";
+  reasoning: string;
+  ruleEvaluationTrace: string;
+}
+
+export type DecisionDto = BuyDecisionDto | SellDecisionDto;
+
+export interface PortfolioDecisionsPreview {
+  portfolioSlug: PaperPortfolioSlug;
+  decisions: DecisionDto[];
+  skippedReasons: string[];
+  evaluatedAt: string;
+}
 
 export interface PriceBar {
   date: string;
