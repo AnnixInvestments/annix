@@ -15,12 +15,27 @@ import {
 @Injectable()
 export class FeatureFlagsService {
   private readonly logger = new Logger(FeatureFlagsService.name);
+  private flagsByKeyCache: Map<string, FeatureFlag> | null = null;
 
   constructor(
     @InjectRepository(FeatureFlag)
     private readonly flagRepo: Repository<FeatureFlag>,
     private readonly configService: ConfigService,
   ) {}
+
+  private invalidateCache(): void {
+    this.flagsByKeyCache = null;
+  }
+
+  private async loadCache(): Promise<Map<string, FeatureFlag>> {
+    if (this.flagsByKeyCache) {
+      return this.flagsByKeyCache;
+    }
+    const flags = await this.flagRepo.find({ order: { flagKey: "ASC" } });
+    const map = new Map(flags.map((f) => [f.flagKey, f]));
+    this.flagsByKeyCache = map;
+    return map;
+  }
 
   async ensureFlags(): Promise<void> {
     const existing = await this.flagRepo.find();
@@ -40,23 +55,24 @@ export class FeatureFlagsService {
         });
       });
       await this.flagRepo.save(newFlags);
+      this.invalidateCache();
       this.logger.log(`Initialised feature flags: ${missing.join(", ")}`);
     }
   }
 
-  isEnabled(flagKey: FeatureFlagKey | string): Promise<boolean> {
-    return this.flagRepo.findOne({ where: { flagKey } }).then((flag) => {
-      if (flag) {
-        return flag.enabled;
-      }
-      return this.configService.get(`ENABLE_${flagKey}`) === "true";
-    });
+  async isEnabled(flagKey: FeatureFlagKey | string): Promise<boolean> {
+    const map = await this.loadCache();
+    const flag = map.get(flagKey);
+    if (flag) {
+      return flag.enabled;
+    }
+    return this.configService.get(`ENABLE_${flagKey}`) === "true";
   }
 
   async allFlags(): Promise<Record<string, boolean>> {
     await this.ensureFlags();
-    const flags = await this.flagRepo.find();
-    return flags.reduce(
+    const map = await this.loadCache();
+    return Array.from(map.values()).reduce(
       (acc, flag) => ({ ...acc, [flag.flagKey]: flag.enabled }),
       {} as Record<string, boolean>,
     );
@@ -66,8 +82,8 @@ export class FeatureFlagsService {
     Array<{ flagKey: string; enabled: boolean; description: string | null; category: string }>
   > {
     await this.ensureFlags();
-    const flags = await this.flagRepo.find({ order: { flagKey: "ASC" } });
-    return flags.map((f) => ({
+    const map = await this.loadCache();
+    return Array.from(map.values()).map((f) => ({
       flagKey: f.flagKey,
       enabled: f.enabled,
       description: f.description,
@@ -91,6 +107,7 @@ export class FeatureFlagsService {
 
     flag.enabled = enabled;
     const saved = await this.flagRepo.save(flag);
+    this.invalidateCache();
 
     this.logger.log(`Feature flag '${flagKey}' ${enabled ? "enabled" : "disabled"}`);
 

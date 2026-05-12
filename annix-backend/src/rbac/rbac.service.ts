@@ -44,6 +44,8 @@ export const STOCK_CONTROL_ROLE_NAMES: Record<string, string> = {
 @Injectable()
 export class RbacService {
   private readonly logger = new Logger(RbacService.name);
+  private allActiveAppsCache: App[] | null = null;
+  private appByCodeCache = new Map<string, App | null>();
 
   constructor(
     @InjectRepository(App)
@@ -70,11 +72,30 @@ export class RbacService {
     private readonly emailService: EmailService,
   ) {}
 
+  private invalidateAppCaches(): void {
+    this.allActiveAppsCache = null;
+    this.appByCodeCache.clear();
+  }
+
+  private async appByCode(code: string): Promise<App | null> {
+    if (this.appByCodeCache.has(code)) {
+      return this.appByCodeCache.get(code) ?? null;
+    }
+    const app = await this.appRepo.findOne({ where: { code } });
+    this.appByCodeCache.set(code, app);
+    return app;
+  }
+
   async allApps(): Promise<App[]> {
-    return this.appRepo.find({
+    if (this.allActiveAppsCache) {
+      return this.allActiveAppsCache;
+    }
+    const apps = await this.appRepo.find({
       where: { isActive: true },
       order: { displayOrder: "ASC" },
     });
+    this.allActiveAppsCache = apps;
+    return apps;
   }
 
   async appWithDetails(
@@ -101,7 +122,7 @@ export class RbacService {
   }
 
   async usersWithAccess(appCode: string): Promise<UserAccessResponseDto[]> {
-    const app = await this.appRepo.findOne({ where: { code: appCode } });
+    const app = await this.appByCode(appCode);
     if (!app) {
       throw new NotFoundException(`App '${appCode}' not found`);
     }
@@ -286,7 +307,7 @@ export class RbacService {
       throw new NotFoundException(`User with ID ${userId} not found`);
     }
 
-    const app = await this.appRepo.findOne({ where: { code: dto.appCode } });
+    const app = await this.appByCode(dto.appCode);
     if (!app) {
       throw new NotFoundException(`App '${dto.appCode}' not found`);
     }
@@ -445,7 +466,7 @@ export class RbacService {
   }
 
   async inviteUser(dto: InviteUserDto, grantedById: number): Promise<InviteUserResponseDto> {
-    const app = await this.appRepo.findOne({ where: { code: dto.appCode } });
+    const app = await this.appByCode(dto.appCode);
     if (!app) {
       throw new NotFoundException(`App '${dto.appCode}' not found`);
     }
@@ -506,7 +527,7 @@ export class RbacService {
     appCode: string,
     permissionCode: string,
   ): Promise<boolean> {
-    const app = await this.appRepo.findOne({ where: { code: appCode } });
+    const app = await this.appByCode(appCode);
     if (!app) {
       return false;
     }
@@ -542,7 +563,7 @@ export class RbacService {
   }
 
   async userPermissions(userId: number, appCode: string): Promise<string[]> {
-    const app = await this.appRepo.findOne({ where: { code: appCode } });
+    const app = await this.appByCode(appCode);
     if (!app) {
       return [];
     }
@@ -588,7 +609,7 @@ export class RbacService {
   }> {
     const permissions = await this.userPermissions(userId, appCode);
 
-    const app = await this.appRepo.findOne({ where: { code: appCode } });
+    const app = await this.appByCode(appCode);
     if (!app) {
       return { roleCode: null, roleName: null, permissions: [], isAdmin: false };
     }
@@ -610,7 +631,7 @@ export class RbacService {
   }
 
   async appPermissions(appCode: string): Promise<AppPermission[]> {
-    const app = await this.appRepo.findOne({ where: { code: appCode } });
+    const app = await this.appByCode(appCode);
     if (!app) {
       return [];
     }
@@ -680,7 +701,7 @@ export class RbacService {
   async rolesWithPermissions(
     appCode: string,
   ): Promise<(RoleResponseDto & { permissions: string[]; userCount: number })[]> {
-    const app = await this.appRepo.findOne({ where: { code: appCode } });
+    const app = await this.appByCode(appCode);
     if (!app) {
       throw new NotFoundException(`App '${appCode}' not found`);
     }
@@ -830,7 +851,7 @@ export class RbacService {
   }
 
   async createRole(appCode: string, dto: CreateRoleDto): Promise<RoleResponseDto> {
-    const app = await this.appRepo.findOne({ where: { code: appCode } });
+    const app = await this.appByCode(appCode);
     if (!app) {
       throw new NotFoundException(`App '${appCode}' not found`);
     }

@@ -20,6 +20,8 @@ export interface BoltFilters {
 
 @Injectable()
 export class BoltService extends BaseCrudService<Bolt, CreateBoltDto, UpdateBoltDto> {
+  private unfilteredCache: Bolt[] | null = null;
+
   constructor(
     @InjectRepository(Bolt) boltRepo: Repository<Bolt>,
     @InjectRepository(UBoltEntity)
@@ -36,12 +38,18 @@ export class BoltService extends BaseCrudService<Bolt, CreateBoltDto, UpdateBolt
     super(boltRepo, { entityName: "Bolt" });
   }
 
+  private invalidateCache(): void {
+    this.unfilteredCache = null;
+  }
+
   async create(dto: CreateBoltDto): Promise<Bolt> {
     await this.checkUnique(
       { designation: dto.designation },
       `Bolt ${dto.designation} already exists`,
     );
-    return super.create(dto);
+    const created = await super.create(dto);
+    this.invalidateCache();
+    return created;
   }
 
   async findAll(input?: BoltFilters | string[]): Promise<Bolt[]> {
@@ -49,6 +57,13 @@ export class BoltService extends BaseCrudService<Bolt, CreateBoltDto, UpdateBolt
       return super.findAll(input);
     }
     const filters = input;
+    const isUnfiltered =
+      !filters || (!filters.grade && !filters.material && !filters.headStyle && !filters.size);
+
+    if (isUnfiltered && this.unfilteredCache) {
+      return this.unfilteredCache;
+    }
+
     const query = this.repo.createQueryBuilder("bolt");
 
     if (filters?.grade) {
@@ -70,7 +85,13 @@ export class BoltService extends BaseCrudService<Bolt, CreateBoltDto, UpdateBolt
       });
     }
 
-    return query.orderBy("bolt.designation", "ASC").getMany();
+    const result = await query.orderBy("bolt.designation", "ASC").getMany();
+
+    if (isUnfiltered) {
+      this.unfilteredCache = result;
+    }
+
+    return result;
   }
 
   async update(id: number, dto: UpdateBoltDto): Promise<Bolt> {
@@ -85,7 +106,14 @@ export class BoltService extends BaseCrudService<Bolt, CreateBoltDto, UpdateBolt
       bolt.designation = dto.designation;
     }
 
-    return this.repo.save(bolt);
+    const saved = await this.repo.save(bolt);
+    this.invalidateCache();
+    return saved;
+  }
+
+  async remove(id: number): Promise<void> {
+    await super.remove(id);
+    this.invalidateCache();
   }
 
   async uBolts(nbMm?: number): Promise<UBoltEntity[]> {

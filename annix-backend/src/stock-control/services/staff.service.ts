@@ -12,6 +12,8 @@ const PRESIGNED_URL_TTL_MS = 50 * 60 * 1000;
 export class StaffService {
   private readonly logger = new Logger(StaffService.name);
   private readonly presignedUrlCache = new Map<string, { url: string; expiresAt: number }>();
+  private readonly findAllCache = new Map<number, StaffMember[]>();
+  private readonly findAllActiveCache = new Map<number, StaffMember[]>();
 
   constructor(
     @InjectRepository(StaffMember)
@@ -20,10 +22,24 @@ export class StaffService {
     private readonly storageService: IStorageService,
   ) {}
 
+  private invalidateListCaches(companyId: number): void {
+    this.findAllCache.delete(companyId);
+    this.findAllActiveCache.delete(companyId);
+  }
+
   async findAll(
     companyId: number,
     filters?: { search?: string; active?: string },
   ): Promise<StaffMember[]> {
+    const isUnfiltered = !filters || (!filters.search && !filters.active);
+
+    if (isUnfiltered) {
+      const cached = this.findAllCache.get(companyId);
+      if (cached) {
+        return this.withPresignedPhotoUrls(cached);
+      }
+    }
+
     const where: Record<string, unknown>[] = [];
 
     const baseWhere: Record<string, unknown> = { companyId };
@@ -50,6 +66,10 @@ export class StaffService {
       order: { name: "ASC" },
     });
 
+    if (isUnfiltered) {
+      this.findAllCache.set(companyId, members);
+    }
+
     return this.withPresignedPhotoUrls(members);
   }
 
@@ -59,10 +79,15 @@ export class StaffService {
   }
 
   async findAllActive(companyId: number): Promise<StaffMember[]> {
+    const cached = this.findAllActiveCache.get(companyId);
+    if (cached) {
+      return this.withPresignedPhotoUrls(cached);
+    }
     const members = await this.staffRepo.find({
       where: { companyId, active: true },
       order: { name: "ASC" },
     });
+    this.findAllActiveCache.set(companyId, members);
     return this.withPresignedPhotoUrls(members);
   }
 
@@ -73,6 +98,7 @@ export class StaffService {
       qrToken: randomUUID(),
     });
     const saved = await this.staffRepo.save(member);
+    this.invalidateListCaches(companyId);
     return this.withPresignedPhotoUrl(saved);
   }
 
@@ -80,6 +106,7 @@ export class StaffService {
     const member = await this.findByIdInternal(companyId, id);
     Object.assign(member, data);
     const saved = await this.staffRepo.save(member);
+    this.invalidateListCaches(companyId);
     return this.withPresignedPhotoUrl(saved);
   }
 
@@ -87,6 +114,7 @@ export class StaffService {
     const member = await this.findByIdInternal(companyId, id);
     member.active = false;
     const saved = await this.staffRepo.save(member);
+    this.invalidateListCaches(companyId);
     return this.withPresignedPhotoUrl(saved);
   }
 
@@ -115,6 +143,7 @@ export class StaffService {
     member.photoUrl = result.path;
     this.presignedUrlCache.delete(result.path);
     const saved = await this.staffRepo.save(member);
+    this.invalidateListCaches(companyId);
     return this.withPresignedPhotoUrl(saved);
   }
 
