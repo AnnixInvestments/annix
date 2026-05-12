@@ -40,6 +40,11 @@ export const cvAssistantTokenStore = new PortalTokenStore({
   refreshToken: "cvAssistantRefreshToken",
 });
 
+export const insightsTokenStore = new PortalTokenStore({
+  accessToken: "insightsAccessToken",
+  refreshToken: "insightsRefreshToken",
+});
+
 /**
  * Every portal-scoped token store, in priority order. Cross-cutting clients
  * (e.g. Nix, which is invoked from any portal) iterate this list to find
@@ -55,6 +60,7 @@ export const ALL_PORTAL_TOKEN_STORES: readonly PortalTokenStore[] = [
   auRubberTokenStore,
   cvAssistantTokenStore,
   teacherAssistantTokenStore,
+  insightsTokenStore,
 ];
 
 /**
@@ -74,6 +80,7 @@ const PORTAL_ROUTE_TO_STORE: ReadonlyArray<{ prefix: string; store: PortalTokenS
   { prefix: "/customer", store: customerTokenStore },
   { prefix: "/annix-rep", store: annixRepTokenStore },
   { prefix: "/teacher-assistant", store: teacherAssistantTokenStore },
+  { prefix: "/insights", store: insightsTokenStore },
 ];
 
 /**
