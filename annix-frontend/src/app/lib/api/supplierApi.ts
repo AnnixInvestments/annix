@@ -318,6 +318,12 @@ export interface RfqItemDetail {
     totalButtWeldLengthM?: number;
     numberOfFlangeWelds?: number;
     totalFlangeWeldLengthM?: number;
+    // HDPE butt-fusion stub-end adapters paired with this pipe's
+    // flange ends. Number of stubs = number of flange ends (FBE → 2,
+    // FOE → 1, PE → 0). stubBoreMm matches the pipe NB for plain
+    // matched flanges; differs only for transition adapters.
+    numberOfStubs?: number;
+    stubBoreMm?: number;
     calculationData?: Record<string, any>;
   };
   bendDetails?: {
