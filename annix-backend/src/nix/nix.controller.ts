@@ -290,6 +290,30 @@ export class NixController {
     return this.sessionService.setQuoteEditorState(id, body.quoteEditorState ?? null);
   }
 
+  @Post("sessions/:id/customer")
+  @UseGuards(AnyUserAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary:
+      "Assign (or clear) the customer for this quote session. companyId is the FK to companies for picks from the master list (or after 'Save for future use'); snapshot is the point-in-time customer-details copy that powers the PDF header. Pass both as null to clear.",
+  })
+  @ApiResponse({ status: 200, type: NixExtractionSession })
+  async setSessionCustomer(
+    @Param("id", ParseIntPipe) id: number,
+    @Body() body: {
+      companyId: number | null;
+      snapshot: Record<string, unknown> | null;
+    },
+    @Req() req: Request,
+  ): Promise<NixExtractionSession> {
+    const authUser = req["authUser"] as AuthenticatedUser;
+    await this.sessionService.findOneForUser(id, authUser.userId, authUser.type === "admin");
+    return this.sessionService.setCustomer(id, {
+      companyId: body.companyId ?? null,
+      snapshot: body.snapshot ?? null,
+    });
+  }
+
   @Get("extraction/:id")
   @ApiOperation({ summary: "Get extraction details by ID" })
   @ApiResponse({

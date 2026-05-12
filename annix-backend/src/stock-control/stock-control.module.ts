@@ -24,6 +24,7 @@ import { StockControlAuthController } from "./controllers/auth.controller";
 import { CertificateController } from "./controllers/certificate.controller";
 import { ChatController } from "./controllers/chat.controller";
 import { CpoController } from "./controllers/cpo.controller";
+import { StockControlCustomersController } from "./controllers/customers.controller";
 import { DashboardController } from "./controllers/dashboard.controller";
 import { DeliveriesController } from "./controllers/deliveries.controller";
 import { GlossaryController } from "./controllers/glossary.controller";
@@ -314,6 +315,7 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
     SupplierDocumentController,
     ChatController,
     ReconciliationController,
+    StockControlCustomersController,
   ],
   providers: [
     StockControlAuthGuard,

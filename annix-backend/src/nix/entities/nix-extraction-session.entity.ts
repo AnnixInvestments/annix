@@ -135,6 +135,22 @@ export class NixExtractionSession {
   @Column({ name: "quote_editor_state", type: "jsonb", nullable: true })
   quoteEditorState?: Record<string, unknown>;
 
+  @ApiProperty({
+    description:
+      "FK to companies.id when the quoter picks an existing customer from the master list (or saves a freshly typed one with 'Save for future use'). Null for one-off customers that exist only on this quote's snapshot. Resolved by GET /stock-control/customers.",
+    required: false,
+  })
+  @Column({ name: "customer_company_id", type: "int", nullable: true })
+  customerCompanyId?: number;
+
+  @ApiProperty({
+    description:
+      "Customer details as they were when this quote was issued — captured for the PDF header so a later edit to the master Company row doesn't retroactively change a quote that's already been sent. Shape: { name, contactPerson, email, phone, vatNumber, registrationNumber, streetAddress, city, province, postalCode, country }.",
+    required: false,
+  })
+  @Column({ name: "customer_snapshot", type: "jsonb", nullable: true })
+  customerSnapshot?: Record<string, unknown>;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

@@ -513,6 +513,8 @@ export interface NixExtractionSessionDto {
    * mirrors what the editor writes back.
    */
   quoteEditorState?: QuoteEditorStateDto | null;
+  customerCompanyId?: number | null;
+  customerSnapshot?: QuoteCustomerSnapshot | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -532,6 +534,44 @@ export interface QuoteEditorStateDto {
   rates: Record<string, unknown>;
   attachments: Record<string, unknown>;
 }
+
+/**
+ * Customer details captured at quote-time for the PDF header. Either copied
+ * from the master picker (companyId set) or freshly typed by the quoter
+ * (companyId null — one-off customer that lives only on this quote).
+ */
+export interface QuoteCustomerSnapshot {
+  name: string;
+  contactPerson: string | null;
+  email: string | null;
+  phone: string | null;
+  vatNumber: string | null;
+  registrationNumber: string | null;
+  streetAddress: string | null;
+  city: string | null;
+  province: string | null;
+  postalCode: string | null;
+  country: string;
+}
+
+export interface SaveQuoteCustomerInput {
+  sessionId: number;
+  companyId: number | null;
+  snapshot: QuoteCustomerSnapshot | null;
+}
+
+export const useSaveQuoteCustomer = createMutationHook<
+  NixExtractionSessionDto,
+  SaveQuoteCustomerInput
+>(
+  ({ sessionId, companyId, snapshot }) =>
+    nixRequest<NixExtractionSessionDto>(`/nix/sessions/${sessionId}/customer`, {
+      method: "POST",
+      body: { companyId, snapshot },
+      errorLabel: "Failed to save customer",
+    }),
+  (_data, vars) => [nixKeys.extractionSessions.detail(vars.sessionId)],
+);
 
 export const useSaveQuoteEditorState = createMutationHook<
   NixExtractionSessionDto,

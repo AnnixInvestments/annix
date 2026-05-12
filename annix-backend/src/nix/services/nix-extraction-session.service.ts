@@ -23,6 +23,8 @@ export interface UpdateNixSessionDto {
   sourceId?: number;
   promotedRef?: string;
   quoteEditorState?: Record<string, unknown>;
+  customerCompanyId?: number | null;
+  customerSnapshot?: Record<string, unknown> | null;
 }
 
 @Injectable()
@@ -142,6 +144,27 @@ export class NixExtractionSessionService extends BaseCrudService<
     state: Record<string, unknown> | null,
   ): Promise<NixExtractionSession> {
     return this.update(id, { quoteEditorState: state ?? undefined });
+  }
+
+  /**
+   * Assigns (or clears) the customer for this session. `companyId` is the
+   * FK to the master companies table when the quoter picked from the
+   * existing list (or saved a new entry to master). `snapshot` is the
+   * point-in-time record of customer details captured at quote time so the
+   * PDF stays stable if the master row is later edited. Pass both as null
+   * to clear the assignment entirely.
+   */
+  async setCustomer(
+    id: number,
+    params: {
+      companyId: number | null;
+      snapshot: Record<string, unknown> | null;
+    },
+  ): Promise<NixExtractionSession> {
+    return this.update(id, {
+      customerCompanyId: params.companyId,
+      customerSnapshot: params.snapshot,
+    });
   }
 
   /**

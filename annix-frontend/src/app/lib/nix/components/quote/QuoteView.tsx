@@ -9,6 +9,7 @@ import {
   useNbToOdMap,
   useSaveQuoteEditorState,
 } from "@/app/lib/query/hooks";
+import { CustomerCard } from "./CustomerCard";
 import { poolItemsBySpec, type QuoteItem, type QuotePool } from "./poolItemsBySpec";
 import { QuoteSpecsEditor } from "./QuoteSpecsEditor";
 import {
@@ -401,11 +402,24 @@ export function QuoteView(props: QuoteViewProps) {
     );
   }
 
+  // Hoist member-access reads off the session DTO before passing to the
+  // CustomerCard — the SWC-safe pattern requires a plain local identifier
+  // on the left of a nullish-fallback operator.
+  const sessionCustomerCompanyId = session.customerCompanyId;
+  const sessionCustomerSnapshot = session.customerSnapshot;
+  const savedCustomerCompanyId = sessionCustomerCompanyId ?? null;
+  const savedCustomerSnapshot = sessionCustomerSnapshot ?? null;
+
   return (
     <div className="space-y-6">
       <div className="flex justify-end">
         <PersistenceChip status={persistenceStatus} />
       </div>
+      <CustomerCard
+        sessionId={session.id}
+        customerCompanyId={savedCustomerCompanyId}
+        customerSnapshot={savedCustomerSnapshot}
+      />
       <QuoteSpecsEditor
         specs={uniqueSpecs}
         overrides={specOverrides}

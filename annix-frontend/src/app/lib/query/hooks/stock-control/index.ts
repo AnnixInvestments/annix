@@ -30,6 +30,12 @@ export {
   useUseCurrentStockDecision,
 } from "./useJobCardDetail";
 export {
+  type NewCustomerInput,
+  type QuoteCustomer,
+  useCreateStockControlCustomer,
+  useStockControlCustomers,
+} from "./useStockControlCustomers";
+export {
   useCpoSummary,
   useDashboardPreferences,
   useDashboardStats,
