@@ -81,11 +81,29 @@ const BRAND_STYLES: Record<ExtractionBrand, BrandStyle> = {
   },
 };
 
+export interface ExtractionBatchContext {
+  // 1-based index of the document currently extracting within the
+  // batch (e.g. 3 of 12).
+  currentIndex: number;
+  // Total documents in this batch.
+  total: number;
+  // Epoch ms when the batch started. Drives "Xs elapsed" on the
+  // batch-level bar.
+  startedAt: number;
+  // Estimated per-document duration in ms (averaged across the
+  // queued types). Drives "~Ys left" on the batch-level bar.
+  avgPerDocMs: number;
+}
+
 export interface ShowExtractionOptions {
   brand: ExtractionBrand;
   label: string;
   estimatedDurationMs: number;
   itemCount?: number;
+  // When set, the modal renders a second progress bar below the
+  // current-document one showing overall batch progress + ETA. Only
+  // surfaced when `batch.total > 1`.
+  batch?: ExtractionBatchContext;
 }
 
 interface ExtractionState extends ShowExtractionOptions {
@@ -188,6 +206,24 @@ function ExtractionProgressModal(props: { state: ExtractionState | null }) {
   const overran = elapsedMs > totalMs;
   const itemCount = state.itemCount;
 
+  // Batch-level progress — only rendered when more than one document
+  // is queued. Combines the current doc's intra-doc progress with
+  // the count of completed docs to give a smooth overall bar.
+  const batch = state.batch;
+  const showBatch = !!batch && batch.total > 1;
+  const batchPercent = showBatch
+    ? Math.min(99, Math.round(((batch.currentIndex - 1 + progress) / batch.total) * 100))
+    : 0;
+  const batchElapsedMs = showBatch ? Math.max(0, nowMillis() - batch.startedAt) : 0;
+  const batchEstimatedTotalMs = showBatch ? batch.avgPerDocMs * batch.total : 0;
+  const batchRemainingMs = showBatch ? Math.max(0, batchEstimatedTotalMs - batchElapsedMs) : 0;
+  const batchRemainingSec = Math.ceil(batchRemainingMs / 1000);
+  const batchElapsedSec = Math.floor(batchElapsedMs / 1000);
+  const batchRemainingDisplay =
+    batchRemainingSec >= 60
+      ? `${Math.floor(batchRemainingSec / 60)}m ${batchRemainingSec % 60}s`
+      : `${batchRemainingSec}s`;
+
   return createPortal(
     <div
       className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
@@ -231,6 +267,29 @@ function ExtractionProgressModal(props: { state: ExtractionState | null }) {
               ? "Taking longer than estimated — still working…"
               : `${percent}% — please leave this window open`}
           </p>
+
+          {showBatch && batch && (
+            <div className="mt-4 pt-3 border-t border-gray-100">
+              <div className="flex items-center justify-between text-[11px] text-gray-700">
+                <span className="font-medium">
+                  Batch progress — document {batch.currentIndex} of {batch.total}
+                </span>
+                <span className="tabular-nums text-gray-500">
+                  {batchElapsedSec}s elapsed
+                  {batchRemainingSec > 0 ? ` · ~${batchRemainingDisplay} left` : ""}
+                </span>
+              </div>
+              <div className="mt-2 h-2 bg-gray-100 rounded-full overflow-hidden">
+                <div
+                  className={`h-full ${styles.bar} opacity-70 transition-all`}
+                  style={{ width: `${batchPercent}%` }}
+                />
+              </div>
+              <p className="mt-1 text-[10px] text-gray-500">
+                {batchPercent}% of the queued documents complete
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>,

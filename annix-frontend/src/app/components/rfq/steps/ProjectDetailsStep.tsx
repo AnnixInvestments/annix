@@ -3,7 +3,10 @@
 import { isNumber, keys } from "es-toolkit/compat";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
+import {
+  type ExtractionBatchContext,
+  useExtractionProgress,
+} from "@/app/components/ExtractionProgressModal";
 import GoogleMapLocationPicker from "@/app/components/GoogleMapLocationPicker";
 import AddMineModal from "@/app/components/rfq/modals/AddMineModal";
 import { AutoFilledInput } from "@/app/components/rfq/shared/AutoFilledField";
@@ -21,7 +24,7 @@ import {
   PRODUCTS_AND_SERVICES,
   PROJECT_TYPES,
 } from "@/app/lib/config/productsServices";
-import { generateUniqueId } from "@/app/lib/datetime";
+import { generateUniqueId, nowMillis } from "@/app/lib/datetime";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import { useEnvironmentalIntelligence } from "@/app/lib/hooks/useEnvironmentalIntelligence";
 import { log } from "@/app/lib/logger";
@@ -134,6 +137,58 @@ export default function ProjectDetailsStep() {
   // attach to it and become the new tail.
   const nixExtractionQueueRef = useRef<Promise<unknown>>(Promise.resolve());
 
+  // Batch context for the extraction progress modal. When the user
+  // drops a pack of N documents at once, every queued task slots
+  // into a single batch so the modal can render an overall progress
+  // bar + ETA in addition to the per-document bar. Reset to null
+  // once the last task in the batch completes.
+  const nixBatchStateRef = useRef<{
+    startedAt: number;
+    total: number;
+    completed: number;
+    totalEstimateMs: number;
+  } | null>(null);
+
+  // Reserve a slot in the active batch (creates one if there isn't
+  // an active batch yet). Called at the moment a task is enqueued.
+  const reserveNixBatchSlot = useCallback((estimatedMs: number) => {
+    if (!nixBatchStateRef.current) {
+      nixBatchStateRef.current = {
+        startedAt: nowMillis(),
+        total: 0,
+        completed: 0,
+        totalEstimateMs: 0,
+      };
+    }
+    nixBatchStateRef.current.total += 1;
+    nixBatchStateRef.current.totalEstimateMs += estimatedMs;
+  }, []);
+
+  // Snapshot the batch state for showExtraction. Returns undefined
+  // when the batch is a singleton (no need to render the overall
+  // bar in that case).
+  const currentNixBatchContext = useCallback((): ExtractionBatchContext | undefined => {
+    const state = nixBatchStateRef.current;
+    if (!state || state.total <= 1) return undefined;
+    return {
+      currentIndex: state.completed + 1,
+      total: state.total,
+      startedAt: state.startedAt,
+      avgPerDocMs: state.totalEstimateMs / state.total,
+    };
+  }, []);
+
+  // Mark a task as complete. When the last task in the batch
+  // finishes, the batch resets so the next drop starts fresh.
+  const releaseNixBatchSlot = useCallback(() => {
+    const state = nixBatchStateRef.current;
+    if (!state) return;
+    state.completed += 1;
+    if (state.completed >= state.total) {
+      nixBatchStateRef.current = null;
+    }
+  }, []);
+
   const runNixBoqExtraction = useCallback(
     async (
       file: File,
@@ -146,6 +201,8 @@ export default function ProjectDetailsStep() {
       // then replaces the tail with a new promise resolving on its
       // own completion. End result — Nix extractions run strictly
       // one-at-a-time even when a customer drops 30 docs at once.
+      const boqEstimatedMs = 30_000;
+      reserveNixBatchSlot(boqEstimatedMs);
       const priorTail = nixExtractionQueueRef.current;
       let releaseQueueSlot: () => void = () => {};
       nixExtractionQueueRef.current = new Promise<void>((resolve) => {
@@ -159,7 +216,8 @@ export default function ProjectDetailsStep() {
       showExtraction({
         brand: "rfq",
         label: `Nix is reading ${file.name} and splitting it into line items…`,
-        estimatedDurationMs: 30_000,
+        estimatedDurationMs: boqEstimatedMs,
+        batch: currentNixBatchContext(),
       });
       try {
         const result = await nixApi.uploadAndProcess(file, {
@@ -225,10 +283,19 @@ export default function ProjectDetailsStep() {
         }
         return null;
       } finally {
+        releaseNixBatchSlot();
         releaseQueueSlot();
       }
     },
-    [showExtraction, hideExtraction, confirm, currentDraftId],
+    [
+      showExtraction,
+      hideExtraction,
+      confirm,
+      currentDraftId,
+      reserveNixBatchSlot,
+      currentNixBatchContext,
+      releaseNixBatchSlot,
+    ],
   );
 
   // Tender-spec extraction. Sends a non-BOQ PDF (specification,
@@ -239,6 +306,8 @@ export default function ProjectDetailsStep() {
   // batch drop processes one-at-a-time.
   const runNixTenderSpecExtraction = useCallback(
     async (file: File): Promise<void> => {
+      const specEstimatedMs = 20_000;
+      reserveNixBatchSlot(specEstimatedMs);
       const priorTail = nixExtractionQueueRef.current;
       let releaseQueueSlot: () => void = () => {};
       nixExtractionQueueRef.current = new Promise<void>((resolve) => {
@@ -252,7 +321,8 @@ export default function ProjectDetailsStep() {
       showExtraction({
         brand: "rfq",
         label: `Nix is reading ${file.name} for specs…`,
-        estimatedDurationMs: 20_000,
+        estimatedDurationMs: specEstimatedMs,
+        batch: currentNixBatchContext(),
       });
       try {
         const result = await nixApi.uploadAndProcess(file, {
@@ -281,10 +351,19 @@ export default function ProjectDetailsStep() {
         // specs manually if needed.
         log.warn(`Nix tender-spec extraction failed for ${file.name}:`, err);
       } finally {
+        releaseNixBatchSlot();
         releaseQueueSlot();
       }
     },
-    [showExtraction, hideExtraction, mergeSpecMetadataIntoGlobalSpecs, currentDraftId],
+    [
+      showExtraction,
+      hideExtraction,
+      mergeSpecMetadataIntoGlobalSpecs,
+      currentDraftId,
+      reserveNixBatchSlot,
+      currentNixBatchContext,
+      releaseNixBatchSlot,
+    ],
   );
 
   const applyEmailMetadataToCustomerFields = useCallback(
