@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, Briefcase, Eye, EyeOff, ListChecks, TrendingUp } from "lucide-react";
+import { ArrowRight, Briefcase, Eye, EyeOff, ListChecks, Signal, TrendingUp } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import PortalToolbar, { type NavItem } from "@/app/components/PortalToolbar";
@@ -182,6 +182,20 @@ function InsightsDashboard(props: { userEmail: string }) {
             <p className="text-sm text-gray-400 mt-1">
               Six fake-money portfolios running side-by-side — empirical answer to "is the signal
               engine actually any good?"
+            </p>
+          </Link>
+          <Link
+            href="/insights/signals"
+            className="group bg-gray-900/50 border border-gray-800 rounded-2xl p-6 hover:border-[#D4AF37] hover:bg-gray-900/70 transition-colors"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <Signal className="w-6 h-6 text-[#D4AF37]" strokeWidth={2} />
+              <ArrowRight className="w-4 h-4 text-gray-500 group-hover:text-[#D4AF37] transition-colors" />
+            </div>
+            <h3 className="text-base font-semibold">Signals</h3>
+            <p className="text-sm text-gray-400 mt-1">
+              Daily 0-100 scores per asset across five signals. Phase 6 wires them to the four
+              non-benchmark portfolios.
             </p>
           </Link>
         </div>

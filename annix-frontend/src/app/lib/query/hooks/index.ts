@@ -685,6 +685,10 @@ export {
   usePaperTrades,
 } from "./insights/usePaperPortfolios";
 export {
+  useSignalHistory,
+  useSignalsLatest,
+} from "./insights/useSignals";
+export {
   useAddToWatchlist,
   useRemoveFromWatchlist,
   useWatchlist,

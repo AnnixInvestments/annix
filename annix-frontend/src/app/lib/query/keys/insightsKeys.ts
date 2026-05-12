@@ -12,4 +12,7 @@ export const insightsKeys = {
     ["insights", "paper-portfolios", slug, "trades", limit ?? "default"] as const,
   paperSnapshots: (slug: string, limit?: number) =>
     ["insights", "paper-portfolios", slug, "snapshots", limit ?? "default"] as const,
+  signalsLatest: () => ["insights", "signals", "latest"] as const,
+  signalHistory: (symbol: string, limit?: number) =>
+    ["insights", "signals", symbol, "history", limit ?? "default"] as const,
 } as const;

@@ -209,6 +209,18 @@ export const insightsApi = {
     },
   },
 
+  signals: {
+    latest(): Promise<SignalSnapshotResponse[]> {
+      return apiClient.get<SignalSnapshotResponse[]>("/insights/signals/latest");
+    },
+    history(symbol: string, limit?: number): Promise<SignalSnapshotResponse[]> {
+      const query = limit ? `?limit=${limit}` : "";
+      return apiClient.get<SignalSnapshotResponse[]>(
+        `/insights/signals/${encodeURIComponent(symbol)}/history${query}`,
+      );
+    },
+  },
+
   paperPortfolios: {
     list(): Promise<PaperPortfolioSummary[]> {
       return apiClient.get<PaperPortfolioSummary[]>("/insights/paper-portfolios");
@@ -301,6 +313,38 @@ export interface PaperPortfolioSummary {
   valueSparkline: number[];
   maxDrawdownPercent: number;
   volatilityScore: number;
+}
+
+export interface SignalComponentBreakdown {
+  momentum: { score: number; roc20: number | null; smaCrossover: number | null };
+  valuation: { score: number; trailingPe: number | null; medianPe: number | null };
+  newsSentiment: { score: number; source: string };
+  sectorTrend: {
+    score: number;
+    sector: string | null;
+    etf: string | null;
+    etfRoc20: number | null;
+  };
+  drawdownRisk: { score: number; weekHigh52: number | null; distanceFromHighPct: number };
+  inputsAvailable: number;
+  inputsMissing: string[];
+}
+
+export interface SignalSnapshotResponse {
+  symbol: string;
+  name: string;
+  sector: string | null;
+  snapshotDate: string;
+  momentumScore: number;
+  valuationScore: number;
+  newsSentimentScore: number;
+  sectorTrendScore: number;
+  drawdownRiskScore: number;
+  opportunityScore: number;
+  riskScore: number;
+  confidenceScore: number;
+  componentBreakdown: SignalComponentBreakdown;
+  marketRegime: string;
 }
 
 export interface PaperPortfolioSnapshot {

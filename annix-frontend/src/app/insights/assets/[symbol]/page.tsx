@@ -7,13 +7,16 @@ import { useMemo, useState } from "react";
 import PortalToolbar, { type NavItem } from "@/app/components/PortalToolbar";
 import { useToast } from "@/app/components/Toast";
 import { ApiError } from "@/app/lib/api/apiError";
-import { insightsApi, type PriceBar } from "@/app/lib/api/insightsApi";
+import { insightsApi, type PriceBar, type SignalSnapshotResponse } from "@/app/lib/api/insightsApi";
 import { fromISO, nowISO } from "@/app/lib/datetime";
 import { useAdaptiveExtractionProgress } from "@/app/lib/hooks/useAdaptiveExtractionProgress";
-import { useAssetHistory, useInvalidateAssetData } from "@/app/lib/query/hooks";
+import { useAssetHistory, useInvalidateAssetData, useSignalHistory } from "@/app/lib/query/hooks";
 import { PriceChart } from "../../components/PriceChart";
+import { Sparkline } from "../../components/Sparkline";
 import { INSIGHTS_VERSION } from "../../config/version";
 import { useInsightsAuth } from "../../context/InsightsAuthContext";
+import { ScoreBar } from "../../signals/components/ScoreBar";
+import { SignalBreakdown } from "../../signals/components/SignalBreakdown";
 
 const NAV_ITEMS: NavItem[] = [];
 
@@ -52,6 +55,7 @@ export default function InsightsAssetDetailPage() {
   const rangeMeta = RANGES.find((r) => r.value === range) ?? RANGES[2];
   const fromIso = fromIsoForRange(rangeMeta.days);
   const historyQuery = useAssetHistory(symbol, fromIso);
+  const signalHistoryQuery = useSignalHistory(symbol, 90);
 
   if (isLoading) {
     return (
@@ -85,6 +89,9 @@ export default function InsightsAssetDetailPage() {
 
   const queryData = historyQuery.data;
   const bars: PriceBar[] = queryData ?? [];
+  const signalQueryData = signalHistoryQuery.data;
+  const signalHistory: SignalSnapshotResponse[] = signalQueryData ?? [];
+  const latestSignal = signalHistory.length > 0 ? signalHistory[signalHistory.length - 1] : null;
   const latestBar = bars.length > 0 ? bars[bars.length - 1] : null;
   const firstBar = bars.length > 0 ? bars[0] : null;
   const rangeChange =
@@ -222,7 +229,63 @@ export default function InsightsAssetDetailPage() {
             </>
           )}
         </div>
+
+        {latestSignal ? (
+          <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="lg:col-span-2 bg-gray-900/50 border border-gray-800 rounded-2xl p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400">
+                  Latest signal · {latestSignal.snapshotDate}
+                </h2>
+                <span className="text-xs text-gray-500 font-mono">
+                  {signalHistory.length} day{signalHistory.length === 1 ? "" : "s"}
+                </span>
+              </div>
+              <div className="grid grid-cols-3 gap-4 mb-4">
+                <SignalStat
+                  label="Opportunity"
+                  value={latestSignal.opportunityScore}
+                  variant="opportunity"
+                />
+                <SignalStat label="Risk" value={latestSignal.riskScore} variant="risk" />
+                <SignalStat
+                  label="Confidence"
+                  value={latestSignal.confidenceScore}
+                  variant="confidence"
+                />
+              </div>
+              <SignalBreakdown signal={latestSignal} />
+            </div>
+            <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-4">
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 mb-3">
+                Opportunity score over 90 days
+              </h2>
+              {signalHistory.length > 1 ? (
+                <Sparkline
+                  closes={signalHistory.map((s) => s.opportunityScore)}
+                  width={300}
+                  height={180}
+                />
+              ) : (
+                <p className="text-xs text-gray-500">Need ≥ 2 daily snapshots.</p>
+              )}
+            </div>
+          </div>
+        ) : null}
       </main>
+    </div>
+  );
+}
+
+function SignalStat(props: {
+  label: string;
+  value: number;
+  variant: "opportunity" | "risk" | "confidence";
+}) {
+  return (
+    <div>
+      <div className="text-xs uppercase tracking-wider text-gray-500 mb-1">{props.label}</div>
+      <ScoreBar value={props.value} variant={props.variant} />
     </div>
   );
 }
