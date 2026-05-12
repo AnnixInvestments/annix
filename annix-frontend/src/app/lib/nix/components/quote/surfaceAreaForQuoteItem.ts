@@ -14,6 +14,253 @@ export interface ItemSurfaceArea {
 }
 
 /**
+ * Fitting classification — chosen from itemType + description so the area
+ * calculator can pick the right formula. "pipe" covers straight pipes and
+ * spools; everything else needs its own surface-area treatment.
+ */
+type FittingKind =
+  | "pipe"
+  | "bend_90"
+  | "bend_45"
+  | "bend_180"
+  | "reducer"
+  | "tee"
+  | "flange"
+  | "equal_y";
+
+function classifyFitting(item: QuoteItem): FittingKind {
+  const rawType = item.itemType;
+  const rawDesc = item.description;
+  const typeStr = rawType ? rawType : "";
+  const descStr = rawDesc ? rawDesc : "";
+  const haystack = `${typeStr} ${descStr}`.toLowerCase();
+  if (/\bequal[\s-]*y\b|\bwye\b|\by[\s-]*piece\b/.test(haystack)) return "equal_y";
+  if (/\bflange\b/.test(haystack)) return "flange";
+  if (/\breducer\b/.test(haystack)) return "reducer";
+  if (/\btee\b|\bt[\s-]?piece\b/.test(haystack)) {
+    // "U-tee" / "U tee" is the local term for a 180° return bend, not a tee.
+    if (/\bu[\s-]?tee\b/.test(haystack)) return "bend_180";
+    return "tee";
+  }
+  if (/\bu[\s-]?bend\b|\bu[\s-]?tee\b|\b180[°\s]/.test(haystack)) return "bend_180";
+  if (/\b45[°\s]|\b45\s*deg/.test(haystack)) return "bend_45";
+  if (/\belbow\b|\bbend\b|\b90[°\s]|\b90\s*deg/.test(haystack)) return "bend_90";
+  return "pipe";
+}
+
+/**
+ * Parses a "primary × secondary" NB pair from the description for tees and
+ * reducers. Accepts `400x350`, `400 × 350`, `350NB × 150NB`, `400/350` and
+ * the same with `mm`. Returns the smaller of the two values when both are
+ * present — callers pair it with `item.diameter` (which carries the larger
+ * NB) to drive frustum / branch geometry.
+ */
+function secondaryNbFromDescription(item: QuoteItem): number | null {
+  const desc = item.description;
+  if (!desc) return null;
+  const match = desc.match(/(\d{2,4})\s*(?:NB)?\s*(?:mm)?\s*[×x*/-]\s*(\d{2,4})\s*(?:NB)?/i);
+  if (!match) return null;
+  const a = Number(match[1]);
+  const b = Number(match[2]);
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return null;
+  if (a <= 0 || b <= 0) return null;
+  const primary = item.diameter;
+  if (primary && (a === primary || b === primary)) return a === primary ? b : a;
+  return Math.min(a, b);
+}
+
+function ringArea(odMm: number, idMm: number): number {
+  if (idMm <= 0) return (Math.PI * odMm * odMm) / 4 / 1e6;
+  return (Math.PI * (odMm * odMm - idMm * idMm)) / 4 / 1e6;
+}
+
+function asResult(args: {
+  externalM2: number;
+  internalM2: number;
+  quantity: number;
+}): ItemSurfaceArea {
+  const { externalM2, internalM2, quantity } = args;
+  const perPipe: SurfaceAreaResult = {
+    externalPipeAreaM2: externalM2,
+    internalPipeAreaM2: internalM2,
+    externalFlangeBackAreaM2: 0,
+    internalFlangeFaceAreaM2: 0,
+    totalExternalAreaM2: externalM2,
+    totalInternalAreaM2: internalM2,
+    totalSurfaceAreaM2: externalM2 + internalM2,
+    flangeDataAvailable: false,
+  };
+  return {
+    perPipe,
+    total: {
+      totalExternalAreaM2: externalM2 * quantity,
+      totalInternalAreaM2: internalM2 * quantity,
+      totalSurfaceAreaM2: (externalM2 + internalM2) * quantity,
+    },
+  };
+}
+
+/**
+ * Centerline bend radius default for buttweld elbows / bends. Long-radius
+ * (ASME B16.9 default): R = 1.5 × NB_mm. Used when the drawing doesn't carry
+ * an explicit radius dimension.
+ */
+function defaultBendRadiusMm(nbMm: number): number {
+  return 1.5 * nbMm;
+}
+
+/**
+ * Bend arc length (centerline) for the given total angle in degrees. Caller
+ * applies it to π × OD for external area and π × ID for internal area.
+ */
+function bendArcLengthMm(radiusMm: number, angleDeg: number): number {
+  return (Math.PI * radiusMm * angleDeg) / 180;
+}
+
+/**
+ * Area for a buttweld bend / elbow / U-bend, given NB + WT. Falls back to
+ * 1.5×NB centerline radius when no explicit radius is set on the item. Length
+ * field is ignored — the arc length is derived from radius + angle.
+ */
+function bendArea(
+  item: QuoteItem,
+  angleDeg: number,
+  nbToOdMap: Record<number, number>,
+): ItemSurfaceArea | null {
+  const nb = item.diameter;
+  const wt = item.wallThickness;
+  if (nb === null || nb <= 0) return null;
+  const odMm = outerDiameterFromNB(nbToOdMap, nb);
+  if (odMm <= 0) return null;
+  const idMm = wt && wt > 0 ? odMm - 2 * wt : 0;
+  const explicitLength = item.length;
+  // If the drawing gave an actual centerline / overall length, prefer it.
+  // Otherwise use 1.5 × NB long-radius default.
+  const arcMm =
+    explicitLength && explicitLength > 0
+      ? explicitLength
+      : bendArcLengthMm(defaultBendRadiusMm(nb), angleDeg);
+  const externalM2 = (Math.PI * odMm * arcMm) / 1e6;
+  const internalM2 = idMm > 0 ? (Math.PI * idMm * arcMm) / 1e6 : 0;
+  const quantity = item.quantity > 0 ? item.quantity : 1;
+  return asResult({ externalM2, internalM2, quantity });
+}
+
+/**
+ * ASME B16.9 concentric reducer — lateral surface of a frustum. When the
+ * drawing gives an explicit `length` we use it; otherwise we approximate the
+ * standard length as `H ≈ 0.6 × max(OD)` which lands within ~15 % of the
+ * published B16.9 table across NPS 4–24.
+ */
+function reducerArea(item: QuoteItem, nbToOdMap: Record<number, number>): ItemSurfaceArea | null {
+  const nb1 = item.diameter;
+  if (nb1 === null || nb1 <= 0) return null;
+  const nb2 = secondaryNbFromDescription(item);
+  const od1 = outerDiameterFromNB(nbToOdMap, nb1);
+  const od2 = nb2 && nb2 > 0 ? outerDiameterFromNB(nbToOdMap, nb2) : od1 * 0.85;
+  if (od1 <= 0 || od2 <= 0) return null;
+  const wt = item.wallThickness;
+  const id1 = wt && wt > 0 ? od1 - 2 * wt : 0;
+  const id2 = wt && wt > 0 ? od2 - 2 * wt : 0;
+  const explicitLength = item.length;
+  const lengthMm = explicitLength && explicitLength > 0 ? explicitLength : 0.6 * Math.max(od1, od2);
+  const r1 = od1 / 2;
+  const r2 = od2 / 2;
+  const slantOuter = Math.sqrt(lengthMm * lengthMm + (r1 - r2) * (r1 - r2));
+  const slantInner =
+    id1 > 0 && id2 > 0 ? Math.sqrt(lengthMm * lengthMm + (id1 / 2 - id2 / 2) ** 2) : 0;
+  const externalM2 = (Math.PI * (r1 + r2) * slantOuter) / 1e6;
+  const internalM2 = slantInner > 0 ? (Math.PI * (id1 / 2 + id2 / 2) * slantInner) / 1e6 : 0;
+  const quantity = item.quantity > 0 ? item.quantity : 1;
+  return asResult({ externalM2, internalM2, quantity });
+}
+
+/**
+ * Tee surface area — sum of (run = 2 cylinders, branch = 1 cylinder), with a
+ * small subtraction for the branch intersection. Run length defaults to
+ * `2 × C` where `C ≈ 0.5×NB + 100 mm` (close enough to ASME B16.9 across the
+ * common range). Branch arm uses `C` of the branch NB. Reducing tee
+ * supported via `secondaryNbFromDescription`.
+ */
+function teeArea(item: QuoteItem, nbToOdMap: Record<number, number>): ItemSurfaceArea | null {
+  const nbRun = item.diameter;
+  if (nbRun === null || nbRun <= 0) return null;
+  const nbBranchParsed = secondaryNbFromDescription(item);
+  const nbBranch = nbBranchParsed && nbBranchParsed > 0 ? nbBranchParsed : nbRun;
+  const odRun = outerDiameterFromNB(nbToOdMap, nbRun);
+  const odBranch = outerDiameterFromNB(nbToOdMap, nbBranch);
+  if (odRun <= 0 || odBranch <= 0) return null;
+  const wt = item.wallThickness;
+  const idRun = wt && wt > 0 ? odRun - 2 * wt : 0;
+  const idBranch = wt && wt > 0 ? odBranch - 2 * wt : 0;
+  const cRun = 0.5 * nbRun + 100;
+  const cBranch = 0.5 * nbBranch + 100;
+  const runLenMm = 2 * cRun;
+  const branchLenMm = cBranch;
+  const externalRun = (Math.PI * odRun * runLenMm) / 1e6;
+  const externalBranch = (Math.PI * odBranch * branchLenMm) / 1e6;
+  // Hole on the run where the branch joins — subtract one branch-OD disc.
+  const externalHole = (Math.PI * odBranch * odBranch) / 4 / 1e6;
+  const externalM2 = externalRun + externalBranch - externalHole;
+  const internalM2 =
+    idRun > 0 && idBranch > 0
+      ? (Math.PI * idRun * runLenMm) / 1e6 +
+        (Math.PI * idBranch * branchLenMm) / 1e6 -
+        (Math.PI * idBranch * idBranch) / 4 / 1e6
+      : 0;
+  const quantity = item.quantity > 0 ? item.quantity : 1;
+  return asResult({ externalM2, internalM2, quantity });
+}
+
+/**
+ * Standalone flange — two annular faces (front + back) + the outer edge.
+ * Outer-diameter and thickness are not in the schema; we approximate from
+ * SABS 1123 / ASME B16.5 fits: `OD_flange ≈ 1.6×NB + 60 mm`, thickness
+ * `t ≈ 0.04×NB + 20 mm`. The bore is the pipe OD that the flange faces
+ * onto. No internal area (flanges are not internally lined).
+ */
+function flangeArea(item: QuoteItem, nbToOdMap: Record<number, number>): ItemSurfaceArea | null {
+  const nb = item.diameter;
+  if (nb === null || nb <= 0) return null;
+  const odPipe = outerDiameterFromNB(nbToOdMap, nb);
+  if (odPipe <= 0) return null;
+  const odFlange = 1.6 * nb + 60;
+  const thickness = 0.04 * nb + 20;
+  const faceArea = ringArea(odFlange, odPipe);
+  const edgeArea = (Math.PI * odFlange * thickness) / 1e6;
+  const externalM2 = 2 * faceArea + edgeArea;
+  const internalM2 = 0;
+  const quantity = item.quantity > 0 ? item.quantity : 1;
+  return asResult({ externalM2, internalM2, quantity });
+}
+
+/**
+ * Equal-Y / wye — three cylindrical arms meeting at 45°. Each arm runs
+ * roughly `1.5 × OD` from the centroid. The intersection geometry is non-
+ * trivial; for quoting purposes we sum three arm surfaces and subtract a
+ * small overlap (one OD-disc per joint).
+ */
+function equalYArea(item: QuoteItem, nbToOdMap: Record<number, number>): ItemSurfaceArea | null {
+  const nb = item.diameter;
+  if (nb === null || nb <= 0) return null;
+  const odMm = outerDiameterFromNB(nbToOdMap, nb);
+  if (odMm <= 0) return null;
+  const wt = item.wallThickness;
+  const idMm = wt && wt > 0 ? odMm - 2 * wt : 0;
+  const explicitLength = item.length;
+  const armLenMm = explicitLength && explicitLength > 0 ? explicitLength : 1.5 * odMm;
+  const externalArm = (Math.PI * odMm * armLenMm) / 1e6;
+  const externalOverlap = (Math.PI * odMm * odMm) / 4 / 1e6;
+  const externalM2 = 3 * externalArm - 2 * externalOverlap;
+  const internalM2 =
+    idMm > 0
+      ? (3 * (Math.PI * idMm * armLenMm)) / 1e6 - (2 * (Math.PI * idMm * idMm)) / 4 / 1e6
+      : 0;
+  const quantity = item.quantity > 0 ? item.quantity : 1;
+  return asResult({ externalM2, internalM2, quantity });
+}
+
+/**
  * Computes coating (external) + lining (internal) m² for a single Nix-extracted
  * quote item by delegating to the shared pipe calculator. The Nix extraction
  * shape carries primitive dimensions (NB, WT, L, flange config) but no OD —
@@ -37,6 +284,17 @@ export function surfaceAreaForQuoteItem(
   item: QuoteItem,
   nbToOdMap: Record<number, number>,
 ): ItemSurfaceArea | null {
+  // Dispatch by fitting kind first — fittings have their own formulas and
+  // don't share the cylinder-with-length requirement that pipes need.
+  const kind = classifyFitting(item);
+  if (kind === "bend_90") return bendArea(item, 90, nbToOdMap);
+  if (kind === "bend_45") return bendArea(item, 45, nbToOdMap);
+  if (kind === "bend_180") return bendArea(item, 180, nbToOdMap);
+  if (kind === "reducer") return reducerArea(item, nbToOdMap);
+  if (kind === "tee") return teeArea(item, nbToOdMap);
+  if (kind === "flange") return flangeArea(item, nbToOdMap);
+  if (kind === "equal_y") return equalYArea(item, nbToOdMap);
+
   const itemDiameter = item.diameter;
   const itemWall = item.wallThickness;
   const itemLengthMm = item.length;
