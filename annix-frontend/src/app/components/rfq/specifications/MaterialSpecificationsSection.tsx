@@ -61,7 +61,7 @@ interface MaterialWarningLimits {
 export interface MaterialWarning {
   show: boolean;
   specName: string;
-  specId: number | undefined;
+  specId: number | null;
   warnings: string[];
   recommendation?: string;
   limits?: MaterialWarningLimits;
@@ -69,10 +69,10 @@ export interface MaterialWarning {
 
 export interface PTRecommendations {
   validPressureClasses: ValidPressureClassInfo[];
-  recommendedPressureClassId?: number;
+  recommendedPressureClassId?: number | null;
   validation?: {
     isValid: boolean;
-    warningMessage?: string;
+    warningMessage?: string | null;
   };
 }
 
@@ -95,7 +95,7 @@ export interface MaterialSpecificationsSectionProps {
   };
   availablePressureClasses: Array<{ id: number; designation: string }>;
   fetchAndSelectPressureClass: (
-    standardId: number | string,
+    standardId: number,
     pressureBar?: number,
     temperatureC?: number,
     materialGroup?: string,
@@ -306,10 +306,16 @@ export function MaterialSpecificationsSection(props: MaterialSpecificationsSecti
     }
 
     try {
-      if (specId && globalSpecs?.flangeStandardId && globalSpecs?.workingPressureBar) {
+      const rawFlangeStandardId = globalSpecs?.flangeStandardId;
+      if (
+        specId &&
+        rawFlangeStandardId &&
+        isNumber(rawFlangeStandardId) &&
+        globalSpecs?.workingPressureBar
+      ) {
         const materialGroup = getFlangeMaterialGroup(newSteelSpec?.steelSpecName);
         recommendedPressureClassId = await fetchAndSelectPressureClass(
-          globalSpecs.flangeStandardId,
+          rawFlangeStandardId,
           globalSpecs.workingPressureBar,
           globalSpecs.workingTemperatureC,
           materialGroup,
