@@ -11,6 +11,7 @@ import { YahooMarketDataService, type YahooNewsArticle } from "./yahoo-market-da
 
 const METRIC_CATEGORY = "insights-news";
 const ARTICLES_PER_SYMBOL = 10;
+const BYTES_PER_NEWS_ROW = 500;
 const VALID_IMPACT_LEVELS: NewsImpactLevel[] = ["low", "medium", "high"];
 
 interface ExtractedNewsFields {
@@ -46,41 +47,46 @@ export class NewsIngestionService {
   ) {}
 
   async runDailyPull(): Promise<NewsPullResult> {
-    return this.metrics.time(METRIC_CATEGORY, "daily-pull", async () => {
-      const assets = await this.assetRepo.find({ where: { isActive: true } });
-      let articlesFound = 0;
-      let articlesPersisted = 0;
-      let articlesExtracted = 0;
-      let articlesFailed = 0;
-      const symbolFailures: string[] = [];
+    return this.metrics.time(
+      METRIC_CATEGORY,
+      "daily-pull",
+      async () => {
+        const assets = await this.assetRepo.find({ where: { isActive: true } });
+        let articlesFound = 0;
+        let articlesPersisted = 0;
+        let articlesExtracted = 0;
+        let articlesFailed = 0;
+        const symbolFailures: string[] = [];
 
-      for (const asset of assets) {
-        try {
-          const articles = await this.yahoo.fetchNews(asset.symbol, ARTICLES_PER_SYMBOL);
-          for (const article of articles) {
-            articlesFound++;
-            const persisted = await this.ingestArticle(article);
-            if (persisted === "skipped") continue;
-            articlesPersisted++;
-            if (persisted === "extracted") articlesExtracted++;
-            else articlesFailed++;
+        for (const asset of assets) {
+          try {
+            const articles = await this.yahoo.fetchNews(asset.symbol, ARTICLES_PER_SYMBOL);
+            for (const article of articles) {
+              articlesFound++;
+              const persisted = await this.ingestArticle(article);
+              if (persisted === "skipped") continue;
+              articlesPersisted++;
+              if (persisted === "extracted") articlesExtracted++;
+              else articlesFailed++;
+            }
+          } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            this.logger.warn(`Yahoo news fetch failed for ${asset.symbol}: ${message}`);
+            symbolFailures.push(asset.symbol);
           }
-        } catch (error) {
-          const message = error instanceof Error ? error.message : String(error);
-          this.logger.warn(`Yahoo news fetch failed for ${asset.symbol}: ${message}`);
-          symbolFailures.push(asset.symbol);
         }
-      }
 
-      return {
-        symbolsProcessed: assets.length,
-        articlesFound,
-        articlesPersisted,
-        articlesExtracted,
-        articlesFailed,
-        symbolFailures,
-      };
-    });
+        return {
+          symbolsProcessed: assets.length,
+          articlesFound,
+          articlesPersisted,
+          articlesExtracted,
+          articlesFailed,
+          symbolFailures,
+        };
+      },
+      (result) => result.articlesPersisted * BYTES_PER_NEWS_ROW,
+    );
   }
 
   private async ingestArticle(

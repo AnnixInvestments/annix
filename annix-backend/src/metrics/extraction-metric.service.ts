@@ -174,16 +174,27 @@ export class ExtractionMetricService {
     category: string,
     operation: string,
     fn: () => Promise<T>,
-    payloadSizeBytes?: number,
+    bytesOption?: number | ((result: T) => number),
   ): Promise<T> {
     const start = Date.now();
     let succeeded = false;
+    let result: T | undefined;
     try {
-      const result = await fn();
+      result = await fn();
       succeeded = true;
       return result;
     } finally {
       const durationMs = Date.now() - start;
+      let payloadSizeBytes: number | undefined;
+      if (typeof bytesOption === "number") {
+        payloadSizeBytes = bytesOption;
+      } else if (typeof bytesOption === "function" && succeeded && result !== undefined) {
+        try {
+          payloadSizeBytes = bytesOption(result);
+        } catch {
+          // bytes-derivation must never break the wrapped call
+        }
+      }
       this.record({ category, operation, durationMs, payloadSizeBytes, succeeded });
     }
   }

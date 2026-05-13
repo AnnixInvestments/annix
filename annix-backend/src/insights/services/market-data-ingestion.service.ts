@@ -17,6 +17,7 @@ export interface IngestResult {
 
 const DEFAULT_BACKFILL_YEARS = 20;
 const METRIC_CATEGORY = "insights-market-data";
+const BYTES_PER_PRICE_ROW = 80;
 
 @Injectable()
 export class MarketDataIngestionService {
@@ -39,32 +40,42 @@ export class MarketDataIngestionService {
 
   async backfillForAsset(asset: Asset, from?: Date): Promise<IngestResult> {
     const since = from ?? defaultBackfillStart();
-    return this.metrics.time(METRIC_CATEGORY, "backfill", async () => {
-      const bars = await this.yahoo.fetchHistorical(asset.symbol, since);
-      return this.persistBars(asset, bars);
-    });
+    return this.metrics.time(
+      METRIC_CATEGORY,
+      "backfill",
+      async () => {
+        const bars = await this.yahoo.fetchHistorical(asset.symbol, since);
+        return this.persistBars(asset, bars);
+      },
+      (result) => result.inserted * BYTES_PER_PRICE_ROW,
+    );
   }
 
   async incrementalUpdate(asset: Asset): Promise<IngestResult> {
-    return this.metrics.time(METRIC_CATEGORY, "daily-snapshot", async () => {
-      const latestRow = await this.historyRepo.findOne({
-        where: { assetId: asset.id },
-        order: { date: "DESC" },
-      });
-      const today = now().toISODate();
-      if (latestRow && today !== null && latestRow.date >= today) {
-        return {
-          symbol: asset.symbol,
-          inserted: 0,
-          skipped: 0,
-          earliestDate: null,
-          latestDate: latestRow.date,
-        };
-      }
-      const since = latestRow ? incrementDate(latestRow.date) : defaultBackfillStart();
-      const bars = await this.yahoo.fetchHistorical(asset.symbol, since);
-      return this.persistBars(asset, bars);
-    });
+    return this.metrics.time(
+      METRIC_CATEGORY,
+      "daily-snapshot",
+      async () => {
+        const latestRow = await this.historyRepo.findOne({
+          where: { assetId: asset.id },
+          order: { date: "DESC" },
+        });
+        const today = now().toISODate();
+        if (latestRow && today !== null && latestRow.date >= today) {
+          return {
+            symbol: asset.symbol,
+            inserted: 0,
+            skipped: 0,
+            earliestDate: null,
+            latestDate: latestRow.date,
+          };
+        }
+        const since = latestRow ? incrementDate(latestRow.date) : defaultBackfillStart();
+        const bars = await this.yahoo.fetchHistorical(asset.symbol, since);
+        return this.persistBars(asset, bars);
+      },
+      (result) => result.inserted * BYTES_PER_PRICE_ROW,
+    );
   }
 
   async runDailySnapshot(): Promise<{ totalInserted: number; failed: string[] }> {

@@ -12,6 +12,7 @@ import { type SignalComponentBreakdown, SignalSnapshot } from "../entities/signa
 const METRIC_CATEGORY = "insights-signal-engine";
 const NEWS_LOOKBACK_HOURS = 48;
 const NEWS_MAX_ARTICLES = 20;
+const BYTES_PER_SIGNAL_SNAPSHOT = 300;
 
 interface ComputedSignals {
   momentum: { score: number; roc20: number | null; smaCrossover: number | null };
@@ -51,23 +52,28 @@ export class SignalEngineService {
   ) {}
 
   async runDailySnapshot(): Promise<SignalRunResult> {
-    return this.metrics.time(METRIC_CATEGORY, "daily-score", async () => {
-      const assets = await this.assetRepo.find({ where: { isActive: true } });
-      let scored = 0;
-      let skipped = 0;
-      for (const asset of assets) {
-        try {
-          const success = await this.scoreOne(asset);
-          if (success) scored += 1;
-          else skipped += 1;
-        } catch (error) {
-          const message = error instanceof Error ? error.message : String(error);
-          this.logger.warn(`Signal score failed for ${asset.symbol}: ${message}`);
-          skipped += 1;
+    return this.metrics.time(
+      METRIC_CATEGORY,
+      "daily-score",
+      async () => {
+        const assets = await this.assetRepo.find({ where: { isActive: true } });
+        let scored = 0;
+        let skipped = 0;
+        for (const asset of assets) {
+          try {
+            const success = await this.scoreOne(asset);
+            if (success) scored += 1;
+            else skipped += 1;
+          } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            this.logger.warn(`Signal score failed for ${asset.symbol}: ${message}`);
+            skipped += 1;
+          }
         }
-      }
-      return { totalAssets: assets.length, scored, skipped };
-    });
+        return { totalAssets: assets.length, scored, skipped };
+      },
+      (result) => result.scored * BYTES_PER_SIGNAL_SNAPSHOT,
+    );
   }
 
   private async scoreOne(asset: Asset): Promise<boolean> {

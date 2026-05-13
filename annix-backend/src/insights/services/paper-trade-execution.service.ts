@@ -23,6 +23,7 @@ export interface ExecutionResult {
 }
 
 const METRIC_CATEGORY = "insights-portfolio-exec";
+const BYTES_PER_TRADE_ROW = 400;
 
 @Injectable()
 export class PaperTradeExecutionService {
@@ -74,21 +75,26 @@ export class PaperTradeExecutionService {
       };
     }
 
-    return this.metrics.time(METRIC_CATEGORY, portfolio.slug, async () => {
-      const decisions = await this.rulesEngine.evaluateOne(portfolio);
-      if (decisions.decisions.length === 0) {
-        return {
-          portfolioSlug: portfolio.slug,
-          buysExecuted: 0,
-          sellsExecuted: 0,
-          cashDeployed: 0,
-          cashRaised: 0,
-          skipped: false,
-          skipReason: null,
-        };
-      }
-      return this.applyDecisions(portfolio, decisions);
-    });
+    return this.metrics.time(
+      METRIC_CATEGORY,
+      portfolio.slug,
+      async () => {
+        const decisions = await this.rulesEngine.evaluateOne(portfolio);
+        if (decisions.decisions.length === 0) {
+          return {
+            portfolioSlug: portfolio.slug,
+            buysExecuted: 0,
+            sellsExecuted: 0,
+            cashDeployed: 0,
+            cashRaised: 0,
+            skipped: false,
+            skipReason: null,
+          };
+        }
+        return this.applyDecisions(portfolio, decisions);
+      },
+      (result) => (result.buysExecuted + result.sellsExecuted) * BYTES_PER_TRADE_ROW,
+    );
   }
 
   private async applyDecisions(
