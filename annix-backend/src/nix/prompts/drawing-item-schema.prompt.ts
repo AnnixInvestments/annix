@@ -78,7 +78,7 @@ DO:
 - Reducers (concentric or eccentric): the OVERALL H dimension — face-to-face / flange-face-to-flange-face / weld-end-to-weld-end. Drawings often show MULTIPLE dimensions around a reducer (e.g. body length 356, flange offsets 100 + 112, overall 568) — the 'length' is the OVERALL number (568 in that example), NEVER the body-only number. If you see a 'TOTAL' or end-to-end dimension callout, use that.
 - Tees: the RUN length (centreline-to-centreline of the two run ends, or face-to-face if flanged on the run). NOT the branch length. The branch comes from the secondary NB in the description, not from 'length'.
 - Equal-Y / Wye: the longest face-to-face dimension printed.
-- Elbows / bends: if a centreline radius is shown (e.g. 'R 525' or 'CLR 525'), set length = null AND record 'centreline radius R = 525 mm' in deviations. Otherwise length = overall leg-to-leg face-to-face if printed.
+- Elbows / bends (90° / 45° / 180° / U-tee): length is the C/F dimension — the centre-to-face number printed on the drawing, i.e. one arm of the elbow measured from the bend centre to the pipe end face. NOT the developed length, NOT the leg-to-leg overall, NOT the centreline arc. If the drawing shows multiple dimensions around a bend (e.g. 405 and 639 on a U-tee, or 705 C/F on a 90° elbow), pick the labelled C/F figure. If only a radius is shown (e.g. 'R 525' or 'CLR 525'), capture that radius as the length AND add a deviation note "radius captured as C/F". If nothing is printed, set length = null and the area calculator will fall back to a 1.5×NB long-radius default.
 - Flanges (standalone): length = null. Flanges have no length dimension along the run.
 
 DO NOT:

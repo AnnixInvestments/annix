@@ -144,9 +144,22 @@ function bendArcLengthMm(radiusMm: number, angleDeg: number): number {
 }
 
 /**
- * Area for a buttweld bend / elbow / U-bend, given NB + WT. Falls back to
- * 1.5×NB centerline radius when no explicit radius is set on the item. Length
- * field is ignored — the arc length is derived from radius + angle.
+ * Area for a buttweld bend / elbow / U-bend.
+ *
+ * Polymer-Lining quoting convention (Andrew 2026-05-13): the printed
+ * bend dimension on a workshop drawing is the C/F (centre-to-face) — one
+ * arm of the elbow from the bend centre to the pipe end face. The shop
+ * prices the bend as if it were 2 straight pipes of length C/F joined
+ * at the centre (developed length = 2 × C/F), plus the standard
+ * 100 mm overlap per flange end. So for a 450NB F.B.E. F/F 90° elbow
+ * with C/F = 705 mm:
+ *   developed = 2 × 705 + 200 = 1610 mm
+ *   external  = π × OD × developed = π × 0.457 × 1.610 ≈ 2.31 m²
+ *
+ * When the drawing doesn't carry an explicit dimension, fall back to
+ * the geometric centreline arc using long-radius R = 1.5 × NB. The arm-
+ * doubling convention is preserved only for explicit lengths because a
+ * geometric arc isn't twice the radius.
  */
 function bendArea(
   item: QuoteItem,
@@ -160,14 +173,14 @@ function bendArea(
   const wt = effectiveWallMm(item, nb);
   const idMm = wt > 0 ? odMm - 2 * wt : 0;
   const explicitLength = item.length;
-  // If the drawing gave an actual centerline / overall length, prefer it.
-  // Otherwise use 1.5 × NB long-radius default.
-  const arcMm =
+  const flangeCount = countFlangesFromConfig(item.flangeConfig);
+  const flangeAllowanceMm = flangeCount * 100;
+  const developedLengthMm =
     explicitLength && explicitLength > 0
-      ? explicitLength
-      : bendArcLengthMm(defaultBendRadiusMm(nb), angleDeg);
-  const externalM2 = (Math.PI * odMm * arcMm) / 1e6;
-  const internalM2 = idMm > 0 ? (Math.PI * idMm * arcMm) / 1e6 : 0;
+      ? 2 * explicitLength + flangeAllowanceMm
+      : bendArcLengthMm(defaultBendRadiusMm(nb), angleDeg) + flangeAllowanceMm;
+  const externalM2 = (Math.PI * odMm * developedLengthMm) / 1e6;
+  const internalM2 = idMm > 0 ? (Math.PI * idMm * developedLengthMm) / 1e6 : 0;
   const quantity = item.quantity > 0 ? item.quantity : 1;
   return asResult({ externalM2, internalM2, quantity });
 }
