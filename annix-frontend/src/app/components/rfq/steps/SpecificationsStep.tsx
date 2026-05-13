@@ -60,6 +60,8 @@ import {
 } from "./specifications/helpers";
 import { NoProductsSelectedBanner } from "./specifications/NoProductsSelectedBanner";
 import { FeatureRestrictionPopup, RestrictionPopup } from "./specifications/RestrictionPopup";
+import { SteelPipesConfirmButton } from "./specifications/SteelPipesConfirmButton";
+import { SteelPipesConfirmedSummary } from "./specifications/SteelPipesConfirmedSummary";
 import { TransportInstallSection } from "./specifications/TransportInstallSection";
 import type { FeatureType, RestrictionPopupPosition } from "./specifications/types";
 
@@ -556,48 +558,20 @@ export default function SpecificationsStep(props: {
 
             {/* Confirmed Summary - show when specs are confirmed */}
             {globalSpecs?.steelPipesSpecsConfirmed && (
-              <div className="bg-green-100 border border-green-400 rounded-md p-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-xs text-green-800">
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                      <path
-                        fillRule="evenodd"
-                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    <span className="font-medium">Steel Pipe Specifications Confirmed</span>
-                    <span className="mx-2">•</span>
-                    <span>
-                      {gsWorkingPressureBar} bar @ {gsWorkingTemperatureC}°C
-                    </span>
-                    {globalSpecs?.steelSpecificationId && masterData?.steelSpecs && (
-                      <>
-                        <span className="mx-2">•</span>
-                        <span>{rawSteelSpecName || "Steel Spec"}</span>
-                      </>
-                    )}
-                    {globalSpecs?.flangeStandardId && masterData?.flangeStandards && (
-                      <>
-                        <span className="mx-2">•</span>
-                        <span>{rawCode || "Flange"}</span>
-                      </>
-                    )}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      onUpdateGlobalSpecs({
-                        ...globalSpecs,
-                        steelPipesSpecsConfirmed: false,
-                      })
-                    }
-                    className="px-2 py-1 bg-gray-500 text-white font-medium rounded text-xs hover:bg-gray-600"
-                  >
-                    Edit
-                  </button>
-                </div>
-              </div>
+              <SteelPipesConfirmedSummary
+                workingPressureBar={gsWorkingPressureBar}
+                workingTemperatureC={gsWorkingTemperatureC}
+                hasSteelSpec={!!globalSpecs?.steelSpecificationId && !!masterData?.steelSpecs}
+                hasFlangeStandard={!!globalSpecs?.flangeStandardId && !!masterData?.flangeStandards}
+                steelSpecName={rawSteelSpecName}
+                flangeStandardCode={rawCode}
+                onEdit={() =>
+                  onUpdateGlobalSpecs({
+                    ...globalSpecs,
+                    steelPipesSpecsConfirmed: false,
+                  })
+                }
+              />
             )}
 
             {/* Detail Forms - show when not confirmed */}
@@ -1600,60 +1574,49 @@ export default function SpecificationsStep(props: {
           </div>
         )}
 
-        {/* Confirm Button for Steel Pipe Specifications */}
         {showSteelPipes && !globalSpecs?.steelPipesSpecsConfirmed && (
-          <div className="mt-4 flex justify-end" data-field="steelPipesConfirmation">
-            <button
-              type="button"
-              onClick={() => {
-                const warnings: string[] = [];
+          <SteelPipesConfirmButton
+            disabled={!gsWorkingPressureBar || !gsWorkingTemperatureC}
+            onConfirm={() => {
+              const warnings: string[] = [];
 
-                // Check material suitability
-                if (globalSpecs?.steelSpecificationId) {
-                  const currentSpec = masterData.steelSpecs?.find(
-                    (s: any) => s.id === globalSpecs.steelSpecificationId,
+              if (globalSpecs?.steelSpecificationId) {
+                const currentSpec = masterData.steelSpecs?.find(
+                  (s: any) => s.id === globalSpecs.steelSpecificationId,
+                );
+                if (currentSpec && allLimits) {
+                  const suitability = checkSuitabilityFromCache(
+                    allLimits,
+                    currentSpec.steelSpecName,
+                    gsWorkingTemperatureC,
+                    gsWorkingPressureBar,
                   );
-                  if (currentSpec && allLimits) {
-                    const suitability = checkSuitabilityFromCache(
-                      allLimits,
-                      currentSpec.steelSpecName,
-                      gsWorkingTemperatureC,
-                      gsWorkingPressureBar,
+                  if (!suitability.isSuitable) {
+                    warnings.push(
+                      `Steel Specification "${currentSpec.steelSpecName}" is not recommended for ${globalSpecs.workingTemperatureC}°C / ${globalSpecs.workingPressureBar} bar operating conditions.`,
                     );
-                    if (!suitability.isSuitable) {
-                      warnings.push(
-                        `Steel Specification "${currentSpec.steelSpecName}" is not recommended for ${globalSpecs.workingTemperatureC}°C / ${globalSpecs.workingPressureBar} bar operating conditions.`,
-                      );
-                    }
                   }
                 }
+              }
 
-                // Check P-T rating validation for pressure class
-                if (isPressureClassUnsuitable) {
-                  warnings.push(
-                    "Pressure Class: The selected pressure class is unsuitable for the operating conditions (P-T rating inadequate).",
-                  );
-                } else if (ptRecommendations?.validation && !ptRecommendations.validation.isValid) {
-                  warnings.push(`Pressure Class: ${ptRecommendations.validation.warningMessage}`);
-                }
+              if (isPressureClassUnsuitable) {
+                warnings.push(
+                  "Pressure Class: The selected pressure class is unsuitable for the operating conditions (P-T rating inadequate).",
+                );
+              } else if (ptRecommendations?.validation && !ptRecommendations.validation.isValid) {
+                warnings.push(`Pressure Class: ${ptRecommendations.validation.warningMessage}`);
+              }
 
-                // If there are warnings, show the confirmation popup
-                if (warnings.length > 0) {
-                  setConfirmationWarning({ show: true, warnings });
-                } else {
-                  // No warnings, confirm directly
-                  onUpdateGlobalSpecs({
-                    ...globalSpecs,
-                    steelPipesSpecsConfirmed: true,
-                  });
-                }
-              }}
-              disabled={!gsWorkingPressureBar || !gsWorkingTemperatureC}
-              className="px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Confirm Steel Pipe Specifications
-            </button>
-          </div>
+              if (warnings.length > 0) {
+                setConfirmationWarning({ show: true, warnings });
+              } else {
+                onUpdateGlobalSpecs({
+                  ...globalSpecs,
+                  steelPipesSpecsConfirmed: true,
+                });
+              }
+            }}
+          />
         )}
 
         {/* Surface Protection - Only show if Surface Protection is selected */}
