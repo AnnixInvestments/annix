@@ -7,6 +7,7 @@ import { CandidateJobMatch, MatchDetails } from "../entities/candidate-job-match
 import { ExternalJob } from "../entities/external-job.entity";
 import { JobMarketSource } from "../entities/job-market-source.entity";
 import { SeekerApplyClick } from "../entities/seeker-apply-click.entity";
+import { SeekerMute } from "../entities/seeker-mute.entity";
 import { CandidateJobMatchingService } from "./candidate-job-matching.service";
 
 const REMATCH_COOLDOWN_MS = 5 * 60 * 1000;
@@ -58,8 +59,127 @@ export class SeekerJobFeedService {
     private readonly applyClickRepo: Repository<SeekerApplyClick>,
     @InjectRepository(ExternalJob)
     private readonly externalJobRepo: Repository<ExternalJob>,
+    @InjectRepository(SeekerMute)
+    private readonly muteRepo: Repository<SeekerMute>,
     private readonly matchingService: CandidateJobMatchingService,
   ) {}
+
+  async muteCompanyForSeeker(
+    email: string | null,
+    company: string,
+  ): Promise<{ created: boolean; mute: SeekerMute | null }> {
+    const trimmed = company.trim();
+    if (!trimmed) {
+      return { created: false, mute: null };
+    }
+    const candidates = await this.candidatesForSeeker(email);
+    if (candidates.length === 0) {
+      return { created: false, mute: null };
+    }
+    const target = candidates[0];
+    const existing = await this.muteRepo
+      .createQueryBuilder("mute")
+      .where("mute.candidate_id = :candidateId", { candidateId: target.id })
+      .andWhere("LOWER(mute.company_name) = LOWER(:company)", { company: trimmed })
+      .getOne();
+    if (existing) {
+      return { created: false, mute: existing };
+    }
+    const created = await this.muteRepo.save(
+      this.muteRepo.create({
+        candidateId: target.id,
+        companyName: trimmed,
+        category: null,
+      }),
+    );
+    return { created: true, mute: created };
+  }
+
+  async muteCategoryForSeeker(
+    email: string | null,
+    category: string,
+  ): Promise<{ created: boolean; mute: SeekerMute | null }> {
+    const trimmed = category.trim();
+    if (!trimmed) {
+      return { created: false, mute: null };
+    }
+    const candidates = await this.candidatesForSeeker(email);
+    if (candidates.length === 0) {
+      return { created: false, mute: null };
+    }
+    const target = candidates[0];
+    const existing = await this.muteRepo
+      .createQueryBuilder("mute")
+      .where("mute.candidate_id = :candidateId", { candidateId: target.id })
+      .andWhere("LOWER(mute.category) = LOWER(:category)", { category: trimmed })
+      .getOne();
+    if (existing) {
+      return { created: false, mute: existing };
+    }
+    const created = await this.muteRepo.save(
+      this.muteRepo.create({
+        candidateId: target.id,
+        companyName: null,
+        category: trimmed,
+      }),
+    );
+    return { created: true, mute: created };
+  }
+
+  async mutesForSeeker(email: string | null): Promise<SeekerMute[]> {
+    const candidates = await this.candidatesForSeeker(email);
+    if (candidates.length === 0) {
+      return [];
+    }
+    const candidateIds = candidates.map((c) => c.id);
+    return this.muteRepo
+      .createQueryBuilder("mute")
+      .where("mute.candidate_id IN (:...ids)", { ids: candidateIds })
+      .orderBy("mute.muted_at", "DESC")
+      .getMany();
+  }
+
+  async revokeMuteForSeeker(email: string | null, muteId: number): Promise<boolean> {
+    const candidates = await this.candidatesForSeeker(email);
+    if (candidates.length === 0) return false;
+    const candidateIds = new Set(candidates.map((c) => c.id));
+    const found = await this.muteRepo.findOne({ where: { id: muteId } });
+    if (!found || !candidateIds.has(found.candidateId)) {
+      return false;
+    }
+    await this.muteRepo.delete(found.id);
+    return true;
+  }
+
+  private async applyMuteFilters<T>(
+    candidateIds: number[],
+    items: T[],
+    selector: (item: T) => { company: string | null; category: string | null },
+  ): Promise<T[]> {
+    if (items.length === 0 || candidateIds.length === 0) return items;
+    const mutes = await this.muteRepo
+      .createQueryBuilder("mute")
+      .where("mute.candidate_id IN (:...ids)", { ids: candidateIds })
+      .getMany();
+    if (mutes.length === 0) return items;
+
+    const mutedCompanies = new Set<string>();
+    const mutedCategories = new Set<string>();
+    for (const mute of mutes) {
+      if (mute.companyName) mutedCompanies.add(mute.companyName.toLowerCase());
+      if (mute.category) mutedCategories.add(mute.category.toLowerCase());
+    }
+    if (mutedCompanies.size === 0 && mutedCategories.size === 0) return items;
+
+    return items.filter((item) => {
+      const fields = selector(item);
+      const company = fields.company;
+      if (company && mutedCompanies.has(company.toLowerCase())) return false;
+      const category = fields.category;
+      if (category && mutedCategories.has(category.toLowerCase())) return false;
+      return true;
+    });
+  }
 
   async candidatesForSeeker(email: string | null): Promise<Candidate[]> {
     if (!email) return [];
@@ -120,7 +240,16 @@ export class SeekerJobFeedService {
       ),
     );
 
-    const flat = perCandidateLists.flat();
+    let flat = perCandidateLists.flat();
+    flat = await this.applyMuteFilters(
+      candidates.map((c) => c.id),
+      flat,
+      (m) => ({
+        company: m.externalJob?.company ?? null,
+        category: m.externalJob?.category ?? null,
+      }),
+    );
+
     if (flat.length === 0) {
       return { matches: [], candidateIds: candidates.map((c) => c.id) };
     }
@@ -320,18 +449,24 @@ export class SeekerJobFeedService {
       qb.andWhere(`(${conditions})`, params);
     }
 
-    qb.orderBy("job.postedAt", "DESC", "NULLS LAST").take(MAX_COLD_START);
-    const jobs = await qb.getMany();
+    qb.orderBy("job.postedAt", "DESC", "NULLS LAST").take(MAX_COLD_START * 2);
+    let jobs = await qb.getMany();
 
     if (jobs.length === 0 && locationTokens.size > 0) {
       const fallback = await this.externalJobRepo
         .createQueryBuilder("job")
         .where("job.country = :country", { country: "za" })
         .orderBy("job.postedAt", "DESC", "NULLS LAST")
-        .take(MAX_COLD_START)
+        .take(MAX_COLD_START * 2)
         .getMany();
       jobs.push(...fallback);
     }
+
+    jobs = await this.applyMuteFilters(candidateIds, jobs, (job) => ({
+      company: job.company,
+      category: job.category,
+    }));
+    jobs = jobs.slice(0, MAX_COLD_START);
 
     const sourceIds = [
       ...new Set(jobs.map((j) => j.sourceId).filter((v): v is number => v != null)),

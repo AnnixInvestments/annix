@@ -13,6 +13,8 @@ import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import {
   useCvDismissSeekerMatch,
   useCvGrantSeekerMatchingConsent,
+  useCvMuteSeekerCategory,
+  useCvMuteSeekerCompany,
   useCvSeekerColdStartJobs,
   useCvSeekerMatchingConsent,
   useCvSeekerRecommendedJobs,
@@ -43,6 +45,8 @@ export default function SeekerJobsPage() {
   const coldStartQuery = useCvSeekerColdStartJobs(coldStartEnabled);
   const dismissMutation = useCvDismissSeekerMatch();
   const rematchMutation = useCvSeekerRematch();
+  const muteCompanyMutation = useCvMuteSeekerCompany();
+  const muteCategoryMutation = useCvMuteSeekerCategory();
   const [filters, setFilters] = useState<SeekerFilterState>({
     search: "",
     provider: "all",
@@ -152,6 +156,31 @@ export default function SeekerJobsPage() {
       },
       onError: () => {
         showToast("Failed to dismiss match", "error");
+      },
+    });
+  };
+
+  const handleMuteCompany = (company: string) => {
+    muteCompanyMutation.mutate(company, {
+      onSuccess: (res) => {
+        showToast(res.created ? `Muted "${company}"` : `"${company}" was already muted`, "success");
+      },
+      onError: () => {
+        showToast("Failed to mute company", "error");
+      },
+    });
+  };
+
+  const handleMuteCategory = (category: string) => {
+    muteCategoryMutation.mutate(category, {
+      onSuccess: (res) => {
+        showToast(
+          res.created ? `Hid "${category}" roles` : `"${category}" roles were already hidden`,
+          "success",
+        );
+      },
+      onError: () => {
+        showToast("Failed to hide category", "error");
       },
     });
   };
@@ -341,6 +370,8 @@ export default function SeekerJobsPage() {
               match={match}
               onApply={handleApply}
               onDismiss={handleDismiss}
+              onMuteCompany={handleMuteCompany}
+              onMuteCategory={handleMuteCategory}
               isDismissing={
                 dismissMutation.isPending && dismissMutation.variables === match.matchId
               }

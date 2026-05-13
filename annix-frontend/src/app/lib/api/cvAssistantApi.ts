@@ -1842,6 +1842,30 @@ class CvAssistantApiClient {
       headers: { "Content-Type": "application/json" },
     });
   }
+
+  async muteSeekerCompany(company: string): Promise<{ created: boolean; mute: SeekerMute }> {
+    return this.request("/cv-assistant/seeker/jobs/mute-company", {
+      method: "POST",
+      body: JSON.stringify({ company }),
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  async muteSeekerCategory(category: string): Promise<{ created: boolean; mute: SeekerMute }> {
+    return this.request("/cv-assistant/seeker/jobs/mute-category", {
+      method: "POST",
+      body: JSON.stringify({ category }),
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  async listSeekerMutes(): Promise<{ mutes: SeekerMute[] }> {
+    return this.request("/cv-assistant/seeker/jobs/mutes");
+  }
+
+  async revokeSeekerMute(muteId: number): Promise<{ success: boolean }> {
+    return this.request(`/cv-assistant/seeker/jobs/mutes/${muteId}`, { method: "DELETE" });
+  }
 }
 
 export interface SeekerJobStats {
@@ -1911,6 +1935,14 @@ export interface SeekerColdStartJobsResponse {
   candidateIds: number[];
   hasCandidate: boolean;
   embeddingPending: boolean;
+}
+
+export interface SeekerMute {
+  id: number;
+  candidateId: number;
+  companyName: string | null;
+  category: string | null;
+  mutedAt: string;
 }
 
 export const cvAssistantApiClient = new CvAssistantApiClient();

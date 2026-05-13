@@ -1,11 +1,14 @@
 "use client";
 
+import { useState } from "react";
 import type { SeekerRecommendedJob } from "@/app/lib/api/cvAssistantApi";
 
 interface SeekerJobCardProps {
   match: SeekerRecommendedJob;
   onApply: (match: SeekerRecommendedJob) => void;
   onDismiss: (matchId: number) => void;
+  onMuteCompany?: (company: string) => void;
+  onMuteCategory?: (category: string) => void;
   isDismissing?: boolean;
 }
 
@@ -18,8 +21,12 @@ const PROVIDER_LABELS: Record<string, string> = {
 };
 
 export function SeekerJobCard(props: SeekerJobCardProps) {
+  const [menuOpen, setMenuOpen] = useState(false);
   const match = props.match;
   const job = match.job;
+  const muteCompanyHandler = props.onMuteCompany;
+  const muteCategoryHandler = props.onMuteCategory;
+  const hasMuteOptions = Boolean(muteCompanyHandler) || Boolean(muteCategoryHandler);
   const overall = Math.round(match.overallScore * 100);
   const matchDetails = match.matchDetails;
   const detailsReasoning = matchDetails ? matchDetails.reasoning : null;
@@ -104,14 +111,58 @@ export function SeekerJobCard(props: SeekerJobCardProps) {
       ) : null}
 
       <div className="mt-4 flex items-center justify-between">
-        <button
-          type="button"
-          onClick={handleDismiss}
-          disabled={props.isDismissing}
-          className="text-sm text-gray-500 hover:text-gray-700 disabled:opacity-50"
-        >
-          Not for me
-        </button>
+        <div className="relative">
+          <button
+            type="button"
+            onClick={handleDismiss}
+            disabled={props.isDismissing}
+            className="text-sm text-gray-500 hover:text-gray-700 disabled:opacity-50"
+          >
+            Not for me
+          </button>
+          {hasMuteOptions ? (
+            <>
+              <button
+                type="button"
+                onClick={() => setMenuOpen((v) => !v)}
+                className="ml-2 text-sm text-gray-400 hover:text-gray-600"
+                aria-label="More options"
+              >
+                ⋯
+              </button>
+              {menuOpen ? (
+                <div className="absolute left-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-10 min-w-[180px]">
+                  {muteCompanyHandler && job.company ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const jobCompany = job.company;
+                        if (jobCompany) muteCompanyHandler(jobCompany);
+                        setMenuOpen(false);
+                      }}
+                      className="block w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                    >
+                      Mute "{job.company}"
+                    </button>
+                  ) : null}
+                  {muteCategoryHandler && job.category ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const jobCategory = job.category;
+                        if (jobCategory) muteCategoryHandler(jobCategory);
+                        setMenuOpen(false);
+                      }}
+                      className="block w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                    >
+                      Hide "{job.category}" roles
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
+            </>
+          ) : null}
+        </div>
         <button
           type="button"
           onClick={handleApply}

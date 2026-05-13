@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   HttpException,
   HttpStatus,
@@ -29,6 +30,18 @@ class RecordApplyClickDto {
   @IsString()
   @MaxLength(1000)
   sourceUrl?: string | null;
+}
+
+class MuteCompanyDto {
+  @IsString()
+  @MaxLength(500)
+  company: string;
+}
+
+class MuteCategoryDto {
+  @IsString()
+  @MaxLength(255)
+  category: string;
 }
 
 interface SeekerAuthRequest {
@@ -91,6 +104,42 @@ export class SeekerJobsController {
   @Post("withdraw-matching")
   async withdrawMatching(@Request() req: SeekerAuthRequest) {
     return this.feedService.withdrawMatchingForSeeker(req.user.email);
+  }
+
+  @Post("mute-company")
+  async muteCompany(@Request() req: SeekerAuthRequest, @Body() body: MuteCompanyDto) {
+    const result = await this.feedService.muteCompanyForSeeker(req.user.email, body.company);
+    if (!result.mute) {
+      throw new BadRequestException("No candidate profile to mute against");
+    }
+    return { created: result.created, mute: result.mute };
+  }
+
+  @Post("mute-category")
+  async muteCategory(@Request() req: SeekerAuthRequest, @Body() body: MuteCategoryDto) {
+    const result = await this.feedService.muteCategoryForSeeker(req.user.email, body.category);
+    if (!result.mute) {
+      throw new BadRequestException("No candidate profile to mute against");
+    }
+    return { created: result.created, mute: result.mute };
+  }
+
+  @Get("mutes")
+  async listMutes(@Request() req: SeekerAuthRequest) {
+    const mutes = await this.feedService.mutesForSeeker(req.user.email);
+    return { mutes };
+  }
+
+  @Delete("mutes/:muteId")
+  async revokeMute(
+    @Request() req: SeekerAuthRequest,
+    @Param("muteId", ParseIntPipe) muteId: number,
+  ) {
+    const revoked = await this.feedService.revokeMuteForSeeker(req.user.email, muteId);
+    if (!revoked) {
+      throw new NotFoundException("Mute not found");
+    }
+    return { success: true };
   }
 
   @Post("clicks")

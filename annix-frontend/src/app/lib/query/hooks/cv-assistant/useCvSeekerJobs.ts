@@ -4,6 +4,7 @@ import {
   type SeekerColdStartJobsResponse,
   type SeekerJobStats,
   type SeekerMatchingConsentStatus,
+  type SeekerMute,
   type SeekerRecommendedJobsResponse,
   type SeekerRematchResponse,
 } from "@/app/lib/api/cvAssistantApi";
@@ -86,6 +87,45 @@ export function useCvGrantSeekerMatchingConsent() {
   const queryClient = useQueryClient();
   return useMutation<{ candidatesAffected: number }, Error, void>({
     mutationFn: () => cvAssistantApiClient.grantSeekerMatchingConsent(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: cvAssistantKeys.seekerJobs.all });
+    },
+  });
+}
+
+export function useCvSeekerMutes(enabled: boolean = true) {
+  return useQuery<{ mutes: SeekerMute[] }>({
+    queryKey: cvAssistantKeys.seekerJobs.mutes(),
+    queryFn: () => cvAssistantApiClient.listSeekerMutes(),
+    enabled,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useCvMuteSeekerCompany() {
+  const queryClient = useQueryClient();
+  return useMutation<{ created: boolean; mute: SeekerMute }, Error, string>({
+    mutationFn: (company) => cvAssistantApiClient.muteSeekerCompany(company),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: cvAssistantKeys.seekerJobs.all });
+    },
+  });
+}
+
+export function useCvMuteSeekerCategory() {
+  const queryClient = useQueryClient();
+  return useMutation<{ created: boolean; mute: SeekerMute }, Error, string>({
+    mutationFn: (category) => cvAssistantApiClient.muteSeekerCategory(category),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: cvAssistantKeys.seekerJobs.all });
+    },
+  });
+}
+
+export function useCvRevokeSeekerMute() {
+  const queryClient = useQueryClient();
+  return useMutation<{ success: boolean }, Error, number>({
+    mutationFn: (muteId) => cvAssistantApiClient.revokeSeekerMute(muteId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: cvAssistantKeys.seekerJobs.all });
     },
