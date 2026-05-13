@@ -20,6 +20,7 @@ import { AnalyticsController } from "./controllers/analytics.controller";
 import { CvAssistantAuthController } from "./controllers/auth.controller";
 import { CandidateController } from "./controllers/candidate.controller";
 import { ComplianceController } from "./controllers/compliance.controller";
+import { CredentialController } from "./controllers/credential.controller";
 import { DashboardController } from "./controllers/dashboard.controller";
 import { EmailTemplateController } from "./controllers/email-template.controller";
 import { IndividualProfileController } from "./controllers/individual-profile.controller";
@@ -50,6 +51,7 @@ import { CvAssistantEmailTemplate } from "./entities/cv-assistant-email-template
 import { CvAssistantIndividualDocument } from "./entities/cv-assistant-individual-document.entity";
 import { CvAssistantProfile } from "./entities/cv-assistant-profile.entity";
 import { CvAssistantUser } from "./entities/cv-assistant-user.entity";
+import { CvCredential } from "./entities/cv-credential.entity";
 import { CvEscoSkill } from "./entities/cv-esco-skill.entity";
 import { CvGeocodeCache } from "./entities/cv-geocode-cache.entity";
 import { CvPushSubscription } from "./entities/cv-push-subscription.entity";
@@ -79,6 +81,7 @@ import { AnalyticsService } from "./services/analytics.service";
 import { CvAssistantAuthService } from "./services/auth.service";
 import { CandidateService } from "./services/candidate.service";
 import { CandidateJobMatchingService } from "./services/candidate-job-matching.service";
+import { CredentialService } from "./services/credential.service";
 import { CvAuditService } from "./services/cv-audit.service";
 import { CvEmailAdapterService } from "./services/cv-email-adapter.service";
 import { CvExtractionService } from "./services/cv-extraction.service";
@@ -149,6 +152,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
       SalaryBenchmark,
       SeekerApplyClick,
       SeekerMute,
+      CvCredential,
       CvEscoSkill,
       CvGeocodeCache,
     ]),
@@ -196,6 +200,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     AdminEeTargetsController,
     SeekerJobsController,
     TradeProfileController,
+    CredentialController,
   ],
   providers: [
     CvAssistantAuthGuard,
@@ -245,6 +250,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     CvAssistantCapabilities,
     SeekerJobFeedService,
     TradeProfileService,
+    CredentialService,
   ],
   exports: [CvAssistantAuthService],
 })

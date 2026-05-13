@@ -1,3 +1,4 @@
+export * from "./credentials";
 export * from "./trades";
 
 export interface SALocation {
