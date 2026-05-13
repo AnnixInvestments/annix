@@ -145,3 +145,58 @@ The integration test scaffold + the three established extraction patterns make t
 * `[x]` **Audit existing test coverage** — already confirmed zero (issue body).
 * `[x]` **Write 5-10 integration tests per monolith** — done as of 2026-05-13: 37 tests across 7 specs.
 * `[x]` **Document current behaviour in `tmp/rfq-baseline.md`** — this document.
+
+## 9. SpecificationsStep — top-level section map (Phase 3 box: "Map the 24 inline JSX return statements")
+
+The 7,374-line SpecificationsStep main render breaks down into top-level conditional sections gated by the 7 `requiredProducts` flags. Captured 2026-05-13 at line numbers in the post-extraction file:
+
+| Line | Condition | Section | Approx. size | Status |
+|---|---|---|---|---|
+| ~517 | (unconditional) | Validation error banner | ~25 lines | Inline, small — keep |
+| ~548 | `{showSteelPipes && (` | **Steel Pipes & Fittings** | huge (~1050 lines) | **Inline — primary Tier-3 candidate** |
+| ~1602 | `{showSteelPipes && !steelPipesSpecsConfirmed && (` | Steel pipes "still configuring" notice | ~50 lines | Inline |
+| ~1658 | `{showSurfaceProtection && (` | **Surface Protection (coatings + linings)** | huge (~4940 lines) | **Inline — biggest Tier-3 candidate** |
+| ~6604 | `{showHdpePipes && (` | HDPE Pipes | small wrapper | **Already extracted** as `<HdpeSpecificationsSection>` |
+| ~6682 | `{showPvcPipes && (` | PVC Pipes | small wrapper | **Already extracted** as `<PvcSpecificationsSection>` |
+| ~6759 | `{showFastenersGaskets && (` | Fasteners & Gaskets | ~390 lines | Inline — Tier-3 candidate |
+| ~7149 | `{showTransportInstall && (` | Transportation & Installation | **30 lines → extracted** (commit pending) | **`<TransportInstallSection>`** ✓ |
+| ~7181 | `{!showSteelPipes && !showFastenersGaskets && …}` | "No Products Selected" empty-state banner | **32 lines → extracted** (commit pending) | **`<NoProductsSelectedBanner>`** ✓ |
+| ~7215 | `{materialWarning.show && (` | Material Suitability Warning modal | ~150 lines | Inline — Tier-3 candidate |
+| ~end | Restriction popups (rendered from refs) | — | small | Already extracted as `<RestrictionPopup>` etc. |
+
+Plus 21 inline `return (` statements at deeper nesting — most are IIFE-wrapped renders inside dropdowns / option mappers (e.g. the steel-spec dropdown's option list, the pressure-class deduper). These are smaller and harder to extract individually; they'll fall out as the parent sections get pulled into their own components.
+
+**Tier-3 extraction priority (after today's commit lands):**
+
+1. ~~`<TransportInstallSection>`~~ ✓ done
+2. ~~`<NoProductsSelectedBanner>`~~ ✓ done
+3. `<MaterialSuitabilityWarningModal>` — ~150 lines, has closure on `materialWarning` state and `onUpdateGlobalSpecs` callback. Tier-3 with one prop drilled in.
+4. `<FastenersGasketsSpecificationsSection>` — 390 lines, needs careful threading of the bolt-grade / gasket-type state.
+5. `<SteelPipesSpecificationsSection>` — the largest single conditional block (~1050 lines). High value, high effort.
+6. `<SurfaceProtectionSpecificationsSection>` — the monster (~4940 lines). Will need to be broken into multiple sub-components (coating-environment, coating-spec, coating-build-up, lining-environment, lining-spec, etc.) before it can be lifted out as a whole.
+
+## 10. SpecificationsStep — hook audit (Phase 3 box: "Audit useState/useEffect/useCallback calls")
+
+Current counts in the post-extraction file:
+- `useState` calls: 11
+- `useEffect` calls: 5
+- `useCallback` / `useMemo` calls: 3
+
+The hooks cluster around three concerns:
+1. **Auto-extraction state** — `autoPressureClassId`, `selectedIso12944SystemCode`, `iso12944Loading`, `materialWarning` etc. These follow user inputs in real time.
+2. **Restriction popups** — `restrictionPopup`, `featureRestrictionPopup` (positions + features). Pure UI state.
+3. **Master-data effects** — `useEffect`s reacting to `globalSpecs?.flangeStandardId` etc., to fetch/select pressure classes.
+
+**Extraction-vs-hook decision per section:**
+
+| Section | Reads | Writes | Prop-drill vs custom hook |
+|---|---|---|---|
+| Steel Pipes section | rfqData.globalSpecs, available pressure classes, P-T recommendations, `autoPressureClassId` | sets autoPressureClassId via dropdown clicks | **Prop-drill** — pass `{globalSpecs, autoPressureClassId, onSetAutoPressureClassId, ...}` as props |
+| Surface Protection — coating | many derived ECP-* fields, iso12944Systems, selectedIso12944SystemCode | sets ECP fields on globalSpecs | **Prop-drill + a `useCoatingRecommendations` custom hook** for the derived state |
+| Surface Protection — lining | mtp* state on globalSpecs, recommendedLining | similar | **Same pattern** — custom hook + prop-drill |
+| Fasteners & Gaskets | boltGrade, gasketType from globalSpecs | onUpdateGlobalSpecs | **Prop-drill** — simple |
+| Material Warning Modal | `materialWarning` state | dismissed by user | **Prop-drill** — fully self-contained once `materialWarning` + `setMaterialWarning` are wired |
+
+The restriction-popup `useState`s (lines 99-122) are already minimal and stay in the parent for now; they're shared across multiple sections.
+
+**No `useEffect` in SpecificationsStep needs to move to a child component** — all 5 are at the component-orchestration level (master-data fetching, ISO 12944 system loading, auto-select on standard change). Pulling them down into children would scatter the orchestration responsibility, which is a worse outcome than letting the parent stay as the lifecycle owner.
