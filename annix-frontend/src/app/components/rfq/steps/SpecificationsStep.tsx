@@ -42,6 +42,7 @@ import { AutoExtractedSpecsBanner } from "./specifications/AutoExtractedSpecsBan
 import { ConfirmedLiningBadge } from "./specifications/ConfirmedLiningBadge";
 import { ExternalCoatingLockedSupplierSpec } from "./specifications/ExternalCoatingLockedSupplierSpec";
 import { ExternalCoatingNonPaintConfirmed } from "./specifications/ExternalCoatingNonPaintConfirmed";
+import { ExternalPaintConfirmed } from "./specifications/ExternalPaintConfirmed";
 import { ExternalRubberLiningOptions } from "./specifications/ExternalRubberLiningOptions";
 import {
   autoFilledClass,
@@ -55,6 +56,7 @@ import {
 import { InternalCeramicLiningOptions } from "./specifications/InternalCeramicLiningOptions";
 import { InternalHdpeLiningOptions } from "./specifications/InternalHdpeLiningOptions";
 import { InternalLiningGalvanizedAutoNotice } from "./specifications/InternalLiningGalvanizedAutoNotice";
+import { InternalPaintConfirmed } from "./specifications/InternalPaintConfirmed";
 import { InternalPaintOptions } from "./specifications/InternalPaintOptions";
 import { InternalPuLiningOptions } from "./specifications/InternalPuLiningOptions";
 import { NoProductsSelectedBanner } from "./specifications/NoProductsSelectedBanner";
@@ -2115,137 +2117,29 @@ export default function SpecificationsStep(props: {
                   />
                 )}
 
-              {/* Confirmed External Paint Specification - Always visible when confirmed */}
               {gsExternalCoatingConfirmed &&
                 gsExternalCoatingType === "Paint" &&
                 globalSpecs?.externalPrimerType && (
-                  <div className="mt-3 pt-3 border-t border-gray-200">
-                    <div className="bg-green-50 border border-green-200 rounded-md p-3">
-                      <h4 className="text-sm font-semibold text-green-800 mb-2 flex items-center gap-1">
-                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                          <path
-                            fillRule="evenodd"
-                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                        External Paint Specification (Confirmed)
-                      </h4>
-
-                      <div className="space-y-1 text-xs">
-                        <div className="flex justify-between items-center">
-                          <span className="text-green-700">
-                            <span className="font-medium">Surface Prep:</span>{" "}
-                            {rawExternalBlastingGrade || (
-                              <span className="text-gray-400 italic">Not specified</span>
-                            )}
-                          </span>
-                        </div>
-
-                        <div className="flex justify-between items-center">
-                          <span className="text-green-700">
-                            <span className="font-medium">Primer:</span>{" "}
-                            {globalSpecs.externalPrimerType}
-                          </span>
-                          <span className="font-semibold text-green-800">
-                            {globalSpecs.externalPrimerMicrons} μm
-                          </span>
-                        </div>
-
-                        {globalSpecs?.externalIntermediateType &&
-                          globalSpecs?.externalIntermediateMicrons && (
-                            <div className="flex justify-between items-center">
-                              <span className="text-green-700">
-                                <span className="font-medium">Intermediate:</span>{" "}
-                                {globalSpecs.externalIntermediateType}
-                              </span>
-                              <span className="font-semibold text-green-800">
-                                {globalSpecs.externalIntermediateMicrons} μm
-                              </span>
-                            </div>
-                          )}
-
-                        {globalSpecs?.externalTopcoatType &&
-                          globalSpecs?.externalTopcoatMicrons && (
-                            <div className="flex justify-between items-center">
-                              <span className="text-green-700">
-                                <span className="font-medium">Topcoat:</span>{" "}
-                                {globalSpecs.externalTopcoatType}
-                              </span>
-                              <span className="font-semibold text-green-800">
-                                {globalSpecs.externalTopcoatMicrons} μm
-                              </span>
-                            </div>
-                          )}
-
-                        {globalSpecs?.externalTopcoatType && (
-                          <div className="flex justify-between items-center">
-                            <span className="text-green-700">
-                              <span className="font-medium">Colour:</span>{" "}
-                              {rawExternalTopcoatColour2 || (
-                                <span className="text-gray-400 italic">Not specified</span>
-                              )}
-                            </span>
-                          </div>
-                        )}
-
-                        <div className="flex gap-6 items-center">
-                          <span className="text-green-700">
-                            <span className="font-medium">Band 1:</span>{" "}
-                            {rawExternalBand1Colour || (
-                              <span className="text-gray-400 italic">None</span>
-                            )}
-                          </span>
-                          <span className="text-green-700">
-                            <span className="font-medium">Band 2:</span>{" "}
-                            {rawExternalBand2Colour || (
-                              <span className="text-gray-400 italic">None</span>
-                            )}
-                          </span>
-                        </div>
-
-                        <div className="flex justify-between items-center pt-1 mt-1 border-t border-green-300">
-                          <span className="font-semibold text-green-800">Total DFT</span>
-                          <span className="font-bold text-green-900">
-                            {(rawExternalPrimerMicrons || 0) +
-                              (rawExternalIntermediateMicrons || 0) +
-                              (rawExternalTopcoatMicrons || 0)}{" "}
-                            μm
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="mt-2">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            onUpdateGlobalSpecs({
-                              ...globalSpecs,
-                              externalCoatingConfirmed: false,
-                              externalPaintSpecConfirmed: false,
-                              externalCoatingType: "Paint",
-                            })
-                          }
-                          className="px-3 py-1.5 bg-gray-500 text-white font-semibold rounded hover:bg-gray-600 focus:outline-none focus:ring-1 focus:ring-gray-400 text-xs flex items-center gap-1"
-                        >
-                          <svg
-                            className="w-3 h-3"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                            />
-                          </svg>
-                          Edit Specification
-                        </button>
-                      </div>
-                    </div>
-                  </div>
+                  <ExternalPaintConfirmed
+                    blastingGrade={rawExternalBlastingGrade}
+                    primerType={globalSpecs.externalPrimerType}
+                    primerMicrons={globalSpecs.externalPrimerMicrons}
+                    intermediateType={globalSpecs?.externalIntermediateType}
+                    intermediateMicrons={globalSpecs?.externalIntermediateMicrons}
+                    topcoatType={globalSpecs?.externalTopcoatType}
+                    topcoatMicrons={globalSpecs?.externalTopcoatMicrons}
+                    topcoatColour={rawExternalTopcoatColour2}
+                    band1Colour={rawExternalBand1Colour}
+                    band2Colour={rawExternalBand2Colour}
+                    onEdit={() =>
+                      onUpdateGlobalSpecs({
+                        ...globalSpecs,
+                        externalCoatingConfirmed: false,
+                        externalPaintSpecConfirmed: false,
+                        externalCoatingType: "Paint",
+                      })
+                    }
+                  />
                 )}
 
               {/* Paint Options - Only show when selected AND not confirmed AND (assistant closed OR rejected) */}
@@ -4403,98 +4297,24 @@ export default function SpecificationsStep(props: {
                   />
                 )}
 
-              {/* Confirmed Internal Paint Specification - Always visible when confirmed */}
               {gsInternalLiningConfirmed &&
                 globalSpecs?.internalLiningType === "Paint" &&
                 globalSpecs?.internalPrimerType && (
-                  <div className="bg-green-50 border border-green-200 rounded-md p-3">
-                    <h4 className="text-sm font-semibold text-green-800 mb-2 flex items-center gap-1">
-                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                        <path
-                          fillRule="evenodd"
-                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                      Internal Paint Specification (Confirmed)
-                    </h4>
-
-                    <div className="space-y-1 text-xs">
-                      <div className="flex justify-between items-center">
-                        <span className="text-green-700">
-                          <span className="font-medium">Primer:</span>{" "}
-                          {globalSpecs.internalPrimerType}
-                        </span>
-                        <span className="font-semibold text-green-800">
-                          {globalSpecs.internalPrimerMicrons} μm
-                        </span>
-                      </div>
-
-                      {globalSpecs?.internalIntermediateType &&
-                        globalSpecs?.internalIntermediateMicrons && (
-                          <div className="flex justify-between items-center">
-                            <span className="text-green-700">
-                              <span className="font-medium">Intermediate:</span>{" "}
-                              {globalSpecs.internalIntermediateType}
-                            </span>
-                            <span className="font-semibold text-green-800">
-                              {globalSpecs.internalIntermediateMicrons} μm
-                            </span>
-                          </div>
-                        )}
-
-                      {globalSpecs?.internalTopcoatType && globalSpecs?.internalTopcoatMicrons && (
-                        <div className="flex justify-between items-center">
-                          <span className="text-green-700">
-                            <span className="font-medium">Topcoat:</span>{" "}
-                            {globalSpecs.internalTopcoatType}
-                          </span>
-                          <span className="font-semibold text-green-800">
-                            {globalSpecs.internalTopcoatMicrons} μm
-                          </span>
-                        </div>
-                      )}
-
-                      <div className="flex justify-between items-center pt-1 mt-1 border-t border-green-300">
-                        <span className="font-semibold text-green-800">Total DFT</span>
-                        <span className="font-bold text-green-900">
-                          {(rawInternalPrimerMicrons || 0) +
-                            (rawInternalIntermediateMicrons || 0) +
-                            (rawInternalTopcoatMicrons || 0)}{" "}
-                          μm
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="mt-2">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          onUpdateGlobalSpecs({
-                            ...globalSpecs,
-                            internalLiningConfirmed: false,
-                            internalLiningType: "Paint",
-                          })
-                        }
-                        className="px-3 py-1.5 bg-gray-500 text-white font-semibold rounded hover:bg-gray-600 focus:outline-none focus:ring-1 focus:ring-gray-400 text-xs flex items-center gap-1"
-                      >
-                        <svg
-                          className="w-3 h-3"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                          />
-                        </svg>
-                        Edit Specification
-                      </button>
-                    </div>
-                  </div>
+                  <InternalPaintConfirmed
+                    primerType={globalSpecs.internalPrimerType}
+                    primerMicrons={globalSpecs.internalPrimerMicrons}
+                    intermediateType={globalSpecs?.internalIntermediateType}
+                    intermediateMicrons={globalSpecs?.internalIntermediateMicrons}
+                    topcoatType={globalSpecs?.internalTopcoatType}
+                    topcoatMicrons={globalSpecs?.internalTopcoatMicrons}
+                    onEdit={() =>
+                      onUpdateGlobalSpecs({
+                        ...globalSpecs,
+                        internalLiningConfirmed: false,
+                        internalLiningType: "Paint",
+                      })
+                    }
+                  />
                 )}
 
               {globalSpecs?.internalLiningType === "Paint" && !gsInternalLiningConfirmed && (
