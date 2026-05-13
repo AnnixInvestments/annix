@@ -83,6 +83,11 @@ const run = (label, cmd, args, opts = {}) =>
     proc.on("close", (code) => {
       const seconds = (Date.now() - start) / 1000;
       if (allowed.has(code)) {
+        if (code !== 0) {
+          console.log(
+            `::warning::${label} exited with code ${code}. Non-fatal but should be investigated; see log above.`,
+          );
+        }
         const suffix = code === 0 ? "" : ` (exit ${code} accepted)`;
         console.log(`[${label}] done in ${seconds.toFixed(1)}s${suffix}`);
         resolve();
@@ -111,12 +116,17 @@ try {
   const dumpBytes = statSync(dumpFile).size;
   console.log(`[pg_dump] dump file size: ${(dumpBytes / 1024 / 1024).toFixed(1)} MB`);
 
-  await run("wipe schema", "psql", [
+  await run("wipe schema and recreate extensions", "psql", [
     STAGING_URL,
     "-v",
     "ON_ERROR_STOP=1",
     "-c",
-    "DROP SCHEMA IF EXISTS public CASCADE;",
+    `DROP EXTENSION IF EXISTS pg_trgm CASCADE;
+     DROP EXTENSION IF EXISTS vector CASCADE;
+     DROP SCHEMA IF EXISTS public CASCADE;
+     CREATE SCHEMA public;
+     CREATE EXTENSION pg_trgm WITH SCHEMA public;
+     CREATE EXTENSION vector WITH SCHEMA public;`,
   ]);
 
   await run(
@@ -152,7 +162,7 @@ try {
   console.log("");
   console.log(`Done in ${totalSeconds}s. Staging is now a copy of prod.`);
   console.log(
-    "pg_restore may have printed warnings about pre-existing extensions or roles. Those are usually safe; review the output above to be sure.",
+    "If pg_restore printed a ::warning:: annotation, review the log above. With extensions pre-created, a clean run should exit 0 with no warnings.",
   );
 } finally {
   rmSync(tmp, { recursive: true, force: true });
