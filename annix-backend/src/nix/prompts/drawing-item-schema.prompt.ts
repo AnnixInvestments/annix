@@ -30,7 +30,7 @@ export const DRAWING_ITEM_SCHEMA_RULES = `CRITICAL — schema rules (must follow
    - diameter (number, mm — nominal bore for pipe-shaped items)
    - wallThickness (number, mm — numeric WT in mm if the drawing gives one)
    - schedule (string or null — pipe schedule / weight designation: "HVY", "STD", "XS", "XXS", "MED", "LGT", "SCH40", "SCH80", "SCH160", "API 5L X-grade" etc. ALWAYS capture this when the drawing shows a designation like "150NB x HVY" — that "HVY" goes here, NOT in description)
-   - length (number, mm)
+   - length (number, mm — see "Length / overall-dimension rules" below — this is the OVERALL face-to-face / end-to-end measurement, including welded flanges, NOT a body-only or face-to-shoulder length)
    - flangeConfig (string — verbatim drawing wording, e.g. "P.E.", "F.B.E. F/F", "F/PE")
    - liningType (string or null — internal lining material, e.g. "Linatex Linard 60", or null if none)
    - liningThicknessMm (number or null)
@@ -68,6 +68,25 @@ When uncertain, prefer null + deviations note. Example:
 { "itemNumber": "-03", ..., "flangeConfig": "P.E.", "schedule": "HVY", "coatingSystem": null, "liningType": null, "materialClass": "SABS62", "deviations": ["coating cell blank for mark -03 — assumed uncoated as P.E."] }
 
 Same rules apply for liningType, liningThicknessMm, materialClass and schedule — read the per-item cell, treat blank/dash/N/A as null, never propagate from another mark or a title-block default.`;
+
+export const DRAWING_ITEM_LENGTH_RULES = `CRITICAL — length / overall-dimension rules for fittings (Gemini has been picking the wrong dimension here — read this carefully):
+
+The 'length' field is the OVERALL FACE-TO-FACE / END-TO-END measurement of the fabricated item, including any flanges welded to it. On most workshop drawings this is the largest dimension printed along the long axis of the part.
+
+DO:
+- Pipes / spools: total length from end to end, including any flanges and butt-weld end allowances. If the drawing shows e.g. 'L 6000' and the flange config is 'F.B.E. F/F', length = 6000 (the F.B.E. F/F is captured separately in flangeConfig — do not subtract the flange thicknesses from L).
+- Reducers (concentric or eccentric): the OVERALL H dimension — face-to-face / flange-face-to-flange-face / weld-end-to-weld-end. Drawings often show MULTIPLE dimensions around a reducer (e.g. body length 356, flange offsets 100 + 112, overall 568) — the 'length' is the OVERALL number (568 in that example), NEVER the body-only number. If you see a 'TOTAL' or end-to-end dimension callout, use that.
+- Tees: the RUN length (centreline-to-centreline of the two run ends, or face-to-face if flanged on the run). NOT the branch length. The branch comes from the secondary NB in the description, not from 'length'.
+- Equal-Y / Wye: the longest face-to-face dimension printed.
+- Elbows / bends: if a centreline radius is shown (e.g. 'R 525' or 'CLR 525'), set length = null AND record 'centreline radius R = 525 mm' in deviations. Otherwise length = overall leg-to-leg face-to-face if printed.
+- Flanges (standalone): length = null. Flanges have no length dimension along the run.
+
+DO NOT:
+- Pick a small intermediate dimension (e.g. a flange neck length, a stub-end offset, an arrow-extension number, or a 'C' / 'M' partial dimension) and call it the length. If the same drawing shows two possible 'length' candidates, ALWAYS prefer the larger end-to-end one.
+- Mistake a quantity, a scale callout, a sheet number, or a drawing-reference number for a length.
+- Subtract flange / weld allowances. The 'length' field is the geometric overall measurement only.
+
+When the drawing has multiple dimensions and it's unclear which is the overall length, capture the LARGER candidate and add a deviations note: "Length 568 — overall face-to-face; drawing also shows body L 356 and flange offsets 100 + 112."`;
 
 export const DRAWING_ITEM_SCHEMA_EXAMPLE = `{
   "items": [
@@ -108,6 +127,25 @@ export const DRAWING_ITEM_SCHEMA_EXAMPLE = `{
       "deviations": [],
       "drawingReference": "HH06",
       "revision": "Sheet 6 Of 9"
+    },
+    {
+      "itemNumber": "-29",
+      "description": "400NB x 350NB Concentric Reducer",
+      "itemType": "reducer",
+      "quantity": 8,
+      "diameter": 400,
+      "wallThickness": null,
+      "schedule": "SCH.STD",
+      "length": 568,
+      "flangeConfig": "F.O.E. F/F",
+      "liningType": "Linatex Linard 60",
+      "liningThicknessMm": 6,
+      "coatingSystem": "R1",
+      "materialClass": "S355JR/SANS 719",
+      "banding": 0,
+      "deviations": [],
+      "drawingReference": "HH29",
+      "revision": "Sheet 1 Of 3"
     }
   ],
   "specifications": { "referencedCodes": ["R1", "R2a", "1000/3", "SABS62"] },
@@ -133,6 +171,7 @@ export function composeDrawingPrompt(input: {
   if (input.itemTypesGuidance) parts.push(input.itemTypesGuidance.trim());
   parts.push(DRAWING_ITEM_SCHEMA_RULES);
   parts.push(DRAWING_ITEM_ASSIGNMENT_RULES);
+  parts.push(DRAWING_ITEM_LENGTH_RULES);
   parts.push(`Respond ONLY with valid JSON of this exact shape:\n${DRAWING_ITEM_SCHEMA_EXAMPLE}`);
   if (input.closing) parts.push(input.closing.trim());
   return parts.join("\n\n");
