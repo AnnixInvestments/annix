@@ -100,6 +100,7 @@ const run = (label, cmd, args, opts = {}) =>
 
 const tmp = mkdtempSync(join(tmpdir(), "annix-clone-"));
 const dumpFile = join(tmp, "prod.dump");
+const tocFile = join(tmp, "dump.toc");
 const startedAt = Date.now();
 
 try {
@@ -129,10 +130,15 @@ try {
      CREATE EXTENSION vector WITH SCHEMA public;`,
   ]);
 
+  await run("filter dump TOC", "sh", [
+    "-c",
+    `pg_restore -l "${dumpFile}" | grep -v " SCHEMA - public " > "${tocFile}"`,
+  ]);
+
   await run(
     "pg_restore",
     "pg_restore",
-    ["--no-owner", "--no-privileges", "--dbname", STAGING_URL, dumpFile],
+    ["--no-owner", "--no-privileges", "--use-list", tocFile, "--dbname", STAGING_URL, dumpFile],
     { allowExitCodes: [1] },
   );
 
