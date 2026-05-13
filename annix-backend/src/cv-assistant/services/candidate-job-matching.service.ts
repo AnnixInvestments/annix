@@ -13,6 +13,11 @@ const WEIGHT_LOCATION = 0.1;
 
 const TOP_MATCHES_LIMIT = 20;
 
+export const STRETCH_RESERVED_SLOTS = 3;
+export const STRETCH_SCORE_BAND_MIN = 0.6;
+export const STRETCH_SCORE_BAND_MAX = 0.79;
+const RECOMMENDED_FETCH_WINDOW = 200;
+
 @Injectable()
 export class CandidateJobMatchingService {
   private readonly logger = new Logger(CandidateJobMatchingService.name);
@@ -108,13 +113,51 @@ export class CandidateJobMatchingService {
       .leftJoinAndSelect("match.externalJob", "job")
       .where("match.candidate_id = :candidateId", { candidateId })
       .orderBy("match.overallScore", "DESC")
-      .take(TOP_MATCHES_LIMIT);
+      .take(RECOMMENDED_FETCH_WINDOW);
 
     if (!options.includeDismissed) {
       qb.andWhere("match.dismissed = false");
     }
 
-    return qb.getMany() as Promise<Array<CandidateJobMatch & { externalJob: ExternalJob }>>;
+    const allMatches = (await qb.getMany()) as Array<
+      CandidateJobMatch & { externalJob: ExternalJob }
+    >;
+
+    return this.applyStretchMatchDiversity(allMatches);
+  }
+
+  applyStretchMatchDiversity<T extends Pick<CandidateJobMatch, "overallScore">>(
+    sortedMatches: T[],
+  ): T[] {
+    if (sortedMatches.length <= TOP_MATCHES_LIMIT) {
+      return sortedMatches;
+    }
+
+    const reserved = STRETCH_RESERVED_SLOTS;
+    const topPriorityCount = TOP_MATCHES_LIMIT - reserved;
+    const topPriority = sortedMatches.slice(0, topPriorityCount);
+    const remaining = sortedMatches.slice(topPriorityCount);
+
+    const stretchPool: T[] = [];
+    const fallbackPool: T[] = [];
+    for (const candidate of remaining) {
+      const score = candidate.overallScore;
+      if (
+        stretchPool.length < reserved &&
+        score >= STRETCH_SCORE_BAND_MIN &&
+        score <= STRETCH_SCORE_BAND_MAX
+      ) {
+        stretchPool.push(candidate);
+      } else {
+        fallbackPool.push(candidate);
+      }
+    }
+
+    const fillerCount = reserved - stretchPool.length;
+    const fillers = fillerCount > 0 ? fallbackPool.slice(0, fillerCount) : [];
+
+    const combined = [...topPriority, ...stretchPool, ...fillers];
+    return combined.slice(0, TOP_MATCHES_LIMIT).sort((a, b) => b.overallScore - a.overallScore);
   }
 
   async matchingCandidatesForJob(
