@@ -89,7 +89,7 @@ export function FastenersGasketsSection(props: FastenersGasketsSectionProps) {
 
                   return onUpdateGlobalSpecs({
                     ...globalSpecs,
-                    boltGrade: rawValue || undefined,
+                    boltGrade: rawValue || null,
                   });
                 }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 text-sm"
@@ -241,7 +241,7 @@ export function FastenersGasketsSection(props: FastenersGasketsSectionProps) {
 
                   return onUpdateGlobalSpecs({
                     ...globalSpecs,
-                    gasketType: rawValue2 || undefined,
+                    gasketType: rawValue2 || null,
                   });
                 }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 text-sm"
