@@ -115,4 +115,8 @@ export const cvAssistantKeys = {
     all: ["cv-assistant", "seeker", "credentials"] as const,
     list: () => ["cv-assistant", "seeker", "credentials", "list"] as const,
   },
+  workforceNeed: {
+    all: ["cv-assistant", "admin", "workforce-needs"] as const,
+    forRfq: (rfqId: number) => ["cv-assistant", "admin", "workforce-needs", "rfq", rfqId] as const,
+  },
 } as const;

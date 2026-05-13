@@ -671,6 +671,10 @@ export {
   useCvSeekerTradeProfile,
   useCvUpsertSeekerTradeProfile,
 } from "./cv-assistant/useCvTradeProfile";
+export {
+  useCvUpsertWorkforceNeed,
+  useCvWorkforceNeed,
+} from "./cv-assistant/useCvWorkforceNeed";
 export type {
   AnalysisResult,
   Drawing,
@@ -738,7 +742,6 @@ export type {
   ValidationIssue,
 } from "./nix/useNix";
 export {
-  type ConvertToJobCardResultDto,
   extractProductSpecFromDataSheet,
   type NixApp,
   type NixCapability,
@@ -757,7 +760,6 @@ export {
   uploadProductDataSheet,
   useAdvanceWalkthrough,
   useBackWalkthrough,
-  useConvertQuoteToJobCard,
   useCreateNixExtractionSession,
   useCreateNixItems,
   useCreateNixSession,

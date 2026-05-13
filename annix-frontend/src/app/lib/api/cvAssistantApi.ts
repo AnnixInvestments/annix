@@ -1933,6 +1933,45 @@ class CvAssistantApiClient {
       method: "POST",
     });
   }
+
+  async adminWorkforceNeedSummary(rfqId: number): Promise<WorkforceNeedSummary> {
+    return this.request(`/admin/cv-assistant/workforce-needs/${rfqId}`);
+  }
+
+  async adminUpsertWorkforceNeed(
+    rfqId: number,
+    input: WorkforceNeedInput,
+  ): Promise<WorkforceNeedSummary> {
+    return this.request(`/admin/cv-assistant/workforce-needs/${rfqId}`, {
+      method: "PUT",
+      body: JSON.stringify(input),
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+}
+
+export interface WorkforceNeedSummary {
+  rfqId: number;
+  projectLocation: string | null;
+  hasProjectCoords: boolean;
+  requiredTrades: import("@annix/product-data/sa-market").TradeKey[];
+  estimatedHeadcount: number | null;
+  radiusKm: number | null;
+  counts: {
+    totalMatching: number;
+    withValidMedical: number;
+    withValidMineInduction: number;
+    availableNowOr14d: number;
+  };
+  unmetHeadcount: number | null;
+  reason?: "no-required-trades" | "no-radius" | "no-project-location";
+}
+
+export interface WorkforceNeedInput {
+  requiredTrades: import("@annix/product-data/sa-market").TradeKey[];
+  estimatedHeadcount?: number | null;
+  radiusKm?: number | null;
+  projectLocation?: string | null;
 }
 
 export interface SeekerCredential {
