@@ -14,10 +14,10 @@ interface MaterialWarningLimits {
 export interface MaterialWarning {
   show: boolean;
   specName: string;
-  specId: number | undefined;
+  specId: number | null;
   warnings: string[];
   recommendation?: string;
-  limits?: MaterialWarningLimits;
+  limits?: MaterialWarningLimits | null;
 }
 
 export interface ConfirmationWarning {

@@ -5,6 +5,10 @@ import { FastenersGasketsSection } from "@/app/components/rfq/specifications/Fas
 import { HdpeSpecificationsSection } from "@/app/components/rfq/specifications/HdpeSpecificationsSection";
 import { MaterialSpecificationsSection } from "@/app/components/rfq/specifications/MaterialSpecificationsSection";
 import { PvcSpecificationsSection } from "@/app/components/rfq/specifications/PvcSpecificationsSection";
+import {
+  ConfirmationWarningModal,
+  MaterialWarningModal,
+} from "@/app/components/rfq/specifications/SpecificationModals";
 import { WorkingConditionsSection } from "@/app/components/rfq/specifications/WorkingConditionsSection";
 import { getFlangeMaterialGroup } from "@/app/components/rfq/utils";
 import { useOptionalAdminAuth } from "@/app/context/AdminAuthContext";
@@ -5727,200 +5731,56 @@ export default function SpecificationsStep(props: {
           !showTransportInstall && <NoProductsSelectedBanner />}
 
         {/* Material Suitability Warning Modal */}
-        {materialWarning.show && (
-          <div className="fixed inset-0 bg-black/10 backdrop-blur-md flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4 overflow-hidden">
-              {/* Header */}
-              <div className="bg-red-600 px-6 py-4">
-                <div className="flex items-center">
-                  <svg
-                    className="w-6 h-6 text-white mr-3"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                    />
-                  </svg>
-                  <h3 className="text-lg font-bold text-white">Material Not Recommended</h3>
-                </div>
-              </div>
-
-              {/* Body */}
-              <div className="px-6 py-4">
-                <p className="text-gray-800 font-medium mb-3">
-                  <span className="font-bold">{materialWarning.specName}</span> is not recommended
-                  for the selected operating conditions:
-                </p>
-
-                <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
-                  <ul className="list-disc list-inside text-red-800 text-sm space-y-1">
-                    {materialWarning.warnings.map((warning, idx) => (
-                      <li key={idx}>{warning}</li>
-                    ))}
-                  </ul>
-                </div>
-
-                {materialWarning.limits && (
-                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-4">
-                    <p className="text-sm text-gray-700">
-                      <span className="font-semibold">{materialWarning.specName}</span> limits:
-                    </p>
-                    <ul className="text-sm text-gray-600 mt-1">
-                      <li>
-                        Temperature: {materialWarning.limits.minTempC}°C to{" "}
-                        {materialWarning.limits.maxTempC}°C
-                      </li>
-                      <li>Max Pressure: {materialWarning.limits.maxPressureBar} bar</li>
-                      <li>Type: {materialWarning.limits.type}</li>
-                    </ul>
-                  </div>
-                )}
-
-                {materialWarning.recommendation && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
-                    <p className="text-sm text-blue-800">
-                      <span className="font-semibold">Recommendation:</span>{" "}
-                      {materialWarning.recommendation}
-                    </p>
-                  </div>
-                )}
-
-                <p className="text-gray-600 text-sm">
-                  Do you want to proceed with this material anyway?
-                </p>
-              </div>
-
-              {/* Footer */}
-              <div className="bg-gray-50 px-6 py-4 flex justify-end space-x-3">
-                <button
-                  onClick={() =>
-                    setMaterialWarning({
-                      show: false,
-                      specName: "",
-                      specId: null,
-                      warnings: [],
-                    })
-                  }
-                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 font-medium text-sm"
-                >
-                  Cancel - Select Different Material
-                </button>
-                <button
-                  onClick={async () => {
-                    // User chose to proceed despite warning
-                    const newSpecId = materialWarning.specId;
-                    let recommendedPressureClassId = globalSpecs?.flangePressureClassId;
-
-                    if (newSpecId && globalSpecs?.flangeStandardId && gsWorkingPressureBar) {
-                      const newSteelSpec = masterData.steelSpecs?.find(
-                        (s: any) => s.id === newSpecId,
-                      );
-                      const materialGroup = getFlangeMaterialGroup(newSteelSpec?.steelSpecName);
-                      recommendedPressureClassId = await fetchAndSelectPressureClass(
-                        globalSpecs.flangeStandardId,
-                        globalSpecs.workingPressureBar,
-                        globalSpecs.workingTemperatureC,
-                        materialGroup,
-                      );
-                    }
-
-                    onUpdateGlobalSpecs({
-                      ...globalSpecs,
-                      steelSpecificationId: newSpecId,
-                      flangePressureClassId:
-                        recommendedPressureClassId || globalSpecs?.flangePressureClassId,
-                    });
-
-                    setMaterialWarning({
-                      show: false,
-                      specName: "",
-                      specId: null,
-                      warnings: [],
-                    });
-                  }}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium text-sm"
-                >
-                  Proceed Anyway
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        <MaterialWarningModal
+          warning={materialWarning}
+          onClose={() =>
+            setMaterialWarning({
+              show: false,
+              specName: "",
+              specId: null,
+              warnings: [],
+            })
+          }
+          onProceed={async () => {
+            const newSpecId = materialWarning.specId;
+            let recommendedPressureClassId = globalSpecs?.flangePressureClassId;
+            if (newSpecId && globalSpecs?.flangeStandardId && gsWorkingPressureBar) {
+              const newSteelSpec = masterData.steelSpecs?.find((s: any) => s.id === newSpecId);
+              const materialGroup = getFlangeMaterialGroup(newSteelSpec?.steelSpecName);
+              recommendedPressureClassId = await fetchAndSelectPressureClass(
+                globalSpecs.flangeStandardId,
+                globalSpecs.workingPressureBar,
+                globalSpecs.workingTemperatureC,
+                materialGroup,
+              );
+            }
+            onUpdateGlobalSpecs({
+              ...globalSpecs,
+              steelSpecificationId: newSpecId,
+              flangePressureClassId:
+                recommendedPressureClassId || globalSpecs?.flangePressureClassId,
+            });
+            setMaterialWarning({
+              show: false,
+              specName: "",
+              specId: null,
+              warnings: [],
+            });
+          }}
+        />
 
         {/* Confirmation Warning Popup - Shows when user tries to confirm with non-recommended specs */}
-        {confirmationWarning.show && (
-          <div className="fixed inset-0 bg-black/10 backdrop-blur-md flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4 overflow-hidden">
-              {/* Header */}
-              <div className="bg-amber-500 px-6 py-4">
-                <div className="flex items-center">
-                  <svg
-                    className="w-6 h-6 text-white mr-3"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                    />
-                  </svg>
-                  <h3 className="text-lg font-bold text-white">Nix has some concerns</h3>
-                </div>
-              </div>
-
-              {/* Body */}
-              <div className="px-6 py-4">
-                <p className="text-gray-800 font-medium mb-3">
-                  The following specifications are not recommended for your operating conditions:
-                </p>
-
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
-                  <ul className="list-disc list-inside text-amber-800 text-sm space-y-2">
-                    {confirmationWarning.warnings.map((warning, idx) => (
-                      <li key={idx}>{warning}</li>
-                    ))}
-                  </ul>
-                </div>
-
-                <p className="text-gray-600 text-sm">
-                  Do you want to proceed with these specifications anyway, or go back and make
-                  corrections?
-                </p>
-              </div>
-
-              {/* Footer */}
-              <div className="bg-gray-50 px-6 py-4 flex justify-end space-x-3">
-                <button
-                  onClick={() => setConfirmationWarning({ show: false, warnings: [] })}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium text-sm"
-                >
-                  Go Back and Correct
-                </button>
-                <button
-                  onClick={() => {
-                    // User chose to proceed despite warnings
-                    onUpdateGlobalSpecs({
-                      ...globalSpecs,
-                      steelPipesSpecsConfirmed: true,
-                    });
-                    setConfirmationWarning({ show: false, warnings: [] });
-                  }}
-                  className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 font-medium text-sm"
-                >
-                  Proceed Anyway
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        <ConfirmationWarningModal
+          warning={confirmationWarning}
+          onClose={() => setConfirmationWarning({ show: false, warnings: [] })}
+          onProceed={() => {
+            onUpdateGlobalSpecs({
+              ...globalSpecs,
+              steelPipesSpecsConfirmed: true,
+            });
+            setConfirmationWarning({ show: false, warnings: [] });
+          }}
+        />
 
         {/* Restriction Popup for unregistered users */}
         {restrictionPopup && (
