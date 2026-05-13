@@ -5,10 +5,10 @@ category: Job Search
 roles: [seeker, individual]
 order: 2
 tags: [jobs, matching, seeker, adzuna, jooble, remotive]
-lastUpdated: 2026-05-11
+lastUpdated: 2026-05-13
 summary: How CV Assistant pulls and ranks jobs from external sources against the CV you uploaded.
 readingMinutes: 4
-relatedPaths: [annix-frontend/src/app/cv-assistant/seeker/jobs, annix-frontend/src/app/lib/cv-assistant/components/SeekerJobCard.tsx, annix-backend/src/cv-assistant/services/seeker-job-feed.service.ts, annix-backend/src/cv-assistant/controllers/seeker-jobs.controller.ts, annix-backend/src/cv-assistant/services/jooble.service.ts, annix-backend/src/cv-assistant/services/remotive.service.ts]
+relatedPaths: [annix-frontend/src/app/cv-assistant/seeker/jobs, annix-frontend/src/app/lib/cv-assistant/components/SeekerJobCard.tsx, annix-backend/src/cv-assistant/services/seeker-job-feed.service.ts, annix-backend/src/cv-assistant/controllers/seeker-jobs.controller.ts, annix-backend/src/cv-assistant/services/jooble.service.ts, annix-backend/src/cv-assistant/services/remotive.service.ts, annix-backend/src/cv-assistant/services/dpsa-circular.service.ts]
 ---
 
 ## What is it?
@@ -95,3 +95,24 @@ Withdraw any time from **Settings → Privacy → Stop matching me to jobs**.
 - Remote-friendly roles surface through Remotive but Remotive applies a
   24-hour publication delay (their terms), so the freshest remote postings
   show up the day after they go live elsewhere.
+
+## Public Service postings (DPSA)
+
+The matcher also pulls the **weekly DPSA Public Service Vacancy Circular**
+(PSVC) every Monday morning. Each circular contains roughly 40-60 posts
+spanning national + provincial departments. We extract structured fields
+(post number, title, department, centre, salary, closing date, enquiries,
+plus a short duties + requirements summary) via Gemini and rank them
+alongside the commercial Adzuna / Jooble / Remotive results.
+
+DPSA posts are kept brief on purpose — for the full vacancy detail
+(complete duties list, full requirements, application form), click through
+to the source PSVC PDF.
+
+Validation status (last reviewed 2026-05-13 against PSVC 15/2026):
+48/48 posts extracted, all 8 fields populated, no duplicates. Validation
+script lives at `scripts/cv-assistant/dpsa-validate.mjs` — re-run quarterly
+against a fresh PSVC to confirm prompt accuracy.
+
+Toggle: set `DPSA_INGESTION_ENABLED=true` (already on staging; flip on
+prod after a clean Monday cycle on staging).

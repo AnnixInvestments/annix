@@ -1,5 +1,9 @@
 const pdfParseModule = require("pdf-parse");
-const pdfParse = pdfParseModule.default ?? pdfParseModule;
+const PDFParseCtor =
+  pdfParseModule.PDFParse ??
+  pdfParseModule.default?.PDFParse ??
+  pdfParseModule.default ??
+  pdfParseModule;
 const XLSX = require("xlsx");
 const mammoth = require("mammoth");
 
@@ -49,8 +53,9 @@ export async function extractTextFromWord(buffer: Buffer): Promise<string> {
 
 export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
   try {
-    const pdfData = await pdfParse(buffer);
-    return pdfData.text || "";
+    const parser = new PDFParseCtor({ data: buffer });
+    const result = await parser.getText();
+    return result?.text || "";
   } catch {
     try {
       return extractTextFromExcel(buffer);

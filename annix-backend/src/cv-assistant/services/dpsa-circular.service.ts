@@ -19,24 +19,34 @@ interface DpsaVacancy {
   salary: string | null;
   closingDate: string | null;
   enquiries: string | null;
-  duties: string | null;
-  requirements: string | null;
+  dutiesSummary: string | null;
+  requirementsSummary: string | null;
 }
 
 const DPSA_EXTRACTION_PROMPT = `You are extracting vacancy posts from a South African Department of Public Service and Administration (DPSA) Public Service Vacancy Circular (PSVC) PDF.
 
-Each post in the circular has a structured shape:
-- POST NUMBER (e.g. "POST 18/01")
-- POST TITLE (job title)
-- DEPARTMENT (national / provincial)
-- CENTRE (location)
-- SALARY (annual range, often a single grade)
-- CLOSING DATE
-- ENQUIRIES (contact)
-- DUTIES (responsibilities)
-- REQUIREMENTS (qualifications, experience, skills)
+Return a strict JSON array of objects. Each object MUST use these exact camelCase field names (NOT the uppercase labels from the PDF):
 
-Return a strict JSON array of objects with these fields exactly. Use null for any field that's missing. Trim whitespace. Do NOT include any prose outside the JSON.
+{
+  "postNumber":          string,        // e.g. "POST 15/01"
+  "title":               string,        // job title, e.g. "Senior Agricultural Economist Ref No: 3/3/1/27/2026"
+  "department":          string|null,
+  "centre":              string|null,   // location, e.g. "Gauteng: Pretoria"
+  "salary":              string|null,   // e.g. "R605 742 per annum (Level 10)"
+  "closingDate":         string|null,
+  "enquiries":           string|null,
+  "dutiesSummary":       string|null,   // 2-3 sentence summary, MAX 400 chars
+  "requirementsSummary": string|null    // 2-3 sentence summary, MAX 400 chars
+}
+
+Rules:
+- Use the exact field names above. Do NOT use "POST NUMBER" or "POST TITLE" — use "postNumber" and "title".
+- dutiesSummary and requirementsSummary MUST be summaries, not the verbatim PDF text. Hard cap 400 characters each — full verbatim text causes output truncation.
+- Use null for any missing field.
+- Trim whitespace; collapse repeated spaces.
+- One object per post. Extract every post you can find.
+- Do NOT include any prose, markdown, or explanation outside the JSON array.
+- The reference number (e.g. "REF NO: 3/3/1/27/2026") is part of the title — keep it in the title string.
 
 The full text of the circular follows.`;
 
@@ -159,15 +169,31 @@ export class DpsaCircularService {
 
   private async discoverLatestCircularUrl(): Promise<string | null> {
     try {
-      const response = await fetch(PSVC_INDEX_URL);
-      if (!response.ok) return null;
-      const html = await response.text();
-      const match = html.match(/href="([^"]+\.pdf)"/i);
-      if (!match) return null;
-      const href = match[1];
-      if (href.startsWith("http")) return href;
-      if (href.startsWith("/")) return `https://www.dpsa.gov.za${href}`;
-      return `https://www.dpsa.gov.za/newsroom/psvc/${href}`;
+      const indexResponse = await fetch(PSVC_INDEX_URL);
+      if (!indexResponse.ok) return null;
+      const indexHtml = await indexResponse.text();
+
+      const circularPageHref = findLatestCircularPageHref(indexHtml);
+      if (!circularPageHref) {
+        this.logger.warn("PSVC discovery: no circular page link on index");
+        return null;
+      }
+      const circularPageUrl = circularPageHref.startsWith("http")
+        ? circularPageHref
+        : `https://www.dpsa.gov.za${circularPageHref.startsWith("/") ? "" : "/"}${circularPageHref}`;
+
+      const circularResponse = await fetch(circularPageUrl);
+      if (!circularResponse.ok) return null;
+      const circularHtml = await circularResponse.text();
+
+      const pdfHref = findPdfHref(circularHtml);
+      if (!pdfHref) {
+        this.logger.warn(`PSVC discovery: no PDF link on ${circularPageUrl}`);
+        return null;
+      }
+      if (pdfHref.startsWith("http")) return pdfHref;
+      if (pdfHref.startsWith("/")) return `https://www.dpsa.gov.za${pdfHref}`;
+      return `https://www.dpsa.gov.za/${pdfHref}`;
     } catch (err) {
       this.logger.warn(
         `PSVC discovery failed: ${err instanceof Error ? err.message : String(err)}`,
@@ -191,7 +217,7 @@ export class DpsaCircularService {
       [{ role: "user", content: `${DPSA_EXTRACTION_PROMPT}\n\nSource: ${pdfUrl}\n\n${trimmed}` }],
       undefined,
       undefined,
-      { maxOutputTokens: 16_000, temperature: 0.1, responseFormat: "json" },
+      { maxOutputTokens: 65_000, temperature: 0.1, responseFormat: "json" },
     );
     try {
       const parsed = parseJsonFromAi<DpsaVacancy[]>(result.content);
@@ -209,6 +235,26 @@ export class DpsaCircularService {
   }
 }
 
+function findLatestCircularPageHref(html: string): string | null {
+  const matches = [
+    ...html.matchAll(/href="([^"]*\/newsroom\/psvc\/circular-(\d+)-of-(\d+)\/?[^"]*)"/gi),
+  ];
+  if (matches.length === 0) return null;
+  const ranked = matches
+    .map((m) => ({
+      href: m[1],
+      year: Number(m[3]),
+      number: Number(m[2]),
+    }))
+    .sort((a, b) => b.year - a.year || b.number - a.number);
+  return ranked[0]?.href ?? null;
+}
+
+function findPdfHref(html: string): string | null {
+  const match = html.match(/href="([^"]+\.pdf)"/i);
+  return match ? match[1] : null;
+}
+
 function buildPostExternalId(pdfUrl: string, postNumber: string): string {
   const circular = pdfUrl.split("/").pop() ?? pdfUrl;
   const trimmed = circular.replace(/\.pdf$/i, "");
@@ -219,8 +265,8 @@ function buildDescription(v: DpsaVacancy): string {
   const sections: string[] = [];
   if (v.salary) sections.push(`SALARY: ${v.salary}`);
   if (v.closingDate) sections.push(`CLOSING DATE: ${v.closingDate}`);
-  if (v.requirements) sections.push(`REQUIREMENTS:\n${v.requirements}`);
-  if (v.duties) sections.push(`DUTIES:\n${v.duties}`);
+  if (v.requirementsSummary) sections.push(`REQUIREMENTS:\n${v.requirementsSummary}`);
+  if (v.dutiesSummary) sections.push(`DUTIES:\n${v.dutiesSummary}`);
   if (v.enquiries) sections.push(`ENQUIRIES: ${v.enquiries}`);
   return sections.join("\n\n");
 }
