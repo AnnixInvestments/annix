@@ -12,6 +12,7 @@ import { Company } from "../platform/entities/company.entity";
 import { App } from "../rbac/entities/app.entity";
 import { AppRole } from "../rbac/entities/app-role.entity";
 import { UserAppAccess } from "../rbac/entities/user-app-access.entity";
+import { Rfq } from "../rfq/entities/rfq.entity";
 import { StorageModule } from "../storage/storage.module";
 import { User } from "../user/entities/user.entity";
 import { CvAssistantCapabilities } from "./capabilities/cv-assistant.capabilities";
@@ -39,6 +40,7 @@ import { ReferencesController } from "./controllers/references.controller";
 import { SeekerJobsController } from "./controllers/seeker-jobs.controller";
 import { SettingsController } from "./controllers/settings.controller";
 import { TradeProfileController } from "./controllers/trade-profile.controller";
+import { WorkforceNeedController } from "./controllers/workforce-need.controller";
 import { Candidate } from "./entities/candidate.entity";
 import { CandidateJobMatch } from "./entities/candidate-job-match.entity";
 import { CandidateReference } from "./entities/candidate-reference.entity";
@@ -116,6 +118,7 @@ import { SettingsService } from "./services/settings.service";
 import { TestCandidateSeederService } from "./services/test-candidate-seeder.service";
 import { TradeProfileService } from "./services/trade-profile.service";
 import { WorkflowAutomationService } from "./services/workflow-automation.service";
+import { WorkforceNeedService } from "./services/workforce-need.service";
 
 @Module({
   imports: [
@@ -155,6 +158,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
       CvCredential,
       CvEscoSkill,
       CvGeocodeCache,
+      Rfq,
     ]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -201,6 +205,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     SeekerJobsController,
     TradeProfileController,
     CredentialController,
+    WorkforceNeedController,
   ],
   providers: [
     CvAssistantAuthGuard,
@@ -251,6 +256,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     SeekerJobFeedService,
     TradeProfileService,
     CredentialService,
+    WorkforceNeedService,
   ],
   exports: [CvAssistantAuthService],
 })

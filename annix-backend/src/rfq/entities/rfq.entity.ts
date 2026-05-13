@@ -1,3 +1,4 @@
+import type { TradeKey } from "@annix/product-data/sa-market";
 import { ApiProperty } from "@nestjs/swagger";
 import {
   Column,
@@ -98,6 +99,36 @@ export class Rfq {
     nullable: true,
   })
   totalCost?: number;
+
+  @ApiProperty({
+    description: "Trades required to deliver this project (for workforce-need linker)",
+    required: false,
+  })
+  @Column({ name: "required_trades", type: "jsonb", nullable: true })
+  requiredTrades?: TradeKey[] | null;
+
+  @ApiProperty({ description: "Estimated headcount for the project", required: false })
+  @Column({ name: "estimated_headcount", type: "int", nullable: true })
+  estimatedHeadcount?: number | null;
+
+  @ApiProperty({
+    description: "Radius around project site to search for candidates (km)",
+    required: false,
+  })
+  @Column({ name: "radius_km", type: "int", nullable: true })
+  radiusKm?: number | null;
+
+  @ApiProperty({ description: "Project site location (free text for geocoding)", required: false })
+  @Column({ name: "project_location", type: "varchar", length: 500, nullable: true })
+  projectLocation?: string | null;
+
+  @ApiProperty({ description: "Geocoded project lat", required: false })
+  @Column({ name: "project_location_lat", type: "double precision", nullable: true })
+  projectLocationLat?: number | null;
+
+  @ApiProperty({ description: "Geocoded project lon", required: false })
+  @Column({ name: "project_location_lon", type: "double precision", nullable: true })
+  projectLocationLon?: number | null;
 
   @ApiProperty({
     description: "User who created this RFQ",
