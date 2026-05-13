@@ -40,6 +40,7 @@ import {
 } from "@/app/lib/utils/coatingLiningRecommendations";
 import { AutoExtractedSpecsBanner } from "./specifications/AutoExtractedSpecsBanner";
 import { ConfirmedLiningBadge } from "./specifications/ConfirmedLiningBadge";
+import { ExternalCoatingLockedSupplierSpec } from "./specifications/ExternalCoatingLockedSupplierSpec";
 import { ExternalCoatingNonPaintConfirmed } from "./specifications/ExternalCoatingNonPaintConfirmed";
 import { ExternalRubberLiningOptions } from "./specifications/ExternalRubberLiningOptions";
 import {
@@ -1914,214 +1915,34 @@ export default function SpecificationsStep(props: {
                 </div>
               )}
 
-              {/* LOCKED SUPPLIER SPECIFICATION - Shows when recommendation is confirmed */}
               {gsExternalCoatingConfirmed && globalSpecs?.externalCoatingRecommendation && (
-                <div className="bg-green-50 border-2 border-green-500 rounded-lg p-4">
-                  <div className="flex items-center gap-2 mb-4">
-                    <svg className="w-6 h-6 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                      <path
-                        fillRule="evenodd"
-                        d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    <h4 className="text-lg font-bold text-green-800">
-                      External Coating Specification (Locked)
-                    </h4>
-                  </div>
-
-                  {/* Supplier Specification Summary */}
-                  <div className="bg-white rounded-lg border border-green-300 p-4 space-y-4">
-                    <div className="text-center border-b border-green-200 pb-3">
-                      <h5 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
-                        Coating System
-                      </h5>
-                      <p className="text-xl font-bold text-green-800 mt-1">
-                        {globalSpecs.externalCoatingRecommendation.coating}
-                      </p>
-                    </div>
-
-                    {/* Surface Preparation */}
-                    {globalSpecs?.externalBlastingGrade && (
-                      <div className="bg-amber-50 rounded-lg p-3 border border-amber-200">
-                        <span className="font-semibold text-amber-800 text-sm">
-                          Surface Preparation:
-                        </span>
-                        <p className="text-amber-900 font-medium mt-1">
-                          {globalSpecs.externalBlastingGrade}
-                        </p>
-                      </div>
-                    )}
-
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <span className="font-semibold text-gray-700">System:</span>
-                        <p className="text-gray-900 mt-0.5">
-                          {globalSpecs.externalCoatingRecommendation.system}
-                        </p>
-                      </div>
-                      <div>
-                        <span className="font-semibold text-gray-700">Thickness Range:</span>
-                        <p className="text-gray-900 font-medium mt-0.5">
-                          {globalSpecs.externalCoatingRecommendation.thicknessRange}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Colour Specifications */}
-                    {(rawExternalTopcoatColour || globalSpecs?.externalBand1Colour) && (
-                      <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
-                        <span className="font-semibold text-blue-800 text-sm">
-                          Colour Specifications:
-                        </span>
-                        <div className="grid grid-cols-3 gap-3 mt-2 text-sm">
-                          {globalSpecs?.externalTopcoatColour && (
-                            <div>
-                              <span className="text-blue-600 text-xs">Topcoat Colour:</span>
-                              <p className="font-medium text-blue-900">
-                                {globalSpecs.externalTopcoatColour}
-                              </p>
-                            </div>
-                          )}
-                          {globalSpecs?.externalBand1Colour && (
-                            <div>
-                              <span className="text-blue-600 text-xs">Band 1 Colour:</span>
-                              <p className="font-medium text-blue-900">
-                                {globalSpecs.externalBand1Colour}
-                              </p>
-                            </div>
-                          )}
-                          {globalSpecs?.externalBand2Colour && (
-                            <div>
-                              <span className="text-blue-600 text-xs">Band 2 Colour:</span>
-                              <p className="font-medium text-blue-900">
-                                {globalSpecs.externalBand2Colour}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    <div>
-                      <span className="font-semibold text-gray-700 text-sm">
-                        Applicable Standards:
-                      </span>
-                      <div className="flex flex-wrap gap-2 mt-1">
-                        {globalSpecs.externalCoatingRecommendation.standardsBasis.map(
-                          (std: string, i: number) => (
-                            <span
-                              key={i}
-                              className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded font-medium"
-                            >
-                              {std}
-                            </span>
-                          ),
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="bg-gray-50 rounded-lg p-3">
-                      <span className="font-semibold text-gray-700 text-sm">
-                        Environment Profile:
-                      </span>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2 text-xs">
-                        <div>
-                          <span className="text-gray-500">Installation:</span>{" "}
-                          <span className="font-medium">{rawInstallationType || "N/A"}</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-500">ISO 12944:</span>{" "}
-                          <span className="font-medium">{rawIso12944Category2 || "N/A"}</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-500">Marine:</span>{" "}
-                          <span className="font-medium">{rawMarineInfluence2 || "None"}</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-500">UV Exposure:</span>{" "}
-                          <span className="font-medium">{rawUvExposure || "N/A"}</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-500">Temperature:</span>{" "}
-                          <span className="font-medium">{rawTemperature || "N/A"}</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-500">Service Life:</span>{" "}
-                          <span className="font-medium">{rawServiceLife || "N/A"}</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-500">Mech. Risk:</span>{" "}
-                          <span className="font-medium">{rawMechanicalRisk || "N/A"}</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-500">Pollution:</span>{" "}
-                          <span className="font-medium">{rawIndustrialPollution2 || "None"}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="bg-green-100 rounded-lg p-3">
-                      <span className="font-semibold text-green-800 text-sm">
-                        Engineering Notes for Suppliers:
-                      </span>
-                      <ul className="mt-2 text-xs text-green-900 space-y-1">
-                        {globalSpecs.externalCoatingRecommendation.engineeringNotes.map(
-                          (note: string, i: number) => (
-                            <li key={i} className="flex items-start gap-2">
-                              <span className="text-green-600 mt-0.5">•</span>
-                              {note}
-                            </li>
-                          ),
-                        )}
-                      </ul>
-                    </div>
-
-                    <div className="text-xs text-gray-500 italic border-t border-gray-200 pt-3">
-                      <strong>Rationale:</strong>{" "}
-                      {globalSpecs.externalCoatingRecommendation.rationale}
-                    </div>
-                  </div>
-
-                  <div className="mt-3 p-2 bg-green-100 rounded text-xs text-green-800 text-center">
-                    <strong>This specification will be sent to suppliers for quotation.</strong>
-                  </div>
-
-                  <div className="mt-4 flex justify-end">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const rawExternalCoatingActionLog3 = globalSpecs?.externalCoatingActionLog;
-
-                        return onUpdateGlobalSpecs({
-                          ...globalSpecs,
-                          externalCoatingConfirmed: false,
-                          externalCoatingRecommendation: null,
-                          externalCoatingActionLog: [
-                            ...(rawExternalCoatingActionLog3 || []),
-                            { action: "UNLOCKED_FOR_EDIT", timestamp: nowISO() },
-                          ],
-                        });
-                      }}
-                      className="px-4 py-2 text-sm bg-gray-500 text-white rounded-lg hover:bg-gray-600 flex items-center gap-2"
-                    >
-                      <svg
-                        className="w-4 h-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"
-                        />
-                      </svg>
-                      Unlock & Edit Specification
-                    </button>
-                  </div>
-                </div>
+                <ExternalCoatingLockedSupplierSpec
+                  recommendation={globalSpecs.externalCoatingRecommendation}
+                  blastingGrade={globalSpecs?.externalBlastingGrade}
+                  topcoatColour={rawExternalTopcoatColour}
+                  band1Colour={globalSpecs?.externalBand1Colour}
+                  band2Colour={globalSpecs?.externalBand2Colour}
+                  installationType={rawInstallationType}
+                  iso12944Category={rawIso12944Category2}
+                  marineInfluence={rawMarineInfluence2}
+                  uvExposure={rawUvExposure}
+                  temperature={rawTemperature}
+                  serviceLife={rawServiceLife}
+                  mechanicalRisk={rawMechanicalRisk}
+                  industrialPollution={rawIndustrialPollution2}
+                  onUnlock={() => {
+                    const rawExternalCoatingActionLog3 = globalSpecs?.externalCoatingActionLog;
+                    onUpdateGlobalSpecs({
+                      ...globalSpecs,
+                      externalCoatingConfirmed: false,
+                      externalCoatingRecommendation: null,
+                      externalCoatingActionLog: [
+                        ...(rawExternalCoatingActionLog3 || []),
+                        { action: "UNLOCKED_FOR_EDIT", timestamp: nowISO() },
+                      ],
+                    });
+                  }}
+                />
               )}
 
               {/* MANUAL COATING FIELDS - Show when:
