@@ -742,8 +742,20 @@ function PoolSection(props: {
         </h3>
         {showAreaColumn && isAreaReady && (
           <span className="text-xs text-gray-700">
-            <span className="font-semibold">{formatM2(poolTotalM2)}</span>{" "}
-            <span className="text-gray-500">{headerLabel.toLowerCase()}</span>
+            {coverageKind === "total" ? (
+              <>
+                <span className="font-semibold">{formatM2(totals.totalExternal)}</span>{" "}
+                <span className="text-gray-500">coating m²</span>
+                <span className="text-gray-400"> · </span>
+                <span className="font-semibold">{formatM2(totals.totalInternal)}</span>{" "}
+                <span className="text-gray-500">lining m²</span>
+              </>
+            ) : (
+              <>
+                <span className="font-semibold">{formatM2(poolTotalM2)}</span>{" "}
+                <span className="text-gray-500">{headerLabel.toLowerCase()}</span>
+              </>
+            )}
           </span>
         )}
       </header>
@@ -755,7 +767,27 @@ function PoolSection(props: {
             <th className="px-3 py-2 font-medium text-right">Qty</th>
             <th className="px-3 py-2 font-medium">Dimensions</th>
             <th className="px-3 py-2 font-medium">Flange class</th>
-            {showAreaColumn && (
+            {showAreaColumn && coverageKind === "total" && (
+              <>
+                <th className="px-3 py-2 font-medium text-right whitespace-nowrap">
+                  Coating m²
+                  <span className="block text-[10px] font-normal text-gray-400">per item</span>
+                </th>
+                <th className="px-3 py-2 font-medium text-right whitespace-nowrap">
+                  Coating m²
+                  <span className="block text-[10px] font-normal text-gray-400">line total</span>
+                </th>
+                <th className="px-3 py-2 font-medium text-right whitespace-nowrap">
+                  Lining m²
+                  <span className="block text-[10px] font-normal text-gray-400">per item</span>
+                </th>
+                <th className="px-3 py-2 font-medium text-right whitespace-nowrap">
+                  Lining m²
+                  <span className="block text-[10px] font-normal text-gray-400">line total</span>
+                </th>
+              </>
+            )}
+            {showAreaColumn && coverageKind !== "total" && (
               <>
                 <th className="px-3 py-2 font-medium text-right whitespace-nowrap">Per item m²</th>
                 <th className="px-3 py-2 font-medium text-right whitespace-nowrap">
@@ -912,13 +944,25 @@ function ItemRow(props: {
 
   let perItemCellText = "—";
   let lineTotalCellText = "—";
+  let coatingPerItemText = "—";
+  let coatingLineTotalText = "—";
+  let liningPerItemText = "—";
+  let liningLineTotalText = "—";
   if (showAreaColumn) {
     if (!isAreaReady) {
       perItemCellText = "…";
       lineTotalCellText = "…";
+      coatingPerItemText = "…";
+      coatingLineTotalText = "…";
+      liningPerItemText = "…";
+      liningLineTotalText = "…";
     } else if (area) {
       perItemCellText = formatM2(coveragePerItemAreaM2(area, coverageKind));
       lineTotalCellText = formatM2(coverageRowAreaM2(area, coverageKind));
+      coatingPerItemText = formatM2(area.perPipe.totalExternalAreaM2);
+      coatingLineTotalText = formatM2(area.total.totalExternalAreaM2);
+      liningPerItemText = formatM2(area.perPipe.totalInternalAreaM2);
+      liningLineTotalText = formatM2(area.total.totalInternalAreaM2);
     }
   }
 
@@ -934,7 +978,23 @@ function ItemRow(props: {
         )}
       </td>
       <td className="px-3 py-2 text-gray-700 font-mono text-xs">{materialClassText}</td>
-      {showAreaColumn && (
+      {showAreaColumn && coverageKind === "total" && (
+        <>
+          <td className="px-3 py-2 text-right text-gray-700 font-mono text-xs whitespace-nowrap">
+            {coatingPerItemText}
+          </td>
+          <td className="px-3 py-2 text-right text-gray-900 font-mono text-xs whitespace-nowrap">
+            {coatingLineTotalText}
+          </td>
+          <td className="px-3 py-2 text-right text-gray-700 font-mono text-xs whitespace-nowrap">
+            {liningPerItemText}
+          </td>
+          <td className="px-3 py-2 text-right text-gray-900 font-mono text-xs whitespace-nowrap">
+            {liningLineTotalText}
+          </td>
+        </>
+      )}
+      {showAreaColumn && coverageKind !== "total" && (
         <>
           <td className="px-3 py-2 text-right text-gray-700 font-mono text-xs whitespace-nowrap">
             {perItemCellText}
