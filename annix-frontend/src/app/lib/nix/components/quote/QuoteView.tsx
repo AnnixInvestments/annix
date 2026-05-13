@@ -446,7 +446,10 @@ export function QuoteView(props: QuoteViewProps) {
     if (!isAreaReady) return 0;
     for (const pool of renderedPools) {
       const items = pool.items;
-      const areas = items.map((item) => surfaceAreaForQuoteItem(item, nbToOdMap));
+      const wrap = Boolean(pool.coating) && Boolean(pool.lining);
+      const areas = items.map((item) =>
+        surfaceAreaForQuoteItem(item, nbToOdMap, { liningWrapsOverPlainEnds: wrap }),
+      );
       const totals = sumPoolTotals(areas);
       const coatingRate = lookupSpecRate(specRates, pool.coating);
       const liningRate = lookupSpecRate(specRates, pool.lining);
@@ -721,10 +724,13 @@ function PoolSection(props: {
   const showAreaColumn = coverageKind !== "none";
   const headerLabel = coverageHeaderLabel(coverageKind);
 
+  const liningWrapsOverPlainEnds = coverageKind === "total";
   const itemAreas = useMemo(() => {
     if (!isAreaReady) return pool.items.map(() => null);
-    return pool.items.map((item) => surfaceAreaForQuoteItem(item, nbToOdMap));
-  }, [pool.items, nbToOdMap, isAreaReady]);
+    return pool.items.map((item) =>
+      surfaceAreaForQuoteItem(item, nbToOdMap, { liningWrapsOverPlainEnds }),
+    );
+  }, [pool.items, nbToOdMap, isAreaReady, liningWrapsOverPlainEnds]);
   const totals = useMemo(() => sumPoolTotals(itemAreas), [itemAreas]);
   const poolTotalM2 = (() => {
     if (coverageKind === "external") return totals.totalExternal;

@@ -315,6 +315,7 @@ function equalYArea(item: QuoteItem, nbToOdMap: Record<number, number>): ItemSur
 export function surfaceAreaForQuoteItem(
   item: QuoteItem,
   nbToOdMap: Record<number, number>,
+  options?: { liningWrapsOverPlainEnds?: boolean },
 ): ItemSurfaceArea | null {
   // Dispatch by fitting kind first — fittings have their own formulas and
   // don't share the cylinder-with-length requirement that pipes need.
@@ -341,6 +342,21 @@ export function surfaceAreaForQuoteItem(
   const lengthM = itemLengthMm / 1000;
   const flangeCount = countFlangesFromConfig(item.flangeConfig);
   const quantity = item.quantity > 0 ? item.quantity : 1;
+
+  // P.E. pipes in dual-spec (coating + lining) pools: the rubber lining
+  // wraps over each end onto the outside of the pipe, 100 mm per end. So
+  // the lining covers (pipe length + 200 mm) and the coating loses those
+  // same 200 mm — the rubber sits on the outside there, paint can't.
+  // Confirmed by Andrew 2026-05-13: see drawing -04 on DOC080526.pdf.
+  const wrapFlag = options ? options.liningWrapsOverPlainEnds : undefined;
+  const wantsWrapOver = wrapFlag === true;
+  if (wantsWrapOver && flangeCount === 0) {
+    const externalLengthM = Math.max(0, lengthM - 0.2);
+    const internalLengthM = lengthM + 0.2;
+    const externalM2 = Math.PI * (odMm / 1000) * externalLengthM;
+    const internalM2 = Math.PI * (idMm / 1000) * internalLengthM;
+    return asResult({ externalM2, internalM2, quantity });
+  }
 
   const raw = calculateTotalSurfaceArea({
     outsideDiameterMm: odMm,
