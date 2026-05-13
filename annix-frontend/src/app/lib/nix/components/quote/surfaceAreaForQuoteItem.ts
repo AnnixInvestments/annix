@@ -257,9 +257,8 @@ function teeArea(item: QuoteItem, nbToOdMap: Record<number, number>): ItemSurfac
 
   const explicitLength = item.length;
   // Drawing length on a tee row is the run face-to-face. C/F = length / 2.
-  const runLengthMm = explicitLength && explicitLength > 0
-    ? explicitLength
-    : 2 * (0.5 * nbRun + 100);
+  const runLengthMm =
+    explicitLength && explicitLength > 0 ? explicitLength : 2 * (0.5 * nbRun + 100);
 
   let developedLengthMm: number;
   if (nbBranch === nbRun) {
