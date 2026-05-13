@@ -5,7 +5,7 @@ category: Hiring
 roles: [recruiter, admin]
 order: 1
 tags: [jobs, nix, ai, wizard]
-lastUpdated: 2026-05-06
+lastUpdated: 2026-05-13
 summary: Walk through the six-step job-posting wizard and learn when to lean on Nix.
 readingMinutes: 6
 relatedPaths: [annix-frontend/src/app/lib/cv-assistant/job-wizard, annix-frontend/src/app/cv-assistant/portal/jobs, annix-backend/src/cv-assistant/services/nix-job-assist.service.ts, annix-backend/src/cv-assistant/services/nix-prompts.ts]
