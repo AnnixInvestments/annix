@@ -1923,6 +1923,16 @@ class CvAssistantApiClient {
   async deleteSeekerCredential(id: number): Promise<{ success: boolean }> {
     return this.request(`/cv-assistant/me/credentials/${id}`, { method: "DELETE" });
   }
+
+  async autofillSeekerCredentialsFromCv(): Promise<{
+    created: number;
+    credentials: SeekerCredential[];
+    reason?: "no-candidate" | "no-cv-text" | "no-credential-keywords" | "ai-failed";
+  }> {
+    return this.request("/cv-assistant/me/credentials/extract-from-cv", {
+      method: "POST",
+    });
+  }
 }
 
 export interface SeekerCredential {

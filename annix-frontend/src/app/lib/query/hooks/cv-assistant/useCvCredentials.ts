@@ -48,3 +48,19 @@ export function useCvDeleteSeekerCredential() {
     },
   });
 }
+
+interface CredentialAutofillResponse {
+  created: number;
+  credentials: SeekerCredential[];
+  reason?: "no-candidate" | "no-cv-text" | "no-credential-keywords" | "ai-failed";
+}
+
+export function useCvAutofillSeekerCredentials() {
+  const queryClient = useQueryClient();
+  return useMutation<CredentialAutofillResponse, Error, void>({
+    mutationFn: () => cvAssistantApiClient.autofillSeekerCredentialsFromCv(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: cvAssistantKeys.seekerCredentials.all });
+    },
+  });
+}

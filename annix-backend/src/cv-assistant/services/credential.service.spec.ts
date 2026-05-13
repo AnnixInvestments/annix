@@ -2,6 +2,7 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { EmailService } from "../../email/email.service";
 import { DateTime } from "../../lib/datetime";
+import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { Candidate } from "../entities/candidate.entity";
 import { CvCredential } from "../entities/cv-credential.entity";
 import { CredentialService } from "./credential.service";
@@ -18,6 +19,7 @@ describe("CredentialService", () => {
   };
   let candidateRepo: { find: jest.Mock };
   let emailService: { sendEmail: jest.Mock };
+  let aiChat: { chat: jest.Mock };
 
   beforeEach(async () => {
     credentialRepo = {
@@ -34,6 +36,7 @@ describe("CredentialService", () => {
     };
     candidateRepo = { find: jest.fn() };
     emailService = { sendEmail: jest.fn().mockResolvedValue(true) };
+    aiChat = { chat: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -41,6 +44,7 @@ describe("CredentialService", () => {
         { provide: getRepositoryToken(CvCredential), useValue: credentialRepo },
         { provide: getRepositoryToken(Candidate), useValue: candidateRepo },
         { provide: EmailService, useValue: emailService },
+        { provide: AiChatService, useValue: aiChat },
       ],
     }).compile();
     service = module.get(CredentialService);
@@ -175,6 +179,105 @@ describe("CredentialService", () => {
       const result = await service.dispatchExpiryReminders();
       expect(result.sent).toBe(0);
       expect(emailService.sendEmail).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("autofillFromCvForSeeker", () => {
+    it("returns reason=no-candidate when seeker has no candidate row", async () => {
+      candidateRepo.find.mockResolvedValue([]);
+      const result = await service.autofillFromCvForSeeker("nobody@example.com");
+      expect(result.created).toBe(0);
+      expect(result.reason).toBe("no-candidate");
+      expect(aiChat.chat).not.toHaveBeenCalled();
+    });
+
+    it("returns reason=no-cv-text when candidate has no rawCvText", async () => {
+      candidateRepo.find.mockResolvedValue([{ id: 1, email: "a@example.com", rawCvText: null }]);
+      const result = await service.autofillFromCvForSeeker("a@example.com");
+      expect(result.created).toBe(0);
+      expect(result.reason).toBe("no-cv-text");
+      expect(aiChat.chat).not.toHaveBeenCalled();
+    });
+
+    it("returns reason=no-credential-keywords when CV has no relevant terms", async () => {
+      candidateRepo.find.mockResolvedValue([
+        {
+          id: 1,
+          email: "a@example.com",
+          rawCvText: "Marketing manager with retail merchandising experience",
+        },
+      ]);
+      const result = await service.autofillFromCvForSeeker("a@example.com");
+      expect(result.created).toBe(0);
+      expect(result.reason).toBe("no-credential-keywords");
+      expect(aiChat.chat).not.toHaveBeenCalled();
+    });
+
+    it("calls Gemini, parses credentials, and saves new ones (skipping duplicates)", async () => {
+      candidateRepo.find.mockResolvedValue([
+        {
+          id: 1,
+          email: "boilie@example.com",
+          rawCvText:
+            "Boilermaker with valid mine induction (2026-01-15) at Kathu Mine HSE and current medical",
+        },
+      ]);
+      credentialRepo.find.mockResolvedValue([
+        {
+          id: 99,
+          candidateId: 1,
+          credentialType: "mine_induction",
+          issuingAuthority: "Kathu Mine HSE",
+        },
+      ]);
+      aiChat.chat.mockResolvedValue({
+        content: JSON.stringify({
+          credentials: [
+            {
+              credentialType: "mine_induction",
+              issuedAt: "2026-01-15",
+              expiresAt: "2027-01-15",
+              issuingAuthority: "Kathu Mine HSE",
+            },
+            {
+              credentialType: "medical",
+              issuedAt: "2025-12-01",
+              expiresAt: "2026-12-01",
+              issuingAuthority: "Dr Bones",
+            },
+          ],
+        }),
+        providerUsed: "gemini",
+        tokensUsed: 800,
+      });
+
+      const result = await service.autofillFromCvForSeeker("boilie@example.com");
+
+      expect(result.created).toBe(1);
+      expect(credentialRepo.save).toHaveBeenCalledTimes(1);
+      const saved = credentialRepo.save.mock.calls[0][0];
+      expect(saved.credentialType).toBe("medical");
+      expect(saved.issuingAuthority).toBe("Dr Bones");
+    });
+
+    it("returns reason=ai-failed when Gemini returns non-JSON", async () => {
+      candidateRepo.find.mockResolvedValue([
+        {
+          id: 1,
+          email: "boilie@example.com",
+          rawCvText: "Boilermaker with medical and mine induction",
+        },
+      ]);
+      aiChat.chat.mockResolvedValue({
+        content: "I can't help with that",
+        providerUsed: "gemini",
+        tokensUsed: 30,
+      });
+
+      const result = await service.autofillFromCvForSeeker("boilie@example.com");
+      expect(result.created).toBe(0);
+      expect(result.reason).toBe("ai-failed");
+      expect(credentialRepo.save).not.toHaveBeenCalled();
     });
   });
 });

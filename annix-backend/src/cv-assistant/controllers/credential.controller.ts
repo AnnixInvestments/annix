@@ -124,4 +124,9 @@ export class CredentialController {
     }
     return { success: true };
   }
+
+  @Post("extract-from-cv")
+  async autofillFromCv(@Request() req: SeekerAuthRequest) {
+    return this.credentialService.autofillFromCvForSeeker(req.user.email);
+  }
 }

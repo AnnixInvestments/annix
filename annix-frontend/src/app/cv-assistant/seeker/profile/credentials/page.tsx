@@ -10,6 +10,7 @@ import { useToast } from "@/app/components/Toast";
 import type { SeekerCredential, SeekerCredentialInput } from "@/app/lib/api/cvAssistantApi";
 import { DateTime, fromISO } from "@/app/lib/datetime";
 import {
+  useCvAutofillSeekerCredentials,
   useCvCreateSeekerCredential,
   useCvDeleteSeekerCredential,
   useCvSeekerCredentials,
@@ -22,6 +23,7 @@ export default function SeekerCredentialsPage() {
   const createMutation = useCvCreateSeekerCredential();
   const updateMutation = useCvUpdateSeekerCredential();
   const deleteMutation = useCvDeleteSeekerCredential();
+  const autofillMutation = useCvAutofillSeekerCredentials();
 
   const [draft, setDraft] = useState<SeekerCredentialInput>(emptyDraft());
 
@@ -59,18 +61,55 @@ export default function SeekerCredentialsPage() {
     });
   };
 
+  const handleAutofill = () => {
+    autofillMutation.mutate(undefined, {
+      onSuccess: (result) => {
+        if (result.created > 0) {
+          showToast(
+            `Added ${result.created} credential${result.created === 1 ? "" : "s"} from your CV`,
+            "success",
+          );
+          return;
+        }
+        const reason = result.reason;
+        if (reason === "no-cv-text") {
+          showToast("Upload a CV first so we can scan it for credentials", "info");
+        } else if (reason === "no-credential-keywords") {
+          showToast("Your CV doesn't mention any credentials we can extract", "info");
+        } else if (reason === "no-candidate") {
+          showToast("Upload a CV first", "info");
+        } else if (reason === "ai-failed") {
+          showToast("Couldn't read credentials from your CV — add them manually", "error");
+        } else {
+          showToast("No new credentials found in your CV", "info");
+        }
+      },
+      onError: () => showToast("Auto-fill failed — add credentials manually", "error"),
+    });
+  };
+
   if (query.isLoading) {
     return <div className="p-6 text-gray-500">Loading…</div>;
   }
 
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-6">
-      <header>
-        <h1 className="text-2xl font-bold text-gray-900">Credentials &amp; tickets</h1>
-        <p className="text-sm text-gray-600 mt-1">
-          Track your medical, mine inductions, blasting tickets and other deployment credentials.
-          You'll get an email 30, 14, and 1 day before any expire so you can renew in time.
-        </p>
+      <header className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Credentials &amp; tickets</h1>
+          <p className="text-sm text-gray-600 mt-1">
+            Track your medical, mine inductions, blasting tickets and other deployment credentials.
+            You'll get an email 30, 14, and 1 day before any expire so you can renew in time.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={handleAutofill}
+          disabled={autofillMutation.isPending}
+          className="shrink-0 px-3 py-1.5 text-sm font-medium rounded-lg bg-amber-100 text-amber-800 hover:bg-amber-200 disabled:opacity-50"
+        >
+          {autofillMutation.isPending ? "Reading CV…" : "Auto-fill from my CV"}
+        </button>
       </header>
 
       <section className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
