@@ -40,6 +40,7 @@ import {
 } from "@/app/lib/utils/coatingLiningRecommendations";
 import { AutoExtractedSpecsBanner } from "./specifications/AutoExtractedSpecsBanner";
 import { ConfirmedLiningBadge } from "./specifications/ConfirmedLiningBadge";
+import { ExternalCoatingNonPaintConfirmed } from "./specifications/ExternalCoatingNonPaintConfirmed";
 import {
   autoFilledClass,
   isPressureClassMissingPTData as computePressureClassMissingPTData,
@@ -49,6 +50,7 @@ import {
   deriveTemperatureCategory,
   serviceLifeToDurability,
 } from "./specifications/helpers";
+import { InternalLiningGalvanizedAutoNotice } from "./specifications/InternalLiningGalvanizedAutoNotice";
 import { NoProductsSelectedBanner } from "./specifications/NoProductsSelectedBanner";
 import { FeatureRestrictionPopup, RestrictionPopup } from "./specifications/RestrictionPopup";
 import { SteelPipesConfirmButton } from "./specifications/SteelPipesConfirmButton";
@@ -2213,40 +2215,19 @@ export default function SpecificationsStep(props: {
                   </>
                 )}
 
-              {/* Confirmed Non-Paint External Coating - Only for manual selection, not recommendation */}
               {gsExternalCoatingConfirmed &&
                 gsExternalCoatingType &&
                 gsExternalCoatingType !== "Paint" &&
                 !globalSpecs?.externalCoatingRecommendation && (
-                  <div className="bg-green-50 border border-green-200 rounded-md p-3">
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-sm font-semibold text-green-800 flex items-center gap-1">
-                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                          <path
-                            fillRule="evenodd"
-                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                        External Coating:{" "}
-                        <span className="ml-1 text-green-700">
-                          {globalSpecs.externalCoatingType}
-                        </span>
-                      </h4>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          onUpdateGlobalSpecs({
-                            ...globalSpecs,
-                            externalCoatingConfirmed: false,
-                          })
-                        }
-                        className="px-2 py-1 bg-gray-500 text-white rounded text-xs hover:bg-gray-600"
-                      >
-                        Edit
-                      </button>
-                    </div>
-                  </div>
+                  <ExternalCoatingNonPaintConfirmed
+                    coatingType={gsExternalCoatingType}
+                    onEdit={() =>
+                      onUpdateGlobalSpecs({
+                        ...globalSpecs,
+                        externalCoatingConfirmed: false,
+                      })
+                    }
+                  />
                 )}
 
               {/* Confirm button for simple selections (not Paint or Rubber Lined) - Only for manual selection */}
@@ -3508,35 +3489,7 @@ export default function SpecificationsStep(props: {
             <div className="bg-white border border-gray-200 rounded-lg p-3">
               <h3 className="text-xs font-semibold text-gray-800 mb-2">Internal Lining</h3>
 
-              {/* Auto-set to Galvanized when external is galvanized */}
-              {gsExternalCoatingType === "Galvanized" && (
-                <div className="bg-green-50 border-2 border-green-500 rounded-lg p-2 mb-2">
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <svg className="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                      <path
-                        fillRule="evenodd"
-                        d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    <h4 className="text-xs font-bold text-green-800">
-                      Internal: Hot-Dip Galvanized (Auto-set)
-                    </h4>
-                  </div>
-                  <div className="bg-white rounded p-2 border border-green-300">
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      <div>
-                        <span className="text-green-600 font-medium">Process:</span>{" "}
-                        <span className="text-green-800">ISO 1461</span>
-                      </div>
-                      <div>
-                        <span className="text-green-600 font-medium">Thickness:</span>{" "}
-                        <span className="text-green-800">45-85 μm</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
+              {gsExternalCoatingType === "Galvanized" && <InternalLiningGalvanizedAutoNotice />}
 
               {/* Material Transfer Profile - Lining Recommendation Assistant */}
               {!gsInternalLiningConfirmed && gsExternalCoatingType !== "Galvanized" && (
@@ -4175,7 +4128,6 @@ export default function SpecificationsStep(props: {
                 </div>
               )}
 
-              {/* Confirmed Non-Paint Internal Lining - Only for simple types without specific boxes */}
               {gsInternalLiningConfirmed &&
                 globalSpecs?.internalLiningType &&
                 globalSpecs?.internalLiningType !== "Paint" &&
@@ -4183,30 +4135,16 @@ export default function SpecificationsStep(props: {
                 globalSpecs?.internalLiningType !== "Ceramic Lined" &&
                 globalSpecs?.internalLiningType !== "HDPE Lined" &&
                 globalSpecs?.internalLiningType !== "PU Lined" && (
-                  <div className="bg-green-100 border border-green-400 rounded-md p-2 flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-xs text-green-800">
-                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                        <path
-                          fillRule="evenodd"
-                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                      <span className="font-medium">{globalSpecs.internalLiningType}</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        onUpdateGlobalSpecs({
-                          ...globalSpecs,
-                          internalLiningConfirmed: false,
-                        })
-                      }
-                      className="px-2 py-1 bg-gray-500 text-white font-medium rounded text-xs hover:bg-gray-600"
-                    >
-                      Edit
-                    </button>
-                  </div>
+                  <ConfirmedLiningBadge
+                    tone="intense"
+                    content={<span className="font-medium">{globalSpecs.internalLiningType}</span>}
+                    onEdit={() =>
+                      onUpdateGlobalSpecs({
+                        ...globalSpecs,
+                        internalLiningConfirmed: false,
+                      })
+                    }
+                  />
                 )}
 
               {/* Confirm button for simple selections (not Paint or Rubber Lined) */}
