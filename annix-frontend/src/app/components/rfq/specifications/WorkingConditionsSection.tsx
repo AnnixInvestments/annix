@@ -6,11 +6,11 @@ import { WORKING_PRESSURE_BAR, WORKING_TEMPERATURE_CELSIUS } from "@/app/lib/con
 
 export interface WorkingConditionsSectionProps {
   globalSpecs: {
-    workingPressureBar?: number;
-    workingTemperatureC?: number;
-    flangeStandardId?: number | string;
-    flangePressureClassId?: number;
-    steelSpecificationId?: number;
+    workingPressureBar?: number | null;
+    workingTemperatureC?: number | null;
+    flangeStandardId?: number | null;
+    flangePressureClassId?: number | null;
+    steelSpecificationId?: number | null;
   };
   onUpdateGlobalSpecs: (specs: Record<string, unknown>) => void;
   masterData: {
@@ -21,8 +21,8 @@ export interface WorkingConditionsSectionProps {
     workingTemperature?: string;
   };
   fetchAndSelectPressureClass: (
-    standardId: number | string,
-    pressureBar: number,
+    standardId: number,
+    pressureBar?: number,
     temperatureC?: number,
     materialGroup?: string,
   ) => Promise<number | undefined>;
@@ -43,10 +43,12 @@ export function WorkingConditionsSection(props: WorkingConditionsSectionProps) {
         (s) => s.id === globalSpecs?.steelSpecificationId,
       );
       const materialGroup = getFlangeMaterialGroup(steelSpec?.steelSpecName);
+      const rawTemperatureC = globalSpecs?.workingTemperatureC;
+      const temperatureCArg = rawTemperatureC == null ? undefined : rawTemperatureC;
       recommendedPressureClassId = await fetchAndSelectPressureClass(
         globalSpecs.flangeStandardId,
         newPressure,
-        globalSpecs?.workingTemperatureC,
+        temperatureCArg,
         materialGroup,
       );
     }

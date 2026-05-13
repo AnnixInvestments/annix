@@ -4,6 +4,7 @@ import { isNumber } from "es-toolkit/compat";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { HdpeSpecificationsSection } from "@/app/components/rfq/specifications/HdpeSpecificationsSection";
 import { PvcSpecificationsSection } from "@/app/components/rfq/specifications/PvcSpecificationsSection";
+import { WorkingConditionsSection } from "@/app/components/rfq/specifications/WorkingConditionsSection";
 import { getFlangeMaterialGroup } from "@/app/components/rfq/utils";
 import { useOptionalAdminAuth } from "@/app/context/AdminAuthContext";
 import { useOptionalCustomerAuth } from "@/app/context/CustomerAuthContext";
@@ -62,7 +63,6 @@ import { NoProductsSelectedBanner } from "./specifications/NoProductsSelectedBan
 import { FeatureRestrictionPopup, RestrictionPopup } from "./specifications/RestrictionPopup";
 import { SteelPipesConfirmButton } from "./specifications/SteelPipesConfirmButton";
 import { SteelPipesConfirmedSummary } from "./specifications/SteelPipesConfirmedSummary";
-import { SteelPipesWorkingConditions } from "./specifications/SteelPipesWorkingConditions";
 import { TransportInstallSection } from "./specifications/TransportInstallSection";
 import type { FeatureType, RestrictionPopupPosition } from "./specifications/types";
 
@@ -578,55 +578,12 @@ export default function SpecificationsStep(props: {
             {/* Detail Forms - show when not confirmed */}
             {!globalSpecs?.steelPipesSpecsConfirmed && (
               <>
-                <SteelPipesWorkingConditions
-                  workingPressureBar={rawWorkingPressureBar}
-                  workingTemperatureC={rawWorkingTemperatureC}
-                  workingPressures={workingPressures}
-                  workingTemperatures={workingTemperatures}
-                  pressureError={errors.workingPressure}
-                  temperatureError={errors.workingTemperature}
-                  onPressureChange={async (newPressure) => {
-                    let recommendedPressureClassId = globalSpecs?.flangePressureClassId;
-                    if (newPressure && globalSpecs?.flangeStandardId) {
-                      const steelSpec = masterData.steelSpecs?.find(
-                        (s: any) => s.id === globalSpecs?.steelSpecificationId,
-                      );
-                      const materialGroup = getFlangeMaterialGroup(steelSpec?.steelSpecName);
-                      recommendedPressureClassId = await fetchAndSelectPressureClass(
-                        globalSpecs.flangeStandardId,
-                        newPressure,
-                        gsWorkingTemperatureC,
-                        materialGroup,
-                      );
-                    }
-                    onUpdateGlobalSpecs({
-                      ...globalSpecs,
-                      workingPressureBar: newPressure,
-                      flangePressureClassId:
-                        recommendedPressureClassId || globalSpecs?.flangePressureClassId,
-                    });
-                  }}
-                  onTemperatureChange={async (newTemp) => {
-                    let recommendedPressureClassId = globalSpecs?.flangePressureClassId;
-                    if (newTemp !== null && gsWorkingPressureBar && globalSpecs?.flangeStandardId) {
-                      const steelSpec = masterData.steelSpecs?.find(
-                        (s: any) => s.id === globalSpecs?.steelSpecificationId,
-                      );
-                      const materialGroup = getFlangeMaterialGroup(steelSpec?.steelSpecName);
-                      recommendedPressureClassId = await fetchAndSelectPressureClass(
-                        globalSpecs.flangeStandardId,
-                        globalSpecs.workingPressureBar,
-                        newTemp,
-                        materialGroup,
-                      );
-                    }
-                    onUpdateGlobalSpecs({
-                      ...globalSpecs,
-                      workingTemperatureC: newTemp,
-                      flangePressureClassId:
-                        recommendedPressureClassId || globalSpecs?.flangePressureClassId,
-                    });
-                  }}
+                <WorkingConditionsSection
+                  globalSpecs={globalSpecs}
+                  onUpdateGlobalSpecs={onUpdateGlobalSpecs}
+                  masterData={masterData}
+                  errors={errors}
+                  fetchAndSelectPressureClass={fetchAndSelectPressureClass}
                 />
 
                 {/* Material Specifications */}
