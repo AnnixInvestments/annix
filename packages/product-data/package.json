@@ -104,6 +104,14 @@
     "./teacher-assistant/*": {
       "types": "./teacher-assistant/*.ts",
       "default": "./dist/teacher-assistant/*.js"
+    },
+    "./sa-market": {
+      "types": "./sa-market/index.ts",
+      "default": "./dist/sa-market/index.js"
+    },
+    "./sa-market/*": {
+      "types": "./sa-market/*.ts",
+      "default": "./dist/sa-market/*.js"
     }
   }
 }
