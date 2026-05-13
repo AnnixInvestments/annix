@@ -58,6 +58,21 @@ function formatZar(value: number): string {
 }
 
 /**
+ * Picks the right label for the length dimension based on item type.
+ * Bends / elbows store length as the C/F (centre-to-face) dimension —
+ * display it as "C/F 705" rather than "L 705" so the customer reads it
+ * the same way it was printed on the drawing. Everything else uses "L".
+ */
+function lengthLabelForItem(item: QuoteItem): string {
+  const haystack =
+    `${item.itemType ? item.itemType : ""} ${item.description ? item.description : ""}`.toLowerCase();
+  if (/\belbow\b|\bbend\b|\b90[°\s]|\b45[°\s]|\b180[°\s]|\bu[\s-]?bend\b/.test(haystack)) {
+    return "C/F";
+  }
+  return "L";
+}
+
+/**
  * South African VAT rate as a fraction (15%). Quote totals split out the
  * VAT line explicitly: subtotal ex VAT, VAT @ 15%, total inc VAT. Centralised
  * so a future SARS rate change is a one-line edit.
@@ -978,7 +993,7 @@ function ItemRow(props: {
   if (item.diameter !== null) dimensionParts.push(`NB ${item.diameter}`);
   if (item.wallThickness !== null) dimensionParts.push(`WT ${item.wallThickness}`);
   if (item.schedule) dimensionParts.push(item.schedule);
-  if (item.length !== null) dimensionParts.push(`L ${item.length}`);
+  if (item.length !== null) dimensionParts.push(`${lengthLabelForItem(item)} ${item.length}`);
   const dimensions = dimensionParts.join(" × ");
   const flange = item.flangeConfig;
   const dimensionText = dimensions ? dimensions : "—";
