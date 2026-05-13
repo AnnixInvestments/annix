@@ -79,6 +79,41 @@ const SOUTH_AFRICA_VAT_RATE = 0.15;
  * line totals matches the existing pool cost (verified against
  * liningCostForPool + coatingCost in PoolSection).
  */
+function coatingUnitCost(
+  area: ItemSurfaceArea | null,
+  pool: QuotePool,
+  coatingRate: SpecRate,
+): number {
+  const poolCoating = pool.coating;
+  const rate = coatingRate.perM2;
+  if (!poolCoating) return 0;
+  if (rate <= 0) return 0;
+  if (!area) return 0;
+  return area.perPipe.totalExternalAreaM2 * rate;
+}
+
+function liningUnitCost(
+  item: QuoteItem,
+  area: ItemSurfaceArea | null,
+  pool: QuotePool,
+  liningRate: SpecRate,
+): number {
+  const poolLining = pool.lining;
+  if (!poolLining) return 0;
+  if (isLongPipeForLiningPricing(item)) {
+    const perRm = liningRate.perRm;
+    if (perRm > 0) {
+      return effectiveLiningLengthM(item) * perRm;
+    }
+    return 0;
+  }
+  const perM2 = liningRate.perM2;
+  if (area && perM2 > 0) {
+    return area.perPipe.totalInternalAreaM2 * perM2;
+  }
+  return 0;
+}
+
 function unitPriceForItem(
   item: QuoteItem,
   area: ItemSurfaceArea | null,
@@ -86,20 +121,7 @@ function unitPriceForItem(
   coatingRate: SpecRate,
   liningRate: SpecRate,
 ): number {
-  let unit = 0;
-  if (pool.coating && coatingRate.perM2 > 0 && area) {
-    unit += area.perPipe.totalExternalAreaM2 * coatingRate.perM2;
-  }
-  if (pool.lining) {
-    if (isLongPipeForLiningPricing(item)) {
-      if (liningRate.perRm > 0) {
-        unit += effectiveLiningLengthM(item) * liningRate.perRm;
-      }
-    } else if (area && liningRate.perM2 > 0) {
-      unit += area.perPipe.totalInternalAreaM2 * liningRate.perM2;
-    }
-  }
-  return unit;
+  return coatingUnitCost(area, pool, coatingRate) + liningUnitCost(item, area, pool, liningRate);
 }
 
 /**
@@ -774,16 +796,16 @@ function PoolSection(props: {
                   <span className="block text-[10px] font-normal text-gray-400">per item</span>
                 </th>
                 <th className="px-3 py-2 font-medium text-right whitespace-nowrap">
-                  Coating m²
-                  <span className="block text-[10px] font-normal text-gray-400">line total</span>
+                  Coating R
+                  <span className="block text-[10px] font-normal text-gray-400">per item</span>
                 </th>
                 <th className="px-3 py-2 font-medium text-right whitespace-nowrap">
                   Lining m²
                   <span className="block text-[10px] font-normal text-gray-400">per item</span>
                 </th>
                 <th className="px-3 py-2 font-medium text-right whitespace-nowrap">
-                  Lining m²
-                  <span className="block text-[10px] font-normal text-gray-400">line total</span>
+                  Lining R
+                  <span className="block text-[10px] font-normal text-gray-400">per item</span>
                 </th>
               </>
             )}
@@ -819,6 +841,8 @@ function PoolSection(props: {
               coverageKind={coverageKind}
               isAreaReady={isAreaReady}
               unitPrice={unitPrices[idx]}
+              coatingPerItemCost={coatingUnitCost(itemAreas[idx], pool, coatingRate)}
+              liningPerItemCost={liningUnitCost(item, itemAreas[idx], pool, liningRate)}
               showPricingColumns={showPricingColumns}
             />
           ))}
@@ -927,10 +951,23 @@ function ItemRow(props: {
   coverageKind: CoverageKind;
   isAreaReady: boolean;
   unitPrice: number;
+  /** Coating contribution to the unit price (per single item). 0 when no rate set. */
+  coatingPerItemCost: number;
+  /** Lining contribution to the unit price (per single item). 0 when no rate set. */
+  liningPerItemCost: number;
   showPricingColumns: boolean;
 }) {
-  const { item, area, showAreaColumn, coverageKind, isAreaReady, unitPrice, showPricingColumns } =
-    props;
+  const {
+    item,
+    area,
+    showAreaColumn,
+    coverageKind,
+    isAreaReady,
+    unitPrice,
+    coatingPerItemCost,
+    liningPerItemCost,
+    showPricingColumns,
+  } = props;
   const dimensionParts: string[] = [];
   if (item.diameter !== null) dimensionParts.push(`NB ${item.diameter}`);
   if (item.wallThickness !== null) dimensionParts.push(`WT ${item.wallThickness}`);
@@ -945,24 +982,18 @@ function ItemRow(props: {
   let perItemCellText = "—";
   let lineTotalCellText = "—";
   let coatingPerItemText = "—";
-  let coatingLineTotalText = "—";
   let liningPerItemText = "—";
-  let liningLineTotalText = "—";
   if (showAreaColumn) {
     if (!isAreaReady) {
       perItemCellText = "…";
       lineTotalCellText = "…";
       coatingPerItemText = "…";
-      coatingLineTotalText = "…";
       liningPerItemText = "…";
-      liningLineTotalText = "…";
     } else if (area) {
       perItemCellText = formatM2(coveragePerItemAreaM2(area, coverageKind));
       lineTotalCellText = formatM2(coverageRowAreaM2(area, coverageKind));
       coatingPerItemText = formatM2(area.perPipe.totalExternalAreaM2);
-      coatingLineTotalText = formatM2(area.total.totalExternalAreaM2);
       liningPerItemText = formatM2(area.perPipe.totalInternalAreaM2);
-      liningLineTotalText = formatM2(area.total.totalInternalAreaM2);
     }
   }
 
@@ -984,13 +1015,13 @@ function ItemRow(props: {
             {coatingPerItemText}
           </td>
           <td className="px-3 py-2 text-right text-gray-900 font-mono text-xs whitespace-nowrap">
-            {coatingLineTotalText}
+            {coatingPerItemCost > 0 ? formatZar(coatingPerItemCost) : "—"}
           </td>
           <td className="px-3 py-2 text-right text-gray-700 font-mono text-xs whitespace-nowrap">
             {liningPerItemText}
           </td>
           <td className="px-3 py-2 text-right text-gray-900 font-mono text-xs whitespace-nowrap">
-            {liningLineTotalText}
+            {liningPerItemCost > 0 ? formatZar(liningPerItemCost) : "—"}
           </td>
         </>
       )}
