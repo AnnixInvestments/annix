@@ -55,12 +55,15 @@ import {
 } from "./specifications/helpers";
 import { InternalCeramicLiningOptions } from "./specifications/InternalCeramicLiningOptions";
 import { InternalHdpeLiningOptions } from "./specifications/InternalHdpeLiningOptions";
+import { InternalLiningFallbackEditBanner } from "./specifications/InternalLiningFallbackEditBanner";
 import { InternalLiningGalvanizedAutoNotice } from "./specifications/InternalLiningGalvanizedAutoNotice";
 import { InternalPaintConfirmed } from "./specifications/InternalPaintConfirmed";
 import { InternalPaintOptions } from "./specifications/InternalPaintOptions";
 import { InternalPuLiningOptions } from "./specifications/InternalPuLiningOptions";
+import { InternalRubberLiningConfirmed } from "./specifications/InternalRubberLiningConfirmed";
 import { NoProductsSelectedBanner } from "./specifications/NoProductsSelectedBanner";
 import { FeatureRestrictionPopup, RestrictionPopup } from "./specifications/RestrictionPopup";
+import { SimpleConfirmButton } from "./specifications/SimpleConfirmButton";
 import { SteelPipesConfirmButton } from "./specifications/SteelPipesConfirmButton";
 import { SteelPipesConfirmedSummary } from "./specifications/SteelPipesConfirmedSummary";
 import { SurfaceProtectionConfirmButton } from "./specifications/SurfaceProtectionConfirmButton";
@@ -2058,27 +2061,21 @@ export default function SpecificationsStep(props: {
                   />
                 )}
 
-              {/* Confirm button for simple selections (not Paint or Rubber Lined) - Only for manual selection */}
               {(!gsShowExternalCoatingProfile ||
                 globalSpecs?.externalCoatingRecommendationRejected) &&
                 !gsExternalCoatingConfirmed &&
                 gsExternalCoatingType &&
                 gsExternalCoatingType !== "Paint" &&
                 gsExternalCoatingType !== "Rubber Lined" && (
-                  <div className="mt-4">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        onUpdateGlobalSpecs({
-                          ...globalSpecs,
-                          externalCoatingConfirmed: true,
-                        })
-                      }
-                      className="px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
-                    >
-                      Confirm External Coating
-                    </button>
-                  </div>
+                  <SimpleConfirmButton
+                    label="Confirm External Coating"
+                    onConfirm={() =>
+                      onUpdateGlobalSpecs({
+                        ...globalSpecs,
+                        externalCoatingConfirmed: true,
+                      })
+                    }
+                  />
                 )}
 
               {(!gsShowExternalCoatingProfile ||
@@ -3730,25 +3727,20 @@ export default function SpecificationsStep(props: {
                   />
                 )}
 
-              {/* Confirm button for simple selections (not Paint or Rubber Lined) */}
               {!gsInternalLiningConfirmed &&
                 globalSpecs?.internalLiningType &&
                 globalSpecs?.internalLiningType !== "Paint" &&
                 globalSpecs?.internalLiningType !== "Rubber Lined" && (
-                  <div className="mt-2">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        onUpdateGlobalSpecs({
-                          ...globalSpecs,
-                          internalLiningConfirmed: true,
-                        })
-                      }
-                      className="px-3 py-1.5 bg-green-600 text-white font-medium rounded text-xs hover:bg-green-700"
-                    >
-                      Confirm Lining
-                    </button>
-                  </div>
+                  <SimpleConfirmButton
+                    label="Confirm Lining"
+                    variant="compact"
+                    onConfirm={() =>
+                      onUpdateGlobalSpecs({
+                        ...globalSpecs,
+                        internalLiningConfirmed: true,
+                      })
+                    }
+                  />
                 )}
 
               {/* Rubber Lined Options - Only show when selected AND not confirmed */}
@@ -4123,78 +4115,24 @@ export default function SpecificationsStep(props: {
                 </div>
               )}
 
-              {/* Confirmed Internal Rubber Lining */}
               {gsInternalLiningConfirmed &&
                 globalSpecs?.internalLiningType === "Rubber Lined" &&
                 (rawInternalRubberType || globalSpecs?.internalRubberSansType) && (
-                  <div className="bg-green-100 border border-green-400 rounded-md p-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-xs text-green-800">
-                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                          <path
-                            fillRule="evenodd"
-                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                        <span className="font-medium">Rubber Lined (SANS 1198:2013)</span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          onUpdateGlobalSpecs({
-                            ...globalSpecs,
-                            internalLiningConfirmed: false,
-                            internalLiningType: "Rubber Lined",
-                          })
-                        }
-                        className="px-2 py-1 bg-gray-500 text-white font-medium rounded text-xs hover:bg-gray-600"
-                      >
-                        Edit
-                      </button>
-                    </div>
-                    {globalSpecs?.internalRubberLineCallout && (
-                      <div className="mt-2 bg-white rounded px-2 py-1 border border-green-300">
-                        <div className="text-xs text-green-900">
-                          <span className="font-semibold">Line Call-out:</span>{" "}
-                          <span className="font-mono">{globalSpecs.internalRubberLineCallout}</span>
-                        </div>
-                        <div className="text-xs text-green-700 mt-1">
-                          {globalSpecs.internalRubberType && (
-                            <span>{globalSpecs.internalRubberType}</span>
-                          )}
-                          {globalSpecs.internalRubberThickness && (
-                            <span> • {globalSpecs.internalRubberThickness}mm</span>
-                          )}
-                          {globalSpecs.internalRubberHardness && (
-                            <span> • {globalSpecs.internalRubberHardness} IRHD</span>
-                          )}
-                          {globalSpecs.internalRubberColour && (
-                            <span> • {globalSpecs.internalRubberColour}</span>
-                          )}
-                          {globalSpecs.internalRubberVulcanizationMethod && (
-                            <span> • {globalSpecs.internalRubberVulcanizationMethod}</span>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                    {!globalSpecs?.internalRubberLineCallout && (
-                      <div className="mt-1 text-xs text-green-700">
-                        {globalSpecs.internalRubberType && (
-                          <span>{globalSpecs.internalRubberType}</span>
-                        )}
-                        {globalSpecs.internalRubberThickness && (
-                          <span> • {globalSpecs.internalRubberThickness}mm</span>
-                        )}
-                        {globalSpecs.internalRubberHardness && (
-                          <span> • {globalSpecs.internalRubberHardness} IRHD</span>
-                        )}
-                        {globalSpecs.internalRubberColour && (
-                          <span> • {globalSpecs.internalRubberColour}</span>
-                        )}
-                      </div>
-                    )}
-                  </div>
+                  <InternalRubberLiningConfirmed
+                    lineCallout={globalSpecs?.internalRubberLineCallout}
+                    rubberType={globalSpecs?.internalRubberType}
+                    rubberThickness={globalSpecs?.internalRubberThickness}
+                    rubberHardness={globalSpecs?.internalRubberHardness}
+                    rubberColour={globalSpecs?.internalRubberColour}
+                    rubberVulcanizationMethod={globalSpecs?.internalRubberVulcanizationMethod}
+                    onEdit={() =>
+                      onUpdateGlobalSpecs({
+                        ...globalSpecs,
+                        internalLiningConfirmed: false,
+                        internalLiningType: "Rubber Lined",
+                      })
+                    }
+                  />
                 )}
 
               {globalSpecs?.internalLiningType === "Ceramic Lined" &&
@@ -4330,7 +4268,6 @@ export default function SpecificationsStep(props: {
                 />
               )}
 
-              {/* Fallback Edit Button for Internal Lining - Shows when confirmed but no specific type block is displaying */}
               {gsInternalLiningConfirmed &&
                 globalSpecs?.internalLiningType &&
                 gsExternalCoatingType !== "Galvanized" &&
@@ -4353,32 +4290,15 @@ export default function SpecificationsStep(props: {
                 !["None", "Galvanized", "Cement Mortar", "Epoxy Lined", "FBE Lined"].includes(
                   globalSpecs?.internalLiningType,
                 ) && (
-                  <div className="bg-amber-100 border border-amber-400 rounded-md p-2 flex items-center justify-between mt-2">
-                    <div className="flex items-center gap-2 text-xs text-amber-800">
-                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                        <path
-                          fillRule="evenodd"
-                          d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                      <span className="font-medium">
-                        {globalSpecs.internalLiningType} - Incomplete Configuration
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        onUpdateGlobalSpecs({
-                          ...globalSpecs,
-                          internalLiningConfirmed: false,
-                        })
-                      }
-                      className="px-2 py-1 bg-amber-600 text-white font-medium rounded text-xs hover:bg-amber-700"
-                    >
-                      Edit
-                    </button>
-                  </div>
+                  <InternalLiningFallbackEditBanner
+                    liningType={globalSpecs.internalLiningType}
+                    onEdit={() =>
+                      onUpdateGlobalSpecs({
+                        ...globalSpecs,
+                        internalLiningConfirmed: false,
+                      })
+                    }
+                  />
                 )}
             </div>
 
