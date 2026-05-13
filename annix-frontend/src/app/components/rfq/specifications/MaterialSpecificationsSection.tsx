@@ -18,6 +18,10 @@ import {
   useAllFlangeTypes,
   useAllMaterialLimits,
 } from "@/app/lib/query/hooks";
+import {
+  findLowestSuitablePressureClass,
+  sortPressureClassesByNumericDesc,
+} from "../steps/specifications/helpers";
 
 const isSteelSpecAllowedForUnregistered = (specName: string): boolean => {
   const name = specName.toLowerCase();
@@ -328,14 +332,14 @@ export function MaterialSpecificationsSection(props: MaterialSpecificationsSecti
       onUpdateGlobalSpecs({
         ...globalSpecs,
         flangeStandardId: "PE",
-        flangePressureClassId: undefined,
+        flangePressureClassId: null,
       });
       setFlangeStandardDropdownOpen(false);
       return;
     }
 
     const standardId = isNumber(rawValue) ? rawValue : Number(rawValue);
-    let recommendedPressureClassId: number | undefined;
+    let recommendedPressureClassId: number | null = null;
     const standardChanged = standardId !== globalSpecs?.flangeStandardId;
     const steelSpec = masterData.steelSpecs?.find(
       (s) => s.id === globalSpecs?.steelSpecificationId,
@@ -350,7 +354,7 @@ export function MaterialSpecificationsSection(props: MaterialSpecificationsSecti
             globalSpecs.workingPressureBar,
             globalSpecs.workingTemperatureC,
             materialGroup,
-          )) || undefined;
+          )) || null;
       } else if (standardId) {
         await fetchAndSelectPressureClass(standardId);
       }
@@ -358,9 +362,24 @@ export function MaterialSpecificationsSection(props: MaterialSpecificationsSecti
       log.warn("Pressure class fetch failed:", error);
     }
 
-    const newPressureClassId = standardChanged
+    let newPressureClassId = standardChanged
       ? recommendedPressureClassId
       : recommendedPressureClassId || globalSpecs?.flangePressureClassId;
+
+    if (!newPressureClassId && availablePressureClasses?.length > 0) {
+      const rawWorkingPressureBar = globalSpecs?.workingPressureBar;
+      const targetPressure = rawWorkingPressureBar || 10;
+      const lowestSuitable = findLowestSuitablePressureClass(
+        availablePressureClasses,
+        targetPressure,
+      );
+      if (lowestSuitable) {
+        newPressureClassId = lowestSuitable.id;
+      } else if (availablePressureClasses.length > 0) {
+        const sorted = sortPressureClassesByNumericDesc(availablePressureClasses);
+        newPressureClassId = sorted[0].id;
+      }
+    }
 
     onUpdateGlobalSpecs({
       ...globalSpecs,
