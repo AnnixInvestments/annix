@@ -111,4 +111,110 @@ describe("CandidateJobMatchingService", () => {
       expect(scores).toEqual(sorted);
     });
   });
+
+  describe("calculateTradeProfileBoost", () => {
+    it("returns score=null when candidate has no trade profile", () => {
+      const candidate = { tradeProfile: null } as Candidate;
+      const job = {
+        title: "Boilermaker on coal shutdown",
+        description: "Gold mine shutdown crew",
+        category: null,
+      } as ExternalJob;
+      const result = service.calculateTradeProfileBoost(candidate, job);
+      expect(result.score).toBeNull();
+      expect(result.tradeKeyMatches).toEqual([]);
+    });
+
+    it("returns score=null when tradeKeys is empty", () => {
+      const candidate = {
+        tradeProfile: {
+          shared: {
+            tradeKeys: [],
+            yearsExperience: null,
+            commoditiesWorked: [],
+            shutdownHistory: [],
+            siteRadiusKm: null,
+            availability: null,
+          },
+          perTrade: {},
+        },
+      } as unknown as Candidate;
+      const job = { title: "Boilermaker", description: "", category: null } as ExternalJob;
+      expect(service.calculateTradeProfileBoost(candidate, job).score).toBeNull();
+    });
+
+    it("matches trade key in job title (boilermaker)", () => {
+      const candidate = {
+        tradeProfile: {
+          shared: {
+            tradeKeys: ["boilermaker"],
+            yearsExperience: null,
+            commoditiesWorked: [],
+            shutdownHistory: [],
+            siteRadiusKm: null,
+            availability: null,
+          },
+          perTrade: {},
+        },
+      } as unknown as Candidate;
+      const job = {
+        title: "Senior Boilermaker - Shutdown Crew",
+        description: "Pressure vessel work",
+        category: null,
+      } as ExternalJob;
+      const result = service.calculateTradeProfileBoost(candidate, job);
+      expect(result.tradeKeyMatches).toContain("Boilermaker");
+      expect(result.score).toBeCloseTo(0.6, 2);
+    });
+
+    it("scores commodity overlap proportionally", () => {
+      const candidate = {
+        tradeProfile: {
+          shared: {
+            tradeKeys: ["boilermaker"],
+            yearsExperience: null,
+            commoditiesWorked: ["gold", "platinum", "coal"],
+            shutdownHistory: [],
+            siteRadiusKm: null,
+            availability: null,
+          },
+          perTrade: {},
+        },
+      } as unknown as Candidate;
+      const job = {
+        title: "Boilermaker",
+        description: "Coal mine shutdown crew, also some gold exposure",
+        category: null,
+      } as ExternalJob;
+      const result = service.calculateTradeProfileBoost(candidate, job);
+      expect(result.commodityMatches.sort()).toEqual(["coal", "gold"]);
+      // tradeKey=1.0 * 0.6 + commodity=(2/3) * 0.4 = 0.6 + 0.2667 = 0.8667
+      expect(result.score).toBeCloseTo(0.867, 2);
+    });
+
+    it("returns score=0 when nothing in candidate's profile matches the job", () => {
+      const candidate = {
+        tradeProfile: {
+          shared: {
+            tradeKeys: ["coded_welder"],
+            yearsExperience: null,
+            commoditiesWorked: ["gold"],
+            shutdownHistory: [],
+            siteRadiusKm: null,
+            availability: null,
+          },
+          perTrade: {},
+        },
+      } as unknown as Candidate;
+      const job = {
+        title: "Marketing Manager",
+        description: "Retail merchandising in Sandton",
+        category: null,
+      } as ExternalJob;
+      const result = service.calculateTradeProfileBoost(candidate, job);
+      expect(result.tradeKeyMatches).toEqual([]);
+      expect(result.commodityMatches).toEqual([]);
+      expect(result.score).toBe(0);
+    });
+  });
 });

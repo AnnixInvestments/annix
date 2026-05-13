@@ -1,3 +1,4 @@
+import { type Commodity, TRADE_LABELS, type TradeKey } from "@annix/product-data/sa-market";
 import { forwardRef, Inject, Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
@@ -11,12 +12,39 @@ const WEIGHT_SKILLS = 0.25;
 const WEIGHT_EXPERIENCE = 0.15;
 const WEIGHT_LOCATION = 0.1;
 
+const TRADE_PROFILE_BOOST_CAP = 0.1;
+const TRADE_KEY_WEIGHT_WITHIN_BOOST = 0.6;
+const COMMODITY_WEIGHT_WITHIN_BOOST = 0.4;
+
 const TOP_MATCHES_LIMIT = 20;
 
 export const STRETCH_RESERVED_SLOTS = 3;
 export const STRETCH_SCORE_BAND_MIN = 0.6;
 export const STRETCH_SCORE_BAND_MAX = 0.79;
 const RECOMMENDED_FETCH_WINDOW = 200;
+
+const TRADE_KEY_KEYWORDS: Record<TradeKey, string[]> = {
+  boilermaker: ["boilermaker", "boiler maker"],
+  coded_welder: ["coded welder", "saqcc welder", "welder"],
+  rubber_liner: ["rubber liner", "rubber lining"],
+  pipe_fitter: ["pipe fitter", "pipefitter"],
+  diesel_mechanic: ["diesel mechanic", "diesel mech"],
+  rigger: ["rigger", "rigging"],
+  electrician: ["electrician", "section 13"],
+};
+
+const COMMODITY_KEYWORDS: Record<Commodity, string[]> = {
+  gold: ["gold"],
+  coal: ["coal"],
+  platinum: ["platinum", "pgm"],
+  iron_ore: ["iron ore", "iron-ore"],
+  manganese: ["manganese"],
+  chrome: ["chrome", "chromite"],
+  copper: ["copper"],
+  diamond: ["diamond"],
+  uranium: ["uranium"],
+  nickel: ["nickel"],
+};
 
 @Injectable()
 export class CandidateJobMatchingService {
@@ -252,6 +280,45 @@ export class CandidateJobMatchingService {
     }
   }
 
+  calculateTradeProfileBoost(
+    candidate: Candidate,
+    job: ExternalJob,
+  ): {
+    score: number | null;
+    tradeKeyMatches: string[];
+    commodityMatches: Commodity[];
+  } {
+    const profile = candidate.tradeProfile;
+    if (!profile || profile.shared.tradeKeys.length === 0) {
+      return { score: null, tradeKeyMatches: [], commodityMatches: [] };
+    }
+    const haystack =
+      `${job.title ?? ""}\n${job.description ?? ""}\n${job.category ?? ""}`.toLowerCase();
+
+    const tradeKeyMatches = profile.shared.tradeKeys.filter((key) =>
+      TRADE_KEY_KEYWORDS[key].some((kw) => haystack.includes(kw)),
+    );
+    const tradeKeyScore = tradeKeyMatches.length > 0 ? 1 : 0;
+
+    const commodityMatches = profile.shared.commoditiesWorked.filter((c) =>
+      COMMODITY_KEYWORDS[c].some((kw) => haystack.includes(kw)),
+    );
+    const commodityScore =
+      profile.shared.commoditiesWorked.length === 0
+        ? 0
+        : commodityMatches.length / profile.shared.commoditiesWorked.length;
+
+    const score =
+      tradeKeyScore * TRADE_KEY_WEIGHT_WITHIN_BOOST +
+      commodityScore * COMMODITY_WEIGHT_WITHIN_BOOST;
+
+    return {
+      score,
+      tradeKeyMatches: tradeKeyMatches.map((k) => TRADE_LABELS[k]),
+      commodityMatches,
+    };
+  }
+
   private async scoreAndSaveMatch(
     candidate: Candidate,
     job: ExternalJob,
@@ -262,12 +329,19 @@ export class CandidateJobMatchingService {
     const skillsResult = this.calculateSkillsOverlap(candidate, job);
     const experienceMatch = this.calculateExperienceMatch(candidate, job);
     const locationMatch = this.calculateLocationMatch(candidate, job);
+    const tradeBoost = this.calculateTradeProfileBoost(candidate, job);
 
-    const overallScore =
+    const baseScore =
       embeddingSimilarity * WEIGHT_EMBEDDING +
       skillsResult.score * WEIGHT_SKILLS +
       experienceMatch * WEIGHT_EXPERIENCE +
       locationMatch * WEIGHT_LOCATION;
+
+    const boostedScore =
+      tradeBoost.score === null
+        ? baseScore
+        : Math.min(1, baseScore + tradeBoost.score * TRADE_PROFILE_BOOST_CAP);
+    const overallScore = boostedScore;
 
     const matchDetails: MatchDetails = {
       embeddingSimilarity,
@@ -282,6 +356,7 @@ export class CandidateJobMatchingService {
         experienceMatch,
         locationMatch,
         job,
+        tradeBoost,
       ),
     };
 
@@ -345,6 +420,7 @@ export class CandidateJobMatchingService {
     experienceMatch: number,
     locationMatch: number,
     job: ExternalJob,
+    tradeBoost: { score: number | null; tradeKeyMatches: string[]; commodityMatches: Commodity[] },
   ): string {
     const simPct = Math.round(embeddingSimilarity * 100);
 
@@ -355,10 +431,12 @@ export class CandidateJobMatchingService {
           ? "moderate match"
           : "limited match";
 
+    const locationArea = job.locationArea;
+    const locationLabel = locationArea ? locationArea : "unspecified";
     const locationPart =
       locationMatch >= 0.7
-        ? `Location: good match (${job.locationArea ?? "unspecified"})`
-        : `Location: ${job.locationArea ?? "unspecified"}`;
+        ? `Location: good match (${locationLabel})`
+        : `Location: ${locationLabel}`;
 
     const parts = [
       `Profile similarity: ${simPct}%`,
@@ -370,6 +448,12 @@ export class CandidateJobMatchingService {
         : []),
       `Experience level: ${experienceLevel}`,
       locationPart,
+      ...(tradeBoost.tradeKeyMatches.length > 0
+        ? [`Trade match: ${tradeBoost.tradeKeyMatches.join(", ")}`]
+        : []),
+      ...(tradeBoost.commodityMatches.length > 0
+        ? [`Commodity overlap: ${tradeBoost.commodityMatches.join(", ")}`]
+        : []),
     ];
 
     return parts.join(". ");
