@@ -25,7 +25,7 @@ export const DRAWING_ITEM_SCHEMA_RULES = `CRITICAL — schema rules (must follow
 2. Use these EXACT field names (camelCase, no aliases, no variants):
    - itemNumber (string, e.g. "-01", "HH01", "P1") — the mark / spool / item number
    - description (string, REQUIRED, what the item is, e.g. "Pipe", "90° Bend", "Reducer", "Tank chute")
-   - itemType (one of: pipe | bend | reducer | tee | flange | expansion_joint | tank_chute | other)
+   - itemType (one of: pipe | bend | reducer | tee | manifold | flange | expansion_joint | tank_chute | other)
    - quantity (number)
    - diameter (number, mm — nominal bore for pipe-shaped items)
    - wallThickness (number, mm — numeric WT in mm if the drawing gives one)
@@ -77,6 +77,7 @@ DO:
 - Pipes / spools: total length from end to end, including any flanges and butt-weld end allowances. If the drawing shows e.g. 'L 6000' and the flange config is 'F.B.E. F/F', length = 6000 (the F.B.E. F/F is captured separately in flangeConfig — do not subtract the flange thicknesses from L).
 - Reducers (concentric or eccentric): the OVERALL H dimension — face-to-face / flange-face-to-flange-face / weld-end-to-weld-end. Drawings often show MULTIPLE dimensions around a reducer (e.g. body length 356, flange offsets 100 + 112, overall 568) — the 'length' is the OVERALL number (568 in that example), NEVER the body-only number. If you see a 'TOTAL' or end-to-end dimension callout, use that.
 - Tees: the RUN length (centreline-to-centreline of the two run ends, or face-to-face if flanged on the run). NOT the branch length. The branch comes from the secondary NB in the description, not from 'length'.
+- Manifolds: a main pipe with MORE THAN ONE stub branching off (3, 4, 5+ outlets). Distinct from a tee (one branch only). itemType = "manifold". Capture: main pipe NB in 'diameter', main pipe length (face-to-face) in 'length', and the stub NB(s) in the description. ALWAYS include the stub COUNT in the description, e.g. "350NB × 3 × 150NB Manifold" or "Manifold 350NB main with 3 × 150NB stubs". The area calculator parses "3-way", "3 stubs", or "× 3" out of description to size the developed length correctly. South African / Polymer Lining drawings sometimes mis-label these as "U-TEE" or just "TEE" — count the actual stubs on the drawing; if more than one branch comes off the main, it's a manifold.
 - Equal-Y / Wye: the longest face-to-face dimension printed.
 - Elbows / bends (90° / 45° / 180° / U-tee): length is the C/F dimension — the centre-to-face number printed on the drawing, i.e. one arm of the elbow measured from the bend centre to the pipe end face. NOT the developed length, NOT the leg-to-leg overall, NOT the centreline arc. If the drawing shows multiple dimensions around a bend (e.g. 405 and 639 on a U-tee, or 705 C/F on a 90° elbow), pick the labelled C/F figure. If only a radius is shown (e.g. 'R 525' or 'CLR 525'), capture that radius as the length AND add a deviation note "radius captured as C/F". If nothing is printed, set length = null and the area calculator will fall back to a 1.5×NB long-radius default.
 - Flanges (standalone): length = null. Flanges have no length dimension along the run.

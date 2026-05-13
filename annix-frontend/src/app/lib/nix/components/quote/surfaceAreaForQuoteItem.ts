@@ -25,6 +25,7 @@ type FittingKind =
   | "bend_180"
   | "reducer"
   | "tee"
+  | "manifold"
   | "flange"
   | "equal_y";
 
@@ -38,6 +39,10 @@ function classifyFitting(item: QuoteItem): FittingKind {
   if (/\bequal[\s-]*y\b|\bwye\b|\by[\s-]*piece\b/.test(haystack)) return "equal_y";
   if (/\bflange\b/.test(haystack)) return "flange";
   if (/\breducer\b/.test(haystack)) return "reducer";
+  // Manifold = main pipe with multiple stubs (more branches than a regular
+  // tee). Distinct surface-area formula: main run + n × branch C/F +
+  // flange allowance for the (n + 2) ends.
+  if (/\bmanifold\b/.test(haystack)) return "manifold";
   // Polymer-Lining shop convention: "U-Tee" / "U-TEE" = Unequal Tee (reducing
   // tee), and "E-Tee" / "E-TEE" = Equal Tee. NOT a 180° U-bend. The genuine
   // U-bend case is matched below via "U-bend" or "180°".
@@ -278,6 +283,70 @@ function teeArea(item: QuoteItem, nbToOdMap: Record<number, number>): ItemSurfac
 }
 
 /**
+ * Manifold = main pipe (the bottom) with `n` stubs branching off. Polymer-
+ * Lining quoting convention (Andrew 2026-05-13):
+ *
+ *   developed = main_run + n × branch_C/F + (n + 2) × 100 mm
+ *
+ * The (n + 2) flange ends are the 2 ends of the main pipe plus n stub
+ * flanges. Branch C/F estimate: 0.5 × branch_NB + 100 mm. Stub count
+ * defaults to 2 when not parsable from the description (the lower bound
+ * for "multiple stubs"). The description can override via "3-way",
+ * "n stubs", or "manifold × n" — the regex below catches all three.
+ *
+ * Applied at OD_run / ID_run for the entire developed length (the stubs
+ * usually share the main NB or are slightly smaller; using the main NB
+ * is conservative for the customer).
+ */
+function manifoldArea(item: QuoteItem, nbToOdMap: Record<number, number>): ItemSurfaceArea | null {
+  const nbRun = item.diameter;
+  if (nbRun === null || nbRun <= 0) return null;
+  const odRun = outerDiameterFromNB(nbToOdMap, nbRun);
+  if (odRun <= 0) return null;
+  const wtRun = effectiveWallMm(item, nbRun);
+  const idRun = wtRun > 0 ? odRun - 2 * wtRun : 0;
+
+  const stubCount = parseStubCountFromDescription(item.description) ?? 2;
+  const nbBranchParsed = secondaryNbFromDescription(item);
+  const nbBranch = nbBranchParsed && nbBranchParsed > 0 ? nbBranchParsed : nbRun;
+  const branchCfMm = 0.5 * nbBranch + 100;
+
+  const explicitLength = item.length;
+  const runLengthMm =
+    explicitLength && explicitLength > 0 ? explicitLength : 2 * (0.5 * nbRun + 100);
+
+  const pipeFlangeCount = countFlangesFromConfig(item.flangeConfig);
+  const flangedEnds = pipeFlangeCount > 0 ? 2 + stubCount : 0;
+  const flangeAllowanceMm = flangedEnds * 100;
+
+  const developedLengthMm = runLengthMm + stubCount * branchCfMm + flangeAllowanceMm;
+  const externalM2 = (Math.PI * odRun * developedLengthMm) / 1e6;
+  const internalM2 = idRun > 0 ? (Math.PI * idRun * developedLengthMm) / 1e6 : 0;
+  const quantity = item.quantity > 0 ? item.quantity : 1;
+  return asResult({ externalM2, internalM2, quantity });
+}
+
+/**
+ * Parses a stub count from a manifold description. Accepts "3-way", "3
+ * stubs", "manifold × 3", "manifold x 3". Returns null when not found —
+ * caller falls back to a sensible default (2).
+ */
+function parseStubCountFromDescription(desc: string | null): number | null {
+  if (!desc) return null;
+  const wayMatch = desc.match(/(\d+)[\s-]*(?:way|stub|stubs)/i);
+  if (wayMatch) {
+    const n = Number(wayMatch[1]);
+    if (Number.isFinite(n) && n > 0) return n;
+  }
+  const xMatch = desc.match(/manifold[\s-]*[x×*][\s-]*(\d+)/i);
+  if (xMatch) {
+    const n = Number(xMatch[1]);
+    if (Number.isFinite(n) && n > 0) return n;
+  }
+  return null;
+}
+
+/**
  * Standalone flange — two annular faces (front + back) + the outer edge.
  * Outer-diameter and thickness are not in the schema; we approximate from
  * SABS 1123 / ASME B16.5 fits: `OD_flange ≈ 1.6×NB + 60 mm`, thickness
@@ -358,6 +427,7 @@ export function surfaceAreaForQuoteItem(
   if (kind === "bend_180") return bendArea(item, 180, nbToOdMap);
   if (kind === "reducer") return reducerArea(item, nbToOdMap);
   if (kind === "tee") return teeArea(item, nbToOdMap);
+  if (kind === "manifold") return manifoldArea(item, nbToOdMap);
   if (kind === "flange") return flangeArea(item, nbToOdMap);
   if (kind === "equal_y") return equalYArea(item, nbToOdMap);
 
