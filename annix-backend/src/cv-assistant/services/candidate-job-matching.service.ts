@@ -6,6 +6,7 @@ import { Candidate } from "../entities/candidate.entity";
 import { CandidateJobMatch, MatchDetails } from "../entities/candidate-job-match.entity";
 import { ExternalJob } from "../entities/external-job.entity";
 import { CvNotificationService } from "./cv-notification.service";
+import { haversineKm } from "./geocode.service";
 
 const WEIGHT_EMBEDDING = 0.5;
 const WEIGHT_SKILLS = 0.25;
@@ -15,6 +16,7 @@ const WEIGHT_LOCATION = 0.1;
 const TRADE_PROFILE_BOOST_CAP = 0.1;
 const TRADE_KEY_WEIGHT_WITHIN_BOOST = 0.6;
 const COMMODITY_WEIGHT_WITHIN_BOOST = 0.4;
+const OUTSIDE_RADIUS_PENALTY = 0.4;
 
 const TOP_MATCHES_LIMIT = 20;
 
@@ -330,6 +332,8 @@ export class CandidateJobMatchingService {
     const experienceMatch = this.calculateExperienceMatch(candidate, job);
     const locationMatch = this.calculateLocationMatch(candidate, job);
     const tradeBoost = this.calculateTradeProfileBoost(candidate, job);
+    const distanceKm = this.calculateDistance(candidate, job);
+    const outsideRadius = this.isOutsideTradeRadius(candidate, job);
 
     const baseScore =
       embeddingSimilarity * WEIGHT_EMBEDDING +
@@ -337,11 +341,11 @@ export class CandidateJobMatchingService {
       experienceMatch * WEIGHT_EXPERIENCE +
       locationMatch * WEIGHT_LOCATION;
 
-    const boostedScore =
+    const withBoost =
       tradeBoost.score === null
         ? baseScore
         : Math.min(1, baseScore + tradeBoost.score * TRADE_PROFILE_BOOST_CAP);
-    const overallScore = boostedScore;
+    const overallScore = outsideRadius ? withBoost * OUTSIDE_RADIUS_PENALTY : withBoost;
 
     const matchDetails: MatchDetails = {
       embeddingSimilarity,
@@ -350,6 +354,8 @@ export class CandidateJobMatchingService {
       skillsMissing: skillsResult.missing,
       experienceMatch,
       locationMatch,
+      distanceKm: distanceKm === null ? null : Math.round(distanceKm),
+      outsideTradeRadius: outsideRadius,
       reasoning: this.buildReasoning(
         embeddingSimilarity,
         skillsResult,
@@ -357,6 +363,8 @@ export class CandidateJobMatchingService {
         locationMatch,
         job,
         tradeBoost,
+        distanceKm,
+        outsideRadius,
       ),
     };
 
@@ -391,27 +399,54 @@ export class CandidateJobMatchingService {
     }
   }
 
+  calculateDistance(candidate: Candidate, job: ExternalJob): number | null {
+    const cLat = candidate.locationLat;
+    const cLon = candidate.locationLon;
+    const jLat = job.locationLat;
+    const jLon = job.locationLon;
+    if (cLat === null || cLon === null || jLat === null || jLon === null) {
+      return null;
+    }
+    return haversineKm({ lat: cLat, lon: cLon }, { lat: jLat, lon: jLon });
+  }
+
   private calculateLocationMatch(candidate: Candidate, job: ExternalJob): number {
+    const distanceKm = this.calculateDistance(candidate, job);
+    if (distanceKm !== null) {
+      if (distanceKm < 25) return 1.0;
+      if (distanceKm < 50) return 0.85;
+      if (distanceKm < 150) return 0.6;
+      if (distanceKm < 400) return 0.35;
+      return 0.15;
+    }
+
     if (!job.locationArea) {
       return 0.5;
-    } else {
-      const summary = candidate.extractedData?.summary?.toLowerCase() ?? "";
-      const locationLower = job.locationArea.toLowerCase();
-
-      if (summary.includes(locationLower)) {
-        return 1.0;
-      } else {
-        const saRegions = ["gauteng", "johannesburg", "cape town", "durban", "pretoria"];
-        const jobInSa = saRegions.some((r) => locationLower.includes(r));
-        const candidateInSa = saRegions.some((r) => summary.includes(r));
-
-        if (jobInSa && candidateInSa) {
-          return 0.7;
-        } else {
-          return 0.3;
-        }
-      }
     }
+
+    const summary = candidate.extractedData?.summary?.toLowerCase() ?? "";
+    const locationLower = job.locationArea.toLowerCase();
+
+    if (summary.includes(locationLower)) {
+      return 1.0;
+    }
+
+    const saRegions = ["gauteng", "johannesburg", "cape town", "durban", "pretoria"];
+    const jobInSa = saRegions.some((r) => locationLower.includes(r));
+    const candidateInSa = saRegions.some((r) => summary.includes(r));
+
+    if (jobInSa && candidateInSa) {
+      return 0.7;
+    }
+    return 0.3;
+  }
+
+  isOutsideTradeRadius(candidate: Candidate, job: ExternalJob): boolean {
+    const radius = candidate.tradeProfile?.shared.siteRadiusKm;
+    if (radius == null || radius <= 0) return false;
+    const distance = this.calculateDistance(candidate, job);
+    if (distance === null) return false;
+    return distance > radius;
   }
 
   private buildReasoning(
@@ -421,6 +456,8 @@ export class CandidateJobMatchingService {
     locationMatch: number,
     job: ExternalJob,
     tradeBoost: { score: number | null; tradeKeyMatches: string[]; commodityMatches: Commodity[] },
+    distanceKm: number | null,
+    outsideRadius: boolean,
   ): string {
     const simPct = Math.round(embeddingSimilarity * 100);
 
@@ -433,10 +470,11 @@ export class CandidateJobMatchingService {
 
     const locationArea = job.locationArea;
     const locationLabel = locationArea ? locationArea : "unspecified";
+    const distanceSuffix = distanceKm !== null ? `, ${Math.round(distanceKm)}km away` : "";
     const locationPart =
       locationMatch >= 0.7
-        ? `Location: good match (${locationLabel})`
-        : `Location: ${locationLabel}`;
+        ? `Location: good match (${locationLabel}${distanceSuffix})`
+        : `Location: ${locationLabel}${distanceSuffix}`;
 
     const parts = [
       `Profile similarity: ${simPct}%`,
@@ -454,6 +492,7 @@ export class CandidateJobMatchingService {
       ...(tradeBoost.commodityMatches.length > 0
         ? [`Commodity overlap: ${tradeBoost.commodityMatches.join(", ")}`]
         : []),
+      ...(outsideRadius ? ["Outside your stated travel radius — score reduced"] : []),
     ];
 
     return parts.join(". ");

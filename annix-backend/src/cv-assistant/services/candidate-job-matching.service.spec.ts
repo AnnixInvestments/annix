@@ -217,4 +217,70 @@ describe("CandidateJobMatchingService", () => {
       expect(result.score).toBe(0);
     });
   });
+
+  describe("distance + siteRadiusKm", () => {
+    it("calculateDistance returns km when both sides have coords", () => {
+      const candidate = { locationLat: -26.2, locationLon: 28.04 } as Candidate;
+      const job = { locationLat: -33.92, locationLon: 18.42 } as ExternalJob;
+      const result = service.calculateDistance(candidate, job);
+      expect(result).not.toBeNull();
+      expect(result).toBeGreaterThan(1250);
+    });
+
+    it("calculateDistance returns null when either side missing coords", () => {
+      const candidate = { locationLat: -26.2, locationLon: null } as Candidate;
+      const job = { locationLat: -33.92, locationLon: 18.42 } as ExternalJob;
+      expect(service.calculateDistance(candidate, job)).toBeNull();
+    });
+
+    it("isOutsideTradeRadius=false when no tradeProfile", () => {
+      const candidate = {
+        locationLat: -26.2,
+        locationLon: 28.04,
+        tradeProfile: null,
+      } as Candidate;
+      const job = { locationLat: -33.92, locationLon: 18.42 } as ExternalJob;
+      expect(service.isOutsideTradeRadius(candidate, job)).toBe(false);
+    });
+
+    it("isOutsideTradeRadius=true when distance > siteRadiusKm", () => {
+      const candidate = {
+        locationLat: -26.2,
+        locationLon: 28.04,
+        tradeProfile: {
+          shared: {
+            tradeKeys: ["coded_welder"],
+            yearsExperience: null,
+            commoditiesWorked: [],
+            shutdownHistory: [],
+            siteRadiusKm: 100,
+            availability: null,
+          },
+          perTrade: {},
+        },
+      } as unknown as Candidate;
+      const capeTownJob = { locationLat: -33.92, locationLon: 18.42 } as ExternalJob;
+      expect(service.isOutsideTradeRadius(candidate, capeTownJob)).toBe(true);
+    });
+
+    it("isOutsideTradeRadius=false when distance is within siteRadiusKm", () => {
+      const candidate = {
+        locationLat: -26.2,
+        locationLon: 28.04,
+        tradeProfile: {
+          shared: {
+            tradeKeys: ["coded_welder"],
+            yearsExperience: null,
+            commoditiesWorked: [],
+            shutdownHistory: [],
+            siteRadiusKm: 100,
+            availability: null,
+          },
+          perTrade: {},
+        },
+      } as unknown as Candidate;
+      const pretoriaJob = { locationLat: -25.74, locationLon: 28.19 } as ExternalJob;
+      expect(service.isOutsideTradeRadius(candidate, pretoriaJob)).toBe(false);
+    });
+  });
 });

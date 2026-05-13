@@ -14,6 +14,7 @@ import { JobPosting, JobPostingStatus } from "../entities/job-posting.entity";
 import { AdzunaService } from "./adzuna.service";
 import { CandidateJobMatchingService } from "./candidate-job-matching.service";
 import { EmbeddingService } from "./embedding.service";
+import { GeocodeService } from "./geocode.service";
 import { IngestedJobResult } from "./ingested-job.types";
 import { JoobleService } from "./jooble.service";
 import { RemotiveService } from "./remotive.service";
@@ -44,6 +45,7 @@ export class JobIngestionService {
     private readonly candidateJobMatchingService: CandidateJobMatchingService,
     private readonly emailService: EmailService,
     private readonly configService: ConfigService,
+    private readonly geocodeService: GeocodeService,
   ) {}
 
   @Cron(CronExpression.EVERY_HOUR, { name: "cv-assistant:poll-job-sources" })
@@ -469,6 +471,22 @@ export class JobIngestionService {
     );
 
     savedJobs.forEach((saved) => {
+      const addressForGeocode = saved.locationRaw ?? saved.locationArea;
+      if (addressForGeocode) {
+        this.geocodeService
+          .geocode(addressForGeocode)
+          .then((coords) => {
+            if (!coords) return;
+            return this.externalJobRepo.update(saved.id, {
+              locationLat: coords.lat,
+              locationLon: coords.lon,
+            });
+          })
+          .catch((err) => {
+            this.logger.warn(`Failed to geocode job ${saved.id}: ${err.message}`);
+          });
+      }
+
       this.embeddingService
         .embedExternalJob(saved.id)
         .then((embedded) => {

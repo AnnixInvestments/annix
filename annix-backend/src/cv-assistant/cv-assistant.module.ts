@@ -51,6 +51,7 @@ import { CvAssistantIndividualDocument } from "./entities/cv-assistant-individua
 import { CvAssistantProfile } from "./entities/cv-assistant-profile.entity";
 import { CvAssistantUser } from "./entities/cv-assistant-user.entity";
 import { CvEscoSkill } from "./entities/cv-esco-skill.entity";
+import { CvGeocodeCache } from "./entities/cv-geocode-cache.entity";
 import { CvPushSubscription } from "./entities/cv-push-subscription.entity";
 import { ExternalJob } from "./entities/external-job.entity";
 import { ExternalJobAlternate } from "./entities/external-job-alternate.entity";
@@ -89,6 +90,7 @@ import { EeReportService } from "./services/ee-report.service";
 import { EmailTemplateService } from "./services/email-template.service";
 import { EmbeddingService } from "./services/embedding.service";
 import { EscoNormalisationService } from "./services/esco-normalisation.service";
+import { GeocodeService } from "./services/geocode.service";
 import { IndividualProfileService } from "./services/individual-profile.service";
 import { InterviewBookingService } from "./services/interview-booking.service";
 import { JobIngestionService } from "./services/job-ingestion.service";
@@ -148,6 +150,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
       SeekerApplyClick,
       SeekerMute,
       CvEscoSkill,
+      CvGeocodeCache,
     ]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -218,6 +221,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     JobMarketSourceService,
     EmbeddingService,
     EscoNormalisationService,
+    GeocodeService,
     CandidateJobMatchingService,
     PopiaService,
     MarketInsightsService,

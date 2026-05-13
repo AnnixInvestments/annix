@@ -107,6 +107,12 @@ export class Candidate {
   @Column({ name: "trade_profile", type: "jsonb", nullable: true })
   tradeProfile: TradeProfile | null;
 
+  @Column({ name: "location_lat", type: "double precision", nullable: true })
+  locationLat: number | null;
+
+  @Column({ name: "location_lon", type: "double precision", nullable: true })
+  locationLon: number | null;
+
   @Column({ name: "acceptance_sent_at", type: "timestamptz", nullable: true })
   acceptanceSentAt: Date | null;
 

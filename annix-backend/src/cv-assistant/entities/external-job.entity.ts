@@ -33,6 +33,12 @@ export class ExternalJob {
   @Column({ name: "location_area", type: "varchar", length: 255, nullable: true })
   locationArea: string | null;
 
+  @Column({ name: "location_lat", type: "double precision", nullable: true })
+  locationLat: number | null;
+
+  @Column({ name: "location_lon", type: "double precision", nullable: true })
+  locationLon: number | null;
+
   @Column({ name: "salary_min", type: "decimal", precision: 12, scale: 2, nullable: true })
   salaryMin: number | null;
 

@@ -19,6 +19,8 @@ export interface MatchDetails {
   experienceMatch: number;
   locationMatch: number;
   reasoning: string;
+  distanceKm?: number | null;
+  outsideTradeRadius?: boolean;
 }
 
 @Entity("cv_assistant_candidate_job_matches")
