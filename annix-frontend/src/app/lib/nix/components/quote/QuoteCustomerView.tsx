@@ -546,9 +546,14 @@ function itemDescription(item: QuoteItem): string {
   const parts: string[] = [];
   if (item.diameter !== null) parts.push(`${item.diameter}NB`);
   if (item.length !== null) parts.push(`${item.length}LG`);
+  // Prefer the human description ("Equal-Y", "Manifold", "90° Elbow") over
+  // the schema's itemType enum — Gemini falls back to "other" whenever an
+  // item doesn't fit a specific enum value (e.g. Equal-Y, wye), which would
+  // render as "OTHER" on the customer-facing quote. Description is the
+  // authoritative per-item label.
   const itemType = item.itemType;
   const itemDesc = item.description;
-  const itemTypeSource = itemType ? itemType : itemDesc ? itemDesc : "Item";
+  const itemTypeSource = itemDesc ? itemDesc : itemType ? itemType : "Item";
   const typeWord = String(itemTypeSource).toUpperCase();
   parts.push(typeWord.includes("PIPE") ? "SPOOLS" : typeWord);
   if (item.flangeConfig) parts.push(item.flangeConfig);
