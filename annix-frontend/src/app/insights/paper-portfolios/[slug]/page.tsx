@@ -1,10 +1,9 @@
 "use client";
 
-import { isUndefined } from "es-toolkit/compat";
 import { ArrowLeft, Briefcase, CirclePause, CirclePlay, ScrollText } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import PortalToolbar, { type NavItem } from "@/app/components/PortalToolbar";
 import { useToast } from "@/app/components/Toast";
 import { ApiError } from "@/app/lib/api/apiError";
@@ -67,6 +66,12 @@ export default function InsightsPaperPortfolioDetailPage() {
   const resumeMutation = useResumePortfolio();
   const { showToast } = useToast();
 
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.replace("/insights");
+    }
+  }, [isLoading, isAuthenticated, router]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40]">
@@ -76,7 +81,6 @@ export default function InsightsPaperPortfolioDetailPage() {
   }
 
   if (!isAuthenticated || !user) {
-    if (!isUndefined(globalThis.window)) router.replace("/insights");
     return null;
   }
 

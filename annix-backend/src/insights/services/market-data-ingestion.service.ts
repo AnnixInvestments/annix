@@ -1,6 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
+import { now } from "../../lib/datetime";
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { Asset } from "../entities/asset.entity";
 import { PriceHistory } from "../entities/price-history.entity";
@@ -50,6 +51,16 @@ export class MarketDataIngestionService {
         where: { assetId: asset.id },
         order: { date: "DESC" },
       });
+      const today = now().toISODate();
+      if (latestRow && today !== null && latestRow.date >= today) {
+        return {
+          symbol: asset.symbol,
+          inserted: 0,
+          skipped: 0,
+          earliestDate: null,
+          latestDate: latestRow.date,
+        };
+      }
       const since = latestRow ? incrementDate(latestRow.date) : defaultBackfillStart();
       const bars = await this.yahoo.fetchHistorical(asset.symbol, since);
       return this.persistBars(asset, bars);

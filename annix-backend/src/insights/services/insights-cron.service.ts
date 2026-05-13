@@ -1,18 +1,35 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
+import { now } from "../../lib/datetime";
 import { BenchmarkExecutionService } from "./benchmark-execution.service";
 import { MarketDataIngestionService } from "./market-data-ingestion.service";
+import { NewsIngestionService } from "./news-ingestion.service";
 import { PaperPortfolioService } from "./paper-portfolio.service";
 import { PaperTradeExecutionService } from "./paper-trade-execution.service";
 import { PortfolioSnapshotService } from "./portfolio-snapshot.service";
 import { SignalEngineService } from "./signal-engine.service";
 
+export interface CronRunStatus {
+  isRunning: boolean;
+  currentRunStartedAt: string | null;
+  lastRunStartedAt: string | null;
+  lastRunFinishedAt: string | null;
+  lastRunDurationMs: number | null;
+  lastRunError: string | null;
+}
+
 @Injectable()
 export class InsightsCronService {
   private readonly logger = new Logger(InsightsCronService.name);
+  private currentRunStartedAtMs: number | null = null;
+  private lastRunStartedAtMs: number | null = null;
+  private lastRunFinishedAtMs: number | null = null;
+  private lastRunDurationMs: number | null = null;
+  private lastRunError: string | null = null;
 
   constructor(
     private readonly ingestion: MarketDataIngestionService,
+    private readonly newsIngestion: NewsIngestionService,
     private readonly portfolioService: PaperPortfolioService,
     private readonly benchmarkExecution: BenchmarkExecutionService,
     private readonly snapshotService: PortfolioSnapshotService,
@@ -20,11 +37,42 @@ export class InsightsCronService {
     private readonly tradeExecution: PaperTradeExecutionService,
   ) {}
 
+  status(): CronRunStatus {
+    return {
+      isRunning: this.currentRunStartedAtMs !== null,
+      currentRunStartedAt:
+        this.currentRunStartedAtMs !== null
+          ? new Date(this.currentRunStartedAtMs).toISOString()
+          : null,
+      lastRunStartedAt:
+        this.lastRunStartedAtMs !== null ? new Date(this.lastRunStartedAtMs).toISOString() : null,
+      lastRunFinishedAt:
+        this.lastRunFinishedAtMs !== null ? new Date(this.lastRunFinishedAtMs).toISOString() : null,
+      lastRunDurationMs: this.lastRunDurationMs,
+      lastRunError: this.lastRunError,
+    };
+  }
+
+  triggerManually(): { accepted: boolean; alreadyRunning: boolean } {
+    if (this.currentRunStartedAtMs !== null) {
+      return { accepted: false, alreadyRunning: true };
+    }
+    void this.runDailySnapshot();
+    return { accepted: true, alreadyRunning: false };
+  }
+
   @Cron("0 6 * * *", {
     name: "insights:daily-snapshot",
     timeZone: "Africa/Johannesburg",
   })
   async runDailySnapshot(): Promise<void> {
+    if (this.currentRunStartedAtMs !== null) {
+      this.logger.warn("Insights daily snapshot skipped: previous run still in progress.");
+      return;
+    }
+    const startedAtMs = now().toMillis();
+    this.currentRunStartedAtMs = startedAtMs;
+    this.lastRunError = null;
     this.logger.log("Insights daily snapshot starting at 06:00 SAST.");
     try {
       const ingest = await this.ingestion.runDailySnapshot();
@@ -37,6 +85,19 @@ export class InsightsCronService {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       this.logger.error(`Market data ingestion crashed: ${message}`);
+    }
+
+    try {
+      const news = await this.newsIngestion.runDailyPull();
+      this.logger.log(
+        `News ingestion: ${news.articlesPersisted} new articles across ${news.symbolsProcessed} symbols (extracted=${news.articlesExtracted}, failed=${news.articlesFailed}).`,
+      );
+      if (news.symbolFailures.length > 0) {
+        this.logger.warn(`News fetch failed for: ${news.symbolFailures.join(", ")}`);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`News ingestion crashed: ${message}`);
     }
 
     try {
@@ -82,6 +143,13 @@ export class InsightsCronService {
       const message = error instanceof Error ? error.message : String(error);
       this.logger.error(`Snapshot capture crashed: ${message}`);
     }
+
+    const finishedAtMs = now().toMillis();
+    this.lastRunStartedAtMs = startedAtMs;
+    this.lastRunFinishedAtMs = finishedAtMs;
+    this.lastRunDurationMs = finishedAtMs - startedAtMs;
+    this.currentRunStartedAtMs = null;
+    this.logger.log(`Insights daily snapshot completed in ${this.lastRunDurationMs}ms.`);
   }
 
   @Cron("0 6 1 * *", {

@@ -388,9 +388,10 @@ export class AllocationRulesEngineService {
     if (assetIds.length === 0) return map;
     const rows = await this.historyRepo
       .createQueryBuilder("h")
-      .select("DISTINCT ON (h.asset_id) h.asset_id", "asset_id")
+      .select("h.asset_id", "asset_id")
       .addSelect("h.close", "close")
       .addSelect("h.date", "date")
+      .distinctOn(["h.asset_id"])
       .where({ assetId: In(assetIds) })
       .orderBy("h.asset_id")
       .addOrderBy("h.date", "DESC")

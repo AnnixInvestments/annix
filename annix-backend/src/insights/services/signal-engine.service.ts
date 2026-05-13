@@ -5,15 +5,23 @@ import { now } from "../../lib/datetime";
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { sectorTrendEtf } from "../config/sector-etf-map";
 import { Asset } from "../entities/asset.entity";
+import { NewsItem } from "../entities/news-item.entity";
 import { PriceHistory } from "../entities/price-history.entity";
 import { type SignalComponentBreakdown, SignalSnapshot } from "../entities/signal-snapshot.entity";
 
 const METRIC_CATEGORY = "insights-signal-engine";
+const NEWS_LOOKBACK_HOURS = 48;
+const NEWS_MAX_ARTICLES = 20;
 
 interface ComputedSignals {
   momentum: { score: number; roc20: number | null; smaCrossover: number | null };
   valuation: { score: number; trailingPe: number | null; medianPe: number | null };
-  newsSentiment: { score: number; source: string };
+  newsSentiment: {
+    score: number;
+    source: string;
+    articleCount: number;
+    articleIds: string[];
+  };
   sectorTrend: {
     score: number;
     sector: string | null;
@@ -38,6 +46,7 @@ export class SignalEngineService {
     @InjectRepository(PriceHistory) private readonly historyRepo: Repository<PriceHistory>,
     @InjectRepository(SignalSnapshot)
     private readonly signalRepo: Repository<SignalSnapshot>,
+    @InjectRepository(NewsItem) private readonly newsRepo: Repository<NewsItem>,
     private readonly metrics: ExtractionMetricService,
   ) {}
 
@@ -78,13 +87,13 @@ export class SignalEngineService {
 
     const momentum = this.momentum(closes);
     const valuation = this.valuationStub();
-    const newsSentiment = this.newsSentimentStub();
+    const newsSentiment = await this.newsSentiment(asset.symbol);
     const sectorTrend = await this.sectorTrend(asset.sector);
     const drawdownRisk = this.drawdownRisk(closes);
 
     const inputsMissing: string[] = [];
     if (valuation.trailingPe === null) inputsMissing.push("valuation");
-    if (newsSentiment.source === "stub") inputsMissing.push("news");
+    if (newsSentiment.source !== "yahoo-news-extraction") inputsMissing.push("news");
     if (sectorTrend.etf === null) inputsMissing.push("sector-etf");
     const inputsAvailable = 5 - inputsMissing.length;
 
@@ -175,8 +184,46 @@ export class SignalEngineService {
     return { score: 50, trailingPe: null, medianPe: null };
   }
 
-  private newsSentimentStub(): ComputedSignals["newsSentiment"] {
-    return { score: 50, source: "stub" };
+  private async newsSentiment(symbol: string): Promise<ComputedSignals["newsSentiment"]> {
+    const cutoff = now().minus({ hours: NEWS_LOOKBACK_HOURS }).toJSDate();
+    const items = await this.newsRepo
+      .createQueryBuilder("n")
+      .where("n.extraction_status = :status", { status: "extracted" })
+      .andWhere("(n.published_at >= :cutoff OR n.created_at >= :cutoff)", { cutoff })
+      .andWhere("n.related_symbols ILIKE :symbolPattern", {
+        symbolPattern: `%${symbol}%`,
+      })
+      .orderBy("n.published_at", "DESC")
+      .limit(NEWS_MAX_ARTICLES)
+      .getMany();
+
+    const matched = items.filter((item) => matchesSymbol(item.relatedSymbols, symbol));
+    if (matched.length === 0) {
+      return { score: 50, source: "no-news", articleCount: 0, articleIds: [] };
+    }
+
+    let weightedSum = 0;
+    let weightTotal = 0;
+    for (const item of matched) {
+      const sentiment = item.sentiment === null ? Number.NaN : Number(item.sentiment);
+      if (!Number.isFinite(sentiment)) continue;
+      const weight = item.impactLevel === "high" ? 4 : item.impactLevel === "medium" ? 2 : 1;
+      weightedSum += sentiment * weight;
+      weightTotal += weight;
+    }
+
+    if (weightTotal === 0) {
+      return { score: 50, source: "no-news", articleCount: 0, articleIds: [] };
+    }
+
+    const avgSentiment = weightedSum / weightTotal;
+    const score = clamp01to100(((avgSentiment + 1) / 2) * 100);
+    return {
+      score,
+      source: "yahoo-news-extraction",
+      articleCount: matched.length,
+      articleIds: matched.map((item) => item.id),
+    };
   }
 
   private async sectorTrend(sector: string | null): Promise<ComputedSignals["sectorTrend"]> {
@@ -228,6 +275,12 @@ export class SignalEngineService {
       distanceFromHighPct: roundOrNull(distancePct) ?? 0,
     };
   }
+}
+
+function matchesSymbol(relatedSymbols: string[] | null, symbol: string): boolean {
+  if (relatedSymbols === null) return false;
+  const upper = symbol.toUpperCase();
+  return relatedSymbols.some((s) => s.toUpperCase() === upper);
 }
 
 function clamp01to100(value: number): number {

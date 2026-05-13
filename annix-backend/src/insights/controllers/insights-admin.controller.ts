@@ -4,6 +4,7 @@ import { JwtAuthGuard } from "../../auth/jwt-auth.guard";
 import { Roles } from "../../auth/roles.decorator";
 import { RolesGuard } from "../../auth/roles.guard";
 import { INSIGHTS_ROLE } from "../insights.constants";
+import { type CronRunStatus, InsightsCronService } from "../services/insights-cron.service";
 import {
   type IngestResult,
   MarketDataIngestionService,
@@ -14,7 +15,10 @@ import {
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(INSIGHTS_ROLE)
 export class InsightsAdminController {
-  constructor(private readonly ingestion: MarketDataIngestionService) {}
+  constructor(
+    private readonly ingestion: MarketDataIngestionService,
+    private readonly cron: InsightsCronService,
+  ) {}
 
   @Post("backfill")
   @ApiOperation({ summary: "Trigger a backfill of historical prices for one symbol" })
@@ -31,6 +35,21 @@ export class InsightsAdminController {
   @ApiOperation({ summary: "Manually trigger the daily snapshot cron payload (admin override)" })
   async runDailySnapshot(): Promise<{ totalInserted: number; failed: string[] }> {
     return this.ingestion.runDailySnapshot();
+  }
+
+  @Post("cron/run")
+  @ApiOperation({
+    summary:
+      "Fire-and-forget trigger for the full insights cron pipeline. Returns immediately; poll GET /insights/admin/cron/status for progress.",
+  })
+  runFullCron(): { accepted: boolean; alreadyRunning: boolean } {
+    return this.cron.triggerManually();
+  }
+
+  @Get("cron/status")
+  @ApiOperation({ summary: "Return the current run status of the insights cron pipeline" })
+  cronStatus(): CronRunStatus {
+    return this.cron.status();
   }
 
   @Get("history/:symbol/count")

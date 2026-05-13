@@ -17,4 +17,11 @@ export const insightsKeys = {
     ["insights", "signals", symbol, "history", limit ?? "default"] as const,
   paperDecisionsToday: (slug: string) =>
     ["insights", "paper-portfolios", slug, "decisions", "today"] as const,
+  cronStatus: () => ["insights", "admin", "cron-status"] as const,
+  news: (params: { limit?: number; offset?: number; symbol?: string }) => {
+    const limit = params.limit;
+    const offset = params.offset;
+    const symbol = params.symbol;
+    return ["insights", "news", limit ?? "default", offset ?? 0, symbol ?? "all"] as const;
+  },
 } as const;

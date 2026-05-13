@@ -1,9 +1,9 @@
 "use client";
 
-import { isUndefined } from "es-toolkit/compat";
 import { ArrowLeft, ArrowRight, Briefcase } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import PortalToolbar, { type NavItem } from "@/app/components/PortalToolbar";
 import type { PaperPortfolioSummary } from "@/app/lib/api/insightsApi";
 import { usePaperPortfolios } from "@/app/lib/query/hooks";
@@ -26,6 +26,12 @@ export default function InsightsPaperPortfoliosPage() {
   const { user, isAuthenticated, isLoading, logout } = useInsightsAuth();
   const query = usePaperPortfolios();
 
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.replace("/insights");
+    }
+  }, [isLoading, isAuthenticated, router]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40]">
@@ -35,7 +41,6 @@ export default function InsightsPaperPortfoliosPage() {
   }
 
   if (!isAuthenticated || !user) {
-    if (!isUndefined(globalThis.window)) router.replace("/insights");
     return null;
   }
 

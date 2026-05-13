@@ -94,7 +94,7 @@ const INSIGHTS_ROLE = "insights";
 const apiClient = createApiClient({
   baseURL: API_BASE,
   tokenStore: insightsTokenStore,
-  refreshHandler: async () => false,
+  refreshUrl: `${API_BASE}/auth/refresh`,
   onUnauthorized: () => insightsTokenStore.clear(),
 });
 
@@ -207,6 +207,14 @@ export const insightsApi = {
         `/insights/admin/history/${encodeURIComponent(symbol)}/count`,
       );
     },
+    runFullCron(): Promise<{ accepted: boolean; alreadyRunning: boolean }> {
+      return apiClient.post<{ accepted: boolean; alreadyRunning: boolean }>(
+        "/insights/admin/cron/run",
+      );
+    },
+    cronStatus(): Promise<CronRunStatusDto> {
+      return apiClient.get<CronRunStatusDto>("/insights/admin/cron/status");
+    },
   },
 
   signals: {
@@ -217,6 +225,25 @@ export const insightsApi = {
       const query = limit ? `?limit=${limit}` : "";
       return apiClient.get<SignalSnapshotResponse[]>(
         `/insights/signals/${encodeURIComponent(symbol)}/history${query}`,
+      );
+    },
+  },
+
+  news: {
+    list(params?: {
+      limit?: number;
+      offset?: number;
+      symbol?: string;
+      status?: NewsExtractionStatus;
+    }): Promise<{ items: NewsItemDto[]; total: number }> {
+      const search = new URLSearchParams();
+      if (params?.limit !== undefined) search.set("limit", String(params.limit));
+      if (params?.offset !== undefined) search.set("offset", String(params.offset));
+      if (params?.symbol) search.set("symbol", params.symbol);
+      if (params?.status) search.set("status", params.status);
+      const qs = search.toString();
+      return apiClient.get<{ items: NewsItemDto[]; total: number }>(
+        `/insights/news${qs ? `?${qs}` : ""}`,
       );
     },
   },
@@ -323,6 +350,36 @@ export interface BackfillResult {
   skipped: number;
   earliestDate: string | null;
   latestDate: string | null;
+}
+
+export interface CronRunStatusDto {
+  isRunning: boolean;
+  currentRunStartedAt: string | null;
+  lastRunStartedAt: string | null;
+  lastRunFinishedAt: string | null;
+  lastRunDurationMs: number | null;
+  lastRunError: string | null;
+}
+
+export type NewsExtractionStatus = "pending" | "extracted" | "failed" | "skipped";
+export type NewsImpactLevel = "low" | "medium" | "high";
+
+export interface NewsItemDto {
+  id: string;
+  url: string;
+  title: string;
+  source: string | null;
+  summary: string | null;
+  relatedSymbols: string[];
+  relatedThemes: string[];
+  sentiment: number | null;
+  impactLevel: NewsImpactLevel | null;
+  shortTermImplication: string | null;
+  mediumTermImplication: string | null;
+  publishedAt: string | null;
+  extractedAt: string | null;
+  extractionStatus: NewsExtractionStatus;
+  extractionError: string | null;
 }
 
 export type PaperPortfolioSlug =

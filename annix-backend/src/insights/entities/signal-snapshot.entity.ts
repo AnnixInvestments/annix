@@ -13,7 +13,12 @@ import { Asset } from "./asset.entity";
 export interface SignalComponentBreakdown {
   momentum: { score: number; roc20: number | null; smaCrossover: number | null };
   valuation: { score: number; trailingPe: number | null; medianPe: number | null };
-  newsSentiment: { score: number; source: string };
+  newsSentiment: {
+    score: number;
+    source: string;
+    articleCount?: number;
+    articleIds?: string[];
+  };
   sectorTrend: {
     score: number;
     sector: string | null;

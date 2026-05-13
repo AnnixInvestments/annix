@@ -1,9 +1,8 @@
 "use client";
 
-import { isUndefined } from "es-toolkit/compat";
 import { ArrowLeft, ScrollText } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import PortalToolbar, { type NavItem } from "@/app/components/PortalToolbar";
 import type { PaperTrade, PaperTradeAction } from "@/app/lib/api/insightsApi";
 import { fromISO } from "@/app/lib/datetime";
@@ -41,6 +40,12 @@ export default function InsightsPaperPortfolioTradesPage() {
   const portfolioQuery = usePaperPortfolio(slug);
   const tradesQuery = usePaperTrades(slug, 1000);
 
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.replace("/insights");
+    }
+  }, [isLoading, isAuthenticated, router]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40]">
@@ -50,7 +55,6 @@ export default function InsightsPaperPortfolioTradesPage() {
   }
 
   if (!isAuthenticated || !user) {
-    if (!isUndefined(globalThis.window)) router.replace("/insights");
     return null;
   }
 

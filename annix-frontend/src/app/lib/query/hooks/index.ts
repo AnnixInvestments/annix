@@ -677,11 +677,13 @@ export {
   useUploadDrawing,
   useUploadDrawingVersion,
 } from "./drawing/useDrawings";
+export { useCronStatus, useRunFullCron } from "./insights/useAdminCron";
 export {
   useAssetHistory,
   useHistoryCount,
   useInvalidateAssetData,
 } from "./insights/useAssetHistory";
+export { useNews } from "./insights/useNews";
 export {
   usePaperDecisionsToday,
   usePausePortfolio,

@@ -1,7 +1,18 @@
 import { Injectable, Logger } from "@nestjs/common";
-import yahooFinance from "yahoo-finance2";
-import type { HistoricalRowHistory } from "yahoo-finance2/esm/src/modules/historical.js";
+import YahooFinanceClass from "yahoo-finance2";
 import { fromJSDate } from "../../lib/datetime";
+
+const yahooFinance = new YahooFinanceClass();
+
+interface ChartQuote {
+  date: Date | number;
+  open: number | null;
+  high: number | null;
+  low: number | null;
+  close: number | null;
+  adjclose?: number | null;
+  volume?: number | null;
+}
 
 export interface YahooDailyBar {
   date: string;
@@ -11,6 +22,15 @@ export interface YahooDailyBar {
   close: number;
   adjClose: number | null;
   volume: number | null;
+}
+
+export interface YahooNewsArticle {
+  uuid: string;
+  title: string;
+  publisher: string;
+  link: string;
+  providerPublishTime: Date;
+  relatedTickers: string[];
 }
 
 const REQUESTS_PER_SECOND = 2;
@@ -39,6 +59,59 @@ export class YahooMarketDataService {
     });
   }
 
+  fetchNews(symbol: string, newsCount = 10): Promise<YahooNewsArticle[]> {
+    return this.scheduled(() => this.fetchNewsWithRetry(symbol, newsCount));
+  }
+
+  private async fetchNewsWithRetry(symbol: string, newsCount: number): Promise<YahooNewsArticle[]> {
+    let attempt = 0;
+    let lastError: unknown = null;
+    while (attempt < MAX_RETRIES) {
+      try {
+        const result = await yahooFinance.search(symbol, {
+          quotesCount: 0,
+          newsCount,
+        });
+        const news = (result?.news ?? []) as Array<{
+          uuid?: string;
+          title?: string;
+          publisher?: string;
+          link?: string;
+          providerPublishTime?: Date | number | string;
+          relatedTickers?: string[];
+        }>;
+        return news
+          .filter((n) => typeof n.link === "string" && typeof n.title === "string")
+          .map((n) => ({
+            uuid: n.uuid ?? "",
+            title: n.title as string,
+            publisher: n.publisher ?? "",
+            link: n.link as string,
+            providerPublishTime:
+              n.providerPublishTime instanceof Date
+                ? n.providerPublishTime
+                : new Date(n.providerPublishTime ?? Date.now()),
+            relatedTickers: n.relatedTickers ?? [],
+          }));
+      } catch (error) {
+        lastError = error;
+        const status = errorStatus(error);
+        const retryable = status === 429 || status === 503 || status === null;
+        if (!retryable) break;
+        attempt += 1;
+        if (attempt >= MAX_RETRIES) break;
+        const backoff = INITIAL_BACKOFF_MS * 2 ** (attempt - 1);
+        this.logger.warn(
+          `Yahoo news fetch for ${symbol} failed (attempt ${attempt}/${MAX_RETRIES}): ${errorMessage(error)}. Retrying in ${backoff}ms.`,
+        );
+        await new Promise<void>((resolve) => setTimeout(resolve, backoff));
+      }
+    }
+    throw new Error(
+      `Yahoo Finance news fetch for ${symbol} failed after ${attempt} attempts: ${errorMessage(lastError)}`,
+    );
+  }
+
   private scheduled<T>(work: () => Promise<T>): Promise<T> {
     const previous = this.pendingChain;
     const current = previous
@@ -65,21 +138,23 @@ export class YahooMarketDataService {
     let lastError: unknown = null;
     while (attempt < MAX_RETRIES) {
       try {
-        const raw = (await yahooFinance.historical(symbol, {
+        const result = await yahooFinance.chart(symbol, {
           period1: from,
           period2: to,
           interval: "1d",
-          events: "history",
-        })) as HistoricalRowHistory[];
-        return raw.map((row) => ({
-          date: toIsoDate(row.date),
-          open: row.open,
-          high: row.high,
-          low: row.low,
-          close: row.close,
-          adjClose: row.adjClose ?? null,
-          volume: row.volume ?? null,
-        }));
+        });
+        const quotes = (result?.quotes ?? []) as ChartQuote[];
+        return quotes
+          .filter((q) => q.close !== null && q.open !== null && q.high !== null && q.low !== null)
+          .map((q) => ({
+            date: toIsoDate(q.date instanceof Date ? q.date : new Date(q.date)),
+            open: q.open as number,
+            high: q.high as number,
+            low: q.low as number,
+            close: q.close as number,
+            adjClose: q.adjclose ?? null,
+            volume: q.volume ?? null,
+          }));
       } catch (error) {
         lastError = error;
         const status = errorStatus(error);
