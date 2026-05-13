@@ -1,8 +1,10 @@
 import { Injectable, Logger } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
-import { In, Repository } from "typeorm";
-import { DateTime, fromISO } from "../../lib/datetime";
+import { In, MoreThan, Repository } from "typeorm";
+import { EmailService } from "../../email/email.service";
+import { DateTime, fromISO, nowMillis } from "../../lib/datetime";
 import { isCvAssistantCronEnabled } from "../cv-assistant-cron.config";
 import { CvAssistantCompany } from "../entities/cv-assistant-company.entity";
 import { ExternalJob } from "../entities/external-job.entity";
@@ -16,9 +18,13 @@ import { IngestedJobResult } from "./ingested-job.types";
 import { JoobleService } from "./jooble.service";
 import { RemotiveService } from "./remotive.service";
 
+const HEALTH_ALERT_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+
 @Injectable()
 export class JobIngestionService {
   private readonly logger = new Logger(JobIngestionService.name);
+  private readonly lastHealthAlertBySource = new Map<number, number>();
+  private readonly lastIngestionErrorBySource = new Map<number, string>();
 
   constructor(
     @InjectRepository(JobMarketSource)
@@ -36,6 +42,8 @@ export class JobIngestionService {
     private readonly remotiveService: RemotiveService,
     private readonly embeddingService: EmbeddingService,
     private readonly candidateJobMatchingService: CandidateJobMatchingService,
+    private readonly emailService: EmailService,
+    private readonly configService: ConfigService,
   ) {}
 
   @Cron(CronExpression.EVERY_HOUR, { name: "cv-assistant:poll-job-sources" })
@@ -50,9 +58,9 @@ export class JobIngestionService {
       try {
         await this.ingestFromSource(source);
       } catch (error) {
-        this.logger.error(
-          `Failed to ingest from source ${source.name} (${source.id}): ${error instanceof Error ? error.message : String(error)}`,
-        );
+        const message = error instanceof Error ? error.message : String(error);
+        this.lastIngestionErrorBySource.set(source.id, message);
+        this.logger.error(`Failed to ingest from source ${source.name} (${source.id}): ${message}`);
       }
     }, Promise.resolve());
   }
@@ -107,11 +115,64 @@ export class JobIngestionService {
     source.lastIngestedAt = DateTime.now().toJSDate();
     await this.sourceRepo.save(source);
 
+    if (totals.ingested > 0) {
+      this.lastIngestionErrorBySource.delete(source.id);
+    }
+
     this.logger.log(
       `Source ${source.name}: ingested ${totals.ingested}, skipped ${totals.skipped}`,
     );
 
+    await this.maybeEmitZeroJobsAlert(source);
+
     return totals;
+  }
+
+  private async maybeEmitZeroJobsAlert(source: JobMarketSource): Promise<void> {
+    const cutoff = DateTime.now().minus({ hours: 24 }).toJSDate();
+    const recentCount = await this.externalJobRepo.count({
+      where: { sourceId: source.id, createdAt: MoreThan(cutoff) },
+    });
+
+    if (recentCount > 0) {
+      return;
+    }
+
+    const lastAlert = this.lastHealthAlertBySource.get(source.id);
+    const cooledDown = !lastAlert || nowMillis() - lastAlert >= HEALTH_ALERT_COOLDOWN_MS;
+    if (!cooledDown) {
+      return;
+    }
+
+    const recipient =
+      this.configService.get<string>("SUPPORT_EMAIL") ||
+      this.configService.get<string>("EMAIL_FROM") ||
+      "info@annix.co.za";
+    const lastError = this.lastIngestionErrorBySource.get(source.id) ?? "none recorded";
+    const lastIngestedLabel = source.lastIngestedAt
+      ? DateTime.fromJSDate(source.lastIngestedAt).toISO()
+      : "never";
+
+    const subject = `[CV Assistant] Adapter ${source.name} returned 0 jobs in the last 24h`;
+    const lines = [
+      `Source: ${source.name} (id=${source.id}, provider=${source.provider})`,
+      `Last ingestion attempt: ${lastIngestedLabel}`,
+      `Last recorded error: ${lastError}`,
+      "No new external jobs from this source in the past 24h.",
+      "Check for revoked API keys, rate limits, or upstream API changes.",
+    ];
+    const text = lines.join("\n");
+    const html = `<p>${lines.map((line) => escapeHtml(line)).join("</p><p>")}</p>`;
+
+    try {
+      await this.emailService.sendEmail({ to: recipient, subject, text, html });
+      this.lastHealthAlertBySource.set(source.id, nowMillis());
+      this.logger.warn(`Emitted zero-jobs health alert for source ${source.name} (${source.id})`);
+    } catch (err) {
+      this.logger.error(
+        `Failed to emit zero-jobs alert for ${source.name}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
   }
 
   async triggerIngestion(sourceId: number): Promise<{ ingested: number; skipped: number }> {
@@ -549,6 +610,15 @@ function normaliseCompanyName(raw: string | null): string {
     .replace(/[\s.,'"]+$/u, "")
     .trim();
   return stripped;
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 function joobleLocationForCountry(country: string): string {
