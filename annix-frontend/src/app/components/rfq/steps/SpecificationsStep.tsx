@@ -50,7 +50,10 @@ import {
   deriveTemperatureCategory,
   serviceLifeToDurability,
 } from "./specifications/helpers";
+import { InternalCeramicLiningOptions } from "./specifications/InternalCeramicLiningOptions";
+import { InternalHdpeLiningOptions } from "./specifications/InternalHdpeLiningOptions";
 import { InternalLiningGalvanizedAutoNotice } from "./specifications/InternalLiningGalvanizedAutoNotice";
+import { InternalPuLiningOptions } from "./specifications/InternalPuLiningOptions";
 import { NoProductsSelectedBanner } from "./specifications/NoProductsSelectedBanner";
 import { FeatureRestrictionPopup, RestrictionPopup } from "./specifications/RestrictionPopup";
 import { SteelPipesConfirmButton } from "./specifications/SteelPipesConfirmButton";
@@ -4614,124 +4617,15 @@ export default function SpecificationsStep(props: {
                   </div>
                 )}
 
-              {/* Ceramic Lining Options - Only show when selected AND not confirmed */}
               {globalSpecs?.internalLiningType === "Ceramic Lined" &&
                 !gsInternalLiningConfirmed && (
-                  <div className="mt-3 pt-3 border-t border-gray-200">
-                    <h4 className="text-xs font-semibold text-gray-800 mb-2">
-                      Internal Ceramic Lining Specifications
-                    </h4>
-                    <div className="grid grid-cols-3 gap-3">
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-900 mb-1">
-                          Ceramic Type
-                        </label>
-                        <select
-                          value={rawInternalCeramicType || ""}
-                          onChange={(e) => {
-                            const rawValue43 = e.target.value;
-
-                            return onUpdateGlobalSpecs({
-                              ...globalSpecs,
-                              internalCeramicType: rawValue43 || null,
-                            });
-                          }}
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
-                        >
-                          <option value="">Select...</option>
-                          <option value="92% Alumina Ceramic Tiles">92% Alumina</option>
-                          <option value="95% Alumina Ceramic Tiles">95% Alumina</option>
-                          <option value="96% Alumina Ceramic Tiles">96% Alumina</option>
-                          <option value="99% Alumina Ceramic Tiles">99% Alumina</option>
-                          <option value="Silicon Carbide Tiles">Silicon Carbide</option>
-                          <option value="Zirconia Tiles">Zirconia</option>
-                          <option value="Silicon Nitride Tiles">Silicon Nitride</option>
-                          <option value="Rubber Embedded Ceramic Tiles">Rubber Embedded</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-900 mb-1">
-                          Tile Shape
-                        </label>
-                        <select
-                          value={rawInternalCeramicShape || ""}
-                          onChange={(e) => {
-                            const rawValue44 = e.target.value;
-
-                            return onUpdateGlobalSpecs({
-                              ...globalSpecs,
-                              internalCeramicShape: rawValue44 || null,
-                            });
-                          }}
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
-                        >
-                          <option value="">Select...</option>
-                          <option value="Square Tile">Square</option>
-                          <option value="Hexagon Tiles">Hexagon</option>
-                          <option value="Triangular Tiles">Triangular</option>
-                          <option value="Flat Liners">Flat Liners</option>
-                          <option value="Pipe Sleeves">Pipe Sleeves</option>
-                          <option value="Special Moulded Tiles">Special Moulded</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-900 mb-1">
-                          Thickness (mm)
-                        </label>
-                        <select
-                          value={rawInternalCeramicThickness || ""}
-                          onChange={(e) =>
-                            onUpdateGlobalSpecs({
-                              ...globalSpecs,
-                              internalCeramicThickness: e.target.value
-                                ? Number(e.target.value)
-                                : null,
-                            })
-                          }
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
-                        >
-                          <option value="">Select...</option>
-                          <option value="6">6</option>
-                          <option value="10">10</option>
-                          <option value="15">15</option>
-                          <option value="20">20</option>
-                          <option value="25">25</option>
-                          <option value="30">30</option>
-                          <option value="40">40</option>
-                          <option value="50">50</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    {/* Ceramic Lining Summary */}
-                    {globalSpecs?.internalCeramicType &&
-                      globalSpecs?.internalCeramicShape &&
-                      globalSpecs?.internalCeramicThickness && (
-                        <div className="mt-3 pt-3 border-t border-gray-200">
-                          <div className="bg-amber-50 border border-amber-200 rounded-md p-2 flex items-center justify-between">
-                            <div className="text-xs text-amber-800">
-                              <span className="font-medium">{globalSpecs.internalCeramicType}</span>{" "}
-                              • {globalSpecs.internalCeramicShape} •{" "}
-                              {globalSpecs.internalCeramicThickness}mm
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                onUpdateGlobalSpecs({
-                                  ...globalSpecs,
-                                  internalLiningConfirmed: true,
-                                })
-                              }
-                              className="px-3 py-1.5 bg-green-600 text-white font-medium rounded text-xs hover:bg-green-700"
-                            >
-                              Confirm
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                  </div>
+                  <InternalCeramicLiningOptions
+                    ceramicType={rawInternalCeramicType}
+                    ceramicShape={rawInternalCeramicShape}
+                    ceramicThickness={rawInternalCeramicThickness}
+                    globalSpecs={globalSpecs as never}
+                    onUpdateGlobalSpecs={onUpdateGlobalSpecs}
+                  />
                 )}
 
               {gsInternalLiningConfirmed &&
@@ -4757,146 +4651,15 @@ export default function SpecificationsStep(props: {
                   />
                 )}
 
-              {/* HDPE Lining Options - Only show when selected AND not confirmed */}
               {globalSpecs?.internalLiningType === "HDPE Lined" && !gsInternalLiningConfirmed && (
-                <div className="mt-3 pt-3 border-t border-gray-200">
-                  <h4 className="text-xs font-semibold text-gray-800 mb-2">
-                    Internal HDPE Lining Specifications
-                  </h4>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-900 mb-1">
-                        Material Grade
-                      </label>
-                      <select
-                        value={rawInternalHdpeMaterialGrade || ""}
-                        onChange={(e) => {
-                          const rawValue45 = e.target.value;
-
-                          return onUpdateGlobalSpecs({
-                            ...globalSpecs,
-                            internalHdpeMaterialGrade: rawValue45 || null,
-                          });
-                        }}
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
-                      >
-                        <option value="">Select...</option>
-                        <option value="PE63">PE63</option>
-                        <option value="PE80">PE80</option>
-                        <option value="PE100">PE100</option>
-                        <option value="PE100-RC">PE100-RC</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-900 mb-1">
-                        Pressure Rating
-                      </label>
-                      <select
-                        value={rawInternalHdpePressureRating || ""}
-                        onChange={(e) => {
-                          const rawValue46 = e.target.value;
-
-                          return onUpdateGlobalSpecs({
-                            ...globalSpecs,
-                            internalHdpePressureRating: rawValue46 || null,
-                          });
-                        }}
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
-                      >
-                        <option value="">Select...</option>
-                        <option value="PN 2.5">PN 2.5</option>
-                        <option value="PN 4">PN 4</option>
-                        <option value="PN 6">PN 6</option>
-                        <option value="PN 8">PN 8</option>
-                        <option value="PN 10">PN 10</option>
-                        <option value="PN 12.5">PN 12.5</option>
-                        <option value="PN 16">PN 16</option>
-                        <option value="PN 20">PN 20</option>
-                        <option value="PN 25">PN 25</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-900 mb-1">SDR</label>
-                      <select
-                        value={rawInternalHdpeSdr || ""}
-                        onChange={(e) => {
-                          const rawValue47 = e.target.value;
-
-                          return onUpdateGlobalSpecs({
-                            ...globalSpecs,
-                            internalHdpeSdr: rawValue47 || null,
-                          });
-                        }}
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
-                      >
-                        <option value="">Select...</option>
-                        <option value="SDR 41">SDR 41</option>
-                        <option value="SDR 26">SDR 26</option>
-                        <option value="SDR 17">SDR 17</option>
-                        <option value="SDR 13.6">SDR 13.6</option>
-                        <option value="SDR 11">SDR 11</option>
-                        <option value="SDR 9">SDR 9</option>
-                        <option value="SDR 7.4">SDR 7.4</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-900 mb-1">
-                        Pipe Type
-                      </label>
-                      <select
-                        value={rawInternalHdpePipeType || ""}
-                        onChange={(e) => {
-                          const rawValue48 = e.target.value;
-
-                          return onUpdateGlobalSpecs({
-                            ...globalSpecs,
-                            internalHdpePipeType: rawValue48 || null,
-                          });
-                        }}
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
-                      >
-                        <option value="">Select...</option>
-                        <option value="Solid Wall HDPE Pipe">Solid Wall</option>
-                        <option value="Corrugated HDPE Pipe">Corrugated</option>
-                        <option value="Slitted HDPE Pipe">Slitted</option>
-                        <option value="Sleeve HDPE for Steel Lining">Sleeve for Steel</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* HDPE Lining Summary */}
-                  {globalSpecs?.internalHdpeMaterialGrade &&
-                    globalSpecs?.internalHdpePressureRating &&
-                    globalSpecs?.internalHdpeSdr &&
-                    globalSpecs?.internalHdpePipeType && (
-                      <div className="mt-3 pt-3 border-t border-gray-200">
-                        <div className="bg-amber-50 border border-amber-200 rounded-md p-2 flex items-center justify-between">
-                          <div className="text-xs text-amber-800">
-                            <span className="font-medium">
-                              {globalSpecs.internalHdpeMaterialGrade}
-                            </span>{" "}
-                            • {globalSpecs.internalHdpePressureRating} •{" "}
-                            {globalSpecs.internalHdpeSdr} • {globalSpecs.internalHdpePipeType}
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              onUpdateGlobalSpecs({
-                                ...globalSpecs,
-                                internalLiningConfirmed: true,
-                              })
-                            }
-                            className="px-3 py-1.5 bg-green-600 text-white font-medium rounded text-xs hover:bg-green-700"
-                          >
-                            Confirm
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                </div>
+                <InternalHdpeLiningOptions
+                  materialGrade={rawInternalHdpeMaterialGrade}
+                  pressureRating={rawInternalHdpePressureRating}
+                  sdr={rawInternalHdpeSdr}
+                  pipeType={rawInternalHdpePipeType}
+                  globalSpecs={globalSpecs as never}
+                  onUpdateGlobalSpecs={onUpdateGlobalSpecs}
+                />
               )}
 
               {gsInternalLiningConfirmed &&
@@ -4922,96 +4685,13 @@ export default function SpecificationsStep(props: {
                   />
                 )}
 
-              {/* PU Lining Options - Only show when selected AND not confirmed */}
               {globalSpecs?.internalLiningType === "PU Lined" && !gsInternalLiningConfirmed && (
-                <div className="mt-3 pt-3 border-t border-gray-200">
-                  <h4 className="text-xs font-semibold text-gray-800 mb-2">
-                    Internal PU Lining Specifications
-                  </h4>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-900 mb-1">
-                        Thickness (mm)
-                      </label>
-                      <select
-                        value={rawInternalPuThickness || ""}
-                        onChange={(e) =>
-                          onUpdateGlobalSpecs({
-                            ...globalSpecs,
-                            internalPuThickness: e.target.value ? Number(e.target.value) : null,
-                          })
-                        }
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
-                      >
-                        <option value="">Select...</option>
-                        <option value="1">1</option>
-                        <option value="2">2</option>
-                        <option value="3">3</option>
-                        <option value="4">4</option>
-                        <option value="5">5</option>
-                        <option value="6">6</option>
-                        <option value="8">8</option>
-                        <option value="10">10</option>
-                        <option value="12">12</option>
-                        <option value="15">15</option>
-                        <option value="20">20</option>
-                        <option value="25">25</option>
-                        <option value="30">30</option>
-                        <option value="40">40</option>
-                        <option value="50">50</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-900 mb-1">
-                        Shore Hardness
-                      </label>
-                      <select
-                        value={rawInternalPuHardness || ""}
-                        onChange={(e) =>
-                          onUpdateGlobalSpecs({
-                            ...globalSpecs,
-                            internalPuHardness: e.target.value ? Number(e.target.value) : null,
-                          })
-                        }
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
-                      >
-                        <option value="">Select...</option>
-                        <option value="40">40 Shore A</option>
-                        <option value="50">50 Shore A</option>
-                        <option value="60">60 Shore A</option>
-                        <option value="70">70 Shore A</option>
-                        <option value="80">80 Shore A</option>
-                        <option value="90">90 Shore A</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* PU Lining Summary */}
-                  {globalSpecs?.internalPuThickness && globalSpecs?.internalPuHardness && (
-                    <div className="mt-3 pt-3 border-t border-gray-200">
-                      <div className="bg-amber-50 border border-amber-200 rounded-md p-2 flex items-center justify-between">
-                        <div className="text-xs text-amber-800">
-                          <span className="font-medium">PU Lining:</span>{" "}
-                          {globalSpecs.internalPuThickness}mm • {globalSpecs.internalPuHardness}{" "}
-                          Shore A
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            onUpdateGlobalSpecs({
-                              ...globalSpecs,
-                              internalLiningConfirmed: true,
-                            })
-                          }
-                          className="px-3 py-1.5 bg-green-600 text-white font-medium rounded text-xs hover:bg-green-700"
-                        >
-                          Confirm
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                <InternalPuLiningOptions
+                  thickness={rawInternalPuThickness}
+                  hardness={rawInternalPuHardness}
+                  globalSpecs={globalSpecs as never}
+                  onUpdateGlobalSpecs={onUpdateGlobalSpecs}
+                />
               )}
 
               {gsInternalLiningConfirmed &&
