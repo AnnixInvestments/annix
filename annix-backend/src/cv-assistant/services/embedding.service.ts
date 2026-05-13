@@ -10,6 +10,7 @@ import { DateTime, nowMillis } from "../../lib/datetime";
 import { isCvAssistantCronEnabled } from "../cv-assistant-cron.config";
 import { Candidate } from "../entities/candidate.entity";
 import { ExternalJob } from "../entities/external-job.entity";
+import { EscoNormalisationService } from "./esco-normalisation.service";
 
 const GEMINI_EMBEDDING_MODEL = "text-embedding-004";
 const GEMINI_EMBEDDING_URL = "https://generativelanguage.googleapis.com/v1beta/models";
@@ -38,6 +39,7 @@ export class EmbeddingService {
     private readonly aiUsageService: AiUsageService,
     private readonly emailService: EmailService,
     private readonly configService: ConfigService,
+    private readonly escoService: EscoNormalisationService,
   ) {
     this.apiKey = process.env.GEMINI_API_KEY ?? "";
   }
@@ -86,43 +88,52 @@ export class EmbeddingService {
     return data.embedding.values;
   }
 
-  candidateEmbeddingText(candidate: Candidate): string {
-    const extractedParts = candidate.extractedData
-      ? [
-          ...(candidate.extractedData.summary ? [candidate.extractedData.summary] : []),
-          ...(candidate.extractedData.skills.length > 0
-            ? [`Skills: ${candidate.extractedData.skills.join(", ")}`]
-            : []),
-          ...(candidate.extractedData.education.length > 0
-            ? [`Education: ${candidate.extractedData.education.join(", ")}`]
-            : []),
-          ...(candidate.extractedData.certifications.length > 0
-            ? [`Certifications: ${candidate.extractedData.certifications.join(", ")}`]
-            : []),
-          ...(candidate.extractedData.experienceYears
-            ? [`Experience: ${candidate.extractedData.experienceYears} years`]
-            : []),
-        ]
-      : [];
-
+  async candidateEmbeddingText(candidate: Candidate): Promise<string> {
+    if (!candidate.extractedData) {
+      return candidate.rawCvText ? candidate.rawCvText.slice(0, 4000) : "";
+    }
+    const data = candidate.extractedData;
+    const expandedSkills = await this.expandSkillList(data.skills);
+    const extractedParts = [
+      ...(data.summary ? [data.summary] : []),
+      ...(expandedSkills.length > 0 ? [`Skills: ${expandedSkills.join(", ")}`] : []),
+      ...(data.education.length > 0 ? [`Education: ${data.education.join(", ")}`] : []),
+      ...(data.certifications.length > 0
+        ? [`Certifications: ${data.certifications.join(", ")}`]
+        : []),
+      ...(data.experienceYears ? [`Experience: ${data.experienceYears} years`] : []),
+    ];
     const parts =
       extractedParts.length === 0 && candidate.rawCvText
         ? [candidate.rawCvText.slice(0, 4000)]
         : extractedParts;
-
     return parts.join("\n");
   }
 
-  jobEmbeddingText(job: ExternalJob): string {
+  async jobEmbeddingText(job: ExternalJob): Promise<string> {
+    const expandedSkills = await this.expandSkillList(job.extractedSkills ?? []);
     const parts = [
       job.title,
       ...(job.company ? [`Company: ${job.company}`] : []),
       ...(job.locationRaw ? [`Location: ${job.locationRaw}`] : []),
       ...(job.category ? [`Category: ${job.category}`] : []),
       ...(job.description ? [job.description.slice(0, 4000)] : []),
-      ...(job.extractedSkills.length > 0 ? [`Skills: ${job.extractedSkills.join(", ")}`] : []),
+      ...(expandedSkills.length > 0 ? [`Skills: ${expandedSkills.join(", ")}`] : []),
     ];
     return parts.join("\n");
+  }
+
+  private async expandSkillList(rawSkills: string[]): Promise<string[]> {
+    if (rawSkills.length === 0) return [];
+    try {
+      const normalised = await this.escoService.canonicaliseAll(rawSkills);
+      return this.escoService.expandedSkillTokens(rawSkills, normalised);
+    } catch (err) {
+      this.logger.warn(
+        `ESCO expansion failed, falling back to raw skills: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      return rawSkills;
+    }
   }
 
   async embedCandidate(candidateId: number): Promise<boolean> {
@@ -131,7 +142,7 @@ export class EmbeddingService {
       return false;
     }
 
-    const text = this.candidateEmbeddingText(candidate);
+    const text = await this.candidateEmbeddingText(candidate);
     if (!text) {
       this.logger.warn(`No text to embed for candidate ${candidateId}`);
       return false;
@@ -158,7 +169,7 @@ export class EmbeddingService {
       return false;
     }
 
-    const text = this.jobEmbeddingText(job);
+    const text = await this.jobEmbeddingText(job);
     if (!text) {
       return false;
     }

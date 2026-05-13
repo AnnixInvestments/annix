@@ -49,6 +49,7 @@ import { CvAssistantEmailTemplate } from "./entities/cv-assistant-email-template
 import { CvAssistantIndividualDocument } from "./entities/cv-assistant-individual-document.entity";
 import { CvAssistantProfile } from "./entities/cv-assistant-profile.entity";
 import { CvAssistantUser } from "./entities/cv-assistant-user.entity";
+import { CvEscoSkill } from "./entities/cv-esco-skill.entity";
 import { CvPushSubscription } from "./entities/cv-push-subscription.entity";
 import { ExternalJob } from "./entities/external-job.entity";
 import { ExternalJobAlternate } from "./entities/external-job-alternate.entity";
@@ -86,6 +87,7 @@ import { EeDisclosureService } from "./services/ee-disclosure.service";
 import { EeReportService } from "./services/ee-report.service";
 import { EmailTemplateService } from "./services/email-template.service";
 import { EmbeddingService } from "./services/embedding.service";
+import { EscoNormalisationService } from "./services/esco-normalisation.service";
 import { IndividualProfileService } from "./services/individual-profile.service";
 import { InterviewBookingService } from "./services/interview-booking.service";
 import { JobIngestionService } from "./services/job-ingestion.service";
@@ -143,6 +145,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
       SalaryBenchmark,
       SeekerApplyClick,
       SeekerMute,
+      CvEscoSkill,
     ]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -211,6 +214,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     JobIngestionService,
     JobMarketSourceService,
     EmbeddingService,
+    EscoNormalisationService,
     CandidateJobMatchingService,
     PopiaService,
     MarketInsightsService,

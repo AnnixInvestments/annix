@@ -6,6 +6,7 @@ import { EmailService } from "../../email/email.service";
 import { Candidate } from "../entities/candidate.entity";
 import { ExternalJob } from "../entities/external-job.entity";
 import { EmbeddingService } from "./embedding.service";
+import { EscoNormalisationService } from "./esco-normalisation.service";
 
 describe("EmbeddingService.embedding cost guard", () => {
   let service: EmbeddingService;
@@ -30,6 +31,14 @@ describe("EmbeddingService.embedding cost guard", () => {
         {
           provide: ConfigService,
           useValue: { get: jest.fn().mockReturnValue(undefined) },
+        },
+        {
+          provide: EscoNormalisationService,
+          useValue: {
+            canonicalise: jest.fn(),
+            canonicaliseAll: jest.fn().mockResolvedValue([]),
+            expandedSkillTokens: jest.fn().mockReturnValue([]),
+          },
         },
       ],
     }).compile();
