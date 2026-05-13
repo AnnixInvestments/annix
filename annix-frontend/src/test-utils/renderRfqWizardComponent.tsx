@@ -49,6 +49,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { type RenderOptions, type RenderResult, render } from "@testing-library/react";
 import type { ReactElement, ReactNode } from "react";
+import { ToastProvider } from "@/app/components/Toast";
 import {
   type BnwSetWeightRecord,
   type FlangeType,
@@ -109,7 +110,9 @@ export const renderRfqWizardComponent = (
   const queryClient = buildTestQueryClient();
   seedQueryCache(queryClient, options.queryCache);
   const Wrapper = ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    <QueryClientProvider client={queryClient}>
+      <ToastProvider>{children}</ToastProvider>
+    </QueryClientProvider>
   );
   const result = render(ui, { ...options.renderOptions, wrapper: Wrapper });
   return { ...result, queryClient };

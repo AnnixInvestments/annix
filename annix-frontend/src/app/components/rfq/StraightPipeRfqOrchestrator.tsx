@@ -57,6 +57,7 @@ import {
   validatePage3Items,
 } from "@/app/lib/utils/validation";
 import { browserBaseUrl } from "@/lib/api-config";
+import { DraftAutoSavedBadge } from "./orchestrator/components/DraftAutoSavedBadge";
 import BOQStep from "./steps/BOQStep";
 import ItemUploadStep from "./steps/ItemUploadStep";
 import PreQuoteClarificationsStep from "./steps/PreQuoteClarificationsStep";
@@ -3633,18 +3634,8 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
                   {draftNumber}
                 </span>
               )}
-              {!isAuthenticated && hasLocalDraft && localDraftLastSaved && (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs bg-green-100 text-green-700 border border-green-200">
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                  Auto-saved {formatLastSaved(localDraftLastSaved)}
-                </span>
+              {!isAuthenticated && hasLocalDraft && (
+                <DraftAutoSavedBadge lastSaved={localDraftLastSaved} />
               )}
               {!isAuthenticated && (
                 <button
