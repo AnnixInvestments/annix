@@ -1894,6 +1894,57 @@ class CvAssistantApiClient {
       method: "POST",
     });
   }
+
+  async listSeekerCredentials(): Promise<{ credentials: SeekerCredential[] }> {
+    return this.request("/cv-assistant/me/credentials");
+  }
+
+  async createSeekerCredential(
+    input: SeekerCredentialInput,
+  ): Promise<{ credential: SeekerCredential }> {
+    return this.request("/cv-assistant/me/credentials", {
+      method: "POST",
+      body: JSON.stringify(input),
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  async updateSeekerCredential(
+    id: number,
+    input: Partial<SeekerCredentialInput>,
+  ): Promise<{ credential: SeekerCredential }> {
+    return this.request(`/cv-assistant/me/credentials/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  async deleteSeekerCredential(id: number): Promise<{ success: boolean }> {
+    return this.request(`/cv-assistant/me/credentials/${id}`, { method: "DELETE" });
+  }
+}
+
+export interface SeekerCredential {
+  id: number;
+  candidateId: number;
+  credentialType: import("@annix/product-data/sa-market").CredentialType;
+  issuedAt: string | null;
+  expiresAt: string | null;
+  issuingAuthority: string | null;
+  documentPath: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SeekerCredentialInput {
+  credentialType: import("@annix/product-data/sa-market").CredentialType;
+  issuedAt?: string | null;
+  expiresAt?: string | null;
+  issuingAuthority?: string | null;
+  documentPath?: string | null;
+  notes?: string | null;
 }
 
 export interface SeekerJobStats {

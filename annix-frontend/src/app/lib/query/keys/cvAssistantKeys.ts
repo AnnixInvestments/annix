@@ -111,4 +111,8 @@ export const cvAssistantKeys = {
     all: ["cv-assistant", "seeker", "trade-profile"] as const,
     detail: () => ["cv-assistant", "seeker", "trade-profile", "detail"] as const,
   },
+  seekerCredentials: {
+    all: ["cv-assistant", "seeker", "credentials"] as const,
+    list: () => ["cv-assistant", "seeker", "credentials", "list"] as const,
+  },
 } as const;

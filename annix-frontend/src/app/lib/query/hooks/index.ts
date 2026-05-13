@@ -569,6 +569,12 @@ export {
   useUpdateMyEeAttributes,
 } from "./cv-assistant/useCvCompliance";
 export {
+  useCvCreateSeekerCredential,
+  useCvDeleteSeekerCredential,
+  useCvSeekerCredentials,
+  useCvUpdateSeekerCredential,
+} from "./cv-assistant/useCvCredentials";
+export {
   useCvDashboardStats,
   useCvMarketInsights,
   useCvTopCandidates,
