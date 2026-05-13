@@ -658,6 +658,10 @@ export {
   useCvUpdateImapSettings,
   useCvUpdateNotificationPreferences,
 } from "./cv-assistant/useCvSettings";
+export {
+  useCvSeekerTradeProfile,
+  useCvUpsertSeekerTradeProfile,
+} from "./cv-assistant/useCvTradeProfile";
 export type {
   AnalysisResult,
   Drawing,

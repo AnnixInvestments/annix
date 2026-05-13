@@ -1866,6 +1866,23 @@ class CvAssistantApiClient {
   async revokeSeekerMute(muteId: number): Promise<{ success: boolean }> {
     return this.request(`/cv-assistant/seeker/jobs/mutes/${muteId}`, { method: "DELETE" });
   }
+
+  async seekerTradeProfile(): Promise<{
+    profile: import("@annix/product-data/sa-market").TradeProfile;
+    candidateIds: number[];
+  }> {
+    return this.request("/cv-assistant/seeker/trade-profile");
+  }
+
+  async upsertSeekerTradeProfile(
+    profile: import("@annix/product-data/sa-market").TradeProfile,
+  ): Promise<{ saved: boolean; candidateIds: number[] }> {
+    return this.request("/cv-assistant/seeker/trade-profile", {
+      method: "PUT",
+      body: JSON.stringify(profile),
+      headers: { "Content-Type": "application/json" },
+    });
+  }
 }
 
 export interface SeekerJobStats {

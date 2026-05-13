@@ -107,4 +107,8 @@ export const cvAssistantKeys = {
     consent: () => ["cv-assistant", "seeker", "jobs", "consent"] as const,
     mutes: () => ["cv-assistant", "seeker", "jobs", "mutes"] as const,
   },
+  seekerTradeProfile: {
+    all: ["cv-assistant", "seeker", "trade-profile"] as const,
+    detail: () => ["cv-assistant", "seeker", "trade-profile", "detail"] as const,
+  },
 } as const;
