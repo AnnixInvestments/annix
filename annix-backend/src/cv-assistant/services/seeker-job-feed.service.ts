@@ -1,14 +1,16 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
-import { DateTime, nowMillis } from "../../lib/datetime";
+import { MoreThanOrEqual, Repository } from "typeorm";
+import { DateTime, fromJSDate, nowMillis } from "../../lib/datetime";
 import { Candidate } from "../entities/candidate.entity";
 import { CandidateJobMatch, MatchDetails } from "../entities/candidate-job-match.entity";
 import { ExternalJob } from "../entities/external-job.entity";
 import { JobMarketSource } from "../entities/job-market-source.entity";
+import { SeekerApplyClick } from "../entities/seeker-apply-click.entity";
 import { CandidateJobMatchingService } from "./candidate-job-matching.service";
 
 const REMATCH_COOLDOWN_MS = 5 * 60 * 1000;
+const APPLY_CLICK_DEDUP_MS = 5_000;
 
 export interface SeekerJobMatch {
   matchId: number;
@@ -51,6 +53,8 @@ export class SeekerJobFeedService {
     private readonly sourceRepo: Repository<JobMarketSource>,
     @InjectRepository(CandidateJobMatch)
     private readonly matchRepo: Repository<CandidateJobMatch>,
+    @InjectRepository(SeekerApplyClick)
+    private readonly applyClickRepo: Repository<SeekerApplyClick>,
     private readonly matchingService: CandidateJobMatchingService,
   ) {}
 
@@ -255,6 +259,51 @@ export class SeekerJobFeedService {
     }
     await this.matchingService.dismissMatch(matchId);
     return true;
+  }
+
+  async recordApplyClick(
+    email: string | null,
+    input: { matchId: number | null; externalJobId: number | null; sourceUrl: string | null },
+  ): Promise<{ recorded: boolean; clickId: number | null }> {
+    const candidates = await this.candidatesForSeeker(email);
+    if (candidates.length === 0) {
+      return { recorded: false, clickId: null };
+    }
+    const candidateIds = new Set(candidates.map((c) => c.id));
+
+    let candidateId: number | null = null;
+    if (input.matchId !== null) {
+      const match = await this.matchRepo.findOne({ where: { id: input.matchId } });
+      if (!match || !candidateIds.has(match.candidateId)) {
+        return { recorded: false, clickId: null };
+      }
+      candidateId = match.candidateId;
+    } else {
+      candidateId = candidates[0].id;
+    }
+
+    if (input.externalJobId !== null && candidateId !== null) {
+      const cutoff = fromJSDate(new Date(nowMillis() - APPLY_CLICK_DEDUP_MS)).toJSDate();
+      const existing = await this.applyClickRepo.findOne({
+        where: {
+          candidateId,
+          externalJobId: input.externalJobId,
+          clickedAt: MoreThanOrEqual(cutoff),
+        },
+      });
+      if (existing) {
+        return { recorded: false, clickId: existing.id };
+      }
+    }
+
+    const click = this.applyClickRepo.create({
+      candidateId,
+      externalJobId: input.externalJobId,
+      matchId: input.matchId,
+      sourceUrl: input.sourceUrl,
+    });
+    const saved = await this.applyClickRepo.save(click);
+    return { recorded: true, clickId: saved.id };
   }
 }
 

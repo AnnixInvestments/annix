@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useToast } from "@/app/components/Toast";
-import type { SeekerRecommendedJob } from "@/app/lib/api/cvAssistantApi";
+import { cvAssistantApiClient, type SeekerRecommendedJob } from "@/app/lib/api/cvAssistantApi";
 import { SeekerJobCard } from "@/app/lib/cv-assistant/components/SeekerJobCard";
 import {
   type SeekerFilterState,
@@ -112,8 +112,16 @@ export default function SeekerJobsPage() {
   }, [matches, filters]);
 
   const handleApply = (match: SeekerRecommendedJob) => {
-    if (match.job.sourceUrl) {
-      window.open(match.job.sourceUrl, "_blank", "noopener,noreferrer");
+    const sourceUrl = match.job.sourceUrl;
+    if (sourceUrl) {
+      cvAssistantApiClient
+        .recordSeekerApplyClick({
+          matchId: match.matchId,
+          externalJobId: match.externalJobId,
+          sourceUrl,
+        })
+        .catch(() => {});
+      window.open(sourceUrl, "_blank", "noopener,noreferrer");
     } else {
       showToast("No apply link available for this job", "error");
     }

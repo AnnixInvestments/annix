@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  Body,
   Controller,
   Get,
   HttpException,
@@ -11,8 +12,24 @@ import {
   Request,
   UseGuards,
 } from "@nestjs/common";
+import { IsInt, IsOptional, IsString, MaxLength } from "class-validator";
 import { CvAssistantAuthGuard } from "../guards/cv-assistant-auth.guard";
 import { SeekerJobFeedService } from "../services/seeker-job-feed.service";
+
+class RecordApplyClickDto {
+  @IsOptional()
+  @IsInt()
+  matchId?: number | null;
+
+  @IsOptional()
+  @IsInt()
+  externalJobId?: number | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  sourceUrl?: string | null;
+}
 
 interface SeekerAuthRequest {
   user: { id: number; email: string; userType: string };
@@ -63,6 +80,21 @@ export class SeekerJobsController {
   @Post("withdraw-matching")
   async withdrawMatching(@Request() req: SeekerAuthRequest) {
     return this.feedService.withdrawMatchingForSeeker(req.user.email);
+  }
+
+  @Post("clicks")
+  async recordClick(@Request() req: SeekerAuthRequest, @Body() body: RecordApplyClickDto) {
+    const matchId = body.matchId ?? null;
+    const externalJobId = body.externalJobId ?? null;
+    if (matchId === null && externalJobId === null) {
+      throw new BadRequestException("matchId or externalJobId is required");
+    }
+    const result = await this.feedService.recordApplyClick(req.user.email, {
+      matchId,
+      externalJobId,
+      sourceUrl: body.sourceUrl ?? null,
+    });
+    return result;
   }
 
   @Post("rematch")

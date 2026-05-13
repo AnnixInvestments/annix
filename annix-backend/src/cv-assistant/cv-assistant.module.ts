@@ -62,6 +62,7 @@ import { JobScreeningQuestion } from "./entities/job-screening-question.entity";
 import { JobSkill } from "./entities/job-skill.entity";
 import { JobSuccessMetric } from "./entities/job-success-metric.entity";
 import { SalaryBenchmark } from "./entities/salary-benchmark.entity";
+import { SeekerApplyClick } from "./entities/seeker-apply-click.entity";
 import { CvAssistantAuthGuard } from "./guards/cv-assistant-auth.guard";
 import { CvAssistantRoleGuard } from "./guards/cv-assistant-role.guard";
 import { AssistedPortalAdapters } from "./services/adapters/assisted-portal-adapters.service";
@@ -139,6 +140,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
       JobSuccessMetric,
       JobScreeningQuestion,
       SalaryBenchmark,
+      SeekerApplyClick,
     ]),
     JwtModule.registerAsync({
       imports: [ConfigModule],

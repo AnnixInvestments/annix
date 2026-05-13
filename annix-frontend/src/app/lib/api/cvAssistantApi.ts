@@ -1826,6 +1826,18 @@ class CvAssistantApiClient {
   async grantSeekerMatchingConsent(): Promise<{ candidatesAffected: number }> {
     return this.request("/cv-assistant/seeker/jobs/consent", { method: "POST" });
   }
+
+  async recordSeekerApplyClick(input: {
+    matchId: number | null;
+    externalJobId: number | null;
+    sourceUrl: string | null;
+  }): Promise<{ recorded: boolean; clickId: number | null }> {
+    return this.request("/cv-assistant/seeker/jobs/clicks", {
+      method: "POST",
+      body: JSON.stringify(input),
+      headers: { "Content-Type": "application/json" },
+    });
+  }
 }
 
 export interface SeekerJobStats {
