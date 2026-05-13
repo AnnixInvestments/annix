@@ -12,6 +12,7 @@ import { isCvAssistantCronEnabled } from "../cv-assistant-cron.config";
 import { Candidate } from "../entities/candidate.entity";
 import { CandidateJobMatch } from "../entities/candidate-job-match.entity";
 import { CvAssistantProfile } from "../entities/cv-assistant-profile.entity";
+import { CvAssistantUser } from "../entities/cv-assistant-user.entity";
 import { CvPushSubscription } from "../entities/cv-push-subscription.entity";
 import { ExternalJob } from "../entities/external-job.entity";
 import { JobPosting, JobPostingStatus } from "../entities/job-posting.entity";
@@ -42,6 +43,8 @@ export class CvNotificationService {
     private readonly jobPostingRepo: Repository<JobPosting>,
     @InjectRepository(ExternalJob)
     private readonly externalJobRepo: Repository<ExternalJob>,
+    @InjectRepository(CvAssistantUser)
+    private readonly cvUserRepo: Repository<CvAssistantUser>,
     private readonly emailService: EmailService,
     private readonly configService: ConfigService,
     private readonly dispatcher: NotificationDispatcherService,
@@ -270,42 +273,61 @@ export class CvNotificationService {
   @Cron(CronExpression.EVERY_DAY_AT_9AM, { name: "cv-assistant:job-alerts" })
   async sendCandidateJobAlerts(): Promise<void> {
     if (!isCvAssistantCronEnabled()) return;
+    await this.dispatchCandidateJobAlerts();
+  }
+
+  async dispatchCandidateJobAlerts(): Promise<{ sent: number }> {
     const oneDayAgo = DateTime.now().minus({ days: 1 }).toJSDate();
 
     const optedInCandidates = await this.candidateRepo.find({
       where: { jobAlertsOptIn: true, popiaConsent: true },
     });
 
+    const seekerUsers = await this.cvUserRepo.find();
+    const userByEmail = new Map(seekerUsers.map((u) => [u.email.toLowerCase(), u] as const));
+
     const results = await Promise.all(
       optedInCandidates
         .filter((candidate) => candidate.email && candidate.embedding)
         .map(async (candidate) => {
+          const candidateEmail = candidate.email;
+          if (!candidateEmail) return 0;
+
+          const seekerUser = userByEmail.get(candidateEmail.toLowerCase()) ?? null;
+          if (seekerUser && !seekerUser.digestEnabled) {
+            return 0;
+          }
+
+          const thresholdPct = seekerUser ? seekerUser.matchAlertThreshold : 60;
+          const thresholdFraction = Math.max(0, Math.min(100, thresholdPct)) / 100;
+
           const recentMatches = await this.matchRepo
             .createQueryBuilder("match")
             .leftJoinAndSelect("match.externalJob", "job")
             .where("match.candidate_id = :candidateId", { candidateId: candidate.id })
             .andWhere("match.created_at > :since", { since: oneDayAgo })
-            .andWhere("match.overall_score >= 0.6")
+            .andWhere("match.overall_score >= :threshold", { threshold: thresholdFraction })
+            .andWhere("match.dismissed = false")
             .orderBy("match.overallScore", "DESC")
             .take(5)
             .getMany();
 
           if (recentMatches.length === 0) {
             return 0;
-          } else {
-            const sent = await this.emailService.sendCvAssistantJobAlertEmail(
-              candidate.email!,
-              candidate.name ?? "Job Seeker",
-              recentMatches.map((m) => ({
-                title: m.externalJob?.title ?? "Job Opportunity",
-                company: m.externalJob?.company ?? null,
-                location: m.externalJob?.locationArea ?? null,
-                score: Math.round(m.overallScore * 100),
-              })),
-            );
-
-            return sent ? 1 : 0;
           }
+
+          const sent = await this.emailService.sendCvAssistantJobAlertEmail(
+            candidateEmail,
+            candidate.name ?? "Job Seeker",
+            recentMatches.map((m) => ({
+              title: m.externalJob?.title ?? "Job Opportunity",
+              company: m.externalJob?.company ?? null,
+              location: m.externalJob?.locationArea ?? null,
+              score: Math.round(m.overallScore * 100),
+            })),
+          );
+
+          return sent ? 1 : 0;
         }),
     );
 
@@ -314,5 +336,6 @@ export class CvNotificationService {
     if (totalSent > 0) {
       this.logger.log(`Sent ${totalSent} candidate job alert emails`);
     }
+    return { sent: totalSent };
   }
 }
