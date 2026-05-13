@@ -62,6 +62,7 @@ import { NoProductsSelectedBanner } from "./specifications/NoProductsSelectedBan
 import { FeatureRestrictionPopup, RestrictionPopup } from "./specifications/RestrictionPopup";
 import { SteelPipesConfirmButton } from "./specifications/SteelPipesConfirmButton";
 import { SteelPipesConfirmedSummary } from "./specifications/SteelPipesConfirmedSummary";
+import { SteelPipesWorkingConditions } from "./specifications/SteelPipesWorkingConditions";
 import { TransportInstallSection } from "./specifications/TransportInstallSection";
 import type { FeatureType, RestrictionPopupPosition } from "./specifications/types";
 
@@ -577,119 +578,56 @@ export default function SpecificationsStep(props: {
             {/* Detail Forms - show when not confirmed */}
             {!globalSpecs?.steelPipesSpecsConfirmed && (
               <>
-                {/* Working Conditions */}
-                <div className="bg-white border border-gray-200 rounded-lg p-3">
-                  <h3 className="text-xs font-semibold text-gray-800 mb-2">
-                    Working Conditions
-                    <span className="ml-2 text-xs font-normal text-gray-500">(Optional)</span>
-                  </h3>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    {/* Working Pressure */}
-                    <div data-field="workingPressure">
-                      <label
-                        className={`block text-xs font-semibold mb-1 ${errors.workingPressure ? "text-red-700" : "text-gray-900"}`}
-                      >
-                        Working Pressure (bar) <span className="text-red-600">*</span>
-                      </label>
-                      <select
-                        value={rawWorkingPressureBar || ""}
-                        onChange={async (e) => {
-                          const newPressure = e.target.value ? Number(e.target.value) : null;
-                          let recommendedPressureClassId = globalSpecs?.flangePressureClassId;
-                          if (newPressure && globalSpecs?.flangeStandardId) {
-                            // Get material group from selected steel spec
-                            const steelSpec = masterData.steelSpecs?.find(
-                              (s: any) => s.id === globalSpecs?.steelSpecificationId,
-                            );
-                            const materialGroup = getFlangeMaterialGroup(steelSpec?.steelSpecName);
-                            recommendedPressureClassId = await fetchAndSelectPressureClass(
-                              globalSpecs.flangeStandardId,
-                              newPressure,
-                              gsWorkingTemperatureC,
-                              materialGroup,
-                            );
-                          }
-                          onUpdateGlobalSpecs({
-                            ...globalSpecs,
-                            workingPressureBar: newPressure,
-                            flangePressureClassId:
-                              recommendedPressureClassId || globalSpecs?.flangePressureClassId,
-                          });
-                        }}
-                        className={`w-full px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-1 text-gray-900 ${
-                          errors.workingPressure
-                            ? "border-red-500 focus:ring-red-500 bg-red-50"
-                            : "border-gray-300 focus:ring-blue-500"
-                        }`}
-                      >
-                        <option value="">Select pressure...</option>
-                        {workingPressures.map((pressure) => (
-                          <option key={pressure} value={pressure}>
-                            {pressure} bar
-                          </option>
-                        ))}
-                      </select>
-                      {errors.workingPressure && (
-                        <p className="mt-0.5 text-xs text-red-600">{errors.workingPressure}</p>
-                      )}
-                    </div>
-
-                    {/* Working Temperature */}
-                    <div data-field="workingTemperature">
-                      <label
-                        className={`block text-xs font-semibold mb-1 ${errors.workingTemperature ? "text-red-700" : "text-gray-900"}`}
-                      >
-                        Working Temperature (°C) <span className="text-red-600">*</span>
-                      </label>
-                      <select
-                        value={rawWorkingTemperatureC || ""}
-                        onChange={async (e) => {
-                          const newTemp = e.target.value ? Number(e.target.value) : null;
-                          let recommendedPressureClassId = globalSpecs?.flangePressureClassId;
-                          if (
-                            newTemp !== null &&
-                            gsWorkingPressureBar &&
-                            globalSpecs?.flangeStandardId
-                          ) {
-                            // Get material group from selected steel spec
-                            const steelSpec = masterData.steelSpecs?.find(
-                              (s: any) => s.id === globalSpecs?.steelSpecificationId,
-                            );
-                            const materialGroup = getFlangeMaterialGroup(steelSpec?.steelSpecName);
-                            recommendedPressureClassId = await fetchAndSelectPressureClass(
-                              globalSpecs.flangeStandardId,
-                              globalSpecs.workingPressureBar,
-                              newTemp,
-                              materialGroup,
-                            );
-                          }
-                          onUpdateGlobalSpecs({
-                            ...globalSpecs,
-                            workingTemperatureC: newTemp,
-                            flangePressureClassId:
-                              recommendedPressureClassId || globalSpecs?.flangePressureClassId,
-                          });
-                        }}
-                        className={`w-full px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-1 text-gray-900 ${
-                          errors.workingTemperature
-                            ? "border-red-500 focus:ring-red-500 bg-red-50"
-                            : "border-gray-300 focus:ring-blue-500"
-                        }`}
-                      >
-                        <option value="">Select temperature...</option>
-                        {workingTemperatures.map((temp) => (
-                          <option key={temp} value={temp}>
-                            {temp}°C
-                          </option>
-                        ))}
-                      </select>
-                      {errors.workingTemperature && (
-                        <p className="mt-0.5 text-xs text-red-600">{errors.workingTemperature}</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                <SteelPipesWorkingConditions
+                  workingPressureBar={rawWorkingPressureBar}
+                  workingTemperatureC={rawWorkingTemperatureC}
+                  workingPressures={workingPressures}
+                  workingTemperatures={workingTemperatures}
+                  pressureError={errors.workingPressure}
+                  temperatureError={errors.workingTemperature}
+                  onPressureChange={async (newPressure) => {
+                    let recommendedPressureClassId = globalSpecs?.flangePressureClassId;
+                    if (newPressure && globalSpecs?.flangeStandardId) {
+                      const steelSpec = masterData.steelSpecs?.find(
+                        (s: any) => s.id === globalSpecs?.steelSpecificationId,
+                      );
+                      const materialGroup = getFlangeMaterialGroup(steelSpec?.steelSpecName);
+                      recommendedPressureClassId = await fetchAndSelectPressureClass(
+                        globalSpecs.flangeStandardId,
+                        newPressure,
+                        gsWorkingTemperatureC,
+                        materialGroup,
+                      );
+                    }
+                    onUpdateGlobalSpecs({
+                      ...globalSpecs,
+                      workingPressureBar: newPressure,
+                      flangePressureClassId:
+                        recommendedPressureClassId || globalSpecs?.flangePressureClassId,
+                    });
+                  }}
+                  onTemperatureChange={async (newTemp) => {
+                    let recommendedPressureClassId = globalSpecs?.flangePressureClassId;
+                    if (newTemp !== null && gsWorkingPressureBar && globalSpecs?.flangeStandardId) {
+                      const steelSpec = masterData.steelSpecs?.find(
+                        (s: any) => s.id === globalSpecs?.steelSpecificationId,
+                      );
+                      const materialGroup = getFlangeMaterialGroup(steelSpec?.steelSpecName);
+                      recommendedPressureClassId = await fetchAndSelectPressureClass(
+                        globalSpecs.flangeStandardId,
+                        globalSpecs.workingPressureBar,
+                        newTemp,
+                        materialGroup,
+                      );
+                    }
+                    onUpdateGlobalSpecs({
+                      ...globalSpecs,
+                      workingTemperatureC: newTemp,
+                      flangePressureClassId:
+                        recommendedPressureClassId || globalSpecs?.flangePressureClassId,
+                    });
+                  }}
+                />
 
                 {/* Material Specifications */}
                 <div className="bg-white border border-gray-200 rounded-lg p-3">

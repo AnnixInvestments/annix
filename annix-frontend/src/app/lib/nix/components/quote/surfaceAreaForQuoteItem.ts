@@ -34,15 +34,21 @@ function classifyFitting(item: QuoteItem): FittingKind {
   const typeStr = rawType ? rawType : "";
   const descStr = rawDesc ? rawDesc : "";
   const haystack = `${typeStr} ${descStr}`.toLowerCase();
+  // "Equal-Y" / "Wye" / "Y-piece" — three-arm 45°/120° branch.
   if (/\bequal[\s-]*y\b|\bwye\b|\by[\s-]*piece\b/.test(haystack)) return "equal_y";
   if (/\bflange\b/.test(haystack)) return "flange";
   if (/\breducer\b/.test(haystack)) return "reducer";
-  if (/\btee\b|\bt[\s-]?piece\b/.test(haystack)) {
-    // "U-tee" / "U tee" is the local term for a 180° return bend, not a tee.
-    if (/\bu[\s-]?tee\b/.test(haystack)) return "bend_180";
+  // Polymer-Lining shop convention: "U-Tee" / "U-TEE" = Unequal Tee (reducing
+  // tee), and "E-Tee" / "E-TEE" = Equal Tee. NOT a 180° U-bend. The genuine
+  // U-bend case is matched below via "U-bend" or "180°".
+  if (
+    /\btee\b|\bt[\s-]?piece\b|\bu[\s-]?tee\b|\be[\s-]?tee\b|\bunequal[\s-]*tee\b|\bequal[\s-]*tee\b/.test(
+      haystack,
+    )
+  ) {
     return "tee";
   }
-  if (/\bu[\s-]?bend\b|\bu[\s-]?tee\b|\b180[°\s]/.test(haystack)) return "bend_180";
+  if (/\bu[\s-]?bend\b|\b180[°\s]/.test(haystack)) return "bend_180";
   if (/\b45[°\s]|\b45\s*deg/.test(haystack)) return "bend_45";
   if (/\belbow\b|\bbend\b|\b90[°\s]|\b90\s*deg/.test(haystack)) return "bend_90";
   return "pipe";
@@ -218,11 +224,18 @@ function reducerArea(item: QuoteItem, nbToOdMap: Record<number, number>): ItemSu
 }
 
 /**
- * Tee surface area — sum of (run = 2 cylinders, branch = 1 cylinder), with a
- * small subtraction for the branch intersection. Run length defaults to
- * `2 × C` where `C ≈ 0.5×NB + 100 mm` (close enough to ASME B16.9 across the
- * common range). Branch arm uses `C` of the branch NB. Reducing tee
- * supported via `secondaryNbFromDescription`.
+ * Tee surface area — Polymer-Lining quoting convention (Andrew 2026-05-13):
+ *
+ * - Equal tee (run NB == branch NB): three identical arms of length C/F
+ *   each, where C/F = (drawing run length) / 2. Developed length =
+ *   3 × C/F + 100 mm per flanged end (3 flanged ends on a typical tee).
+ * - Unequal / reducing tee: run length + branch C/F + 100 mm per flanged
+ *   end. Branch C/F is estimated as 0.5 × branch_NB + 100 mm (B16.9
+ *   approximation across NPS 4–24).
+ *
+ * Both formulas multiply by OD_run for the external area and ID_run for
+ * the internal area (the run dominates and the run NB is the largest of
+ * the three faces — conservative for the customer).
  */
 function teeArea(item: QuoteItem, nbToOdMap: Record<number, number>): ItemSurfaceArea | null {
   const nbRun = item.diameter;
@@ -230,29 +243,37 @@ function teeArea(item: QuoteItem, nbToOdMap: Record<number, number>): ItemSurfac
   const nbBranchParsed = secondaryNbFromDescription(item);
   const nbBranch = nbBranchParsed && nbBranchParsed > 0 ? nbBranchParsed : nbRun;
   const odRun = outerDiameterFromNB(nbToOdMap, nbRun);
-  const odBranch = outerDiameterFromNB(nbToOdMap, nbBranch);
-  if (odRun <= 0 || odBranch <= 0) return null;
-  // SCH.STD wall fallback per leg so internal area still computes when the
-  // extraction only captured the schedule label.
+  if (odRun <= 0) return null;
   const wtRun = effectiveWallMm(item, nbRun);
-  const wtBranch = effectiveWallMm(item, nbBranch);
   const idRun = wtRun > 0 ? odRun - 2 * wtRun : 0;
-  const idBranch = wtBranch > 0 ? odBranch - 2 * wtBranch : 0;
-  const cRun = 0.5 * nbRun + 100;
-  const cBranch = 0.5 * nbBranch + 100;
-  const runLenMm = 2 * cRun;
-  const branchLenMm = cBranch;
-  const externalRun = (Math.PI * odRun * runLenMm) / 1e6;
-  const externalBranch = (Math.PI * odBranch * branchLenMm) / 1e6;
-  // Hole on the run where the branch joins — subtract one branch-OD disc.
-  const externalHole = (Math.PI * odBranch * odBranch) / 4 / 1e6;
-  const externalM2 = externalRun + externalBranch - externalHole;
-  const internalM2 =
-    idRun > 0 && idBranch > 0
-      ? (Math.PI * idRun * runLenMm) / 1e6 +
-        (Math.PI * idBranch * branchLenMm) / 1e6 -
-        (Math.PI * idBranch * idBranch) / 4 / 1e6
-      : 0;
+
+  // Tees have 3 open ends. countFlangesFromConfig only returns 0/1/2 (it was
+  // designed for pipes); for tees we assume all 3 ends are flanged whenever
+  // any flange config is present (matching the "S/O F.X.E F/F" tee callouts
+  // on Polymer Lining drawings).
+  const pipeFlangeCount = countFlangesFromConfig(item.flangeConfig);
+  const flangedEnds = pipeFlangeCount > 0 ? 3 : 0;
+  const flangeAllowanceMm = flangedEnds * 100;
+
+  const explicitLength = item.length;
+  // Drawing length on a tee row is the run face-to-face. C/F = length / 2.
+  const runLengthMm = explicitLength && explicitLength > 0
+    ? explicitLength
+    : 2 * (0.5 * nbRun + 100);
+
+  let developedLengthMm: number;
+  if (nbBranch === nbRun) {
+    // Equal tee
+    const cf = runLengthMm / 2;
+    developedLengthMm = 3 * cf + flangeAllowanceMm;
+  } else {
+    // Unequal / reducing tee
+    const branchCfMm = 0.5 * nbBranch + 100;
+    developedLengthMm = runLengthMm + branchCfMm + flangeAllowanceMm;
+  }
+
+  const externalM2 = (Math.PI * odRun * developedLengthMm) / 1e6;
+  const internalM2 = idRun > 0 ? (Math.PI * idRun * developedLengthMm) / 1e6 : 0;
   const quantity = item.quantity > 0 ? item.quantity : 1;
   return asResult({ externalM2, internalM2, quantity });
 }
