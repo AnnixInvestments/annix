@@ -89,9 +89,14 @@ export class ProductDataSheetsController {
     } catch (error) {
       if (error instanceof ExtractionFailedError) {
         // 422 would be more correct, but the editor distinguishes by message
-        // content; the failure caption already handles a thrown error.
+        // content; the failure caption already handles a thrown error. We
+        // include the partial extraction in the response so the quoter sees
+        // exactly what Gemini saw before giving up.
+        const e = error.extracted;
+        const m = e.manufacturer ? `'${e.manufacturer}'` : "(blank)";
+        const p = e.productName ? `'${e.productName}'` : "(blank)";
         throw new BadRequestException(
-          "Could not read the manufacturer and product from this data sheet. Please type the details in manually.",
+          `Auto-fill failed — Gemini read manufacturer=${m}, productName=${p}. Type the missing details manually.`,
         );
       }
       throw error;

@@ -199,6 +199,9 @@ Use null when a field is genuinely absent from the document. Never invent values
     const userPrompt =
       kind === ProductDataSheetKind.COATING ? this.coatingPrompt() : this.liningPrompt();
 
+    this.logger.log(
+      `extractWithGemini start: mediaType=${mediaType}, bufferBytes=${fileBuffer.length}, kind=${kind}`,
+    );
     try {
       const result = await this.aiChatService.chatWithImage(
         base64,
@@ -207,10 +210,19 @@ Use null when a field is genuinely absent from the document. Never invent values
         systemPrompt,
         { temperature: 0.1, maxOutputTokens: 1024, responseFormat: "json" },
       );
-      return this.parseExtractionResponse(result.content);
+      this.logger.log(
+        `extractWithGemini Gemini returned: providerUsed=${result.providerUsed}, tokens=${result.tokensUsed ?? "?"}, content.length=${result.content.length}`,
+      );
+      this.logger.log(`extractWithGemini raw content: ${result.content.slice(0, 800)}`);
+      const parsed = this.parseExtractionResponse(result.content);
+      this.logger.log(
+        `extractWithGemini parsed: manufacturer=${parsed.manufacturer}, productName=${parsed.productName}, rev=${parsed.publishedRevision}`,
+      );
+      return parsed;
     } catch (error) {
-      this.logger.warn(
-        `Gemini extraction failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+      this.logger.error(
+        `Gemini extraction THREW: ${error instanceof Error ? error.message : "Unknown error"}`,
+        error instanceof Error ? error.stack : undefined,
       );
       return emptyExtraction();
     }
