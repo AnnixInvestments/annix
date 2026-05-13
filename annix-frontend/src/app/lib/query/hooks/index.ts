@@ -36,6 +36,7 @@ export {
   useAnnixCompanyProfile,
   useUpdateAnnixCompanyProfile,
 } from "./admin/useCompanyProfile";
+export { useExtractionMetricsUsage } from "./admin/useExtractionMetricsUsage";
 export { useFeatureFlags, useToggleFeatureFlag } from "./admin/useFeatureFlags";
 export {
   usePausePollingJob,
@@ -737,6 +738,7 @@ export type {
   ValidationIssue,
 } from "./nix/useNix";
 export {
+  type ConvertToJobCardResultDto,
   extractProductSpecFromDataSheet,
   type NixApp,
   type NixCapability,
@@ -755,6 +757,7 @@ export {
   uploadProductDataSheet,
   useAdvanceWalkthrough,
   useBackWalkthrough,
+  useConvertQuoteToJobCard,
   useCreateNixExtractionSession,
   useCreateNixItems,
   useCreateNixSession,

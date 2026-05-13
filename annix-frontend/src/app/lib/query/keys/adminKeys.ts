@@ -71,4 +71,13 @@ export const adminKeys = {
     detail: (id: number) => [...adminKeys.feedback.all, "detail", id] as const,
     attachments: (id: number) => [...adminKeys.feedback.all, "attachments", id] as const,
   },
+  metrics: {
+    all: ["admin", "metrics"] as const,
+    extractionUsage: (params: {
+      from?: string;
+      to?: string;
+      groupBy?: "category" | "operation" | "day";
+      category?: string;
+    }) => [...adminKeys.metrics.all, "extractionUsage", params] as const,
+  },
 } as const;
