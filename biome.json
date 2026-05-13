@@ -104,7 +104,9 @@
       "!**/*.config.mjs",
       "!**/*.config.ts",
       "!**/scripts/test-pipe-calculations.ts",
-      "!voice-filter"
+      "!voice-filter",
+      "!tmp",
+      "!**/tmp"
     ]
   }
 }
