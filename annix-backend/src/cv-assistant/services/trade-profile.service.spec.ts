@@ -1,20 +1,27 @@
 import { emptyTradeProfile, type TradeProfile } from "@annix/product-data/sa-market";
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
+import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { Candidate } from "../entities/candidate.entity";
 import { TradeProfileService } from "./trade-profile.service";
 
 describe("TradeProfileService", () => {
   let service: TradeProfileService;
   let repo: { find: jest.Mock; update: jest.Mock };
+  let aiChat: { chat: jest.Mock };
 
   beforeEach(async () => {
     repo = {
       find: jest.fn(),
       update: jest.fn().mockResolvedValue({ affected: 1 }),
     };
+    aiChat = { chat: jest.fn() };
     const module: TestingModule = await Test.createTestingModule({
-      providers: [TradeProfileService, { provide: getRepositoryToken(Candidate), useValue: repo }],
+      providers: [
+        TradeProfileService,
+        { provide: getRepositoryToken(Candidate), useValue: repo },
+        { provide: AiChatService, useValue: aiChat },
+      ],
     }).compile();
     service = module.get(TradeProfileService);
   });
@@ -110,6 +117,102 @@ describe("TradeProfileService", () => {
       repo.find.mockResolvedValue([]);
       const result = await service.upsertForSeeker("nobody@example.com", emptyTradeProfile());
       expect(result.saved).toBe(false);
+      expect(repo.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("autofillFromCvForSeeker", () => {
+    it("returns reason=no-candidate when seeker has no candidate row", async () => {
+      repo.find.mockResolvedValue([]);
+      const result = await service.autofillFromCvForSeeker("nobody@example.com");
+      expect(result.extracted).toBe(false);
+      expect(result.reason).toBe("no-candidate");
+      expect(aiChat.chat).not.toHaveBeenCalled();
+    });
+
+    it("returns reason=no-cv-text when candidate has no rawCvText", async () => {
+      repo.find.mockResolvedValue([{ id: 1, email: "a@example.com", rawCvText: null }]);
+      const result = await service.autofillFromCvForSeeker("a@example.com");
+      expect(result.extracted).toBe(false);
+      expect(result.reason).toBe("no-cv-text");
+      expect(aiChat.chat).not.toHaveBeenCalled();
+    });
+
+    it("returns reason=no-trade-keywords when CV has no trade keywords", async () => {
+      repo.find.mockResolvedValue([
+        {
+          id: 1,
+          email: "a@example.com",
+          rawCvText: "Marketing manager with experience in retail merchandising",
+        },
+      ]);
+      const result = await service.autofillFromCvForSeeker("a@example.com");
+      expect(result.extracted).toBe(false);
+      expect(result.reason).toBe("no-trade-keywords");
+      expect(aiChat.chat).not.toHaveBeenCalled();
+    });
+
+    it("calls Gemini, parses trade profile, persists, and merges with existing profile", async () => {
+      const existing: TradeProfile = emptyTradeProfile();
+      existing.shared.commoditiesWorked = ["gold"];
+      repo.find.mockResolvedValue([
+        {
+          id: 1,
+          email: "boilie@example.com",
+          rawCvText: "Senior boilermaker with 12 years pressure-vessel experience in coal mines",
+          tradeProfile: existing,
+        },
+      ]);
+      aiChat.chat.mockResolvedValue({
+        content: JSON.stringify({
+          shared: {
+            tradeKeys: ["boilermaker"],
+            yearsExperience: 12,
+            commoditiesWorked: ["coal"],
+            shutdownHistory: [],
+            siteRadiusKm: 200,
+            availability: "available_now",
+          },
+          perTrade: {
+            boilermaker: {
+              codedTickets: ["6G"],
+              pressureVesselExperience: true,
+              specialisations: ["heat exchanger"],
+            },
+          },
+        }),
+        providerUsed: "gemini",
+        tokensUsed: 1500,
+      });
+
+      const result = await service.autofillFromCvForSeeker("boilie@example.com");
+
+      expect(result.extracted).toBe(true);
+      expect(result.profile.shared.tradeKeys).toEqual(["boilermaker"]);
+      expect(result.profile.shared.commoditiesWorked.sort()).toEqual(["coal", "gold"]);
+      expect(result.profile.shared.yearsExperience).toBe(12);
+      expect(result.profile.perTrade.boilermaker?.codedTickets).toEqual(["6G"]);
+      expect(repo.update).toHaveBeenCalledTimes(1);
+    });
+
+    it("returns reason=ai-failed when Gemini returns non-JSON", async () => {
+      repo.find.mockResolvedValue([
+        {
+          id: 1,
+          email: "boilie@example.com",
+          rawCvText: "Senior boilermaker with 12 years experience",
+        },
+      ]);
+      aiChat.chat.mockResolvedValue({
+        content: "Sorry, I cannot help",
+        providerUsed: "gemini",
+        tokensUsed: 50,
+      });
+
+      const result = await service.autofillFromCvForSeeker("boilie@example.com");
+
+      expect(result.extracted).toBe(false);
+      expect(result.reason).toBe("ai-failed");
       expect(repo.update).not.toHaveBeenCalled();
     });
   });

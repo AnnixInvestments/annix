@@ -18,12 +18,17 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import { DateTime } from "@/app/lib/datetime";
-import { useCvSeekerTradeProfile, useCvUpsertSeekerTradeProfile } from "@/app/lib/query/hooks";
+import {
+  useCvAutofillSeekerTradeProfile,
+  useCvSeekerTradeProfile,
+  useCvUpsertSeekerTradeProfile,
+} from "@/app/lib/query/hooks";
 
 export default function SeekerTradeProfilePage() {
   const { showToast } = useToast();
   const query = useCvSeekerTradeProfile();
   const mutation = useCvUpsertSeekerTradeProfile();
+  const autofillMutation = useCvAutofillSeekerTradeProfile();
 
   const [profile, setProfile] = useState<TradeProfile>(emptyTradeProfile());
 
@@ -110,6 +115,32 @@ export default function SeekerTradeProfilePage() {
     });
   };
 
+  const handleAutofill = () => {
+    autofillMutation.mutate(undefined, {
+      onSuccess: (result) => {
+        if (result.extracted) {
+          setProfile(result.profile);
+          showToast("Trade profile auto-filled from your CV — review and save", "success");
+          return;
+        }
+        const reason = result.reason;
+        if (reason === "no-cv-text") {
+          showToast("Upload a CV first so we can read your trade history", "info");
+        } else if (reason === "no-trade-keywords") {
+          showToast(
+            "Your CV doesn't mention one of the supported trades — fill in the form manually",
+            "info",
+          );
+        } else if (reason === "no-candidate") {
+          showToast("Upload a CV first", "info");
+        } else {
+          showToast("Auto-fill couldn't read your CV — fill in the form manually", "error");
+        }
+      },
+      onError: () => showToast("Auto-fill failed — fill in the form manually", "error"),
+    });
+  };
+
   const showPerTradeSections = useMemo(() => shared.tradeKeys.length > 0, [shared.tradeKeys]);
 
   if (query.isLoading) {
@@ -118,12 +149,22 @@ export default function SeekerTradeProfilePage() {
 
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-6">
-      <header>
-        <h1 className="text-2xl font-bold text-gray-900">Trade profile</h1>
-        <p className="text-sm text-gray-600 mt-1">
-          Structured details for industrial trades — used to surface mining + shutdown opportunities
-          the embedding match can't infer from a CV alone.
-        </p>
+      <header className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Trade profile</h1>
+          <p className="text-sm text-gray-600 mt-1">
+            Structured details for industrial trades — used to surface mining + shutdown
+            opportunities the embedding match can't infer from a CV alone.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={handleAutofill}
+          disabled={autofillMutation.isPending}
+          className="shrink-0 px-3 py-1.5 text-sm font-medium rounded-lg bg-amber-100 text-amber-800 hover:bg-amber-200 disabled:opacity-50"
+        >
+          {autofillMutation.isPending ? "Reading CV…" : "Auto-fill from my CV"}
+        </button>
       </header>
 
       <section className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">

@@ -659,6 +659,7 @@ export {
   useCvUpdateNotificationPreferences,
 } from "./cv-assistant/useCvSettings";
 export {
+  useCvAutofillSeekerTradeProfile,
   useCvSeekerTradeProfile,
   useCvUpsertSeekerTradeProfile,
 } from "./cv-assistant/useCvTradeProfile";

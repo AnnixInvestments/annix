@@ -27,3 +27,20 @@ export function useCvUpsertSeekerTradeProfile() {
     },
   });
 }
+
+interface AutofillResponse {
+  extracted: boolean;
+  profile: TradeProfile;
+  candidateIds: number[];
+  reason?: "no-candidate" | "no-cv-text" | "no-trade-keywords" | "ai-failed";
+}
+
+export function useCvAutofillSeekerTradeProfile() {
+  const queryClient = useQueryClient();
+  return useMutation<AutofillResponse, Error, void>({
+    mutationFn: () => cvAssistantApiClient.autofillSeekerTradeProfileFromCv(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: cvAssistantKeys.seekerTradeProfile.all });
+    },
+  });
+}

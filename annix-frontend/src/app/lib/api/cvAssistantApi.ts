@@ -1883,6 +1883,17 @@ class CvAssistantApiClient {
       headers: { "Content-Type": "application/json" },
     });
   }
+
+  async autofillSeekerTradeProfileFromCv(): Promise<{
+    extracted: boolean;
+    profile: import("@annix/product-data/sa-market").TradeProfile;
+    candidateIds: number[];
+    reason?: "no-candidate" | "no-cv-text" | "no-trade-keywords" | "ai-failed";
+  }> {
+    return this.request("/cv-assistant/seeker/trade-profile/extract-from-cv", {
+      method: "POST",
+    });
+  }
 }
 
 export interface SeekerJobStats {

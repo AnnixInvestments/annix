@@ -1,5 +1,14 @@
 import type { TradeProfile } from "@annix/product-data/sa-market";
-import { Body, Controller, Get, NotFoundException, Put, Request, UseGuards } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Get,
+  NotFoundException,
+  Post,
+  Put,
+  Request,
+  UseGuards,
+} from "@nestjs/common";
 import { CvAssistantAuthGuard } from "../guards/cv-assistant-auth.guard";
 import { TradeProfileService } from "../services/trade-profile.service";
 
@@ -25,5 +34,10 @@ export class TradeProfileController {
       throw new NotFoundException("No candidate profile to attach a trade profile to");
     }
     return result;
+  }
+
+  @Post("extract-from-cv")
+  async autofillFromCv(@Request() req: SeekerAuthRequest) {
+    return this.tradeProfileService.autofillFromCvForSeeker(req.user.email);
   }
 }
