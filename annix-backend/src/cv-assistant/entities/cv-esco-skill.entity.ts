@@ -15,7 +15,7 @@ export class CvEscoSkill {
   @Column({ name: "alt_labels", type: "jsonb", default: () => "'[]'::jsonb" })
   altLabels: string[];
 
-  @Column({ type: "text", nullable: true })
+  @Column({ name: "description", type: "text", nullable: true })
   description: string | null;
 
   @CreateDateColumn({ name: "created_at" })

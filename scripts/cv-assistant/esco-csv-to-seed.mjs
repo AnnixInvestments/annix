@@ -118,7 +118,12 @@ function parseArgs(args) {
 
 function quoteSqlString(value) {
   if (value === null || value === undefined) return "NULL";
-  return `'${String(value).replace(/'/g, "''")}'`;
+  const sqlEscaped = String(value).replace(/'/g, "''");
+  const templateSafe = sqlEscaped
+    .replace(/\\/g, "\\\\")
+    .replace(/`/g, "\\`")
+    .replace(/\${/g, "\\${");
+  return `'${templateSafe}'`;
 }
 
 function parseCsv(text) {
