@@ -38,6 +38,7 @@ export {
 } from "./admin/useCompanyProfile";
 export { useExtractionMetricsUsage } from "./admin/useExtractionMetricsUsage";
 export { useFeatureFlags, useToggleFeatureFlag } from "./admin/useFeatureFlags";
+export { useNeonConsumption } from "./admin/useNeonConsumption";
 export {
   usePausePollingJob,
   usePollingConfig,
@@ -722,6 +723,11 @@ export {
   useRemoveFromWatchlist,
   useWatchlist,
 } from "./insights/useWatchlist";
+export {
+  type ConvertToJobCardInput,
+  type ConvertToJobCardResultDto,
+  useConvertQuoteToJobCard,
+} from "./nix/useConvertQuoteToJobCard";
 export {
   useClearExtractionMine,
   useCreateMineLibraryMine,

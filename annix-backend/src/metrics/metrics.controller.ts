@@ -7,13 +7,27 @@ import {
   ExtractionMetricService,
   type ExtractionStats,
 } from "./extraction-metric.service";
+import { NeonApiService, type NeonConsumption } from "./neon-api.service";
 
 const VALID_GROUP_BY: AggregatedUsageGroupBy[] = ["category", "operation", "day"];
 
 @ApiTags("Metrics")
 @Controller("metrics")
 export class MetricsController {
-  constructor(private readonly extractionMetricService: ExtractionMetricService) {}
+  constructor(
+    private readonly extractionMetricService: ExtractionMetricService,
+    private readonly neonApiService: NeonApiService,
+  ) {}
+
+  @UseGuards(AdminAuthGuard)
+  @ApiBearerAuth()
+  @Get("neon-consumption")
+  @ApiOperation({
+    summary: "Current-month project-level Neon consumption (compute, transfer, storage)",
+  })
+  neonConsumption(): Promise<NeonConsumption> {
+    return this.neonApiService.currentConsumption();
+  }
 
   @UseGuards(AdminAuthGuard)
   @ApiBearerAuth()

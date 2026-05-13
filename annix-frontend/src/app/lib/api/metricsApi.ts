@@ -31,6 +31,20 @@ export interface ExtractionUsageQuery {
   category?: string;
 }
 
+export interface NeonConsumption {
+  configured: boolean;
+  projectId: string | null;
+  periodStart: string | null;
+  periodEnd: string | null;
+  computeTimeSeconds: number;
+  activeTimeSeconds: number;
+  writtenDataBytes: number;
+  dataStorageBytesHour: number;
+  syntheticStorageSizeBytes: number;
+  fetchedAt: string;
+  note: string | null;
+}
+
 const apiClient = createApiClient({
   baseURL: API_BASE_URL,
   tokenStore: adminTokenStore,
@@ -52,6 +66,10 @@ class MetricsApiClient {
     if (query.category) params.set("category", query.category);
     const qs = params.toString();
     return apiClient.get<AggregatedUsageRow[]>(`/metrics/extraction-usage${qs ? `?${qs}` : ""}`);
+  }
+
+  async neonConsumption(): Promise<NeonConsumption> {
+    return apiClient.get<NeonConsumption>("/metrics/neon-consumption");
   }
 }
 

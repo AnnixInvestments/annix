@@ -7,7 +7,7 @@ import type {
   ExtractionUsageQuery,
 } from "@/app/lib/api/metricsApi";
 import { fromISO, now } from "@/app/lib/datetime";
-import { useExtractionMetricsUsage } from "@/app/lib/query/hooks";
+import { useExtractionMetricsUsage, useNeonConsumption } from "@/app/lib/query/hooks";
 
 const PRESETS: Array<{ label: string; days: number }> = [
   { label: "Last 24h", days: 1 },
@@ -104,6 +104,8 @@ export default function ExtractionMetricsPage() {
           find what's eating Neon bandwidth; by total duration to find what's eating compute.
         </p>
       </div>
+
+      <NeonConsumptionPanel />
 
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 flex flex-wrap items-end gap-4">
         <div className="flex flex-col gap-1">
@@ -301,4 +303,113 @@ function SummaryCard(props: { label: string; value: string; tone?: "danger" }) {
       <div className={`mt-1 text-2xl font-semibold ${toneClass}`}>{props.value}</div>
     </div>
   );
+}
+
+function NeonConsumptionPanel() {
+  const { data, isLoading, error } = useNeonConsumption();
+  const errorMessage = error instanceof Error ? error.message : null;
+
+  if (isLoading) {
+    return (
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 text-sm text-gray-500 dark:text-gray-400">
+        Loading Neon project consumption…
+      </div>
+    );
+  }
+
+  if (errorMessage) {
+    return (
+      <div
+        role="alert"
+        className="bg-red-50 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-lg p-4 text-red-700 dark:text-red-200 text-sm"
+      >
+        Could not fetch Neon consumption: {errorMessage}
+      </div>
+    );
+  }
+
+  if (!data) return null;
+
+  if (!data.configured) {
+    const note = data.note;
+    const noteText = note ?? "Set NEON_API_KEY and NEON_PROJECT_ID to enable.";
+    return (
+      <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700 rounded-lg p-4 text-amber-700 dark:text-amber-200 text-sm">
+        <strong>Neon API not configured.</strong> {noteText}
+      </div>
+    );
+  }
+
+  const apiNote = data.note;
+  const transfer = data.writtenDataBytes;
+  const computeHrs = data.computeTimeSeconds / 3600;
+  const activeHrs = data.activeTimeSeconds / 3600;
+  const storage = data.syntheticStorageSizeBytes;
+  const periodStart = data.periodStart;
+  const rawPeriodEnd = data.periodEnd;
+  const periodEnd = rawPeriodEnd ?? "";
+  const rawProjectId = data.projectId;
+  const projectIdDisplay = rawProjectId ?? "";
+
+  return (
+    <div className="bg-gradient-to-br from-indigo-50 via-white to-indigo-50 dark:from-indigo-900/40 dark:via-gray-800 dark:to-indigo-900/40 border border-indigo-200 dark:border-indigo-700 rounded-lg shadow p-5">
+      <div className="flex items-center justify-between flex-wrap gap-3 mb-3">
+        <div>
+          <h2 className="text-sm font-semibold text-indigo-900 dark:text-indigo-100 uppercase tracking-wider">
+            Neon — current month
+          </h2>
+          {periodStart !== null ? (
+            <p className="text-xs text-indigo-700 dark:text-indigo-300">
+              Period: {periodStart.slice(0, 10)} → {periodEnd.slice(0, 10)}
+            </p>
+          ) : null}
+        </div>
+        <span className="text-xs text-indigo-700 dark:text-indigo-300">{projectIdDisplay}</span>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <NeonStat
+          label="Data written"
+          value={formatBytesShort(transfer)}
+          hint="Egress + write ingest this period"
+        />
+        <NeonStat
+          label="Compute time"
+          value={`${computeHrs.toFixed(2)} h`}
+          hint={`${activeHrs.toFixed(2)} h active`}
+        />
+        <NeonStat label="Storage" value={formatBytesShort(storage)} hint="Current size" />
+        <NeonStat
+          label="Fetched"
+          value={`${data.fetchedAt.slice(11, 16)} UTC`}
+          hint="Refreshes every 5 min"
+        />
+      </div>
+      {apiNote !== null ? (
+        <p className="text-xs text-amber-700 dark:text-amber-300 mt-3">{apiNote}</p>
+      ) : null}
+    </div>
+  );
+}
+
+function NeonStat(props: { label: string; value: string; hint?: string }) {
+  return (
+    <div>
+      <div className="text-[10px] font-medium uppercase tracking-wider text-indigo-700 dark:text-indigo-300">
+        {props.label}
+      </div>
+      <div className="text-xl font-semibold text-gray-900 dark:text-white mt-0.5">
+        {props.value}
+      </div>
+      {props.hint !== undefined ? (
+        <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{props.hint}</div>
+      ) : null}
+    </div>
+  );
+}
+
+function formatBytesShort(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1_048_576) return `${(bytes / 1024).toFixed(1)} KB`;
+  if (bytes < 1_073_741_824) return `${(bytes / 1_048_576).toFixed(1)} MB`;
+  return `${(bytes / 1_073_741_824).toFixed(2)} GB`;
 }
