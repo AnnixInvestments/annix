@@ -13,6 +13,7 @@ import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import {
   useCvDismissSeekerMatch,
   useCvGrantSeekerMatchingConsent,
+  useCvSeekerColdStartJobs,
   useCvSeekerMatchingConsent,
   useCvSeekerRecommendedJobs,
   useCvSeekerRematch,
@@ -29,7 +30,17 @@ export default function SeekerJobsPage() {
   const consentGranted = consentData ? consentData.consented : false;
   const consentEnabled = consentReady && consentHasCandidate && consentGranted;
 
-  const recommendedQuery = useCvSeekerRecommendedJobs(consentEnabled);
+  const recommendedRefetchInterval: number | false = consentEnabled ? 120_000 : false;
+  const recommendedQuery = useCvSeekerRecommendedJobs(consentEnabled, {
+    // eslint-disable-next-line no-restricted-syntax -- 120s is the project floor; cold-start needs to detect embedding completion
+    refetchInterval: recommendedRefetchInterval,
+  });
+  const recommendedHasMatches = recommendedQuery.data
+    ? recommendedQuery.data.matches.length > 0
+    : false;
+  const recommendedReady = recommendedQuery.data != null;
+  const coldStartEnabled = consentEnabled && recommendedReady && !recommendedHasMatches;
+  const coldStartQuery = useCvSeekerColdStartJobs(coldStartEnabled);
   const dismissMutation = useCvDismissSeekerMatch();
   const rematchMutation = useCvSeekerRematch();
   const [filters, setFilters] = useState<SeekerFilterState>({
@@ -44,8 +55,15 @@ export default function SeekerJobsPage() {
   const consentPromptShown = useRef(false);
 
   const data = recommendedQuery.data;
-  const matches = useMemo(() => (data ? data.matches : []), [data]);
+  const coldStartData = coldStartQuery.data;
+  const coldStartJobsCount = coldStartData ? coldStartData.jobs.length : 0;
+  const showColdStart = recommendedReady && !recommendedHasMatches && coldStartJobsCount > 0;
+  const matches = useMemo(() => {
+    if (showColdStart && coldStartData) return coldStartData.jobs;
+    return data ? data.matches : [];
+  }, [data, coldStartData, showColdStart]);
   const hasCandidate = data ? data.hasCandidate : consentHasCandidate;
+  const embeddingPending = coldStartData ? coldStartData.embeddingPending : false;
 
   const providers = useMemo(() => {
     const set = new Set<string>();
@@ -295,6 +313,14 @@ export default function SeekerJobsPage() {
   return (
     <div className="space-y-6">
       <PageHeader showRematch onRematch={handleRematch} rematching={rematchMutation.isPending} />
+
+      {showColdStart ? (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800">
+          {embeddingPending
+            ? "Matching your CV to live job listings… showing recent SA roles in the meantime."
+            : "Showing recent SA roles while we refine your matches."}
+        </div>
+      ) : null}
 
       <SeekerJobFilters
         state={filters}

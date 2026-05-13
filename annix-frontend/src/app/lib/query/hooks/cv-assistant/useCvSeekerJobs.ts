@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   cvAssistantApiClient,
+  type SeekerColdStartJobsResponse,
   type SeekerJobStats,
   type SeekerMatchingConsentStatus,
   type SeekerRecommendedJobsResponse,
@@ -17,12 +18,28 @@ export function useCvSeekerJobStats(enabled: boolean = true) {
   });
 }
 
-export function useCvSeekerRecommendedJobs(enabled: boolean = true) {
+export function useCvSeekerRecommendedJobs(
+  enabled: boolean = true,
+  options: { refetchInterval?: number | false } = {},
+) {
+  const requestedInterval = options.refetchInterval;
+  const refetchInterval = requestedInterval === undefined ? false : requestedInterval;
   return useQuery<SeekerRecommendedJobsResponse>({
     queryKey: cvAssistantKeys.seekerJobs.recommended(),
     queryFn: () => cvAssistantApiClient.seekerRecommendedJobs(),
     enabled,
     staleTime: 2 * 60 * 1000,
+    // eslint-disable-next-line no-restricted-syntax -- caller-controlled, defaults to off; only the seeker cold-start path opts in at 120s
+    refetchInterval,
+  });
+}
+
+export function useCvSeekerColdStartJobs(enabled: boolean = true) {
+  return useQuery<SeekerColdStartJobsResponse>({
+    queryKey: cvAssistantKeys.seekerJobs.coldStart(),
+    queryFn: () => cvAssistantApiClient.seekerColdStartJobs(),
+    enabled,
+    staleTime: 5 * 60 * 1000,
   });
 }
 

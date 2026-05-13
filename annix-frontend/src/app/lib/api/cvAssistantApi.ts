@@ -1803,6 +1803,10 @@ class CvAssistantApiClient {
     return this.request("/cv-assistant/seeker/jobs/recommended");
   }
 
+  async seekerColdStartJobs(): Promise<SeekerColdStartJobsResponse> {
+    return this.request("/cv-assistant/seeker/jobs/cold-start");
+  }
+
   async dismissSeekerMatch(matchId: number): Promise<{ success: boolean }> {
     return this.request(`/cv-assistant/seeker/jobs/${matchId}/dismiss`, { method: "POST" });
   }
@@ -1900,6 +1904,13 @@ export interface SeekerRecommendedJobsResponse {
   matches: SeekerRecommendedJob[];
   candidateIds: number[];
   hasCandidate: boolean;
+}
+
+export interface SeekerColdStartJobsResponse {
+  jobs: SeekerRecommendedJob[];
+  candidateIds: number[];
+  hasCandidate: boolean;
+  embeddingPending: boolean;
 }
 
 export const cvAssistantApiClient = new CvAssistantApiClient();

@@ -102,6 +102,7 @@ export const cvAssistantKeys = {
   seekerJobs: {
     all: ["cv-assistant", "seeker", "jobs"] as const,
     recommended: () => ["cv-assistant", "seeker", "jobs", "recommended"] as const,
+    coldStart: () => ["cv-assistant", "seeker", "jobs", "cold-start"] as const,
     stats: () => ["cv-assistant", "seeker", "jobs", "stats"] as const,
     consent: () => ["cv-assistant", "seeker", "jobs", "consent"] as const,
   },

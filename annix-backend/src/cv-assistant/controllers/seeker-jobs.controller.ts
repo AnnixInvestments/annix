@@ -50,6 +50,17 @@ export class SeekerJobsController {
     };
   }
 
+  @Get("cold-start")
+  async coldStart(@Request() req: SeekerAuthRequest) {
+    const result = await this.feedService.coldStartForSeeker(req.user.email);
+    return {
+      jobs: result.jobs,
+      candidateIds: result.candidateIds,
+      hasCandidate: result.candidateIds.length > 0,
+      embeddingPending: result.embeddingPending,
+    };
+  }
+
   @Get("stats")
   async stats(@Request() req: SeekerAuthRequest) {
     return this.feedService.statsForSeeker(req.user.email);

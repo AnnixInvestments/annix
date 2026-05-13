@@ -11,6 +11,7 @@ import { CandidateJobMatchingService } from "./candidate-job-matching.service";
 
 const REMATCH_COOLDOWN_MS = 5 * 60 * 1000;
 const APPLY_CLICK_DEDUP_MS = 5_000;
+const MAX_COLD_START = 12;
 
 export interface SeekerJobMatch {
   matchId: number;
@@ -55,6 +56,8 @@ export class SeekerJobFeedService {
     private readonly matchRepo: Repository<CandidateJobMatch>,
     @InjectRepository(SeekerApplyClick)
     private readonly applyClickRepo: Repository<SeekerApplyClick>,
+    @InjectRepository(ExternalJob)
+    private readonly externalJobRepo: Repository<ExternalJob>,
     private readonly matchingService: CandidateJobMatchingService,
   ) {}
 
@@ -261,6 +264,93 @@ export class SeekerJobFeedService {
     return true;
   }
 
+  async coldStartForSeeker(
+    email: string | null,
+  ): Promise<{ jobs: SeekerJobMatch[]; candidateIds: number[]; embeddingPending: boolean }> {
+    const candidates = await this.candidatesForSeeker(email);
+    if (candidates.length === 0) {
+      return { jobs: [], candidateIds: [], embeddingPending: false };
+    }
+
+    const embeddingPending = candidates.every((c) => c.embedding === null);
+    const candidateIds = candidates.map((c) => c.id);
+
+    const skillsLower = new Set<string>();
+    const locationTokens = new Set<string>();
+    for (const candidate of candidates) {
+      const extracted = candidate.extractedData;
+      if (extracted) {
+        for (const skill of extracted.skills) {
+          if (skill.trim().length > 0) skillsLower.add(skill.toLowerCase().trim());
+        }
+        const summary = extracted.summary;
+        if (summary) {
+          const provinces = [
+            "gauteng",
+            "western cape",
+            "kwazulu-natal",
+            "eastern cape",
+            "free state",
+            "mpumalanga",
+            "limpopo",
+            "north west",
+            "northern cape",
+          ];
+          const lower = summary.toLowerCase();
+          for (const province of provinces) {
+            if (lower.includes(province)) locationTokens.add(province);
+          }
+        }
+      }
+    }
+
+    const qb = this.externalJobRepo
+      .createQueryBuilder("job")
+      .where("job.country = :country", { country: "za" });
+
+    if (locationTokens.size > 0) {
+      const locations = [...locationTokens];
+      const conditions = locations
+        .map((_, idx) => `LOWER(COALESCE(job.location_raw, '')) LIKE :loc${idx}`)
+        .join(" OR ");
+      const params = locations.reduce<Record<string, string>>(
+        (acc, loc, idx) => Object.assign(acc, { [`loc${idx}`]: `%${loc}%` }),
+        {},
+      );
+      qb.andWhere(`(${conditions})`, params);
+    }
+
+    qb.orderBy("job.postedAt", "DESC", "NULLS LAST").take(MAX_COLD_START);
+    const jobs = await qb.getMany();
+
+    if (jobs.length === 0 && locationTokens.size > 0) {
+      const fallback = await this.externalJobRepo
+        .createQueryBuilder("job")
+        .where("job.country = :country", { country: "za" })
+        .orderBy("job.postedAt", "DESC", "NULLS LAST")
+        .take(MAX_COLD_START)
+        .getMany();
+      jobs.push(...fallback);
+    }
+
+    const sourceIds = [
+      ...new Set(jobs.map((j) => j.sourceId).filter((v): v is number => v != null)),
+    ];
+    const sources = sourceIds.length > 0 ? await this.sourceRepo.findByIds(sourceIds) : [];
+    const sourceById = new Map(sources.map((s) => [s.id, s]));
+
+    const seekerJobs = jobs.map((job) =>
+      toColdStartSeekerMatch(
+        job,
+        candidateIds[0],
+        sourceById.get(job.sourceId) ?? null,
+        skillsLower,
+      ),
+    );
+
+    return { jobs: seekerJobs, candidateIds, embeddingPending };
+  }
+
   async recordApplyClick(
     email: string | null,
     input: { matchId: number | null; externalJobId: number | null; sourceUrl: string | null },
@@ -320,6 +410,52 @@ function toSeekerMatch(
     similarityScore: Number(match.similarityScore),
     structuredScore: Number(match.structuredScore),
     matchDetails: match.matchDetails,
+    job: {
+      id: job.id,
+      title: job.title,
+      company: job.company,
+      country: job.country,
+      locationRaw: job.locationRaw,
+      locationArea: job.locationArea,
+      salaryMin: job.salaryMin,
+      salaryMax: job.salaryMax,
+      salaryCurrency: job.salaryCurrency,
+      description: job.description,
+      extractedSkills: job.extractedSkills ?? [],
+      category: job.category,
+      sourceUrl: job.sourceUrl,
+      postedAt: job.postedAt ? job.postedAt.toISOString() : null,
+      expiresAt: job.expiresAt ? job.expiresAt.toISOString() : null,
+      sourceProvider: source?.provider ?? null,
+      sourceName: source?.name ?? null,
+    },
+  };
+}
+
+function toColdStartSeekerMatch(
+  job: ExternalJob,
+  candidateId: number,
+  source: JobMarketSource | null,
+  candidateSkillsLower: Set<string>,
+): SeekerJobMatch {
+  const jobSkillsLower = (job.extractedSkills ?? []).map((s) => s.toLowerCase());
+  const matched = jobSkillsLower.filter((s) => candidateSkillsLower.has(s));
+  return {
+    matchId: -job.id,
+    candidateId,
+    externalJobId: job.id,
+    overallScore: 0,
+    similarityScore: 0,
+    structuredScore: 0,
+    matchDetails: {
+      embeddingSimilarity: 0,
+      skillsOverlap: 0,
+      skillsMatched: matched,
+      skillsMissing: [],
+      experienceMatch: 0,
+      locationMatch: 0,
+      reasoning: "Recent SA job listing while your CV is being matched.",
+    },
     job: {
       id: job.id,
       title: job.title,
