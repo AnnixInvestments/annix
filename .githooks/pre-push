@@ -111,6 +111,10 @@ has_change_in() {
   printf "%s\n" "$CHANGED_FILES" | grep -qE "$pattern"
 }
 
+if [ "${PRE_PUSH_SKIP_BUILDS:-0}" = "1" ]; then
+  echo "Scope: PRE_PUSH_SKIP_BUILDS=1 — skipping backend + frontend builds (tsc + jest still run)"
+fi
+
 if [ "${PRE_PUSH_FULL:-0}" = "1" ]; then
   echo "Scope: PRE_PUSH_FULL=1 — running full gauntlet"
   BACKEND_CHANGED=1
@@ -196,9 +200,12 @@ if [ "$BACKEND_CHANGED" = "1" ] || [ "$FRONTEND_CHANGED" = "1" ]; then
 fi
 
 # ── Backend build ──────────────────────────────────────────────────────
+# Override: PRE_PUSH_SKIP_BUILDS=1 skips both BE + FE builds. The test step
+# already runs `tsc --noEmit` for both apps so type-safety is preserved;
+# only the dist/.next artefact emit is skipped. CI rebuilds on push anyway.
 BUILD_BE_PID=""
 build_be_start=$(_timer_ms)
-if [ "$BACKEND_CHANGED" = "1" ]; then
+if [ "$BACKEND_CHANGED" = "1" ] && [ "${PRE_PUSH_SKIP_BUILDS:-0}" != "1" ]; then
   ( cd "$ROOT_DIR/annix-backend" && pnpm run build > "$BUILD_BE_LOG" 2>&1 ) &
   BUILD_BE_PID=$!
 fi
@@ -206,7 +213,7 @@ fi
 # ── Frontend build ─────────────────────────────────────────────────────
 BUILD_FE_PID=""
 build_fe_start=$(_timer_ms)
-if [ "$FRONTEND_CHANGED" = "1" ]; then
+if [ "$FRONTEND_CHANGED" = "1" ] && [ "${PRE_PUSH_SKIP_BUILDS:-0}" != "1" ]; then
   ( cd "$ROOT_DIR/annix-frontend" && rm -f .next/lock && pnpm run build > "$BUILD_FE_LOG" 2>&1 ) &
   BUILD_FE_PID=$!
 fi
