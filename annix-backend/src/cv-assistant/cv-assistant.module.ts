@@ -37,6 +37,7 @@ import { ReferenceFeedbackController } from "./controllers/reference-feedback.co
 import { ReferencesController } from "./controllers/references.controller";
 import { SeekerJobsController } from "./controllers/seeker-jobs.controller";
 import { SettingsController } from "./controllers/settings.controller";
+import { TradeProfileController } from "./controllers/trade-profile.controller";
 import { Candidate } from "./entities/candidate.entity";
 import { CandidateJobMatch } from "./entities/candidate-job-match.entity";
 import { CandidateReference } from "./entities/candidate-reference.entity";
@@ -108,6 +109,7 @@ import { SalaryBenchmarkService } from "./services/salary-benchmark.service";
 import { SeekerJobFeedService } from "./services/seeker-job-feed.service";
 import { SettingsService } from "./services/settings.service";
 import { TestCandidateSeederService } from "./services/test-candidate-seeder.service";
+import { TradeProfileService } from "./services/trade-profile.service";
 import { WorkflowAutomationService } from "./services/workflow-automation.service";
 
 @Module({
@@ -190,6 +192,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     ComplianceController,
     AdminEeTargetsController,
     SeekerJobsController,
+    TradeProfileController,
   ],
   providers: [
     CvAssistantAuthGuard,
@@ -237,6 +240,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     InterviewBookingService,
     CvAssistantCapabilities,
     SeekerJobFeedService,
+    TradeProfileService,
   ],
   exports: [CvAssistantAuthService],
 })

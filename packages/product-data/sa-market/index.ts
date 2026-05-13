@@ -1,3 +1,5 @@
+export * from "./trades";
+
 export interface SALocation {
   province: string;
   cities: string[];

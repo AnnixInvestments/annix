@@ -1,3 +1,4 @@
+import type { TradeProfile } from "@annix/product-data/sa-market";
 import {
   Column,
   CreateDateColumn,
@@ -102,6 +103,9 @@ export class Candidate {
 
   @Column({ name: "is_test_fixture", type: "boolean", default: false })
   isTestFixture: boolean;
+
+  @Column({ name: "trade_profile", type: "jsonb", nullable: true })
+  tradeProfile: TradeProfile | null;
 
   @Column({ name: "acceptance_sent_at", type: "timestamptz", nullable: true })
   acceptanceSentAt: Date | null;
