@@ -54,6 +54,7 @@ import {
 import { InternalCeramicLiningOptions } from "./specifications/InternalCeramicLiningOptions";
 import { InternalHdpeLiningOptions } from "./specifications/InternalHdpeLiningOptions";
 import { InternalLiningGalvanizedAutoNotice } from "./specifications/InternalLiningGalvanizedAutoNotice";
+import { InternalPaintOptions } from "./specifications/InternalPaintOptions";
 import { InternalPuLiningOptions } from "./specifications/InternalPuLiningOptions";
 import { NoProductsSelectedBanner } from "./specifications/NoProductsSelectedBanner";
 import { FeatureRestrictionPopup, RestrictionPopup } from "./specifications/RestrictionPopup";
@@ -4675,215 +4676,17 @@ export default function SpecificationsStep(props: {
                   </div>
                 )}
 
-              {/* Paint Options - Only show when selected AND not confirmed */}
               {globalSpecs?.internalLiningType === "Paint" && !gsInternalLiningConfirmed && (
-                <div className="mt-3 pt-3 border-t border-gray-200">
-                  <h4 className="text-xs font-semibold text-gray-800 mb-2">
-                    Internal Paint Specifications
-                  </h4>
-                  <div className="grid grid-cols-3 gap-3 mb-3">
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-900 mb-1">
-                        Primer Type
-                      </label>
-                      <select
-                        value={rawInternalPrimerType || ""}
-                        onChange={(e) => {
-                          const rawValue49 = e.target.value;
-
-                          return onUpdateGlobalSpecs({
-                            ...globalSpecs,
-                            internalPrimerType: rawValue49 || null,
-                          });
-                        }}
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
-                      >
-                        <option value="">Select...</option>
-                        <option value="Epoxy Primer">Epoxy Primer</option>
-                        <option value="Phenolic Epoxy">Phenolic Epoxy</option>
-                        <option value="Novolac Epoxy">Novolac Epoxy</option>
-                        <option value="Coal Tar Epoxy">Coal Tar Epoxy</option>
-                        <option value="Polyurethane Primer">PU Primer</option>
-                        <option value="Zinc Phosphate Epoxy">Zinc Phosphate</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-900 mb-1">
-                        Primer (μm)
-                      </label>
-                      <input
-                        type="number"
-                        value={rawInternalPrimerMicrons2 || ""}
-                        onChange={(e) =>
-                          onUpdateGlobalSpecs({
-                            ...globalSpecs,
-                            internalPrimerMicrons: e.target.value ? Number(e.target.value) : null,
-                          })
-                        }
-                        placeholder="50-75"
-                        min="0"
-                        max="500"
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-900 mb-1">
-                        Intermediate
-                      </label>
-                      <select
-                        value={rawInternalIntermediateType || ""}
-                        onChange={(e) => {
-                          const rawValue50 = e.target.value;
-
-                          return onUpdateGlobalSpecs({
-                            ...globalSpecs,
-                            internalIntermediateType: rawValue50 || null,
-                          });
-                        }}
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
-                      >
-                        <option value="">None</option>
-                        <option value="High Build Epoxy">High Build Epoxy</option>
-                        <option value="Glass Flake Epoxy">Glass Flake Epoxy</option>
-                        <option value="Phenolic Epoxy">Phenolic Epoxy</option>
-                        <option value="Novolac Epoxy">Novolac Epoxy</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-3">
-                    {globalSpecs?.internalIntermediateType && (
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-900 mb-1">
-                          Intermediate (μm)
-                        </label>
-                        <input
-                          type="number"
-                          value={rawInternalIntermediateMicrons2 || ""}
-                          onChange={(e) =>
-                            onUpdateGlobalSpecs({
-                              ...globalSpecs,
-                              internalIntermediateMicrons: e.target.value
-                                ? Number(e.target.value)
-                                : null,
-                            })
-                          }
-                          placeholder="125-200"
-                          min="0"
-                          max="500"
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
-                        />
-                      </div>
-                    )}
-
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-900 mb-1">
-                        Topcoat
-                      </label>
-                      <select
-                        value={rawInternalTopcoatType || ""}
-                        onChange={(e) => {
-                          const rawValue51 = e.target.value;
-
-                          return onUpdateGlobalSpecs({
-                            ...globalSpecs,
-                            internalTopcoatType: rawValue51 || null,
-                          });
-                        }}
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
-                      >
-                        <option value="">None</option>
-                        <option value="Epoxy Topcoat">Epoxy Topcoat</option>
-                        <option value="Phenolic Epoxy">Phenolic Epoxy</option>
-                        <option value="Novolac Epoxy">Novolac Epoxy</option>
-                        <option value="Polyurethane">Polyurethane</option>
-                      </select>
-                    </div>
-
-                    {globalSpecs?.internalTopcoatType && (
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-900 mb-1">
-                          Topcoat (μm)
-                        </label>
-                        <input
-                          type="number"
-                          value={rawInternalTopcoatMicrons2 || ""}
-                          onChange={(e) =>
-                            onUpdateGlobalSpecs({
-                              ...globalSpecs,
-                              internalTopcoatMicrons: e.target.value
-                                ? Number(e.target.value)
-                                : null,
-                            })
-                          }
-                          placeholder="50-75"
-                          min="0"
-                          max="500"
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
-                        />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Paint Specification Summary - shows when primer is selected */}
-                  {globalSpecs?.internalPrimerType && globalSpecs?.internalPrimerMicrons && (
-                    <div className="mt-3 pt-3 border-t border-gray-200">
-                      <div className="bg-amber-50 border border-amber-200 rounded-md p-2">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-1.5 text-xs text-amber-800">
-                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                              <path
-                                fillRule="evenodd"
-                                d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-                                clipRule="evenodd"
-                              />
-                            </svg>
-                            <span className="font-medium">Review:</span>
-                            <span>
-                              {globalSpecs.internalPrimerType} ({globalSpecs.internalPrimerMicrons}
-                              μm)
-                            </span>
-                            {globalSpecs?.internalIntermediateType &&
-                              globalSpecs?.internalIntermediateMicrons && (
-                                <span>
-                                  • {globalSpecs.internalIntermediateType} (
-                                  {globalSpecs.internalIntermediateMicrons}μm)
-                                </span>
-                              )}
-                            {globalSpecs?.internalTopcoatType &&
-                              globalSpecs?.internalTopcoatMicrons && (
-                                <span>
-                                  • {globalSpecs.internalTopcoatType} (
-                                  {globalSpecs.internalTopcoatMicrons}μm)
-                                </span>
-                              )}
-                            <span className="font-semibold ml-1">
-                              ={" "}
-                              {(rawInternalPrimerMicrons3 || 0) +
-                                (rawInternalIntermediateMicrons3 || 0) +
-                                (rawInternalTopcoatMicrons3 || 0)}
-                              μm DFT
-                            </span>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              onUpdateGlobalSpecs({
-                                ...globalSpecs,
-                                internalLiningConfirmed: true,
-                              })
-                            }
-                            className="px-3 py-1 bg-green-600 text-white font-medium rounded text-xs hover:bg-green-700"
-                          >
-                            Confirm
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                <InternalPaintOptions
+                  primerType={rawInternalPrimerType}
+                  primerMicrons={rawInternalPrimerMicrons2}
+                  intermediateType={rawInternalIntermediateType}
+                  intermediateMicrons={rawInternalIntermediateMicrons2}
+                  topcoatType={rawInternalTopcoatType}
+                  topcoatMicrons={rawInternalTopcoatMicrons2}
+                  globalSpecs={globalSpecs as never}
+                  onUpdateGlobalSpecs={onUpdateGlobalSpecs}
+                />
               )}
 
               {/* Fallback Edit Button for Internal Lining - Shows when confirmed but no specific type block is displaying */}
