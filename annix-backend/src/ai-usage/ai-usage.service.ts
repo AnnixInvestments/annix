@@ -72,6 +72,23 @@ export class AiUsageService {
       });
   }
 
+  async aggregateDailyUsageByModel(
+    model: string,
+    since: Date,
+  ): Promise<{ calls: number; tokens: number }> {
+    const row = await this.repo
+      .createQueryBuilder("log")
+      .select("COUNT(*)::int", "calls")
+      .addSelect("COALESCE(SUM(log.tokens_used), 0)::bigint", "tokens")
+      .where("log.model = :model", { model })
+      .andWhere("log.createdAt >= :since", { since })
+      .getRawOne<{ calls: number; tokens: string | number }>();
+    return {
+      calls: Number(row?.calls ?? 0),
+      tokens: Number(row?.tokens ?? 0),
+    };
+  }
+
   async usageLogs(query: AiUsageQueryDto): Promise<AiUsageListResponse> {
     const page = query.page ?? 1;
     const limit = query.limit ?? 50;

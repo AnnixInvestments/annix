@@ -1,15 +1,23 @@
 import { Injectable, Logger } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { Cron } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { AiUsageService } from "../../ai-usage/ai-usage.service";
 import { AiApp, AiProvider } from "../../ai-usage/entities/ai-usage-log.entity";
-import { nowMillis } from "../../lib/datetime";
+import { EmailService } from "../../email/email.service";
+import { DateTime, nowMillis } from "../../lib/datetime";
+import { isCvAssistantCronEnabled } from "../cv-assistant-cron.config";
 import { Candidate } from "../entities/candidate.entity";
 import { ExternalJob } from "../entities/external-job.entity";
 
 const GEMINI_EMBEDDING_MODEL = "text-embedding-004";
 const GEMINI_EMBEDDING_URL = "https://generativelanguage.googleapis.com/v1beta/models";
 const EMBEDDING_DIMENSIONS = 768;
+
+const DEFAULT_EMBEDDING_DAILY_CALLS_THRESHOLD = 5_000;
+const DEFAULT_EMBEDDING_DAILY_COST_USD_THRESHOLD = 5;
+const GEMINI_EMBEDDING_USD_PER_1K_TOKENS = 0.000025;
 
 interface GeminiEmbeddingResponse {
   embedding: {
@@ -28,6 +36,8 @@ export class EmbeddingService {
     @InjectRepository(ExternalJob)
     private readonly externalJobRepo: Repository<ExternalJob>,
     private readonly aiUsageService: AiUsageService,
+    private readonly emailService: EmailService,
+    private readonly configService: ConfigService,
   ) {
     this.apiKey = process.env.GEMINI_API_KEY ?? "";
   }
@@ -218,4 +228,97 @@ export class EmbeddingService {
   dimensions(): number {
     return EMBEDDING_DIMENSIONS;
   }
+
+  @Cron("0 6 * * *", { name: "cv-assistant:embedding-cost-guard" })
+  async embeddingCostGuard(): Promise<{
+    calls: number;
+    tokens: number;
+    estimatedUsd: number;
+    alerted: boolean;
+  }> {
+    if (!isCvAssistantCronEnabled()) {
+      return { calls: 0, tokens: 0, estimatedUsd: 0, alerted: false };
+    }
+    return this.runEmbeddingCostGuard();
+  }
+
+  async runEmbeddingCostGuard(): Promise<{
+    calls: number;
+    tokens: number;
+    estimatedUsd: number;
+    alerted: boolean;
+  }> {
+    const since = DateTime.now().minus({ hours: 24 }).toJSDate();
+    const { calls, tokens } = await this.aiUsageService.aggregateDailyUsageByModel(
+      GEMINI_EMBEDDING_MODEL,
+      since,
+    );
+    const estimatedUsd = (tokens / 1000) * GEMINI_EMBEDDING_USD_PER_1K_TOKENS;
+
+    const callsThreshold = Number(
+      this.configService.get<string>("CV_EMBEDDING_DAILY_CALLS_THRESHOLD") ??
+        DEFAULT_EMBEDDING_DAILY_CALLS_THRESHOLD,
+    );
+    const costThreshold = Number(
+      this.configService.get<string>("CV_EMBEDDING_DAILY_COST_USD_THRESHOLD") ??
+        DEFAULT_EMBEDDING_DAILY_COST_USD_THRESHOLD,
+    );
+
+    if (calls < callsThreshold && estimatedUsd < costThreshold) {
+      return { calls, tokens, estimatedUsd, alerted: false };
+    }
+
+    const recipient =
+      this.configService.get<string>("SUPPORT_EMAIL") ||
+      this.configService.get<string>("EMAIL_FROM") ||
+      "info@annix.co.za";
+
+    const breaches: string[] = [];
+    if (calls >= callsThreshold) {
+      breaches.push(`Calls in 24h: ${calls} (threshold ${callsThreshold})`);
+    }
+    if (estimatedUsd >= costThreshold) {
+      breaches.push(
+        `Estimated cost in 24h: $${estimatedUsd.toFixed(4)} (threshold $${costThreshold})`,
+      );
+    }
+    const lines = [
+      "Embedding usage exceeded the configured guardrails.",
+      `Model: ${GEMINI_EMBEDDING_MODEL}`,
+      `Calls: ${calls}`,
+      `Tokens: ${tokens}`,
+      `Estimated USD: $${estimatedUsd.toFixed(4)}`,
+      ...breaches.map((line) => `→ ${line}`),
+      "Inspect ai_usage_logs for the runaway adapter and consider pausing the source.",
+    ];
+    const text = lines.join("\n");
+    const html = `<p>${lines.map((l) => escapeHtmlForEmail(l)).join("</p><p>")}</p>`;
+
+    try {
+      await this.emailService.sendEmail({
+        to: recipient,
+        subject: `[CV Assistant] Embedding cost guard tripped (${calls} calls / $${estimatedUsd.toFixed(2)} in 24h)`,
+        text,
+        html,
+      });
+      this.logger.warn(
+        `Embedding cost guard tripped: calls=${calls} tokens=${tokens} estUsd=${estimatedUsd.toFixed(4)}`,
+      );
+      return { calls, tokens, estimatedUsd, alerted: true };
+    } catch (err) {
+      this.logger.error(
+        `Failed to send embedding cost guard alert: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      return { calls, tokens, estimatedUsd, alerted: false };
+    }
+  }
+}
+
+function escapeHtmlForEmail(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
