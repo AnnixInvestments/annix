@@ -120,6 +120,15 @@ export function useSpecLookup(
     }
 
     const kindMap = new Map<string, CodeKind>();
+    /** Drawing-derived bore + flange-face lining thicknesses per liningType.
+     *  The signed drawings always override the spec-PDF summary values for
+     *  these fields (see project memory: "Signed drawings always override
+     *  spec documents"). First non-null value across all items wins —
+     *  drawings should be internally consistent for a given code. */
+    const liningThicknessOverrides = new Map<
+      string,
+      { boreMm: number | null; flangeMm: number | null }
+    >();
     for (const extraction of drawingExtractions) {
       const items = extraction.extractedItems;
       if (!isArray(items)) continue;
@@ -130,6 +139,20 @@ export function useSpecLookup(
         rememberKind(kindMap, item.liningType, "lining");
         rememberKind(kindMap, item.materialClass, "materialClass");
         rememberKind(kindMap, item.flangeConfig, "flangeConfig");
+        rememberLiningThickness(liningThicknessOverrides, item);
+      }
+    }
+
+    // Apply drawing overrides on top of the spec-PDF summary. The base
+    // summary string usually starts with "X mm bore, Y mm flange, …rest"
+    // — we replace that thickness prefix with the drawing-derived values
+    // and keep the rest (hot-bonded, autoclave vulcanised, red, …) intact.
+    for (const [codeKey, override] of liningThicknessOverrides) {
+      const resolved = map.get(codeKey);
+      if (!resolved) continue;
+      const merged = mergeLiningThicknessIntoSummary(resolved.summary, override);
+      if (merged !== resolved.summary) {
+        map.set(codeKey, { ...resolved, summary: merged });
       }
     }
 
@@ -279,6 +302,84 @@ function rememberKind(kindMap: Map<string, CodeKind>, value: unknown, kind: Code
   if (!isString(value) || value.length === 0) return;
   const key = normaliseCode(value);
   if (!kindMap.has(key)) kindMap.set(key, kind);
+}
+
+/**
+ * Record the lining bore + flange-face thicknesses called out for one
+ * drawing item, keyed by its liningType. First non-null value across all
+ * items using the same liningType wins — signed drawings should be
+ * internally consistent. If the drawing only states a single bore-only
+ * value (`liningThicknessMm`) the flange-face stays null and the consumer
+ * treats null as "same as bore", which matches how blanket "Lining: 6mm"
+ * callouts are intended to read.
+ */
+function rememberLiningThickness(
+  overrides: Map<string, { boreMm: number | null; flangeMm: number | null }>,
+  item: Record<string, unknown>,
+): void {
+  const liningType = item.liningType;
+  if (!isString(liningType) || liningType.length === 0) return;
+  const key = normaliseCode(liningType);
+  const current = overrides.get(key) ?? { boreMm: null, flangeMm: null };
+  const bore = item.liningThicknessMm;
+  if (current.boreMm === null && isNumber(bore) && Number.isFinite(bore)) {
+    current.boreMm = bore;
+  }
+  const flange = item.liningFlangeFaceThicknessMm;
+  if (current.flangeMm === null && isNumber(flange) && Number.isFinite(flange)) {
+    current.flangeMm = flange;
+  }
+  overrides.set(key, current);
+}
+
+/**
+ * Replace the bore / flange-face thickness prefix of a spec-PDF summary
+ * with the drawing-derived values, keeping the rest of the summary text
+ * intact. The original summary typically looks like
+ *
+ *   "6 mm bore, 3 mm flange face, hot-bonded, autoclave vulcanised, red"
+ *
+ * and the drawings might override that with bore=6, flange=6 — yielding
+ *
+ *   "6 mm bore, 6 mm flange, hot-bonded, autoclave vulcanised, red"
+ *
+ * When the drawings only supply a bore value, the flange-face value
+ * inherits from the bore (matches the "Lining: 6mm" blanket convention).
+ * If the original summary doesn't contain a bore/flange prefix at all,
+ * the override is prepended.
+ */
+function mergeLiningThicknessIntoSummary(
+  summary: string | null,
+  override: { boreMm: number | null; flangeMm: number | null },
+): string | null {
+  if (override.boreMm === null && override.flangeMm === null) return summary;
+  const boreMm = override.boreMm;
+  const flangeMm = override.flangeMm !== null ? override.flangeMm : override.boreMm;
+  const newPrefixParts: string[] = [];
+  if (boreMm !== null) newPrefixParts.push(`${boreMm} mm bore`);
+  if (flangeMm !== null) newPrefixParts.push(`${flangeMm} mm flange`);
+  const newPrefix = newPrefixParts.join(", ");
+  if (!summary || summary.trim().length === 0) return newPrefix;
+  const stripped = stripLiningThicknessPrefix(summary);
+  return stripped.length > 0 ? `${newPrefix}, ${stripped}` : newPrefix;
+}
+
+/**
+ * Remove leading "X mm bore" / "Y mm flange" / "Y mm flange face" tokens
+ * from a spec-PDF summary string so we can substitute drawing-derived
+ * values in front of the remaining descriptive text. Tolerates either
+ * order, optional whitespace, and the "flange" vs "flange face" wording
+ * variants spec PDFs use interchangeably.
+ */
+function stripLiningThicknessPrefix(summary: string): string {
+  const tokens = summary
+    .split(",")
+    .map((token) => token.trim())
+    .filter((token) => token.length > 0);
+  const remaining = tokens.filter(
+    (token) => !/^\d+(?:\.\d+)?\s*mm\s*(?:bore|flange(?:\s+face)?)\b/i.test(token),
+  );
+  return remaining.join(", ");
 }
 
 function normaliseCode(code: string): string {

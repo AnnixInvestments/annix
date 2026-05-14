@@ -33,7 +33,8 @@ export const DRAWING_ITEM_SCHEMA_RULES = `CRITICAL — schema rules (must follow
    - length (number, mm — see "Length / overall-dimension rules" below — this is the OVERALL face-to-face / end-to-end measurement, including welded flanges, NOT a body-only or face-to-shoulder length)
    - flangeConfig (string — verbatim drawing wording, e.g. "P.E.", "F.B.E. F/F", "F/PE")
    - liningType (string or null — internal lining material, e.g. "Linatex Linard 60", or null if none)
-   - liningThicknessMm (number or null)
+   - liningThicknessMm (number or null — rubber lining thickness on the pipe BORE / internal cylindrical surface. When the drawing shows a single blanket value like "Lining: 6mm", that's the bore thickness. Drawings often abbreviate this as the unqualified "lining thickness".)
+   - liningFlangeFaceThicknessMm (number or null — rubber lining thickness on the FLANGE FACE specifically, when the drawing calls it out separately from the bore. Common drawing wording: "6mm rubber on flange face", "Flange face: 6mm", or a two-value callout like "Bore 6mm / Flange 3mm". Leave null if the drawing only states one lining thickness — the consumer treats null as "same as liningThicknessMm".)
    - coatingSystem (string or null — external paint system code, e.g. "R1", "R2a")
    - materialClass (string or null — material class / spec code, e.g. "SC1", "1000/3", "SABS62", "SANS 719", "ASTM A53", "API 5L". ALWAYS capture per-item material specs separately from coating — many drawings have a spec column showing BOTH a paint code (R1) AND a material code (SABS62) — coatingSystem gets the paint code, materialClass gets the material code, both are required when shown)
    - banding (number — count of identification bands shown per item)
@@ -67,7 +68,13 @@ Blanket-rule exception:
 When uncertain, prefer null + deviations note. Example:
 { "itemNumber": "-03", ..., "flangeConfig": "P.E.", "schedule": "HVY", "coatingSystem": null, "liningType": null, "materialClass": "SABS62", "deviations": ["coating cell blank for mark -03 — assumed uncoated as P.E."] }
 
-Same rules apply for liningType, liningThicknessMm, materialClass and schedule — read the per-item cell, treat blank/dash/N/A as null, never propagate from another mark or a title-block default.`;
+Same rules apply for liningType, liningThicknessMm, liningFlangeFaceThicknessMm, materialClass and schedule — read the per-item cell, treat blank/dash/N/A as null, never propagate from another mark or a title-block default.
+
+Lining thickness — bore vs flange face:
+- A drawing that prints a single "Lining: 6mm" callout is stating the BORE / cylindrical lining thickness only — set liningThicknessMm = 6, leave liningFlangeFaceThicknessMm = null. The downstream consumer treats null flange face as "same as bore".
+- A drawing that prints "6mm rubber on flange face" or "Flange face: 6mm" or any explicit "X mm flange" wording is calling out the FLANGE FACE specifically — set liningFlangeFaceThicknessMm = X. This often differs from the bore value, sometimes deliberately (3mm bore + 6mm flange or 6mm bore + 3mm flange) because the gasket-contact surface is hand-laid separately.
+- A drawing that prints BOTH ("Bore 6mm / Flange 3mm" or two stacked dimension lines on a flange detail) — set both fields independently.
+- The signed drawings always override any spec-document value here. If the spec PDF says one thickness and the drawing says another, the drawing wins.`;
 
 export const DRAWING_ITEM_LENGTH_RULES = `CRITICAL — length / overall-dimension rules for fittings (Gemini has been picking the wrong dimension here — read this carefully):
 
@@ -103,6 +110,7 @@ export const DRAWING_ITEM_SCHEMA_EXAMPLE = `{
       "flangeConfig": "F.B.E. F/F",
       "liningType": null,
       "liningThicknessMm": null,
+      "liningFlangeFaceThicknessMm": null,
       "coatingSystem": "R2a",
       "materialClass": "1000/3",
       "banding": 0,
@@ -122,6 +130,7 @@ export const DRAWING_ITEM_SCHEMA_EXAMPLE = `{
       "flangeConfig": "P.E.",
       "liningType": null,
       "liningThicknessMm": null,
+      "liningFlangeFaceThicknessMm": null,
       "coatingSystem": null,
       "materialClass": "SABS62",
       "banding": 0,
@@ -141,6 +150,7 @@ export const DRAWING_ITEM_SCHEMA_EXAMPLE = `{
       "flangeConfig": "F.O.E. F/F",
       "liningType": "Linatex Linard 60",
       "liningThicknessMm": 6,
+      "liningFlangeFaceThicknessMm": 6,
       "coatingSystem": "R1",
       "materialClass": "S355JR/SANS 719",
       "banding": 0,
