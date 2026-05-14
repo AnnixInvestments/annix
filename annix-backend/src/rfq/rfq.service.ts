@@ -746,6 +746,15 @@ export class RfqService {
       );
     }
 
+    // Final reload with eager item details so the response carries
+    // everything the customer just saved. valveDetails /
+    // instrumentDetails / surfaceProtectionDetails are intentionally
+    // omitted: their entities exist in code but the corresponding
+    // tables (valve_rfqs, instrument_rfqs, surface_protection_rfqs)
+    // were never migrated. Including them here forced TypeORM to
+    // JOIN non-existent tables and crashed every submit with
+    // "relation \"valve_rfqs\" does not exist", even when the BOQ
+    // had no valves. Re-enable each once its migration lands.
     const finalRfq = await this.rfqRepository.findOne({
       where: { id: savedRfq.id },
       relations: [
@@ -754,8 +763,6 @@ export class RfqService {
         "items.bendDetails",
         "items.fittingDetails",
         "items.expansionJointDetails",
-        "items.valveDetails",
-        "items.instrumentDetails",
         "items.pumpDetails",
         "items.tankChuteDetails",
         "items.fastenerDetails",
