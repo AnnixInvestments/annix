@@ -324,11 +324,12 @@ VALUE RANGE SANITY (if your output is outside these ranges, your column alignmen
 
 SELF-CHECK AFTER EXTRACTION:
 1. Count how many batches you returned. It must equal the number of numeric-batch-number rows on page 2 of the PDF — NOT the number of all rows including Unit/Nominal/Limit.
-2. Verify every Shore A is 30-90. If any are 1.0-1.5, columns are misaligned.
-3. Verify every SG is 1.0-1.5. If any are 30-90, columns are misaligned.
-4. For sparse rows (Shore A + rheometer only), confirm SG/Rebound/Tear/Tensile/Elongation are null — NOT carried forward from a neighbouring batch.
-5. Re-read the FIRST batch row visually. The values you extracted for batch 1 must match what is physically beside batch 1's number on the PDF — not row 0 (Limit) and not row 2 (the next batch).
-6. Re-read the LAST batch row visually. The values you extracted for the last batch must match what is physically beside its number — not the second-to-last row.
+2. batchNumbers and batches MUST agree. batches.length must equal batchNumbers.length, and every entry in batchNumbers must appear as a batches[i].batchNumber. Common failure mode: the first numeric batch row (e.g. "325") is the only sparse row that sits directly below the "Batch No." header — DO NOT skip it. Even if it has only Shore A + rheometer values, it is still a batch.
+3. Verify every Shore A is 30-90. If any are 1.0-1.5, columns are misaligned.
+4. Verify every SG is 1.0-1.5. If any are 30-90, columns are misaligned.
+5. For sparse rows (Shore A + rheometer only), confirm SG/Rebound/Tear/Tensile/Elongation are null — NOT carried forward from a neighbouring batch.
+6. Re-read the FIRST batch row visually. The values you extracted for batch 1 must match what is physically beside batch 1's number on the PDF — not row 0 (Limit) and not row 2 (the next batch). If batch 1's row is sparse (most middle columns blank), it is still a batch — include it.
+7. Re-read the LAST batch row visually. The values you extracted for the last batch must match what is physically beside its number — not the second-to-last row.
 
 - Return ONLY the JSON object, no additional text`;
 

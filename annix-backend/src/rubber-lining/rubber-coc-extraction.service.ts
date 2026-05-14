@@ -236,6 +236,7 @@ export class RubberCocExtractionService {
     }
 
     this.validateBatchData(extractedData);
+    this.warnOnBatchListMismatch(extractedData, "Compounder CoC (text)");
 
     return {
       data: extractedData,
@@ -291,12 +292,36 @@ export class RubberCocExtractionService {
 
     this.validateBatchData(extractedData);
     this.warnOnSuspiciousBatchColumnCounts(extractedData);
+    this.warnOnBatchListMismatch(extractedData, "Compounder CoC (vision)");
 
     return {
       data: extractedData,
       tokensUsed: response.tokensUsed,
       processingTimeMs,
     };
+  }
+
+  private warnOnBatchListMismatch(data: ExtractedCocData, source: string): void {
+    const declared = (data.batchNumbers ?? []).map((b) => String(b).trim()).filter(Boolean);
+    const extracted = (data.batches ?? [])
+      .map((b) => (b.batchNumber ?? "").toString().trim())
+      .filter(Boolean);
+
+    if (declared.length === 0) return;
+
+    const declaredSet = new Set(declared);
+    const extractedSet = new Set(extracted);
+    const missing = declared.filter((n) => !extractedSet.has(n));
+    const extra = extracted.filter((n) => !declaredSet.has(n));
+
+    if (missing.length > 0 || extra.length > 0) {
+      this.logger.error(
+        `${source}: batchNumbers/batches mismatch — declared ${declared.length} batches but extracted ${extracted.length} rows. ` +
+          `Missing from batches: [${missing.join(", ") || "none"}]. ` +
+          `Extra (not in batchNumbers): [${extra.join(", ") || "none"}]. ` +
+          "The extraction likely dropped a batch row (often the first or last). Re-extract or patch manually before approval.",
+      );
+    }
   }
 
   private warnOnSuspiciousBatchColumnCounts(data: ExtractedCocData): void {
@@ -399,6 +424,7 @@ export class RubberCocExtractionService {
     }
 
     this.validateBatchData(extractedData);
+    this.warnOnBatchListMismatch(extractedData, "Calenderer CoC (text)");
 
     return {
       data: extractedData,
@@ -453,6 +479,7 @@ export class RubberCocExtractionService {
     }
 
     this.validateBatchData(extractedData);
+    this.warnOnBatchListMismatch(extractedData, "Calenderer CoC (vision)");
 
     return {
       data: extractedData,
