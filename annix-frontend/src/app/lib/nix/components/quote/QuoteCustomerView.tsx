@@ -8,7 +8,6 @@ import { useSpecLookup } from "@/app/lib/nix/components/draft";
 import {
   type NixExtractionSessionDto,
   type QuoteCustomerSnapshot,
-  type QuoteEditorStateDto,
   type QuoteNotesDto,
   type QuotePdfSnapshotDto,
   useNbToOdMap,
@@ -273,8 +272,7 @@ export function QuoteCustomerView(props: {
     };
   }, [profile]);
 
-  const accountCode: string | null =
-    customer && customer.customerCode ? customer.customerCode : null;
+  const accountCode: string | null = customer?.customerCode ? customer.customerCode : null;
   const rawOrderNumber = session.customerOrderNumber;
   const rawDeliveryNote = session.deliveryNoteRef;
 

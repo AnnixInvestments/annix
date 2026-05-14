@@ -109,7 +109,7 @@ export function ExtractionCard(props: {
                   : "No stored source — re-upload the file from the upload page"
               }
             >
-              {isRetrying ? "Retrying..." : "Retry"}
+              {isRetrying ? "Re-extracting..." : "Re-Extract"}
             </button>
             <button
               type="button"

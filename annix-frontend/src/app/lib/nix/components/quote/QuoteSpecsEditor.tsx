@@ -1,7 +1,7 @@
 "use client";
 
 import { keys } from "es-toolkit/compat";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { type UploadProductDataSheetResult, uploadProductDataSheet } from "@/app/lib/query/hooks";
 import {
   countMissingDataSheets,
@@ -305,6 +305,37 @@ function SpecCard(props: SpecCardProps) {
     onSuppliersChange((current) => [...current, newCustomEntry("", "")]);
   };
 
+  /**
+   * For lining rows: rewrite the bore + flange-face thickness tokens in every
+   * stored supplier description so they track the current merged spec summary
+   * (which itself reflects drawing-derived values per the "drawings override
+   * spec" rule). Touches only the thickness tokens, preserves everything else
+   * the quoter typed — product name, hardness, cure method, colour — and
+   * leaves data-sheet attachments intact. No-op for coating rows or when the
+   * resolved summary doesn't carry thickness tokens.
+   */
+  const resolvedSummaryRaw = spec.resolved?.summary;
+  const resolvedSummary = resolvedSummaryRaw ?? null;
+  const resolvedSummaryForRefresh = isLining ? resolvedSummary : null;
+  const summaryThicknesses = useMemo(
+    () => parseLiningSummaryThicknesses(resolvedSummaryForRefresh),
+    [resolvedSummaryForRefresh],
+  );
+  const canRefreshThicknesses =
+    isLining &&
+    suppliers.length > 0 &&
+    summaryThicknesses !== null &&
+    (summaryThicknesses.boreMm !== null || summaryThicknesses.flangeMm !== null);
+  const refreshThicknessesFromSpec = () => {
+    if (!canRefreshThicknesses || !summaryThicknesses) return;
+    onSuppliersChange((current) =>
+      current.map((entry) => ({
+        ...entry,
+        description: rewriteLiningThicknessTokens(entry.description, summaryThicknesses),
+      })),
+    );
+  };
+
   return (
     <div className="flex flex-col gap-3 border border-gray-200 rounded-md p-3">
       <div className="flex items-start justify-between gap-2">
@@ -379,13 +410,25 @@ function SpecCard(props: SpecCardProps) {
             );
           })
         )}
-        <button
-          type="button"
-          onClick={addSupplier}
-          className="inline-flex items-center gap-1 text-xs text-[#323288] font-medium hover:underline"
-        >
-          <span aria-hidden>+</span> Add {isLining ? "product" : "alternative"}
-        </button>
+        <div className="flex items-center gap-3 flex-wrap">
+          <button
+            type="button"
+            onClick={addSupplier}
+            className="inline-flex items-center gap-1 text-xs text-[#323288] font-medium hover:underline"
+          >
+            <span aria-hidden>+</span> Add {isLining ? "product" : "alternative"}
+          </button>
+          {canRefreshThicknesses && (
+            <button
+              type="button"
+              onClick={refreshThicknessesFromSpec}
+              className="inline-flex items-center gap-1 text-xs text-[#323288] font-medium hover:underline"
+              title="Rewrite the bore / flange thicknesses in every supplier line to match the latest signed-drawing values — leaves product names, properties and data-sheet attachments untouched."
+            >
+              <span aria-hidden>↻</span> Refresh thicknesses from drawings
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="flex items-end gap-2 pt-1 border-t border-gray-100">
@@ -426,7 +469,6 @@ function formatLibraryNote(result: UploadProductDataSheetResult): string {
       return result.supersededFromRevision
         ? `Saved as the new ${productLabel}${revLabel} — supersedes ${result.supersededFromRevision} in the library.`
         : `Saved as the new ${productLabel}${revLabel} — supersedes the previous version in the library.`;
-    case "new":
     default:
       return `Saved ${productLabel}${revLabel} to the shared library (first version).`;
   }
@@ -473,6 +515,53 @@ function extractThicknessesFromSpecSummary(summary: string | null): string | nul
   return parts.length > 0 ? parts.join(", ") : null;
 }
 
+/**
+ * Numeric-form of the spec summary's bore + flange thickness tokens. Used by
+ * the "Refresh thicknesses from drawings" affordance to rewrite supplier
+ * descriptions that were composed before drawings landed a newer value.
+ * Returns null only when the summary itself is null/empty; otherwise returns
+ * an object with whichever fields were present (each value may be null).
+ */
+function parseLiningSummaryThicknesses(
+  summary: string | null,
+): { boreMm: number | null; flangeMm: number | null } | null {
+  if (!summary) return null;
+  const boreMatch = summary.match(/(\d+(?:\.\d+)?)\s*mm\s*bore/i);
+  const flangeMatch = summary.match(/(\d+(?:\.\d+)?)\s*mm\s*flange/i);
+  const boreMm = boreMatch ? Number.parseFloat(boreMatch[1]) : null;
+  const flangeMm = flangeMatch ? Number.parseFloat(flangeMatch[1]) : null;
+  if (boreMm === null && flangeMm === null) return null;
+  return {
+    boreMm: boreMm !== null && Number.isFinite(boreMm) ? boreMm : null,
+    flangeMm: flangeMm !== null && Number.isFinite(flangeMm) ? flangeMm : null,
+  };
+}
+
+/**
+ * In-place rewrite of bore / flange thickness tokens within a supplier-line
+ * description. Replaces every "X mm bore" with the latest bore value and
+ * every "Y mm flange" / "Y mm flange face" with the latest flange-face value.
+ * Untouched if the description has no thickness tokens — we don't insert
+ * tokens that weren't already there, because the original description format
+ * was the quoter's call (some lines list thicknesses, some don't).
+ */
+function rewriteLiningThicknessTokens(
+  description: string,
+  thicknesses: { boreMm: number | null; flangeMm: number | null },
+): string {
+  let result = description;
+  if (thicknesses.boreMm !== null) {
+    result = result.replace(/\d+(?:\.\d+)?\s*mm\s*bore/gi, `${thicknesses.boreMm} mm bore`);
+  }
+  if (thicknesses.flangeMm !== null) {
+    result = result.replace(
+      /\d+(?:\.\d+)?\s*mm\s*flange(?:\s+face)?/gi,
+      `${thicknesses.flangeMm} mm flange`,
+    );
+  }
+  return result;
+}
+
 function SupplierRow(props: SupplierRowProps) {
   const {
     supplier,
@@ -494,6 +583,11 @@ function SupplierRow(props: SupplierRowProps) {
   >("idle");
   const [libraryNote, setLibraryNote] = useState<string | null>(null);
   const [uploadingFilename, setUploadingFilename] = useState<string | null>(null);
+  // Server / network error from the most recent auto-fill upload. We surface
+  // this verbatim in the amber banner so the quoter sees what Gemini actually
+  // returned (e.g. "manufacturer='Weir Minerals', productName=(blank)")
+  // instead of the generic "Auto-fill failed" caption.
+  const [autoFillErrorDetail, setAutoFillErrorDetail] = useState<string | null>(null);
 
   /**
    * Triggered when the quoter picks a file in DataSheetUpload. The file goes
@@ -515,6 +609,7 @@ function SupplierRow(props: SupplierRowProps) {
     setUploadingFilename(file.name);
     setAutoFillState("extracting");
     setLibraryNote(null);
+    setAutoFillErrorDetail(null);
     try {
       const result = await uploadProductDataSheet(file, kind);
       const supplierBrand = supplier.brand;
@@ -569,10 +664,20 @@ function SupplierRow(props: SupplierRowProps) {
         setAutoFillState("idle");
         setLibraryNote(null);
       }, 6000);
-    } catch {
+    } catch (err) {
       setAutoFillState("error");
       setLibraryNote(null);
-      setTimeout(() => setAutoFillState("idle"), 4000);
+      const rawMessage = err instanceof Error ? err.message : String(err);
+      // uploadProductDataSheet wraps the body message as
+      //   "Failed to upload data sheet: <status> — <backend message>"
+      // Surface the backend half (which now includes what Gemini saw) and
+      // drop the generic wrapper.
+      const afterEmDash = rawMessage.split(" — ");
+      const backendPart = afterEmDash.length > 1 ? afterEmDash.slice(1).join(" — ").trim() : "";
+      const cleaned = backendPart.length > 0 ? backendPart : rawMessage.trim();
+      setAutoFillErrorDetail(cleaned.length > 0 ? cleaned : null);
+      // The error banner stays visible until the next upload attempt so the
+      // quoter has time to read what Gemini saw.
     } finally {
       setUploadingFilename(null);
     }
@@ -582,6 +687,7 @@ function SupplierRow(props: SupplierRowProps) {
     onAttachmentChange(null);
     setAutoFillState("idle");
     setLibraryNote(null);
+    setAutoFillErrorDetail(null);
   };
 
   let containerToneClass: string;
@@ -704,7 +810,8 @@ function SupplierRow(props: SupplierRowProps) {
                     : autoFillState === "no-match"
                       ? "Couldn't read product details — please type them in"
                       : autoFillState === "error"
-                        ? "Auto-fill failed — please type the product details in"
+                        ? (autoFillErrorDetail ??
+                          "Auto-fill failed — please type the product details in")
                         : "data sheet must accompany the quote"}
               </span>
             </span>

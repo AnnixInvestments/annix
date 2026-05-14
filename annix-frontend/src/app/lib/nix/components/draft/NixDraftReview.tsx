@@ -73,7 +73,7 @@ export function NixDraftReview(props: {
         await nixApi.retryExtraction(extraction.id);
         await onSessionChanged();
       } catch (err) {
-        showToast(err instanceof Error ? err.message : "Retry failed", "error");
+        showToast(err instanceof Error ? err.message : "Re-extract failed", "error");
       } finally {
         hideExtraction();
         setRetryingId(null);
