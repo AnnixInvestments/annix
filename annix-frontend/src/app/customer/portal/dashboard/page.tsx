@@ -272,6 +272,20 @@ function CustomerDashboardContent() {
                       >
                         {getStatusDisplay(draft.status).label}
                       </span>
+                      {/* RFQ / draft identifier — without this every */}
+                      {/* row in the list looked identical when the */}
+                      {/* project name was reused (e.g. several "MME */}
+                      {/* HDPE ENQ" rows back to back). */}
+                      {(() => {
+                        const rawRfqNumber = draft.rfqNumber;
+                        const rawDraftNumber = draft.draftNumber;
+                        const identifier = rawRfqNumber || rawDraftNumber;
+                        return identifier ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-mono font-semibold bg-slate-100 text-slate-700">
+                            {identifier}
+                          </span>
+                        ) : null;
+                      })()}
                       <h3 className="text-sm font-medium text-gray-900 truncate">
                         {(() => {
                           const rawCustomerRfqReference = draft.customerRfqReference;
