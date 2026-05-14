@@ -29,6 +29,7 @@ export interface UpdateNixSessionDto {
   deliveryNoteRef?: string | null;
   quoteNotes?: Record<string, unknown> | null;
   submittedAt?: Date | null;
+  jobCardId?: number | null;
 }
 
 @Injectable()

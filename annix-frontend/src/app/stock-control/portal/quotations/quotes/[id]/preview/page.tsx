@@ -5,7 +5,9 @@ import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { DateTime } from "@/app/lib/datetime";
 import { QuoteCustomerView } from "@/app/lib/nix/components/quote";
+import { ConvertToJobCardModal } from "@/app/lib/nix/components/quote/ConvertToJobCardModal";
 import {
   type QuotePdfSnapshotDto,
   useDownloadQuotePdf,
@@ -68,8 +70,11 @@ function CustomerQuotePreviewBody(props: {
   const searchParams = useSearchParams();
   const wantEmail = searchParams ? searchParams.get("email") === "1" : false;
   const wantPrint = searchParams ? searchParams.get("print") === "1" : false;
+  const wantConvert = searchParams ? searchParams.get("convert") === "1" : false;
   const [autoEmailOpened, setAutoEmailOpened] = useState(false);
   const [autoPrintTriggered, setAutoPrintTriggered] = useState(false);
+  const [showConvertModal, setShowConvertModal] = useState(false);
+  const [latestSnapshot, setLatestSnapshot] = useState<QuotePdfSnapshotDto | null>(null);
 
   useEffect(() => {
     if (wantEmail && !autoEmailOpened) {
@@ -90,6 +95,14 @@ function CustomerQuotePreviewBody(props: {
     return () => window.clearTimeout(handle);
   }, [wantPrint, autoPrintTriggered, wantEmail, showEmailModal]);
 
+  // ?convert=1 from QuoteView's "Convert to Job Card" button — wait for
+  // QuoteCustomerView to compute the snapshot, then open the modal.
+  useEffect(() => {
+    if (wantConvert && latestSnapshot && !showConvertModal) {
+      setShowConvertModal(true);
+    }
+  }, [wantConvert, latestSnapshot, showConvertModal]);
+
   const rawCustomerCompanyId = session.customerCompanyId;
   const customerCompanyId: number | null =
     rawCustomerCompanyId === undefined || rawCustomerCompanyId === null
@@ -100,7 +113,7 @@ function CustomerQuotePreviewBody(props: {
   const liveCustomer = useStockControlCustomer(customerCompanyId);
   const defaultEmail = useMemo(() => {
     const live = liveCustomer.data;
-    if (live && live.email && live.email.trim().length > 0) return live.email.trim();
+    if (live?.email && live.email.trim().length > 0) return live.email.trim();
     const snap = session.customerSnapshot;
     const snapEmail = snap ? snap.email : null;
     if (isString(snapEmail) && snapEmail.trim().length > 0) return snapEmail.trim();
@@ -176,6 +189,7 @@ function CustomerQuotePreviewBody(props: {
             session={session}
             onSnapshotChange={(snap) => {
               snapshotRef.current = snap;
+              setLatestSnapshot(snap);
             }}
           />
         </div>
@@ -189,8 +203,44 @@ function CustomerQuotePreviewBody(props: {
           onClose={() => setShowEmailModal(false)}
         />
       )}
+      {showConvertModal && latestSnapshot && (
+        <ConvertToJobCardModal
+          sessionId={validSessionId}
+          snapshot={latestSnapshot}
+          defaults={buildJobCardDefaults(session, modalQuoteRef)}
+          onClose={() => setShowConvertModal(false)}
+        />
+      )}
     </div>
   );
+}
+
+/** Derive sensible pre-fills for the Convert-to-Job-Card modal from the
+ *  session's customer snapshot and the quote reference. The quoter can
+ *  override any field before confirming. */
+function buildJobCardDefaults(
+  session: NonNullable<ReturnType<typeof useNixExtractionSession>["data"]>,
+  modalQuoteRef: string,
+): {
+  jobNumber: string;
+  jobName: string;
+  siteLocation: string;
+  contactPerson: string;
+} {
+  const snap = session.customerSnapshot;
+  const customerName = snap && isString(snap.name) ? snap.name : "";
+  const streetAddress = snap && isString(snap.streetAddress) ? snap.streetAddress : "";
+  const contactPerson = snap && isString(snap.contactPerson) ? snap.contactPerson : "";
+  // JC-{YEAR}-{4-digit session id} keeps the job number unique per session
+  // and easy to trace back to the source quote at a glance.
+  const year = DateTime.now().year;
+  const sessionSuffix = String(session.id).padStart(4, "0");
+  return {
+    jobNumber: `JC-${year}-${sessionSuffix}`,
+    jobName: `${customerName ? `${customerName} — ` : ""}${modalQuoteRef}`.trim(),
+    siteLocation: streetAddress,
+    contactPerson,
+  };
 }
 
 function EmailQuoteModal(props: {

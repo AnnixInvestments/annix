@@ -17,6 +17,8 @@ import { MinesModule } from "../mines/mines.module";
 import { Company } from "../platform/entities/company.entity";
 import { RfqModule } from "../rfq/rfq.module";
 import { SecureDocumentsModule } from "../secure-documents/secure-documents.module";
+import { JobCard } from "../stock-control/entities/job-card.entity";
+import { JobCardLineItem } from "../stock-control/entities/job-card-line-item.entity";
 import { StockControlCompany } from "../stock-control/entities/stock-control-company.entity";
 import { CompanyEmailService } from "../stock-control/services/company-email.service";
 import { StorageModule } from "../storage/storage.module";
@@ -61,6 +63,7 @@ import { NixItemParserService } from "./services/nix-item-parser.service";
 import { NixValidationService } from "./services/nix-validation.service";
 import { PdfExtractorService } from "./services/pdf-extractor.service";
 import { QuotePdfService } from "./services/quote-pdf.service";
+import { QuoteToJobCardService } from "./services/quote-to-job-card.service";
 import { RegistrationDocumentVerifierService } from "./services/registration-document-verifier.service";
 import { WordExtractorService } from "./services/word-extractor.service";
 
@@ -86,6 +89,8 @@ import { WordExtractorService } from "./services/word-extractor.service";
       SaMine,
       StockControlCompany,
       Company,
+      JobCard,
+      JobCardLineItem,
     ]),
     MinesModule,
     MulterModule.register({
@@ -139,6 +144,7 @@ import { WordExtractorService } from "./services/word-extractor.service";
     ExcelExtractorService,
     PdfExtractorService,
     QuotePdfService,
+    QuoteToJobCardService,
     CompanyEmailService,
     WordExtractorService,
     AiChatService,

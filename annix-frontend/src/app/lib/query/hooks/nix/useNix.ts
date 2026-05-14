@@ -520,6 +520,11 @@ export interface NixExtractionSessionDto {
   quoteNotes?: QuoteNotesDto | null;
   /** ISO timestamp when the quoter clicked Submit on the working quote page. Null until first submit. */
   submittedAt?: string | null;
+  /** FK to the JobCard this quote was converted to. Null until the quoter
+   *  uses the 'Convert to Job Card' action; non-null afterwards, at which
+   *  point the quote page replaces the Convert button with a View Job Card
+   *  link to prevent duplicate conversions. */
+  jobCardId?: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -673,6 +678,34 @@ export const useSubmitNixQuote = createMutationHook<NixExtractionSessionDto, { s
       body: {},
       errorLabel: "Failed to submit quote",
     }),
+);
+
+export interface ConvertToJobCardResultDto {
+  jobCardId: number;
+  jobNumber: string;
+}
+
+/** Converts a promoted quote into a Job Card. Backend creates the JC root +
+ *  line items in one transaction and stamps `session.jobCardId` so the
+ *  convert button locks afterwards (single-conversion guarantee). */
+export const useConvertQuoteToJobCard = createMutationHook<
+  ConvertToJobCardResultDto,
+  {
+    sessionId: number;
+    snapshot: QuotePdfSnapshotDto;
+    jobNumber: string;
+    jobName: string;
+    dueDate?: string;
+    siteLocation?: string;
+    contactPerson?: string;
+  }
+>(({ sessionId, snapshot, jobNumber, jobName, dueDate, siteLocation, contactPerson }) =>
+  nixRequest<ConvertToJobCardResultDto>(`/nix/sessions/${sessionId}/convert-to-job-card`, {
+    method: "POST",
+    body: { snapshot, jobNumber, jobName, dueDate, siteLocation, contactPerson },
+    errorLabel: "Failed to convert quote to Job Card",
+    parseErrorBody: true,
+  }),
 );
 
 export const useEmailQuoteToCustomer = createMutationHook<

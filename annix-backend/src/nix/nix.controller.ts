@@ -40,6 +40,7 @@ import { Company } from "../platform/entities/company.entity";
 import { CompanyEmailService } from "../stock-control/services/company-email.service";
 import { IStorageService, STORAGE_SERVICE } from "../storage/storage.interface";
 import { SupplierDocument } from "../supplier/entities/supplier-document.entity";
+import { ConvertToJobCardDto, ConvertToJobCardResponseDto } from "./dto/convert-to-job-card.dto";
 import {
   ExtractFromRegionDto,
   ExtractionRegionResponseDto,
@@ -69,6 +70,7 @@ import { CustomFieldService } from "./services/custom-field.service";
 import { DocumentAnnotationService } from "./services/document-annotation.service";
 import { NixExtractionSessionService } from "./services/nix-extraction-session.service";
 import { QuotePdfService } from "./services/quote-pdf.service";
+import { QuoteToJobCardService } from "./services/quote-to-job-card.service";
 import {
   ExpectedCompanyData,
   RegistrationDocumentType,
@@ -91,6 +93,7 @@ export class NixController {
     @InjectRepository(SupplierDocument)
     private readonly supplierDocumentRepo: Repository<SupplierDocument>,
     private readonly quotePdfService: QuotePdfService,
+    private readonly quoteToJobCardService: QuoteToJobCardService,
     private readonly companyEmailService: CompanyEmailService,
     @InjectRepository(Company)
     private readonly companyRepo: Repository<Company>,
@@ -513,6 +516,34 @@ export class NixController {
     const authUser = req["authUser"] as AuthenticatedUser;
     await this.sessionService.findOneForUser(id, authUser.userId, authUser.type === "admin");
     return this.sessionService.markSubmitted(id);
+  }
+
+  @Post("sessions/:id/convert-to-job-card")
+  @UseGuards(AnyUserAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary:
+      "Convert a promoted Nix quote into a Job Card. Creates the JC root + line items in one transaction, stamps the session with jobCardId so the convert button locks afterwards. Body carries the same pooled-items snapshot the PDF / email endpoints use, plus job number / name / due date / location / contact overrides from the modal.",
+  })
+  @ApiResponse({ status: 201, type: ConvertToJobCardResponseDto })
+  async convertToJobCard(
+    @Param("id", ParseIntPipe) id: number,
+    @Body() body: ConvertToJobCardDto,
+    @Req() req: Request,
+  ): Promise<ConvertToJobCardResponseDto> {
+    const authUser = req["authUser"] as AuthenticatedUser;
+    await this.sessionService.findOneForUser(id, authUser.userId, authUser.type === "admin");
+    const companyId = authUser.companyId;
+    if (companyId == null) {
+      throw new BadRequestException(
+        "Convert to Job Card requires a stock-control authenticated user with a companyId",
+      );
+    }
+    return this.quoteToJobCardService.convert({
+      sessionId: id,
+      companyId,
+      dto: body,
+    });
   }
 
   @Post("sessions/:id/notes")

@@ -183,6 +183,14 @@ export class NixExtractionSession {
   @Column({ name: "submitted_at", type: "timestamp", nullable: true })
   submittedAt?: Date;
 
+  @ApiProperty({
+    description:
+      "FK to the JobCard that was created from this quote via the 'Convert to Job Card' action. Null until the quote is converted; non-null afterwards, which locks the convert button and replaces it with a 'View Job Card' link. Lock-after-first-convert is intentional (per project decision) to prevent duplicate JCs from accidental double-clicks.",
+    required: false,
+  })
+  @Column({ name: "job_card_id", type: "int", nullable: true })
+  jobCardId?: number;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 
