@@ -299,6 +299,9 @@ Guidelines (Format B — S&N CALENDER SHEETING):
 - Walk EVERY page. Each page is a separate delivery-note shipment with its own DELIVERY NOTE number, PURCHASE ORDER NUMBER, PRODUCTION DATE, Roll no. range, and per-batch laboratory table. The PDF will commonly have 2 or more pages.
 - batchNumbers is the UNION of all per-batch rows across ALL pages (e.g., page 1 batches 1-6 + page 2 batches 7-12 → batchNumbers: ["1","2","3","4","5","6","7","8","9","10","11","12"]). batches[] must contain ONE entry per individual numeric batch row in the same order.
 - Skip the "Unit", "Nominal", "Limits", and "Roll no." rows — those are reference rows, NOT batches. The "Roll no." cell that says e.g. "1-4" is a roll-range label, not a batch number.
+- ROLL NUMBER vs BATCH NUMBER (CRITICAL — common failure mode): the "Roll no." label introduces the roll-number value(s) for this page. The roll number may appear ON THE SAME ROW as the "Roll no." label (e.g., "Roll no. 1-4") OR IN THE ROW DIRECTLY BELOW IT (e.g., "Roll no." label row, then "10" on its own row underneath, then the actual batch rows below that). In either case, the roll number value is NOT a batch — it goes into rollNumbers, not batches/batchNumbers.
+- HOW TO TELL ROLL NUMBER FROM BATCH NUMBER VISUALLY: the roll-number row has BLANK Shore A (and blank Density / Tensile / Elongation). The batch rows have a Shore A value (and sometimes the spot-check row also has Density / Tensile / Elongation). If a numeric value in the "Batches used" column has NO Shore A beside it, it is a roll number, not a batch.
+- WORKED EXAMPLE: column shows top-to-bottom "Roll no." (label, blank values) → "10" (blank Shore A) → "13" (Shore A 48) → "14" (Shore A 48, plus Density/Tensile/Elong) → "15" (Shore A 48) → "16" (Shore A 48). Correct extraction: rollNumbers=["10"], batchNumbers=["13","14","15","16"]. WRONG extraction: batchNumbers=["10","13","14","15","16"].
 - Column → field mapping on S&N sheeting:
     "Shore A last testpoint" → shoreA
     "Density" / "[g/cm³]" → specificGravity
@@ -494,6 +497,12 @@ CRITICAL EXTRACTION RULES:
 - The "Roll no." label precedes the roll range (e.g., "1-4" means rolls 1, 2, 3, 4) — expand the range into individual numbers.
 - A multi-page PDF has MULTIPLE groups. Each page is its own delivery note shipment with its OWN: production date, PO, waybill, DN number, batch numbers, rolls, and shared density/tensile/elongation values.
 - Extract ALL pages — never collapse two pages into one entry.
+
+ROLL NUMBER vs COMPOUND BATCH NUMBER — CRITICAL COMMON MISTAKE TO AVOID:
+- The "Roll no." label may sit on its own row with the roll-number value directly BELOW it (e.g., "Roll no." label row, then "10" on its own row underneath, then compound-batch rows below that). DO NOT include the roll number in pages[].batchNumbers — it belongs in pages[].rolls[].rollNumber.
+- VISUAL DISCRIMINATOR: the roll-number row has BLANK Shore A. The compound-batch rows EACH have a Shore A value beside them (and one "spot-check" batch row per page typically also has Density/Tensile/Elongation values).
+- WORKED EXAMPLE: column shows top-to-bottom "Roll no." (label, blank values) → "10" (blank Shore A) → "13" (Shore A 48) → "14" (Shore A 48 + Density 1.07 / Tensile 9.1 / Elong 590) → "15" (Shore A 48) → "16" (Shore A 48). Correct extraction: pages[0].rolls[0].rollNumber="10", pages[0].batchNumbers=["13","14","15","16"], pages[0].rolls[0].shoreA = null. WRONG extraction: pages[0].batchNumbers=["10","13","14","15","16"].
+- The Shore A value on a batch row is the COMPOUND BATCH's Shore A measurement (assigned to that batch in the compounder), not the roll's Shore A. The roll's individual Shore A is in a different table (rare; usually rolls within a page share one Shore A measurement).
 
 NEVER HALLUCINATE — REAL FAILURE MODES TO AVOID:
 - If you cannot read a roll's Shore A, return null for that roll. Do NOT fill it with the previous roll's value, the next roll's value, or the Nominal value.
