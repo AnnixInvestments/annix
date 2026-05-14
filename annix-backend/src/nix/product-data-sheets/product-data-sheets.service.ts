@@ -14,6 +14,17 @@ export interface ProductDataSheetExtraction {
   description: string | null;
 }
 
+/** Forensic envelope so the controller can surface *why* Gemini failed
+ *  without forcing the operator to read backend logs. Populated by
+ *  extractWithGemini on every call. */
+export interface ProductDataSheetExtractionDiagnostic {
+  mediaType: string | null;
+  bufferBytes: number;
+  providerUsed: string | null;
+  rawSnippet: string | null;
+  errorMessage: string | null;
+}
+
 export type UploadOutcome = "new" | "reused" | "superseded";
 
 export interface UploadResult {
@@ -67,13 +78,13 @@ export class ProductDataSheetsService {
   }): Promise<UploadResult> {
     const { fileBuffer, originalFilename, mimeType, kind, userId } = params;
 
-    const extracted = await this.extractWithGemini(fileBuffer, mimeType, kind);
+    const { extracted, diagnostic } = await this.extractWithGemini(fileBuffer, mimeType, kind);
 
     if (!extracted.manufacturer || !extracted.productName) {
       this.logger.warn(
         `Couldn't determine manufacturer/product for ${originalFilename} (kind=${kind}) — Gemini returned manufacturer=${extracted.manufacturer}, productName=${extracted.productName}. Not registering to library.`,
       );
-      throw new ExtractionFailedError(extracted);
+      throw new ExtractionFailedError(extracted, diagnostic);
     }
 
     const manufacturerSlug = slugify(extracted.manufacturer);
@@ -114,7 +125,7 @@ export class ProductDataSheetsService {
       kind,
       version: nextVersion,
       publishedRevision: extracted.publishedRevision ?? undefined,
-      publishedDate: extracted.publishedDate ?? undefined,
+      publishedDate: normalisePublishedDate(extracted.publishedDate) ?? undefined,
       storagePath: storage.path,
       originalFilename: storage.originalFilename,
       sizeBytes: storage.size,
@@ -176,11 +187,23 @@ export class ProductDataSheetsService {
     fileBuffer: Buffer,
     mimeType: string,
     kind: ProductDataSheetKind,
-  ): Promise<ProductDataSheetExtraction> {
+  ): Promise<{
+    extracted: ProductDataSheetExtraction;
+    diagnostic: ProductDataSheetExtractionDiagnostic;
+  }> {
     const mediaType = normaliseDataSheetMediaType(mimeType);
     if (!mediaType) {
       this.logger.warn(`Unsupported data sheet media type: ${mimeType}`);
-      return emptyExtraction();
+      return {
+        extracted: emptyExtraction(),
+        diagnostic: {
+          mediaType: null,
+          bufferBytes: fileBuffer.length,
+          providerUsed: null,
+          rawSnippet: null,
+          errorMessage: `Unsupported media type: ${mimeType}`,
+        },
+      };
     }
 
     const base64 = fileBuffer.toString("base64");
@@ -208,7 +231,7 @@ Use null when a field is genuinely absent from the document. Never invent values
         mediaType,
         userPrompt,
         systemPrompt,
-        { temperature: 0.1, maxOutputTokens: 1024, responseFormat: "json" },
+        { temperature: 0.1, maxOutputTokens: 2048, responseFormat: "json" },
       );
       this.logger.log(
         `extractWithGemini Gemini returned: providerUsed=${result.providerUsed}, tokens=${result.tokensUsed ?? "?"}, content.length=${result.content.length}`,
@@ -218,13 +241,32 @@ Use null when a field is genuinely absent from the document. Never invent values
       this.logger.log(
         `extractWithGemini parsed: manufacturer=${parsed.manufacturer}, productName=${parsed.productName}, rev=${parsed.publishedRevision}`,
       );
-      return parsed;
+      return {
+        extracted: parsed,
+        diagnostic: {
+          mediaType,
+          bufferBytes: fileBuffer.length,
+          providerUsed: result.providerUsed ?? null,
+          rawSnippet: result.content.slice(0, 600),
+          errorMessage: this.lastParseError,
+        },
+      };
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
       this.logger.error(
-        `Gemini extraction THREW: ${error instanceof Error ? error.message : "Unknown error"}`,
+        `Gemini extraction THREW: ${errorMessage}`,
         error instanceof Error ? error.stack : undefined,
       );
-      return emptyExtraction();
+      return {
+        extracted: emptyExtraction(),
+        diagnostic: {
+          mediaType,
+          bufferBytes: fileBuffer.length,
+          providerUsed: null,
+          rawSnippet: null,
+          errorMessage,
+        },
+      };
     }
   }
 
@@ -270,13 +312,27 @@ Use null when a field is genuinely absent from the document. Never invent values
     ].join("\n");
   }
 
+  /** Last parser failure reason, exposed to the controller through the
+   *  diagnostic so a malformed reply can be shown in the upload error
+   *  banner without forcing the operator to read terminal logs. Cleared
+   *  on every successful parse. */
+  private lastParseError: string | null = null;
+
   private parseExtractionResponse(raw: string): ProductDataSheetExtraction {
-    const trimmed = raw
-      .trim()
-      .replace(/^```json\s*/i, "")
-      .replace(/```$/i, "");
+    this.lastParseError = null;
+    // Gemini sometimes wraps its JSON in ```json … ``` fences, sometimes
+    // appends a prose footer like "Note: based on the document above…",
+    // and very occasionally returns the JSON inside a larger object. The
+    // safest extraction is to grab the first balanced { … } block and
+    // parse that — everything else is noise.
+    const candidate = extractFirstJsonObject(raw);
+    if (!candidate) {
+      this.lastParseError = `no JSON object found in reply (length=${raw.length})`;
+      this.logger.warn(`${this.lastParseError} — raw=${raw.slice(0, 200)}`);
+      return emptyExtraction();
+    }
     try {
-      const parsed = JSON.parse(trimmed);
+      const parsed = JSON.parse(candidate);
       return {
         manufacturer: stringOrNull(parsed.manufacturer),
         productName: stringOrNull(parsed.productName),
@@ -286,16 +342,19 @@ Use null when a field is genuinely absent from the document. Never invent values
         description: stringOrNull(parsed.description),
       };
     } catch (error) {
-      this.logger.warn(
-        `Failed to parse Gemini JSON: ${error instanceof Error ? error.message : "unknown"} — raw=${raw.slice(0, 200)}`,
-      );
+      const message = error instanceof Error ? error.message : "unknown";
+      this.lastParseError = `JSON.parse threw: ${message}`;
+      this.logger.warn(`${this.lastParseError} — candidate=${candidate.slice(0, 200)}`);
       return emptyExtraction();
     }
   }
 }
 
 export class ExtractionFailedError extends Error {
-  constructor(public readonly extracted: ProductDataSheetExtraction) {
+  constructor(
+    public readonly extracted: ProductDataSheetExtraction,
+    public readonly diagnostic: ProductDataSheetExtractionDiagnostic,
+  ) {
     super("Could not determine manufacturer + product from data sheet");
     this.name = "ExtractionFailedError";
   }
@@ -337,6 +396,69 @@ function revisionsMatch(incoming: string | null, existing: string | null): boole
   if (incoming === null && existing === null) return true;
   if (incoming === null || existing === null) return false;
   return incoming === existing;
+}
+
+/**
+ * Returns the first balanced `{ … }` block in `raw`. Handles code-fenced
+ * replies, prose preambles ("Here is the JSON: …"), and prose footers
+ * ("Note: this is approximate") that would otherwise break JSON.parse.
+ * Skips over braces that live inside string literals (escapes included)
+ * so a `{` in a "description" value doesn't get mistaken for an opener.
+ * Returns null if no balanced object is found.
+ */
+function extractFirstJsonObject(raw: string): string | null {
+  const text = raw
+    .trim()
+    .replace(/^```json\s*/i, "")
+    .replace(/```\s*$/i, "");
+  const start = text.indexOf("{");
+  if (start < 0) return null;
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i];
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (inString) {
+      if (ch === "\\") {
+        escaped = true;
+      } else if (ch === '"') {
+        inString = false;
+      }
+      continue;
+    }
+    if (ch === '"') {
+      inString = true;
+    } else if (ch === "{") {
+      depth++;
+    } else if (ch === "}") {
+      depth--;
+      if (depth === 0) {
+        return text.slice(start, i + 1);
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Coerce Gemini's `publishedDate` (which the prompt allows as either
+ * `yyyy-mm-dd` or `yyyy-mm`) into a value Postgres' `date` column will
+ * accept. Month-only inputs are anchored to the first of the month —
+ * data sheets that print only "10/2015" almost never list a day, and
+ * the first-of-month convention is what the rest of the codebase uses.
+ * Anything that doesn't match either pattern is dropped (`null`) so a
+ * malformed extraction can't break the insert.
+ */
+function normalisePublishedDate(raw: string | null): string | null {
+  if (!raw) return null;
+  const trimmed = raw.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+  if (/^\d{4}-\d{2}$/.test(trimmed)) return `${trimmed}-01`;
+  return null;
 }
 
 function normaliseDataSheetMediaType(

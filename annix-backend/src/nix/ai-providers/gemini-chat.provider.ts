@@ -167,9 +167,17 @@ export class GeminiChatProvider {
         parts: this.toGeminiParts(msg.content),
       }));
 
+    // Gemini 2.5 Flash counts thinking tokens against maxOutputTokens.
+    // The product-data-sheet extraction hit this on a 92-char partial
+    // because reasoning ate the whole 1024 budget. Floor structured-
+    // JSON callers at 4096 so the reply has room even when thinking is
+    // verbose. (Sending thinkingConfig.thinkingBudget=0 would be more
+    // surgical but the field is rejected by v1beta on some accounts.)
+    const requestedMax = options?.maxOutputTokens ?? this.maxTokens;
     const generationConfig: Record<string, unknown> = {
       temperature: options?.temperature ?? this.temperature,
-      maxOutputTokens: options?.maxOutputTokens ?? this.maxTokens,
+      maxOutputTokens:
+        options?.responseFormat === "json" ? Math.max(requestedMax, 4096) : requestedMax,
     };
     if (options?.responseFormat === "json") {
       generationConfig.responseMimeType = "application/json";

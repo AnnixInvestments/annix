@@ -90,16 +90,39 @@ export class ProductDataSheetsController {
       if (error instanceof ExtractionFailedError) {
         // 422 would be more correct, but the editor distinguishes by message
         // content; the failure caption already handles a thrown error. We
-        // include the partial extraction in the response so the quoter sees
-        // exactly what Gemini saw before giving up.
+        // include the partial extraction AND a forensic snippet of what
+        // Gemini actually returned so the quoter can diagnose without ever
+        // reading the backend terminal.
         const e = error.extracted;
+        const d = error.diagnostic;
         const m = e.manufacturer ? `'${e.manufacturer}'` : "(blank)";
         const p = e.productName ? `'${e.productName}'` : "(blank)";
-        throw new BadRequestException(
-          `Auto-fill failed — Gemini read manufacturer=${m}, productName=${p}. Type the missing details manually.`,
-        );
+        const parts: string[] = [
+          `Auto-fill failed — Gemini read manufacturer=${m}, productName=${p}.`,
+          `Sent ${d.bufferBytes} bytes as ${d.mediaType ?? "?"} via ${d.providerUsed ?? "?"}.`,
+        ];
+        if (d.errorMessage) {
+          parts.push(`Reason: ${d.errorMessage}.`);
+        }
+        if (d.rawSnippet) {
+          // First ~600 chars of Gemini's reply — usually shows whether the
+          // model returned all-null JSON, refused, or returned a shape
+          // that broke the parser.
+          parts.push(`Raw reply: ${d.rawSnippet.replace(/\s+/g, " ").trim()}`);
+        }
+        parts.push("Type the missing details manually.");
+        throw new BadRequestException(parts.join(" "));
       }
-      throw error;
+      // Anything that wasn't an ExtractionFailedError (network blow-up,
+      // provider returning HTTP 500, fallback chain exhausted, etc.)
+      // would otherwise surface as a bare "Internal server error" in
+      // the upload banner with no clue about the root cause. Re-throw
+      // it as a BadRequestException carrying the actual message so the
+      // quoter sees what went wrong without reading the terminal.
+      const detail = error instanceof Error ? error.message : String(error);
+      throw new BadRequestException(
+        `Auto-fill failed — upload threw: ${detail}. Type the product details manually.`,
+      );
     } finally {
       try {
         fs.unlinkSync(file.path);
