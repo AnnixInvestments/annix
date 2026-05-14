@@ -6,6 +6,7 @@ import { BoltMass } from "../bolt-mass/entities/bolt-mass.entity";
 import { Boq } from "../boq/entities/boq.entity";
 import { BoqSupplierAccess } from "../boq/entities/boq-supplier-access.entity";
 import { EmailService } from "../email/email.service";
+import { FittingService } from "../fitting/fitting.service";
 import { FlangeDimension } from "../flange-dimension/entities/flange-dimension.entity";
 import { NbNpsLookup } from "../nb-nps-lookup/entities/nb-nps-lookup.entity";
 import { NutMass } from "../nut-mass/entities/nut-mass.entity";
@@ -345,6 +346,12 @@ describe("RfqService", () => {
             calculateStraightPipeRequirements: jest.fn(),
             calculateBendRequirements: jest.fn(),
             calculatePumpRequirements: jest.fn(),
+          },
+        },
+        {
+          provide: FittingService,
+          useValue: {
+            calculateFitting: jest.fn(),
           },
         },
         {

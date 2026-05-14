@@ -10,6 +10,7 @@ import {
   buildRfqClarificationEmailText,
 } from "../email/templates/rfq-clarification";
 import { buildRfqClarificationPdf } from "../email/templates/rfq-clarification-pdf";
+import { FittingService } from "../fitting/fitting.service";
 import { FlangeDimension } from "../flange-dimension/entities/flange-dimension.entity";
 import { fromISO, now } from "../lib/datetime";
 import { NbNpsLookup } from "../nb-nps-lookup/entities/nb-nps-lookup.entity";
@@ -139,6 +140,7 @@ export class RfqService {
     private emailService: EmailService,
     private referenceDataCache: ReferenceDataCacheService,
     private rfqCalculationService: RfqCalculationService,
+    private fittingService: FittingService,
     private dataSource: DataSource,
   ) {}
 
@@ -483,21 +485,45 @@ export class RfqService {
         this.logger.log(`Created bend item #${lineNumber}: ${item.description}`);
       } else if (item.itemType === "fitting" && item.fitting) {
         // Auto-calc weight when the frontend didn't run a per-item
-        // calc. For HDPE fittings we use the dedicated
-        // hdpeFittingWeightKg helper (pipe-kg/m × equivalent-length
-        // factor, parameterised by FittingType). Steel fittings
-        // would need the FittingService which isn't injected into
-        // RfqService — leave their value alone for now (still 0 if
-        // the frontend didn't calc).
+        // calc. NIX-extracted fittings arrive without a computed
+        // totalWeightKg — every steel fitting in RFQ-2026-0009 then
+        // landed at 0 kg.
+        // - HDPE branch: dedicated helper (pipe-kg/m × equivalent
+        //   length factor by FittingType).
+        // - Steel branch: delegate to the existing FittingService.
+        //   The SABS719 path requires scheduleNumber + pipeLengthA/B
+        //   which NIX extractions don't always populate, so wrap in
+        //   try/catch and fall back to 0 with a warn log.
         let fittingWeightKg = item.totalWeightKg;
         const fittingIsHdpe = item.fitting.materialType === "hdpe";
-        if (!fittingWeightKg && fittingIsHdpe) {
-          fittingWeightKg = hdpeFittingWeightKg(
-            item.fitting.nominalDiameterMm,
-            item.fitting.fittingType,
-            item.fitting.hdpeSdr,
-            item.fitting.quantityValue,
-          );
+        if (!fittingWeightKg) {
+          if (fittingIsHdpe) {
+            fittingWeightKg = hdpeFittingWeightKg(
+              item.fitting.nominalDiameterMm,
+              item.fitting.fittingType,
+              item.fitting.hdpeSdr,
+              item.fitting.quantityValue,
+            );
+          } else {
+            try {
+              const calc = await this.fittingService.calculateFitting({
+                fittingStandard: item.fitting.fittingStandard as any,
+                fittingType: item.fitting.fittingType as any,
+                nominalDiameterMm: item.fitting.nominalDiameterMm,
+                scheduleNumber: item.fitting.scheduleNumber,
+                pipeLengthAMm: item.fitting.pipeLengthAMm,
+                pipeLengthBMm: item.fitting.pipeLengthBMm,
+                quantityValue: item.fitting.quantityValue || 1,
+                workingPressureBar: item.fitting.workingPressureBar,
+                workingTemperatureC: item.fitting.workingTemperatureC,
+              } as any);
+              fittingWeightKg = calc.totalWeight;
+            } catch (err: any) {
+              this.logger.warn(
+                `Steel fitting auto-calc failed for line ${lineNumber}: ${err?.message || err}`,
+              );
+            }
+          }
         }
 
         const savedRfqItem = await this.createRfqItem({

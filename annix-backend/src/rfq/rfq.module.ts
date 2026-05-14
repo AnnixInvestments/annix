@@ -6,6 +6,7 @@ import { Boq } from "../boq/entities/boq.entity";
 import { BoqSupplierAccess } from "../boq/entities/boq-supplier-access.entity";
 import { CustomerModule } from "../customer/customer.module";
 import { EmailModule } from "../email/email.module";
+import { FittingModule } from "../fitting/fitting.module";
 import { FlangeDimension } from "../flange-dimension/entities/flange-dimension.entity";
 import { FlangePressureClass } from "../flange-pressure-class/entities/flange-pressure-class.entity";
 import { FlangeStandard } from "../flange-standard/entities/flange-standard.entity";
@@ -44,6 +45,7 @@ import { RfqDocumentService } from "./services/rfq-document.service";
   imports: [
     forwardRef(() => CustomerModule),
     EmailModule,
+    FittingModule,
     TypeOrmModule.forFeature([
       Rfq,
       RfqItem,
