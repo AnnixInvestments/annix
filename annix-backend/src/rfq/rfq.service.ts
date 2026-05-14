@@ -1212,8 +1212,8 @@ export class RfqService {
         "items.bendDetails",
         "items.fittingDetails",
         "items.expansionJointDetails",
-        "items.valveDetails",
-        "items.instrumentDetails",
+        // valveDetails / instrumentDetails: skip — see notes
+        // in findRfqById / createUnifiedRfq for why.
         "items.pumpDetails",
         "items.tankChuteDetails",
         "items.fastenerDetails",
@@ -1340,6 +1340,14 @@ export class RfqService {
   }
 
   async findRfqById(id: number): Promise<Rfq> {
+    // valveDetails / instrumentDetails / surfaceProtectionDetails
+    // are intentionally omitted: their tables (valve_rfqs,
+    // instrument_rfqs, surface_protection_rfqs) were never
+    // migrated. Including them here forces TypeORM to JOIN
+    // non-existent tables and crashes the customer-portal detail
+    // page (and any other findRfqById caller) with
+    // "relation \"valve_rfqs\" does not exist". Restore each
+    // relation once its CREATE TABLE migration lands.
     const rfq = await this.rfqRepository.findOne({
       where: { id },
       relations: [
@@ -1349,8 +1357,6 @@ export class RfqService {
         "items.bendDetails",
         "items.fittingDetails",
         "items.expansionJointDetails",
-        "items.valveDetails",
-        "items.instrumentDetails",
         "items.pumpDetails",
         "items.tankChuteDetails",
         "items.fastenerDetails",

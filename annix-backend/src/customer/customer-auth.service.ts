@@ -255,6 +255,7 @@ export class CustomerAuthService {
         email: savedUser.email,
         type: "customer",
         sessionToken,
+        roles: ["customer"],
       };
 
       const { accessToken, refreshToken } = await this.tokenService.generateTokenPair(payload);
@@ -529,6 +530,12 @@ export class CustomerAuthService {
       email: user.email,
       type: "customer",
       sessionToken,
+      // Populated so the default AuthGuard("jwt") + RolesGuard
+      // chain on shared controllers (e.g. BoqController) sees the
+      // customer's role. Without this, the customer JWT validates
+      // but RolesGuard rejects every @Roles("customer") endpoint
+      // with 403 because payload.roles is undefined.
+      roles: ["customer"],
     };
 
     const { accessToken, refreshToken } = await this.tokenService.generateTokenPair(payload);
@@ -614,6 +621,12 @@ export class CustomerAuthService {
       email: user.email,
       type: "customer",
       sessionToken,
+      // Populated so the default AuthGuard("jwt") + RolesGuard
+      // chain on shared controllers (e.g. BoqController) sees the
+      // customer's role. Without this, the customer JWT validates
+      // but RolesGuard rejects every @Roles("customer") endpoint
+      // with 403 because payload.roles is undefined.
+      roles: ["customer"],
     };
 
     const { accessToken, refreshToken } = await this.tokenService.generateTokenPair(payload);
@@ -675,6 +688,7 @@ export class CustomerAuthService {
         email: profile.user.email,
         type: "customer",
         sessionToken,
+        roles: ["customer"],
       };
 
       const { accessToken, refreshToken } = await this.tokenService.generateTokenPair(newPayload);

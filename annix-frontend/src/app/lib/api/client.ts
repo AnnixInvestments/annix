@@ -450,6 +450,9 @@ class ApiClient {
       method: "POST",
       body: formData,
       // Don't set Content-Type header - browser will set it with boundary for multipart
+      // Authorization MUST be explicit — this fetch bypasses
+      // ApiClient.request(), so it doesn't pick up auth automatically.
+      headers: authHeaders(),
     });
 
     await throwIfNotOk(response);
