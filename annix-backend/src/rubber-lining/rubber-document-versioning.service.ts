@@ -68,12 +68,13 @@ export class RubberDocumentVersioningService {
   async existingActiveSupplierCoc(
     cocNumber: string,
     cocType: SupplierCocType,
+    options: { excludeId?: number; supplierCompanyId?: number } = {},
   ): Promise<RubberSupplierCoc | null> {
     if (!cocNumber) return null;
 
     const normalized = cocNumber.trim().replace(/\s+/g, "").replace(/[–—]/g, "-");
 
-    return this.supplierCocRepository
+    const qb = this.supplierCocRepository
       .createQueryBuilder("coc")
       .where(
         "LOWER(TRIM(REPLACE(REPLACE(coc.coc_number, ' ', ''), '–', '-'))) = LOWER(:cocNumber)",
@@ -82,9 +83,18 @@ export class RubberDocumentVersioningService {
         },
       )
       .andWhere("coc.coc_type = :cocType", { cocType })
-      .andWhere("coc.version_status = :status", { status: DocumentVersionStatus.ACTIVE })
-      .orderBy("coc.id", "DESC")
-      .getOne();
+      .andWhere("coc.version_status = :status", { status: DocumentVersionStatus.ACTIVE });
+
+    if (options.excludeId !== undefined) {
+      qb.andWhere("coc.id != :excludeId", { excludeId: options.excludeId });
+    }
+    if (options.supplierCompanyId !== undefined) {
+      qb.andWhere("coc.supplier_company_id = :supplierCompanyId", {
+        supplierCompanyId: options.supplierCompanyId,
+      });
+    }
+
+    return qb.orderBy("coc.id", "DESC").getOne();
   }
 
   async repointSupplierCocReferences(oldId: number, newId: number): Promise<void> {

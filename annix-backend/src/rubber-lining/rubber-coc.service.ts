@@ -487,7 +487,12 @@ export class RubberCocService {
     if (!coc.cocNumber) return coc;
     if (coc.versionStatus !== DocumentVersionStatus.ACTIVE) return coc;
 
-    const result = await this.mergeIfDuplicateCocNumber(coc.id, coc.cocNumber, coc.cocType);
+    const result = await this.mergeIfDuplicateCocNumber(
+      coc.id,
+      coc.cocNumber,
+      coc.cocType,
+      coc.supplierCompanyId,
+    );
     if (!result.merged) return coc;
 
     const refreshed = await this.supplierCocRepository.findOne({
@@ -878,6 +883,7 @@ export class RubberCocService {
     const existingActive = await this.versioningService.existingActiveSupplierCoc(
       normalizedCocNumber,
       cocType,
+      { supplierCompanyId },
     );
 
     const isDuplicate = existingActive !== null;
@@ -1348,6 +1354,7 @@ export class RubberCocService {
     cocId: number,
     cocNumber: string,
     cocType: SupplierCocType,
+    supplierCompanyId?: number,
   ): Promise<{
     merged: boolean;
     keptCocId: number;
@@ -1359,9 +1366,10 @@ export class RubberCocService {
     const existingActive = await this.versioningService.existingActiveSupplierCoc(
       normalizedCocNumber,
       cocType,
+      { excludeId: cocId, supplierCompanyId },
     );
 
-    if (!existingActive || existingActive.id === cocId) {
+    if (!existingActive) {
       return { merged: false, keptCocId: cocId, deletedCocId: null, requiresAuthorization: false };
     }
 
