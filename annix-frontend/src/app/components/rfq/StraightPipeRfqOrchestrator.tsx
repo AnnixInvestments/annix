@@ -888,6 +888,17 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
     const recoveryToken = searchParams?.get("recover");
     if (recoveryToken) return;
 
+    // "New RFQ" link in the customer toolbar appends ?new=1 to
+    // force a fresh start even when the user is already on /create.
+    // Wipe localStorage so the auto-restore on the next mount can't
+    // resurrect the abandoned draft.
+    const startFresh = searchParams?.get("new") === "1";
+    if (startFresh) {
+      clearLocalDraft();
+      setHasCheckedLocalDraft(true);
+      return;
+    }
+
     setHasCheckedLocalDraft(true);
 
     const draft = loadLocalDraft();
@@ -3292,6 +3303,13 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
           log.error("Failed to mark draft as converted:", convertError);
         }
       }
+
+      // Submit succeeded — wipe the localStorage backup so the
+      // next visit to /customer/portal/rfqs/create (whether via
+      // toolbar "New RFQ", the My RFQs page, or a fresh tab)
+      // starts clean instead of auto-restoring data the user has
+      // already committed to a real rfq row.
+      clearLocalDraft();
 
       const rfqNumber = result.rfq?.rfqNumber;
       showToast(
