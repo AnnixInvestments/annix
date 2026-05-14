@@ -70,6 +70,7 @@ import type {
 } from "@annix/product-data/rfq";
 import { sessionExpiredEvent } from "@/app/components/SessionExpiredModal";
 import { throwIfNotOk } from "@/app/lib/api/apiError";
+import { anyPortalAuthHeaders } from "@/app/lib/api/portalTokenStores";
 import { log } from "@/app/lib/logger";
 import { API_BASE_URL } from "@/lib/api-config";
 
@@ -154,21 +155,30 @@ function authToken(): string | null {
   // eslint-disable-next-line no-restricted-syntax -- SSR guard; isUndefined(window) would throw
   if (typeof window === "undefined") return null;
 
-  const customerToken = localStorage.getItem("customerAccessToken");
-  if (customerToken) return customerToken;
-
-  const supplierToken = localStorage.getItem("supplierAccessToken");
-  if (supplierToken) return supplierToken;
-
-  const adminToken = localStorage.getItem("adminAccessToken");
-  if (adminToken) return adminToken;
-
+  // Delegate to the portal-aware token resolver. It (a) prefers the
+  // token store matching the current URL prefix (so a logged-in
+  // customer's token is used on /customer/portal/* even if a stale
+  // admin token still lingers from earlier in the session), and (b)
+  // reads BOTH localStorage and sessionStorage — the previous
+  // localStorage-only lookup missed customer tokens when the user
+  // logged in without "remember me", silently producing 401 on every
+  // post-submit detail-page hit.
+  const portalHeaders = anyPortalAuthHeaders();
+  const portalAuth = portalHeaders.Authorization;
+  if (portalAuth?.startsWith("Bearer ")) {
+    return portalAuth.substring(7);
+  }
   return localStorage.getItem("authToken") || localStorage.getItem("token");
 }
 
 function authHeaders(): Record<string, string> {
-  const token = authToken();
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  // Same portal-aware delegation as authToken(): also fixes
+  // boqApi.create / boqApi.submitForQuotation and other raw-fetch
+  // sites that used to read localStorage directly.
+  const headers = anyPortalAuthHeaders();
+  if (headers.Authorization) return headers;
+  const legacy = localStorage.getItem("authToken") || localStorage.getItem("token");
+  return legacy ? { Authorization: `Bearer ${legacy}` } : {};
 }
 
 class ApiClient {
