@@ -200,7 +200,7 @@ async function main() {
     }
   }
 
-  console.log("\n" + "=".repeat(70));
+  console.log(`\n${"=".repeat(70)}`);
   console.log("Summary");
   console.log("=".repeat(70));
   console.log(`  Total keys referenced     : ${paths.size}`);
