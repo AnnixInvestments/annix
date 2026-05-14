@@ -71,6 +71,7 @@ import {
   ValveFailPosition,
   ValveRfq,
 } from "./entities/valve-rfq.entity";
+import { hdpeDeratedPn, hdpePnFromSdr } from "./services/hdpe-pressure-ratings";
 import { ReferenceDataCacheService } from "./services/reference-data-cache.service";
 import { RfqCalculationService } from "./services/rfq-calculation.service";
 
@@ -383,7 +384,20 @@ export class RfqService {
           totalFlangeWeldLengthM: calculation.totalFlangeWeldLength,
           hdpePeGrade: item.straightPipe.hdpePeGrade,
           hdpeSdr: item.straightPipe.hdpeSdr,
-          hdpePnRating: item.straightPipe.hdpePnRating,
+          // Auto-fill PN from SDR via the ISO 4427 lookup when the
+          // entry didn't carry an explicit rating; explicit value
+          // always wins so customer-stated intent isn't overwritten.
+          hdpePnRating:
+            item.straightPipe.hdpePnRating ??
+            hdpePnFromSdr(item.straightPipe.hdpeSdr, item.straightPipe.hdpePeGrade),
+          // Derated PN at the line's operating temperature — uses
+          // the PE100 derating table from ISO 4427-2 Annex.
+          hdpeDeratedPn: hdpeDeratedPn(
+            item.straightPipe.hdpePnRating ??
+              hdpePnFromSdr(item.straightPipe.hdpeSdr, item.straightPipe.hdpePeGrade),
+            item.straightPipe.workingTemperatureC,
+            item.straightPipe.hdpePeGrade,
+          ),
         });
 
         if (item.straightPipe.steelSpecificationId) {
@@ -454,7 +468,14 @@ export class RfqService {
           // HDPE-specific persistence — null for steel bends.
           hdpePeGrade: item.bend.hdpePeGrade,
           hdpeSdr: item.bend.hdpeSdr,
-          hdpePnRating: item.bend.hdpePnRating,
+          // Same ISO 4427 auto-fill as the straight-pipe branch.
+          hdpePnRating:
+            item.bend.hdpePnRating ?? hdpePnFromSdr(item.bend.hdpeSdr, item.bend.hdpePeGrade),
+          hdpeDeratedPn: hdpeDeratedPn(
+            item.bend.hdpePnRating ?? hdpePnFromSdr(item.bend.hdpeSdr, item.bend.hdpePeGrade),
+            item.bend.workingTemperatureC,
+            item.bend.hdpePeGrade,
+          ),
         });
 
         await this.bendRfqRepository.save(bendRfq);
@@ -875,7 +896,20 @@ export class RfqService {
           totalFlangeWeldLengthM: calculation.totalFlangeWeldLength,
           hdpePeGrade: item.straightPipe.hdpePeGrade,
           hdpeSdr: item.straightPipe.hdpeSdr,
-          hdpePnRating: item.straightPipe.hdpePnRating,
+          // Auto-fill PN from SDR via the ISO 4427 lookup when the
+          // entry didn't carry an explicit rating; explicit value
+          // always wins so customer-stated intent isn't overwritten.
+          hdpePnRating:
+            item.straightPipe.hdpePnRating ??
+            hdpePnFromSdr(item.straightPipe.hdpeSdr, item.straightPipe.hdpePeGrade),
+          // Derated PN at the line's operating temperature — uses
+          // the PE100 derating table from ISO 4427-2 Annex.
+          hdpeDeratedPn: hdpeDeratedPn(
+            item.straightPipe.hdpePnRating ??
+              hdpePnFromSdr(item.straightPipe.hdpeSdr, item.straightPipe.hdpePeGrade),
+            item.straightPipe.workingTemperatureC,
+            item.straightPipe.hdpePeGrade,
+          ),
         });
 
         if (item.straightPipe.steelSpecificationId) {
