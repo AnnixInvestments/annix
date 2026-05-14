@@ -61,7 +61,13 @@ export function countUncalculatedItems(allItems: any[]): number {
   return allItems.filter((e: any) => requiresCalc.includes(e.itemType) && !e.calculation).length;
 }
 
-function mapBendItem(entry: any, specs: any, calculation: any, g: GlobalSpecsOverrides) {
+function mapBendItem(
+  entry: any,
+  specs: any,
+  calculation: any,
+  g: GlobalSpecsOverrides,
+  globalSpecs: any,
+) {
   const gWpb = g.workingPressureBar;
   const gWtc = g.workingTemperatureC;
   const gSsid = g.steelSpecificationId;
@@ -87,12 +93,50 @@ function mapBendItem(entry: any, specs: any, calculation: any, g: GlobalSpecsOve
   const rawFlangeStandardId = specs.flangeStandardId;
   const rawFlangePressureClassId = specs.flangePressureClassId;
   const rawBendScheduleNumber = specs.scheduleNumber;
+  // Same HDPE-resolution logic as mapStraightPipeItem: per-entry
+  // spec fields take precedence, then description parsing
+  // ("HDPE PE100 PN34 (SDR6)"), then globalSpecs as last resort.
+  // Without this the backend's bend calc falls back to steel
+  // density and over-estimates HDPE bend mass by ~8x.
+  const isHdpe = entry.materialType === "hdpe";
+  const parsedHdpe = isHdpe ? parseHdpeFromDescription(rawDescription) : {};
+  const rawSpecsBendHdpePeGrade = specs.hdpePeGrade;
+  const rawSpecsBendHdpeSdr = specs.hdpeSdr;
+  const rawSpecsBendHdpePnRating = specs.hdpePnRating;
+  const rawGlobalHdpeGrade = globalSpecs?.hdpeGrade;
+  const rawGlobalHdpeSdr = globalSpecs?.hdpeSdr;
+  const rawGlobalHdpePressureRating = globalSpecs?.hdpePressureRating;
+  const parsedBendPeGrade = parsedHdpe.peGrade;
+  const parsedBendSdr = parsedHdpe.sdr;
+  const parsedBendPn = parsedHdpe.pnRating;
+  const bendHdpePeGrade = isHdpe
+    ? rawSpecsBendHdpePeGrade || parsedBendPeGrade || rawGlobalHdpeGrade
+    : undefined;
+  const bendHdpeSdr = isHdpe ? rawSpecsBendHdpeSdr || parsedBendSdr || rawGlobalHdpeSdr : undefined;
+  const bendGlobalPnRating = isHdpe
+    ? (() => {
+        const raw = rawGlobalHdpePressureRating;
+        if (isNumber(raw)) return raw;
+        if (isString(raw)) {
+          const m = raw.match(/PN\s*(\d+(?:\.\d+)?)/i);
+          return m ? Number(m[1]) : undefined;
+        }
+        return undefined;
+      })()
+    : undefined;
+  const bendHdpePnRating = isHdpe
+    ? rawSpecsBendHdpePnRating || parsedBendPn || bendGlobalPnRating
+    : undefined;
   return {
     itemType: "bend" as const,
     description: rawDescription || "Bend Item",
     notes: entry.notes,
     totalWeightKg: rawTotalWeight || calculation.bendWeight,
     bend: {
+      materialType: isHdpe ? "hdpe" : "steel",
+      hdpePeGrade: bendHdpePeGrade,
+      hdpeSdr: bendHdpeSdr,
+      hdpePnRating: bendHdpePnRating,
       nominalBoreMm: specs.nominalBoreMm,
       // Backend requires a string. HDPE bends carry SDR info in the description
       // / globalSpecs and have no schedule number — pass empty string so the
@@ -352,7 +396,7 @@ export function mapItemToUnified(entry: any, g: GlobalSpecsOverrides, globalSpec
   const calculation = rawCalculation || {};
 
   if (entry.itemType === "bend") {
-    return mapBendItem(entry, specs, calculation, g);
+    return mapBendItem(entry, specs, calculation, g, globalSpecs);
   } else if (entry.itemType === "fitting") {
     return mapFittingItem(entry, specs, calculation, globalSpecs);
   } else if (entry.itemType === "tank_chute") {

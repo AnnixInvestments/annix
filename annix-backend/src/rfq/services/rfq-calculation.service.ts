@@ -213,7 +213,7 @@ export class RfqCalculationService {
     if (!dto.hdpeSdr || dto.hdpeSdr <= 0) {
       throw new NotFoundException(
         `HDPE pipe at ${dto.nominalBoreMm}NB is missing SDR. ` +
-          `Set hdpeSdr on the item (or in globalSpecs) so wall thickness can be derived.`,
+          "Set hdpeSdr on the item (or in globalSpecs) so wall thickness can be derived.",
       );
     }
 
@@ -272,6 +272,14 @@ export class RfqCalculationService {
   }
 
   async calculateBendRequirements(dto: CreateBendRfqDto): Promise<BendCalculationResultDto> {
+    // HDPE bends are dimensioned by SDR and have no schedule
+    // number / steel-density assumption. Route them through a
+    // dedicated branch so the steel formula doesn't over-estimate
+    // their weight by ~8x (HDPE density 0.96 vs steel 7.85).
+    if (dto.materialType === "hdpe") {
+      return this.calculateHdpeBendRequirements(dto);
+    }
+
     const weightBreakdown = this.bendWeight(dto);
     const centerToFace = this.centerToFace(dto);
     const numberOfFlanges = dto.numberOfTangents + 1;
@@ -303,6 +311,80 @@ export class RfqCalculationService {
       totalButtWeldLength: dto.numberOfTangents > 0 ? (Math.PI * dto.nominalBoreMm) / 1000 : 0,
       outsideDiameterMm: od,
       wallThicknessMm: this.wallThicknessFromSchedule(dto.scheduleNumber),
+    };
+  }
+
+  // HDPE branch of calculateBendRequirements. HDPE bends are
+  // butt-fused (no flanges/bolts) and dimensioned by SDR rather
+  // than steel schedule. nominalBoreMm carries the nominal OD
+  // (industry norm — HDPE is sized by OD). Falls back to SDR=11
+  // (PE100 PN16) when the entry doesn't supply one.
+  //
+  // Bend body weight uses the toroidal-arc model from Grok's
+  // HDPE weight reference:
+  //   - Centerline arc length = R_bend × bendAngleRadians where
+  //     R_bend = OD × bendTypeMultiplier (parsed from "3D",
+  //     "1.5D" etc.; default 1.5D when missing).
+  //   - Shell volume ≈ π × OD × t × arc_length (thin-wall hollow
+  //     cylinder swept along the arc — accurate to within a few
+  //     percent for SDR ≤ 17).
+  //   - Mass = volume × density.
+  // Tangent legs are modelled as straight HDPE pipe sections via
+  // the same π·OD·t·L·ρ formula. The legacy steel branch used a
+  // density-of-steel constant; here we use HDPE_DENSITY_KG_DM3
+  // throughout.
+  private async calculateHdpeBendRequirements(
+    dto: CreateBendRfqDto,
+  ): Promise<BendCalculationResultDto> {
+    const outsideDiameterMm = dto.nominalBoreMm;
+    const sdr = dto.hdpeSdr && dto.hdpeSdr > 0 ? dto.hdpeSdr : 11;
+    const wallThicknessMm = outsideDiameterMm / sdr;
+
+    // Parse bendType like "3D" / "1.5D" → multiplier. Default 1.5
+    // (long-radius elbow, the most common HDPE bend).
+    const bendTypeMultiplier =
+      dto.bendType && /^(\d+(?:\.\d+)?)D$/.test(dto.bendType)
+        ? Number.parseFloat(dto.bendType.replace("D", ""))
+        : 1.5;
+    const bendRadiusMm = outsideDiameterMm * bendTypeMultiplier;
+    const bendDegrees = dto.bendDegrees || 90;
+    const arcLengthM = (bendRadiusMm * (bendDegrees * Math.PI)) / 180 / 1000;
+    // π × OD(mm) × t(mm) × arcLength(m) × ρ(kg/dm³) / 1000
+    // → kg. Unit dance: mm × mm × m × kg/dm³ ÷ 1000 = kg, given
+    // 1 dm³ = 1000 cm³ = 1e6 mm³ ÷ 1e3 = volume in mm² × m
+    // matches once divided by 1000.
+    const bendBodyWeight =
+      (Math.PI * outsideDiameterMm * wallThicknessMm * arcLengthM * HDPE_DENSITY_KG_DM3) / 1000;
+
+    const tangentLengths = dto.tangentLengths || [];
+    const tangentWeight = tangentLengths.reduce((total, length) => {
+      // Same hollow-cylinder formula for each straight tangent leg.
+      return (
+        total +
+        (Math.PI * outsideDiameterMm * wallThicknessMm * (length / 1000) * HDPE_DENSITY_KG_DM3) /
+          1000
+      );
+    }, 0);
+    const totalWeight = bendBodyWeight + tangentWeight;
+
+    return {
+      totalWeight: Math.round(totalWeight * 100) / 100,
+      centerToFaceDimension: this.centerToFace(dto),
+      bendWeight: Math.round(bendBodyWeight * 100) / 100,
+      tangentWeight: Math.round(tangentWeight * 100) / 100,
+      flangeWeight: 0,
+      numberOfFlanges: 0,
+      numberOfFlangeWelds: 0,
+      totalFlangeWeldLength: 0,
+      // HDPE bends are typically fused to the adjacent pipes —
+      // count each tangent end as a butt-fusion joint.
+      numberOfButtWelds: tangentLengths.length,
+      totalButtWeldLength:
+        tangentLengths.length > 0
+          ? (tangentLengths.length * Math.PI * outsideDiameterMm) / 1000
+          : 0,
+      outsideDiameterMm,
+      wallThicknessMm: Math.round(wallThicknessMm * 100) / 100,
     };
   }
 

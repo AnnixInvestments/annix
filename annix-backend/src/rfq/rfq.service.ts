@@ -451,6 +451,10 @@ export class RfqService {
           flangePressureClassId: item.bend.flangePressureClassId,
           totalWeightKg: bendWeightKg,
           rfqItem: savedRfqItem,
+          // HDPE-specific persistence — null for steel bends.
+          hdpePeGrade: item.bend.hdpePeGrade,
+          hdpeSdr: item.bend.hdpeSdr,
+          hdpePnRating: item.bend.hdpePnRating,
         });
 
         await this.bendRfqRepository.save(bendRfq);
