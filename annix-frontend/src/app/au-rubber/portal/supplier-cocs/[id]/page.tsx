@@ -1,5 +1,6 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { isArray, isNumber, keys, values } from "es-toolkit/compat";
 import {
   AlertTriangle,
@@ -30,7 +31,12 @@ import {
   type SupplierCocType,
 } from "@/app/lib/api/auRubberApi";
 import { formatDateTimeZA, formatDateZA } from "@/app/lib/datetime";
-import { useAuRubberAuthorizeVersion, useAuRubberRejectVersion } from "@/app/lib/query/hooks";
+import {
+  useAuRubberApproveSupplierCoc,
+  useAuRubberAuthorizeVersion,
+  useAuRubberRejectVersion,
+} from "@/app/lib/query/hooks";
+import { rubberKeys } from "@/app/lib/query/keys/rubberKeys";
 
 interface ExtractedBatch {
   batchNumber: string;
@@ -71,6 +77,8 @@ export default function SupplierCocDetailPage() {
   const { isAdmin } = useAuRubberAuth();
   const authorizeVersionMutation = useAuRubberAuthorizeVersion();
   const rejectVersionMutation = useAuRubberRejectVersion();
+  const approveSupplierCocMutation = useAuRubberApproveSupplierCoc();
+  const queryClient = useQueryClient();
   const [coc, setCoc] = useState<RubberSupplierCocDto | null>(null);
   const [batches, setBatches] = useState<RubberCompoundBatchDto[]>([]);
   const [siblingCocs, setSiblingCocs] = useState<RubberSupplierCocDto[]>([]);
@@ -211,7 +219,8 @@ export default function SupplierCocDetailPage() {
   const handleApprove = async () => {
     try {
       setIsApproving(true);
-      await auRubberApiClient.approveSupplierCoc(cocId);
+      await approveSupplierCocMutation.mutateAsync(cocId);
+      await queryClient.refetchQueries({ queryKey: rubberKeys.supplierCocs.all });
       showToast("CoC approved", "success");
       router.replace("/au-rubber/portal/supplier-cocs");
     } catch (err) {
@@ -223,6 +232,7 @@ export default function SupplierCocDetailPage() {
   const handleAuthorizeVersion = async () => {
     try {
       await authorizeVersionMutation.mutateAsync({ kind: "supplier-cocs", id: cocId });
+      await queryClient.refetchQueries({ queryKey: rubberKeys.supplierCocs.all });
       showToast("Version authorized — previous version superseded", "success");
       router.replace("/au-rubber/portal/supplier-cocs");
     } catch (err) {
@@ -242,6 +252,7 @@ export default function SupplierCocDetailPage() {
     if (!confirmed) return;
     try {
       await rejectVersionMutation.mutateAsync({ kind: "supplier-cocs", id: cocId });
+      await queryClient.refetchQueries({ queryKey: rubberKeys.supplierCocs.all });
       showToast("Version rejected", "success");
       router.replace("/au-rubber/portal/supplier-cocs");
     } catch (err) {
