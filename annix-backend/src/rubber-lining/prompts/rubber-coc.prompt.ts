@@ -198,9 +198,30 @@ Guidelines:
   12. FIRST-BATCH HARD CHECK: If your first extracted batch has a non-null SG, Tensile, Elongation, Tear, OR Rebound value, look at the PDF: is the SG cell on the FIRST batch row actually filled in? If the PDF's first batch row has those cells visually empty (very common — sparse first row), set them all to null on your first extracted batch. Failing this check is the #1 source of full-table row shift in S&N Rubber Compounder CoCs.
 - Return ONLY the JSON object, no additional text`;
 
-export const CALENDARER_COC_SYSTEM_PROMPT = `You are an expert at extracting structured data from Impilo Industries rubber Batch Certificates.
+export const CALENDARER_COC_SYSTEM_PROMPT = `You are an expert at extracting structured data from rubber Calenderer / Calender Sheeting Certificates of Conformance.
 
-These are calendarer COCs that show test results for compound batches used in rubber roll production.
+DETECT THE FORMAT FIRST — there are TWO and only TWO formats. Read the cover page header before doing anything else:
+
+FORMAT A — IMPILO INDUSTRIES Calenderer Batch Certificate:
+  - Header text on page 1 says "IMPILO INDUSTRIES".
+  - Page 2 has a "BATCH CERTIFICATES" table with columns including Shore A, Specific gravity, Rebound Resilience, Tear strength, Tensile strength, Elongation break, S' min, S' max, TS 2, TC 90, State.
+  - Usually page 3 is a rheometer cure graph.
+  - One delivery note per document; batch number ranges are typically large (e.g. 209-227, 325-342).
+
+FORMAT B — S&N RUBBER Calender Sheeting CoC:
+  - Header on EACH page says "SAN" or "S&N CALENDARS" (S&N has a distinct logo top-left).
+  - The header lists COMPOUND CODE, CALENDER ROLL DESCRIPTION, PRODUCTION DATE OF CALENDER ROLLS, PURCHASE ORDER NUMBER (with a Waybill number in parens), DELIVERY NOTE.
+  - Each page is a SEPARATE delivery note shipment, with its own delivery-note number and its own laboratory table.
+  - The table is titled "LABORATORY ANALYSIS DATA" and has only four data columns:
+      Compound Details (header — its sub-label is "Batches used") | Shore A last testpoint | Density [g/cm³] | Tensile strength [MPa] | Elongation break [%]
+  - There are NO Rebound, Tear, S' min, S' max, TS 2, TC 90, or State columns on S&N sheeting CoCs. Those fields MUST be null on every batch.
+  - Batches are numbered 1-12, 1-18 etc. — small ranges.
+  - The "Roll no." row in the leftmost column carries a roll range label like "1-4" or "5-8". That is roll metadata, NOT a batch — DO NOT include "1-4" as a batchNumber.
+  - hasGraph: ALWAYS false for S&N Calender Sheeting (the cure graph lives on the upstream S&N Compounder CoC, not on the sheeting CoC).
+
+Pick exactly one format and follow that format's rules. Do not mix Format A's column expectations into a Format B document — that produces row-carry-forward errors where a Format-A "spot-check" row's values get spread into surrounding sparse rows.
+
+These are calendarer / calender sheeting CoCs that show test results for compound batches used in rubber roll production.
 
 CRITICAL - PRODUCTION DATE FORMAT (READ CAREFULLY — REPEATED MIS-PARSE PATTERN):
 - The date field on these CoCs is in SOUTH AFRICAN format: DAY first, then month, then year.
@@ -266,7 +287,7 @@ Return a JSON object with this structure:
   ]
 }
 
-Guidelines:
+Guidelines (Format A — IMPILO):
 - Look for "IMPILO INDUSTRIES" header to confirm this is a calendarer CoC
 - Batch Number field may show a range like "209-227" - expand this to individual batch numbers
 - Page 1 has order details (Customer, Date, Order Number, Ticket Number, Compound, Batch Number range)
@@ -274,7 +295,25 @@ Guidelines:
 - Page 3 has rheometer graph (set hasGraph: true if graph page exists)
 - Extract every numeric batch row from the page 2 table — do NOT return an empty batches array if the table is present
 
-CRITICAL - PAGE 2 BATCH CERTIFICATES TABLE:
+Guidelines (Format B — S&N CALENDER SHEETING):
+- Walk EVERY page. Each page is a separate delivery-note shipment with its own DELIVERY NOTE number, PURCHASE ORDER NUMBER, PRODUCTION DATE, Roll no. range, and per-batch laboratory table. The PDF will commonly have 2 or more pages.
+- batchNumbers is the UNION of all per-batch rows across ALL pages (e.g., page 1 batches 1-6 + page 2 batches 7-12 → batchNumbers: ["1","2","3","4","5","6","7","8","9","10","11","12"]). batches[] must contain ONE entry per individual numeric batch row in the same order.
+- Skip the "Unit", "Nominal", "Limits", and "Roll no." rows — those are reference rows, NOT batches. The "Roll no." cell that says e.g. "1-4" is a roll-range label, not a batch number.
+- Column → field mapping on S&N sheeting:
+    "Shore A last testpoint" → shoreA
+    "Density" / "[g/cm³]" → specificGravity
+    "Tensile strength" / "[MPa]" → tensileStrengthMpa
+    "Elongation break" / "[%]" → elongationPercent
+- Set reboundPercent, tearStrengthKnM, rheometerSMin, rheometerSMax, rheometerTs2, rheometerTc90, and passFailStatus to null for EVERY batch on an S&N sheeting CoC. Those columns do not exist on this document; do not invent values.
+- Sparse-row pattern on S&N is extreme: most batch rows have ONLY Shore A filled in, with Density/Tensile/Elongation blank. A few "spot-check" rows (commonly one per page) additionally have Density/Tensile/Elongation. Blanks STAY null — never copy the spot-check row's values into adjacent rows.
+- compoundCode comes from the COMPOUND CODE field at the top of each page (e.g., "AU-C50.NBRBSC" or "AU-C50,NBRBSC" — normalize to "AU-C50-NBRBSC"). All pages should agree on compoundCode; if they disagree, use the first page's value.
+- productionDate comes from "PRODUCTION DATE OF CALENDER ROLLS" on page 1.
+- orderNumber: extract the bare PO number from "PURCHASE ORDER NUMBER" (e.g., "189 (Waybill no: 17008720)" → orderNumber "189"). All pages typically share the same PO.
+- ticketNumber: leave null on S&N sheeting (S&N does not issue ticket numbers).
+- hasGraph: false (always — S&N sheeting CoCs do not carry rheometer graphs).
+- Specifications: read the Nominal and Limits rows ONCE (they repeat per page but the values are identical). Map them into shoreA{Nominal,Min,Max}, specificGravity{Nominal,Min,Max}, tensile{Nominal,Min,Max}, elongation{Nominal,Min,Max}. Leave rebound/tear/rheometer specification fields null.
+
+CRITICAL - PAGE 2 BATCH CERTIFICATES TABLE (Format A — IMPILO only):
 The Page 2 table on Impilo Calenderer CoCs has columns in this typical order (read the actual headers — order may vary):
   Batch No. | Shore A | Specific gravity | Rebound Resilience | Tear strength Die | Tensile strength | Elongation break | S' min | S' max | TS 2 | TC 90 | State
 
@@ -323,8 +362,8 @@ VALUE RANGE SANITY (if your output is outside these ranges, your column alignmen
 - TC 90: 0.5-8
 
 SELF-CHECK AFTER EXTRACTION:
-1. Count how many batches you returned. It must equal the number of numeric-batch-number rows on page 2 of the PDF — NOT the number of all rows including Unit/Nominal/Limit.
-2. batchNumbers and batches MUST agree. batches.length must equal batchNumbers.length, and every entry in batchNumbers must appear as a batches[i].batchNumber. Common failure mode: the first numeric batch row (e.g. "325") is the only sparse row that sits directly below the "Batch No." header — DO NOT skip it. Even if it has only Shore A + rheometer values, it is still a batch.
+1. Count how many batches you returned. For Format A it must equal the numeric-batch rows on page 2; for Format B it must equal the SUM of numeric-batch rows across ALL pages — NOT counting Unit/Nominal/Limits/Roll no. rows.
+2. batchNumbers and batches MUST agree. batches.length must equal batchNumbers.length, and every entry in batchNumbers must appear as a batches[i].batchNumber. Common failure mode: the first numeric batch row (e.g. "325" on Impilo, "1" on S&N) is the only sparse row that sits directly below the header — DO NOT skip it. Even if it has only Shore A + rheometer values (Impilo) or only Shore A (S&N), it is still a batch.
 3. Verify every Shore A is 30-90. If any are 1.0-1.5, columns are misaligned.
 4. Verify every SG is 1.0-1.5. If any are 30-90, columns are misaligned.
 5. For sparse rows (Shore A + rheometer only), confirm SG/Rebound/Tear/Tensile/Elongation are null — NOT carried forward from a neighbouring batch.
