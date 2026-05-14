@@ -409,6 +409,8 @@ describe("RfqService", () => {
           "items.bendDetails",
           "items.fittingDetails",
           "items.expansionJointDetails",
+          "items.valveDetails",
+          "items.instrumentDetails",
           "items.pumpDetails",
           "items.tankChuteDetails",
           "items.fastenerDetails",
