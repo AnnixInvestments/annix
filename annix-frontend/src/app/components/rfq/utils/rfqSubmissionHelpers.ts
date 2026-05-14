@@ -127,16 +127,52 @@ function mapBendItem(
   const bendHdpePnRating = isHdpe
     ? rawSpecsBendHdpePnRating || parsedBendPn || bendGlobalPnRating
     : undefined;
+  // PVC bend parsing — same shape as the pipe mapper.
+  const bendIsPvc = entry.materialType === "pvc";
+  const parsedFittingPvcForBend = bendIsPvc ? parsePvcFromDescription(rawDescription) : {};
+  const rawSpecsBendPvcSdr = specs.pvcSdr;
+  const rawSpecsBendPvcPressureClass = specs.pvcPressureClass;
+  const rawSpecsBendPvcPnRating = specs.pvcPnRating;
+  const rawGlobalBendPvcSdr = globalSpecs?.pvcSdr;
+  const rawGlobalBendPvcPressureClass = globalSpecs?.pvcPressureClass;
+  const rawGlobalBendPvcPressureRating = globalSpecs?.pvcPressureRating;
+  const parsedBendPvcSdr = parsedFittingPvcForBend.sdr;
+  const parsedBendPvcClass = parsedFittingPvcForBend.pressureClass;
+  const parsedBendPvcPn = parsedFittingPvcForBend.pnRating;
+  const bendPvcSdr = bendIsPvc
+    ? rawSpecsBendPvcSdr || parsedBendPvcSdr || rawGlobalBendPvcSdr
+    : undefined;
+  const bendPvcPressureClass = bendIsPvc
+    ? rawSpecsBendPvcPressureClass || parsedBendPvcClass || rawGlobalBendPvcPressureClass
+    : undefined;
+  const bendPvcGlobalPnRating = bendIsPvc
+    ? (() => {
+        const raw = rawGlobalBendPvcPressureRating;
+        if (isNumber(raw)) return raw;
+        if (isString(raw)) {
+          const m = raw.match(/PN\s*(\d+(?:\.\d+)?)/i);
+          return m ? Number(m[1]) : undefined;
+        }
+        return undefined;
+      })()
+    : undefined;
+  const bendPvcPnRating = bendIsPvc
+    ? rawSpecsBendPvcPnRating || parsedBendPvcPn || bendPvcGlobalPnRating
+    : undefined;
+  const bendMaterialType = isHdpe ? "hdpe" : bendIsPvc ? "pvc" : "steel";
   return {
     itemType: "bend" as const,
     description: rawDescription || "Bend Item",
     notes: entry.notes,
     totalWeightKg: rawTotalWeight || calculation.bendWeight,
     bend: {
-      materialType: isHdpe ? "hdpe" : "steel",
+      materialType: bendMaterialType,
       hdpePeGrade: bendHdpePeGrade,
       hdpeSdr: bendHdpeSdr,
       hdpePnRating: bendHdpePnRating,
+      pvcSdr: bendPvcSdr,
+      pvcPressureClass: bendPvcPressureClass,
+      pvcPnRating: bendPvcPnRating,
       nominalBoreMm: specs.nominalBoreMm,
       // Backend requires a string. HDPE bends carry SDR info in the description
       // / globalSpecs and have no schedule number — pass empty string so the
@@ -214,16 +250,52 @@ function mapFittingItem(entry: any, specs: any, calculation: any, globalSpecs: a
   const fittingHdpePnRating = fittingIsHdpe
     ? rawSpecsFittingHdpePnRating || parsedFittingPn || fittingGlobalPnRating
     : undefined;
+  // PVC fitting parsing — same shape as pipe / bend mappers.
+  const fittingIsPvc = entry.materialType === "pvc";
+  const parsedFittingPvc = fittingIsPvc ? parsePvcFromDescription(rawDescription) : {};
+  const rawSpecsFittingPvcSdr = specs.pvcSdr;
+  const rawSpecsFittingPvcPressureClass = specs.pvcPressureClass;
+  const rawSpecsFittingPvcPnRating = specs.pvcPnRating;
+  const rawGlobalFittingPvcSdr = globalSpecs?.pvcSdr;
+  const rawGlobalFittingPvcPressureClass = globalSpecs?.pvcPressureClass;
+  const rawGlobalFittingPvcPressureRating = globalSpecs?.pvcPressureRating;
+  const parsedFittingPvcSdr = parsedFittingPvc.sdr;
+  const parsedFittingPvcClass = parsedFittingPvc.pressureClass;
+  const parsedFittingPvcPn = parsedFittingPvc.pnRating;
+  const fittingPvcSdr = fittingIsPvc
+    ? rawSpecsFittingPvcSdr || parsedFittingPvcSdr || rawGlobalFittingPvcSdr
+    : undefined;
+  const fittingPvcPressureClass = fittingIsPvc
+    ? rawSpecsFittingPvcPressureClass || parsedFittingPvcClass || rawGlobalFittingPvcPressureClass
+    : undefined;
+  const fittingPvcGlobalPnRating = fittingIsPvc
+    ? (() => {
+        const raw = rawGlobalFittingPvcPressureRating;
+        if (isNumber(raw)) return raw;
+        if (isString(raw)) {
+          const m = raw.match(/PN\s*(\d+(?:\.\d+)?)/i);
+          return m ? Number(m[1]) : undefined;
+        }
+        return undefined;
+      })()
+    : undefined;
+  const fittingPvcPnRating = fittingIsPvc
+    ? rawSpecsFittingPvcPnRating || parsedFittingPvcPn || fittingPvcGlobalPnRating
+    : undefined;
+  const fittingMaterialType = fittingIsHdpe ? "hdpe" : fittingIsPvc ? "pvc" : "steel";
   return {
     itemType: "fitting" as const,
     description: rawDescription || "Fitting Item",
     notes: entry.notes,
     totalWeightKg: rawTotalWeight || calculation.pipeWeight,
     fitting: {
-      materialType: fittingIsHdpe ? "hdpe" : "steel",
+      materialType: fittingMaterialType,
       hdpePeGrade: fittingHdpePeGrade,
       hdpeSdr: fittingHdpeSdr,
       hdpePnRating: fittingHdpePnRating,
+      pvcSdr: fittingPvcSdr,
+      pvcPressureClass: fittingPvcPressureClass,
+      pvcPnRating: fittingPvcPnRating,
       nominalDiameterMm: specs.nominalDiameterMm,
       // Backend DTO requires @IsString(). Forms / NIX extraction
       // sometimes store this as a number (e.g. 40, 80) and HDPE
@@ -340,6 +412,27 @@ function parseHdpeFromDescription(description?: string): {
   };
 }
 
+// PVC pipes use the same SDR/PN markers as HDPE but ALSO commonly
+// quote a Pressure Class shorthand ("Class 12", "CL16"). Capture
+// the class as a normalised string so the backend can look it up
+// in the PVC pressure-class table.
+function parsePvcFromDescription(description?: string): {
+  sdr?: number;
+  pnRating?: number;
+  pressureClass?: string;
+} {
+  if (!description) return {};
+  const sdrMatch = description.match(/\bSDR\s*([\d.]+)\b/i);
+  const pnMatch = description.match(/\bPN\s*(\d+(?:\.\d+)?)\b/i);
+  // "Class 16", "Cl12", "CL 9" etc.
+  const classMatch = description.match(/\b(?:Class|Cl)\s*(\d+)\b/i);
+  return {
+    sdr: sdrMatch ? Number(sdrMatch[1]) : undefined,
+    pnRating: pnMatch ? Number(pnMatch[1]) : undefined,
+    pressureClass: classMatch ? `Class ${classMatch[1]}` : undefined,
+  };
+}
+
 function mapStraightPipeItem(
   entry: any,
   specs: any,
@@ -395,16 +488,51 @@ function mapStraightPipeItem(
     : undefined;
   const hdpePnRating = isHdpe ? rawSpecsHdpePnRating || parsedPn || globalPnRating : undefined;
 
+  // PVC: same precedence chain — per-entry → description parse →
+  // globalSpecs. PVC items can carry either an SDR or a Pressure
+  // Class shorthand; both flow through.
+  const isPvc = entry.materialType === "pvc";
+  const parsedPvc = isPvc ? parsePvcFromDescription(rawDescription) : {};
+  const rawSpecsPvcSdr = specs.pvcSdr;
+  const rawSpecsPvcPressureClass = specs.pvcPressureClass;
+  const rawSpecsPvcPnRating = specs.pvcPnRating;
+  const rawGlobalPvcSdr = globalSpecs?.pvcSdr;
+  const rawGlobalPvcPressureClass = globalSpecs?.pvcPressureClass;
+  const rawGlobalPvcPressureRating = globalSpecs?.pvcPressureRating;
+  const parsedPvcSdr = parsedPvc.sdr;
+  const parsedPvcPn = parsedPvc.pnRating;
+  const parsedPvcClass = parsedPvc.pressureClass;
+  const pvcSdr = isPvc ? rawSpecsPvcSdr || parsedPvcSdr || rawGlobalPvcSdr : undefined;
+  const pvcPressureClass = isPvc
+    ? rawSpecsPvcPressureClass || parsedPvcClass || rawGlobalPvcPressureClass
+    : undefined;
+  const pvcGlobalPnRating = isPvc
+    ? (() => {
+        const raw = rawGlobalPvcPressureRating;
+        if (isNumber(raw)) return raw;
+        if (isString(raw)) {
+          const m = raw.match(/PN\s*(\d+(?:\.\d+)?)/i);
+          return m ? Number(m[1]) : undefined;
+        }
+        return undefined;
+      })()
+    : undefined;
+  const pvcPnRating = isPvc ? rawSpecsPvcPnRating || parsedPvcPn || pvcGlobalPnRating : undefined;
+  const resolvedMaterialType = isHdpe ? "hdpe" : isPvc ? "pvc" : "steel";
+
   return {
     itemType: "straight_pipe" as const,
     description: rawDescription || "Pipe Item",
     notes: entry.notes,
     totalWeightKg: rawTotalSystemWeight || calculation.totalPipeWeight,
     straightPipe: {
-      materialType: isHdpe ? "hdpe" : "steel",
+      materialType: resolvedMaterialType,
       hdpePeGrade,
       hdpeSdr,
       hdpePnRating,
+      pvcSdr,
+      pvcPressureClass,
+      pvcPnRating,
       nominalBoreMm: specs.nominalBoreMm,
       scheduleType: specs.scheduleType,
       // Same string-coercion as the fitting mapper above.

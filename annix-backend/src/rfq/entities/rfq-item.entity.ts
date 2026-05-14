@@ -41,6 +41,7 @@ export enum RfqItemType {
 export enum MaterialType {
   STEEL = "steel",
   HDPE = "hdpe",
+  PVC = "pvc",
 }
 
 @Entity("rfq_items")

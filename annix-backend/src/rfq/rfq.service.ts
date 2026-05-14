@@ -74,6 +74,13 @@ import {
 } from "./entities/valve-rfq.entity";
 import { hdpeFittingWeightKg } from "./services/hdpe-fitting-weights";
 import { hdpeDeratedPn, hdpePnFromSdr } from "./services/hdpe-pressure-ratings";
+import { pvcFittingWeightKg } from "./services/pvc-fitting-weights";
+// pvcPnFromSdr / pvcDeratedPn / pvcPnFromPressureClass are also
+// exported from pvc-pressure-ratings — they'll be wired in once
+// the pvc_* persistence columns land on the typed rfq tables
+// (mirror of the hdpe_* columns). Only the SDR resolver is needed
+// for weight calc today.
+import { pvcPnFromPressureClass, pvcSdrFromPn } from "./services/pvc-pressure-ratings";
 import { ReferenceDataCacheService } from "./services/reference-data-cache.service";
 import { RfqCalculationService } from "./services/rfq-calculation.service";
 
@@ -490,18 +497,36 @@ export class RfqService {
         // landed at 0 kg.
         // - HDPE branch: dedicated helper (pipe-kg/m × equivalent
         //   length factor by FittingType).
+        // - PVC branch:  same shape as HDPE; PVC density.
         // - Steel branch: delegate to the existing FittingService.
         //   The SABS719 path requires scheduleNumber + pipeLengthA/B
         //   which NIX extractions don't always populate, so wrap in
         //   try/catch and fall back to 0 with a warn log.
         let fittingWeightKg = item.totalWeightKg;
         const fittingIsHdpe = item.fitting.materialType === "hdpe";
+        const fittingIsPvc = item.fitting.materialType === "pvc";
+        // Resolve PVC SDR from explicit value → pressure class
+        // shorthand → derived from PN rating. Used both for the
+        // weight calc and (downstream) for any pvc_* persistence
+        // once those columns land.
+        const resolvedPvcSdr = fittingIsPvc
+          ? (item.fitting.pvcSdr ??
+            pvcSdrFromPn(pvcPnFromPressureClass(item.fitting.pvcPressureClass)) ??
+            pvcSdrFromPn(item.fitting.pvcPnRating))
+          : undefined;
         if (!fittingWeightKg) {
           if (fittingIsHdpe) {
             fittingWeightKg = hdpeFittingWeightKg(
               item.fitting.nominalDiameterMm,
               item.fitting.fittingType,
               item.fitting.hdpeSdr,
+              item.fitting.quantityValue,
+            );
+          } else if (fittingIsPvc) {
+            fittingWeightKg = pvcFittingWeightKg(
+              item.fitting.nominalDiameterMm,
+              item.fitting.fittingType,
+              resolvedPvcSdr,
               item.fitting.quantityValue,
             );
           } else {

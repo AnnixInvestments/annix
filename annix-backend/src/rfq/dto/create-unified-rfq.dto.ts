@@ -14,7 +14,7 @@ import { CreateRfqDto } from "./create-rfq.dto";
 
 export class UnifiedStraightPipeDto {
   @ApiProperty({
-    description: "Material — 'steel' (default) or 'hdpe'. Drives the calculation branch.",
+    description: "Material — 'steel' (default), 'hdpe', or 'pvc'. Drives the calculation branch.",
     example: "steel",
     required: false,
   })
@@ -36,6 +36,24 @@ export class UnifiedStraightPipeDto {
   @IsOptional()
   @IsNumber()
   hdpePnRating?: number;
+
+  @ApiProperty({ description: "PVC SDR (Standard Dimension Ratio)", required: false })
+  @IsOptional()
+  @IsNumber()
+  pvcSdr?: number;
+
+  @ApiProperty({
+    description: "PVC pressure class shorthand (e.g. 'Class 16', 'CL12')",
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  pvcPressureClass?: string;
+
+  @ApiProperty({ description: "PVC PN pressure rating in bar", required: false })
+  @IsOptional()
+  @IsNumber()
+  pvcPnRating?: number;
 
   @ApiProperty({ description: "Nominal bore in mm", example: 500 })
   @IsNumber()
@@ -230,7 +248,7 @@ export class UnifiedStraightPipeDto {
 
 export class UnifiedBendDto {
   @ApiProperty({
-    description: "Material — 'steel' (default) or 'hdpe'. Drives the calculation branch.",
+    description: "Material — 'steel' (default), 'hdpe', or 'pvc'. Drives the calculation branch.",
     example: "steel",
     required: false,
   })
@@ -252,6 +270,24 @@ export class UnifiedBendDto {
   @IsOptional()
   @IsNumber()
   hdpePnRating?: number;
+
+  @ApiProperty({ description: "PVC SDR (Standard Dimension Ratio)", required: false })
+  @IsOptional()
+  @IsNumber()
+  pvcSdr?: number;
+
+  @ApiProperty({
+    description: "PVC pressure class shorthand (e.g. 'Class 16')",
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  pvcPressureClass?: string;
+
+  @ApiProperty({ description: "PVC PN pressure rating in bar", required: false })
+  @IsOptional()
+  @IsNumber()
+  pvcPnRating?: number;
 
   @ApiProperty({ description: "Nominal bore in mm", example: 500 })
   @IsNumber()
@@ -599,7 +635,7 @@ export class UnifiedExpansionJointDto {
 
 export class UnifiedFittingDto {
   @ApiProperty({
-    description: "Material — 'steel' (default) or 'hdpe'. Drives the calculation branch.",
+    description: "Material — 'steel' (default), 'hdpe', or 'pvc'. Drives the calculation branch.",
     example: "steel",
     required: false,
   })
@@ -621,6 +657,24 @@ export class UnifiedFittingDto {
   @IsOptional()
   @IsNumber()
   hdpePnRating?: number;
+
+  @ApiProperty({ description: "PVC SDR (Standard Dimension Ratio)", required: false })
+  @IsOptional()
+  @IsNumber()
+  pvcSdr?: number;
+
+  @ApiProperty({
+    description: "PVC pressure class shorthand (e.g. 'Class 16')",
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  pvcPressureClass?: string;
+
+  @ApiProperty({ description: "PVC PN pressure rating in bar", required: false })
+  @IsOptional()
+  @IsNumber()
+  pvcPnRating?: number;
 
   @ApiProperty({ description: "Nominal diameter in mm", example: 500 })
   @IsNumber()

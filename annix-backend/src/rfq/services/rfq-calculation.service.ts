@@ -19,6 +19,11 @@ const STEEL_DENSITY_KG_DM3 = 7.85;
 // nominal 0.96 for weight estimation; the second-decimal variation
 // is well below the accuracy of any RFQ-stage take-off.
 const HDPE_DENSITY_KG_DM3 = 0.96;
+// uPVC density typically 1.38–1.45 kg/dm³ depending on additive
+// package. ISO 1452 / SANS 966 design tables use 1.40 as the
+// reference. Higher than HDPE → PVC pipes weigh roughly 1.46x an
+// HDPE pipe of identical OD/SDR.
+const PVC_DENSITY_KG_DM3 = 1.4;
 
 @Injectable()
 export class RfqCalculationService {
@@ -42,6 +47,11 @@ export class RfqCalculationService {
     // lookup is skipped entirely.
     if (dto.materialType === "hdpe") {
       return this.calculateHdpeStraightPipeRequirements(dto);
+    }
+    // PVC pipes also use SDR (or Pressure Class) and have no
+    // pipe_dimensions table; same shape as HDPE, different density.
+    if (dto.materialType === "pvc") {
+      return this.calculatePvcStraightPipeRequirements(dto);
     }
 
     const steelSpec = dto.steelSpecificationId
@@ -271,6 +281,80 @@ export class RfqCalculationService {
     };
   }
 
+  // PVC straight-pipe branch. Structurally identical to the HDPE
+  // branch — SDR-derived wall thickness, no flange/bolt/nut
+  // weights — but with PVC density (1.40 vs 0.96 kg/dm³). For PVC,
+  // nominalBoreMm is the nominal OD (PVC pressure pipe per
+  // ISO 1452 / SANS 966 is sized by OD).
+  private async calculatePvcStraightPipeRequirements(
+    dto: UnifiedStraightPipeDto,
+  ): Promise<StraightPipeCalculationResultDto> {
+    // Prefer explicit pvcSdr; fall back to hdpeSdr if the entry
+    // came in via the HDPE path by mistake (e.g. NIX called it
+    // "polymer"). Last-resort fallback is SDR 21 (~PN10), the
+    // most common pressure-pipe rung in the SA market.
+    const sdr = dto.pvcSdr ?? dto.hdpeSdr ?? 21;
+    if (sdr <= 0) {
+      throw new NotFoundException(
+        `PVC pipe at ${dto.nominalBoreMm}NB has an invalid SDR (${sdr}).`,
+      );
+    }
+
+    const outsideDiameterMm = dto.nominalBoreMm;
+    const wallThicknessMm = outsideDiameterMm / sdr;
+    const pipeWeightPerMeter =
+      (Math.PI * wallThicknessMm * (outsideDiameterMm - wallThicknessMm) * PVC_DENSITY_KG_DM3) /
+      1000;
+
+    let individualPipeLengthM = dto.individualPipeLength;
+    if (dto.lengthUnit === LengthUnit.FEET) {
+      individualPipeLengthM = dto.individualPipeLength * 0.3048;
+    }
+
+    let calculatedPipeCount: number;
+    let calculatedTotalLengthM: number;
+    if (dto.quantityType === QuantityType.TOTAL_LENGTH) {
+      let totalLengthM = dto.quantityValue;
+      if (dto.lengthUnit === LengthUnit.FEET) {
+        totalLengthM = dto.quantityValue * 0.3048;
+      }
+      calculatedTotalLengthM = totalLengthM;
+      calculatedPipeCount = Math.ceil(totalLengthM / individualPipeLengthM);
+    } else {
+      calculatedPipeCount = dto.quantityValue;
+      calculatedTotalLengthM = calculatedPipeCount * individualPipeLengthM;
+    }
+
+    const totalPipeWeight = pipeWeightPerMeter * calculatedTotalLengthM;
+
+    // PVC pressure-pipe joints are typically solvent-welded sockets
+    // or rubber-ring spigots, not butt-fused — but for downstream
+    // consumers that want a joint count we still report
+    // numberOfButtWelds = pipeCount - 1. The "weld length" is
+    // useful as a proxy for joint material / labour.
+    const numberOfButtWelds = Math.max(0, calculatedPipeCount - 1);
+    const circumferenceM = (Math.PI * outsideDiameterMm) / 1000;
+    const totalButtWeldLength = numberOfButtWelds * circumferenceM;
+
+    return {
+      outsideDiameterMm,
+      wallThicknessMm: Math.round(wallThicknessMm * 100) / 100,
+      pipeWeightPerMeter: Math.round(pipeWeightPerMeter * 100) / 100,
+      totalPipeWeight: Math.round(totalPipeWeight),
+      totalFlangeWeight: 0,
+      totalBoltWeight: 0,
+      totalNutWeight: 0,
+      totalSystemWeight: Math.round(totalPipeWeight),
+      calculatedPipeCount,
+      calculatedTotalLength: Math.round(calculatedTotalLengthM * 100) / 100,
+      numberOfFlanges: 0,
+      numberOfButtWelds,
+      totalButtWeldLength: Math.round(totalButtWeldLength * 100) / 100,
+      numberOfFlangeWelds: 0,
+      totalFlangeWeldLength: 0,
+    };
+  }
+
   async calculateBendRequirements(dto: CreateBendRfqDto): Promise<BendCalculationResultDto> {
     // HDPE bends are dimensioned by SDR and have no schedule
     // number / steel-density assumption. Route them through a
@@ -278,6 +362,12 @@ export class RfqCalculationService {
     // their weight by ~8x (HDPE density 0.96 vs steel 7.85).
     if (dto.materialType === "hdpe") {
       return this.calculateHdpeBendRequirements(dto);
+    }
+    // PVC bends — same geometry model as HDPE bends, different
+    // density. Branch separately so we can keep distinct fallback
+    // SDRs (PVC defaults to 21 = PN10; HDPE defaults to 11 = PN16).
+    if (dto.materialType === "pvc") {
+      return this.calculatePvcBendRequirements(dto);
     }
 
     const weightBreakdown = this.bendWeight(dto);
@@ -378,6 +468,58 @@ export class RfqCalculationService {
       totalFlangeWeldLength: 0,
       // HDPE bends are typically fused to the adjacent pipes —
       // count each tangent end as a butt-fusion joint.
+      numberOfButtWelds: tangentLengths.length,
+      totalButtWeldLength:
+        tangentLengths.length > 0
+          ? (tangentLengths.length * Math.PI * outsideDiameterMm) / 1000
+          : 0,
+      outsideDiameterMm,
+      wallThicknessMm: Math.round(wallThicknessMm * 100) / 100,
+    };
+  }
+
+  // PVC bend branch — same geometry model as the HDPE one (toroidal
+  // arc body + straight pipe tangents), only the density and the
+  // default SDR fallback differ. PVC bends are typically moulded
+  // (not fabricated from mitred pipe segments like HDPE), so the
+  // estimate has slightly more variance vs the datasheet weight,
+  // but stays within the ±15% quoting band.
+  private async calculatePvcBendRequirements(
+    dto: CreateBendRfqDto,
+  ): Promise<BendCalculationResultDto> {
+    const outsideDiameterMm = dto.nominalBoreMm;
+    const sdr = dto.pvcSdr && dto.pvcSdr > 0 ? dto.pvcSdr : 21;
+    const wallThicknessMm = outsideDiameterMm / sdr;
+
+    const bendTypeMultiplier =
+      dto.bendType && /^(\d+(?:\.\d+)?)D$/.test(dto.bendType)
+        ? Number.parseFloat(dto.bendType.replace("D", ""))
+        : 1.5;
+    const bendRadiusMm = outsideDiameterMm * bendTypeMultiplier;
+    const bendDegrees = dto.bendDegrees || 90;
+    const arcLengthM = (bendRadiusMm * (bendDegrees * Math.PI)) / 180 / 1000;
+    const bendBodyWeight =
+      (Math.PI * outsideDiameterMm * wallThicknessMm * arcLengthM * PVC_DENSITY_KG_DM3) / 1000;
+
+    const tangentLengths = dto.tangentLengths || [];
+    const tangentWeight = tangentLengths.reduce((total, length) => {
+      return (
+        total +
+        (Math.PI * outsideDiameterMm * wallThicknessMm * (length / 1000) * PVC_DENSITY_KG_DM3) /
+          1000
+      );
+    }, 0);
+    const totalWeight = bendBodyWeight + tangentWeight;
+
+    return {
+      totalWeight: Math.round(totalWeight * 100) / 100,
+      centerToFaceDimension: this.centerToFace(dto),
+      bendWeight: Math.round(bendBodyWeight * 100) / 100,
+      tangentWeight: Math.round(tangentWeight * 100) / 100,
+      flangeWeight: 0,
+      numberOfFlanges: 0,
+      numberOfFlangeWelds: 0,
+      totalFlangeWeldLength: 0,
       numberOfButtWelds: tangentLengths.length,
       totalButtWeldLength:
         tangentLengths.length > 0

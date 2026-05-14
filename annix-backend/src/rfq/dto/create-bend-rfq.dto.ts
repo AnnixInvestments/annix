@@ -13,7 +13,7 @@ import { NaceRequiresHardnessLimit, Psl2RequiresCvn } from "../../shared/validat
 
 export class CreateBendRfqDto {
   @ApiProperty({
-    description: "Material — 'steel' (default) or 'hdpe'. Drives the calculation branch.",
+    description: "Material — 'steel' (default), 'hdpe', or 'pvc'. Drives the calculation branch.",
     example: "steel",
     required: false,
   })
@@ -35,6 +35,24 @@ export class CreateBendRfqDto {
   @IsOptional()
   @IsNumber()
   hdpePnRating?: number;
+
+  @ApiProperty({ description: "PVC SDR (Standard Dimension Ratio)", required: false })
+  @IsOptional()
+  @IsNumber()
+  pvcSdr?: number;
+
+  @ApiProperty({
+    description: "PVC pressure class shorthand (e.g. 'Class 16')",
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  pvcPressureClass?: string;
+
+  @ApiProperty({ description: "PVC PN pressure rating in bar", required: false })
+  @IsOptional()
+  @IsNumber()
+  pvcPnRating?: number;
 
   @ApiProperty({
     description: "Nominal bore in mm",
