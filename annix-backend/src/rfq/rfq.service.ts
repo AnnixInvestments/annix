@@ -397,12 +397,33 @@ export class RfqService {
         await this.straightPipeRfqRepository.save(straightPipeRfq);
         this.logger.log(`Created straight pipe item #${lineNumber}: ${item.description}`);
       } else if (item.itemType === "bend" && item.bend) {
+        // Auto-calc weight when the frontend didn't run a per-item
+        // calculation. NIX-extracted bends arrive without a
+        // computed totalWeightKg, which used to land in the DB as
+        // 0 kg — every bend in RFQ-2026-0009 displayed as zero
+        // mass in the BOQ. Call calculateBendRequirements as a
+        // server-side fallback so the supplier sees a realistic
+        // weight estimate. Non-fatal if it throws (missing
+        // required spec field, etc.) — we keep whatever the
+        // frontend sent (possibly undefined → null in DB).
+        let bendWeightKg = item.totalWeightKg;
+        if (!bendWeightKg) {
+          try {
+            const calc = await this.rfqCalculationService.calculateBendRequirements(item.bend);
+            bendWeightKg = calc.totalWeight;
+          } catch (err: any) {
+            this.logger.warn(
+              `Bend auto-calc failed for line ${lineNumber}: ${err?.message || err}`,
+            );
+          }
+        }
+
         const savedRfqItem = await this.createRfqItem({
           lineNumber,
           description: item.description,
           itemType: RfqItemType.BEND,
           quantity: item.bend.quantityValue || 1,
-          totalWeightKg: item.totalWeightKg,
+          totalWeightKg: bendWeightKg,
           notes: item.notes,
           rfq: savedRfq,
         });
@@ -428,7 +449,7 @@ export class RfqService {
           useGlobalFlangeSpecs: item.bend.useGlobalFlangeSpecs ?? true,
           flangeStandardId: item.bend.flangeStandardId,
           flangePressureClassId: item.bend.flangePressureClassId,
-          totalWeightKg: item.totalWeightKg,
+          totalWeightKg: bendWeightKg,
           rfqItem: savedRfqItem,
         });
 
