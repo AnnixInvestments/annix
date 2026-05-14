@@ -598,6 +598,30 @@ export class UnifiedExpansionJointDto {
 }
 
 export class UnifiedFittingDto {
+  @ApiProperty({
+    description: "Material — 'steel' (default) or 'hdpe'. Drives the calculation branch.",
+    example: "steel",
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  materialType?: string;
+
+  @ApiProperty({ description: "HDPE PE grade (PE100, PE4710, etc.)", required: false })
+  @IsOptional()
+  @IsString()
+  hdpePeGrade?: string;
+
+  @ApiProperty({ description: "HDPE SDR (Standard Dimension Ratio)", required: false })
+  @IsOptional()
+  @IsNumber()
+  hdpeSdr?: number;
+
+  @ApiProperty({ description: "HDPE PN pressure rating in bar", required: false })
+  @IsOptional()
+  @IsNumber()
+  hdpePnRating?: number;
+
   @ApiProperty({ description: "Nominal diameter in mm", example: 500 })
   @IsNumber()
   nominalDiameterMm: number;

@@ -71,6 +71,7 @@ import {
   ValveFailPosition,
   ValveRfq,
 } from "./entities/valve-rfq.entity";
+import { hdpeFittingWeightKg } from "./services/hdpe-fitting-weights";
 import { hdpeDeratedPn, hdpePnFromSdr } from "./services/hdpe-pressure-ratings";
 import { ReferenceDataCacheService } from "./services/reference-data-cache.service";
 import { RfqCalculationService } from "./services/rfq-calculation.service";
@@ -481,12 +482,30 @@ export class RfqService {
         await this.bendRfqRepository.save(bendRfq);
         this.logger.log(`Created bend item #${lineNumber}: ${item.description}`);
       } else if (item.itemType === "fitting" && item.fitting) {
+        // Auto-calc weight when the frontend didn't run a per-item
+        // calc. For HDPE fittings we use the dedicated
+        // hdpeFittingWeightKg helper (pipe-kg/m × equivalent-length
+        // factor, parameterised by FittingType). Steel fittings
+        // would need the FittingService which isn't injected into
+        // RfqService — leave their value alone for now (still 0 if
+        // the frontend didn't calc).
+        let fittingWeightKg = item.totalWeightKg;
+        const fittingIsHdpe = item.fitting.materialType === "hdpe";
+        if (!fittingWeightKg && fittingIsHdpe) {
+          fittingWeightKg = hdpeFittingWeightKg(
+            item.fitting.nominalDiameterMm,
+            item.fitting.fittingType,
+            item.fitting.hdpeSdr,
+            item.fitting.quantityValue,
+          );
+        }
+
         const savedRfqItem = await this.createRfqItem({
           lineNumber,
           description: item.description,
           itemType: RfqItemType.FITTING,
           quantity: item.fitting.quantityValue || 1,
-          totalWeightKg: item.totalWeightKg,
+          totalWeightKg: fittingWeightKg,
           notes: item.notes,
           rfq: savedRfq,
         });
@@ -507,9 +526,22 @@ export class RfqService {
           quantityType: item.fitting.quantityType || "number_of_items",
           workingPressureBar: item.fitting.workingPressureBar,
           workingTemperatureC: item.fitting.workingTemperatureC,
-          totalWeightKg: item.totalWeightKg,
+          totalWeightKg: fittingWeightKg,
           calculationData: item.fitting.calculationData,
           rfqItem: savedRfqItem,
+          // HDPE-specific persistence — see straight-pipe branch
+          // for the SDR↔PN auto-fill logic.
+          hdpePeGrade: item.fitting.hdpePeGrade,
+          hdpeSdr: item.fitting.hdpeSdr,
+          hdpePnRating:
+            item.fitting.hdpePnRating ??
+            hdpePnFromSdr(item.fitting.hdpeSdr, item.fitting.hdpePeGrade),
+          hdpeDeratedPn: hdpeDeratedPn(
+            item.fitting.hdpePnRating ??
+              hdpePnFromSdr(item.fitting.hdpeSdr, item.fitting.hdpePeGrade),
+            item.fitting.workingTemperatureC,
+            item.fitting.hdpePeGrade,
+          ),
         });
 
         await this.fittingRfqRepository.save(fittingRfq);

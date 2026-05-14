@@ -181,12 +181,49 @@ function mapFittingItem(entry: any, specs: any, calculation: any, globalSpecs: a
   const rawWorkingTemperatureC = specs.workingTemperatureC;
   const gsWorkingPressureBar = globalSpecs?.workingPressureBar;
   const gsWorkingTemperatureC = globalSpecs?.workingTemperatureC;
+  // Same HDPE resolution chain as the pipe / bend mappers:
+  // per-entry spec → description parse → globalSpecs.
+  const fittingIsHdpe = entry.materialType === "hdpe";
+  const parsedFittingHdpe = fittingIsHdpe ? parseHdpeFromDescription(rawDescription) : {};
+  const rawSpecsFittingHdpePeGrade = specs.hdpePeGrade;
+  const rawSpecsFittingHdpeSdr = specs.hdpeSdr;
+  const rawSpecsFittingHdpePnRating = specs.hdpePnRating;
+  const rawGlobalFittingHdpeGrade = globalSpecs?.hdpeGrade;
+  const rawGlobalFittingHdpeSdr = globalSpecs?.hdpeSdr;
+  const rawGlobalFittingHdpePressureRating = globalSpecs?.hdpePressureRating;
+  const parsedFittingPeGrade = parsedFittingHdpe.peGrade;
+  const parsedFittingSdr = parsedFittingHdpe.sdr;
+  const parsedFittingPn = parsedFittingHdpe.pnRating;
+  const fittingHdpePeGrade = fittingIsHdpe
+    ? rawSpecsFittingHdpePeGrade || parsedFittingPeGrade || rawGlobalFittingHdpeGrade
+    : undefined;
+  const fittingHdpeSdr = fittingIsHdpe
+    ? rawSpecsFittingHdpeSdr || parsedFittingSdr || rawGlobalFittingHdpeSdr
+    : undefined;
+  const fittingGlobalPnRating = fittingIsHdpe
+    ? (() => {
+        const raw = rawGlobalFittingHdpePressureRating;
+        if (isNumber(raw)) return raw;
+        if (isString(raw)) {
+          const m = raw.match(/PN\s*(\d+(?:\.\d+)?)/i);
+          return m ? Number(m[1]) : undefined;
+        }
+        return undefined;
+      })()
+    : undefined;
+  const fittingHdpePnRating = fittingIsHdpe
+    ? rawSpecsFittingHdpePnRating || parsedFittingPn || fittingGlobalPnRating
+    : undefined;
   return {
     itemType: "fitting" as const,
     description: rawDescription || "Fitting Item",
     notes: entry.notes,
     totalWeightKg: rawTotalWeight || calculation.pipeWeight,
     fitting: {
+      materialType: fittingIsHdpe ? "hdpe" : "steel",
+      hdpePeGrade: fittingHdpePeGrade,
+      hdpeSdr: fittingHdpeSdr,
+      hdpePnRating: fittingHdpePnRating,
       nominalDiameterMm: specs.nominalDiameterMm,
       // Backend DTO requires @IsString(). Forms / NIX extraction
       // sometimes store this as a number (e.g. 40, 80) and HDPE
