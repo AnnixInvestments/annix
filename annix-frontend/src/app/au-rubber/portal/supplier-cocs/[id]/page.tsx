@@ -1037,7 +1037,74 @@ export default function SupplierCocDetailPage() {
                     (() => {
                       const rawBatchNumbers = extracted.batchNumbers;
                       const compoundBatchNumbers = (rawBatchNumbers || []) as string[];
-                      if (compoundBatchNumbers.length === 0) return null;
+                      const rawBatches = extracted.batches as
+                        | Array<{
+                            batchNumber: string;
+                            shoreA?: number;
+                            specificGravity?: number;
+                            tensileStrengthMpa?: number;
+                            elongationPercent?: number;
+                          }>
+                        | undefined;
+                      const batches = rawBatches ?? [];
+                      if (compoundBatchNumbers.length === 0 && batches.length === 0) return null;
+
+                      if (batches.length > 0) {
+                        return (
+                          <div className="mb-4">
+                            <h3 className="text-sm font-medium text-gray-700 mb-2">
+                              Compound Batch Test Results
+                            </h3>
+                            <table className="min-w-full text-sm border border-gray-200 rounded">
+                              <thead className="bg-gray-50">
+                                <tr>
+                                  <th className="px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase">
+                                    Batch
+                                  </th>
+                                  <th className="px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase">
+                                    Shore A
+                                  </th>
+                                  <th className="px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase">
+                                    Density
+                                  </th>
+                                  <th className="px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase">
+                                    Tensile (MPa)
+                                  </th>
+                                  <th className="px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase">
+                                    Elong %
+                                  </th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-gray-200">
+                                {batches.map((b) => {
+                                  const dash = (v: number | undefined) =>
+                                    v == null ? "—" : String(v);
+                                  return (
+                                    <tr key={String(b.batchNumber)}>
+                                      <td className="px-3 py-1.5 font-mono text-gray-700">
+                                        {String(b.batchNumber)}
+                                      </td>
+                                      <td className="px-3 py-1.5 text-gray-900">
+                                        {dash(b.shoreA)}
+                                      </td>
+                                      <td className="px-3 py-1.5 text-gray-900">
+                                        {dash(b.specificGravity)}
+                                      </td>
+                                      <td className="px-3 py-1.5 text-gray-900">
+                                        {dash(b.tensileStrengthMpa)}
+                                      </td>
+                                      <td className="px-3 py-1.5 text-gray-900">
+                                        {dash(b.elongationPercent)}
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        );
+                      }
+
                       return (
                         <div className="mb-4">
                           <h3 className="text-sm font-medium text-gray-700 mb-2">

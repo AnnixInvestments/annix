@@ -594,6 +594,28 @@ export class RubberCocExtractionService {
       elongationLimits: (specs.elongationLimits as string) || null,
     };
 
+    type RawBatchTest = {
+      batchNumber: string;
+      shoreA?: number;
+      specificGravity?: number;
+      tensileStrengthMpa?: number;
+      elongationPercent?: number;
+    };
+    const toNumOrUndef = (v: unknown): number | undefined =>
+      typeof v === "number" && Number.isFinite(v) ? v : undefined;
+    const sanitizeBatches = (raw: unknown): RawBatchTest[] => {
+      const arr = Array.isArray(raw) ? (raw as Array<Record<string, unknown>>) : [];
+      return arr
+        .map((b) => ({
+          batchNumber: String(b?.batchNumber ?? ""),
+          shoreA: toNumOrUndef(b?.shoreA),
+          specificGravity: toNumOrUndef(b?.specificGravity),
+          tensileStrengthMpa: toNumOrUndef(b?.tensileStrengthMpa),
+          elongationPercent: toNumOrUndef(b?.elongationPercent),
+        }))
+        .filter((b) => b.batchNumber !== "");
+    };
+
     const pages: ExtractedCocData[] = rawPages.map((page) => {
       const pageRolls = (page.rolls || []) as Array<{
         rollNumber: string;
@@ -604,6 +626,7 @@ export class RubberCocExtractionService {
       const rollRange = this.formatRollRange(rollNumbers);
       const cocNumber = dnNumber ? `DN${dnNumber}-R${rollRange}` : `R${rollRange}`;
       const batchNumbers = ((page.batchNumbers || []) as string[]).map((b) => String(b));
+      const pageBatches = sanitizeBatches(page.batches);
 
       return {
         cocNumber,
@@ -616,6 +639,7 @@ export class RubberCocExtractionService {
         rollNumbers,
         rolls: pageRolls,
         batchNumbers,
+        batches: pageBatches,
         sharedDensity: (page.sharedDensity as number) || null,
         sharedTensile: (page.sharedTensile as number) || null,
         sharedElongation: (page.sharedElongation as number) || null,
@@ -639,6 +663,7 @@ export class RubberCocExtractionService {
     const allBatchNumbers = rawPages.flatMap((page) =>
       ((page.batchNumbers || []) as string[]).map((b) => String(b)),
     );
+    const allBatches = rawPages.flatMap((page) => sanitizeBatches(page.batches));
     const legacyCocNumber = firstDnNumber
       ? `DN${firstDnNumber}-R${allRollRange}`
       : `R${allRollRange}`;
@@ -657,6 +682,7 @@ export class RubberCocExtractionService {
       documentDate,
       rolls: allRolls,
       batchNumbers: allBatchNumbers,
+      batches: allBatches,
       sharedDensity: (firstPage.sharedDensity as number) || null,
       sharedTensile: (firstPage.sharedTensile as number) || null,
       sharedElongation: (firstPage.sharedElongation as number) || null,

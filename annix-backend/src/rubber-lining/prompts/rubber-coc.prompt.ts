@@ -557,10 +557,30 @@ Return a JSON object with this structure:
           "rollNumber": string (e.g., "1", "2", "7"),
           "shoreA": number or null (individual Shore A value for this roll)
         }
+      ],
+      "batches": [
+        {
+          "batchNumber": string (e.g., "13"),
+          "shoreA": number or null (the Shore A measurement on THIS batch's row),
+          "specificGravity": number or null (only filled on the spot-check batch row),
+          "tensileStrengthMpa": number or null (only filled on the spot-check batch row),
+          "elongationPercent": number or null (only filled on the spot-check batch row)
+        }
       ]
     }
   ]
 }
+
+CAPTURE PER-BATCH SHORE A (IMPORTANT):
+- The compound-batch rows on the laboratory table each have an individual Shore A value beside the batch number. Walk every batch row and capture its shoreA in pages[].batches[].
+- One "spot-check" batch row per page typically ALSO has Density, Tensile, and Elongation populated. Capture those on that batch's entry (specificGravity/tensileStrengthMpa/elongationPercent). All other batches' density/tensile/elongation fields should be null.
+- pages[].batches[].batchNumber values must match pages[].batchNumbers exactly — every batch in batchNumbers must appear in batches[], and every batches[].batchNumber must appear in batchNumbers.
+- WORKED EXAMPLE (#207-style row layout): roll "10" with batches 13/14/15/16 each Shore A 48, batch 14 spot-check shows Density 1.07 / Tensile 9.1 / Elong 590. Expected pages[].batches = [
+    {"batchNumber":"13","shoreA":48,"specificGravity":null,"tensileStrengthMpa":null,"elongationPercent":null},
+    {"batchNumber":"14","shoreA":48,"specificGravity":1.07,"tensileStrengthMpa":9.1,"elongationPercent":590},
+    {"batchNumber":"15","shoreA":48,"specificGravity":null,"tensileStrengthMpa":null,"elongationPercent":null},
+    {"batchNumber":"16","shoreA":48,"specificGravity":null,"tensileStrengthMpa":null,"elongationPercent":null}
+  ]
 
 Guidelines:
 - Parse dates from DD.MM.YYYY to YYYY-MM-DD
