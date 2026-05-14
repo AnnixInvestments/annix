@@ -536,6 +536,9 @@ export interface GlobalSpecs {
 
   pvcType?: PvcType;
   pvcPressureClass?: PvcPressureClass;
+  pvcSdr?: number;
+  pvcPressureRating?: string;
+  pvcOperatingTempC?: number;
   pvcJoiningMethod?: PvcJoiningMethod;
   pvcSpecsConfirmed?: boolean;
 

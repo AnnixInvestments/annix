@@ -447,7 +447,36 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
           blind: "FBE",
         };
 
-        const allItems = nixItems.flatMap((item, idx): PipeItem[] => {
+        const allItems = nixItems.flatMap((rawItem, idx): PipeItem[] => {
+          // Normalise uPVC items — the Excel extractor's /\bupvc\b/i
+          // regex (excel-extractor.service.ts:289) matches BEFORE the
+          // bend/tee/reducer patterns, so a "uPVC 45° bend Class 16"
+          // lands with itemType="upvc" rather than "bend". Re-derive
+          // the structural type from the description so uPVC items
+          // render correctly in the BOQ AND flow through the standard
+          // pipe/bend/fitting branches at submit time. productType
+          // stays "upvc", which nixProductTypeToMaterialType already
+          // collapses to materialType="pvc".
+          const item = (() => {
+            if (rawItem.itemType !== "upvc") return rawItem;
+            const rawDesc = rawItem.description;
+            const desc = (rawDesc || "").toLowerCase();
+            const looksLikeFitting =
+              /\b(tee|t[-\s]?piece|reducer|cross|coupling|adapter|adaptor|union|sleeve|socket)\b/.test(
+                desc,
+              );
+            const looksLikeBend = /\b(elbow|s[-\s]?bend|bend|\d+\s*deg(?:ree)?s?|degrees?)\b/.test(
+              desc,
+            );
+            const derivedItemType: NixExtractedItem["itemType"] = looksLikeFitting
+              ? /\breducer\b/.test(desc)
+                ? "reducer"
+                : "tee"
+              : looksLikeBend
+                ? "bend"
+                : "pipe";
+            return { ...rawItem, itemType: derivedItemType };
+          })();
           if (!item.diameter && item.itemType !== "tank_chute") return [];
 
           const itemIndex = idx + 1;

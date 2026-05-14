@@ -75,12 +75,12 @@ import {
 import { hdpeFittingWeightKg } from "./services/hdpe-fitting-weights";
 import { hdpeDeratedPn, hdpePnFromSdr } from "./services/hdpe-pressure-ratings";
 import { pvcFittingWeightKg } from "./services/pvc-fitting-weights";
-// pvcPnFromSdr / pvcDeratedPn / pvcPnFromPressureClass are also
-// exported from pvc-pressure-ratings — they'll be wired in once
-// the pvc_* persistence columns land on the typed rfq tables
-// (mirror of the hdpe_* columns). Only the SDR resolver is needed
-// for weight calc today.
-import { pvcPnFromPressureClass, pvcSdrFromPn } from "./services/pvc-pressure-ratings";
+import {
+  pvcDeratedPn,
+  pvcPnFromPressureClass,
+  pvcPnFromSdr,
+  pvcSdrFromPn,
+} from "./services/pvc-pressure-ratings";
 import { ReferenceDataCacheService } from "./services/reference-data-cache.service";
 import { RfqCalculationService } from "./services/rfq-calculation.service";
 
@@ -408,6 +408,26 @@ export class RfqService {
             item.straightPipe.workingTemperatureC,
             item.straightPipe.hdpePeGrade,
           ),
+          // PVC persistence — mirrors the HDPE block above. SDR can
+          // come from explicit value, pressure class lookup, or PN
+          // back-resolution. PN/derated-PN auto-filled via ISO 1452
+          // when not provided explicitly.
+          pvcSdr:
+            item.straightPipe.pvcSdr ??
+            pvcSdrFromPn(pvcPnFromPressureClass(item.straightPipe.pvcPressureClass)) ??
+            pvcSdrFromPn(item.straightPipe.pvcPnRating),
+          pvcPressureClass: item.straightPipe.pvcPressureClass,
+          pvcPnRating:
+            item.straightPipe.pvcPnRating ??
+            pvcPnFromPressureClass(item.straightPipe.pvcPressureClass) ??
+            pvcPnFromSdr(item.straightPipe.pvcSdr),
+          pvcDeratedPn: pvcDeratedPn(
+            item.straightPipe.pvcPnRating ??
+              pvcPnFromPressureClass(item.straightPipe.pvcPressureClass) ??
+              pvcPnFromSdr(item.straightPipe.pvcSdr),
+            item.straightPipe.workingTemperatureC,
+          ),
+          pvcOperatingTempC: item.straightPipe.workingTemperatureC,
         });
 
         if (item.straightPipe.steelSpecificationId) {
@@ -486,6 +506,23 @@ export class RfqService {
             item.bend.workingTemperatureC,
             item.bend.hdpePeGrade,
           ),
+          // PVC bend persistence — mirrors the HDPE block.
+          pvcSdr:
+            item.bend.pvcSdr ??
+            pvcSdrFromPn(pvcPnFromPressureClass(item.bend.pvcPressureClass)) ??
+            pvcSdrFromPn(item.bend.pvcPnRating),
+          pvcPressureClass: item.bend.pvcPressureClass,
+          pvcPnRating:
+            item.bend.pvcPnRating ??
+            pvcPnFromPressureClass(item.bend.pvcPressureClass) ??
+            pvcPnFromSdr(item.bend.pvcSdr),
+          pvcDeratedPn: pvcDeratedPn(
+            item.bend.pvcPnRating ??
+              pvcPnFromPressureClass(item.bend.pvcPressureClass) ??
+              pvcPnFromSdr(item.bend.pvcSdr),
+            item.bend.workingTemperatureC,
+          ),
+          pvcOperatingTempC: item.bend.workingTemperatureC,
         });
 
         await this.bendRfqRepository.save(bendRfq);
@@ -593,6 +630,22 @@ export class RfqService {
             item.fitting.workingTemperatureC,
             item.fitting.hdpePeGrade,
           ),
+          // PVC fitting persistence — resolvedPvcSdr already computed
+          // above for weight calc; reuse it here to keep the persisted
+          // SDR aligned with what the calc consumed.
+          pvcSdr: resolvedPvcSdr,
+          pvcPressureClass: item.fitting.pvcPressureClass,
+          pvcPnRating:
+            item.fitting.pvcPnRating ??
+            pvcPnFromPressureClass(item.fitting.pvcPressureClass) ??
+            pvcPnFromSdr(resolvedPvcSdr),
+          pvcDeratedPn: pvcDeratedPn(
+            item.fitting.pvcPnRating ??
+              pvcPnFromPressureClass(item.fitting.pvcPressureClass) ??
+              pvcPnFromSdr(resolvedPvcSdr),
+            item.fitting.workingTemperatureC,
+          ),
+          pvcOperatingTempC: item.fitting.workingTemperatureC,
         });
 
         await this.fittingRfqRepository.save(fittingRfq);
@@ -993,6 +1046,26 @@ export class RfqService {
             item.straightPipe.workingTemperatureC,
             item.straightPipe.hdpePeGrade,
           ),
+          // PVC persistence — mirrors the HDPE block above. SDR can
+          // come from explicit value, pressure class lookup, or PN
+          // back-resolution. PN/derated-PN auto-filled via ISO 1452
+          // when not provided explicitly.
+          pvcSdr:
+            item.straightPipe.pvcSdr ??
+            pvcSdrFromPn(pvcPnFromPressureClass(item.straightPipe.pvcPressureClass)) ??
+            pvcSdrFromPn(item.straightPipe.pvcPnRating),
+          pvcPressureClass: item.straightPipe.pvcPressureClass,
+          pvcPnRating:
+            item.straightPipe.pvcPnRating ??
+            pvcPnFromPressureClass(item.straightPipe.pvcPressureClass) ??
+            pvcPnFromSdr(item.straightPipe.pvcSdr),
+          pvcDeratedPn: pvcDeratedPn(
+            item.straightPipe.pvcPnRating ??
+              pvcPnFromPressureClass(item.straightPipe.pvcPressureClass) ??
+              pvcPnFromSdr(item.straightPipe.pvcSdr),
+            item.straightPipe.workingTemperatureC,
+          ),
+          pvcOperatingTempC: item.straightPipe.workingTemperatureC,
         });
 
         if (item.straightPipe.steelSpecificationId) {

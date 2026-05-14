@@ -393,6 +393,54 @@ export class StraightPipeRfq {
   @Column({ name: "hdpe_joint_count", type: "int", nullable: true })
   hdpeJointCount?: number;
 
+  // PVC-specific fields
+  @ApiProperty({ description: "PVC type (uPVC, mPVC, PVC-O, cPVC)", required: false })
+  @Column({ name: "pvc_type", type: "varchar", length: 20, nullable: true })
+  pvcType?: string;
+
+  @ApiProperty({ description: "PVC SDR (Standard Dimension Ratio)", required: false })
+  @Column({ name: "pvc_sdr", type: "decimal", precision: 4, scale: 1, nullable: true })
+  pvcSdr?: number;
+
+  @ApiProperty({ description: "PVC pressure class shorthand (e.g. 'Class 16')", required: false })
+  @Column({ name: "pvc_pressure_class", type: "varchar", length: 20, nullable: true })
+  pvcPressureClass?: string;
+
+  @ApiProperty({
+    description: "PVC PN rating in bar (resolved from SDR / class)",
+    required: false,
+  })
+  @Column({ name: "pvc_pn_rating", type: "decimal", precision: 4, scale: 1, nullable: true })
+  pvcPnRating?: number;
+
+  @ApiProperty({ description: "PVC derated PN after temperature adjustment", required: false })
+  @Column({ name: "pvc_derated_pn", type: "decimal", precision: 4, scale: 1, nullable: true })
+  pvcDeratedPn?: number;
+
+  @ApiProperty({
+    description: "PVC operating temperature in Celsius for derating",
+    required: false,
+  })
+  @Column({
+    name: "pvc_operating_temp_c",
+    type: "decimal",
+    precision: 4,
+    scale: 1,
+    nullable: true,
+  })
+  pvcOperatingTempC?: number;
+
+  @ApiProperty({
+    description: "PVC joining method (solvent_weld, threaded, push_fit, flanged)",
+    required: false,
+  })
+  @Column({ name: "pvc_joining_method", type: "varchar", length: 30, nullable: true })
+  pvcJoiningMethod?: string;
+
+  @ApiProperty({ description: "PVC color (grey, white, black, blue)", required: false })
+  @Column({ name: "pvc_color", type: "varchar", length: 20, nullable: true })
+  pvcColor?: string;
+
   // Relationships
   @ApiProperty({ description: "Parent RFQ item", type: () => RfqItem })
   @OneToOne(
