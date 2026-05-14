@@ -21,12 +21,12 @@ export class SaveAnonymousDraftDto {
   projectName?: string;
 
   @ApiProperty({
-    description: "Current step in the RFQ form (1-5)",
+    description: "Current step in the RFQ form (1-6)",
     example: 2,
   })
   @IsInt()
   @Min(1)
-  @Max(5)
+  @Max(6)
   currentStep: number;
 
   @ApiProperty({

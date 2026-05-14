@@ -13,6 +13,30 @@ import { PlateBomItem } from "../entities/tank-chute-rfq.entity";
 import { CreateRfqDto } from "./create-rfq.dto";
 
 export class UnifiedStraightPipeDto {
+  @ApiProperty({
+    description: "Material — 'steel' (default) or 'hdpe'. Drives the calculation branch.",
+    example: "steel",
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  materialType?: string;
+
+  @ApiProperty({ description: "HDPE PE grade (PE100, PE4710, etc.)", required: false })
+  @IsOptional()
+  @IsString()
+  hdpePeGrade?: string;
+
+  @ApiProperty({ description: "HDPE SDR (Standard Dimension Ratio)", required: false })
+  @IsOptional()
+  @IsNumber()
+  hdpeSdr?: number;
+
+  @ApiProperty({ description: "HDPE PN pressure rating in bar", required: false })
+  @IsOptional()
+  @IsNumber()
+  hdpePnRating?: number;
+
   @ApiProperty({ description: "Nominal bore in mm", example: 500 })
   @IsNumber()
   nominalBoreMm: number;

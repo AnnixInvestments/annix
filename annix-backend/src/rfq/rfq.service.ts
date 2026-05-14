@@ -273,6 +273,25 @@ export class RfqService {
     dto: CreateUnifiedRfqDto,
     userId: number,
   ): Promise<{ rfq: Rfq; itemsCreated: number }> {
+    // Idempotency: same submissionId already produced an RFQ →
+    // return that one. Stops the Next.js dev proxy auto-retry,
+    // user double-click, and HMR-reset from producing duplicate
+    // rfqs rows when a long submit times out client-side.
+    if (dto.rfq.submissionId) {
+      const existing = await this.rfqRepository.findOne({
+        where: { submissionId: dto.rfq.submissionId },
+      });
+      if (existing) {
+        const itemsCreated = await this.rfqItemRepository.count({
+          where: { rfq: { id: existing.id } },
+        });
+        this.logger.log(
+          `Idempotency hit: reusing RFQ ${existing.rfqNumber} (${itemsCreated} items) for submissionId ${dto.rfq.submissionId}`,
+        );
+        return { rfq: existing, itemsCreated };
+      }
+    }
+
     const user = await this.userRepository.findOne({ where: { id: userId } }).catch((err) => {
       this.logger.warn("Failed to find user for RFQ creation", err.message);
       return null;
@@ -290,6 +309,7 @@ export class RfqService {
     const rfq = this.rfqRepository.create({
       ...dto.rfq,
       rfqNumber,
+      submissionId: dto.rfq.submissionId,
       status: dto.rfq.status || RfqStatus.SUBMITTED,
       totalWeightKg: totalWeight,
       ...(user && { createdBy: user }),
@@ -298,8 +318,29 @@ export class RfqService {
     const savedRfq = await this.rfqRepository.save(rfq);
     this.logger.log(`Created unified RFQ ${rfqNumber} with ${dto.items.length} items`);
 
-    await dto.items.reduce(async (prevPromise, item, index) => {
-      await prevPromise;
+    // Pre-fetch unique steel specs in one query instead of one
+    // SELECT per straight-pipe item. Big win on large BOQs that
+    // share a handful of steel grades.
+    const uniqueSteelSpecIds = Array.from(
+      new Set(
+        dto.items
+          .filter((i) => i.itemType === "straight_pipe" && i.straightPipe?.steelSpecificationId)
+          .map((i) => i.straightPipe!.steelSpecificationId!),
+      ),
+    );
+    const steelSpecsMap = new Map<number, SteelSpecification>();
+    if (uniqueSteelSpecIds.length > 0) {
+      const specs = await this.steelSpecRepository.find({ where: { id: In(uniqueSteelSpecIds) } });
+      for (const s of specs) steelSpecsMap.set(s.id, s);
+    }
+
+    // Parallel-batch the per-item processing. Each batch of
+    // SUBMIT_BATCH_SIZE items runs concurrently; batches run
+    // sequentially so we don't exhaust Neon's connection pool.
+    // Order of inserts within a batch isn't significant — each
+    // row carries its own lineNumber and FK to savedRfq.
+    const SUBMIT_BATCH_SIZE = 10;
+    const processItem = async (item: any, index: number) => {
       const lineNumber = index + 1;
 
       if (item.itemType === "straight_pipe" && item.straightPipe) {
@@ -340,12 +381,14 @@ export class RfqService {
           totalButtWeldLengthM: calculation.totalButtWeldLength,
           numberOfFlangeWelds: calculation.numberOfFlangeWelds,
           totalFlangeWeldLengthM: calculation.totalFlangeWeldLength,
+          hdpePeGrade: item.straightPipe.hdpePeGrade,
+          hdpeSdr: item.straightPipe.hdpeSdr,
+          hdpePnRating: item.straightPipe.hdpePnRating,
         });
 
         if (item.straightPipe.steelSpecificationId) {
-          const steelSpec = await this.steelSpecRepository.findOne({
-            where: { id: item.straightPipe.steelSpecificationId },
-          });
+          // Use pre-fetched map; no per-item DB round-trip.
+          const steelSpec = steelSpecsMap.get(item.straightPipe.steelSpecificationId);
           if (steelSpec) {
             straightPipeRfq.steelSpecification = steelSpec;
           }
@@ -693,7 +736,15 @@ export class RfqService {
         await this.fastenerRfqRepository.save(fastenerRfq);
         this.logger.log(`Created fastener item #${lineNumber}: ${item.description}`);
       }
-    }, Promise.resolve());
+    };
+
+    for (let batchStart = 0; batchStart < dto.items.length; batchStart += SUBMIT_BATCH_SIZE) {
+      await Promise.all(
+        dto.items
+          .slice(batchStart, batchStart + SUBMIT_BATCH_SIZE)
+          .map((item, batchOffset) => processItem(item, batchStart + batchOffset)),
+      );
+    }
 
     const finalRfq = await this.rfqRepository.findOne({
       where: { id: savedRfq.id },
@@ -797,6 +848,9 @@ export class RfqService {
           totalButtWeldLengthM: calculation.totalButtWeldLength,
           numberOfFlangeWelds: calculation.numberOfFlangeWelds,
           totalFlangeWeldLengthM: calculation.totalFlangeWeldLength,
+          hdpePeGrade: item.straightPipe.hdpePeGrade,
+          hdpeSdr: item.straightPipe.hdpeSdr,
+          hdpePnRating: item.straightPipe.hdpePnRating,
         });
 
         if (item.straightPipe.steelSpecificationId) {

@@ -22,6 +22,13 @@ export interface RfqDraftData {
   entries: any[];
   lastSaved: string;
   customerEmail?: string;
+  // Server draft attachment — once a save has hit /drafts and the
+  // server has minted a row, these track the row so subsequent
+  // saves update it instead of spawning new drafts. Preserved
+  // across every debounced autosave; only cleared by clearDraft()
+  // or by an explicit overwrite.
+  draftId?: number;
+  draftNumber?: string;
 }
 
 export interface UseRfqDraftStorageReturn {
@@ -118,6 +125,10 @@ export function useRfqDraftStorage(): UseRfqDraftStorageReturn {
       const existingCurrentStep = existingDraft ? existingDraft.currentStep : null;
       const existingEntries = existingDraft ? existingDraft.entries : null;
       const existingCustomerEmail = existingDraft ? existingDraft.customerEmail : null;
+      const existingDraftId = existingDraft ? existingDraft.draftId : undefined;
+      const existingDraftNumber = existingDraft ? existingDraft.draftNumber : undefined;
+      const rawDataDraftId = data.draftId;
+      const rawDataDraftNumber = data.draftNumber;
 
       const draftToSave: RfqDraftData = {
         rfqData: rawRfqData || existingRfqData || {},
@@ -127,6 +138,11 @@ export function useRfqDraftStorage(): UseRfqDraftStorageReturn {
         lastSaved: currentTime,
         customerEmail:
           rawCustomerEmail || rawDataCustomerEmail || existingCustomerEmail || undefined,
+        // Server attachment survives every debounced autosave;
+        // explicit incoming value wins, otherwise carry forward
+        // whatever's already on disk.
+        draftId: rawDataDraftId ?? existingDraftId,
+        draftNumber: rawDataDraftNumber ?? existingDraftNumber,
       };
 
       localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draftToSave));

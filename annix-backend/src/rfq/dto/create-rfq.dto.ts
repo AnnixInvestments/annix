@@ -47,4 +47,15 @@ export class CreateRfqDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  // Client-generated UUID for idempotent submission. If the same
+  // submissionId is sent twice (proxy retry, double click, HMR
+  // reset), the second call returns the rfq from the first.
+  @ApiProperty({
+    description: "Client-generated UUID for idempotent submit",
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  submissionId?: string;
 }

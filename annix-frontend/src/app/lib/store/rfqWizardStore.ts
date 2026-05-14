@@ -57,6 +57,11 @@ export interface LocalDraftData {
   entries?: PipeItem[];
   currentStep?: number;
   lastSaved?: string | number;
+  // Server attachment for an authenticated draft — once the user
+  // has saved at least once, the prompted-restore path uses these
+  // to re-bind subsequent saves to the existing row.
+  draftId?: number;
+  draftNumber?: string;
 }
 
 export interface DraftFormData {

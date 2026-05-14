@@ -1,5 +1,5 @@
 import { FLANGE_OD } from "@annix/product-data/pipe";
-import { isString } from "es-toolkit/compat";
+import { isNumber, isString } from "es-toolkit/compat";
 import type { BnwSetWeightRecord, GasketWeightRecord } from "@/app/lib/api/client";
 import { log } from "@/app/lib/logger";
 import { buildFlangeLookups, type FlangeTypeWeightRecord } from "@/app/lib/query/hooks";
@@ -45,18 +45,20 @@ export function validateItemsForSubmission(
     return `Please add at least one item before ${action}.`;
   }
 
-  const itemsRequiringCalculation = ["straight_pipe", "bend", "fitting"];
-  const uncalculatedIndex = allItems.findIndex(
-    (entry: any) => itemsRequiringCalculation.includes(entry.itemType) && !entry.calculation,
-  );
-  if (uncalculatedIndex !== -1) {
-    const entry = allItems[uncalculatedIndex];
-    const itemType =
-      entry.itemType === "bend" ? "Bend" : entry.itemType === "fitting" ? "Fitting" : "Pipe";
-    return `${itemType} #${uncalculatedIndex + 1} (${entry.description}) has not been calculated. Please calculate all items before ${action}.`;
-  }
-
+  // Previously this required every straight_pipe / bend / fitting to have a
+  // computed `calculation` before submit. That worked for hand-built RFQs but
+  // blocked Nix-extracted RFQs silently: HDPE pipes/bends/fittings have no
+  // auto-calc path at all, and even steel bends/fittings only get a
+  // `calculation` when opened in their per-item form and Calculated. At 500+
+  // items that's impractical. Submit now goes through with whatever
+  // calculations are present; uncalc items show 0 kg in the BOQ and can be
+  // refined on the detail page or by the supplier in quoting.
   return null;
+}
+
+export function countUncalculatedItems(allItems: any[]): number {
+  const requiresCalc = ["straight_pipe", "bend", "fitting"];
+  return allItems.filter((e: any) => requiresCalc.includes(e.itemType) && !e.calculation).length;
 }
 
 function mapBendItem(entry: any, specs: any, calculation: any, g: GlobalSpecsOverrides) {
@@ -84,6 +86,7 @@ function mapBendItem(entry: any, specs: any, calculation: any, g: GlobalSpecsOve
   const rawUseGlobalFlangeSpecs = specs.useGlobalFlangeSpecs;
   const rawFlangeStandardId = specs.flangeStandardId;
   const rawFlangePressureClassId = specs.flangePressureClassId;
+  const rawBendScheduleNumber = specs.scheduleNumber;
   return {
     itemType: "bend" as const,
     description: rawDescription || "Bend Item",
@@ -91,7 +94,10 @@ function mapBendItem(entry: any, specs: any, calculation: any, g: GlobalSpecsOve
     totalWeightKg: rawTotalWeight || calculation.bendWeight,
     bend: {
       nominalBoreMm: specs.nominalBoreMm,
-      scheduleNumber: specs.scheduleNumber,
+      // Backend requires a string. HDPE bends carry SDR info in the description
+      // / globalSpecs and have no schedule number — pass empty string so the
+      // backend DTO accepts the payload (steel bends will have a real value).
+      scheduleNumber: rawBendScheduleNumber ?? "",
       wallThicknessMm: specs.wallThicknessMm,
       bendType: specs.bendType,
       bendRadiusType: specs.bendRadiusType,
@@ -138,7 +144,11 @@ function mapFittingItem(entry: any, specs: any, calculation: any, globalSpecs: a
     totalWeightKg: rawTotalWeight || calculation.pipeWeight,
     fitting: {
       nominalDiameterMm: specs.nominalDiameterMm,
-      scheduleNumber: specs.scheduleNumber,
+      // Backend DTO requires @IsString(). Forms / NIX extraction
+      // sometimes store this as a number (e.g. 40, 80) and HDPE
+      // fittings have no schedule at all. Normalize: numbers →
+      // their string form, missing → "".
+      scheduleNumber: specs.scheduleNumber != null ? String(specs.scheduleNumber) : "",
       wallThicknessMm: specs.wallThicknessMm,
       fittingType: specs.fittingType,
       fittingStandard: specs.fittingStandard,
@@ -228,7 +238,34 @@ function mapFastenerItem(entry: any, specs: any) {
   };
 }
 
-function mapStraightPipeItem(entry: any, specs: any, calculation: any, g: GlobalSpecsOverrides) {
+// HDPE pipes carry their material spec in the description (e.g.
+// "HDPE PE100 PN34 (SDR6)") rather than on structured spec fields,
+// because the BOQ aggregator that creates these entries doesn't
+// populate per-item HDPE values. Parse the description at submit
+// time and fall back to globalSpecs when markers aren't present.
+function parseHdpeFromDescription(description?: string): {
+  peGrade?: string;
+  sdr?: number;
+  pnRating?: number;
+} {
+  if (!description) return {};
+  const peMatch = description.match(/\bPE\s*(100|4710|80|63)\b/i);
+  const sdrMatch = description.match(/\bSDR\s*([\d.]+)\b/i);
+  const pnMatch = description.match(/\bPN\s*(\d+(?:\.\d+)?)\b/i);
+  return {
+    peGrade: peMatch ? `PE${peMatch[1]}`.toUpperCase() : undefined,
+    sdr: sdrMatch ? Number(sdrMatch[1]) : undefined,
+    pnRating: pnMatch ? Number(pnMatch[1]) : undefined,
+  };
+}
+
+function mapStraightPipeItem(
+  entry: any,
+  specs: any,
+  calculation: any,
+  g: GlobalSpecsOverrides,
+  globalSpecs: any,
+) {
   const gWpb = g.workingPressureBar;
   const gWtc = g.workingTemperatureC;
   const gSsid = g.steelSpecificationId;
@@ -241,15 +278,56 @@ function mapStraightPipeItem(entry: any, specs: any, calculation: any, g: Global
   const rawSteelSpecificationId = specs.steelSpecificationId;
   const rawFlangeStandardId = specs.flangeStandardId;
   const rawFlangePressureClassId = specs.flangePressureClassId;
+
+  const isHdpe = entry.materialType === "hdpe";
+  // For HDPE items, resolve PE grade / SDR / PN from (in order):
+  //   1. per-entry spec fields if the BOQ creator ever populates them,
+  //   2. the description text ("HDPE PE100 PN34 (SDR6)"),
+  //   3. globalSpecs (single rfq-wide HDPE defaults).
+  // Globally-set values are the weakest because mixed-SDR BOQs
+  // (PN34/SDR6, PN20/SDR9, PN10/SDR17 in one rfq) would otherwise
+  // collapse to one wrong value.
+  const parsedHdpe = isHdpe ? parseHdpeFromDescription(rawDescription) : {};
+  const rawSpecsHdpePeGrade = specs.hdpePeGrade;
+  const rawSpecsHdpeSdr = specs.hdpeSdr;
+  const rawSpecsHdpePnRating = specs.hdpePnRating;
+  const rawGlobalHdpeGrade = globalSpecs?.hdpeGrade;
+  const rawGlobalHdpeSdr = globalSpecs?.hdpeSdr;
+  const rawGlobalHdpePressureRating = globalSpecs?.hdpePressureRating;
+  const parsedPeGrade = parsedHdpe.peGrade;
+  const parsedSdr = parsedHdpe.sdr;
+  const parsedPn = parsedHdpe.pnRating;
+  const hdpePeGrade = isHdpe
+    ? rawSpecsHdpePeGrade || parsedPeGrade || rawGlobalHdpeGrade
+    : undefined;
+  const hdpeSdr = isHdpe ? rawSpecsHdpeSdr || parsedSdr || rawGlobalHdpeSdr : undefined;
+  const globalPnRating = isHdpe
+    ? (() => {
+        const raw = rawGlobalHdpePressureRating;
+        if (isNumber(raw)) return raw;
+        if (isString(raw)) {
+          const m = raw.match(/PN\s*(\d+(?:\.\d+)?)/i);
+          return m ? Number(m[1]) : undefined;
+        }
+        return undefined;
+      })()
+    : undefined;
+  const hdpePnRating = isHdpe ? rawSpecsHdpePnRating || parsedPn || globalPnRating : undefined;
+
   return {
     itemType: "straight_pipe" as const,
     description: rawDescription || "Pipe Item",
     notes: entry.notes,
     totalWeightKg: rawTotalSystemWeight || calculation.totalPipeWeight,
     straightPipe: {
+      materialType: isHdpe ? "hdpe" : "steel",
+      hdpePeGrade,
+      hdpeSdr,
+      hdpePnRating,
       nominalBoreMm: specs.nominalBoreMm,
       scheduleType: specs.scheduleType,
-      scheduleNumber: specs.scheduleNumber,
+      // Same string-coercion as the fitting mapper above.
+      scheduleNumber: specs.scheduleNumber != null ? String(specs.scheduleNumber) : "",
       wallThicknessMm: specs.wallThicknessMm,
       pipeEndConfiguration: specs.pipeEndConfiguration,
       individualPipeLength: specs.individualPipeLength,
@@ -258,9 +336,11 @@ function mapStraightPipeItem(entry: any, specs: any, calculation: any, g: Global
       quantityValue: specs.quantityValue,
       workingPressureBar: rawWorkingPressureBar || gWpb || 10,
       workingTemperatureC: rawWorkingTemperatureC || gWtc,
-      steelSpecificationId: rawSteelSpecificationId || gSsid,
-      flangeStandardId: rawFlangeStandardId || gFsid,
-      flangePressureClassId: rawFlangePressureClassId || gFpcid,
+      // Steel-only fields stay null for HDPE so they don't seed
+      // bogus steel relations on the persisted row.
+      steelSpecificationId: isHdpe ? undefined : rawSteelSpecificationId || gSsid,
+      flangeStandardId: isHdpe ? undefined : rawFlangeStandardId || gFsid,
+      flangePressureClassId: isHdpe ? undefined : rawFlangePressureClassId || gFpcid,
     },
   };
 }
@@ -279,9 +359,19 @@ export function mapItemToUnified(entry: any, g: GlobalSpecsOverrides, globalSpec
     return mapTankChuteItem(entry, specs);
   } else if (entry.itemType === "fastener") {
     return mapFastenerItem(entry, specs);
-  } else {
-    return mapStraightPipeItem(entry, specs, calculation, g);
+  } else if (entry.itemType === "straight_pipe") {
+    return mapStraightPipeItem(entry, specs, calculation, g, globalSpecs);
   }
+  // misc / unclassified items — Nix dropped them in but the backend's
+  // UnifiedRfqItemDto has no shape for them (only the explicit types above).
+  // Skip them rather than coerce into straightPipe with all-null required
+  // fields, which the backend's class-validator rejects with a 400.
+  return null;
+}
+
+export function countDroppedMiscItems(allItems: any[]): number {
+  const knownTypes = new Set(["straight_pipe", "bend", "fitting", "tank_chute", "fastener"]);
+  return allItems.filter((e: any) => !knownTypes.has(e.itemType)).length;
 }
 
 export function buildBoqConsolidation(
@@ -334,7 +424,7 @@ export function buildCustomerProjectInfo(rfqData: any) {
   };
 }
 
-export function buildRfqPayload(rfqData: any, unifiedItems: any[]) {
+export function buildRfqPayload(rfqData: any, unifiedItems: any[], submissionId?: string) {
   return {
     rfq: {
       projectName: rfqData.projectName,
@@ -345,6 +435,10 @@ export function buildRfqPayload(rfqData: any, unifiedItems: any[]) {
       requiredDate: rfqData.requiredDate,
       status: "submitted" as const,
       notes: rfqData.notes,
+      // Client-generated idempotency key. Backend dedupes on this
+      // so proxy retries / double-clicks / HMR resets can't
+      // produce duplicate rfqs rows.
+      submissionId,
     },
     items: unifiedItems,
   };

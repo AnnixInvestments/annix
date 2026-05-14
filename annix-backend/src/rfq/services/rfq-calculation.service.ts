@@ -14,6 +14,11 @@ import { LengthUnit, QuantityType, ScheduleType } from "../entities/straight-pip
 import { ReferenceDataCacheService } from "./reference-data-cache.service";
 
 const STEEL_DENSITY_KG_DM3 = 7.85;
+// PE100 ~0.96 kg/dm³ (slightly lower than water, varies marginally
+// across PE grades — PE4710 is ~0.95). Industry datasheets quote a
+// nominal 0.96 for weight estimation; the second-decimal variation
+// is well below the accuracy of any RFQ-stage take-off.
+const HDPE_DENSITY_KG_DM3 = 0.96;
 
 @Injectable()
 export class RfqCalculationService {
@@ -30,6 +35,15 @@ export class RfqCalculationService {
   async calculateStraightPipeRequirements(
     dto: UnifiedStraightPipeDto,
   ): Promise<StraightPipeCalculationResultDto> {
+    // HDPE pipes are dimensioned by SDR (Standard Dimension Ratio),
+    // not by steel pipe schedules — wall thickness = OD / SDR, and
+    // they're typically butt-fused (no flanges/bolts). Route them
+    // through a dedicated branch so the steel pipe_dimensions
+    // lookup is skipped entirely.
+    if (dto.materialType === "hdpe") {
+      return this.calculateHdpeStraightPipeRequirements(dto);
+    }
+
     const steelSpec = dto.steelSpecificationId
       ? this.referenceDataCache.steelSpecificationById(dto.steelSpecificationId)
       : null;
@@ -185,6 +199,75 @@ export class RfqCalculationService {
       totalButtWeldLength,
       numberOfFlangeWelds,
       totalFlangeWeldLength: Math.round(totalFlangeWeldLength * 100) / 100,
+    };
+  }
+
+  // HDPE branch of calculateStraightPipeRequirements. Kept separate
+  // because the calc is structurally simpler: no pipe_dimensions
+  // table, no flange/bolt/nut weights, weight derived from SDR.
+  // For HDPE, nominalBoreMm carries the nominal OD (the industry
+  // norm — HDPE is specified by OD, not internal bore).
+  private async calculateHdpeStraightPipeRequirements(
+    dto: UnifiedStraightPipeDto,
+  ): Promise<StraightPipeCalculationResultDto> {
+    if (!dto.hdpeSdr || dto.hdpeSdr <= 0) {
+      throw new NotFoundException(
+        `HDPE pipe at ${dto.nominalBoreMm}NB is missing SDR. ` +
+          `Set hdpeSdr on the item (or in globalSpecs) so wall thickness can be derived.`,
+      );
+    }
+
+    const outsideDiameterMm = dto.nominalBoreMm;
+    const wallThicknessMm = outsideDiameterMm / dto.hdpeSdr;
+    const pipeWeightPerMeter =
+      (Math.PI * wallThicknessMm * (outsideDiameterMm - wallThicknessMm) * HDPE_DENSITY_KG_DM3) /
+      1000;
+
+    let individualPipeLengthM = dto.individualPipeLength;
+    if (dto.lengthUnit === LengthUnit.FEET) {
+      individualPipeLengthM = dto.individualPipeLength * 0.3048;
+    }
+
+    let calculatedPipeCount: number;
+    let calculatedTotalLengthM: number;
+    if (dto.quantityType === QuantityType.TOTAL_LENGTH) {
+      let totalLengthM = dto.quantityValue;
+      if (dto.lengthUnit === LengthUnit.FEET) {
+        totalLengthM = dto.quantityValue * 0.3048;
+      }
+      calculatedTotalLengthM = totalLengthM;
+      calculatedPipeCount = Math.ceil(totalLengthM / individualPipeLengthM);
+    } else {
+      calculatedPipeCount = dto.quantityValue;
+      calculatedTotalLengthM = calculatedPipeCount * individualPipeLengthM;
+    }
+
+    const totalPipeWeight = pipeWeightPerMeter * calculatedTotalLengthM;
+
+    // HDPE is butt-fused (or electrofused) joint-to-joint — no
+    // physical flanges/bolts unless a transition flange is called
+    // out. Report joint count via numberOfButtWelds for downstream
+    // consumers that still want a weld count.
+    const numberOfButtWelds = Math.max(0, calculatedPipeCount - 1);
+    const circumferenceM = (Math.PI * outsideDiameterMm) / 1000;
+    const totalButtWeldLength = numberOfButtWelds * circumferenceM;
+
+    return {
+      outsideDiameterMm,
+      wallThicknessMm: Math.round(wallThicknessMm * 100) / 100,
+      pipeWeightPerMeter: Math.round(pipeWeightPerMeter * 100) / 100,
+      totalPipeWeight: Math.round(totalPipeWeight),
+      totalFlangeWeight: 0,
+      totalBoltWeight: 0,
+      totalNutWeight: 0,
+      totalSystemWeight: Math.round(totalPipeWeight),
+      calculatedPipeCount,
+      calculatedTotalLength: Math.round(calculatedTotalLengthM * 100) / 100,
+      numberOfFlanges: 0,
+      numberOfButtWelds,
+      totalButtWeldLength: Math.round(totalButtWeldLength * 100) / 100,
+      numberOfFlangeWelds: 0,
+      totalFlangeWeldLength: 0,
     };
   }
 

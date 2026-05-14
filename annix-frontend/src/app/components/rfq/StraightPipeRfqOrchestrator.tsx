@@ -68,6 +68,8 @@ import {
   buildBoqConsolidation,
   buildCustomerProjectInfo,
   buildRfqPayload,
+  countDroppedMiscItems,
+  countUncalculatedItems,
   extractErrorMessage,
   mapItemToUnified,
   resolveGlobalSpecsOverrides,
@@ -232,6 +234,75 @@ const calculateLocalPipeResult = (
   };
 };
 
+// Modal shown while an RFQ submission is in flight. Counts elapsed
+// seconds locally so the user can see the request is still alive
+// even though the backend's per-item loop offers no streaming
+// progress signal. Pure local state — mounted/unmounted purely by
+// the `visible` prop so the timer resets cleanly between attempts.
+function SubmissionProgressPopup(props: { visible: boolean; itemCount: number }) {
+  const { visible, itemCount } = props;
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+
+  useEffect(() => {
+    if (!visible) {
+      setElapsedSeconds(0);
+      return;
+    }
+    setElapsedSeconds(0);
+    const interval = setInterval(() => {
+      setElapsedSeconds((s) => s + 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [visible]);
+
+  if (!visible) return null;
+
+  const mm = Math.floor(elapsedSeconds / 60)
+    .toString()
+    .padStart(2, "0");
+  const ss = (elapsedSeconds % 60).toString().padStart(2, "0");
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+      <div className="bg-white rounded-lg shadow-2xl p-8 max-w-md w-full mx-4">
+        <div className="flex items-center justify-center mb-6">
+          <svg
+            className="w-12 h-12 animate-spin text-blue-600"
+            fill="none"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <circle
+              className="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              strokeWidth="4"
+            />
+            <path
+              className="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+            />
+          </svg>
+        </div>
+        <h2 className="text-xl font-semibold text-gray-900 text-center mb-2">Submitting RFQ</h2>
+        <p className="text-sm text-gray-600 text-center mb-4">
+          Processing {itemCount.toLocaleString()} item{itemCount === 1 ? "" : "s"}. Large bills of
+          quantities can take several minutes — please keep this tab open.
+        </p>
+        <div className="bg-gray-50 rounded p-3 text-center">
+          <div className="text-xs uppercase tracking-wide text-gray-500">Elapsed</div>
+          <div className="text-2xl font-mono font-semibold text-gray-900 mt-1">
+            {mm}:{ss}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function StraightPipeRfqOrchestrator(props: Props) {
   const { onSuccess, onCancel, editRfqId } = props;
   const isEditing = editRfqId !== undefined;
@@ -345,6 +416,12 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
 
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
   const initialDraftDataRef = useRef<string | null>(null);
+  // Count of items being submitted — set at the top of handleSubmit
+  // so the progress popup can show "Processing N items" instead of
+  // a bare spinner. Large BOQs can take minutes to process serially
+  // on the backend, and the popup is what tells the user it's still
+  // alive vs. hung.
+  const [submissionItemCount, setSubmissionItemCount] = useState<number>(0);
 
   const {
     loadDraft: loadLocalDraft,
@@ -373,6 +450,10 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
       straightPipeEntries: pendingLocalDraft.entries,
       currentStep: pendingLocalDraft.currentStep,
     });
+    // Rehydrate server attachment so the restored draft keeps
+    // updating its existing row.
+    if (pendingLocalDraft.draftId) setCurrentDraftId(pendingLocalDraft.draftId);
+    if (pendingLocalDraft.draftNumber) setDraftNumber(pendingLocalDraft.draftNumber);
 
     setShowDraftRestorePrompt(false);
     setPendingLocalDraft(null);
@@ -380,6 +461,8 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
   }, [
     pendingLocalDraft,
     restoreFromDraft,
+    setCurrentDraftId,
+    setDraftNumber,
     showToast,
     setShowDraftRestorePrompt,
     setPendingLocalDraft,
@@ -725,6 +808,9 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
             straightPipeEntries: serverDraft.entries,
             currentStep: serverDraft.currentStep,
           });
+          // Anonymous recovery flow doesn't carry a server draftId
+          // (anonymous drafts use tokens, not the authenticated
+          // drafts table), so we deliberately don't attach here.
           clearLocalDraft();
         } else if (localDraft) {
           restoreFromDraft({
@@ -734,6 +820,8 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
             straightPipeEntries: localDraft.entries,
             currentStep: localDraft.currentStep,
           });
+          if (localDraft.draftId) setCurrentDraftId(localDraft.draftId);
+          if (localDraft.draftNumber) setDraftNumber(localDraft.draftNumber);
         }
 
         setHasCheckedLocalDraft(true);
@@ -750,6 +838,8 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
             straightPipeEntries: localDraft.entries,
             currentStep: localDraft.currentStep,
           });
+          if (localDraft.draftId) setCurrentDraftId(localDraft.draftId);
+          if (localDraft.draftNumber) setDraftNumber(localDraft.draftNumber);
           setHasCheckedLocalDraft(true);
           showToast("Draft restored from local storage (recovery link expired)", "warning");
         } else {
@@ -771,6 +861,8 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
     setHasProcessedRecoveryToken,
     setHasCheckedLocalDraft,
     setIsLoadingDraft,
+    setCurrentDraftId,
+    setDraftNumber,
   ]);
 
   // Check for existing localStorage draft on mount.
@@ -815,6 +907,10 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
         straightPipeEntries: draft.entries,
         currentStep: draft.currentStep,
       });
+      // Rehydrate the server attachment so subsequent saves
+      // update the existing row instead of spawning new drafts.
+      if (draft.draftId) setCurrentDraftId(draft.draftId);
+      if (draft.draftNumber) setDraftNumber(draft.draftNumber);
       log.info(`Auto-restored draft from localStorage at step ${draft.currentStep}`);
       return;
     }
@@ -829,6 +925,8 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
     hasCheckedLocalDraft,
     isLocalDraftFresh,
     restoreFromDraft,
+    setCurrentDraftId,
+    setDraftNumber,
     setHasCheckedLocalDraft,
     setPendingLocalDraft,
     setShowDraftRestorePrompt,
@@ -906,6 +1004,10 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
       currentStep,
       entries: rfqData.items,
       customerEmail: rfqData.customerEmail,
+      // Carry the server attachment forward on every autosave so
+      // the debounced flush doesn't drop it.
+      draftId: currentDraftId || undefined,
+      draftNumber: draftNumber || undefined,
     });
   }, [
     isLoadingDraft,
@@ -931,6 +1033,8 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
     rfqData.globalSpecs,
     rfqData.items,
     currentStep,
+    currentDraftId,
+    draftNumber,
     saveLocalDraft,
   ]);
 
@@ -2072,17 +2176,6 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
       if (currentStep === 1) {
         draftSaveAndSendRecoveryEmail(isAuthenticated);
       }
-      // v1.4.3: silent server-side save on every step transition for
-      // authenticated users. localStorage covers per-browser durability
-      // (and is updated continuously); the server save is the
-      // cross-device backstop. Step-bound rather than timer-bound to
-      // keep Neon write traffic minimal — at most 5–6 saves per RFQ
-      // creation regardless of how long the user spends on each step.
-      if (isAuthenticated) {
-        handleSaveProgress().catch((err) => {
-          log.warn("Step-transition server save failed (non-fatal):", err);
-        });
-      }
       // When the customer accepted a BOQ extraction (or hit Confirm
       // on the unified document bucket), the wizard collapses to
       // three logical stops: Project Details → Clarifications → BOQ.
@@ -2091,6 +2184,21 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
       // BOQ page is the canonical review surface. Step pills still
       // let the customer detour into 2/3/4 manually if they want.
       const clarStep = rfqData.useNix ? 4 : 5;
+      const destinationStep =
+        currentStep === 1 && rfqData.boqExtractionAccepted ? clarStep : currentStep + 1;
+      // v1.4.3: silent server-side save on every step transition for
+      // authenticated users. localStorage covers per-browser durability
+      // (and is updated continuously); the server save is the
+      // cross-device backstop. Step-bound rather than timer-bound to
+      // keep Neon write traffic minimal — at most 5–6 saves per RFQ
+      // creation regardless of how long the user spends on each step.
+      // Saves with the destination step so the server row reflects
+      // where the user is now, matching localStorage.
+      if (isAuthenticated) {
+        handleSaveProgress(destinationStep).catch((err) => {
+          log.warn("Step-transition server save failed (non-fatal):", err);
+        });
+      }
       if (currentStep === 1 && rfqData.boqExtractionAccepted) {
         setCurrentStep(clarStep);
       } else {
@@ -2121,14 +2229,31 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
     scrollToTop();
   };
 
-  // Next step function (no validation) - used to go from Review to BOQ
+  // Next step function (no validation) - used to go from Review to BOQ.
+  // Persists destination step server-side so authenticated drafts
+  // track wizard progress instead of being frozen at the row's
+  // creation step.
   const handleNextStep = () => {
-    setCurrentStep(currentStep + 1);
+    const destinationStep = currentStep + 1;
+    if (isAuthenticated) {
+      handleSaveProgress(destinationStep).catch((err) => {
+        log.warn("Step-transition server save failed (non-fatal):", err);
+      });
+    }
+    setCurrentStep(destinationStep);
     scrollToTop();
   };
 
-  // Step click handler with scroll to top
+  // Step click handler with scroll to top — used by the bottom
+  // stepper pills. Mirrors the Next button: silent server save
+  // to the destination step for authenticated users so the row
+  // stays aligned with localStorage when the user jumps around.
   const handleStepClick = (stepNumber: number) => {
+    if (isAuthenticated && stepNumber !== currentStep) {
+      handleSaveProgress(stepNumber).catch((err) => {
+        log.warn("Stepper jump server save failed (non-fatal):", err);
+      });
+    }
     setCurrentStep(stepNumber);
     scrollToTop();
   };
@@ -2858,7 +2983,7 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
   );
 
   // Save progress handler - saves current RFQ data to server
-  const handleSaveProgress = async () => {
+  const handleSaveProgress = async (stepOverride?: number) => {
     log.debug("💾 handleSaveProgress called");
     log.debug("💾 rfqData.projectType:", rfqData.projectType);
     log.debug("💾 rfqData.requiredProducts:", rfqData.requiredProducts);
@@ -2868,11 +2993,15 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
     log.debug("💾 rfqData.globalSpecs:", rfqData.globalSpecs);
 
     const rawRequiredProducts2 = rfqData.requiredProducts;
+    // Allow callers (Next button, stepper jumps) to persist the
+    // destination step so the server row tracks where the user
+    // is going, not the page they just left.
+    const stepToSave = stepOverride ?? currentStep;
 
     const saveData = {
       draftId: currentDraftId || undefined,
       projectName: rfqData.projectName,
-      currentStep,
+      currentStep: stepToSave,
       formData: {
         projectName: rfqData.projectName,
         projectType: rfqData.projectType,
@@ -2974,11 +3103,15 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
       setCurrentDraftId(result.id);
       setDraftNumber(result.draftNumber);
 
-      // Also save to localStorage as backup
+      // Also save to localStorage as backup. Use the server's
+      // authoritative id/number rather than saveData (whose
+      // draftId snapshotted currentDraftId BEFORE the response
+      // came back — undefined on first save).
       localStorage.setItem(
         "annix_rfq_draft",
         JSON.stringify({
           ...saveData,
+          draftId: result.id,
           draftNumber: result.draftNumber,
           savedAt: nowISO(),
         }),
@@ -3047,6 +3180,32 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
   };
 
   const handleSubmit = async () => {
+    // Client-side double-submit guard. sessionStorage survives
+    // HMR (which resets React state), so a re-mount of the
+    // orchestrator while a submit is in flight can't quietly
+    // re-fire from a stale click. The backend's idempotency
+    // key (rfq.submissionId) is the authoritative dedupe; this
+    // is the friendly client-side belt.
+    const SUBMIT_GUARD_KEY = "rfq_submit_in_flight";
+    const inFlightSessionId =
+      // eslint-disable-next-line no-restricted-syntax -- SSR guard; isUndefined(window) would throw
+      typeof window !== "undefined" ? sessionStorage.getItem(SUBMIT_GUARD_KEY) : null;
+    if (inFlightSessionId) {
+      showToast(
+        "A submission is already in progress for this RFQ. Please wait for it to complete.",
+        "warning",
+      );
+      return;
+    }
+    // Generate one idempotency key per submit attempt. Reused
+    // automatically by any backend dedupe path if the request
+    // gets retried by the dev proxy or by the user.
+    const submissionId = crypto.randomUUID();
+    // eslint-disable-next-line no-restricted-syntax -- SSR guard; isUndefined(window) would throw
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem(SUBMIT_GUARD_KEY, submissionId);
+    }
+
     setIsSubmitting(true);
     setValidationErrors({});
     const g = resolveGlobalSpecsOverrides(rfqData.globalSpecs);
@@ -3054,18 +3213,34 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
     try {
       const rawItems2 = rfqData.items;
       const allItems = rawItems2 || rfqData.straightPipeEntries || [];
+      setSubmissionItemCount(allItems.length);
       const validationError = validateItemsForSubmission(allItems, "submitting");
       if (validationError) {
         setValidationErrors({ submit: validationError });
+        showToast(validationError, "error");
         setIsSubmitting(false);
         return;
       }
+      const uncalcCount = countUncalculatedItems(allItems);
+      if (uncalcCount > 0) {
+        showToast(
+          `Submitting with ${uncalcCount} item${uncalcCount === 1 ? "" : "s"} lacking weight calculations — they will show 0 kg in the BOQ.`,
+          "info",
+        );
+      }
+      const droppedMiscCount = countDroppedMiscItems(allItems);
+      if (droppedMiscCount > 0) {
+        showToast(
+          `Skipping ${droppedMiscCount} unclassified item${droppedMiscCount === 1 ? "" : "s"} (no backend item type) — these will not appear in the RFQ.`,
+          "info",
+        );
+      }
 
       const { unifiedRfqApi } = await import("@/app/lib/api/client");
-      const unifiedItems = allItems.map((entry: any) =>
-        mapItemToUnified(entry, g, rfqData.globalSpecs),
-      );
-      const unifiedPayload = buildRfqPayload(rfqData, unifiedItems);
+      const unifiedItems = allItems
+        .map((entry: any) => mapItemToUnified(entry, g, rfqData.globalSpecs))
+        .filter((it: any) => it !== null);
+      const unifiedPayload = buildRfqPayload(rfqData, unifiedItems, submissionId);
 
       log.debug("Submitting unified RFQ payload:", unifiedPayload);
       const result = await unifiedRfqApi.create(unifiedPayload);
@@ -3132,6 +3307,14 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
       showToast(`Submission failed: ${errorMessage}`, "error");
     } finally {
       setIsSubmitting(false);
+      // Always release the guard, success or fail. The backend
+      // idempotency key remains the authoritative dedupe — if a
+      // proxy retry comes in after this clears, it'll still
+      // match the recorded submissionId on the rfqs row.
+      // eslint-disable-next-line no-restricted-syntax -- SSR guard; isUndefined(window) would throw
+      if (typeof window !== "undefined") {
+        sessionStorage.removeItem(SUBMIT_GUARD_KEY);
+      }
     }
   };
 
@@ -3152,15 +3335,16 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
       const validationError = validateItemsForSubmission(allItems, "re-submitting");
       if (validationError) {
         setValidationErrors({ submit: validationError });
+        showToast(validationError, "error");
         setIsSubmitting(false);
         return;
       }
 
       const { unifiedRfqApi } = await import("@/app/lib/api/client");
 
-      const unifiedItems = allItems.map((entry: any) =>
-        mapItemToUnified(entry, g, rfqData.globalSpecs),
-      );
+      const unifiedItems = allItems
+        .map((entry: any) => mapItemToUnified(entry, g, rfqData.globalSpecs))
+        .filter((it: any) => it !== null);
 
       const unifiedPayload = buildRfqPayload(rfqData, unifiedItems);
 
@@ -3357,6 +3541,7 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex flex-col">
+      <SubmissionProgressPopup visible={isSubmitting} itemCount={submissionItemCount} />
       {/* Nix AI Assistant Popup */}
       <NixAiPopup isVisible={showNixPopup} onYes={nixAccept} onNo={nixDecline} />
       {/* Nix Processing Popup - shows while extracting data */}
@@ -3878,7 +4063,7 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
           {/* Right side - Save Progress & Next/Submit buttons */}
           <div className="flex items-center gap-3 justify-end">
             <button
-              onClick={handleSaveProgress}
+              onClick={() => handleSaveProgress()}
               disabled={isSavingDraft}
               className="px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               style={{

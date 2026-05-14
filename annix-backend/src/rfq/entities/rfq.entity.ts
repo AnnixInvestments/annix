@@ -40,6 +40,18 @@ export class Rfq {
   @Column({ name: "rfq_number", unique: true })
   rfqNumber: string;
 
+  // Idempotency key generated client-side on submit. The unique
+  // constraint stops duplicate rfqs from being created when the
+  // Next.js dev proxy retries a long POST that timed out, when
+  // the user double-clicks Submit, or when HMR resets React state
+  // mid-submit. Nullable so historical rows aren't broken.
+  @ApiProperty({
+    description: "Client-generated idempotency key for the submission attempt",
+    required: false,
+  })
+  @Column({ name: "submission_id", type: "varchar", length: 36, nullable: true, unique: true })
+  submissionId?: string | null;
+
   @ApiProperty({
     description: "Project name",
     example: "500NB Pipeline Extension",
