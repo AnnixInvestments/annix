@@ -345,6 +345,10 @@ export class RubberCocService {
       this.autoLinkCalendererToCompounder(dedupedCoc);
     }
 
+    if (dedupedCoc.cocType === SupplierCocType.COMPOUNDER) {
+      this.autoLinkCompounderToCalenderers(dedupedCoc);
+    }
+
     if (dedupedCoc.cocType === SupplierCocType.CALENDER_ROLL) {
       this.autoLinkCalenderRollToCalenderer(dedupedCoc);
     }
@@ -1492,6 +1496,81 @@ export class RubberCocService {
       .catch((error) => {
         this.logger.error(
           `Auto-link calenderer ${calendererCoc.id} to compounder failed: ${error.message}`,
+        );
+      });
+  }
+
+  async linkCompounderToCalendererCocs(
+    compounderCocId: number,
+  ): Promise<{ updatedCalendererIds: number[]; linkedBatches: string[] }> {
+    const compounderCoc = await this.supplierCocRepository.findOne({
+      where: { id: compounderCocId },
+    });
+
+    if (!compounderCoc || compounderCoc.cocType !== SupplierCocType.COMPOUNDER) {
+      return { updatedCalendererIds: [], linkedBatches: [] };
+    }
+
+    const declared = compounderCoc.extractedData?.batchNumbers || [];
+    const fromBatches = compounderCoc.extractedData?.batches?.map((b) => b.batchNumber) || [];
+    const allCompBatches = [...new Set([...declared, ...fromBatches])]
+      .map((b) => (b ?? "").toString().toLowerCase().trim())
+      .filter(Boolean);
+
+    if (allCompBatches.length === 0) {
+      return { updatedCalendererIds: [], linkedBatches: [] };
+    }
+
+    const calendererCocs = await this.supplierCocRepository
+      .createQueryBuilder("coc")
+      .where("coc.coc_type = :type", { type: SupplierCocType.CALENDARER })
+      .andWhere("coc.version_status = :status", { status: DocumentVersionStatus.ACTIVE })
+      .getMany();
+
+    const updatedCalendererIds: number[] = [];
+    const linkedBatches: string[] = [];
+
+    for (const calCoc of calendererCocs) {
+      const calBatches = (calCoc.extractedData?.batchNumbers || []).map((b) =>
+        (b ?? "").toString().toLowerCase().trim(),
+      );
+      const matching = calBatches.filter((bn) => allCompBatches.includes(bn));
+      if (matching.length === 0) continue;
+
+      const existing = calCoc.extractedData?.linkedCompounderCocIds || [];
+      if (existing.includes(compounderCocId)) continue;
+
+      const updatedLinks = [...new Set([...existing, compounderCocId])];
+      calCoc.extractedData = {
+        ...(calCoc.extractedData ?? {}),
+        linkedCompounderCocIds: updatedLinks,
+      };
+      await this.supplierCocRepository.save(calCoc);
+
+      updatedCalendererIds.push(calCoc.id);
+      linkedBatches.push(...matching);
+
+      this.triggerReadinessCheckForLinkedCalenderer(calCoc);
+    }
+
+    return {
+      updatedCalendererIds,
+      linkedBatches: [...new Set(linkedBatches)],
+    };
+  }
+
+  private autoLinkCompounderToCalenderers(compounderCoc: RubberSupplierCoc): void {
+    this.linkCompounderToCalendererCocs(compounderCoc.id)
+      .then((result) => {
+        if (result.updatedCalendererIds.length > 0) {
+          this.logger.log(
+            `Auto-linked compounder ${compounderCoc.id} to calenderer(s) [${result.updatedCalendererIds.join(", ")}] via batch numbers [${result.linkedBatches.join(", ")}]`,
+          );
+        }
+      })
+      .catch((error) => {
+        this.logger.error(
+          `Auto-link compounder ${compounderCoc.id} to calenderer(s) failed: ${error instanceof Error ? error.message : String(error)}`,
         );
       });
   }
