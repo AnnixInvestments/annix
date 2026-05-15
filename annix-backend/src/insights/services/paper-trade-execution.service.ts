@@ -41,7 +41,20 @@ export class PaperTradeExecutionService {
     const portfolios = await this.portfolioRepo.find({ where: { isActive: true } });
     const results: ExecutionResult[] = [];
     for (const portfolio of portfolios) {
-      if (portfolio.allocationRulesJson.fixedHolding) continue;
+      const strategy = portfolio.executorStrategy;
+      if (strategy === "buy-and-hold") continue;
+      if (strategy !== "rules") {
+        results.push({
+          portfolioSlug: portfolio.slug,
+          buysExecuted: 0,
+          sellsExecuted: 0,
+          cashDeployed: 0,
+          cashRaised: 0,
+          skipped: true,
+          skipReason: `executor_strategy=${strategy} not yet implemented`,
+        });
+        continue;
+      }
       try {
         results.push(await this.executeOne(portfolio));
       } catch (error) {

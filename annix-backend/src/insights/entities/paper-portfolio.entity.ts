@@ -27,6 +27,8 @@ export type RiskProfile =
   | "commodity-tilt"
   | "very-high-risk";
 
+export type ExecutorStrategy = "buy-and-hold" | "rules" | "ai-pure" | "ai-override" | "ai-picker";
+
 export interface AllocationRules {
   maxPositions: number | null;
   maxPercentPerPosition: number | null;
@@ -74,6 +76,18 @@ export class PaperPortfolio {
   @ApiProperty()
   @Column({ type: "varchar", length: 32, name: "risk_profile" })
   riskProfile: RiskProfile;
+
+  @ApiProperty({
+    description:
+      "Which executor handles trade decisions. 'buy-and-hold' routes to BenchmarkExecutionService; 'rules' routes to the deterministic rules engine; 'ai-pure', 'ai-override', 'ai-picker' route to AiExecutorService in different modes.",
+  })
+  @Column({
+    type: "varchar",
+    length: 32,
+    name: "executor_strategy",
+    default: "rules",
+  })
+  executorStrategy: ExecutorStrategy;
 
   @ApiProperty()
   @Column({ type: "numeric", precision: 18, scale: 2, name: "current_cash_balance" })

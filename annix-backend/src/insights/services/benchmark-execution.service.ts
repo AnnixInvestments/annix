@@ -34,7 +34,7 @@ export class BenchmarkExecutionService {
 
   async runAll(): Promise<BenchmarkExecutionResult[]> {
     const portfolios = await this.portfolioRepo.find({
-      where: { isActive: true, riskProfile: "buy-and-hold" },
+      where: { isActive: true, executorStrategy: "buy-and-hold" },
     });
     const results: BenchmarkExecutionResult[] = [];
     for (const portfolio of portfolios) {
