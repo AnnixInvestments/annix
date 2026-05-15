@@ -311,12 +311,13 @@ export const fallbackMiscWeight = (
     return perMetre * collarLenM + clampKg;
   }
   if (isPuddlePipe) {
-    // ~1m of pipe section + a SANS1123 backing flange. Backing flange
-    // mass for HDPE puddle pipes is approximately 0.0008 × DN² kg
-    // (empirical from SANS1123 Table 1600/3 plate-flange masses).
+    // ~1m of pipe section + TWO SANS1123 flanges (one puddle, one
+    // backing). Empirical fit to SANS 1123 Table 1000/3 plate-flange
+    // masses (DN100=2.5kg, DN400=16kg, DN600=33kg) is roughly
+    // DN^1.5/600 per flange, scaling more gently than DN².
     const pipeLenM = 1.0;
-    const flangeKg = 0.0008 * dn * dn;
-    return perMetre * pipeLenM + flangeKg;
+    const perFlangeKg = dn ** 1.5 / 600;
+    return perMetre * pipeLenM + 2 * perFlangeKg;
   }
   // Steel-other (rubber-lined mild steel pipes) — typically the
   // description is for a straight pipe section. Read explicit
