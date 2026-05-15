@@ -112,6 +112,14 @@ export class AiExecutorService {
         () => 0,
       );
     }
+    if (strategy === "ai-picker") {
+      return this.metrics.time(
+        METRIC_CATEGORY,
+        `${portfolio.slug}:ai-picker`,
+        () => this.runPickerMode(portfolio),
+        () => 0,
+      );
+    }
     return {
       portfolioSlug: portfolio.slug,
       buysExecuted: 0,
@@ -121,6 +129,69 @@ export class AiExecutorService {
       skipped: true,
       skipReason: `executor_strategy=${strategy} not yet implemented in AiExecutorService`,
     };
+  }
+
+  private async runPickerMode(portfolio: PaperPortfolio): Promise<ExecutionResult> {
+    const context = await this.gatherContext(portfolio);
+    if (context.topSignals.length === 0) {
+      return skipResult(portfolio.slug, "no signal snapshots available — skipping ai-picker run");
+    }
+    const prompt = buildPickerPrompt(portfolio, context);
+    let aiContent: string;
+    try {
+      const response = await this.ai.chat([{ role: "user", content: prompt }], SYSTEM_PROMPT);
+      aiContent = response.content;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Gemini picker call failed for ${portfolio.slug}: ${message}`);
+      return skipResult(portfolio.slug, `gemini failed: ${message}`);
+    }
+
+    let picks: ParsedPickerResponse;
+    try {
+      picks = parsePickerResponse(aiContent);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.warn(
+        `Gemini picker parse failed for ${portfolio.slug}: ${message}. Raw: ${aiContent.slice(0, 400)}`,
+      );
+      return skipResult(portfolio.slug, `ai-response parse failed: ${message}`);
+    }
+
+    const pickedSymbols = new Set(picks.picks.map((s) => s.toUpperCase()));
+    if (pickedSymbols.size === 0) {
+      this.logger.log(
+        `${portfolio.slug}: ai-picker returned zero picks — letting rules engine sell-only.`,
+      );
+    }
+
+    const draft = await this.rulesEngine.evaluateOne(portfolio);
+    const filtered: Decision[] = draft.decisions
+      .filter((d) => {
+        if (d.action === "sell") return true;
+        return pickedSymbols.has(d.symbol.toUpperCase());
+      })
+      .map((d) => {
+        const tag = d.action === "buy" ? "[ai-picker · picked]" : "[ai-picker · sell-pass-through]";
+        return {
+          ...d,
+          reasoning: `${tag} ${picks.rationale ? `overall: ${picks.rationale} | ` : ""}original: ${d.reasoning}`,
+        } as Decision;
+      });
+
+    if (filtered.length === 0) {
+      this.logger.log(`${portfolio.slug}: ai-picker filter dropped all rules-engine decisions.`);
+      return {
+        portfolioSlug: portfolio.slug,
+        buysExecuted: 0,
+        sellsExecuted: 0,
+        cashDeployed: 0,
+        cashRaised: 0,
+        skipped: false,
+        skipReason: null,
+      };
+    }
+    return applyTradeDecisions(this.dataSource, portfolio, filtered, this.logger);
   }
 
   private async runOverrideMode(portfolio: PaperPortfolio): Promise<ExecutionResult> {
@@ -438,6 +509,93 @@ export class AiExecutorService {
     }
     return map;
   }
+}
+
+interface ParsedPickerResponse {
+  picks: string[];
+  rationale: string;
+}
+
+function parsePickerResponse(raw: string): ParsedPickerResponse {
+  let cleaned = raw.trim();
+  if (cleaned.startsWith("```")) {
+    cleaned = cleaned.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
+  }
+  const parsed = JSON.parse(cleaned) as Record<string, unknown>;
+  const picksRaw = parsed.picks;
+  if (!Array.isArray(picksRaw)) {
+    throw new Error("picks must be an array");
+  }
+  const picks: string[] = picksRaw
+    .filter((s): s is string => typeof s === "string" && s.length > 0)
+    .map((s) => s.trim());
+  const rationale = typeof parsed.rationale === "string" ? parsed.rationale : "";
+  return { picks, rationale };
+}
+
+function buildPickerPrompt(portfolio: PaperPortfolio, context: AiDecisionContext): string {
+  const rules = portfolio.allocationRulesJson;
+  const maxPicks = rules.maxPositions ?? TOP_SIGNAL_COUNT;
+  const lines: string[] = [];
+  lines.push(`Portfolio: ${portfolio.slug} (${portfolio.displayName})`);
+  lines.push(`Currency: ${context.currency}`);
+  lines.push(`Cash balance: ${context.currency} ${context.cashBalance.toFixed(2)}`);
+  lines.push(`Today (SAST): ${context.todayIso}`);
+  lines.push(`Max picks allowed: ${maxPicks}`);
+  lines.push("");
+  lines.push(
+    "You are NOT sizing positions or choosing quantities — a deterministic rules engine handles that downstream.",
+  );
+  lines.push(
+    "Your job: from the candidate universe below, return the high-conviction symbols you'd consider buying TODAY.",
+  );
+  lines.push(
+    "Sell decisions are handled by the rules engine separately — focus only on buy-side picks.",
+  );
+  lines.push("");
+
+  lines.push(`Current holdings (${context.holdings.length}):`);
+  if (context.holdings.length === 0) {
+    lines.push("  (none)");
+  } else {
+    for (const h of context.holdings) {
+      lines.push(`  ${h.asset.symbol} (${h.asset.sector ?? "no-sector"})`);
+    }
+  }
+  lines.push("");
+
+  lines.push(`Candidate universe — top ${TOP_SIGNAL_COUNT} signal snapshots (today):`);
+  for (const s of context.topSignals) {
+    const b = s.snapshot.componentBreakdownJson;
+    lines.push(
+      `  ${s.asset.symbol} (${s.asset.sector ?? "no-sector"}) — opp ${Number(s.snapshot.opportunityScore).toFixed(0)} / risk ${Number(s.snapshot.riskScore).toFixed(0)} / conf ${Number(s.snapshot.confidenceScore).toFixed(0)} | mom ${b.momentum.score.toFixed(0)} val ${b.valuation.score.toFixed(0)} news ${b.newsSentiment.score.toFixed(0)} sec ${b.sectorTrend.score.toFixed(0)}`,
+    );
+  }
+  lines.push("");
+
+  lines.push(`Recent high/medium-impact news (last ${NEWS_LOOKBACK_HOURS}h):`);
+  if (context.newsItems.length === 0) {
+    lines.push("  (none)");
+  } else {
+    for (const n of context.newsItems.slice(0, NEWS_MAX_ARTICLES)) {
+      const date = n.publishedAt !== null ? n.publishedAt.toISOString().slice(0, 10) : "?";
+      const symbols = n.symbols.length > 0 ? n.symbols.join(",") : "broad";
+      lines.push(`  [${date} ${n.impactLevel ?? "?"}] ${symbols}: ${n.event}`);
+    }
+  }
+  lines.push("");
+
+  lines.push("Output JSON in this exact shape (and nothing else):");
+  lines.push("{");
+  lines.push(`  "picks": ["TICKER1", "TICKER2", ...],`);
+  lines.push(`  "rationale": "<overall reasoning incl. at least one risk caveat>"`);
+  lines.push("}");
+  lines.push("");
+  lines.push(
+    "Each pick must be a symbol from the candidate universe above. Empty picks array is valid when nothing looks compelling — include the reason in rationale.",
+  );
+
+  return lines.join("\n");
 }
 
 interface ParsedOverrideVerdict {
