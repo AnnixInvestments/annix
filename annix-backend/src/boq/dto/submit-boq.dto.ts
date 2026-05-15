@@ -26,13 +26,28 @@ export class ConsolidatedItemDto {
   @IsNumber({}, { each: true })
   entries: number[];
 
-  @ApiPropertyOptional({ description: "Weld data" })
+  @ApiPropertyOptional({ description: "Total weld length per type in linear metres" })
   @IsOptional()
   welds?: {
     pipeWeld?: number;
     flangeWeld?: number;
     mitreWeld?: number;
     teeWeld?: number;
+    gussetTeeWeld?: number;
+    latWeld45Plus?: number;
+    latWeldUnder45?: number;
+  };
+
+  @ApiPropertyOptional({ description: "Number of welds per type (parallel to welds)" })
+  @IsOptional()
+  weldCounts?: {
+    pipeWeld?: number;
+    flangeWeld?: number;
+    mitreWeld?: number;
+    teeWeld?: number;
+    gussetTeeWeld?: number;
+    latWeld45Plus?: number;
+    latWeldUnder45?: number;
   };
 
   @ApiPropertyOptional({ description: "Surface area data" })
