@@ -52,6 +52,7 @@ export class NewsIngestionService {
       "daily-pull",
       async () => {
         const assets = await this.assetRepo.find({ where: { isActive: true } });
+        const watchlist = new Set(assets.map((a) => a.symbol));
         let articlesFound = 0;
         let articlesPersisted = 0;
         let articlesExtracted = 0;
@@ -63,7 +64,7 @@ export class NewsIngestionService {
             const articles = await this.yahoo.fetchNews(asset.symbol, ARTICLES_PER_SYMBOL);
             for (const article of articles) {
               articlesFound++;
-              const persisted = await this.ingestArticle(article);
+              const persisted = await this.ingestArticle(article, watchlist);
               if (persisted === "skipped") continue;
               articlesPersisted++;
               if (persisted === "extracted") articlesExtracted++;
@@ -91,10 +92,23 @@ export class NewsIngestionService {
 
   private async ingestArticle(
     article: YahooNewsArticle,
+    watchlist: Set<string>,
   ): Promise<"skipped" | "extracted" | "failed"> {
     const urlHash = hashArticle(article.link, article.title);
     const existing = await this.newsRepo.findOne({ where: { urlHash } });
     if (existing) return "skipped";
+
+    // Pre-Gemini filter: Yahoo's per-ticker news endpoint surfaces
+    // related/trending market news, not just articles about the queried
+    // ticker. ~43% of the May 15 first-run articles had Yahoo-tagged
+    // tickers that didn't overlap any watchlist symbol (e.g. BMW.DE,
+    // GETY, KEX, AGIO). Skipping them here avoids the Gemini call entirely.
+    // Articles with empty relatedTickers fall through to Gemini so we can
+    // still capture general market commentary that Gemini extracts into
+    // affectedSymbols — the post-Gemini filter below drops the residue.
+    if (article.relatedTickers.length > 0 && !hasOverlap(article.relatedTickers, watchlist)) {
+      return "skipped";
+    }
 
     const created = this.newsRepo.create({
       urlHash,
@@ -111,6 +125,14 @@ export class NewsIngestionService {
       const extraction = await this.extractWithGemini(article);
       const themes = [...extraction.affectedSectors, ...extraction.affectedCommodities];
       const symbolUnion = unique([...article.relatedTickers, ...extraction.affectedSymbols]);
+      // Post-Gemini filter: catches the "empty Yahoo tickers + Gemini
+      // didn't extract a watchlist symbol either" case ("India hikes fuel
+      // prices..." style general macro). Delete the pending row so we
+      // don't leave orphans for the signal engine to scan.
+      if (!hasOverlap(symbolUnion, watchlist)) {
+        await this.newsRepo.delete(saved.id);
+        return "skipped";
+      }
       await this.newsRepo.update(saved.id, {
         summary: extraction.event,
         relatedSymbols: symbolUnion,
@@ -172,6 +194,13 @@ function hashArticle(url: string, title: string): string {
 
 function unique(arr: string[]): string[] {
   return Array.from(new Set(arr.filter((s) => typeof s === "string" && s.length > 0)));
+}
+
+function hasOverlap(candidates: string[], watchlist: Set<string>): boolean {
+  for (const c of candidates) {
+    if (typeof c === "string" && watchlist.has(c)) return true;
+  }
+  return false;
 }
 
 function parseGeminiResponse(raw: string): ExtractedNewsFields {
