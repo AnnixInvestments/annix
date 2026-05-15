@@ -126,9 +126,15 @@ const JOB_METADATA: Record<string, { description: string; module: string; defaul
   },
   "insights:daily-snapshot": {
     description:
-      "Annix Insights — pull yesterday's OHLCV bars for every active watchlist asset via Yahoo Finance",
+      "Annix Insights — morning run: pull OHLCV, news, signals, execute trades, snapshot portfolios (06:00 SAST)",
     module: "Annix Insights",
     defaultCron: "0 6 * * *",
+  },
+  "insights:evening-snapshot": {
+    description:
+      "Annix Insights — evening run: pull OHLCV, news, signals, execute trades, snapshot portfolios (18:00 SAST)",
+    module: "Annix Insights",
+    defaultCron: "0 18 * * *",
   },
   "insights:monthly-contribution": {
     description:

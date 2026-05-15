@@ -1,6 +1,9 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable, Logger, type OnApplicationBootstrap } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
 import { now } from "../../lib/datetime";
+import { PaperPortfolioSnapshot } from "../entities/paper-portfolio-snapshot.entity";
 import { BenchmarkExecutionService } from "./benchmark-execution.service";
 import { MarketDataIngestionService } from "./market-data-ingestion.service";
 import { NewsIngestionService } from "./news-ingestion.service";
@@ -19,7 +22,7 @@ export interface CronRunStatus {
 }
 
 @Injectable()
-export class InsightsCronService {
+export class InsightsCronService implements OnApplicationBootstrap {
   private readonly logger = new Logger(InsightsCronService.name);
   private currentRunStartedAtMs: number | null = null;
   private lastRunStartedAtMs: number | null = null;
@@ -35,7 +38,37 @@ export class InsightsCronService {
     private readonly snapshotService: PortfolioSnapshotService,
     private readonly signalEngine: SignalEngineService,
     private readonly tradeExecution: PaperTradeExecutionService,
+    @InjectRepository(PaperPortfolioSnapshot)
+    private readonly snapshotRepo: Repository<PaperPortfolioSnapshot>,
   ) {}
+
+  async onApplicationBootstrap(): Promise<void> {
+    const today = now().toISODate();
+    if (!today) {
+      return;
+    }
+    const currentHour = now().hour;
+    if (currentHour < 6) {
+      return;
+    }
+    const latest = await this.snapshotRepo
+      .createQueryBuilder("s")
+      .select("MAX(s.snapshot_date)", "maxDate")
+      .getRawOne<{ maxDate: string | Date | null }>();
+    const rawMax = latest?.maxDate ?? null;
+    const latestDate =
+      rawMax instanceof Date ? rawMax.toISOString().slice(0, 10) : (rawMax as string | null);
+    if (latestDate && latestDate >= today) {
+      return;
+    }
+    const source = latestDate
+      ? `bootstrap catch-up (latest snapshot ${latestDate})`
+      : "bootstrap catch-up (no prior snapshots)";
+    this.logger.warn(
+      `Insights catch-up: no snapshot for ${today} (latest=${latestDate ?? "never"}). Firing pipeline.`,
+    );
+    void this.runSnapshotPipeline(source);
+  }
 
   status(): CronRunStatus {
     return {
@@ -57,7 +90,7 @@ export class InsightsCronService {
     if (this.currentRunStartedAtMs !== null) {
       return { accepted: false, alreadyRunning: true };
     }
-    void this.runDailySnapshot();
+    void this.runSnapshotPipeline("manual trigger");
     return { accepted: true, alreadyRunning: false };
   }
 
@@ -66,14 +99,26 @@ export class InsightsCronService {
     timeZone: "Africa/Johannesburg",
   })
   async runDailySnapshot(): Promise<void> {
+    await this.runSnapshotPipeline("06:00 SAST cron");
+  }
+
+  @Cron("0 18 * * *", {
+    name: "insights:evening-snapshot",
+    timeZone: "Africa/Johannesburg",
+  })
+  async runEveningSnapshot(): Promise<void> {
+    await this.runSnapshotPipeline("18:00 SAST cron");
+  }
+
+  private async runSnapshotPipeline(source: string): Promise<void> {
     if (this.currentRunStartedAtMs !== null) {
-      this.logger.warn("Insights daily snapshot skipped: previous run still in progress.");
+      this.logger.warn(`Insights snapshot skipped (${source}): previous run still in progress.`);
       return;
     }
     const startedAtMs = now().toMillis();
     this.currentRunStartedAtMs = startedAtMs;
     this.lastRunError = null;
-    this.logger.log("Insights daily snapshot starting at 06:00 SAST.");
+    this.logger.log(`Insights snapshot starting (${source}).`);
     try {
       const ingest = await this.ingestion.runDailySnapshot();
       this.logger.log(
@@ -149,7 +194,7 @@ export class InsightsCronService {
     this.lastRunFinishedAtMs = finishedAtMs;
     this.lastRunDurationMs = finishedAtMs - startedAtMs;
     this.currentRunStartedAtMs = null;
-    this.logger.log(`Insights daily snapshot completed in ${this.lastRunDurationMs}ms.`);
+    this.logger.log(`Insights snapshot completed (${source}) in ${this.lastRunDurationMs}ms.`);
   }
 
   @Cron("0 6 1 * *", {
