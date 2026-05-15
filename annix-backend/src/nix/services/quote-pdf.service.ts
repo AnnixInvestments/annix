@@ -121,7 +121,12 @@ export class QuotePdfService {
   private async loadLogoAsDataUrl(rawLogo: string): Promise<string | null> {
     let buffer: Buffer | null = null;
     if (rawLogo.startsWith("http://") || rawLogo.startsWith("https://")) {
-      const response = await fetch(rawLogo);
+      // Node's fetch has NO default timeout — a slow or unreachable logo
+      // host would otherwise stall the entire quote-PDF render until the
+      // socket itself gave up (minutes). Cap it at 8s; on timeout the
+      // AbortError propagates to buildLetterhead's catch and the PDF
+      // generates logo-less rather than hanging on "Generating…".
+      const response = await fetch(rawLogo, { signal: AbortSignal.timeout(8000) });
       if (!response.ok) {
         this.logger.warn(`Logo fetch ${rawLogo} returned ${response.status}`);
         return null;
