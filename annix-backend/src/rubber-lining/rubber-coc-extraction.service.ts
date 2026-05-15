@@ -164,6 +164,34 @@ export class RubberCocExtractionService {
     return finalRanges.join(", ");
   }
 
+  // coc_number is a varchar(100) column; keep generated identifiers comfortably under it.
+  private static readonly MAX_COC_NUMBER_LENGTH = 90;
+
+  // Gemini sometimes returns several ticket/batch numbers joined into a single
+  // string ("42234, 42235, 42236"). Split those so formatRollRange can collapse
+  // them into ranges instead of emitting the raw comma list verbatim.
+  private splitMultiValueTokens(values: Array<string | null | undefined>): string[] {
+    const tokens = values
+      .filter((v): v is string => !!v)
+      .flatMap((v) => v.split(/[,;/]+|\s+/))
+      .map((t) => t.trim())
+      .filter(Boolean);
+    return [...new Set(tokens)];
+  }
+
+  private capCocNumber(orderOrPrefix: string, tokens: string[], full: string): string {
+    if (full.length <= RubberCocExtractionService.MAX_COC_NUMBER_LENGTH) return full;
+    const nums = tokens
+      .map((t) => {
+        const m = t.match(/\d+/);
+        return m ? Number.parseInt(m[0], 10) : Number.NaN;
+      })
+      .filter((n) => !Number.isNaN(n))
+      .sort((a, b) => a - b);
+    if (nums.length >= 2) return `${orderOrPrefix}${nums[0]}..${nums[nums.length - 1]}`;
+    return orderOrPrefix.replace(/-$/, "");
+  }
+
   private generateCalendererCocNumber(
     orderNumber: string | null,
     ticketNumber: string | null,
@@ -171,22 +199,22 @@ export class RubberCocExtractionService {
   ): string | null {
     if (!orderNumber) return null;
 
-    const allRolls = [
-      ...(ticketNumber ? [ticketNumber] : []),
-      ...(rollNumbers ?? []).filter((r) => r !== ticketNumber),
-    ];
+    const allRolls = this.splitMultiValueTokens([ticketNumber, ...(rollNumbers ?? [])]);
 
     if (allRolls.length === 0) return orderNumber;
 
     const rollRange = this.formatRollRange(allRolls);
-    return `${orderNumber}-${rollRange}`;
+    return this.capCocNumber(`${orderNumber}-`, allRolls, `${orderNumber}-${rollRange}`);
   }
 
   private generateCompounderCocNumber(batchNumbers: string[] | null): string | null {
     if (!batchNumbers || batchNumbers.length === 0) return null;
 
-    const batchRange = this.formatRollRange(batchNumbers);
-    return `B${batchRange}`;
+    const batches = this.splitMultiValueTokens(batchNumbers);
+    if (batches.length === 0) return null;
+
+    const batchRange = this.formatRollRange(batches);
+    return this.capCocNumber("B", batches, `B${batchRange}`);
   }
 
   private cleanCompounderCompoundCode(compoundCode: string): string {
