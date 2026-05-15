@@ -222,8 +222,30 @@ function reducerArea(item: QuoteItem, nbToOdMap: Record<number, number>): ItemSu
   const slantOuter = Math.sqrt(lengthMm * lengthMm + (r1 - r2) * (r1 - r2));
   const slantInner =
     id1 > 0 && id2 > 0 ? Math.sqrt(lengthMm * lengthMm + (id1 / 2 - id2 / 2) ** 2) : 0;
-  const externalM2 = (Math.PI * (r1 + r2) * slantOuter) / 1e6;
-  const internalM2 = slantInner > 0 ? (Math.PI * (id1 / 2 + id2 / 2) * slantInner) / 1e6 : 0;
+  const frustumExternal = (Math.PI * (r1 + r2) * slantOuter) / 1e6;
+  const frustumInternal = slantInner > 0 ? (Math.PI * (id1 / 2 + id2 / 2) * slantInner) / 1e6 : 0;
+  // Flange-face overlap: paint / lining wraps ~100 mm onto each flanged
+  // end — the same 100-mm-per-end convention pipes, bends, tees and
+  // manifolds all apply. reducerArea was the only formula NOT adding it,
+  // so a short flanged reducer was undercharged: a 200 mm 125×100 F.B.E
+  // reducer came out with LESS m² than a 200 mm 100NB F.B.E pipe even
+  // though it's the bigger item (Andrew 2026-05-15). Large end uses od1,
+  // small end od2; a single-flange (F.O.E) reducer is assumed flanged
+  // on the large end.
+  const flangeCount = countFlangesFromConfig(item.flangeConfig);
+  const overlapMm = 100;
+  let externalFlange = 0;
+  let internalFlange = 0;
+  if (flangeCount >= 1) {
+    externalFlange += (Math.PI * od1 * overlapMm) / 1e6;
+    if (id1 > 0) internalFlange += (Math.PI * id1 * overlapMm) / 1e6;
+  }
+  if (flangeCount >= 2) {
+    externalFlange += (Math.PI * od2 * overlapMm) / 1e6;
+    if (id2 > 0) internalFlange += (Math.PI * id2 * overlapMm) / 1e6;
+  }
+  const externalM2 = frustumExternal + externalFlange;
+  const internalM2 = frustumInternal + internalFlange;
   const quantity = item.quantity > 0 ? item.quantity : 1;
   return asResult({ externalM2, internalM2, quantity });
 }
