@@ -20,6 +20,7 @@ import { ApiError } from "@/app/lib/api/apiError";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import { useCronStatus, useRunFullCron } from "@/app/lib/query/hooks";
 import { insightsKeys } from "@/app/lib/query/keys";
+import { MacroSentimentPanel } from "./components/MacroSentimentPanel";
 import { INSIGHTS_VERSION } from "./config/version";
 import { useInsightsAuth } from "./context/InsightsAuthContext";
 
@@ -176,6 +177,8 @@ function InsightsDashboard(props: { userEmail: string }) {
             portfolios start running at Phase 3. Progress is tracked in GitHub issue #287.
           </p>
         </div>
+
+        <MacroSentimentPanel />
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
           <Link

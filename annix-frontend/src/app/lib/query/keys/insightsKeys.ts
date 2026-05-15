@@ -24,4 +24,6 @@ export const insightsKeys = {
     const symbol = params.symbol;
     return ["insights", "news", limit ?? "default", offset ?? 0, symbol ?? "all"] as const;
   },
+  macroToday: () => ["insights", "macro", "today"] as const,
+  macroHistory: (limit?: number) => ["insights", "macro", "history", limit ?? "default"] as const,
 } as const;

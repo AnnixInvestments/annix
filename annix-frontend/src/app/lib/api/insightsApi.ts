@@ -175,6 +175,16 @@ export const insightsApi = {
     insightsTokenStore.clear();
   },
 
+  macro: {
+    today(): Promise<MacroSentimentSnapshot | null> {
+      return apiClient.get<MacroSentimentSnapshot | null>("/insights/macro/today");
+    },
+    history(limit?: number): Promise<MacroSentimentSnapshot[]> {
+      const params = limit ? `?limit=${limit}` : "";
+      return apiClient.get<MacroSentimentSnapshot[]>(`/insights/macro/history${params}`);
+    },
+  },
+
   watchlist: {
     list(): Promise<WatchlistItemResponse[]> {
       return apiClient.get<WatchlistItemResponse[]>("/insights/watchlist");
@@ -416,6 +426,22 @@ export interface PaperAllocationRules {
   sectorTilt?: { sectors: string[]; bonus: number };
   preferLeveragedEtfs?: boolean;
   fixedHolding?: { symbol: string };
+}
+
+export interface MacroBreakdownEntry {
+  count: number;
+  meanSentiment: number;
+}
+
+export interface MacroSentimentSnapshot {
+  id: string;
+  snapshotDate: string;
+  overallScore: number;
+  articleCount: number;
+  highImpactCount: number;
+  sectorBreakdown: Record<string, MacroBreakdownEntry>;
+  commodityBreakdown: Record<string, MacroBreakdownEntry>;
+  createdAt: string;
 }
 
 export interface PaperPortfolioSummary {

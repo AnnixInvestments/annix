@@ -701,6 +701,7 @@ export {
   useHistoryCount,
   useInvalidateAssetData,
 } from "./insights/useAssetHistory";
+export { useMacroHistory, useMacroToday } from "./insights/useMacroSentiment";
 export { useNews } from "./insights/useNews";
 export {
   usePaperDecisionsToday,
