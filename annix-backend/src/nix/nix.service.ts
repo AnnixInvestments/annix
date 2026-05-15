@@ -1271,6 +1271,33 @@ export class NixService {
       "materialClassRef",
       "material_class",
     );
+    const liningThicknessMm = numFrom(
+      "liningThicknessMm",
+      "liningThickness",
+      "lining_thickness_mm",
+    );
+    const liningFlangeFaceThicknessMm = numFrom(
+      "liningFlangeFaceThicknessMm",
+      "liningFlangeFaceThickness",
+      "lining_flange_face_thickness_mm",
+    );
+    const internalCoatingDescription = strFrom(
+      "internalCoatingDescription",
+      "corrosionInternal",
+      "corrosion_int",
+      "internalPaint",
+    );
+    const externalCoatingDescription = strFrom(
+      "externalCoatingDescription",
+      "corrosionExternal",
+      "corrosion_ext",
+      "externalPaint",
+    );
+    const bandingDetails = strFrom("bandingDetails", "bands", "bandCallout");
+    const deviationsRaw = item["deviations"];
+    const deviations = Array.isArray(deviationsRaw)
+      ? (deviationsRaw.filter((d) => typeof d === "string" && d.length > 0) as string[])
+      : null;
     return {
       rowNumber: numFrom("rowNumber") ?? 0,
       itemNumber:
@@ -1318,6 +1345,12 @@ export class NixService {
       ...(liningType ? { liningType } : {}),
       ...(coatingSystem ? { coatingSystem } : {}),
       ...(materialClass ? { materialClass } : {}),
+      ...(liningThicknessMm !== null ? { liningThicknessMm } : {}),
+      ...(liningFlangeFaceThicknessMm !== null ? { liningFlangeFaceThicknessMm } : {}),
+      ...(internalCoatingDescription ? { internalCoatingDescription } : {}),
+      ...(externalCoatingDescription ? { externalCoatingDescription } : {}),
+      ...(bandingDetails ? { bandingDetails } : {}),
+      ...(deviations && deviations.length > 0 ? { deviations } : {}),
     } as ExtractedItem;
   }
 

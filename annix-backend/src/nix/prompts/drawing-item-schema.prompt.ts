@@ -112,7 +112,7 @@ export const DRAWING_ITEM_SCHEMA_EXAMPLE = `{
   "items": [
     {
       "itemNumber": "-01",
-      "description": "Pipe",
+      "description": "1000NB x 16mm Pipe",
       "itemType": "pipe",
       "quantity": 6,
       "diameter": 1000,
@@ -135,7 +135,7 @@ export const DRAWING_ITEM_SCHEMA_EXAMPLE = `{
     },
     {
       "itemNumber": "-02",
-      "description": "Pipe",
+      "description": "350NB x 10mm Pipe",
       "itemType": "pipe",
       "quantity": 45,
       "diameter": 350,
@@ -158,7 +158,7 @@ export const DRAWING_ITEM_SCHEMA_EXAMPLE = `{
     },
     {
       "itemNumber": "-04",
-      "description": "Pipe",
+      "description": "350NB x 10mm Pipe",
       "itemType": "pipe",
       "quantity": 6,
       "diameter": 350,
@@ -181,7 +181,7 @@ export const DRAWING_ITEM_SCHEMA_EXAMPLE = `{
     },
     {
       "itemNumber": "-06",
-      "description": "Pipe",
+      "description": "150NB x HVY Pipe",
       "itemType": "pipe",
       "quantity": 1,
       "diameter": 150,

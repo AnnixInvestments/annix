@@ -85,6 +85,18 @@ export interface ExtractedItem {
     weightKg?: number;
     areaM2?: number;
   }>;
+  /** Material class / spec code on a drawing item, e.g. "1000/3", "SABS62". */
+  materialClass?: string;
+  /** Rubber-lining bore thickness in mm — drawing-derived, supersedes spec PDF. */
+  liningFlangeFaceThicknessMm?: number;
+  /** Verbatim drawing text after "CORROSION INT." / "INTERNAL PAINT". */
+  internalCoatingDescription?: string;
+  /** Verbatim drawing text after "CORROSION EXT." / "EXTERNAL PAINT". */
+  externalCoatingDescription?: string;
+  /** Verbatim text of band callouts (e.g. "Band 1 GOLDEN YELLOW B49"). */
+  bandingDetails?: string;
+  /** Hand-written / red-pen client deviations from the printed spec. */
+  deviations?: string[];
 }
 
 export interface SpecificationCellData {
