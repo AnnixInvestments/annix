@@ -89,14 +89,36 @@ export class NixExtractionSessionService extends BaseCrudService<
    * Sessions visible to a particular user — they own them or they're an
    * admin viewing all. The controller layer is responsible for applying the
    * admin override; this method returns ownership-scoped results.
+   *
+   * Filters (sourceModule / status) are pushed to SQL rather than applied in
+   * memory — the Quotations page fires two calls (drafts + promoted), and
+   * fetching ALL sessions twice then filtering 49 of every 50 away in JS
+   * showed up as the dominant network-egress query in pg_stat_statements
+   * (issue #203). Only `ext.id` is pulled from the extractions join so the
+   * frontend's `s.extractions.length` count still works without shipping
+   * the heavy jsonb columns (extracted_data, extracted_items, raw_text)
+   * over the wire.
    */
-  async sessionsForOwner(ownerUserId: number): Promise<NixExtractionSession[]> {
-    return this.repo.find({
-      where: { ownerUserId },
-      order: { createdAt: "DESC" },
-      take: 50,
-      relations: ["extractions"],
-    });
+  async sessionsForOwner(
+    ownerUserId: number,
+    filters: { sourceModule?: string; status?: NixExtractionSessionStatus } = {},
+  ): Promise<NixExtractionSession[]> {
+    const qb = this.repo
+      .createQueryBuilder("session")
+      .leftJoin("session.extractions", "ext")
+      .addSelect("ext.id")
+      .where("session.ownerUserId = :ownerUserId", { ownerUserId })
+      .orderBy("session.createdAt", "DESC")
+      .take(50);
+    if (filters.sourceModule) {
+      qb.andWhere("session.sourceModule = :sourceModule", {
+        sourceModule: filters.sourceModule,
+      });
+    }
+    if (filters.status) {
+      qb.andWhere("session.status = :status", { status: filters.status });
+    }
+    return qb.getMany();
   }
 
   /**

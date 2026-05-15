@@ -56,6 +56,16 @@ export interface MineRecord {
  */
 @Injectable()
 export class MineRegistryService {
+  // In-memory cache of all mines across all six country tables. The data is
+  // static-ish reference data (mines are added rarely, via admin tooling),
+  // so a 30-min TTL is plenty fresh. Pre-cache, NixExtractionSessionService
+  // and MineInferenceService were each pulling every country table on every
+  // call — 2,056 calls per table per 2 days in pg_stat_statements (#203).
+  // Mutations on the underlying entities should call `invalidate()` so the
+  // next read repopulates.
+  private static readonly CACHE_TTL_MS = 30 * 60 * 1000;
+  private cache: { data: MineRecord[]; at: number } | null = null;
+
   constructor(
     @InjectRepository(SaMine) private readonly saRepo: Repository<SaMine>,
     @InjectRepository(BotswanaMine) private readonly bwRepo: Repository<BotswanaMine>,
@@ -66,6 +76,9 @@ export class MineRegistryService {
   ) {}
 
   async allMines(): Promise<MineRecord[]> {
+    if (this.cache && Date.now() - this.cache.at < MineRegistryService.CACHE_TTL_MS) {
+      return this.cache.data;
+    }
     const [sa, bw, na, zw, zm, mz] = await Promise.all([
       this.saRepo.find(),
       this.bwRepo.find(),
@@ -74,7 +87,7 @@ export class MineRegistryService {
       this.zmRepo.find(),
       this.mzRepo.find(),
     ]);
-    return [
+    const data: MineRecord[] = [
       ...sa.map((m) => toRecord("South Africa", m)),
       ...bw.map((m) => toRecord("Botswana", m)),
       ...na.map((m) => toRecord("Namibia", m)),
@@ -82,31 +95,17 @@ export class MineRegistryService {
       ...zm.map((m) => toRecord("Zambia", m)),
       ...mz.map((m) => toRecord("Mozambique", m)),
     ];
+    this.cache = { data, at: Date.now() };
+    return data;
   }
 
   async byCountry(country: Country): Promise<MineRecord[]> {
-    if (country === "South Africa") {
-      const rows = await this.saRepo.find();
-      return rows.map((m) => toRecord(country, m));
-    }
-    if (country === "Botswana") {
-      const rows = await this.bwRepo.find();
-      return rows.map((m) => toRecord(country, m));
-    }
-    if (country === "Namibia") {
-      const rows = await this.naRepo.find();
-      return rows.map((m) => toRecord(country, m));
-    }
-    if (country === "Zimbabwe") {
-      const rows = await this.zwRepo.find();
-      return rows.map((m) => toRecord(country, m));
-    }
-    if (country === "Zambia") {
-      const rows = await this.zmRepo.find();
-      return rows.map((m) => toRecord(country, m));
-    }
-    const mzRows = await this.mzRepo.find();
-    return mzRows.map((m) => toRecord(country, m));
+    const all = await this.allMines();
+    return all.filter((m) => m.country === country);
+  }
+
+  invalidate(): void {
+    this.cache = null;
   }
 }
 

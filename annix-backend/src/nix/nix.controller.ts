@@ -224,12 +224,7 @@ export class NixController {
     @Query("status") status?: NixExtractionSessionStatus,
   ): Promise<NixExtractionSession[]> {
     const authUser = req["authUser"] as AuthenticatedUser;
-    const all = await this.sessionService.sessionsForOwner(authUser.userId);
-    return all.filter((s) => {
-      if (sourceModule && s.sourceModule !== sourceModule) return false;
-      if (status && s.status !== status) return false;
-      return true;
-    });
+    return this.sessionService.sessionsForOwner(authUser.userId, { sourceModule, status });
   }
 
   @Get("sessions/:id")
