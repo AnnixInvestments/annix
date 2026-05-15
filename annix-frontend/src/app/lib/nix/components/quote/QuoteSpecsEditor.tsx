@@ -288,6 +288,13 @@ function SpecCard(props: SpecCardProps) {
   const kindToneClass = isLining
     ? "bg-blue-50 text-blue-800 border-blue-200"
     : "bg-orange-50 text-orange-800 border-orange-200";
+  // Drawing-faceted coating: the signed drawing dictates the per-face
+  // treatment (CORROSION INT. + CORROSION EXT.), so the supplier rows
+  // are the contractual facets — not alternatives the quoter picks
+  // between. Hides the USE THIS toggle, the '+ Add alternative' button,
+  // and the per-row select affordance.
+  const isDrawingFaceted =
+    !isLining && suppliers.some((s) => s.brand === "Internal" || s.brand === "External");
 
   const m2Value = rate && rate.perM2 > 0 ? String(rate.perM2) : "";
   const rmValue = rate && rate.perRm > 0 ? String(rate.perRm) : "";
@@ -371,7 +378,13 @@ function SpecCard(props: SpecCardProps) {
       </div>
 
       <div className="space-y-2">
-        {!isLining && suppliers.length > 1 && (
+        {isDrawingFaceted && (
+          <p className="text-[11px] text-gray-500">
+            Internal &amp; external coatings are dictated by the signed drawing — both apply and
+            travel with the quote. Edit the description text if a product needs amending.
+          </p>
+        )}
+        {!isLining && !isDrawingFaceted && suppliers.length > 1 && (
           <p className="text-[11px] text-gray-500">
             {selectedId
               ? "Selected supplier shown below — click another brand to switch, or click the same one to clear and quote all alternatives."
@@ -387,8 +400,8 @@ function SpecCard(props: SpecCardProps) {
           </p>
         ) : (
           suppliers.map((supplier) => {
-            const isSelected = selectedId === supplier.id;
-            const isDimmed = !isLining && selectedId !== null && !isSelected;
+            const isSelected = !isDrawingFaceted && selectedId === supplier.id;
+            const isDimmed = !isLining && !isDrawingFaceted && selectedId !== null && !isSelected;
             const resolved = spec.resolved;
             const specSummary = resolved ? resolved.summary : null;
             return (
@@ -399,7 +412,8 @@ function SpecCard(props: SpecCardProps) {
                 isLining={isLining}
                 isSelected={isSelected}
                 isDimmed={isDimmed}
-                showSelectAffordance={!isLining}
+                showSelectAffordance={!isLining && !isDrawingFaceted}
+                hideDelete={isDrawingFaceted}
                 attachment={attachments[supplier.id] ? attachments[supplier.id] : null}
                 specSummary={specSummary}
                 onChange={(partial) => updateSupplier(supplier.id, partial)}
@@ -411,13 +425,15 @@ function SpecCard(props: SpecCardProps) {
           })
         )}
         <div className="flex items-center gap-3 flex-wrap">
-          <button
-            type="button"
-            onClick={addSupplier}
-            className="inline-flex items-center gap-1 text-xs text-[#323288] font-medium hover:underline"
-          >
-            <span aria-hidden>+</span> Add {isLining ? "product" : "alternative"}
-          </button>
+          {!isDrawingFaceted && (
+            <button
+              type="button"
+              onClick={addSupplier}
+              className="inline-flex items-center gap-1 text-xs text-[#323288] font-medium hover:underline"
+            >
+              <span aria-hidden>+</span> Add {isLining ? "product" : "alternative"}
+            </button>
+          )}
           {canRefreshThicknesses && (
             <button
               type="button"
@@ -481,6 +497,12 @@ interface SupplierRowProps {
   isSelected: boolean;
   isDimmed: boolean;
   showSelectAffordance: boolean;
+  /**
+   * Hide the row's delete (×) button — used for drawing-faceted INT/EXT
+   * coating rows where the user shouldn't be able to drop the contractual
+   * face. Editing the description text is still permitted.
+   */
+  hideDelete: boolean;
   attachment: DataSheetAttachment | null;
   /**
    * The parent spec's one-liner summary (e.g. '6 mm bore, 3 mm flange,
@@ -570,6 +592,7 @@ function SupplierRow(props: SupplierRowProps) {
     isSelected,
     isDimmed,
     showSelectAffordance,
+    hideDelete,
     attachment,
     specSummary,
     onChange,
@@ -784,15 +807,17 @@ function SupplierRow(props: SupplierRowProps) {
           rows={isLining ? 2 : 2}
           className="flex-1 min-w-0 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#323288]/30 resize-y"
         />
-        <button
-          type="button"
-          onClick={onDelete}
-          className="text-gray-400 hover:text-red-600 text-sm leading-none px-1.5 py-1"
-          aria-label="Delete entry"
-          title="Delete entry"
-        >
-          ×
-        </button>
+        {!hideDelete && (
+          <button
+            type="button"
+            onClick={onDelete}
+            className="text-gray-400 hover:text-red-600 text-sm leading-none px-1.5 py-1"
+            aria-label="Delete entry"
+            title="Delete entry"
+          >
+            ×
+          </button>
+        )}
       </div>
       {isCustom && (
         <div className="mt-2 flex flex-col gap-1">

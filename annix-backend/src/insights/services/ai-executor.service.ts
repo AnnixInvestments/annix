@@ -16,6 +16,7 @@ import { PriceHistory } from "../entities/price-history.entity";
 import { type SignalComponentBreakdown, SignalSnapshot } from "../entities/signal-snapshot.entity";
 import { WatchlistItem } from "../entities/watchlist-item.entity";
 import type { BuyDecision, Decision, SellDecision } from "./allocation-rules-engine.service";
+import { AllocationRulesEngineService } from "./allocation-rules-engine.service";
 import { applyTradeDecisions, type ExecutionResult } from "./paper-trade-execution.service";
 
 const METRIC_CATEGORY = "insights-ai-exec";
@@ -90,6 +91,7 @@ export class AiExecutorService {
     private readonly dataSource: DataSource,
     private readonly ai: AiChatService,
     private readonly metrics: ExtractionMetricService,
+    private readonly rulesEngine: AllocationRulesEngineService,
   ) {}
 
   async executeOne(portfolio: PaperPortfolio): Promise<ExecutionResult> {
@@ -102,6 +104,14 @@ export class AiExecutorService {
         () => 0,
       );
     }
+    if (strategy === "ai-override") {
+      return this.metrics.time(
+        METRIC_CATEGORY,
+        `${portfolio.slug}:ai-override`,
+        () => this.runOverrideMode(portfolio),
+        () => 0,
+      );
+    }
     return {
       portfolioSlug: portfolio.slug,
       buysExecuted: 0,
@@ -111,6 +121,62 @@ export class AiExecutorService {
       skipped: true,
       skipReason: `executor_strategy=${strategy} not yet implemented in AiExecutorService`,
     };
+  }
+
+  private async runOverrideMode(portfolio: PaperPortfolio): Promise<ExecutionResult> {
+    const draft = await this.rulesEngine.evaluateOne(portfolio);
+    if (draft.decisions.length === 0) {
+      this.logger.log(
+        `${portfolio.slug}: rules engine produced no draft decisions — nothing to override.`,
+      );
+      return {
+        portfolioSlug: portfolio.slug,
+        buysExecuted: 0,
+        sellsExecuted: 0,
+        cashDeployed: 0,
+        cashRaised: 0,
+        skipped: false,
+        skipReason: null,
+      };
+    }
+    const context = await this.gatherContext(portfolio);
+    const prompt = buildOverridePrompt(portfolio, context, draft.decisions);
+
+    let aiContent: string;
+    try {
+      const response = await this.ai.chat([{ role: "user", content: prompt }], SYSTEM_PROMPT);
+      aiContent = response.content;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Gemini override call failed for ${portfolio.slug}: ${message}`);
+      return skipResult(portfolio.slug, `gemini failed: ${message}`);
+    }
+
+    let verdicts: ParsedOverrideResponse;
+    try {
+      verdicts = parseOverrideResponse(aiContent);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.warn(
+        `Gemini override parse failed for ${portfolio.slug}: ${message}. Raw: ${aiContent.slice(0, 400)}`,
+      );
+      return skipResult(portfolio.slug, `ai-response parse failed: ${message}`);
+    }
+
+    const applied = applyOverrides(draft.decisions, verdicts, this.logger, portfolio.slug);
+    if (applied.length === 0) {
+      this.logger.log(`${portfolio.slug}: ai-override dropped every draft decision.`);
+      return {
+        portfolioSlug: portfolio.slug,
+        buysExecuted: 0,
+        sellsExecuted: 0,
+        cashDeployed: 0,
+        cashRaised: 0,
+        skipped: false,
+        skipReason: null,
+      };
+    }
+    return applyTradeDecisions(this.dataSource, portfolio, applied, this.logger);
   }
 
   private async runPureMode(portfolio: PaperPortfolio): Promise<ExecutionResult> {
@@ -372,6 +438,170 @@ export class AiExecutorService {
     }
     return map;
   }
+}
+
+interface ParsedOverrideVerdict {
+  draftIndex: number;
+  action: "keep" | "drop" | "replace-qty";
+  newQty: number | null;
+  reasoning: string;
+}
+
+interface ParsedOverrideResponse {
+  verdicts: ParsedOverrideVerdict[];
+  rationale: string;
+}
+
+function applyOverrides(
+  draft: Decision[],
+  response: ParsedOverrideResponse,
+  logger: Logger,
+  slug: PaperPortfolioSlug,
+): Decision[] {
+  const verdictByIndex = new Map<number, ParsedOverrideVerdict>();
+  for (const v of response.verdicts) {
+    verdictByIndex.set(v.draftIndex, v);
+  }
+  const out: Decision[] = [];
+  for (let i = 0; i < draft.length; i++) {
+    const decision = draft[i];
+    const verdict = verdictByIndex.get(i);
+    if (!verdict || verdict.action === "keep") {
+      const reasoning = verdict
+        ? `[ai-override · keep] ${verdict.reasoning} | overall: ${response.rationale} | original: ${decision.reasoning}`
+        : `[ai-override · keep (no verdict)] original: ${decision.reasoning}`;
+      out.push({ ...decision, reasoning } as Decision);
+      continue;
+    }
+    if (verdict.action === "drop") {
+      logger.log(
+        `${slug}: ai-override dropped ${decision.action} ${decision.symbol} — ${verdict.reasoning}`,
+      );
+      continue;
+    }
+    // replace-qty
+    if (verdict.newQty === null || verdict.newQty <= 0) {
+      logger.warn(
+        `${slug}: ai-override replace-qty for ${decision.symbol} missing/invalid newQty — keeping original`,
+      );
+      out.push(decision);
+      continue;
+    }
+    const newQty = Math.floor(verdict.newQty);
+    const newTradeValue = newQty * decision.estimatedPrice;
+    const reasoning = `[ai-override · replace-qty ${decision.qty}->${newQty}] ${verdict.reasoning} | overall: ${response.rationale} | original: ${decision.reasoning}`;
+    out.push({
+      ...decision,
+      qty: newQty,
+      estimatedTradeValue: newTradeValue,
+      reasoning,
+    } as Decision);
+  }
+  return out;
+}
+
+function parseOverrideResponse(raw: string): ParsedOverrideResponse {
+  let cleaned = raw.trim();
+  if (cleaned.startsWith("```")) {
+    cleaned = cleaned.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
+  }
+  const parsed = JSON.parse(cleaned) as Record<string, unknown>;
+  const verdictsRaw = parsed.verdicts;
+  if (!Array.isArray(verdictsRaw)) {
+    throw new Error("verdicts must be an array");
+  }
+  const verdicts: ParsedOverrideVerdict[] = verdictsRaw.map((v, i) => {
+    if (typeof v !== "object" || v === null) {
+      throw new Error(`verdicts[${i}] must be an object`);
+    }
+    const rec = v as Record<string, unknown>;
+    if (typeof rec.draftIndex !== "number" || !Number.isInteger(rec.draftIndex)) {
+      throw new Error(`verdicts[${i}].draftIndex must be an integer`);
+    }
+    const action = rec.action;
+    if (action !== "keep" && action !== "drop" && action !== "replace-qty") {
+      throw new Error(`verdicts[${i}].action must be "keep", "drop", or "replace-qty"`);
+    }
+    const newQty =
+      typeof rec.newQty === "number" && Number.isFinite(rec.newQty) ? rec.newQty : null;
+    const reasoning = typeof rec.reasoning === "string" ? rec.reasoning : "";
+    return { draftIndex: rec.draftIndex, action, newQty, reasoning };
+  });
+  const rationale = typeof parsed.rationale === "string" ? parsed.rationale : "";
+  return { verdicts, rationale };
+}
+
+function buildOverridePrompt(
+  portfolio: PaperPortfolio,
+  context: AiDecisionContext,
+  draft: Decision[],
+): string {
+  const lines: string[] = [];
+  lines.push(`Portfolio: ${portfolio.slug} (${portfolio.displayName})`);
+  lines.push(`Currency: ${context.currency}`);
+  lines.push(`Cash balance: ${context.currency} ${context.cashBalance.toFixed(2)}`);
+  lines.push(`Today (SAST): ${context.todayIso}`);
+  lines.push("");
+
+  lines.push(`Draft trade decisions from the rules engine (${draft.length}):`);
+  draft.forEach((d, i) => {
+    const tradeValue = d.estimatedTradeValue.toFixed(2);
+    lines.push(
+      `  [#${i}] ${d.action.toUpperCase()} ${d.qty} ${d.symbol} @ ${d.estimatedPrice.toFixed(2)} = ${context.currency} ${tradeValue}. opp ${d.opportunityScore.toFixed(0)} risk ${d.riskScore.toFixed(0)} conf ${d.confidenceScore.toFixed(0)}. ${d.reasoning}`,
+    );
+  });
+  lines.push("");
+
+  lines.push(`Current holdings (${context.holdings.length}):`);
+  if (context.holdings.length === 0) {
+    lines.push("  (none)");
+  } else {
+    for (const h of context.holdings) {
+      const qty = Number(h.holding.quantity);
+      const avg = Number(h.holding.averageBuyPrice);
+      const cur = h.latestPrice ?? Number(h.holding.currentPrice);
+      const plPct = avg > 0 ? ((cur - avg) / avg) * 100 : 0;
+      lines.push(
+        `  ${h.asset.symbol} — qty ${qty}, avg ${avg.toFixed(2)}, current ${cur.toFixed(2)}, P/L ${plPct >= 0 ? "+" : ""}${plPct.toFixed(2)}%`,
+      );
+    }
+  }
+  lines.push("");
+
+  lines.push(`Recent high/medium-impact news (last ${NEWS_LOOKBACK_HOURS}h):`);
+  if (context.newsItems.length === 0) {
+    lines.push("  (none)");
+  } else {
+    for (const n of context.newsItems.slice(0, NEWS_MAX_ARTICLES)) {
+      const date = n.publishedAt !== null ? n.publishedAt.toISOString().slice(0, 10) : "?";
+      const sentimentLabel =
+        n.sentiment === null
+          ? "?"
+          : n.sentiment > 0
+            ? `+${n.sentiment.toFixed(2)}`
+            : n.sentiment.toFixed(2);
+      const symbols = n.symbols.length > 0 ? n.symbols.join(",") : "broad";
+      lines.push(`  [${date} ${n.impactLevel ?? "?"} ${sentimentLabel}] ${symbols}: ${n.event}`);
+    }
+  }
+  lines.push("");
+
+  lines.push("For each draft decision, return a verdict:");
+  lines.push('  - "keep": accept the rules-engine decision as-is');
+  lines.push('  - "drop": reject this trade entirely');
+  lines.push('  - "replace-qty": keep the action and symbol but change the quantity (set newQty)');
+  lines.push("");
+  lines.push("Output JSON in this exact shape (and nothing else):");
+  lines.push("{");
+  lines.push(`  "verdicts": [`);
+  lines.push(
+    `    {"draftIndex": <int>, "action": "keep"|"drop"|"replace-qty", "newQty": <int or null>, "reasoning": "<1-2 sentences>"}`,
+  );
+  lines.push("  ],");
+  lines.push(`  "rationale": "<overall reasoning incl. at least one risk caveat>"`);
+  lines.push("}");
+
+  return lines.join("\n");
 }
 
 function skipResult(slug: PaperPortfolioSlug, reason: string): ExecutionResult {
