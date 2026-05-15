@@ -136,6 +136,12 @@ const JOB_METADATA: Record<string, { description: string; module: string; defaul
     module: "Annix Insights",
     defaultCron: "0 18 * * *",
   },
+  "insights:news-cleanup": {
+    description:
+      "Annix Insights — delete insights_news_items older than 90 days (signals only read the last 48h; bounds table growth)",
+    module: "Annix Insights",
+    defaultCron: "0 12 * * *",
+  },
   "insights:monthly-contribution": {
     description:
       "Annix Insights — credit each paper portfolio's monthly contribution and record a contribution PaperTrade row",

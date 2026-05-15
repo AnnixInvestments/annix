@@ -560,7 +560,10 @@ function stripLiningThicknessPrefix(summary: string): string {
 }
 
 function normaliseCode(code: string): string {
-  return code.trim().toLowerCase().replace(/\s+/g, " ");
+  // Strip ® ™ © marks before lowercasing + collapsing whitespace so a
+  // drawing code transcribed as "LINATEX LINARD®60" resolves against a
+  // spec clause keyed "Linatex Linard 60" (and vice versa).
+  return code.replace(/[®™©]/g, " ").trim().toLowerCase().replace(/\s+/g, " ");
 }
 
 /**

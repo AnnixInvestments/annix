@@ -137,10 +137,16 @@ export function poolItemsBySpec(
 
   const pools = new Map<string, QuotePool>();
   for (const item of flattened) {
-    const itemCoating = item.coating;
-    const itemLining = item.lining;
-    const coatingKey = itemCoating ? itemCoating : "";
-    const liningKey = itemLining ? itemLining : "";
+    const itemCoating = canonicalSpecCode(item.coating);
+    const itemLining = canonicalSpecCode(item.lining);
+    // Group case-insensitively so "LINATEX LINARD®60" and "Linatex
+    // Linard 60" (same product, different Gemini transcription) land in
+    // ONE pool / spec card instead of two. Display form is the canonical
+    // (®-stripped) text of whichever item was seen first — flattened is
+    // sorted newest-extraction-first, so the latest drawing's spelling
+    // wins for display.
+    const coatingKey = itemCoating ? itemCoating.toLowerCase() : "";
+    const liningKey = itemLining ? itemLining.toLowerCase() : "";
     const key = `${coatingKey}||${liningKey}`;
     const existing = pools.get(key);
     if (existing) {
@@ -290,4 +296,19 @@ function numberField(obj: Record<string, unknown>, keys: string[]): number | nul
     }
   }
   return null;
+}
+
+/**
+ * Canonicalises a coating / lining code so transcription variants of the
+ * same product collapse together. Gemini reads "LINATEX LINARD®60" off
+ * one drawing and "Linatex Linard 60" off another — the ® symbol (and
+ * the missing space it leaves) would otherwise split one product into
+ * two quote pools and two spec cards. Strips ® ™ © marks, collapses
+ * whitespace, trims. Casing is preserved for display; pool grouping
+ * lowercases separately.
+ */
+function canonicalSpecCode(raw: string | null): string | null {
+  if (!raw) return null;
+  const cleaned = raw.replace(/[®™©]/g, " ").replace(/\s+/g, " ").trim();
+  return cleaned.length > 0 ? cleaned : null;
 }

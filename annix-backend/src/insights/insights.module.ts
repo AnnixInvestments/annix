@@ -29,6 +29,7 @@ import { InsightsCronService } from "./services/insights-cron.service";
 import { MacroSentimentService } from "./services/macro-sentiment.service";
 import { MarketDataIngestionService } from "./services/market-data-ingestion.service";
 import { NewsIngestionService } from "./services/news-ingestion.service";
+import { NewsRetentionService } from "./services/news-retention.service";
 import { PaperPortfolioService } from "./services/paper-portfolio.service";
 import { PaperTradeExecutionService } from "./services/paper-trade-execution.service";
 import { PortfolioSnapshotService } from "./services/portfolio-snapshot.service";
@@ -78,6 +79,7 @@ import { YahooMarketDataService } from "./services/yahoo-market-data.service";
     AiExecutorService,
     PaperTradeExecutionService,
     MacroSentimentService,
+    NewsRetentionService,
     InsightsCronService,
   ],
   exports: [],
