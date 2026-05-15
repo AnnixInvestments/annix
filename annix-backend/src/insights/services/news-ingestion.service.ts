@@ -5,8 +5,9 @@ import { Repository } from "typeorm";
 import { now } from "../../lib/datetime";
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
+import { MACRO_ARTICLES_PER_QUERY, MACRO_QUERIES } from "../config/macro-queries";
 import { Asset } from "../entities/asset.entity";
-import { type NewsImpactLevel, NewsItem } from "../entities/news-item.entity";
+import { type NewsFeedType, type NewsImpactLevel, NewsItem } from "../entities/news-item.entity";
 import { YahooMarketDataService, type YahooNewsArticle } from "./yahoo-market-data.service";
 
 const METRIC_CATEGORY = "insights-news";
@@ -32,6 +33,9 @@ export interface NewsPullResult {
   articlesExtracted: number;
   articlesFailed: number;
   symbolFailures: string[];
+  macroQueriesProcessed: number;
+  macroArticlesPersisted: number;
+  macroQueryFailures: string[];
 }
 
 @Injectable()
@@ -64,7 +68,11 @@ export class NewsIngestionService {
             const articles = await this.yahoo.fetchNews(asset.symbol, ARTICLES_PER_SYMBOL);
             for (const article of articles) {
               articlesFound++;
-              const persisted = await this.ingestArticle(article, watchlist);
+              const persisted = await this.ingestArticle(article, {
+                feedType: "per-asset",
+                macroQuery: null,
+                watchlist,
+              });
               if (persisted === "skipped") continue;
               articlesPersisted++;
               if (persisted === "extracted") articlesExtracted++;
@@ -77,6 +85,28 @@ export class NewsIngestionService {
           }
         }
 
+        let macroArticlesPersisted = 0;
+        const macroQueryFailures: string[] = [];
+        for (const query of MACRO_QUERIES) {
+          try {
+            const articles = await this.yahoo.fetchNews(query, MACRO_ARTICLES_PER_QUERY);
+            for (const article of articles) {
+              const persisted = await this.ingestArticle(article, {
+                feedType: "macro",
+                macroQuery: query,
+                watchlist,
+              });
+              if (persisted === "extracted" || persisted === "failed") {
+                macroArticlesPersisted += 1;
+              }
+            }
+          } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            this.logger.warn(`Yahoo macro fetch failed for "${query}": ${message}`);
+            macroQueryFailures.push(query);
+          }
+        }
+
         return {
           symbolsProcessed: assets.length,
           articlesFound,
@@ -84,29 +114,40 @@ export class NewsIngestionService {
           articlesExtracted,
           articlesFailed,
           symbolFailures,
+          macroQueriesProcessed: MACRO_QUERIES.length,
+          macroArticlesPersisted,
+          macroQueryFailures,
         };
       },
-      (result) => result.articlesPersisted * BYTES_PER_NEWS_ROW,
+      (result) => (result.articlesPersisted + result.macroArticlesPersisted) * BYTES_PER_NEWS_ROW,
     );
   }
 
   private async ingestArticle(
     article: YahooNewsArticle,
-    watchlist: Set<string>,
+    options: {
+      feedType: NewsFeedType;
+      macroQuery: string | null;
+      watchlist: Set<string>;
+    },
   ): Promise<"skipped" | "extracted" | "failed"> {
     const urlHash = hashArticle(article.link, article.title);
     const existing = await this.newsRepo.findOne({ where: { urlHash } });
     if (existing) return "skipped";
 
-    // Pre-Gemini filter: Yahoo's per-ticker news endpoint surfaces
-    // related/trending market news, not just articles about the queried
-    // ticker. ~43% of the May 15 first-run articles had Yahoo-tagged
-    // tickers that didn't overlap any watchlist symbol (e.g. BMW.DE,
-    // GETY, KEX, AGIO). Skipping them here avoids the Gemini call entirely.
-    // Articles with empty relatedTickers fall through to Gemini so we can
-    // still capture general market commentary that Gemini extracts into
-    // affectedSymbols — the post-Gemini filter below drops the residue.
-    if (article.relatedTickers.length > 0 && !hasOverlap(article.relatedTickers, watchlist)) {
+    const isMacro = options.feedType === "macro";
+
+    // Pre-Gemini filter (per-asset only): Yahoo's per-ticker news endpoint
+    // surfaces related/trending market news, not just articles about the
+    // queried ticker. Articles whose tagged tickers don't overlap the
+    // watchlist are skipped before the Gemini call.
+    // Macro pulls bypass this filter — by design they're about themes
+    // (Fed, oil, China demand) and rarely tag any single watchlist symbol.
+    if (
+      !isMacro &&
+      article.relatedTickers.length > 0 &&
+      !hasOverlap(article.relatedTickers, options.watchlist)
+    ) {
       return "skipped";
     }
 
@@ -118,6 +159,8 @@ export class NewsIngestionService {
       publishedAt: article.providerPublishTime,
       relatedSymbols: article.relatedTickers,
       extractionStatus: "pending",
+      feedType: options.feedType,
+      macroQuery: options.macroQuery,
     });
     const saved = await this.newsRepo.save(created);
 
@@ -125,11 +168,11 @@ export class NewsIngestionService {
       const extraction = await this.extractWithGemini(article);
       const themes = [...extraction.affectedSectors, ...extraction.affectedCommodities];
       const symbolUnion = unique([...article.relatedTickers, ...extraction.affectedSymbols]);
-      // Post-Gemini filter: catches the "empty Yahoo tickers + Gemini
-      // didn't extract a watchlist symbol either" case ("India hikes fuel
-      // prices..." style general macro). Delete the pending row so we
-      // don't leave orphans for the signal engine to scan.
-      if (!hasOverlap(symbolUnion, watchlist)) {
+      // Post-Gemini filter (per-asset only): catches the "empty Yahoo
+      // tickers + Gemini didn't extract a watchlist symbol either" case.
+      // Macro pulls keep these rows — affectedSectors / affectedCommodities
+      // is the whole point of the macro feed.
+      if (!isMacro && !hasOverlap(symbolUnion, options.watchlist)) {
         await this.newsRepo.delete(saved.id);
         return "skipped";
       }

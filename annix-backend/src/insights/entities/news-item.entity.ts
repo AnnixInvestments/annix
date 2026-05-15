@@ -10,11 +10,13 @@ import {
 
 export type NewsExtractionStatus = "pending" | "extracted" | "failed" | "skipped";
 export type NewsImpactLevel = "low" | "medium" | "high";
+export type NewsFeedType = "per-asset" | "macro";
 
 @Entity({ name: "insights_news_items" })
 @Index("UQ_insights_news_items_url_hash", ["urlHash"], { unique: true })
 @Index("IDX_insights_news_items_published_at", ["publishedAt"])
 @Index("IDX_insights_news_items_extraction_status", ["extractionStatus"])
+@Index("IDX_insights_news_items_feed_type", ["feedType"])
 export class NewsItem {
   @ApiProperty()
   @PrimaryGeneratedColumn("uuid")
@@ -84,6 +86,20 @@ export class NewsItem {
   @ApiProperty({ required: false })
   @Column({ name: "extraction_error", type: "text", nullable: true })
   extractionError: string | null;
+
+  @ApiProperty({
+    description:
+      "'per-asset' = pulled by ticker search against a watchlist symbol; 'macro' = pulled by broad query for portfolio-wide context",
+  })
+  @Column({ name: "feed_type", type: "varchar", length: 32, default: "per-asset" })
+  feedType: NewsFeedType;
+
+  @ApiProperty({
+    required: false,
+    description: "For macro articles: which query brought this article in (e.g. 'oil price')",
+  })
+  @Column({ name: "macro_query", type: "text", nullable: true })
+  macroQuery: string | null;
 
   @CreateDateColumn({ name: "created_at", type: "timestamptz" })
   createdAt: Date;
