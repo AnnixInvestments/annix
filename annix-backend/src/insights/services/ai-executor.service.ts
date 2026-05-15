@@ -421,6 +421,7 @@ export class AiExecutorService {
           reasonCode: "confidence-dropped",
           reasoning,
           ruleEvaluationTrace: "ai-pure executor — Gemini-directed sell",
+          newsConsidered: [],
         };
         decisions.push(sellDecision);
         simulatedCash += tradeValue;
@@ -463,6 +464,7 @@ export class AiExecutorService {
         adjustedScore: Number(sig.snapshot.opportunityScore),
         reasoning,
         ruleEvaluationTrace: "ai-pure executor — Gemini-directed buy",
+        newsConsidered: [],
       };
       decisions.push(buyDecision);
       simulatedCash -= tradeValue;

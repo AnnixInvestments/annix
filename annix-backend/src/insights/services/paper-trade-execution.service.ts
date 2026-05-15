@@ -4,7 +4,7 @@ import { DataSource, Repository } from "typeorm";
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { PaperHolding } from "../entities/paper-holding.entity";
 import { PaperPortfolio } from "../entities/paper-portfolio.entity";
-import { PaperTrade } from "../entities/paper-trade.entity";
+import { type NewsProvenance, PaperTrade } from "../entities/paper-trade.entity";
 import { AiExecutorService } from "./ai-executor.service";
 import {
   AllocationRulesEngineService,
@@ -195,7 +195,8 @@ async function applySell(
       signalSnapshot: decision.signalSnapshotId
         ? { signalSnapshotId: decision.signalSnapshotId, reasonCode: decision.reasonCode }
         : null,
-      relatedNewsIds: null,
+      relatedNewsIds: newsIds(decision.newsConsidered),
+      newsConsidered: decision.newsConsidered.length > 0 ? decision.newsConsidered : null,
     }),
   );
   return true;
@@ -263,9 +264,15 @@ async function applyBuy(
         breakdown: decision.signalBreakdown,
         adjustedScore: decision.adjustedScore,
       },
-      relatedNewsIds: null,
+      relatedNewsIds: newsIds(decision.newsConsidered),
+      newsConsidered: decision.newsConsidered.length > 0 ? decision.newsConsidered : null,
     }),
   );
+}
+
+function newsIds(provenance: NewsProvenance[]): string[] | null {
+  if (provenance.length === 0) return null;
+  return provenance.map((p) => p.id);
 }
 
 export type { Decision } from "./allocation-rules-engine.service";

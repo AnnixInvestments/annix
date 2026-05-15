@@ -13,6 +13,18 @@ import { PaperPortfolio } from "./paper-portfolio.entity";
 
 export type PaperTradeAction = "buy" | "sell" | "rebalance" | "contribution";
 
+export interface NewsProvenance {
+  id: string;
+  title: string;
+  url: string;
+  source: string | null;
+  publishedAt: string | null;
+  sentiment: number | null;
+  impactLevel: string | null;
+  summary: string | null;
+  feedType: string;
+}
+
 @Entity({ name: "insights_paper_trades" })
 @Index("IDX_insights_paper_trades_portfolio_executed_at", ["portfolioId", "executedAt"])
 export class PaperTrade {
@@ -97,6 +109,13 @@ export class PaperTrade {
   @ApiProperty({ description: "News item IDs that influenced this trade (Phase 8+)." })
   @Column({ type: "simple-array", nullable: true, name: "related_news_ids" })
   relatedNewsIds: string[] | null;
+
+  @ApiProperty({
+    description:
+      "Frozen snapshot of every news article considered for this trade — title, url, sentiment etc. Self-contained so it survives the 90-day news-retention purge.",
+  })
+  @Column({ type: "jsonb", nullable: true, name: "news_considered" })
+  newsConsidered: NewsProvenance[] | null;
 
   @ApiProperty()
   @CreateDateColumn({ type: "timestamptz", name: "executed_at" })

@@ -4,16 +4,19 @@ import { isString } from "es-toolkit/compat";
 import { In, Repository } from "typeorm";
 import { daysBetween, now, nowISO } from "../../lib/datetime";
 import { Asset } from "../entities/asset.entity";
+import { NewsItem } from "../entities/news-item.entity";
 import { PaperHolding } from "../entities/paper-holding.entity";
 import {
   type AllocationRules,
   PaperPortfolio,
   type PaperPortfolioSlug,
 } from "../entities/paper-portfolio.entity";
+import type { NewsProvenance } from "../entities/paper-trade.entity";
 import { PaperTrade } from "../entities/paper-trade.entity";
 import { PriceHistory } from "../entities/price-history.entity";
 import { type SignalComponentBreakdown, SignalSnapshot } from "../entities/signal-snapshot.entity";
 import { WatchlistItem } from "../entities/watchlist-item.entity";
+import { dedupeProvenance, toNewsProvenance } from "./news-provenance";
 
 export interface BuyDecision {
   action: "buy";
@@ -34,6 +37,7 @@ export interface BuyDecision {
   adjustedScore: number;
   reasoning: string;
   ruleEvaluationTrace: string;
+  newsConsidered: NewsProvenance[];
 }
 
 export interface SellDecision {
@@ -54,6 +58,7 @@ export interface SellDecision {
   reasonCode: "confidence-dropped" | "stop-loss";
   reasoning: string;
   ruleEvaluationTrace: string;
+  newsConsidered: NewsProvenance[];
 }
 
 export type Decision = BuyDecision | SellDecision;
@@ -89,6 +94,7 @@ export class AllocationRulesEngineService {
     @InjectRepository(PriceHistory) private readonly historyRepo: Repository<PriceHistory>,
     @InjectRepository(SignalSnapshot)
     private readonly signalRepo: Repository<SignalSnapshot>,
+    @InjectRepository(NewsItem) private readonly newsRepo: Repository<NewsItem>,
   ) {}
 
   async evaluateOne(portfolio: PaperPortfolio): Promise<PortfolioDecisions> {
@@ -122,6 +128,7 @@ export class AllocationRulesEngineService {
 
     const latestPrices = await this.latestPrices(allAssetIds);
     const latestSignals = await this.latestSignals(allAssetIds);
+    const newsMap = await this.buildNewsMap(Array.from(latestSignals.values()));
 
     const cashBalance = Number(portfolio.currentCashBalance);
     const investedValue = Number(portfolio.currentPortfolioValue);
@@ -161,6 +168,7 @@ export class AllocationRulesEngineService {
         holding,
         signal,
         priceSnapshot.close,
+        newsMap,
       );
       if (sellDecision) {
         decisions.push(sellDecision);
@@ -280,6 +288,7 @@ export class AllocationRulesEngineService {
         adjustedScore: candidate.adjustedScore,
         reasoning,
         ruleEvaluationTrace: trace,
+        newsConsidered: newsForSignal(candidate.signal, newsMap),
       });
 
       deployableCash -= tradeValue;
@@ -322,6 +331,7 @@ export class AllocationRulesEngineService {
     holding: PaperHolding,
     signal: SignalSummary,
     price: number,
+    newsMap: Map<string, NewsProvenance>,
   ): Promise<SellDecision | null> {
     const qty = Number(holding.quantity);
     const tradeValue = qty * price;
@@ -343,6 +353,7 @@ export class AllocationRulesEngineService {
       opportunityScore: signal.opportunityScore,
       riskScore: signal.riskScore,
       confidenceScore: signal.confidenceScore,
+      newsConsidered: newsForSignal(signal, newsMap),
     };
 
     if (signal.confidenceScore < rules.confidenceFloor) {
@@ -403,6 +414,23 @@ export class AllocationRulesEngineService {
     return map;
   }
 
+  private async buildNewsMap(signals: SignalSummary[]): Promise<Map<string, NewsProvenance>> {
+    const articleIds = new Set<string>();
+    for (const signal of signals) {
+      const ids = signal.componentBreakdownJson.newsSentiment.articleIds ?? [];
+      for (const id of ids) articleIds.add(id);
+    }
+    const map = new Map<string, NewsProvenance>();
+    if (articleIds.size === 0) return map;
+    const rows = await this.newsRepo.find({
+      where: { id: In(Array.from(articleIds)) },
+    });
+    for (const row of rows) {
+      map.set(row.id, toNewsProvenance(row));
+    }
+    return map;
+  }
+
   private async latestSignals(assetIds: string[]): Promise<Map<string, SignalSummary>> {
     const map = new Map<string, SignalSummary>();
     if (assetIds.length === 0) return map;
@@ -436,6 +464,19 @@ interface SignalSummary {
   riskScore: number;
   confidenceScore: number;
   componentBreakdownJson: SignalComponentBreakdown;
+}
+
+function newsForSignal(
+  signal: SignalSummary,
+  newsMap: Map<string, NewsProvenance>,
+): NewsProvenance[] {
+  const ids = signal.componentBreakdownJson.newsSentiment.articleIds ?? [];
+  const rows: NewsProvenance[] = [];
+  for (const id of ids) {
+    const entry = newsMap.get(id);
+    if (entry !== undefined) rows.push(entry);
+  }
+  return dedupeProvenance(rows);
 }
 
 function topThreeComponents(breakdown: SignalComponentBreakdown): string {
