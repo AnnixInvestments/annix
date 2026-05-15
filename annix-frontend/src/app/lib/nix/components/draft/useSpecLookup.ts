@@ -421,7 +421,17 @@ function rememberCoatingDescription(
 ): void {
   const code = item.coatingSystem;
   if (!isString(code) || code.length === 0) return;
-  const internalRaw = item.internalCoatingDescription;
+  // When the item is rubber-lined, its CORROSION INT. callout describes
+  // the LINING ("6mmR/L LINATEX LINARD®60 & 6mm ON FACE") — NOT an
+  // internal coating. The coating code (e.g. R1) is the EXTERNAL paint
+  // only; the internal treatment is the rubber lining, quoted on its own
+  // lining spec card. Capturing it as the coating's internal facet would
+  // duplicate the lining onto the coating card AND wrongly bill it as a
+  // both-sides paint. So for lined items, skip the internal facet — the
+  // coating is external-only. Unlined items (e.g. R2a Plasite both
+  // sides) keep both facets.
+  const lined = isString(item.liningType) && item.liningType.trim().length > 0;
+  const internalRaw = lined ? null : item.internalCoatingDescription;
   const externalRaw = item.externalCoatingDescription;
   const internal =
     isString(internalRaw) && internalRaw.trim().length > 0 ? internalRaw.trim() : null;
