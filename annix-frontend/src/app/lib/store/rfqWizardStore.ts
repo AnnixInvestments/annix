@@ -609,13 +609,21 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
           } else if (
             item.itemType === "tee" ||
             item.itemType === "reducer" ||
-            item.itemType === "expansion_joint"
+            item.itemType === "expansion_joint" ||
+            item.itemType === "lateral" ||
+            item.itemType === "end_cap" ||
+            item.itemType === "puddle_pipe" ||
+            item.itemType === "boot"
           ) {
             // Distinguish concentric vs eccentric reducer from the
             // free-text description. Defaults to concentric — the
             // overwhelmingly most common type. Keys must match the
             // canonical fittingType constants the wizard form +
             // BOQStep both expect (CON_REDUCER, NOT CONCENTRIC_REDUCER).
+            // end_cap / puddle_pipe / boot / lateral are routed here
+            // (rather than the misc fallback) so they get persisted
+            // into fitting_rfqs at submit time and ship to suppliers
+            // with proper computed weights, not as 0-kg drops.
             const rawItemDescription = item.description;
             const descLower = (rawItemDescription || "").toLowerCase();
             const isEccentricReducer =
@@ -627,7 +635,15 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
                   ? isEccentricReducer
                     ? "ECCENTRIC_REDUCER"
                     : "CON_REDUCER"
-                  : "EXPANSION_LOOP";
+                  : item.itemType === "expansion_joint"
+                    ? "EXPANSION_LOOP"
+                    : item.itemType === "lateral"
+                      ? "SABS719_LATERAL"
+                      : item.itemType === "end_cap"
+                        ? "END_CAP"
+                        : item.itemType === "puddle_pipe"
+                          ? "PUDDLE_PIPE"
+                          : "BOOT";
 
             const rawItemNumber3 = item.itemNumber;
             const rawDiameter3 = item.diameter;

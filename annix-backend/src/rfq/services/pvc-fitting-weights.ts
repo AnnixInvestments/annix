@@ -64,6 +64,21 @@ const FITTING_LENGTH_FACTORS: Record<string, FittingLengthRule> = {
   // PVC duckfoot pieces — rare but spec'd in some drainage systems.
   DUCKFOOT_SHORT: { kind: "arc_90", bendRadiusMult: 1.5 },
   DUCKFOOT_GUSSETTED: { kind: "arc_90", bendRadiusMult: 2.0 },
+
+  // End cap / stop end: short cap with solvent-weld socket. PVC end
+  // caps are typically shorter than HDPE stub-ends (0.5× OD vs
+  // 0.8× OD) because they're moulded as a thin disk with a socket
+  // skirt rather than fabricated from pipe stock.
+  END_CAP: { kind: "od_multiple", mult: 0.5 },
+
+  // Pipe boot — uncommon in pure-PVC systems but possible in mixed
+  // installations. 0.4× OD with caller-added clamp/seal mass.
+  BOOT: { kind: "od_multiple", mult: 0.4 },
+
+  // Puddle pipe: PVC puddle pieces are less common than HDPE but
+  // occur in chemical / acid drainage systems. 3.5× OD eq length
+  // captures ~1m of pipe + solvent-welded flange skirt.
+  PUDDLE_PIPE: { kind: "od_multiple", mult: 3.5 },
 };
 
 const DEFAULT_LENGTH_FACTOR: FittingLengthRule = { kind: "od_multiple", mult: 1.8 };

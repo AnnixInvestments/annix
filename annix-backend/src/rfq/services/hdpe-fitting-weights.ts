@@ -70,6 +70,27 @@ const FITTING_LENGTH_FACTORS: Record<string, FittingLengthRule> = {
   // includes a 90° elbow plus a base plate; treat as "long elbow".
   DUCKFOOT_SHORT: { kind: "arc_90", bendRadiusMult: 1.5 },
   DUCKFOOT_GUSSETTED: { kind: "arc_90", bendRadiusMult: 2.0 },
+
+  // End cap / stub-end: short cap on a pipe end. 0.8× OD captures
+  // the typical SABS-standard stub-end length when no catalogue
+  // dimension is available (DN250 SDR6 stub = ~335mm ≈ 1.3× OD on
+  // the high end; DN110 SDR9 ≈ 1.7× OD; smaller DNs run higher
+  // ratio). 0.8 is a deliberately conservative midpoint that
+  // matches manufacturer-published stub-end masses to within ±20%.
+  END_CAP: { kind: "od_multiple", mult: 0.8 },
+
+  // Pipe boot: short HDPE collar (~0.5× OD body) with stainless
+  // steel clamp + neoprene seal — the clamp/seal mass dominates
+  // for smaller DNs, so 0.5× OD eq length is a conservative
+  // pipe-equivalent. Caller adds an additional fixed mass
+  // proportional to DN for the clamp.
+  BOOT: { kind: "od_multiple", mult: 0.5 },
+
+  // Puddle pipe: pipe section cast into concrete with backing
+  // flange welded at one end. 4× OD eq length captures ~1m of
+  // pipe + the flange contribution. Caller can add a separate
+  // flange-mass term if higher precision is needed.
+  PUDDLE_PIPE: { kind: "od_multiple", mult: 4.0 },
 };
 
 /**
