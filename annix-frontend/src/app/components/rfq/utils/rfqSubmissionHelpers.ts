@@ -391,6 +391,89 @@ function mapFastenerItem(entry: any, specs: any) {
   };
 }
 
+// Map a NIX-extracted "misc" entry to a submit-path shape. Misc
+// entries are rows NIX tagged as consumable / valve / pump etc.
+// that the wizard couldn't slot into a structural type. The submit
+// path previously returned null for ALL misc items, so gaskets,
+// bolt sets and coating drums never reached suppliers.
+//
+// Consumables (gasket / bolt / nut / washer / coating drum) are
+// mapped onto the backend's UnifiedFastenerDto so they persist into
+// fastener_rfqs and show in the Bolts/Nuts/Gaskets supplier section.
+// Valves / pumps still return null — they have their own supplier
+// flow and need valve/pump DTO shapes, tracked separately.
+function mapMiscItem(entry: any, specs: any) {
+  const rawDescription = entry.description;
+  const description = rawDescription || "Misc Item";
+  const descLower = description.toLowerCase();
+  const rawQuantityValue = specs.quantityValue;
+  const quantityValue = rawQuantityValue || 1;
+
+  const isGasket = /\bgaskets?\b/.test(descLower);
+  const isNut = /\bnuts?\b/.test(descLower);
+  const isWasher = /\bwashers?\b/.test(descLower);
+  const isBolt = /\bbolt\s*sets?\b|\bbolts?\b/.test(descLower);
+  // "20 litre drum of <X> coating" — a coating consumable supplied
+  // alongside the bolt sets. No dedicated FastenerCategory, so it
+  // rides in the "bolt" bucket; the description carries the detail.
+  const isCoatingDrum = /\bdrum\b/.test(descLower);
+
+  if (!isGasket && !isNut && !isWasher && !isBolt && !isCoatingDrum) {
+    // valves, pumps, genuinely-unclassifiable rows — leave to the
+    // caller's null path (dropped at submit, as before).
+    return null;
+  }
+
+  // FastenerCategory enum: bolt | nut | washer | gasket |
+  // set_screw | machine_screw | insert. Bolt sets and the coating
+  // drum both bucket under "bolt".
+  const fastenerCategory = isGasket
+    ? "gasket"
+    : isNut && !isBolt
+      ? "nut"
+      : isWasher && !isBolt
+        ? "washer"
+        : "bolt";
+
+  // Thread size — "M36 bolt sets" → "M36". Gaskets / drums have no
+  // thread; size stays empty (the DTO requires a string, not a
+  // non-empty one).
+  const sizeMatch = description.match(/\bM\s*(\d{2,3})\b/i);
+  const size = sizeMatch ? `M${sizeMatch[1]}` : "";
+
+  // Grade — "Grade 8.8" → "8.8".
+  const gradeMatch = description.match(/\bgrade\s*([\d.]+)\b/i);
+  const grade = gradeMatch ? gradeMatch[1] : undefined;
+
+  // Standard — "SABS 1123 Table 1600/3" / "SANS 1123 ...".
+  const standardMatch = description.match(/\b(?:SABS|SANS)\s*1123(?:\s*Table\s*[\d/]+)?/i);
+  const standard = standardMatch ? standardMatch[0] : undefined;
+
+  const specificType = isGasket
+    ? "compressed_fibre_gasket"
+    : isCoatingDrum
+      ? "coating_consumable"
+      : "hex_bolt_set";
+
+  const rawSpecsMaterial = specs.material;
+
+  return {
+    itemType: "fastener" as const,
+    description,
+    notes: entry.notes,
+    totalWeightKg: undefined,
+    fastener: {
+      fastenerCategory,
+      specificType,
+      size,
+      grade,
+      material: rawSpecsMaterial || undefined,
+      standard,
+      quantityValue,
+    },
+  };
+}
+
 // HDPE pipes carry their material spec in the description (e.g.
 // "HDPE PE100 PN34 (SDR6)") rather than on structured spec fields,
 // because the BOQ aggregator that creates these entries doesn't
@@ -570,8 +653,14 @@ export function mapItemToUnified(entry: any, g: GlobalSpecsOverrides, globalSpec
     return mapFastenerItem(entry, specs);
   } else if (entry.itemType === "straight_pipe") {
     return mapStraightPipeItem(entry, specs, calculation, g, globalSpecs);
+  } else if (entry.itemType === "misc") {
+    // Consumables (gaskets / bolt sets / coating drums) get mapped
+    // onto the fastener shape so they persist + reach suppliers.
+    // mapMiscItem returns null for valves / pumps / unclassifiable
+    // rows, which then fall through to the null drop below.
+    return mapMiscItem(entry, specs);
   }
-  // misc / unclassified items — Nix dropped them in but the backend's
+  // unclassified items — Nix dropped them in but the backend's
   // UnifiedRfqItemDto has no shape for them (only the explicit types above).
   // Skip them rather than coerce into straightPipe with all-null required
   // fields, which the backend's class-validator rejects with a 400.
