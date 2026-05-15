@@ -539,10 +539,27 @@ function describeSpec(
   return joinSuppliersForFooter(customerFacing, spec.kind);
 }
 
+/**
+ * Length label for the customer-facing dimension string. A 90° / 45° bend
+ * carries a centre-to-face dimension on the workshop sheet, so its length
+ * reads "<n> C/F". Offset / S-bends only have an overall length printed,
+ * so they keep the plain "<n>LG". Everything else is "<n>LG".
+ */
+function lengthTokenForItem(item: QuoteItem): string {
+  if (item.length === null) return "";
+  const haystack =
+    `${item.itemType ? item.itemType : ""} ${item.description ? item.description : ""}`.toLowerCase();
+  const isBend = /\belbow\b|\bbend\b|\b90[°\s]|\b45[°\s]|\b180[°\s]|\bu[\s-]?bend\b/.test(haystack);
+  const isOffsetBend = /\boffset\b|\bs[\s-]?bend\b/.test(haystack);
+  if (isBend && !isOffsetBend) return `${item.length} C/F`;
+  return `${item.length}LG`;
+}
+
 function itemDescription(item: QuoteItem): string {
   const parts: string[] = [];
   if (item.diameter !== null) parts.push(`${item.diameter}NB`);
-  if (item.length !== null) parts.push(`${item.length}LG`);
+  const lengthToken = lengthTokenForItem(item);
+  if (lengthToken) parts.push(lengthToken);
   // Prefer the human description ("Equal-Y", "Manifold", "90° Elbow") over
   // the schema's itemType enum — Gemini falls back to "other" whenever an
   // item doesn't fit a specific enum value (e.g. Equal-Y, wye), which would

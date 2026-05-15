@@ -64,13 +64,16 @@ function formatZar(value: number): string {
  * display it as "C/F 705" rather than "L 705" so the customer reads it
  * the same way it was printed on the drawing. Everything else uses "L".
  */
-function lengthLabelForItem(item: QuoteItem): string {
+export function lengthLabelForItem(item: QuoteItem): string {
   const haystack =
     `${item.itemType ? item.itemType : ""} ${item.description ? item.description : ""}`.toLowerCase();
-  if (/\belbow\b|\bbend\b|\b90[°\s]|\b45[°\s]|\b180[°\s]|\bu[\s-]?bend\b/.test(haystack)) {
-    return "C/F";
-  }
-  return "L";
+  const isBend = /\belbow\b|\bbend\b|\b90[°\s]|\b45[°\s]|\b180[°\s]|\bu[\s-]?bend\b/.test(haystack);
+  if (!isBend) return "L";
+  // Offset / S-bends: the workshop sheet carries only an overall length,
+  // not a centre-to-face dimension — keep "L". A normal 90° / 45° bend
+  // has a C/F printed, so it labels as "C/F".
+  const isOffsetBend = /\boffset\b|\bs[\s-]?bend\b/.test(haystack);
+  return isOffsetBend ? "L" : "C/F";
 }
 
 /**
