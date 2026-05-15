@@ -58,6 +58,23 @@ export interface ResolvedCode {
    * Falls back through clauseKey → first sentence of description.
    */
   searchHint: string | null;
+  /**
+   * Which faces of the item this coating spec applies to, when the signed
+   * drawing carries explicit CORROSION INT. / CORROSION EXT. callouts.
+   *
+   * - "both"     drawing has BOTH INT and EXT text → paint applies internally
+   *              AND externally → coating m² is external + internal
+   * - "external" drawing has only EXT text → external face only (default)
+   * - "internal" drawing has only INT text → internal face only
+   * - null       no drawing override (or this is a lining/material spec)
+   *
+   * Drives the per-item coating area calc: when "both", the quote
+   * doubles the painted area to cover both surfaces. Without this flag,
+   * the calc would silently undercharge customers whose R2a items (or
+   * any other code resolving to a both-sides paint spec) are painted
+   * inside AND out.
+   */
+  coatingSides: "external" | "both" | "internal" | null;
 }
 
 export interface SpecLookup {
@@ -114,6 +131,7 @@ export function useSpecLookup(
           sourceExtractionId: extraction.id,
           sourceDocumentName: extraction.documentName,
           searchHint: pickSearchHint(code, description, summary),
+          coatingSides: null,
         };
         map.set(normaliseCode(code), resolved);
       }
@@ -168,30 +186,41 @@ export function useSpecLookup(
     // Apply drawing-derived INT/EXT coating callouts. When a drawing prints
     // explicit CORROSION INT. / CORROSION EXT. text, it overrides whatever
     // the spec PDF resolves the code to — the drawing is contractual.
+    // We override BOTH `summary` and `productDescriptors` because the editor
+    // rebuilds the customer-facing supplier list from `productDescriptors`
+    // (see defaultSuppliersForSpec in quoteSpecOverrides.ts), so changing
+    // only summary would leave the footer still rendering the spec PDF's
+    // default suppliers (Stoncor, Corrocoat, colour) instead of the
+    // drawing-mandated Internal + External entries.
     for (const [codeKey, override] of coatingDescriptionOverrides) {
       const resolved = map.get(codeKey);
-      const merged = mergeCoatingDescriptionIntoSummary(
+      const mergedSummary = mergeCoatingDescriptionIntoSummary(
         resolved ? resolved.summary : null,
         override,
       );
+      const drawingProductDescriptors = buildCoatingProductDescriptors(override);
       if (!resolved) {
-        if (merged !== null) {
+        if (mergedSummary !== null) {
           map.set(codeKey, {
             code: codeKey,
-            summary: merged,
+            summary: mergedSummary,
             description: null,
-            productDescriptors: null,
+            productDescriptors: drawingProductDescriptors,
             pageReference: null,
             sourceExtractionId: 0,
             sourceDocumentName: "drawing",
             searchHint: null,
+            coatingSides: coatingSidesFromOverride(override),
           });
         }
         continue;
       }
-      if (merged !== resolved.summary) {
-        map.set(codeKey, { ...resolved, summary: merged });
-      }
+      map.set(codeKey, {
+        ...resolved,
+        summary: mergedSummary !== null ? mergedSummary : resolved.summary,
+        productDescriptors: drawingProductDescriptors ?? resolved.productDescriptors,
+        coatingSides: coatingSidesFromOverride(override),
+      });
     }
 
     return {
@@ -420,6 +449,57 @@ function mergeCoatingDescriptionIntoSummary(
   if (override.external !== null) parts.push(`External: ${override.external}`);
   if (parts.length === 0) return null;
   return parts.join(" | ");
+}
+
+/**
+ * Build the productDescriptors string the coating override-rebuild reads
+ * (see defaultSuppliersForSpec / parseSuppliersFromCoating in
+ * quoteSpecOverrides.ts). The parser splits on ' • ' and reads "Brand:
+ * Description" — so emitting "Internal: <int> • External: <ext>" makes
+ * the auto-rebuilt supplier list carry two rows labelled "Internal" and
+ * "External" with the drawing's verbatim text as the description.
+ *
+ * Returns null when no override text is present so the caller can keep
+ * the spec-PDF descriptors.
+ */
+function buildCoatingProductDescriptors(override: {
+  internal: string | null;
+  external: string | null;
+}): string | null {
+  const parts: string[] = [];
+  if (override.internal !== null) parts.push(`Internal: ${override.internal}`);
+  if (override.external !== null) parts.push(`External: ${override.external}`);
+  if (parts.length === 0) return null;
+  return parts.join(" • ");
+}
+
+/**
+ * Classifies which face(s) a coating override targets, so downstream
+ * area math knows whether to bill external only or external + internal.
+ * "both" is the case Andrew flagged on 2026-05-15 — R2a items where the
+ * drawing prints PLASITE on both CORROSION INT. and CORROSION EXT.
+ */
+function coatingSidesFromOverride(override: {
+  internal: string | null;
+  external: string | null;
+}): "external" | "both" | "internal" | null {
+  const hasInternal = override.internal !== null && !isNoneSentinel(override.internal);
+  const hasExternal = override.external !== null && !isNoneSentinel(override.external);
+  if (hasInternal && hasExternal) return "both";
+  if (hasExternal) return "external";
+  if (hasInternal) return "internal";
+  return null;
+}
+
+/**
+ * Drawings sometimes print "NONE", "UNLINED", "UNCOATED", "—" on a
+ * CORROSION INT/EXT line to explicitly mean "no treatment this face".
+ * The text is captured verbatim for traceability, but for area-math
+ * purposes the face must be treated as uncoated (NOT charged).
+ */
+function isNoneSentinel(text: string): boolean {
+  const trimmed = text.trim().toLowerCase();
+  return /^(none|no\s+coating|uncoated|unlined|n\/?a|—|-)$/.test(trimmed);
 }
 
 /**

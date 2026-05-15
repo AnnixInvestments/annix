@@ -323,7 +323,6 @@ function Letterhead(props: { quoteRef: string; info: LetterheadInfo }) {
     <header className="border-b-2 border-gray-300 pb-4 mb-4 flex items-start justify-between">
       <div className="flex items-start gap-3">
         {info.logoUrl ? (
-          // biome-ignore lint/performance/noImgElement: remote tenant logo URL, no Next domain config
           <img
             src={info.logoUrl}
             alt={`${displayName} logo`}
@@ -568,7 +567,11 @@ function unitPriceForItem(
 ): number {
   let unit = 0;
   if (pool.coating && coatingRate.perM2 > 0 && area) {
-    unit += area.perPipe.totalExternalAreaM2 * coatingRate.perM2;
+    const bothSides = pool.coatingResolved !== null && pool.coatingResolved.coatingSides === "both";
+    const coatingAreaM2 = bothSides
+      ? area.perPipe.totalExternalAreaM2 + area.perPipe.totalInternalAreaM2
+      : area.perPipe.totalExternalAreaM2;
+    unit += coatingAreaM2 * coatingRate.perM2;
   }
   if (pool.lining) {
     if (isLongPipeForLiningPricing(item)) {

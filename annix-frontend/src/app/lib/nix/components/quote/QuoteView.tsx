@@ -94,6 +94,30 @@ const SOUTH_AFRICA_VAT_RATE = 0.15;
  * line totals matches the existing pool cost (verified against
  * liningCostForPool + coatingCost in PoolSection).
  */
+/**
+ * Per-pipe m² that the coating rate applies to. Usually the external
+ * surface only — but when the signed drawing prints a CORROSION INT.
+ * AND CORROSION EXT. callout for the same code (e.g. R2a items where
+ * both faces get Plasite), the painted area doubles to cover both
+ * surfaces. Detected via pool.coatingResolved.coatingSides set by
+ * useSpecLookup from the drawing's INT/EXT fields.
+ */
+function coatingAreaPerPipeM2(area: ItemSurfaceArea, pool: QuotePool): number {
+  const sides = pool.coatingResolved ? pool.coatingResolved.coatingSides : null;
+  if (sides === "both") {
+    return area.perPipe.totalExternalAreaM2 + area.perPipe.totalInternalAreaM2;
+  }
+  return area.perPipe.totalExternalAreaM2;
+}
+
+function coatingAreaTotalM2(area: ItemSurfaceArea, pool: QuotePool): number {
+  const sides = pool.coatingResolved ? pool.coatingResolved.coatingSides : null;
+  if (sides === "both") {
+    return area.total.totalExternalAreaM2 + area.total.totalInternalAreaM2;
+  }
+  return area.total.totalExternalAreaM2;
+}
+
 function coatingUnitCost(
   area: ItemSurfaceArea | null,
   pool: QuotePool,
@@ -104,7 +128,7 @@ function coatingUnitCost(
   if (!poolCoating) return 0;
   if (rate <= 0) return 0;
   if (!area) return 0;
-  return area.perPipe.totalExternalAreaM2 * rate;
+  return coatingAreaPerPipeM2(area, pool) * rate;
 }
 
 function liningUnitCost(
@@ -178,8 +202,8 @@ function coverageLineTotalLabel(kind: CoverageKind): string {
   return "m² (line total)";
 }
 
-function coverageRowAreaM2(area: ItemSurfaceArea, kind: CoverageKind): number {
-  if (kind === "external") return area.total.totalExternalAreaM2;
+function coverageRowAreaM2(area: ItemSurfaceArea, kind: CoverageKind, pool: QuotePool): number {
+  if (kind === "external") return coatingAreaTotalM2(area, pool);
   if (kind === "internal") return area.total.totalInternalAreaM2;
   return area.total.totalSurfaceAreaM2;
 }
@@ -191,9 +215,9 @@ function coverageRowAreaM2(area: ItemSurfaceArea, kind: CoverageKind): number {
  * column so a quoter can sanity-check the rate against the unit area without
  * dividing total / qty in their head.
  */
-function coveragePerItemAreaM2(area: ItemSurfaceArea, kind: CoverageKind): number {
+function coveragePerItemAreaM2(area: ItemSurfaceArea, kind: CoverageKind, pool: QuotePool): number {
   const perPipe = area.perPipe;
-  if (kind === "external") return perPipe.totalExternalAreaM2;
+  if (kind === "external") return coatingAreaPerPipeM2(area, pool);
   if (kind === "internal") return perPipe.totalInternalAreaM2;
   return perPipe.totalSurfaceAreaM2;
 }
@@ -468,7 +492,12 @@ export function QuoteView(props: QuoteViewProps) {
       const totals = sumPoolTotals(areas);
       const coatingRate = lookupSpecRate(specRates, pool.coating);
       const liningRate = lookupSpecRate(specRates, pool.lining);
-      total += totals.totalExternal * coatingRate.perM2;
+      const bothSidesPaint =
+        pool.coatingResolved !== null && pool.coatingResolved.coatingSides === "both";
+      const coatingPoolArea = bothSidesPaint
+        ? totals.totalExternal + totals.totalInternal
+        : totals.totalExternal;
+      total += coatingPoolArea * coatingRate.perM2;
       const liningBreakdown = liningCostForPool(items, areas, liningRate);
       total += liningBreakdown.total;
     }
@@ -763,8 +792,13 @@ function PoolSection(props: {
     );
   }, [pool.items, nbToOdMap, isAreaReady, liningWrapsOverPlainEnds]);
   const totals = useMemo(() => sumPoolTotals(itemAreas), [itemAreas]);
+  const coatingBothSides =
+    pool.coatingResolved !== null && pool.coatingResolved.coatingSides === "both";
+  const coatingPoolAreaM2 = coatingBothSides
+    ? totals.totalExternal + totals.totalInternal
+    : totals.totalExternal;
   const poolTotalM2 = (() => {
-    if (coverageKind === "external") return totals.totalExternal;
+    if (coverageKind === "external") return coatingPoolAreaM2;
     if (coverageKind === "internal") return totals.totalInternal;
     if (coverageKind === "total") return totals.totalCombined;
     return 0;
@@ -772,7 +806,7 @@ function PoolSection(props: {
 
   const coatingRate = lookupSpecRate(specRates, pool.coating);
   const liningRate = lookupSpecRate(specRates, pool.lining);
-  const coatingCost = totals.totalExternal * coatingRate.perM2;
+  const coatingCost = coatingPoolAreaM2 * coatingRate.perM2;
   const liningBreakdown = useMemo(
     () => liningCostForPool(pool.items, itemAreas, liningRate),
     [pool.items, itemAreas, liningRate],
@@ -803,7 +837,7 @@ function PoolSection(props: {
           <span className="text-xs text-gray-700">
             {coverageKind === "total" ? (
               <>
-                <span className="font-semibold">{formatM2(totals.totalExternal)}</span>{" "}
+                <span className="font-semibold">{formatM2(coatingPoolAreaM2)}</span>{" "}
                 <span className="text-gray-500">coating m²</span>
                 <span className="text-gray-400"> · </span>
                 <span className="font-semibold">{formatM2(totals.totalInternal)}</span>{" "}
@@ -874,6 +908,7 @@ function PoolSection(props: {
               key={`${item.sourceExtractionId}-${item.mark}-${idx}`}
               item={item}
               area={itemAreas[idx]}
+              pool={pool}
               showAreaColumn={showAreaColumn}
               coverageKind={coverageKind}
               isAreaReady={isAreaReady}
@@ -895,7 +930,7 @@ function PoolSection(props: {
             <span className="text-emerald-800/90">
               {coatingRate.perM2 > 0 && pool.coating && (
                 <>
-                  {pool.coating}: {formatM2(totals.totalExternal)} × {formatZar(coatingRate.perM2)}
+                  {pool.coating}: {formatM2(coatingPoolAreaM2)} × {formatZar(coatingRate.perM2)}
                   /m² = <span className="font-semibold">{formatZar(coatingCost)}</span>
                 </>
               )}
@@ -984,6 +1019,7 @@ function GeneralNotesEditor(props: { value: string; onChange: (text: string) => 
 function ItemRow(props: {
   item: QuoteItem;
   area: ItemSurfaceArea | null;
+  pool: QuotePool;
   showAreaColumn: boolean;
   coverageKind: CoverageKind;
   isAreaReady: boolean;
@@ -997,6 +1033,7 @@ function ItemRow(props: {
   const {
     item,
     area,
+    pool,
     showAreaColumn,
     coverageKind,
     isAreaReady,
@@ -1027,9 +1064,9 @@ function ItemRow(props: {
       coatingPerItemText = "…";
       liningPerItemText = "…";
     } else if (area) {
-      perItemCellText = formatM2(coveragePerItemAreaM2(area, coverageKind));
-      lineTotalCellText = formatM2(coverageRowAreaM2(area, coverageKind));
-      coatingPerItemText = formatM2(area.perPipe.totalExternalAreaM2);
+      perItemCellText = formatM2(coveragePerItemAreaM2(area, coverageKind, pool));
+      lineTotalCellText = formatM2(coverageRowAreaM2(area, coverageKind, pool));
+      coatingPerItemText = formatM2(coatingAreaPerPipeM2(area, pool));
       liningPerItemText = formatM2(area.perPipe.totalInternalAreaM2);
     }
   }
