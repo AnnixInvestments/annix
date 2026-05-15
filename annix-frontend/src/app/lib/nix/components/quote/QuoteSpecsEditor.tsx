@@ -433,7 +433,7 @@ function SpecCard(props: SpecCardProps) {
                 isSelected={isSelected}
                 isDimmed={isDimmed}
                 showSelectAffordance={!isLining && !isDrawingFaceted}
-                hideDelete={isDrawingFaceted}
+                hideDelete={isDrawingFaceted && !supplier.isCustom}
                 attachment={attachments[supplier.id] ? attachments[supplier.id] : null}
                 specSummary={specSummary}
                 onChange={(partial) => updateSupplier(supplier.id, partial)}
@@ -445,15 +445,14 @@ function SpecCard(props: SpecCardProps) {
           })
         )}
         <div className="flex items-center gap-3 flex-wrap">
-          {!isDrawingFaceted && (
-            <button
-              type="button"
-              onClick={addSupplier}
-              className="inline-flex items-center gap-1 text-xs text-[#323288] font-medium hover:underline"
-            >
-              <span aria-hidden>+</span> Add {isLining ? "product" : "alternative"}
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={addSupplier}
+            className="inline-flex items-center gap-1 text-xs text-[#323288] font-medium hover:underline"
+          >
+            <span aria-hidden>+</span> Add{" "}
+            {isLining ? "product" : isDrawingFaceted ? "coat" : "alternative"}
+          </button>
           {canRefreshThicknesses && (
             <button
               type="button"
