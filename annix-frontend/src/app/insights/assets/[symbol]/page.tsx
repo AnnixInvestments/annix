@@ -78,7 +78,7 @@ export default function InsightsAssetDetailPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40] text-white">
         <div className="text-center">
-          <p className="text-gray-400 mb-3">Unknown symbol.</p>
+          <p className="text-slate-600 dark:text-gray-400 mb-3">Unknown symbol.</p>
           <button
             type="button"
             onClick={() => router.push("/insights/watchlist")}
@@ -137,7 +137,6 @@ export default function InsightsAssetDetailPage() {
         user={{ email: user.email }}
         onLogout={logout}
         version={INSIGHTS_VERSION}
-        hideThemeToggle
       />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -146,7 +145,7 @@ export default function InsightsAssetDetailPage() {
             <button
               type="button"
               onClick={() => router.push("/insights/watchlist")}
-              className="inline-flex items-center gap-1.5 text-sm text-gray-300 hover:text-[#FFA500] transition-colors"
+              className="inline-flex items-center gap-1.5 text-sm text-slate-700 dark:text-gray-300 hover:text-[#FFA500] transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
               Watchlist
@@ -155,13 +154,13 @@ export default function InsightsAssetDetailPage() {
               <h1 className="text-2xl font-bold tracking-tight font-mono text-[#FFA500]">
                 {symbol}
               </h1>
-              <p className="text-sm text-gray-400">
+              <p className="text-sm text-slate-600 dark:text-gray-400">
                 {bars.length} bar{bars.length === 1 ? "" : "s"} in selected range.
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <div className="flex items-center bg-gray-900 border border-gray-800 rounded-lg p-1">
+            <div className="flex items-center bg-slate-100 dark:bg-gray-900 border border-slate-300 dark:border-gray-800 rounded-lg p-1">
               {RANGES.map((r) => (
                 <button
                   key={r.value}
@@ -170,7 +169,7 @@ export default function InsightsAssetDetailPage() {
                   className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
                     r.value === range
                       ? "bg-[#FFA500] text-gray-900"
-                      : "text-gray-400 hover:text-white"
+                      : "text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white"
                   }`}
                 >
                   {r.label}
@@ -180,7 +179,7 @@ export default function InsightsAssetDetailPage() {
             <button
               type="button"
               onClick={handleBackfill}
-              className="inline-flex items-center gap-1.5 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-sm text-gray-200 px-3 py-2 rounded-lg transition-colors"
+              className="inline-flex items-center gap-1.5 bg-slate-100 dark:bg-gray-800 hover:bg-slate-200 dark:hover:bg-gray-700 border border-slate-300 dark:border-gray-700 text-sm text-slate-700 dark:text-gray-200 px-3 py-2 rounded-lg transition-colors"
             >
               <RefreshCw className="w-3.5 h-3.5" />
               Backfill
@@ -188,7 +187,7 @@ export default function InsightsAssetDetailPage() {
           </div>
         </div>
 
-        <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6">
+        <div className="bg-white dark:bg-gray-900/50 border border-slate-200 dark:border-gray-800 rounded-2xl p-6 text-slate-900 dark:text-white">
           {historyQuery.isLoading ? (
             <div className="h-[360px] flex items-center justify-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFA500]" />
@@ -197,7 +196,7 @@ export default function InsightsAssetDetailPage() {
             <div className="h-[360px] flex flex-col items-center justify-center text-center">
               <TrendingUp className="w-10 h-10 text-[#FFA500] mx-auto mb-3" strokeWidth={1.5} />
               <h2 className="text-lg font-semibold">No price history yet.</h2>
-              <p className="text-sm text-gray-400 mt-1 max-w-md">
+              <p className="text-sm text-slate-600 dark:text-gray-400 mt-1 max-w-md">
                 Run a backfill to pull 20 years of daily OHLCV bars from Yahoo Finance. Or wait for
                 the 06:00 SAST cron to fill it in.
               </p>
@@ -214,7 +213,7 @@ export default function InsightsAssetDetailPage() {
             <>
               <div className="flex items-baseline gap-4 mb-4">
                 {latestBar ? (
-                  <span className="text-3xl font-mono text-white">
+                  <span className="text-3xl font-mono text-slate-900 dark:text-white">
                     {latestBar.close.toLocaleString(undefined, {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
@@ -223,7 +222,7 @@ export default function InsightsAssetDetailPage() {
                 ) : null}
                 {rangeChange !== null ? (
                   <span
-                    className={`text-sm font-semibold ${rangeChange >= 0 ? "text-green-400" : "text-red-400"}`}
+                    className={`text-sm font-semibold ${rangeChange >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
                   >
                     {rangeChange >= 0 ? "+" : ""}
                     {rangeChange.toFixed(2)}% over {rangeMeta.label}
@@ -237,12 +236,12 @@ export default function InsightsAssetDetailPage() {
 
         {latestSignal ? (
           <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <div className="lg:col-span-2 bg-gray-900/50 border border-gray-800 rounded-2xl p-6">
+            <div className="lg:col-span-2 bg-white dark:bg-gray-900/50 border border-slate-200 dark:border-gray-800 rounded-2xl p-6 text-slate-900 dark:text-white">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400">
+                <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-600 dark:text-gray-400">
                   Latest signal · {latestSignal.snapshotDate}
                 </h2>
-                <span className="text-xs text-gray-500 font-mono">
+                <span className="text-xs text-slate-500 dark:text-gray-500 font-mono">
                   {signalHistory.length} day{signalHistory.length === 1 ? "" : "s"}
                 </span>
               </div>
@@ -261,8 +260,8 @@ export default function InsightsAssetDetailPage() {
               </div>
               <SignalBreakdown signal={latestSignal} />
             </div>
-            <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-4">
-              <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 mb-3">
+            <div className="bg-white dark:bg-gray-900/50 border border-slate-200 dark:border-gray-800 rounded-2xl p-4 text-slate-900 dark:text-white">
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-600 dark:text-gray-400 mb-3">
                 Opportunity score over 90 days
               </h2>
               {signalHistory.length > 1 ? (
@@ -272,7 +271,9 @@ export default function InsightsAssetDetailPage() {
                   height={180}
                 />
               ) : (
-                <p className="text-xs text-gray-500">Need ≥ 2 daily snapshots.</p>
+                <p className="text-xs text-slate-500 dark:text-gray-500">
+                  Need ≥ 2 daily snapshots.
+                </p>
               )}
             </div>
           </div>
@@ -289,7 +290,9 @@ function SignalStat(props: {
 }) {
   return (
     <div>
-      <div className="text-xs uppercase tracking-wider text-gray-500 mb-1">{props.label}</div>
+      <div className="text-xs uppercase tracking-wider text-slate-500 dark:text-gray-500 mb-1">
+        {props.label}
+      </div>
       <ScoreBar value={props.value} variant={props.variant} />
     </div>
   );

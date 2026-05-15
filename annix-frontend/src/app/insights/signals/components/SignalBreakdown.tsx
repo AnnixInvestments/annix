@@ -21,19 +21,19 @@ export function SignalBreakdown(props: SignalBreakdownProps) {
   const missingDimensions = b.inputsMissing;
 
   return (
-    <div className="space-y-3 text-sm bg-gray-900/40 border border-gray-800 rounded-xl p-4">
+    <div className="space-y-3 text-sm bg-slate-50 dark:bg-gray-900/40 border border-slate-200 dark:border-gray-800 rounded-xl p-4 text-slate-900 dark:text-white">
       <Row label="Momentum (20d ROC + 50d SMA crossover)" score={sig.momentumScore}>
-        <span className="text-gray-500">
+        <span className="text-slate-500 dark:text-gray-500">
           ROC {fmtPct(b.momentum.roc20)} · SMA {fmtPct(b.momentum.smaCrossover)}
         </span>
       </Row>
       <Row label="Valuation (P/E vs 5y median)" score={sig.valuationScore}>
-        <span className="text-gray-500">
+        <span className="text-slate-500 dark:text-gray-500">
           P/E {fmtNumber(b.valuation.trailingPe)} · median {fmtNumber(b.valuation.medianPe)}
         </span>
       </Row>
       <Row label="News sentiment" score={sig.newsSentimentScore}>
-        <span className="text-gray-500">source: {b.newsSentiment.source}</span>
+        <span className="text-slate-500 dark:text-gray-500">source: {b.newsSentiment.source}</span>
       </Row>
       <Row label="Sector trend (20d ETF ROC)" score={sig.sectorTrendScore}>
         {(() => {
@@ -42,7 +42,7 @@ export function SignalBreakdown(props: SignalBreakdownProps) {
           const etfRaw = b.sectorTrend.etf;
           const etfText = etfRaw ?? "—";
           return (
-            <span className="text-gray-500">
+            <span className="text-slate-500 dark:text-gray-500">
               {sectorText} · ETF {etfText}
               {b.sectorTrend.etfRoc20 !== null ? ` · ${fmtPct(b.sectorTrend.etfRoc20)}` : ""}
             </span>
@@ -54,13 +54,13 @@ export function SignalBreakdown(props: SignalBreakdownProps) {
         score={sig.drawdownRiskScore}
         variant="risk"
       >
-        <span className="text-gray-500">
+        <span className="text-slate-500 dark:text-gray-500">
           peak {fmtNumber(b.drawdownRisk.weekHigh52)} ·{" "}
           {b.drawdownRisk.distanceFromHighPct.toFixed(2)}% below
         </span>
       </Row>
       {missingDimensions.length > 0 ? (
-        <p className="text-xs text-yellow-400 pt-2 border-t border-gray-800">
+        <p className="text-xs text-yellow-600 dark:text-yellow-400 pt-2 border-t border-slate-200 dark:border-gray-800">
           Stubbed dimensions: {missingDimensions.join(", ")} — confidence ceiling is{" "}
           {80 - missingDimensions.length * 10}.
         </p>
@@ -82,7 +82,7 @@ function Row(props: RowProps) {
   return (
     <div>
       <div className="flex items-center justify-between mb-1">
-        <span className="text-gray-300 text-xs">{props.label}</span>
+        <span className="text-slate-700 dark:text-gray-300 text-xs">{props.label}</span>
         {props.children}
       </div>
       <ScoreBar value={props.score} variant={variant} />

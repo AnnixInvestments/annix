@@ -89,7 +89,6 @@ export default function InsightsSignalsPage() {
         user={{ email: user.email }}
         onLogout={logout}
         version={INSIGHTS_VERSION}
-        hideThemeToggle
       />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -98,14 +97,14 @@ export default function InsightsSignalsPage() {
             <button
               type="button"
               onClick={() => router.push("/insights")}
-              className="inline-flex items-center gap-1.5 text-sm text-gray-300 hover:text-[#FFA500] transition-colors"
+              className="inline-flex items-center gap-1.5 text-sm text-slate-700 dark:text-gray-300 hover:text-[#FFA500] transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
               Back
             </button>
             <div>
               <h1 className="text-2xl font-bold tracking-tight">Signals</h1>
-              <p className="text-sm text-gray-400">
+              <p className="text-sm text-slate-600 dark:text-gray-400">
                 Daily scores per asset. {signals.length} asset
                 {signals.length === 1 ? "" : "s"} scored.
               </p>
@@ -116,27 +115,27 @@ export default function InsightsSignalsPage() {
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
             placeholder="Filter by symbol, name, sector…"
-            className="w-64 px-3 py-2 bg-gray-900 border border-gray-800 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#FFA500] focus:border-transparent"
+            className="w-64 px-3 py-2 bg-slate-50 dark:bg-gray-800 border border-slate-300 dark:border-gray-700 text-slate-900 dark:text-white rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#FFA500] focus:border-transparent"
           />
         </div>
 
         {query.isLoading ? (
-          <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-12 flex items-center justify-center">
+          <div className="bg-white dark:bg-gray-900/50 border border-slate-200 dark:border-gray-800 rounded-2xl p-12 flex items-center justify-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFA500]" />
           </div>
         ) : signals.length === 0 ? (
-          <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-12 text-center">
+          <div className="bg-white dark:bg-gray-900/50 border border-slate-200 dark:border-gray-800 rounded-2xl p-12 text-center text-slate-900 dark:text-white">
             <Signal className="w-10 h-10 text-[#FFA500] mx-auto mb-3" strokeWidth={1.5} />
             <h2 className="text-lg font-semibold">No signal snapshots yet.</h2>
-            <p className="text-sm text-gray-400 mt-1 max-w-md mx-auto">
+            <p className="text-sm text-slate-600 dark:text-gray-400 mt-1 max-w-md mx-auto">
               The signal engine runs daily at 06:00 SAST. Wait for the next cron tick, or ensure
               watchlist assets have at least 21 days of price history.
             </p>
           </div>
         ) : (
-          <div className="bg-gray-900/50 border border-gray-800 rounded-2xl overflow-hidden">
+          <div className="bg-white dark:bg-gray-900/50 border border-slate-200 dark:border-gray-800 rounded-2xl overflow-hidden text-slate-900 dark:text-white">
             <table className="w-full text-sm">
-              <thead className="bg-gray-900/80 text-xs uppercase tracking-wider text-gray-400 border-b border-gray-800">
+              <thead className="bg-slate-100 dark:bg-gray-900/80 text-xs uppercase tracking-wider text-slate-600 dark:text-gray-400 border-b border-slate-200 dark:border-gray-800">
                 <tr>
                   <th className="px-4 py-3 text-left">
                     <SortHeader
@@ -174,7 +173,7 @@ export default function InsightsSignalsPage() {
                   <th className="px-4 py-3 w-8" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-800">
+              <tbody className="divide-y divide-slate-200 dark:divide-gray-800">
                 {filteredAndSorted.map((sig) => {
                   const isExpanded = expanded === sig.symbol;
                   return (
@@ -207,7 +206,7 @@ function SortHeader(props: SortHeaderProps) {
     <button
       type="button"
       onClick={props.onClick}
-      className={`inline-flex items-center gap-1 hover:text-white transition-colors ${
+      className={`inline-flex items-center gap-1 hover:text-slate-900 dark:hover:text-white transition-colors ${
         props.active ? "text-[#FFA500]" : ""
       }`}
     >
@@ -230,7 +229,7 @@ function RowGroup(props: { sig: SignalSnapshotResponse; expanded: boolean; onTog
   return (
     <>
       <tr
-        className="hover:bg-gray-900/40 transition-colors cursor-pointer"
+        className="hover:bg-slate-100 dark:hover:bg-gray-900/40 transition-colors cursor-pointer"
         onClick={props.onToggle}
       >
         <td className="px-4 py-3">
@@ -244,7 +243,7 @@ function RowGroup(props: { sig: SignalSnapshotResponse; expanded: boolean; onTog
         </td>
         <td className="px-4 py-3">
           <div className="text-sm">{sig.name}</div>
-          <div className="text-xs text-gray-500">{sectorDisplay}</div>
+          <div className="text-xs text-slate-500 dark:text-gray-500">{sectorDisplay}</div>
         </td>
         <td className="px-4 py-3">
           <ScoreBar value={sig.opportunityScore} variant="opportunity" />
@@ -257,14 +256,14 @@ function RowGroup(props: { sig: SignalSnapshotResponse; expanded: boolean; onTog
         </td>
         <td className="px-4 py-3 text-right">
           {props.expanded ? (
-            <ChevronUp className="w-4 h-4 text-gray-400 inline" />
+            <ChevronUp className="w-4 h-4 text-slate-600 dark:text-gray-400 inline" />
           ) : (
-            <ChevronDown className="w-4 h-4 text-gray-400 inline" />
+            <ChevronDown className="w-4 h-4 text-slate-600 dark:text-gray-400 inline" />
           )}
         </td>
       </tr>
       {props.expanded ? (
-        <tr className="bg-gray-950/40">
+        <tr className="bg-slate-50 dark:bg-gray-950/40">
           <td colSpan={6} className="px-4 py-4">
             <SignalBreakdown signal={sig} />
           </td>

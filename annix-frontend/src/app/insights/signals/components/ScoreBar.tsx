@@ -18,7 +18,7 @@ export function ScoreBar(props: ScoreBarProps) {
   return (
     <div className="flex items-center gap-2">
       <span className="font-mono text-sm w-12 text-right">{clamped.toFixed(0)}</span>
-      <div className="flex-1 h-1.5 rounded-full bg-gray-800 overflow-hidden">
+      <div className="flex-1 h-1.5 rounded-full bg-slate-200 dark:bg-gray-800 overflow-hidden">
         <div className={`h-full ${colour}`} style={{ width: `${clamped}%` }} />
       </div>
     </div>

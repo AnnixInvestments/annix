@@ -20,11 +20,11 @@ export function AllocationRulesCard(props: AllocationRulesCardProps) {
   const fixed = rules.fixedHolding;
 
   return (
-    <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6 space-y-3">
-      <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-400">
+    <div className="bg-white dark:bg-gray-900/50 border border-slate-200 dark:border-gray-800 rounded-2xl p-6 space-y-3 text-slate-900 dark:text-white">
+      <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-600 dark:text-gray-400">
         Allocation rules
       </h3>
-      <dl className="text-sm divide-y divide-gray-800">
+      <dl className="text-sm divide-y divide-slate-200 dark:divide-gray-800">
         <Row label="Max positions" value={fmtCount(rules.maxPositions)} />
         <Row label="Max % per position" value={fmtPct(rules.maxPercentPerPosition)} />
         <Row label="Max % per sector" value={fmtPct(rules.maxPercentPerSector)} />
@@ -36,9 +36,11 @@ export function AllocationRulesCard(props: AllocationRulesCardProps) {
         {fixed ? <Row label="Fixed holding" value={fixed.symbol} /> : null}
       </dl>
       {sectorBonus ? (
-        <div className="mt-3 text-xs text-gray-400">
-          <div className="text-gray-300 mb-1">Sector tilt — score bonus +{sectorBonus.bonus}</div>
-          <div className="text-gray-500">{sectorBonus.sectors.join(" · ")}</div>
+        <div className="mt-3 text-xs text-slate-600 dark:text-gray-400">
+          <div className="text-slate-700 dark:text-gray-300 mb-1">
+            Sector tilt — score bonus +{sectorBonus.bonus}
+          </div>
+          <div className="text-slate-500 dark:text-gray-500">{sectorBonus.sectors.join(" · ")}</div>
         </div>
       ) : null}
     </div>
@@ -48,8 +50,8 @@ export function AllocationRulesCard(props: AllocationRulesCardProps) {
 function Row(props: { label: string; value: string }) {
   return (
     <div className="py-1.5 flex items-baseline justify-between gap-3">
-      <dt className="text-gray-400">{props.label}</dt>
-      <dd className="text-gray-100 font-medium">{props.value}</dd>
+      <dt className="text-slate-600 dark:text-gray-400">{props.label}</dt>
+      <dd className="text-slate-900 dark:text-gray-100 font-medium">{props.value}</dd>
     </div>
   );
 }

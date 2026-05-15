@@ -72,7 +72,6 @@ export default function InsightsPaperPortfolioTradesPage() {
         user={{ email: user.email }}
         onLogout={logout}
         version={INSIGHTS_VERSION}
-        hideThemeToggle
       />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -82,14 +81,14 @@ export default function InsightsPaperPortfolioTradesPage() {
             onClick={() =>
               router.push(`/insights/paper-portfolios/${encodeURIComponent(slug ?? "")}`)
             }
-            className="inline-flex items-center gap-1.5 text-sm text-gray-300 hover:text-[#FFA500] transition-colors"
+            className="inline-flex items-center gap-1.5 text-sm text-slate-700 dark:text-gray-300 hover:text-[#FFA500] transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             Portfolio
           </button>
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Trade log</h1>
-            <p className="text-sm text-gray-400">
+            <p className="text-sm text-slate-600 dark:text-gray-400">
               {portfolio ? portfolio.displayName : slug} — {trades.length} trade
               {trades.length === 1 ? "" : "s"} shown.
             </p>
@@ -115,19 +114,24 @@ export default function InsightsPaperPortfolioTradesPage() {
           })}
         </div>
 
-        <div className="bg-gray-900/50 border border-gray-800 rounded-2xl overflow-hidden">
+        <div className="bg-white dark:bg-gray-900/50 border border-slate-200 dark:border-gray-800 rounded-2xl overflow-hidden text-slate-900 dark:text-white">
           {tradesQuery.isLoading ? (
             <div className="h-48 flex items-center justify-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFA500]" />
             </div>
           ) : trades.length === 0 ? (
             <div className="py-16 text-center">
-              <ScrollText className="w-10 h-10 text-gray-600 mx-auto mb-3" strokeWidth={1.5} />
-              <p className="text-sm text-gray-400">No trades match the filter.</p>
+              <ScrollText
+                className="w-10 h-10 text-slate-400 dark:text-gray-600 mx-auto mb-3"
+                strokeWidth={1.5}
+              />
+              <p className="text-sm text-slate-600 dark:text-gray-400">
+                No trades match the filter.
+              </p>
             </div>
           ) : (
             <table className="w-full text-sm">
-              <thead className="bg-gray-900/80 text-xs uppercase tracking-wider text-gray-400 border-b border-gray-800">
+              <thead className="bg-slate-100 dark:bg-gray-900/80 text-xs uppercase tracking-wider text-slate-600 dark:text-gray-400 border-b border-slate-200 dark:border-gray-800">
                 <tr>
                   <th className="px-4 py-3 text-left">When</th>
                   <th className="px-4 py-3 text-left">Action</th>
@@ -139,34 +143,37 @@ export default function InsightsPaperPortfolioTradesPage() {
                   <th className="px-4 py-3 text-left">Reasoning</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-800">
+              <tbody className="divide-y divide-slate-200 dark:divide-gray-800">
                 {trades.map((t) => {
                   const confidence = t.confidenceScore;
                   const confidenceDisplay = confidence !== null ? confidence.toFixed(0) : "—";
                   const symbolRaw = t.symbol;
                   const symbolDisplay = symbolRaw ?? "—";
                   return (
-                    <tr key={t.id} className="hover:bg-gray-900/40 transition-colors align-top">
-                      <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">
+                    <tr
+                      key={t.id}
+                      className="hover:bg-slate-100 dark:hover:bg-gray-900/40 transition-colors align-top"
+                    >
+                      <td className="px-4 py-3 text-slate-600 dark:text-gray-400 text-xs whitespace-nowrap">
                         {fmtDate(t.executedAt)}
                       </td>
                       <td className="px-4 py-3">
                         <ActionBadge action={t.action} />
                       </td>
                       <td className="px-4 py-3 font-mono text-[#FFA500]">{symbolDisplay}</td>
-                      <td className="px-4 py-3 text-right font-mono text-gray-300">
+                      <td className="px-4 py-3 text-right font-mono text-slate-700 dark:text-gray-300">
                         {t.quantity > 0 ? fmtNumber(t.quantity) : "—"}
                       </td>
-                      <td className="px-4 py-3 text-right font-mono text-gray-300">
+                      <td className="px-4 py-3 text-right font-mono text-slate-700 dark:text-gray-300">
                         {t.price > 0 ? fmtNumber(t.price) : "—"}
                       </td>
-                      <td className="px-4 py-3 text-right font-mono text-gray-200">
+                      <td className="px-4 py-3 text-right font-mono text-slate-700 dark:text-gray-200">
                         {fmtNumber(t.tradeValue)}
                       </td>
-                      <td className="px-4 py-3 text-right font-mono text-gray-400">
+                      <td className="px-4 py-3 text-right font-mono text-slate-600 dark:text-gray-400">
                         {confidenceDisplay}
                       </td>
-                      <td className="px-4 py-3 text-xs text-gray-400 max-w-[400px]">
+                      <td className="px-4 py-3 text-xs text-slate-600 dark:text-gray-400 max-w-[400px]">
                         {t.appReasoning}
                       </td>
                     </tr>
@@ -189,7 +196,7 @@ function FilterPill(props: { active: boolean; onClick: () => void; label: string
       className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
         props.active
           ? "bg-[#FFA500] text-gray-900"
-          : "bg-gray-900 border border-gray-800 text-gray-300 hover:text-white"
+          : "bg-slate-100 dark:bg-gray-900 border border-slate-300 dark:border-gray-800 text-slate-700 dark:text-gray-300 hover:text-slate-900 dark:hover:text-white"
       }`}
     >
       {props.label}
@@ -199,13 +206,17 @@ function FilterPill(props: { active: boolean; onClick: () => void; label: string
 
 function ActionBadge(props: { action: string }) {
   const styles: Record<string, string> = {
-    buy: "bg-green-900/40 text-green-300 border-green-700",
-    sell: "bg-red-900/40 text-red-300 border-red-700",
-    rebalance: "bg-blue-900/40 text-blue-300 border-blue-700",
-    contribution: "bg-yellow-900/40 text-yellow-300 border-yellow-700",
+    buy: "bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 border-green-300 dark:border-green-700",
+    sell: "bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 border-red-300 dark:border-red-700",
+    rebalance:
+      "bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700",
+    contribution:
+      "bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300 border-yellow-300 dark:border-yellow-700",
   };
   const styleMatch = styles[props.action];
-  const cls = styleMatch ?? "bg-gray-800 text-gray-300 border-gray-700";
+  const cls =
+    styleMatch ??
+    "bg-slate-100 dark:bg-gray-800 text-slate-700 dark:text-gray-300 border-slate-300 dark:border-gray-700";
   return (
     <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded border ${cls}`}>
       {props.action}
