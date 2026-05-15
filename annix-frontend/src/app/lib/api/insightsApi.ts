@@ -524,6 +524,18 @@ export interface PaperHolding {
 
 export type PaperTradeAction = "buy" | "sell" | "rebalance" | "contribution";
 
+export interface TradeNewsProvenance {
+  id: string;
+  title: string;
+  url: string;
+  source: string | null;
+  publishedAt: string | null;
+  sentiment: number | null;
+  impactLevel: string | null;
+  summary: string | null;
+  feedType: string;
+}
+
 export interface PaperTrade {
   id: string;
   symbol: string | null;
@@ -538,4 +550,5 @@ export interface PaperTrade {
   confidenceScore: number | null;
   marketRegime: string | null;
   executedAt: string;
+  newsConsidered: TradeNewsProvenance[];
 }

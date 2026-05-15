@@ -1,10 +1,10 @@
 "use client";
 
-import { ArrowLeft, ScrollText } from "lucide-react";
+import { ArrowLeft, ExternalLink, Newspaper, ScrollText } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import PortalToolbar, { type NavItem } from "@/app/components/PortalToolbar";
-import type { PaperTrade, PaperTradeAction } from "@/app/lib/api/insightsApi";
+import type { PaperTrade, PaperTradeAction, TradeNewsProvenance } from "@/app/lib/api/insightsApi";
 import { fromISO } from "@/app/lib/datetime";
 import { usePaperPortfolio, usePaperTrades } from "@/app/lib/query/hooks";
 import { INSIGHTS_VERSION } from "../../../config/version";
@@ -174,7 +174,8 @@ export default function InsightsPaperPortfolioTradesPage() {
                         {confidenceDisplay}
                       </td>
                       <td className="px-4 py-3 text-xs text-slate-600 dark:text-gray-400 max-w-[400px]">
-                        {t.appReasoning}
+                        <div>{t.appReasoning}</div>
+                        <TradeNewsDisclosure news={t.newsConsidered} />
                       </td>
                     </tr>
                   );
@@ -201,6 +202,77 @@ function FilterPill(props: { active: boolean; onClick: () => void; label: string
     >
       {props.label}
     </button>
+  );
+}
+
+function TradeNewsDisclosure(props: { news: TradeNewsProvenance[] }) {
+  const [open, setOpen] = useState(false);
+  const news = props.news;
+  const count = news.length;
+  if (count === 0) {
+    return null;
+  }
+  return (
+    <div className="mt-2">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500 dark:text-gray-500 hover:text-[#FFA500] transition-colors"
+      >
+        <Newspaper className="w-3 h-3" />
+        {count} news article{count === 1 ? "" : "s"} considered
+        <span>{open ? "▲" : "▼"}</span>
+      </button>
+      {open ? (
+        <ul className="mt-2 space-y-2 border-l border-slate-200 dark:border-gray-800 pl-3">
+          {news.map((item) => (
+            <TradeNewsRow key={item.id} item={item} />
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
+
+function TradeNewsRow(props: { item: TradeNewsProvenance }) {
+  const item = props.item;
+  const sentiment = item.sentiment;
+  const sentimentLabel =
+    sentiment === null ? "—" : sentiment >= 0 ? `+${sentiment.toFixed(2)}` : sentiment.toFixed(2);
+  const sentimentClass =
+    sentiment === null
+      ? "text-slate-400 dark:text-gray-600"
+      : sentiment > 0.15
+        ? "text-emerald-600 dark:text-emerald-400"
+        : sentiment < -0.15
+          ? "text-red-600 dark:text-red-400"
+          : "text-amber-600 dark:text-amber-400";
+  const source = item.source;
+  const sourceLabel = source === null || source.length === 0 ? "unknown source" : source;
+  const publishedAt = item.publishedAt;
+  const dateLabel = publishedAt === null ? "" : publishedAt.slice(0, 10);
+  const impact = item.impactLevel;
+  const impactLabel = impact === null ? "" : impact;
+  return (
+    <li className="text-[11px] leading-snug">
+      <a
+        href={item.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-start gap-1 text-slate-700 dark:text-gray-300 hover:text-[#FFA500] transition-colors"
+      >
+        <span>{item.title}</span>
+        <ExternalLink className="w-3 h-3 shrink-0 mt-0.5" />
+      </a>
+      <div className="text-slate-400 dark:text-gray-600 mt-0.5">
+        {sourceLabel}
+        {dateLabel ? ` · ${dateLabel}` : ""}
+        {impactLabel ? ` · ${impactLabel} impact` : ""}
+        {" · "}
+        <span className={sentimentClass}>sentiment {sentimentLabel}</span>
+        {item.feedType === "macro" ? " · macro" : ""}
+      </div>
+    </li>
   );
 }
 

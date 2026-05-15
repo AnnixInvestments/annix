@@ -10,7 +10,7 @@ import {
   type RiskProfile,
 } from "../entities/paper-portfolio.entity";
 import { PaperPortfolioSnapshot } from "../entities/paper-portfolio-snapshot.entity";
-import { PaperTrade } from "../entities/paper-trade.entity";
+import { type NewsProvenance, PaperTrade } from "../entities/paper-trade.entity";
 
 export interface PaperPortfolioSummary {
   id: string;
@@ -72,6 +72,7 @@ export interface PaperTradeDto {
   confidenceScore: number | null;
   marketRegime: string | null;
   executedAt: string;
+  newsConsidered: NewsProvenance[];
 }
 
 @Injectable()
@@ -214,6 +215,7 @@ export class PaperPortfolioService {
       confidenceScore: t.confidenceScore !== null ? Number(t.confidenceScore) : null,
       marketRegime: t.marketRegime,
       executedAt: t.executedAt.toISOString(),
+      newsConsidered: t.newsConsidered ?? [],
     }));
   }
 
