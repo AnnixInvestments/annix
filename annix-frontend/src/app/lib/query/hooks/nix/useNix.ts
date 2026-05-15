@@ -525,6 +525,10 @@ export interface NixExtractionSessionDto {
    *  point the quote page replaces the Convert button with a View Job Card
    *  link to prevent duplicate conversions. */
   jobCardId?: number | null;
+  /** Quote grand total (incl VAT) snapshotted when the quoter submits.
+   *  Lets the Quotations hub show a Value column without recomputing
+   *  every quote's pooled m² × rate math. Null until first submit. */
+  quoteTotalIncVat?: number | null;
   createdAt: string;
   updatedAt: string;
 }

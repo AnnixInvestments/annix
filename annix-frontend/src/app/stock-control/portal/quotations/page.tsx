@@ -1,6 +1,6 @@
 "use client";
 
-import { isString } from "es-toolkit/compat";
+import { isNumber, isString } from "es-toolkit/compat";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -16,79 +16,28 @@ import { useConfirm } from "@/app/stock-control/hooks/useConfirm";
 
 const NIX_QUOTE_FROM_DOCS_FLAG = "STOCK_MGMT_NIX_QUOTE_FROM_DOCUMENTS";
 
-const MOCK_QUOTES = [
-  {
-    id: 1,
-    quoteNumber: "QUO-2026-0187",
-    customer: "Example Mining Co",
-    subject: "DN100 spool assemblies x 12",
-    raisedBy: "Sales A",
-    raisedAt: "2026-04-03",
-    validUntil: "2026-05-03",
-    lineCount: 8,
-    totalValue: 487_200,
-    status: "sent",
-  },
-  {
-    id: 2,
-    quoteNumber: "QUO-2026-0186",
-    customer: "Sample Chemical Works",
-    subject: "Rubber-lined pipework refurb",
-    raisedBy: "Sales B",
-    raisedAt: "2026-04-02",
-    validUntil: "2026-05-02",
-    lineCount: 15,
-    totalValue: 1_240_000,
-    status: "won",
-  },
-  {
-    id: 3,
-    quoteNumber: "QUO-2026-0185",
-    customer: "Test Power Station",
-    subject: "Tee and flange fabrication",
-    raisedBy: "Sales A",
-    raisedAt: "2026-03-30",
-    validUntil: "2026-04-30",
-    lineCount: 22,
-    totalValue: 892_500,
-    status: "negotiating",
-  },
-  {
-    id: 4,
-    quoteNumber: "QUO-2026-0184",
-    customer: "Example Refinery Ltd",
-    subject: "Emergency bend replacement",
-    raisedBy: "Sales C",
-    raisedAt: "2026-03-28",
-    validUntil: "2026-04-11",
-    lineCount: 3,
-    totalValue: 145_800,
-    status: "lost",
-  },
-  {
-    id: 5,
-    quoteNumber: "QUO-2026-0183",
-    customer: "Sample Water Utility",
-    subject: "DN600 HDPE spools",
-    raisedBy: "Sales B",
-    raisedAt: "2026-03-27",
-    validUntil: "2026-04-27",
-    lineCount: 6,
-    totalValue: 376_400,
-    status: "draft",
-  },
-];
-
-function statusBadge(status: string): string {
-  if (status === "won") return "bg-green-100 text-green-800 border-green-200";
-  if (status === "lost") return "bg-red-100 text-red-800 border-red-200";
-  if (status === "negotiating") return "bg-amber-100 text-amber-800 border-amber-200";
-  if (status === "sent") return "bg-blue-100 text-blue-800 border-blue-200";
-  return "bg-gray-100 text-gray-700 border-gray-200";
-}
-
 function formatZar(value: number): string {
   return `R ${value.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+/**
+ * Quote lifecycle status, derived purely from session fields — no manual
+ * status column. jobCardId set means the quote was converted to a Job
+ * Card, i.e. the job was WON. submittedAt set means it's been sent to
+ * the client. Otherwise it's a promoted quote still being worked.
+ */
+type QuoteStatus = "Won" | "Submitted" | "Promoted";
+
+function quoteStatus(session: NixExtractionSessionDto): QuoteStatus {
+  if (isNumber(session.jobCardId) && session.jobCardId > 0) return "Won";
+  if (isString(session.submittedAt) && session.submittedAt.length > 0) return "Submitted";
+  return "Promoted";
+}
+
+function statusBadgeClass(status: QuoteStatus): string {
+  if (status === "Won") return "bg-green-100 text-green-800 border-green-200";
+  if (status === "Submitted") return "bg-blue-100 text-blue-800 border-blue-200";
+  return "bg-gray-100 text-gray-700 border-gray-200";
 }
 
 export default function QuotationsPage() {
@@ -105,14 +54,6 @@ export default function QuotationsPage() {
   );
   const promotedData = promotedQuery.data;
   const promotedSessions = isNixEnabled && promotedData ? promotedData : [];
-  // Split promoted quotes by whether they've been submitted to the
-  // customer yet. A submittedAt timestamp is stamped by the Submit Quote
-  // modal — once set the quote moves out of the working "Promoted" list
-  // into its own "Submitted to client" section.
-  const isSubmitted = (s: { submittedAt?: string | null }): boolean =>
-    isString(s.submittedAt) && s.submittedAt.length > 0;
-  const awaitingSubmission = promotedSessions.filter((s) => !isSubmitted(s));
-  const submittedSessions = promotedSessions.filter(isSubmitted);
   const deleteMutation = useDeleteNixExtractionSession();
   const { confirm, ConfirmDialog } = useConfirm();
 
@@ -195,11 +136,6 @@ export default function QuotationsPage() {
             New Quotation
           </button>
         </div>
-      </div>
-
-      <div className="mb-4 rounded-md bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800">
-        Preview — issued quotes table at the bottom of this page is still scaffold content. The
-        in-progress drafts and promoted quotes sections above it are real.
       </div>
 
       {isNixEnabled && (
@@ -373,31 +309,18 @@ export default function QuotationsPage() {
       {isNixEnabled && (
         <section className="mb-6">
           <div className="flex items-center justify-between mb-2">
-            <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-              Promoted quotes (from documents)
-            </h2>
+            <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Quotes</h2>
           </div>
           {promotedQuery.isLoading ? (
             <p className="text-sm text-gray-500">Loading…</p>
-          ) : awaitingSubmission.length === 0 ? (
+          ) : promotedSessions.length === 0 ? (
             <p className="text-sm text-gray-500">
-              Quotes you promote from a draft will appear here, with all items pooled by their
-              coating + lining specification.
+              Quotes you promote from a draft appear here. Submit one to the client, then convert a
+              won quote into a Job Card.
             </p>
           ) : (
-            <PromotedQuotesTable sessions={awaitingSubmission} router={router} />
+            <QuotesTable sessions={promotedSessions} router={router} />
           )}
-        </section>
-      )}
-
-      {isNixEnabled && submittedSessions.length > 0 && (
-        <section className="mb-6">
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-              Submitted to client
-            </h2>
-          </div>
-          <PromotedQuotesTable sessions={submittedSessions} router={router} />
         </section>
       )}
 
@@ -418,94 +341,6 @@ export default function QuotationsPage() {
           <div className="text-xs uppercase text-gray-500 font-medium">Expiring This Week</div>
           <div className="mt-1 text-2xl font-semibold text-red-600">3</div>
         </div>
-      </div>
-
-      <div className="mb-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <input
-          type="text"
-          placeholder="Search quote number / customer…"
-          className="rounded-md border-gray-300 text-sm"
-        />
-        <select className="rounded-md border-gray-300 text-sm">
-          <option>All customers</option>
-        </select>
-        <select className="rounded-md border-gray-300 text-sm">
-          <option>All statuses</option>
-          <option>Draft</option>
-          <option>Sent</option>
-          <option>Negotiating</option>
-          <option>Won</option>
-          <option>Lost</option>
-        </select>
-      </div>
-
-      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-          <thead className="bg-gray-50 dark:bg-gray-900/20">
-            <tr>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                Quote #
-              </th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                Customer
-              </th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                Subject
-              </th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                Raised
-              </th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                Valid Until
-              </th>
-              <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">
-                Lines
-              </th>
-              <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">
-                Value
-              </th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                Status
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-            {MOCK_QUOTES.map((q) => {
-              const badgeClass = statusBadge(q.status);
-              const valueDisplay = formatZar(q.totalValue);
-              return (
-                <tr key={q.id} className="hover:bg-gray-50 dark:hover:bg-gray-900/30">
-                  <td className="px-4 py-3 text-sm font-medium text-[#323288]">{q.quoteNumber}</td>
-                  <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
-                    {q.customer}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
-                    {q.subject}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
-                    {q.raisedAt}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
-                    {q.validUntil}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-right text-gray-700 dark:text-gray-300">
-                    {q.lineCount}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-right text-gray-700 dark:text-gray-300">
-                    {valueDisplay}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`inline-flex items-center px-2 py-0.5 rounded border text-xs font-medium ${badgeClass}`}
-                    >
-                      {q.status}
-                    </span>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
       </div>
 
       <div className="mt-6 rounded-lg border border-dashed border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40 p-6">
@@ -529,11 +364,20 @@ export default function QuotationsPage() {
 }
 
 /**
- * Shared table for the "Promoted quotes" and "Submitted to client"
- * sections — identical columns, just a different sessions array. Each
- * row is clickable / keyboard-activatable and opens the working quote.
+ * Unified quotes table for the Quotations hub — every promoted Nix
+ * session, with a derived lifecycle Status and per-row actions:
+ *
+ *  - Edit               always — opens the working quote page
+ *  - Convert to Job Card on Submitted quotes — routes to the preview's
+ *                       convert flow (?convert=1); on success the
+ *                       session gets a jobCardId and the quote flips
+ *                       to "Won"
+ *  - View Job Card      on Won quotes — opens the linked Job Card
+ *
+ * Value is shown once the quote total is persisted on the session
+ * (see the submit flow); "—" until then.
  */
-function PromotedQuotesTable(props: {
+function QuotesTable(props: {
   sessions: NixExtractionSessionDto[];
   router: ReturnType<typeof useRouter>;
 }) {
@@ -547,16 +391,19 @@ function PromotedQuotesTable(props: {
               Quote #
             </th>
             <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-              Title
-            </th>
-            <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">
-              Documents
+              Customer
             </th>
             <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-              Promoted
+              Title
             </th>
             <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
               Submitted
+            </th>
+            <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+              Value
+            </th>
+            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+              Status
             </th>
             <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">
               Actions
@@ -567,16 +414,22 @@ function PromotedQuotesTable(props: {
           {sessions.map((s) => {
             const promoted = s.promotedRef;
             const ref = promoted ? promoted : quoteRefForSession(s);
-            const docCount = s.extractions ? s.extractions.length : 0;
-            const promotedAt = fromISO(s.updatedAt).toFormat("dd MMM yyyy HH:mm");
+            const snap = s.customerSnapshot;
+            const customerName = snap && snap.name.length > 0 ? snap.name : "—";
             const submittedAtIso = s.submittedAt;
             const submittedAt =
               isString(submittedAtIso) && submittedAtIso.length > 0
                 ? fromISO(submittedAtIso).toFormat("dd MMM yyyy")
                 : "—";
             const titleText = s.title ? s.title : `Quote from documents — session #${s.id}`;
+            const status = quoteStatus(s);
+            const totalValue = s.quoteTotalIncVat;
+            const valueText = isNumber(totalValue) && totalValue > 0 ? formatZar(totalValue) : "—";
             const quoteHref = `/stock-control/portal/quotations/quotes/${s.id}`;
             const openQuote = () => router.push(quoteHref);
+            const openConvert = () =>
+              router.push(`/stock-control/portal/quotations/quotes/${s.id}/preview?convert=1`);
+            const openJobCard = () => router.push(`/stock-control/portal/job-cards/${s.jobCardId}`);
             const onRowKeyDown = (event: React.KeyboardEvent<HTMLTableRowElement>) => {
               if (event.key === "Enter" || event.key === " ") {
                 event.preventDefault();
@@ -594,28 +447,54 @@ function PromotedQuotesTable(props: {
                 className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900/30 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-[#323288]/40"
               >
                 <td className="px-4 py-3 text-sm font-mono text-[#323288]">{ref}</td>
+                <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
+                  {customerName}
+                </td>
                 <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{titleText}</td>
-                <td className="px-4 py-3 text-sm text-right text-gray-700 dark:text-gray-300">
-                  {docCount}
-                </td>
-                <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
-                  {promotedAt}
-                </td>
                 <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
                   {submittedAt}
+                </td>
+                <td className="px-4 py-3 text-sm text-right text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                  {valueText}
+                </td>
+                <td className="px-4 py-3">
+                  <span
+                    className={`inline-flex items-center px-2 py-0.5 rounded border text-xs font-medium ${statusBadgeClass(status)}`}
+                  >
+                    {status}
+                  </span>
                 </td>
                 <td
                   className="px-4 py-3 text-sm text-right whitespace-nowrap"
                   onClick={(e) => e.stopPropagation()}
                   onKeyDown={(e) => e.stopPropagation()}
                 >
-                  <button
-                    type="button"
-                    onClick={openQuote}
-                    className="inline-flex items-center px-2.5 py-1 text-xs font-medium border border-[#323288] text-[#323288] rounded hover:bg-[#323288] hover:text-white"
-                  >
-                    Edit
-                  </button>
+                  <div className="inline-flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={openQuote}
+                      className="inline-flex items-center px-2.5 py-1 text-xs font-medium border border-[#323288] text-[#323288] rounded hover:bg-[#323288] hover:text-white"
+                    >
+                      Edit
+                    </button>
+                    {status === "Won" ? (
+                      <button
+                        type="button"
+                        onClick={openJobCard}
+                        className="inline-flex items-center px-2.5 py-1 text-xs font-medium border border-green-600 text-green-700 rounded hover:bg-green-600 hover:text-white"
+                      >
+                        View Job Card
+                      </button>
+                    ) : status === "Submitted" ? (
+                      <button
+                        type="button"
+                        onClick={openConvert}
+                        className="inline-flex items-center px-2.5 py-1 text-xs font-medium border border-green-600 text-green-700 rounded hover:bg-green-600 hover:text-white"
+                      >
+                        Convert to Job Card
+                      </button>
+                    ) : null}
+                  </div>
                 </td>
               </tr>
             );
