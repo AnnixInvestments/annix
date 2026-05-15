@@ -1,3 +1,4 @@
+import { isString } from "es-toolkit/compat";
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import {
@@ -804,7 +805,51 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
         if (allItems.length > 0) {
           log.debug(`Converting ${allItems.length} Nix items to RFQ items`);
           const rawItems = rfqData.items;
-          updateRfqField("items", [...(rawItems || []), ...allItems] as any);
+          const merged = [...(rawItems || []), ...allItems];
+          // Dedup by source sheet+row so a re-extraction (or a
+          // retried / double-fired extraction) REPLACES rather than
+          // duplicates. Issue #293: this used to blindly append, so
+          // each re-run added a fresh copy of every BOQ row — draft
+          // 10 ended up with 234 entries (2x of 117). The source
+          // location (sheet+row) is stable across extractions of the
+          // same workbook; non-Nix manual entries have no source
+          // info and keep their own id so they never collapse.
+          const dedupKey = (it: any): string => {
+            const sl = it.sourceLocation;
+            const slRow = sl?.rowNumber;
+            if (slRow != null) {
+              const slSheet = sl?.sheetName;
+              return `SRC:${slSheet || ""}#${slRow}`;
+            }
+            // misc entries don't carry sourceLocation — recover the
+            // sheet+row from the "Extracted by Nix from Sheet 'X'
+            // Row N" note the converter stamps on every entry.
+            const rawNotes = it.notes;
+            if (isString(rawNotes)) {
+              const m = rawNotes.match(/Sheet '([^']+)' Row (\d+)/);
+              if (m) return `SRC:${m[1]}#${m[2]}`;
+              const m2 = rawNotes.match(/\bRow (\d+)/);
+              if (m2) return `SRC:#${m2[1]}`;
+            }
+            const rawId = it.id;
+            return `ID:${rawId}`;
+          };
+          // Keep the LAST occurrence of each key — a re-extraction
+          // appends fresh items after the stale ones, so last-wins
+          // means the freshly-extracted data survives. Reverse →
+          // filter first-seen → reverse back restores original order.
+          const seen = new Set<string>();
+          const deduped = merged
+            .slice()
+            .reverse()
+            .filter((it) => {
+              const key = dedupKey(it);
+              if (seen.has(key)) return false;
+              seen.add(key);
+              return true;
+            })
+            .reverse();
+          updateRfqField("items", deduped as any);
         }
       };
 
