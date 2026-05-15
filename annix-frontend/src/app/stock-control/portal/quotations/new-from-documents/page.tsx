@@ -11,6 +11,7 @@ import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import { useAdaptiveExtractionProgress } from "@/app/lib/hooks/useAdaptiveExtractionProgress";
 import { type NixDocumentRole, nixApi } from "@/app/lib/nix";
 import { DocNumberAutocomplete } from "@/app/lib/nix/components/library";
+import { isEmlFile, parseEmail } from "@/app/lib/nix/emlAttachmentExtractor";
 import {
   type NixExtractionSessionDto,
   useCreateNixExtractionSession,
@@ -80,6 +81,54 @@ export default function QuoteFromDocumentsPage() {
 
   const addDocumentTo = useCallback(
     (set: typeof setDrawings) => (file: File) => {
+      // .eml drops: parse the email in-browser, route its PDF / XLSX
+      // attachments into the same bucket the .eml landed in. Inline
+      // images (signatures) are skipped. The email body is surfaced as
+      // a toast so client notes like 'Item 4 cancelled' aren't lost —
+      // the quoter can copy any instructions into the session notes
+      // after the bucket loads. parseEmail is the same helper the RFQ
+      // ProjectDetailsStep uses.
+      if (isEmlFile(file)) {
+        void parseEmail(file)
+          .then((parsed) => {
+            if (!parsed) {
+              showToast(
+                `Couldn't read ${file.name}. Save the attachments out of your mail client and drop them individually.`,
+                "error",
+              );
+              return;
+            }
+            let attachmentsAdded = 0;
+            for (const attachment of parsed.attachments) {
+              if (attachment.kind === "image") continue;
+              const att = attachment.file;
+              const id = `eml-${att.name}-${att.size}-${Math.random().toString(36).slice(2, 8)}`;
+              set((prev) => ({
+                ...prev,
+                documents: [...prev.documents, { file: att, id }],
+              }));
+              attachmentsAdded += 1;
+            }
+            const subjectRaw = parsed.metadata.subject;
+            const subject = subjectRaw ?? "(no subject)";
+            const bodySnippet = parsed.metadata.bodyText
+              ? parsed.metadata.bodyText.trim().slice(0, 240)
+              : "";
+            if (attachmentsAdded === 0) {
+              showToast(`${file.name}: no extractable attachments found.`, "warning");
+              return;
+            }
+            const noteHint = bodySnippet.length > 0 ? ` Body: "${bodySnippet}…"` : "";
+            showToast(
+              `Loaded ${attachmentsAdded} attachment${attachmentsAdded === 1 ? "" : "s"} from ${subject}.${noteHint} Log any client instructions in the quote notes after extraction.`,
+              "info",
+            );
+          })
+          .catch(() => {
+            showToast(`Couldn't read ${file.name}.`, "error");
+          });
+        return;
+      }
       set((prev) => ({
         ...prev,
         documents: [
@@ -88,7 +137,7 @@ export default function QuoteFromDocumentsPage() {
         ],
       }));
     },
-    [],
+    [showToast],
   );
 
   const removeDocumentFrom = useCallback(
