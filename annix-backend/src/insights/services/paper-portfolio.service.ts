@@ -4,6 +4,7 @@ import { Repository } from "typeorm";
 import { PaperHolding } from "../entities/paper-holding.entity";
 import {
   type AllocationRules,
+  type ExecutorStrategy,
   PaperPortfolio,
   type PaperPortfolioSlug,
   type RiskProfile,
@@ -16,6 +17,7 @@ export interface PaperPortfolioSummary {
   slug: PaperPortfolioSlug;
   displayName: string;
   riskProfile: RiskProfile;
+  executorStrategy: ExecutorStrategy;
   currency: string;
   startingCapital: number;
   monthlyContribution: number;
@@ -301,6 +303,7 @@ export class PaperPortfolioService {
       slug: portfolio.slug,
       displayName: portfolio.displayName,
       riskProfile: portfolio.riskProfile,
+      executorStrategy: portfolio.executorStrategy,
       currency: portfolio.currency,
       startingCapital: Number(portfolio.startingCapital),
       monthlyContribution: Number(portfolio.monthlyContribution),

@@ -388,7 +388,10 @@ export type PaperPortfolioSlug =
   | "signal-conservative"
   | "signal-balanced"
   | "signal-commodity-tilt"
-  | "signal-very-high-risk";
+  | "signal-very-high-risk"
+  | "nix-pure"
+  | "nix-hybrid"
+  | "nix-picker";
 
 export type PaperRiskProfile =
   | "buy-and-hold"
@@ -396,6 +399,13 @@ export type PaperRiskProfile =
   | "balanced"
   | "commodity-tilt"
   | "very-high-risk";
+
+export type PaperExecutorStrategy =
+  | "buy-and-hold"
+  | "rules"
+  | "ai-pure"
+  | "ai-override"
+  | "ai-picker";
 
 export interface PaperAllocationRules {
   maxPositions: number | null;
@@ -413,6 +423,7 @@ export interface PaperPortfolioSummary {
   slug: PaperPortfolioSlug;
   displayName: string;
   riskProfile: PaperRiskProfile;
+  executorStrategy: PaperExecutorStrategy;
   currency: string;
   startingCapital: number;
   monthlyContribution: number;

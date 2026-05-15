@@ -10,6 +10,7 @@ import { usePaperPortfolios } from "@/app/lib/query/hooks";
 import { Sparkline } from "../components/Sparkline";
 import { INSIGHTS_VERSION } from "../config/version";
 import { useInsightsAuth } from "../context/InsightsAuthContext";
+import { ExecutorBadge } from "./components/ExecutorBadge";
 import { RiskBadge } from "./components/RiskBadge";
 
 const NAV_ITEMS: NavItem[] = [];
@@ -109,7 +110,10 @@ export default function InsightsPaperPortfoliosPage() {
                       <h3 className="text-base font-semibold">{p.displayName}</h3>
                       <p className="text-xs text-gray-500 font-mono">{p.slug}</p>
                     </div>
-                    <RiskBadge profile={p.riskProfile} />
+                    <div className="flex flex-col items-end gap-1">
+                      <RiskBadge profile={p.riskProfile} />
+                      <ExecutorBadge strategy={p.executorStrategy} />
+                    </div>
                   </div>
                   <div className="mb-3 h-9 flex items-center">
                     {sparklineCloses.length > 1 ? (
