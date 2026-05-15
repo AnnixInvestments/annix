@@ -9,6 +9,33 @@ import {
 } from "@annix/product-data/hdpe";
 import { DEFAULT_HDPE_SDR, PIPE_WEIGHT_K_BY_PRODUCT_TYPE } from "./constants";
 
+// Parse a wall thickness in millimetres out of a free-text description.
+// Recognises the variants Nix-extracted BOQs commonly use:
+//   "8mm wall thickness", "wall thickness of 8 mm", "8mm WT",
+//   "WT 8mm", "8 mm w/t". Returns undefined when nothing matches.
+// Used by the fitting / misc / bend fallback paths to recover wall
+// thickness when the structured spec field wasn't populated upstream —
+// without this, every steel fitting that came through the Nix misc
+// fallback would persist at 0 kg even though the description clearly
+// states the wall.
+const parseWallThicknessFromDescription = (description: string): number | undefined => {
+  const patterns = [
+    /(\d+(?:\.\d+)?)\s*mm\s*wall\s*thickness/i,
+    /wall\s*thickness\s*(?:of\s*)?(\d+(?:\.\d+)?)\s*mm/i,
+    /(\d+(?:\.\d+)?)\s*mm\s*W\.?T\.?/i,
+    /\bWT\s*(\d+(?:\.\d+)?)\s*mm/i,
+    /(\d+(?:\.\d+)?)\s*mm\s*w\/t/i,
+  ];
+  for (const p of patterns) {
+    const m = description.match(p);
+    if (m) {
+      const v = Number(m[1]);
+      if (v > 0 && v < 100) return v;
+    }
+  }
+  return undefined;
+};
+
 // Effective HDPE PN for the row's stub-flange spec. Priority:
 // 1. globalSpecs.hdpePressureRating (explicit project-level pick)
 // 2. derived from the resolved SDR via PE100 SDR↔PN table
@@ -136,7 +163,9 @@ export const fallbackBendWeight = (
     const sdr = globalHdpeSdr || DEFAULT_HDPE_SDR;
     wt = od / Number(sdr);
   } else if (!wt) {
-    return 0;
+    const rawDescription = entry.description;
+    wt = rawDescription ? parseWallThicknessFromDescription(rawDescription) : undefined;
+    if (!wt) return 0;
   }
 
   const rawBendDegrees = entry.specs?.bendDegrees;
@@ -180,7 +209,11 @@ export const fallbackFittingWeight = (
     const sdr = globalHdpeSdr || DEFAULT_HDPE_SDR;
     wt = od / Number(sdr);
   } else if (!wt) {
-    return 0;
+    // Steel/PVC fitting with no structured wt — try the description
+    // ("8mm wall thickness" etc.) before giving up.
+    const rawDescription = entry.description;
+    wt = rawDescription ? parseWallThicknessFromDescription(rawDescription) : undefined;
+    if (!wt) return 0;
   }
 
   // Run length: 2 × OD as a rule of thumb for an equal tee body
@@ -240,8 +273,15 @@ export const fallbackMiscWeight = (
         : "steel";
   const k = PIPE_WEIGHT_K_BY_PRODUCT_TYPE[productKey];
 
-  // Wall thickness: per-entry → derived from SDR → 0 (caller bails).
+  // Wall thickness: per-entry → description parse → SDR-derived →
+  // 0 (caller bails). The description-parse step recovers steel rows
+  // whose only stated wall thickness is in the free-text ("8mm wall
+  // thickness") — common for rubber-lined mild steel rows that flow
+  // through the misc bucket.
   let wt = entry.specs?.wallThicknessMm ? Number(entry.specs.wallThicknessMm) : undefined;
+  if (!wt) {
+    wt = parseWallThicknessFromDescription(description);
+  }
   if (!wt && productKey === "hdpe") {
     const sdr = globalHdpeSdr || DEFAULT_HDPE_SDR;
     wt = dn / Number(sdr);
