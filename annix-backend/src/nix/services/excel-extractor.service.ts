@@ -298,8 +298,17 @@ export class ExcelExtractorService {
       type: "wrapping" as const,
     },
     {
+      // "carboline" (a brand name for protective coatings) and bare
+      // "epoxy" both appear in coating specs on STEEL PIPE rows
+      // (e.g. "DN 900 mild steel pipes ... Epoxy coated inside and
+      // outside with Carboline 890 UHS..."). Matching them here
+      // hijacks pipe rows into the consumable category and they get
+      // routed to the Fasteners supplier section. Keep only the
+      // genuinely-consumable phrases — "drum of <X> coating" and
+      // "epoxy touch-up" are standalone-purchase consumables;
+      // "carboline" alone is not.
       pattern:
-        /\b(gaskets?|bolt\s*sets?|nut\s*and\s*washer|drum\s*of\s*[a-z\s]*coating|carboline|epoxy\s*touch[-\s]?up)\b/i,
+        /\b(gaskets?|bolt\s*sets?|nut\s*and\s*washer|drum\s*of\s*[a-z\s]*coating|drum\s*of\s*epoxy|epoxy\s*touch[-\s]?up)\b/i,
       type: "consumable" as const,
     },
     { pattern: /\bupvc\b/i, type: "upvc" as const },

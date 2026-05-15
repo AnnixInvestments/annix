@@ -1287,9 +1287,23 @@ export default function BOQStep(props: {
         /\b(valve|RSV|pinch\s*valve|gate\s*valve|globe\s*valve|ball\s*valve|butterfly\s*valve|check\s*valve|knife\s*valve|hand\s*pump|hydraulic\s*pump)\b/i.test(
           miscDescription,
         );
+      // Override `nixItemType === "consumable"` when the description
+      // clearly identifies a steel pipe / bend / tee / flange / spool
+      // / lateral. The excel-extractor over-matches "consumable" on
+      // rows where words like "Carboline" or "epoxy coated" appear in
+      // the COATING SPEC of an otherwise-procurement pipe row. Trust
+      // the description content over the upstream classification.
+      const looksLikePipingDescription =
+        /\bDN\s*\d+\s+[^.]*?(pipes?|bends?|tees?|t[-\s]?pieces?|laterals?|reducers?|blank\s*flanges?|spools?|spigot|stub[-\s]?ons?|sweep)\b/i.test(
+          miscDescription,
+        ) ||
+        /\brubber[-\s]?lined\s+(?:mild\s*)?steel\b/i.test(miscDescription) ||
+        /\bmild\s*steel\s*pipes?\b/i.test(miscDescription);
       const isFastenerDescription =
-        rawSpecsNixItemType === "consumable" ||
-        /\b(bolt|nut|washer|stud|gasket|fastener|jointing\s*ring)s?\b/i.test(miscDescription);
+        /\b(bolts?|nuts?|washers?|studs?|gaskets?|fasteners?|jointing\s*rings?)\b/i.test(
+          miscDescription,
+        ) ||
+        (rawSpecsNixItemType === "consumable" && !looksLikePipingDescription);
 
       const miscKey = `MISC_${descLower}_${miscUnit}`;
       // Pick destination map. Valves first (covers cross-material),

@@ -7,6 +7,7 @@ import {
   type SdrValue,
   selectSdrForPressure,
 } from "@annix/product-data/hdpe";
+import { isString } from "es-toolkit/compat";
 import { DEFAULT_HDPE_SDR, PIPE_WEIGHT_K_BY_PRODUCT_TYPE } from "./constants";
 
 // Parse a wall thickness in millimetres out of a free-text description.
@@ -359,13 +360,40 @@ export const fallbackMiscWeight = (
     const perFlangeKg = dn ** 1.5 / 600;
     return perMetre * pipeLenM + 2 * perFlangeKg;
   }
-  // Steel-other (rubber-lined mild steel pipes) — typically the
-  // description is for a straight pipe section. Read explicit
-  // length from description ("up to 8 m", "9.144 m") or fall back
-  // to DEFAULT_HDPE_SDR-equivalent (12 m).
+  // Steel-other (rubber-lined mild steel pipes / spools / bends /
+  // tees that fell through the NIX consumable mis-classification).
+  // Two distinct cases:
+  //   - unit === "m"  → qty IS the total length in metres; return
+  //     per-metre weight and let the caller multiply by qty.
+  //   - unit === "No." / "Each" → each "unit" is one fabricated
+  //     piece; return perMetre × parsedLength so qty × this gives
+  //     total weight.
+  // Avoid matching "flanged every N m" (flange spacing) or
+  // "centre-to-face Nmm" (bend C/F) as the pipe length — require
+  // a "length" / "long" / "pipe length" qualifier.
   if (productKey === "steel") {
-    const lengthMatch = description.match(/(\d+(?:\.\d+)?)\s*m\s*(?:length|long)?\b/i);
-    const pipeLenM = lengthMatch ? Number(lengthMatch[1]) : 12;
+    const rawUnit = entry.specs?.unit;
+    const unitLower = isString(rawUnit) ? rawUnit.toLowerCase().trim() : "";
+    const unitIsMetres =
+      unitLower === "m" ||
+      unitLower === "lm" ||
+      unitLower === "metre" ||
+      unitLower === "metres" ||
+      unitLower === "meter" ||
+      unitLower === "meters";
+    if (unitIsMetres) {
+      return perMetre;
+    }
+    const explicitLengthM = description.match(
+      /(\d+(?:\.\d+)?)\s*m(?:etres?)?\s+(?:pipe\s*)?(?:length|long)\b/i,
+    );
+    const explicitLengthMm = description.match(/(\d+(?:\.\d+)?)\s*mm\s+long\b/i);
+    let pipeLenM = 12;
+    if (explicitLengthM) {
+      pipeLenM = Number(explicitLengthM[1]);
+    } else if (explicitLengthMm) {
+      pipeLenM = Number(explicitLengthMm[1]) / 1000;
+    }
     return perMetre * pipeLenM;
   }
   return 0;
