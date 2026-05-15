@@ -1,6 +1,6 @@
 "use client";
 
-import { toPairs as entries, isObject, isString } from "es-toolkit/compat";
+import { toPairs as entries, isObject, isString, keys } from "es-toolkit/compat";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSpecLookup } from "@/app/lib/nix/components/draft";
 import {
@@ -427,6 +427,51 @@ export function QuoteView(props: QuoteViewProps) {
     }
     hydratedRef.current = true;
   }, [session.quoteEditorState]);
+
+  // Stale-override auto-migration. When a coating override was saved BEFORE
+  // the drawing-INT/EXT capability shipped, the override's suppliers carry
+  // spec-PDF brand labels (Stoncor, Corrocoat, colour) even though the
+  // signed drawing now demands Internal + External entries. Without this
+  // migration the override stays sticky forever — the auto-save keeps
+  // writing the spec-PDF shape back to the DB, and the customer-facing
+  // footer never reflects the contractual paint scope (Andrew 2026-05-15:
+  // the R2a items kept rendering 'Stoncor: Plasite 4550-S' even after
+  // re-extract because the saved override never invalidated).
+  //
+  // Triggered once specLookup is ready AND hydration has run. Detects
+  // any override whose resolved code now exposes a drawing-derived
+  // 'Internal: … • External: …' productDescriptors shape but whose
+  // suppliers don't carry matching 'Internal' / 'External' brands —
+  // drops those override keys so defaultSuppliersForSpec rebuilds from
+  // the current resolved shape on the next render.
+  const overrideMigratedRef = useRef(false);
+  useEffect(() => {
+    if (!hydratedRef.current) return;
+    if (overrideMigratedRef.current) return;
+    const codesToDrop: string[] = [];
+    for (const code of keys(specOverrides)) {
+      const override = specOverrides[code];
+      if (!override) continue;
+      const resolved = specLookup.resolve(code);
+      const descriptors = resolved ? resolved.productDescriptors : null;
+      if (!descriptors) continue;
+      const drawingShape =
+        /^\s*Internal:\s/i.test(descriptors) || /\bExternal:\s/i.test(descriptors);
+      if (!drawingShape) continue;
+      const hasDrawingBrand = override.suppliers.some(
+        (s) => s.brand === "Internal" || s.brand === "External",
+      );
+      if (!hasDrawingBrand) codesToDrop.push(code);
+    }
+    if (codesToDrop.length > 0) {
+      setSpecOverrides((prev) => {
+        const next = { ...prev };
+        for (const code of codesToDrop) delete next[code];
+        return next;
+      });
+    }
+    overrideMigratedRef.current = true;
+  }, [specOverrides, specLookup]);
 
   // Debounced auto-save: any change to the bundle schedules a 1-s save. If
   // another change lands in the window, the timer resets — Notion / Google-

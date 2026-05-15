@@ -7,16 +7,29 @@ import { sectorTrendEtf } from "../config/sector-etf-map";
 import { Asset } from "../entities/asset.entity";
 import { NewsItem } from "../entities/news-item.entity";
 import { PriceHistory } from "../entities/price-history.entity";
-import { type SignalComponentBreakdown, SignalSnapshot } from "../entities/signal-snapshot.entity";
+import {
+  type SignalComponentBreakdown,
+  SignalSnapshot,
+  type ValuationSource,
+} from "../entities/signal-snapshot.entity";
 
 const METRIC_CATEGORY = "insights-signal-engine";
 const NEWS_LOOKBACK_HOURS = 48;
 const NEWS_MAX_ARTICLES = 20;
 const BYTES_PER_SIGNAL_SNAPSHOT = 300;
+const MIN_SECTOR_PEERS = 3;
+const VALUATION_DISCOUNT_CAP = 0.5;
 
 interface ComputedSignals {
   momentum: { score: number; roc20: number | null; smaCrossover: number | null };
-  valuation: { score: number; trailingPe: number | null; medianPe: number | null };
+  valuation: {
+    score: number;
+    trailingPe: number | null;
+    medianPe: number | null;
+    source: ValuationSource;
+    sector: string | null;
+    peerCount: number;
+  };
   newsSentiment: {
     score: number;
     source: string;
@@ -57,11 +70,12 @@ export class SignalEngineService {
       "daily-score",
       async () => {
         const assets = await this.assetRepo.find({ where: { isActive: true } });
+        const sectorMedians = computeSectorMedians(assets);
         let scored = 0;
         let skipped = 0;
         for (const asset of assets) {
           try {
-            const success = await this.scoreOne(asset);
+            const success = await this.scoreOne(asset, sectorMedians);
             if (success) scored += 1;
             else skipped += 1;
           } catch (error) {
@@ -76,7 +90,7 @@ export class SignalEngineService {
     );
   }
 
-  private async scoreOne(asset: Asset): Promise<boolean> {
+  private async scoreOne(asset: Asset, sectorMedians: SectorMedians): Promise<boolean> {
     const history = await this.historyRepo.find({
       where: { assetId: asset.id },
       order: { date: "DESC" },
@@ -92,13 +106,13 @@ export class SignalEngineService {
     const closes = orderedAsc.map((row) => Number(row.close));
 
     const momentum = this.momentum(closes);
-    const valuation = this.valuationStub();
+    const valuation = this.valuationFromPeers(asset, sectorMedians);
     const newsSentiment = await this.newsSentiment(asset.symbol);
     const sectorTrend = await this.sectorTrend(asset.sector);
     const drawdownRisk = this.drawdownRisk(closes);
 
     const inputsMissing: string[] = [];
-    if (valuation.trailingPe === null) inputsMissing.push("valuation");
+    if (valuation.source !== "sector-peer-median") inputsMissing.push("valuation");
     if (newsSentiment.source !== "yahoo-news-extraction") inputsMissing.push("news");
     if (sectorTrend.etf === null) inputsMissing.push("sector-etf");
     const inputsAvailable = 5 - inputsMissing.length;
@@ -186,8 +200,60 @@ export class SignalEngineService {
     };
   }
 
-  private valuationStub(): ComputedSignals["valuation"] {
-    return { score: 50, trailingPe: null, medianPe: null };
+  private valuationFromPeers(
+    asset: Asset,
+    sectorMedians: SectorMedians,
+  ): ComputedSignals["valuation"] {
+    const sector = asset.sector;
+    if (sector === null) {
+      return {
+        score: 50,
+        trailingPe: null,
+        medianPe: null,
+        source: "no-sector",
+        sector: null,
+        peerCount: 0,
+      };
+    }
+    const sectorStats = sectorMedians.get(sector) ?? null;
+    if (sectorStats === null || sectorStats.peerCount < MIN_SECTOR_PEERS) {
+      return {
+        score: 50,
+        trailingPe: parsePe(asset.trailingPe),
+        medianPe: sectorStats !== null ? sectorStats.median : null,
+        source: "insufficient-peers",
+        sector,
+        peerCount: sectorStats !== null ? sectorStats.peerCount : 0,
+      };
+    }
+    const assetPe = parsePe(asset.trailingPe);
+    if (assetPe === null) {
+      return {
+        score: 50,
+        trailingPe: null,
+        medianPe: sectorStats.median,
+        source: "no-asset-pe",
+        sector,
+        peerCount: sectorStats.peerCount,
+      };
+    }
+    const discountPct =
+      sectorStats.median > 0 ? (sectorStats.median - assetPe) / sectorStats.median : 0;
+    const clamped = Math.max(
+      -VALUATION_DISCOUNT_CAP,
+      Math.min(VALUATION_DISCOUNT_CAP, discountPct),
+    );
+    const score = clamp01to100(
+      ((clamped + VALUATION_DISCOUNT_CAP) / (2 * VALUATION_DISCOUNT_CAP)) * 100,
+    );
+    return {
+      score,
+      trailingPe: assetPe,
+      medianPe: sectorStats.median,
+      source: "sector-peer-median",
+      sector,
+      peerCount: sectorStats.peerCount,
+    };
   }
 
   private async newsSentiment(symbol: string): Promise<ComputedSignals["newsSentiment"]> {
@@ -281,6 +347,44 @@ export class SignalEngineService {
       distanceFromHighPct: roundOrNull(distancePct) ?? 0,
     };
   }
+}
+
+interface SectorStats {
+  median: number;
+  peerCount: number;
+}
+
+type SectorMedians = Map<string, SectorStats>;
+
+function computeSectorMedians(assets: Asset[]): SectorMedians {
+  const peValuesBySector = new Map<string, number[]>();
+  for (const asset of assets) {
+    if (asset.sector === null) continue;
+    const pe = parsePe(asset.trailingPe);
+    if (pe === null) continue;
+    const bucket = peValuesBySector.get(asset.sector) ?? [];
+    bucket.push(pe);
+    peValuesBySector.set(asset.sector, bucket);
+  }
+  const result: SectorMedians = new Map();
+  for (const [sector, values] of peValuesBySector.entries()) {
+    result.set(sector, { median: median(values), peerCount: values.length });
+  }
+  return result;
+}
+
+function median(values: number[]): number {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+}
+
+function parsePe(raw: string | null): number | null {
+  if (raw === null) return null;
+  const numeric = Number(raw);
+  if (!Number.isFinite(numeric) || numeric <= 0) return null;
+  return numeric;
 }
 
 function matchesSymbol(relatedSymbols: string[] | null, symbol: string): boolean {

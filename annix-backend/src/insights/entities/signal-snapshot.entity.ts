@@ -10,9 +10,22 @@ import {
 } from "typeorm";
 import { Asset } from "./asset.entity";
 
+export type ValuationSource =
+  | "sector-peer-median"
+  | "no-asset-pe"
+  | "insufficient-peers"
+  | "no-sector";
+
 export interface SignalComponentBreakdown {
   momentum: { score: number; roc20: number | null; smaCrossover: number | null };
-  valuation: { score: number; trailingPe: number | null; medianPe: number | null };
+  valuation: {
+    score: number;
+    trailingPe: number | null;
+    medianPe: number | null;
+    source: ValuationSource;
+    sector: string | null;
+    peerCount: number;
+  };
   newsSentiment: {
     score: number;
     source: string;
