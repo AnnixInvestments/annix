@@ -79,6 +79,20 @@ export class Asset {
   @Column({ type: "boolean", default: true, name: "is_active" })
   isActive: boolean;
 
+  @ApiProperty({
+    description: "Trailing twelve-month P/E ratio from Yahoo summaryDetail (null when N/A)",
+    required: false,
+  })
+  @Column({ type: "numeric", precision: 12, scale: 4, nullable: true, name: "trailing_pe" })
+  trailingPe: string | null;
+
+  @ApiProperty({
+    description: "Timestamp of the last trailingPe refresh (null when never fetched)",
+    required: false,
+  })
+  @Column({ type: "timestamptz", nullable: true, name: "pe_updated_at" })
+  peUpdatedAt: Date | null;
+
   @ApiProperty({ description: "Creation timestamp" })
   @CreateDateColumn({ type: "timestamptz", name: "created_at" })
   createdAt: Date;

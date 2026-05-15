@@ -63,6 +63,50 @@ export class YahooMarketDataService {
     return this.scheduled(() => this.fetchNewsWithRetry(symbol, newsCount));
   }
 
+  fetchTrailingPE(symbol: string): Promise<number | null> {
+    return this.scheduled(() => this.fetchTrailingPEWithRetry(symbol));
+  }
+
+  private async fetchTrailingPEWithRetry(symbol: string): Promise<number | null> {
+    let attempt = 0;
+    let lastError: unknown = null;
+    while (attempt < MAX_RETRIES) {
+      try {
+        const result = await yahooFinance.quoteSummary(symbol, {
+          modules: ["summaryDetail"],
+        });
+        const summary = result?.summaryDetail as
+          | { trailingPE?: number | { raw?: number } | null }
+          | undefined;
+        const rawTrailing = summary?.trailingPE ?? null;
+        if (rawTrailing === null || rawTrailing === undefined) return null;
+        const numeric =
+          typeof rawTrailing === "number"
+            ? rawTrailing
+            : typeof rawTrailing.raw === "number"
+              ? rawTrailing.raw
+              : null;
+        if (numeric === null || !Number.isFinite(numeric) || numeric <= 0) return null;
+        return numeric;
+      } catch (error) {
+        lastError = error;
+        const status = errorStatus(error);
+        const retryable = status === 429 || status === 503 || status === null;
+        if (!retryable) break;
+        attempt += 1;
+        if (attempt >= MAX_RETRIES) break;
+        const backoff = INITIAL_BACKOFF_MS * 2 ** (attempt - 1);
+        this.logger.warn(
+          `Yahoo quoteSummary for ${symbol} failed (attempt ${attempt}/${MAX_RETRIES}): ${errorMessage(error)}. Retrying in ${backoff}ms.`,
+        );
+        await new Promise<void>((resolve) => setTimeout(resolve, backoff));
+      }
+    }
+    throw new Error(
+      `Yahoo Finance quoteSummary for ${symbol} failed after ${attempt} attempts: ${errorMessage(lastError)}`,
+    );
+  }
+
   private async fetchNewsWithRetry(symbol: string, newsCount: number): Promise<YahooNewsArticle[]> {
     let attempt = 0;
     let lastError: unknown = null;

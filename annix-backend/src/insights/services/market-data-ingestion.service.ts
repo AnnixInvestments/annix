@@ -91,8 +91,26 @@ export class MarketDataIngestionService {
         this.logger.warn(`Daily snapshot failed for ${asset.symbol}: ${message}`);
         failed.push(asset.symbol);
       }
+      try {
+        await this.refreshTrailingPE(asset);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.logger.warn(`Trailing P/E refresh failed for ${asset.symbol}: ${message}`);
+      }
     }
     return { totalInserted, failed };
+  }
+
+  async refreshTrailingPE(asset: Asset): Promise<number | null> {
+    const trailingPe = await this.yahoo.fetchTrailingPE(asset.symbol);
+    await this.assetRepo.update(
+      { id: asset.id },
+      {
+        trailingPe: trailingPe !== null ? trailingPe.toFixed(4) : null,
+        peUpdatedAt: now().toJSDate(),
+      },
+    );
+    return trailingPe;
   }
 
   async historyForSymbol(symbol: string): Promise<PriceHistory[]> {
