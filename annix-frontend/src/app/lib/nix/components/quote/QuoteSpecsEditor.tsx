@@ -295,6 +295,17 @@ function SpecCard(props: SpecCardProps) {
   // and the per-row select affordance.
   const isDrawingFaceted =
     !isLining && suppliers.some((s) => s.brand === "Internal" || s.brand === "External");
+  // When a lining spec carries a custom product (e.g. the quoter uploaded
+  // a 'Weir Linacure 60' data sheet to substitute the drawing's 'Linatex
+  // Linard 60'), the card should headline the product actually being
+  // supplied — not the drawing's code. The code stays as a small mono
+  // subtitle so the drawing linkage is still visible. Product name is the
+  // text before the first comma of the custom description.
+  const customLiningEntry = isLining ? suppliers.find((s) => s.isCustom) : undefined;
+  const customLiningName =
+    customLiningEntry && customLiningEntry.description.trim().length > 0
+      ? customLiningEntry.description.split(",")[0].trim()
+      : null;
 
   const m2Value = rate && rate.perM2 > 0 ? String(rate.perM2) : "";
   const rmValue = rate && rate.perRm > 0 ? String(rate.perRm) : "";
@@ -360,6 +371,15 @@ function SpecCard(props: SpecCardProps) {
               placeholder="Spec code (e.g. R3)"
               className="font-mono text-sm font-semibold text-gray-900 border border-gray-200 rounded px-1.5 py-0.5 min-w-0 flex-1 focus:outline-none focus:ring-2 focus:ring-[#323288]/30"
             />
+          ) : customLiningName ? (
+            <span className="flex items-baseline gap-1.5 min-w-0">
+              <span className="text-sm font-semibold text-gray-900 truncate">
+                {customLiningName}
+              </span>
+              <span className="font-mono text-[11px] text-gray-400 whitespace-nowrap">
+                ({spec.code})
+              </span>
+            </span>
           ) : (
             <span className="font-mono text-sm font-semibold text-gray-900">{spec.code}</span>
           )}
