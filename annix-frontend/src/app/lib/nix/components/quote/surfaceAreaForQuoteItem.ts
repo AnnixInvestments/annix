@@ -410,9 +410,10 @@ function equalYArea(item: QuoteItem, nbToOdMap: Record<number, number>): ItemSur
  * Anything else is treated as 'no flange' so the area is just the bare pipe;
  * the calculator's flange allowance only kicks in for actual flange counts.
  *
- * Returns null when the item lacks the data needed (no length, no diameter,
- * no wall thickness) — callers should render '—' in that case rather than a
- * misleading zero.
+ * Returns null when the item lacks the data needed (no length, no
+ * diameter) — callers should render '—' in that case rather than a
+ * misleading zero. A missing wall thickness is NOT a blocker: it falls
+ * back to the SCH.STD approximation (schedule-only pipes like "HVY").
  */
 export function surfaceAreaForQuoteItem(
   item: QuoteItem,
@@ -432,13 +433,19 @@ export function surfaceAreaForQuoteItem(
   if (kind === "equal_y") return equalYArea(item, nbToOdMap);
 
   const itemDiameter = item.diameter;
-  const itemWall = item.wallThickness;
   const itemLengthMm = item.length;
-  if (itemDiameter === null || itemWall === null || itemLengthMm === null) return null;
-  if (itemDiameter <= 0 || itemWall <= 0 || itemLengthMm <= 0) return null;
+  if (itemDiameter === null || itemLengthMm === null) return null;
+  if (itemDiameter <= 0 || itemLengthMm <= 0) return null;
 
   const dn = itemDiameter;
   const odMm = outerDiameterFromNB(nbToOdMap, dn);
+  // Wall thickness falls back to the SCH.STD approximation when the
+  // drawing gave only a schedule designation ("HVY", "MED", "SCH.STD")
+  // and no numeric WT — the same effectiveWallMm fallback the fitting
+  // formulas use. Previously the pipe branch hard-rejected a null
+  // wallThickness, so a "100NB x HVY Pipe" row produced NO m² at all
+  // even though external area (π × OD × L) never needed the wall.
+  const itemWall = effectiveWallMm(item, dn);
   const idMm = odMm - 2 * itemWall;
   if (idMm <= 0) return null;
 
