@@ -7,11 +7,13 @@ import { MetricsModule } from "../metrics/metrics.module";
 import { NixModule } from "../nix/nix.module";
 import { InsightsAdminController } from "./controllers/insights-admin.controller";
 import { InsightsHealthController } from "./controllers/insights-health.controller";
+import { InsightsMacroController } from "./controllers/insights-macro.controller";
 import { InsightsNewsController } from "./controllers/insights-news.controller";
 import { InsightsPaperPortfoliosController } from "./controllers/insights-paper-portfolios.controller";
 import { InsightsSignalsController } from "./controllers/insights-signals.controller";
 import { InsightsWatchlistController } from "./controllers/insights-watchlist.controller";
 import { Asset } from "./entities/asset.entity";
+import { MacroSentimentSnapshot } from "./entities/macro-sentiment-snapshot.entity";
 import { NewsItem } from "./entities/news-item.entity";
 import { PaperHolding } from "./entities/paper-holding.entity";
 import { PaperPortfolio } from "./entities/paper-portfolio.entity";
@@ -24,6 +26,7 @@ import { AiExecutorService } from "./services/ai-executor.service";
 import { AllocationRulesEngineService } from "./services/allocation-rules-engine.service";
 import { BenchmarkExecutionService } from "./services/benchmark-execution.service";
 import { InsightsCronService } from "./services/insights-cron.service";
+import { MacroSentimentService } from "./services/macro-sentiment.service";
 import { MarketDataIngestionService } from "./services/market-data-ingestion.service";
 import { NewsIngestionService } from "./services/news-ingestion.service";
 import { PaperPortfolioService } from "./services/paper-portfolio.service";
@@ -48,6 +51,7 @@ import { YahooMarketDataService } from "./services/yahoo-market-data.service";
       PaperPortfolioSnapshot,
       SignalSnapshot,
       NewsItem,
+      MacroSentimentSnapshot,
     ]),
   ],
   controllers: [
@@ -57,6 +61,7 @@ import { YahooMarketDataService } from "./services/yahoo-market-data.service";
     InsightsPaperPortfoliosController,
     InsightsSignalsController,
     InsightsNewsController,
+    InsightsMacroController,
   ],
   providers: [
     JwtAuthGuard,
@@ -72,6 +77,7 @@ import { YahooMarketDataService } from "./services/yahoo-market-data.service";
     AllocationRulesEngineService,
     AiExecutorService,
     PaperTradeExecutionService,
+    MacroSentimentService,
     InsightsCronService,
   ],
   exports: [],

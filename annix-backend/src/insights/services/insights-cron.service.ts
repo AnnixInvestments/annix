@@ -5,6 +5,7 @@ import { Repository } from "typeorm";
 import { now } from "../../lib/datetime";
 import { PaperPortfolioSnapshot } from "../entities/paper-portfolio-snapshot.entity";
 import { BenchmarkExecutionService } from "./benchmark-execution.service";
+import { MacroSentimentService } from "./macro-sentiment.service";
 import { MarketDataIngestionService } from "./market-data-ingestion.service";
 import { NewsIngestionService } from "./news-ingestion.service";
 import { PaperPortfolioService } from "./paper-portfolio.service";
@@ -38,6 +39,7 @@ export class InsightsCronService implements OnApplicationBootstrap {
     private readonly snapshotService: PortfolioSnapshotService,
     private readonly signalEngine: SignalEngineService,
     private readonly tradeExecution: PaperTradeExecutionService,
+    private readonly macroSentiment: MacroSentimentService,
     @InjectRepository(PaperPortfolioSnapshot)
     private readonly snapshotRepo: Repository<PaperPortfolioSnapshot>,
   ) {}
@@ -135,14 +137,27 @@ export class InsightsCronService implements OnApplicationBootstrap {
     try {
       const news = await this.newsIngestion.runDailyPull();
       this.logger.log(
-        `News ingestion: ${news.articlesPersisted} new articles across ${news.symbolsProcessed} symbols (extracted=${news.articlesExtracted}, failed=${news.articlesFailed}).`,
+        `News ingestion: ${news.articlesPersisted} per-asset articles across ${news.symbolsProcessed} symbols (extracted=${news.articlesExtracted}, failed=${news.articlesFailed}). Macro: ${news.macroArticlesPersisted} articles across ${news.macroQueriesProcessed} queries.`,
       );
       if (news.symbolFailures.length > 0) {
         this.logger.warn(`News fetch failed for: ${news.symbolFailures.join(", ")}`);
       }
+      if (news.macroQueryFailures.length > 0) {
+        this.logger.warn(`Macro fetch failed for: ${news.macroQueryFailures.join(", ")}`);
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       this.logger.error(`News ingestion crashed: ${message}`);
+    }
+
+    try {
+      const macro = await this.macroSentiment.captureForToday();
+      this.logger.log(
+        `Macro sentiment captured: score=${Number(macro.overallScore).toFixed(3)}, articles=${macro.articleCount} (${macro.highImpactCount} high-impact).`,
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Macro sentiment capture crashed: ${message}`);
     }
 
     try {
