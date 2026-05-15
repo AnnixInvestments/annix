@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { fromISO } from "@/app/lib/datetime";
 import {
+  type NixExtractionSessionDto,
   quoteRefForSession,
   useDeleteNixExtractionSession,
   useFeatureFlagEnabled,
@@ -104,6 +105,14 @@ export default function QuotationsPage() {
   );
   const promotedData = promotedQuery.data;
   const promotedSessions = isNixEnabled && promotedData ? promotedData : [];
+  // Split promoted quotes by whether they've been submitted to the
+  // customer yet. A submittedAt timestamp is stamped by the Submit Quote
+  // modal — once set the quote moves out of the working "Promoted" list
+  // into its own "Submitted to client" section.
+  const isSubmitted = (s: { submittedAt?: string | null }): boolean =>
+    isString(s.submittedAt) && s.submittedAt.length > 0;
+  const awaitingSubmission = promotedSessions.filter((s) => !isSubmitted(s));
+  const submittedSessions = promotedSessions.filter(isSubmitted);
   const deleteMutation = useDeleteNixExtractionSession();
   const { confirm, ConfirmDialog } = useConfirm();
 
@@ -370,99 +379,25 @@ export default function QuotationsPage() {
           </div>
           {promotedQuery.isLoading ? (
             <p className="text-sm text-gray-500">Loading…</p>
-          ) : promotedSessions.length === 0 ? (
+          ) : awaitingSubmission.length === 0 ? (
             <p className="text-sm text-gray-500">
               Quotes you promote from a draft will appear here, with all items pooled by their
               coating + lining specification.
             </p>
           ) : (
-            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                <thead className="bg-gray-50 dark:bg-gray-900/20">
-                  <tr>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                      Quote #
-                    </th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                      Title
-                    </th>
-                    <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">
-                      Documents
-                    </th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                      Promoted
-                    </th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                      Submitted
-                    </th>
-                    <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                  {promotedSessions.map((s) => {
-                    const promoted = s.promotedRef;
-                    const ref = promoted ? promoted : quoteRefForSession(s);
-                    const docCount = s.extractions ? s.extractions.length : 0;
-                    const promotedAt = fromISO(s.updatedAt).toFormat("dd MMM yyyy HH:mm");
-                    const submittedAtIso = s.submittedAt;
-                    const submittedAt =
-                      isString(submittedAtIso) && submittedAtIso.length > 0
-                        ? fromISO(submittedAtIso).toFormat("dd MMM yyyy")
-                        : "—";
-                    const titleText = s.title ? s.title : `Quote from documents — session #${s.id}`;
-                    const quoteHref = `/stock-control/portal/quotations/quotes/${s.id}`;
-                    const openQuote = () => router.push(quoteHref);
-                    const onRowKeyDown = (event: React.KeyboardEvent<HTMLTableRowElement>) => {
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        openQuote();
-                      }
-                    };
-                    return (
-                      <tr
-                        key={s.id}
-                        onClick={openQuote}
-                        onKeyDown={onRowKeyDown}
-                        role="button"
-                        tabIndex={0}
-                        aria-label={`Open ${ref} — ${titleText}`}
-                        className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900/30 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-[#323288]/40"
-                      >
-                        <td className="px-4 py-3 text-sm font-mono text-[#323288]">{ref}</td>
-                        <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
-                          {titleText}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-right text-gray-700 dark:text-gray-300">
-                          {docCount}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
-                          {promotedAt}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
-                          {submittedAt}
-                        </td>
-                        <td
-                          className="px-4 py-3 text-sm text-right whitespace-nowrap"
-                          onClick={(e) => e.stopPropagation()}
-                          onKeyDown={(e) => e.stopPropagation()}
-                        >
-                          <button
-                            type="button"
-                            onClick={openQuote}
-                            className="inline-flex items-center px-2.5 py-1 text-xs font-medium border border-[#323288] text-[#323288] rounded hover:bg-[#323288] hover:text-white"
-                          >
-                            Edit
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+            <PromotedQuotesTable sessions={awaitingSubmission} router={router} />
           )}
+        </section>
+      )}
+
+      {isNixEnabled && submittedSessions.length > 0 && (
+        <section className="mb-6">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+              Submitted to client
+            </h2>
+          </div>
+          <PromotedQuotesTable sessions={submittedSessions} router={router} />
         </section>
       )}
 
@@ -589,6 +524,104 @@ export default function QuotationsPage() {
       </div>
 
       {ConfirmDialog}
+    </div>
+  );
+}
+
+/**
+ * Shared table for the "Promoted quotes" and "Submitted to client"
+ * sections — identical columns, just a different sessions array. Each
+ * row is clickable / keyboard-activatable and opens the working quote.
+ */
+function PromotedQuotesTable(props: {
+  sessions: NixExtractionSessionDto[];
+  router: ReturnType<typeof useRouter>;
+}) {
+  const { sessions, router } = props;
+  return (
+    <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+      <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+        <thead className="bg-gray-50 dark:bg-gray-900/20">
+          <tr>
+            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+              Quote #
+            </th>
+            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+              Title
+            </th>
+            <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+              Documents
+            </th>
+            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+              Promoted
+            </th>
+            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+              Submitted
+            </th>
+            <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+              Actions
+            </th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+          {sessions.map((s) => {
+            const promoted = s.promotedRef;
+            const ref = promoted ? promoted : quoteRefForSession(s);
+            const docCount = s.extractions ? s.extractions.length : 0;
+            const promotedAt = fromISO(s.updatedAt).toFormat("dd MMM yyyy HH:mm");
+            const submittedAtIso = s.submittedAt;
+            const submittedAt =
+              isString(submittedAtIso) && submittedAtIso.length > 0
+                ? fromISO(submittedAtIso).toFormat("dd MMM yyyy")
+                : "—";
+            const titleText = s.title ? s.title : `Quote from documents — session #${s.id}`;
+            const quoteHref = `/stock-control/portal/quotations/quotes/${s.id}`;
+            const openQuote = () => router.push(quoteHref);
+            const onRowKeyDown = (event: React.KeyboardEvent<HTMLTableRowElement>) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                openQuote();
+              }
+            };
+            return (
+              <tr
+                key={s.id}
+                onClick={openQuote}
+                onKeyDown={onRowKeyDown}
+                role="button"
+                tabIndex={0}
+                aria-label={`Open ${ref} — ${titleText}`}
+                className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900/30 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-[#323288]/40"
+              >
+                <td className="px-4 py-3 text-sm font-mono text-[#323288]">{ref}</td>
+                <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{titleText}</td>
+                <td className="px-4 py-3 text-sm text-right text-gray-700 dark:text-gray-300">
+                  {docCount}
+                </td>
+                <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                  {promotedAt}
+                </td>
+                <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                  {submittedAt}
+                </td>
+                <td
+                  className="px-4 py-3 text-sm text-right whitespace-nowrap"
+                  onClick={(e) => e.stopPropagation()}
+                  onKeyDown={(e) => e.stopPropagation()}
+                >
+                  <button
+                    type="button"
+                    onClick={openQuote}
+                    className="inline-flex items-center px-2.5 py-1 text-xs font-medium border border-[#323288] text-[#323288] rounded hover:bg-[#323288] hover:text-white"
+                  >
+                    Edit
+                  </button>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }

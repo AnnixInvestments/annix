@@ -2,7 +2,7 @@
 
 import { isArray, isString } from "es-toolkit/compat";
 import Link from "next/link";
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { DateTime } from "@/app/lib/datetime";
@@ -68,6 +68,7 @@ function CustomerQuotePreviewBody(props: {
   // print is deferred until the email modal is closed (success or
   // dismiss) so the user sees the email confirmation first.
   const searchParams = useSearchParams();
+  const router = useRouter();
   const wantEmail = searchParams ? searchParams.get("email") === "1" : false;
   const wantPrint = searchParams ? searchParams.get("print") === "1" : false;
   const wantConvert = searchParams ? searchParams.get("convert") === "1" : false;
@@ -94,6 +95,26 @@ function CustomerQuotePreviewBody(props: {
     }, 400);
     return () => window.clearTimeout(handle);
   }, [wantPrint, autoPrintTriggered, wantEmail, showEmailModal]);
+
+  // After the Submit-Quote flow finishes (print dialog closed, or email
+  // modal closed), return the quoter to the Quotations hub — the quote
+  // now shows under "Submitted to client". Only fires when the preview
+  // was reached via ?print / ?email (i.e. from Submit Quote), never on
+  // a plain preview visit.
+  useEffect(() => {
+    if (!wantPrint || !autoPrintTriggered) return;
+    const handler = () => router.push("/stock-control/portal/quotations");
+    window.addEventListener("afterprint", handler, { once: true });
+    return () => window.removeEventListener("afterprint", handler);
+  }, [wantPrint, autoPrintTriggered, router]);
+
+  useEffect(() => {
+    // Email-only submit: once the auto-opened email modal is closed
+    // (sent or dismissed) and no print is pending, head to the hub.
+    if (wantEmail && !wantPrint && autoEmailOpened && !showEmailModal) {
+      router.push("/stock-control/portal/quotations");
+    }
+  }, [wantEmail, wantPrint, autoEmailOpened, showEmailModal, router]);
 
   // ?convert=1 from QuoteView's "Convert to Job Card" button — wait for
   // QuoteCustomerView to compute the snapshot, then open the modal.
