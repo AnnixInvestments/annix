@@ -1087,6 +1087,58 @@ export function consolidateBoqData(input: ConsolidationInput): ExtendedConsolida
           entries: [itemNumber],
         });
       }
+    } else if (entry.itemType === "misc") {
+      // Misc items are Nix-extracted rows that never slotted into a
+      // structural itemType — valves, pumps, gaskets, bolt sets,
+      // coating drums. Without this branch they fall through to the
+      // straight-pipe `else` below and get mangled into bogus 100NB
+      // pipe rows in the SUPPLIER BOQ. Route by nixItemType /
+      // description keyword into the matching supplier section,
+      // mirroring the misc handling in BOQStep.tsx's display
+      // consolidation so the wizard preview and the submitted BOQ
+      // finally agree.
+      const rawMiscDescription = entry.description;
+      const miscDescription = rawMiscDescription || "Item";
+      const miscLower = miscDescription.toLowerCase();
+      const rawNixItemType = entry.specs?.nixItemType;
+      const nixItemType = rawNixItemType || "";
+      const rawMiscUnit = entry.specs?.unit;
+      const miscUnit = rawMiscUnit || "Each";
+
+      const isMiscValve = nixItemType === "valve" || /\bvalves?\b|\brsv\b/i.test(miscDescription);
+      const isMiscPump = nixItemType === "pump" || /\bpumps?\b/i.test(miscDescription);
+      const isMiscGasket = /\bgaskets?\b/i.test(miscDescription);
+
+      const pushMisc = (dest: Map<string, ConsolidatedItem>, keyPrefix: string): void => {
+        const key = `${keyPrefix}_${miscLower}_${miscUnit}`;
+        const existing = dest.get(key);
+        if (existing) {
+          existing.qty += qty;
+          existing.entries.push(itemNumber);
+          return;
+        }
+        dest.set(key, {
+          description: miscDescription,
+          qty,
+          unit: miscUnit,
+          weight: 0,
+          entries: [itemNumber],
+        });
+      };
+
+      if (isMiscValve) {
+        pushMisc(consolidatedValves, "MISC_VALVE");
+      } else if (isMiscPump) {
+        pushMisc(consolidatedPumps, "MISC_PUMP");
+      } else if (isMiscGasket) {
+        pushMisc(consolidatedGaskets, "MISC_GASKET");
+      } else {
+        // Bolt sets, coating drums and any other consumable land in
+        // the BNW Sets section — the Bolts/Nuts/Gaskets supplier
+        // bundle. Coating drums have no dedicated slot; the
+        // description carries the detail.
+        pushMisc(consolidatedBnwSets, "MISC_CONSUMABLE");
+      }
     } else {
       const rawNominalBoreMm2 = entry.specs?.nominalBoreMm;
       const nb = rawNominalBoreMm2 || 100;
