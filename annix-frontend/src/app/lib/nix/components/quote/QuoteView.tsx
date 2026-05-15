@@ -35,6 +35,7 @@ import {
 } from "./quoteSpecOverrides";
 import { SubmitQuoteModal } from "./SubmitQuoteModal";
 import {
+  countFlangesFromConfig,
   effectiveLiningLengthM,
   type ItemSurfaceArea,
   isLongPipeForLiningPricing,
@@ -70,6 +71,37 @@ function lengthLabelForItem(item: QuoteItem): string {
     return "C/F";
   }
   return "L";
+}
+
+/**
+ * The 'Flange class' column previously rendered materialClass directly,
+ * which produced two wrong outcomes Andrew flagged on 2026-05-15:
+ *
+ *  - P.E. items showed their pipe material spec (e.g. "SANS 719 Gr.B")
+ *    under a flange-class heading, despite having no flanges at all.
+ *  - Fittings showed the steel grade (e.g. "S355JR/SANS 719") which is
+ *    the material spec, NOT the flange pressure rating.
+ *
+ * The real flange class lives in the drawing's SABS 1123 callout box
+ * ("1000/3 SABS 1123", "4000/3 SABS 1123"), captured into the new
+ * flangeClass field by extractions running the updated prompt. When
+ * Gemini hasn't filled flangeClass yet (older extractions, items
+ * pending Re-Extract), fall back to a SABS-pattern heuristic on
+ * materialClass — accept "1000/3", "4000/3 SABS 1123" etc., reject
+ * "SANS 719", "S355JR/...", "SABS62" which are pipe specs.
+ *
+ * P.E. / B.W. items always render "—" regardless of what either field
+ * contains — no flanges means no flange class to report.
+ */
+function formatFlangeClassCell(item: QuoteItem): string {
+  if (countFlangesFromConfig(item.flangeConfig) === 0) return "—";
+  const explicit = item.flangeClass;
+  if (explicit && explicit.trim().length > 0) return explicit;
+  const material = item.materialClass;
+  if (material && /^\d{3,4}\/\d(\s|$)/.test(material.trim())) {
+    return material;
+  }
+  return "—";
 }
 
 /**
@@ -1050,8 +1082,7 @@ function ItemRow(props: {
   const dimensions = dimensionParts.join(" × ");
   const flange = item.flangeConfig;
   const dimensionText = dimensions ? dimensions : "—";
-  const materialClass = item.materialClass;
-  const materialClassText = materialClass ? materialClass : "—";
+  const flangeClassText = formatFlangeClassCell(item);
 
   let perItemCellText = "—";
   let lineTotalCellText = "—";
@@ -1082,7 +1113,7 @@ function ItemRow(props: {
           <span className="ml-2 text-[11px] text-gray-500 whitespace-nowrap">{flange}</span>
         )}
       </td>
-      <td className="px-3 py-2 text-gray-700 font-mono text-xs">{materialClassText}</td>
+      <td className="px-3 py-2 text-gray-700 font-mono text-xs">{flangeClassText}</td>
       {showAreaColumn && coverageKind === "total" && (
         <>
           <td className="px-3 py-2 text-right text-gray-700 font-mono text-xs whitespace-nowrap">

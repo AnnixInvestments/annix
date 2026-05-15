@@ -20,6 +20,14 @@ export interface QuoteItem {
   coating: string | null;
   lining: string | null;
   materialClass: string | null;
+  /**
+   * Flange pressure class from the drawing title block (SABS 1123 box), e.g.
+   * "1000/3 SABS 1123". On items where the two ends carry different flanges
+   * (reducers, reducing tees), the verbatim string holds both with a " / "
+   * separator: "2500/3 SABS 1123 / 4000/3 SABS 1123". Null on P.E./B.W.
+   * items — those have no flanges to apply a class to.
+   */
+  flangeClass: string | null;
   /** id of the originating NixExtraction, for traceability. */
   sourceExtractionId: number;
 }
@@ -107,6 +115,7 @@ export function poolItemsBySpec(
         coating: stringField(item, ["coatingSystem"]),
         lining: stringField(item, ["liningType"]),
         materialClass: stringField(item, ["materialClass"]),
+        flangeClass: stringField(item, ["flangeClass"]),
         sourceExtractionId: extraction.id,
       });
     }

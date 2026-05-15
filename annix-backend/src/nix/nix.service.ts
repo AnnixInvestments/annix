@@ -1294,6 +1294,7 @@ export class NixService {
       "externalPaint",
     );
     const bandingDetails = strFrom("bandingDetails", "bands", "bandCallout");
+    const flangeClass = strFrom("flangeClass", "flange_class", "flangeClassRating");
     const deviationsRaw = item["deviations"];
     const deviations = Array.isArray(deviationsRaw)
       ? (deviationsRaw.filter((d) => typeof d === "string" && d.length > 0) as string[])
@@ -1350,6 +1351,7 @@ export class NixService {
       ...(internalCoatingDescription ? { internalCoatingDescription } : {}),
       ...(externalCoatingDescription ? { externalCoatingDescription } : {}),
       ...(bandingDetails ? { bandingDetails } : {}),
+      ...(flangeClass ? { flangeClass } : {}),
       ...(deviations && deviations.length > 0 ? { deviations } : {}),
     } as ExtractedItem;
   }

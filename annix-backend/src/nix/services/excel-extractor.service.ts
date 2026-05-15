@@ -95,6 +95,10 @@ export interface ExtractedItem {
   externalCoatingDescription?: string;
   /** Verbatim text of band callouts (e.g. "Band 1 GOLDEN YELLOW B49"). */
   bandingDetails?: string;
+  /** Flange pressure class from the SABS 1123 box(es) in the title block,
+   *  e.g. "1000/3 SABS 1123" or "2500/3 SABS 1123 / 4000/3 SABS 1123"
+   *  when the two ends carry different flanges. Null on P.E./B.W. items. */
+  flangeClass?: string;
   /** Hand-written / red-pen client deviations from the printed spec. */
   deviations?: string[];
 }

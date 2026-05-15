@@ -39,7 +39,8 @@ export const DRAWING_ITEM_SCHEMA_RULES = `CRITICAL — schema rules (must follow
    - internalCoatingDescription (string or null — verbatim drawing text for the CORROSION INT. / INTERNAL PAINT / INTERNAL COAT callout in the title block, e.g. "BLAST SA 2½ THEN COAT PLASITE 4550-S @ 600μm-800μm", "6mmR/L LINATEX LINARD®60 & 6mm ON FACE", "UNLINED", "NONE". Capture the FULL text Gemini sees, including product names, microns, blast-prep. Use null when the drawing does NOT print a CORROSION INT line — DO NOT invent one from the spec code.)
    - externalCoatingDescription (string or null — verbatim drawing text for the CORROSION EXT. / EXTERNAL PAINT / EXTERNAL COAT callout, e.g. "BLAST SA 2½ THEN COAT PLASITE 4550-S @ 600μm-800μm", "BRILLIANT GREEN", "NONE". Same null-vs-text rule as internalCoatingDescription.)
    - bandingDetails (string or null — verbatim text of any per-pipe identification band callouts the drawing prints, e.g. "Band 1 GOLDEN YELLOW B49, Band 2 MIDDLE BROWN B07" or "3 × Yellow B49 bands at 1m centres". Use null when the drawing only shows a generic band marker with no colour / code / count text.)
-   - materialClass (string or null — material class / spec code, e.g. "SC1", "1000/3", "SABS62", "SANS 719", "ASTM A53", "API 5L". ALWAYS capture per-item material specs separately from coating — many drawings have a spec column showing BOTH a paint code (R1) AND a material code (SABS62) — coatingSystem gets the paint code, materialClass gets the material code, both are required when shown)
+   - materialClass (string or null — PIPE / FITTING material spec, e.g. "SANS 719 Gr.B", "SABS62", "S355JR/SANS 719", "S355JR/ANSI 16.9", "ASTM A53", "API 5L". This is the STEEL GRADE / PIPE STANDARD only — NOT a flange-class number. ALWAYS capture per-item material specs separately from coating — many drawings have a spec column showing BOTH a paint code (R1) AND a material code (SABS62) — coatingSystem gets the paint code, materialClass gets the material code.)
+   - flangeClass (string or null — flange pressure rating / class from the SABS 1123 box(es) in the title block, format "X/3 SABS 1123" or just "X/3" where X is the pressure rating in kPa, e.g. "1000/3", "1600/3", "2500/3", "4000/3". DO NOT put this in materialClass — they are different fields. When the drawing prints TWO different boxes (typical on reducers and reducing tees: one box per end), capture BOTH separated by " / ", e.g. "2500/3 SABS 1123 / 4000/3 SABS 1123" — order is small end first, large end second. When the item is P.E. (Plain End, no flanges) or B.W. (butt-weld only), set flangeClass = null even if the title block lists a class — there are no flanges to apply it to.)
    - banding (number — count of identification bands shown per item)
    - deviations (array of strings — handwritten/red-pen/coloured-pen client deviations from the printed spec; surface SEPARATELY here, do NOT silently merge into the printed values)
    - drawingReference (string)
@@ -127,7 +128,8 @@ export const DRAWING_ITEM_SCHEMA_EXAMPLE = `{
       "internalCoatingDescription": "BLAST SA 2½ THEN COAT PLASITE 4550-S @ 600μm-800μm",
       "externalCoatingDescription": "BLAST SA 2½ THEN COAT PLASITE 4550-S @ 600μm-800μm",
       "bandingDetails": null,
-      "materialClass": "1000/3",
+      "materialClass": "SANS 719 Gr.B",
+      "flangeClass": "1000/3 SABS 1123",
       "banding": 0,
       "deviations": [],
       "drawingReference": "HH01",
@@ -150,7 +152,8 @@ export const DRAWING_ITEM_SCHEMA_EXAMPLE = `{
       "internalCoatingDescription": "6mmR/L LINATEX LINARD®60 & 6mm ON FACE",
       "externalCoatingDescription": "BLAST & PAINT CARBOGUARD 890 ALUMINIUM & CARBOTHANE 137 HS BRILLIANT GREEN DFT 150 MICRONS",
       "bandingDetails": "Band 1 GOLDEN YELLOW B49, Band 2 MIDDLE BROWN B07",
-      "materialClass": "4000/3",
+      "materialClass": "SANS 719 Gr.B",
+      "flangeClass": "4000/3 SABS 1123",
       "banding": 5,
       "deviations": ["Only 5 of 45 pipes to be banded"],
       "drawingReference": "HH02",
@@ -174,6 +177,7 @@ export const DRAWING_ITEM_SCHEMA_EXAMPLE = `{
       "externalCoatingDescription": "BLAST & PAINT CARBOGUARD 890 ALUMINIUM & CARBOTHANE 137 HS BRILLIANT GREEN DFT 150 MICRONS",
       "bandingDetails": null,
       "materialClass": "SANS 719 Gr.B",
+      "flangeClass": null,
       "banding": 0,
       "deviations": ["100mm R/L fold-back on each end onto external face"],
       "drawingReference": "HH04",
@@ -197,6 +201,7 @@ export const DRAWING_ITEM_SCHEMA_EXAMPLE = `{
       "externalCoatingDescription": "NONE",
       "bandingDetails": null,
       "materialClass": "SABS62",
+      "flangeClass": null,
       "banding": 0,
       "deviations": [],
       "drawingReference": "HH06",
@@ -220,6 +225,7 @@ export const DRAWING_ITEM_SCHEMA_EXAMPLE = `{
       "externalCoatingDescription": "BLAST & PAINT CARBOGUARD 890 ALUMINIUM & CARBOTHANE 137 HS BRILLIANT GREEN DFT 150 MICRONS",
       "bandingDetails": null,
       "materialClass": "S355JR/SANS 719",
+      "flangeClass": "2500/3 SABS 1123 / 4000/3 SABS 1123",
       "banding": 0,
       "deviations": [],
       "drawingReference": "HH29",
