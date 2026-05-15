@@ -12,11 +12,13 @@ import {
   PaperPortfolio,
   type PaperPortfolioSlug,
 } from "../entities/paper-portfolio.entity";
+import type { NewsProvenance } from "../entities/paper-trade.entity";
 import { PriceHistory } from "../entities/price-history.entity";
 import { type SignalComponentBreakdown, SignalSnapshot } from "../entities/signal-snapshot.entity";
 import { WatchlistItem } from "../entities/watchlist-item.entity";
 import type { BuyDecision, Decision, SellDecision } from "./allocation-rules-engine.service";
 import { AllocationRulesEngineService } from "./allocation-rules-engine.service";
+import { dedupeProvenance, toNewsProvenance } from "./news-provenance";
 import { applyTradeDecisions, type ExecutionResult } from "./paper-trade-execution.service";
 
 const METRIC_CATEGORY = "insights-ai-exec";
@@ -30,6 +32,7 @@ const SYSTEM_PROMPT =
 interface AiDecisionContext {
   topSignals: SignalContextRow[];
   newsItems: NewsContextRow[];
+  promptNews: NewsProvenance[];
   holdings: HoldingContextRow[];
   cashBalance: number;
   currency: string;
@@ -176,6 +179,7 @@ export class AiExecutorService {
         return {
           ...d,
           reasoning: `${tag} ${picks.rationale ? `overall: ${picks.rationale} | ` : ""}original: ${d.reasoning}`,
+          newsConsidered: dedupeProvenance([...d.newsConsidered, ...context.promptNews]),
         } as Decision;
       });
 
@@ -234,7 +238,13 @@ export class AiExecutorService {
       return skipResult(portfolio.slug, `ai-response parse failed: ${message}`);
     }
 
-    const applied = applyOverrides(draft.decisions, verdicts, this.logger, portfolio.slug);
+    const applied = applyOverrides(
+      draft.decisions,
+      verdicts,
+      this.logger,
+      portfolio.slug,
+      context.promptNews,
+    );
     if (applied.length === 0) {
       this.logger.log(`${portfolio.slug}: ai-override dropped every draft decision.`);
       return {
@@ -337,6 +347,7 @@ export class AiExecutorService {
       impactLevel: n.impactLevel,
       shortTermImplication: n.shortTermImplication,
     }));
+    const promptNews = dedupeProvenance(newsRows.map(toNewsProvenance));
 
     const holdings = await this.holdingRepo.find({
       where: { portfolioId: portfolio.id },
@@ -355,6 +366,7 @@ export class AiExecutorService {
     return {
       topSignals,
       newsItems,
+      promptNews,
       holdings: holdingsContext,
       cashBalance: Number(portfolio.currentCashBalance),
       currency: portfolio.currency,
@@ -421,7 +433,7 @@ export class AiExecutorService {
           reasonCode: "confidence-dropped",
           reasoning,
           ruleEvaluationTrace: "ai-pure executor — Gemini-directed sell",
-          newsConsidered: [],
+          newsConsidered: context.promptNews,
         };
         decisions.push(sellDecision);
         simulatedCash += tradeValue;
@@ -464,7 +476,7 @@ export class AiExecutorService {
         adjustedScore: Number(sig.snapshot.opportunityScore),
         reasoning,
         ruleEvaluationTrace: "ai-pure executor — Gemini-directed buy",
-        newsConsidered: [],
+        newsConsidered: context.promptNews,
       };
       decisions.push(buyDecision);
       simulatedCash -= tradeValue;
@@ -617,6 +629,7 @@ function applyOverrides(
   response: ParsedOverrideResponse,
   logger: Logger,
   slug: PaperPortfolioSlug,
+  promptNews: NewsProvenance[],
 ): Decision[] {
   const verdictByIndex = new Map<number, ParsedOverrideVerdict>();
   for (const v of response.verdicts) {
@@ -625,12 +638,13 @@ function applyOverrides(
   const out: Decision[] = [];
   for (let i = 0; i < draft.length; i++) {
     const decision = draft[i];
+    const mergedNews = dedupeProvenance([...decision.newsConsidered, ...promptNews]);
     const verdict = verdictByIndex.get(i);
     if (!verdict || verdict.action === "keep") {
       const reasoning = verdict
         ? `[ai-override · keep] ${verdict.reasoning} | overall: ${response.rationale} | original: ${decision.reasoning}`
         : `[ai-override · keep (no verdict)] original: ${decision.reasoning}`;
-      out.push({ ...decision, reasoning } as Decision);
+      out.push({ ...decision, reasoning, newsConsidered: mergedNews } as Decision);
       continue;
     }
     if (verdict.action === "drop") {
@@ -644,7 +658,7 @@ function applyOverrides(
       logger.warn(
         `${slug}: ai-override replace-qty for ${decision.symbol} missing/invalid newQty — keeping original`,
       );
-      out.push(decision);
+      out.push({ ...decision, newsConsidered: mergedNews } as Decision);
       continue;
     }
     const newQty = Math.floor(verdict.newQty);
@@ -655,6 +669,7 @@ function applyOverrides(
       qty: newQty,
       estimatedTradeValue: newTradeValue,
       reasoning,
+      newsConsidered: mergedNews,
     } as Decision);
   }
   return out;
