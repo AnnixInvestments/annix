@@ -72,12 +72,18 @@ export function poolItemsBySpec(
   drawingExtractions: NixExtractionSummary[],
   specLookup: SpecLookup,
 ): QuotePool[] {
+  // Superseded drawings contribute NOTHING. Signature dedup alone isn't
+  // enough — an item the latest revision dropped entirely (e.g. item -04,
+  // cancelled per the client email) has no matching signature in the new
+  // drawing, so it would survive into the quote off the old extraction.
+  // A superseded revision is wholly replaced; drop its items outright.
+  const liveExtractions = drawingExtractions.filter((e) => e.isLatestRevision !== false);
   // Process newest-first so when a revision uploads the same marks as an
   // older drawing, the newer copy wins and the older copy is dropped as a
   // duplicate. Signature = mark + diameter + length + wallThickness +
   // flangeConfig — true revisions match all five; coincidental mark
   // collisions across unrelated drawings won't.
-  const sortedExtractions = [...drawingExtractions].sort((a, b) => {
+  const sortedExtractions = [...liveExtractions].sort((a, b) => {
     const aCreated = a.createdAt ? a.createdAt : "";
     const bCreated = b.createdAt ? b.createdAt : "";
     return bCreated.localeCompare(aCreated);
