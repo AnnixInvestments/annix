@@ -23,7 +23,7 @@ const STYLES: Record<PaperExecutorStrategy, { label: string; classes: string } |
 
 export function ExecutorBadge(props: ExecutorBadgeProps) {
   const meta = STYLES[props.strategy];
-  if (meta === null) return null;
+  if (!meta) return null;
   return (
     <span
       className={`inline-flex items-center px-2 py-0.5 text-xs font-medium rounded border ${meta.classes}`}
