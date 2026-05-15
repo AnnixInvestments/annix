@@ -35,7 +35,10 @@ export const DRAWING_ITEM_SCHEMA_RULES = `CRITICAL — schema rules (must follow
    - liningType (string or null — internal lining material, e.g. "Linatex Linard 60", or null if none)
    - liningThicknessMm (number or null — rubber lining thickness on the pipe BORE / internal cylindrical surface. When the drawing shows a single blanket value like "Lining: 6mm", that's the bore thickness. Drawings often abbreviate this as the unqualified "lining thickness".)
    - liningFlangeFaceThicknessMm (number or null — rubber lining thickness on the FLANGE FACE specifically, when the drawing calls it out separately from the bore. Common drawing wording: "6mm rubber on flange face", "Flange face: 6mm", or a two-value callout like "Bore 6mm / Flange 3mm". Leave null if the drawing only states one lining thickness — the consumer treats null as "same as liningThicknessMm".)
-   - coatingSystem (string or null — external paint system code, e.g. "R1", "R2a")
+   - coatingSystem (string or null — coating-system code, e.g. "R1", "R2a")
+   - internalCoatingDescription (string or null — verbatim drawing text for the CORROSION INT. / INTERNAL PAINT / INTERNAL COAT callout in the title block, e.g. "BLAST SA 2½ THEN COAT PLASITE 4550-S @ 600μm-800μm", "6mmR/L LINATEX LINARD®60 & 6mm ON FACE", "UNLINED", "NONE". Capture the FULL text Gemini sees, including product names, microns, blast-prep. Use null when the drawing does NOT print a CORROSION INT line — DO NOT invent one from the spec code.)
+   - externalCoatingDescription (string or null — verbatim drawing text for the CORROSION EXT. / EXTERNAL PAINT / EXTERNAL COAT callout, e.g. "BLAST SA 2½ THEN COAT PLASITE 4550-S @ 600μm-800μm", "BRILLIANT GREEN", "NONE". Same null-vs-text rule as internalCoatingDescription.)
+   - bandingDetails (string or null — verbatim text of any per-pipe identification band callouts the drawing prints, e.g. "Band 1 GOLDEN YELLOW B49, Band 2 MIDDLE BROWN B07" or "3 × Yellow B49 bands at 1m centres". Use null when the drawing only shows a generic band marker with no colour / code / count text.)
    - materialClass (string or null — material class / spec code, e.g. "SC1", "1000/3", "SABS62", "SANS 719", "ASTM A53", "API 5L". ALWAYS capture per-item material specs separately from coating — many drawings have a spec column showing BOTH a paint code (R1) AND a material code (SABS62) — coatingSystem gets the paint code, materialClass gets the material code, both are required when shown)
    - banding (number — count of identification bands shown per item)
    - deviations (array of strings — handwritten/red-pen/coloured-pen client deviations from the printed spec; surface SEPARATELY here, do NOT silently merge into the printed values)
@@ -74,7 +77,16 @@ Lining thickness — bore vs flange face:
 - A drawing that prints a single "Lining: 6mm" callout is stating the BORE / cylindrical lining thickness only — set liningThicknessMm = 6, leave liningFlangeFaceThicknessMm = null. The downstream consumer treats null flange face as "same as bore".
 - A drawing that prints "6mm rubber on flange face" or "Flange face: 6mm" or any explicit "X mm flange" wording is calling out the FLANGE FACE specifically — set liningFlangeFaceThicknessMm = X. This often differs from the bore value, sometimes deliberately (3mm bore + 6mm flange or 6mm bore + 3mm flange) because the gasket-contact surface is hand-laid separately.
 - A drawing that prints BOTH ("Bore 6mm / Flange 3mm" or two stacked dimension lines on a flange detail) — set both fields independently.
-- The signed drawings always override any spec-document value here. If the spec PDF says one thickness and the drawing says another, the drawing wins.`;
+- The signed drawings always override any spec-document value here. If the spec PDF says one thickness and the drawing says another, the drawing wins.
+
+Corrosion INT / EXT capture — the model has been silently collapsing this:
+- Polymer Lining and similar shop drawings print the corrosion / paint spec as TWO explicit lines in the title block: "CORROSION INT." and "CORROSION EXT." (sometimes "INTERNAL PAINT" / "EXTERNAL PAINT" / "INTERNAL COAT" / "EXTERNAL COAT"). The text following each label is the SHOP'S CONTRACTED treatment for that face, often more specific than the coating-code (R1, R2a) would resolve to via the spec PDF.
+- For EVERY drawing item, copy the FULL verbatim text after "CORROSION INT." into internalCoatingDescription, and the FULL text after "CORROSION EXT." into externalCoatingDescription. Include product names, prep ("BLAST SA 2½"), microns, colour callouts — everything printed on the line. Do NOT shorten or normalise.
+- "NONE", "UNLINED", "UNCOATED", "—", "N/A" — capture verbatim as the description (string), not null. Null is reserved for drawings where the INT or EXT line is absent entirely.
+- When the same drawing also shows a coating code (e.g. "R2a" in the SPEC box AND "CORROSION INT.: PLASITE 4550-S @ 600μm-800μm" below), populate BOTH coatingSystem (the code) AND internalCoatingDescription (the explicit text). They are NOT redundant — the drawing's explicit text overrides the spec-PDF's resolution of the code downstream (per the [[signed-drawings-override]] rule).
+- A common mistake: the drawing has "CORROSION INT.: PLASITE …" AND "CORROSION EXT.: PLASITE …" (same product both sides) but the spec PDF's R2a clause says "Plasite internal + Corrocoat external" — the drawing's BOTH-SIDES-PLASITE wins. Capture both fields verbatim so the consumer can apply the override.
+- The "& 6mm ON FACE" suffix on a LINATEX internal callout means the rubber lining wraps onto the flange face at the stated thickness — still belongs in liningFlangeFaceThicknessMm (numeric), but the FULL "6mmR/L LINATEX LINARD®60 & 6mm ON FACE" text also goes into internalCoatingDescription so the contracted product name + brand is preserved.
+- Rubber FOLD-BACK callouts ("100mm R/L FOLD BACK each end", "75mm rubber fold-back onto external face"): these are deviations from the standard flange-face-only lining, where the rubber wraps further onto the external face of the pipe. Capture them in the deviations array verbatim, e.g. "100mm R/L fold-back on each end onto external face". DO NOT bury them inside internalCoatingDescription — fold-back is treated as a separate work scope by the lining shop.`;
 
 export const DRAWING_ITEM_LENGTH_RULES = `CRITICAL — length / overall-dimension rules for fittings (Gemini has been picking the wrong dimension here — read this carefully):
 
@@ -112,11 +124,60 @@ export const DRAWING_ITEM_SCHEMA_EXAMPLE = `{
       "liningThicknessMm": null,
       "liningFlangeFaceThicknessMm": null,
       "coatingSystem": "R2a",
+      "internalCoatingDescription": "BLAST SA 2½ THEN COAT PLASITE 4550-S @ 600μm-800μm",
+      "externalCoatingDescription": "BLAST SA 2½ THEN COAT PLASITE 4550-S @ 600μm-800μm",
+      "bandingDetails": null,
       "materialClass": "1000/3",
       "banding": 0,
       "deviations": [],
       "drawingReference": "HH01",
       "revision": "Sheet 1 Of 9"
+    },
+    {
+      "itemNumber": "-02",
+      "description": "Pipe",
+      "itemType": "pipe",
+      "quantity": 45,
+      "diameter": 350,
+      "wallThickness": 10,
+      "schedule": null,
+      "length": 6000,
+      "flangeConfig": "F.B.E. F/F",
+      "liningType": "Linatex Linard 60",
+      "liningThicknessMm": 6,
+      "liningFlangeFaceThicknessMm": 6,
+      "coatingSystem": "R1",
+      "internalCoatingDescription": "6mmR/L LINATEX LINARD®60 & 6mm ON FACE",
+      "externalCoatingDescription": "BLAST & PAINT CARBOGUARD 890 ALUMINIUM & CARBOTHANE 137 HS BRILLIANT GREEN DFT 150 MICRONS",
+      "bandingDetails": "Band 1 GOLDEN YELLOW B49, Band 2 MIDDLE BROWN B07",
+      "materialClass": "4000/3",
+      "banding": 5,
+      "deviations": ["Only 5 of 45 pipes to be banded"],
+      "drawingReference": "HH02",
+      "revision": "Sheet 2 Of 9"
+    },
+    {
+      "itemNumber": "-04",
+      "description": "Pipe",
+      "itemType": "pipe",
+      "quantity": 6,
+      "diameter": 350,
+      "wallThickness": 10,
+      "schedule": null,
+      "length": 6000,
+      "flangeConfig": "P.E.",
+      "liningType": "Linatex Linard 60",
+      "liningThicknessMm": 6,
+      "liningFlangeFaceThicknessMm": null,
+      "coatingSystem": "R1",
+      "internalCoatingDescription": "6mmR/L LINATEX LINARD®60",
+      "externalCoatingDescription": "BLAST & PAINT CARBOGUARD 890 ALUMINIUM & CARBOTHANE 137 HS BRILLIANT GREEN DFT 150 MICRONS",
+      "bandingDetails": null,
+      "materialClass": "SANS 719 Gr.B",
+      "banding": 0,
+      "deviations": ["100mm R/L fold-back on each end onto external face"],
+      "drawingReference": "HH04",
+      "revision": "Sheet 4 Of 9"
     },
     {
       "itemNumber": "-06",
@@ -132,6 +193,9 @@ export const DRAWING_ITEM_SCHEMA_EXAMPLE = `{
       "liningThicknessMm": null,
       "liningFlangeFaceThicknessMm": null,
       "coatingSystem": null,
+      "internalCoatingDescription": "NONE",
+      "externalCoatingDescription": "NONE",
+      "bandingDetails": null,
       "materialClass": "SABS62",
       "banding": 0,
       "deviations": [],
@@ -152,6 +216,9 @@ export const DRAWING_ITEM_SCHEMA_EXAMPLE = `{
       "liningThicknessMm": 6,
       "liningFlangeFaceThicknessMm": 6,
       "coatingSystem": "R1",
+      "internalCoatingDescription": "6mmR/L LINATEX LINARD®60 & 6mm ON FACE",
+      "externalCoatingDescription": "BLAST & PAINT CARBOGUARD 890 ALUMINIUM & CARBOTHANE 137 HS BRILLIANT GREEN DFT 150 MICRONS",
+      "bandingDetails": null,
       "materialClass": "S355JR/SANS 719",
       "banding": 0,
       "deviations": [],

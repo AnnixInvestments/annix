@@ -129,6 +129,14 @@ export function useSpecLookup(
       string,
       { boreMm: number | null; flangeMm: number | null }
     >();
+    /** Drawing-derived explicit INT/EXT coating callouts per coatingSystem
+     *  code. Same precedence rule as lining thicknesses — the drawing's
+     *  CORROSION INT. / CORROSION EXT. text wins over whatever the spec PDF
+     *  resolves a code like "R2a" to. First non-null wins. */
+    const coatingDescriptionOverrides = new Map<
+      string,
+      { internal: string | null; external: string | null }
+    >();
     for (const extraction of drawingExtractions) {
       const items = extraction.extractedItems;
       if (!isArray(items)) continue;
@@ -140,6 +148,7 @@ export function useSpecLookup(
         rememberKind(kindMap, item.materialClass, "materialClass");
         rememberKind(kindMap, item.flangeConfig, "flangeConfig");
         rememberLiningThickness(liningThicknessOverrides, item);
+        rememberCoatingDescription(coatingDescriptionOverrides, item);
       }
     }
 
@@ -151,6 +160,35 @@ export function useSpecLookup(
       const resolved = map.get(codeKey);
       if (!resolved) continue;
       const merged = mergeLiningThicknessIntoSummary(resolved.summary, override);
+      if (merged !== resolved.summary) {
+        map.set(codeKey, { ...resolved, summary: merged });
+      }
+    }
+
+    // Apply drawing-derived INT/EXT coating callouts. When a drawing prints
+    // explicit CORROSION INT. / CORROSION EXT. text, it overrides whatever
+    // the spec PDF resolves the code to — the drawing is contractual.
+    for (const [codeKey, override] of coatingDescriptionOverrides) {
+      const resolved = map.get(codeKey);
+      const merged = mergeCoatingDescriptionIntoSummary(
+        resolved ? resolved.summary : null,
+        override,
+      );
+      if (!resolved) {
+        if (merged !== null) {
+          map.set(codeKey, {
+            code: codeKey,
+            summary: merged,
+            description: null,
+            productDescriptors: null,
+            pageReference: null,
+            sourceExtractionId: 0,
+            sourceDocumentName: "drawing",
+            searchHint: null,
+          });
+        }
+        continue;
+      }
       if (merged !== resolved.summary) {
         map.set(codeKey, { ...resolved, summary: merged });
       }
@@ -330,6 +368,58 @@ function rememberLiningThickness(
     current.flangeMm = flange;
   }
   overrides.set(key, current);
+}
+
+/**
+ * Record the explicit CORROSION INT. / CORROSION EXT. callouts a drawing
+ * prints for one item, keyed by its coatingSystem code (R1, R2a, …). First
+ * non-null value across all items using the same code wins — drawings
+ * should be internally consistent. Both descriptions are stored as the
+ * verbatim text Gemini captured; downstream we collapse them into a
+ * single "Internal: … | External: …" summary that replaces the spec-PDF
+ * interpretation.
+ */
+function rememberCoatingDescription(
+  overrides: Map<string, { internal: string | null; external: string | null }>,
+  item: Record<string, unknown>,
+): void {
+  const code = item.coatingSystem;
+  if (!isString(code) || code.length === 0) return;
+  const internalRaw = item.internalCoatingDescription;
+  const externalRaw = item.externalCoatingDescription;
+  const internal =
+    isString(internalRaw) && internalRaw.trim().length > 0 ? internalRaw.trim() : null;
+  const external =
+    isString(externalRaw) && externalRaw.trim().length > 0 ? externalRaw.trim() : null;
+  if (internal === null && external === null) return;
+  const key = normaliseCode(code);
+  const current = overrides.get(key) ?? { internal: null, external: null };
+  if (current.internal === null && internal !== null) current.internal = internal;
+  if (current.external === null && external !== null) current.external = external;
+  overrides.set(key, current);
+}
+
+/**
+ * Build a drawing-derived summary that replaces the spec-PDF resolution of
+ * a coating code when the drawing prints explicit CORROSION INT. /
+ * CORROSION EXT. text. The drawing is the contractual document and
+ * supersedes anything the spec PDF would have inferred for the code (see
+ * [[signed-drawings-override]] memory).
+ *
+ * Format: "Internal: <int-text> | External: <ext-text>". When only one
+ * side is captured, only that side is emitted. Returns null when the
+ * drawing supplied no INT/EXT text at all (caller should keep the
+ * spec-PDF summary in that case).
+ */
+function mergeCoatingDescriptionIntoSummary(
+  _existingSummary: string | null,
+  override: { internal: string | null; external: string | null },
+): string | null {
+  const parts: string[] = [];
+  if (override.internal !== null) parts.push(`Internal: ${override.internal}`);
+  if (override.external !== null) parts.push(`External: ${override.external}`);
+  if (parts.length === 0) return null;
+  return parts.join(" | ");
 }
 
 /**
