@@ -555,21 +555,55 @@ function lengthTokenForItem(item: QuoteItem): string {
   return `${item.length}LG`;
 }
 
+/**
+ * "U-Tee" / "U-TEE" on a Polymer Lining workshop sheet means UNEQUAL TEE
+ * (a reducing tee) — not a 180° U-bend. Always spell it out in full so
+ * the customer-facing quote is unambiguous. Applied to every rendered
+ * description.
+ */
+function normaliseTeeWording(text: string): string {
+  return text.replace(/\bu[\s-]?tee\b/gi, "Unequal Tee");
+}
+
+/**
+ * Leading size run of a fitting description — e.g. "400NB X 350NB" out of
+ * "400NB X 350NB Concentric Reducer", or "350NB" out of "350NB 90° Bend".
+ * Returns { size, rest }. Used so the customer line leads with the size
+ * ONCE rather than prepending item.diameter and then repeating it inside
+ * the description ("400NB 568LG 400NB X 350NB …").
+ */
+function splitLeadingSize(desc: string): { size: string; rest: string } {
+  const match = desc.match(/^[\d.]+\s*(?:NB|MM)?(?:\s*[xX×]\s*[\d.]+\s*(?:NB|MM)?)*/i);
+  if (!match || match[0].trim().length === 0) return { size: "", rest: desc.trim() };
+  return { size: match[0].trim(), rest: desc.slice(match[0].length).trim() };
+}
+
 function itemDescription(item: QuoteItem): string {
   const parts: string[] = [];
-  if (item.diameter !== null) parts.push(`${item.diameter}NB`);
   const lengthToken = lengthTokenForItem(item);
-  if (lengthToken) parts.push(lengthToken);
-  // Prefer the human description ("Equal-Y", "Manifold", "90° Elbow") over
-  // the schema's itemType enum — Gemini falls back to "other" whenever an
-  // item doesn't fit a specific enum value (e.g. Equal-Y, wye), which would
-  // render as "OTHER" on the customer-facing quote. Description is the
-  // authoritative per-item label.
+  const rawDesc = item.description ? item.description.trim() : "";
   const itemType = item.itemType;
-  const itemDesc = item.description;
-  const itemTypeSource = itemDesc ? itemDesc : itemType ? itemType : "Item";
-  const typeWord = String(itemTypeSource).toUpperCase();
-  parts.push(typeWord.includes("PIPE") ? "SPOOLS" : typeWord);
+  const isPipe = /\bpipe\b/i.test(rawDesc) || itemType === "pipe";
+
+  if (isPipe) {
+    // Pipes: <NB> <length> SPOOLS — wall thickness is dropped, the
+    // customer sees the spool's nominal bore + length.
+    if (item.diameter !== null) parts.push(`${item.diameter}NB`);
+    if (lengthToken) parts.push(lengthToken);
+    parts.push("SPOOLS");
+  } else {
+    // Fittings: lead with the size run the description ALREADY carries
+    // ("400NB X 350NB"), then the length, then the descriptive words.
+    // Prevents the NB-duplication Andrew flagged (2026-05-15):
+    // "400NB 568LG 400NB X 350NB CONCENTRIC REDUCER" →
+    // "400NB X 350NB 568LG CONCENTRIC REDUCER".
+    const { size, rest } = splitLeadingSize(rawDesc);
+    const sizeText = size || (item.diameter !== null ? `${item.diameter}NB` : "");
+    if (sizeText) parts.push(sizeText.toUpperCase());
+    if (lengthToken) parts.push(lengthToken);
+    const restText = rest.length > 0 ? rest : itemType ? itemType : "Item";
+    parts.push(normaliseTeeWording(restText).toUpperCase());
+  }
   if (item.flangeConfig) parts.push(item.flangeConfig);
   if (item.materialClass) parts.push(item.materialClass);
   return parts.join(" ");

@@ -46,6 +46,7 @@ export const DRAWING_ITEM_SCHEMA_RULES = `CRITICAL — schema rules (must follow
    - drawingReference (string)
    - revision (string)
 3. EVERY item MUST have description, itemType, and itemNumber populated. Never omit description.
+   - NEVER write "U-Tee" / "U-TEE" in the description. A Polymer Lining drawing's "U-TEE" label means UNEQUAL TEE (a reducing tee) — NOT a 180° U-bend. Always spell it out: description = "<NB1> x <NB2> Unequal Tee", itemType = "tee". The "U-Tee" spelling is forbidden output.
 4. Use null (not empty string, not omitted) when a value is genuinely unknown.
 5. Do NOT define what the codes mean (R1, R2a, SC1, SABS62 etc.) — just capture them. The spec extraction step resolves the codes.`;
 

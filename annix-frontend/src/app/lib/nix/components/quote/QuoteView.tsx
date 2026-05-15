@@ -1153,7 +1153,9 @@ function ItemRow(props: {
   return (
     <tr className="hover:bg-gray-50">
       <td className="px-3 py-2 font-mono text-xs text-gray-700">{item.mark}</td>
-      <td className="px-3 py-2 text-gray-900">{item.description}</td>
+      <td className="px-3 py-2 text-gray-900">
+        {item.description ? item.description.replace(/\bu[\s-]?tee\b/gi, "Unequal Tee") : ""}
+      </td>
       <td className="px-3 py-2 text-right text-gray-700">{item.quantity}</td>
       <td className="px-3 py-2 text-gray-700">
         {dimensionText}
