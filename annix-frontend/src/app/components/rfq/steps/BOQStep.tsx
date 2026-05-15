@@ -35,6 +35,7 @@ import { useRfqWizardStore } from "@/app/lib/store/rfqWizardStore";
 import {
   fallbackBendWeight,
   fallbackFittingWeight,
+  fallbackMiscWeight,
   fallbackPipeWeight,
   resolveHdpeDims,
   resolveHdpePn,
@@ -1363,9 +1364,23 @@ export default function BOQStep(props: {
         return `${miscDescription}, ${dims.runFaceToFaceMm}×${dims.branchFaceToCentreMm}mm${estimatedFlag}`;
       })();
 
+      // Compute a fallback weight for known misc categories
+      // (end caps, pipe boots, puddle pipes, laterals, UPVC bends,
+      // steel-other). Without this every HDPE-Other / PVC-Other /
+      // Steel-Other row in the BOQ shows 0 kg even when the row's
+      // geometry is fully known from the description.
+      const miscPerUnitWeight = fallbackMiscWeight(
+        entry,
+        miscDescription,
+        rawSpecsProductType,
+        globalHdpeSdr,
+      );
+      const miscRowWeight = miscPerUnitWeight * miscQty;
+
       const existingMisc = dest.get(miscKey);
       if (existingMisc) {
         existingMisc.qty += miscQty;
+        existingMisc.weight += miscRowWeight;
         existingMisc.entries.push(itemNumber);
         existingMisc.entryIds.push(entry.id);
       } else {
@@ -1373,7 +1388,7 @@ export default function BOQStep(props: {
           description: enrichedMiscDescription,
           qty: miscQty,
           unit: miscUnit,
-          weight: 0,
+          weight: miscRowWeight,
           entries: [itemNumber],
           entryIds: [entry.id],
           material: mat,

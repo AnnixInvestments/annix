@@ -1,6 +1,8 @@
 import {
   type HdpeNominalSize,
+  hdpeEndCapLength,
   pipeDimensions as hdpePipeDimensions,
+  lateralDimensions,
   pnClassForSdr,
   type SdrValue,
   selectSdrForPressure,
@@ -188,4 +190,142 @@ export const fallbackFittingWeight = (
   const perMetreRun = (od - wt) * wt * k;
   const perMetreBranch = (branchOd - wt) * wt * k;
   return perMetreRun * runLengthM + perMetreBranch * branchLengthM;
+};
+
+// Per-MISC-ITEM weight (no qty multiplier — caller multiplies by qty
+// when accumulating). Misc items are Nix-extracted rows that didn't
+// match a structural itemType — end caps, pipe boots, puddle pipes,
+// laterals, UPVC bends, and steel-other off-cuts that fall through
+// the wizard converter into the catch-all "misc" bucket. They show
+// up in the BOQ's HDPE-Other / PVC-Other / Steel-Other sections;
+// without this fallback those sections all display 0 kg even though
+// we know the geometry. Each kind has a different volume estimate:
+//
+//   end_cap     — short stub-end fitting, length from end-cap table
+//   pipe_boot   — short HDPE collar + SS clamp + neoprene seal
+//   puddle_pipe — ~1m pipe section with backing flange
+//   lateral     — body length (run F-F) + branch length from
+//                 lateralDimensions catalogue
+//   bend (UPVC) — toroidal-arc model: kgPerM × π × radius × angle
+//
+// Returns 0 when the kind isn't recognised — supplier sees the row
+// at 0 kg, same as before, but now everything we CAN compute shows.
+export const fallbackMiscWeight = (
+  entry: any,
+  description: string,
+  productType: string | undefined,
+  globalHdpeSdr: number | string | null | undefined,
+): number => {
+  const descLower = description.toLowerCase();
+
+  const rawSpecsNb = entry.specs?.nominalBoreMm;
+  const specsDn = rawSpecsNb ? Number(rawSpecsNb) : null;
+  const dnPrefixMatch = description.match(/(?:DN|OD)\s*(\d{2,4})/i);
+  const dnDiameterMatch = description.match(/(\d{2,4})\s*mm\s*(?:diameter|dia\.?|Ø)/i);
+  const regexDn = dnPrefixMatch
+    ? Number(dnPrefixMatch[1])
+    : dnDiameterMatch
+      ? Number(dnDiameterMatch[1])
+      : null;
+  const dn = specsDn || regexDn;
+  if (!dn || !Number.isFinite(dn)) return 0;
+
+  // Pick density constant. HDPE for hdpe; PVC for pvc/upvc; steel
+  // covers the residual steel-other category.
+  const productKey: keyof typeof PIPE_WEIGHT_K_BY_PRODUCT_TYPE =
+    productType === "hdpe"
+      ? "hdpe"
+      : productType === "pvc" || productType === "upvc"
+        ? "pvc"
+        : "steel";
+  const k = PIPE_WEIGHT_K_BY_PRODUCT_TYPE[productKey];
+
+  // Wall thickness: per-entry → derived from SDR → 0 (caller bails).
+  let wt = entry.specs?.wallThicknessMm ? Number(entry.specs.wallThicknessMm) : undefined;
+  if (!wt && productKey === "hdpe") {
+    const sdr = globalHdpeSdr || DEFAULT_HDPE_SDR;
+    wt = dn / Number(sdr);
+  }
+  if (!wt && productKey === "pvc") {
+    // Default PVC SDR 17 (Class 12) when nothing else is known —
+    // most common pressure class in mining drainage.
+    wt = dn / 17;
+  }
+  if (!wt) return 0;
+
+  const perMetre = (dn - wt) * wt * k;
+
+  // Classification regexes — order matters: more specific first.
+  const isUpvcBend = /\b(upvc|pvc)\b/i.test(descLower) && /\b(bend|elbow|deg)\b/i.test(descLower);
+  const isLateral = /\blaterals?\b/i.test(descLower);
+  const isEndCap = /\bend[\s-]?caps?\b/i.test(descLower);
+  const isPipeBoot = /\bpipe\s*boots?\b/i.test(descLower);
+  const isPuddlePipe = /\bpuddle\s*pipes?\b/i.test(descLower);
+
+  if (isUpvcBend) {
+    // Toroidal-arc bend: arcLen = π × radiusFactor × DN × angle/180
+    // Read bend angle from description ("22.5-degree", "45 deg",
+    // "90°"). Default to 90 when nothing matches. Radius factor 1.5
+    // is the SABS-standard mining default for slip-over PVC bends.
+    const angleMatch = description.match(/(\d+(?:\.\d+)?)\s*(?:°|deg)/i);
+    const angleDeg = angleMatch ? Number(angleMatch[1]) : 90;
+    const radiusFactor = 1.5;
+    const arcLengthM = (Math.PI * (angleDeg / 180) * radiusFactor * dn) / 1000;
+    return perMetre * arcLengthM;
+  }
+  if (isLateral) {
+    // Use catalogued lateral dimensions when available (HDPE 45°),
+    // else fall back to 2.5 × OD as eq length.
+    const angleMatch = description.match(/\b(\d+(?:\.\d+)?)\s*(?:°|deg)/i);
+    const angleDeg = angleMatch ? Number(angleMatch[1]) : 45;
+    if (productKey === "hdpe") {
+      const dims = lateralDimensions(angleDeg, dn);
+      if (dims) {
+        const runLenM = dims.runFaceToFaceMm / 1000;
+        const branchLenM = dims.branchLengthMm / 1000;
+        return perMetre * (runLenM + branchLenM);
+      }
+    }
+    const eqLenM = (2.5 * dn) / 1000;
+    return perMetre * eqLenM;
+  }
+  if (isEndCap) {
+    // Use catalogued end-cap length (DN-specific stub-end length)
+    // for HDPE; default to 0.8 × OD eq length otherwise.
+    if (productKey === "hdpe") {
+      const lengthMm = hdpeEndCapLength(dn);
+      if (lengthMm) {
+        return perMetre * (lengthMm / 1000);
+      }
+    }
+    const eqLenM = (0.8 * dn) / 1000;
+    return perMetre * eqLenM;
+  }
+  if (isPipeBoot) {
+    // Short HDPE collar (~0.5 × OD) plus a stainless-steel clamp
+    // mass that scales mildly with DN (clamps for DN250 are
+    // typically ~1.5 kg, for DN100 ~0.4 kg). Approximate the
+    // clamp/seal contribution as +0.005 × DN kg.
+    const collarLenM = (0.5 * dn) / 1000;
+    const clampKg = 0.005 * dn;
+    return perMetre * collarLenM + clampKg;
+  }
+  if (isPuddlePipe) {
+    // ~1m of pipe section + a SANS1123 backing flange. Backing flange
+    // mass for HDPE puddle pipes is approximately 0.0008 × DN² kg
+    // (empirical from SANS1123 Table 1600/3 plate-flange masses).
+    const pipeLenM = 1.0;
+    const flangeKg = 0.0008 * dn * dn;
+    return perMetre * pipeLenM + flangeKg;
+  }
+  // Steel-other (rubber-lined mild steel pipes) — typically the
+  // description is for a straight pipe section. Read explicit
+  // length from description ("up to 8 m", "9.144 m") or fall back
+  // to DEFAULT_HDPE_SDR-equivalent (12 m).
+  if (productKey === "steel") {
+    const lengthMatch = description.match(/(\d+(?:\.\d+)?)\s*m\s*(?:length|long)?\b/i);
+    const pipeLenM = lengthMatch ? Number(lengthMatch[1]) : 12;
+    return perMetre * pipeLenM;
+  }
+  return 0;
 };
