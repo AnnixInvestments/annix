@@ -1,0 +1,513 @@
+import { Injectable, Logger } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { DataSource, In, Repository } from "typeorm";
+import { now } from "../../lib/datetime";
+import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
+import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
+import { Asset } from "../entities/asset.entity";
+import { NewsItem } from "../entities/news-item.entity";
+import { PaperHolding } from "../entities/paper-holding.entity";
+import {
+  type ExecutorStrategy,
+  PaperPortfolio,
+  type PaperPortfolioSlug,
+} from "../entities/paper-portfolio.entity";
+import { PriceHistory } from "../entities/price-history.entity";
+import { type SignalComponentBreakdown, SignalSnapshot } from "../entities/signal-snapshot.entity";
+import { WatchlistItem } from "../entities/watchlist-item.entity";
+import type { BuyDecision, Decision, SellDecision } from "./allocation-rules-engine.service";
+import { applyTradeDecisions, type ExecutionResult } from "./paper-trade-execution.service";
+
+const METRIC_CATEGORY = "insights-ai-exec";
+const TOP_SIGNAL_COUNT = 20;
+const NEWS_LOOKBACK_HOURS = 48;
+const NEWS_MAX_ARTICLES = 30;
+const MAX_PRICE_AGE_DAYS = 5;
+const SYSTEM_PROMPT =
+  "You are a paper-trading allocator for an experimental ZAR-denominated portfolio. You receive market signals, recent news, the portfolio's current holdings, and its cash balance. Your job is to output a list of trade decisions — buys, sells, or no-ops — with concise reasoning per decision and an overall rationale. Rules: (1) Never recommend buying more than the cash balance allows. (2) Only sell symbols the portfolio currently holds. (3) Only buy symbols from the provided signal list — those are the universe. (4) Always include at least one risk caveat in the overall rationale. (5) Output ONLY a JSON object — no markdown, no code fences, no surrounding text.";
+
+interface AiDecisionContext {
+  topSignals: SignalContextRow[];
+  newsItems: NewsContextRow[];
+  holdings: HoldingContextRow[];
+  cashBalance: number;
+  currency: string;
+  todayIso: string;
+}
+
+interface SignalContextRow {
+  asset: Asset;
+  snapshot: SignalSnapshot;
+  latestPrice: number;
+  latestPriceDate: string;
+}
+
+interface NewsContextRow {
+  publishedAt: Date | null;
+  symbols: string[];
+  event: string;
+  sentiment: number | null;
+  impactLevel: string | null;
+  shortTermImplication: string | null;
+}
+
+interface HoldingContextRow {
+  holding: PaperHolding;
+  asset: Asset;
+  signal: SignalSnapshot | null;
+  latestPrice: number | null;
+}
+
+interface ParsedAiDecision {
+  action: "buy" | "sell";
+  symbol: string;
+  qty: number;
+  reasoning: string;
+}
+
+interface ParsedAiResponse {
+  decisions: ParsedAiDecision[];
+  rationale: string;
+}
+
+@Injectable()
+export class AiExecutorService {
+  private readonly logger = new Logger(AiExecutorService.name);
+
+  constructor(
+    @InjectRepository(PaperPortfolio)
+    private readonly portfolioRepo: Repository<PaperPortfolio>,
+    @InjectRepository(PaperHolding)
+    private readonly holdingRepo: Repository<PaperHolding>,
+    @InjectRepository(Asset) private readonly assetRepo: Repository<Asset>,
+    @InjectRepository(WatchlistItem)
+    private readonly watchlistRepo: Repository<WatchlistItem>,
+    @InjectRepository(PriceHistory)
+    private readonly historyRepo: Repository<PriceHistory>,
+    @InjectRepository(SignalSnapshot)
+    private readonly signalRepo: Repository<SignalSnapshot>,
+    @InjectRepository(NewsItem) private readonly newsRepo: Repository<NewsItem>,
+    private readonly dataSource: DataSource,
+    private readonly ai: AiChatService,
+    private readonly metrics: ExtractionMetricService,
+  ) {}
+
+  async executeOne(portfolio: PaperPortfolio): Promise<ExecutionResult> {
+    const strategy = portfolio.executorStrategy;
+    if (strategy === "ai-pure") {
+      return this.metrics.time(
+        METRIC_CATEGORY,
+        `${portfolio.slug}:ai-pure`,
+        () => this.runPureMode(portfolio),
+        () => 0,
+      );
+    }
+    return {
+      portfolioSlug: portfolio.slug,
+      buysExecuted: 0,
+      sellsExecuted: 0,
+      cashDeployed: 0,
+      cashRaised: 0,
+      skipped: true,
+      skipReason: `executor_strategy=${strategy} not yet implemented in AiExecutorService`,
+    };
+  }
+
+  private async runPureMode(portfolio: PaperPortfolio): Promise<ExecutionResult> {
+    const context = await this.gatherContext(portfolio);
+    if (context.topSignals.length === 0) {
+      return skipResult(portfolio.slug, "no signal snapshots available — skipping ai-pure run");
+    }
+    const prompt = buildPurePrompt(portfolio, context);
+    let aiContent: string;
+    try {
+      const response = await this.ai.chat([{ role: "user", content: prompt }], SYSTEM_PROMPT);
+      aiContent = response.content;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Gemini call failed for ${portfolio.slug}: ${message}`);
+      return skipResult(portfolio.slug, `gemini failed: ${message}`);
+    }
+
+    let parsed: ParsedAiResponse;
+    try {
+      parsed = parseAiResponse(aiContent);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.warn(
+        `Gemini response parse failed for ${portfolio.slug}: ${message}. Raw: ${aiContent.slice(0, 400)}`,
+      );
+      return skipResult(portfolio.slug, `ai-response parse failed: ${message}`);
+    }
+
+    const decisions = this.resolveDecisions(portfolio, parsed, context);
+    if (decisions.length === 0) {
+      this.logger.log(`${portfolio.slug}: ai-pure produced no actionable decisions.`);
+      return {
+        portfolioSlug: portfolio.slug,
+        buysExecuted: 0,
+        sellsExecuted: 0,
+        cashDeployed: 0,
+        cashRaised: 0,
+        skipped: false,
+        skipReason: null,
+      };
+    }
+    return applyTradeDecisions(this.dataSource, portfolio, decisions, this.logger);
+  }
+
+  private async gatherContext(portfolio: PaperPortfolio): Promise<AiDecisionContext> {
+    const todayIso = now().toISODate() ?? "";
+    const watchlist = await this.watchlistRepo.find({ relations: { asset: true } });
+    const candidateAssets = watchlist.map((w) => w.asset);
+    const candidateAssetIds = candidateAssets.map((a) => a.id);
+
+    const latestSignals = await this.latestSignalsByAsset(candidateAssetIds);
+    const latestPrices = await this.latestPricesByAsset(candidateAssetIds);
+
+    const topSignals: SignalContextRow[] = candidateAssets
+      .map((asset) => {
+        const snapshot = latestSignals.get(asset.id) ?? null;
+        const priceInfo = latestPrices.get(asset.id) ?? null;
+        if (snapshot === null || priceInfo === null) return null;
+        const staleness = isoDaysDiff(priceInfo.date, todayIso);
+        if (staleness > MAX_PRICE_AGE_DAYS) return null;
+        return {
+          asset,
+          snapshot,
+          latestPrice: priceInfo.close,
+          latestPriceDate: priceInfo.date,
+        };
+      })
+      .filter((row): row is SignalContextRow => row !== null)
+      .sort((a, b) => Number(b.snapshot.opportunityScore) - Number(a.snapshot.opportunityScore))
+      .slice(0, TOP_SIGNAL_COUNT);
+
+    const cutoff = now().minus({ hours: NEWS_LOOKBACK_HOURS }).toJSDate();
+    const newsRows = await this.newsRepo
+      .createQueryBuilder("n")
+      .where("n.extraction_status = :status", { status: "extracted" })
+      .andWhere("(n.published_at >= :cutoff OR n.created_at >= :cutoff)", { cutoff })
+      .andWhere("n.impact_level IN (:...impacts)", { impacts: ["high", "medium"] })
+      .orderBy("n.published_at", "DESC")
+      .limit(NEWS_MAX_ARTICLES)
+      .getMany();
+    const newsItems: NewsContextRow[] = newsRows.map((n) => ({
+      publishedAt: n.publishedAt,
+      symbols: n.relatedSymbols ?? [],
+      event: n.summary ?? n.title,
+      sentiment: n.sentiment !== null ? Number(n.sentiment) : null,
+      impactLevel: n.impactLevel,
+      shortTermImplication: n.shortTermImplication,
+    }));
+
+    const holdings = await this.holdingRepo.find({
+      where: { portfolioId: portfolio.id },
+      relations: { asset: true },
+    });
+    const holdingAssetIds = holdings.map((h) => h.assetId);
+    const holdingSignals = await this.latestSignalsByAsset(holdingAssetIds);
+    const holdingPrices = await this.latestPricesByAsset(holdingAssetIds);
+    const holdingsContext: HoldingContextRow[] = holdings.map((h) => ({
+      holding: h,
+      asset: h.asset,
+      signal: holdingSignals.get(h.assetId) ?? null,
+      latestPrice: holdingPrices.get(h.assetId)?.close ?? null,
+    }));
+
+    return {
+      topSignals,
+      newsItems,
+      holdings: holdingsContext,
+      cashBalance: Number(portfolio.currentCashBalance),
+      currency: portfolio.currency,
+      todayIso,
+    };
+  }
+
+  private resolveDecisions(
+    portfolio: PaperPortfolio,
+    parsed: ParsedAiResponse,
+    context: AiDecisionContext,
+  ): Decision[] {
+    const signalBySymbol = new Map<string, SignalContextRow>();
+    for (const row of context.topSignals) {
+      signalBySymbol.set(row.asset.symbol.toUpperCase(), row);
+    }
+    const holdingBySymbol = new Map<string, HoldingContextRow>();
+    for (const row of context.holdings) {
+      holdingBySymbol.set(row.asset.symbol.toUpperCase(), row);
+    }
+
+    const decisions: Decision[] = [];
+    let simulatedCash = context.cashBalance;
+    const overallRationale = parsed.rationale;
+
+    for (const parsedDecision of parsed.decisions) {
+      const symbol = parsedDecision.symbol.toUpperCase();
+      const qty = Math.floor(parsedDecision.qty);
+      if (qty <= 0) {
+        this.logger.warn(`${portfolio.slug}: skipping ${symbol} — non-positive qty ${qty}`);
+        continue;
+      }
+      const reasoning = `[ai-pure] ${parsedDecision.reasoning} | overall: ${overallRationale}`;
+
+      if (parsedDecision.action === "sell") {
+        const held = holdingBySymbol.get(symbol);
+        if (!held) {
+          this.logger.warn(`${portfolio.slug}: ai-pure sell ${symbol} skipped — not held`);
+          continue;
+        }
+        const priceInfo = held.latestPrice;
+        if (priceInfo === null) {
+          this.logger.warn(`${portfolio.slug}: ai-pure sell ${symbol} skipped — no current price`);
+          continue;
+        }
+        const heldQty = Number(held.holding.quantity);
+        const sellQty = Math.min(qty, heldQty);
+        const tradeValue = sellQty * priceInfo;
+        const sellDecision: SellDecision = {
+          action: "sell",
+          portfolioId: portfolio.id,
+          portfolioSlug: portfolio.slug,
+          holdingId: held.holding.id,
+          assetId: held.asset.id,
+          symbol: held.asset.symbol,
+          assetName: held.asset.name,
+          qty: sellQty,
+          estimatedPrice: priceInfo,
+          estimatedTradeValue: tradeValue,
+          signalSnapshotId: held.signal?.id ?? null,
+          opportunityScore: held.signal !== null ? Number(held.signal.opportunityScore) : 0,
+          riskScore: held.signal !== null ? Number(held.signal.riskScore) : 0,
+          confidenceScore: held.signal !== null ? Number(held.signal.confidenceScore) : 0,
+          reasonCode: "confidence-dropped",
+          reasoning,
+          ruleEvaluationTrace: "ai-pure executor — Gemini-directed sell",
+        };
+        decisions.push(sellDecision);
+        simulatedCash += tradeValue;
+        continue;
+      }
+
+      const sig = signalBySymbol.get(symbol);
+      if (!sig) {
+        this.logger.warn(
+          `${portfolio.slug}: ai-pure buy ${symbol} skipped — not in top ${TOP_SIGNAL_COUNT} signals`,
+        );
+        continue;
+      }
+      const tradeValue = qty * sig.latestPrice;
+      if (tradeValue > simulatedCash) {
+        this.logger.warn(
+          `${portfolio.slug}: ai-pure buy ${symbol} ${qty}@${sig.latestPrice} = ${tradeValue.toFixed(2)} exceeds remaining cash ${simulatedCash.toFixed(2)}; skipping`,
+        );
+        continue;
+      }
+      const buyDecision: BuyDecision = {
+        action: "buy",
+        portfolioId: portfolio.id,
+        portfolioSlug: portfolio.slug,
+        assetId: sig.asset.id,
+        symbol: sig.asset.symbol,
+        assetName: sig.asset.name,
+        qty,
+        estimatedPrice: sig.latestPrice,
+        estimatedTradeValue: tradeValue,
+        signalSnapshotId: sig.snapshot.id,
+        signalSnapshotDate:
+          typeof sig.snapshot.snapshotDate === "string"
+            ? sig.snapshot.snapshotDate.slice(0, 10)
+            : sig.snapshot.snapshotDate,
+        signalBreakdown: sig.snapshot.componentBreakdownJson,
+        opportunityScore: Number(sig.snapshot.opportunityScore),
+        riskScore: Number(sig.snapshot.riskScore),
+        confidenceScore: Number(sig.snapshot.confidenceScore),
+        adjustedScore: Number(sig.snapshot.opportunityScore),
+        reasoning,
+        ruleEvaluationTrace: "ai-pure executor — Gemini-directed buy",
+      };
+      decisions.push(buyDecision);
+      simulatedCash -= tradeValue;
+    }
+
+    return decisions;
+  }
+
+  private async latestSignalsByAsset(assetIds: string[]): Promise<Map<string, SignalSnapshot>> {
+    const map = new Map<string, SignalSnapshot>();
+    if (assetIds.length === 0) return map;
+    const rows = await this.signalRepo
+      .createQueryBuilder("s")
+      .where({ assetId: In(assetIds) })
+      .orderBy("s.asset_id")
+      .addOrderBy("s.snapshot_date", "DESC")
+      .getMany();
+    for (const row of rows) {
+      if (map.has(row.assetId)) continue;
+      map.set(row.assetId, row);
+    }
+    return map;
+  }
+
+  private async latestPricesByAsset(
+    assetIds: string[],
+  ): Promise<Map<string, { close: number; date: string }>> {
+    const map = new Map<string, { close: number; date: string }>();
+    if (assetIds.length === 0) return map;
+    const rows = await this.historyRepo
+      .createQueryBuilder("h")
+      .select("h.asset_id", "asset_id")
+      .addSelect("h.close", "close")
+      .addSelect("h.date", "date")
+      .distinctOn(["h.asset_id"])
+      .where({ assetId: In(assetIds) })
+      .orderBy("h.asset_id")
+      .addOrderBy("h.date", "DESC")
+      .getRawMany<{ asset_id: string; close: string; date: string | Date }>();
+    for (const row of rows) {
+      const date =
+        typeof row.date === "string" ? row.date.slice(0, 10) : row.date.toISOString().slice(0, 10);
+      map.set(row.asset_id, { close: Number(row.close), date });
+    }
+    return map;
+  }
+}
+
+function skipResult(slug: PaperPortfolioSlug, reason: string): ExecutionResult {
+  return {
+    portfolioSlug: slug,
+    buysExecuted: 0,
+    sellsExecuted: 0,
+    cashDeployed: 0,
+    cashRaised: 0,
+    skipped: true,
+    skipReason: reason,
+  };
+}
+
+function buildPurePrompt(portfolio: PaperPortfolio, context: AiDecisionContext): string {
+  const rules = portfolio.allocationRulesJson;
+  const lines: string[] = [];
+  lines.push(`Portfolio: ${portfolio.slug} (${portfolio.displayName})`);
+  lines.push(`Currency: ${context.currency}`);
+  lines.push(`Cash balance: ${context.currency} ${context.cashBalance.toFixed(2)}`);
+  lines.push(`Today (SAST): ${context.todayIso}`);
+  lines.push("");
+  lines.push("Allocation rules:");
+  lines.push(`- Max positions: ${rules.maxPositions ?? "no cap"}`);
+  lines.push(`- Max % per position: ${rules.maxPercentPerPosition ?? "no cap"}`);
+  lines.push(`- Max % per sector: ${rules.maxPercentPerSector ?? "no cap"}`);
+  lines.push(`- Cash floor %: ${rules.cashFloorPercent}`);
+  lines.push(`- Confidence floor: ${rules.confidenceFloor}`);
+  if (rules.sectorTilt) {
+    lines.push(
+      `- Sector tilt: bonus +${rules.sectorTilt.bonus} for [${rules.sectorTilt.sectors.join(", ")}]`,
+    );
+  }
+  if (rules.preferLeveragedEtfs) {
+    lines.push("- Prefer leveraged ETFs: yes");
+  }
+  lines.push("");
+
+  lines.push(`Current holdings (${context.holdings.length}):`);
+  if (context.holdings.length === 0) {
+    lines.push("  (none)");
+  } else {
+    for (const h of context.holdings) {
+      const qty = Number(h.holding.quantity);
+      const avg = Number(h.holding.averageBuyPrice);
+      const cur = h.latestPrice ?? Number(h.holding.currentPrice);
+      const plPct = avg > 0 ? ((cur - avg) / avg) * 100 : 0;
+      lines.push(
+        `  ${h.asset.symbol} (${h.asset.name}) — qty ${qty}, avg ${avg.toFixed(2)}, current ${cur.toFixed(2)}, P/L ${plPct >= 0 ? "+" : ""}${plPct.toFixed(2)}%`,
+      );
+    }
+  }
+  lines.push("");
+
+  lines.push(`Top ${TOP_SIGNAL_COUNT} signal snapshots (today):`);
+  for (const s of context.topSignals) {
+    const b = s.snapshot.componentBreakdownJson;
+    lines.push(
+      `  ${s.asset.symbol} (${s.asset.sector ?? "no-sector"}) — opp ${Number(s.snapshot.opportunityScore).toFixed(0)} / risk ${Number(s.snapshot.riskScore).toFixed(0)} / conf ${Number(s.snapshot.confidenceScore).toFixed(0)} | mom ${b.momentum.score.toFixed(0)} val ${b.valuation.score.toFixed(0)} news ${b.newsSentiment.score.toFixed(0)} sec ${b.sectorTrend.score.toFixed(0)} | price ${s.latestPrice.toFixed(2)} (${s.latestPriceDate})`,
+    );
+  }
+  lines.push("");
+
+  lines.push(`Recent high/medium-impact news (last ${NEWS_LOOKBACK_HOURS}h):`);
+  if (context.newsItems.length === 0) {
+    lines.push("  (none)");
+  } else {
+    for (const n of context.newsItems.slice(0, NEWS_MAX_ARTICLES)) {
+      const date = n.publishedAt !== null ? n.publishedAt.toISOString().slice(0, 10) : "?";
+      const sentimentLabel =
+        n.sentiment === null
+          ? "?"
+          : n.sentiment > 0
+            ? `+${n.sentiment.toFixed(2)}`
+            : n.sentiment.toFixed(2);
+      const symbols = n.symbols.length > 0 ? n.symbols.join(",") : "broad";
+      lines.push(
+        `  [${date} ${n.impactLevel ?? "?"} ${sentimentLabel}] ${symbols}: ${n.event} — ${n.shortTermImplication ?? ""}`,
+      );
+    }
+  }
+  lines.push("");
+
+  lines.push("Output JSON in this exact shape (and nothing else):");
+  lines.push("{");
+  lines.push(`  "decisions": [`);
+  lines.push(
+    `    {"action": "buy" | "sell", "symbol": "<TICKER>", "qty": <integer>, "reasoning": "<1-3 sentences>"}`,
+  );
+  lines.push("  ],");
+  lines.push(`  "rationale": "<overall reasoning incl. at least one risk caveat>"`);
+  lines.push("}");
+  lines.push("");
+  lines.push(
+    "If no action makes sense today, return an empty decisions array with a rationale explaining why.",
+  );
+
+  return lines.join("\n");
+}
+
+function parseAiResponse(raw: string): ParsedAiResponse {
+  let cleaned = raw.trim();
+  if (cleaned.startsWith("```")) {
+    cleaned = cleaned.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
+  }
+  const parsed = JSON.parse(cleaned) as Record<string, unknown>;
+  const decisionsRaw = parsed.decisions;
+  if (!Array.isArray(decisionsRaw)) {
+    throw new Error("decisions must be an array");
+  }
+  const decisions: ParsedAiDecision[] = decisionsRaw.map((d, i) => {
+    if (typeof d !== "object" || d === null) {
+      throw new Error(`decisions[${i}] must be an object`);
+    }
+    const rec = d as Record<string, unknown>;
+    const action = rec.action;
+    if (action !== "buy" && action !== "sell") {
+      throw new Error(`decisions[${i}].action must be "buy" or "sell"`);
+    }
+    if (typeof rec.symbol !== "string") {
+      throw new Error(`decisions[${i}].symbol must be a string`);
+    }
+    if (typeof rec.qty !== "number" || !Number.isFinite(rec.qty)) {
+      throw new Error(`decisions[${i}].qty must be a finite number`);
+    }
+    const reasoning = typeof rec.reasoning === "string" ? rec.reasoning : "";
+    return { action, symbol: rec.symbol, qty: rec.qty, reasoning };
+  });
+  const rationale = typeof parsed.rationale === "string" ? parsed.rationale : "";
+  return { decisions, rationale };
+}
+
+function isoDaysDiff(earlierIso: string, laterIso: string): number {
+  const a = new Date(`${earlierIso}T00:00:00.000Z`).getTime();
+  const b = new Date(`${laterIso}T00:00:00.000Z`).getTime();
+  return Math.max(0, Math.round((b - a) / 86400000));
+}
+
+export type { ExecutorStrategy, SignalComponentBreakdown };

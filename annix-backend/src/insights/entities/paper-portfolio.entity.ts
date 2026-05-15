@@ -18,7 +18,10 @@ export type PaperPortfolioSlug =
   | "signal-conservative"
   | "signal-balanced"
   | "signal-commodity-tilt"
-  | "signal-very-high-risk";
+  | "signal-very-high-risk"
+  | "nix-pure"
+  | "nix-hybrid"
+  | "nix-picker";
 
 export type RiskProfile =
   | "buy-and-hold"

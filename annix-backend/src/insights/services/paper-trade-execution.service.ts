@@ -1,14 +1,15 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { forwardRef, Inject, Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { DataSource, Repository } from "typeorm";
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { PaperHolding } from "../entities/paper-holding.entity";
 import { PaperPortfolio } from "../entities/paper-portfolio.entity";
 import { PaperTrade } from "../entities/paper-trade.entity";
+import { AiExecutorService } from "./ai-executor.service";
 import {
   AllocationRulesEngineService,
   type BuyDecision,
-  type PortfolioDecisions,
+  type Decision,
   type SellDecision,
 } from "./allocation-rules-engine.service";
 
@@ -35,6 +36,8 @@ export class PaperTradeExecutionService {
     private readonly dataSource: DataSource,
     private readonly rulesEngine: AllocationRulesEngineService,
     private readonly metrics: ExtractionMetricService,
+    @Inject(forwardRef(() => AiExecutorService))
+    private readonly aiExecutor: AiExecutorService,
   ) {}
 
   async executeAll(): Promise<ExecutionResult[]> {
@@ -43,20 +46,12 @@ export class PaperTradeExecutionService {
     for (const portfolio of portfolios) {
       const strategy = portfolio.executorStrategy;
       if (strategy === "buy-and-hold") continue;
-      if (strategy !== "rules") {
-        results.push({
-          portfolioSlug: portfolio.slug,
-          buysExecuted: 0,
-          sellsExecuted: 0,
-          cashDeployed: 0,
-          cashRaised: 0,
-          skipped: true,
-          skipReason: `executor_strategy=${strategy} not yet implemented`,
-        });
-        continue;
-      }
       try {
-        results.push(await this.executeOne(portfolio));
+        if (strategy === "rules") {
+          results.push(await this.executeOne(portfolio));
+        } else {
+          results.push(await this.aiExecutor.executeOne(portfolio));
+        }
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         this.logger.error(`Execution crashed for ${portfolio.slug}: ${message}`);
@@ -104,73 +99,75 @@ export class PaperTradeExecutionService {
             skipReason: null,
           };
         }
-        return this.applyDecisions(portfolio, decisions);
+        return applyTradeDecisions(this.dataSource, portfolio, decisions.decisions, this.logger);
       },
       (result) => (result.buysExecuted + result.sellsExecuted) * BYTES_PER_TRADE_ROW,
     );
   }
+}
 
-  private async applyDecisions(
-    portfolio: PaperPortfolio,
-    decisions: PortfolioDecisions,
-  ): Promise<ExecutionResult> {
-    const sortedSellsFirst = [...decisions.decisions].sort((a, b) => {
-      if (a.action === b.action) return 0;
-      return a.action === "sell" ? -1 : 1;
-    });
+export async function applyTradeDecisions(
+  dataSource: DataSource,
+  portfolio: PaperPortfolio,
+  decisions: Decision[],
+  logger: Logger,
+): Promise<ExecutionResult> {
+  const sortedSellsFirst = [...decisions].sort((a, b) => {
+    if (a.action === b.action) return 0;
+    return a.action === "sell" ? -1 : 1;
+  });
 
-    let buysExecuted = 0;
-    let sellsExecuted = 0;
-    let cashDeployed = 0;
-    let cashRaised = 0;
+  let buysExecuted = 0;
+  let sellsExecuted = 0;
+  let cashDeployed = 0;
+  let cashRaised = 0;
 
-    await this.dataSource.transaction(async (manager) => {
-      const portfolioRepo = manager.getRepository(PaperPortfolio);
-      const holdingRepo = manager.getRepository(PaperHolding);
-      const tradeRepo = manager.getRepository(PaperTrade);
+  await dataSource.transaction(async (manager) => {
+    const portfolioRepo = manager.getRepository(PaperPortfolio);
+    const holdingRepo = manager.getRepository(PaperHolding);
+    const tradeRepo = manager.getRepository(PaperTrade);
 
-      const fresh = await portfolioRepo.findOneOrFail({ where: { id: portfolio.id } });
-      let cashBalance = Number(fresh.currentCashBalance);
+    const fresh = await portfolioRepo.findOneOrFail({ where: { id: portfolio.id } });
+    let cashBalance = Number(fresh.currentCashBalance);
 
-      for (const decision of sortedSellsFirst) {
-        if (decision.action === "sell") {
-          const applied = await applySell(decision, holdingRepo, tradeRepo);
-          if (applied) {
-            cashBalance += decision.estimatedTradeValue;
-            cashRaised += decision.estimatedTradeValue;
-            sellsExecuted += 1;
-          }
-        } else {
-          const cost = decision.estimatedTradeValue;
-          if (cashBalance < cost) {
-            this.logger.warn(
-              `${decision.portfolioSlug}: insufficient cash to buy ${decision.symbol} (need ${cost.toFixed(2)}, have ${cashBalance.toFixed(2)}). Skipping.`,
-            );
-            continue;
-          }
-          await applyBuy(decision, holdingRepo, tradeRepo);
-          cashBalance -= cost;
-          cashDeployed += cost;
-          buysExecuted += 1;
+    for (const decision of sortedSellsFirst) {
+      if (decision.action === "sell") {
+        const applied = await applySell(decision, holdingRepo, tradeRepo);
+        if (applied) {
+          cashBalance += decision.estimatedTradeValue;
+          cashRaised += decision.estimatedTradeValue;
+          sellsExecuted += 1;
         }
+      } else {
+        const cost = decision.estimatedTradeValue;
+        if (cashBalance < cost) {
+          logger.warn(
+            `${decision.portfolioSlug}: insufficient cash to buy ${decision.symbol} (need ${cost.toFixed(2)}, have ${cashBalance.toFixed(2)}). Skipping.`,
+          );
+          continue;
+        }
+        await applyBuy(decision, holdingRepo, tradeRepo);
+        cashBalance -= cost;
+        cashDeployed += cost;
+        buysExecuted += 1;
       }
+    }
 
-      await portfolioRepo.update(
-        { id: portfolio.id },
-        { currentCashBalance: cashBalance.toFixed(2) },
-      );
-    });
+    await portfolioRepo.update(
+      { id: portfolio.id },
+      { currentCashBalance: cashBalance.toFixed(2) },
+    );
+  });
 
-    return {
-      portfolioSlug: portfolio.slug,
-      buysExecuted,
-      sellsExecuted,
-      cashDeployed,
-      cashRaised,
-      skipped: false,
-      skipReason: null,
-    };
-  }
+  return {
+    portfolioSlug: portfolio.slug,
+    buysExecuted,
+    sellsExecuted,
+    cashDeployed,
+    cashRaised,
+    skipped: false,
+    skipReason: null,
+  };
 }
 
 async function applySell(

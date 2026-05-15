@@ -20,6 +20,7 @@ import { PaperTrade } from "./entities/paper-trade.entity";
 import { PriceHistory } from "./entities/price-history.entity";
 import { SignalSnapshot } from "./entities/signal-snapshot.entity";
 import { WatchlistItem } from "./entities/watchlist-item.entity";
+import { AiExecutorService } from "./services/ai-executor.service";
 import { AllocationRulesEngineService } from "./services/allocation-rules-engine.service";
 import { BenchmarkExecutionService } from "./services/benchmark-execution.service";
 import { InsightsCronService } from "./services/insights-cron.service";
@@ -69,6 +70,7 @@ import { YahooMarketDataService } from "./services/yahoo-market-data.service";
     PortfolioSnapshotService,
     SignalEngineService,
     AllocationRulesEngineService,
+    AiExecutorService,
     PaperTradeExecutionService,
     InsightsCronService,
   ],
