@@ -477,7 +477,16 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
                 : "pipe";
             return { ...rawItem, itemType: derivedItemType };
           })();
-          if (!item.diameter && item.itemType !== "tank_chute") return [];
+          // Consumables (gaskets, bolt sets, drum of <X> coating,
+          // epoxy touch-up) and wrapping (denso tape, viscoelastic
+          // wrap) routinely have no diameter — they're flange/joint
+          // accessories, not pipe items. Letting them through here
+          // makes them flow to the misc-fallback branch at the
+          // bottom of the converter where they're persisted as
+          // misc entries with nixItemType preserved, then the BOQ
+          // routes them to the Fasteners supplier section.
+          const allowedWithoutDiameter = new Set(["tank_chute", "consumable", "wrapping"]);
+          if (!item.diameter && !allowedWithoutDiameter.has(item.itemType)) return [];
 
           const itemIndex = idx + 1;
           const rawUnit = item.unit;
@@ -768,7 +777,7 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
           // these auto-extracted rows; price-out happens via supplier
           // bundles instead.
           const rawDiameterMisc = item.diameter;
-          if (rawDiameterMisc || item.itemType === "consumable") {
+          if (rawDiameterMisc || item.itemType === "consumable" || item.itemType === "wrapping") {
             const rawItemNumber5 = item.itemNumber;
             const rawItemQuantityMisc = item.quantity;
             const rawItemUnitMisc = item.unit;
