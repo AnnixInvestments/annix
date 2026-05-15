@@ -43,20 +43,28 @@ export function NixDraftReview(props: {
   const [bulkRetrying, setBulkRetrying] = useState(false);
 
   const sessionExtractions = session.extractions;
+  // Newest extraction on top so the latest drawing / spec the user just
+  // uploaded is the first card they see — no scrolling needed to find it.
+  // Ties on createdAt fall back to id (sequential), also descending.
+  const sortNewestFirst = (a: NixExtractionSummary, b: NixExtractionSummary): number => {
+    const aTime = a.createdAt ? a.createdAt : "";
+    const bTime = b.createdAt ? b.createdAt : "";
+    if (aTime !== bTime) return bTime.localeCompare(aTime);
+    return b.id - a.id;
+  };
   const drawingExtractions = useMemo(() => {
     const list = sessionExtractions || [];
-    return list.filter((extraction) => extraction.documentRole === "drawing");
+    return [...list].filter((e) => e.documentRole === "drawing").sort(sortNewestFirst);
   }, [sessionExtractions]);
   const specExtractions = useMemo(() => {
     const list = sessionExtractions || [];
-    return list.filter((extraction) => extraction.documentRole === "specification");
+    return [...list].filter((e) => e.documentRole === "specification").sort(sortNewestFirst);
   }, [sessionExtractions]);
   const otherExtractions = useMemo(() => {
     const list = sessionExtractions || [];
-    return list.filter(
-      (extraction) =>
-        extraction.documentRole !== "drawing" && extraction.documentRole !== "specification",
-    );
+    return [...list]
+      .filter((e) => e.documentRole !== "drawing" && e.documentRole !== "specification")
+      .sort(sortNewestFirst);
   }, [sessionExtractions]);
 
   const specLookup = useSpecLookup(specExtractions, drawingExtractions);
