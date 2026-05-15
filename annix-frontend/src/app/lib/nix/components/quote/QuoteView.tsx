@@ -1205,15 +1205,16 @@ function ItemRow(props: {
 }
 
 /**
- * Format an m² figure with one decimal place — matches the precision the
- * shop quotes are calculated to. Quote-line m² figures are usually well
- * above 1, so a single decimal is enough resolution and reads cleaner than
- * '12.3456 m²'. Returns '—' for non-finite or zero, since 0 m² always
- * means we couldn't compute it (genuine zero-area items don't exist).
+ * Format an m² figure with two decimal places. Short fittings (200 mm
+ * stubs / reducers) can have per-item areas around 0.1 m² where a single
+ * decimal hides real differences — a 0.07 m² and a 0.15 m² item both
+ * showed as "0.1 m²" even though the cost doubled. Two decimals make the
+ * per-item m² differences legible. Returns '—' for non-finite or zero,
+ * since 0 m² always means we couldn't compute it.
  */
 function formatM2(value: number): string {
   if (!Number.isFinite(value) || value <= 0) return "—";
-  return `${value.toFixed(1)} m²`;
+  return `${value.toFixed(2)} m²`;
 }
 
 function NoScopeFootnote(props: { items: QuoteItem[] }) {
