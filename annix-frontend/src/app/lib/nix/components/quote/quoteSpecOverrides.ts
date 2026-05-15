@@ -176,11 +176,36 @@ export function defaultSuppliersForSpec(spec: SpecListing): SupplierEntry[] {
  * computed from the resolved extraction. Read-side helper used by both the
  * editor (to render rows) and the section footer (to rebuild the
  * 'All above items require:' line from the user's choices).
+ *
+ * Stale-shape guard: when the resolved code now exposes drawing-derived
+ * INT/EXT productDescriptors ("Internal: <int> • External: <ext>") but a
+ * legacy override was saved with spec-PDF brand labels (Stoncor /
+ * Corrocoat / colour) before the drawing-INT/EXT capability shipped, the
+ * override no longer matches what the signed drawing demands. Without
+ * this guard the customer-facing footer would keep rendering the old
+ * spec-PDF supplier list — see [[signed-drawings-override]]. Returning
+ * defaultSuppliersForSpec drops the stale override silently; the
+ * companion hydration migration (in QuoteView) cleans up the DB so the
+ * stale entry doesn't reappear on subsequent loads.
  */
 export function effectiveSuppliers(spec: SpecListing, overrides: SpecOverrides): SupplierEntry[] {
   const override = overrides[spec.code];
-  if (override) return override.suppliers;
-  return defaultSuppliersForSpec(spec);
+  if (!override) return defaultSuppliersForSpec(spec);
+  if (spec.kind === "coating" && isOverrideStaleVsDrawing(spec, override)) {
+    return defaultSuppliersForSpec(spec);
+  }
+  return override.suppliers;
+}
+
+function isOverrideStaleVsDrawing(spec: SpecListing, override: SpecOverride): boolean {
+  const descriptors = spec.resolved ? spec.resolved.productDescriptors : null;
+  if (!descriptors) return false;
+  const drawingShape = /^\s*Internal:\s/i.test(descriptors) || /\bExternal:\s/i.test(descriptors);
+  if (!drawingShape) return false;
+  const hasDrawingBrand = override.suppliers.some(
+    (s) => s.brand === "Internal" || s.brand === "External",
+  );
+  return !hasDrawingBrand;
 }
 
 /**
@@ -218,6 +243,12 @@ export function withSpecSuppliers(
 export function selectedSupplierId(spec: SpecListing, overrides: SpecOverrides): string | null {
   const override = overrides[spec.code];
   if (!override) return null;
+  // Same stale-shape guard as effectiveSuppliers — a legacy override's
+  // selectedSupplierId (e.g. "default-R2a-0" pointing at Stoncor) is
+  // meaningless once we've switched to drawing-derived Internal/External
+  // suppliers. Treat selection as cleared so every supplier renders in
+  // the footer.
+  if (spec.kind === "coating" && isOverrideStaleVsDrawing(spec, override)) return null;
   const selected = override.selectedSupplierId;
   return selected ? selected : null;
 }
