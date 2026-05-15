@@ -155,7 +155,14 @@ export function useSpecLookup(
       string,
       { internal: string | null; external: string | null }
     >();
-    for (const extraction of drawingExtractions) {
+    // Skip superseded drawings — older revisions can carry shorter / stale
+    // CORROSION EXT text (e.g. just "BRILLIANT GREEN" before the prompt
+    // captured the full PAINT line beneath it), and rememberCoatingDescription
+    // keeps the FIRST non-null value across all drawings. Without this filter
+    // the superseded extraction wins and the customer-facing footer shows
+    // the truncated colour callout instead of the full paint system.
+    const liveDrawingExtractions = drawingExtractions.filter((e) => e.isLatestRevision !== false);
+    for (const extraction of liveDrawingExtractions) {
       const items = extraction.extractedItems;
       if (!isArray(items)) continue;
       for (const raw of items as unknown[]) {

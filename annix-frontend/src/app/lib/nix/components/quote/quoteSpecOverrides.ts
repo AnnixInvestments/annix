@@ -194,6 +194,17 @@ export function effectiveSuppliers(spec: SpecListing, overrides: SpecOverrides):
   if (spec.kind === "coating" && isOverrideStaleVsDrawing(spec, override)) {
     return defaultSuppliersForSpec(spec);
   }
+  // Lining specs: when the user has uploaded a custom product (e.g.
+  // 'Weir Linacure 60' with a data sheet attached) the spec-PDF default
+  // ('6 mm bore, 3 mm flange, hot-bonded …') is no longer authoritative
+  // — the customer is being quoted the user's nominated product. Hide
+  // the defaults from the editor so the row reflects what's actually
+  // going on the quote. Editing still works (textarea is enabled) and
+  // the user can re-add a default via '+ Add product' if needed.
+  if (spec.kind === "lining") {
+    const customs = override.suppliers.filter((s) => s.isCustom);
+    if (customs.length > 0) return customs;
+  }
   return override.suppliers;
 }
 
@@ -249,6 +260,18 @@ export function selectedSupplierId(spec: SpecListing, overrides: SpecOverrides):
   // suppliers. Treat selection as cleared so every supplier renders in
   // the footer.
   if (spec.kind === "coating" && isOverrideStaleVsDrawing(spec, override)) return null;
+  // Drawing-faceted coatings: when the suppliers are the contractual
+  // Internal + External facets per the signed drawing, neither is an
+  // optional alternative — both must render in the customer-facing
+  // footer. Ignore any saved selection (which can linger from when the
+  // override was Stoncor/Corrocoat-shaped and the migration preserved
+  // the id by coincidence).
+  if (
+    spec.kind === "coating" &&
+    override.suppliers.some((s) => s.brand === "Internal" || s.brand === "External")
+  ) {
+    return null;
+  }
   const selected = override.selectedSupplierId;
   return selected ? selected : null;
 }
