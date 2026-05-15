@@ -433,10 +433,19 @@ function rememberCoatingDescription(
   const lined = isString(item.liningType) && item.liningType.trim().length > 0;
   const internalRaw = lined ? null : item.internalCoatingDescription;
   const externalRaw = item.externalCoatingDescription;
+  // "NONE" / "UNLINED" / "UNCOATED" / "—" are explicit no-treatment
+  // sentinels — they must NOT become a coating facet. An R1 item like
+  // -39 prints CORROSION INT. "UNLINED"; capturing that verbatim would
+  // give the R1 coating card a phantom Internal box. Treat sentinels
+  // as null so the facet simply doesn't exist.
   const internal =
-    isString(internalRaw) && internalRaw.trim().length > 0 ? internalRaw.trim() : null;
+    isString(internalRaw) && internalRaw.trim().length > 0 && !isNoneSentinel(internalRaw.trim())
+      ? internalRaw.trim()
+      : null;
   const external =
-    isString(externalRaw) && externalRaw.trim().length > 0 ? externalRaw.trim() : null;
+    isString(externalRaw) && externalRaw.trim().length > 0 && !isNoneSentinel(externalRaw.trim())
+      ? externalRaw.trim()
+      : null;
   if (internal === null && external === null) return;
   const key = normaliseCode(code);
   const current = overrides.get(key) ?? { internal: null, external: null };

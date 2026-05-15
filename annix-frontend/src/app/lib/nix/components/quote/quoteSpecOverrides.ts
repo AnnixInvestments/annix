@@ -211,12 +211,23 @@ export function effectiveSuppliers(spec: SpecListing, overrides: SpecOverrides):
 function isOverrideStaleVsDrawing(spec: SpecListing, override: SpecOverride): boolean {
   const descriptors = spec.resolved ? spec.resolved.productDescriptors : null;
   if (!descriptors) return false;
-  const drawingShape = /^\s*Internal:\s/i.test(descriptors) || /\bExternal:\s/i.test(descriptors);
-  if (!drawingShape) return false;
-  const hasDrawingBrand = override.suppliers.some(
-    (s) => s.brand === "Internal" || s.brand === "External",
-  );
-  return !hasDrawingBrand;
+  const drawingHasInternal = /(^|\W)Internal:\s/i.test(descriptors);
+  const drawingHasExternal = /\bExternal:\s/i.test(descriptors);
+  if (!drawingHasInternal && !drawingHasExternal) return false;
+  const overrideHasInternal = override.suppliers.some((s) => s.brand === "Internal");
+  const overrideHasExternal = override.suppliers.some((s) => s.brand === "External");
+  // Legacy spec-PDF shape (Stoncor / Corrocoat / colour) — no drawing
+  // facet brands at all. Stale: rebuild from the drawing-derived defaults.
+  if (!overrideHasInternal && !overrideHasExternal) return true;
+  // Facet-set mismatch — the drawing has since dropped or added a facet
+  // relative to the saved override. The R1 case Andrew hit on 2026-05-15:
+  // R1 used to capture an Internal facet (the lining text), the override
+  // saved Internal+External, but R1 is now external-only — leaving a
+  // phantom empty Internal box on the coating card. Treat as stale so
+  // the card rebuilds to exactly the facets the drawing dictates.
+  if (drawingHasInternal !== overrideHasInternal) return true;
+  if (drawingHasExternal !== overrideHasExternal) return true;
+  return false;
 }
 
 /**
