@@ -179,6 +179,37 @@ export class ProductDataSheetsService {
     });
   }
 
+  /**
+   * Search the latest-version data sheets by free text against the
+   * manufacturer + product name. Powers the quote coating/lining editor's
+   * "find an existing sheet in the library" affordance, so a quoter can
+   * attach a Stoncor sheet already in the repo (e.g. "Carboguard 880")
+   * instead of re-uploading it. Each space-separated term must appear
+   * (case-insensitive) somewhere in "<manufacturer> <productName>", so
+   * "carboguard 880" and "880 carbo" both match. Latest versions only;
+   * capped at 20 rows, most recently published first.
+   */
+  async search(query: string): Promise<ProductDataSheet[]> {
+    const terms = query
+      .trim()
+      .toLowerCase()
+      .split(/\s+/)
+      .filter((t) => t.length > 0);
+    if (terms.length === 0) return [];
+    const qb = this.repo
+      .createQueryBuilder("ds")
+      .where("ds.is_latest = true")
+      .orderBy("ds.published_date", "DESC", "NULLS LAST")
+      .addOrderBy("ds.updated_at", "DESC")
+      .limit(20);
+    terms.forEach((term, i) => {
+      qb.andWhere(`lower(ds.manufacturer || ' ' || ds.product_name) LIKE :t${i}`, {
+        [`t${i}`]: `%${term}%`,
+      });
+    });
+    return qb.getMany();
+  }
+
   // ------------------------------------------------------------------
   // Gemini extraction
   // ------------------------------------------------------------------

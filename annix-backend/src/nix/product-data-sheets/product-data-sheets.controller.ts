@@ -8,6 +8,7 @@ import {
   Param,
   ParseIntPipe,
   Post,
+  Query,
   Req,
   UploadedFile,
   UseGuards,
@@ -130,6 +131,40 @@ export class ProductDataSheetsController {
         // ignore — multer cleans up after the request anyway
       }
     }
+  }
+
+  // Declared before the :id / :manufacturerSlug param routes so "search"
+  // isn't swallowed as a path param.
+  @Get("search")
+  @UseGuards(AnyUserAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary:
+      "Search the data-sheet library by manufacturer + product name. Lets the quote editor attach an existing sheet instead of re-uploading.",
+  })
+  async search(@Query("q") q: string): Promise<
+    {
+      id: number;
+      manufacturer: string;
+      productName: string;
+      kind: string;
+      version: number;
+      publishedRevision: string | null;
+      originalFilename: string;
+      sizeBytes: number;
+    }[]
+  > {
+    const rows = await this.service.search(q ?? "");
+    return rows.map((r) => ({
+      id: r.id,
+      manufacturer: r.manufacturer,
+      productName: r.productName,
+      kind: r.kind,
+      version: r.version,
+      publishedRevision: r.publishedRevision ?? null,
+      originalFilename: r.originalFilename,
+      sizeBytes: Number(r.sizeBytes),
+    }));
   }
 
   @Get(":id/url")
