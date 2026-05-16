@@ -34,8 +34,8 @@ duplication_check() {
 }
 
 how_to_freshness_check() {
-  if [ -f "${ROOT_DIR}/scripts/check-how-to-freshness.mjs" ]; then
-    node "${ROOT_DIR}/scripts/check-how-to-freshness.mjs"
+  if [ -f "${ROOT_DIR}/scripts/check-how-to-freshness.ts" ]; then
+    node "${ROOT_DIR}/scripts/check-how-to-freshness.ts"
   fi
 }
 

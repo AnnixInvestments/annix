@@ -253,9 +253,9 @@ Cross-app build / quality / tooling scripts that run from the repo root, typical
 |---|---|---|
 | `scripts/check-legal-risks.sh` | Pre-push gate against committing real `.co.za` / `.com` emails, reserved standards-body data, etc. (#149) | `.githooks/pre-push` |
 | `scripts/check-inter-app-duplication.sh` | Pre-push gate against duplicated app constants. Enforces the discovery-first protocol. | `.githooks/pre-push` |
-| `scripts/check-how-to-freshness.mjs` | Pre-push warning when any how-to guide's `lastUpdated` is older than the latest commit on any of its `relatedPaths`. Auto-discovers guides under `annix-frontend/src/app/*/how-to/guides/*.md` (Stock Control, CV Assistant, future apps). Warn-only. | `.githooks/pre-push` |
-| `scripts/howto-pre-commit-prompt.mjs` | Pre-commit interactive prompt (`edit` / `bump` / `skip` / `draft`) when staged files match any guide's `relatedPaths`. Same auto-discovery as the freshness checker. Reads `/dev/tty`; honours `HOWTO_HOOK=skip` (#250). | `.githooks/pre-commit` |
-| `scripts/draft-howto-update.mjs` | One-shot Gemini / Claude API call that drafts a minimal-edit patch to a guide given the staged diff(s). 30s `AbortController` timeout. Skips silently if neither `GEMINI_API_KEY` nor `ANTHROPIC_API_KEY` is set (#250). | `howto-pre-commit-prompt.mjs` |
+| `scripts/check-how-to-freshness.ts` | Pre-push warning when any how-to guide's `lastUpdated` is older than the latest commit on any of its `relatedPaths`. Auto-discovers guides under `annix-frontend/src/app/*/how-to/guides/*.md` (Stock Control, CV Assistant, future apps). Warn-only. | `.githooks/pre-push` |
+| `scripts/howto-pre-commit-prompt.ts` | Pre-commit interactive prompt (`edit` / `bump` / `skip` / `draft`) when staged files match any guide's `relatedPaths`. Same auto-discovery as the freshness checker. Reads `/dev/tty`; honours `HOWTO_HOOK=skip` (#250). | `.githooks/pre-commit` |
+| `scripts/draft-howto-update.ts` | One-shot Gemini / Claude API call that drafts a minimal-edit patch to a guide given the staged diff(s). 30s `AbortController` timeout. Skips silently if neither `GEMINI_API_KEY` nor `ANTHROPIC_API_KEY` is set (#250). | `howto-pre-commit-prompt.ts` |
 
 **When to add a new script here:** a quality gate, validator, or tooling script that runs across the whole repo (not bound to a single app). For app-specific scripts, prefer the app's own `scripts/` directory.
 

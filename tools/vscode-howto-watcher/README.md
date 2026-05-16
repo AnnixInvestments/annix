@@ -2,8 +2,8 @@
 
 VS Code extension that surfaces how-to guides affected by the file you're
 currently editing. Pairs with the pre-commit prompt
-(`scripts/howto-pre-commit-prompt.mjs`) and the pre-push freshness checker
-(`scripts/check-how-to-freshness.mjs`) to keep documentation in sync with
+(`scripts/howto-pre-commit-prompt.ts`) and the pre-push freshness checker
+(`scripts/check-how-to-freshness.ts`) to keep documentation in sync with
 code.
 
 ## What it does

@@ -44,7 +44,7 @@ jobs:
         run: |
           export PATH="/usr/lib/postgresql/17/bin:$PATH"
           pg_dump --version
-          node scripts/clone-prod-to-staging.mjs --yes
+          node scripts/clone-prod-to-staging.ts --yes
 
       - name: Scale staging back to 2 machines
         if: always()

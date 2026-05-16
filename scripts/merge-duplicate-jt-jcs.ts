@@ -23,9 +23,9 @@
  *   authoritative). All other table re-parents are straight UPDATEs.
  *
  * Usage:
- *   node scripts/merge-duplicate-jt-jcs.mjs           # dry run
- *   node scripts/merge-duplicate-jt-jcs.mjs --apply   # commit
- *   node scripts/merge-duplicate-jt-jcs.mjs --apply --job=P9945  # restrict
+ *   node scripts/merge-duplicate-jt-jcs.ts           # dry run
+ *   node scripts/merge-duplicate-jt-jcs.ts --apply   # commit
+ *   node scripts/merge-duplicate-jt-jcs.ts --apply --job=P9945  # restrict
  *
  * Flags:
  *   --apply        Commit the merges (otherwise dry run)
@@ -367,7 +367,7 @@ function formatPlan(group, plan) {
 
 async function main() {
   logLine(
-    `merge-duplicate-jt-jcs.mjs starting (mode=${apply ? "APPLY" : "DRY-RUN"}${jobFilter ? ` job=${jobFilter}` : ""})`,
+    `merge-duplicate-jt-jcs.ts starting (mode=${apply ? "APPLY" : "DRY-RUN"}${jobFilter ? ` job=${jobFilter}` : ""})`,
   );
 
   const client = new pg.Client({

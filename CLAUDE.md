@@ -318,7 +318,7 @@ All apps follow semantic versioning (major.minor.patch):
 | Annix Insights | `annix-frontend/src/app/insights/config/version.ts` | `INSIGHTS_VERSION` | PortalToolbar |
 
 ## Stock Control How To Guides
-When you change any user-facing Stock Control feature (new button, renamed field, new workflow), check `annix-frontend/src/app/stock-control/how-to/guides/*.md` for guides whose `relatedPaths` include the files you touched. Update the guide and bump `lastUpdated`. The pre-push hook runs `scripts/check-how-to-freshness.mjs` (warns, non-blocking).
+When you change any user-facing Stock Control feature (new button, renamed field, new workflow), check `annix-frontend/src/app/stock-control/how-to/guides/*.md` for guides whose `relatedPaths` include the files you touched. Update the guide and bump `lastUpdated`. The pre-push hook runs `scripts/check-how-to-freshness.ts` (warns, non-blocking).
 
 ### Automatic How To Creation (MANDATORY)
 **Every new user-facing feature MUST include a How To guide in the same commit.** Enhancements to existing features should update the relevant existing guide.

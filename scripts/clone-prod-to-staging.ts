@@ -18,7 +18,7 @@ const fail = (msg) => {
 if (!PROD_URL || !STAGING_URL) {
   console.error("Usage:");
   console.error(
-    "  PROD_DATABASE_URL=... STAGING_DATABASE_URL=... node scripts/clone-prod-to-staging.mjs [--dry-run] [--yes]",
+    "  PROD_DATABASE_URL=... STAGING_DATABASE_URL=... node scripts/clone-prod-to-staging.ts [--dry-run] [--yes]",
   );
   console.error("");
   console.error(

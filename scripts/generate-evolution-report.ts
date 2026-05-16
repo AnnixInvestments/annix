@@ -1,14 +1,18 @@
 #!/usr/bin/env node
 
-const { execSync } = require("child_process");
-const fs = require("fs");
-const path = require("path");
+import { execSync } from "node:child_process";
+import fs from "node:fs";
+import path from "node:path";
 
-const ROOT = path.resolve(__dirname, "..");
+const ROOT = path.resolve(import.meta.dirname, "..");
 const OUTPUT = path.join(ROOT, "annix-frontend/public/codebase-evolution-stats.html");
 
 function git(cmd) {
-  return execSync(`git ${cmd}`, { cwd: ROOT, encoding: "utf-8", maxBuffer: 50 * 1024 * 1024 }).trim();
+  return execSync(`git ${cmd}`, {
+    cwd: ROOT,
+    encoding: "utf-8",
+    maxBuffer: 50 * 1024 * 1024,
+  }).trim();
 }
 
 function walkDir(dir, extensions) {
@@ -17,13 +21,20 @@ function walkDir(dir, extensions) {
     const entries = fs.readdirSync(dir, { withFileTypes: true });
     entries.forEach((entry) => {
       const fullPath = path.join(dir, entry.name);
-      if (entry.isDirectory() && entry.name !== "node_modules" && entry.name !== ".next" && entry.name !== "dist") {
+      if (
+        entry.isDirectory() &&
+        entry.name !== "node_modules" &&
+        entry.name !== ".next" &&
+        entry.name !== "dist"
+      ) {
         results.push(...walkDir(fullPath, extensions));
       } else if (entry.isFile() && extensions.some((ext) => entry.name.endsWith(ext))) {
         results.push(fullPath);
       }
     });
-  } catch { /* skip inaccessible dirs */ }
+  } catch {
+    /* skip inaccessible dirs */
+  }
   return results;
 }
 
@@ -38,7 +49,9 @@ function countLines(dir, extensions) {
     try {
       const content = fs.readFileSync(f, "utf-8");
       total += content.split("\n").length;
-    } catch { /* skip unreadable */ }
+    } catch {
+      /* skip unreadable */
+    }
   });
   return total;
 }
@@ -52,7 +65,9 @@ function grepCount(pattern, dir, extensions) {
       const content = fs.readFileSync(f, "utf-8");
       const matches = content.match(regex);
       if (matches) total += matches.length;
-    } catch { /* skip */ }
+    } catch {
+      /* skip */
+    }
   });
   return total;
 }
@@ -65,15 +80,18 @@ function locAtRef(ref, dir, extensions) {
     return 0;
   }
   let total = 0;
-  out.split("\n").filter(Boolean).forEach((line) => {
-    const lastColon = line.lastIndexOf(":");
-    if (lastColon < 0) return;
-    const count = parseInt(line.slice(lastColon + 1), 10) || 0;
-    const beforeCount = line.slice(0, lastColon);
-    const firstColon = beforeCount.indexOf(":");
-    const filePath = firstColon < 0 ? beforeCount : beforeCount.slice(firstColon + 1);
-    if (extensions.some((ext) => filePath.endsWith(ext))) total += count;
-  });
+  out
+    .split("\n")
+    .filter(Boolean)
+    .forEach((line) => {
+      const lastColon = line.lastIndexOf(":");
+      if (lastColon < 0) return;
+      const count = parseInt(line.slice(lastColon + 1), 10) || 0;
+      const beforeCount = line.slice(0, lastColon);
+      const firstColon = beforeCount.indexOf(":");
+      const filePath = firstColon < 0 ? beforeCount : beforeCount.slice(firstColon + 1);
+      if (extensions.some((ext) => filePath.endsWith(ext))) total += count;
+    });
   return total;
 }
 
@@ -92,7 +110,7 @@ const startDate = new Date(TEAM_START);
 const weeksElapsed = Math.floor((todayDate - startDate) / (7 * 24 * 60 * 60 * 1000));
 const daysElapsed = Math.floor((todayDate - startDate) / (24 * 60 * 60 * 1000));
 
-const totalCommits = parseInt(git(`rev-list --count --since="${TEAM_START}" HEAD`));
+const totalCommits = parseInt(git(`rev-list --count --since="${TEAM_START}" HEAD`), 10);
 
 const frontendLOC = countLines("annix-frontend/src", [".ts", ".tsx"]);
 const backendLOC = countLines("annix-backend/src", [".ts"]);
@@ -102,21 +120,31 @@ const locPerDay = daysElapsed > 0 ? Math.round(addedLOC / daysElapsed) : 0;
 const commitsPerWeek = weeksElapsed > 0 ? Math.round(totalCommits / weeksElapsed) : 0;
 
 const frontendTsxFiles = countFiles("annix-frontend/src", [".tsx"]);
-const frontendTsFiles = walkDir(path.join(ROOT, "annix-frontend/src"), [".ts"]).filter((f) => !f.endsWith(".tsx")).length;
+const frontendTsFiles = walkDir(path.join(ROOT, "annix-frontend/src"), [".ts"]).filter(
+  (f) => !f.endsWith(".tsx"),
+).length;
 const backendTsFiles = countFiles("annix-backend/src", [".ts"]);
 const totalTsFiles = frontendTsxFiles + frontendTsFiles + backendTsFiles;
 
 const vendorLocPerDay = Math.round(VENDOR_LOC / (VENDOR_MONTHS * 30));
 const productivityMultiplier = vendorLocPerDay > 0 ? Math.round(locPerDay / vendorLocPerDay) : 0;
 
-const reactComponents = grepCount("export default function|export function \\w+", "annix-frontend/src", [".tsx"]);
+const reactComponents = grepCount(
+  "export default function|export function \\w+",
+  "annix-frontend/src",
+  [".tsx"],
+);
 const nestControllers = grepCount("@Controller\\(", "annix-backend/src", [".ts"]);
 const nestModules = grepCount("@Module\\(", "annix-backend/src", [".ts"]);
 const migrations = countFiles("annix-backend/src/migrations", [".ts"]);
-const nextPages = walkDir(path.join(ROOT, "annix-frontend/src"), [".tsx"]).filter((f) => f.endsWith("page.tsx")).length;
+const nextPages = walkDir(path.join(ROOT, "annix-frontend/src"), [".tsx"]).filter((f) =>
+  f.endsWith("page.tsx"),
+).length;
 const specFiles = countFiles("annix-backend/src", [".spec.ts"]);
 const testCases = grepCount("\\bit\\(|\\btest\\(", "annix-backend/src", [".spec.ts"]);
-const apiEndpoints = grepCount("@(Get|Post|Put|Delete|Patch)\\(", "annix-backend/src", [".controller.ts"]);
+const apiEndpoints = grepCount("@(Get|Post|Put|Delete|Patch)\\(", "annix-backend/src", [
+  ".controller.ts",
+]);
 
 // legal-risk-ignore: real git commit emails for identity consolidation
 const _auind = "auind.co" + ".za";
@@ -136,11 +164,14 @@ function personFromEmail(email) {
 }
 
 const shortlog = git("shortlog -sne --since='2025-12-17' HEAD");
-const rawContributors = shortlog.split("\n").map((line) => {
-  const match = line.trim().match(/^(\d+)\s+(.+?)\s+<(.+)>$/);
-  if (!match) return null;
-  return { commits: parseInt(match[1]), name: match[2], email: match[3] };
-}).filter(Boolean);
+const rawContributors = shortlog
+  .split("\n")
+  .map((line) => {
+    const match = line.trim().match(/^(\d+)\s+(.+?)\s+<(.+)>$/);
+    if (!match) return null;
+    return { commits: parseInt(match[1], 10), name: match[2], email: match[3] };
+  })
+  .filter(Boolean);
 
 const mergedMap = {};
 rawContributors.forEach((c) => {
@@ -160,18 +191,21 @@ const secondContributor = contributors[1] || { name: "Unknown", commits: 0, emai
 
 const weeklyRaw = git(`log --format="%ae %ai" --since="${TEAM_START}"`);
 const weekBuckets = {};
-weeklyRaw.split("\n").filter(Boolean).forEach((line) => {
-  const parts = line.split(" ");
-  const email = parts[0];
-  const person = personFromEmail(email);
-  const dateStr = parts[1];
-  const d = new Date(dateStr);
-  const weekStart = new Date(d);
-  weekStart.setDate(weekStart.getDate() - weekStart.getDay());
-  const key = weekStart.toISOString().slice(0, 10);
-  if (!weekBuckets[key]) weekBuckets[key] = {};
-  weekBuckets[key][person] = (weekBuckets[key][person] || 0) + 1;
-});
+weeklyRaw
+  .split("\n")
+  .filter(Boolean)
+  .forEach((line) => {
+    const parts = line.split(" ");
+    const email = parts[0];
+    const person = personFromEmail(email);
+    const dateStr = parts[1];
+    const d = new Date(dateStr);
+    const weekStart = new Date(d);
+    weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+    const key = weekStart.toISOString().slice(0, 10);
+    if (!weekBuckets[key]) weekBuckets[key] = {};
+    weekBuckets[key][person] = (weekBuckets[key][person] || 0) + 1;
+  });
 
 const sortedWeeks = Object.keys(weekBuckets).sort();
 const topName = topContributor.name;
@@ -213,7 +247,7 @@ try {
     sampleWeeks.push(completedWeeks[completedWeeks.length - 1]);
   }
 
-  growthLabels = [`Vendor\nBase`];
+  growthLabels = ["Vendor\nBase"];
   growthFrontend = [VENDOR_FRONTEND];
   growthBackend = [VENDOR_BACKEND];
 
@@ -251,9 +285,14 @@ function fmtNum(n) {
 }
 
 const topPct = totalCommits > 0 ? Math.round((topContributor.commits / totalCommits) * 100) : 0;
-const secondPct = totalCommits > 0 ? Math.round((secondContributor.commits / totalCommits) * 100) : 0;
+const secondPct =
+  totalCommits > 0 ? Math.round((secondContributor.commits / totalCommits) * 100) : 0;
 
-const generatedDate = todayDate.toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" });
+const generatedDate = todayDate.toLocaleDateString("en-US", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+});
 
 const traditionalDevs = 5;
 const traditionalYears = Math.round(addedLOC / (traditionalDevs * 40 * 250));
@@ -289,7 +328,7 @@ const html = `<!DOCTYPE html>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"><\/script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
   <style>
     :root {
       --navy:        #323288;
@@ -1140,10 +1179,12 @@ const html = `<!DOCTYPE html>
       chart.update();
     });
   }
-<\/script>
+</script>
 </body>
 </html>`;
 
 fs.writeFileSync(OUTPUT, html);
 console.log(`Report generated: ${OUTPUT}`);
-console.log(`  Total LOC: ${fmtK(totalLOC)} | Commits: ${fmtNum(totalCommits)} | Files: ${fmtNum(totalTsFiles)} | Weeks: ${weeksElapsed}`);
+console.log(
+  `  Total LOC: ${fmtK(totalLOC)} | Commits: ${fmtNum(totalCommits)} | Files: ${fmtNum(totalTsFiles)} | Weeks: ${weeksElapsed}`,
+);

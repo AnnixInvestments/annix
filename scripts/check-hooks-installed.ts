@@ -13,7 +13,7 @@
  *   - package.json "dev"     — runs before `claude-swarm start`
  *
  * Run standalone:
- *   node scripts/check-hooks-installed.mjs
+ *   node scripts/check-hooks-installed.ts
  */
 
 import { execSync } from "node:child_process";

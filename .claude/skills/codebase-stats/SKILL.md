@@ -9,7 +9,7 @@ Regenerate the interactive codebase evolution report at `annix-frontend/public/c
 
 ## What this does
 
-Runs `scripts/generate-evolution-report.js` which analyses git history and the codebase to produce an interactive HTML dashboard showing:
+Runs `scripts/generate-evolution-report.ts` which analyses git history and the codebase to produce an interactive HTML dashboard showing:
 
 - Total lines of TypeScript code (frontend vs backend split)
 - Commit activity and weekly trends
@@ -22,7 +22,7 @@ Runs `scripts/generate-evolution-report.js` which analyses git history and the c
 
 1. Run the generator script:
    ```bash
-   node scripts/generate-evolution-report.js
+   node scripts/generate-evolution-report.ts
    ```
 
 2. Verify the output file was created:

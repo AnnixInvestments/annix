@@ -11,12 +11,12 @@
  * the label without moving any data.
  *
  * Usage:
- *   node scripts/swap-companies-and-relink.mjs <id-a> <id-b> [--relink-email=<addr> --to=<id>] [--apply]
+ *   node scripts/swap-companies-and-relink.ts <id-a> <id-b> [--relink-email=<addr> --to=<id>] [--apply]
  *
  * Example (dry run):
- *   node scripts/swap-companies-and-relink.mjs 1 2 --relink-email=andy@polymerliners.co.za --to=1
+ *   node scripts/swap-companies-and-relink.ts 1 2 --relink-email=andy@polymerliners.co.za --to=1
  * Example (apply):
- *   node scripts/swap-companies-and-relink.mjs 1 2 --relink-email=andy@polymerliners.co.za --to=1 --apply
+ *   node scripts/swap-companies-and-relink.ts 1 2 --relink-email=andy@polymerliners.co.za --to=1 --apply
  */
 
 import fs from "node:fs";
@@ -45,7 +45,7 @@ const env = Object.fromEntries(
 const [, , aRaw, bRaw, ...flags] = process.argv;
 if (!aRaw || !bRaw) {
   console.error(
-    "Usage: node scripts/swap-companies-and-relink.mjs <id-a> <id-b> [--relink-email=<addr> --to=<id>] [--apply]",
+    "Usage: node scripts/swap-companies-and-relink.ts <id-a> <id-b> [--relink-email=<addr> --to=<id>] [--apply]",
   );
   process.exit(1);
 }

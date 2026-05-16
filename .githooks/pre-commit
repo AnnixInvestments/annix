@@ -516,6 +516,6 @@ fi
 # matches their `relatedPaths` against staged files, and prompts the engineer
 # to edit / bump / skip / draft-with-claude before the commit lands.
 # Honours HOWTO_HOOK=skip and the standard --no-verify escape hatch.
-if [ -f "$ROOT_DIR/scripts/howto-pre-commit-prompt.mjs" ]; then
-    node "$ROOT_DIR/scripts/howto-pre-commit-prompt.mjs" || true
+if [ -f "$ROOT_DIR/scripts/howto-pre-commit-prompt.ts" ]; then
+    node "$ROOT_DIR/scripts/howto-pre-commit-prompt.ts" || true
 fi

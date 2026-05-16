@@ -11,9 +11,9 @@
  * constraint collision) rolls back cleanly.
  *
  * Usage:
- *   node scripts/merge-companies.mjs <source-id> <target-id>            # dry run
- *   node scripts/merge-companies.mjs <source-id> <target-id> --apply
- *   node scripts/merge-companies.mjs 1 2 --apply --copy-branding
+ *   node scripts/merge-companies.ts <source-id> <target-id>            # dry run
+ *   node scripts/merge-companies.ts <source-id> <target-id> --apply
+ *   node scripts/merge-companies.ts 1 2 --apply --copy-branding
  *
  * Flags:
  *   --apply           Commit the merge (otherwise dry run)
@@ -53,7 +53,7 @@ const env = Object.fromEntries(
 const [, , sourceRaw, targetRaw, ...flags] = process.argv;
 if (!sourceRaw || !targetRaw) {
   console.error(
-    "Usage: node scripts/merge-companies.mjs <source-id> <target-id> [--apply] [--copy-branding] [--include=a,b] [--exclude=a,b]",
+    "Usage: node scripts/merge-companies.ts <source-id> <target-id> [--apply] [--copy-branding] [--include=a,b] [--exclude=a,b]",
   );
   process.exit(1);
 }

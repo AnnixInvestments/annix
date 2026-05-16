@@ -11,7 +11,7 @@ const TIMEOUT_MS = 30_000;
 const [, , guidePath, ...triggerFiles] = process.argv;
 
 if (!guidePath || triggerFiles.length === 0) {
-  console.warn("usage: draft-howto-update.mjs <guide-path> <staged-file> [<staged-file>...]");
+  console.warn("usage: draft-howto-update.ts <guide-path> <staged-file> [<staged-file>...]");
   process.exit(2);
 }
 

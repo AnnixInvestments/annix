@@ -166,7 +166,7 @@ const openInEditor = (guidePath) =>
   });
 
 const draftWithClaude = async (guidePath, triggers) => {
-  const draftScript = resolve(SCRIPT_DIR, "draft-howto-update.mjs");
+  const draftScript = resolve(SCRIPT_DIR, "draft-howto-update.ts");
   return new Promise((res) => {
     const child = spawn("node", [draftScript, guidePath, ...triggers.map((t) => t.staged)], {
       cwd: REPO_ROOT,

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Spec test for scripts/howto-pre-commit-prompt.mjs.
+# Spec test for scripts/howto-pre-commit-prompt.ts.
 # Validates non-interactive paths (TTY paths can't be tested without `expect`):
 #   1. HOWTO_HOOK=skip exits 0 immediately.
 #   2. No staged files → exits 0.
@@ -13,7 +13,7 @@
 set -u
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-SCRIPT_UNDER_TEST="${SCRIPT_DIR}/howto-pre-commit-prompt.mjs"
+SCRIPT_UNDER_TEST="${SCRIPT_DIR}/howto-pre-commit-prompt.ts"
 
 if [ ! -f "$SCRIPT_UNDER_TEST" ]; then
     echo "FAIL: $SCRIPT_UNDER_TEST not found"
@@ -80,8 +80,9 @@ setup_fixture_repo() {
     mkdir -p annix-frontend/src/app/app-two/feature-y
     mkdir -p annix-backend/src/some-module
     mkdir -p scripts
+    printf '{"type":"module"}\n' > scripts/package.json
 
-    cp "$SCRIPT_UNDER_TEST" scripts/howto-pre-commit-prompt.mjs
+    cp "$SCRIPT_UNDER_TEST" scripts/howto-pre-commit-prompt.ts
 
     cat > annix-frontend/src/app/app-one/how-to/guides/guide-one.md <<'EOF'
 ---
@@ -125,7 +126,7 @@ EOF
 echo "TEST 1: HOWTO_HOOK=skip skips entirely"
 TEST_DIR="$(mktemp -d)"
 setup_fixture_repo "$TEST_DIR/repo"
-HOWTO_HOOK=skip node "$TEST_DIR/repo/scripts/howto-pre-commit-prompt.mjs"
+HOWTO_HOOK=skip node "$TEST_DIR/repo/scripts/howto-pre-commit-prompt.ts"
 assert_eq "exit code is 0" "0" "$?"
 rm -rf "$TEST_DIR"
 
@@ -134,7 +135,7 @@ echo ""
 echo "TEST 2: no staged files exits 0"
 TEST_DIR="$(mktemp -d)"
 setup_fixture_repo "$TEST_DIR/repo"
-output=$(node "$TEST_DIR/repo/scripts/howto-pre-commit-prompt.mjs" 2>&1)
+output=$(node "$TEST_DIR/repo/scripts/howto-pre-commit-prompt.ts" 2>&1)
 assert_eq "exit code is 0" "0" "$?"
 assert_eq "no warning printed (no staged files)" "" "$output"
 rm -rf "$TEST_DIR"
@@ -146,7 +147,7 @@ TEST_DIR="$(mktemp -d)"
 setup_fixture_repo "$TEST_DIR/repo"
 echo "new content" > "$TEST_DIR/repo/annix-frontend/src/app/app-one/feature-x/changed.txt"
 git -C "$TEST_DIR/repo" add annix-frontend/src/app/app-one/feature-x/changed.txt
-output=$(node "$TEST_DIR/repo/scripts/howto-pre-commit-prompt.mjs" < /dev/null 2>&1)
+output=$(node "$TEST_DIR/repo/scripts/howto-pre-commit-prompt.ts" < /dev/null 2>&1)
 assert_eq "exit code is 0 (warn-only when no TTY)" "0" "$?"
 assert_contains "mentions affected guide" "guide-one.md" "$output"
 assert_contains "mentions trigger file" "changed.txt" "$output"
@@ -159,7 +160,7 @@ TEST_DIR="$(mktemp -d)"
 setup_fixture_repo "$TEST_DIR/repo"
 echo "new content" > "$TEST_DIR/repo/annix-backend/src/unrelated.ts"
 git -C "$TEST_DIR/repo" add annix-backend/src/unrelated.ts
-output=$(node "$TEST_DIR/repo/scripts/howto-pre-commit-prompt.mjs" < /dev/null 2>&1)
+output=$(node "$TEST_DIR/repo/scripts/howto-pre-commit-prompt.ts" < /dev/null 2>&1)
 assert_eq "exit code is 0" "0" "$?"
 assert_eq "no output (no matching guide)" "" "$output"
 rm -rf "$TEST_DIR"
@@ -171,7 +172,7 @@ TEST_DIR="$(mktemp -d)"
 setup_fixture_repo "$TEST_DIR/repo"
 echo "new content" > "$TEST_DIR/repo/annix-frontend/src/app/app-two/feature-y/changed.txt"
 git -C "$TEST_DIR/repo" add annix-frontend/src/app/app-two/feature-y/changed.txt
-output=$(node "$TEST_DIR/repo/scripts/howto-pre-commit-prompt.mjs" < /dev/null 2>&1)
+output=$(node "$TEST_DIR/repo/scripts/howto-pre-commit-prompt.ts" < /dev/null 2>&1)
 assert_eq "exit code is 0" "0" "$?"
 assert_contains "mentions guide-two from app-two" "guide-two.md" "$output"
 assert_not_contains "does NOT mention guide-one (app-one was not staged)" "guide-one.md" "$output"

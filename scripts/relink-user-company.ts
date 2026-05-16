@@ -3,7 +3,7 @@
  * One-shot: relink a unified user's stock-control profile to a different unified company.
  *
  * Usage:
- *   node scripts/relink-user-company.mjs <user-email> <target-company-id> [--apply]
+ *   node scripts/relink-user-company.ts <user-email> <target-company-id> [--apply]
  *
  * Without --apply, the script does a dry run (read-only) and prints what
  * would change. Add --apply to commit the UPDATE.
@@ -11,8 +11,8 @@
  * Reads DATABASE_* env vars from annix-backend/.env (same vars TypeORM uses).
  *
  * Example (relink andy@polymerliners.co.za to companyId=2):
- *   node scripts/relink-user-company.mjs andy@polymerliners.co.za 2
- *   node scripts/relink-user-company.mjs andy@polymerliners.co.za 2 --apply
+ *   node scripts/relink-user-company.ts andy@polymerliners.co.za 2
+ *   node scripts/relink-user-company.ts andy@polymerliners.co.za 2 --apply
  */
 
 import fs from "node:fs";
@@ -41,9 +41,7 @@ const env = Object.fromEntries(
 
 const [, , email, targetCompanyIdRaw, ...flags] = process.argv;
 if (!email || !targetCompanyIdRaw) {
-  console.error(
-    "Usage: node scripts/relink-user-company.mjs <email> <target-company-id> [--apply]",
-  );
+  console.error("Usage: node scripts/relink-user-company.ts <email> <target-company-id> [--apply]");
   process.exit(1);
 }
 
