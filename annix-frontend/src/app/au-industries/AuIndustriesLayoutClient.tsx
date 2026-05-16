@@ -77,10 +77,7 @@ export function AuIndustriesLayoutClient(props: { children: React.ReactNode }) {
         `}
         </Script>
 
-        <Script
-          src="https://static.elfsight.com/platform/platform.js"
-          strategy="afterInteractive"
-        />
+        <Script src="https://static.elfsight.com/platform/platform.js" strategy="lazyOnload" />
 
         <AuIndustriesNav pages={pages.filter((p) => p.showInNav !== false)} />
 

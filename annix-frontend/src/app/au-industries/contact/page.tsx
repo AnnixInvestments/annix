@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 // eslint-disable-next-line no-restricted-imports -- AU Industries public contact form; requires new public contact-submission hook. Tracked as tech debt.
 import { browserBaseUrl } from "@/lib/api-config";
@@ -65,10 +66,15 @@ export default function AuIndustriesContactPage() {
 
   return (
     <div>
-      <section
-        className="relative h-56 md:h-72 bg-cover bg-center bg-fixed"
-        style={{ backgroundImage: "url(/au-industries/AUI-banner6.jpg)" }}
-      >
+      <section className="relative h-56 md:h-72">
+        <Image
+          src="/au-industries/AUI-banner6.jpg"
+          alt=""
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover"
+        />
         <div className="absolute inset-0 bg-black/50" />
         <div className="relative max-w-4xl mx-auto px-4 h-full flex items-center justify-center">
           <h1 className="text-3xl md:text-5xl font-bold text-white uppercase tracking-wider text-center">

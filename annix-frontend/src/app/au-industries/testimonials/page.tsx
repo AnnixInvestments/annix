@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
+import Image from "next/image";
 import Link from "next/link";
 
 const SITE_URL = "https://auind.co.za";
@@ -113,10 +114,15 @@ export default async function TestimonialsPage() {
         />
       )}
 
-      <section
-        className="relative h-56 md:h-72 bg-cover bg-center bg-fixed"
-        style={{ backgroundImage: "url(/au-industries/AUI-banner3.jpg)" }}
-      >
+      <section className="relative h-56 md:h-72">
+        <Image
+          src="/au-industries/AUI-banner3.jpg"
+          alt=""
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover"
+        />
         <div className="absolute inset-0 bg-black/55" />
         <div className="relative max-w-4xl mx-auto px-4 h-full flex flex-col items-center justify-center text-center">
           <h1 className="text-3xl md:text-5xl font-bold text-white uppercase tracking-wider mb-3">

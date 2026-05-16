@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { AuIndustriesLayoutClient } from "./AuIndustriesLayoutClient";
 import { AU_INDUSTRIES_CONTACT } from "./auIndustriesContact";
 
@@ -40,6 +40,17 @@ export const metadata: Metadata = {
   verification: {
     google: "sp2KS-iFxp5dRSfkuMv7xDR6FHve0O4hMfyApm269xk",
   },
+};
+
+// Overrides the root layout's user-scalable=no (a PWA setting for the internal
+// Annix apps) for the public marketing site only — pinch-zoom must be allowed
+// for accessibility, and Lighthouse flags the lock as a Best Practices failure.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  userScalable: true,
+  themeColor: "#B8860B",
+  viewportFit: "cover",
 };
 
 const localBusinessJsonLd = {

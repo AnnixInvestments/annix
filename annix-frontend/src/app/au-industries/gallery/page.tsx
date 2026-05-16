@@ -242,10 +242,15 @@ function GalleryCard(props: { section: GallerySection }) {
 export default function AuIndustriesGalleryPage() {
   return (
     <div>
-      <section
-        className="relative h-56 md:h-72 bg-cover bg-center bg-fixed"
-        style={{ backgroundImage: "url(/au-industries/AUI-banner8.jpg)" }}
-      >
+      <section className="relative h-56 md:h-72">
+        <Image
+          src="/au-industries/AUI-banner8.jpg"
+          alt=""
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover"
+        />
         <div className="absolute inset-0 bg-black/50" />
         <div className="relative max-w-4xl mx-auto px-4 h-full flex items-center justify-center">
           <h1 className="text-3xl md:text-5xl font-bold text-white uppercase tracking-wider text-center">
@@ -254,10 +259,14 @@ export default function AuIndustriesGalleryPage() {
         </div>
       </section>
 
-      <section
-        className="relative py-12 bg-cover bg-center bg-fixed"
-        style={{ backgroundImage: "url(/au-industries/AUI-banner3.jpg)" }}
-      >
+      <section className="relative py-12">
+        <Image
+          src="/au-industries/AUI-banner3.jpg"
+          alt=""
+          fill
+          sizes="100vw"
+          className="object-cover"
+        />
         <div className="absolute inset-0 bg-black/40" />
         <div className="relative mx-auto px-4 sm:px-6 lg:px-8">
           <p className="text-center text-[#efcc54] text-lg mb-12">

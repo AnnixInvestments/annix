@@ -71,10 +71,15 @@ export default function CaseStudiesIndexPage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      <section
-        className="relative h-56 md:h-72 bg-cover bg-center bg-fixed"
-        style={{ backgroundImage: "url(/au-industries/AUI-banner8.jpg)" }}
-      >
+      <section className="relative h-56 md:h-72">
+        <Image
+          src="/au-industries/AUI-banner8.jpg"
+          alt=""
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover"
+        />
         <div className="absolute inset-0 bg-black/55" />
         <div className="relative max-w-4xl mx-auto px-4 h-full flex flex-col items-center justify-center text-center">
           <h1 className="text-3xl md:text-5xl font-bold text-white uppercase tracking-wider mb-3">

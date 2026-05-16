@@ -25,10 +25,15 @@ export default function AuIndustriesHomePage(): React.JSX.Element {
 
   return (
     <div>
-      <section
-        className="relative h-[550px] md:h-[650px] bg-cover bg-center"
-        style={{ backgroundImage: `url(${heroImage})` }}
-      >
+      <section className="relative h-[550px] md:h-[650px]">
+        <Image
+          src={heroImage}
+          alt="AU Industries rubber lining and mining solutions facility"
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover"
+        />
         <div className="absolute inset-0 bg-black/40" />
         <div className="relative max-w-4xl mx-auto px-4 h-full flex flex-col items-center justify-center text-center">
           <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold text-white uppercase tracking-wider leading-tight mb-10">
@@ -76,10 +81,14 @@ export default function AuIndustriesHomePage(): React.JSX.Element {
         </div>
       </section>
 
-      <section
-        className="relative bg-cover bg-center bg-fixed"
-        style={{ backgroundImage: "url(/au-industries/AUI-homeparallax.jpg)" }}
-      >
+      <section className="relative">
+        <Image
+          src="/au-industries/AUI-homeparallax.jpg"
+          alt=""
+          fill
+          sizes="100vw"
+          className="object-cover"
+        />
         <div className="absolute inset-0 bg-black/35" />
         <div className="relative grid grid-cols-1 md:grid-cols-2">
           <div className="h-[500px] md:h-[600px] flex items-center justify-center p-8">
@@ -213,10 +222,14 @@ export default function AuIndustriesHomePage(): React.JSX.Element {
         </div>
       </section>
 
-      <section
-        className="relative py-10 bg-cover bg-center bg-fixed"
-        style={{ backgroundImage: "url(/au-industries/AUI-banner2.jpg)" }}
-      >
+      <section className="relative py-10">
+        <Image
+          src="/au-industries/AUI-banner2.jpg"
+          alt=""
+          fill
+          sizes="100vw"
+          className="object-cover"
+        />
         <div className="absolute inset-0 bg-black/30" />
         <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div
@@ -226,10 +239,14 @@ export default function AuIndustriesHomePage(): React.JSX.Element {
         </div>
       </section>
 
-      <section
-        className="relative py-20 bg-cover bg-center bg-fixed"
-        style={{ backgroundImage: "url(/au-industries/AUI-banner6.jpg)" }}
-      >
+      <section className="relative py-20">
+        <Image
+          src="/au-industries/AUI-banner6.jpg"
+          alt=""
+          fill
+          sizes="100vw"
+          className="object-cover"
+        />
         <div className="absolute inset-0 bg-black/40" />
         <div className="relative max-w-6xl mx-auto px-4 md:px-8 text-center">
           <h2 className="text-3xl md:text-4xl font-bold text-[#efcc54] uppercase tracking-wider mb-2">
@@ -282,10 +299,14 @@ export default function AuIndustriesHomePage(): React.JSX.Element {
         </div>
       </section>
 
-      <section
-        className="relative bg-cover bg-center bg-fixed"
-        style={{ backgroundImage: "url(/au-industries/history-bg.jpg)" }}
-      >
+      <section className="relative">
+        <Image
+          src="/au-industries/history-bg.jpg"
+          alt=""
+          fill
+          sizes="100vw"
+          className="object-cover"
+        />
         <div className="absolute inset-0 bg-black/20" />
         <div className="relative max-w-7xl mx-auto px-4 md:px-8 py-20">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">

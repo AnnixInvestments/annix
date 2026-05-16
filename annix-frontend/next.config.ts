@@ -17,6 +17,38 @@ const nextConfig: NextConfig = {
     return [];
   },
 
+  async headers() {
+    return [
+      {
+        // Content-hashed build assets — safe to cache forever.
+        source: "/_next/static/:path*",
+        headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
+      },
+      {
+        // Marketing-site images: long cache, but revalidate so a swapped
+        // banner is eventually picked up (these filenames are not hashed).
+        source: "/au-industries/:all*(jpg|jpeg|png|webp|avif|svg|ico|woff2)",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=2592000, stale-while-revalidate=86400",
+          },
+        ],
+      },
+      {
+        source: "/:path*",
+        headers: [
+          {
+            key: "Strict-Transport-Security",
+            value: "max-age=63072000; includeSubDomains; preload",
+          },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+        ],
+      },
+    ];
+  },
+
   async rewrites() {
     return [
       {
