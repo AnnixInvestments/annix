@@ -1,3 +1,4 @@
+import { ApiSchema } from "@nestjs/swagger";
 import { Type } from "class-transformer";
 import { IsArray, IsNumber, IsOptional, IsString, Min, ValidateNested } from "class-validator";
 
@@ -14,6 +15,7 @@ export class CreateDeliveryNoteItemDto {
   photoUrl?: string;
 }
 
+@ApiSchema({ name: "StockControlCreateDeliveryNoteDto" })
 export class CreateDeliveryNoteDto {
   @IsString()
   deliveryNumber: string;

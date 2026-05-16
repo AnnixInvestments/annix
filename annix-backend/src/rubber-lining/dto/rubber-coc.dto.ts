@@ -1,3 +1,4 @@
+import { ApiSchema } from "@nestjs/swagger";
 import { IsArray, IsDateString, IsEnum, IsNumber, IsOptional, IsString } from "class-validator";
 import { DocumentVersionStatus } from "../entities/document-version.types";
 import { AuCocStatus } from "../entities/rubber-au-coc.entity";
@@ -292,6 +293,7 @@ export class RubberDeliveryNoteDto {
   documentPathSiblingCount: number;
 }
 
+@ApiSchema({ name: "RubberLiningCreateDeliveryNoteDto" })
 export class CreateDeliveryNoteDto {
   @IsEnum(DeliveryNoteType)
   deliveryNoteType: DeliveryNoteType;
@@ -319,6 +321,7 @@ export class CreateDeliveryNoteDto {
   stockCategory?: string | null;
 }
 
+@ApiSchema({ name: "RubberLiningUpdateDeliveryNoteDto" })
 export class UpdateDeliveryNoteDto {
   @IsOptional()
   @IsString()

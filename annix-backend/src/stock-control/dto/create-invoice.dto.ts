@@ -1,3 +1,4 @@
+import { ApiSchema } from "@nestjs/swagger";
 import { IsDateString, IsNumber, IsOptional, IsString, Min } from "class-validator";
 
 export class CreateInvoiceDto {
@@ -26,6 +27,7 @@ export class CreateInvoiceDto {
   vatAmount?: number;
 }
 
+@ApiSchema({ name: "StockControlSubmitClarificationDto" })
 export class SubmitClarificationDto {
   @IsOptional()
   @IsNumber()
