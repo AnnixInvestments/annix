@@ -5,9 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
-// eslint-disable-next-line no-restricted-imports -- AU Industries CMS uses dynamic slug routing with editable content; TanStack Query hook would require new public CMS content hook infrastructure. Tracked as tech debt.
-import { browserBaseUrl } from "@/lib/api-config";
+import { useAuIndustriesPage, useUpdateAuIndustriesPage } from "@/app/lib/query/hooks";
 import { type CaseStudy, caseStudiesForService } from "../caseStudies";
 import { useEditMode } from "../context/EditModeContext";
 import { SERVICE_FAQS } from "../serviceFaqs";
@@ -18,72 +16,42 @@ const MarkdownPreview = dynamic(
   { ssr: false },
 );
 
-interface WebsitePage {
-  id: string;
-  slug: string;
-  title: string;
-  metaTitle: string | null;
-  metaDescription: string | null;
-  content: string;
-  heroImageUrl: string | null;
-}
-
 export default function AuIndustriesSlugPage() {
   const params = useParams();
   const slug = params.slug as string;
   const { editMode } = useEditMode();
 
-  const [page, setPage] = useState<WebsitePage | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [notFound, setNotFound] = useState(false);
+  const { data: page, isLoading: loading, isError: notFound } = useAuIndustriesPage(slug);
+  const { mutateAsync: updatePage, isPending: saving } = useUpdateAuIndustriesPage();
   const [editContent, setEditContent] = useState("");
-  const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!slug) return;
-    const base = browserBaseUrl();
-    fetch(`${base}/public/au-industries/pages/${slug}`)
-      .then((res) => {
-        if (!res.ok) {
-          setNotFound(true);
-          return null;
-        }
-        return res.json();
-      })
-      .then((data) => {
-        if (data) {
-          setPage(data);
-          setEditContent(data.content);
-          const rawMetaTitle = data.metaTitle;
-          const pageTitle = rawMetaTitle || data.title;
-          document.title = `${pageTitle} | AU Industries`;
-          const metaDesc = document.querySelector('meta[name="description"]');
-          if (metaDesc && data.metaDescription) {
-            metaDesc.setAttribute("content", data.metaDescription);
-          }
-        }
-      })
-      .catch(() => setNotFound(true))
-      .finally(() => setLoading(false));
-  }, [slug]);
+    if (!page) {
+      return;
+    }
+    setEditContent(page.content);
+    const rawMetaTitle = page.metaTitle;
+    const pageTitle = rawMetaTitle || page.title;
+    document.title = `${pageTitle} | AU Industries`;
+    const metaDesc = document.querySelector('meta[name="description"]');
+    if (metaDesc && page.metaDescription) {
+      metaDesc.setAttribute("content", page.metaDescription);
+    }
+  }, [page]);
 
   const handleSave = async () => {
-    if (!page) return;
-    setSaving(true);
+    if (!page) {
+      return;
+    }
     setSaveMessage(null);
     try {
-      await auRubberApiClient.updateWebsitePage(page.id, {
-        content: editContent,
-      });
-      setPage({ ...page, content: editContent });
+      await updatePage({ id: page.id, content: editContent });
       setSaveMessage("Saved");
       setTimeout(() => setSaveMessage(null), 2000);
     } catch {
       setSaveMessage("Failed to save");
       setTimeout(() => setSaveMessage(null), 3000);
-    } finally {
-      setSaving(false);
     }
   };
 

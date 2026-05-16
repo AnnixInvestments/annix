@@ -2,8 +2,7 @@
 
 import Image from "next/image";
 import { useState } from "react";
-// eslint-disable-next-line no-restricted-imports -- AU Industries public contact form; requires new public contact-submission hook. Tracked as tech debt.
-import { browserBaseUrl } from "@/lib/api-config";
+import { useSubmitAuIndustriesEnquiry } from "@/app/lib/query/hooks";
 import { AU_INDUSTRIES_CONTACT } from "../auIndustriesContact";
 
 export default function AuIndustriesContactPage() {
@@ -12,9 +11,9 @@ export default function AuIndustriesContactPage() {
   const [phone, setPhone] = useState("");
   const [message, setMessage] = useState("");
   const [enquiryType, setEnquiryType] = useState("");
-  const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
+  const { mutateAsync: submitEnquiry, isPending: submitting } = useSubmitAuIndustriesEnquiry();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,22 +22,11 @@ export default function AuIndustriesContactPage() {
       return;
     }
 
-    setSubmitting(true);
     setError("");
+    const fullMessage = enquiryType ? `[${enquiryType}]\n\n${message}` : message;
 
     try {
-      const base = browserBaseUrl();
-      const fullMessage = enquiryType ? `[${enquiryType}]\n\n${message}` : message;
-      const res = await fetch(`${base}/public/au-industries/contact`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, phone, message: fullMessage }),
-      });
-
-      if (!res.ok) {
-        throw new Error("Failed to send message");
-      }
-
+      await submitEnquiry({ name, email, phone, message: fullMessage });
       setSubmitted(true);
       setName("");
       setEmail("");
@@ -47,8 +35,6 @@ export default function AuIndustriesContactPage() {
       setEnquiryType("");
     } catch {
       setError("Failed to send your message. Please try again or contact us directly.");
-    } finally {
-      setSubmitting(false);
     }
   };
 

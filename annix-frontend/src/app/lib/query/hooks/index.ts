@@ -355,6 +355,17 @@ export {
   useTranscript,
   useUpdateTranscript,
 } from "./annix-rep/useTranscript";
+export type {
+  AuIndustriesNavPage,
+  AuIndustriesPage,
+} from "./au-industries/useAuIndustriesContent";
+export {
+  useAuIndustriesNavPages,
+  useAuIndustriesPage,
+  useUpdateAuIndustriesPage,
+} from "./au-industries/useAuIndustriesContent";
+export type { AuIndustriesEnquiry } from "./au-industries/useAuIndustriesEnquiry";
+export { useSubmitAuIndustriesEnquiry } from "./au-industries/useAuIndustriesEnquiry";
 export {
   useAuRubberAccessPermissions,
   useAuRubberAccessRoles,

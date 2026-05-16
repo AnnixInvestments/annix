@@ -2,8 +2,7 @@
 
 import Image from "next/image";
 import { useState } from "react";
-// eslint-disable-next-line no-restricted-imports -- AU Industries public quote form; requires new public quote-submission mutation hook. Tracked as tech debt.
-import { browserBaseUrl } from "@/lib/api-config";
+import { useSubmitAuIndustriesEnquiry } from "@/app/lib/query/hooks";
 
 export default function AuIndustriesQuotePage() {
   const [name, setName] = useState("");
@@ -12,9 +11,9 @@ export default function AuIndustriesQuotePage() {
   const [phone, setPhone] = useState("");
   const [message, setMessage] = useState("");
   const [enquiryType, setEnquiryType] = useState("");
-  const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
+  const { mutateAsync: submitEnquiry, isPending: submitting } = useSubmitAuIndustriesEnquiry();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,25 +22,14 @@ export default function AuIndustriesQuotePage() {
       return;
     }
 
-    setSubmitting(true);
     setError("");
+    const fullName = surname ? `${name} ${surname}` : name;
+    const fullMessage = enquiryType
+      ? `[Quote Request - ${enquiryType}]\n\n${message}`
+      : `[Quote Request]\n\n${message}`;
 
     try {
-      const base = browserBaseUrl();
-      const fullName = surname ? `${name} ${surname}` : name;
-      const fullMessage = enquiryType
-        ? `[Quote Request - ${enquiryType}]\n\n${message}`
-        : `[Quote Request]\n\n${message}`;
-      const res = await fetch(`${base}/public/au-industries/contact`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: fullName, email, phone, message: fullMessage }),
-      });
-
-      if (!res.ok) {
-        throw new Error("Failed to send message");
-      }
-
+      await submitEnquiry({ name: fullName, email, phone, message: fullMessage });
       setSubmitted(true);
       setName("");
       setSurname("");
@@ -51,8 +39,6 @@ export default function AuIndustriesQuotePage() {
       setEnquiryType("");
     } catch {
       setError("Failed to send your request. Please try again or contact us directly.");
-    } finally {
-      setSubmitting(false);
     }
   };
 

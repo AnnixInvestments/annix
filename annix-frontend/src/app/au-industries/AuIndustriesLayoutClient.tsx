@@ -2,19 +2,12 @@
 
 import Script from "next/script";
 import { useEffect, useState } from "react";
-import { browserBaseUrl } from "@/lib/api-config";
+import { useAuIndustriesNavPages } from "@/app/lib/query/hooks";
 import { AU_INDUSTRIES_CONTACT } from "./auIndustriesContact";
 import { AuIndustriesFooter } from "./components/AuIndustriesFooter";
 import { AuIndustriesNav } from "./components/AuIndustriesNav";
 import { WhatsAppButton } from "./components/WhatsAppButton";
 import { EditModeProvider } from "./context/EditModeContext";
-
-interface NavPage {
-  slug: string;
-  title: string;
-  isHomePage: boolean;
-  showInNav?: boolean;
-}
 
 const GA_MEASUREMENT_ID = "G-SSG705PB3R";
 
@@ -27,17 +20,11 @@ function hasAuRubberToken(): boolean {
 }
 
 export function AuIndustriesLayoutClient(props: { children: React.ReactNode }) {
-  const [pages, setPages] = useState<NavPage[]>([]);
+  const { data: pages } = useAuIndustriesNavPages();
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     setIsAdmin(hasAuRubberToken());
-
-    const base = browserBaseUrl();
-    fetch(`${base}/public/au-industries/pages`)
-      .then((res) => res.json())
-      .then((data) => setPages(data))
-      .catch(() => {});
   }, []);
 
   useEffect(() => {

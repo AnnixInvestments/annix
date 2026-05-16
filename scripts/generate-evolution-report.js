@@ -57,6 +57,26 @@ function grepCount(pattern, dir, extensions) {
   return total;
 }
 
+function locAtRef(ref, dir, extensions) {
+  let out;
+  try {
+    out = git(`grep -I -c "^" ${ref} -- "${dir}"`);
+  } catch {
+    return 0;
+  }
+  let total = 0;
+  out.split("\n").filter(Boolean).forEach((line) => {
+    const lastColon = line.lastIndexOf(":");
+    if (lastColon < 0) return;
+    const count = parseInt(line.slice(lastColon + 1), 10) || 0;
+    const beforeCount = line.slice(0, lastColon);
+    const firstColon = beforeCount.indexOf(":");
+    const filePath = firstColon < 0 ? beforeCount : beforeCount.slice(firstColon + 1);
+    if (extensions.some((ext) => filePath.endsWith(ext))) total += count;
+  });
+  return total;
+}
+
 console.log("Generating Codebase Evolution Report...");
 
 const TEAM_START = "2025-12-17";
@@ -175,77 +195,44 @@ let growthFrontend = [];
 let growthBackend = [];
 
 try {
-  const numWeekSamples = Math.min(sortedWeeks.length, 12);
-  const step = Math.max(1, Math.floor(sortedWeeks.length / numWeekSamples));
+  const nowWeekStart = new Date();
+  nowWeekStart.setDate(nowWeekStart.getDate() - nowWeekStart.getDay());
+  const nowWeekKey = nowWeekStart.toISOString().slice(0, 10);
+  const completedWeeks = sortedWeeks.filter((w) => w < nowWeekKey);
+
+  const numWeekSamples = Math.min(completedWeeks.length, 12) || 1;
+  const step = Math.max(1, Math.floor(completedWeeks.length / numWeekSamples));
   const sampleWeeks = [];
-  for (let i = 0; i < sortedWeeks.length; i += step) {
-    sampleWeeks.push(sortedWeeks[i]);
+  for (let i = 0; i < completedWeeks.length; i += step) {
+    sampleWeeks.push(completedWeeks[i]);
   }
-  if (sampleWeeks[sampleWeeks.length - 1] !== sortedWeeks[sortedWeeks.length - 1]) {
-    sampleWeeks.push(sortedWeeks[sortedWeeks.length - 1]);
+  if (
+    completedWeeks.length > 0 &&
+    sampleWeeks[sampleWeeks.length - 1] !== completedWeeks[completedWeeks.length - 1]
+  ) {
+    sampleWeeks.push(completedWeeks[completedWeeks.length - 1]);
   }
-
-  const numstatRaw = git(`log --numstat --format="COMMIT %ai" --since="${TEAM_START}" -- "*.ts" "*.tsx"`);
-  let cumFE = VENDOR_FRONTEND;
-  let cumBE = VENDOR_BACKEND;
-  const weeklyNet = {};
-
-  let currentWeekKey = null;
-  numstatRaw.split("\n").forEach((line) => {
-    if (line.startsWith("COMMIT ")) {
-      const dateStr = line.replace("COMMIT ", "").split(" ")[0];
-      const d = new Date(dateStr);
-      const weekStart = new Date(d);
-      weekStart.setDate(weekStart.getDate() - weekStart.getDay());
-      currentWeekKey = weekStart.toISOString().slice(0, 10);
-      if (!weeklyNet[currentWeekKey]) weeklyNet[currentWeekKey] = { fe: 0, be: 0 };
-    } else if (line.trim() && currentWeekKey) {
-      const parts = line.split("\t");
-      if (parts.length === 3) {
-        const added = parseInt(parts[0]) || 0;
-        const deleted = parseInt(parts[1]) || 0;
-        const filePath = parts[2];
-        const net = added - deleted;
-        if (filePath.startsWith("annix-frontend/")) {
-          weeklyNet[currentWeekKey].fe += net;
-        } else if (filePath.startsWith("annix-backend/")) {
-          weeklyNet[currentWeekKey].be += net;
-        }
-      }
-    }
-  });
 
   growthLabels = [`Vendor\nBase`];
   growthFrontend = [VENDOR_FRONTEND];
   growthBackend = [VENDOR_BACKEND];
 
-  const allWeekKeys = Object.keys(weeklyNet).sort();
-  allWeekKeys.forEach((wk) => {
-    cumFE += weeklyNet[wk].fe;
-    cumBE += weeklyNet[wk].be;
-  });
-
-  let runFE = VENDOR_FRONTEND;
-  let runBE = VENDOR_BACKEND;
   sampleWeeks.forEach((sw) => {
-    allWeekKeys.filter((wk) => wk <= sw && !growthLabels.includes(sw)).forEach((wk) => {
-      if (!weeklyNet._counted) weeklyNet._counted = {};
-      if (!weeklyNet._counted[wk]) {
-        runFE += weeklyNet[wk].fe;
-        runBE += weeklyNet[wk].be;
-        weeklyNet._counted[wk] = true;
-      }
-    });
+    const weekEnd = new Date(sw);
+    weekEnd.setDate(weekEnd.getDate() + 7);
+    const boundary = weekEnd.toISOString().slice(0, 10);
+    const sha = git(`rev-list -1 --before="${boundary}" HEAD`);
+    const ref = sha || "HEAD";
     const d = new Date(sw);
     const label = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
     growthLabels.push(label);
-    growthFrontend.push(Math.max(0, runFE));
-    growthBackend.push(Math.max(0, runBE));
+    growthFrontend.push(locAtRef(ref, "annix-frontend/src", [".ts", ".tsx"]));
+    growthBackend.push(locAtRef(ref, "annix-backend/src", [".ts"]));
   });
 
   growthLabels.push("Now");
-  growthFrontend.push(frontendLOC);
-  growthBackend.push(backendLOC);
+  growthFrontend.push(locAtRef("HEAD", "annix-frontend/src", [".ts", ".tsx"]));
+  growthBackend.push(locAtRef("HEAD", "annix-backend/src", [".ts"]));
 } catch (e) {
   console.warn("Growth chart data generation failed, using simple start/end:", e.message);
   growthLabels = ["Vendor Base", "Now"];
@@ -270,11 +257,27 @@ const generatedDate = todayDate.toLocaleDateString("en-US", { day: "numeric", mo
 
 const traditionalDevs = 5;
 const traditionalYears = Math.round(addedLOC / (traditionalDevs * 40 * 250));
-const traditionalCostUSD = traditionalDevs * traditionalYears * 150000;
-const traditionalCostZAR = traditionalCostUSD * 18;
-const cashSpendZAR = 12000;
+const DEV_SALARY_USD = 150000;
+const traditionalCostUSD = traditionalDevs * traditionalYears * DEV_SALARY_USD;
 const cashSpendUSD = 650;
-const cashAdvantage = cashSpendZAR > 0 ? Math.round(traditionalCostZAR / cashSpendZAR) : 0;
+const costPerLocUSD = addedLOC > 0 ? cashSpendUSD / addedLOC : 0;
+const cashAdvantage = cashSpendUSD > 0 ? Math.round(traditionalCostUSD / cashSpendUSD) : 0;
+
+const FX_RATES = { USD: 1, ZAR: 18.5, GBP: 0.79 };
+const CCY_SYMBOL = { USD: "$", ZAR: "R", GBP: "£" };
+const DEFAULT_CCY = "ZAR";
+
+function fmtMoney(usd, style, ccy) {
+  const value = usd * FX_RATES[ccy];
+  const symbol = CCY_SYMBOL[ccy];
+  if (style === "compact") return symbol + fmtK(Math.round(value));
+  if (style === "perloc") return symbol + (value >= 1 ? value.toFixed(2) : value.toFixed(3));
+  return symbol + fmtNum(Math.round(value));
+}
+
+function money(usd, style) {
+  return `<span class="money" data-usd="${usd}" data-style="${style}">${fmtMoney(usd, style, DEFAULT_CCY)}</span>`;
+}
 
 const html = `<!DOCTYPE html>
 <html lang="en">
@@ -352,6 +355,13 @@ const html = `<!DOCTYPE html>
       font-size: 13px; font-family: inherit; transition: background 0.2s;
     }
     .theme-btn:hover { background: rgba(255,255,255,0.2); }
+    .nav-actions { display: flex; align-items: center; gap: 10px; }
+    .ccy-select {
+      background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2);
+      color: white; padding: 8px 12px; border-radius: 20px; cursor: pointer;
+      font-size: 13px; font-family: inherit;
+    }
+    .ccy-select option { color: #171717; }
     .header-title { color: white; font-size: 36px; font-weight: 800; letter-spacing: -1px; margin-bottom: 8px; }
     .header-subtitle { color: rgba(255,255,255,0.65); font-size: 16px; max-width: 560px; }
     .header-accent { color: var(--orange); }
@@ -570,7 +580,14 @@ const html = `<!DOCTYPE html>
         <div class="brand-sub">Codebase Evolution</div>
       </div>
     </div>
-    <button class="theme-btn" onclick="toggleTheme()">Toggle theme</button>
+    <div class="nav-actions">
+      <select class="ccy-select" id="ccySelect" onchange="setCurrency(this.value)" aria-label="Display currency">
+        <option value="ZAR">ZAR (R)</option>
+        <option value="GBP">GBP (&pound;)</option>
+        <option value="USD">USD ($)</option>
+      </select>
+      <button class="theme-btn" onclick="toggleTheme()">Toggle theme</button>
+    </div>
   </div>
 </nav>
 
@@ -716,15 +733,15 @@ const html = `<!DOCTYPE html>
       </div>
       <div class="cost-card highlight">
         <div class="cost-label">${topContributor.name} + ${secondContributor.name} + AI &mdash; Team phase</div>
-        <div class="cost-headline orange">~R${fmtNum(cashSpendZAR)}</div>
-        <div class="cost-sub">~$${cashSpendUSD} USD cash outlay &middot; Dec 17 2025 &ndash; present</div>
+        <div class="cost-headline orange">~${money(cashSpendUSD, "full")}</div>
+        <div class="cost-sub">Cash outlay &middot; Dec 17 2025 &ndash; present</div>
         <div class="cost-row"><span>Duration</span><strong>${weeksElapsed} weeks</strong></div>
         <div class="cost-row"><span>Team size</span><strong>2 owner-developers + AI</strong></div>
         <div class="cost-row"><span>Lines of code added</span><strong>${fmtNum(addedLOC)}</strong></div>
         <div class="cost-row"><span>Commits</span><strong>${fmtNum(totalCommits)}</strong></div>
         <div class="cost-row"><span>LOC / day</span><strong>~${fmtNum(locPerDay)}</strong></div>
         <div class="cost-row"><span>AI tooling</span><strong>Claude Max subscription</strong></div>
-        <div class="cost-row"><span>Cash cost per LOC</span><strong>R${(cashSpendZAR / addedLOC).toFixed(2)} / $${(cashSpendUSD / addedLOC).toFixed(3)}</strong></div>
+        <div class="cost-row"><span>Cash cost per LOC</span><strong>${money(costPerLocUSD, "perloc")}</strong></div>
       </div>
     </div>
     <div class="value-callout">
@@ -734,14 +751,14 @@ const html = `<!DOCTYPE html>
         <div class="value-stat-sub">${fmtK(addedLOC)} LOC at 40 lines/dev/day needs ~${traditionalYears} years with a ${traditionalDevs}-person team</div>
       </div>
       <div>
-        <div class="value-stat-num">R${fmtK(traditionalCostZAR)} / $${fmtK(traditionalCostUSD)}</div>
+        <div class="value-stat-num">${money(traditionalCostUSD, "compact")}</div>
         <div class="value-stat-lbl">Traditional team cost</div>
-        <div class="value-stat-sub">${traditionalDevs} devs &times; ${traditionalYears} yrs &times; $150K/yr vs R${fmtNum(cashSpendZAR)} / $${cashSpendUSD} cash AI spend</div>
+        <div class="value-stat-sub">${traditionalDevs} devs &times; ${traditionalYears} yrs &times; ${money(DEV_SALARY_USD, "compact")}/yr vs ${money(cashSpendUSD, "full")} cash AI spend</div>
       </div>
       <div>
         <div class="value-stat-num">~${fmtNum(cashAdvantage)}&times;</div>
         <div class="value-stat-lbl">Cash cost advantage</div>
-        <div class="value-stat-sub">R${fmtK(traditionalCostZAR)} traditional vs R${fmtNum(cashSpendZAR)} actual &middot; same output</div>
+        <div class="value-stat-sub">${money(traditionalCostUSD, "compact")} traditional vs ${money(cashSpendUSD, "full")} actual &middot; same output</div>
       </div>
     </div>
   </section>
@@ -901,6 +918,37 @@ const html = `<!DOCTYPE html>
   if (localStorage.getItem('annix-theme') === 'dark' || (!localStorage.getItem('annix-theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
     document.body.classList.add('dark');
   }
+
+  const FX_RATES = { USD: 1, ZAR: 18.5, GBP: 0.79 };
+  const CCY_SYMBOL = { USD: '$', ZAR: 'R', GBP: '£' };
+
+  function fmtKnum(n) {
+    if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+    if (n >= 1000) return Math.round(n / 1000) + 'K';
+    return String(n);
+  }
+  function fmtMoneyJs(usd, style, ccy) {
+    const value = usd * FX_RATES[ccy];
+    const symbol = CCY_SYMBOL[ccy];
+    if (style === 'compact') return symbol + fmtKnum(Math.round(value));
+    if (style === 'perloc') return symbol + (value >= 1 ? value.toFixed(2) : value.toFixed(3));
+    return symbol + Math.round(value).toLocaleString('en-US');
+  }
+  function applyCurrency(ccy) {
+    document.querySelectorAll('.money').forEach(function (el) {
+      el.textContent = fmtMoneyJs(parseFloat(el.dataset.usd), el.dataset.style, ccy);
+    });
+  }
+  function setCurrency(ccy) {
+    localStorage.setItem('annix-ccy', ccy);
+    applyCurrency(ccy);
+  }
+  (function () {
+    const savedCcy = localStorage.getItem('annix-ccy') || 'ZAR';
+    const ccySelect = document.getElementById('ccySelect');
+    if (ccySelect) ccySelect.value = savedCcy;
+    applyCurrency(savedCcy);
+  })();
 
   function gridColor() { return isDark() ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'; }
   function textColor()  { return isDark() ? '#8fa3c0' : '#6b7280'; }
