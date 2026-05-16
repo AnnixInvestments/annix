@@ -108,6 +108,7 @@ export default async function AuIndustriesHomePage(): Promise<React.JSX.Element>
                   src="/au-industries/aui-home01.jpg"
                   alt="Rubber lined pipes in warehouse"
                   fill
+                  sizes="(max-width: 768px) 50vw, 240px"
                   className="object-cover"
                 />
               </div>
@@ -116,6 +117,7 @@ export default async function AuIndustriesHomePage(): Promise<React.JSX.Element>
                   src="/au-industries/aui-home05.jpg"
                   alt="Red rubber sheeting"
                   fill
+                  sizes="(max-width: 768px) 50vw, 240px"
                   className="object-cover"
                 />
               </div>
@@ -124,6 +126,7 @@ export default async function AuIndustriesHomePage(): Promise<React.JSX.Element>
                   src="/au-industries/aui-home04.jpg"
                   alt="Rubber manufacturing"
                   fill
+                  sizes="(max-width: 768px) 50vw, 240px"
                   className="object-cover"
                 />
               </div>
@@ -132,6 +135,7 @@ export default async function AuIndustriesHomePage(): Promise<React.JSX.Element>
                   src="/au-industries/aui-home06.jpg"
                   alt="Rubber sheeting machine"
                   fill
+                  sizes="(max-width: 768px) 50vw, 240px"
                   className="object-cover"
                 />
               </div>
@@ -271,6 +275,7 @@ export default async function AuIndustriesHomePage(): Promise<React.JSX.Element>
                 src="/au-industries/projects-01.jpg"
                 alt="Rubber lining installation"
                 fill
+                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 290px"
                 className="object-cover hover:scale-105 transition-transform duration-300"
               />
             </div>
@@ -279,6 +284,7 @@ export default async function AuIndustriesHomePage(): Promise<React.JSX.Element>
                 src="/au-industries/projects-02.jpg"
                 alt="Blue rubber lined pipes"
                 fill
+                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 290px"
                 className="object-cover hover:scale-105 transition-transform duration-300"
               />
             </div>
@@ -287,6 +293,7 @@ export default async function AuIndustriesHomePage(): Promise<React.JSX.Element>
                 src="/au-industries/projects-03.jpg"
                 alt="Ceramic embedded rubber products"
                 fill
+                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 290px"
                 className="object-cover hover:scale-105 transition-transform duration-300"
               />
             </div>
@@ -295,6 +302,7 @@ export default async function AuIndustriesHomePage(): Promise<React.JSX.Element>
                 src="/au-industries/projects-04.jpg"
                 alt="Pipe fabrication and delivery"
                 fill
+                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 290px"
                 className="object-cover hover:scale-105 transition-transform duration-300"
               />
             </div>
@@ -336,6 +344,7 @@ export default async function AuIndustriesHomePage(): Promise<React.JSX.Element>
                     src="/au-industries/rubbertree01.jpg"
                     alt="Rubber tree tapping"
                     fill
+                    sizes="(max-width: 1024px) 48vw, 310px"
                     className="object-cover"
                   />
                 </div>
@@ -344,6 +353,7 @@ export default async function AuIndustriesHomePage(): Promise<React.JSX.Element>
                     src="/au-industries/rubbertree02.jpg"
                     alt="Rubber tree plantation"
                     fill
+                    sizes="(max-width: 1024px) 48vw, 310px"
                     className="object-cover"
                   />
                 </div>
@@ -352,6 +362,7 @@ export default async function AuIndustriesHomePage(): Promise<React.JSX.Element>
                     src="/au-industries/rubbertree03.jpg"
                     alt="Rubber tree bark"
                     fill
+                    sizes="(max-width: 1024px) 48vw, 310px"
                     className="object-cover"
                   />
                 </div>
@@ -360,6 +371,7 @@ export default async function AuIndustriesHomePage(): Promise<React.JSX.Element>
                     src="/au-industries/rubbertree04.jpg"
                     alt="Latex collection"
                     fill
+                    sizes="(max-width: 1024px) 48vw, 310px"
                     className="object-cover"
                   />
                 </div>
