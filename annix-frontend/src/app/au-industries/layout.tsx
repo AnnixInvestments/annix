@@ -48,6 +48,10 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  // Must be set explicitly: Next.js merges nested viewport exports field by
+  // field, so omitting maximumScale would inherit the root layout's value of 1
+  // and still block pinch-zoom. 5 restores accessible zoom.
+  maximumScale: 5,
   userScalable: true,
   themeColor: "#B8860B",
   viewportFit: "cover",
