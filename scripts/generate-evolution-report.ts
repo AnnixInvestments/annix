@@ -295,7 +295,10 @@ const generatedDate = todayDate.toLocaleDateString("en-US", {
 });
 
 const traditionalDevs = 5;
-const traditionalYears = Math.round(addedLOC / (traditionalDevs * 40 * 250));
+const TRADITIONAL_LOC_PER_DEV_DAY = 50;
+const traditionalYears = Math.round(
+  addedLOC / (traditionalDevs * TRADITIONAL_LOC_PER_DEV_DAY * 250),
+);
 const DEV_SALARY_USD = 150000;
 const traditionalCostUSD = traditionalDevs * traditionalYears * DEV_SALARY_USD;
 const cashSpendUSD = 650;
@@ -787,7 +790,7 @@ const html = `<!DOCTYPE html>
       <div>
         <div class="value-stat-num">${traditionalDevs} devs &middot; ${traditionalYears} yrs</div>
         <div class="value-stat-lbl">Traditional human equivalent</div>
-        <div class="value-stat-sub">${fmtK(addedLOC)} LOC at 40 lines/dev/day needs ~${traditionalYears} years with a ${traditionalDevs}-person team</div>
+        <div class="value-stat-sub">${fmtK(addedLOC)} LOC at ${TRADITIONAL_LOC_PER_DEV_DAY} lines/dev/day needs ~${traditionalYears} years with a ${traditionalDevs}-person team</div>
       </div>
       <div>
         <div class="value-stat-num">${money(traditionalCostUSD, "compact")}</div>
@@ -799,6 +802,9 @@ const html = `<!DOCTYPE html>
         <div class="value-stat-lbl">Cash cost advantage</div>
         <div class="value-stat-sub">${money(traditionalCostUSD, "compact")} traditional vs ${money(cashSpendUSD, "full")} actual &middot; same output</div>
       </div>
+    </div>
+    <div class="callout">
+      <strong>How to read this:</strong> these figures use lines of code as the unit of work, which is a rough proxy at best. AI-assisted code tends to be more verbose than hand-written code, so an equal line count does not mean equal functionality. Treat the multiplier and the cost comparison as illustrative rather than precise. The ${TRADITIONAL_LOC_PER_DEV_DAY} lines/developer/day baseline is a mid-range industry figure for sustained, production-quality output with design, review, testing and debugging included; real rates vary widely with team, domain and codebase maturity.
     </div>
   </section>
 
