@@ -119,6 +119,17 @@ export class PipeScheduleService {
     });
   }
 
+  // Every schedule row — used by the ASCA quote m² calculator to resolve
+  // a real wall thickness for schedule-only pipes (e.g. "100NB x HVY",
+  // SABS 62 Heavy) instead of a linear approximation. is_stainless is
+  // returned so the consumer can prefer carbon-steel rows when a
+  // schedule designation collides across standards (40S, XS, 5S).
+  async getAllSchedules(): Promise<PipeSchedule[]> {
+    return this.scheduleRepo.find({
+      order: { nbMm: "ASC", wallThicknessInch: "ASC" },
+    });
+  }
+
   // Find next suitable schedule that meets minimum thickness
   async getRecommendedSchedule(
     nps: string,

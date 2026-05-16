@@ -16,6 +16,11 @@ export class PipeScheduleController {
     return this.pipeScheduleService.getSchedulesByNbMm(Number(nbMm));
   }
 
+  @Get("all")
+  async getAllSchedules() {
+    return this.pipeScheduleService.getAllSchedules();
+  }
+
   @Get("nps-sizes")
   async getAvailableNpsSizes() {
     return this.pipeScheduleService.getAvailableNpsSizes();
