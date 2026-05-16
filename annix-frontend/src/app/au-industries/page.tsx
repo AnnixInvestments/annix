@@ -1,27 +1,37 @@
-"use client";
-
+import { isString } from "es-toolkit/compat";
+import { headers } from "next/headers";
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { browserBaseUrl } from "@/lib/api-config";
 
 const DEFAULT_HERO_IMAGE = "/au-industries/gallery/gallery29.jpg";
 
-export default function AuIndustriesHomePage(): React.JSX.Element {
-  const [heroImage, setHeroImage] = useState(DEFAULT_HERO_IMAGE);
+// Fetched server-side so the real CMS hero is in the initial HTML with
+// fetchpriority=high. A client-side fetch left the LCP image undiscoverable
+// until after hydration — the homepage's main LCP cost.
+async function fetchHeroImage(): Promise<string> {
+  const headersList = await headers();
+  const host = (headersList.get("host") ?? "").toLowerCase().split(":")[0];
+  if (host.length === 0) {
+    return DEFAULT_HERO_IMAGE;
+  }
+  const protocol = headersList.get("x-forwarded-proto") ?? "https";
+  try {
+    const res = await fetch(`${protocol}://${host}/api/public/au-industries/home`, {
+      next: { revalidate: 300 },
+    });
+    if (!res.ok) {
+      return DEFAULT_HERO_IMAGE;
+    }
+    const data = await res.json();
+    const url = data?.heroImageUrl;
+    return isString(url) && url.length > 0 ? url : DEFAULT_HERO_IMAGE;
+  } catch {
+    return DEFAULT_HERO_IMAGE;
+  }
+}
 
-  useEffect(() => {
-    const base = browserBaseUrl();
-    fetch(`${base}/public/au-industries/home`)
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        const url = data?.heroImageUrl;
-        if (url) {
-          setHeroImage(url);
-        }
-      })
-      .catch(() => {});
-  }, []);
+export default async function AuIndustriesHomePage(): Promise<React.JSX.Element> {
+  const heroImage = await fetchHeroImage();
 
   return (
     <div>

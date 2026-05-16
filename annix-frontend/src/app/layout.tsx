@@ -10,9 +10,13 @@ const geistSans = Geist({
   subsets: ["latin"],
 });
 
+// Secondary fonts: not preloaded — geist-mono is only used inside the apps
+// and great-vibes only in Annix branding, so preloading them render-blocked
+// every page (including the public marketing site) for nothing.
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  preload: false,
 });
 
 // Annix App signature font - elegant cursive for branding
@@ -20,6 +24,7 @@ const greatVibes = Great_Vibes({
   variable: "--font-great-vibes",
   subsets: ["latin"],
   weight: "400",
+  preload: false,
 });
 
 export const metadata: Metadata = {
