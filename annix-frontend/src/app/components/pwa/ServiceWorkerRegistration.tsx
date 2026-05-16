@@ -22,6 +22,15 @@ export default function ServiceWorkerRegistration() {
       return;
     }
 
+    if (process.env.NODE_ENV !== "production") {
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        registrations.forEach((registration) => {
+          registration.unregister();
+        });
+      });
+      return;
+    }
+
     let updateInterval: ReturnType<typeof setInterval> | null = null;
 
     const registerServiceWorker = async () => {
