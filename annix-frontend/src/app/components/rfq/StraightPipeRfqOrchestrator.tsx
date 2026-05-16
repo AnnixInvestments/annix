@@ -422,6 +422,11 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
   // on the backend, and the popup is what tells the user it's still
   // alive vs. hung.
   const [submissionItemCount, setSubmissionItemCount] = useState<number>(0);
+  // RFQ id this draft was already converted into, if any. Set when a
+  // converted draft is loaded — drives the "Re-send BOQ to Suppliers"
+  // recovery button so a BOQ-distribution failure can be retried
+  // without spawning a duplicate RFQ.
+  const [convertedRfqId, setConvertedRfqId] = useState<number | null>(null);
 
   const {
     loadDraft: loadLocalDraft,
@@ -734,6 +739,11 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
 
         setCurrentDraftId(draft.id);
         setDraftNumber(draft.draftNumber);
+        // Capture the converted RFQ id so the BOQ step can offer a
+        // "Re-send BOQ to Suppliers" recovery action for drafts that
+        // already became RFQs.
+        const rawConvertedRfqId = draft.convertedRfqId;
+        setConvertedRfqId(rawConvertedRfqId ?? null);
 
         log.debug(`Loaded draft ${draft.draftNumber}`);
       } catch (error) {
@@ -3415,6 +3425,67 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
     }
   };
 
+  // Re-send the BOQ to suppliers for a draft already converted to an
+  // RFQ — recovers from a BOQ-distribution failure (the RFQ was
+  // created but submitForQuotation threw, leaving the BOQ in draft
+  // status with no supplier sections) WITHOUT creating a duplicate
+  // RFQ. Skips createUnifiedRfq entirely: the RFQ already exists.
+  const handleResendBoq = async () => {
+    if (!convertedRfqId) {
+      showToast("Cannot re-send BOQ: this draft has not been converted to an RFQ yet.", "error");
+      return;
+    }
+    setIsSubmitting(true);
+    setValidationErrors({});
+    try {
+      const rawItemsResend = rfqData.items;
+      const rawStraightPipeEntriesResend = rfqData.straightPipeEntries;
+      const allItems = rawItemsResend || rawStraightPipeEntriesResend || [];
+      const consolidatedData = buildBoqConsolidation(
+        allItems,
+        rfqData,
+        masterData,
+        allWeights,
+        allBnw,
+        allGaskets,
+      );
+      const { customerInfo, projectInfo } = buildCustomerProjectInfo(rfqData);
+      const existingBoq = await boqApi.getByRfqId(convertedRfqId);
+      if (existingBoq) {
+        // Re-run distribution on the existing BOQ — submitForQuotation
+        // deletes + rebuilds sections, so this is safe to repeat.
+        await boqApi.submitForQuotation(existingBoq.id, {
+          boqData: consolidatedData,
+          customerInfo,
+          projectInfo,
+        });
+      } else {
+        // No BOQ row at all — build one and distribute it.
+        await submitBoqForRfq(
+          convertedRfqId,
+          allItems,
+          rfqData,
+          masterData,
+          allWeights,
+          allBnw,
+          allGaskets,
+          boqApi,
+        );
+      }
+      showToast("BOQ re-sent to suppliers successfully.", "success");
+    } catch (error: any) {
+      log.error("Re-send BOQ error:", error);
+      const errorMessage = extractErrorMessage(
+        error,
+        "Failed to re-send the BOQ. Please try again.",
+      );
+      setValidationErrors({ submit: errorMessage });
+      showToast(`Re-send BOQ failed: ${errorMessage}`, "error");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   // When the customer has accepted a BOQ extraction the wizard
   // collapses to a 3-pill toolbar: Project Details, Clarifications,
   // BOQ. The underlying step numbers still match the full flow
@@ -3503,6 +3574,7 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
               onPrevStep={handlePrevStep}
               onSubmit={handleSubmit}
               onResubmit={handleResubmit}
+              onResendBoq={convertedRfqId ? handleResendBoq : undefined}
               isEditing={isEditing}
               clarificationsSkipped={clarificationsSkipped}
             />
@@ -3543,6 +3615,7 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
               onPrevStep={handlePrevStep}
               onSubmit={handleSubmit}
               onResubmit={handleResubmit}
+              onResendBoq={convertedRfqId ? handleResendBoq : undefined}
               isEditing={isEditing}
               clarificationsSkipped={clarificationsSkipped}
             />

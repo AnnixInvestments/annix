@@ -69,6 +69,10 @@ export default function BOQStep(props: {
   onPrevStep?: () => void;
   onSubmit?: () => void;
   onResubmit?: () => void;
+  // Re-send the BOQ to suppliers for a draft already converted to an
+  // RFQ. Used to recover from a BOQ-distribution failure (e.g. the
+  // weldCounts validation reject) without spawning a duplicate RFQ.
+  onResendBoq?: () => void;
   isEditing?: boolean;
   // True when the customer chose Skip on the clarifications step.
   // Drives the warning banner styling — amber when skipped (we
@@ -77,7 +81,7 @@ export default function BOQStep(props: {
   // (jumped here via the step pill).
   clarificationsSkipped?: boolean;
 }) {
-  const { onPrevStep, onSubmit, onResubmit, isEditing, clarificationsSkipped } = props;
+  const { onPrevStep, onSubmit, onResubmit, onResendBoq, isEditing, clarificationsSkipped } = props;
   const rfqData = useRfqWizardStore((s) => s.rfqData);
   const masterData = useRfqWizardStore((s) => s.masterData);
   const loading = useRfqWizardStore((s) => s.isSubmitting);
@@ -314,8 +318,159 @@ export default function BOQStep(props: {
       material: "pvc",
     });
   };
+
+  // Defense-in-depth reclassifier for legacy drafts that came through
+  // Nix BEFORE the consumable-regex fix landed. Those drafts have
+  // steel pipe rows tagged itemType="misc" because their coating spec
+  // mentioned "Carboline" (a brand name) and the old regex matched it.
+  // Here we sniff the description for structural keywords and rebuild
+  // a properly-typed entry in memory so the structured branches below
+  // process it — putting it in the right Steel Pipes / Bends /
+  // Fittings BOQ section instead of "Steel Other". No DB mutation.
+  const reclassifyMiscPipeRow = (orig: any): any => {
+    if (orig.itemType !== "misc") return orig;
+    const rawOrigSpecs = orig.specs;
+    const specs = rawOrigSpecs || {};
+    if (specs.productType !== "steel") return orig;
+    const rawOrigDescription = orig.description;
+    const description = rawOrigDescription || "";
+    if (!description) return orig;
+
+    // Parse DN out of "DN N" or "DN N mild steel" etc. Same regex
+    // shape as the misc-bucket DN parser further down.
+    const dnPrefixMatch = description.match(/(?:DN|OD)\s*(\d{2,4})/i);
+    const dnDiameterMatch = description.match(/(\d{2,4})\s*mm\s*(?:diameter|dia\.?|Ø)/i);
+    const dn = dnPrefixMatch
+      ? Number(dnPrefixMatch[1])
+      : dnDiameterMatch
+        ? Number(dnDiameterMatch[1])
+        : null;
+    if (!dn || !Number.isFinite(dn)) return orig;
+
+    const wtMatch = description.match(/(\d+(?:\.\d+)?)\s*mm\s*wall\s*thickness/i);
+    const wallThicknessMm = wtMatch ? Number(wtMatch[1]) : undefined;
+
+    const lower = description.toLowerCase();
+    const isLateral = /\b\d+\s*deg(?:ree)?s?\s*lateral\b|\blaterals?\b/.test(lower);
+    const isBlankFlange = /\bblank\s*flange\b/.test(lower);
+    const isReducer = /\breducers?\b/.test(lower);
+    const isTee = /\b(t[-\s]?piece|tees?|sweep\s*t)\b/.test(lower);
+    const isBend = /\b(\d+\s*deg(?:ree)?s?\s*bend|long\s*radius|sweep\s*bend|elbow)\b/.test(lower);
+    const isSpool = /\bspools?\b/.test(lower);
+    const isStraightPipe =
+      /\bstraight\s*pipes?\b|\bpipe\s*spools?\b|\bstraight\s*spools?\b/.test(lower) ||
+      (/\bmild\s*steel\s*pipes?\b/.test(lower) &&
+        !isBend &&
+        !isTee &&
+        !isReducer &&
+        !isLateral &&
+        !isBlankFlange);
+
+    // Hoist spec field accesses to plain locals before the OR
+    // fallbacks — keeps the SWC-safety rule happy in dev builds.
+    const rawScheduleNumber = specs.scheduleNumber;
+    const rawScheduleType = specs.scheduleType;
+    const rawQuantityType = specs.quantityType;
+    const rawQuantityValue = specs.quantityValue;
+    const rawIndividualPipeLength = specs.individualPipeLength;
+    const rawUnit = specs.unit;
+
+    const baseSpecsForFitting = {
+      ...specs,
+      nominalDiameterMm: dn,
+      wallThicknessMm,
+      scheduleNumber: rawScheduleNumber || "",
+      quantityType: rawQuantityType || "number_of_items",
+      quantityValue: rawQuantityValue || 1,
+      fittingStandard: "SABS719",
+    };
+
+    if (isLateral) {
+      return {
+        ...orig,
+        itemType: "fitting",
+        materialType: "steel",
+        specs: { ...baseSpecsForFitting, fittingType: "SABS719_LATERAL" },
+      };
+    }
+    if (isReducer) {
+      return {
+        ...orig,
+        itemType: "fitting",
+        materialType: "steel",
+        specs: { ...baseSpecsForFitting, fittingType: "CON_REDUCER" },
+      };
+    }
+    if (isTee) {
+      return {
+        ...orig,
+        itemType: "fitting",
+        materialType: "steel",
+        specs: { ...baseSpecsForFitting, fittingType: "SWEEP_TEE" },
+      };
+    }
+    if (isBlankFlange) {
+      return {
+        ...orig,
+        itemType: "fitting",
+        materialType: "steel",
+        specs: { ...baseSpecsForFitting, fittingType: "EQUAL_TEE" },
+      };
+    }
+    if (isBend) {
+      const angleMatch = description.match(/(\d+(?:\.\d+)?)\s*deg(?:ree)?s?/i);
+      const bendDegrees = angleMatch ? Number(angleMatch[1]) : 90;
+      const radiusMatch = description.match(/(\d+(?:\.\d+)?)\s*[xX]\s*D\b/);
+      const bendType = radiusMatch ? `${radiusMatch[1]}D` : "3D";
+      return {
+        ...orig,
+        itemType: "bend",
+        materialType: "steel",
+        specs: {
+          ...specs,
+          nominalBoreMm: dn,
+          wallThicknessMm,
+          bendDegrees,
+          bendType,
+          scheduleNumber: rawScheduleNumber || "",
+          quantityType: rawQuantityType || "number_of_items",
+          quantityValue: rawQuantityValue || 1,
+        },
+      };
+    }
+    if (isStraightPipe || isSpool) {
+      const unitLower = isString(rawUnit) ? rawUnit.toLowerCase() : "";
+      const unitIsMetres = /^(m|lm|metres?|meters?)$/.test(unitLower);
+      const explicitLengthM = description.match(
+        /(\d+(?:\.\d+)?)\s*m(?:etres?)?\s+(?:pipe\s*)?(?:length|long)\b/i,
+      );
+      const explicitLengthMm = description.match(/(\d+(?:\.\d+)?)\s*mm\s+long\b/i);
+      let pipeLengthM = rawIndividualPipeLength || 12;
+      if (explicitLengthM) pipeLengthM = Number(explicitLengthM[1]);
+      else if (explicitLengthMm) pipeLengthM = Number(explicitLengthMm[1]) / 1000;
+      return {
+        ...orig,
+        itemType: "straight_pipe",
+        materialType: "steel",
+        specs: {
+          ...specs,
+          nominalBoreMm: dn,
+          wallThicknessMm,
+          scheduleType: rawScheduleType || "wall_thickness",
+          scheduleNumber: rawScheduleNumber || "",
+          individualPipeLength: pipeLengthM,
+          lengthUnit: "meters",
+          quantityType: unitIsMetres ? "total_length" : "number_of_pipes",
+          quantityValue: rawQuantityValue || 1,
+        },
+      };
+    }
+    return orig;
+  };
+
   // Process each entry
-  entries.forEach((entry) => {
+  entries.forEach((rawEntry) => {
+    const entry = reclassifyMiscPipeRow(rawEntry);
     const rawClientItemNumber = entry.clientItemNumber;
     const itemNumber = rawClientItemNumber || entry.id;
     const rawQuantityValue = entry.specs?.quantityValue;
@@ -3030,6 +3185,48 @@ export default function BOQStep(props: {
                 )}
               </button>
             )
+          )}
+          {onResendBoq && (
+            <button
+              type="button"
+              onClick={onResendBoq}
+              disabled={loading}
+              title="This draft is already an RFQ — re-send its BOQ to suppliers without creating a new RFQ."
+              className="px-8 py-3 bg-orange-600 text-white font-semibold rounded-lg hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              {loading ? (
+                <>
+                  <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                  </svg>
+                  Re-sending BOQ...
+                </>
+              ) : (
+                <>
+                  Re-send BOQ to Suppliers
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                    />
+                  </svg>
+                </>
+              )}
+            </button>
           )}
         </div>
       </div>
