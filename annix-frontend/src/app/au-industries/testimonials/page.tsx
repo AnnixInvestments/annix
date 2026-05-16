@@ -5,7 +5,6 @@ import Link from "next/link";
 
 const SITE_URL = "https://auind.co.za";
 const GOOGLE_REVIEW_URL = "https://www.google.com/maps?cid=7279509968095619778";
-const ELFSIGHT_WIDGET_CLASS = "elfsight-app-4c13c174-7edd-4de9-b428-dc35d38ec263";
 
 interface PublicTestimonial {
   id: string;
@@ -158,19 +157,6 @@ export default async function TestimonialsPage() {
           </div>
         </section>
       )}
-
-      <section className="bg-[#fdf8e8] py-16 border-t border-[#B8860B]/20">
-        <div className="max-w-5xl mx-auto px-4">
-          <h2 className="text-2xl md:text-3xl font-bold text-[#B8860B] uppercase tracking-wide mb-2">
-            Live Google reviews
-          </h2>
-          <div className="w-20 h-[3px] bg-[#B8860B] mb-8" />
-          <p className="text-gray-700 mb-8">
-            Verified reviews from our Google Business Profile, updated automatically.
-          </p>
-          <div className={ELFSIGHT_WIDGET_CLASS} data-elfsight-app-lazy />
-        </div>
-      </section>
 
       <section className="bg-gray-900 py-16">
         <div className="max-w-3xl mx-auto px-4 text-center">
