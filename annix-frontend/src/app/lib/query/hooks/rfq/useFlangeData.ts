@@ -11,6 +11,7 @@ import {
   masterDataApi,
   type RetainingRingWeightRecord,
 } from "@/app/lib/api/client";
+import { normaliseScheduleDesignation } from "@/app/lib/nix/components/quote/surfaceAreaForQuoteItem";
 import { flangeWeightKeys } from "../../keys";
 
 export type { FlangeType, FlangeTypeWeightRecord };
@@ -45,6 +46,40 @@ export function useNbToOdMap() {
         (acc, r) => ({ ...acc, [r.nominal_bore_mm]: Number(r.outside_diameter_mm) }),
         {},
       );
+    },
+    staleTime: Number.POSITIVE_INFINITY,
+  });
+}
+
+/**
+ * Lookup map from `${nb}|${normalisedSchedule}` to wall thickness in mm,
+ * built from the pipe_schedules DB table. Lets the ASCA quote m²
+ * calculator resolve a real wall for a schedule-only pipe (e.g. a
+ * "100NB x HVY" SABS 62 Heavy pipe) instead of a linear approximation.
+ *
+ * Schedule designations are normalised so the DB's "Heavy" / "STD" /
+ * "40" and a drawing's "HVY" / "SCH.STD" / "SCH40" collapse to the same
+ * key. Carbon-steel rows win over stainless (ASME B36.19) when a
+ * schedule name collides across standards (40S / XS / 5S).
+ */
+export function usePipeScheduleWallMap() {
+  return useQuery<Record<string, number>>({
+    queryKey: flangeWeightKeys.scheduleWallMap(),
+    queryFn: async () => {
+      const records = await flangeWeightApi.allPipeSchedules();
+      const map: Record<string, number> = {};
+      for (const r of records) {
+        const nb = Number(r.nbMm);
+        const sched = normaliseScheduleDesignation(r.schedule);
+        const wall = Number(r.wallThicknessMm);
+        if (!Number.isFinite(nb) || nb <= 0 || !sched) continue;
+        if (!Number.isFinite(wall) || wall <= 0) continue;
+        const key = `${nb}|${sched}`;
+        if (map[key] === undefined || r.standardCode !== "ASME B36.19") {
+          map[key] = wall;
+        }
+      }
+      return map;
     },
     staleTime: Number.POSITIVE_INFINITY,
   });

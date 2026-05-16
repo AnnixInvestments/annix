@@ -861,6 +861,7 @@ export {
   useAllRetainingRingWeights,
   useNbToOdLookup,
   useNbToOdMap,
+  usePipeScheduleWallMap,
 } from "./rfq/useFlangeData";
 export type {
   CachedSuitabilityResult,

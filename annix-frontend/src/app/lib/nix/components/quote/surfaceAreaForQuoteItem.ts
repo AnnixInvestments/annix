@@ -136,13 +136,52 @@ function fallbackWallThicknessMm(nbMm: number): number {
 }
 
 /**
- * Resolves the wall thickness to use for area math. If the extraction
- * captured a wallThickness value, prefer it; otherwise fall back to the
- * SCH.STD approximation above.
+ * Lookup map from `${nb}|${normalisedSchedule}` to wall thickness in mm,
+ * built from the pipe_schedules DB table (see usePipeScheduleWallMap).
  */
-function effectiveWallMm(item: QuoteItem, nbMm: number): number {
+export type ScheduleWallMap = Record<string, number>;
+
+/**
+ * Normalises a pipe-schedule designation to a stable lookup token so a
+ * drawing's "HVY" / "SCH.STD" / "SCH40" and the DB's "Heavy" / "STD" /
+ * "40" all collapse to the same key. Used both to KEY the schedule-wall
+ * map (from DB schedule names) and to LOOK UP a drawing item's schedule
+ * against it. Returns null when there's nothing usable.
+ */
+export function normaliseScheduleDesignation(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  let s = raw.trim().toLowerCase();
+  if (s.length === 0) return null;
+  // Drop a leading "sch" prefix and all dots / spaces / dashes:
+  // "SCH.STD" → "std", "SCH 40" → "40", "SCH-80" → "80", "STD" → "std".
+  s = s.replace(/^sch[\s.-]*/, "").replace(/[\s.-]+/g, "");
+  if (s.length === 0) return null;
+  const aliases: Record<string, string> = {
+    hvy: "heavy",
+    med: "medium",
+    lgt: "light",
+  };
+  const aliased = aliases[s];
+  return aliased ? aliased : s;
+}
+
+/**
+ * Resolves the wall thickness to use for area math:
+ *  1. an explicit numeric wallThickness from the extraction, else
+ *  2. the real DB wall for the item's schedule (e.g. "HVY" → SABS 62
+ *     Heavy) via the schedule-wall map, else
+ *  3. the linear SCH.STD approximation.
+ */
+function effectiveWallMm(item: QuoteItem, nbMm: number, scheduleWallMap?: ScheduleWallMap): number {
   const wt = item.wallThickness;
   if (wt && wt > 0) return wt;
+  if (scheduleWallMap) {
+    const sched = normaliseScheduleDesignation(item.schedule);
+    if (sched) {
+      const dbWall = scheduleWallMap[`${nbMm}|${sched}`];
+      if (dbWall && dbWall > 0) return dbWall;
+    }
+  }
   return fallbackWallThicknessMm(nbMm);
 }
 
@@ -176,12 +215,13 @@ function bendArea(
   item: QuoteItem,
   angleDeg: number,
   nbToOdMap: Record<number, number>,
+  scheduleWallMap?: ScheduleWallMap,
 ): ItemSurfaceArea | null {
   const nb = item.diameter;
   if (nb === null || nb <= 0) return null;
   const odMm = outerDiameterFromNB(nbToOdMap, nb);
   if (odMm <= 0) return null;
-  const wt = effectiveWallMm(item, nb);
+  const wt = effectiveWallMm(item, nb, scheduleWallMap);
   const idMm = wt > 0 ? odMm - 2 * wt : 0;
   const explicitLength = item.length;
   const flangeCount = countFlangesFromConfig(item.flangeConfig);
@@ -202,7 +242,11 @@ function bendArea(
  * standard length as `H ≈ 0.6 × max(OD)` which lands within ~15 % of the
  * published B16.9 table across NPS 4–24.
  */
-function reducerArea(item: QuoteItem, nbToOdMap: Record<number, number>): ItemSurfaceArea | null {
+function reducerArea(
+  item: QuoteItem,
+  nbToOdMap: Record<number, number>,
+  scheduleWallMap?: ScheduleWallMap,
+): ItemSurfaceArea | null {
   const nb1 = item.diameter;
   if (nb1 === null || nb1 <= 0) return null;
   const nb2 = secondaryNbFromDescription(item);
@@ -211,8 +255,8 @@ function reducerArea(item: QuoteItem, nbToOdMap: Record<number, number>): ItemSu
   if (od1 <= 0 || od2 <= 0) return null;
   // Wall-thickness fallback per end so internal-lining area still computes
   // when the drawing only printed "SCH.STD" without an explicit WT.
-  const wt1 = effectiveWallMm(item, nb1);
-  const wt2 = effectiveWallMm(item, nb2 && nb2 > 0 ? nb2 : nb1);
+  const wt1 = effectiveWallMm(item, nb1, scheduleWallMap);
+  const wt2 = effectiveWallMm(item, nb2 && nb2 > 0 ? nb2 : nb1, scheduleWallMap);
   const id1 = wt1 > 0 ? od1 - 2 * wt1 : 0;
   const id2 = wt2 > 0 ? od2 - 2 * wt2 : 0;
   const explicitLength = item.length;
@@ -264,14 +308,18 @@ function reducerArea(item: QuoteItem, nbToOdMap: Record<number, number>): ItemSu
  * the internal area (the run dominates and the run NB is the largest of
  * the three faces — conservative for the customer).
  */
-function teeArea(item: QuoteItem, nbToOdMap: Record<number, number>): ItemSurfaceArea | null {
+function teeArea(
+  item: QuoteItem,
+  nbToOdMap: Record<number, number>,
+  scheduleWallMap?: ScheduleWallMap,
+): ItemSurfaceArea | null {
   const nbRun = item.diameter;
   if (nbRun === null || nbRun <= 0) return null;
   const nbBranchParsed = secondaryNbFromDescription(item);
   const nbBranch = nbBranchParsed && nbBranchParsed > 0 ? nbBranchParsed : nbRun;
   const odRun = outerDiameterFromNB(nbToOdMap, nbRun);
   if (odRun <= 0) return null;
-  const wtRun = effectiveWallMm(item, nbRun);
+  const wtRun = effectiveWallMm(item, nbRun, scheduleWallMap);
   const idRun = wtRun > 0 ? odRun - 2 * wtRun : 0;
 
   // Tees have 3 open ends. countFlangesFromConfig only returns 0/1/2 (it was
@@ -320,12 +368,16 @@ function teeArea(item: QuoteItem, nbToOdMap: Record<number, number>): ItemSurfac
  * usually share the main NB or are slightly smaller; using the main NB
  * is conservative for the customer).
  */
-function manifoldArea(item: QuoteItem, nbToOdMap: Record<number, number>): ItemSurfaceArea | null {
+function manifoldArea(
+  item: QuoteItem,
+  nbToOdMap: Record<number, number>,
+  scheduleWallMap?: ScheduleWallMap,
+): ItemSurfaceArea | null {
   const nbRun = item.diameter;
   if (nbRun === null || nbRun <= 0) return null;
   const odRun = outerDiameterFromNB(nbToOdMap, nbRun);
   if (odRun <= 0) return null;
-  const wtRun = effectiveWallMm(item, nbRun);
+  const wtRun = effectiveWallMm(item, nbRun, scheduleWallMap);
   const idRun = wtRun > 0 ? odRun - 2 * wtRun : 0;
 
   const stubCount = parseStubCountFromDescription(item.description) ?? 2;
@@ -396,12 +448,16 @@ function flangeArea(item: QuoteItem, nbToOdMap: Record<number, number>): ItemSur
  * trivial; for quoting purposes we sum three arm surfaces and subtract a
  * small overlap (one OD-disc per joint).
  */
-function equalYArea(item: QuoteItem, nbToOdMap: Record<number, number>): ItemSurfaceArea | null {
+function equalYArea(
+  item: QuoteItem,
+  nbToOdMap: Record<number, number>,
+  scheduleWallMap?: ScheduleWallMap,
+): ItemSurfaceArea | null {
   const nb = item.diameter;
   if (nb === null || nb <= 0) return null;
   const odMm = outerDiameterFromNB(nbToOdMap, nb);
   if (odMm <= 0) return null;
-  const wt = effectiveWallMm(item, nb);
+  const wt = effectiveWallMm(item, nb, scheduleWallMap);
   const idMm = wt > 0 ? odMm - 2 * wt : 0;
   const explicitLength = item.length;
   const armLenMm = explicitLength && explicitLength > 0 ? explicitLength : 1.5 * odMm;
@@ -440,19 +496,20 @@ function equalYArea(item: QuoteItem, nbToOdMap: Record<number, number>): ItemSur
 export function surfaceAreaForQuoteItem(
   item: QuoteItem,
   nbToOdMap: Record<number, number>,
-  options?: { liningWrapsOverPlainEnds?: boolean },
+  options?: { liningWrapsOverPlainEnds?: boolean; scheduleWallMap?: ScheduleWallMap },
 ): ItemSurfaceArea | null {
+  const scheduleWallMap = options ? options.scheduleWallMap : undefined;
   // Dispatch by fitting kind first — fittings have their own formulas and
   // don't share the cylinder-with-length requirement that pipes need.
   const kind = classifyFitting(item);
-  if (kind === "bend_90") return bendArea(item, 90, nbToOdMap);
-  if (kind === "bend_45") return bendArea(item, 45, nbToOdMap);
-  if (kind === "bend_180") return bendArea(item, 180, nbToOdMap);
-  if (kind === "reducer") return reducerArea(item, nbToOdMap);
-  if (kind === "tee") return teeArea(item, nbToOdMap);
-  if (kind === "manifold") return manifoldArea(item, nbToOdMap);
+  if (kind === "bend_90") return bendArea(item, 90, nbToOdMap, scheduleWallMap);
+  if (kind === "bend_45") return bendArea(item, 45, nbToOdMap, scheduleWallMap);
+  if (kind === "bend_180") return bendArea(item, 180, nbToOdMap, scheduleWallMap);
+  if (kind === "reducer") return reducerArea(item, nbToOdMap, scheduleWallMap);
+  if (kind === "tee") return teeArea(item, nbToOdMap, scheduleWallMap);
+  if (kind === "manifold") return manifoldArea(item, nbToOdMap, scheduleWallMap);
   if (kind === "flange") return flangeArea(item, nbToOdMap);
-  if (kind === "equal_y") return equalYArea(item, nbToOdMap);
+  if (kind === "equal_y") return equalYArea(item, nbToOdMap, scheduleWallMap);
 
   const itemDiameter = item.diameter;
   const itemLengthMm = item.length;
@@ -467,7 +524,7 @@ export function surfaceAreaForQuoteItem(
   // formulas use. Previously the pipe branch hard-rejected a null
   // wallThickness, so a "100NB x HVY Pipe" row produced NO m² at all
   // even though external area (π × OD × L) never needed the wall.
-  const itemWall = effectiveWallMm(item, dn);
+  const itemWall = effectiveWallMm(item, dn, scheduleWallMap);
   const idMm = odMm - 2 * itemWall;
   if (idMm <= 0) return null;
 

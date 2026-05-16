@@ -6,4 +6,5 @@ export const flangeWeightKeys = {
   allRetainingRings: () => [...flangeWeightKeys.all, "all-retaining-rings"] as const,
   allGasketWeights: () => [...flangeWeightKeys.all, "all-gasket-weights"] as const,
   allFlangeTypes: () => [...flangeWeightKeys.all, "all-flange-types"] as const,
+  scheduleWallMap: () => [...flangeWeightKeys.all, "schedule-wall-map"] as const,
 } as const;

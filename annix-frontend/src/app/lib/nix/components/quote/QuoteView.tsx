@@ -8,6 +8,7 @@ import {
   type QuoteEditorStateDto,
   type QuoteNotesDto,
   useNbToOdMap,
+  usePipeScheduleWallMap,
   useSaveQuoteEditorState,
   useSaveQuoteNotes,
 } from "@/app/lib/query/hooks";
@@ -39,6 +40,7 @@ import {
   effectiveLiningLengthM,
   type ItemSurfaceArea,
   isLongPipeForLiningPricing,
+  type ScheduleWallMap,
   sumPoolTotals,
   surfaceAreaForQuoteItem,
 } from "./surfaceAreaForQuoteItem";
@@ -357,6 +359,12 @@ export function QuoteView(props: QuoteViewProps) {
   const nbToOdQuery = useNbToOdMap();
   const nbToOdData = nbToOdQuery.data;
   const nbToOdMap = useMemo(() => (nbToOdData ? nbToOdData : {}), [nbToOdData]);
+  const scheduleWallQuery = usePipeScheduleWallMap();
+  const scheduleWallData = scheduleWallQuery.data;
+  const scheduleWallMap = useMemo(
+    () => (scheduleWallData ? scheduleWallData : {}),
+    [scheduleWallData],
+  );
   const isAreaReady = !nbToOdQuery.isLoading;
 
   const scopedPools = pools.filter((p) => !p.isNoScope);
@@ -567,7 +575,10 @@ export function QuoteView(props: QuoteViewProps) {
       const items = pool.items;
       const wrap = Boolean(pool.coating) && Boolean(pool.lining);
       const areas = items.map((item) =>
-        surfaceAreaForQuoteItem(item, nbToOdMap, { liningWrapsOverPlainEnds: wrap }),
+        surfaceAreaForQuoteItem(item, nbToOdMap, {
+          liningWrapsOverPlainEnds: wrap,
+          scheduleWallMap,
+        }),
       );
       const totals = sumPoolTotals(areas);
       const coatingRate = lookupSpecRate(specRates, pool.coating);
@@ -582,7 +593,7 @@ export function QuoteView(props: QuoteViewProps) {
       total += liningBreakdown.total;
     }
     return total;
-  }, [renderedPools, specRates, nbToOdMap, isAreaReady]);
+  }, [renderedPools, specRates, nbToOdMap, scheduleWallMap, isAreaReady]);
 
   const specByCode = useMemo(() => {
     const map = new Map<string, SpecListing>();
@@ -646,6 +657,7 @@ export function QuoteView(props: QuoteViewProps) {
           pool={pool}
           sectionNumber={idx + 1}
           nbToOdMap={nbToOdMap}
+          scheduleWallMap={scheduleWallMap}
           isAreaReady={isAreaReady}
           specRates={specRates}
           specOverrides={specOverrides}
@@ -669,6 +681,7 @@ export function QuoteView(props: QuoteViewProps) {
             pool={pool}
             sectionNumber={scopedPools.length + idx + 1}
             nbToOdMap={nbToOdMap}
+            scheduleWallMap={scheduleWallMap}
             isAreaReady={isAreaReady}
             specRates={specRates}
             specOverrides={specOverrides}
@@ -842,6 +855,7 @@ function PoolSection(props: {
   pool: QuotePool;
   sectionNumber: number;
   nbToOdMap: Record<number, number>;
+  scheduleWallMap: ScheduleWallMap;
   isAreaReady: boolean;
   specRates: SpecRates;
   specOverrides: SpecOverrides;
@@ -853,6 +867,7 @@ function PoolSection(props: {
     pool,
     sectionNumber,
     nbToOdMap,
+    scheduleWallMap,
     isAreaReady,
     specRates,
     specOverrides,
@@ -868,9 +883,9 @@ function PoolSection(props: {
   const itemAreas = useMemo(() => {
     if (!isAreaReady) return pool.items.map(() => null);
     return pool.items.map((item) =>
-      surfaceAreaForQuoteItem(item, nbToOdMap, { liningWrapsOverPlainEnds }),
+      surfaceAreaForQuoteItem(item, nbToOdMap, { liningWrapsOverPlainEnds, scheduleWallMap }),
     );
-  }, [pool.items, nbToOdMap, isAreaReady, liningWrapsOverPlainEnds]);
+  }, [pool.items, nbToOdMap, scheduleWallMap, isAreaReady, liningWrapsOverPlainEnds]);
   const totals = useMemo(() => sumPoolTotals(itemAreas), [itemAreas]);
   const coatingBothSides =
     pool.coatingResolved !== null && pool.coatingResolved.coatingSides === "both";

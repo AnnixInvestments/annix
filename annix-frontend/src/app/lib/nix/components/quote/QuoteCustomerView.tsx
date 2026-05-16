@@ -11,6 +11,7 @@ import {
   type QuoteNotesDto,
   type QuotePdfSnapshotDto,
   useNbToOdMap,
+  usePipeScheduleWallMap,
 } from "@/app/lib/query/hooks";
 import { useStockControlCustomer } from "@/app/lib/query/hooks/stock-control";
 import { poolItemsBySpec, type QuoteItem, type QuotePool } from "./poolItemsBySpec";
@@ -79,6 +80,9 @@ export function QuoteCustomerView(props: {
   const nbToOdQuery = useNbToOdMap();
   const nbToOdData = nbToOdQuery.data;
   const nbToOdMap = useMemo(() => nbToOdData ?? {}, [nbToOdData]);
+  const scheduleWallQuery = usePipeScheduleWallMap();
+  const scheduleWallData = scheduleWallQuery.data;
+  const scheduleWallMap = useMemo(() => scheduleWallData ?? {}, [scheduleWallData]);
   const isAreaReady = !nbToOdQuery.isLoading;
 
   // Customer-facing — hide unscoped items (matches PolymerLining mode).
@@ -128,7 +132,7 @@ export function QuoteCustomerView(props: {
   const poolRows = useMemo(() => {
     return scopedPools.map((pool) => {
       const itemAreas = isAreaReady
-        ? pool.items.map((item) => surfaceAreaForQuoteItem(item, nbToOdMap))
+        ? pool.items.map((item) => surfaceAreaForQuoteItem(item, nbToOdMap, { scheduleWallMap }))
         : pool.items.map(() => null);
       const coatingRate = lookupSpecRate(specRates, pool.coating);
       const liningRate = lookupSpecRate(specRates, pool.lining);
@@ -148,7 +152,7 @@ export function QuoteCustomerView(props: {
       const poolExcl = items.reduce((acc, row) => acc + row.lineExcl, 0);
       return { pool, items, poolExcl };
     });
-  }, [scopedPools, specRates, isAreaReady, nbToOdMap]);
+  }, [scopedPools, specRates, isAreaReady, nbToOdMap, scheduleWallMap]);
 
   const subtotalExcl = poolRows.reduce((acc, r) => acc + r.poolExcl, 0);
   const totalTax = subtotalExcl * SOUTH_AFRICA_VAT_RATE;

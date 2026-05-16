@@ -181,6 +181,25 @@ function authHeaders(): Record<string, string> {
   return legacy ? { Authorization: `Bearer ${legacy}` } : {};
 }
 
+/**
+ * One row of the pipe_schedules reference table. Decimal columns arrive
+ * as strings (TypeORM serialises numeric as string) — callers Number()
+ * them. standardCode distinguishes carbon-steel standards (ASME B36.10,
+ * SABS 62/719) from stainless (ASME B36.19) so a consumer can break
+ * schedule-name collisions (40S / XS / 5S exist in both B36.10 + B36.19).
+ */
+export interface PipeScheduleRecord {
+  id: number;
+  nps: string;
+  nbMm: string | number;
+  schedule: string;
+  wallThicknessMm: string | number;
+  wallThicknessInch: string | number;
+  outsideDiameterMm: string | number;
+  outsideDiameterInch: string | number;
+  standardCode: string;
+}
+
 class ApiClient {
   private baseURL: string;
 
@@ -1280,6 +1299,10 @@ class ApiClient {
   async allGasketWeights(): Promise<GasketWeightRecord[]> {
     return this.request<GasketWeightRecord[]>("/gasket-weight");
   }
+
+  async allPipeSchedules(): Promise<PipeScheduleRecord[]> {
+    return this.request<PipeScheduleRecord[]>("/pipe-schedules/all");
+  }
 }
 
 // Create and export the API client instance
@@ -1474,6 +1497,7 @@ export const flangeWeightApi = {
   allNbToOd: () => apiClient.allNbToOd(),
   allRetainingRingWeights: () => apiClient.allRetainingRingWeights(),
   allGasketWeights: () => apiClient.allGasketWeights(),
+  allPipeSchedules: () => apiClient.allPipeSchedules(),
 };
 
 export const coatingSpecificationApi = {
