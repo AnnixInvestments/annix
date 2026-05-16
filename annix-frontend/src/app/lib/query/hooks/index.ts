@@ -611,6 +611,8 @@ export {
   useCvUpdateMyNotificationPreferences,
   useCvUploadMyDocument,
   useCvWithdrawMyConsent,
+  useGenerateNixCv,
+  useNixGeneratedCv,
 } from "./cv-assistant/useCvIndividualProfile";
 export {
   useCvCalendarAdvisory,

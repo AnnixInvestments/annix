@@ -77,6 +77,7 @@ export const FEATURE_FLAGS = {
   STOCK_MGMT_VALUATION_EXPORTS: "STOCK_MGMT_VALUATION_EXPORTS",
   STOCK_MGMT_NIX_QUOTE_FROM_DOCUMENTS: "STOCK_MGMT_NIX_QUOTE_FROM_DOCUMENTS",
   CV_ASSISTANT_EE_COMPLIANCE_ENABLED: "CV_ASSISTANT_EE_COMPLIANCE_ENABLED",
+  CV_ASSISTANT_NIX_CV_BUILDER: "CV_ASSISTANT_NIX_CV_BUILDER",
 } as const;
 
 export type FeatureFlagKey = (typeof FEATURE_FLAGS)[keyof typeof FEATURE_FLAGS];
@@ -166,6 +167,8 @@ export const FEATURE_FLAG_DESCRIPTIONS: Record<FeatureFlagKey, string> = {
     "Stock management module — sellable add-on: Nix 'New quote from documents'. Drop drawings + specs, auto-extract items + codes, mine library + revision tracking, cross-quote reuse.",
   CV_ASSISTANT_EE_COMPLIANCE_ENABLED:
     "CV Assistant — EE Act 55/1998 compliance (disclosure flow, fairness monitoring, EEA2/EEA4 reports). Default off; per-customer activation requires is_designated_employer + signed DPIA.",
+  CV_ASSISTANT_NIX_CV_BUILDER:
+    "CV Assistant — paid 'Get Nix to build my CV' feature: Nix generates a rewritten, improved CV for individual job seekers with a downloadable PDF.",
 };
 
 export const FEATURE_FLAG_DEFAULTS: Record<FeatureFlagKey, boolean> = {
@@ -247,6 +250,7 @@ export const FEATURE_FLAG_DEFAULTS: Record<FeatureFlagKey, boolean> = {
   STOCK_MGMT_VALUATION_EXPORTS: true,
   STOCK_MGMT_NIX_QUOTE_FROM_DOCUMENTS: false,
   CV_ASSISTANT_EE_COMPLIANCE_ENABLED: false,
+  CV_ASSISTANT_NIX_CV_BUILDER: true,
 };
 
 export type FeatureFlagCategory =
@@ -338,4 +342,5 @@ export const FEATURE_FLAG_CATEGORIES: Record<FeatureFlagKey, FeatureFlagCategory
   STOCK_MGMT_VALUATION_EXPORTS: "stock-management",
   STOCK_MGMT_NIX_QUOTE_FROM_DOCUMENTS: "addons",
   CV_ASSISTANT_EE_COMPLIANCE_ENABLED: "addons",
+  CV_ASSISTANT_NIX_CV_BUILDER: "addons",
 };

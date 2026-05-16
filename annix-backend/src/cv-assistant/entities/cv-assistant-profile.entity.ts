@@ -10,6 +10,7 @@ import {
 } from "typeorm";
 import { Company } from "../../platform/entities/company.entity";
 import { User } from "../../user/entities/user.entity";
+import type { NixGeneratedCv } from "../services/nix-prompts";
 import type { ExtractedCvData } from "./candidate.entity";
 
 export enum CvAssistantUserType {
@@ -57,6 +58,12 @@ export class CvAssistantProfile {
 
   @Column({ name: "extracted_cv_data", type: "jsonb", nullable: true })
   extractedCvData: ExtractedCvData | null;
+
+  @Column({ name: "nix_generated_cv", type: "jsonb", nullable: true })
+  nixGeneratedCv: NixGeneratedCv | null;
+
+  @Column({ name: "nix_generated_cv_at", type: "timestamptz", nullable: true })
+  nixGeneratedCvAt: Date | null;
 
   @Column({ name: "cv_uploaded_at", type: "timestamptz", nullable: true })
   cvUploadedAt: Date | null;

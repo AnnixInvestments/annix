@@ -6,6 +6,7 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import { AdminModule } from "../admin/admin.module";
 import { AuditModule } from "../audit/audit.module";
 import { EmailModule } from "../email/email.module";
+import { FeatureFlagsModule } from "../feature-flags/feature-flags.module";
 import { MetricsModule } from "../metrics/metrics.module";
 import { NixModule } from "../nix/nix.module";
 import { Company } from "../platform/entities/company.entity";
@@ -104,6 +105,7 @@ import { JobMatchService } from "./services/job-match.service";
 import { JobPostingService } from "./services/job-posting.service";
 import { JoobleService } from "./services/jooble.service";
 import { MarketInsightsService } from "./services/market-insights.service";
+import { NixCvPdfService } from "./services/nix-cv-pdf.service";
 import { NixJobAssistService } from "./services/nix-job-assist.service";
 import { NixSeekerAssistService } from "./services/nix-seeker-assist.service";
 import { PopiaService } from "./services/popia.service";
@@ -179,6 +181,7 @@ import { WorkforceNeedService } from "./services/workforce-need.service";
     StorageModule,
     AuditModule,
     AdminModule,
+    FeatureFlagsModule,
   ],
   controllers: [
     CvAssistantAuthController,
@@ -248,6 +251,7 @@ import { WorkforceNeedService } from "./services/workforce-need.service";
     AssistedPortalAdapters,
     NixJobAssistService,
     NixSeekerAssistService,
+    NixCvPdfService,
     SalaryBenchmarkService,
     TestCandidateSeederService,
     EmailTemplateService,

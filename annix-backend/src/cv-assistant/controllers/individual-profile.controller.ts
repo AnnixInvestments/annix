@@ -3,17 +3,22 @@ import {
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
   Param,
   ParseIntPipe,
   Patch,
   Post,
   Request,
+  Res,
   UploadedFile,
   UseGuards,
   UseInterceptors,
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
+import type { Response } from "express";
+import { FEATURE_FLAGS } from "../../feature-flags/feature-flags.constants";
+import { FeatureFlagsService } from "../../feature-flags/feature-flags.service";
 import {
   INDIVIDUAL_DOC_MAX_BYTES,
   isAcceptedDocumentMime,
@@ -30,6 +35,7 @@ import type {
 import { CvAssistantAuthGuard } from "../guards/cv-assistant-auth.guard";
 import { IndividualProfileService } from "../services/individual-profile.service";
 import { InterviewBookingService } from "../services/interview-booking.service";
+import { NixCvPdfService } from "../services/nix-cv-pdf.service";
 import type { NixCalendarAdvisoryConflict } from "../services/nix-prompts";
 import { NixSeekerAssistService } from "../services/nix-seeker-assist.service";
 
@@ -40,7 +46,20 @@ export class IndividualProfileController {
     private readonly individualProfileService: IndividualProfileService,
     private readonly nixSeekerAssistService: NixSeekerAssistService,
     private readonly interviewBookingService: InterviewBookingService,
+    private readonly featureFlagsService: FeatureFlagsService,
+    private readonly nixCvPdfService: NixCvPdfService,
   ) {}
+
+  private async ensureNixCvBuilderEnabled(): Promise<void> {
+    const enabled = await this.featureFlagsService.isEnabled(
+      FEATURE_FLAGS.CV_ASSISTANT_NIX_CV_BUILDER,
+    );
+    if (!enabled) {
+      throw new ForbiddenException(
+        "The Nix CV builder is not available on your plan. Please contact us to enable it.",
+      );
+    }
+  }
 
   @Get("profile/status")
   status(@Request() req: { user: { id: number } }) {
@@ -141,6 +160,35 @@ export class IndividualProfileController {
   @Post("nix-wizard/cv-improvements")
   nixCvImprovements(@Request() req: { user: { id: number } }) {
     return this.nixSeekerAssistService.cvImprovements(req.user.id);
+  }
+
+  @Post("nix-wizard/generate-cv")
+  async nixGenerateCv(@Request() req: { user: { id: number } }) {
+    await this.ensureNixCvBuilderEnabled();
+    return this.nixSeekerAssistService.generateCv(req.user.id);
+  }
+
+  @Get("nix-wizard/generated-cv")
+  async nixGeneratedCv(@Request() req: { user: { id: number } }) {
+    await this.ensureNixCvBuilderEnabled();
+    return this.nixSeekerAssistService.generatedCv(req.user.id);
+  }
+
+  @Get("nix-wizard/generated-cv/pdf")
+  async nixGeneratedCvPdf(
+    @Request() req: { user: { id: number } },
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<void> {
+    await this.ensureNixCvBuilderEnabled();
+    const { cv } = await this.nixSeekerAssistService.generatedCv(req.user.id);
+    if (!cv) {
+      throw new BadRequestException("Generate your CV with Nix first.");
+    }
+    const buffer = await this.nixCvPdfService.renderPdf(cv);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="Nix-CV.pdf"`);
+    res.setHeader("Content-Length", buffer.length.toString());
+    res.end(buffer);
   }
 
   @Get("interview-bookings")

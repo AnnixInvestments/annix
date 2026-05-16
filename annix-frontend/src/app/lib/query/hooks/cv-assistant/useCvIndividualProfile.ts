@@ -5,8 +5,11 @@ import {
   type IndividualDocumentKind,
   type IndividualNotificationPreferences,
   type IndividualProfileStatus,
+  type NixGeneratedCv,
+  type NixGeneratedCvResponse,
   type NixSeekerCvAssessment,
 } from "@/app/lib/api/cvAssistantApi";
+import { nowISO } from "@/app/lib/datetime";
 import { cvAssistantKeys } from "../../keys";
 
 export function useCvMyProfileStatus(enabled = true) {
@@ -104,5 +107,31 @@ export function useCvWithdrawMyConsent() {
 export function useCvNixWizardImprovements() {
   return useMutation<NixSeekerCvAssessment>({
     mutationFn: () => cvAssistantApiClient.nixWizardCvImprovements(),
+  });
+}
+
+export function useNixGeneratedCv(enabled = true) {
+  return useQuery<NixGeneratedCvResponse>({
+    queryKey: cvAssistantKeys.individualProfile.nixGeneratedCv(),
+    queryFn: () => cvAssistantApiClient.nixWizardGeneratedCv(),
+    enabled,
+    staleTime: 60 * 1000,
+  });
+}
+
+export function useGenerateNixCv() {
+  const queryClient = useQueryClient();
+
+  return useMutation<NixGeneratedCv>({
+    mutationFn: () => cvAssistantApiClient.nixWizardGenerateCv(),
+    onSuccess: (data) => {
+      queryClient.setQueryData<NixGeneratedCvResponse>(
+        cvAssistantKeys.individualProfile.nixGeneratedCv(),
+        { cv: data, generatedAt: nowISO() },
+      );
+      queryClient.invalidateQueries({
+        queryKey: cvAssistantKeys.individualProfile.nixGeneratedCv(),
+      });
+    },
   });
 }

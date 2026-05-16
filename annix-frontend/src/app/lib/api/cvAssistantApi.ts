@@ -629,6 +629,35 @@ export interface NixSeekerCvAssessment {
   rewriteSummary: string | null;
 }
 
+export interface NixGeneratedCvExperience {
+  role: string;
+  employer: string;
+  period: string;
+  location: string | null;
+  bullets: string[];
+}
+
+export interface NixGeneratedCv {
+  fullName: string;
+  headlineTitle: string;
+  location: string | null;
+  contact: { email: string | null; phone: string | null; linkedin: string | null };
+  professionalSummary: string;
+  coreCompetencies: string[];
+  experience: NixGeneratedCvExperience[];
+  education: string[];
+  certifications: string[];
+  professionalRegistrations: string[];
+  keySkills: string[];
+  improvementsApplied: string[];
+  closingNote: string | null;
+}
+
+export interface NixGeneratedCvResponse {
+  cv: NixGeneratedCv | null;
+  generatedAt: string | null;
+}
+
 export interface CandidateJobMatchDetails {
   embeddingSimilarity: number;
   skillsOverlap: number;
@@ -1703,6 +1732,18 @@ class CvAssistantApiClient {
 
   async nixWizardCvImprovements(): Promise<NixSeekerCvAssessment> {
     return this.request("/cv-assistant/me/nix-wizard/cv-improvements", { method: "POST" });
+  }
+
+  async nixWizardGenerateCv(): Promise<NixGeneratedCv> {
+    return this.request("/cv-assistant/me/nix-wizard/generate-cv", { method: "POST" });
+  }
+
+  async nixWizardGeneratedCv(): Promise<NixGeneratedCvResponse> {
+    return this.request("/cv-assistant/me/nix-wizard/generated-cv");
+  }
+
+  async nixWizardGeneratedCvPdf(): Promise<Blob> {
+    return apiClient.requestBlob("/cv-assistant/me/nix-wizard/generated-cv/pdf");
   }
 
   async candidateDataExport(candidateId: number): Promise<unknown> {

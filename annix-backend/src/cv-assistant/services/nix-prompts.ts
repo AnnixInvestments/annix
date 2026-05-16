@@ -769,6 +769,146 @@ export function parseNixJson<T>(content: string): T {
   return JSON.parse(slice) as T;
 }
 
+export interface NixGeneratedCvExperience {
+  role: string;
+  employer: string;
+  period: string;
+  location: string | null;
+  bullets: string[];
+}
+
+export interface NixGeneratedCv {
+  fullName: string;
+  headlineTitle: string;
+  location: string | null;
+  contact: { email: string | null; phone: string | null; linkedin: string | null };
+  professionalSummary: string;
+  coreCompetencies: string[];
+  experience: NixGeneratedCvExperience[];
+  education: string[];
+  certifications: string[];
+  professionalRegistrations: string[];
+  keySkills: string[];
+  improvementsApplied: string[];
+  closingNote: string | null;
+}
+
+export function seekerCvGenerationPrompt(input: {
+  cvText: string | null;
+  extractedCv: {
+    candidateName: string | null;
+    summary: string | null;
+    skills: string[];
+    experienceYears: number | null;
+    education: string[];
+    certifications: string[];
+    professionalRegistrations: string[];
+    saQualifications: string[];
+    location: string | null;
+  } | null;
+  supportingDocuments: Array<{
+    kind: "qualification" | "certificate";
+    originalFilename: string;
+    label: string | null;
+  }>;
+}): NixPrompt {
+  const supporting =
+    input.supportingDocuments.length > 0
+      ? input.supportingDocuments
+          .map((d) => `- ${d.kind}: ${d.originalFilename}${d.label ? ` (${d.label})` : ""}`)
+          .join("\n")
+      : "(none uploaded)";
+
+  const extracted = input.extractedCv;
+  const skillSummary =
+    extracted && extracted.skills.length > 0 ? extracted.skills.join(", ") : "(none extracted)";
+  const educationSummary =
+    extracted && extracted.education.length > 0
+      ? extracted.education.join(" | ")
+      : "(none extracted)";
+  const certificationSummary =
+    extracted && extracted.certifications.length > 0
+      ? extracted.certifications.join(" | ")
+      : "(none extracted)";
+  const registrationSummary =
+    extracted && extracted.professionalRegistrations.length > 0
+      ? extracted.professionalRegistrations.join(", ")
+      : "(none)";
+  const saQualSummary =
+    extracted && extracted.saQualifications.length > 0
+      ? extracted.saQualifications.join(", ")
+      : "(none)";
+
+  const cvBody = input.cvText
+    ? input.cvText.length > 8000
+      ? `${input.cvText.slice(0, 8000)}\n\n[CV truncated for prompt — first 8 000 chars shown]`
+      : input.cvText
+    : "(CV text not available — work from extracted fields and supporting documents)";
+
+  return {
+    system: `${SA_SYSTEM_PREAMBLE} You are rewriting an individual job seeker's CV into a complete, polished, recruiter-ready document. Keep everything genuinely good about the original, apply professional CV best practice, and never fabricate. Be specific, kind, and accurate.`,
+    user: `Rewrite this job seeker's CV into a complete, improved CV. Keep the genuinely good content, fix the weak parts, and produce a document the seeker can hand to a South African employer.
+
+Candidate name: ${extracted?.candidateName ?? "(unknown)"}
+Location: ${extracted?.location ?? "(unspecified)"}
+Years of experience (extracted): ${extracted?.experienceYears ?? "(unknown)"}
+Summary (extracted): ${extracted?.summary ?? "(none)"}
+Skills (extracted): ${skillSummary}
+Education (extracted): ${educationSummary}
+Certifications (extracted): ${certificationSummary}
+Professional registrations (extracted): ${registrationSummary}
+SA qualifications (extracted): ${saQualSummary}
+
+Supporting documents the seeker has uploaded:
+${supporting}
+
+Raw CV text:
+"""
+${cvBody}
+"""
+
+Return JSON with this exact shape:
+{
+  "fullName": "string — the seeker's full name",
+  "headlineTitle": "string — a sharp professional headline (e.g. 'External Sales Representative')",
+  "location": "string or null — city / province",
+  "contact": {
+    "email": "string or null",
+    "phone": "string or null",
+    "linkedin": "string or null"
+  },
+  "professionalSummary": "string — a strong 3-5 sentence professional summary",
+  "coreCompetencies": ["string — 6-10 short competency phrases", ...],
+  "experience": [
+    {
+      "role": "string — job title",
+      "employer": "string — company name",
+      "period": "string — e.g. 'Jan 2021 – Present'",
+      "location": "string or null",
+      "bullets": ["string — quantified achievement bullet", ...]
+    },
+    ...
+  ],
+  "education": ["string — e.g. 'BCom Accounting (NQF7), University of Pretoria, 2019'", ...],
+  "certifications": ["string", ...],
+  "professionalRegistrations": ["string — e.g. 'ECSA Pr Eng'", ...],
+  "keySkills": ["string", ...],
+  "improvementsApplied": ["string — short list of what you changed vs the original CV", ...],
+  "closingNote": "string or null — optional one-line note such as references availability"
+}
+
+Rules:
+- Produce a COMPLETE rewritten CV — every section the seeker genuinely has must appear, improved.
+- NEVER invent qualifications, employers, job titles, dates, certifications or registrations the seeker does not have. If a date or employer is missing, leave the field as a best-effort plain value or null — do not guess specifics.
+- professionalSummary: a strong, confident 3-5 sentence summary written in third person or neutral voice, tailored to the seeker's actual field and experience.
+- experience bullets: rewrite into quantified, achievement-led bullets where the original gives enough signal. 3-6 bullets per role. Start each with a strong verb. Do not invent metrics that aren't supported.
+- coreCompetencies / keySkills: ATS-friendly, recruiter-searchable keywords drawn from the seeker's real experience.
+- Apply South African hiring norms: NQF levels, SAQA, ECSA / SACPCMP / SAICA / SAIPA registrations, valid driver's licence, right-to-work — only where the seeker legitimately has them.
+- improvementsApplied: 4-8 short, concrete items describing what you changed (e.g. "Rewrote the summary to lead with measurable sales results", "Converted duty lists into quantified achievement bullets", "Added missing ATS keywords for the seeker's field").
+- All amounts (if mentioned) in ZAR.`,
+  };
+}
+
 export function summariseSuccessMetrics(posting: JobPosting): { in3: string[]; in12: string[] } {
   const metrics = posting.successMetrics || [];
   const in3 = metrics.filter((m) => m.timeframe === "3_months").map((m) => m.metric);

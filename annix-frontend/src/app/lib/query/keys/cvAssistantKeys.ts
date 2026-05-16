@@ -83,6 +83,7 @@ export const cvAssistantKeys = {
     interviewBookings: () => ["cv-assistant", "me", "interview-bookings"] as const,
     eeAttributes: () => ["cv-assistant", "me", "ee-attributes"] as const,
     interviewInvites: () => ["cv-assistant", "me", "interview-invites"] as const,
+    nixGeneratedCv: () => ["cv-assistant", "me", "nix-generated-cv"] as const,
   },
 
   interviewSlots: {

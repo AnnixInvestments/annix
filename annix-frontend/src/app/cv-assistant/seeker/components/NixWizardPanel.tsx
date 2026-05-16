@@ -11,8 +11,11 @@ import type {
   NixSeekerRankingPotential,
 } from "@/app/lib/api/cvAssistantApi";
 import { useCvNixWizardImprovements } from "@/app/lib/query/hooks";
+import { useFeatureFlagEnabled } from "@/app/lib/query/hooks/useFeatureFlagEnabled";
+import { NixCvBuilder } from "./NixCvBuilder";
 
 const NIX_REVIEW_ESTIMATED_MS = 12000;
+const NIX_CV_BUILDER_FLAG = "CV_ASSISTANT_NIX_CV_BUILDER";
 
 const AREA_LABELS: Record<NixSeekerImprovementArea, string> = {
   summary: "Summary",
@@ -59,6 +62,8 @@ export function NixWizardPanel(props: NixWizardPanelProps) {
   const mutate = mutation.mutate;
   const { showExtraction, hideExtraction } = useExtractionProgress();
   const isLoading = mutation.isPending;
+  const cvBuilderFlag = useFeatureFlagEnabled(NIX_CV_BUILDER_FLAG);
+  const cvBuilderEnabled = cvBuilderFlag.enabled;
 
   useEffect(() => {
     if (!hasCv) return;
@@ -157,6 +162,8 @@ export function NixWizardPanel(props: NixWizardPanelProps) {
       {result && !isLoading && (
         <NixResultBlock assessment={result} copied={copied} onCopy={handleCopy} />
       )}
+
+      {cvBuilderEnabled && <NixCvBuilder hasCv={hasCv} />}
     </div>
   );
 }
