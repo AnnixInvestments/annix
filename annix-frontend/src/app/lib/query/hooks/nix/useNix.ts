@@ -467,6 +467,49 @@ export async function uploadProductDataSheet(
   return response.json();
 }
 
+/**
+ * One hit from the org-wide data-sheet library search. Carries everything
+ * the quote editor needs to attach the sheet without re-uploading: the
+ * library row id, the display name, and the original filename/size for the
+ * attachment chip.
+ */
+export interface ProductDataSheetSearchHit {
+  id: number;
+  manufacturer: string;
+  productName: string;
+  kind: "coating" | "lining";
+  version: number;
+  publishedRevision: string | null;
+  originalFilename: string;
+  sizeBytes: number;
+}
+
+/**
+ * Free-text search of the shared product-data-sheet library. Lets the quote
+ * coating/lining editor offer an already-in-the-repo Stoncor sheet for one-
+ * click attach instead of forcing the quoter to re-upload a PDF the library
+ * already holds. Empty/blank query returns no rows.
+ */
+export async function searchProductDataSheets(
+  query: string,
+  portalContext?: PortalContext,
+): Promise<ProductDataSheetSearchHit[]> {
+  const trimmed = query.trim();
+  if (trimmed.length === 0) return [];
+  const headers: Record<string, string> = { ...nixAuthHeaders(portalContext) };
+  const url = `${browserBaseUrl()}/nix/product-data-sheets/search?q=${encodeURIComponent(trimmed)}`;
+  const response = await retryableFetch(url, { method: "GET", headers });
+  if (!response.ok) {
+    if (response.status === 401) {
+      sessionExpiredEvent.emit();
+      throw new Error("Session expired — please sign in again.");
+    }
+    console.warn(`[searchProductDataSheets] ${response.status} ${response.statusText}`);
+    throw new Error(`Failed to search data sheets: ${response.statusText}`);
+  }
+  return response.json();
+}
+
 /* ------------------------------------------------------------------
  * Nix extraction sessions (#253 task B)
  *

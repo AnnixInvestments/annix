@@ -1,8 +1,13 @@
 "use client";
 
 import { keys } from "es-toolkit/compat";
-import { useMemo, useState } from "react";
-import { type UploadProductDataSheetResult, uploadProductDataSheet } from "@/app/lib/query/hooks";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  type ProductDataSheetSearchHit,
+  searchProductDataSheets,
+  type UploadProductDataSheetResult,
+  uploadProductDataSheet,
+} from "@/app/lib/query/hooks";
 import {
   countMissingDataSheets,
   type DataSheetAttachment,
@@ -732,6 +737,59 @@ function SupplierRow(props: SupplierRowProps) {
     setAutoFillErrorDetail(null);
   };
 
+  /**
+   * Triggered when the quoter attaches an existing sheet from the library
+   * search instead of uploading a fresh PDF. No Gemini round-trip happens —
+   * the library row already carries manufacturer + product, so the empty
+   * brand/description fields are filled straight from those (the quoter's
+   * own typed text always wins). The bytes already live on S3.
+   */
+  const handleLibraryPick = (hit: ProductDataSheetSearchHit) => {
+    const supplierBrand = supplier.brand;
+    const supplierDescription = supplier.description;
+    const brandIsEmpty = !supplierBrand || supplierBrand.trim().length === 0;
+    const descriptionIsEmpty = !supplierDescription || supplierDescription.trim().length === 0;
+    const productLabel = `${hit.manufacturer} ${hit.productName}`.trim();
+    const partial: Partial<SupplierEntry> = {};
+    if (!isLining && brandIsEmpty && hit.manufacturer.trim().length > 0) {
+      partial.brand = hit.manufacturer.trim();
+    }
+    if (descriptionIsEmpty) {
+      if (isLining) {
+        const thicknesses = extractThicknessesFromSpecSummary(specSummary);
+        const composedDescription = [productLabel || null, thicknesses]
+          .filter((piece): piece is string => Boolean(piece && piece.length > 0))
+          .join(", ");
+        if (composedDescription.length > 0) partial.description = composedDescription;
+      } else if (hit.productName.trim().length > 0) {
+        partial.description = hit.productName.trim();
+      }
+    }
+    onAttachmentChange({
+      specCode: "",
+      entryId: supplier.id,
+      dataSheetId: hit.id,
+      filename: hit.originalFilename,
+      sizeBytes: hit.sizeBytes,
+      manufacturer: hit.manufacturer,
+      productName: hit.productName,
+      publishedRevision: hit.publishedRevision,
+    });
+    if (keys(partial).length > 0) {
+      onChange(partial);
+      setAutoFillState("applied");
+    } else {
+      setAutoFillState("idle");
+    }
+    setAutoFillErrorDetail(null);
+    const revisionSuffix = hit.publishedRevision ? ` ${hit.publishedRevision}` : "";
+    setLibraryNote(`attached ${productLabel}${revisionSuffix} from the library`);
+    setTimeout(() => {
+      setAutoFillState("idle");
+      setLibraryNote(null);
+    }, 6000);
+  };
+
   let containerToneClass: string;
   if (isSelected) {
     containerToneClass =
@@ -861,11 +919,13 @@ function SupplierRow(props: SupplierRowProps) {
             </span>
             <DataSheetUpload
               entryId={supplier.id}
+              kind={kind}
               attachment={attachment}
               uploadingFilename={uploadingFilename}
               uploadingSizeBytes={null}
               isExtracting={autoFillState === "extracting"}
               onFilePicked={handleFilePicked}
+              onPickFromLibrary={handleLibraryPick}
               onRemove={handleRemoveAttachment}
             />
           </div>
@@ -880,6 +940,7 @@ function SupplierRow(props: SupplierRowProps) {
 
 interface DataSheetUploadProps {
   entryId: string;
+  kind: SpecKind;
   attachment: DataSheetAttachment | null;
   /** Filename being uploaded to the library (transient — clears once the
    *  library write returns and the saved attachment takes over). */
@@ -887,11 +948,12 @@ interface DataSheetUploadProps {
   uploadingSizeBytes: number | null;
   isExtracting: boolean;
   onFilePicked: (file: File) => void;
+  onPickFromLibrary: (hit: ProductDataSheetSearchHit) => void;
   onRemove: () => void;
 }
 
 function DataSheetUpload(props: DataSheetUploadProps) {
-  const { entryId, attachment, uploadingFilename, uploadingSizeBytes, isExtracting } = props;
+  const { entryId, kind, attachment, uploadingFilename, uploadingSizeBytes, isExtracting } = props;
   const inputId = `data-sheet-${entryId}`;
 
   const displayFilename = attachment ? attachment.filename : uploadingFilename;
@@ -958,38 +1020,177 @@ function DataSheetUpload(props: DataSheetUploadProps) {
   }
 
   return (
-    <label
-      htmlFor={inputId}
-      className="inline-flex items-center gap-1 px-2 py-1 bg-white border border-amber-400 text-amber-800 rounded text-xs font-medium cursor-pointer hover:bg-amber-50"
-    >
-      <svg
-        className="w-3.5 h-3.5"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-        aria-hidden="true"
+    <div className="inline-flex items-center gap-1.5">
+      <label
+        htmlFor={inputId}
+        className="inline-flex items-center gap-1 px-2 py-1 bg-white border border-amber-400 text-amber-800 rounded text-xs font-medium cursor-pointer hover:bg-amber-50"
       >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+        <svg
+          className="w-3.5 h-3.5"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+          />
+        </svg>
+        Upload data sheet
+        <input
+          id={inputId}
+          type="file"
+          accept=".pdf,.png,.jpg,.jpeg,.docx"
+          onChange={(event) => {
+            const file = event.target.files ? event.target.files[0] : null;
+            if (!file) return;
+            props.onFilePicked(file);
+            event.target.value = "";
+          }}
+          className="hidden"
         />
-      </svg>
-      Upload data sheet
-      <input
-        id={inputId}
-        type="file"
-        accept=".pdf,.png,.jpg,.jpeg,.docx"
-        onChange={(event) => {
-          const file = event.target.files ? event.target.files[0] : null;
-          if (!file) return;
-          props.onFilePicked(file);
-          event.target.value = "";
-        }}
-        className="hidden"
-      />
-    </label>
+      </label>
+      <DataSheetLibraryPicker kind={kind} onPick={props.onPickFromLibrary} />
+    </div>
+  );
+}
+
+/**
+ * Inline search of the shared product-data-sheet library. Lets the quoter
+ * attach a Stoncor (or any) sheet that already lives in the repo with one
+ * click — no re-upload, no Gemini round-trip — instead of hunting down the
+ * original PDF. Results are filtered to the row's kind (coating vs lining)
+ * so a coating row never offers a rubber-lining sheet.
+ */
+function DataSheetLibraryPicker(props: {
+  kind: SpecKind;
+  onPick: (hit: ProductDataSheetSearchHit) => void;
+}) {
+  const { kind, onPick } = props;
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [hits, setHits] = useState<ProductDataSheetSearchHit[]>([]);
+  const [status, setStatus] = useState<"idle" | "searching" | "error">("idle");
+  // Bumped on every keystroke so a slow earlier request can't overwrite the
+  // results of a later one (last-write-wins by sequence number).
+  const seqRef = useRef(0);
+
+  useEffect(() => {
+    const trimmed = query.trim();
+    if (trimmed.length < 2) {
+      setHits([]);
+      setStatus("idle");
+      return;
+    }
+    const seq = seqRef.current + 1;
+    seqRef.current = seq;
+    setStatus("searching");
+    const timer = setTimeout(() => {
+      searchProductDataSheets(trimmed)
+        .then((rows) => {
+          if (seqRef.current !== seq) return;
+          setHits(rows.filter((r) => r.kind === kind));
+          setStatus("idle");
+        })
+        .catch(() => {
+          if (seqRef.current !== seq) return;
+          setHits([]);
+          setStatus("error");
+        });
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [query, kind]);
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="inline-flex items-center gap-1 px-2 py-1 bg-white border border-[#323288]/40 text-[#323288] rounded text-xs font-medium cursor-pointer hover:bg-[#323288]/5"
+        title="Attach a data sheet that is already in the library"
+      >
+        <svg
+          className="w-3.5 h-3.5"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M21 21l-4.35-4.35M11 18a7 7 0 100-14 7 7 0 000 14z"
+          />
+        </svg>
+        Find in library
+      </button>
+    );
+  }
+
+  return (
+    <div className="relative inline-block">
+      <div className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-white border border-[#323288]/40 rounded">
+        <input
+          type="text"
+          autoFocus
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Search library…"
+          className="w-44 px-1 py-0.5 text-xs border-0 focus:outline-none"
+        />
+        <button
+          type="button"
+          onClick={() => {
+            setOpen(false);
+            setQuery("");
+            setHits([]);
+          }}
+          className="text-gray-400 hover:text-red-600 text-sm leading-none px-1"
+          aria-label="Close library search"
+          title="Close"
+        >
+          ×
+        </button>
+      </div>
+      {query.trim().length >= 2 && (
+        <div className="absolute z-20 mt-1 left-0 w-72 max-h-60 overflow-auto bg-white border border-gray-300 rounded shadow-lg text-xs">
+          {status === "searching" && <div className="px-2 py-1.5 text-gray-500">Searching…</div>}
+          {status === "error" && (
+            <div className="px-2 py-1.5 text-red-600">Search failed — try again.</div>
+          )}
+          {status === "idle" && hits.length === 0 && (
+            <div className="px-2 py-1.5 text-gray-500">
+              No {kind} sheets match — upload a new one.
+            </div>
+          )}
+          {hits.map((hit) => (
+            <button
+              key={hit.id}
+              type="button"
+              onClick={() => {
+                onPick(hit);
+                setOpen(false);
+                setQuery("");
+                setHits([]);
+              }}
+              className="block w-full text-left px-2 py-1.5 hover:bg-[#323288]/5 border-b border-gray-100 last:border-b-0"
+            >
+              <span className="font-medium text-gray-800">
+                {hit.manufacturer} {hit.productName}
+              </span>
+              {hit.publishedRevision && (
+                <span className="ml-1 text-gray-500">({hit.publishedRevision})</span>
+              )}
+              <span className="block text-gray-400 truncate">{hit.originalFilename}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
