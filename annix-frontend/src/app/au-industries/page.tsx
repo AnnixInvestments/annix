@@ -41,6 +41,7 @@ export default async function AuIndustriesHomePage(): Promise<React.JSX.Element>
           alt="AU Industries rubber lining and mining solutions facility"
           fill
           priority
+          fetchPriority="high"
           sizes="100vw"
           className="object-cover"
         />

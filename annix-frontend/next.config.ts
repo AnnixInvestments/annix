@@ -13,6 +13,12 @@ const nextConfig: NextConfig = {
     "@annix/feedback-web",
   ],
 
+  // AVIF first — ~20-30% smaller than WebP; next/image falls back to WebP
+  // then the original for browsers that don't accept it.
+  images: {
+    formats: ["image/avif", "image/webp"],
+  },
+
   async redirects() {
     return [];
   },
