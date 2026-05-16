@@ -12,6 +12,7 @@
       "name": "frontend",
       "start": { "mac": "./run-frontend.sh", "windows": ".\\run-frontend.ps1" },
       "readyPattern": "Ready in",
+      "readyTimeoutMs": 120000,
       "port": 3000
     }
   ],
