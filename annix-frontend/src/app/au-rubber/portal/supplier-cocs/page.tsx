@@ -441,12 +441,14 @@ export default function SupplierCocsPage() {
       EXTRACTED: "bg-blue-100 text-blue-800",
       NEEDS_REVIEW: "bg-yellow-100 text-yellow-800",
       APPROVED: "bg-green-100 text-green-800",
+      FAILED: "bg-red-100 text-red-800",
     };
     const labels: Record<CocProcessingStatus, string> = {
       PENDING: "Pending",
       EXTRACTED: "Extracted",
       NEEDS_REVIEW: "Needs Review",
       APPROVED: "Approved",
+      FAILED: "Failed",
     };
     return (
       <span

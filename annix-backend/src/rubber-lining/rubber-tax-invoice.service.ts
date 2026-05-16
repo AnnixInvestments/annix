@@ -36,6 +36,7 @@ const TAX_INVOICE_STATUS_LABELS: Record<TaxInvoiceStatus, string> = {
   [TaxInvoiceStatus.PENDING]: "Pending",
   [TaxInvoiceStatus.EXTRACTED]: "Extracted",
   [TaxInvoiceStatus.APPROVED]: "Approved",
+  [TaxInvoiceStatus.FAILED]: "Extraction Failed",
 };
 
 const TAX_INVOICE_TYPE_LABELS: Record<TaxInvoiceType, string> = {
@@ -192,13 +193,19 @@ export class RubberTaxInvoiceService {
     pageSize?: number;
   }): Promise<PaginatedResult<RubberTaxInvoiceDto>> {
     const page = Math.max(1, filters?.page ?? 1);
-    const pageSize = Math.max(1, Math.min(10000, filters?.pageSize ?? 25));
+    const pageSize = Math.max(1, Math.min(200, filters?.pageSize ?? 25));
     const skip = (page - 1) * pageSize;
 
+    // ti.* is kept (the list derives its product summary from extracted_data),
+    // but the joined company/originalInvoice rows are slimmed to the two fields
+    // the DTO actually reads — leftJoinAndSelect was dragging a full duplicate
+    // invoice (including its own extracted_data) into every polled row.
     const query = this.taxInvoiceRepository
       .createQueryBuilder("ti")
-      .leftJoinAndSelect("ti.company", "company")
-      .leftJoinAndSelect("ti.originalInvoice", "originalInvoice");
+      .leftJoin("ti.company", "company")
+      .addSelect(["company.id", "company.name"])
+      .leftJoin("ti.originalInvoice", "originalInvoice")
+      .addSelect(["originalInvoice.id", "originalInvoice.invoiceNumber"]);
 
     if (!filters?.includeAllVersions) {
       query.andWhere("ti.version_status = :versionStatus", {
@@ -1037,6 +1044,13 @@ export class RubberTaxInvoiceService {
     invoice.documentPath = documentPath;
     await this.taxInvoiceRepository.save(invoice);
     return this.mapToDto(invoice);
+  }
+
+  async markExtractionFailed(id: number): Promise<void> {
+    await this.taxInvoiceRepository.update(
+      { id, status: TaxInvoiceStatus.PENDING },
+      { status: TaxInvoiceStatus.FAILED },
+    );
   }
 
   async setExtractedData(

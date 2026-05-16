@@ -349,6 +349,7 @@ export default function CustomerDeliveryNotesPage() {
       APPROVED: "bg-teal-100 text-teal-800",
       LINKED: "bg-blue-100 text-blue-800",
       STOCK_CREATED: "bg-green-100 text-green-800",
+      FAILED: "bg-red-100 text-red-800",
     };
     const labels: Record<DeliveryNoteStatus, string> = {
       PENDING: "Pending",
@@ -356,6 +357,7 @@ export default function CustomerDeliveryNotesPage() {
       APPROVED: "Approved",
       LINKED: "Linked",
       STOCK_CREATED: "Stock Created",
+      FAILED: "Failed",
     };
     return (
       <span

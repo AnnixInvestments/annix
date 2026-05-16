@@ -21,6 +21,7 @@ export enum CocProcessingStatus {
   EXTRACTED = "EXTRACTED",
   NEEDS_REVIEW = "NEEDS_REVIEW",
   APPROVED = "APPROVED",
+  FAILED = "FAILED",
 }
 
 export interface ExtractedCocSpecifications {

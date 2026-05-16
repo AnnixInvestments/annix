@@ -19,6 +19,7 @@ export enum TaxInvoiceStatus {
   PENDING = "PENDING",
   EXTRACTED = "EXTRACTED",
   APPROVED = "APPROVED",
+  FAILED = "FAILED",
 }
 
 export interface ExtractedRollDetail {

@@ -117,9 +117,15 @@ export type RubberCompoundOrderStatus =
   | "RECEIVED"
   | "CANCELLED";
 export type SupplierCocType = "COMPOUNDER" | "CALENDARER" | "CALENDER_ROLL";
-export type CocProcessingStatus = "PENDING" | "EXTRACTED" | "NEEDS_REVIEW" | "APPROVED";
+export type CocProcessingStatus = "PENDING" | "EXTRACTED" | "NEEDS_REVIEW" | "APPROVED" | "FAILED";
 export type DeliveryNoteType = "COMPOUND" | "ROLL";
-export type DeliveryNoteStatus = "PENDING" | "EXTRACTED" | "APPROVED" | "LINKED" | "STOCK_CREATED";
+export type DeliveryNoteStatus =
+  | "PENDING"
+  | "EXTRACTED"
+  | "APPROVED"
+  | "LINKED"
+  | "STOCK_CREATED"
+  | "FAILED";
 export type RollStockStatus = "IN_STOCK" | "RESERVED" | "SOLD" | "SCRAPPED" | "REJECTED";
 export type RollRejectionStatus = "PENDING_RETURN" | "RETURNED" | "REPLACEMENT_RECEIVED" | "CLOSED";
 export type AuCocStatus = "DRAFT" | "GENERATED" | "APPROVED" | "SENT";
@@ -255,7 +261,7 @@ export type QualityAlertSeverity = "WARNING" | "CRITICAL";
 export type TrendDirection = "up" | "down" | "stable";
 export type QualityStatus = "normal" | "warning" | "critical";
 export type TaxInvoiceType = "SUPPLIER" | "CUSTOMER";
-export type TaxInvoiceStatus = "PENDING" | "EXTRACTED" | "APPROVED";
+export type TaxInvoiceStatus = "PENDING" | "EXTRACTED" | "APPROVED" | "FAILED";
 
 export interface PaginatedResult<T> {
   items: T[];

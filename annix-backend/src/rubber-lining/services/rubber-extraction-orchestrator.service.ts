@@ -12,9 +12,26 @@ import { RubberRollStockService } from "../rubber-roll-stock.service";
 import { RubberTaxInvoiceService } from "../rubber-tax-invoice.service";
 import { AuRubberDocumentFilerService } from "./au-rubber-document-filer.service";
 
+const EXTRACTION_TIMEOUT_MS = 4 * 60 * 1000;
+
 @Injectable()
 export class RubberExtractionOrchestratorService {
   private readonly logger = new Logger(RubberExtractionOrchestratorService.name);
+
+  // Fire-and-forget extraction has no caller awaiting it; without a timeout a
+  // hung Gemini/OCR call leaves the document PENDING forever, which makes the
+  // frontend poll it indefinitely. This bounds the wait so the failure is at
+  // least logged and the pipeline gives up.
+  private withTimeout<T>(work: Promise<T>, label: string): Promise<T> {
+    let timer: NodeJS.Timeout;
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(
+        () => reject(new Error(`${label} timed out after ${EXTRACTION_TIMEOUT_MS}ms`)),
+        EXTRACTION_TIMEOUT_MS,
+      );
+    });
+    return Promise.race([work, timeout]).finally(() => clearTimeout(timer)) as Promise<T>;
+  }
 
   constructor(
     private readonly cocService: RubberCocService,
@@ -32,7 +49,7 @@ export class RubberExtractionOrchestratorService {
     pdfText: string,
     pdfBuffer?: Buffer,
   ): void {
-    this.cocService
+    const work = this.cocService
       .correctionHintsForCoc(cocId)
       .then((hints) => this.cocExtractionService.extractByType(cocType, pdfText, hints, pdfBuffer))
       .then(async (result) => {
@@ -47,10 +64,13 @@ export class RubberExtractionOrchestratorService {
         }
         await this.cocService.setExtractedData(cocId, result.data);
         this.logger.log(`Auto-extracted data for CoC ${cocId} in ${result.processingTimeMs}ms`);
-      })
-      .catch((error) => {
-        this.logger.error(`Auto-extraction failed for CoC ${cocId}: ${error.message}`);
       });
+    this.withTimeout(work, `CoC ${cocId} extraction`).catch((error) => {
+      this.logger.error(
+        `Auto-extraction failed for CoC ${cocId}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      void this.cocService.markExtractionFailed(cocId);
+    });
   }
 
   triggerTaxInvoiceExtraction(
@@ -62,7 +82,7 @@ export class RubberExtractionOrchestratorService {
     const ext = originalFilename.split(".").pop()?.toLowerCase() || "";
     const isPdf = ext === "pdf";
 
-    (async () => {
+    const work = (async () => {
       try {
         const invoiceMeta = await this.taxInvoiceService.taxInvoiceById(invoiceId);
         const invoiceType = invoiceMeta?.invoiceType ?? TaxInvoiceType.SUPPLIER;
@@ -109,8 +129,15 @@ export class RubberExtractionOrchestratorService {
         this.logger.error(
           `Failed to auto-extract Tax Invoice ${invoiceId}: ${error instanceof Error ? error.message : String(error)}`,
         );
+        void this.taxInvoiceService.markExtractionFailed(invoiceId);
       }
     })();
+    this.withTimeout(work, `Tax Invoice ${invoiceId} extraction`).catch((error) => {
+      this.logger.error(
+        `Tax Invoice ${invoiceId} extraction aborted: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      void this.taxInvoiceService.markExtractionFailed(invoiceId);
+    });
   }
 
   triggerDeliveryNoteExtraction(
@@ -121,7 +148,7 @@ export class RubberExtractionOrchestratorService {
       ReturnType<RubberCocExtractionService["extractCustomerDeliveryNoteFromImages"]>
     >,
   ): void {
-    (async () => {
+    const work = (async () => {
       try {
         const isRoll = dnType === DeliveryNoteType.ROLL;
 
@@ -234,8 +261,15 @@ export class RubberExtractionOrchestratorService {
         this.logger.error(
           `Failed to auto-extract delivery note ${deliveryNoteId}: ${error instanceof Error ? error.message : String(error)}`,
         );
+        void this.deliveryNoteService.markExtractionFailed(deliveryNoteId);
       }
     })();
+    this.withTimeout(work, `Delivery note ${deliveryNoteId} extraction`).catch((error) => {
+      this.logger.error(
+        `Delivery note ${deliveryNoteId} extraction aborted: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      void this.deliveryNoteService.markExtractionFailed(deliveryNoteId);
+    });
   }
 
   async dispatchRollsForDeliveryNote(deliveryNoteId: number): Promise<void> {

@@ -50,6 +50,7 @@ const PROCESSING_STATUS_LABELS: Record<CocProcessingStatus, string> = {
   [CocProcessingStatus.EXTRACTED]: "Extracted",
   [CocProcessingStatus.NEEDS_REVIEW]: "Needs Review",
   [CocProcessingStatus.APPROVED]: "Approved",
+  [CocProcessingStatus.FAILED]: "Extraction Failed",
 };
 
 const BATCH_PASS_FAIL_LABELS: Record<BatchPassFailStatus, string> = {

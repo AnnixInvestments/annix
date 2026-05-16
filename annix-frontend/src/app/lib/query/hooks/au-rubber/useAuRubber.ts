@@ -34,6 +34,7 @@ import type {
   RubberProductCodingDto,
   RubberProductDto,
 } from "@/app/lib/api/rubberPortalApi";
+import { fromISO, nowMillis } from "@/app/lib/datetime";
 import { cacheConfig } from "../../cacheConfig";
 import { rubberKeys } from "../../keys";
 
@@ -73,6 +74,29 @@ export function useAuRubberSupplierCocs(filters?: {
   });
 }
 
+const POLL_STALE_MS = 10 * 60 * 1000;
+
+// Drives refetchInterval for the extraction-status polls. Polling continues only
+// while a PENDING document is younger than POLL_STALE_MS, so a stuck extraction
+// stops being polled instead of looping forever; the interval also backs off as
+// the document ages. The previous version polled a heavy list endpoint every 3s
+// with no stop condition, which burned gigabytes of DB egress from one open tab.
+function pendingPollInterval<T extends { status: string; createdAt: string }>(
+  items: T[] | undefined,
+): number | false {
+  if (!items) return false;
+  const now = nowMillis();
+  const pendingAges = items
+    .filter((it) => it.status === "PENDING")
+    .map((it) => now - fromISO(it.createdAt).toMillis())
+    .filter((age) => age >= 0 && age < POLL_STALE_MS);
+  if (pendingAges.length === 0) return false;
+  const youngest = Math.min(...pendingAges);
+  if (youngest < 30_000) return 3_000;
+  if (youngest < 120_000) return 10_000;
+  return 30_000;
+}
+
 export function useAuRubberDeliveryNotes(filters?: {
   deliveryNoteType?: DeliveryNoteType;
   status?: DeliveryNoteStatus;
@@ -90,15 +114,9 @@ export function useAuRubberDeliveryNotes(filters?: {
   return useQuery<PaginatedResult<RubberDeliveryNoteDto>>({
     queryKey: rubberKeys.deliveryNotes.list(filters),
     queryFn: () => auRubberApiClient.deliveryNotes(filters),
-    // eslint-disable-next-line no-restricted-syntax -- short polling justified: only fires while PENDING items exist (post-upload extraction window), auto-stops when all are EXTRACTED. Replaces manual setTimeout(refresh, 5000/20000/30000) cascade.
+    // eslint-disable-next-line no-restricted-syntax -- bounded polling: backs off as the document ages and stops once no PENDING item is younger than 10min, so a stuck extraction can't loop forever.
     refetchInterval: pollWhilePending
-      ? (query) => {
-          const data = query.state.data;
-          if (!data) return false;
-          const items = data.items;
-          const hasPending = items.some((inv) => inv.status === "PENDING");
-          return hasPending ? 3000 : false;
-        }
+      ? (query) => pendingPollInterval(query.state.data?.items)
       : false,
   });
 }
@@ -135,15 +153,9 @@ export function useAuRubberTaxInvoices(filters?: {
   return useQuery<PaginatedResult<RubberTaxInvoiceDto>>({
     queryKey: rubberKeys.taxInvoices.list(filters),
     queryFn: () => auRubberApiClient.taxInvoices(filters),
-    // eslint-disable-next-line no-restricted-syntax -- short polling justified: only fires while PENDING items exist (post-upload extraction window), auto-stops when all are EXTRACTED. Replaces manual setTimeout(refresh, 5000/20000/30000) cascade.
+    // eslint-disable-next-line no-restricted-syntax -- bounded polling: backs off as the document ages and stops once no PENDING item is younger than 10min, so a stuck extraction can't loop forever.
     refetchInterval: pollWhilePending
-      ? (query) => {
-          const data = query.state.data;
-          if (!data) return false;
-          const items = data.items;
-          const hasPending = items.some((inv) => inv.status === "PENDING");
-          return hasPending ? 3000 : false;
-        }
+      ? (query) => pendingPollInterval(query.state.data?.items)
       : false,
   });
 }

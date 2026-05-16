@@ -459,11 +459,13 @@ export default function SupplierTaxInvoicesPage() {
       PENDING: "bg-gray-100 text-gray-800",
       EXTRACTED: "bg-blue-100 text-blue-800",
       APPROVED: "bg-green-100 text-green-800",
+      FAILED: "bg-red-100 text-red-800",
     };
     const labels: Record<TaxInvoiceStatus, string> = {
       PENDING: "Pending",
       EXTRACTED: "Extracted",
       APPROVED: "Approved",
+      FAILED: "Failed",
     };
     return (
       <span

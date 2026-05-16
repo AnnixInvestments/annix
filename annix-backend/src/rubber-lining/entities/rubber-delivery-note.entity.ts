@@ -22,6 +22,7 @@ export enum DeliveryNoteStatus {
   APPROVED = "APPROVED",
   LINKED = "LINKED",
   STOCK_CREATED = "STOCK_CREATED",
+  FAILED = "FAILED",
 }
 
 export interface ExtractedDeliveryNoteRoll {

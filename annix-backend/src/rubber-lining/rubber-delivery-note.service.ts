@@ -58,6 +58,7 @@ const DELIVERY_NOTE_STATUS_LABELS: Record<DeliveryNoteStatus, string> = {
   [DeliveryNoteStatus.APPROVED]: "Approved",
   [DeliveryNoteStatus.LINKED]: "Linked",
   [DeliveryNoteStatus.STOCK_CREATED]: "Stock Created",
+  [DeliveryNoteStatus.FAILED]: "Extraction Failed",
 };
 
 const parseCocNumberRolls = (cocNumber: string | null): string[] => {
@@ -157,13 +158,23 @@ export class RubberDeliveryNoteService {
     pageSize?: number;
   }): Promise<PaginatedResult<RubberDeliveryNoteDto>> {
     const page = Math.max(1, filters?.page ?? 1);
-    const pageSize = Math.max(1, Math.min(10000, filters?.pageSize ?? 25));
+    const pageSize = Math.max(1, Math.min(200, filters?.pageSize ?? 25));
     const skip = (page - 1) * pageSize;
+
+    // List rows never need the heavy extracted_data jsonb (or the linked CoC's),
+    // and shipping it on every poll was the bulk of this endpoint's DB egress.
+    const dnColumns = this.deliveryNoteRepository.metadata.columns
+      .map((c) => c.propertyName)
+      .filter((p) => p !== "extractedData")
+      .map((p) => `dn.${p}`);
 
     const query = this.deliveryNoteRepository
       .createQueryBuilder("dn")
-      .leftJoinAndSelect("dn.supplierCompany", "company")
-      .leftJoinAndSelect("dn.linkedCoc", "coc");
+      .select(dnColumns)
+      .leftJoin("dn.supplierCompany", "company")
+      .addSelect(["company.id", "company.name", "company.companyType"])
+      .leftJoin("dn.linkedCoc", "coc")
+      .addSelect(["coc.id", "coc.cocNumber"]);
 
     if (!filters?.includeAllVersions) {
       query.andWhere("dn.version_status = :versionStatus", {
@@ -225,6 +236,13 @@ export class RubberDeliveryNoteService {
     if (!note) return null;
     const siblingCounts = await this.documentPathSiblingCounts([note]);
     return this.mapDeliveryNoteToDto(note, null, siblingCounts.get(note.id) ?? 1);
+  }
+
+  async markExtractionFailed(id: number): Promise<void> {
+    await this.deliveryNoteRepository.update(
+      { id, status: DeliveryNoteStatus.PENDING },
+      { status: DeliveryNoteStatus.FAILED },
+    );
   }
 
   private async documentPathSiblingCounts(
@@ -1411,7 +1429,7 @@ export class RubberDeliveryNoteService {
       linkedCocNumber: note.linkedCoc?.cocNumber ?? null,
       auCocId: auCoc?.id ?? null,
       auCocNumber: auCoc?.cocNumber ?? null,
-      extractedData: note.extractedData,
+      extractedData: note.extractedData ?? null,
       createdBy: note.createdBy,
       createdAt: note.createdAt.toISOString(),
       updatedAt: note.updatedAt.toISOString(),
