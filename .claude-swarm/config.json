@@ -6,7 +6,8 @@
       "start": { "mac": "./run-backend.sh", "windows": ".\\run-backend.ps1" },
       "readyPattern": "Nest application successfully started",
       "readyTimeoutMs": 180000,
-      "port": 4001
+      "port": 4001,
+      "health": "http://localhost:4001/health"
     },
     {
       "name": "frontend",
