@@ -162,7 +162,7 @@ export default async function BlogPostPage(props: PageProps) {
         <div className="max-w-3xl mx-auto px-4">
           {heroUrl === null && (
             <>
-              <p className="text-sm uppercase tracking-widest text-[#B8860B] font-semibold mb-2">
+              <p className="text-sm uppercase tracking-widest text-[#8A6608] font-semibold mb-2">
                 <Link href="/blog" className="hover:underline">
                   Blog
                 </Link>
@@ -194,7 +194,7 @@ export default async function BlogPostPage(props: PageProps) {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               href="/quote"
-              className="inline-block px-10 py-4 bg-[#B8860B] text-white font-semibold uppercase tracking-wider hover:bg-[#9A7209] transition-colors"
+              className="inline-block px-10 py-4 bg-[#8A6608] text-white font-semibold uppercase tracking-wider hover:bg-[#6E5106] transition-colors"
             >
               Request a quote
             </Link>

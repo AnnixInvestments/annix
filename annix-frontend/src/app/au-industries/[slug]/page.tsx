@@ -152,7 +152,7 @@ export default function AuIndustriesSlugPage() {
                   <button
                     onClick={handleSave}
                     disabled={saving || !hasChanges}
-                    className="px-5 py-2 text-sm font-semibold text-white bg-[#B8860B] rounded hover:bg-[#9A7209] disabled:opacity-50 transition-colors"
+                    className="px-5 py-2 text-sm font-semibold text-white bg-[#8A6608] rounded hover:bg-[#6E5106] disabled:opacity-50 transition-colors"
                   >
                     {saving ? "Saving..." : "Save"}
                   </button>
@@ -176,7 +176,7 @@ export default function AuIndustriesSlugPage() {
                 .au-industries-content p > a:only-child {
                   display: inline-block;
                   padding: 12px 40px;
-                  background-color: #B8860B;
+                  background-color: #8A6608;
                   color: #fff !important;
                   font-weight: 600;
                   text-transform: uppercase;
@@ -185,7 +185,7 @@ export default function AuIndustriesSlugPage() {
                   transition: background-color 0.2s;
                 }
                 .au-industries-content p > a:only-child:hover {
-                  background-color: #9A7209;
+                  background-color: #6E5106;
                 }
               `}</style>
               <MarkdownPreview source={page.content} style={{ backgroundColor: "transparent" }} />
@@ -250,7 +250,7 @@ function ServiceCaseStudies(props: { slug: string }) {
           </h2>
           <Link
             href="/projects"
-            className="text-sm font-semibold uppercase tracking-wider text-[#B8860B] hover:text-[#9A7209]"
+            className="text-sm font-semibold uppercase tracking-wider text-[#8A6608] hover:text-[#9A7209]"
           >
             All projects →
           </Link>
@@ -285,7 +285,7 @@ function ServiceCaseStudyCard(props: { study: CaseStudy }) {
         />
       </div>
       <div className="p-4">
-        <div className="text-xs uppercase tracking-widest text-[#B8860B] font-semibold mb-1">
+        <div className="text-xs uppercase tracking-widest text-[#8A6608] font-semibold mb-1">
           {props.study.dateLabel}
         </div>
         <div className="font-bold text-gray-900 leading-tight text-sm">{props.study.title}</div>

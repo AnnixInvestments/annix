@@ -112,7 +112,7 @@ export default function CaseStudiesIndexPage() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               href="/quote"
-              className="inline-block px-10 py-4 bg-[#B8860B] text-white font-semibold uppercase tracking-wider hover:bg-[#9A7209] transition-colors"
+              className="inline-block px-10 py-4 bg-[#8A6608] text-white font-semibold uppercase tracking-wider hover:bg-[#6E5106] transition-colors"
             >
               Request a quote
             </Link>
@@ -164,12 +164,12 @@ function CaseStudyCard(props: { study: CaseStudy }) {
           className="object-cover group-hover:scale-105 transition-transform duration-300"
           sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
         />
-        <div className="absolute top-3 left-3 bg-[#B8860B] text-white text-xs font-semibold uppercase tracking-widest px-3 py-1 rounded">
+        <div className="absolute top-3 left-3 bg-[#8A6608] text-white text-xs font-semibold uppercase tracking-widest px-3 py-1 rounded">
           {industryLabel}
         </div>
       </div>
       <div className="p-5">
-        <div className="text-xs uppercase tracking-widest text-[#B8860B] font-semibold mb-1">
+        <div className="text-xs uppercase tracking-widest text-[#8A6608] font-semibold mb-1">
           {props.study.dateLabel}
           {props.study.location !== null && <span className="mx-2 text-gray-400">·</span>}
           {props.study.location !== null && (

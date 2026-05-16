@@ -43,7 +43,7 @@ export default function AuIndustriesProductsPage() {
               </p>
               <Link
                 href="/au-industries/contact"
-                className="inline-block px-10 py-3 bg-[#B8860B] text-white font-semibold uppercase tracking-wider hover:bg-[#9A7209] transition-colors"
+                className="inline-block px-10 py-3 bg-[#8A6608] text-white font-semibold uppercase tracking-wider hover:bg-[#6E5106] transition-colors"
               >
                 Enquire Here
               </Link>
@@ -84,7 +84,7 @@ export default function AuIndustriesProductsPage() {
               </p>
               <Link
                 href="/au-industries/contact"
-                className="inline-block px-10 py-3 bg-[#B8860B] text-white font-semibold uppercase tracking-wider hover:bg-[#9A7209] transition-colors mb-8"
+                className="inline-block px-10 py-3 bg-[#8A6608] text-white font-semibold uppercase tracking-wider hover:bg-[#6E5106] transition-colors mb-8"
               >
                 Enquire Here
               </Link>
@@ -137,7 +137,7 @@ export default function AuIndustriesProductsPage() {
               </p>
               <Link
                 href="/au-industries/contact"
-                className="inline-block px-10 py-3 bg-[#B8860B] text-white font-semibold uppercase tracking-wider hover:bg-[#9A7209] transition-colors"
+                className="inline-block px-10 py-3 bg-[#8A6608] text-white font-semibold uppercase tracking-wider hover:bg-[#6E5106] transition-colors"
               >
                 Enquire Here
               </Link>
@@ -168,7 +168,7 @@ export default function AuIndustriesProductsPage() {
               </p>
               <Link
                 href="/au-industries/quote"
-                className="inline-block px-10 py-3 bg-[#B8860B] text-white font-semibold uppercase tracking-wider hover:bg-[#9A7209] transition-colors"
+                className="inline-block px-10 py-3 bg-[#8A6608] text-white font-semibold uppercase tracking-wider hover:bg-[#6E5106] transition-colors"
               >
                 Request a Quote
               </Link>
@@ -214,7 +214,7 @@ export default function AuIndustriesProductsPage() {
               </p>
               <Link
                 href="/au-industries/contact"
-                className="inline-block px-10 py-3 bg-[#B8860B] text-white font-semibold uppercase tracking-wider hover:bg-[#9A7209] transition-colors"
+                className="inline-block px-10 py-3 bg-[#8A6608] text-white font-semibold uppercase tracking-wider hover:bg-[#6E5106] transition-colors"
               >
                 Request More Information
               </Link>

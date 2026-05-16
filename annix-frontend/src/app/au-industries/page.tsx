@@ -41,7 +41,7 @@ export default function AuIndustriesHomePage(): React.JSX.Element {
           </h1>
           <Link
             href="/products-and-services"
-            className="inline-block px-12 py-4 bg-[#B8860B] text-white text-lg font-semibold uppercase tracking-wider hover:bg-[#9A7209] transition-colors"
+            className="inline-block px-12 py-4 bg-[#8A6608] text-white text-lg font-semibold uppercase tracking-wider hover:bg-[#6E5106] transition-colors"
           >
             Our Services
           </Link>
@@ -214,7 +214,7 @@ export default function AuIndustriesHomePage(): React.JSX.Element {
             </ul>
             <Link
               href="/products-and-services"
-              className="inline-block self-start px-8 py-3 bg-[#B8860B] text-white font-semibold uppercase tracking-wider hover:bg-[#9A7209] transition-colors"
+              className="inline-block self-start px-8 py-3 bg-[#8A6608] text-white font-semibold uppercase tracking-wider hover:bg-[#6E5106] transition-colors"
             >
               View All Services
             </Link>
@@ -292,7 +292,7 @@ export default function AuIndustriesHomePage(): React.JSX.Element {
 
           <Link
             href="/projects"
-            className="inline-block px-10 py-4 bg-[#B8860B] text-white text-lg font-semibold uppercase tracking-wider hover:bg-[#9A7209] transition-colors"
+            className="inline-block px-10 py-4 bg-[#8A6608] text-white text-lg font-semibold uppercase tracking-wider hover:bg-[#6E5106] transition-colors"
           >
             View Project Case Studies
           </Link>
@@ -311,11 +311,11 @@ export default function AuIndustriesHomePage(): React.JSX.Element {
         <div className="relative max-w-7xl mx-auto px-4 md:px-8 py-20">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
             <div>
-              <h2 className="text-3xl md:text-4xl font-bold text-[#B8860B] uppercase tracking-wider mb-2">
+              <h2 className="text-3xl md:text-4xl font-bold text-white uppercase tracking-wider mb-2">
                 The History of Rubber
               </h2>
               <div className="w-24 h-[3px] bg-[#B8860B] mt-3 mb-8" />
-              <p className="text-[#B8860B] text-lg leading-relaxed mb-8">
+              <p className="text-white text-lg leading-relaxed mb-8">
                 The biggest producer of rubber is Thailand, followed by Indonesia, Vietnam, India
                 and China. Most of the rubber is produced in South-East Asia and Asia followed by
                 Africa and Central America.
@@ -363,7 +363,7 @@ export default function AuIndustriesHomePage(): React.JSX.Element {
               <div className="w-24 h-[3px] bg-[#B8860B] mt-3 mb-8" />
               <div className="space-y-4">
                 <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6">
-                  <h3 className="text-xl font-bold text-[#B8860B] mb-3">
+                  <h3 className="text-xl font-bold text-white mb-3">
                     Olmec, Maya, and Aztec Civilizations:
                   </h3>
                   <p className="text-gray-200 text-sm leading-relaxed text-justify">
@@ -373,20 +373,20 @@ export default function AuIndustriesHomePage(): React.JSX.Element {
                   </p>
                 </div>
                 <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6">
-                  <h3 className="text-xl font-bold text-[#B8860B] mb-3">Rubber Balls:</h3>
+                  <h3 className="text-xl font-bold text-white mb-3">Rubber Balls:</h3>
                   <p className="text-gray-200 text-sm leading-relaxed text-justify">
                     Indigenous populations used rubber to create balls for their ball games, which
                     were often religious or recreational in nature.
                   </p>
                 </div>
                 <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6">
-                  <h3 className="text-xl font-bold text-[#B8860B] mb-3">Waterproofing:</h3>
+                  <h3 className="text-xl font-bold text-white mb-3">Waterproofing:</h3>
                   <p className="text-gray-200 text-sm leading-relaxed text-justify">
                     The latex was also used to make clothing and other items waterproof.
                   </p>
                 </div>
                 <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6">
-                  <h3 className="text-xl font-bold text-[#B8860B] mb-3">Other Applications:</h3>
+                  <h3 className="text-xl font-bold text-white mb-3">Other Applications:</h3>
                   <p className="text-gray-200 text-sm leading-relaxed text-justify">
                     They also used it for containers, shoes, and even to decorate canoes.
                   </p>
@@ -407,7 +407,7 @@ export default function AuIndustriesHomePage(): React.JSX.Element {
           </p>
           <Link
             href="/contact"
-            className="inline-block px-10 py-4 bg-[#B8860B] text-white text-lg font-semibold uppercase tracking-wider hover:bg-[#9A7209] transition-colors"
+            className="inline-block px-10 py-4 bg-[#8A6608] text-white text-lg font-semibold uppercase tracking-wider hover:bg-[#6E5106] transition-colors"
           >
             Contact Us
           </Link>

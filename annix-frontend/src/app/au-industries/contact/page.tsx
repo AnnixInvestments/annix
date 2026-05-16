@@ -103,7 +103,7 @@ export default function AuIndustriesContactPage() {
                   </p>
                   <button
                     onClick={() => setSubmitted(false)}
-                    className="mt-4 text-sm text-[#B8860B] hover:underline"
+                    className="mt-4 text-sm text-[#8A6608] hover:underline"
                   >
                     Send another message
                   </button>
@@ -180,7 +180,7 @@ export default function AuIndustriesContactPage() {
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="w-full px-4 py-3 bg-[#B8860B] text-white font-semibold uppercase tracking-wider hover:bg-[#9A7209] transition-colors disabled:opacity-50"
+                    className="w-full px-4 py-3 bg-[#8A6608] text-white font-semibold uppercase tracking-wider hover:bg-[#6E5106] transition-colors disabled:opacity-50"
                   >
                     {submitting ? "Sending..." : "Send Message"}
                   </button>

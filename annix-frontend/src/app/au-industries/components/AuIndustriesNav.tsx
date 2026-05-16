@@ -120,7 +120,7 @@ export function AuIndustriesNav(props: { pages: NavPage[] }) {
                 onClick={() => setEditMode(!editMode)}
                 className={`ml-4 px-4 py-2 text-sm font-semibold uppercase tracking-wide rounded transition-colors ${
                   editMode
-                    ? "bg-[#B8860B] text-white"
+                    ? "bg-[#8A6608] text-white"
                     : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                 }`}
                 title={editMode ? "Exit edit mode" : "Edit this page"}

@@ -171,13 +171,13 @@ export function LocalLandingPage(props: LocalLandingProps) {
           <div className="mt-10 flex flex-col sm:flex-row gap-4">
             <Link
               href={`/${props.serviceSlug}`}
-              className="inline-block px-8 py-3 border-2 border-[#B8860B] text-[#B8860B] font-semibold uppercase tracking-wider hover:bg-[#B8860B] hover:text-white transition-colors text-center"
+              className="inline-block px-8 py-3 border-2 border-[#8A6608] text-[#8A6608] font-semibold uppercase tracking-wider hover:bg-[#8A6608] hover:text-white transition-colors text-center"
             >
               Full {props.serviceName} details
             </Link>
             <Link
               href="/quote"
-              className="inline-block px-8 py-3 bg-[#B8860B] text-white font-semibold uppercase tracking-wider hover:bg-[#9A7209] transition-colors text-center"
+              className="inline-block px-8 py-3 bg-[#8A6608] text-white font-semibold uppercase tracking-wider hover:bg-[#6E5106] transition-colors text-center"
             >
               Request a quote
             </Link>
@@ -197,7 +197,7 @@ export function LocalLandingPage(props: LocalLandingProps) {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               href="/quote"
-              className="inline-block px-10 py-4 bg-[#B8860B] text-white font-semibold uppercase tracking-wider hover:bg-[#9A7209] transition-colors"
+              className="inline-block px-10 py-4 bg-[#8A6608] text-white font-semibold uppercase tracking-wider hover:bg-[#6E5106] transition-colors"
             >
               Get a quote
             </Link>
@@ -250,7 +250,7 @@ function NearbyCaseCard(props: { study: CaseStudy }) {
         />
       </div>
       <div className="p-4">
-        <div className="text-xs uppercase tracking-widest text-[#B8860B] font-semibold mb-1">
+        <div className="text-xs uppercase tracking-widest text-[#8A6608] font-semibold mb-1">
           {props.study.dateLabel}
         </div>
         <div className="font-bold text-gray-900 leading-tight text-sm">{props.study.title}</div>

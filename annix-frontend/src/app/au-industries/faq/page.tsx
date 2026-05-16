@@ -96,10 +96,10 @@ export default function AuIndustriesFaqPage() {
                 <Link
                   key={page.slug}
                   href={`/${page.slug}#frequently-asked-questions`}
-                  className="flex items-center justify-between px-5 py-4 bg-[#fdf8e8] border border-[#B8860B]/20 rounded-lg hover:bg-[#B8860B] hover:text-white hover:border-[#B8860B] transition-colors group"
+                  className="flex items-center justify-between px-5 py-4 bg-[#fdf8e8] border border-[#8A6608]/20 rounded-lg hover:bg-[#8A6608] hover:text-white hover:border-[#8A6608] transition-colors group"
                 >
                   <span className="font-semibold">{page.title}</span>
-                  <span className="text-sm text-[#B8860B] group-hover:text-white">
+                  <span className="text-sm text-[#8A6608] group-hover:text-white">
                     {count} questions →
                   </span>
                 </Link>
@@ -119,7 +119,7 @@ export default function AuIndustriesFaqPage() {
           </p>
           <Link
             href="/contact"
-            className="inline-block px-10 py-4 bg-[#B8860B] text-white text-lg font-semibold uppercase tracking-wider hover:bg-[#9A7209] transition-colors"
+            className="inline-block px-10 py-4 bg-[#8A6608] text-white text-lg font-semibold uppercase tracking-wider hover:bg-[#6E5106] transition-colors"
           >
             Contact Us
           </Link>

@@ -246,7 +246,7 @@ export default async function CaseStudyDetailPage(props: PageProps) {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               href="/quote"
-              className="inline-block px-10 py-4 bg-[#B8860B] text-white font-semibold uppercase tracking-wider hover:bg-[#9A7209] transition-colors"
+              className="inline-block px-10 py-4 bg-[#8A6608] text-white font-semibold uppercase tracking-wider hover:bg-[#6E5106] transition-colors"
             >
               Request a quote
             </Link>
@@ -268,7 +268,7 @@ function FactCard(props: { label: string; value: string | null }) {
   const display = value || "—";
   return (
     <div className="border border-[#B8860B]/30 rounded-lg p-4">
-      <div className="text-xs uppercase tracking-widest text-[#B8860B] font-semibold mb-1">
+      <div className="text-xs uppercase tracking-widest text-[#8A6608] font-semibold mb-1">
         {props.label}
       </div>
       <div className="text-base font-semibold text-gray-900">{display}</div>
@@ -281,7 +281,7 @@ function FactList(props: { label: string; items: string[]; linkSlugs?: string[] 
   const linkSlugs = fromProps || [];
   return (
     <div className="border border-[#B8860B]/30 rounded-lg p-4">
-      <div className="text-xs uppercase tracking-widest text-[#B8860B] font-semibold mb-2">
+      <div className="text-xs uppercase tracking-widest text-[#8A6608] font-semibold mb-2">
         {props.label}
       </div>
       <ul className="space-y-1">
@@ -328,7 +328,7 @@ function RelatedCard(props: { study: CaseStudy }) {
         />
       </div>
       <div className="p-4">
-        <div className="text-xs uppercase tracking-widest text-[#B8860B] font-semibold mb-1">
+        <div className="text-xs uppercase tracking-widest text-[#8A6608] font-semibold mb-1">
           {props.study.dateLabel}
         </div>
         <div className="font-bold text-gray-900 leading-tight">{props.study.title}</div>

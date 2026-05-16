@@ -153,7 +153,7 @@ function BlogPostCard(props: { post: PublicBlogPost }) {
         </div>
       )}
       <div className="p-5">
-        <div className="text-xs uppercase tracking-widest text-[#B8860B] font-semibold mb-1">
+        <div className="text-xs uppercase tracking-widest text-[#8A6608] font-semibold mb-1">
           {dateLabel}
         </div>
         <h2 className="font-bold text-gray-900 leading-snug mb-2 text-lg">{props.post.title}</h2>
