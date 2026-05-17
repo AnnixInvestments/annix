@@ -1193,6 +1193,17 @@ Formula: totalPrice = totalKg × salePricePerKg
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
+  @Get("portal/supplier-cocs/missing-coc-number-ids")
+  @ApiOperation({
+    summary: "List ACTIVE supplier CoC IDs whose document (CoC) number is missing",
+  })
+  async missingCocNumberIds(): Promise<{ ids: number[] }> {
+    const ids = await this.rubberCocService.supplierCocIdsMissingCocNumber();
+    return { ids };
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
   @Get("portal/supplier-cocs/:id")
   @ApiOperation({ summary: "Get supplier CoC by ID" })
   @ApiParam({ name: "id", description: "Supplier CoC ID" })
@@ -1313,17 +1324,6 @@ Formula: totalPrice = totalKg × salePricePerKg
       `Bulk re-extract: ${succeeded.length}/${candidates.length} succeeded, ${failed.length} failed`,
     );
     return { candidates, succeeded, failed };
-  }
-
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
-  @ApiBearerAuth()
-  @Get("portal/supplier-cocs/missing-coc-number-ids")
-  @ApiOperation({
-    summary: "List ACTIVE supplier CoC IDs whose document (CoC) number is missing",
-  })
-  async missingCocNumberIds(): Promise<{ ids: number[] }> {
-    const ids = await this.rubberCocService.supplierCocIdsMissingCocNumber();
-    return { ids };
   }
 
   private async runReextractForSupplierCoc(id: number): Promise<RubberSupplierCocDto> {
