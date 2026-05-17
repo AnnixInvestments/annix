@@ -21,8 +21,14 @@ type SubmitChoice = "print" | "email" | "both" | "save";
  * QuoteView's vertical layout. Styling matches the project ConfirmModal
  * (Stock Control palette + backdrop blur).
  */
-export function SubmitQuoteModal(props: { sessionId: number; onClose: () => void }) {
-  const { sessionId, onClose } = props;
+export function SubmitQuoteModal(props: {
+  sessionId: number;
+  /** Quote grand total incl VAT, snapshotted onto the session so the
+   *  Quotations hub can show a Value column. */
+  quoteTotalIncVat: number;
+  onClose: () => void;
+}) {
+  const { sessionId, quoteTotalIncVat, onClose } = props;
   const router = useRouter();
   const submit = useSubmitNixQuote();
   const [error, setError] = useState<string | null>(null);
@@ -47,7 +53,7 @@ export function SubmitQuoteModal(props: { sessionId: number; onClose: () => void
     setError(null);
     setBusyChoice(choice);
     submit.mutate(
-      { sessionId },
+      { sessionId, quoteTotalIncVat },
       {
         onSuccess: () => {
           if (choice === "save") {

@@ -191,6 +191,25 @@ export class NixExtractionSession {
   @Column({ name: "job_card_id", type: "int", nullable: true })
   jobCardId?: number;
 
+  @ApiProperty({
+    description:
+      "Quote grand total incl VAT, snapshotted when the quoter clicks Submit. Lets the Quotations hub render a Value column without re-running every quote's pooled m² x rate maths. Null until first submit; refreshed on each subsequent submit.",
+    required: false,
+  })
+  @Column({
+    name: "quote_total_inc_vat",
+    type: "numeric",
+    precision: 14,
+    scale: 2,
+    nullable: true,
+    transformer: {
+      to: (value?: number | null) => value ?? null,
+      from: (value?: string | null) =>
+        value === null || value === undefined ? null : Number(value),
+    },
+  })
+  quoteTotalIncVat?: number | null;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

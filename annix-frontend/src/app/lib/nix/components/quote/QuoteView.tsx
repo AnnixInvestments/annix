@@ -736,7 +736,11 @@ export function QuoteView(props: QuoteViewProps) {
       </div>
 
       {showSubmitModal && (
-        <SubmitQuoteModal sessionId={session.id} onClose={() => setShowSubmitModal(false)} />
+        <SubmitQuoteModal
+          sessionId={session.id}
+          quoteTotalIncVat={grandTotal * (1 + SOUTH_AFRICA_VAT_RATE)}
+          onClose={() => setShowSubmitModal(false)}
+        />
       )}
     </div>
   );

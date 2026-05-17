@@ -54,6 +54,7 @@ import {
   SubmitClarificationDto,
   SubmitClarificationResponseDto,
 } from "./dto/submit-clarification.dto";
+import { SubmitQuoteDto } from "./dto/submit-quote.dto";
 import {
   VerifyRegistrationBatchResponseDto,
   VerifyRegistrationDocumentResponseDto,
@@ -506,11 +507,12 @@ export class NixController {
   @ApiResponse({ status: 201, type: NixExtractionSession })
   async submitSession(
     @Param("id", ParseIntPipe) id: number,
+    @Body() dto: SubmitQuoteDto,
     @Req() req: Request,
   ): Promise<NixExtractionSession> {
     const authUser = req["authUser"] as AuthenticatedUser;
     await this.sessionService.findOneForUser(id, authUser.userId, authUser.type === "admin");
-    return this.sessionService.markSubmitted(id);
+    return this.sessionService.markSubmitted(id, dto.quoteTotalIncVat);
   }
 
   @Post("sessions/:id/convert-to-job-card")

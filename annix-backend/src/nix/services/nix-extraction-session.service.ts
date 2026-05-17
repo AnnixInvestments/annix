@@ -205,14 +205,18 @@ export class NixExtractionSessionService extends BaseCrudService<
   }
 
   /**
-   * Stamps the session as submitted by setting submittedAt to NOW().
-   * Used by the "Submit Quote" button on the working quote page. Does
-   * NOT change the session status — the quote stays in 'promoted' and
-   * remains editable via auto-save. The timestamp is purely a display
-   * indicator on the Quotations hub.
+   * Stamps the session as submitted by setting submittedAt to NOW() and,
+   * when supplied, snapshots the quote grand total incl VAT so the
+   * Quotations hub can show a Value column without recomputing every
+   * quote's pooled m² x rate maths. Used by the "Submit Quote" button on
+   * the working quote page. Does NOT change the session status — the quote
+   * stays in 'promoted' and remains editable via auto-save. A re-submit
+   * refreshes both the timestamp and the total.
    */
-  async markSubmitted(id: number): Promise<NixExtractionSession> {
-    return this.update(id, { submittedAt: new Date() });
+  async markSubmitted(id: number, quoteTotalIncVat?: number): Promise<NixExtractionSession> {
+    const patch: Partial<NixExtractionSession> = { submittedAt: new Date() };
+    if (quoteTotalIncVat !== undefined) patch.quoteTotalIncVat = quoteTotalIncVat;
+    return this.update(id, patch);
   }
 
   /**

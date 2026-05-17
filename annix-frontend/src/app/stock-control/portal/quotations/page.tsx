@@ -421,7 +421,16 @@ function QuotesTable(props: {
               isString(submittedAtIso) && submittedAtIso.length > 0
                 ? fromISO(submittedAtIso).toFormat("dd MMM yyyy")
                 : "—";
-            const titleText = s.title ? s.title : `Quote from documents — session #${s.id}`;
+            // The customer's order number (e.g. "VALTERRA Q150526E") is the
+            // most recognisable label for a quote, so it wins the Title cell.
+            // Fall back to the session title, then a generic placeholder.
+            const orderNumber = s.customerOrderNumber;
+            const titleText =
+              isString(orderNumber) && orderNumber.trim().length > 0
+                ? orderNumber.trim()
+                : s.title
+                  ? s.title
+                  : `Quote from documents — session #${s.id}`;
             const status = quoteStatus(s);
             const totalValue = s.quoteTotalIncVat;
             const valueText = isNumber(totalValue) && totalValue > 0 ? formatZar(totalValue) : "—";

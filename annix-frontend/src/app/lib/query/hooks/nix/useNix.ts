@@ -718,13 +718,15 @@ export interface QuotePdfSnapshotDto {
   totalIncl: number;
 }
 
-export const useSubmitNixQuote = createMutationHook<NixExtractionSessionDto, { sessionId: number }>(
-  ({ sessionId }) =>
-    nixRequest<NixExtractionSessionDto>(`/nix/sessions/${sessionId}/submit`, {
-      method: "POST",
-      body: {},
-      errorLabel: "Failed to submit quote",
-    }),
+export const useSubmitNixQuote = createMutationHook<
+  NixExtractionSessionDto,
+  { sessionId: number; quoteTotalIncVat?: number }
+>(({ sessionId, quoteTotalIncVat }) =>
+  nixRequest<NixExtractionSessionDto>(`/nix/sessions/${sessionId}/submit`, {
+    method: "POST",
+    body: quoteTotalIncVat === undefined ? {} : { quoteTotalIncVat },
+    errorLabel: "Failed to submit quote",
+  }),
 );
 
 export interface ConvertToJobCardResultDto {
