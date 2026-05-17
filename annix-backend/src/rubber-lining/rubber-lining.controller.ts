@@ -1315,6 +1315,17 @@ Formula: totalPrice = totalKg × salePricePerKg
     return { candidates, succeeded, failed };
   }
 
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/supplier-cocs/missing-coc-number-ids")
+  @ApiOperation({
+    summary: "List ACTIVE supplier CoC IDs whose document (CoC) number is missing",
+  })
+  async missingCocNumberIds(): Promise<{ ids: number[] }> {
+    const ids = await this.rubberCocService.supplierCocIdsMissingCocNumber();
+    return { ids };
+  }
+
   private async runReextractForSupplierCoc(id: number): Promise<RubberSupplierCocDto> {
     const coc = await this.rubberCocService.supplierCocById(id);
     if (!coc) throw new NotFoundException("Supplier CoC not found");

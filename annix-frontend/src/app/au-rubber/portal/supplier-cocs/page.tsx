@@ -681,6 +681,96 @@ export default function SupplierCocsPage() {
     cocsQuery.refetch();
   };
 
+  const handleBulkReextractMissingNumbers = async () => {
+    const candidatesResult = await auRubberApiClient.missingCocNumberIds();
+    const candidateIds = candidatesResult.ids;
+    if (candidateIds.length === 0) {
+      showToast("No CoCs missing a document number — nothing to re-extract", "info");
+      return;
+    }
+    const confirmed = await confirm({
+      title: `Re-extract ${candidateIds.length} CoC${candidateIds.length > 1 ? "s" : ""} missing a document number?`,
+      message:
+        "These CoCs show a COC-{id} placeholder because their document number was never extracted. This re-runs Gemini against each PDF to pull the real number.\n\nAny manual corrections previously made to those CoCs will be lost.",
+      confirmLabel: "Re-extract",
+      cancelLabel: "Cancel",
+      variant: "warning",
+    });
+    if (!confirmed) return;
+    setIsBulkReextracting(true);
+    const skipped: { id: number; reason: string }[] = [];
+    let toastsShown = 0;
+    const reportToast = (message: string, variant: "warning" | "info" = "warning") => {
+      if (toastsShown < 3) {
+        showToast(message, variant);
+        toastsShown += 1;
+      }
+    };
+    const isTransient = (err: unknown): boolean => {
+      const message = err instanceof Error ? err.message : String(err);
+      return /trouble reaching the server|HTTP 5\d\d|fetch failed|network|timeout/i.test(message);
+    };
+    const isMissingFile = (err: unknown): boolean => {
+      const message = err instanceof Error ? err.message : String(err);
+      return /file not found|no document|ENOENT|NoSuchKey/i.test(message);
+    };
+    const delay = (ms: number) => new Promise((resolve) => globalThis.setTimeout(resolve, ms));
+    const result = await runAdaptiveBulk({
+      brand: "au-rubber",
+      metricCategory: "rubber-coc-extract",
+      metricOperation: "CALENDARER",
+      items: candidateIds,
+      itemId: (id) => id,
+      itemLabel: (id, index, total) =>
+        `Re-extracting CoC ${index + 1} of ${total} (system #${id})…`,
+      perItemDelayMs: 500,
+      run: async (cocId) => {
+        try {
+          await auRubberApiClient.extractSupplierCoc(cocId);
+        } catch (firstErr) {
+          if (isMissingFile(firstErr)) {
+            skipped.push({
+              id: cocId,
+              reason: "PDF missing in storage — skipped (delete the CoC if you no longer need it)",
+            });
+            reportToast(`CoC #${cocId} skipped: PDF missing in storage`, "info");
+            return;
+          }
+          if (isTransient(firstErr)) {
+            await delay(2000);
+            await auRubberApiClient.extractSupplierCoc(cocId);
+            return;
+          }
+          throw firstErr;
+        }
+      },
+    });
+    setIsBulkReextracting(false);
+    const failedIds = result.failed.map(({ item }) => item);
+    if (failedIds.length > 0) {
+      const firstFew = result.failed.slice(0, 3 - toastsShown);
+      firstFew.forEach(({ item, error }) => {
+        const message = error instanceof Error ? error.message : String(error);
+        reportToast(`CoC #${item} failed: ${message}`, "warning");
+      });
+    }
+    const summaryParts: string[] = [
+      `${result.succeeded.length}/${candidateIds.length} re-extracted`,
+    ];
+    if (skipped.length > 0) {
+      summaryParts.push(
+        `${skipped.length} skipped (missing PDF: #${skipped.map((s) => s.id).join(", #")})`,
+      );
+    }
+    if (failedIds.length > 0) {
+      summaryParts.push(`${failedIds.length} failed (#${failedIds.join(", #")})`);
+    }
+    const summaryVariant =
+      failedIds.length > 0 ? "warning" : skipped.length > 0 ? "info" : "success";
+    showToast(summaryParts.join(" · "), summaryVariant);
+    cocsQuery.refetch();
+  };
+
   const handleReclassify = async (newType: SupplierCocType) => {
     const target = reclassifyTarget;
     if (!target) return;
@@ -923,6 +1013,17 @@ export default function SupplierCocsPage() {
             >
               <RefreshCw className={`w-4 h-4 mr-2 ${isBulkReextracting ? "animate-spin" : ""}`} />
               {isBulkReextracting ? "Re-extracting…" : "Re-extract non-canonical Compounder CoCs"}
+            </button>
+          )}
+          {isAdmin && (
+            <button
+              onClick={handleBulkReextractMissingNumbers}
+              disabled={isBulkReextracting}
+              className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+              title="Re-extract every CoC that shows a COC-{id} placeholder instead of its real document number"
+            >
+              <RefreshCw className={`w-4 h-4 mr-2 ${isBulkReextracting ? "animate-spin" : ""}`} />
+              {isBulkReextracting ? "Re-extracting…" : "Re-extract missing CoC numbers"}
             </button>
           )}
           {selectedForApproval.size > 0 && (

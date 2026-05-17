@@ -105,6 +105,18 @@ export class RubberCocService {
       .map((c) => c.id);
   }
 
+  async supplierCocIdsMissingCocNumber(): Promise<number[]> {
+    const cocs = await this.supplierCocRepository
+      .createQueryBuilder("coc")
+      .select(["coc.id"])
+      .where("(coc.coc_number IS NULL OR coc.coc_number = '')")
+      .andWhere("coc.version_status = :status", { status: DocumentVersionStatus.ACTIVE })
+      .andWhere("coc.document_path IS NOT NULL")
+      .orderBy("coc.id", "DESC")
+      .getMany();
+    return cocs.map((c) => c.id);
+  }
+
   private async equivalentCompoundCodes(compoundCode: string | null): Promise<string[]> {
     if (!compoundCode) return [];
     const coding = await this.productCodingRepository
