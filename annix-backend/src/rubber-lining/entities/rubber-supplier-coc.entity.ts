@@ -125,7 +125,7 @@ export class RubberSupplierCoc {
   @Column({ name: "graph_pdf_path", type: "varchar", length: 500, nullable: true })
   graphPdfPath: string | null;
 
-  @Column({ name: "coc_number", type: "varchar", length: 100, nullable: true })
+  @Column({ name: "coc_number", type: "varchar", length: 255, nullable: true })
   cocNumber: string | null;
 
   @Column({ name: "production_date", type: "date", nullable: true })
@@ -134,10 +134,10 @@ export class RubberSupplierCoc {
   @Column({ name: "compound_code", type: "varchar", length: 100, nullable: true })
   compoundCode: string | null;
 
-  @Column({ name: "order_number", type: "varchar", length: 100, nullable: true })
+  @Column({ name: "order_number", type: "varchar", length: 255, nullable: true })
   orderNumber: string | null;
 
-  @Column({ name: "ticket_number", type: "varchar", length: 100, nullable: true })
+  @Column({ name: "ticket_number", type: "varchar", length: 255, nullable: true })
   ticketNumber: string | null;
 
   @Column({

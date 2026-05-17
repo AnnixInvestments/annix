@@ -168,12 +168,13 @@ export class RubberCocExtractionService {
   private static readonly MAX_COC_NUMBER_LENGTH = 90;
 
   // Gemini sometimes returns several ticket/batch numbers joined into a single
-  // string ("42234, 42235, 42236"). Split those so formatRollRange can collapse
-  // them into ranges instead of emitting the raw comma list verbatim.
-  private splitMultiValueTokens(values: Array<string | null | undefined>): string[] {
+  // string ("42234, 42235, 42236"), and sometimes returns a bare number. Coerce
+  // to string and split so formatRollRange can collapse them into ranges instead
+  // of emitting the raw comma list verbatim.
+  private splitMultiValueTokens(values: Array<string | number | null | undefined>): string[] {
     const tokens = values
-      .filter((v): v is string => !!v)
-      .flatMap((v) => v.split(/[,;/]+|\s+/))
+      .filter((v) => v !== null && v !== undefined && v !== "")
+      .flatMap((v) => String(v).split(/[,;/]+|\s+/))
       .map((t) => t.trim())
       .filter(Boolean);
     return [...new Set(tokens)];
