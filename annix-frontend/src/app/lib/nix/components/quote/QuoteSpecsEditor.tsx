@@ -9,18 +9,25 @@ import {
   uploadProductDataSheet,
 } from "@/app/lib/query/hooks";
 import {
+  type CoatEntry,
+  coatLabel,
   countMissingDataSheets,
   type DataSheetAttachment,
   type DataSheetAttachments,
+  defaultCoatBreakdown,
   effectiveSuppliers,
   newCustomEntry,
+  newIntermediateCoat,
+  orderedCoats,
   type SpecKind,
   type SpecListing,
   type SpecOverrides,
   type SpecRate,
   type SpecRates,
   type SupplierEntry,
+  sanitiseRate,
   selectedSupplierId,
+  sumCoatRates,
   withSelectedSupplier,
   withSpecSuppliers,
 } from "./quoteSpecOverrides";
@@ -315,6 +322,29 @@ function SpecCard(props: SpecCardProps) {
   const m2Value = rate && rate.perM2 > 0 ? String(rate.perM2) : "";
   const rmValue = rate && rate.perRm > 0 ? String(rate.perRm) : "";
 
+  // Per-coat breakdown (#295): when a coating entry has been broken into
+  // coats, that entry's summed coat rate IS the spec's R/m². The selected
+  // supplier's breakdown wins; otherwise the first entry that has one.
+  const selectedCoatEntry =
+    !isLining && selectedId
+      ? suppliers.find((s) => s.id === selectedId && s.coats !== undefined)
+      : undefined;
+  const firstCoatEntry = isLining ? undefined : suppliers.find((s) => s.coats !== undefined);
+  const coatModeEntry = selectedCoatEntry ?? firstCoatEntry;
+  const coatModeCoats = coatModeEntry ? coatModeEntry.coats : undefined;
+  const coatRateSum = coatModeCoats ? sumCoatRates(coatModeCoats) : null;
+  const coatRateSumLabel = coatRateSum === null ? "0.00" : coatRateSum.toFixed(2);
+  const currentM2 = rate ? rate.perM2 : 0;
+  // Keep the persisted SpecRate.perM2 in lockstep with the coat sum, so the
+  // whole cost pipeline (grand total, pool sections, customer PDF) reads
+  // the right number without knowing per-coat pricing exists.
+  useEffect(() => {
+    if (coatRateSum === null) return;
+    if (Math.abs(currentM2 - coatRateSum) > 1e-9) {
+      onRateChange("perM2", String(coatRateSum));
+    }
+  }, [coatRateSum, currentM2, onRateChange]);
+
   const updateSupplier = (entryId: string, partial: Partial<SupplierEntry>) => {
     onSuppliersChange((current) =>
       current.map((s) => (s.id === entryId ? { ...s, ...partial, isCustom: true } : s)),
@@ -440,11 +470,13 @@ function SpecCard(props: SpecCardProps) {
                 showSelectAffordance={!isLining && !isDrawingFaceted}
                 hideDelete={isDrawingFaceted && !supplier.isCustom}
                 attachment={attachments[supplier.id] ? attachments[supplier.id] : null}
+                attachments={attachments}
                 specSummary={specSummary}
                 onChange={(partial) => updateSupplier(supplier.id, partial)}
                 onDelete={() => deleteSupplier(supplier.id)}
                 onToggleSelect={() => onSelectSupplier(isSelected ? null : supplier.id)}
                 onAttachmentChange={(attachment) => onAttachmentChange(supplier.id, attachment)}
+                onCoatAttachmentChange={onAttachmentChange}
               />
             );
           })
@@ -481,13 +513,25 @@ function SpecCard(props: SpecCardProps) {
             onChange={(raw) => onRateChange("perRm", raw)}
           />
         )}
-        <RateField
-          id={`m2-${spec.code}`}
-          label="R / m²"
-          helper={isLining ? "Plate, fittings, pipes < 3 m" : "Coating area"}
-          value={m2Value}
-          onChange={(raw) => onRateChange("perM2", raw)}
-        />
+        {coatModeEntry ? (
+          <div className="flex-1 min-w-0">
+            <span className="block text-[10px] uppercase tracking-wider text-gray-500 font-medium mb-0.5">
+              R / m²
+              <span className="ml-1 text-gray-400 normal-case font-normal">— sum of coats</span>
+            </span>
+            <div className="px-2 py-1 border border-gray-200 bg-gray-50 rounded text-sm font-mono text-right text-gray-700">
+              R {coatRateSumLabel}
+            </div>
+          </div>
+        ) : (
+          <RateField
+            id={`m2-${spec.code}`}
+            label="R / m²"
+            helper={isLining ? "Plate, fittings, pipes < 3 m" : "Coating area"}
+            value={m2Value}
+            onChange={(raw) => onRateChange("perM2", raw)}
+          />
+        )}
       </div>
     </div>
   );
@@ -528,6 +572,9 @@ interface SupplierRowProps {
    */
   hideDelete: boolean;
   attachment: DataSheetAttachment | null;
+  /** Full attachment map — coat-mode rows (#295) attach a data sheet per
+   *  coat, each keyed by the coat's own id. */
+  attachments: DataSheetAttachments;
   /**
    * The parent spec's one-liner summary (e.g. '6 mm bore, 3 mm flange,
    * hot-bonded, autoclave vulcanised, red'), extracted from the drawings /
@@ -541,6 +588,9 @@ interface SupplierRowProps {
   onDelete: () => void;
   onToggleSelect: () => void;
   onAttachmentChange: (attachment: DataSheetAttachment | null) => void;
+  /** Attach / detach a data sheet by arbitrary id — used for per-coat
+   *  sheets (#295), where the id is the coat's id rather than the row's. */
+  onCoatAttachmentChange: (id: string, attachment: DataSheetAttachment | null) => void;
 }
 
 /**
@@ -618,13 +668,19 @@ function SupplierRow(props: SupplierRowProps) {
     showSelectAffordance,
     hideDelete,
     attachment,
+    attachments,
     specSummary,
     onChange,
     onDelete,
     onToggleSelect,
     onAttachmentChange,
+    onCoatAttachmentChange,
   } = props;
   const isCustom = supplier.isCustom;
+  // #295 — coatings can be broken into per-coat rows (blast / primer /
+  // intermediate(s) / final). `coats` undefined = plain single-description
+  // mode; an array = coat mode (the description is derived from the coats).
+  const coatModeOn = !isLining && supplier.coats !== undefined;
   const [autoFillState, setAutoFillState] = useState<
     "idle" | "extracting" | "applied" | "no-match" | "error"
   >("idle");
@@ -735,6 +791,22 @@ function SupplierRow(props: SupplierRowProps) {
     setAutoFillState("idle");
     setLibraryNote(null);
     setAutoFillErrorDetail(null);
+  };
+
+  /**
+   * Flips the entry between plain mode (single description + rate) and
+   * per-coat mode (#295). Leaving coat mode drops any per-coat data sheets
+   * so they don't linger as orphans in the attachment map.
+   */
+  const handleToggleCoatMode = (on: boolean) => {
+    if (on) {
+      onChange({ coats: defaultCoatBreakdown() });
+      return;
+    }
+    if (supplier.coats) {
+      for (const coat of supplier.coats) onCoatAttachmentChange(coat.id, null);
+    }
+    onChange({ coats: undefined });
   };
 
   /**
@@ -873,17 +945,23 @@ function SupplierRow(props: SupplierRowProps) {
             )}
           </div>
         )}
-        <textarea
-          value={supplier.description}
-          onChange={(event) => onChange({ description: event.target.value })}
-          placeholder={
-            isLining
-              ? "Product description (e.g. 6 mm bore, 3 mm flange, hot-bonded, autoclave vulcanised, red)"
-              : "Products + DFTs (e.g. Carboguard 890 @ 100-150μm, Carbothane 137 HS @ 50-100μm)"
-          }
-          rows={isLining ? 2 : 2}
-          className="flex-1 min-w-0 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#323288]/30 resize-y"
-        />
+        {coatModeOn ? (
+          <div className="flex-1 min-w-0 px-2 py-1 text-xs text-gray-400 italic">
+            Itemised into coats below.
+          </div>
+        ) : (
+          <textarea
+            value={supplier.description}
+            onChange={(event) => onChange({ description: event.target.value })}
+            placeholder={
+              isLining
+                ? "Product description (e.g. 6 mm bore, 3 mm flange, hot-bonded, autoclave vulcanised, red)"
+                : "Products + DFTs (e.g. Carboguard 890 @ 100-150μm, Carbothane 137 HS @ 50-100μm)"
+            }
+            rows={2}
+            className="flex-1 min-w-0 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#323288]/30 resize-y"
+          />
+        )}
         {!hideDelete && (
           <button
             type="button"
@@ -896,7 +974,26 @@ function SupplierRow(props: SupplierRowProps) {
           </button>
         )}
       </div>
-      {isCustom && (
+      {!isLining && (
+        <label className="mt-2 inline-flex w-fit items-center gap-1.5 text-[11px] text-gray-600 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={coatModeOn}
+            onChange={(event) => handleToggleCoatMode(event.target.checked)}
+            className="h-3.5 w-3.5 rounded border-gray-300 text-[#323288] focus:ring-[#323288]/30"
+          />
+          Break into coats — price blast prep, primer, intermediate &amp; final separately
+        </label>
+      )}
+      {coatModeOn && supplier.coats && (
+        <CoatBreakdownEditor
+          coats={supplier.coats}
+          attachments={attachments}
+          onCoatsChange={(coats) => onChange({ coats })}
+          onCoatAttachmentChange={onCoatAttachmentChange}
+        />
+      )}
+      {isCustom && !coatModeOn && (
         <div className="mt-2 flex flex-col gap-1">
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <span
@@ -1190,6 +1287,205 @@ function DataSheetLibraryPicker(props: {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * Per-coat editor for a coating entry (#295). Renders the fixed blast /
+ * primer / final coats — each with an "applies" tick-box — plus any
+ * intermediate coats, with an "Add intermediate coat" button. Blast prep
+ * carries only a rate (it's surface prep, no product); the product coats
+ * carry a product name, DFT and their own data sheet. The summed rate of
+ * the applied coats becomes the coating's R/m² (SpecCard syncs it onto
+ * the persisted SpecRate so the cost pipeline is unaffected).
+ */
+function CoatBreakdownEditor(props: {
+  coats: CoatEntry[];
+  attachments: DataSheetAttachments;
+  onCoatsChange: (coats: CoatEntry[]) => void;
+  onCoatAttachmentChange: (coatId: string, attachment: DataSheetAttachment | null) => void;
+}) {
+  const { coats, attachments, onCoatsChange, onCoatAttachmentChange } = props;
+  const [uploading, setUploading] = useState<{ coatId: string; filename: string } | null>(null);
+
+  const updateCoat = (coatId: string, partial: Partial<CoatEntry>) => {
+    onCoatsChange(coats.map((coat) => (coat.id === coatId ? { ...coat, ...partial } : coat)));
+  };
+  const removeCoat = (coatId: string) => {
+    onCoatsChange(coats.filter((coat) => coat.id !== coatId));
+    onCoatAttachmentChange(coatId, null);
+  };
+  const addIntermediate = () => {
+    onCoatsChange([...coats, newIntermediateCoat()]);
+  };
+
+  // After a data sheet attaches, fill the coat's product name from it —
+  // but only when blank, so a quoter's own wording is never overwritten.
+  const autoFillProduct = (coatId: string, manufacturer: string, productName: string) => {
+    const coat = coats.find((c) => c.id === coatId);
+    if (!coat || coat.product.trim().length > 0) return;
+    const label = `${manufacturer} ${productName}`.trim();
+    if (label.length > 0) updateCoat(coatId, { product: label });
+  };
+
+  const handleFilePicked = async (coatId: string, file: File) => {
+    setUploading({ coatId, filename: file.name });
+    try {
+      const result = await uploadProductDataSheet(file, "coating");
+      onCoatAttachmentChange(coatId, {
+        specCode: "",
+        entryId: coatId,
+        dataSheetId: result.dataSheetId,
+        filename: file.name,
+        sizeBytes: file.size,
+        manufacturer: result.manufacturer,
+        productName: result.productName,
+        publishedRevision: result.publishedRevision,
+      });
+      autoFillProduct(coatId, result.manufacturer, result.productName);
+    } catch {
+      // The chip just won't appear — the quoter can retry or type the
+      // product in by hand. The entry-level path surfaces detailed Gemini
+      // errors; per-coat we keep it quiet to avoid banner clutter.
+    } finally {
+      setUploading(null);
+    }
+  };
+
+  const handleLibraryPick = (coatId: string, hit: ProductDataSheetSearchHit) => {
+    onCoatAttachmentChange(coatId, {
+      specCode: "",
+      entryId: coatId,
+      dataSheetId: hit.id,
+      filename: hit.originalFilename,
+      sizeBytes: hit.sizeBytes,
+      manufacturer: hit.manufacturer,
+      productName: hit.productName,
+      publishedRevision: hit.publishedRevision,
+    });
+    autoFillProduct(coatId, hit.manufacturer, hit.productName);
+  };
+
+  const ordered = orderedCoats(coats);
+  const intermediateCount = ordered.filter((coat) => coat.type === "intermediate").length;
+  let intermediateSeen = 0;
+  const total = sumCoatRates(coats);
+
+  return (
+    <div className="mt-2 flex flex-col gap-1.5 rounded-md border border-orange-200 bg-orange-50/40 p-2">
+      {ordered.map((coat) => {
+        if (coat.type === "intermediate") intermediateSeen += 1;
+        const label = coatLabel(coat, intermediateSeen, intermediateCount);
+        const isBlast = coat.type === "blast";
+        const isIntermediate = coat.type === "intermediate";
+        const rateText = coat.ratePerM2 > 0 ? String(coat.ratePerM2) : "";
+        const coatAttachment = attachments[coat.id] ? attachments[coat.id] : null;
+        return (
+          <div
+            key={coat.id}
+            className={`flex flex-wrap items-center gap-2 rounded border bg-white px-2 py-1.5 ${
+              coat.applies ? "border-gray-200" : "border-gray-100 opacity-60"
+            }`}
+          >
+            {isIntermediate ? (
+              <span className="w-28 text-[11px] font-semibold text-gray-700">{label}</span>
+            ) : (
+              <label className="inline-flex w-28 cursor-pointer items-center gap-1.5 text-[11px] font-semibold text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={coat.applies}
+                  onChange={(event) => updateCoat(coat.id, { applies: event.target.checked })}
+                  className="h-3.5 w-3.5 rounded border-gray-300 text-[#323288] focus:ring-[#323288]/30"
+                />
+                {label}
+              </label>
+            )}
+            {isBlast ? (
+              <span className="min-w-[8rem] flex-1 text-[11px] text-gray-400 italic">
+                Surface prep — abrasive blast, no product
+              </span>
+            ) : (
+              <>
+                <input
+                  type="text"
+                  value={coat.product}
+                  onChange={(event) => updateCoat(coat.id, { product: event.target.value })}
+                  placeholder="Product (e.g. Carbozinc 880)"
+                  disabled={!coat.applies}
+                  className="min-w-[8rem] flex-1 rounded border border-gray-300 px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-[#323288]/30 disabled:bg-gray-50"
+                />
+                <div className="flex items-center gap-1">
+                  <input
+                    type="text"
+                    value={coat.dftMicrons}
+                    onChange={(event) => updateCoat(coat.id, { dftMicrons: event.target.value })}
+                    placeholder="DFT"
+                    disabled={!coat.applies}
+                    className="w-16 rounded border border-gray-300 px-2 py-1 text-right text-xs focus:outline-none focus:ring-2 focus:ring-[#323288]/30 disabled:bg-gray-50"
+                  />
+                  <span className="text-[11px] text-gray-400">µm</span>
+                </div>
+              </>
+            )}
+            <div className="flex items-center gap-1">
+              <span className="text-[11px] text-gray-500">R</span>
+              <input
+                type="number"
+                inputMode="decimal"
+                min={0}
+                step={1}
+                value={rateText}
+                onChange={(event) =>
+                  updateCoat(coat.id, { ratePerM2: sanitiseRate(Number(event.target.value)) })
+                }
+                placeholder="0.00"
+                disabled={!coat.applies}
+                className="w-20 rounded border border-gray-300 px-2 py-1 text-right font-mono text-xs focus:outline-none focus:ring-2 focus:ring-[#323288]/30 disabled:bg-gray-50"
+              />
+              <span className="text-[10px] text-gray-400">/m²</span>
+            </div>
+            {!isBlast && coat.applies && (
+              <DataSheetUpload
+                entryId={coat.id}
+                kind="coating"
+                attachment={coatAttachment}
+                uploadingFilename={
+                  uploading && uploading.coatId === coat.id ? uploading.filename : null
+                }
+                uploadingSizeBytes={null}
+                isExtracting={uploading !== null && uploading.coatId === coat.id}
+                onFilePicked={(file) => handleFilePicked(coat.id, file)}
+                onPickFromLibrary={(hit) => handleLibraryPick(coat.id, hit)}
+                onRemove={() => onCoatAttachmentChange(coat.id, null)}
+              />
+            )}
+            {isIntermediate && (
+              <button
+                type="button"
+                onClick={() => removeCoat(coat.id)}
+                className="px-1 text-sm leading-none text-gray-400 hover:text-red-600"
+                aria-label={`Remove ${label}`}
+                title={`Remove ${label}`}
+              >
+                ×
+              </button>
+            )}
+          </div>
+        );
+      })}
+      <div className="flex items-center justify-between gap-2 pt-0.5">
+        <button
+          type="button"
+          onClick={addIntermediate}
+          className="inline-flex items-center gap-1 text-[11px] font-medium text-[#323288] hover:underline"
+        >
+          <span aria-hidden>+</span> Add intermediate coat
+        </button>
+        <span className="text-[11px] font-semibold text-gray-700">
+          Total R {total.toFixed(2)} /m²
+        </span>
+      </div>
     </div>
   );
 }

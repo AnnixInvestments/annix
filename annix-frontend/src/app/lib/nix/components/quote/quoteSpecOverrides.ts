@@ -20,6 +20,46 @@ export interface SupplierEntry {
   brand: string;
   description: string;
   isCustom: boolean;
+  /**
+   * Per-coat breakdown of a coating system (#295). `undefined` means the
+   * entry is in plain mode — a single free-text `description` + the spec's
+   * single R/m² rate. An array (even empty) means the quoter ticked "Break
+   * into coats", so the system is itemised: blast prep + primer +
+   * intermediate(s) + final, each with its own rate and data sheet, and the
+   * coating R/m² is the sum of the applied coats. Coatings only — never set
+   * on lining entries. Stored in the opaque `quote_editor_state` JSONB;
+   * absent on every quote saved before #295, which reads as plain mode.
+   */
+  coats?: CoatEntry[];
+}
+
+/**
+ * The four roles a coat can play in a paint system. `blast` is surface
+ * prep (abrasive blast to Sa 2.5) — priced, but it carries no product,
+ * DFT or data sheet. `intermediate` can repeat (build systems run two or
+ * more); `blast`, `primer` and `final` appear at most once.
+ */
+export type CoatType = "blast" | "primer" | "intermediate" | "final";
+
+/**
+ * One coat within a coating entry's per-coat breakdown (#295).
+ *
+ * The fixed blast / primer / final coats always sit in the `coats` array
+ * but can be switched off via `applies` (un-ticked = not part of the
+ * system, contributes nothing to the rate and is dropped from the
+ * customer footer). Intermediate coats are only present when they apply —
+ * adding one appends an `applies: true` entry, removing it deletes it.
+ */
+export interface CoatEntry {
+  id: string;
+  type: CoatType;
+  applies: boolean;
+  /** Product name, e.g. "Carbozinc 880". Always blank for blast prep. */
+  product: string;
+  /** Dry-film thickness in microns — free text ("150" or "100-150"). Blank for blast prep. */
+  dftMicrons: string;
+  /** This coat's contribution to the coating R/m² rate. */
+  ratePerM2: number;
 }
 
 export type SpecKind = "coating" | "lining";
@@ -92,6 +132,13 @@ function nextEntryId(): string {
   entryCounter += 1;
   const random = Math.random().toString(36).slice(2, 8);
   return `entry-${entryCounter}-${random}`;
+}
+
+let coatCounter = 0;
+function nextCoatId(): string {
+  coatCounter += 1;
+  const random = Math.random().toString(36).slice(2, 8);
+  return `coat-${coatCounter}-${random}`;
 }
 
 /**
@@ -357,9 +404,15 @@ export function joinSuppliersForFooter(suppliers: SupplierEntry[], kind: SpecKin
 
   return pool
     .map((s) => {
-      if (s.brand && s.description) return `${s.brand}: ${s.description}`;
+      // A coat-broken-down entry (#295) describes itself through its
+      // applied coats, not the free-text description field.
+      const detail =
+        s.coats !== undefined && coatBreakdownText(s.coats).length > 0
+          ? coatBreakdownText(s.coats)
+          : s.description;
+      if (s.brand && detail) return `${s.brand}: ${detail}`;
       if (s.brand) return s.brand;
-      return s.description;
+      return detail;
     })
     .filter((p) => p.length > 0)
     .join(" • ");
@@ -380,6 +433,107 @@ export function newCustomEntry(brand: string, description: string): SupplierEntr
     description,
     isCustom: true,
   };
+}
+
+/* ------------------------------------------------------------------
+ * Per-coat coating breakdown (#295)
+ * ------------------------------------------------------------------ */
+
+function blankCoat(type: CoatType, applies: boolean): CoatEntry {
+  return { id: nextCoatId(), type, applies, product: "", dftMicrons: "", ratePerM2: 0 };
+}
+
+/**
+ * The starting coat list when the quoter ticks "Break into coats" on a
+ * coating entry: the three fixed coats (blast prep, primer, final), all
+ * applied, all blank. The quoter un-ticks the ones that don't apply and
+ * adds intermediate coats as needed.
+ */
+export function defaultCoatBreakdown(): CoatEntry[] {
+  return [blankCoat("blast", true), blankCoat("primer", true), blankCoat("final", true)];
+}
+
+/** A fresh intermediate coat — appended when the quoter clicks "Add intermediate coat". */
+export function newIntermediateCoat(): CoatEntry {
+  return blankCoat("intermediate", true);
+}
+
+const COAT_TYPE_ORDER: Record<CoatType, number> = {
+  blast: 0,
+  primer: 1,
+  intermediate: 2,
+  final: 3,
+};
+
+/**
+ * Coats in render order — blast, primer, intermediate(s), final —
+ * preserving the insertion order of intermediates among themselves.
+ */
+export function orderedCoats(coats: CoatEntry[]): CoatEntry[] {
+  return coats
+    .map((coat, index) => ({ coat, index }))
+    .sort((a, b) => {
+      const typeDelta = COAT_TYPE_ORDER[a.coat.type] - COAT_TYPE_ORDER[b.coat.type];
+      return typeDelta !== 0 ? typeDelta : a.index - b.index;
+    })
+    .map((wrapped) => wrapped.coat);
+}
+
+/** Sum of the R/m² rates of the coats that apply — the coating's effective R/m². */
+export function sumCoatRates(coats: CoatEntry[]): number {
+  return coats.reduce((acc, coat) => (coat.applies ? acc + sanitiseRate(coat.ratePerM2) : acc), 0);
+}
+
+/**
+ * Customer-facing label for a coat. Intermediate coats are numbered when
+ * there's more than one ("Intermediate coat 1", "Intermediate coat 2");
+ * a lone intermediate is just "Intermediate coat".
+ */
+export function coatLabel(coat: CoatEntry, intermediateNumber: number, intermediateCount: number) {
+  switch (coat.type) {
+    case "blast":
+      return "Blast prep";
+    case "primer":
+      return "Primer";
+    case "final":
+      return "Final coat";
+    default:
+      return intermediateCount > 1
+        ? `Intermediate coat ${intermediateNumber}`
+        : "Intermediate coat";
+  }
+}
+
+/**
+ * One-line description of an applied coat for the customer footer, e.g.
+ * "Primer: Carbozinc 880 @ 150µm" or "Blast prep". Product / DFT are
+ * omitted when blank so a half-filled coat still reads cleanly.
+ */
+function coatFooterPiece(coat: CoatEntry, label: string): string {
+  const product = coat.product.trim();
+  const dft = coat.dftMicrons.trim();
+  if (coat.type === "blast") return label;
+  if (product.length === 0 && dft.length === 0) return label;
+  const productPart = product.length > 0 ? product : "—";
+  const dftPart = dft.length > 0 ? ` @ ${dft}µm` : "";
+  return `${label}: ${productPart}${dftPart}`;
+}
+
+/**
+ * Renders a coating entry's applied coats as the customer-facing
+ * description string — "Blast prep; Primer: Carbozinc 880 @ 150µm; Final
+ * coat: Carbothane 137HS @ 50µm". Returns "" when no coats apply.
+ */
+export function coatBreakdownText(coats: CoatEntry[]): string {
+  const ordered = orderedCoats(coats).filter((coat) => coat.applies);
+  const intermediateCount = ordered.filter((coat) => coat.type === "intermediate").length;
+  let intermediateSeen = 0;
+  return ordered
+    .map((coat) => {
+      if (coat.type === "intermediate") intermediateSeen += 1;
+      return coatFooterPiece(coat, coatLabel(coat, intermediateSeen, intermediateCount));
+    })
+    .join("; ");
 }
 
 /* ------------------------------------------------------------------
@@ -436,6 +590,20 @@ export function countMissingDataSheets(
     const suppliers = effectiveSuppliers(spec, overrides);
     for (const supplier of suppliers) {
       if (!supplier.isCustom) continue;
+      // Coat-broken-down entry (#295): the data sheet requirement is
+      // per-coat — each applied coat that names a product needs its own
+      // sheet. Blast prep and blank coats carry no product, so no sheet.
+      if (supplier.coats !== undefined) {
+        for (const coat of supplier.coats) {
+          const applies = coat.applies;
+          const hasProduct = coat.product.trim().length > 0;
+          if (!applies || !hasProduct) continue;
+          custom += 1;
+          const coatAttachment = attachments[coat.id];
+          if (!coatAttachment) missing += 1;
+        }
+        continue;
+      }
       custom += 1;
       const attachment = attachments[supplier.id];
       if (!attachment) missing += 1;
