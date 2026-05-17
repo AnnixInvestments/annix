@@ -9,15 +9,18 @@ const STYLES: Record<PaperExecutorStrategy, { label: string; classes: string } |
   rules: null,
   "ai-pure": {
     label: "Nix · Pure",
-    classes: "bg-purple-900/40 text-purple-300 border-purple-700",
+    classes:
+      "bg-purple-100 text-purple-700 border-purple-300 dark:bg-purple-900/40 dark:text-purple-300 dark:border-purple-700",
   },
   "ai-override": {
     label: "Nix · Hybrid",
-    classes: "bg-indigo-900/40 text-indigo-300 border-indigo-700",
+    classes:
+      "bg-indigo-100 text-indigo-700 border-indigo-300 dark:bg-indigo-900/40 dark:text-indigo-300 dark:border-indigo-700",
   },
   "ai-picker": {
     label: "Nix · Picker",
-    classes: "bg-fuchsia-900/40 text-fuchsia-300 border-fuchsia-700",
+    classes:
+      "bg-fuchsia-100 text-fuchsia-700 border-fuchsia-300 dark:bg-fuchsia-900/40 dark:text-fuchsia-300 dark:border-fuchsia-700",
   },
 };
 
