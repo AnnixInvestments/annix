@@ -76,6 +76,36 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
     persistCv(next);
   };
 
+  const handleAddCoreCompetency = (value: string) => {
+    if (!cv) return;
+    const trimmed = value.trim();
+    if (trimmed.length === 0) return;
+    const exists = cv.coreCompetencies.some(
+      (entry) => entry.toLowerCase() === trimmed.toLowerCase(),
+    );
+    if (exists) return;
+    const next: NixGeneratedCv = {
+      ...cv,
+      coreCompetencies: [...cv.coreCompetencies, trimmed],
+    };
+    setEditedCv(next);
+    persistCv(next);
+  };
+
+  const handleAddKeySkill = (value: string) => {
+    if (!cv) return;
+    const trimmed = value.trim();
+    if (trimmed.length === 0) return;
+    const exists = cv.keySkills.some((entry) => entry.toLowerCase() === trimmed.toLowerCase());
+    if (exists) return;
+    const next: NixGeneratedCv = {
+      ...cv,
+      keySkills: [...cv.keySkills, trimmed],
+    };
+    setEditedCv(next);
+    persistCv(next);
+  };
+
   const mutationError = generateMutation.error;
   const buildErrorMessage = mutationError
     ? mutationError instanceof Error
@@ -178,6 +208,8 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
             cv={cv}
             onRemoveCoreCompetency={handleRemoveCoreCompetency}
             onRemoveKeySkill={handleRemoveKeySkill}
+            onAddCoreCompetency={handleAddCoreCompetency}
+            onAddKeySkill={handleAddKeySkill}
           />
 
           {downloadError && (
@@ -213,10 +245,14 @@ function NixCvDocument(props: {
   cv: NixGeneratedCv;
   onRemoveCoreCompetency: (value: string) => void;
   onRemoveKeySkill: (value: string) => void;
+  onAddCoreCompetency: (value: string) => void;
+  onAddKeySkill: (value: string) => void;
 }) {
   const cv = props.cv;
   const onRemoveCoreCompetency = props.onRemoveCoreCompetency;
   const onRemoveKeySkill = props.onRemoveKeySkill;
+  const onAddCoreCompetency = props.onAddCoreCompetency;
+  const onAddKeySkill = props.onAddKeySkill;
   const rawFullName = cv.fullName;
   const fullName = rawFullName || "Curriculum Vitae";
   const contactParts = [cv.contact.email, cv.contact.phone, cv.contact.linkedin].filter(
@@ -243,11 +279,13 @@ function NixCvDocument(props: {
         </CvSection>
       )}
 
-      {cv.coreCompetencies.length > 0 && (
-        <CvSection title="Core Competencies">
-          <CvSkillList values={cv.coreCompetencies} onRemove={onRemoveCoreCompetency} />
-        </CvSection>
-      )}
+      <CvSection title="Core Competencies">
+        <CvSkillList
+          values={cv.coreCompetencies}
+          onRemove={onRemoveCoreCompetency}
+          onAdd={onAddCoreCompetency}
+        />
+      </CvSection>
 
       {cv.experience.length > 0 && (
         <CvSection title="Experience">
@@ -277,11 +315,9 @@ function NixCvDocument(props: {
         </CvSection>
       )}
 
-      {cv.keySkills.length > 0 && (
-        <CvSection title="Key Skills">
-          <CvSkillList values={cv.keySkills} onRemove={onRemoveKeySkill} />
-        </CvSection>
-      )}
+      <CvSection title="Key Skills">
+        <CvSkillList values={cv.keySkills} onRemove={onRemoveKeySkill} onAdd={onAddKeySkill} />
+      </CvSection>
 
       {cv.closingNote && <p className="text-xs text-gray-500 italic">{cv.closingNote}</p>}
     </div>
@@ -299,11 +335,33 @@ function CvSection(props: { title: string; children: React.ReactNode }) {
   );
 }
 
-function CvSkillList(props: { values: string[]; onRemove: (value: string) => void }) {
+function CvSkillList(props: {
+  values: string[];
+  onRemove: (value: string) => void;
+  onAdd: (value: string) => void;
+}) {
   const values = props.values;
   const onRemove = props.onRemove;
+  const onAdd = props.onAdd;
+  const [adding, setAdding] = useState(false);
+  const [draft, setDraft] = useState("");
+
+  const commit = () => {
+    const trimmed = draft.trim();
+    if (trimmed.length > 0) {
+      onAdd(trimmed);
+    }
+    setDraft("");
+    setAdding(false);
+  };
+
+  const cancel = () => {
+    setDraft("");
+    setAdding(false);
+  };
+
   return (
-    <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
       {values.map((value) => (
         <span key={value} className="inline-flex items-center gap-1.5 text-sm text-gray-800">
           <span>{value}</span>
@@ -318,6 +376,49 @@ function CvSkillList(props: { values: string[]; onRemove: (value: string) => voi
           </button>
         </span>
       ))}
+      {adding ? (
+        <span className="inline-flex items-center gap-1.5">
+          <input
+            type="text"
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                commit();
+              }
+              if (event.key === "Escape") {
+                cancel();
+              }
+            }}
+            placeholder="New entry"
+            autoFocus
+            className="text-sm border border-[#c0c0eb] rounded px-2 py-0.5 w-40 focus:outline-none focus:ring-1 focus:ring-[#323288]"
+          />
+          <button
+            type="button"
+            onClick={commit}
+            className="text-xs font-medium text-[#323288] hover:text-[#252560]"
+          >
+            Add
+          </button>
+          <button
+            type="button"
+            onClick={cancel}
+            className="text-xs text-gray-400 hover:text-gray-700"
+          >
+            Cancel
+          </button>
+        </span>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setAdding(true)}
+          className="text-xs font-medium text-[#323288] hover:text-[#252560]"
+        >
+          + Add
+        </button>
+      )}
     </div>
   );
 }
