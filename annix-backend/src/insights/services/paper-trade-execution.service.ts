@@ -177,7 +177,26 @@ async function applySell(
 ): Promise<boolean> {
   const holding = await holdingRepo.findOne({ where: { id: decision.holdingId } });
   if (!holding) return false;
-  await holdingRepo.delete({ id: decision.holdingId });
+  const heldQty = Number(holding.quantity);
+  const remainingQty = heldQty - decision.qty;
+  if (remainingQty > 0) {
+    const avg = Number(holding.averageBuyPrice);
+    const newMarketValue = remainingQty * decision.estimatedPrice;
+    const newUnrealised = newMarketValue - remainingQty * avg;
+    const newUnrealisedPct = avg > 0 ? (newUnrealised / (remainingQty * avg)) * 100 : 0;
+    await holdingRepo.update(
+      { id: holding.id },
+      {
+        quantity: remainingQty.toString(),
+        currentPrice: decision.estimatedPrice.toFixed(6),
+        marketValue: newMarketValue.toFixed(2),
+        unrealisedGainLoss: newUnrealised.toFixed(2),
+        unrealisedGainLossPercent: newUnrealisedPct.toFixed(4),
+      },
+    );
+  } else {
+    await holdingRepo.delete({ id: holding.id });
+  }
   await tradeRepo.save(
     tradeRepo.create({
       portfolioId: decision.portfolioId,
