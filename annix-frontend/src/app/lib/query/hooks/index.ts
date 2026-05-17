@@ -613,6 +613,7 @@ export {
   useCvWithdrawMyConsent,
   useGenerateNixCv,
   useNixGeneratedCv,
+  useUpdateNixGeneratedCv,
 } from "./cv-assistant/useCvIndividualProfile";
 export {
   useCvCalendarAdvisory,

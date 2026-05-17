@@ -1742,6 +1742,13 @@ class CvAssistantApiClient {
     return this.request("/cv-assistant/me/nix-wizard/generated-cv");
   }
 
+  async nixWizardUpdateGeneratedCv(cv: NixGeneratedCv): Promise<NixGeneratedCv> {
+    return this.request("/cv-assistant/me/nix-wizard/generated-cv", {
+      method: "PATCH",
+      body: JSON.stringify(cv),
+    });
+  }
+
   async nixWizardGeneratedCvPdf(): Promise<Blob> {
     return apiClient.requestBlob("/cv-assistant/me/nix-wizard/generated-cv/pdf");
   }

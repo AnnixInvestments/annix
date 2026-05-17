@@ -4,7 +4,11 @@ import { useEffect, useState } from "react";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import type { NixGeneratedCv, NixGeneratedCvExperience } from "@/app/lib/api/cvAssistantApi";
 import { cvAssistantApiClient } from "@/app/lib/api/cvAssistantApi";
-import { useGenerateNixCv, useNixGeneratedCv } from "@/app/lib/query/hooks";
+import {
+  useGenerateNixCv,
+  useNixGeneratedCv,
+  useUpdateNixGeneratedCv,
+} from "@/app/lib/query/hooks";
 
 const NIX_BUILD_ESTIMATED_MS = 18000;
 
@@ -20,6 +24,10 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
   const [copied, setCopied] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
+
+  const updateMutation = useUpdateNixGeneratedCv();
+  const persistCv = updateMutation.mutate;
+  const [editedCv, setEditedCv] = useState<NixGeneratedCv | null>(null);
 
   const isBuilding = generateMutation.isPending;
   const generate = generateMutation.mutate;
@@ -41,7 +49,32 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
 
   const mutationCv = generateMutation.data;
   const queryCv = generatedQuery.data ? generatedQuery.data.cv : null;
-  const cv: NixGeneratedCv | null = mutationCv ? mutationCv : queryCv;
+  const sourceCv: NixGeneratedCv | null = mutationCv ? mutationCv : queryCv;
+  const cv: NixGeneratedCv | null = editedCv ? editedCv : sourceCv;
+
+  useEffect(() => {
+    setEditedCv(sourceCv);
+  }, [sourceCv]);
+
+  const handleRemoveCoreCompetency = (value: string) => {
+    if (!cv) return;
+    const next: NixGeneratedCv = {
+      ...cv,
+      coreCompetencies: cv.coreCompetencies.filter((entry) => entry !== value),
+    };
+    setEditedCv(next);
+    persistCv(next);
+  };
+
+  const handleRemoveKeySkill = (value: string) => {
+    if (!cv) return;
+    const next: NixGeneratedCv = {
+      ...cv,
+      keySkills: cv.keySkills.filter((entry) => entry !== value),
+    };
+    setEditedCv(next);
+    persistCv(next);
+  };
 
   const mutationError = generateMutation.error;
   const buildErrorMessage = mutationError
@@ -141,7 +174,11 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
             </div>
           )}
 
-          <NixCvDocument cv={cv} />
+          <NixCvDocument
+            cv={cv}
+            onRemoveCoreCompetency={handleRemoveCoreCompetency}
+            onRemoveKeySkill={handleRemoveKeySkill}
+          />
 
           {downloadError && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
@@ -172,8 +209,14 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
   );
 }
 
-function NixCvDocument(props: { cv: NixGeneratedCv }) {
+function NixCvDocument(props: {
+  cv: NixGeneratedCv;
+  onRemoveCoreCompetency: (value: string) => void;
+  onRemoveKeySkill: (value: string) => void;
+}) {
   const cv = props.cv;
+  const onRemoveCoreCompetency = props.onRemoveCoreCompetency;
+  const onRemoveKeySkill = props.onRemoveKeySkill;
   const rawFullName = cv.fullName;
   const fullName = rawFullName || "Curriculum Vitae";
   const contactParts = [cv.contact.email, cv.contact.phone, cv.contact.linkedin].filter(
@@ -202,7 +245,7 @@ function NixCvDocument(props: { cv: NixGeneratedCv }) {
 
       {cv.coreCompetencies.length > 0 && (
         <CvSection title="Core Competencies">
-          <CvChips values={cv.coreCompetencies} />
+          <CvSkillList values={cv.coreCompetencies} onRemove={onRemoveCoreCompetency} />
         </CvSection>
       )}
 
@@ -236,7 +279,7 @@ function NixCvDocument(props: { cv: NixGeneratedCv }) {
 
       {cv.keySkills.length > 0 && (
         <CvSection title="Key Skills">
-          <CvChips values={cv.keySkills} />
+          <CvSkillList values={cv.keySkills} onRemove={onRemoveKeySkill} />
         </CvSection>
       )}
 
@@ -256,15 +299,23 @@ function CvSection(props: { title: string; children: React.ReactNode }) {
   );
 }
 
-function CvChips(props: { values: string[] }) {
+function CvSkillList(props: { values: string[]; onRemove: (value: string) => void }) {
+  const values = props.values;
+  const onRemove = props.onRemove;
   return (
-    <div className="flex flex-wrap gap-2">
-      {props.values.map((value) => (
-        <span
-          key={value}
-          className="text-xs bg-[#f0f0fc] text-[#252560] px-2.5 py-1 rounded-full border border-[#c0c0eb]"
-        >
-          {value}
+    <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+      {values.map((value) => (
+        <span key={value} className="inline-flex items-center gap-1.5 text-sm text-gray-800">
+          <span>{value}</span>
+          <button
+            type="button"
+            onClick={() => onRemove(value)}
+            aria-label={`Remove ${value}`}
+            title={`Remove ${value}`}
+            className="text-gray-400 hover:text-gray-700 transition-colors text-xs leading-none"
+          >
+            ×
+          </button>
         </span>
       ))}
     </div>

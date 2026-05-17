@@ -179,6 +179,23 @@ export class NixSeekerAssistService {
     return { cv: profile.nixGeneratedCv, generatedAt };
   }
 
+  async updateGeneratedCv(userId: number, cv: NixGeneratedCv): Promise<NixGeneratedCv> {
+    const profile = await this.profileRepo.findOne({ where: { userId } });
+    if (!profile) {
+      throw new BadRequestException("CV Assistant profile not found");
+    }
+    if (profile.userType !== CvAssistantUserType.INDIVIDUAL) {
+      throw new BadRequestException("Nix CV builder is only for individual job seekers.");
+    }
+    if (!profile.nixGeneratedCv) {
+      throw new BadRequestException("Generate your CV with Nix before editing it.");
+    }
+    profile.nixGeneratedCv = cv;
+    profile.nixGeneratedCvAt = now().toJSDate();
+    await this.profileRepo.save(profile);
+    return cv;
+  }
+
   async calendarAdvisory(
     conflicts: NixCalendarAdvisoryConflict[],
   ): Promise<NixCalendarAdvisoryResponse> {

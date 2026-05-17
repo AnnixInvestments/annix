@@ -1,6 +1,9 @@
 import { Injectable, Logger } from "@nestjs/common";
+import { PDFDocument } from "pdf-lib";
 import { PuppeteerPoolService } from "../../shared/services/puppeteer-pool.service";
 import type { NixGeneratedCv, NixGeneratedCvExperience } from "./nix-prompts";
+
+const PDF_RETRY_DELAY_MS = 800;
 
 @Injectable()
 export class NixCvPdfService {
@@ -11,11 +14,38 @@ export class NixCvPdfService {
   async renderPdf(cv: NixGeneratedCv): Promise<Buffer> {
     const html = this.buildHtml(cv);
     this.logger.log(`Rendering Nix CV PDF for ${cv.fullName || "(unnamed seeker)"}`);
-    return this.puppeteerPool.generatePdfFromHtml(html, {
-      format: "A4",
+    const rendered = await this.renderWithRetry(html);
+    return this.applyMetadata(rendered, cv);
+  }
+
+  private async renderWithRetry(html: string): Promise<Buffer> {
+    const options = {
+      format: "A4" as const,
       printBackground: true,
       margin: { top: "16mm", bottom: "16mm", left: "16mm", right: "16mm" },
-    });
+    };
+    try {
+      return await this.puppeteerPool.generatePdfFromHtml(html, options);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`Nix CV PDF render failed, retrying once: ${message}`);
+      await new Promise((resolve) => setTimeout(resolve, PDF_RETRY_DELAY_MS));
+      return this.puppeteerPool.generatePdfFromHtml(html, options);
+    }
+  }
+
+  private async applyMetadata(buffer: Buffer, cv: NixGeneratedCv): Promise<Buffer> {
+    const rawFullName = cv.fullName;
+    const author = rawFullName || "";
+    const doc = await PDFDocument.load(buffer);
+    doc.setTitle("Curriculum Vitae");
+    doc.setAuthor(author);
+    doc.setSubject("Curriculum Vitae");
+    doc.setProducer("");
+    doc.setCreator("");
+    doc.setKeywords([]);
+    const saved = await doc.save();
+    return Buffer.from(saved);
   }
 
   private buildHtml(cv: NixGeneratedCv): string {
@@ -51,11 +81,7 @@ export class NixCvPdfService {
     border-bottom: 1px solid #e0e0f5; padding-bottom: 3px;
   }
   .summary { font-size: 11px; color: #1f2937; margin: 0; }
-  .chips { display: flex; flex-wrap: wrap; gap: 5px; }
-  .chip {
-    font-size: 10px; background: #f0f0fc; color: #252560;
-    border: 1px solid #c0c0eb; border-radius: 10px; padding: 2px 9px;
-  }
+  .skill-line { font-size: 10.5px; color: #1f2937; margin: 0; }
   .experience-item { margin-bottom: 10px; }
   .exp-head { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
   .exp-role { font-size: 11.5px; font-weight: 700; color: #1f2937; margin: 0; }
@@ -78,12 +104,12 @@ export class NixCvPdfService {
     ${contactLine ? `<p class="header-contact">${contactLine}</p>` : ""}
   </header>
   ${this.renderSummary(cv)}
-  ${this.renderChips("Core Competencies", cv.coreCompetencies)}
+  ${this.renderSkillLine("Core Competencies", cv.coreCompetencies)}
   ${this.renderExperience(cv.experience)}
   ${this.renderList("Education", cv.education)}
   ${this.renderList("Certifications", cv.certifications)}
   ${this.renderList("Professional Registrations", cv.professionalRegistrations)}
-  ${this.renderChips("Key Skills", cv.keySkills)}
+  ${this.renderSkillLine("Key Skills", cv.keySkills)}
   ${cv.closingNote ? `<p class="closing">${escapeHtml(cv.closingNote)}</p>` : ""}
 </div>
 </body>
@@ -108,20 +134,18 @@ export class NixCvPdfService {
 </section>`;
   }
 
-  private renderChips(title: string, values: string[]): string {
+  private renderSkillLine(title: string, values: string[]): string {
     if (!values || values.length === 0) {
       return "";
     }
-    const chips = values
-      .filter((v) => Boolean(v && v.trim().length > 0))
-      .map((v) => `<span class="chip">${escapeHtml(v)}</span>`)
-      .join("");
-    if (chips.length === 0) {
+    const cleaned = values.filter((v) => Boolean(v && v.trim().length > 0)).map((v) => v.trim());
+    if (cleaned.length === 0) {
       return "";
     }
+    const line = escapeHtml(cleaned.join(", "));
     return `<section class="section">
   <h2 class="section-title">${escapeHtml(title)}</h2>
-  <div class="chips">${chips}</div>
+  <p class="skill-line">${line}</p>
 </section>`;
   }
 

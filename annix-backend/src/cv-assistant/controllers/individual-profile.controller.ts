@@ -36,7 +36,7 @@ import { CvAssistantAuthGuard } from "../guards/cv-assistant-auth.guard";
 import { IndividualProfileService } from "../services/individual-profile.service";
 import { InterviewBookingService } from "../services/interview-booking.service";
 import { NixCvPdfService } from "../services/nix-cv-pdf.service";
-import type { NixCalendarAdvisoryConflict } from "../services/nix-prompts";
+import type { NixCalendarAdvisoryConflict, NixGeneratedCv } from "../services/nix-prompts";
 import { NixSeekerAssistService } from "../services/nix-seeker-assist.service";
 
 @Controller("cv-assistant/me")
@@ -172,6 +172,15 @@ export class IndividualProfileController {
   async nixGeneratedCv(@Request() req: { user: { id: number } }) {
     await this.ensureNixCvBuilderEnabled();
     return this.nixSeekerAssistService.generatedCv(req.user.id);
+  }
+
+  @Patch("nix-wizard/generated-cv")
+  async nixUpdateGeneratedCv(
+    @Request() req: { user: { id: number } },
+    @Body() body: NixGeneratedCv,
+  ) {
+    await this.ensureNixCvBuilderEnabled();
+    return this.nixSeekerAssistService.updateGeneratedCv(req.user.id, body);
   }
 
   @Get("nix-wizard/generated-cv/pdf")

@@ -846,7 +846,7 @@ export function seekerCvGenerationPrompt(input: {
     : "(CV text not available — work from extracted fields and supporting documents)";
 
   return {
-    system: `${SA_SYSTEM_PREAMBLE} You are rewriting an individual job seeker's CV into a complete, polished, recruiter-ready document. Keep everything genuinely good about the original, apply professional CV best practice, and never fabricate. Be specific, kind, and accurate.`,
+    system: `${SA_SYSTEM_PREAMBLE} You are rewriting an individual job seeker's CV into a complete, recruiter-ready document. Keep everything genuinely good about the original, apply professional CV best practice, and never fabricate. The finished CV must read as if the candidate wrote it themselves, in their own natural voice, so that automated AI-content detectors used in recruitment screening do not unfairly flag a real person's CV. Be specific, accurate, and human.`,
     user: `Rewrite this job seeker's CV into a complete, improved CV. Keep the genuinely good content, fix the weak parts, and produce a document the seeker can hand to a South African employer.
 
 Candidate name: ${extracted?.candidateName ?? "(unknown)"}
@@ -900,11 +900,19 @@ Return JSON with this exact shape:
 Rules:
 - Produce a COMPLETE rewritten CV — every section the seeker genuinely has must appear, improved.
 - NEVER invent qualifications, employers, job titles, dates, certifications or registrations the seeker does not have. If a date or employer is missing, leave the field as a best-effort plain value or null — do not guess specifics.
-- professionalSummary: a strong, confident 3-5 sentence summary written in third person or neutral voice, tailored to the seeker's actual field and experience.
-- experience bullets: rewrite into quantified, achievement-led bullets where the original gives enough signal. 3-6 bullets per role. Start each with a strong verb. Do not invent metrics that aren't supported.
-- coreCompetencies / keySkills: ATS-friendly, recruiter-searchable keywords drawn from the seeker's real experience.
+
+Write it like a real person, not like AI. This matters because recruitment screening tools run AI-content detectors, and a genuine candidate's CV should not be auto-rejected just because it had wording help:
+- Vary the length and structure of sentences and bullets. Do not make every bullet the same uniform "power verb + object + result" shape. Some bullets can be short, some longer, some plainer or descriptive.
+- Do not start every bullet with a power verb. Mix the openers. A bullet may begin with the context, a noun, a timeframe, or a plain description of the work.
+- Avoid CV and AI clichés and stacked buzzwords. Do not use phrases like "results-driven professional", "proven track record", "leverage" / "leveraged", "spearheaded", "orchestrated", "synergy", "dynamic", "passionate about", or "in today's fast-paced". Use plain, specific, concrete language about what the person actually did.
+- Do not use em-dashes. Use commas and full stops naturally.
+- Allow natural unevenness. Real CVs are not perfectly balanced, so a more recent or more significant role can carry more detail than an older or minor one.
+- Keep one consistent voice throughout, as though a single real person wrote the whole document.
+- professionalSummary: 3-5 sentences that sound like the candidate describing themselves naturally, not a template opener. Tailor it to their actual field and experience. Avoid the clichés above.
+- experience bullets: 3-6 per role. Rewrite duty lists into clear achievement-focused bullets where the original gives enough signal, but keep them varied in shape and length. Do not invent metrics that aren't supported by the source.
+- coreCompetencies / keySkills: recruiter-searchable terms drawn from the seeker's real experience. Plain skill names, no marketing phrasing.
 - Apply South African hiring norms: NQF levels, SAQA, ECSA / SACPCMP / SAICA / SAIPA registrations, valid driver's licence, right-to-work — only where the seeker legitimately has them.
-- improvementsApplied: 4-8 short, concrete items describing what you changed (e.g. "Rewrote the summary to lead with measurable sales results", "Converted duty lists into quantified achievement bullets", "Added missing ATS keywords for the seeker's field").
+- improvementsApplied: 4-8 short, concrete items describing what you changed (e.g. "Rewrote the summary in the candidate's own voice", "Turned duty lists into clearer achievement bullets", "Added recruiter-searchable terms for the seeker's field").
 - All amounts (if mentioned) in ZAR.`,
   };
 }

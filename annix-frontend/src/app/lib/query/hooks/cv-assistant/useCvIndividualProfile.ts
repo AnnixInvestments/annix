@@ -135,3 +135,17 @@ export function useGenerateNixCv() {
     },
   });
 }
+
+export function useUpdateNixGeneratedCv() {
+  const queryClient = useQueryClient();
+
+  return useMutation<NixGeneratedCv, Error, NixGeneratedCv>({
+    mutationFn: (cv: NixGeneratedCv) => cvAssistantApiClient.nixWizardUpdateGeneratedCv(cv),
+    onSuccess: (data) => {
+      queryClient.setQueryData<NixGeneratedCvResponse>(
+        cvAssistantKeys.individualProfile.nixGeneratedCv(),
+        { cv: data, generatedAt: nowISO() },
+      );
+    },
+  });
+}
