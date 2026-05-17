@@ -337,8 +337,10 @@ export interface JobMarketSource {
   updatedAt: string;
 }
 
+export type JobSourceProvider = "adzuna" | "jooble" | "remotive";
+
 export interface CreateJobMarketSourceDto {
-  provider: string;
+  provider: JobSourceProvider;
   name: string;
   apiId?: string | null;
   apiKey?: string | null;

@@ -1,7 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import type { CreateJobMarketSourceDto } from "@/app/lib/api/cvAssistantApi";
+import type { CreateJobMarketSourceDto, JobSourceProvider } from "@/app/lib/api/cvAssistantApi";
+
+const PROVIDER_OPTIONS: { value: JobSourceProvider; label: string }[] = [
+  { value: "adzuna", label: "Adzuna" },
+  { value: "jooble", label: "Jooble" },
+  { value: "remotive", label: "Remotive" },
+];
+
+const PROVIDER_DEFAULT_NAMES: Record<JobSourceProvider, string> = {
+  adzuna: "Adzuna SA",
+  jooble: "Jooble SA",
+  remotive: "Remotive Remote Jobs",
+};
 
 export function AddSourceForm({
   onSubmit,
@@ -10,19 +22,39 @@ export function AddSourceForm({
   onSubmit: (dto: CreateJobMarketSourceDto) => void;
   onCancel: () => void;
 }) {
-  const [name, setName] = useState("Adzuna SA");
+  const [provider, setProvider] = useState<JobSourceProvider>("adzuna");
+  const [name, setName] = useState(PROVIDER_DEFAULT_NAMES.adzuna);
+  const [nameEdited, setNameEdited] = useState(false);
   const [apiId, setApiId] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [countryCodes, setCountryCodes] = useState("za");
   const [intervalHours, setIntervalHours] = useState("6");
 
+  const handleProviderChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const next = e.target.value as JobSourceProvider;
+    setProvider(next);
+    if (!nameEdited) {
+      const defaultName = PROVIDER_DEFAULT_NAMES[next];
+      setName(defaultName);
+    }
+  };
+
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setName(e.target.value);
+    setNameEdited(true);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const trimmedId = apiId.trim();
+    const trimmedKey = apiKey.trim();
+    const submitApiId = provider === "adzuna" ? trimmedId || null : null;
+    const submitApiKey = provider === "remotive" ? null : trimmedKey || null;
     onSubmit({
-      provider: "adzuna",
+      provider,
       name,
-      apiId: apiId || null,
-      apiKey: apiKey || null,
+      apiId: submitApiId,
+      apiKey: submitApiKey,
       countryCodes: countryCodes
         .split(",")
         .map((c) => c.trim().toLowerCase())
@@ -44,44 +76,71 @@ export function AddSourceForm({
           <input
             type="text"
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={handleNameChange}
             required
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
           />
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Provider</label>
-          <input
-            type="text"
-            value="Adzuna"
-            disabled
-            className="w-full px-4 py-2 border border-[#e0e0f5] rounded-lg bg-gray-50 text-gray-500"
-          />
+          <select
+            value={provider}
+            onChange={handleProviderChange}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
+          >
+            {PROVIDER_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Adzuna App ID</label>
-          <input
-            type="text"
-            value={apiId}
-            onChange={(e) => setApiId(e.target.value)}
-            placeholder="Your Adzuna app_id"
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
-          />
+      {provider === "adzuna" && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Adzuna App ID</label>
+            <input
+              type="text"
+              value={apiId}
+              onChange={(e) => setApiId(e.target.value)}
+              required
+              placeholder="Your Adzuna app_id"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Adzuna App Key</label>
+            <input
+              type="password"
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              required
+              placeholder="Your Adzuna app_key"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
+            />
+          </div>
         </div>
+      )}
+
+      {provider === "jooble" && (
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Adzuna App Key</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Jooble API Key</label>
           <input
             type="password"
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
-            placeholder="Your Adzuna app_key"
+            required
+            placeholder="Your Jooble API key"
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
           />
         </div>
-      </div>
+      )}
+
+      {provider === "remotive" && (
+        <p className="text-sm text-gray-500">Remotive is a public API — no API key needed.</p>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
