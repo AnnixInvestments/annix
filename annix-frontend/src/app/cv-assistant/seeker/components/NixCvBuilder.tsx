@@ -2,7 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
-import type { NixGeneratedCv, NixGeneratedCvExperience } from "@/app/lib/api/cvAssistantApi";
+import type {
+  NixGeneratedCv,
+  NixGeneratedCvExperience,
+  NixGeneratedCvReference,
+} from "@/app/lib/api/cvAssistantApi";
 import { cvAssistantApiClient } from "@/app/lib/api/cvAssistantApi";
 import {
   useGenerateNixCv,
@@ -101,6 +105,30 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
     const next: NixGeneratedCv = {
       ...cv,
       keySkills: [...cv.keySkills, trimmed],
+    };
+    setEditedCv(next);
+    persistCv(next);
+  };
+
+  const handleRemoveReference = (reference: NixGeneratedCvReference) => {
+    if (!cv) return;
+    const rawRefs = cv.references;
+    const references = rawRefs || [];
+    const next: NixGeneratedCv = {
+      ...cv,
+      references: references.filter((entry) => entry !== reference),
+    };
+    setEditedCv(next);
+    persistCv(next);
+  };
+
+  const handleAddReference = (reference: NixGeneratedCvReference) => {
+    if (!cv) return;
+    const rawRefs = cv.references;
+    const references = rawRefs || [];
+    const next: NixGeneratedCv = {
+      ...cv,
+      references: [...references, reference],
     };
     setEditedCv(next);
     persistCv(next);
@@ -210,6 +238,8 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
             onRemoveKeySkill={handleRemoveKeySkill}
             onAddCoreCompetency={handleAddCoreCompetency}
             onAddKeySkill={handleAddKeySkill}
+            onRemoveReference={handleRemoveReference}
+            onAddReference={handleAddReference}
           />
 
           {downloadError && (
@@ -247,12 +277,16 @@ function NixCvDocument(props: {
   onRemoveKeySkill: (value: string) => void;
   onAddCoreCompetency: (value: string) => void;
   onAddKeySkill: (value: string) => void;
+  onRemoveReference: (reference: NixGeneratedCvReference) => void;
+  onAddReference: (reference: NixGeneratedCvReference) => void;
 }) {
   const cv = props.cv;
   const onRemoveCoreCompetency = props.onRemoveCoreCompetency;
   const onRemoveKeySkill = props.onRemoveKeySkill;
   const onAddCoreCompetency = props.onAddCoreCompetency;
   const onAddKeySkill = props.onAddKeySkill;
+  const onRemoveReference = props.onRemoveReference;
+  const onAddReference = props.onAddReference;
   const rawFullName = cv.fullName;
   const fullName = rawFullName || "Curriculum Vitae";
   const contactParts = [cv.contact.email, cv.contact.phone, cv.contact.linkedin].filter(
@@ -317,6 +351,14 @@ function NixCvDocument(props: {
 
       <CvSection title="Key Skills">
         <CvSkillList values={cv.keySkills} onRemove={onRemoveKeySkill} onAdd={onAddKeySkill} />
+      </CvSection>
+
+      <CvSection title="References">
+        <CvReferenceList
+          references={cv.references}
+          onRemove={onRemoveReference}
+          onAdd={onAddReference}
+        />
       </CvSection>
 
       {cv.closingNote && <p className="text-xs text-gray-500 italic">{cv.closingNote}</p>}
@@ -436,6 +478,168 @@ function CvList(props: { values: string[] }) {
   );
 }
 
+function CvReferenceList(props: {
+  references: NixGeneratedCvReference[];
+  onRemove: (reference: NixGeneratedCvReference) => void;
+  onAdd: (reference: NixGeneratedCvReference) => void;
+}) {
+  const rawReferences = props.references;
+  const references = rawReferences || [];
+  const onRemove = props.onRemove;
+  const onAdd = props.onAdd;
+  const [adding, setAdding] = useState(false);
+  const [name, setName] = useState("");
+  const [position, setPosition] = useState("");
+  const [company, setCompany] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [emailError, setEmailError] = useState<string | null>(null);
+
+  const resetForm = () => {
+    setName("");
+    setPosition("");
+    setCompany("");
+    setPhone("");
+    setEmail("");
+    setEmailError(null);
+  };
+
+  const commit = () => {
+    const trimmedName = name.trim();
+    if (trimmedName.length === 0) return;
+    const trimmedEmail = email.trim();
+    const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail);
+    if (!emailValid) {
+      setEmailError("A valid email address is required — employers use it for reference checks.");
+      return;
+    }
+    setEmailError(null);
+    const trimmedPosition = position.trim();
+    const trimmedCompany = company.trim();
+    const trimmedPhone = phone.trim();
+    onAdd({
+      name: trimmedName,
+      position: trimmedPosition.length > 0 ? trimmedPosition : null,
+      company: trimmedCompany.length > 0 ? trimmedCompany : null,
+      phone: trimmedPhone.length > 0 ? trimmedPhone : null,
+      email: trimmedEmail,
+    });
+    resetForm();
+    setAdding(false);
+  };
+
+  const cancel = () => {
+    resetForm();
+    setAdding(false);
+  };
+
+  return (
+    <div className="space-y-3">
+      {references.length === 0 && !adding && (
+        <p className="text-sm text-gray-500">
+          Add your references — employers need these for background checks once you're shortlisted.
+        </p>
+      )}
+      {references.map((reference, index) => {
+        const roleParts = [reference.position, reference.company].filter((part): part is string =>
+          Boolean(part && part.trim().length > 0),
+        );
+        const roleLine = roleParts.join(", ");
+        const contactParts = [reference.phone, reference.email].filter((part): part is string =>
+          Boolean(part && part.trim().length > 0),
+        );
+        const contactLine = contactParts.join("  •  ");
+        return (
+          <div
+            key={`${reference.name}-${index}`}
+            className="flex items-start justify-between gap-3"
+          >
+            <div>
+              <p className="text-sm font-bold text-gray-900">{reference.name}</p>
+              {roleLine && <p className="text-sm text-[#323288]">{roleLine}</p>}
+              {contactLine && <p className="text-xs text-gray-500">{contactLine}</p>}
+            </div>
+            <button
+              type="button"
+              onClick={() => onRemove(reference)}
+              aria-label={`Remove ${reference.name}`}
+              title={`Remove ${reference.name}`}
+              className="text-gray-400 hover:text-gray-700 transition-colors text-xs leading-none"
+            >
+              ×
+            </button>
+          </div>
+        );
+      })}
+      {adding ? (
+        <div className="space-y-2 border border-[#c0c0eb] rounded-lg p-3 bg-[#f8f8fd]">
+          <input
+            type="text"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            placeholder="Name (required)"
+            autoFocus
+            className="w-full text-sm border border-[#c0c0eb] rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[#323288]"
+          />
+          <input
+            type="text"
+            value={position}
+            onChange={(event) => setPosition(event.target.value)}
+            placeholder="Position"
+            className="w-full text-sm border border-[#c0c0eb] rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[#323288]"
+          />
+          <input
+            type="text"
+            value={company}
+            onChange={(event) => setCompany(event.target.value)}
+            placeholder="Company"
+            className="w-full text-sm border border-[#c0c0eb] rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[#323288]"
+          />
+          <input
+            type="text"
+            value={phone}
+            onChange={(event) => setPhone(event.target.value)}
+            placeholder="Phone"
+            className="w-full text-sm border border-[#c0c0eb] rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[#323288]"
+          />
+          <input
+            type="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            placeholder="Email (required)"
+            className="w-full text-sm border border-[#c0c0eb] rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[#323288]"
+          />
+          {emailError && <p className="text-xs text-red-600">{emailError}</p>}
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={commit}
+              className="text-xs font-medium text-[#323288] hover:text-[#252560]"
+            >
+              Add reference
+            </button>
+            <button
+              type="button"
+              onClick={cancel}
+              className="text-xs text-gray-400 hover:text-gray-700"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setAdding(true)}
+          className="text-xs font-medium text-[#323288] hover:text-[#252560]"
+        >
+          + Add reference
+        </button>
+      )}
+    </div>
+  );
+}
+
 function CvExperienceItem(props: { experience: NixGeneratedCvExperience }) {
   const exp = props.experience;
   const employerLine = exp.location ? `${exp.employer} · ${exp.location}` : exp.employer;
@@ -501,6 +705,24 @@ function renderPlainText(cv: NixGeneratedCv): string {
   }
   if (cv.keySkills.length > 0) {
     lines.push("", "KEY SKILLS", cv.keySkills.join(", "));
+  }
+  const rawReferences = cv.references;
+  const references = rawReferences || [];
+  if (references.length > 0) {
+    lines.push("", "REFERENCES");
+    references.forEach((reference) => {
+      const roleParts = [reference.position, reference.company].filter((part): part is string =>
+        Boolean(part && part.trim().length > 0),
+      );
+      const roleLine = roleParts.join(", ");
+      const contactParts = [reference.phone, reference.email].filter((part): part is string =>
+        Boolean(part && part.trim().length > 0),
+      );
+      const contactLine = contactParts.join("  |  ");
+      lines.push(reference.name);
+      if (roleLine.length > 0) lines.push(`  ${roleLine}`);
+      if (contactLine.length > 0) lines.push(`  ${contactLine}`);
+    });
   }
   if (cv.closingNote) {
     lines.push("", cv.closingNote);

@@ -1,7 +1,11 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { PDFDocument } from "pdf-lib";
 import { PuppeteerPoolService } from "../../shared/services/puppeteer-pool.service";
-import type { NixGeneratedCv, NixGeneratedCvExperience } from "./nix-prompts";
+import type {
+  NixGeneratedCv,
+  NixGeneratedCvExperience,
+  NixGeneratedCvReference,
+} from "./nix-prompts";
 
 const PDF_RETRY_DELAY_MS = 800;
 
@@ -79,10 +83,11 @@ export class NixCvPdfService {
     font-size: 12px; font-weight: 700; color: #252560; text-transform: uppercase;
     letter-spacing: 0.06em; margin: 0 0 6px;
     border-bottom: 1px solid #e0e0f5; padding-bottom: 3px;
+    break-after: avoid; page-break-after: avoid;
   }
   .summary { font-size: 11px; color: #1f2937; margin: 0; }
   .skill-line { font-size: 10.5px; color: #1f2937; margin: 0; }
-  .experience-item { margin-bottom: 10px; }
+  .experience-item { margin-bottom: 10px; break-inside: avoid; page-break-inside: avoid; }
   .exp-head { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
   .exp-role { font-size: 11.5px; font-weight: 700; color: #1f2937; margin: 0; }
   .exp-employer { font-size: 11px; color: #323288; font-weight: 600; margin: 1px 0 0; }
@@ -92,6 +97,10 @@ export class NixCvPdfService {
   ul.bullets li { font-size: 10.5px; color: #1f2937; margin-bottom: 2px; }
   ul.plain { margin: 0; padding-left: 16px; }
   ul.plain li { font-size: 10.5px; color: #1f2937; margin-bottom: 2px; }
+  .reference-item { margin-bottom: 8px; break-inside: avoid; page-break-inside: avoid; }
+  .reference-name { font-size: 11px; font-weight: 700; color: #1f2937; margin: 0; }
+  .reference-role { font-size: 10.5px; color: #323288; margin: 1px 0 0; }
+  .reference-contact { font-size: 10px; color: #6b7280; margin: 1px 0 0; }
   .closing { font-size: 10px; color: #6b7280; font-style: italic; margin: 16px 0 0; }
 </style>
 </head>
@@ -110,6 +119,7 @@ export class NixCvPdfService {
   ${this.renderList("Certifications", cv.certifications)}
   ${this.renderList("Professional Registrations", cv.professionalRegistrations)}
   ${this.renderSkillLine("Key Skills", cv.keySkills)}
+  ${this.renderReferences(cv)}
   ${cv.closingNote ? `<p class="closing">${escapeHtml(cv.closingNote)}</p>` : ""}
 </div>
 </body>
@@ -196,6 +206,41 @@ export class NixCvPdfService {
   <h2 class="section-title">Experience</h2>
   ${items}
 </section>`;
+  }
+
+  private renderReferences(cv: NixGeneratedCv): string {
+    const refs = cv.references || [];
+    const items = refs
+      .filter((ref) => Boolean(ref && ref.name && ref.name.trim().length > 0))
+      .map((ref) => this.renderReferenceItem(ref))
+      .join("");
+    if (items.length === 0) {
+      return "";
+    }
+    return `<section class="section">
+  <h2 class="section-title">References</h2>
+  ${items}
+</section>`;
+  }
+
+  private renderReferenceItem(ref: NixGeneratedCvReference): string {
+    const roleParts = [ref.position, ref.company]
+      .filter((p): p is string => Boolean(p && p.trim().length > 0))
+      .map((p) => escapeHtml(p));
+    const roleLine =
+      roleParts.length > 0 ? `<p class="reference-role">${roleParts.join(", ")}</p>` : "";
+    const contactParts = [ref.phone, ref.email]
+      .filter((p): p is string => Boolean(p && p.trim().length > 0))
+      .map((p) => escapeHtml(p));
+    const contactLine =
+      contactParts.length > 0
+        ? `<p class="reference-contact">${contactParts.join("  •  ")}</p>`
+        : "";
+    return `<div class="reference-item">
+  <p class="reference-name">${escapeHtml(ref.name)}</p>
+  ${roleLine}
+  ${contactLine}
+</div>`;
   }
 }
 

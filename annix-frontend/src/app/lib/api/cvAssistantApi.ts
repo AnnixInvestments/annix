@@ -637,6 +637,14 @@ export interface NixGeneratedCvExperience {
   bullets: string[];
 }
 
+export interface NixGeneratedCvReference {
+  name: string;
+  position: string | null;
+  company: string | null;
+  phone: string | null;
+  email: string | null;
+}
+
 export interface NixGeneratedCv {
   fullName: string;
   headlineTitle: string;
@@ -649,6 +657,7 @@ export interface NixGeneratedCv {
   certifications: string[];
   professionalRegistrations: string[];
   keySkills: string[];
+  references: NixGeneratedCvReference[];
   improvementsApplied: string[];
   closingNote: string | null;
 }

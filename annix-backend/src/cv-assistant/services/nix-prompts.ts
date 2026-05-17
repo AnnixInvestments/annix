@@ -777,6 +777,14 @@ export interface NixGeneratedCvExperience {
   bullets: string[];
 }
 
+export interface NixGeneratedCvReference {
+  name: string;
+  position: string | null;
+  company: string | null;
+  phone: string | null;
+  email: string | null;
+}
+
 export interface NixGeneratedCv {
   fullName: string;
   headlineTitle: string;
@@ -789,6 +797,7 @@ export interface NixGeneratedCv {
   certifications: string[];
   professionalRegistrations: string[];
   keySkills: string[];
+  references: NixGeneratedCvReference[];
   improvementsApplied: string[];
   closingNote: string | null;
 }
@@ -893,8 +902,18 @@ Return JSON with this exact shape:
   "certifications": ["string", ...],
   "professionalRegistrations": ["string — e.g. 'ECSA Pr Eng'", ...],
   "keySkills": ["string", ...],
+  "references": [
+    {
+      "name": "string — the referee's full name",
+      "position": "string or null — the referee's job title",
+      "company": "string or null — the referee's company",
+      "phone": "string or null — the referee's contact number",
+      "email": "string or null — the referee's email address"
+    },
+    ...
+  ],
   "improvementsApplied": ["string — short list of what you changed vs the original CV", ...],
-  "closingNote": "string or null — optional one-line note such as references availability"
+  "closingNote": "string or null — optional genuine one-line closing note"
 }
 
 Rules:
@@ -913,6 +932,8 @@ Write it like a real person, not like AI. This matters because recruitment scree
 - coreCompetencies / keySkills: recruiter-searchable terms drawn from the seeker's real experience. Plain skill names, no marketing phrasing.
 - Apply South African hiring norms: NQF levels, SAQA, ECSA / SACPCMP / SAICA / SAIPA registrations, valid driver's licence, right-to-work — only where the seeker legitimately has them.
 - improvementsApplied: 4-8 short, concrete items describing what you changed (e.g. "Rewrote the summary in the candidate's own voice", "Turned duty lists into clearer achievement bullets", "Added recruiter-searchable terms for the seeker's field").
+- references: populate this array ONLY with genuine referees that are actually present in the seeker's uploaded CV — use their real names and contact details exactly as given. NEVER invent a referee, a name, a position, a company, a phone number or an email address. If the original CV lists no referees, return references as an empty array [].
+- NEVER output "References available upon request" or any similar placeholder — not in closingNote, not in any other field, not anywhere in the response. closingNote must stay null unless there is a genuine, non-placeholder closing line.
 - All amounts (if mentioned) in ZAR.`,
   };
 }
