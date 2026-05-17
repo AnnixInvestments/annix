@@ -629,6 +629,7 @@ export {
   useCvCreateJobMarketSource,
   useCvDeleteJobMarketSource,
   useCvExternalJobs,
+  useCvJobMarketProviders,
   useCvJobMarketSources,
   useCvJobMarketStats,
   useCvMatchingCandidates,

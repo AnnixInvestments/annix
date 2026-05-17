@@ -6,9 +6,18 @@ import {
   type ExternalJob,
   type JobMarketSource,
   type JobMarketStats,
+  type JobSourceProviderInfo,
   type UpdateJobMarketSourceDto,
 } from "@/app/lib/api/cvAssistantApi";
 import { type CvExternalJobQueryParams, cvAssistantKeys } from "../../keys";
+
+export function useCvJobMarketProviders() {
+  return useQuery<JobSourceProviderInfo[]>({
+    queryKey: cvAssistantKeys.jobMarket.providers(),
+    queryFn: () => cvAssistantApiClient.jobMarketProviders(),
+    staleTime: 30 * 60 * 1000,
+  });
+}
 
 export function useCvJobMarketStats() {
   return useQuery<JobMarketStats>({

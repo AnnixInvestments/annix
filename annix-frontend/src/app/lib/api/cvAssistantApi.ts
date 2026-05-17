@@ -339,6 +339,19 @@ export interface JobMarketSource {
 
 export type JobSourceProvider = "adzuna" | "jooble" | "remotive";
 
+export interface JobSourceCredentialField {
+  key: "apiId" | "apiKey";
+  label: string;
+  secret: boolean;
+}
+
+export interface JobSourceProviderInfo {
+  id: JobSourceProvider;
+  label: string;
+  description: string;
+  credentialFields: JobSourceCredentialField[];
+}
+
 export interface CreateJobMarketSourceDto {
   provider: JobSourceProvider;
   name: string;
@@ -1486,6 +1499,10 @@ class CvAssistantApiClient {
       method: "POST",
       body: JSON.stringify({ rating, feedbackText }),
     });
+  }
+
+  async jobMarketProviders(): Promise<JobSourceProviderInfo[]> {
+    return this.request("/cv-assistant/job-market/providers");
   }
 
   async jobMarketSources(): Promise<JobMarketSource[]> {

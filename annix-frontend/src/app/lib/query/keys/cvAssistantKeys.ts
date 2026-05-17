@@ -57,6 +57,7 @@ export const cvAssistantKeys = {
 
   jobMarket: {
     all: ["cv-assistant", "job-market"] as const,
+    providers: () => ["cv-assistant", "job-market", "providers"] as const,
     stats: () => ["cv-assistant", "job-market", "stats"] as const,
     sources: () => ["cv-assistant", "job-market", "sources"] as const,
     jobs: (params?: CvExternalJobQueryParams) =>

@@ -1,19 +1,15 @@
 "use client";
 
-import { useState } from "react";
-import type { CreateJobMarketSourceDto, JobSourceProvider } from "@/app/lib/api/cvAssistantApi";
+import { useMemo, useState } from "react";
+import type {
+  CreateJobMarketSourceDto,
+  JobSourceProvider,
+  JobSourceProviderInfo,
+} from "@/app/lib/api/cvAssistantApi";
+import { useCvJobMarketProviders } from "@/app/lib/query/hooks";
 
-const PROVIDER_OPTIONS: { value: JobSourceProvider; label: string }[] = [
-  { value: "adzuna", label: "Adzuna" },
-  { value: "jooble", label: "Jooble" },
-  { value: "remotive", label: "Remotive" },
-];
-
-const PROVIDER_DEFAULT_NAMES: Record<JobSourceProvider, string> = {
-  adzuna: "Adzuna SA",
-  jooble: "Jooble SA",
-  remotive: "Remotive Remote Jobs",
-};
+const inputClasses =
+  "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent";
 
 export function AddSourceForm({
   onSubmit,
@@ -22,19 +18,31 @@ export function AddSourceForm({
   onSubmit: (dto: CreateJobMarketSourceDto) => void;
   onCancel: () => void;
 }) {
-  const [provider, setProvider] = useState<JobSourceProvider>("adzuna");
-  const [name, setName] = useState(PROVIDER_DEFAULT_NAMES.adzuna);
+  const providersQuery = useCvJobMarketProviders();
+  const providers = providersQuery.data;
+
+  const [provider, setProvider] = useState<JobSourceProvider | "">("");
+  const [name, setName] = useState("");
   const [nameEdited, setNameEdited] = useState(false);
-  const [apiId, setApiId] = useState("");
-  const [apiKey, setApiKey] = useState("");
+  const [credentials, setCredentials] = useState<Record<string, string>>({});
   const [countryCodes, setCountryCodes] = useState("za");
   const [intervalHours, setIntervalHours] = useState("6");
 
+  const selectedProvider = useMemo<JobSourceProviderInfo | null>(() => {
+    if (!providers || !provider) {
+      return null;
+    }
+    const match = providers.find((entry) => entry.id === provider);
+    return match ?? null;
+  }, [providers, provider]);
+
   const handleProviderChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const next = e.target.value as JobSourceProvider;
+    const next = e.target.value as JobSourceProvider | "";
     setProvider(next);
-    if (!nameEdited) {
-      const defaultName = PROVIDER_DEFAULT_NAMES[next];
+    setCredentials({});
+    if (!nameEdited && providers) {
+      const match = providers.find((entry) => entry.id === next);
+      const defaultName = match ? match.label : "";
       setName(defaultName);
     }
   };
@@ -44,14 +52,30 @@ export function AddSourceForm({
     setNameEdited(true);
   };
 
+  const handleCredentialChange = (key: string, value: string) => {
+    setCredentials((prev) => ({ ...prev, [key]: value }));
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const trimmedId = apiId.trim();
-    const trimmedKey = apiKey.trim();
-    const submitApiId = provider === "adzuna" ? trimmedId || null : null;
-    const submitApiKey = provider === "remotive" ? null : trimmedKey || null;
+    if (!selectedProvider) {
+      return;
+    }
+
+    const fields = selectedProvider.credentialFields;
+    const wantsApiId = fields.some((field) => field.key === "apiId");
+    const wantsApiKey = fields.some((field) => field.key === "apiKey");
+
+    const rawApiId = credentials.apiId;
+    const rawApiKey = credentials.apiKey;
+    const trimmedApiId = rawApiId ? rawApiId.trim() : "";
+    const trimmedApiKey = rawApiKey ? rawApiKey.trim() : "";
+
+    const submitApiId = wantsApiId ? trimmedApiId || null : null;
+    const submitApiKey = wantsApiKey ? trimmedApiKey || null : null;
+
     onSubmit({
-      provider,
+      provider: selectedProvider.id,
       name,
       apiId: submitApiId,
       apiKey: submitApiKey,
@@ -63,6 +87,11 @@ export function AddSourceForm({
     });
   };
 
+  const isLoading = providersQuery.isLoading;
+  const isError = providersQuery.isError;
+  const hasProviders = Boolean(providers && providers.length > 0);
+  const credentialFields = selectedProvider ? selectedProvider.credentialFields : [];
+
   return (
     <form
       onSubmit={handleSubmit}
@@ -70,105 +99,108 @@ export function AddSourceForm({
     >
       <h3 className="text-lg font-semibold text-gray-900">Add Job Source</h3>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Source Name</label>
-          <input
-            type="text"
-            value={name}
-            onChange={handleNameChange}
-            required
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Provider</label>
-          <select
-            value={provider}
-            onChange={handleProviderChange}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
-          >
-            {PROVIDER_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
+      {isLoading && <p className="text-sm text-gray-500">Loading providers…</p>}
 
-      {provider === "adzuna" && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Adzuna App ID</label>
-            <input
-              type="text"
-              value={apiId}
-              onChange={(e) => setApiId(e.target.value)}
-              required
-              placeholder="Your Adzuna app_id"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
-            />
+      {isError && (
+        <p className="text-sm text-red-600">Could not load job providers — please try again.</p>
+      )}
+
+      {!isLoading && !isError && (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Source Name</label>
+              <input
+                type="text"
+                value={name}
+                onChange={handleNameChange}
+                required
+                className={inputClasses}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Provider</label>
+              <select
+                value={provider}
+                onChange={handleProviderChange}
+                required
+                className={inputClasses}
+              >
+                <option value="" disabled>
+                  Select a provider…
+                </option>
+                {(providers ?? []).map((entry) => (
+                  <option key={entry.id} value={entry.id}>
+                    {entry.label}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Adzuna App Key</label>
-            <input
-              type="password"
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              required
-              placeholder="Your Adzuna app_key"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
-            />
+
+          {selectedProvider && (
+            <p className="text-sm text-gray-500">{selectedProvider.description}</p>
+          )}
+
+          {credentialFields.length > 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {credentialFields.map((field) => {
+                const fieldType = field.secret ? "password" : "text";
+                const rawFieldValue = credentials[field.key];
+                const fieldValue = rawFieldValue || "";
+                return (
+                  <div key={field.key}>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      {field.label}
+                    </label>
+                    <input
+                      type={fieldType}
+                      value={fieldValue}
+                      onChange={(e) => handleCredentialChange(field.key, e.target.value)}
+                      required
+                      className={inputClasses}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {selectedProvider && credentialFields.length === 0 && (
+            <p className="text-sm text-gray-500">
+              {selectedProvider.label} is a public API — no API key needed.
+            </p>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Country Codes (comma-separated)
+              </label>
+              <input
+                type="text"
+                value={countryCodes}
+                onChange={(e) => setCountryCodes(e.target.value)}
+                placeholder="za, gb, us"
+                className={inputClasses}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Ingestion Interval (hours)
+              </label>
+              <input
+                type="number"
+                value={intervalHours}
+                onChange={(e) => setIntervalHours(e.target.value)}
+                min="1"
+                max="24"
+                className={inputClasses}
+              />
+            </div>
           </div>
-        </div>
+        </>
       )}
-
-      {provider === "jooble" && (
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Jooble API Key</label>
-          <input
-            type="password"
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            required
-            placeholder="Your Jooble API key"
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
-          />
-        </div>
-      )}
-
-      {provider === "remotive" && (
-        <p className="text-sm text-gray-500">Remotive is a public API — no API key needed.</p>
-      )}
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Country Codes (comma-separated)
-          </label>
-          <input
-            type="text"
-            value={countryCodes}
-            onChange={(e) => setCountryCodes(e.target.value)}
-            placeholder="za, gb, us"
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Ingestion Interval (hours)
-          </label>
-          <input
-            type="number"
-            value={intervalHours}
-            onChange={(e) => setIntervalHours(e.target.value)}
-            min="1"
-            max="24"
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
-          />
-        </div>
-      </div>
 
       <div className="flex justify-end gap-3">
         <button
@@ -180,7 +212,8 @@ export function AddSourceForm({
         </button>
         <button
           type="submit"
-          className="px-4 py-2 text-sm bg-[#323288] text-white rounded-lg hover:bg-[#252560]"
+          disabled={isLoading || isError || !hasProviders || !selectedProvider}
+          className="px-4 py-2 text-sm bg-[#323288] text-white rounded-lg hover:bg-[#252560] disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Add Source
         </button>

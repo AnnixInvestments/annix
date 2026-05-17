@@ -11,6 +11,7 @@ import {
   Request,
   UseGuards,
 } from "@nestjs/common";
+import { JOB_SOURCE_PROVIDERS } from "../config/job-source-providers";
 import { CreateJobMarketSourceDto, UpdateJobMarketSourceDto } from "../dto/job-market.dto";
 import { CvAssistantAuthGuard } from "../guards/cv-assistant-auth.guard";
 import { AdzunaService } from "../services/adzuna.service";
@@ -33,6 +34,11 @@ export class JobMarketController {
     private readonly embeddingService: EmbeddingService,
     private readonly matchingService: CandidateJobMatchingService,
   ) {}
+
+  @Get("providers")
+  providers() {
+    return JOB_SOURCE_PROVIDERS;
+  }
 
   @Get("sources")
   async sources(@Request() req: AuthRequest) {
