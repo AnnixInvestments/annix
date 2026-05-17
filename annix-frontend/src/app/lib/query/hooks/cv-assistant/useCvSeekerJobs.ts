@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   cvAssistantApiClient,
+  type PublicJob,
   type SeekerColdStartJobsResponse,
   type SeekerJobStats,
   type SeekerMatchingConsentStatus,
@@ -8,7 +9,7 @@ import {
   type SeekerRecommendedJobsResponse,
   type SeekerRematchResponse,
 } from "@/app/lib/api/cvAssistantApi";
-import { cvAssistantKeys } from "../../keys";
+import { type CvExternalJobQueryParams, cvAssistantKeys } from "../../keys";
 
 export function useCvSeekerJobStats(enabled: boolean = true) {
   return useQuery<SeekerJobStats>({
@@ -39,6 +40,24 @@ export function useCvSeekerColdStartJobs(enabled: boolean = true) {
   return useQuery<SeekerColdStartJobsResponse>({
     queryKey: cvAssistantKeys.seekerJobs.coldStart(),
     queryFn: () => cvAssistantApiClient.seekerColdStartJobs(),
+    enabled,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useCvSeekerBrowseJobs(params?: CvExternalJobQueryParams, enabled: boolean = true) {
+  return useQuery<{ jobs: PublicJob[]; total: number }>({
+    queryKey: cvAssistantKeys.seekerJobs.browse(params),
+    queryFn: () => {
+      const rawSearch = params?.search;
+      return cvAssistantApiClient.publicJobs({
+        country: params?.country,
+        category: params?.category,
+        search: rawSearch || undefined,
+        page: params?.page,
+        limit: params?.limit,
+      });
+    },
     enabled,
     staleTime: 5 * 60 * 1000,
   });

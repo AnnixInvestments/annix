@@ -3,7 +3,12 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useToast } from "@/app/components/Toast";
-import { cvAssistantApiClient, type SeekerRecommendedJob } from "@/app/lib/api/cvAssistantApi";
+import {
+  cvAssistantApiClient,
+  type PublicJob,
+  type SeekerRecommendedJob,
+} from "@/app/lib/api/cvAssistantApi";
+import { SeekerBrowseJobCard } from "@/app/lib/cv-assistant/components/SeekerBrowseJobCard";
 import { SeekerJobCard } from "@/app/lib/cv-assistant/components/SeekerJobCard";
 import {
   type SeekerFilterState,
@@ -15,6 +20,8 @@ import {
   useCvGrantSeekerMatchingConsent,
   useCvMuteSeekerCategory,
   useCvMuteSeekerCompany,
+  useCvMyProfileStatus,
+  useCvSeekerBrowseJobs,
   useCvSeekerColdStartJobs,
   useCvSeekerMatchingConsent,
   useCvSeekerRecommendedJobs,
@@ -24,7 +31,12 @@ import {
 export default function SeekerJobsPage() {
   const { showToast } = useToast();
   const { confirm, ConfirmDialog } = useConfirm();
-  const consentQuery = useCvSeekerMatchingConsent();
+  const profileStatusQuery = useCvMyProfileStatus();
+  const profileStatus = profileStatusQuery.data;
+  const hasCv = profileStatus ? profileStatus.hasCv : null;
+  const profileReady = profileStatus != null;
+
+  const consentQuery = useCvSeekerMatchingConsent(hasCv === true);
   const grantConsentMutation = useCvGrantSeekerMatchingConsent();
   const consentData = consentQuery.data;
   const consentReady = consentData != null;
@@ -58,6 +70,11 @@ export default function SeekerJobsPage() {
   const [consentDeclined, setConsentDeclined] = useState<boolean>(false);
   const consentPromptShown = useRef(false);
 
+  const browseJobsEnabled = profileReady && hasCv === false;
+  const browseJobsQuery = useCvSeekerBrowseJobs({ limit: 100 }, browseJobsEnabled);
+  const browseJobsData = browseJobsQuery.data;
+  const browseJobs = useMemo(() => (browseJobsData ? browseJobsData.jobs : []), [browseJobsData]);
+
   const data = recommendedQuery.data;
   const coldStartData = coldStartQuery.data;
   const coldStartJobsCount = coldStartData ? coldStartData.jobs.length : 0;
@@ -66,7 +83,6 @@ export default function SeekerJobsPage() {
     if (showColdStart && coldStartData) return coldStartData.jobs;
     return data ? data.matches : [];
   }, [data, coldStartData, showColdStart]);
-  const hasCandidate = data ? data.hasCandidate : consentHasCandidate;
   const embeddingPending = coldStartData ? coldStartData.embeddingPending : false;
 
   const providers = useMemo(() => {
@@ -147,6 +163,22 @@ export default function SeekerJobsPage() {
     } else {
       showToast("No apply link available for this job", "error");
     }
+  };
+
+  const handleBrowseApply = (job: PublicJob) => {
+    const sourceUrl = job.sourceUrl;
+    if (!sourceUrl) {
+      showToast("No apply link available for this job", "error");
+      return;
+    }
+    const externalJobId = job.kind === "external" ? job.id : null;
+    cvAssistantApiClient
+      .recordSeekerApplyClick({
+        matchId: null,
+        externalJobId,
+        sourceUrl,
+      })
+      .catch(() => {});
   };
 
   const handleDismiss = (matchId: number) => {
@@ -238,15 +270,55 @@ export default function SeekerJobsPage() {
     });
   };
 
+  const profileLoading = profileStatusQuery.isLoading;
+  const profileError = profileStatusQuery.isError;
   const consentLoading = consentQuery.isLoading;
   const consentError = consentQuery.isError;
   const matchesLoading = recommendedQuery.isLoading;
   const matchesError = recommendedQuery.isError;
 
+  if (profileLoading) {
+    return (
+      <div className="space-y-6">
+        <PageHeader subtitle="Loading…" />
+        <div className="bg-white rounded-xl border border-gray-200 p-12 text-center text-gray-500">
+          Loading jobs…
+        </div>
+        {ConfirmDialog}
+      </div>
+    );
+  }
+
+  if (profileError) {
+    return (
+      <div className="space-y-6">
+        <PageHeader subtitle="Browse open jobs." />
+        <div className="bg-white rounded-xl border border-red-200 p-6 text-red-700">
+          We couldn't load this page right now. Try refreshing.
+        </div>
+        {ConfirmDialog}
+      </div>
+    );
+  }
+
+  if (hasCv === false) {
+    return (
+      <BrowseAllJobsView
+        jobs={browseJobs}
+        loading={browseJobsQuery.isLoading}
+        error={browseJobsQuery.isError}
+        onApply={handleBrowseApply}
+        confirmDialog={ConfirmDialog}
+      />
+    );
+  }
+
+  const matchedSubtitle = "Opportunities ranked against your CV.";
+
   if (consentLoading || (consentEnabled && matchesLoading)) {
     return (
       <div className="space-y-6">
-        <PageHeader />
+        <PageHeader subtitle={matchedSubtitle} />
         <div className="bg-white rounded-xl border border-gray-200 p-12 text-center text-gray-500">
           Loading your matches…
         </div>
@@ -258,7 +330,7 @@ export default function SeekerJobsPage() {
   if (consentError || (consentEnabled && matchesError)) {
     return (
       <div className="space-y-6">
-        <PageHeader />
+        <PageHeader subtitle={matchedSubtitle} />
         <div className="bg-white rounded-xl border border-red-200 p-6 text-red-700">
           We couldn't load your matches right now. Try refreshing the page.
         </div>
@@ -270,7 +342,7 @@ export default function SeekerJobsPage() {
   if (!consentHasCandidate) {
     return (
       <div className="space-y-6">
-        <PageHeader />
+        <PageHeader subtitle={matchedSubtitle} />
         <div className="bg-white rounded-xl border border-dashed border-gray-300 p-12 text-center">
           <h2 className="text-lg font-semibold text-gray-900">Upload your CV first</h2>
           <p className="text-gray-600 mt-2 max-w-md mx-auto">
@@ -291,7 +363,7 @@ export default function SeekerJobsPage() {
   if (!consentGranted) {
     return (
       <div className="space-y-6">
-        <PageHeader />
+        <PageHeader subtitle={matchedSubtitle} />
         <div className="bg-white rounded-xl border border-amber-200 p-8 text-center">
           <h2 className="text-lg font-semibold text-amber-900">We need your consent to match</h2>
           <p className="text-amber-900/80 mt-2 max-w-md mx-auto text-sm">
@@ -326,7 +398,12 @@ export default function SeekerJobsPage() {
   if (matches.length === 0) {
     return (
       <div className="space-y-6">
-        <PageHeader showRematch onRematch={handleRematch} rematching={rematchMutation.isPending} />
+        <PageHeader
+          subtitle={matchedSubtitle}
+          showRematch
+          onRematch={handleRematch}
+          rematching={rematchMutation.isPending}
+        />
         <div className="bg-white rounded-xl border border-dashed border-gray-300 p-12 text-center">
           <h2 className="text-lg font-semibold text-gray-900">No matches yet</h2>
           <p className="text-gray-600 mt-2 max-w-md mx-auto">
@@ -341,7 +418,12 @@ export default function SeekerJobsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader showRematch onRematch={handleRematch} rematching={rematchMutation.isPending} />
+      <PageHeader
+        subtitle={matchedSubtitle}
+        showRematch
+        onRematch={handleRematch}
+        rematching={rematchMutation.isPending}
+      />
 
       {showColdStart ? (
         <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800">
@@ -384,7 +466,64 @@ export default function SeekerJobsPage() {
   );
 }
 
+interface BrowseAllJobsViewProps {
+  jobs: PublicJob[];
+  loading: boolean;
+  error: boolean;
+  onApply: (job: PublicJob) => void;
+  confirmDialog: React.ReactNode;
+}
+
+function BrowseAllJobsView(props: BrowseAllJobsViewProps) {
+  const jobs = props.jobs;
+  const subtitle = "All open jobs — upload your CV to see your match scores.";
+
+  return (
+    <div className="space-y-6">
+      <PageHeader subtitle={subtitle} />
+
+      <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800 flex flex-wrap items-center justify-between gap-2">
+        <span>
+          Browsing all open jobs. Upload your CV and Nix will rank these by how well they match you.
+        </span>
+        <Link
+          href="/cv-assistant/seeker/profile"
+          className="inline-block px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 whitespace-nowrap"
+        >
+          Upload my CV
+        </Link>
+      </div>
+
+      {props.loading ? (
+        <div className="bg-white rounded-xl border border-gray-200 p-12 text-center text-gray-500">
+          Loading open jobs…
+        </div>
+      ) : props.error ? (
+        <div className="bg-white rounded-xl border border-red-200 p-6 text-red-700">
+          We couldn't load open jobs right now. Try refreshing the page.
+        </div>
+      ) : jobs.length === 0 ? (
+        <div className="bg-white rounded-xl border border-dashed border-gray-300 p-12 text-center">
+          <h2 className="text-lg font-semibold text-gray-900">No open jobs right now</h2>
+          <p className="text-gray-600 mt-2 max-w-md mx-auto">
+            There are no open listings at the moment. Check back soon — new jobs are added
+            regularly.
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {jobs.map((job) => (
+            <SeekerBrowseJobCard key={`${job.kind}-${job.id}`} job={job} onApply={props.onApply} />
+          ))}
+        </div>
+      )}
+      {props.confirmDialog}
+    </div>
+  );
+}
+
 interface PageHeaderProps {
+  subtitle: string;
   showRematch?: boolean;
   onRematch?: () => void;
   rematching?: boolean;
@@ -397,7 +536,7 @@ function PageHeader(props: PageHeaderProps) {
     <div className="flex items-start justify-between gap-3">
       <div>
         <h1 className="text-3xl font-bold text-white">Browse Jobs</h1>
-        <p className="text-white/70 mt-2">Opportunities ranked against your CV.</p>
+        <p className="text-white/70 mt-2">{props.subtitle}</p>
       </div>
       {showRematch ? (
         <button

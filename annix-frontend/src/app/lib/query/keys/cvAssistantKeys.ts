@@ -104,6 +104,8 @@ export const cvAssistantKeys = {
     all: ["cv-assistant", "seeker", "jobs"] as const,
     recommended: () => ["cv-assistant", "seeker", "jobs", "recommended"] as const,
     coldStart: () => ["cv-assistant", "seeker", "jobs", "cold-start"] as const,
+    browse: (params?: CvExternalJobQueryParams) =>
+      ["cv-assistant", "seeker", "jobs", "browse", params ?? {}] as const,
     stats: () => ["cv-assistant", "seeker", "jobs", "stats"] as const,
     consent: () => ["cv-assistant", "seeker", "jobs", "consent"] as const,
     mutes: () => ["cv-assistant", "seeker", "jobs", "mutes"] as const,

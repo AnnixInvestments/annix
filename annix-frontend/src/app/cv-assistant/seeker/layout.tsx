@@ -58,7 +58,8 @@ function SeekerContent({ children }: { children: React.ReactNode }) {
   const hasCv = profileStatus ? profileStatus.hasCv : null;
   const isOnProfilePage = pathname.startsWith("/cv-assistant/seeker/profile");
   const isOnSettingsPage = pathname.startsWith("/cv-assistant/seeker/settings");
-  const cvGateExempt = isOnProfilePage || isOnSettingsPage;
+  const isOnJobsPage = pathname.startsWith("/cv-assistant/seeker/jobs");
+  const cvGateExempt = isOnProfilePage || isOnSettingsPage || isOnJobsPage;
 
   useEffect(() => {
     if (isLoading) return;

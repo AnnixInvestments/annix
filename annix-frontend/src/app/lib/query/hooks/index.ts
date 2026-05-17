@@ -665,6 +665,7 @@ export {
   useCvMuteSeekerCategory,
   useCvMuteSeekerCompany,
   useCvRevokeSeekerMute,
+  useCvSeekerBrowseJobs,
   useCvSeekerColdStartJobs,
   useCvSeekerJobStats,
   useCvSeekerMatchingConsent,
