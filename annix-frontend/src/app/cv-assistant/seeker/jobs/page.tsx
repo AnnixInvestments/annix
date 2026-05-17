@@ -70,7 +70,7 @@ export default function SeekerJobsPage() {
   const [consentDeclined, setConsentDeclined] = useState<boolean>(false);
   const consentPromptShown = useRef(false);
 
-  const browseJobsEnabled = profileReady && hasCv === false;
+  const browseJobsEnabled = profileReady;
   const browseJobsQuery = useCvSeekerBrowseJobs({ limit: 100 }, browseJobsEnabled);
   const browseJobsData = browseJobsQuery.data;
   const browseJobs = useMemo(() => (browseJobsData ? browseJobsData.jobs : []), [browseJobsData]);
@@ -309,6 +309,7 @@ export default function SeekerJobsPage() {
         error={browseJobsQuery.isError}
         onApply={handleBrowseApply}
         confirmDialog={ConfirmDialog}
+        variant="no-cv"
       />
     );
   }
@@ -341,22 +342,14 @@ export default function SeekerJobsPage() {
 
   if (!consentHasCandidate) {
     return (
-      <div className="space-y-6">
-        <PageHeader subtitle={matchedSubtitle} />
-        <div className="bg-white rounded-xl border border-dashed border-gray-300 p-12 text-center">
-          <h2 className="text-lg font-semibold text-gray-900">Upload your CV first</h2>
-          <p className="text-gray-600 mt-2 max-w-md mx-auto">
-            We need your CV before we can match you to jobs. Head to your profile to upload it.
-          </p>
-          <Link
-            href="/cv-assistant/seeker/profile"
-            className="inline-block mt-4 px-4 py-2 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700"
-          >
-            Go to my CV
-          </Link>
-        </div>
-        {ConfirmDialog}
-      </div>
+      <BrowseAllJobsView
+        jobs={browseJobs}
+        loading={browseJobsQuery.isLoading}
+        error={browseJobsQuery.isError}
+        onApply={handleBrowseApply}
+        confirmDialog={ConfirmDialog}
+        variant="matches-pending"
+      />
     );
   }
 
@@ -397,22 +390,14 @@ export default function SeekerJobsPage() {
 
   if (matches.length === 0) {
     return (
-      <div className="space-y-6">
-        <PageHeader
-          subtitle={matchedSubtitle}
-          showRematch
-          onRematch={handleRematch}
-          rematching={rematchMutation.isPending}
-        />
-        <div className="bg-white rounded-xl border border-dashed border-gray-300 p-12 text-center">
-          <h2 className="text-lg font-semibold text-gray-900">No matches yet</h2>
-          <p className="text-gray-600 mt-2 max-w-md mx-auto">
-            We're still matching jobs to your profile. New matches usually appear within an hour of
-            uploading your CV. Make sure your skills are up to date in your CV for better matches.
-          </p>
-        </div>
-        {ConfirmDialog}
-      </div>
+      <BrowseAllJobsView
+        jobs={browseJobs}
+        loading={browseJobsQuery.isLoading}
+        error={browseJobsQuery.isError}
+        onApply={handleBrowseApply}
+        confirmDialog={ConfirmDialog}
+        variant="matches-pending"
+      />
     );
   }
 
@@ -472,27 +457,40 @@ interface BrowseAllJobsViewProps {
   error: boolean;
   onApply: (job: PublicJob) => void;
   confirmDialog: React.ReactNode;
+  variant: "no-cv" | "matches-pending";
 }
 
 function BrowseAllJobsView(props: BrowseAllJobsViewProps) {
   const jobs = props.jobs;
-  const subtitle = "All open jobs — upload your CV to see your match scores.";
+  const variant = props.variant;
+  const matchesPending = variant === "matches-pending";
+  const subtitle = matchesPending
+    ? "Your personalised matches are being prepared — browse all open jobs in the meantime."
+    : "All open jobs — upload your CV to see your match scores.";
 
   return (
     <div className="space-y-6">
       <PageHeader subtitle={subtitle} />
 
-      <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800 flex flex-wrap items-center justify-between gap-2">
-        <span>
-          Browsing all open jobs. Upload your CV and Nix will rank these by how well they match you.
-        </span>
-        <Link
-          href="/cv-assistant/seeker/profile"
-          className="inline-block px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 whitespace-nowrap"
-        >
-          Upload my CV
-        </Link>
-      </div>
+      {matchesPending ? (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800">
+          Nix is still preparing your personalised job matches. In the meantime, here are all open
+          jobs — you can browse and apply to any of them now.
+        </div>
+      ) : (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800 flex flex-wrap items-center justify-between gap-2">
+          <span>
+            Browsing all open jobs. Upload your CV and Nix will rank these by how well they match
+            you.
+          </span>
+          <Link
+            href="/cv-assistant/seeker/profile"
+            className="inline-block px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 whitespace-nowrap"
+          >
+            Upload my CV
+          </Link>
+        </div>
+      )}
 
       {props.loading ? (
         <div className="bg-white rounded-xl border border-gray-200 p-12 text-center text-gray-500">
