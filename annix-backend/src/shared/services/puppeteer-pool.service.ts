@@ -45,14 +45,21 @@ export class PuppeteerPoolService implements OnModuleDestroy {
     "--disable-gpu",
     "--disable-extensions",
     "--disable-software-rasterizer",
-    "--single-process",
-    "--no-zygote",
     "--disable-features=VizDisplayCompositor",
     "--disable-background-networking",
     "--disable-default-apps",
     "--disable-sync",
     "--js-flags=--max-old-space-size=128",
   ];
+
+  private readonly memoryConstrainedArgs = ["--single-process", "--no-zygote"];
+
+  private launchArgs(): string[] {
+    if (process.env.NODE_ENV === "production") {
+      return [...this.defaultArgs, ...this.memoryConstrainedArgs];
+    }
+    return this.defaultArgs;
+  }
 
   async onModuleDestroy(): Promise<void> {
     await this.closeBrowser();
@@ -225,7 +232,7 @@ export class PuppeteerPoolService implements OnModuleDestroy {
       headless: "shell",
       timeout: 60000,
       executablePath: executablePath ?? undefined,
-      args: this.defaultArgs,
+      args: this.launchArgs(),
     });
 
     this.logger.log("Browser launched successfully");
