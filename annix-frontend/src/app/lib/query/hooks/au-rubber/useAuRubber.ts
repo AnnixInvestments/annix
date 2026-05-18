@@ -444,6 +444,18 @@ export function useAuRubberRefileTaxInvoiceStock() {
   });
 }
 
+export function useAuRubberLinkTaxInvoiceCalenderRollCoc() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, cocId }: { id: number; cocId: number | null }) =>
+      auRubberApiClient.linkTaxInvoiceCalenderRollCoc(id, cocId),
+    onSuccess: (_result, { id }) => {
+      queryClient.invalidateQueries({ queryKey: rubberKeys.taxInvoices.detail(id) });
+      queryClient.invalidateQueries({ queryKey: rubberKeys.taxInvoices.all });
+    },
+  });
+}
+
 export function useAuRubberAnalyzeSupplierCocs() {
   return useMutation({
     mutationFn: (files: File[]) => auRubberApiClient.analyzeSupplierCocs(files),

@@ -73,6 +73,11 @@ const navSections: NavSection[] = [
         permission: PAGE_PERMISSIONS["/au-rubber/portal/tax-invoices"],
       },
       {
+        href: "/au-rubber/portal/supplier-credit-notes",
+        label: "Supplier Credit Notes",
+        permission: PAGE_PERMISSIONS["/au-rubber/portal/supplier-credit-notes"],
+      },
+      {
         href: "/au-rubber/portal/supplier-cocs",
         label: "Supplier CoCs",
         permission: PAGE_PERMISSIONS["/au-rubber/portal/supplier-cocs"],
@@ -362,8 +367,11 @@ export function AuSidebar() {
     user?.firstName && user?.lastName
       ? `${user.firstName} ${user.lastName}`
       : rawEmailSplitAt0 || "AU Rubber";
-  const firstInitial = rawFirstNameAt0 || user?.email?.[0] || "A";
-  const lastInitial = rawLastNameAt0 || user?.email?.[1] || "U";
+  const userEmail = user?.email;
+  const emailInitial0 = userEmail ? userEmail[0] : undefined;
+  const emailInitial1 = userEmail ? userEmail[1] : undefined;
+  const firstInitial = rawFirstNameAt0 || emailInitial0 || "A";
+  const lastInitial = rawLastNameAt0 || emailInitial1 || "U";
   const userInitials = `${firstInitial}${lastInitial}`.toUpperCase();
 
   return (

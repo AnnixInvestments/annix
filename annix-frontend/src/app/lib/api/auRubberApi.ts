@@ -1929,6 +1929,14 @@ class AuRubberApiClient {
     path: (id) => `/rubber-lining/portal/tax-invoices/${id}/refile-stock`,
   });
 
+  linkTaxInvoiceCalenderRollCoc = createEndpoint<
+    [id: number, cocId: number | null],
+    RubberTaxInvoiceDto
+  >(apiClient, "PUT", {
+    path: (id) => `/rubber-lining/portal/tax-invoices/${id}/link-calender-roll-coc`,
+    body: (_id, cocId) => ({ cocId }),
+  });
+
   updateTaxInvoiceLineItemRolls = createEndpoint<
     [id: number, lineIdx: number, rolls: Array<{ rollNumber: string; weightKg: number | null }>],
     RubberTaxInvoiceDto

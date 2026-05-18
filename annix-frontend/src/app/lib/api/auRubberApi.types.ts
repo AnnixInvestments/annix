@@ -333,6 +333,8 @@ export interface RubberTaxInvoiceDto {
   originalInvoiceId: number | null;
   originalInvoiceNumber: string | null;
   creditNoteRollNumbers: string[];
+  linkedCalenderRollCocId: number | null;
+  linkedCalenderRollCocNumber: string | null;
 }
 
 export interface RubberTaxInvoiceStatementDto {
