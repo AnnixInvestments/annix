@@ -1515,6 +1515,17 @@ Return ONLY a valid JSON object of this exact shape (no extra fields, no comment
         corrected.rheometerSMin = undefined;
       }
 
+      // Shore A on rubber CoCs is always a whole number; a non-integer (e.g.
+      // 39.5) is a mis-read — usually two adjacent readings averaged. Round it
+      // so the value is at least format-valid, and warn so it can be checked.
+      if (hasVal(corrected.shoreA) && !Number.isInteger(corrected.shoreA)) {
+        const rounded = Math.round(corrected.shoreA);
+        this.logger.warn(
+          `Batch ${batch.batchNumber}: Shore A ${corrected.shoreA} is not a whole number — rubber CoC Shore A is always an integer. Rounding to ${rounded}; verify against the source PDF.`,
+        );
+        corrected.shoreA = rounded;
+      }
+
       return corrected;
     });
   }
