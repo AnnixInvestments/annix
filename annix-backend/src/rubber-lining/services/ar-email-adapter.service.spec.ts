@@ -6,6 +6,7 @@ import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { RubberCompany } from "../entities/rubber-company.entity";
 import { DeliveryNoteType, RubberDeliveryNote } from "../entities/rubber-delivery-note.entity";
 import { RubberTaxInvoice } from "../entities/rubber-tax-invoice.entity";
+import { RubberInboundEmailService } from "../rubber-inbound-email.service";
 import { ArDocumentType, ArEmailAdapterService } from "./ar-email-adapter.service";
 import { RubberExtractionOrchestratorService } from "./rubber-extraction-orchestrator.service";
 
@@ -40,6 +41,10 @@ describe("ArEmailAdapterService", () => {
     triggerReadinessCheckForDeliveryNote: jest.fn(),
   };
 
+  const rubberInboundEmailMock = {
+    processInboundEmail: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -50,6 +55,7 @@ describe("ArEmailAdapterService", () => {
         { provide: getRepositoryToken(RubberTaxInvoice), useValue: taxInvoiceRepo },
         { provide: getRepositoryToken(RubberCompany), useValue: companyRepo },
         { provide: RubberExtractionOrchestratorService, useValue: orchestratorMock },
+        { provide: RubberInboundEmailService, useValue: rubberInboundEmailMock },
       ],
     }).compile();
 
@@ -330,22 +336,61 @@ describe("ArEmailAdapterService", () => {
   });
 
   describe("route - CoC and unroutable", () => {
-    it("CoC returns no linked entity (manual upload required)", async () => {
+    it("CoC routes through the inbound-email CoC pipeline", async () => {
+      rubberInboundEmailMock.processInboundEmail.mockResolvedValue({
+        success: true,
+        cocIds: [555],
+        deliveryNoteIds: [],
+        taxInvoiceIds: [],
+        errors: [],
+      });
       const attachment = {
         documentType: ArDocumentType.COC,
+        originalFilename: "coc.pdf",
+        mimeType: "application/pdf",
+        fileSizeBytes: 1234,
         s3Path: "path",
       } as InboundEmailAttachment;
 
       const result = await service.route(
         attachment,
-        Buffer.from(""),
+        Buffer.from("pdf"),
+        null,
+        "supplier@example.com",
+        "CoC",
+      );
+
+      expect(rubberInboundEmailMock.processInboundEmail).toHaveBeenCalled();
+      expect(result.linkedEntityType).toBe("RubberSupplierCoc");
+      expect(result.linkedEntityId).toBe(555);
+      expect(result.extractionTriggered).toBe(true);
+    });
+
+    it("CoC graph attachment (no CoC created) returns no linked entity", async () => {
+      rubberInboundEmailMock.processInboundEmail.mockResolvedValue({
+        success: true,
+        cocIds: [],
+        deliveryNoteIds: [],
+        taxInvoiceIds: [],
+        errors: [],
+      });
+      const attachment = {
+        documentType: ArDocumentType.COC,
+        originalFilename: "coc-GRAPH.pdf",
+        mimeType: "application/pdf",
+        fileSizeBytes: 100,
+        s3Path: "path",
+      } as InboundEmailAttachment;
+
+      const result = await service.route(
+        attachment,
+        Buffer.from("g"),
         null,
         "supplier@example.com",
         "CoC",
       );
 
       expect(result.linkedEntityType).toBeNull();
-      expect(result.linkedEntityId).toBeNull();
       expect(result.extractionTriggered).toBe(false);
     });
 

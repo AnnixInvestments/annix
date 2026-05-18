@@ -28,6 +28,7 @@ import {
   TaxInvoiceStatus,
   TaxInvoiceType,
 } from "../entities/rubber-tax-invoice.entity";
+import { RubberInboundEmailService } from "../rubber-inbound-email.service";
 import { RubberExtractionOrchestratorService } from "./rubber-extraction-orchestrator.service";
 
 export const ArDocumentType = {
@@ -106,6 +107,7 @@ export class ArEmailAdapterService implements EmailAppAdapter, OnModuleInit {
     @InjectRepository(RubberCompany)
     private readonly companyRepo: Repository<RubberCompany>,
     private readonly extractionOrchestrator: RubberExtractionOrchestratorService,
+    private readonly rubberInboundEmailService: RubberInboundEmailService,
   ) {}
 
   onModuleInit() {
@@ -262,14 +264,54 @@ Respond ONLY with JSON:
     }
 
     if (documentType === ArDocumentType.COC) {
-      this.logger.log(
-        `CoC document received from ${fromEmail} - requires manual upload for extraction pipeline`,
-      );
-      return { linkedEntityType: null, linkedEntityId: null, extractionTriggered: false };
+      return this.routeCoc(attachment, fileBuffer, fromEmail, subject);
     }
 
     this.logger.log(`Unroutable document type "${documentType}" from ${fromEmail}`);
     return { linkedEntityType: null, linkedEntityId: null, extractionTriggered: false };
+  }
+
+  private async routeCoc(
+    attachment: InboundEmailAttachment,
+    fileBuffer: Buffer,
+    fromEmail: string,
+    subject: string,
+  ): Promise<RoutingResult> {
+    try {
+      const filename = attachment.originalFilename || "coc.pdf";
+      // Hand the attachment to the proven CoC pipeline — the same
+      // RubberInboundEmailService the webhook uses. It classifies data-PDF vs
+      // graph-PDF, ignores non-PDFs, creates the supplier CoC, links graphs to
+      // an existing CoC by batch number, and triggers extraction.
+      const result = await this.rubberInboundEmailService.processInboundEmail({
+        from: fromEmail,
+        to: "",
+        subject,
+        attachments: [
+          {
+            filename,
+            content: fileBuffer,
+            contentType: attachment.mimeType,
+            size: attachment.fileSizeBytes ?? fileBuffer.length,
+          },
+        ],
+      });
+      const cocId = result.cocIds.length > 0 ? result.cocIds[0] : null;
+      if (cocId != null) {
+        return {
+          linkedEntityType: "RubberSupplierCoc",
+          linkedEntityId: cocId,
+          extractionTriggered: true,
+        };
+      }
+      // A graph PDF linked to an existing CoC, or a non-PDF the pipeline
+      // ignored — nothing to extract for this individual attachment.
+      return { linkedEntityType: null, linkedEntityId: null, extractionTriggered: false };
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Failed to route CoC: ${msg}`);
+      return { linkedEntityType: null, linkedEntityId: null, extractionTriggered: false };
+    }
   }
 
   private async routeInvoice(
