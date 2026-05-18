@@ -891,9 +891,17 @@ ${truncatedText}`;
     const result: { cocIds?: number[]; deliveryNoteIds?: number[]; taxInvoiceIds?: number[] } = {};
 
     if (documentType === "supplier_coc") {
-      result.cocIds = await files.reduce(
-        async (accPromise, file) => {
-          const acc = await accPromise;
+      // Phase 1 — create every CoC record. Graph PDFs link to an existing CoC
+      // and are not created here. Roll back created CoCs if any file fails.
+      const createdCocs: {
+        id: number;
+        cocType: SupplierCocType;
+        pdfText: string;
+        buffer: Buffer;
+      }[] = [];
+      const linkedCocIds: number[] = [];
+      try {
+        for (const file of files) {
           const pdfText = await extractTextFromPdf(file.buffer);
 
           const graphInfo = this.detectIfGraph(pdfText, file.originalname);
@@ -905,7 +913,8 @@ ${truncatedText}`;
             );
             if (linkedCocId) {
               this.logger.log(`Linked graph PDF to existing CoC ${linkedCocId}`);
-              return [...acc, linkedCocId];
+              linkedCocIds.push(linkedCocId);
+              continue;
             }
             this.logger.warn("Could not find matching COC for graph, creating new COC");
           }
@@ -932,20 +941,40 @@ ${truncatedText}`;
             },
             createdBy,
           );
+          createdCocs.push({
+            id: coc.id,
+            cocType: detectedCocType,
+            pdfText,
+            buffer: file.buffer,
+          });
+        }
+      } catch (error) {
+        for (const c of createdCocs) {
+          await this.cocService.deleteSupplierCoc(c.id).catch(() => undefined);
+        }
+        this.logger.error(
+          `CoC batch failed after creating ${createdCocs.length} record(s) — rolled them all back`,
+        );
+        throw error;
+      }
 
-          this.autoExtractCoc(coc.id, detectedCocType, pdfText, file.buffer);
-          return [...acc, coc.id];
-        },
-        Promise.resolve([] as number[]),
-      );
+      // Phase 2 — every record persisted; trigger extraction for the batch.
+      for (const c of createdCocs) {
+        this.autoExtractCoc(c.id, c.cocType, c.pdfText, c.buffer);
+      }
+      result.cocIds = [...createdCocs.map((c) => c.id), ...linkedCocIds];
     } else if (documentType === SharedDocumentType.TAX_INVOICE) {
       const invoiceType = metadata.invoiceType || TaxInvoiceType.SUPPLIER;
       const explicitCompanyId = metadata.companyId;
 
-      result.taxInvoiceIds = await files.reduce(
-        async (accPromise, file) => {
-          const acc = await accPromise;
-
+      // Phase 1 — create every invoice record; roll back on any failure.
+      const createdInvoices: {
+        id: number;
+        file: Express.Multer.File;
+        companyName: string | null;
+      }[] = [];
+      try {
+        for (const file of files) {
           const resolvedCompanyId =
             explicitCompanyId ??
             (await this.detectCompanyFromPdf(file.buffer, file.originalname, invoiceType));
@@ -967,12 +996,23 @@ ${truncatedText}`;
             },
             createdBy,
           );
+          createdInvoices.push({ id: invoice.id, file, companyName: company?.name ?? null });
+        }
+      } catch (error) {
+        for (const inv of createdInvoices) {
+          await this.taxInvoiceService.deleteTaxInvoice(inv.id).catch(() => undefined);
+        }
+        this.logger.error(
+          `Tax invoice batch failed after creating ${createdInvoices.length} record(s) — rolled them all back`,
+        );
+        throw error;
+      }
 
-          this.autoExtractTaxInvoice(invoice.id, file, company?.name ?? null);
-          return [...acc, invoice.id];
-        },
-        Promise.resolve([] as number[]),
-      );
+      // Phase 2 — every record persisted; trigger extraction for the batch.
+      for (const inv of createdInvoices) {
+        this.autoExtractTaxInvoice(inv.id, inv.file, inv.companyName);
+      }
+      result.taxInvoiceIds = createdInvoices.map((inv) => inv.id);
     } else {
       const dnType = metadata.deliveryNoteType || DeliveryNoteType.COMPOUND;
 
