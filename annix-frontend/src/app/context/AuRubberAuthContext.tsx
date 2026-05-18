@@ -88,17 +88,22 @@ export function AuRubberAuthProvider(props: { children: ReactNode }) {
 
   const checkAuth = useCallback(async () => {
     if (!auRubberApiClient.isAuthenticated()) {
-      clearCachedAuth();
-      setState({
-        isAuthenticated: false,
-        isLoading: false,
-        user: null,
-        profile: null,
-        permissions: [],
-        roleCode: null,
-        isAdmin: false,
-      });
-      return;
+      // A tab opened from an email link has empty sessionStorage. Before
+      // declaring the user logged out, ask other open tabs for their session.
+      const adopted = await auRubberApiClient.tryAdoptSessionFromAnotherTab();
+      if (!adopted) {
+        clearCachedAuth();
+        setState({
+          isAuthenticated: false,
+          isLoading: false,
+          user: null,
+          profile: null,
+          permissions: [],
+          roleCode: null,
+          isAdmin: false,
+        });
+        return;
+      }
     }
 
     try {

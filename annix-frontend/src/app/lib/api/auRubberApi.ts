@@ -144,6 +144,10 @@ class AuRubberApiClient {
     return auRubberTokenStore.isAuthenticated();
   }
 
+  tryAdoptSessionFromAnotherTab(): Promise<boolean> {
+    return auRubberTokenStore.adoptSessionFromOtherTab();
+  }
+
   private request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     return apiClient.request<T>(endpoint, options);
   }

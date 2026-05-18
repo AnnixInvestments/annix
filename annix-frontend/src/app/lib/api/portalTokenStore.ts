@@ -5,13 +5,82 @@ export interface PortalTokenKeys {
   refreshToken: string;
 }
 
+export interface PortalTokenStoreOptions {
+  /**
+   * When true, the store can share a live session with other open tabs of
+   * the same portal via BroadcastChannel. A fresh tab (e.g. opened from an
+   * email link) whose sessionStorage is empty can then adopt the session of
+   * an already-signed-in tab instead of bouncing to login. The session is
+   * still tab-scoped — closing every tab/the browser ends it.
+   */
+  crossTabRelay?: boolean;
+}
+
 export class PortalTokenStore {
   private accessTokenValue: string | null = null;
   private refreshTokenValue: string | null = null;
   private rememberMeValue = false;
+  private relayChannel: BroadcastChannel | null = null;
 
-  constructor(private readonly keys: PortalTokenKeys) {
+  constructor(
+    private readonly keys: PortalTokenKeys,
+    options: PortalTokenStoreOptions = {},
+  ) {
     this.loadFromStorage();
+    if (options.crossTabRelay) this.setupCrossTabRelay();
+  }
+
+  private setupCrossTabRelay() {
+    // eslint-disable-next-line no-restricted-syntax -- SSR + feature guard
+    if (typeof window === "undefined" || typeof BroadcastChannel === "undefined") return;
+    const channel = new BroadcastChannel(`portal-token-relay:${this.keys.accessToken}`);
+    channel.addEventListener("message", (event) => {
+      if (event.data?.type !== "request") return;
+      const access = this.accessToken();
+      const refresh = this.refreshToken();
+      if (access && refresh) {
+        channel.postMessage({
+          type: "response",
+          accessToken: access,
+          refreshToken: refresh,
+          rememberMe: this.rememberMeValue,
+        });
+      }
+    });
+    this.relayChannel = channel;
+  }
+
+  /**
+   * Ask other open tabs of the same portal for their session. Resolves true
+   * if a live session was adopted into this tab, false if no tab answered
+   * within the timeout. Lets a fresh tab bootstrap an existing login.
+   */
+  adoptSessionFromOtherTab(timeoutMs = 500): Promise<boolean> {
+    const channel = this.relayChannel;
+    if (!channel) return Promise.resolve(false);
+    return new Promise<boolean>((resolve) => {
+      let settled = false;
+      const onMessage = (event: MessageEvent) => {
+        const msg = event.data;
+        if (!msg) return;
+        if (msg.type !== "response") return;
+        const access = msg.accessToken;
+        const refresh = msg.refreshToken;
+        if (!access || !refresh) return;
+        this.setTokens(access, refresh, Boolean(msg.rememberMe));
+        finish(true);
+      };
+      const finish = (adopted: boolean) => {
+        if (settled) return;
+        settled = true;
+        channel.removeEventListener("message", onMessage);
+        clearTimeout(timer);
+        resolve(adopted);
+      };
+      const timer = setTimeout(() => finish(false), timeoutMs);
+      channel.addEventListener("message", onMessage);
+      channel.postMessage({ type: "request" });
+    });
   }
 
   private loadFromStorage() {

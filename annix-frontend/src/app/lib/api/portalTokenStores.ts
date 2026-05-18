@@ -20,10 +20,13 @@ export const stockControlTokenStore = new PortalTokenStore({
   refreshToken: "stockControlRefreshToken",
 });
 
-export const auRubberTokenStore = new PortalTokenStore({
-  accessToken: "auRubberAccessToken",
-  refreshToken: "auRubberRefreshToken",
-});
+export const auRubberTokenStore = new PortalTokenStore(
+  {
+    accessToken: "auRubberAccessToken",
+    refreshToken: "auRubberRefreshToken",
+  },
+  { crossTabRelay: true },
+);
 
 export const teacherAssistantTokenStore = new PortalTokenStore({
   accessToken: "teacherAssistantAccessToken",
