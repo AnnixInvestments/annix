@@ -976,10 +976,12 @@ ${truncatedText}`;
     } else {
       const dnType = metadata.deliveryNoteType || DeliveryNoteType.COMPOUND;
 
-      result.deliveryNoteIds = await files.reduce(
-        async (accPromise, file) => {
-          const acc = await accPromise;
-
+      // Phase 1 — create every delivery note record. If any file in the batch
+      // fails (supplier detection, storage upload, etc.), roll back every
+      // record created so far so a failed/retried batch leaves no orphans.
+      const created: { id: number; buffer: Buffer }[] = [];
+      try {
+        for (const file of files) {
           const supplierCompanyId = metadata.supplierCompanyId
             ? metadata.supplierCompanyId
             : await this.detectSupplierFromPdf(file.buffer, file.originalname);
@@ -998,12 +1000,23 @@ ${truncatedText}`;
             },
             createdBy,
           );
+          created.push({ id: dn.id, buffer: file.buffer });
+        }
+      } catch (error) {
+        for (const c of created) {
+          await this.deliveryNoteService.deleteDeliveryNote(c.id).catch(() => undefined);
+        }
+        this.logger.error(
+          `Delivery note batch failed after creating ${created.length} record(s) — rolled them all back`,
+        );
+        throw error;
+      }
 
-          this.autoExtractAndSplitDeliveryNote(dn.id, file.buffer, dnType);
-          return [...acc, dn.id];
-        },
-        Promise.resolve([] as number[]),
-      );
+      // Phase 2 — every record persisted; trigger extraction for the batch.
+      for (const c of created) {
+        this.autoExtractAndSplitDeliveryNote(c.id, c.buffer, dnType);
+      }
+      result.deliveryNoteIds = created.map((c) => c.id);
     }
 
     return result;
