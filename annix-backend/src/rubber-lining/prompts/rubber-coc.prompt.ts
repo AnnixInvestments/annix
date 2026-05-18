@@ -485,15 +485,15 @@ DOCUMENT STRUCTURE:
 - COMPOUND BATCH NUMBERS: per page, the underlying B-numbers (e.g., "1, 2, 3, 4, 5, 6") that this page's rolls were calendered from. CRITICAL: page 1 and page 2 typically reference DIFFERENT compound batch numbers — they are not shared.
 
 LABORATORY ANALYSIS DATA TABLE:
-The table has these columns: Compound Details, Shore A last testpoint [Shore A], Density [g/cm³], Tensile strength [MPa], Elongation break [%]
+The table has these columns: Compound Details (Batches used), Shore A last testpoint [Shore A], Density [g/cm³], Tensile strength [MPa], Elongation break [%]
 - Row "Nominal": specification nominal values (e.g., Shore A 50.0, Density 1.075, Tensile 12.0, Elongation 500)
 - Row "Limits": specification limits as ranges (e.g., Shore A 45.0-55.0, Density 1.040-1.110, Tensile 7-17, Elongation 350-750)
-- Roll rows: each roll has its own Shore A value in its own row
-- Density, Tensile, and Elongation values are SHARED across all rolls within ONE PAGE (one group), but DIFFER between pages
+- The numbered rows are COMPOUND BATCHES (the "Batches used" column) — each has its own Shore A value. Shore A is measured PER BATCH, never per roll.
+- Density, Tensile, and Elongation values are SHARED across the page (one spot-check batch row carries them).
 
 CRITICAL EXTRACTION RULES:
-- Each roll number has its OWN Shore A value in the Shore A column. Read each roll's Shore A from the row beside its number — do NOT copy values from neighbouring rolls.
-- Density, Tensile, and Elongation appear ONCE per page (group of rolls) and apply to ALL rolls in that page.
+- Shore A is a PER-BATCH measurement. Read each batch's Shore A from the row beside its batch number — do NOT copy values from neighbouring rows. Rolls have NO Shore A reading of their own.
+- Density, Tensile, and Elongation appear ONCE per page and apply to the whole page.
 - The "Roll no." label precedes the roll range (e.g., "1-4" means rolls 1, 2, 3, 4) — expand the range into individual numbers.
 - A multi-page PDF has MULTIPLE groups. Each page is its own delivery note shipment with its OWN: production date, PO, waybill, DN number, batch numbers, rolls, and shared density/tensile/elongation values.
 - Extract ALL pages — never collapse two pages into one entry.
@@ -509,8 +509,8 @@ ROLL NUMBER vs COMPOUND BATCH NUMBER — CRITICAL COMMON MISTAKE TO AVOID:
 - WORKED EXAMPLE (roll range — the #202 mistake): "Roll no." → "5-8" (blank Shore A) → "7" (Shore A 50) → "8" (Shore A 49 + Density 1.065 / Tensile 9.2 / Elong 607) → "9" (50) → "10" (50) → "11" (50) → "12" (50). Correct: rolls=[{rollNumber:"5",shoreA:null},{rollNumber:"6",shoreA:null},{rollNumber:"7",shoreA:null},{rollNumber:"8",shoreA:null}], rollNumbers=["5","6","7","8"], batchNumbers=["7","8","9","10","11","12"]. WRONG: rolls or rollNumbers containing 7-12 (those are batches, not rolls).
 
 NEVER HALLUCINATE — REAL FAILURE MODES TO AVOID:
-- If you cannot read a roll's Shore A, return null for that roll. Do NOT fill it with the previous roll's value, the next roll's value, or the Nominal value.
-- NEVER return rows where every roll has identical Shore A / S' min / S' max / TS 2 / TC 90 — that pattern is the model hallucinating and failing the extraction. If you cannot distinguish individual values, return an empty rolls array for that page rather than fabricated identical data.
+- If you cannot read a batch's Shore A, return null for that batch. Do NOT fill it with the previous batch's value, the next batch's value, or the Nominal value.
+- Rolls do NOT have a Shore A reading — never assign a Shore A value to a roll.
 - The compound code on the document is one of the AU-C50.NBRBSC family. If you extract a different compound code (e.g. "AUA40RSCA"), you have read the wrong document — re-check the page.
 - Production dates are 2024-2026 era, in DD.MM.YYYY format. Never produce a year < 2020 or > current year + 1 — if you do, your day/month/year ordering is wrong.
 
@@ -559,7 +559,7 @@ Return a JSON object with this structure:
       "rolls": [
         {
           "rollNumber": string (e.g., "1", "2", "7"),
-          "shoreA": number or null (individual Shore A value for this roll)
+          "shoreA": null (rolls never have a Shore A reading — always null; Shore A is per-batch)
         }
       ],
       "batches": [
@@ -589,8 +589,7 @@ Guidelines:
 - Parse dates from DD.MM.YYYY to YYYY-MM-DD
 - Remove OCR artifacts from production dates (leading "1|" etc.)
 - Each page is a separate delivery note with its own rolls group AND its own compound batch numbers
-- Rolls within a page share density, tensile, and elongation values
-- Each roll has its own individual Shore A reading — read it row-by-row, never carry forward
+- Shore A is measured per compound BATCH, never per roll — read each batch's Shore A row-by-row, never carry forward; leave every roll's shoreA null
 - Return ONLY the JSON object, no additional text`;
 
 export function calenderRollCocExtractionPrompt(pdfText: string): string {

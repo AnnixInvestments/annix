@@ -993,50 +993,6 @@ export default function SupplierCocDetailPage() {
 
                   {coc.cocType === "CALENDER_ROLL" &&
                     (() => {
-                      const rawExtractedRolls = extracted.rolls;
-                      const rolls = (rawExtractedRolls || []) as Array<{
-                        rollNumber: string;
-                        shoreA?: number | null;
-                      }>;
-                      if (rolls.length === 0) return null;
-                      return (
-                        <div className="mb-4">
-                          <h3 className="text-sm font-medium text-gray-700 mb-2">
-                            Per-Roll Shore A
-                          </h3>
-                          <table className="min-w-full text-sm border border-gray-200 rounded">
-                            <thead className="bg-gray-50">
-                              <tr>
-                                <th className="px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase">
-                                  Roll
-                                </th>
-                                <th className="px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase">
-                                  Shore A
-                                </th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-200">
-                              {rolls.map((roll) => {
-                                const rawRollShoreA = roll.shoreA;
-                                const shoreDisplay =
-                                  rawRollShoreA == null ? "—" : String(rawRollShoreA);
-                                return (
-                                  <tr key={String(roll.rollNumber)}>
-                                    <td className="px-3 py-1.5 font-mono text-gray-700">
-                                      {String(roll.rollNumber)}
-                                    </td>
-                                    <td className="px-3 py-1.5 text-gray-900">{shoreDisplay}</td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
-                      );
-                    })()}
-
-                  {coc.cocType === "CALENDER_ROLL" &&
-                    (() => {
                       const rawBatchNumbers = extracted.batchNumbers;
                       const compoundBatchNumbers = (rawBatchNumbers || []) as string[];
                       const rawBatches = extracted.batches as
@@ -1259,7 +1215,7 @@ export default function SupplierCocDetailPage() {
                     </div>
                   )}
 
-                  {rawBatches.length > 0 && (
+                  {coc.cocType !== "CALENDER_ROLL" && rawBatches.length > 0 && (
                     <div className="overflow-x-auto">
                       <h3 className="text-sm font-medium text-gray-700 mb-2">Batch Results</h3>
                       <table className="min-w-full divide-y divide-gray-200 text-sm">
