@@ -1762,20 +1762,21 @@ export class RubberDeliveryNoteService {
         const matchedNotes = supplierNotes.filter((note) => {
           const batchRange = note.extractedData?.batchRange;
           const dnNumber = note.deliveryNoteNumber;
-          const dnCustomerRef = (
-            note.customerReference ||
-            note.extractedData?.customerReference ||
-            ""
-          )
-            .trim()
-            .toUpperCase();
-          const dnRollNumbers = (note.extractedData?.rolls || [])
-            .map((r) => r.rollNumber)
-            .filter(Boolean);
+          const dnRolls = note.extractedData?.rolls || [];
+          // The top-level customerReference can carry a stale PO that bled
+          // across pages of a multi-DN PDF; each roll keeps the correct one.
+          const dnCustomerRefs = [
+            note.customerReference,
+            note.extractedData?.customerReference,
+            ...dnRolls.map((r) => r.customerReference),
+          ]
+            .filter((v): v is string => typeof v === "string" && v.trim().length > 0)
+            .map((v) => v.trim().toUpperCase());
+          const dnRollNumbers = dnRolls.map((r) => r.rollNumber).filter(Boolean);
 
           const batchMatch = batchRange && cocBatches.some((b: string) => batchRange.includes(b));
           const orderMatch = cocOrderNumber && dnNumber.toUpperCase().includes(cocOrderNumber);
-          const poMatch = cocOrderNumber && dnCustomerRef && cocOrderNumber === dnCustomerRef;
+          const poMatch = Boolean(cocOrderNumber) && dnCustomerRefs.includes(cocOrderNumber);
           const rollMatch =
             dnRollNumbers.length > 0 &&
             cocRollParts.length > 0 &&
