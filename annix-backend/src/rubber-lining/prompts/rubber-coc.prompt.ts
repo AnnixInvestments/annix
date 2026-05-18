@@ -284,7 +284,11 @@ Return a JSON object with this structure:
       "rheometerTc90": number or null (TC 90 in min),
       "passFailStatus": "PASS" or "FAIL" or null
     }
-  ]
+  ],
+  "batchStats": {
+    "count": object or null — transcribe the table's "Count" summary row VERBATIM, keyed by the same field names as a batch (shoreA, specificGravity, reboundPercent, tearStrengthKnM, tensileStrengthMpa, elongationPercent, rheometerSMin, rheometerSMax, rheometerTs2, rheometerTc90). Each value is the integer printed in the Count row for that column, or null if absent. If the table has no "Count" row, set "count" to null.
+    "median": object or null — transcribe the table's "Median" summary row VERBATIM, same keys, each value the number printed in the Median row or null. If the table has no "Median" row, set "median" to null.
+  }
 }
 
 Guidelines (Format A — IMPILO):
@@ -346,6 +350,11 @@ SPOT-CHECK ROW ANCHORING (the #1 Format A failure mode — read carefully):
 - A batch's Specific gravity is read from the table body only. If the SG cell is blank, the field is null — NEVER substitute the Nominal-row SG (e.g. 1.0550) to "fill" an empty cell.
 - VERIFY: the batch row immediately ABOVE a spot-check row, and the one immediately BELOW it, must each have SG/Rebound/Tear/Tensile/Elongation all null (unless that neighbour is itself a spot-check row). If you have given two ADJACENT batches lab data where the document shows only one filled row, you have shifted a spot-check row by one — re-read and correct.
 
+SUMMARY ROWS — Count and Median (transcribe into batchStats):
+- Below the per-batch rows the table has summary rows labelled "Count", "Mean", "Median", "Std Dev", "VarrCoeff". These are NOT batches — never include them in batches[].
+- Transcribe the "Count" row into batchStats.count and the "Median" row into batchStats.median, cell-for-cell, using the column→field mapping below. These are read back to verify your per-batch extraction, so they must match exactly what is printed.
+- If the table has no Count row, batchStats.count = null. If no Median row, batchStats.median = null.
+
 COLUMN HEADER TO OUTPUT FIELD MAPPING:
 - "Shore A" / "Shore A last testpoint" → shoreA
 - "Specific gravity" / "[g/cm³]" → specificGravity
@@ -381,6 +390,27 @@ SELF-CHECK AFTER EXTRACTION:
 7. Re-read the LAST batch row visually. The values you extracted for the last batch must match what is physically beside its number — not the second-to-last row.
 
 - Return ONLY the JSON object, no additional text`;
+
+export const CALENDERER_SPARSE_VERIFY_PROMPT = `You are verifying ONE thing on an Impilo Industries Calenderer Certificate of Conformance: which batches were spot-checked for physical properties.
+
+On page 2 there is a "BATCH CERTIFICATES" table. Most batch rows have ONLY a Shore A value plus rheometer values (S' min, S' max, TS 2, TC 90). A few "spot-check" batch rows ALSO have values printed in these five columns: Specific gravity, Rebound Resilience, Tear strength, Tensile strength, Elongation break.
+
+Your task: for each of those five columns, list the batch numbers (from the leftmost "Batch No." cell of each row) whose cell in that column is NON-BLANK.
+
+Rules:
+- Look ONLY at the per-batch data rows. IGNORE the "Unit", "Nominal", "Limit", "Count", "Mean", "Median", "Std Dev" and "VarrCoeff" rows entirely — they are not batches.
+- A batch belongs in a column's list ONLY if a value is physically printed in that batch's OWN row for that column. An empty cell means that batch is NOT in the list.
+- Trace each value horizontally back to the batch number on its own row — never attribute a value to the row above or below it.
+- Use the batch number exactly as printed (e.g. "344").
+
+Return ONLY this JSON object, no other text:
+{
+  "specificGravity": string[],
+  "reboundPercent": string[],
+  "tearStrengthKnM": string[],
+  "tensileStrengthMpa": string[],
+  "elongationPercent": string[]
+}`;
 
 export const DELIVERY_NOTE_SYSTEM_PROMPT = `You are an expert at extracting structured data from delivery notes for rubber compound or rubber rolls.
 

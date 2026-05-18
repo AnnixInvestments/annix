@@ -10,11 +10,16 @@ import {
   ExtractedCustomerDeliveryNotesResult,
   ExtractedDeliveryNoteData,
 } from "./entities/rubber-delivery-note.entity";
-import { ExtractedCocData, SupplierCocType } from "./entities/rubber-supplier-coc.entity";
+import {
+  BatchStatRow,
+  ExtractedCocData,
+  SupplierCocType,
+} from "./entities/rubber-supplier-coc.entity";
 import { ExtractedTaxInvoiceData, TaxInvoiceType } from "./entities/rubber-tax-invoice.entity";
 import {
   CALENDARER_COC_SYSTEM_PROMPT,
   CALENDER_ROLL_COC_SYSTEM_PROMPT,
+  CALENDERER_SPARSE_VERIFY_PROMPT,
   COMPOUNDER_COC_SYSTEM_PROMPT,
   CREDIT_NOTE_SYSTEM_PROMPT,
   CUSTOMER_DELIVERY_NOTE_OCR_PROMPT,
@@ -102,6 +107,18 @@ interface GeminiResponse {
     totalTokenCount?: number;
   };
 }
+
+// The five sparse "spot-check" columns on a Format A (Impilo) Calenderer
+// batch table. The position-aware verification pass returns, per column, the
+// batch numbers whose cell is non-blank — used to catch row-shift errors.
+type SparseColumn =
+  | "specificGravity"
+  | "reboundPercent"
+  | "tearStrengthKnM"
+  | "tensileStrengthMpa"
+  | "elongationPercent";
+
+type SparseColumnVerification = Record<SparseColumn, string[]>;
 
 @Injectable()
 export class RubberCocExtractionService {
@@ -1226,6 +1243,138 @@ Return ONLY a valid JSON object of this exact shape (no extra fields, no comment
     return declared.filter((n) => !extracted.has(n));
   }
 
+  private median(values: number[]): number {
+    const sorted = [...values].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+  }
+
+  // Compares extracted batches against the document's own "Count" and "Median"
+  // summary rows. Catches dropped, hallucinated, or misread cell values. (A
+  // pure row-shift preserves both — that is caught by the position pass.)
+  private validateBatchStats(data: ExtractedCocData): string[] {
+    const stats = data.batchStats;
+    const batches = data.batches ?? [];
+    if (!stats || batches.length === 0) return [];
+    const defects: string[] = [];
+    const fields: (keyof BatchStatRow)[] = [
+      "shoreA",
+      "specificGravity",
+      "reboundPercent",
+      "tearStrengthKnM",
+      "tensileStrengthMpa",
+      "elongationPercent",
+      "rheometerSMin",
+      "rheometerSMax",
+      "rheometerTs2",
+      "rheometerTc90",
+    ];
+    for (const field of fields) {
+      const values = batches.map((b) => b[field]).filter((v): v is number => typeof v === "number");
+      const reportedCount = stats.count?.[field];
+      if (typeof reportedCount === "number" && reportedCount !== values.length) {
+        defects.push(
+          `${field}: document Count row = ${reportedCount}, extracted ${values.length} populated batch(es)`,
+        );
+      }
+      const reportedMedian = stats.median?.[field];
+      if (typeof reportedMedian === "number" && values.length > 0) {
+        const actual = this.median(values);
+        const tolerance = Math.max(Math.abs(reportedMedian) * 0.02, 0.05);
+        if (Math.abs(actual - reportedMedian) > tolerance) {
+          defects.push(
+            `${field}: document Median row = ${reportedMedian}, extracted batches median = ${actual.toFixed(4)}`,
+          );
+        }
+      }
+    }
+    return defects;
+  }
+
+  // Independent vision pass: asks ONLY which batches have a non-blank cell in
+  // each sparse column. Position-aware, so it catches a spot-check row that
+  // the main extraction attributed to the wrong (usually adjacent) batch.
+  private async verifySparseColumns(pdfBuffer: Buffer): Promise<SparseColumnVerification | null> {
+    try {
+      const images = await this.convertPdfToImages(pdfBuffer);
+      const response = await this.callGeminiWithImages(
+        CALENDERER_SPARSE_VERIFY_PROMPT,
+        "List which batches were spot-checked, following the instructions exactly. Return ONLY the JSON object.",
+        images,
+        "calenderer-sparse-verify",
+      );
+      const raw = response.data;
+      const columns: SparseColumn[] = [
+        "specificGravity",
+        "reboundPercent",
+        "tearStrengthKnM",
+        "tensileStrengthMpa",
+        "elongationPercent",
+      ];
+      const toList = (value: unknown): string[] =>
+        Array.isArray(value) ? value.map((v) => String(v).trim()).filter(Boolean) : [];
+      const result = {} as SparseColumnVerification;
+      for (const column of columns) result[column] = toList(raw[column]);
+      return result;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.warn(
+        `Sparse-column verification pass failed (skipping position check): ${message}`,
+      );
+      return null;
+    }
+  }
+
+  // Cross-checks which batches the main extraction gave sparse values to
+  // against the verification pass — a mismatch means a spot-check row shifted.
+  private validateSparsePositions(
+    data: ExtractedCocData,
+    verify: SparseColumnVerification,
+  ): string[] {
+    const batches = data.batches ?? [];
+    if (batches.length === 0) return [];
+    const defects: string[] = [];
+    const columns: SparseColumn[] = [
+      "specificGravity",
+      "reboundPercent",
+      "tearStrengthKnM",
+      "tensileStrengthMpa",
+      "elongationPercent",
+    ];
+    for (const column of columns) {
+      const extracted = new Set(
+        batches.filter((b) => b[column] != null).map((b) => String(b.batchNumber).trim()),
+      );
+      const expected = new Set(verify[column]);
+      const onlyExpected = [...expected].filter((n) => !extracted.has(n));
+      const onlyExtracted = [...extracted].filter((n) => !expected.has(n));
+      if (onlyExpected.length > 0 || onlyExtracted.length > 0) {
+        defects.push(
+          `${column}: spot-check rows misaligned — document has values on batch(es) [${[...expected].join(", ") || "none"}], extraction placed them on [${[...extracted].join(", ") || "none"}]`,
+        );
+      }
+    }
+    return defects;
+  }
+
+  // All batch-table defects for a result: dropped rows always; for Format A
+  // Calenderer CoCs also the Count/Median and spot-check-position checks.
+  private extractionDefects(
+    cocType: SupplierCocType,
+    data: ExtractedCocData,
+    sparseVerify: SparseColumnVerification | null,
+  ): string[] {
+    const missing = this.missingBatchRows(data).map((m) => `dropped batch ${m}`);
+    const batches = data.batches ?? [];
+    const isCalendererFormatA =
+      cocType === SupplierCocType.CALENDARER &&
+      batches.some((b) => b.rheometerSMin != null || b.reboundPercent != null);
+    if (!isCalendererFormatA) return missing;
+    const stats = this.validateBatchStats(data);
+    const positions = sparseVerify ? this.validateSparsePositions(data, sparseVerify) : [];
+    return [...missing, ...stats, ...positions];
+  }
+
   // Last-resort: insert a visible all-null batch row for every declared batch the
   // model dropped, ordered to match batchNumbers, so a missing batch is never
   // silently lost from the table even when retries fail to recover it.
@@ -1261,7 +1410,10 @@ Return ONLY a valid JSON object of this exact shape (no extra fields, no comment
       async () => {
         const MAX_ATTEMPTS = 3;
         let best: Awaited<ReturnType<typeof this.runExtractionForType>> | null = null;
-        let bestMissingCount = Number.POSITIVE_INFINITY;
+        let bestDefectCount = Number.POSITIVE_INFINITY;
+        // Position-aware verification pass — run once, lazily, the first time
+        // a Format A Calenderer result appears; reused across retry attempts.
+        let sparseVerify: SparseColumnVerification | null | undefined;
 
         for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
           const result = await this.runExtractionForType(
@@ -1270,16 +1422,25 @@ Return ONLY a valid JSON object of this exact shape (no extra fields, no comment
             correctionHints,
             pdfBuffer,
           );
-          const missing = this.missingBatchRows(result.data);
-          if (missing.length === 0) return result;
 
-          if (missing.length < bestMissingCount) {
+          const batches = result.data.batches ?? [];
+          const isCalendererFormatA =
+            cocType === SupplierCocType.CALENDARER &&
+            batches.some((b) => b.rheometerSMin != null || b.reboundPercent != null);
+          if (isCalendererFormatA && pdfBuffer && sparseVerify === undefined) {
+            sparseVerify = await this.verifySparseColumns(pdfBuffer);
+          }
+
+          const defects = this.extractionDefects(cocType, result.data, sparseVerify ?? null);
+          if (defects.length === 0) return result;
+
+          if (defects.length < bestDefectCount) {
             best = result;
-            bestMissingCount = missing.length;
+            bestDefectCount = defects.length;
           }
           if (attempt < MAX_ATTEMPTS) {
             this.logger.warn(
-              `${cocType} extraction attempt ${attempt} dropped ${missing.length} batch row(s) [${missing.join(", ")}] — retrying`,
+              `${cocType} extraction attempt ${attempt} has ${defects.length} batch defect(s): ${defects.join("; ")} — retrying`,
             );
           }
         }
@@ -1291,6 +1452,14 @@ Return ONLY a valid JSON object of this exact shape (no extra fields, no comment
             `${cocType} extraction still missing ${missing.length} batch row(s) [${missing.join(", ")}] after ${MAX_ATTEMPTS} attempts — inserting null placeholder rows so they stay visible for manual entry`,
           );
           this.backfillMissingBatchStubs(result.data, missing);
+        }
+        const residual = this.extractionDefects(cocType, result.data, sparseVerify ?? null).filter(
+          (d) => !d.startsWith("dropped batch "),
+        );
+        if (residual.length > 0) {
+          this.logger.error(
+            `${cocType} extraction batch data failed validation after ${MAX_ATTEMPTS} attempts — verify against the source PDF before approving: ${residual.join("; ")}`,
+          );
         }
         return result;
       },

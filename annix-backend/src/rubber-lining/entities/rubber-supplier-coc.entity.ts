@@ -45,6 +45,21 @@ export interface ExtractedCocSpecifications {
   elongationNominal?: number | null;
 }
 
+// One row of the batch table's "Count" / "Median" summary block, keyed by the
+// same numeric field names as a batch. Used to cross-check extracted batches.
+export interface BatchStatRow {
+  shoreA?: number | null;
+  specificGravity?: number | null;
+  reboundPercent?: number | null;
+  tearStrengthKnM?: number | null;
+  tensileStrengthMpa?: number | null;
+  elongationPercent?: number | null;
+  rheometerSMin?: number | null;
+  rheometerSMax?: number | null;
+  rheometerTs2?: number | null;
+  rheometerTc90?: number | null;
+}
+
 export interface ExtractedCocData {
   cocNumber?: string;
   productionDate?: string;
@@ -72,6 +87,10 @@ export interface ExtractedCocData {
     rheometerTc90?: number;
     passFailStatus?: string;
   }>;
+  batchStats?: {
+    count?: BatchStatRow | null;
+    median?: BatchStatRow | null;
+  } | null;
   linkedCompounderCocIds?: number[];
   compoundCodingId?: number | null;
   parsedCompoundInfo?: Record<string, any> | null;
