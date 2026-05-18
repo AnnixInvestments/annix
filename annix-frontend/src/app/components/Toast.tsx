@@ -83,7 +83,7 @@ function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
 
   return (
     <div
-      className={`${bgColor} text-white px-4 py-3 rounded-lg shadow-lg flex items-center space-x-3 min-w-[300px] max-w-md animate-slide-in`}
+      className={`${bgColor} text-white px-4 py-3 rounded-lg shadow-lg flex items-center space-x-3 min-w-[300px] max-w-md animate-toast-in pointer-events-auto`}
       role="alert"
     >
       <div className="flex-shrink-0">{icon}</div>
@@ -119,25 +119,25 @@ export function ToastProvider(props: { children: React.ReactNode }) {
     <ToastContext.Provider value={{ showToast, hideToast }}>
       {children}
       {/* Toast Container */}
-      <div className="fixed top-4 right-4 z-[100] flex flex-col space-y-2">
+      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[100] flex flex-col items-center space-y-2 pointer-events-none">
         {toasts.map((toast) => (
           <ToastItem key={toast.id} toast={toast} onClose={() => hideToast(toast.id)} />
         ))}
       </div>
       {/* Animation styles */}
       <style jsx global>{`
-        @keyframes slide-in {
+        @keyframes toast-in {
           from {
-            transform: translateX(100%);
+            transform: scale(0.92);
             opacity: 0;
           }
           to {
-            transform: translateX(0);
+            transform: scale(1);
             opacity: 1;
           }
         }
-        .animate-slide-in {
-          animation: slide-in 0.3s ease-out;
+        .animate-toast-in {
+          animation: toast-in 0.2s ease-out;
         }
       `}</style>
     </ToastContext.Provider>

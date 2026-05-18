@@ -3861,7 +3861,7 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
       )}
       {/* Save Progress Confirmation Toast */}
       {showSaveConfirmation && (
-        <div className="fixed top-4 right-4 z-50 animate-slide-in-right">
+        <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50">
           <div className="bg-green-600 text-white px-6 py-4 rounded-lg shadow-lg">
             <div className="flex items-center gap-3">
               <svg
