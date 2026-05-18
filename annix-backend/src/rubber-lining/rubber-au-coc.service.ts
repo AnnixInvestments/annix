@@ -1201,7 +1201,7 @@ export class RubberAuCocService {
   }
 
   private drawHeader(doc: PdfDoc): void {
-    const headerPath = path.join(__dirname, "..", "..", "assets", "au-header.jpg");
+    const headerPath = path.join(__dirname, "..", "assets", "au-header.jpg");
     this.logger.debug(`Header image path: ${headerPath}`);
     this.logger.debug(`Header file exists: ${fs.existsSync(headerPath)}`);
 
@@ -1432,7 +1432,7 @@ export class RubberAuCocService {
         y,
       );
 
-    const footerPath = path.join(__dirname, "..", "..", "assets", "au-footer.jpg");
+    const footerPath = path.join(__dirname, "..", "assets", "au-footer.jpg");
     this.logger.debug(`Footer image path: ${footerPath}`);
     this.logger.debug(`Footer file exists: ${fs.existsSync(footerPath)}`);
 
