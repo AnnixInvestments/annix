@@ -10,6 +10,7 @@
     "start": "next start",
     "codegen": "openapi-typescript http://localhost:4001/swagger-yaml -o src/app/lib/api/schema.ts",
     "type-check": "tsc --noEmit",
+    "type-check:prepush": "tsc --noEmit -p tsconfig.prepush.json",
     "format": "biome format --write src",
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",

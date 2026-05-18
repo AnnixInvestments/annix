@@ -8,7 +8,7 @@
     "claude-swarm": "claude-swarm",
     "test:backend": "cd annix-backend && pnpm test",
     "test:backend:scoped": "cd annix-backend && pnpm exec jest --forceExit --changedSince=origin/main --passWithNoTests",
-    "test:frontend": "cd annix-frontend && pnpm type-check && pnpm test",
+    "test:frontend": "cd annix-frontend && pnpm type-check:prepush && pnpm test",
     "test:all": "pnpm test:backend && pnpm test:frontend",
     "test:coverage": "cd annix-backend && pnpm test:cov",
     "test:watch": "cd annix-backend && pnpm test:watch",
