@@ -312,6 +312,22 @@ export class InboundEmailService {
     return attachment;
   }
 
+  // Attachments classified as a real document type whose extraction was
+  // skipped (e.g. an app router that wasn't yet wired). Loaded with their
+  // parent email so a reprocess pass has the sender/subject context.
+  async listSkippedAttachments(app: string): Promise<InboundEmailAttachment[]> {
+    return this.attachmentRepo
+      .createQueryBuilder("att")
+      .leftJoinAndSelect("att.inboundEmail", "email")
+      .where("email.app = :app", { app })
+      .andWhere("att.extraction_status = :status", {
+        status: AttachmentExtractionStatus.SKIPPED,
+      })
+      .andWhere("att.document_type != :unknown", { unknown: "unknown" })
+      .orderBy("att.id", "ASC")
+      .getMany();
+  }
+
   async emailStats(
     app: string,
     companyId: number,

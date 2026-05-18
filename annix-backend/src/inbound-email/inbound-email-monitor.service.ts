@@ -265,6 +265,60 @@ export class InboundEmailMonitorService {
     }
   }
 
+  // Re-route attachments whose extraction was skipped (e.g. ingested before an
+  // app's router handled that document type). Reads each file back from
+  // storage and runs it through the current router.
+  async reprocessSkippedAttachments(
+    app: string,
+  ): Promise<{ reprocessed: number; total: number; details: string[] }> {
+    const router = this.registry.routerForApp(app);
+    if (!router) {
+      return { reprocessed: 0, total: 0, details: [`No router registered for app "${app}"`] };
+    }
+
+    const attachments = await this.inboundEmailService.listSkippedAttachments(app);
+    const details: string[] = [];
+    let reprocessed = 0;
+
+    for (const attachment of attachments) {
+      try {
+        const email = attachment.inboundEmail;
+        const storedPath = attachment.s3Path;
+        if (!storedPath) {
+          details.push(
+            `Attachment ${attachment.id} (${attachment.originalFilename}): no stored file`,
+          );
+          continue;
+        }
+        const content = await this.storageService.download(storedPath);
+        const routingResult = await router.route(
+          attachment,
+          content,
+          email?.companyId ?? null,
+          email?.fromEmail ?? "",
+          email?.subject ?? "",
+        );
+        await this.inboundEmailService.updateAttachment(attachment.id, {
+          linkedEntityType: routingResult.linkedEntityType,
+          linkedEntityId: routingResult.linkedEntityId,
+          extractionStatus: routingResult.extractionTriggered
+            ? attachment.extractionStatus
+            : ("skipped" as InboundEmailAttachment["extractionStatus"]),
+        });
+        if (routingResult.extractionTriggered) reprocessed += 1;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        details.push(`Attachment ${attachment.id} (${attachment.originalFilename}): ${msg}`);
+        this.logger.error(`[${app}] Reprocess failed for attachment ${attachment.id}: ${msg}`);
+      }
+    }
+
+    this.logger.log(
+      `[${app}] Reprocessed ${reprocessed}/${attachments.length} skipped attachment(s)`,
+    );
+    return { reprocessed, total: attachments.length, details };
+  }
+
   private async extractContentForClassification(
     buffer: Buffer,
     mimeType: string,

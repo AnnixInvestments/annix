@@ -78,4 +78,10 @@ export class InboundEmailController {
   async emailStats(@Param("app") app: string, @Param("companyId") companyId: string) {
     return this.inboundEmailService.emailStats(app, parseInt(companyId, 10));
   }
+
+  @Post(":app/:companyId/reprocess-skipped")
+  @ApiOperation({ summary: "Re-route attachments whose extraction was skipped" })
+  async reprocessSkipped(@Param("app") app: string) {
+    return this.monitorService.reprocessSkippedAttachments(app);
+  }
 }
