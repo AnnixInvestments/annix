@@ -499,10 +499,14 @@ CRITICAL EXTRACTION RULES:
 - Extract ALL pages — never collapse two pages into one entry.
 
 ROLL NUMBER vs COMPOUND BATCH NUMBER — CRITICAL COMMON MISTAKE TO AVOID:
-- The "Roll no." label may sit on its own row with the roll-number value directly BELOW it (e.g., "Roll no." label row, then "10" on its own row underneath, then compound-batch rows below that). DO NOT include the roll number in pages[].batchNumbers — it belongs in pages[].rolls[].rollNumber.
-- VISUAL DISCRIMINATOR: the roll-number row has BLANK Shore A. The compound-batch rows EACH have a Shore A value beside them (and one "spot-check" batch row per page typically also has Density/Tensile/Elongation values).
-- WORKED EXAMPLE: column shows top-to-bottom "Roll no." (label, blank values) → "10" (blank Shore A) → "13" (Shore A 48) → "14" (Shore A 48 + Density 1.07 / Tensile 9.1 / Elong 590) → "15" (Shore A 48) → "16" (Shore A 48). Correct extraction: pages[0].rolls[0].rollNumber="10", pages[0].batchNumbers=["13","14","15","16"], pages[0].rolls[0].shoreA = null. WRONG extraction: pages[0].batchNumbers=["10","13","14","15","16"].
-- The Shore A value on a batch row is the COMPOUND BATCH's Shore A measurement (assigned to that batch in the compounder), not the roll's Shore A. The roll's individual Shore A is in a different table (rare; usually rolls within a page share one Shore A measurement).
+- TWO SEPARATE THINGS live in the leftmost area of the laboratory table:
+  (a) The ROLL NUMBER(S) — directly under the "Roll no." label. This is a single number ("10") OR a range ("5-8", "1-4"). It goes ONLY into pages[].rolls[].rollNumber. Expand a range: "5-8" -> rolls 5, 6, 7, 8.
+  (b) The COMPOUND BATCH NUMBERS — the numbered rows in the "Compound Details / Batches used" column, each WITH a Shore A value beside it. These go into pages[].batchNumbers and pages[].batches[].
+- These two number sets are DIFFERENT and usually do NOT match. A page may have rolls "5-8" (4 rolls) but batches "7,8,9,10,11,12" (6 batches). Never copy the batch numbers into rollNumbers, and never copy the roll range into batchNumbers.
+- VISUAL DISCRIMINATOR: the "Roll no." value/range has BLANK Shore A beside it. The compound-batch rows EACH have a Shore A value (one "spot-check" batch row per page also has Density/Tensile/Elongation/etc.). A numbered row WITH Shore A = a batch; the roll range under "Roll no." with no Shore A = the rolls.
+- The Shore A values belong to the BATCHES, not the rolls. On these S&N CoCs the rolls have NO individual Shore A reading — set every pages[].rolls[].shoreA to null. Do NOT take the batch-row Shore A values and assign them to rolls.
+- WORKED EXAMPLE (single roll): "Roll no." → "10" (blank Shore A) → "13" (Shore A 48) → "14" (Shore A 48 + Density 1.07 / Tensile 9.1 / Elong 590) → "15" (48) → "16" (48). Correct: rolls=[{rollNumber:"10",shoreA:null}], batchNumbers=["13","14","15","16"]. WRONG: batchNumbers=["10","13","14","15","16"] or rolls containing 13-16.
+- WORKED EXAMPLE (roll range — the #202 mistake): "Roll no." → "5-8" (blank Shore A) → "7" (Shore A 50) → "8" (Shore A 49 + Density 1.065 / Tensile 9.2 / Elong 607) → "9" (50) → "10" (50) → "11" (50) → "12" (50). Correct: rolls=[{rollNumber:"5",shoreA:null},{rollNumber:"6",shoreA:null},{rollNumber:"7",shoreA:null},{rollNumber:"8",shoreA:null}], rollNumbers=["5","6","7","8"], batchNumbers=["7","8","9","10","11","12"]. WRONG: rolls or rollNumbers containing 7-12 (those are batches, not rolls).
 
 NEVER HALLUCINATE — REAL FAILURE MODES TO AVOID:
 - If you cannot read a roll's Shore A, return null for that roll. Do NOT fill it with the previous roll's value, the next roll's value, or the Nominal value.
