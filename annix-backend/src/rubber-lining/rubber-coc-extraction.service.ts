@@ -1186,6 +1186,60 @@ Return ONLY a valid JSON object of this exact shape (no extra fields, no comment
     };
   }
 
+  private async runExtractionForType(
+    cocType: SupplierCocType,
+    pdfText: string,
+    correctionHints?: string | null,
+    pdfBuffer?: Buffer,
+  ): Promise<{
+    data: ExtractedCocData;
+    pages?: ExtractedCocData[];
+    tokensUsed?: number;
+    processingTimeMs: number;
+  }> {
+    if (cocType === SupplierCocType.COMPOUNDER) {
+      return pdfBuffer
+        ? this.extractCompounderCocFromImages(pdfBuffer, correctionHints)
+        : this.extractCompounderCoc(pdfText, correctionHints);
+    }
+    if (cocType === SupplierCocType.CALENDER_ROLL) {
+      return pdfBuffer
+        ? this.extractCalenderRollCocFromImages(pdfBuffer, correctionHints)
+        : this.extractCalenderRollCoc(pdfText, correctionHints);
+    }
+    return pdfBuffer
+      ? this.extractCalendererCocFromImages(pdfBuffer, correctionHints)
+      : this.extractCalendererCoc(pdfText, correctionHints);
+  }
+
+  // Which declared batchNumbers never made it into the batches[] detail rows.
+  private missingBatchRows(data: ExtractedCocData): string[] {
+    const declared = (data.batchNumbers ?? []).map((b) => String(b).trim()).filter(Boolean);
+    if (declared.length === 0) return [];
+    const extracted = new Set(
+      (data.batches ?? []).map((b) => (b.batchNumber ?? "").toString().trim()).filter(Boolean),
+    );
+    return declared.filter((n) => !extracted.has(n));
+  }
+
+  // Last-resort: insert a visible all-null batch row for every declared batch the
+  // model dropped, ordered to match batchNumbers, so a missing batch is never
+  // silently lost from the table even when retries fail to recover it.
+  private backfillMissingBatchStubs(data: ExtractedCocData, missing: string[]): void {
+    if (missing.length === 0) return;
+    const batches = data.batches ?? [];
+    for (const batchNumber of missing) {
+      batches.push({ batchNumber });
+    }
+    const order = new Map((data.batchNumbers ?? []).map((b, i) => [String(b).trim(), i] as const));
+    batches.sort((a, b) => {
+      const ai = order.get(String(a.batchNumber).trim()) ?? Number.MAX_SAFE_INTEGER;
+      const bi = order.get(String(b.batchNumber).trim()) ?? Number.MAX_SAFE_INTEGER;
+      return ai - bi;
+    });
+    data.batches = batches;
+  }
+
   async extractByType(
     cocType: SupplierCocType,
     pdfText: string,
@@ -1201,22 +1255,40 @@ Return ONLY a valid JSON object of this exact shape (no extra fields, no comment
       "rubber-coc-extract",
       cocType,
       async () => {
-        if (cocType === SupplierCocType.COMPOUNDER) {
-          if (pdfBuffer) {
-            return this.extractCompounderCocFromImages(pdfBuffer, correctionHints);
+        const MAX_ATTEMPTS = 3;
+        let best: Awaited<ReturnType<typeof this.runExtractionForType>> | null = null;
+        let bestMissingCount = Number.POSITIVE_INFINITY;
+
+        for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
+          const result = await this.runExtractionForType(
+            cocType,
+            pdfText,
+            correctionHints,
+            pdfBuffer,
+          );
+          const missing = this.missingBatchRows(result.data);
+          if (missing.length === 0) return result;
+
+          if (missing.length < bestMissingCount) {
+            best = result;
+            bestMissingCount = missing.length;
           }
-          return this.extractCompounderCoc(pdfText, correctionHints);
-        } else if (cocType === SupplierCocType.CALENDER_ROLL) {
-          if (pdfBuffer) {
-            return this.extractCalenderRollCocFromImages(pdfBuffer, correctionHints);
+          if (attempt < MAX_ATTEMPTS) {
+            this.logger.warn(
+              `${cocType} extraction attempt ${attempt} dropped ${missing.length} batch row(s) [${missing.join(", ")}] — retrying`,
+            );
           }
-          return this.extractCalenderRollCoc(pdfText, correctionHints);
-        } else {
-          if (pdfBuffer) {
-            return this.extractCalendererCocFromImages(pdfBuffer, correctionHints);
-          }
-          return this.extractCalendererCoc(pdfText, correctionHints);
         }
+
+        const result = best as Awaited<ReturnType<typeof this.runExtractionForType>>;
+        const missing = this.missingBatchRows(result.data);
+        if (missing.length > 0) {
+          this.logger.error(
+            `${cocType} extraction still missing ${missing.length} batch row(s) [${missing.join(", ")}] after ${MAX_ATTEMPTS} attempts — inserting null placeholder rows so they stay visible for manual entry`,
+          );
+          this.backfillMissingBatchStubs(result.data, missing);
+        }
+        return result;
       },
       pdfBuffer?.length,
     );
