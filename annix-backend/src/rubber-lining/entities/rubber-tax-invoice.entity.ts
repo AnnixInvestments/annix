@@ -148,6 +148,11 @@ export class RubberTaxInvoice {
   @Column({ name: "linked_au_coc_id", type: "int", nullable: true })
   linkedAuCocId: number | null;
 
+  // For supplier credit notes: the Calender Roll supplier CoC the credited
+  // rolls arrived on (rubber_supplier_cocs.id).
+  @Column({ name: "linked_calender_roll_coc_id", type: "int", nullable: true })
+  linkedCalenderRollCocId: number | null;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

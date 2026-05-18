@@ -449,19 +449,25 @@ export class RubberInboundEmailService {
           documentType,
         );
 
-        if (documentType === SharedDocumentType.TAX_INVOICE) {
-          const invoiceNumber = `INV-${nowMillis()}`;
+        if (
+          documentType === SharedDocumentType.TAX_INVOICE ||
+          documentType === SharedDocumentType.CREDIT_NOTE
+        ) {
+          const isCreditNote = documentType === SharedDocumentType.CREDIT_NOTE;
+          const documentLabel = isCreditNote ? "Credit Note" : "Tax Invoice";
+          const invoiceNumber = `${isCreditNote ? "CN" : "INV"}-${nowMillis()}`;
           const invoice = await this.taxInvoiceService.createTaxInvoice(
             {
               invoiceNumber,
               invoiceType: TaxInvoiceType.SUPPLIER,
               companyId: supplierMapping.company.id,
               documentPath: storageResult.path,
+              isCreditNote,
             },
             `inbound-email:${emailData.from}`,
           );
           result.taxInvoiceIds = [...result.taxInvoiceIds, invoice.id];
-          this.logger.log(`Created Tax Invoice ${invoice.id} from email attachment`);
+          this.logger.log(`Created ${documentLabel} ${invoice.id} from email attachment`);
 
           try {
             const correctionHints = await this.taxInvoiceService.correctionHintsForSupplier(
@@ -474,41 +480,43 @@ export class RubberInboundEmailService {
             if (isPdf) {
               const pdfText = await extractTextFromPdf(attachment.content);
               if (pdfText.length >= 50) {
-                const extractionResult = await this.cocExtractionService.extractTaxInvoice(
-                  pdfText,
-                  correctionHints,
-                );
+                const extractionResult = isCreditNote
+                  ? await this.cocExtractionService.extractCreditNote(pdfText, correctionHints)
+                  : await this.cocExtractionService.extractTaxInvoice(pdfText, correctionHints);
                 await this.taxInvoiceService.setExtractedData(invoice.id, extractionResult.data);
                 this.logger.log(
-                  `Auto-extracted Tax Invoice ${invoice.id} in ${extractionResult.processingTimeMs}ms`,
+                  `Auto-extracted ${documentLabel} ${invoice.id} in ${extractionResult.processingTimeMs}ms`,
                 );
               } else {
                 this.logger.log(
-                  `Tax Invoice ${invoice.id} PDF text too short (${pdfText.length} chars), falling back to OCR`,
+                  `${documentLabel} ${invoice.id} PDF text too short (${pdfText.length} chars), falling back to OCR`,
                 );
-                const extractionResult =
-                  await this.cocExtractionService.extractTaxInvoiceFromImages(
-                    attachment.content,
-                    correctionHints,
-                  );
+                const extractionResult = isCreditNote
+                  ? await this.cocExtractionService.extractCreditNoteFromImages(
+                      attachment.content,
+                      correctionHints,
+                    )
+                  : await this.cocExtractionService.extractTaxInvoiceFromImages(
+                      attachment.content,
+                      correctionHints,
+                    );
                 await this.taxInvoiceService.setExtractedData(invoice.id, extractionResult.data);
                 this.logger.log(
-                  `Auto-extracted Tax Invoice ${invoice.id} via OCR in ${extractionResult.processingTimeMs}ms`,
+                  `Auto-extracted ${documentLabel} ${invoice.id} via OCR in ${extractionResult.processingTimeMs}ms`,
                 );
               }
             } else {
-              const extractionResult = await this.cocExtractionService.extractTaxInvoice(
-                documentText,
-                correctionHints,
-              );
+              const extractionResult = isCreditNote
+                ? await this.cocExtractionService.extractCreditNote(documentText, correctionHints)
+                : await this.cocExtractionService.extractTaxInvoice(documentText, correctionHints);
               await this.taxInvoiceService.setExtractedData(invoice.id, extractionResult.data);
               this.logger.log(
-                `Auto-extracted Tax Invoice ${invoice.id} from ${attachment.contentType} in ${extractionResult.processingTimeMs}ms`,
+                `Auto-extracted ${documentLabel} ${invoice.id} from ${attachment.contentType} in ${extractionResult.processingTimeMs}ms`,
               );
             }
           } catch (extractionError) {
             this.logger.error(
-              `Failed to auto-extract Tax Invoice ${invoice.id}: ${extractionError.message}`,
+              `Failed to auto-extract ${documentLabel} ${invoice.id}: ${extractionError.message}`,
             );
           }
         } else {
@@ -758,6 +766,11 @@ export class RubberInboundEmailService {
       "packing",
     ];
 
+    if (textLower.includes("credit note") || filenameLower.includes("credit note")) {
+      this.logger.log(`Rule-based classification: credit_note (file: ${filename})`);
+      return SharedDocumentType.CREDIT_NOTE;
+    }
+
     if (
       cocKeywords.some((kw) => textLower.includes(kw)) ||
       cocFilenameKeywords.some((kw) => filenameLower.includes(kw))
@@ -837,6 +850,7 @@ ${truncatedText}`;
       coc: "cocs",
       delivery_note: "delivery-notes",
       tax_invoice: "tax-invoices",
+      credit_note: "tax-invoices",
     };
 
     const multerFile: Express.Multer.File = {

@@ -15,6 +15,7 @@ import { RubberDeliveryNote } from "./entities/rubber-delivery-note.entity";
 import { RubberProduct } from "./entities/rubber-product.entity";
 import { ProductCodingType, RubberProductCoding } from "./entities/rubber-product-coding.entity";
 import { RollStockStatus, RubberRollStock } from "./entities/rubber-roll-stock.entity";
+import { RubberSupplierCoc, SupplierCocType } from "./entities/rubber-supplier-coc.entity";
 import {
   ExtractedTaxInvoiceData,
   RubberTaxInvoice,
@@ -87,6 +88,8 @@ export interface RubberTaxInvoiceDto {
   originalInvoiceId: number | null;
   originalInvoiceNumber: string | null;
   creditNoteRollNumbers: string[];
+  linkedCalenderRollCocId: number | null;
+  linkedCalenderRollCocNumber: string | null;
 }
 
 export interface CreateTaxInvoiceDto {
@@ -135,6 +138,8 @@ export class RubberTaxInvoiceService {
     private deliveryNoteRepository: Repository<RubberDeliveryNote>,
     @InjectRepository(RubberRollStock)
     private rollStockRepository: Repository<RubberRollStock>,
+    @InjectRepository(RubberSupplierCoc)
+    private supplierCocRepository: Repository<RubberSupplierCoc>,
     private rubberStockService: RubberStockService,
     private versioningService: RubberDocumentVersioningService,
     private rollStockService: RubberRollStockService,
@@ -177,7 +182,7 @@ export class RubberTaxInvoiceService {
     }
 
     const invoices = await query.getMany();
-    return invoices.map((inv) => this.mapToDto(inv));
+    return this.mapManyToDto(invoices);
   }
 
   async paginatedTaxInvoices(filters?: {
@@ -244,7 +249,7 @@ export class RubberTaxInvoiceService {
     const invoices = await query.getMany();
 
     return {
-      items: invoices.map((inv) => this.mapToDto(inv)),
+      items: await this.mapManyToDto(invoices),
       total,
       page,
       limit: pageSize,
@@ -330,7 +335,7 @@ export class RubberTaxInvoiceService {
       where: { id },
       relations: ["company", "originalInvoice"],
     });
-    return invoice ? this.mapToDto(invoice) : null;
+    return invoice ? this.mapSingleToDto(invoice) : null;
   }
 
   async taxInvoiceEntityById(id: number): Promise<RubberTaxInvoice | null> {
@@ -391,7 +396,7 @@ export class RubberTaxInvoiceService {
       where: { id: saved.id },
       relations: ["company"],
     });
-    return this.mapToDto(result!);
+    return this.mapSingleToDto(result!);
   }
 
   async updateTaxInvoice(
@@ -523,7 +528,7 @@ export class RubberTaxInvoiceService {
       where: { id },
       relations: ["company"],
     });
-    return this.mapToDto(result!);
+    return this.mapSingleToDto(result!);
   }
 
   async approveTaxInvoice(id: number): Promise<RubberTaxInvoiceDto | null> {
@@ -540,7 +545,7 @@ export class RubberTaxInvoiceService {
     }
 
     if (invoice.status === TaxInvoiceStatus.APPROVED) {
-      return this.mapToDto(invoice);
+      return this.mapSingleToDto(invoice);
     }
 
     invoice.status = TaxInvoiceStatus.APPROVED;
@@ -564,7 +569,7 @@ export class RubberTaxInvoiceService {
       where: { id },
       relations: ["company"],
     });
-    return this.mapToDto(result!);
+    return this.mapSingleToDto(result!);
   }
 
   async reprocessCompoundStock(id: number): Promise<RubberTaxInvoiceDto | null> {
@@ -573,8 +578,8 @@ export class RubberTaxInvoiceService {
       relations: ["company"],
     });
     if (!invoice) return null;
-    if (invoice.status !== TaxInvoiceStatus.APPROVED) return this.mapToDto(invoice);
-    if (invoice.invoiceType !== TaxInvoiceType.SUPPLIER) return this.mapToDto(invoice);
+    if (invoice.status !== TaxInvoiceStatus.APPROVED) return this.mapSingleToDto(invoice);
+    if (invoice.invoiceType !== TaxInvoiceType.SUPPLIER) return this.mapSingleToDto(invoice);
 
     await this.rubberStockService.deleteMovementsForReference(
       CompoundMovementReferenceType.INVOICE_RECEIPT,
@@ -596,7 +601,7 @@ export class RubberTaxInvoiceService {
       where: { id },
       relations: ["company"],
     });
-    return this.mapToDto(result!);
+    return this.mapSingleToDto(result!);
   }
 
   async refileStock(id: number): Promise<RubberTaxInvoiceDto | null> {
@@ -612,7 +617,7 @@ export class RubberTaxInvoiceService {
     if (!invoice.isCreditNote) {
       await this.dispatchCustomerRollsToStock(invoice);
     }
-    return this.mapToDto(invoice);
+    return this.mapSingleToDto(invoice);
   }
 
   private async processCompoundStockIn(invoice: RubberTaxInvoice): Promise<void> {
@@ -732,7 +737,7 @@ export class RubberTaxInvoiceService {
       await this.dispatchCustomerRollsToStock(invoice);
     }
 
-    return this.mapToDto(invoice);
+    return this.mapSingleToDto(invoice);
   }
 
   private async processSupplierPerRollIntake(invoice: RubberTaxInvoice): Promise<void> {
@@ -1043,7 +1048,32 @@ export class RubberTaxInvoiceService {
 
     invoice.documentPath = documentPath;
     await this.taxInvoiceRepository.save(invoice);
-    return this.mapToDto(invoice);
+    return this.mapSingleToDto(invoice);
+  }
+
+  async linkCalenderRollCoc(id: number, cocId: number | null): Promise<RubberTaxInvoiceDto | null> {
+    const invoice = await this.taxInvoiceRepository.findOne({
+      where: { id },
+      relations: ["company", "originalInvoice"],
+    });
+    if (!invoice) return null;
+
+    if (cocId != null) {
+      const coc = await this.supplierCocRepository.findOne({ where: { id: cocId } });
+      if (!coc) {
+        throw new BadRequestException("Calender Roll CoC not found");
+      }
+      if (
+        coc.cocType !== SupplierCocType.CALENDER_ROLL &&
+        coc.cocType !== SupplierCocType.CALENDARER
+      ) {
+        throw new BadRequestException("Linked CoC must be a Calender Roll or Calenderer CoC");
+      }
+    }
+
+    invoice.linkedCalenderRollCocId = cocId;
+    await this.taxInvoiceRepository.save(invoice);
+    return this.mapSingleToDto(invoice);
   }
 
   async markExtractionFailed(id: number): Promise<void> {
@@ -1148,7 +1178,7 @@ export class RubberTaxInvoiceService {
       await this.dispatchCustomerRollsToStock(invoice);
     }
 
-    return this.mapToDto(invoice);
+    return this.mapSingleToDto(invoice);
   }
 
   async dispatchCustomerRollsToStock(invoice: RubberTaxInvoice): Promise<void> {
@@ -1452,8 +1482,40 @@ export class RubberTaxInvoiceService {
     );
   }
 
-  private mapToDto(invoice: RubberTaxInvoice): RubberTaxInvoiceDto {
+  private async mapManyToDto(invoices: RubberTaxInvoice[]): Promise<RubberTaxInvoiceDto[]> {
+    const cocIds = Array.from(
+      new Set(
+        invoices.map((inv) => inv.linkedCalenderRollCocId).filter((id): id is number => id != null),
+      ),
+    );
+    const cocNumberById = new Map<number, string | null>();
+    if (cocIds.length > 0) {
+      const cocs = await this.supplierCocRepository.find({
+        where: { id: In(cocIds) },
+        select: ["id", "cocNumber"],
+      });
+      for (const coc of cocs) {
+        cocNumberById.set(coc.id, coc.cocNumber);
+      }
+    }
+    return invoices.map((inv) => this.mapToDto(inv, cocNumberById));
+  }
+
+  private async mapSingleToDto(invoice: RubberTaxInvoice): Promise<RubberTaxInvoiceDto> {
+    const [dto] = await this.mapManyToDto([invoice]);
+    return dto;
+  }
+
+  private mapToDto(
+    invoice: RubberTaxInvoice,
+    cocNumberById?: Map<number, string | null>,
+  ): RubberTaxInvoiceDto {
     const productSummary = this.extractProductSummary(invoice.extractedData);
+    const linkedCalenderRollCocId = invoice.linkedCalenderRollCocId ?? null;
+    const linkedCalenderRollCocNumber =
+      linkedCalenderRollCocId != null
+        ? (cocNumberById?.get(linkedCalenderRollCocId) ?? null)
+        : null;
 
     return {
       id: invoice.id,
@@ -1488,6 +1550,8 @@ export class RubberTaxInvoiceService {
       originalInvoiceId: invoice.originalInvoiceId ?? null,
       originalInvoiceNumber: invoice.originalInvoice?.invoiceNumber ?? null,
       creditNoteRollNumbers: invoice.creditNoteRollNumbers ?? [],
+      linkedCalenderRollCocId,
+      linkedCalenderRollCocNumber,
     };
   }
 

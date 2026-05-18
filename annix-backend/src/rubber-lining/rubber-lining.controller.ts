@@ -3684,6 +3684,23 @@ Formula: totalPrice = totalKg × salePricePerKg
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
+  @Put("portal/tax-invoices/:id/link-calender-roll-coc")
+  @ApiOperation({ summary: "Link a supplier credit note to a Calender Roll CoC" })
+  @ApiParam({ name: "id", description: "Tax invoice ID" })
+  async linkTaxInvoiceCalenderRollCoc(
+    @Param("id") id: string,
+    @Body() body: { cocId: number | null },
+  ): Promise<RubberTaxInvoiceDto> {
+    const invoice = await this.rubberTaxInvoiceService.linkCalenderRollCoc(
+      Number(id),
+      body.cocId ?? null,
+    );
+    if (!invoice) throw new NotFoundException("Tax invoice not found");
+    return invoice;
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
   @Delete("portal/tax-invoices/:id")
   @ApiOperation({ summary: "Delete tax invoice" })
   @ApiParam({ name: "id", description: "Tax invoice ID" })
