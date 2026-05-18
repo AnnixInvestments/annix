@@ -562,7 +562,9 @@ Return a JSON object with this structure:
         {
           "batchNumber": string (e.g., "13"),
           "shoreA": number or null (the Shore A measurement on THIS batch's row),
-          "specificGravity": number or null (only filled on the spot-check batch row),
+          "specificGravity": number or null (Density column — only filled on the spot-check batch row),
+          "reboundPercent": number or null (Rebound column — only filled on the spot-check batch row, if the table has a Rebound column),
+          "tearStrengthKnM": number or null (Tear strength column — only filled on the spot-check batch row, if the table has a Tear column),
           "tensileStrengthMpa": number or null (only filled on the spot-check batch row),
           "elongationPercent": number or null (only filled on the spot-check batch row)
         }
@@ -573,14 +575,11 @@ Return a JSON object with this structure:
 
 CAPTURE PER-BATCH SHORE A (IMPORTANT):
 - The compound-batch rows on the laboratory table each have an individual Shore A value beside the batch number. Walk every batch row and capture its shoreA in pages[].batches[].
-- One "spot-check" batch row per page typically ALSO has Density, Tensile, and Elongation populated. Capture those on that batch's entry (specificGravity/tensileStrengthMpa/elongationPercent). All other batches' density/tensile/elongation fields should be null.
+- The laboratory table has a VARYING set of columns — always Shore A and Density, and depending on the document also Rebound, Tear strength, Tensile strength, and Elongation. Capture EVERY data column the table has — read the column headers and map each one. Do NOT drop Rebound or Tear just because some documents omit them.
+- One "spot-check" batch row per page typically has the non-Shore-A columns (Density, Rebound, Tear, Tensile, Elongation) populated. Capture all of them on that batch's entry. All other batches' non-Shore-A fields should be null.
 - pages[].batches[].batchNumber values must match pages[].batchNumbers exactly — every batch in batchNumbers must appear in batches[], and every batches[].batchNumber must appear in batchNumbers.
-- WORKED EXAMPLE (#207-style row layout): roll "10" with batches 13/14/15/16 each Shore A 48, batch 14 spot-check shows Density 1.07 / Tensile 9.1 / Elong 590. Expected pages[].batches = [
-    {"batchNumber":"13","shoreA":48,"specificGravity":null,"tensileStrengthMpa":null,"elongationPercent":null},
-    {"batchNumber":"14","shoreA":48,"specificGravity":1.07,"tensileStrengthMpa":9.1,"elongationPercent":590},
-    {"batchNumber":"15","shoreA":48,"specificGravity":null,"tensileStrengthMpa":null,"elongationPercent":null},
-    {"batchNumber":"16","shoreA":48,"specificGravity":null,"tensileStrengthMpa":null,"elongationPercent":null}
-  ]
+- COLUMN MAPPING: "Shore A last testpoint" -> shoreA, "Density" -> specificGravity, "Rebound" -> reboundPercent, "Tear strength Die C" -> tearStrengthKnM, "Tensile strength" -> tensileStrengthMpa, "Elongation break" -> elongationPercent.
+- WORKED EXAMPLE (6-column table): roll "3-6" with batches 17..28, spot-check batch 18 shows Density 1.075 / Rebound 22.3 / Tear 29.4 / Tensile 11.0 / Elong 501.1. batch 18 -> {"batchNumber":"18","shoreA":46,"specificGravity":1.075,"reboundPercent":22.3,"tearStrengthKnM":29.4,"tensileStrengthMpa":11.0,"elongationPercent":501.1}; every non-spot-check batch -> only shoreA set, the rest null.
 
 Guidelines:
 - Parse dates from DD.MM.YYYY to YYYY-MM-DD

@@ -627,6 +627,8 @@ export class RubberCocExtractionService {
       batchNumber: string;
       shoreA?: number;
       specificGravity?: number;
+      reboundPercent?: number;
+      tearStrengthKnM?: number;
       tensileStrengthMpa?: number;
       elongationPercent?: number;
     };
@@ -639,6 +641,8 @@ export class RubberCocExtractionService {
           batchNumber: String(b?.batchNumber ?? ""),
           shoreA: toNumOrUndef(b?.shoreA),
           specificGravity: toNumOrUndef(b?.specificGravity),
+          reboundPercent: toNumOrUndef(b?.reboundPercent),
+          tearStrengthKnM: toNumOrUndef(b?.tearStrengthKnM),
           tensileStrengthMpa: toNumOrUndef(b?.tensileStrengthMpa),
           elongationPercent: toNumOrUndef(b?.elongationPercent),
         }))

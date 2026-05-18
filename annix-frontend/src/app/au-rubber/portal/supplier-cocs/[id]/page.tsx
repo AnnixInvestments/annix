@@ -1044,6 +1044,8 @@ export default function SupplierCocDetailPage() {
                             batchNumber: string;
                             shoreA?: number;
                             specificGravity?: number;
+                            reboundPercent?: number;
+                            tearStrengthKnM?: number;
                             tensileStrengthMpa?: number;
                             elongationPercent?: number;
                           }>
@@ -1070,6 +1072,12 @@ export default function SupplierCocDetailPage() {
                                     Density
                                   </th>
                                   <th className="px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase">
+                                    Rebound %
+                                  </th>
+                                  <th className="px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase">
+                                    Tear (kN/m)
+                                  </th>
+                                  <th className="px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase">
                                     Tensile (MPa)
                                   </th>
                                   <th className="px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase">
@@ -1091,6 +1099,12 @@ export default function SupplierCocDetailPage() {
                                       </td>
                                       <td className="px-3 py-1.5 text-gray-900">
                                         {dash(b.specificGravity)}
+                                      </td>
+                                      <td className="px-3 py-1.5 text-gray-900">
+                                        {dash(b.reboundPercent)}
+                                      </td>
+                                      <td className="px-3 py-1.5 text-gray-900">
+                                        {dash(b.tearStrengthKnM)}
                                       </td>
                                       <td className="px-3 py-1.5 text-gray-900">
                                         {dash(b.tensileStrengthMpa)}
