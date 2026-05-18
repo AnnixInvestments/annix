@@ -34,6 +34,7 @@ import { Breadcrumb } from "../../components/Breadcrumb";
 import { RequirePermission } from "../../components/RequirePermission";
 import { PAGE_PERMISSIONS } from "../../config/pagePermissions";
 import { CompanyInfoTab } from "./CompanyInfoTab";
+import { InboundEmailConfigSection } from "./InboundEmailConfigSection";
 import { SageConfigSection } from "./SageConfigSection";
 import { SageContactSyncSection } from "./SageContactSyncSection";
 
@@ -1387,7 +1388,12 @@ export default function SettingsPage() {
           </nav>
         </div>
 
-        {activeTab === "company" && <CompanyInfoTab />}
+        {activeTab === "company" && (
+          <>
+            <CompanyInfoTab />
+            <InboundEmailConfigSection />
+          </>
+        )}
         {activeTab === "branding" && (
           <>
             <SageConfigSection />

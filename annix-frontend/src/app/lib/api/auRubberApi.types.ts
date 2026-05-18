@@ -10,6 +10,28 @@ export interface SageExportFilter {
   excludeExported?: boolean;
 }
 
+export interface InboundEmailConfigResponse {
+  emailHost: string | null;
+  emailPort: number | null;
+  emailUser: string | null;
+  emailPassSet: boolean;
+  tlsEnabled: boolean;
+  tlsServerName: string | null;
+  enabled: boolean;
+  lastPollAt: string | null;
+  lastError: string | null;
+}
+
+export interface InboundEmailConfigUpdate {
+  emailHost: string | null;
+  emailPort: number | null;
+  emailUser: string | null;
+  emailPass: string | null;
+  tlsEnabled: boolean;
+  tlsServerName: string | null;
+  enabled: boolean;
+}
+
 export interface AnalyzeSupplierCocsFile {
   filename: string;
   isGraph: boolean;

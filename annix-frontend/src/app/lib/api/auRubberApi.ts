@@ -49,6 +49,8 @@ import type {
   ImportOpeningStockRowDto,
   ImportOtherStockResultDto,
   ImportOtherStockRowDto,
+  InboundEmailConfigResponse,
+  InboundEmailConfigUpdate,
   JcLineItemDto,
   JcSearchResultDto,
   PaginatedResult,
@@ -117,6 +119,10 @@ const apiClient: ApiClient = createApiClient({
   refreshUrl: `${API_BASE_URL}/admin/auth/refresh`,
 });
 
+// The au-rubber app is single-tenant; its inbound-email config row is keyed
+// to this company id (inbound_email_configs.app='au-rubber', company_id=3).
+const AU_RUBBER_INBOUND_COMPANY_ID = 3;
+
 class AuRubberApiClient {
   baseURL = API_BASE_URL;
 
@@ -146,6 +152,26 @@ class AuRubberApiClient {
 
   tryAdoptSessionFromAnotherTab(): Promise<boolean> {
     return auRubberTokenStore.adoptSessionFromOtherTab();
+  }
+
+  inboundEmailConfig(): Promise<InboundEmailConfigResponse> {
+    return this.request<InboundEmailConfigResponse>(
+      `/inbound-email/au-rubber/${AU_RUBBER_INBOUND_COMPANY_ID}/config`,
+    );
+  }
+
+  updateInboundEmailConfig(dto: InboundEmailConfigUpdate): Promise<{ message: string }> {
+    return this.request<{ message: string }>(
+      `/inbound-email/au-rubber/${AU_RUBBER_INBOUND_COMPANY_ID}/config`,
+      { method: "PATCH", body: JSON.stringify(dto) },
+    );
+  }
+
+  testInboundEmailConnection(): Promise<{ success: boolean; error?: string }> {
+    return this.request<{ success: boolean; error?: string }>(
+      `/inbound-email/au-rubber/${AU_RUBBER_INBOUND_COMPANY_ID}/test-connection`,
+      { method: "POST" },
+    );
   }
 
   private request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
