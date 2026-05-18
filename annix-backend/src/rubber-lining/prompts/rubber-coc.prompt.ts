@@ -339,6 +339,13 @@ NEVER COPY VALUES BETWEEN BATCHES:
 - Do NOT use the Nominal row as per-batch values.
 - Each row is read independently.
 
+SPOT-CHECK ROW ANCHORING (the #1 Format A failure mode — read carefully):
+- A "spot-check" row is one of the few batch rows with Specific gravity, Rebound, Tear, Tensile AND Elongation filled in. Every other batch row has those five cells blank.
+- A spot-check row's lab values belong to the batch number printed in ITS OWN leftmost cell — NOT the row above it, NOT the row below it.
+- Before attaching SG/Rebound/Tear/Tensile/Elongation to a batch, trace horizontally from that batch's number to the SG column and confirm a value is physically printed on that exact row. If the SG cell on that row is empty, ALL FIVE of those fields are null for that batch.
+- A batch's Specific gravity is read from the table body only. If the SG cell is blank, the field is null — NEVER substitute the Nominal-row SG (e.g. 1.0550) to "fill" an empty cell.
+- VERIFY: the batch row immediately ABOVE a spot-check row, and the one immediately BELOW it, must each have SG/Rebound/Tear/Tensile/Elongation all null (unless that neighbour is itself a spot-check row). If you have given two ADJACENT batches lab data where the document shows only one filled row, you have shifted a spot-check row by one — re-read and correct.
+
 COLUMN HEADER TO OUTPUT FIELD MAPPING:
 - "Shore A" / "Shore A last testpoint" → shoreA
 - "Specific gravity" / "[g/cm³]" → specificGravity
