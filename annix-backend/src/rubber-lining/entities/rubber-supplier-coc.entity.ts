@@ -213,6 +213,11 @@ export class RubberSupplierCoc {
   })
   versionStatus: DocumentVersionStatus;
 
+  // SHA-256 of the source PDF. Used to skip creating a CoC when the exact
+  // same document has already been ingested (e.g. re-forwarded email).
+  @Column({ name: "document_hash", type: "varchar", length: 64, nullable: true })
+  documentHash: string | null;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

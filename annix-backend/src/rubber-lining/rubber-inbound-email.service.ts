@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
@@ -292,6 +293,24 @@ export class RubberInboundEmailService {
             `Identified supplier from document: ${cert.supplierMapping.company.name} (${cert.supplierMapping.cocType})`,
           );
 
+          const documentHash = createHash("sha256").update(cert.attachment.content).digest("hex");
+          const existingCoc = await this.cocService.findSupplierCocByDocumentHash(documentHash);
+          if (existingCoc) {
+            this.logger.log(
+              `Skipping duplicate CoC "${cert.attachment.filename}" — identical document already ingested as CoC ${existingCoc.id}`,
+            );
+            result.cocIds = [...result.cocIds, existingCoc.id];
+            return [
+              ...acc,
+              {
+                cocId: existingCoc.id,
+                batchNumbers: cert.batchNumbers,
+                companyId: cert.supplierMapping.company.id,
+                filename: cert.attachment.filename,
+              },
+            ];
+          }
+
           const storageResult = await this.saveAttachment(
             cert.attachment,
             cert.supplierMapping.company.id,
@@ -305,6 +324,7 @@ export class RubberInboundEmailService {
               documentPath: storageResult.path,
             },
             `inbound-email:${emailData.from}`,
+            documentHash,
           );
           result.cocIds = [...result.cocIds, coc.id];
           this.logger.log(`Created Supplier CoC ${coc.id} from email attachment`);
@@ -919,6 +939,16 @@ ${truncatedText}`;
             this.logger.warn("Could not find matching COC for graph, creating new COC");
           }
 
+          const documentHash = createHash("sha256").update(file.buffer).digest("hex");
+          const existingCoc = await this.cocService.findSupplierCocByDocumentHash(documentHash);
+          if (existingCoc) {
+            this.logger.log(
+              `Skipping duplicate upload "${file.originalname}" — identical document already ingested as CoC ${existingCoc.id}`,
+            );
+            linkedCocIds.push(existingCoc.id);
+            continue;
+          }
+
           const supplierInfo = await this.identifySupplierWithAi(pdfText, file.originalname);
 
           const detectedCocType =
@@ -940,6 +970,7 @@ ${truncatedText}`;
               compoundCode: metadata.compoundCode,
             },
             createdBy,
+            documentHash,
           );
           createdCocs.push({
             id: coc.id,

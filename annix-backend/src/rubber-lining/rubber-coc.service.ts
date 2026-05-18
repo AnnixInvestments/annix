@@ -245,9 +245,16 @@ export class RubberCocService {
     return siblings.map((s) => this.mapSupplierCocToDto(s, rejectionMap.get(s.id) || []));
   }
 
+  // Looks up an existing CoC by the SHA-256 of its source document, so the
+  // same PDF ingested twice (re-forwarded email, re-run backfill) is detected.
+  async findSupplierCocByDocumentHash(documentHash: string): Promise<RubberSupplierCoc | null> {
+    return this.supplierCocRepository.findOne({ where: { documentHash } });
+  }
+
   async createSupplierCoc(
     dto: CreateSupplierCocDto,
     createdBy?: string,
+    documentHash?: string | null,
   ): Promise<RubberSupplierCocDto> {
     const supplierCompanyId = await (async () => {
       if (!dto.supplierCompanyId) {
@@ -277,6 +284,7 @@ export class RubberCocService {
       ticketNumber: dto.ticketNumber ?? null,
       processingStatus: CocProcessingStatus.PENDING,
       createdBy: createdBy ?? null,
+      documentHash: documentHash ?? null,
     });
 
     const saved = await this.supplierCocRepository.save(coc);
