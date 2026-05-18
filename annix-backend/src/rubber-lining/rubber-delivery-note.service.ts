@@ -67,10 +67,26 @@ const parseCocNumberRolls = (cocNumber: string | null): string[] => {
   if (dashIdx < 0) return [];
   const rollPart = cocNumber.substring(dashIdx + 1).trim();
   if (!rollPart) return [];
-  return rollPart
-    .split(/[,\s]+/)
-    .map((r) => r.trim())
-    .filter((r) => r.length > 0 && /^\d+$/.test(r));
+  const out: string[] = [];
+  for (const raw of rollPart.split(/[,\s]+/)) {
+    // strip a leading non-digit run (e.g. "R5" -> "5")
+    const tok = raw.trim().replace(/^[^\d]+/, "");
+    if (!tok) continue;
+    if (/^\d+$/.test(tok)) {
+      out.push(tok);
+      continue;
+    }
+    // expand a "41791-41797" style range into individual numbers
+    const range = tok.match(/^(\d+)-(\d+)$/);
+    if (range) {
+      const start = Number.parseInt(range[1], 10);
+      const end = Number.parseInt(range[2], 10);
+      if (end >= start && end - start <= 1000) {
+        for (let n = start; n <= end; n += 1) out.push(String(n));
+      }
+    }
+  }
+  return out;
 };
 
 @Injectable()
@@ -556,7 +572,11 @@ export class RubberDeliveryNoteService {
     }
 
     note.linkedCocId = cocId;
-    note.status = DeliveryNoteStatus.LINKED;
+    // Don't downgrade a DN that has already had stock created — LINKED sits
+    // earlier in the lifecycle than STOCK_CREATED.
+    if (note.status !== DeliveryNoteStatus.STOCK_CREATED) {
+      note.status = DeliveryNoteStatus.LINKED;
+    }
     await this.deliveryNoteRepository.save(note);
 
     await this.updateSupplierAvailableProducts(note.supplierCompanyId, coc.compoundCode);
@@ -1700,11 +1720,10 @@ export class RubberDeliveryNoteService {
   async bulkAutoLinkAllUnlinkedDns(): Promise<{ linked: number; details: string[] }> {
     const [allCocs, allUnlinkedNotes] = await Promise.all([
       this.supplierCocRepository.find(),
+      // Any unlinked DN is a candidate, regardless of processing status —
+      // a STOCK_CREATED DN can still be missing its CoC link.
       this.deliveryNoteRepository.find({
-        where: [
-          { linkedCocId: IsNull(), status: DeliveryNoteStatus.PENDING },
-          { linkedCocId: IsNull(), status: DeliveryNoteStatus.EXTRACTED },
-        ],
+        where: { linkedCocId: IsNull() },
       }),
     ]);
 
