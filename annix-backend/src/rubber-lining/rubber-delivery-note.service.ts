@@ -1719,7 +1719,10 @@ export class RubberDeliveryNoteService {
 
   async bulkAutoLinkAllUnlinkedDns(): Promise<{ linked: number; details: string[] }> {
     const [allCocs, allUnlinkedNotes] = await Promise.all([
-      this.supplierCocRepository.find(),
+      // Only ACTIVE CoCs are valid link targets — never a superseded version.
+      this.supplierCocRepository.find({
+        where: { versionStatus: DocumentVersionStatus.ACTIVE },
+      }),
       // Any unlinked DN is a candidate, regardless of processing status —
       // a STOCK_CREATED DN can still be missing its CoC link.
       this.deliveryNoteRepository.find({
