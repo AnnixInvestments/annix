@@ -88,6 +88,12 @@ export class RubberInboundEmailController {
     }
   }
 
+  @Post("internal/backfill-coc-hashes")
+  @ApiOperation({ summary: "Backfill SHA-256 document hashes onto existing supplier CoCs" })
+  async backfillCocHashes(): Promise<{ updated: number; total: number; errors: string[] }> {
+    return this.inboundEmailService.backfillCocHashes();
+  }
+
   @Post("webhook/inbound-email/raw")
   @ApiOperation({
     summary: "Receive raw email content (for Cloudflare Email Workers)",

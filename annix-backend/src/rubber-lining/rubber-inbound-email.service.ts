@@ -1093,6 +1093,12 @@ ${truncatedText}`;
     return result;
   }
 
+  // One-off maintenance: hash the source PDFs of CoCs that predate the
+  // content-hash dedup, so re-sends of those documents are also caught.
+  backfillCocHashes(): Promise<{ updated: number; total: number; errors: string[] }> {
+    return this.cocService.backfillDocumentHashes();
+  }
+
   private autoExtractTaxInvoice(
     invoiceId: number,
     file: Express.Multer.File,

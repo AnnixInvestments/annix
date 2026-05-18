@@ -1,7 +1,8 @@
+import { createHash } from "node:crypto";
 import { BadRequestException, forwardRef, Inject, Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { PDFDocument } from "pdf-lib";
-import { Repository } from "typeorm";
+import { IsNull, Repository } from "typeorm";
 import { fromISO, generateUniqueId, now } from "../lib/datetime";
 import { IStorageService, STORAGE_SERVICE } from "../storage/storage.interface";
 import {
@@ -249,6 +250,33 @@ export class RubberCocService {
   // same PDF ingested twice (re-forwarded email, re-run backfill) is detected.
   async findSupplierCocByDocumentHash(documentHash: string): Promise<RubberSupplierCoc | null> {
     return this.supplierCocRepository.findOne({ where: { documentHash } });
+  }
+
+  // One-off: compute and store the SHA-256 of the source PDF for every CoC
+  // that lacks one, so the content-hash dedup also recognises pre-existing CoCs.
+  async backfillDocumentHashes(): Promise<{ updated: number; total: number; errors: string[] }> {
+    const cocs = await this.supplierCocRepository.find({
+      where: { documentHash: IsNull() },
+      select: ["id", "documentPath"],
+    });
+    const errors: string[] = [];
+    let updated = 0;
+    for (const coc of cocs) {
+      try {
+        if (!coc.documentPath) {
+          errors.push(`CoC ${coc.id}: no document path`);
+          continue;
+        }
+        const buffer = await this.storageService.download(coc.documentPath);
+        const hash = createHash("sha256").update(buffer).digest("hex");
+        await this.supplierCocRepository.update(coc.id, { documentHash: hash });
+        updated += 1;
+      } catch (err) {
+        errors.push(`CoC ${coc.id}: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+    this.logger.log(`CoC document-hash backfill: ${updated}/${cocs.length} hashed`);
+    return { updated, total: cocs.length, errors };
   }
 
   async createSupplierCoc(
