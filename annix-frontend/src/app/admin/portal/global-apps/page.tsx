@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useAdminAuth } from "@/app/context/AdminAuthContext";
+import { useAdminAttention } from "@/app/lib/query/hooks/admin/useAdminAttention";
 
 function RfqIcon() {
   return (
@@ -139,6 +140,8 @@ interface AppCard {
   icon: React.ReactNode;
   color: string;
   hoverColor: string;
+  /** Stable identifier used to look up the app's "needs attention" count. */
+  appCode?: string;
 }
 
 const adminApps: AppCard[] = [
@@ -168,6 +171,7 @@ const platformApps: AppCard[] = [
     icon: <RfqIcon />,
     color: "bg-blue-100 text-blue-600",
     hoverColor: "hover:border-blue-400 group-hover:bg-blue-600 group-hover:text-white",
+    appCode: "rfq",
   },
   {
     href: "/au-rubber/portal/dashboard",
@@ -219,12 +223,21 @@ const platformApps: AppCard[] = [
   },
 ];
 
-function AppCardComponent({ app }: { app: AppCard }) {
+function AppCardComponent({ app, badge }: { app: AppCard; badge?: number }) {
+  const showBadge = badge !== undefined && badge > 0;
   return (
     <Link href={app.href} className="group">
       <div
-        className={`bg-white dark:bg-slate-800 rounded-xl shadow-md p-6 border-2 border-transparent ${app.hoverColor.split(" ")[0]} hover:shadow-lg transition-all duration-300 h-full`}
+        className={`relative bg-white dark:bg-slate-800 rounded-xl shadow-md p-6 border-2 border-transparent ${app.hoverColor.split(" ")[0]} hover:shadow-lg transition-all duration-300 h-full`}
       >
+        {showBadge && (
+          <span
+            className="absolute -top-2 -right-2 min-w-[1.5rem] h-6 px-1.5 flex items-center justify-center rounded-full bg-red-500 text-white text-xs font-bold shadow"
+            title={`${badge} item${badge === 1 ? "" : "s"} need attention`}
+          >
+            {badge}
+          </span>
+        )}
         <div className="flex items-start gap-4">
           <div
             className={`flex-shrink-0 w-14 h-14 rounded-xl flex items-center justify-center ${app.color} ${app.hoverColor.split(" ").slice(1).join(" ")} transition-colors`}
@@ -253,6 +266,12 @@ export default function GlobalAppsPage() {
   const { admin } = useAdminAuth();
   const rawFirstName = admin?.firstName;
   const firstName = rawFirstName || "Admin";
+
+  const attention = useAdminAttention();
+  const attentionApps = attention.data?.apps;
+  const attentionByApp = new Map((attentionApps ?? []).map((a) => [a.appCode, a.total]));
+  const badgeFor = (app: AppCard): number | undefined =>
+    app.appCode ? attentionByApp.get(app.appCode) : undefined;
 
   return (
     <div className="space-y-8">
@@ -307,7 +326,7 @@ export default function GlobalAppsPage() {
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {platformApps.map((app) => (
-            <AppCardComponent key={app.href} app={app} />
+            <AppCardComponent key={app.href} app={app} badge={badgeFor(app)} />
           ))}
         </div>
       </div>

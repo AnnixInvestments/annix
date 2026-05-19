@@ -23,6 +23,7 @@ export const adminKeys = {
   dashboard: {
     all: ["admin", "dashboard"] as const,
     stats: () => [...adminKeys.dashboard.all, "stats"] as const,
+    attention: () => [...adminKeys.dashboard.all, "attention"] as const,
   },
   rfqs: {
     all: ["admin", "rfqs"] as const,

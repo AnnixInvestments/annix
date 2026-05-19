@@ -436,3 +436,23 @@ export interface AdminRfqQueryDto {
   page?: number;
   limit?: number;
 }
+
+export type AttentionSeverity = "info" | "warning" | "urgent";
+
+export interface AttentionItem {
+  label: string;
+  count: number;
+  href: string;
+  severity: AttentionSeverity;
+}
+
+export interface AppAttention {
+  appCode: string;
+  appName: string;
+  total: number;
+  items: AttentionItem[];
+}
+
+export interface AdminAttention {
+  apps: AppAttention[];
+}

@@ -4,6 +4,7 @@ import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
 import { AdminDashboardService } from "./admin-dashboard.service";
 import {
+  AdminAttentionDto,
   CustomerStatsDto,
   DashboardStatsDto,
   RecentActivityItemDto,
@@ -28,6 +29,17 @@ export class AdminDashboardController {
   })
   async getDashboardStats(): Promise<DashboardStatsDto> {
     return this.dashboardService.getDashboardStats();
+  }
+
+  @Get("attention")
+  @ApiOperation({ summary: "Get per-app items needing admin attention" })
+  @ApiResponse({
+    status: 200,
+    description: "Attention summary retrieved successfully",
+    type: AdminAttentionDto,
+  })
+  async getAttention(): Promise<AdminAttentionDto> {
+    return this.dashboardService.getAttentionSummary();
   }
 
   @Get("recent-activity")

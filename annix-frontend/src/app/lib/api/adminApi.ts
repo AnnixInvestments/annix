@@ -6,6 +6,7 @@ import { API_BASE_URL } from "@/lib/api-config";
 
 import type {
   ActivityItem,
+  AdminAttention,
   AdminLoginDto,
   AdminLoginResponse,
   AdminRfqListResponse,
@@ -122,6 +123,10 @@ class AdminApiClient {
 
   getSupplierStats = createEndpoint<[], SupplierStats>(apiClient, "GET", {
     path: "/admin/dashboard/suppliers/stats",
+  });
+
+  getAttention = createEndpoint<[], AdminAttention>(apiClient, "GET", {
+    path: "/admin/dashboard/attention",
   });
 
   // Customer Management endpoints

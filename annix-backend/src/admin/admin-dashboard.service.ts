@@ -1,6 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { MoreThan, Repository } from "typeorm";
+import { In, MoreThan, Repository } from "typeorm";
 import { AuditAction, AuditLog } from "../audit/entities/audit-log.entity";
 import {
   CustomerOnboarding,
@@ -23,6 +23,8 @@ import {
 } from "../supplier/entities/supplier-profile.entity";
 import { SupplierSession } from "../supplier/entities/supplier-session.entity";
 import {
+  AdminAttentionDto,
+  AttentionItemDto,
   CustomerStatsDto,
   DashboardStatsDto,
   RecentActivityItemDto,
@@ -130,6 +132,81 @@ export class AdminDashboardService {
         activeSupplierSessions,
         activeAdminSessions,
       },
+    };
+  }
+
+  /**
+   * Per-app summary of items needing admin action, for the Global Apps badges
+   * and the dashboard "Needs Attention" panel. Only the RFQ Platform has
+   * defined attention sources so far; other apps are added as their sources
+   * are identified.
+   */
+  async getAttentionSummary(): Promise<AdminAttentionDto> {
+    const pendingSuppliers = await this.supplierOnboardingRepo.count({
+      where: {
+        status: In([SupplierOnboardingStatus.SUBMITTED, SupplierOnboardingStatus.UNDER_REVIEW]),
+      },
+    });
+
+    const pendingCustomers = await this.customerOnboardingRepo.count({
+      where: {
+        status: In([CustomerOnboardingStatus.SUBMITTED, CustomerOnboardingStatus.UNDER_REVIEW]),
+      },
+    });
+
+    // Registrations whose uploaded documents disagreed with the typed company
+    // details — still open (not yet approved or rejected).
+    const supplierDocReview = await this.supplierOnboardingRepo.count({
+      where: {
+        documentsNeedReview: true,
+        status: In([
+          SupplierOnboardingStatus.DRAFT,
+          SupplierOnboardingStatus.SUBMITTED,
+          SupplierOnboardingStatus.UNDER_REVIEW,
+        ]),
+      },
+    });
+    const customerDocReview = await this.customerOnboardingRepo.count({
+      where: {
+        documentsNeedReview: true,
+        status: In([
+          CustomerOnboardingStatus.DRAFT,
+          CustomerOnboardingStatus.SUBMITTED,
+          CustomerOnboardingStatus.UNDER_REVIEW,
+        ]),
+      },
+    });
+
+    const rfqItems: AttentionItemDto[] = [
+      {
+        label: "Suppliers awaiting approval",
+        count: pendingSuppliers,
+        href: "/admin/portal/suppliers",
+        severity: "warning" as const,
+      },
+      {
+        label: "Customers awaiting approval",
+        count: pendingCustomers,
+        href: "/admin/portal/customers",
+        severity: "warning" as const,
+      },
+      {
+        label: "Registrations with document mismatches",
+        count: supplierDocReview + customerDocReview,
+        href: "/admin/portal/approvals",
+        severity: "urgent" as const,
+      },
+    ].filter((item) => item.count > 0);
+
+    return {
+      apps: [
+        {
+          appCode: "rfq",
+          appName: "RFQ Platform",
+          total: rfqItems.reduce((sum, item) => sum + item.count, 0),
+          items: rfqItems,
+        },
+      ],
     };
   }
 

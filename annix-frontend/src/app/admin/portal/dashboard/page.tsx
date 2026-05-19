@@ -1,9 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import type { ActivityItem, FeedbackItem, ScheduledJobDto } from "@/app/lib/api/adminApi";
+import type {
+  ActivityItem,
+  AppAttention,
+  FeedbackItem,
+  ScheduledJobDto,
+} from "@/app/lib/api/adminApi";
 import { fromISO, now } from "@/app/lib/datetime";
 import { useAdminDashboard, useAdminFeedback, useScheduledJobs } from "@/app/lib/query/hooks";
+import { useAdminAttention } from "@/app/lib/query/hooks/admin/useAdminAttention";
 
 function formatRelativeDate(dateString: string) {
   const date = fromISO(dateString);
@@ -299,10 +305,60 @@ function ActivityFeed({ activities }: { activities: ActivityItem[] }) {
   );
 }
 
+function NeedsAttentionPanel({ app }: { app: AppAttention }) {
+  return (
+    <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 rounded-xl p-5">
+      <div className="flex items-center gap-2 mb-3">
+        <svg
+          className="w-5 h-5 text-amber-600 dark:text-amber-400"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"
+          />
+        </svg>
+        <h2 className="text-sm font-semibold text-amber-900 dark:text-amber-200">
+          Needs Attention — {app.total} item{app.total === 1 ? "" : "s"}
+        </h2>
+      </div>
+      <ul className="space-y-2">
+        {app.items.map((item) => (
+          <li key={item.label}>
+            <Link
+              href={item.href}
+              className="flex items-center justify-between gap-3 bg-white dark:bg-slate-800 rounded-lg px-4 py-2.5 border border-amber-200 dark:border-slate-700 hover:border-amber-400 transition-colors"
+            >
+              <span className="flex items-center gap-2.5 text-sm text-gray-800 dark:text-gray-200">
+                <span
+                  className={`min-w-[1.5rem] h-6 px-1.5 flex items-center justify-center rounded-full text-white text-xs font-bold ${
+                    item.severity === "urgent" ? "bg-red-500" : "bg-amber-500"
+                  }`}
+                >
+                  {item.count}
+                </span>
+                {item.label}
+              </span>
+              <span className="text-xs font-medium text-amber-700 dark:text-amber-300 whitespace-nowrap">
+                Review →
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 export default function AdminDashboardPage() {
   const dashboardQuery = useAdminDashboard();
   const feedbackQuery = useAdminFeedback();
   const jobsQuery = useScheduledJobs();
+  const attentionQuery = useAdminAttention();
 
   const stats = dashboardQuery.data;
   const rawData = feedbackQuery.data;
@@ -313,6 +369,7 @@ export default function AdminDashboardPage() {
   })() as ScheduledJobDto[];
 
   const openFeedbackCount = feedback.filter((f) => f.status !== "resolved").length;
+  const rfqAttention = attentionQuery.data?.apps.find((a) => a.appCode === "rfq");
 
   if (dashboardQuery.isLoading) {
     return (
@@ -356,6 +413,7 @@ export default function AdminDashboardPage() {
             dashboardQuery.refetch();
             feedbackQuery.refetch();
             jobsQuery.refetch();
+            attentionQuery.refetch();
           }}
           className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors flex items-center gap-2"
         >
@@ -370,6 +428,8 @@ export default function AdminDashboardPage() {
           Refresh
         </button>
       </div>
+
+      {rfqAttention && rfqAttention.total > 0 && <NeedsAttentionPanel app={rfqAttention} />}
 
       {stats.systemHealth && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
