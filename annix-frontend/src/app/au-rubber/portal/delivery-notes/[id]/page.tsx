@@ -146,6 +146,7 @@ export default function DeliveryNoteDetailPage() {
   const [docTotalPages, setDocTotalPages] = useState(0);
   const [docPageUrl, setDocPageUrl] = useState<string | null>(null);
   const [isLoadingDoc, setIsLoadingDoc] = useState(false);
+  const [docError, setDocError] = useState<string | null>(null);
   const docViewer = useImageViewer();
 
   const visiblePages = useMemo(() => {
@@ -372,6 +373,7 @@ export default function DeliveryNoteDetailPage() {
   const loadDocPage = async (pageNumber: number) => {
     try {
       setIsLoadingDoc(true);
+      setDocError(null);
       setDocPageNumber(pageNumber);
       docViewer.reset();
       const result = await deliveryNotePageUrlMutation.mutateAsync({
@@ -380,8 +382,13 @@ export default function DeliveryNoteDetailPage() {
       });
       setDocPageUrl(result.url);
       setDocTotalPages(result.totalPages);
-    } catch (err) {
-      toastError(showToast, err, "Failed to load document page");
+    } catch {
+      // Show an inline panel message rather than a transient toast — a missing
+      // scanned file is a persistent state the user needs to keep seeing.
+      setDocPageUrl(null);
+      setDocError(
+        "The scanned document could not be loaded — the file may be missing from storage and need re-uploading.",
+      );
     } finally {
       setIsLoadingDoc(false);
     }
@@ -929,6 +936,24 @@ export default function DeliveryNoteDetailPage() {
                   onMouseDown={docViewer.handleMouseDown}
                   draggable={false}
                 />
+              ) : docError ? (
+                <div className="text-center py-12 px-4">
+                  <svg
+                    className="h-10 w-10 mx-auto text-gray-300"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.5}
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
+                  </svg>
+                  <p className="mt-3 text-sm font-medium text-gray-700">Document unavailable</p>
+                  <p className="mt-1 text-xs text-gray-500 max-w-xs mx-auto">{docError}</p>
+                </div>
               ) : (
                 <div className="text-center py-12 text-gray-500">No document loaded</div>
               )}
