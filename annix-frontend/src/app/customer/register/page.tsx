@@ -32,6 +32,12 @@ import { nowISO } from "@/app/lib/datetime";
 import { log } from "@/app/lib/logger";
 import { nixApi, RegistrationBatchResult } from "@/app/lib/nix/api";
 import { validatePassword } from "@/app/lib/utils/passwordValidation";
+import {
+  isValidZaRegistrationNumber,
+  isValidZaVatNumber,
+  ZA_REGISTRATION_NUMBER_HINT,
+  ZA_VAT_NUMBER_HINT,
+} from "@/app/lib/utils/saCompanyValidation";
 
 type Step = "documents" | "company" | "profile" | "security" | "complete";
 
@@ -51,6 +57,7 @@ export default function CustomerRegistrationPage() {
   const [currentStep, setCurrentStep] = useState<Step>("documents");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>({});
 
   const [company, setCompany] = useState<Partial<CustomerCompanyDto>>({
     country: "South Africa",
@@ -283,6 +290,16 @@ export default function CustomerRegistrationPage() {
         autoFilledFields: [...new Set(autoFilledFields)],
       });
 
+      // Treat auto-filled fields as touched so format errors surface even
+      // though the user never typed in them.
+      setTouchedFields((prev) => {
+        const next = { ...prev };
+        for (const field of autoFilledFields) {
+          next[field] = true;
+        }
+        return next;
+      });
+
       setCurrentStep("company");
     } catch (err) {
       log.error("Nix batch verification failed:", err);
@@ -321,9 +338,12 @@ export default function CustomerRegistrationPage() {
   };
 
   const isCompanyValid = (): boolean => {
+    const vatNumber = company.vatNumber;
     return !!(
       company.legalName &&
       company.registrationNumber &&
+      isValidZaRegistrationNumber(company.registrationNumber) &&
+      (!vatNumber || isValidZaVatNumber(vatNumber)) &&
       company.streetAddress &&
       company.city &&
       company.provinceState &&
@@ -780,6 +800,7 @@ export default function CustomerRegistrationPage() {
               return rawRegistrationNumber || "";
             })()}
             onChange={(e) => handleCompanyChange("registrationNumber", e.target.value)}
+            onBlur={() => setTouchedFields((prev) => ({ ...prev, registrationNumber: true }))}
             className={`mt-1 block w-full rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
               nixState.autoFilledFields.includes("registrationNumber")
                 ? "border-green-300 bg-green-50"
@@ -787,6 +808,11 @@ export default function CustomerRegistrationPage() {
             }`}
             placeholder="e.g., 2023/123456/07"
           />
+          {touchedFields.registrationNumber &&
+            company.registrationNumber &&
+            !isValidZaRegistrationNumber(company.registrationNumber) && (
+              <p className="mt-1 text-xs text-red-600">{ZA_REGISTRATION_NUMBER_HINT}</p>
+            )}
         </div>
 
         <div>
@@ -803,6 +829,7 @@ export default function CustomerRegistrationPage() {
               return rawVatNumber || "";
             })()}
             onChange={(e) => handleCompanyChange("vatNumber", e.target.value)}
+            onBlur={() => setTouchedFields((prev) => ({ ...prev, vatNumber: true }))}
             className={`mt-1 block w-full rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
               nixState.autoFilledFields.includes("vatNumber")
                 ? "border-green-300 bg-green-50"
@@ -810,6 +837,11 @@ export default function CustomerRegistrationPage() {
             }`}
             placeholder="VAT registration number"
           />
+          {touchedFields.vatNumber &&
+            company.vatNumber &&
+            !isValidZaVatNumber(company.vatNumber) && (
+              <p className="mt-1 text-xs text-red-600">{ZA_VAT_NUMBER_HINT}</p>
+            )}
         </div>
 
         <div>

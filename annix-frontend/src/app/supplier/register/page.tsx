@@ -37,6 +37,12 @@ import NixRegistrationVerifier, {
   VerificationResult,
 } from "@/app/lib/nix/components/NixRegistrationVerifier";
 import { validatePassword } from "@/app/lib/utils/passwordValidation";
+import {
+  isValidZaRegistrationNumber,
+  isValidZaVatNumber,
+  ZA_REGISTRATION_NUMBER_HINT,
+  ZA_VAT_NUMBER_HINT,
+} from "@/app/lib/utils/saCompanyValidation";
 
 type Step = "company" | "bee" | "documents" | "profile" | "security" | "complete";
 
@@ -57,6 +63,7 @@ export default function SupplierRegistrationPage() {
   const [currentStep, setCurrentStep] = useState<Step>("company");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>({});
 
   // Company data
   const [company, setCompany] = useState<Partial<SupplierCompanyDto>>({
@@ -300,9 +307,12 @@ export default function SupplierRegistrationPage() {
   };
 
   const isCompanyValid = (): boolean => {
+    const vatNumber = company.vatNumber;
     return !!(
       company.legalName &&
       company.registrationNumber &&
+      isValidZaRegistrationNumber(company.registrationNumber) &&
+      (!vatNumber || isValidZaVatNumber(vatNumber)) &&
       company.streetAddress &&
       company.city &&
       company.provinceState &&
@@ -555,9 +565,15 @@ export default function SupplierRegistrationPage() {
               return rawRegistrationNumber || "";
             })()}
             onChange={(e) => handleCompanyChange("registrationNumber", e.target.value)}
+            onBlur={() => setTouchedFields((prev) => ({ ...prev, registrationNumber: true }))}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             placeholder="e.g., 2023/123456/07"
           />
+          {touchedFields.registrationNumber &&
+            company.registrationNumber &&
+            !isValidZaRegistrationNumber(company.registrationNumber) && (
+              <p className="mt-1 text-xs text-red-600">{ZA_REGISTRATION_NUMBER_HINT}</p>
+            )}
         </div>
 
         <div>
@@ -569,9 +585,15 @@ export default function SupplierRegistrationPage() {
               return rawVatNumber || "";
             })()}
             onChange={(e) => handleCompanyChange("vatNumber", e.target.value)}
+            onBlur={() => setTouchedFields((prev) => ({ ...prev, vatNumber: true }))}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             placeholder="VAT registration number"
           />
+          {touchedFields.vatNumber &&
+            company.vatNumber &&
+            !isValidZaVatNumber(company.vatNumber) && (
+              <p className="mt-1 text-xs text-red-600">{ZA_VAT_NUMBER_HINT}</p>
+            )}
         </div>
 
         <div>

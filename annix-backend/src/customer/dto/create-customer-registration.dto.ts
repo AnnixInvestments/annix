@@ -12,6 +12,7 @@ import {
   RequiredPhone,
   RequiredString,
 } from "../../lib/dto/validation-decorators";
+import { IsZACompanyRegNumber, IsZAVatNumber } from "../../shared/validators";
 
 export class CompanyDetailsDto {
   @ApiProperty({
@@ -33,6 +34,7 @@ export class CompanyDetailsDto {
     example: "2020/123456/07",
   })
   @RequiredString({ maxLength: 50 })
+  @IsZACompanyRegNumber()
   registrationNumber: string;
 
   @ApiPropertyOptional({
@@ -40,6 +42,7 @@ export class CompanyDetailsDto {
     example: "4123456789",
   })
   @OptionalString({ maxLength: 50 })
+  @IsZAVatNumber()
   vatNumber?: string;
 
   @ApiPropertyOptional({ description: "Industry type", example: "Mining" })
