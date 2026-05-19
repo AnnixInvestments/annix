@@ -795,57 +795,9 @@ export default function DeliveryNoteDetailPage() {
         </div>
       </div>
 
-      <div className="bg-white shadow rounded-lg p-6">
-        <h2 className="text-lg font-medium text-gray-900 mb-4">Delivery Note Details</h2>
-        <dl className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4">
-          <div>
-            <dt className="text-sm font-medium text-gray-500">DN Number</dt>
-            <dd className="mt-1 text-sm text-gray-900">{rawNoteDeliveryNoteNumber3 || "-"}</dd>
-          </div>
-          <div>
-            <dt className="text-sm font-medium text-gray-500">Customer</dt>
-            <dd className="mt-1 text-sm text-gray-900">{rawNoteSupplierCompanyName || "-"}</dd>
-          </div>
-          <div>
-            <dt className="text-sm font-medium text-gray-500">PO / Ref</dt>
-            <dd className="mt-1 text-sm text-gray-900 font-medium text-blue-600">
-              {rawNoteCustomerReference || "-"}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-sm font-medium text-gray-500">Type</dt>
-            <dd className="mt-1 text-sm text-gray-900">{note.deliveryNoteTypeLabel}</dd>
-          </div>
-          <div>
-            <dt className="text-sm font-medium text-gray-500">Delivery Date</dt>
-            <dd className="mt-1 text-sm text-gray-900">
-              {note.deliveryDate ? formatDateZA(note.deliveryDate) : "-"}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-sm font-medium text-gray-500">Status</dt>
-            <dd className="mt-1 text-sm text-gray-900">{note.statusLabel}</dd>
-          </div>
-          <div>
-            <dt className="text-sm font-medium text-gray-500">Created</dt>
-            <dd className="mt-1 text-sm text-gray-900">{formatDateTimeZA(note.createdAt)}</dd>
-          </div>
-        </dl>
-        {note.linkedCocId && (
-          <div className="mt-4 pt-4 border-t">
-            <Link
-              href={`/au-rubber/portal/supplier-cocs/${note.linkedCocId}`}
-              className="text-yellow-600 hover:text-yellow-800 text-sm font-medium"
-            >
-              View Linked CoC
-            </Link>
-          </div>
-        )}
-      </div>
-
       <div className="flex flex-col lg:flex-row gap-6 lg:items-start">
         {showDocViewer && (
-          <div className="w-full lg:w-[420px] lg:shrink-0 lg:sticky lg:top-6 bg-white shadow rounded-lg overflow-hidden">
+          <div className="w-full lg:flex-[3] lg:min-w-0 lg:sticky lg:top-6 bg-white shadow rounded-lg overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
               <h2 className="text-lg font-medium text-gray-900">Scanned Document</h2>
               <div className="flex items-center space-x-2">
@@ -922,7 +874,10 @@ export default function DeliveryNoteDetailPage() {
                 </button>
               </div>
             </div>
-            <div className="p-4 bg-gray-50 overflow-auto" style={{ maxHeight: "70vh" }}>
+            <div
+              className="p-4 bg-gray-50 overflow-auto"
+              style={{ maxHeight: "calc(100vh - 8.5rem)" }}
+            >
               {isLoadingDoc ? (
                 <div className="flex items-center justify-center py-12">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-600" />
@@ -969,8 +924,56 @@ export default function DeliveryNoteDetailPage() {
         )}
 
         <div
-          className={showDocViewer ? "w-full lg:flex-1 lg:min-w-0 space-y-6" : "w-full space-y-6"}
+          className={showDocViewer ? "w-full lg:flex-[2] lg:min-w-0 space-y-6" : "w-full space-y-6"}
         >
+          <div className="bg-white shadow rounded-lg p-6">
+            <h2 className="text-lg font-medium text-gray-900 mb-4">Delivery Note Details</h2>
+            <dl className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              <div>
+                <dt className="text-sm font-medium text-gray-500">DN Number</dt>
+                <dd className="mt-1 text-sm text-gray-900">{rawNoteDeliveryNoteNumber3 || "-"}</dd>
+              </div>
+              <div>
+                <dt className="text-sm font-medium text-gray-500">Customer</dt>
+                <dd className="mt-1 text-sm text-gray-900">{rawNoteSupplierCompanyName || "-"}</dd>
+              </div>
+              <div>
+                <dt className="text-sm font-medium text-gray-500">PO / Ref</dt>
+                <dd className="mt-1 text-sm text-gray-900 font-medium text-blue-600">
+                  {rawNoteCustomerReference || "-"}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-sm font-medium text-gray-500">Type</dt>
+                <dd className="mt-1 text-sm text-gray-900">{note.deliveryNoteTypeLabel}</dd>
+              </div>
+              <div>
+                <dt className="text-sm font-medium text-gray-500">Delivery Date</dt>
+                <dd className="mt-1 text-sm text-gray-900">
+                  {note.deliveryDate ? formatDateZA(note.deliveryDate) : "-"}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-sm font-medium text-gray-500">Status</dt>
+                <dd className="mt-1 text-sm text-gray-900">{note.statusLabel}</dd>
+              </div>
+              <div>
+                <dt className="text-sm font-medium text-gray-500">Created</dt>
+                <dd className="mt-1 text-sm text-gray-900">{formatDateTimeZA(note.createdAt)}</dd>
+              </div>
+            </dl>
+            {note.linkedCocId && (
+              <div className="mt-4 pt-4 border-t">
+                <Link
+                  href={`/au-rubber/portal/supplier-cocs/${note.linkedCocId}`}
+                  className="text-yellow-600 hover:text-yellow-800 text-sm font-medium"
+                >
+                  View Linked CoC
+                </Link>
+              </div>
+            )}
+          </div>
+
           {hasExtractedData && (
             <div className="bg-white shadow rounded-lg overflow-hidden">
               <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
@@ -1067,592 +1070,564 @@ export default function DeliveryNoteDetailPage() {
                 ) : null;
               })()}
 
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-2 py-1.5 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider">
-                        Roll Number
-                      </th>
-                      <th className="px-2 py-1.5 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider">
-                        Compound Code
-                      </th>
-                      <th className="px-2 py-1.5 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider">
-                        Thickness (mm)
-                      </th>
-                      <th className="px-2 py-1.5 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider">
-                        Width (mm)
-                      </th>
-                      <th className="px-2 py-1.5 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider">
-                        Length (m)
-                      </th>
-                      <th className="px-2 py-1.5 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider">
-                        Area (m²)
-                      </th>
-                      <th className="px-2 py-1.5 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider">
-                        Weight (kg)
-                      </th>
-                      <th className="px-2 py-1.5 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider">
-                        DN Number
-                      </th>
-                      <th className="px-2 py-1.5 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider">
-                        Delivery Date
-                      </th>
-                      <th className="px-2 py-1.5 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider">
-                        Customer
-                      </th>
-                      <th className="px-2 py-1.5 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider">
-                        PO/Ref
-                      </th>
-                      <th className="px-2 py-1.5 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider">
-                        Page
-                      </th>
-                      {isEditing && (
-                        <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-10" />
-                      )}
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {displayData.flatMap((dn, dnIdx) => {
-                      const rawDnDeliveryNoteNumber = dn.deliveryNoteNumber;
-                      const rawDnDeliveryDate = dn.deliveryDate;
-                      const rawDnCustomerName = dn.customerName;
-                      const rawDnCustomerReference = dn.customerReference;
-                      return dn.rolls && dn.rolls.length > 0
-                        ? dn.rolls
-                            .filter((r): r is EditableRoll => r != null && isObject(r))
-                            .map((roll, rollIdx) => {
-                              const rawRollRollNumber = roll.rollNumber;
-                              const rawRollRollNumber2 = roll.rollNumber;
-                              const rawRollCompoundCode = roll.compoundCode;
-                              const rawRollDeliveryNoteNumber = roll.deliveryNoteNumber;
-                              const rawRollDeliveryNoteNumber2 = roll.deliveryNoteNumber;
-                              const rawRollDeliveryDate = roll.deliveryDate;
-                              const rawNoteDeliveryDate = note.deliveryDate;
-                              const rawRollCustomerName = roll.customerName;
-                              const rawRollCustomerName2 = roll.customerName;
-                              const rawRollCustomerReference = roll.customerReference;
-                              const rawRollCustomerReference2 = roll.customerReference;
-                              const rawRollPageNumber = roll.pageNumber;
-                              const rawDnRolls = dn.rolls;
-                              const areaSqM = calculateAreaSqM(roll.widthMm, roll.lengthM);
+              <div className="px-4 py-4 space-y-3">
+                {displayData.flatMap((dn, dnIdx) => {
+                  const rawDnDeliveryNoteNumber = dn.deliveryNoteNumber;
+                  const rawDnDeliveryDate = dn.deliveryDate;
+                  const rawDnCustomerName = dn.customerName;
+                  const rawDnCustomerReference = dn.customerReference;
+                  return dn.rolls && dn.rolls.length > 0
+                    ? dn.rolls
+                        .filter((r): r is EditableRoll => r != null && isObject(r))
+                        .map((roll, rollIdx) => {
+                          const rawRollRollNumber = roll.rollNumber;
+                          const rawRollRollNumber2 = roll.rollNumber;
+                          const rawRollCompoundCode = roll.compoundCode;
+                          const rawRollDeliveryNoteNumber = roll.deliveryNoteNumber;
+                          const rawRollDeliveryNoteNumber2 = roll.deliveryNoteNumber;
+                          const rawRollDeliveryDate = roll.deliveryDate;
+                          const rawNoteDeliveryDate = note.deliveryDate;
+                          const rawRollCustomerName = roll.customerName;
+                          const rawRollCustomerName2 = roll.customerName;
+                          const rawRollCustomerReference = roll.customerReference;
+                          const rawRollCustomerReference2 = roll.customerReference;
+                          const rawRollPageNumber = roll.pageNumber;
+                          const rawDnRolls = dn.rolls;
+                          const areaSqM = calculateAreaSqM(roll.widthMm, roll.lengthM);
 
-                              return (
-                                <tr
-                                  key={`${dnIdx}-${rollIdx}`}
-                                  className={`hover:bg-gray-50 ${roll.isEdited ? "bg-yellow-50" : ""}`}
-                                >
-                                  <td className="px-2 py-1 whitespace-nowrap text-xs">
-                                    {isEditing ? (
-                                      <input
-                                        type="text"
-                                        value={rawRollRollNumber || ""}
-                                        onChange={(e) =>
-                                          handleRollFieldChange(
-                                            dnIdx,
-                                            rollIdx,
-                                            "rollNumber",
-                                            e.target.value,
-                                          )
-                                        }
-                                        className="w-20 px-1.5 py-0.5 text-xs border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
+                          return (
+                            <div
+                              key={`${dnIdx}-${rollIdx}`}
+                              className={`rounded-lg border p-3 ${roll.isEdited ? "border-yellow-300 bg-yellow-50" : "border-gray-200"}`}
+                            >
+                              <div className="flex items-center justify-between mb-2">
+                                <h3 className="text-sm font-semibold text-gray-900">
+                                  Roll {rawRollRollNumber2 || "—"}
+                                </h3>
+                                {isEditing && (
+                                  <button
+                                    onClick={() => handleRemoveRow(dnIdx, rollIdx)}
+                                    disabled={(rawDnRolls || []).length <= 1}
+                                    className="text-red-400 hover:text-red-600 disabled:text-gray-300 disabled:cursor-not-allowed"
+                                    title="Remove row"
+                                  >
+                                    <svg
+                                      className="w-4 h-4"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      viewBox="0 0 24 24"
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M6 18L18 6M6 6l12 12"
                                       />
-                                    ) : (
-                                      <span className="font-medium text-gray-900">
-                                        {rawRollRollNumber2 || "-"}
-                                      </span>
-                                    )}
-                                  </td>
-                                  <td className="px-2 py-1 whitespace-nowrap text-xs text-gray-600">
-                                    {isEditing ? (
-                                      <input
-                                        type="text"
-                                        value={rawRollCompoundCode || ""}
-                                        onChange={(e) =>
-                                          handleRollFieldChange(
-                                            dnIdx,
-                                            rollIdx,
-                                            "compoundCode",
-                                            e.target.value,
-                                          )
-                                        }
-                                        className="w-20 px-1.5 py-0.5 text-xs border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
-                                      />
-                                    ) : (
-                                      <span className="font-mono">
-                                        {rawRollCompoundCode || "-"}
-                                      </span>
-                                    )}
-                                  </td>
-                                  <td className="px-2 py-1 whitespace-nowrap text-xs text-gray-600">
-                                    {isEditing ? (
-                                      <input
-                                        type="number"
-                                        value={roll.thicknessMm != null ? roll.thicknessMm : ""}
-                                        onChange={(e) =>
-                                          handleRollFieldChange(
-                                            dnIdx,
-                                            rollIdx,
-                                            "thicknessMm",
-                                            e.target.value,
-                                          )
-                                        }
-                                        className="w-14 px-1.5 py-0.5 text-xs border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
-                                      />
-                                    ) : roll.thicknessMm != null ? (
-                                      roll.thicknessMm
-                                    ) : (
-                                      "-"
-                                    )}
-                                  </td>
-                                  <td className="px-2 py-1 whitespace-nowrap text-xs text-gray-600">
-                                    {isEditing ? (
-                                      <input
-                                        type="number"
-                                        value={roll.widthMm != null ? roll.widthMm : ""}
-                                        onChange={(e) =>
-                                          handleRollFieldChange(
-                                            dnIdx,
-                                            rollIdx,
-                                            "widthMm",
-                                            e.target.value,
-                                          )
-                                        }
-                                        className="w-16 px-1.5 py-0.5 text-xs border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
-                                      />
-                                    ) : roll.widthMm != null ? (
-                                      roll.widthMm
-                                    ) : (
-                                      "-"
-                                    )}
-                                  </td>
-                                  <td className="px-2 py-1 whitespace-nowrap text-xs text-gray-600">
-                                    {isEditing ? (
-                                      <input
-                                        type="number"
-                                        step="0.1"
-                                        value={roll.lengthM != null ? roll.lengthM : ""}
-                                        onChange={(e) =>
-                                          handleRollFieldChange(
-                                            dnIdx,
-                                            rollIdx,
-                                            "lengthM",
-                                            e.target.value,
-                                          )
-                                        }
-                                        className="w-14 px-1.5 py-0.5 text-xs border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
-                                      />
-                                    ) : roll.lengthM != null ? (
-                                      roll.lengthM
-                                    ) : (
-                                      "-"
-                                    )}
-                                  </td>
-                                  <td className="px-2 py-1 whitespace-nowrap text-xs text-gray-600">
-                                    {areaSqM ? areaSqM.toFixed(2) : "-"}
-                                  </td>
-                                  <td className="px-2 py-1 whitespace-nowrap text-xs text-gray-600">
-                                    {isEditing ? (
-                                      <input
-                                        type="number"
-                                        step="0.01"
-                                        value={roll.weightKg != null ? roll.weightKg : ""}
-                                        onChange={(e) =>
-                                          handleRollFieldChange(
-                                            dnIdx,
-                                            rollIdx,
-                                            "weightKg",
-                                            e.target.value,
-                                          )
-                                        }
-                                        className="w-16 px-1.5 py-0.5 text-xs border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
-                                      />
-                                    ) : safeFixed(roll.weightKg, 2) != null ? (
-                                      safeFixed(roll.weightKg, 2)
-                                    ) : (
-                                      "-"
-                                    )}
-                                  </td>
-                                  <td className="px-2 py-1 whitespace-nowrap text-xs text-gray-600">
-                                    {isEditing ? (
-                                      <input
-                                        type="text"
-                                        value={
-                                          rawRollDeliveryNoteNumber ||
-                                          rawNoteDeliveryNoteNumber ||
-                                          ""
-                                        }
-                                        onChange={(e) =>
-                                          handleRollFieldChange(
-                                            dnIdx,
-                                            rollIdx,
-                                            "deliveryNoteNumber",
-                                            e.target.value,
-                                          )
-                                        }
-                                        className="w-20 px-1.5 py-0.5 text-xs border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
-                                      />
-                                    ) : (
-                                      rawRollDeliveryNoteNumber2 || rawNoteDeliveryNoteNumber || "-"
-                                    )}
-                                  </td>
-                                  <td className="px-2 py-1 whitespace-nowrap text-xs text-gray-600">
-                                    {isEditing ? (
-                                      <input
-                                        type="date"
-                                        value={rawRollDeliveryDate || rawNoteDeliveryDate || ""}
-                                        onChange={(e) =>
-                                          handleRollFieldChange(
-                                            dnIdx,
-                                            rollIdx,
-                                            "deliveryDate",
-                                            e.target.value,
-                                          )
-                                        }
-                                        className="px-1.5 py-0.5 text-xs border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
-                                      />
-                                    ) : (
-                                      rawNoteDeliveryDate || "-"
-                                    )}
-                                  </td>
-                                  <td className="px-2 py-1 whitespace-nowrap text-xs text-gray-600">
-                                    {isEditing ? (
-                                      <input
-                                        type="text"
-                                        value={rawRollCustomerName || rawDnCustomerName || ""}
-                                        onChange={(e) =>
-                                          handleRollFieldChange(
-                                            dnIdx,
-                                            rollIdx,
-                                            "customerName",
-                                            e.target.value,
-                                          )
-                                        }
-                                        className="w-32 px-1.5 py-0.5 text-xs border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
-                                      />
-                                    ) : (
-                                      rawRollCustomerName2 || rawDnCustomerName || "-"
-                                    )}
-                                  </td>
-                                  <td className="px-2 py-1 whitespace-nowrap text-xs text-blue-600 font-medium">
-                                    {isEditing ? (
-                                      <input
-                                        type="text"
-                                        value={
-                                          rawRollCustomerReference ||
-                                          rawDnCustomerReference ||
-                                          rawNoteCustomerReference ||
-                                          ""
-                                        }
-                                        onChange={(e) =>
-                                          handleRollFieldChange(
-                                            dnIdx,
-                                            rollIdx,
-                                            "customerReference",
-                                            e.target.value,
-                                          )
-                                        }
-                                        className="w-14 px-1.5 py-0.5 text-xs border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
-                                      />
-                                    ) : (
-                                      rawRollCustomerReference2 ||
-                                      rawDnCustomerReference ||
-                                      rawNoteCustomerReference ||
-                                      "-"
-                                    )}
-                                  </td>
-                                  <td className="px-2 py-1 whitespace-nowrap text-xs text-gray-600">
-                                    {rawRollPageNumber || "-"}
-                                  </td>
-                                  {isEditing && (
-                                    <td className="px-2 py-3 whitespace-nowrap">
-                                      <button
-                                        onClick={() => handleRemoveRow(dnIdx, rollIdx)}
-                                        disabled={(rawDnRolls || []).length <= 1}
-                                        className="text-red-400 hover:text-red-600 disabled:text-gray-300 disabled:cursor-not-allowed"
-                                        title="Remove row"
-                                      >
-                                        <svg
-                                          className="w-4 h-4"
-                                          fill="none"
-                                          stroke="currentColor"
-                                          viewBox="0 0 24 24"
-                                        >
-                                          <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth={2}
-                                            d="M6 18L18 6M6 6l12 12"
-                                          />
-                                        </svg>
-                                      </button>
-                                    </td>
+                                    </svg>
+                                  </button>
+                                )}
+                              </div>
+                              <dl className="grid grid-cols-2 sm:grid-cols-3 gap-x-3 gap-y-2">
+                                <div>
+                                  <dt className="text-xs font-medium text-gray-500">Roll Number</dt>
+                                  {isEditing ? (
+                                    <input
+                                      type="text"
+                                      value={rawRollRollNumber || ""}
+                                      onChange={(e) =>
+                                        handleRollFieldChange(
+                                          dnIdx,
+                                          rollIdx,
+                                          "rollNumber",
+                                          e.target.value,
+                                        )
+                                      }
+                                      className="mt-0.5 w-full rounded border border-gray-300 px-2 py-1 text-sm focus:ring-yellow-500 focus:border-yellow-500"
+                                    />
+                                  ) : (
+                                    <dd className="mt-0.5 text-sm text-gray-900">
+                                      {rawRollRollNumber2 || "-"}
+                                    </dd>
                                   )}
-                                </tr>
-                              );
-                            })
-                        : [
-                            <tr key={dnIdx} className="hover:bg-gray-50">
-                              <td
-                                colSpan={6}
-                                className="px-4 py-3 text-sm text-gray-500 text-center"
-                              >
-                                No rolls data
-                              </td>
-                              <td className="px-2 py-1 whitespace-nowrap text-xs text-gray-600">
-                                {rawDnDeliveryNoteNumber || "-"}
-                              </td>
-                              <td className="px-2 py-1 whitespace-nowrap text-xs text-gray-600">
-                                {rawDnDeliveryDate || "-"}
-                              </td>
-                              <td className="px-2 py-1 whitespace-nowrap text-xs text-gray-600">
-                                {rawDnCustomerName || "-"}
-                              </td>
-                              <td className="px-2 py-1 whitespace-nowrap text-xs text-blue-600 font-medium">
-                                {rawDnCustomerReference || rawNoteCustomerReference || "-"}
-                              </td>
-                              <td className="px-2 py-1 whitespace-nowrap text-xs text-gray-600">
-                                -
-                              </td>
-                            </tr>,
-                          ];
-                    })}
-                  </tbody>
-                </table>
+                                </div>
+                                <div>
+                                  <dt className="text-xs font-medium text-gray-500">
+                                    Compound Code
+                                  </dt>
+                                  {isEditing ? (
+                                    <input
+                                      type="text"
+                                      value={rawRollCompoundCode || ""}
+                                      onChange={(e) =>
+                                        handleRollFieldChange(
+                                          dnIdx,
+                                          rollIdx,
+                                          "compoundCode",
+                                          e.target.value,
+                                        )
+                                      }
+                                      className="mt-0.5 w-full rounded border border-gray-300 px-2 py-1 text-sm focus:ring-yellow-500 focus:border-yellow-500"
+                                    />
+                                  ) : (
+                                    <dd className="mt-0.5 text-sm text-gray-900 font-mono">
+                                      {rawRollCompoundCode || "-"}
+                                    </dd>
+                                  )}
+                                </div>
+                                <div>
+                                  <dt className="text-xs font-medium text-gray-500">
+                                    Thickness (mm)
+                                  </dt>
+                                  {isEditing ? (
+                                    <input
+                                      type="number"
+                                      value={roll.thicknessMm != null ? roll.thicknessMm : ""}
+                                      onChange={(e) =>
+                                        handleRollFieldChange(
+                                          dnIdx,
+                                          rollIdx,
+                                          "thicknessMm",
+                                          e.target.value,
+                                        )
+                                      }
+                                      className="mt-0.5 w-full rounded border border-gray-300 px-2 py-1 text-sm focus:ring-yellow-500 focus:border-yellow-500"
+                                    />
+                                  ) : (
+                                    <dd className="mt-0.5 text-sm text-gray-900">
+                                      {roll.thicknessMm != null ? roll.thicknessMm : "-"}
+                                    </dd>
+                                  )}
+                                </div>
+                                <div>
+                                  <dt className="text-xs font-medium text-gray-500">Width (mm)</dt>
+                                  {isEditing ? (
+                                    <input
+                                      type="number"
+                                      value={roll.widthMm != null ? roll.widthMm : ""}
+                                      onChange={(e) =>
+                                        handleRollFieldChange(
+                                          dnIdx,
+                                          rollIdx,
+                                          "widthMm",
+                                          e.target.value,
+                                        )
+                                      }
+                                      className="mt-0.5 w-full rounded border border-gray-300 px-2 py-1 text-sm focus:ring-yellow-500 focus:border-yellow-500"
+                                    />
+                                  ) : (
+                                    <dd className="mt-0.5 text-sm text-gray-900">
+                                      {roll.widthMm != null ? roll.widthMm : "-"}
+                                    </dd>
+                                  )}
+                                </div>
+                                <div>
+                                  <dt className="text-xs font-medium text-gray-500">Length (m)</dt>
+                                  {isEditing ? (
+                                    <input
+                                      type="number"
+                                      step="0.1"
+                                      value={roll.lengthM != null ? roll.lengthM : ""}
+                                      onChange={(e) =>
+                                        handleRollFieldChange(
+                                          dnIdx,
+                                          rollIdx,
+                                          "lengthM",
+                                          e.target.value,
+                                        )
+                                      }
+                                      className="mt-0.5 w-full rounded border border-gray-300 px-2 py-1 text-sm focus:ring-yellow-500 focus:border-yellow-500"
+                                    />
+                                  ) : (
+                                    <dd className="mt-0.5 text-sm text-gray-900">
+                                      {roll.lengthM != null ? roll.lengthM : "-"}
+                                    </dd>
+                                  )}
+                                </div>
+                                <div>
+                                  <dt className="text-xs font-medium text-gray-500">Area (m²)</dt>
+                                  <dd className="mt-0.5 text-sm text-gray-900">
+                                    {areaSqM ? areaSqM.toFixed(2) : "-"}
+                                  </dd>
+                                </div>
+                                <div>
+                                  <dt className="text-xs font-medium text-gray-500">Weight (kg)</dt>
+                                  {isEditing ? (
+                                    <input
+                                      type="number"
+                                      step="0.01"
+                                      value={roll.weightKg != null ? roll.weightKg : ""}
+                                      onChange={(e) =>
+                                        handleRollFieldChange(
+                                          dnIdx,
+                                          rollIdx,
+                                          "weightKg",
+                                          e.target.value,
+                                        )
+                                      }
+                                      className="mt-0.5 w-full rounded border border-gray-300 px-2 py-1 text-sm focus:ring-yellow-500 focus:border-yellow-500"
+                                    />
+                                  ) : (
+                                    <dd className="mt-0.5 text-sm text-gray-900">
+                                      {safeFixed(roll.weightKg, 2) != null
+                                        ? safeFixed(roll.weightKg, 2)
+                                        : "-"}
+                                    </dd>
+                                  )}
+                                </div>
+                                <div>
+                                  <dt className="text-xs font-medium text-gray-500">DN Number</dt>
+                                  {isEditing ? (
+                                    <input
+                                      type="text"
+                                      value={
+                                        rawRollDeliveryNoteNumber || rawNoteDeliveryNoteNumber || ""
+                                      }
+                                      onChange={(e) =>
+                                        handleRollFieldChange(
+                                          dnIdx,
+                                          rollIdx,
+                                          "deliveryNoteNumber",
+                                          e.target.value,
+                                        )
+                                      }
+                                      className="mt-0.5 w-full rounded border border-gray-300 px-2 py-1 text-sm focus:ring-yellow-500 focus:border-yellow-500"
+                                    />
+                                  ) : (
+                                    <dd className="mt-0.5 text-sm text-gray-900">
+                                      {rawRollDeliveryNoteNumber2 ||
+                                        rawNoteDeliveryNoteNumber ||
+                                        "-"}
+                                    </dd>
+                                  )}
+                                </div>
+                                <div>
+                                  <dt className="text-xs font-medium text-gray-500">
+                                    Delivery Date
+                                  </dt>
+                                  {isEditing ? (
+                                    <input
+                                      type="date"
+                                      value={rawRollDeliveryDate || rawNoteDeliveryDate || ""}
+                                      onChange={(e) =>
+                                        handleRollFieldChange(
+                                          dnIdx,
+                                          rollIdx,
+                                          "deliveryDate",
+                                          e.target.value,
+                                        )
+                                      }
+                                      className="mt-0.5 w-full rounded border border-gray-300 px-2 py-1 text-sm focus:ring-yellow-500 focus:border-yellow-500"
+                                    />
+                                  ) : (
+                                    <dd className="mt-0.5 text-sm text-gray-900">
+                                      {rawNoteDeliveryDate || "-"}
+                                    </dd>
+                                  )}
+                                </div>
+                                <div>
+                                  <dt className="text-xs font-medium text-gray-500">Customer</dt>
+                                  {isEditing ? (
+                                    <input
+                                      type="text"
+                                      value={rawRollCustomerName || rawDnCustomerName || ""}
+                                      onChange={(e) =>
+                                        handleRollFieldChange(
+                                          dnIdx,
+                                          rollIdx,
+                                          "customerName",
+                                          e.target.value,
+                                        )
+                                      }
+                                      className="mt-0.5 w-full rounded border border-gray-300 px-2 py-1 text-sm focus:ring-yellow-500 focus:border-yellow-500"
+                                    />
+                                  ) : (
+                                    <dd className="mt-0.5 text-sm text-gray-900">
+                                      {rawRollCustomerName2 || rawDnCustomerName || "-"}
+                                    </dd>
+                                  )}
+                                </div>
+                                <div>
+                                  <dt className="text-xs font-medium text-gray-500">PO/Ref</dt>
+                                  {isEditing ? (
+                                    <input
+                                      type="text"
+                                      value={
+                                        rawRollCustomerReference ||
+                                        rawDnCustomerReference ||
+                                        rawNoteCustomerReference ||
+                                        ""
+                                      }
+                                      onChange={(e) =>
+                                        handleRollFieldChange(
+                                          dnIdx,
+                                          rollIdx,
+                                          "customerReference",
+                                          e.target.value,
+                                        )
+                                      }
+                                      className="mt-0.5 w-full rounded border border-gray-300 px-2 py-1 text-sm focus:ring-yellow-500 focus:border-yellow-500"
+                                    />
+                                  ) : (
+                                    <dd className="mt-0.5 text-sm text-blue-600 font-medium">
+                                      {rawRollCustomerReference2 ||
+                                        rawDnCustomerReference ||
+                                        rawNoteCustomerReference ||
+                                        "-"}
+                                    </dd>
+                                  )}
+                                </div>
+                                <div>
+                                  <dt className="text-xs font-medium text-gray-500">Page</dt>
+                                  <dd className="mt-0.5 text-sm text-gray-900">
+                                    {rawRollPageNumber || "-"}
+                                  </dd>
+                                </div>
+                              </dl>
+                            </div>
+                          );
+                        })
+                    : [
+                        <div
+                          key={dnIdx}
+                          className="rounded-lg border border-gray-200 p-3 text-sm text-gray-500"
+                        >
+                          No rolls data
+                          {rawDnDeliveryNoteNumber ? ` for DN ${rawDnDeliveryNoteNumber}` : ""}
+                        </div>,
+                      ];
+                })}
                 {isEditing && (
-                  <div className="px-4 py-3 border-t border-gray-200 bg-gray-50">
-                    <button
-                      onClick={() => handleAddRow(0)}
-                      className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-yellow-700 bg-yellow-50 border border-yellow-300 rounded-md hover:bg-yellow-100"
+                  <button
+                    onClick={() => handleAddRow(0)}
+                    className="mt-1 inline-flex items-center px-3 py-1.5 text-sm font-medium text-yellow-700 bg-yellow-50 border border-yellow-300 rounded-md hover:bg-yellow-100"
+                  >
+                    <svg
+                      className="w-4 h-4 mr-1.5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
                     >
-                      <svg
-                        className="w-4 h-4 mr-1.5"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                        />
-                      </svg>
-                      Add Row
-                    </button>
-                  </div>
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                      />
+                    </svg>
+                    Add Row
+                  </button>
                 )}
               </div>
             </div>
           )}
-        </div>
-      </div>
 
-      {note.podPageNumbers && note.podPageNumbers.length > 0 && (
-        <div className="bg-white shadow rounded-lg overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-medium text-gray-900">Proof of Delivery</h2>
-          </div>
-          <div className="px-6 py-4 flex flex-wrap gap-3">
-            {note.podPageNumbers.map((pageNum) => (
-              <button
-                key={pageNum}
-                onClick={() => handleViewPod(pageNum)}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                  />
-                </svg>
-                View POD - Page {pageNum}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {items.length > 0 && (
-        <div className="bg-white shadow rounded-lg overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-medium text-gray-900">
-              {note.deliveryNoteType === "COMPOUND" ? "Batch Items" : "Roll Items"}
-            </h2>
-          </div>
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                {note.deliveryNoteType === "COMPOUND" ? (
-                  <>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      Batch Range
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      Weight (kg)
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      Linked Batches
-                    </th>
-                  </>
-                ) : (
-                  <>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      Roll Number
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      Thickness (mm)
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      Width (mm)
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      Length (m)
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      Area (m²)
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      Weight (kg)
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      Theo. Weight
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      Deviation
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      Linked Batches
-                    </th>
-                  </>
-                )}
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {items.map((item) => {
-                const rawItemRollNumber = item.rollNumber;
-                const itemAreaSqM =
-                  item.widthMm && item.lengthM ? (item.widthMm * item.lengthM) / 1000 : null;
-                const linkedBatchIds = item.linkedBatchIds;
-                const linkedBatchCount = linkedBatchIds ? linkedBatchIds.length : 0;
-                return (
-                  <tr
-                    key={item.id}
-                    className={`hover:bg-gray-50 ${item.weightFlagged ? "bg-amber-50" : ""}`}
+          {note.podPageNumbers && note.podPageNumbers.length > 0 && (
+            <div className="bg-white shadow rounded-lg overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <h2 className="text-lg font-medium text-gray-900">Proof of Delivery</h2>
+              </div>
+              <div className="px-6 py-4 flex flex-wrap gap-3">
+                {note.podPageNumbers.map((pageNum) => (
+                  <button
+                    key={pageNum}
+                    onClick={() => handleViewPod(pageNum)}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium"
                   >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                      />
+                    </svg>
+                    View POD - Page {pageNum}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {items.length > 0 && (
+            <div className="bg-white shadow rounded-lg overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <h2 className="text-lg font-medium text-gray-900">
+                  {note.deliveryNoteType === "COMPOUND" ? "Batch Items" : "Roll Items"}
+                </h2>
+              </div>
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
                     {note.deliveryNoteType === "COMPOUND" ? (
                       <>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {item.batchNumberStart}
-                          {item.batchNumberEnd && item.batchNumberEnd !== item.batchNumberStart
-                            ? ` - ${item.batchNumberEnd}`
-                            : ""}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {safeFixed(item.weightKg, 2) || "-"}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {linkedBatchCount}
-                        </td>
+                        <th
+                          scope="col"
+                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
+                          Batch Range
+                        </th>
+                        <th
+                          scope="col"
+                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
+                          Weight (kg)
+                        </th>
+                        <th
+                          scope="col"
+                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
+                          Linked Batches
+                        </th>
                       </>
                     ) : (
                       <>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {rawItemRollNumber || "-"}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {item.thicknessMm != null ? item.thicknessMm : "-"}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {item.widthMm != null ? item.widthMm : "-"}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {item.lengthM != null ? item.lengthM : "-"}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {itemAreaSqM ? itemAreaSqM.toFixed(2) : "-"}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {safeFixed(item.rollWeightKg, 2) || "-"}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {safeFixed(item.theoreticalWeightKg, 2) || "-"}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          {item.weightDeviationPct != null ? (
-                            <span
-                              className={`inline-flex items-center ${item.weightFlagged ? "text-amber-700 font-semibold" : "text-gray-500"}`}
-                            >
-                              {item.weightFlagged && (
-                                <svg
-                                  className="w-4 h-4 mr-1 text-amber-500"
-                                  fill="currentColor"
-                                  viewBox="0 0 20 20"
-                                >
-                                  <path
-                                    fillRule="evenodd"
-                                    d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                                    clipRule="evenodd"
-                                  />
-                                </svg>
-                              )}
-                              {item.weightDeviationPct > 0 ? "+" : ""}
-                              {safeFixed(item.weightDeviationPct, 1)}%
-                            </span>
-                          ) : (
-                            "-"
-                          )}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {linkedBatchCount}
-                        </td>
+                        <th
+                          scope="col"
+                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
+                          Roll Number
+                        </th>
+                        <th
+                          scope="col"
+                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
+                          Thickness (mm)
+                        </th>
+                        <th
+                          scope="col"
+                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
+                          Width (mm)
+                        </th>
+                        <th
+                          scope="col"
+                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
+                          Length (m)
+                        </th>
+                        <th
+                          scope="col"
+                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
+                          Area (m²)
+                        </th>
+                        <th
+                          scope="col"
+                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
+                          Weight (kg)
+                        </th>
+                        <th
+                          scope="col"
+                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
+                          Theo. Weight
+                        </th>
+                        <th
+                          scope="col"
+                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
+                          Deviation
+                        </th>
+                        <th
+                          scope="col"
+                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
+                          Linked Batches
+                        </th>
                       </>
                     )}
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {items.map((item) => {
+                    const rawItemRollNumber = item.rollNumber;
+                    const itemAreaSqM =
+                      item.widthMm && item.lengthM ? (item.widthMm * item.lengthM) / 1000 : null;
+                    const linkedBatchIds = item.linkedBatchIds;
+                    const linkedBatchCount = linkedBatchIds ? linkedBatchIds.length : 0;
+                    return (
+                      <tr
+                        key={item.id}
+                        className={`hover:bg-gray-50 ${item.weightFlagged ? "bg-amber-50" : ""}`}
+                      >
+                        {note.deliveryNoteType === "COMPOUND" ? (
+                          <>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                              {item.batchNumberStart}
+                              {item.batchNumberEnd && item.batchNumberEnd !== item.batchNumberStart
+                                ? ` - ${item.batchNumberEnd}`
+                                : ""}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {safeFixed(item.weightKg, 2) || "-"}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {linkedBatchCount}
+                            </td>
+                          </>
+                        ) : (
+                          <>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                              {rawItemRollNumber || "-"}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {item.thicknessMm != null ? item.thicknessMm : "-"}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {item.widthMm != null ? item.widthMm : "-"}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {item.lengthM != null ? item.lengthM : "-"}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {itemAreaSqM ? itemAreaSqM.toFixed(2) : "-"}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {safeFixed(item.rollWeightKg, 2) || "-"}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {safeFixed(item.theoreticalWeightKg, 2) || "-"}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                              {item.weightDeviationPct != null ? (
+                                <span
+                                  className={`inline-flex items-center ${item.weightFlagged ? "text-amber-700 font-semibold" : "text-gray-500"}`}
+                                >
+                                  {item.weightFlagged && (
+                                    <svg
+                                      className="w-4 h-4 mr-1 text-amber-500"
+                                      fill="currentColor"
+                                      viewBox="0 0 20 20"
+                                    >
+                                      <path
+                                        fillRule="evenodd"
+                                        d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                                        clipRule="evenodd"
+                                      />
+                                    </svg>
+                                  )}
+                                  {item.weightDeviationPct > 0 ? "+" : ""}
+                                  {safeFixed(item.weightDeviationPct, 1)}%
+                                </span>
+                              ) : (
+                                "-"
+                              )}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {linkedBatchCount}
+                            </td>
+                          </>
+                        )}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       {showLinkModal && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
