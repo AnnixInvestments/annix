@@ -953,6 +953,13 @@ export default function DeliveryNoteDetailPage() {
                   </svg>
                   <p className="mt-3 text-sm font-medium text-gray-700">Document unavailable</p>
                   <p className="mt-1 text-xs text-gray-500 max-w-xs mx-auto">{docError}</p>
+                  <button
+                    type="button"
+                    onClick={() => loadDocPage(docPageNumber)}
+                    className="mt-4 inline-flex items-center px-3 py-1.5 text-xs font-medium rounded border border-gray-300 text-gray-700 hover:bg-gray-100"
+                  >
+                    Retry
+                  </button>
                 </div>
               ) : (
                 <div className="text-center py-12 text-gray-500">No document loaded</div>
