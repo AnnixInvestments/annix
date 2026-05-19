@@ -189,40 +189,37 @@ export default function PortalToolbar(props: PortalToolbarProps) {
 
             {props.hideThemeToggle ? null : <ThemeToggle />}
 
-            <div className="relative group/user" ref={menuRef}>
-              <button
-                onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                className="flex items-center space-x-3 focus:outline-none"
-              >
-                <div className="flex items-center space-x-2">
-                  <span
-                    className="hidden md:block text-base font-medium"
-                    style={{ color: corpId.colors.accent.orange }}
-                  >
-                    {user?.firstName} {user?.lastName}
-                  </span>
-                  <div
-                    className="w-10 h-10 rounded-full flex items-center justify-center font-semibold text-sm transition-colors"
-                    style={{
-                      backgroundColor: corpId.colors.accent.orange,
-                      color: corpId.colors.text.onOrange,
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = corpId.colors.accent.orangeLight;
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = corpId.colors.accent.orange;
-                    }}
-                  >
-                    {userInitials}
+            <div className="relative" ref={menuRef}>
+              <Tooltip text="Account menu and settings" align="end" disabled={isUserMenuOpen}>
+                <button
+                  onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                  className="flex items-center space-x-3 focus:outline-none"
+                >
+                  <div className="flex items-center space-x-2">
+                    <span
+                      className="hidden md:block text-base font-medium"
+                      style={{ color: corpId.colors.accent.orange }}
+                    >
+                      {user?.firstName} {user?.lastName}
+                    </span>
+                    <div
+                      className="w-10 h-10 rounded-full flex items-center justify-center font-semibold text-sm transition-colors"
+                      style={{
+                        backgroundColor: corpId.colors.accent.orange,
+                        color: corpId.colors.text.onOrange,
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = corpId.colors.accent.orangeLight;
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = corpId.colors.accent.orange;
+                      }}
+                    >
+                      {userInitials}
+                    </div>
                   </div>
-                </div>
-              </button>
-              {!isUserMenuOpen && (
-                <span className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 text-xs text-white bg-slate-800 rounded opacity-0 group-hover/user:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 shadow-lg">
-                  Account menu and settings
-                </span>
-              )}
+                </button>
+              </Tooltip>
 
               {isUserMenuOpen && (
                 <div className="absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50">

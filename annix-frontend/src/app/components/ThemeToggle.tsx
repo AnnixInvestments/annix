@@ -16,7 +16,7 @@ export function ThemeToggle(props: ThemeToggleProps) {
   const iconClass = iconClassName ?? "w-5 h-5 text-amix-orange";
 
   return (
-    <Tooltip text={tooltipText} position="bottom">
+    <Tooltip text={tooltipText} position="bottom" align="end">
       <button onClick={toggleTheme} className={buttonClass} aria-label={tooltipText}>
         {resolvedTheme === "light" ? (
           <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
