@@ -138,18 +138,23 @@ export function ImageViewerToolbar(props: ImageViewerToolbarProps) {
           />
         </svg>
       </button>
-      {(state.scale !== 1.0 || state.rotation !== 0) && (
-        <button onClick={onReset} className={btnClass} title="Reset view">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M6 18L18 6M6 6l12 12"
-            />
-          </svg>
-        </button>
-      )}
+      {/* Always rendered (disabled when there is nothing to reset) so the
+          toolbar width stays constant — otherwise it shifts on first zoom. */}
+      <button
+        onClick={onReset}
+        disabled={state.scale === 1.0 && state.rotation === 0}
+        className={`${btnClass} disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-gray-500`}
+        title="Reset view"
+      >
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M6 18L18 6M6 6l12 12"
+          />
+        </svg>
+      </button>
     </div>
   );
 }
