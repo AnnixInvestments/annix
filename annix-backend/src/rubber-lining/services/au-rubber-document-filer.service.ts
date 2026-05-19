@@ -86,15 +86,20 @@ export class AuRubberDocumentFilerService {
           note.deliveryNoteNumber,
           filename,
         );
-        await this.storageService.upload(
+        // storageService.upload() always writes the file under a generated
+        // UUID filename and returns the real storage key. documentPath MUST be
+        // that returned key — recording the computed targetPath instead leaves
+        // documentPath pointing at an object that was never written, which
+        // surfaces later as "File not found" when the slice is opened.
+        const uploaded = await this.storageService.upload(
           this.bufferAsMulter(slicedBuffer, filename, isPdf ? "application/pdf" : "image/png"),
           targetPath.substring(0, targetPath.lastIndexOf("/")),
         );
-        await this.deliveryNoteRepository.update(note.id, { documentPath: targetPath });
+        await this.deliveryNoteRepository.update(note.id, { documentPath: uploaded.path });
         this.pdfPageCacheService.invalidate(parentDocumentPath);
-        this.pdfPageCacheService.invalidate(targetPath);
+        this.pdfPageCacheService.invalidate(uploaded.path);
         this.logger.log(
-          `Filed DN ${note.deliveryNoteNumber} (#${note.id}) → ${targetPath} (${slicedBuffer.length} bytes, ${note.sourcePageNumbers?.length ?? 0} page(s))`,
+          `Filed DN ${note.deliveryNoteNumber} (#${note.id}) → ${uploaded.path} (${slicedBuffer.length} bytes, ${note.sourcePageNumbers?.length ?? 0} page(s))`,
         );
       }),
     );
