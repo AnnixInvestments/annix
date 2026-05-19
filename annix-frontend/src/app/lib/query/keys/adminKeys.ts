@@ -23,6 +23,7 @@ export const adminKeys = {
   dashboard: {
     all: ["admin", "dashboard"] as const,
     stats: () => [...adminKeys.dashboard.all, "stats"] as const,
+    // Per-app "needs attention" counts for the Global Apps badges + dashboard panel.
     attention: () => [...adminKeys.dashboard.all, "attention"] as const,
   },
   rfqs: {
