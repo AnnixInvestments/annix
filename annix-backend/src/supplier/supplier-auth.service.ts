@@ -344,11 +344,13 @@ export class SupplierAuthService {
       const savedProfile = await queryRunner.manager.save(profile);
 
       const documentsComplete = !!(vatDocument && companyRegDocument);
+      const documentsNeedReview = this.documentsNeedManualReview(dto.documentVerificationResults);
       const onboarding = this.onboardingRepo.create({
         supplierId: savedProfile.id,
         status: SupplierOnboardingStatus.DRAFT,
         companyDetailsComplete: true,
         documentsComplete,
+        documentsNeedReview,
       });
       await queryRunner.manager.save(onboarding);
 
@@ -518,6 +520,28 @@ export class SupplierAuthService {
     }
 
     return idsNeedingVerification;
+  }
+
+  /**
+   * True when any client-supplied document verification result lands in
+   * MANUAL_REVIEW (a field mismatch or low OCR confidence). Documents without a
+   * client-side result are verified asynchronously — DocumentVerificationService
+   * flips the onboarding flag if that later check finds a mismatch.
+   */
+  private documentsNeedManualReview(verificationResults?: {
+    vat?: any;
+    registration?: any;
+    bee?: any;
+  }): boolean {
+    if (!verificationResults) {
+      return false;
+    }
+    return [verificationResults.vat, verificationResults.registration, verificationResults.bee]
+      .filter(Boolean)
+      .some(
+        (result) =>
+          this.determineValidationStatus(result) === SupplierDocumentValidationStatus.MANUAL_REVIEW,
+      );
   }
 
   private determineValidationStatus(verificationResult: any): SupplierDocumentValidationStatus {

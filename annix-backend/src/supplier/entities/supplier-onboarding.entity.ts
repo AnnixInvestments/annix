@@ -48,6 +48,10 @@ export class SupplierOnboarding {
   @Column({ name: "documents_complete", default: false })
   documentsComplete: boolean;
 
+  /** Set when document verification found a field mismatch or low OCR confidence. */
+  @Column({ name: "documents_need_review", default: false })
+  documentsNeedReview: boolean;
+
   @Column({ name: "submitted_at", type: "timestamp", nullable: true })
   submittedAt: Date | null;
 

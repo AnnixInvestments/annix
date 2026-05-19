@@ -6,6 +6,7 @@ import {
   CustomerDocumentType,
   CustomerDocumentValidationStatus,
 } from "../../customer/entities/customer-document.entity";
+import { CustomerOnboarding } from "../../customer/entities/customer-onboarding.entity";
 import { CustomerProfile } from "../../customer/entities/customer-profile.entity";
 import { now } from "../../lib/datetime";
 import { Company } from "../../platform/entities/company.entity";
@@ -15,6 +16,7 @@ import {
   SupplierDocumentType,
   SupplierDocumentValidationStatus,
 } from "../../supplier/entities/supplier-document.entity";
+import { SupplierOnboarding } from "../../supplier/entities/supplier-onboarding.entity";
 import { SupplierProfile } from "../../supplier/entities/supplier-profile.entity";
 import {
   ExpectedCompanyData,
@@ -53,6 +55,10 @@ export class DocumentVerificationService {
     private readonly supplierDocumentRepo: Repository<SupplierDocument>,
     @InjectRepository(SupplierProfile)
     private readonly supplierProfileRepo: Repository<SupplierProfile>,
+    @InjectRepository(CustomerOnboarding)
+    private readonly customerOnboardingRepo: Repository<CustomerOnboarding>,
+    @InjectRepository(SupplierOnboarding)
+    private readonly supplierOnboardingRepo: Repository<SupplierOnboarding>,
     private readonly storageService: S3StorageService,
     private readonly verifierService: RegistrationDocumentVerifierService,
   ) {}
@@ -133,6 +139,10 @@ export class DocumentVerificationService {
     const requiresManualReview =
       !verificationResult.allFieldsMatch || verificationResult.overallConfidence < 0.7;
 
+    if (requiresManualReview) {
+      await this.customerOnboardingRepo.update({ customerId }, { documentsNeedReview: true });
+    }
+
     return {
       success: verificationResult.success,
       documentId,
@@ -193,6 +203,10 @@ export class DocumentVerificationService {
 
     const requiresManualReview =
       !verificationResult.allFieldsMatch || verificationResult.overallConfidence < 0.7;
+
+    if (requiresManualReview) {
+      await this.supplierOnboardingRepo.update({ supplierId }, { documentsNeedReview: true });
+    }
 
     return {
       success: verificationResult.success,
