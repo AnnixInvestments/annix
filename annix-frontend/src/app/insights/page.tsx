@@ -266,7 +266,10 @@ function AdminActions() {
   }, [status, lastFinishedAt]);
 
   useEffect(() => {
-    if (isRunning) {
+    // Only hijack the screen with the progress modal for a run the user
+    // started from this page. Scheduled / catch-up crons run server-side and
+    // must not interrupt anyone who simply opened the dashboard.
+    if (isRunning && awaitingOutcome.current) {
       showExtraction({
         brand: "insights",
         label: "Running daily cron pipeline…",
