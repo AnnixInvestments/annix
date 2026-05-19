@@ -18,12 +18,23 @@ const nextConfig: NextConfig = {
   },
 
   async headers() {
+    // An immutable, year-long cache is only safe for production builds, whose
+    // /_next/static filenames are content-hashed. Turbopack dev chunks reuse
+    // stable names, so an immutable header would pin stale code in the browser
+    // across every edit — apply this rule in production only.
+    const productionStaticCaching =
+      process.env.NODE_ENV === "production"
+        ? [
+            {
+              source: "/_next/static/:path*",
+              headers: [
+                { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
+              ],
+            },
+          ]
+        : [];
     return [
-      {
-        // Content-hashed build assets — safe to cache forever.
-        source: "/_next/static/:path*",
-        headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
-      },
+      ...productionStaticCaching,
       {
         // Marketing-site images: long cache, but revalidate so a swapped
         // banner is eventually picked up (these filenames are not hashed).
