@@ -117,11 +117,20 @@ export class CustomerAuthService {
       throw new ConflictException("An account with this email already exists");
     }
 
-    const existingCompany = await this.companyRepo.findOne({
-      where: { registrationNumber: dto.company.registrationNumber },
-    });
-    if (existingCompany) {
-      throw new ConflictException("A company with this registration number already exists");
+    // A company has a single registration number shared across every Annix app
+    // and side (customer/supplier). Only block if this company already has a
+    // customer account — a supplier of the same company may still register here.
+    if (dto.company.registrationNumber) {
+      const existingCustomerCount = await this.profileRepo
+        .createQueryBuilder("profile")
+        .innerJoin("profile.company", "company")
+        .where("company.registrationNumber = :registrationNumber", {
+          registrationNumber: dto.company.registrationNumber,
+        })
+        .getCount();
+      if (existingCustomerCount > 0) {
+        throw new ConflictException("A customer account is already registered for this company");
+      }
     }
 
     const queryRunner = this.dataSource.createQueryRunner();
