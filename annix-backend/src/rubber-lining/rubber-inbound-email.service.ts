@@ -1417,44 +1417,80 @@ ${truncatedText}`;
     throw new Error(`Cannot determine ${targetType} for file ${filename} — none exist`);
   }
 
-  private async detectSupplierFromPdf(pdfBuffer: Buffer, filename: string): Promise<number> {
-    const pdfText = await extractTextFromPdf(pdfBuffer);
-    const pdfTextLower = pdfText.toLowerCase();
+  /**
+   * Match a supplier company from a chunk of text (a PDF text layer, a
+   * filename, or a vision-extracted company name). Impilo is checked first:
+   * a document that names "impilo" is from Impilo, whereas the S&N markers
+   * ("calendered products") are generic enough to false-positive on an
+   * Impilo toll-calendering DN.
+   */
+  private matchSupplierByKeyword(
+    text: string,
+    filename: string,
+    companies: RubberCompany[],
+  ): RubberCompany | null {
+    const t = (text || "").toLowerCase();
+    const f = (filename || "").toLowerCase();
 
-    const companies = await this.companyRepository.find();
+    if (t.includes("impilo") || f.includes("impilo") || f.startsWith("imp-")) {
+      const impilo = companies.find((c) => c.name.toLowerCase().includes("impilo"));
+      if (impilo) return impilo;
+    }
 
     if (
-      pdfTextLower.includes("s&n") ||
-      pdfTextLower.includes("s & n") ||
-      pdfTextLower.includes("sandrubber") ||
-      pdfTextLower.includes("calendered products")
+      t.includes("s&n") ||
+      t.includes("s & n") ||
+      t.includes("sandrubber") ||
+      t.includes("calendered products")
     ) {
-      const snCompany = companies.find(
+      const sn = companies.find(
         (c) => c.name.toLowerCase().includes("s&n") || c.name.toLowerCase().includes("s & n"),
       );
-      if (snCompany) {
-        this.logger.log(`Auto-detected supplier: ${snCompany.name} (from PDF content)`);
-        return snCompany.id;
-      }
+      if (sn) return sn;
     }
 
-    if (
-      pdfTextLower.includes("impilo") ||
-      filename.toLowerCase().includes("impilo") ||
-      filename.toLowerCase().startsWith("imp-")
-    ) {
-      const impiloCompany = companies.find((c) => c.name.toLowerCase().includes("impilo"));
-      if (impiloCompany) {
-        this.logger.log(`Auto-detected supplier: ${impiloCompany.name} (from PDF content)`);
-        return impiloCompany.id;
-      }
+    if (t.includes("au industries") || t.includes("au-industrie")) {
+      const au = companies.find((c) => c.name.toLowerCase().includes("au industrie"));
+      if (au) return au;
     }
 
-    if (pdfTextLower.includes("au industries") || pdfTextLower.includes("au-industrie")) {
-      const auCompany = companies.find((c) => c.name.toLowerCase().includes("au industrie"));
-      if (auCompany) {
-        this.logger.log(`Auto-detected supplier: ${auCompany.name} (from PDF content)`);
-        return auCompany.id;
+    return null;
+  }
+
+  private async detectSupplierFromPdf(pdfBuffer: Buffer, filename: string): Promise<number> {
+    const companies = await this.companyRepository.find();
+    const pdfText = await extractTextFromPdf(pdfBuffer);
+
+    const fromText = this.matchSupplierByKeyword(pdfText, filename, companies);
+    if (fromText) {
+      this.logger.log(`Auto-detected supplier: ${fromText.name} (from PDF text layer)`);
+      return fromText.id;
+    }
+
+    // Scanned or photographed delivery notes carry no text layer, so the
+    // keyword match above (and the text-based AI fallback below) find
+    // nothing. Identify the issuer visually from the letterhead before
+    // falling back — otherwise every scanned DN silently lands on whichever
+    // supplier happens to have the lowest id (historically: S&N Rubber).
+    if (pdfText.trim().length < 50) {
+      try {
+        const visualName = await this.cocExtractionService.identifySupplierFromImages(pdfBuffer);
+        if (visualName) {
+          const fromVision = this.matchSupplierByKeyword(visualName, filename, companies);
+          if (fromVision) {
+            this.logger.log(
+              `Vision-detected supplier: ${fromVision.name} ("${visualName}") for ${filename}`,
+            );
+            return fromVision.id;
+          }
+          this.logger.warn(
+            `Vision identified supplier "${visualName}" for ${filename} but it matched no known company`,
+          );
+        }
+      } catch (err) {
+        this.logger.warn(
+          `Vision supplier detection failed for ${filename}: ${err instanceof Error ? err.message : String(err)}`,
+        );
       }
     }
 

@@ -293,6 +293,43 @@ describe("RubberInboundEmailService", () => {
     });
   });
 
+  describe("matchSupplierByKeyword", () => {
+    // Mirrors production: two "S&N Rubber" rows (a known duplicate) plus
+    // Impilo. id 8 is the lowest-id supplier, which is what a blind fallback
+    // would wrongly pick for an undetected Impilo delivery note.
+    const companies = [
+      { id: 8, name: "S&N Rubber" },
+      { id: 9, name: "Impilo Industries" },
+      { id: 10, name: "S&N Rubber" },
+    ];
+    const match = (text: string, filename: string) =>
+      (service as any).matchSupplierByKeyword(text, filename, companies);
+
+    it("matches Impilo from document text", () => {
+      expect(match("Impilo Industries Pty Ltd — Delivery Note", "scan.pdf")?.id).toBe(9);
+    });
+
+    it("matches S&N from document text", () => {
+      expect(match("S&N RUBBER CALENDERED PRODUCTS", "scan.pdf")?.id).toBe(8);
+    });
+
+    it("matches Impilo from the filename when text is empty", () => {
+      expect(match("", "IMP-177565.pdf")?.id).toBe(9);
+    });
+
+    it("keeps an Impilo toll-calendering DN on Impilo, not S&N", () => {
+      // Impilo DNs describe 'Toll Calendered' line items; Impilo must win
+      // over the generic S&N 'calendered products' marker.
+      const text = "Impilo Industries Pty Ltd\nTOLLCALENDERROLLS Toll Calendered Rolls";
+      expect(match(text, "scan.pdf")?.id).toBe(9);
+    });
+
+    it("returns null when no supplier keyword is present", () => {
+      expect(match("", "scan.pdf")).toBeNull();
+      expect(match("a delivery note with no issuer name", "scan.pdf")).toBeNull();
+    });
+  });
+
   describe("determineDocumentType", () => {
     const determine = (subject: string) => (service as any).determineDocumentType(subject);
 

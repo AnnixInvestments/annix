@@ -2004,4 +2004,44 @@ Return ONLY a valid JSON object of this exact shape (no extra fields, no comment
       processingTimeMs,
     };
   }
+
+  /**
+   * Identify the supplier company that ISSUED a document by reading its
+   * letterhead visually. Used for scanned/photographed PDFs that carry no
+   * text layer, where keyword matching on extracted text finds nothing.
+   * Returns the issuer's name as printed, or null if it cannot be determined.
+   */
+  async identifySupplierFromImages(pdfBuffer: Buffer): Promise<string | null> {
+    if (!this.apiKey) {
+      this.logger.warn("GEMINI_API_KEY not configured — cannot vision-detect supplier");
+      return null;
+    }
+
+    const images = await this.convertPdfToImages(pdfBuffer);
+    if (images.length === 0) return null;
+
+    const systemPrompt = `You identify which company ISSUED a rubber-industry document (a delivery note, certificate of conformance, or invoice).
+The issuer is the company whose letterhead, logo, and address appear at the TOP of the document — NOT the customer it is addressed to.
+
+Known issuers in this system:
+- "Impilo Industries" — a toll calenderer. Documents are headed "Impilo Industries" / "Impilo Industries Pty Ltd". Document numbers look like "IN177565" or "D08422". Header table columns: Document No | Order No. | Date | Delivery Details.
+- "S&N Rubber" — a compounder/calenderer. Documents are headed "S&N RUBBER", often with a "CALENDERED PRODUCTS" subtitle, frequently on a yellow pre-printed form.
+- "AU Industries" — the customer receiving goods. Only treat AU Industries as the issuer if this is clearly an OUTGOING AU Industries delivery note.
+
+Respond ONLY with a JSON object: {"supplierName": string|null, "confidence": number} where supplierName is the issuing company's name exactly as printed (or null if you genuinely cannot tell) and confidence is 0.0-1.0.`;
+
+    const response = await this.callGeminiWithImages(
+      systemPrompt,
+      "Identify the company that ISSUED this document from its letterhead. Return ONLY the JSON object.",
+      images.slice(0, 2),
+      "supplier-identification",
+    );
+
+    const name = response.data?.supplierName;
+    if (typeof name === "string" && name.trim().length > 0) {
+      this.logger.log(`Vision supplier identification: "${name.trim()}"`);
+      return name.trim();
+    }
+    return null;
+  }
 }

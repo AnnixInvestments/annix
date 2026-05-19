@@ -1101,6 +1101,7 @@ export class RubberDeliveryNoteService {
         ownRolls,
         suppliers,
         note.supplierCompanyId,
+        extractedData.supplierName,
       );
       note.status = DeliveryNoteStatus.EXTRACTED;
       note.sourcePageNumbers = this.sourcePagesFromRolls(ownRolls);
@@ -1124,6 +1125,7 @@ export class RubberDeliveryNoteService {
         singleRolls,
         suppliers,
         note.supplierCompanyId,
+        extractedData.supplierName,
       );
       note.supplierCompanyId = resolvedSupplierId;
       note.status = DeliveryNoteStatus.EXTRACTED;
@@ -1166,6 +1168,7 @@ export class RubberDeliveryNoteService {
           rolls,
           suppliers,
           note.supplierCompanyId,
+          extractedData.supplierName,
         );
 
         const existingActive = await this.versioningService.existingActiveDeliveryNote(
@@ -1289,6 +1292,7 @@ export class RubberDeliveryNoteService {
           rolls,
           suppliers,
           parent.supplierCompanyId,
+          dn.supplierName,
         );
 
         const existingActive = await this.versioningService.existingActiveDeliveryNote(
@@ -1363,8 +1367,14 @@ export class RubberDeliveryNoteService {
     rolls: { supplierName?: string | null }[],
     suppliers: RubberCompany[],
     fallbackSupplierId: number,
+    documentSupplierName?: string | null,
   ): number {
-    const supplierName = rolls.find((r) => r.supplierName)?.supplierName;
+    // Prefer a per-roll supplier name, but fall back to the document-level
+    // supplierName: vision extractions often fill the top-level field while
+    // leaving it null on individual rolls, and without this fallback the
+    // resolution silently keeps the (possibly wrong) upload-time supplier.
+    const supplierName =
+      rolls.find((r) => r.supplierName)?.supplierName ?? documentSupplierName ?? null;
     if (!supplierName) return fallbackSupplierId;
 
     const nameLower = supplierName.toLowerCase();
