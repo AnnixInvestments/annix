@@ -1,6 +1,6 @@
 "use client";
 
-import { toPairs as entries } from "es-toolkit/compat";
+import { toPairs as entries, isNumber } from "es-toolkit/compat";
 import { Globe2 } from "lucide-react";
 import { useMacroHistory, useMacroToday } from "@/app/lib/query/hooks";
 import { Sparkline } from "./Sparkline";
@@ -14,7 +14,9 @@ export function MacroSentimentPanel() {
 
   const todayData = today.data;
   const historyData = history.data;
-  const todayRow = todayData === undefined ? null : todayData;
+  // A "no snapshot" backend response is null, but the shared apiClient turns an
+  // empty HTTP body into {}, so guard on the actual payload, not just null.
+  const todayRow = todayData != null && isNumber(todayData.overallScore) ? todayData : null;
   const historyRows = historyData === undefined ? [] : historyData;
   const sparklineValues = historyRows.map((row) => row.overallScore);
 
