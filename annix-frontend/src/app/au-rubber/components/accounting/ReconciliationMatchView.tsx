@@ -6,6 +6,12 @@ interface MatchItem {
   systemAmount: number | null;
   matchResult: string;
   difference: number | null;
+  // Cascade audit (Phase 1 backend). Null on the *Present fields means the
+  // check is not applicable (e.g. NOT_IN_SYSTEM — we have no STI to follow
+  // links from, or the STI carries no DN ref).
+  linkedDeliveryNoteRef?: string | null;
+  linkedDeliveryNotePresent?: boolean | null;
+  linkedSupplierCocPresent?: boolean | null;
 }
 
 interface ReconciliationMatchViewProps {
@@ -15,6 +21,37 @@ interface ReconciliationMatchViewProps {
 function formatCurrency(amount: number | null): string {
   if (amount === null) return "-";
   return `R ${amount.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function CascadeFlag({
+  present,
+  tooltip,
+}: {
+  present: boolean | null | undefined;
+  tooltip?: string;
+}) {
+  if (present === true) {
+    return (
+      <span title={tooltip} className="text-green-600 dark:text-green-400">
+        ✓
+      </span>
+    );
+  }
+  if (present === false) {
+    return (
+      <span
+        title={tooltip ? `${tooltip} — missing` : "Missing"}
+        className="text-red-600 dark:text-red-400 font-bold"
+      >
+        ✗
+      </span>
+    );
+  }
+  return (
+    <span title="Not applicable" className="text-gray-400">
+      —
+    </span>
+  );
 }
 
 const RESULT_STYLES: Record<string, { bg: string; text: string; label: string }> = {
@@ -61,6 +98,12 @@ export function ReconciliationMatchView(props: ReconciliationMatchViewProps) {
               <th className="px-4 py-3 text-right">Statement Amount</th>
               <th className="px-4 py-3 text-right">System Amount</th>
               <th className="px-4 py-3 text-right">Difference</th>
+              <th className="px-4 py-3 text-center" title="Delivery Note linked to this STI">
+                DN
+              </th>
+              <th className="px-4 py-3 text-center" title="Supplier CoC linked to this STI">
+                SCoC
+              </th>
               <th className="px-4 py-3">Status</th>
             </tr>
           </thead>
@@ -97,6 +140,19 @@ export function ReconciliationMatchView(props: ReconciliationMatchViewProps) {
                     ) : (
                       "-"
                     )}
+                  </td>
+                  <td className="px-4 py-2 text-center">
+                    <CascadeFlag
+                      present={item.linkedDeliveryNotePresent}
+                      tooltip={
+                        item.linkedDeliveryNoteRef
+                          ? `Linked DN: ${item.linkedDeliveryNoteRef}`
+                          : undefined
+                      }
+                    />
+                  </td>
+                  <td className="px-4 py-2 text-center">
+                    <CascadeFlag present={item.linkedSupplierCocPresent} />
                   </td>
                   <td className="px-4 py-2">
                     <span
