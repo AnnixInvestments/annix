@@ -6,6 +6,7 @@ import { AiUsageService } from "../ai-usage/ai-usage.service";
 import { AiApp, AiProvider } from "../ai-usage/entities/ai-usage-log.entity";
 import { now } from "../lib/datetime";
 import { IStorageService, STORAGE_SERVICE, StorageArea } from "../storage/storage.interface";
+import { RubberDeliveryNote } from "./entities/rubber-delivery-note.entity";
 import {
   ExtractedStatementLineItem,
   ReconciliationStatus,
@@ -38,6 +39,13 @@ export interface ReconciliationMatchItem {
   systemAmount: number | null;
   matchResult: MatchResultType;
   difference: number | null;
+  // Cascade audit (Phase 1). Populated when the STI exists in our system —
+  // i.e. matchResult is MATCHED, AMOUNT_DISCREPANCY, or NOT_ON_STATEMENT.
+  // For NOT_IN_SYSTEM rows all three are null (we can't cascade from an STI
+  // we don't have). null on the *Present fields means "not applicable".
+  linkedDeliveryNoteRef: string | null;
+  linkedDeliveryNotePresent: boolean | null;
+  linkedSupplierCocPresent: boolean | null;
 }
 
 export interface ReconciliationDetailDto {
@@ -50,7 +58,13 @@ export interface ReconciliationDetailDto {
   originalFilename: string;
   extractedData: ExtractedStatementLineItem[] | null;
   status: string;
-  matchSummary: { matched: number; unmatched: number; discrepancies: number } | null;
+  matchSummary: {
+    matched: number;
+    unmatched: number;
+    discrepancies: number;
+    dnGaps?: number;
+    cocGaps?: number;
+  } | null;
   matchItems: ReconciliationMatchItem[];
   resolvedBy: string | null;
   resolvedAt: string | null;
@@ -68,7 +82,13 @@ export interface ReconciliationListDto {
   periodMonth: number;
   originalFilename: string;
   status: string;
-  matchSummary: { matched: number; unmatched: number; discrepancies: number } | null;
+  matchSummary: {
+    matched: number;
+    unmatched: number;
+    discrepancies: number;
+    dnGaps?: number;
+    cocGaps?: number;
+  } | null;
   createdAt: string;
 }
 
@@ -84,6 +104,8 @@ export class RubberStatementReconciliationService {
     private readonly reconciliationRepository: Repository<RubberStatementReconciliation>,
     @InjectRepository(RubberTaxInvoice)
     private readonly taxInvoiceRepository: Repository<RubberTaxInvoice>,
+    @InjectRepository(RubberDeliveryNote)
+    private readonly deliveryNoteRepository: Repository<RubberDeliveryNote>,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
     private readonly aiUsageService: AiUsageService,
@@ -183,81 +205,142 @@ export class RubberStatementReconciliationService {
       .andWhere("inv.version_status = :vs", { vs: "ACTIVE" })
       .getMany();
 
-    const systemMap = new Map(
-      systemInvoices.map((inv) => [
-        inv.invoiceNumber.trim().toLowerCase(),
-        parseFloat(inv.totalAmount || "0"),
-      ]),
+    const systemInvoiceByKey = new Map(
+      systemInvoices.map((inv) => [inv.invoiceNumber.trim().toLowerCase(), inv]),
     );
 
     const statementMap = new Map(
       recon.extractedData.map((item) => [item.invoiceNumber.trim().toLowerCase(), item.amount]),
     );
 
+    // Cascade pre-fetch: collect every deliveryNoteRef on every system STI in
+    // this period (one query rather than N), then check existence in
+    // rubber_delivery_notes filtered by this supplier. A DN is considered
+    // "present" if any non-rejected/superseded version exists.
+    const dnRefs = systemInvoices
+      .map((inv) => inv.extractedData?.deliveryNoteRef)
+      .filter((ref): ref is string => typeof ref === "string" && ref.trim().length > 0)
+      .map((ref) => ref.trim());
+    const presentDnNumbers = new Set<string>();
+    if (dnRefs.length > 0) {
+      const existingDns = await this.deliveryNoteRepository
+        .createQueryBuilder("dn")
+        .select("dn.delivery_note_number", "deliveryNoteNumber")
+        .where("dn.supplier_company_id = :companyId", { companyId: recon.companyId })
+        .andWhere("dn.delivery_note_number IN (:...refs)", { refs: dnRefs })
+        .andWhere("dn.version_status = :vs", { vs: "ACTIVE" })
+        .getRawMany();
+      for (const row of existingDns) {
+        presentDnNumbers.add(String(row.deliveryNoteNumber).trim().toLowerCase());
+      }
+    }
+
+    const cascadeForInvoice = (
+      inv: RubberTaxInvoice | undefined,
+    ): {
+      linkedDeliveryNoteRef: string | null;
+      linkedDeliveryNotePresent: boolean | null;
+      linkedSupplierCocPresent: boolean | null;
+    } => {
+      if (!inv) {
+        return {
+          linkedDeliveryNoteRef: null,
+          linkedDeliveryNotePresent: null,
+          linkedSupplierCocPresent: null,
+        };
+      }
+      const rawDnRef = inv.extractedData?.deliveryNoteRef;
+      const dnRef = rawDnRef && rawDnRef.trim().length > 0 ? rawDnRef.trim() : null;
+      const linkedDeliveryNotePresent = dnRef ? presentDnNumbers.has(dnRef.toLowerCase()) : null;
+      const linkedSupplierCocPresent = inv.linkedCalenderRollCocId != null;
+      return {
+        linkedDeliveryNoteRef: dnRef,
+        linkedDeliveryNotePresent,
+        linkedSupplierCocPresent,
+      };
+    };
+
     const matchItems: ReconciliationMatchItem[] = [];
     let matched = 0;
     let discrepancies = 0;
     let unmatched = 0;
+    let dnGaps = 0;
+    let cocGaps = 0;
+
+    const countCascadeGaps = (cascade: ReturnType<typeof cascadeForInvoice>): void => {
+      if (cascade.linkedDeliveryNotePresent === false) dnGaps++;
+      if (cascade.linkedSupplierCocPresent === false) cocGaps++;
+    };
 
     recon.extractedData.forEach((item) => {
       const key = item.invoiceNumber.trim().toLowerCase();
-      const systemAmount = systemMap.get(key);
-      if (systemAmount === undefined) {
+      const systemInv = systemInvoiceByKey.get(key);
+      if (!systemInv) {
         matchItems.push({
           invoiceNumber: item.invoiceNumber,
           statementAmount: item.amount,
           systemAmount: null,
           matchResult: MatchResultType.NOT_IN_SYSTEM,
           difference: null,
+          linkedDeliveryNoteRef: null,
+          linkedDeliveryNotePresent: null,
+          linkedSupplierCocPresent: null,
         });
         unmatched++;
-      } else {
-        const diff = Math.abs(systemAmount - item.amount);
-        if (diff <= 0.01) {
-          matchItems.push({
-            invoiceNumber: item.invoiceNumber,
-            statementAmount: item.amount,
-            systemAmount,
-            matchResult: MatchResultType.MATCHED,
-            difference: 0,
-          });
-          matched++;
-        } else {
-          matchItems.push({
-            invoiceNumber: item.invoiceNumber,
-            statementAmount: item.amount,
-            systemAmount,
-            matchResult: MatchResultType.AMOUNT_DISCREPANCY,
-            difference: systemAmount - item.amount,
-          });
-          discrepancies++;
-        }
+        return;
       }
+      const systemAmount = parseFloat(systemInv.totalAmount || "0");
+      const diff = Math.abs(systemAmount - item.amount);
+      const cascade = cascadeForInvoice(systemInv);
+      if (diff <= 0.01) {
+        matchItems.push({
+          invoiceNumber: item.invoiceNumber,
+          statementAmount: item.amount,
+          systemAmount,
+          matchResult: MatchResultType.MATCHED,
+          difference: 0,
+          ...cascade,
+        });
+        matched++;
+      } else {
+        matchItems.push({
+          invoiceNumber: item.invoiceNumber,
+          statementAmount: item.amount,
+          systemAmount,
+          matchResult: MatchResultType.AMOUNT_DISCREPANCY,
+          difference: systemAmount - item.amount,
+          ...cascade,
+        });
+        discrepancies++;
+      }
+      countCascadeGaps(cascade);
     });
 
     systemInvoices.forEach((inv) => {
       const key = inv.invoiceNumber.trim().toLowerCase();
-      if (!statementMap.has(key)) {
-        matchItems.push({
-          invoiceNumber: inv.invoiceNumber,
-          statementAmount: null,
-          systemAmount: parseFloat(inv.totalAmount || "0"),
-          matchResult: MatchResultType.NOT_ON_STATEMENT,
-          difference: null,
-        });
-        unmatched++;
-      }
+      if (statementMap.has(key)) return;
+      const cascade = cascadeForInvoice(inv);
+      matchItems.push({
+        invoiceNumber: inv.invoiceNumber,
+        statementAmount: null,
+        systemAmount: parseFloat(inv.totalAmount || "0"),
+        matchResult: MatchResultType.NOT_ON_STATEMENT,
+        difference: null,
+        ...cascade,
+      });
+      unmatched++;
+      countCascadeGaps(cascade);
     });
 
-    recon.matchSummary = { matched, unmatched, discrepancies };
+    recon.matchSummary = { matched, unmatched, discrepancies, dnGaps, cocGaps };
     recon.status =
-      discrepancies > 0 || unmatched > 0
+      discrepancies > 0 || unmatched > 0 || dnGaps > 0 || cocGaps > 0
         ? ReconciliationStatus.DISCREPANCY
         : ReconciliationStatus.MATCHED;
     await this.reconciliationRepository.save(recon);
 
     this.logger.log(
-      `Reconciled statement ${reconciliationId}: ${matched} matched, ${discrepancies} discrepancies, ${unmatched} unmatched`,
+      `Reconciled statement ${reconciliationId}: ${matched} matched, ${discrepancies} discrepancies, ${unmatched} unmatched, ${dnGaps} DN gap(s), ${cocGaps} CoC gap(s)`,
     );
     return this.mapToDetailDto(recon, matchItems);
   }

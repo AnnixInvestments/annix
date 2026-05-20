@@ -29,6 +29,11 @@ export interface ReconciliationMatchSummary {
   matched: number;
   unmatched: number;
   discrepancies: number;
+  // Phase-1 cascade audit counts — populated only for supplier
+  // reconciliations. Older rows persisted before this field existed will
+  // have undefined values; callers must handle both shapes.
+  dnGaps?: number;
+  cocGaps?: number;
 }
 
 @Entity("rubber_statement_reconciliations")
