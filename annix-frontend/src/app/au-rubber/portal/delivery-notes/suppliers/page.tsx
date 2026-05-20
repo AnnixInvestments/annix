@@ -10,6 +10,7 @@ import { FileDropZone } from "@/app/au-rubber/components/FileDropZone";
 import { useConfirm } from "@/app/au-rubber/hooks/useConfirm";
 import { useTablePreferences } from "@/app/au-rubber/hooks/useTablePreferences";
 import { waitForReExtractionComplete } from "@/app/au-rubber/lib/waitForReExtractionComplete";
+import { formatDeliveryNoteNumber } from "@/app/au-rubber/utils/deliveryNoteName";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import {
   Pagination,
@@ -686,6 +687,7 @@ export default function SupplierDeliveryNotesPage() {
                 const rawNoteDeliveryNoteNumber = note.deliveryNoteNumber;
                 const rawNoteSupplierCompanyName = note.supplierCompanyName;
                 const rawNoteDeliveryNoteNumber2 = note.deliveryNoteNumber;
+                const dnDisplay = formatDeliveryNoteNumber(rawNoteDeliveryNoteNumber);
                 const isInactive =
                   note.versionStatus === "SUPERSEDED" || note.versionStatus === "REJECTED";
                 const isPendingAuth = note.versionStatus === "PENDING_AUTHORIZATION";
@@ -702,7 +704,9 @@ export default function SupplierDeliveryNotesPage() {
                           onClick={(e) => e.stopPropagation()}
                           className="text-orange-600 hover:text-orange-800 font-medium"
                         >
-                          {rawNoteDeliveryNoteNumber || `DN-${note.id}`}
+                          <span className={dnDisplay.isPlaceholder ? "italic text-gray-500" : ""}>
+                            {dnDisplay.display}
+                          </span>
                         </Link>
                         {note.version > 1 && (
                           <span className="px-1.5 py-0.5 text-xs font-semibold rounded-full bg-blue-100 text-blue-700">

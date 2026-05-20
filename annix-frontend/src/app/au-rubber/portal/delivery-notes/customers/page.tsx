@@ -11,6 +11,7 @@ import { FileDropZone } from "@/app/au-rubber/components/FileDropZone";
 import { useConfirm } from "@/app/au-rubber/hooks/useConfirm";
 import { useTablePreferences } from "@/app/au-rubber/hooks/useTablePreferences";
 import { waitForReExtractionComplete } from "@/app/au-rubber/lib/waitForReExtractionComplete";
+import { formatDeliveryNoteNumber } from "@/app/au-rubber/utils/deliveryNoteName";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import {
   Pagination,
@@ -744,6 +745,7 @@ export default function CustomerDeliveryNotesPage() {
                 const rawNoteSupplierCompanyName = note.supplierCompanyName;
                 const rawNoteCustomerReference = note.customerReference;
                 const rawNoteAuCocNumber = note.auCocNumber;
+                const dnDisplay = formatDeliveryNoteNumber(rawNoteDeliveryNoteNumber);
                 return (
                   <tr
                     key={note.id}
@@ -757,7 +759,9 @@ export default function CustomerDeliveryNotesPage() {
                           onClick={(e) => e.stopPropagation()}
                           className="text-blue-600 hover:text-blue-800 font-medium"
                         >
-                          {rawNoteDeliveryNoteNumber || `DN-${note.id}`}
+                          <span className={dnDisplay.isPlaceholder ? "italic text-gray-500" : ""}>
+                            {dnDisplay.display}
+                          </span>
                         </Link>
                         {note.documentPathSiblingCount > 1 && (
                           <span

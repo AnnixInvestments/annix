@@ -6,6 +6,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import { useConfirm } from "@/app/au-rubber/hooks/useConfirm";
+import { formatDeliveryNoteNumber } from "@/app/au-rubber/utils/deliveryNoteName";
 import {
   ImageViewerToolbar,
   imageViewerTransform,
@@ -688,9 +689,16 @@ export default function DeliveryNoteDetailPage() {
 
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">
-            {rawNoteDeliveryNoteNumber2 || `DN-${note.id}`}
-          </h1>
+          {(() => {
+            const dnDisplay = formatDeliveryNoteNumber(rawNoteDeliveryNoteNumber2);
+            return (
+              <h1
+                className={`text-2xl font-bold ${dnDisplay.isPlaceholder ? "italic text-gray-500" : "text-gray-900"}`}
+              >
+                {dnDisplay.display}
+              </h1>
+            );
+          })()}
           <div className="mt-2 flex items-center space-x-3">
             {typeBadge(note.deliveryNoteType)}
             {statusBadge(note.status)}
