@@ -2426,6 +2426,12 @@ class AuRubberApiClient {
     path: (id) => `/rubber-lining/portal/accounting/reconciliation/${id}`,
   });
 
+  async uploadSupplierStatementAutoDetect(
+    file: File,
+  ): Promise<{ id: number; companyName: string; detectedSupplierName: string }> {
+    return this.requestWithFiles("/rubber-lining/portal/supplier-statements/upload", [file], {});
+  }
+
   async accountingUploadStatement(
     companyId: number,
     file: File,

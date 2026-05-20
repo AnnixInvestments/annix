@@ -9,7 +9,7 @@ import { RequirePermission } from "@/app/au-rubber/components/RequirePermission"
 import { PAGE_PERMISSIONS } from "@/app/au-rubber/config/pagePermissions";
 import { useToast } from "@/app/components/Toast";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
-import { fromISO, now } from "@/app/lib/datetime";
+import { fromISO } from "@/app/lib/datetime";
 
 interface MatchSummary {
   matched: number;
@@ -29,11 +29,6 @@ interface ReconciliationItem {
   status: string;
   matchSummary: MatchSummary | null;
   createdAt: string;
-}
-
-interface SupplierOption {
-  id: number;
-  name: string;
 }
 
 const MONTH_NAMES = [
@@ -68,29 +63,15 @@ function statusBadge(status: string): { label: string; cls: string } {
 
 export default function SupplierStatementsPage() {
   const { showToast } = useToast();
-  const today = now();
   const [recons, setRecons] = useState<ReconciliationItem[]>([]);
-  const [suppliers, setSuppliers] = useState<SupplierOption[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedSupplierId, setSelectedSupplierId] = useState<number | null>(null);
-  const [periodYear, setPeriodYear] = useState<number>(today.year);
-  const [periodMonth, setPeriodMonth] = useState<number>(today.month);
   const [isUploading, setIsUploading] = useState(false);
 
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const [reconsResp, companiesResp] = await Promise.all([
-        auRubberApiClient.accountingReconciliations(),
-        auRubberApiClient.companies(),
-      ]);
+      const reconsResp = await auRubberApiClient.accountingReconciliations();
       setRecons(reconsResp as ReconciliationItem[]);
-      const supplierCompanies = (
-        companiesResp as Array<{ id: number; name: string; companyType: string }>
-      )
-        .filter((c) => c.companyType === "SUPPLIER")
-        .map((c) => ({ id: c.id, name: c.name }));
-      setSuppliers(supplierCompanies);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to load statements";
       showToast(msg, "error");
@@ -106,22 +87,16 @@ export default function SupplierStatementsPage() {
 
   const handleFilesSelected = async (files: File[]) => {
     if (files.length === 0 || isUploading) return;
-    if (selectedSupplierId === null) {
-      showToast("Pick a supplier before dropping the statement", "warning");
-      return;
-    }
     const file = files[0];
     if (!file) return;
     try {
       setIsUploading(true);
-      await auRubberApiClient.accountingUploadStatement(
-        selectedSupplierId,
-        file,
-        periodYear,
-        periodMonth,
-      );
+      const result = await auRubberApiClient.uploadSupplierStatementAutoDetect(file);
+      const detectedName = result.detectedSupplierName
+        ? result.detectedSupplierName
+        : "the supplier";
       showToast(
-        "Statement uploaded — extraction and reconciliation will run in the background",
+        `Statement filed under ${detectedName} — Nix is extracting and reconciling now`,
         "success",
       );
       await fetchData();
@@ -133,8 +108,7 @@ export default function SupplierStatementsPage() {
     }
   };
 
-  const filteredRecons =
-    selectedSupplierId !== null ? recons.filter((r) => r.companyId === selectedSupplierId) : recons;
+  const filteredRecons = recons;
 
   return (
     <RequirePermission permission={PAGE_PERMISSIONS["/au-rubber/portal/supplier-statements"]}>
@@ -153,69 +127,20 @@ export default function SupplierStatementsPage() {
           </p>
         </div>
 
-        {/* Upload area */}
+        {/* Upload area — just drop the statement; Nix detects the supplier
+            and period from the letterhead and STATEMENT DATE. */}
         <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <label className="block">
-              <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Supplier</span>
-              <select
-                className="mt-1 w-full rounded border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 px-2 py-1.5 text-sm focus:ring-yellow-500 focus:border-yellow-500"
-                value={selectedSupplierId !== null ? String(selectedSupplierId) : ""}
-                onChange={(e) =>
-                  setSelectedSupplierId(e.target.value ? Number(e.target.value) : null)
-                }
-                disabled={isUploading}
-              >
-                <option value="">— Select supplier —</option>
-                {suppliers.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="block">
-              <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                Statement period — Month
-              </span>
-              <select
-                className="mt-1 w-full rounded border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 px-2 py-1.5 text-sm focus:ring-yellow-500 focus:border-yellow-500"
-                value={String(periodMonth)}
-                onChange={(e) => setPeriodMonth(Number(e.target.value))}
-                disabled={isUploading}
-              >
-                {MONTH_NAMES.map((name, idx) => (
-                  <option key={name} value={idx + 1}>
-                    {name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="block">
-              <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Year</span>
-              <input
-                type="number"
-                min={2020}
-                max={today.year + 1}
-                className="mt-1 w-full rounded border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 px-2 py-1.5 text-sm focus:ring-yellow-500 focus:border-yellow-500"
-                value={periodYear}
-                onChange={(e) => setPeriodYear(Number(e.target.value) || today.year)}
-                disabled={isUploading}
-              />
-            </label>
-          </div>
-
           <FileDropZone
             onFilesSelected={handleFilesSelected}
             accept=".pdf,application/pdf"
             multiple={false}
-            disabled={isUploading || selectedSupplierId === null}
+            disabled={isUploading}
           />
 
           {isUploading && (
             <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-600" />
-              Uploading and queuing extraction…
+              Reading the letterhead and statement date, then queuing extraction…
             </div>
           )}
         </div>
@@ -224,7 +149,7 @@ export default function SupplierStatementsPage() {
         <div className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
           <div className="px-6 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-              {selectedSupplierId !== null ? "Statements for this supplier" : "All statements"}
+              All statements
             </h2>
             <span className="text-xs text-gray-500 dark:text-gray-400">
               {filteredRecons.length} record{filteredRecons.length !== 1 ? "s" : ""}
@@ -236,9 +161,7 @@ export default function SupplierStatementsPage() {
             </div>
           ) : filteredRecons.length === 0 ? (
             <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-              No statements uploaded yet
-              {selectedSupplierId !== null ? " for this supplier" : ""}. Drop one above to get
-              started.
+              No statements uploaded yet. Drop one above to get started.
             </div>
           ) : (
             <table className="w-full text-sm">
