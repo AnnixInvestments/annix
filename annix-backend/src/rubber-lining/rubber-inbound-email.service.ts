@@ -1467,31 +1467,30 @@ ${truncatedText}`;
       return fromText.id;
     }
 
-    // Scanned or photographed delivery notes carry no text layer, so the
-    // keyword match above (and the text-based AI fallback below) find
-    // nothing. Identify the issuer visually from the letterhead before
-    // falling back — otherwise every scanned DN silently lands on whichever
-    // supplier happens to have the lowest id (historically: S&N Rubber).
-    if (pdfText.trim().length < 50) {
-      try {
-        const visualName = await this.cocExtractionService.identifySupplierFromImages(pdfBuffer);
-        if (visualName) {
-          const fromVision = this.matchSupplierByKeyword(visualName, filename, companies);
-          if (fromVision) {
-            this.logger.log(
-              `Vision-detected supplier: ${fromVision.name} ("${visualName}") for ${filename}`,
-            );
-            return fromVision.id;
-          }
-          this.logger.warn(
-            `Vision identified supplier "${visualName}" for ${filename} but it matched no known company`,
+    // The keyword match above only catches PDFs whose text layer contains a
+    // supplier name. Scanned DNs frequently have either no text layer or a
+    // garbled OCR text layer with 50+ characters but no recognisable keyword
+    // — gating vision on "text < 50 chars" let those slip through to the
+    // silent first-supplier fallback. Always identify the issuer visually
+    // from the letterhead before falling back to text-AI.
+    try {
+      const visualName = await this.cocExtractionService.identifySupplierFromImages(pdfBuffer);
+      if (visualName) {
+        const fromVision = this.matchSupplierByKeyword(visualName, filename, companies);
+        if (fromVision) {
+          this.logger.log(
+            `Vision-detected supplier: ${fromVision.name} ("${visualName}") for ${filename}`,
           );
+          return fromVision.id;
         }
-      } catch (err) {
         this.logger.warn(
-          `Vision supplier detection failed for ${filename}: ${err instanceof Error ? err.message : String(err)}`,
+          `Vision identified supplier "${visualName}" for ${filename} but it matched no known company`,
         );
       }
+    } catch (err) {
+      this.logger.warn(
+        `Vision supplier detection failed for ${filename}: ${err instanceof Error ? err.message : String(err)}`,
+      );
     }
 
     const aiResult = await this.identifySupplierWithAi(pdfText, filename);
@@ -1504,8 +1503,9 @@ ${truncatedText}`;
 
     const firstSupplier = companies.find((c) => String(c.companyType) === "SUPPLIER");
     if (firstSupplier) {
-      this.logger.warn(
-        `Could not detect supplier for ${filename}, defaulting to ${firstSupplier.name}`,
+      // Loud — silent wrong-supplier assignment is the bug we are escaping.
+      this.logger.error(
+        `Could not detect supplier for ${filename} — defaulting to ${firstSupplier.name} (id ${firstSupplier.id}). Verify and reassign in the UI.`,
       );
       return firstSupplier.id;
     }
