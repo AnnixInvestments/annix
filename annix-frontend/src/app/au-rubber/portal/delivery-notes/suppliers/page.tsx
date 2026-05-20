@@ -28,7 +28,7 @@ import {
   type ExtractedDeliveryNoteData,
   type RubberDeliveryNoteDto,
 } from "@/app/lib/api/auRubberApi";
-import { formatDateZA } from "@/app/lib/datetime";
+import { formatDateZA, nowMillis } from "@/app/lib/datetime";
 import { useScrollRestoration } from "@/app/lib/hooks/useScrollRestoration";
 import NixProcessingPopup from "@/app/lib/nix/components/NixProcessingPopup";
 import { useAuRubberCompanies, useAuRubberDeliveryNotes } from "@/app/lib/query/hooks";
@@ -206,24 +206,69 @@ export default function SupplierDeliveryNotesPage() {
         }
       }, 3000);
 
-      await auRubberApiClient.uploadDeliveryNoteWithFiles(files, {
+      const uploadResponse = (await auRubberApiClient.uploadDeliveryNoteWithFiles(files, {
         deliveryNoteType: "ROLL" as DeliveryNoteType,
-      });
+      })) as unknown as { deliveryNoteIds?: number[] };
 
       clearInterval(progressInterval);
 
-      setUploadProgress(90);
-      setUploadStatus("Upload complete!");
-      setUploadDetail("NIX is extracting data in the background...");
+      const rawDeliveryNoteIds = uploadResponse?.deliveryNoteIds;
+      const newDnIds = rawDeliveryNoteIds ? rawDeliveryNoteIds : [];
 
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Keep the popup open through extraction. The upload above only creates
+      // PENDING records on the backend; Gemini extraction then runs async for
+      // ~30–80s. Closing at upload-time leaves the user with a "still
+      // Extracting…" row and no feedback — poll the new DN ids until each
+      // status leaves PENDING (i.e. EXTRACTED, FAILED, or further along).
+      if (newDnIds.length > 0) {
+        setUploadProgress(85);
+        setUploadStatus("Nix is extracting data from the document...");
+        setUploadDetail(
+          `Reading ${newDnIds.length === 1 ? "the delivery note" : `${newDnIds.length} delivery notes`}...`,
+        );
+
+        const pollIntervalMs = 2000;
+        const timeoutMs = 4 * 60 * 1000;
+        const extractionDeadlineMs = nowMillis() + timeoutMs;
+        const maxIterations = Math.ceil(timeoutMs / pollIntervalMs) + 1;
+        const pending = new Set(newDnIds);
+
+        await Array.from({ length: maxIterations }).reduce<Promise<boolean>>(
+          async (chain, _unused, idx) => {
+            const alreadyDone = await chain;
+            if (alreadyDone) return true;
+            if (idx > 0) {
+              await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+            }
+            if (pending.size === 0) return true;
+            if (nowMillis() >= extractionDeadlineMs) return true;
+            await Promise.all(
+              Array.from(pending).map(async (id) => {
+                try {
+                  const dn = await auRubberApiClient.deliveryNoteById(id);
+                  if (dn.status !== "PENDING") {
+                    pending.delete(id);
+                  }
+                } catch {
+                  // Transient — extraction still in flight; retry on next tick.
+                }
+              }),
+            );
+            const done = newDnIds.length - pending.size;
+            setUploadProgress(85 + Math.round((done / newDnIds.length) * 13));
+            return pending.size === 0;
+          },
+          Promise.resolve(false),
+        );
+      }
+
       setUploadProgress(100);
       setUploadStatus("Complete!");
-      setUploadDetail("All files processed successfully.");
+      setUploadDetail("All files processed and extracted.");
 
-      await new Promise((resolve) => setTimeout(resolve, 800));
+      await new Promise((resolve) => setTimeout(resolve, 600));
       showToast(
-        `${files.length} file${files.length !== 1 ? "s" : ""} uploaded — NIX is extracting data in the background`,
+        `${files.length} file${files.length !== 1 ? "s" : ""} uploaded and extracted`,
         "success",
       );
       notesQuery.refetch();
