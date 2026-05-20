@@ -96,6 +96,13 @@ export interface ExtractedUniversalDeliveryNote {
   receivedDate: string | null;
 }
 
+interface VerifiedBatch {
+  thicknessMm: number | null;
+  widthMm: number | null;
+  lengthM: number | null;
+  rolls?: Array<{ rollNumber: string | null; weightKg: number | null }>;
+}
+
 interface GeminiResponse {
   candidates?: Array<{
     content?: {
@@ -806,6 +813,13 @@ export class RubberCocExtractionService {
     const systemPrompt = correctionHints
       ? `${CUSTOMER_DELIVERY_NOTE_OCR_PROMPT}\n\n${correctionHints}`
       : CUSTOMER_DELIVERY_NOTE_OCR_PROMPT;
+
+    // Kick off the batch-verification pass IN PARALLEL with the main
+    // extraction — both hit Gemini against the same images and are
+    // independent, so running them sequentially would double the
+    // user-visible latency for no gain.
+    const verificationPromise = this.fetchBatchVerification(images);
+
     const response = await this.callGeminiWithImages(
       systemPrompt,
       "Analyze these delivery note images. In the header box at the top, find the REFERENCE: field (between NUMBER: and DATE:) and extract the PO/reference number. This is CRITICAL. Return ONLY valid JSON.",
@@ -821,12 +835,10 @@ export class RubberCocExtractionService {
       this.sanitizeSnRubberColumnConfusion(dn),
     );
 
-    // Second pass: re-read batch headers + per-roll weights and override the
-    // first pass on disagreement. Costs one extra Gemini call (~3-5s) but
-    // catches the recurring "5x1100x12.5 → 5x100x12.5" digit-drop and
-    // handwritten weight misreads. Silently no-ops on documents (like the
-    // S&N tabular format) that have no batch-header text.
-    await this.verifyDeliveryNoteBatchesAndWeights(deliveryNotes, images);
+    // Await the in-flight verification (usually already resolved by now) and
+    // override the first-pass values where the verifier disagrees.
+    const verifiedBatches = await verificationPromise;
+    this.applyBatchVerification(deliveryNotes, verifiedBatches);
 
     const podPages = rawData?.podPages || [];
 
@@ -1077,18 +1089,15 @@ Return ONLY a valid JSON object of this exact shape (no extra fields, no comment
    * → 100) or misreads a handwritten per-roll weight (e.g. 63 → 83). A
    * focused verification call re-reads the batch headers (typed, reliable)
    * and the per-roll "Roll # NNNN  KK kg" lines, and overrides the first
-   * pass on disagreement. No-op for documents with no batch headers.
+   * pass on disagreement.
+   *
+   * Split into fetch + apply so callers can kick off the fetch in parallel
+   * with the main extraction — both calls hit Gemini against the same
+   * images, so running them sequentially doubles the user-visible latency.
+   * No-ops for documents with no batch headers (e.g. the S&N tabular
+   * format) — the verifier returns an empty batches array.
    */
-  private async verifyDeliveryNoteBatchesAndWeights(
-    deliveryNotes: ExtractedCustomerDeliveryNoteData[],
-    images: Buffer[],
-  ): Promise<void> {
-    if (!deliveryNotes || deliveryNotes.length === 0) return;
-    const hasAnyRolls = deliveryNotes.some(
-      (dn) => (dn.lineItems ?? []).filter((li) => li?.rollNumber).length > 0,
-    );
-    if (!hasAnyRolls) return;
-
+  private async fetchBatchVerification(images: Buffer[]): Promise<VerifiedBatch[] | null> {
     try {
       const verificationPrompt = `You are a verification pass for a supplier delivery note extraction.
 
@@ -1149,88 +1158,88 @@ format, return { "batches": [] }.
         "supplier-dn-batches-verification",
       );
 
-      const verification = response.data as {
-        batches?: Array<{
-          thicknessMm: number | null;
-          widthMm: number | null;
-          lengthM: number | null;
-          rolls?: Array<{ rollNumber: string | null; weightKg: number | null }>;
-        }>;
-      };
+      const verification = response.data as { batches?: VerifiedBatch[] };
       const verifiedBatches = verification.batches ?? [];
       if (verifiedBatches.length === 0) {
-        this.logger.log(
-          "Batch verification: no batch headers detected — keeping first-pass values",
-        );
-        return;
+        this.logger.log("Batch verification: no batch headers detected");
+        return null;
       }
-
-      const verifiedByRoll = new Map<
-        string,
-        {
-          thicknessMm: number | null;
-          widthMm: number | null;
-          lengthM: number | null;
-          weightKg: number | null;
-        }
-      >();
-      for (const batch of verifiedBatches) {
-        const rawBatchRolls = batch.rolls;
-        const batchRolls = rawBatchRolls ? rawBatchRolls : [];
-        for (const roll of batchRolls) {
-          if (!roll?.rollNumber) continue;
-          verifiedByRoll.set(roll.rollNumber, {
-            thicknessMm: batch.thicknessMm,
-            widthMm: batch.widthMm,
-            lengthM: batch.lengthM,
-            weightKg: roll.weightKg,
-          });
-        }
-      }
-
-      let correctionCount = 0;
-      for (const dn of deliveryNotes) {
-        const rawLineItems = dn.lineItems;
-        const lineItems = rawLineItems ? rawLineItems : [];
-        for (const item of lineItems) {
-          if (!item?.rollNumber) continue;
-          const verified = verifiedByRoll.get(item.rollNumber);
-          if (!verified) continue;
-          const corrections: string[] = [];
-          if (verified.thicknessMm != null && verified.thicknessMm !== item.thicknessMm) {
-            corrections.push(`thicknessMm ${item.thicknessMm}→${verified.thicknessMm}`);
-            item.thicknessMm = verified.thicknessMm;
-          }
-          if (verified.widthMm != null && verified.widthMm !== item.widthMm) {
-            corrections.push(`widthMm ${item.widthMm}→${verified.widthMm}`);
-            item.widthMm = verified.widthMm;
-          }
-          if (verified.lengthM != null && verified.lengthM !== item.lengthM) {
-            corrections.push(`lengthM ${item.lengthM}→${verified.lengthM}`);
-            item.lengthM = verified.lengthM;
-          }
-          if (verified.weightKg != null && verified.weightKg !== item.actualWeightKg) {
-            corrections.push(`weightKg ${item.actualWeightKg}→${verified.weightKg}`);
-            item.actualWeightKg = verified.weightKg;
-          }
-          if (corrections.length > 0) {
-            correctionCount++;
-            this.logger.log(`Verified roll ${item.rollNumber}: ${corrections.join(", ")}`);
-          }
-        }
-      }
-
-      if (correctionCount > 0) {
-        this.logger.warn(`Batch verification corrected ${correctionCount} roll(s) on supplier DN`);
-      } else {
-        this.logger.log(
-          `Batch verification confirmed ${verifiedByRoll.size} roll(s) on first read`,
-        );
-      }
+      this.logger.log(`Batch verification returned ${verifiedBatches.length} batch(es)`);
+      return verifiedBatches;
     } catch (err) {
       this.logger.warn(
-        `Batch verification pass failed: ${err instanceof Error ? err.message : String(err)} — keeping first-pass values`,
+        `Batch verification fetch failed: ${err instanceof Error ? err.message : String(err)}`,
       );
+      return null;
+    }
+  }
+
+  private applyBatchVerification(
+    deliveryNotes: ExtractedCustomerDeliveryNoteData[],
+    verifiedBatches: VerifiedBatch[] | null,
+  ): void {
+    if (!deliveryNotes || deliveryNotes.length === 0) return;
+    if (!verifiedBatches || verifiedBatches.length === 0) return;
+
+    const verifiedByRoll = new Map<
+      string,
+      {
+        thicknessMm: number | null;
+        widthMm: number | null;
+        lengthM: number | null;
+        weightKg: number | null;
+      }
+    >();
+    for (const batch of verifiedBatches) {
+      const rawBatchRolls = batch.rolls;
+      const batchRolls = rawBatchRolls ? rawBatchRolls : [];
+      for (const roll of batchRolls) {
+        if (!roll?.rollNumber) continue;
+        verifiedByRoll.set(roll.rollNumber, {
+          thicknessMm: batch.thicknessMm,
+          widthMm: batch.widthMm,
+          lengthM: batch.lengthM,
+          weightKg: roll.weightKg,
+        });
+      }
+    }
+
+    let correctionCount = 0;
+    for (const dn of deliveryNotes) {
+      const rawLineItems = dn.lineItems;
+      const lineItems = rawLineItems ? rawLineItems : [];
+      for (const item of lineItems) {
+        if (!item?.rollNumber) continue;
+        const verified = verifiedByRoll.get(item.rollNumber);
+        if (!verified) continue;
+        const corrections: string[] = [];
+        if (verified.thicknessMm != null && verified.thicknessMm !== item.thicknessMm) {
+          corrections.push(`thicknessMm ${item.thicknessMm}→${verified.thicknessMm}`);
+          item.thicknessMm = verified.thicknessMm;
+        }
+        if (verified.widthMm != null && verified.widthMm !== item.widthMm) {
+          corrections.push(`widthMm ${item.widthMm}→${verified.widthMm}`);
+          item.widthMm = verified.widthMm;
+        }
+        if (verified.lengthM != null && verified.lengthM !== item.lengthM) {
+          corrections.push(`lengthM ${item.lengthM}→${verified.lengthM}`);
+          item.lengthM = verified.lengthM;
+        }
+        if (verified.weightKg != null && verified.weightKg !== item.actualWeightKg) {
+          corrections.push(`weightKg ${item.actualWeightKg}→${verified.weightKg}`);
+          item.actualWeightKg = verified.weightKg;
+        }
+        if (corrections.length > 0) {
+          correctionCount++;
+          this.logger.log(`Verified roll ${item.rollNumber}: ${corrections.join(", ")}`);
+        }
+      }
+    }
+
+    if (correctionCount > 0) {
+      this.logger.warn(`Batch verification corrected ${correctionCount} roll(s) on supplier DN`);
+    } else {
+      this.logger.log(`Batch verification confirmed ${verifiedByRoll.size} roll(s) on first read`);
     }
   }
 
