@@ -971,6 +971,27 @@ For PART items:
 - rollNumber will typically be null
 - quantity and actualWeightKg should still be extracted if available
 
+DIMENSIONAL SANITY CHECKS (CRITICAL — rubber rolls have predictable size ranges):
+For ROLL items, dimensions almost always fall in these ranges. If your extracted
+value sits OUTSIDE the typical range, RE-READ the source region in the image —
+you have likely misread a digit or confused two columns.
+- thicknessMm: typically 3–15 mm (a single- or low-double-digit integer).
+  - If you extract 50+, you have likely misread the compound-code shore hardness
+    (e.g. the "40" in "SC40") or a Roll # column as the thickness.
+  - If two batches on the SAME DN show different thicknesses but share the same
+    product/compound code, the lower of the two is almost certainly correct —
+    re-check the higher one against the header spec.
+- widthMm: typically 800–1500 mm (a 3- or 4-digit number).
+  - Values under 300 are SUSPICIOUS. Leading "1" digits are easy to miss on
+    scanned forms — "100" is almost always "1100", "150" is almost always
+    "1500", "80" is almost always "800". Re-read.
+- lengthM: typically 5–30 m (with an optional .5 decimal).
+- actualWeightKg per roll: typically 30–150 kg.
+  - Values over 500 for a single roll are SUSPICIOUS — usually a multi-roll
+    total misread as one roll's weight, or a column shift.
+
+Apply these checks BEFORE finalizing each line item.
+
 COMPOUND CODE — PROPAGATE FROM HEADER TO EVERY ROLL, FORMATTED AS AU INTERNAL CODE (CRITICAL for compound stock tracking):
 On Impilo Industries delivery notes (and similar formats), the compound spec is typically printed ONCE in a header / summary line at the top of the DN — e.g. "Steam cure 40 Red 5x1100x12.5" or "1 roll Red 40 Steam Cured 6mm x 800mm x 12.5m" — and then the individual Roll # rows below it list only the roll number + dimensions + weight, with NO compound text per row. You MUST derive a compound code from that header line and apply it to EVERY line item beneath it. Do NOT leave compoundCode null on the per-roll line items just because the row itself doesn't restate the compound — the header IS the compound spec for those rows.
 
