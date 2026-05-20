@@ -4431,6 +4431,20 @@ Formula: totalPrice = totalKg × salePricePerKg
     );
   }
 
+  @Post("portal/supplier-statements/upload")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseInterceptors(FileInterceptor("file"))
+  @ApiConsumes("multipart/form-data")
+  @ApiOperation({
+    summary:
+      "Upload a supplier statement and auto-detect the issuing supplier and period from the letterhead",
+  })
+  async supplierStatementUploadAutoDetect(
+    @UploadedFile() file: Express.Multer.File,
+  ): Promise<ReconciliationListDto & { detectedSupplierName: string }> {
+    return this.rubberStatementReconciliationService.uploadStatementAutoDetect(file);
+  }
+
   @Post("portal/accounting/reconciliation/:id/extract")
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiOperation({ summary: "Trigger AI extraction on uploaded statement" })

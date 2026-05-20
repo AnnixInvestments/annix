@@ -1,11 +1,12 @@
 import { randomBytes } from "node:crypto";
-import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { AiUsageService } from "../ai-usage/ai-usage.service";
 import { AiApp, AiProvider } from "../ai-usage/entities/ai-usage-log.entity";
 import { now } from "../lib/datetime";
 import { IStorageService, STORAGE_SERVICE, StorageArea } from "../storage/storage.interface";
+import { CompanyType, RubberCompany } from "./entities/rubber-company.entity";
 import { RubberDeliveryNote } from "./entities/rubber-delivery-note.entity";
 import {
   ExtractedStatementLineItem,
@@ -106,6 +107,8 @@ export class RubberStatementReconciliationService {
     private readonly taxInvoiceRepository: Repository<RubberTaxInvoice>,
     @InjectRepository(RubberDeliveryNote)
     private readonly deliveryNoteRepository: Repository<RubberDeliveryNote>,
+    @InjectRepository(RubberCompany)
+    private readonly companyRepository: Repository<RubberCompany>,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
     private readonly aiUsageService: AiUsageService,
@@ -143,6 +146,58 @@ export class RubberStatementReconciliationService {
       relations: ["company"],
     });
     return this.mapToListDto(withCompany || saved);
+  }
+
+  /**
+   * Auto-detect upload: figure out the issuing supplier (from the
+   * letterhead) and the statement period (from the STATEMENT DATE label) via
+   * Gemini, then file the statement against the matching company. Triggers
+   * extraction + reconciliation in the background so the API returns as soon
+   * as the row exists; the frontend polls status to know when the pipeline
+   * is complete.
+   */
+  async uploadStatementAutoDetect(
+    file: Express.Multer.File,
+  ): Promise<ReconciliationListDto & { detectedSupplierName: string }> {
+    if (!file) {
+      throw new BadRequestException("No file provided");
+    }
+
+    const images = await this.convertPdfToImages(file.buffer);
+    if (images.length === 0) {
+      throw new BadRequestException("Could not read pages from the uploaded PDF");
+    }
+
+    const metadata = await this.detectStatementMetadata(images);
+    if (!metadata || !metadata.supplierName) {
+      throw new BadRequestException(
+        "Could not detect supplier from statement letterhead — please verify the document is a supplier statement",
+      );
+    }
+
+    const companyId = await this.findSupplierIdByName(metadata.supplierName);
+    if (!companyId) {
+      throw new BadRequestException(
+        `Detected supplier "${metadata.supplierName}" does not match any company in the system`,
+      );
+    }
+
+    // Fall back to "now" if the statement date could not be read — the
+    // reconcile step needs a year/month to scope its STI query, but the user
+    // can correct the period later via the existing detail page.
+    const today = now();
+    const periodYear = metadata.periodYear != null ? metadata.periodYear : today.year;
+    const periodMonth = metadata.periodMonth != null ? metadata.periodMonth : today.month;
+
+    const listDto = await this.uploadStatement(companyId, file, periodYear, periodMonth);
+
+    void this.runStatementPipeline(listDto.id);
+
+    this.logger.log(
+      `Auto-detected statement: supplier="${metadata.supplierName}" (id ${companyId}), period ${periodYear}-${String(periodMonth).padStart(2, "0")}, reconciliation #${listDto.id}`,
+    );
+
+    return { ...listDto, detectedSupplierName: metadata.supplierName };
   }
 
   async extractStatement(reconciliationId: number): Promise<ReconciliationDetailDto> {
@@ -482,6 +537,155 @@ export class RubberStatementReconciliationService {
       return parsed;
     }
     return [];
+  }
+
+  /**
+   * Cheap focused Gemini call (page 1 only) that reads the issuing supplier
+   * name off the letterhead and the STATEMENT DATE label. Returns null on
+   * anything we can't parse — the caller treats null as "could not detect".
+   */
+  private async detectStatementMetadata(images: Buffer[]): Promise<{
+    supplierName: string | null;
+    periodYear: number | null;
+    periodMonth: number | null;
+  } | null> {
+    if (!this.apiKey) {
+      this.logger.warn("GEMINI_API_KEY not configured - statement metadata detection skipped");
+      return null;
+    }
+    const firstImage = images[0];
+    if (!firstImage) return null;
+
+    const prompt = `You are reading page 1 of a supplier statement (a monthly invoicing summary issued BY a supplier TO their customer).
+
+Return JSON of this EXACT shape (no commentary, no markdown fence):
+{
+  "supplierName": "<the issuing supplier's full company name from the letterhead at the top of the page>",
+  "statementDate": "<the value labelled STATEMENT DATE / Statement Date, in YYYY-MM-DD format>"
+}
+
+Rules:
+1. supplierName is the ISSUER (top of page, biggest text, letterhead) — NOT the customer the statement is addressed "To:".
+2. statementDate is usually labelled "STATEMENT DATE" or "Statement Date" in the header box; convert any format (DD/MM/YYYY, MM/DD/YYYY, "5 May 2026") to YYYY-MM-DD.
+3. If either field cannot be read with full confidence, use null for that field.`;
+
+    const imageParts = [
+      {
+        inline_data: {
+          mime_type: "image/png",
+          data: firstImage.toString("base64"),
+        },
+      },
+    ];
+
+    try {
+      const response = await fetch(
+        `${this.geminiBaseUrl}/models/${this.geminiModel}:generateContent?key=${this.apiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }, ...imageParts] }],
+            generationConfig: {
+              temperature: 0.1,
+              maxOutputTokens: 256,
+              responseMimeType: "application/json",
+            },
+          }),
+        },
+      );
+      const data = await response.json();
+      const content = data.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+      const tokensUsed =
+        (data.usageMetadata?.promptTokenCount || 0) +
+        (data.usageMetadata?.candidatesTokenCount || 0);
+      try {
+        this.aiUsageService.log({
+          app: AiApp.AU_RUBBER,
+          actionType: "STATEMENT_METADATA_DETECTION",
+          provider: AiProvider.GEMINI,
+          model: this.geminiModel,
+          tokensUsed,
+        });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Unknown error";
+        this.logger.warn(`Failed to log AI usage: ${msg}`);
+      }
+
+      const cleaned = content
+        .replace(/```json\n?/g, "")
+        .replace(/```\n?/g, "")
+        .trim();
+      const parsed = JSON.parse(cleaned) as {
+        supplierName: string | null;
+        statementDate: string | null;
+      };
+
+      const supplierName = parsed.supplierName ? parsed.supplierName.trim() : null;
+      let periodYear: number | null = null;
+      let periodMonth: number | null = null;
+      const rawStatementDate = parsed.statementDate;
+      if (rawStatementDate) {
+        const match = rawStatementDate.match(/^(\d{4})-(\d{2})/);
+        if (match) {
+          periodYear = parseInt(match[1], 10);
+          periodMonth = parseInt(match[2], 10);
+        }
+      }
+      return { supplierName, periodYear, periodMonth };
+    } catch (err) {
+      this.logger.warn(
+        `Statement metadata detection failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      return null;
+    }
+  }
+
+  /**
+   * Match a free-form supplier name (as Gemini read it off a letterhead) to a
+   * known SUPPLIER company id. Keyword-first for the known issuers, then a
+   * case-insensitive exact-name fallback.
+   */
+  private async findSupplierIdByName(supplierName: string): Promise<number | null> {
+    const norm = supplierName.toLowerCase();
+    const suppliers = await this.companyRepository.find({
+      where: { companyType: CompanyType.SUPPLIER },
+    });
+
+    if (norm.includes("impilo")) {
+      const c = suppliers.find((s) => s.name.toLowerCase().includes("impilo"));
+      if (c) return c.id;
+    }
+    if (norm.includes("s&n") || norm.includes("s & n") || norm.includes("sandrubber")) {
+      const c = suppliers.find(
+        (s) => s.name.toLowerCase().includes("s&n") || s.name.toLowerCase().includes("s & n"),
+      );
+      if (c) return c.id;
+    }
+
+    const exact = suppliers.find((s) => s.name.toLowerCase() === norm);
+    if (exact) return exact.id;
+    const contains = suppliers.find(
+      (s) => norm.includes(s.name.toLowerCase()) || s.name.toLowerCase().includes(norm),
+    );
+    return contains ? contains.id : null;
+  }
+
+  /**
+   * Fire-and-forget pipeline for a freshly-uploaded statement: extract line
+   * items, then reconcile against the system's STIs (with the Phase-1 DN +
+   * SCoC cascade). Errors are logged; the row remains in whatever status the
+   * pipeline reached.
+   */
+  private async runStatementPipeline(reconciliationId: number): Promise<void> {
+    try {
+      await this.extractStatement(reconciliationId);
+      await this.reconcileStatement(reconciliationId);
+    } catch (err) {
+      this.logger.error(
+        `Statement pipeline failed for reconciliation ${reconciliationId}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
   }
 
   private mapToListDto(recon: RubberStatementReconciliation): ReconciliationListDto {
