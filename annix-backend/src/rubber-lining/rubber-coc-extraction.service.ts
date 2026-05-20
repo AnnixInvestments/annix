@@ -820,6 +820,14 @@ export class RubberCocExtractionService {
     const deliveryNotes = (rawData?.deliveryNotes || []).map((dn) =>
       this.sanitizeSnRubberColumnConfusion(dn),
     );
+
+    // Second pass: re-read batch headers + per-roll weights and override the
+    // first pass on disagreement. Costs one extra Gemini call (~3-5s) but
+    // catches the recurring "5x1100x12.5 → 5x100x12.5" digit-drop and
+    // handwritten weight misreads. Silently no-ops on documents (like the
+    // S&N tabular format) that have no batch-header text.
+    await this.verifyDeliveryNoteBatchesAndWeights(deliveryNotes, images);
+
     const podPages = rawData?.podPages || [];
 
     this.logger.log(
@@ -1058,6 +1066,170 @@ Return ONLY a valid JSON object of this exact shape (no extra fields, no comment
     } catch (error) {
       this.logger.warn(
         `Roll verification pass failed: ${error instanceof Error ? error.message : String(error)}. Keeping first-pass values.`,
+      );
+    }
+  }
+
+  /**
+   * Second-pass verifier for supplier DNs that group rolls under typed batch
+   * headers like "13 roll Steam 40 Red 5x1100x12.5". The first OCR pass is
+   * stochastic and routinely drops a digit on those header widths (e.g. 1100
+   * → 100) or misreads a handwritten per-roll weight (e.g. 63 → 83). A
+   * focused verification call re-reads the batch headers (typed, reliable)
+   * and the per-roll "Roll # NNNN  KK kg" lines, and overrides the first
+   * pass on disagreement. No-op for documents with no batch headers.
+   */
+  private async verifyDeliveryNoteBatchesAndWeights(
+    deliveryNotes: ExtractedCustomerDeliveryNoteData[],
+    images: Buffer[],
+  ): Promise<void> {
+    if (!deliveryNotes || deliveryNotes.length === 0) return;
+    const hasAnyRolls = deliveryNotes.some(
+      (dn) => (dn.lineItems ?? []).filter((li) => li?.rollNumber).length > 0,
+    );
+    if (!hasAnyRolls) return;
+
+    try {
+      const verificationPrompt = `You are a verification pass for a supplier delivery note extraction.
+
+The document groups rolls under typed BATCH HEADER lines such as:
+  "6 rolls Steam 40 Red 8x800x12.5"
+  "3 rolls Steam 40 Red 5x800x12.5"
+  "13 roll Steam 40 Red 5x1100x12.5"
+  "1 roll Steam 40 Red 5x950x12.5"
+The dimensions after the colour/cure spec are: <thicknessMm>x<widthMm>x<lengthM>.
+
+Beneath each batch header, individual rolls are listed as:
+  "Roll # 42271   90 kg"
+
+For EACH batch on the document, in document order, output the dimensions from
+the header AND every "Roll # ..." line beneath it.
+
+CRITICAL RULES:
+1. Read every digit of the BATCH HEADER carefully. "5x1100x12.5" means
+   thicknessMm=5, widthMm=1100, lengthM=12.5. Rubber roll widths are 3- or
+   4-digit numbers in the 800–1500 range — values under 300 do NOT exist.
+   If you find yourself extracting widthMm=100 you missed the leading "1" —
+   re-read; it is 1100. Similarly "80" → 800, "150" → 1500.
+2. A single document often contains MULTIPLE batches (e.g. a 6-roll 8x800x12.5
+   batch followed by a 3-roll 5x800x12.5 batch). They have different
+   dimensions. Do NOT collapse them — each batch has its own header.
+3. Within one batch ALL rolls share the batch's thicknessMm, widthMm, and
+   lengthM exactly — propagate the header values to every roll in that batch.
+4. Each "Roll #" line has ONE roll number and ONE handwritten weight on the
+   SAME line. Weights are 30–150 kg per roll.
+5. Distinguish carefully between commonly-confused digit pairs in handwriting:
+   3 vs 5 vs 8, 0 vs 6 vs 8, 1 vs 7. Read each digit at maximum care.
+6. If you cannot read a value with full confidence, use null.
+
+Return ONLY a valid JSON object of this exact shape (no extra fields, no
+commentary). If the document does not contain batch-header text in this
+format, return { "batches": [] }.
+
+{
+  "batches": [
+    {
+      "thicknessMm": 8, "widthMm": 800, "lengthM": 12.5,
+      "rolls": [
+        { "rollNumber": "42271", "weightKg": 90 },
+        { "rollNumber": "42266", "weightKg": 81 }
+      ]
+    },
+    {
+      "thicknessMm": 5, "widthMm": 1100, "lengthM": 12.5,
+      "rolls": [{ "rollNumber": "42277", "weightKg": 74 }]
+    }
+  ]
+}`;
+
+      const response = await this.callGeminiWithImages(
+        verificationPrompt,
+        "Verify the batch dimensions and per-roll weights for this supplier delivery note. Return ONLY the JSON.",
+        images,
+        "supplier-dn-batches-verification",
+      );
+
+      const verification = response.data as {
+        batches?: Array<{
+          thicknessMm: number | null;
+          widthMm: number | null;
+          lengthM: number | null;
+          rolls?: Array<{ rollNumber: string | null; weightKg: number | null }>;
+        }>;
+      };
+      const verifiedBatches = verification.batches ?? [];
+      if (verifiedBatches.length === 0) {
+        this.logger.log(
+          "Batch verification: no batch headers detected — keeping first-pass values",
+        );
+        return;
+      }
+
+      const verifiedByRoll = new Map<
+        string,
+        {
+          thicknessMm: number | null;
+          widthMm: number | null;
+          lengthM: number | null;
+          weightKg: number | null;
+        }
+      >();
+      for (const batch of verifiedBatches) {
+        const rawBatchRolls = batch.rolls;
+        const batchRolls = rawBatchRolls ? rawBatchRolls : [];
+        for (const roll of batchRolls) {
+          if (!roll?.rollNumber) continue;
+          verifiedByRoll.set(roll.rollNumber, {
+            thicknessMm: batch.thicknessMm,
+            widthMm: batch.widthMm,
+            lengthM: batch.lengthM,
+            weightKg: roll.weightKg,
+          });
+        }
+      }
+
+      let correctionCount = 0;
+      for (const dn of deliveryNotes) {
+        const rawLineItems = dn.lineItems;
+        const lineItems = rawLineItems ? rawLineItems : [];
+        for (const item of lineItems) {
+          if (!item?.rollNumber) continue;
+          const verified = verifiedByRoll.get(item.rollNumber);
+          if (!verified) continue;
+          const corrections: string[] = [];
+          if (verified.thicknessMm != null && verified.thicknessMm !== item.thicknessMm) {
+            corrections.push(`thicknessMm ${item.thicknessMm}→${verified.thicknessMm}`);
+            item.thicknessMm = verified.thicknessMm;
+          }
+          if (verified.widthMm != null && verified.widthMm !== item.widthMm) {
+            corrections.push(`widthMm ${item.widthMm}→${verified.widthMm}`);
+            item.widthMm = verified.widthMm;
+          }
+          if (verified.lengthM != null && verified.lengthM !== item.lengthM) {
+            corrections.push(`lengthM ${item.lengthM}→${verified.lengthM}`);
+            item.lengthM = verified.lengthM;
+          }
+          if (verified.weightKg != null && verified.weightKg !== item.actualWeightKg) {
+            corrections.push(`weightKg ${item.actualWeightKg}→${verified.weightKg}`);
+            item.actualWeightKg = verified.weightKg;
+          }
+          if (corrections.length > 0) {
+            correctionCount++;
+            this.logger.log(`Verified roll ${item.rollNumber}: ${corrections.join(", ")}`);
+          }
+        }
+      }
+
+      if (correctionCount > 0) {
+        this.logger.warn(`Batch verification corrected ${correctionCount} roll(s) on supplier DN`);
+      } else {
+        this.logger.log(
+          `Batch verification confirmed ${verifiedByRoll.size} roll(s) on first read`,
+        );
+      }
+    } catch (err) {
+      this.logger.warn(
+        `Batch verification pass failed: ${err instanceof Error ? err.message : String(err)} — keeping first-pass values`,
       );
     }
   }
