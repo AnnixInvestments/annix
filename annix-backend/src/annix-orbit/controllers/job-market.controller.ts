@@ -13,7 +13,9 @@ import {
 } from "@nestjs/common";
 import { JOB_SOURCE_PROVIDERS } from "../config/job-source-providers";
 import { CreateJobMarketSourceDto, UpdateJobMarketSourceDto } from "../dto/job-market.dto";
+import { AnnixOrbitRole } from "../entities/annix-orbit-user.entity";
 import { AnnixOrbitAuthGuard } from "../guards/annix-orbit-auth.guard";
+import { AnnixOrbitRoleGuard, AnnixOrbitRoles } from "../guards/annix-orbit-role.guard";
 import { AdzunaService } from "../services/adzuna.service";
 import { CandidateJobMatchingService } from "../services/candidate-job-matching.service";
 import { EmbeddingService } from "../services/embedding.service";
@@ -25,7 +27,7 @@ interface AuthRequest {
 }
 
 @Controller("annix-orbit/job-market")
-@UseGuards(AnnixOrbitAuthGuard)
+@UseGuards(AnnixOrbitAuthGuard, AnnixOrbitRoleGuard)
 export class JobMarketController {
   constructor(
     private readonly sourceService: JobMarketSourceService,
@@ -46,6 +48,7 @@ export class JobMarketController {
   }
 
   @Post("sources")
+  @AnnixOrbitRoles(AnnixOrbitRole.ADMIN)
   async createSource(@Request() req: AuthRequest, @Body() dto: CreateJobMarketSourceDto) {
     return this.sourceService.create(req.user.companyId, dto);
   }
@@ -56,6 +59,7 @@ export class JobMarketController {
   }
 
   @Put("sources/:id")
+  @AnnixOrbitRoles(AnnixOrbitRole.ADMIN)
   async updateSource(
     @Request() req: AuthRequest,
     @Param("id", ParseIntPipe) id: number,
@@ -65,15 +69,17 @@ export class JobMarketController {
   }
 
   @Delete("sources/:id")
+  @AnnixOrbitRoles(AnnixOrbitRole.ADMIN)
   async removeSource(@Request() req: AuthRequest, @Param("id", ParseIntPipe) id: number) {
     await this.sourceService.remove(id, req.user.companyId);
     return { message: "Source deleted" };
   }
 
   @Post("sources/:id/ingest")
-  async triggerIngestion(@Param("id", ParseIntPipe) id: number) {
-    const result = await this.ingestionService.triggerIngestion(id);
-    return result;
+  @AnnixOrbitRoles(AnnixOrbitRole.ADMIN)
+  async triggerIngestion(@Request() req: AuthRequest, @Param("id", ParseIntPipe) id: number) {
+    await this.sourceService.findById(id, req.user.companyId);
+    return this.ingestionService.triggerIngestion(id);
   }
 
   @Get("jobs")
@@ -118,6 +124,7 @@ export class JobMarketController {
   }
 
   @Post("embeddings/backfill")
+  @AnnixOrbitRoles(AnnixOrbitRole.ADMIN)
   async backfillEmbeddings() {
     const [candidates, jobs] = await Promise.all([
       this.embeddingService.backfillCandidateEmbeddings(),

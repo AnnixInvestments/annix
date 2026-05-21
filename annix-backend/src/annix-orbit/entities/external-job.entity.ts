@@ -79,6 +79,15 @@ export class ExternalJob {
   @Column({ type: "varchar", nullable: true })
   embedding: string | null;
 
+  @Column({ name: "accepts_za", type: "boolean", nullable: true })
+  acceptsZa: boolean | null;
+
+  @Column({ name: "vetting_notes", type: "text", nullable: true })
+  vettingNotes: string | null;
+
+  @Column({ name: "vetted_at", type: "timestamptz", nullable: true })
+  vettedAt: Date | null;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

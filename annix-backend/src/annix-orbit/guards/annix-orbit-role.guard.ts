@@ -1,8 +1,16 @@
-import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from "@nestjs/common";
+import {
+  CanActivate,
+  ExecutionContext,
+  ForbiddenException,
+  Injectable,
+  SetMetadata,
+} from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 import { AnnixOrbitRole } from "../entities/annix-orbit-user.entity";
 
 export const ROLES_KEY = "cv_assistant_roles";
+
+export const AnnixOrbitRoles = (...roles: AnnixOrbitRole[]) => SetMetadata(ROLES_KEY, roles);
 
 @Injectable()
 export class AnnixOrbitRoleGuard implements CanActivate {

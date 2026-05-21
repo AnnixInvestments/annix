@@ -83,4 +83,17 @@ export const adminKeys = {
     }) => [...adminKeys.metrics.all, "extractionUsage", params] as const,
     neonConsumption: () => [...adminKeys.metrics.all, "neonConsumption"] as const,
   },
+  orbitJobMarket: {
+    all: ["admin", "orbitJobMarket"] as const,
+    providers: () => [...adminKeys.orbitJobMarket.all, "providers"] as const,
+    sources: () => [...adminKeys.orbitJobMarket.all, "sources"] as const,
+    stats: () => [...adminKeys.orbitJobMarket.all, "stats"] as const,
+    jobs: (params?: {
+      country?: string;
+      category?: string;
+      search?: string;
+      page?: number;
+      limit?: number;
+    }) => [...adminKeys.orbitJobMarket.all, "jobs", params ?? {}] as const,
+  },
 } as const;

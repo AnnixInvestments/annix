@@ -206,9 +206,9 @@ const platformApps: AppCard[] = [
     hoverColor: "hover:border-teal-400 group-hover:bg-teal-600 group-hover:text-white",
   },
   {
-    href: "/annix/orbit/portal/dashboard",
+    href: "/admin/portal/orbit/job-market",
     title: "Annix Orbit",
-    description: "AI-powered candidate screening and reference checking.",
+    description: "Manage job-market ingestion sources for the seeker network.",
     icon: <AnnixOrbitIcon />,
     color: "bg-violet-100 text-violet-600",
     hoverColor: "hover:border-violet-400 group-hover:bg-violet-600 group-hover:text-white",

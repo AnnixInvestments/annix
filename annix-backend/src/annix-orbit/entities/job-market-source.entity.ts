@@ -57,12 +57,12 @@ export class JobMarketSource {
   @Column({ name: "ingestion_interval_hours", type: "int", default: 6 })
   ingestionIntervalHours: number;
 
-  @ManyToOne(() => AnnixOrbitCompany, { onDelete: "CASCADE" })
+  @ManyToOne(() => AnnixOrbitCompany, { onDelete: "SET NULL", nullable: true })
   @JoinColumn({ name: "company_id" })
-  company: AnnixOrbitCompany;
+  company: AnnixOrbitCompany | null;
 
-  @Column({ name: "company_id" })
-  companyId: number;
+  @Column({ name: "company_id", nullable: true })
+  companyId: number | null;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

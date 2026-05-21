@@ -332,7 +332,7 @@ export interface JobMarketSource {
   requestsToday: number;
   lastIngestedAt: string | null;
   ingestionIntervalHours: number;
-  companyId: number;
+  companyId: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -390,6 +390,9 @@ export interface ExternalJob {
   postedAt: string | null;
   expiresAt: string | null;
   sourceId: number;
+  acceptsZa: boolean | null;
+  vettingNotes: string | null;
+  vettedAt: string | null;
   createdAt: string;
   updatedAt: string;
 }

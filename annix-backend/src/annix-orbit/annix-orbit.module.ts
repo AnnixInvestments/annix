@@ -18,6 +18,7 @@ import { StorageModule } from "../storage/storage.module";
 import { User } from "../user/entities/user.entity";
 import { AnnixOrbitCapabilities } from "./capabilities/annix-orbit.capabilities";
 import { AdminEeTargetsController } from "./controllers/admin-ee-targets.controller";
+import { AdminOrbitJobMarketController } from "./controllers/admin-orbit-job-market.controller";
 import { AnalyticsController } from "./controllers/analytics.controller";
 import { AnnixOrbitAuthController } from "./controllers/auth.controller";
 import { CandidateController } from "./controllers/candidate.controller";
@@ -103,6 +104,7 @@ import { JobIngestionService } from "./services/job-ingestion.service";
 import { JobMarketSourceService } from "./services/job-market-source.service";
 import { JobMatchService } from "./services/job-match.service";
 import { JobPostingService } from "./services/job-posting.service";
+import { JobVettingService } from "./services/job-vetting.service";
 import { JoobleService } from "./services/jooble.service";
 import { MarketInsightsService } from "./services/market-insights.service";
 import { NixCvPdfService } from "./services/nix-cv-pdf.service";
@@ -207,6 +209,7 @@ import { WorkforceNeedService } from "./services/workforce-need.service";
     PublicEeDisclosureController,
     ComplianceController,
     AdminEeTargetsController,
+    AdminOrbitJobMarketController,
     SeekerJobsController,
     TradeProfileController,
     CredentialController,
@@ -234,6 +237,7 @@ import { WorkforceNeedService } from "./services/workforce-need.service";
     DpsaCircularService,
     JobIngestionService,
     JobMarketSourceService,
+    JobVettingService,
     EmbeddingService,
     EscoNormalisationService,
     GeocodeService,

@@ -1,5 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { DateTime } from "../../lib/datetime";
+import { stripHtmlToText } from "../../lib/html-text";
 import { IngestedJobResult } from "./ingested-job.types";
 
 interface RemotiveApiResponse {
@@ -21,6 +22,8 @@ interface RemotiveApiResponse {
 
 const REMOTIVE_BASE_URL = "https://remotive.com/api/remote-jobs";
 const PUBLICATION_DELAY_HOURS = 24;
+const REMOTIVE_PAGE_SIZE = 20;
+const REMOTIVE_MAX_PAGES = 20;
 
 @Injectable()
 export class RemotiveService {
@@ -29,39 +32,57 @@ export class RemotiveService {
   async searchJobs(
     options: { category?: string; keywords?: string; resultsPerPage?: number } = {},
   ): Promise<{ jobs: IngestedJobResult[]; totalCount: number }> {
-    const params = new URLSearchParams();
-    if (options.category) {
-      params.set("category", options.category);
-    }
-    if (options.keywords) {
-      params.set("search", options.keywords);
-    }
-    if (options.resultsPerPage) {
-      params.set("limit", String(options.resultsPerPage));
-    }
-
-    const url =
-      params.toString().length > 0
-        ? `${REMOTIVE_BASE_URL}?${params.toString()}`
-        : REMOTIVE_BASE_URL;
-
-    const response = await fetch(url);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      this.logger.error(`Remotive API error ${response.status}: ${errorText}`);
-      throw new Error(`Remotive API returned ${response.status}: ${errorText}`);
-    }
-
-    const data: RemotiveApiResponse = await response.json();
+    const target = options.resultsPerPage ?? REMOTIVE_PAGE_SIZE;
     const cutoff = DateTime.now().minus({ hours: PUBLICATION_DELAY_HOURS });
-    const respected = (data.jobs ?? []).filter((job) => {
-      if (!job.publication_date) return true;
-      const published = DateTime.fromISO(job.publication_date);
-      if (!published.isValid) return true;
-      return published <= cutoff;
-    });
-    const jobs = respected.map((result) => this.mapResult(result));
+    const seenIds = new Set<string | number>();
+    const collected: IngestedJobResult[] = [];
+
+    for (let page = 0; page < REMOTIVE_MAX_PAGES; page += 1) {
+      if (collected.length >= target) break;
+
+      const offset = page * REMOTIVE_PAGE_SIZE;
+      const params = new URLSearchParams();
+      if (options.category) params.set("category", options.category);
+      if (options.keywords) params.set("search", options.keywords);
+      if (offset > 0) params.set("offset", String(offset));
+
+      const url = `${REMOTIVE_BASE_URL}${params.toString().length > 0 ? `?${params.toString()}` : ""}`;
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        this.logger.error(
+          `Remotive API error ${response.status} at offset ${offset}: ${errorText}`,
+        );
+        throw new Error(`Remotive API returned ${response.status}: ${errorText}`);
+      }
+
+      const data: RemotiveApiResponse = await response.json();
+      const rawJobs = data.jobs ?? [];
+      if (rawJobs.length === 0) break;
+
+      const newIds = rawJobs.filter((job) => !seenIds.has(job.id));
+      if (page > 0 && newIds.length === 0) {
+        this.logger.log(
+          `Remotive returned same ids at offset ${offset} — free API caps results, stopping pagination`,
+        );
+        break;
+      }
+      newIds.forEach((job) => seenIds.add(job.id));
+
+      const fresh = newIds.filter((job) => {
+        if (!job.publication_date) return true;
+        const published = DateTime.fromISO(job.publication_date);
+        if (!published.isValid) return true;
+        return published <= cutoff;
+      });
+
+      collected.push(...fresh.map((result) => this.mapResult(result)));
+
+      if (rawJobs.length < REMOTIVE_PAGE_SIZE) break;
+    }
+
+    const jobs = collected.slice(0, target);
     return { jobs, totalCount: jobs.length };
   }
 
@@ -83,7 +104,7 @@ export class RemotiveService {
       id: String(result.id),
       title: result.title ?? "",
       company: result.company_name ?? null,
-      description: result.description ?? null,
+      description: stripHtmlToText(result.description ?? null),
       locationDisplayName: location,
       locationArea: location,
       salaryMin: salary.min,

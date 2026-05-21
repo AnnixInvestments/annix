@@ -28,6 +28,17 @@ export {
   useSendAdminMessage,
   useUpdateSlaConfig,
 } from "./admin/useAdminMessaging";
+export {
+  useAdminCreateOrbitJobMarketSource,
+  useAdminDeleteOrbitJobMarketSource,
+  useAdminOrbitExternalJobs,
+  useAdminOrbitJobMarketProviders,
+  useAdminOrbitJobMarketSources,
+  useAdminOrbitJobMarketStats,
+  useAdminTriggerOrbitIngestion,
+  useAdminUpdateOrbitJobMarketSource,
+  useAdminVetPendingOrbitJobs,
+} from "./admin/useAdminOrbitJobMarket";
 export { useAdminRfqDetail, useAdminRfqs } from "./admin/useAdminRfqs";
 export { useAdminSupplierDetail } from "./admin/useAdminSupplierDetail";
 export { useAdminSuppliers, useInviteSupplier } from "./admin/useAdminSuppliers";

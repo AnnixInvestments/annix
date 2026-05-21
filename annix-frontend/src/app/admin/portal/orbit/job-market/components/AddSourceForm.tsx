@@ -6,21 +6,23 @@ import type {
   JobSourceProvider,
   JobSourceProviderInfo,
 } from "@/app/lib/api/annixOrbitApi";
-import { useOrbitJobMarketProviders } from "@/app/lib/query/hooks";
 
 const inputClasses =
-  "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent";
+  "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent";
 
 export function AddSourceForm({
+  providers,
+  isLoading,
+  isError,
   onSubmit,
   onCancel,
 }: {
+  providers: JobSourceProviderInfo[] | undefined;
+  isLoading: boolean;
+  isError: boolean;
   onSubmit: (dto: CreateJobMarketSourceDto) => void;
   onCancel: () => void;
 }) {
-  const providersQuery = useOrbitJobMarketProviders();
-  const providers = providersQuery.data;
-
   const [provider, setProvider] = useState<JobSourceProvider | "">("");
   const [name, setName] = useState("");
   const [nameEdited, setNameEdited] = useState(false);
@@ -29,9 +31,7 @@ export function AddSourceForm({
   const [intervalHours, setIntervalHours] = useState("6");
 
   const selectedProvider = useMemo<JobSourceProviderInfo | null>(() => {
-    if (!providers || !provider) {
-      return null;
-    }
+    if (!providers || !provider) return null;
     const match = providers.find((entry) => entry.id === provider);
     return match ?? null;
   }, [providers, provider]);
@@ -58,9 +58,7 @@ export function AddSourceForm({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedProvider) {
-      return;
-    }
+    if (!selectedProvider) return;
 
     const fields = selectedProvider.credentialFields;
     const wantsApiId = fields.some((field) => field.key === "apiId");
@@ -87,15 +85,13 @@ export function AddSourceForm({
     });
   };
 
-  const isLoading = providersQuery.isLoading;
-  const isError = providersQuery.isError;
   const hasProviders = Boolean(providers && providers.length > 0);
   const credentialFields = selectedProvider ? selectedProvider.credentialFields : [];
 
   return (
     <form
       onSubmit={handleSubmit}
-      className="bg-white rounded-xl shadow-sm border border-[#e0e0f5] p-6 space-y-4"
+      className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-4"
     >
       <h3 className="text-lg font-semibold text-gray-900">Add Job Source</h3>
 
@@ -213,7 +209,7 @@ export function AddSourceForm({
         <button
           type="submit"
           disabled={isLoading || isError || !hasProviders || !selectedProvider}
-          className="px-4 py-2 text-sm bg-[#323288] text-white rounded-lg hover:bg-[#252560] disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Add Source
         </button>

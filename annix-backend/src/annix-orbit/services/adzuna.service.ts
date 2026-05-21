@@ -1,5 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { DateTime } from "../../lib/datetime";
+import { stripHtmlToText } from "../../lib/html-text";
 import { IngestedJobResult } from "./ingested-job.types";
 
 export type AdzunaJobResult = IngestedJobResult;
@@ -46,7 +47,6 @@ export class AdzunaService {
       app_id: appId,
       app_key: appKey,
       results_per_page: String(resultsPerPage),
-      content_type: "application/json",
     });
 
     if (options.keywords) {
@@ -189,7 +189,7 @@ export class AdzunaService {
       id: String(result.id),
       title: result.title ?? "",
       company: result.company?.display_name ?? null,
-      description: result.description ?? null,
+      description: stripHtmlToText(result.description ?? null),
       locationDisplayName: result.location?.display_name ?? null,
       locationArea,
       salaryMin: result.salary_min ?? null,

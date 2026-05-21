@@ -2,7 +2,8 @@ import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
-import { In, MoreThan, Repository } from "typeorm";
+import { chunk } from "es-toolkit/compat";
+import { In, IsNull, MoreThan, Repository } from "typeorm";
 import { EmailService } from "../../email/email.service";
 import { DateTime, fromISO, nowMillis } from "../../lib/datetime";
 import { isAnnixOrbitCronEnabled } from "../annix-orbit-cron.config";
@@ -16,6 +17,7 @@ import { CandidateJobMatchingService } from "./candidate-job-matching.service";
 import { EmbeddingService } from "./embedding.service";
 import { GeocodeService } from "./geocode.service";
 import { IngestedJobResult } from "./ingested-job.types";
+import { JobVettingService } from "./job-vetting.service";
 import { JoobleService } from "./jooble.service";
 import { RemotiveService } from "./remotive.service";
 
@@ -46,6 +48,7 @@ export class JobIngestionService {
     private readonly emailService: EmailService,
     private readonly configService: ConfigService,
     private readonly geocodeService: GeocodeService,
+    private readonly jobVettingService: JobVettingService,
   ) {}
 
   @Cron(CronExpression.EVERY_HOUR, { name: "annix-orbit:poll-job-sources" })
@@ -67,19 +70,23 @@ export class JobIngestionService {
     }, Promise.resolve());
   }
 
-  async ingestFromSource(source: JobMarketSource): Promise<{ ingested: number; skipped: number }> {
+  async ingestFromSource(
+    source: JobMarketSource,
+    options: { vetInline?: boolean } = {},
+  ): Promise<{ ingested: number; skipped: number; savedIds: number[] }> {
+    const vetInline = options.vetInline ?? true;
     this.resetDailyCounterIfNeeded(source);
 
     if (source.requestsToday >= source.rateLimitPerDay) {
       this.logger.warn(
         `Rate limit reached for source ${source.name} (${source.requestsToday}/${source.rateLimitPerDay})`,
       );
-      return { ingested: 0, skipped: 0 };
+      return { ingested: 0, skipped: 0, savedIds: [] };
     }
 
     if (!this.hasRequiredCredentials(source)) {
       this.logger.warn(`Source ${source.name} missing API credentials`);
-      return { ingested: 0, skipped: 0 };
+      return { ingested: 0, skipped: 0, savedIds: [] };
     }
 
     const countryCategories = source.countryCodes.flatMap((country) => {
@@ -99,10 +106,11 @@ export class JobIngestionService {
 
           source.requestsToday += 1;
 
-          const result = await this.upsertJobs(jobs, source, country);
+          const result = await this.upsertJobs(jobs, source, country, { vetInline });
           return {
             ingested: acc.ingested + result.ingested,
             skipped: acc.skipped + result.skipped,
+            savedIds: [...acc.savedIds, ...result.savedIds],
           };
         } catch (error) {
           this.logger.error(
@@ -111,7 +119,7 @@ export class JobIngestionService {
           return acc;
         }
       },
-      Promise.resolve({ ingested: 0, skipped: 0 }),
+      Promise.resolve({ ingested: 0, skipped: 0, savedIds: [] as number[] }),
     );
 
     source.lastIngestedAt = DateTime.now().toJSDate();
@@ -177,12 +185,34 @@ export class JobIngestionService {
     }
   }
 
-  async triggerIngestion(sourceId: number): Promise<{ ingested: number; skipped: number }> {
+  async triggerIngestion(
+    sourceId: number,
+    options: { vetInline?: boolean } = {},
+  ): Promise<{ ingested: number; skipped: number; savedIds: number[] }> {
     const source = await this.sourceRepo.findOne({ where: { id: sourceId } });
     if (!source) {
       throw new Error(`Source ${sourceId} not found`);
     }
-    return this.ingestFromSource(source);
+    return this.ingestFromSource(source, options);
+  }
+
+  async vetSingleJob(jobId: number): Promise<{ acceptsZa: boolean | null; notes: string }> {
+    const job = await this.externalJobRepo.findOne({ where: { id: jobId } });
+    if (!job) {
+      throw new Error(`Job ${jobId} not found`);
+    }
+    const result = await this.jobVettingService.vet({
+      title: job.title,
+      company: job.company,
+      locationRaw: job.locationRaw,
+      description: job.description,
+    });
+    await this.externalJobRepo.update(jobId, {
+      acceptsZa: result.acceptsZa,
+      vettingNotes: result.notes,
+      vettedAt: DateTime.now().toJSDate(),
+    });
+    return result;
   }
 
   async externalJobsForCompany(
@@ -223,6 +253,161 @@ export class JobIngestionService {
     return { jobs, total };
   }
 
+  async platformGlobalExternalJobs(
+    options: {
+      country?: string;
+      category?: string;
+      search?: string;
+      page?: number;
+      limit?: number;
+    } = {},
+  ): Promise<{ jobs: ExternalJob[]; total: number }> {
+    const page = options.page ?? 1;
+    const limit = options.limit ?? 20;
+
+    const qb = this.externalJobRepo
+      .createQueryBuilder("job")
+      .innerJoin("job.source", "source")
+      .where("source.company_id IS NULL")
+      .andWhere("(job.accepts_za IS NULL OR job.accepts_za = true)");
+
+    if (options.country) {
+      qb.andWhere("job.country = :country", { country: options.country });
+    }
+    if (options.category) {
+      qb.andWhere("job.category = :category", { category: options.category });
+    }
+    if (options.search) {
+      qb.andWhere("(job.title ILIKE :search OR job.company ILIKE :search)", {
+        search: `%${options.search}%`,
+      });
+    }
+
+    qb.orderBy("job.postedAt", "DESC", "NULLS LAST")
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    const [jobs, total] = await qb.getManyAndCount();
+    return { jobs, total };
+  }
+
+  private async vetSavedJobs(savedJobs: ExternalJob[]): Promise<void> {
+    if (savedJobs.length === 0) return;
+    const batches = chunk(savedJobs, 5);
+    await batches.reduce(async (prev, batch) => {
+      await prev;
+      await Promise.all(
+        batch.map(async (saved) => {
+          try {
+            const result = await this.jobVettingService.vet({
+              title: saved.title,
+              company: saved.company,
+              locationRaw: saved.locationRaw,
+              description: saved.description,
+            });
+            await this.externalJobRepo.update(saved.id, {
+              acceptsZa: result.acceptsZa,
+              vettingNotes: result.notes,
+              vettedAt: DateTime.now().toJSDate(),
+            });
+          } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            this.logger.warn(`Failed to vet job ${saved.id}: ${message}`);
+          }
+        }),
+      );
+    }, Promise.resolve());
+  }
+
+  async vetPendingJobs(limit: number = 100): Promise<{
+    vetted: number;
+    accepted: number;
+    rejected: number;
+    ambiguous: number;
+  }> {
+    const pending = await this.externalJobRepo.find({
+      where: { acceptsZa: IsNull() },
+      take: limit,
+    });
+
+    let accepted = 0;
+    let rejected = 0;
+    let ambiguous = 0;
+
+    for (const job of pending) {
+      const result = await this.jobVettingService.vet({
+        title: job.title,
+        company: job.company,
+        locationRaw: job.locationRaw,
+        description: job.description,
+      });
+      await this.externalJobRepo.update(job.id, {
+        acceptsZa: result.acceptsZa,
+        vettingNotes: result.notes,
+        vettedAt: DateTime.now().toJSDate(),
+      });
+      if (result.acceptsZa === true) accepted += 1;
+      else if (result.acceptsZa === false) rejected += 1;
+      else ambiguous += 1;
+    }
+
+    return {
+      vetted: pending.length,
+      accepted,
+      rejected,
+      ambiguous,
+    };
+  }
+
+  async platformGlobalIngestionStats(): Promise<{
+    totalJobs: number;
+    jobsLast7Days: number;
+    sources: Array<{
+      id: number;
+      name: string;
+      provider: string;
+      enabled: boolean;
+      lastIngestedAt: Date | null;
+      requestsToday: number;
+      rateLimitPerDay: number;
+    }>;
+  }> {
+    const sources = await this.sourceRepo.find({ where: { companyId: IsNull() } });
+    const sourceIds = sources.map((s) => s.id);
+
+    const totalJobs =
+      sourceIds.length > 0
+        ? await this.externalJobRepo
+            .createQueryBuilder("job")
+            .where("job.source_id IN (:...sourceIds)", { sourceIds })
+            .getCount()
+        : 0;
+
+    const sevenDaysAgo = DateTime.now().minus({ days: 7 }).toJSDate();
+    const jobsLast7Days =
+      sourceIds.length > 0
+        ? await this.externalJobRepo
+            .createQueryBuilder("job")
+            .where("job.source_id IN (:...sourceIds)", { sourceIds })
+            .andWhere("job.created_at >= :sevenDaysAgo", { sevenDaysAgo })
+            .getCount()
+        : 0;
+
+    return {
+      totalJobs,
+      jobsLast7Days,
+      sources: sources.map((s) => ({
+        id: s.id,
+        name: s.name,
+        provider: s.provider,
+        enabled: s.enabled,
+        lastIngestedAt: s.lastIngestedAt,
+        requestsToday: s.requestsToday,
+        rateLimitPerDay: s.rateLimitPerDay,
+      })),
+    };
+  }
+
   async externalJobById(jobId: number): Promise<ExternalJob | null> {
     return this.externalJobRepo.findOne({ where: { id: jobId }, relations: ["source"] });
   }
@@ -242,7 +427,9 @@ export class JobIngestionService {
 
     const annixJobs = await this.activeAnnixPublicJobs(options);
 
-    const qb = this.externalJobRepo.createQueryBuilder("job");
+    const qb = this.externalJobRepo
+      .createQueryBuilder("job")
+      .where("(job.accepts_za IS NULL OR job.accepts_za = true)");
     if (options.country) {
       qb.andWhere("job.country = :country", { country: options.country });
     }
@@ -377,7 +564,7 @@ export class JobIngestionService {
     if (source.provider === JobSourceProvider.REMOTIVE) {
       const { jobs } = await this.remotiveService.searchJobs({
         category: category ?? undefined,
-        resultsPerPage: 50,
+        resultsPerPage: 200,
       });
       return jobs;
     }
@@ -398,10 +585,12 @@ export class JobIngestionService {
     jobs: IngestedJobResult[],
     source: JobMarketSource,
     country: string,
-  ): Promise<{ ingested: number; skipped: number }> {
+    options: { vetInline?: boolean } = {},
+  ): Promise<{ ingested: number; skipped: number; savedIds: number[] }> {
+    const vetInline = options.vetInline ?? true;
     const externalIds = jobs.map((job) => job.id);
     if (externalIds.length === 0) {
-      return { ingested: 0, skipped: 0 };
+      return { ingested: 0, skipped: 0, savedIds: [] };
     }
 
     const existingJobs = await this.externalJobRepo.find({
@@ -500,8 +689,16 @@ export class JobIngestionService {
         });
     });
 
+    if (vetInline) {
+      await this.vetSavedJobs(savedJobs);
+    }
+
     const skipped = alreadyKnown.size + alternates.length;
-    return { ingested: savedJobs.length, skipped };
+    return {
+      ingested: savedJobs.length,
+      skipped,
+      savedIds: savedJobs.map((job) => job.id),
+    };
   }
 
   private async findDuplicateCanonicalJob(

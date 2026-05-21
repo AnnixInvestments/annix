@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { IsNull, Repository } from "typeorm";
 import { CreateJobMarketSourceDto, UpdateJobMarketSourceDto } from "../dto/job-market.dto";
 import { JobMarketSource } from "../entities/job-market-source.entity";
 
@@ -59,6 +59,56 @@ export class JobMarketSourceService {
 
   async remove(id: number, companyId: number): Promise<void> {
     const source = await this.findById(id, companyId);
+    await this.sourceRepo.remove(source);
+  }
+
+  async createPlatformGlobal(dto: CreateJobMarketSourceDto): Promise<JobMarketSource> {
+    const source = this.sourceRepo.create({
+      provider: dto.provider,
+      name: dto.name,
+      apiId: dto.apiId ?? null,
+      apiKeyEncrypted: dto.apiKey ?? null,
+      countryCodes: dto.countryCodes ?? ["za"],
+      categories: dto.categories ?? [],
+      ingestionIntervalHours: dto.ingestionIntervalHours ?? 6,
+      companyId: null,
+    });
+
+    return this.sourceRepo.save(source);
+  }
+
+  async findAllPlatformGlobal(): Promise<JobMarketSource[]> {
+    return this.sourceRepo.find({
+      where: { companyId: IsNull() },
+      order: { createdAt: "DESC" },
+    });
+  }
+
+  async findByIdPlatformGlobal(id: number): Promise<JobMarketSource> {
+    const source = await this.sourceRepo.findOne({ where: { id, companyId: IsNull() } });
+    if (!source) {
+      throw new NotFoundException("Job market source not found");
+    }
+    return source;
+  }
+
+  async updatePlatformGlobal(id: number, dto: UpdateJobMarketSourceDto): Promise<JobMarketSource> {
+    const source = await this.findByIdPlatformGlobal(id);
+
+    if (dto.name != null) source.name = dto.name;
+    if (dto.apiId != null) source.apiId = dto.apiId;
+    if (dto.apiKey != null) source.apiKeyEncrypted = dto.apiKey;
+    if (dto.countryCodes != null) source.countryCodes = dto.countryCodes;
+    if (dto.categories != null) source.categories = dto.categories;
+    if (dto.enabled != null) source.enabled = dto.enabled;
+    if (dto.ingestionIntervalHours != null)
+      source.ingestionIntervalHours = dto.ingestionIntervalHours;
+
+    return this.sourceRepo.save(source);
+  }
+
+  async removePlatformGlobal(id: number): Promise<void> {
+    const source = await this.findByIdPlatformGlobal(id);
     await this.sourceRepo.remove(source);
   }
 }

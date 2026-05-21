@@ -40,6 +40,14 @@ import type {
   UpdateSecureDocumentDto,
   VerificationResult,
 } from "./adminApi.types";
+import type {
+  CreateJobMarketSourceDto,
+  ExternalJob,
+  JobMarketSource,
+  JobMarketStats,
+  JobSourceProviderInfo,
+  UpdateJobMarketSourceDto,
+} from "./annixOrbitApi";
 
 export type * from "./adminApi.types";
 
@@ -976,6 +984,89 @@ class AdminApiClient {
     path: "/admin/company-profile",
     body: (data) => data,
   });
+
+  async orbitJobMarketProviders(): Promise<JobSourceProviderInfo[]> {
+    return this.request("/admin/annix-orbit/job-market/providers");
+  }
+
+  async orbitJobMarketSources(): Promise<JobMarketSource[]> {
+    return this.request("/admin/annix-orbit/job-market/sources");
+  }
+
+  async createOrbitJobMarketSource(data: CreateJobMarketSourceDto): Promise<JobMarketSource> {
+    return this.request("/admin/annix-orbit/job-market/sources", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateOrbitJobMarketSource(
+    id: number,
+    data: UpdateJobMarketSourceDto,
+  ): Promise<JobMarketSource> {
+    return this.request(`/admin/annix-orbit/job-market/sources/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteOrbitJobMarketSource(id: number): Promise<{ message: string }> {
+    return this.request(`/admin/annix-orbit/job-market/sources/${id}`, {
+      method: "DELETE",
+    });
+  }
+
+  async triggerOrbitIngestion(
+    sourceId: number,
+  ): Promise<{ ingested: number; skipped: number; savedIds: number[] }> {
+    return this.request(`/admin/annix-orbit/job-market/sources/${sourceId}/ingest`, {
+      method: "POST",
+    });
+  }
+
+  async fetchOrbitSource(
+    sourceId: number,
+  ): Promise<{ ingested: number; skipped: number; savedIds: number[] }> {
+    return this.request(`/admin/annix-orbit/job-market/sources/${sourceId}/fetch`, {
+      method: "POST",
+    });
+  }
+
+  async vetOrbitJob(jobId: number): Promise<{ acceptsZa: boolean | null; notes: string }> {
+    return this.request(`/admin/annix-orbit/job-market/jobs/${jobId}/vet`, {
+      method: "POST",
+    });
+  }
+
+  async orbitExternalJobs(filters?: {
+    country?: string;
+    category?: string;
+    search?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<{ jobs: ExternalJob[]; total: number }> {
+    const params = new URLSearchParams();
+    if (filters?.country) params.append("country", filters.country);
+    if (filters?.category) params.append("category", filters.category);
+    if (filters?.search) params.append("search", filters.search);
+    if (filters?.page) params.append("page", String(filters.page));
+    if (filters?.limit) params.append("limit", String(filters.limit));
+    const query = params.toString() ? `?${params.toString()}` : "";
+    return this.request(`/admin/annix-orbit/job-market/jobs${query}`);
+  }
+
+  async orbitJobMarketStats(): Promise<JobMarketStats> {
+    return this.request("/admin/annix-orbit/job-market/stats");
+  }
+
+  async vetPendingOrbitJobs(
+    limit?: number,
+  ): Promise<{ vetted: number; accepted: number; rejected: number; ambiguous: number }> {
+    const query = limit ? `?limit=${limit}` : "";
+    return this.request(`/admin/annix-orbit/job-market/vet-pending${query}`, {
+      method: "POST",
+    });
+  }
 }
 
 export interface AiUsageQueryParams {

@@ -1,5 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { DateTime } from "../../lib/datetime";
+import { stripHtmlToText } from "../../lib/html-text";
 import { IngestedJobResult } from "./ingested-job.types";
 
 interface JoobleApiResponse {
@@ -90,7 +91,7 @@ export class JoobleService {
       id: String(result.id),
       title: result.title ?? "",
       company: result.company ?? null,
-      description: result.snippet ?? null,
+      description: stripHtmlToText(result.snippet ?? null),
       locationDisplayName: result.location ?? null,
       locationArea: result.location ?? null,
       salaryMin: salary.min,
