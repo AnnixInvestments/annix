@@ -4479,6 +4479,18 @@ Formula: totalPrice = totalKg × salePricePerKg
     );
   }
 
+  @Delete("portal/accounting/reconciliation/:id")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiOperation({
+    summary: "Delete a statement reconciliation (so the user can re-upload)",
+  })
+  async reconciliationDelete(@Param("id") id: string): Promise<{ deletedId: number }> {
+    const deletedId = await this.rubberStatementReconciliationService.deleteReconciliation(
+      Number(id),
+    );
+    return { deletedId };
+  }
+
   @Get("portal/accounting/reconciliation")
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiOperation({ summary: "List all reconciliations" })

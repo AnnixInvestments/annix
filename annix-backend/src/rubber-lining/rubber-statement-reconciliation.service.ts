@@ -444,6 +444,30 @@ export class RubberStatementReconciliationService {
     return this.mapToDetailDto(recon, matchItems);
   }
 
+  // Hard-delete a reconciliation (and its underlying statement PDF) so the
+  // user can re-upload from scratch. Used when an OCR-misread row can't be
+  // fixed by Re-extract and the easier path is "delete, drop the PDF again".
+  async deleteReconciliation(id: number): Promise<number> {
+    const recon = await this.reconciliationRepository.findOne({ where: { id } });
+    if (!recon) {
+      throw new NotFoundException("Reconciliation not found");
+    }
+    // Best-effort delete the PDF — if it's already gone (e.g. on the wrong
+    // bucket), don't block the DB delete the user actually asked for.
+    if (recon.statementPath) {
+      try {
+        await this.storageService.delete(recon.statementPath);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        this.logger.warn(
+          `deleteReconciliation: failed to delete statement file ${recon.statementPath} — ${message}; deleting DB row anyway`,
+        );
+      }
+    }
+    await this.reconciliationRepository.delete({ id });
+    return id;
+  }
+
   async resolveDiscrepancy(
     id: number,
     resolvedBy: string,

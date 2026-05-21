@@ -2,6 +2,7 @@
 
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useConfirm } from "@/app/au-rubber/hooks/useConfirm";
 import { useToast } from "@/app/components/Toast";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
 import { ReconciliationMatchView } from "../../../../components/accounting/ReconciliationMatchView";
@@ -45,6 +46,7 @@ export default function ReconciliationDetailPage() {
   const params = useParams();
   const id = Number(params.id);
   const { showToast } = useToast();
+  const { confirm, ConfirmDialog } = useConfirm();
   const [data, setData] = useState<ReconciliationDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isExtracting, setIsExtracting] = useState(false);
@@ -77,6 +79,33 @@ export default function ReconciliationDetailPage() {
       showToast("Statement extracted successfully", "success");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Extraction failed";
+      showToast(msg, "error");
+    } finally {
+      setIsExtracting(false);
+    }
+  };
+
+  // Re-OCR a statement we've already extracted — useful when Gemini misread an
+  // amount and the row now shows as Amount Discrepancy. Auto-reconciles after
+  // so the user doesn't have to click the second button.
+  const handleReextract = async () => {
+    const ok = await confirm({
+      title: "Re-extract statement",
+      message:
+        "This re-runs Gemini OCR on the source PDF and replaces every extracted line on this statement, then re-runs reconciliation. Continue?",
+      confirmLabel: "Re-extract",
+      cancelLabel: "Cancel",
+      variant: "warning",
+    });
+    if (!ok) return;
+    setIsExtracting(true);
+    try {
+      await auRubberApiClient.accountingExtractStatement(id);
+      const reconciled = await auRubberApiClient.accountingReconcileStatement(id);
+      setData(reconciled as ReconciliationDetail);
+      showToast("Statement re-extracted and reconciled", "success");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Re-extraction failed";
       showToast(msg, "error");
     } finally {
       setIsExtracting(false);
@@ -133,6 +162,7 @@ export default function ReconciliationDetailPage() {
 
   return (
     <RequirePermission permission={PAGE_PERMISSIONS["/au-rubber/portal/accounting"]}>
+      {ConfirmDialog}
       <div className="space-y-6">
         <Breadcrumb
           items={[
@@ -161,6 +191,16 @@ export default function ReconciliationDetailPage() {
                 className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
               >
                 {isExtracting ? "Extracting..." : "Extract Statement"}
+              </button>
+            )}
+            {data.extractedData && data.extractedData.length > 0 && (
+              <button
+                onClick={handleReextract}
+                disabled={isExtracting}
+                className="px-4 py-2 text-sm font-medium text-orange-700 dark:text-orange-300 bg-white dark:bg-gray-800 border border-orange-300 dark:border-orange-900/60 rounded-lg hover:bg-orange-50 dark:hover:bg-orange-900/20 disabled:opacity-50 transition-colors"
+                title="Re-run Gemini OCR on the source PDF — useful when a line shows the wrong amount"
+              >
+                {isExtracting ? "Re-extracting..." : "Re-extract"}
               </button>
             )}
             {data.extractedData &&

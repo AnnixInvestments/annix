@@ -1,6 +1,7 @@
 "use client";
 
 import { isNumber } from "es-toolkit/compat";
+import { Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -8,6 +9,7 @@ import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import { FileDropZone } from "@/app/au-rubber/components/FileDropZone";
 import { RequirePermission } from "@/app/au-rubber/components/RequirePermission";
 import { PAGE_PERMISSIONS } from "@/app/au-rubber/config/pagePermissions";
+import { useConfirm } from "@/app/au-rubber/hooks/useConfirm";
 import { useToast } from "@/app/components/Toast";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
 import { fromISO } from "@/app/lib/datetime";
@@ -65,9 +67,11 @@ function statusBadge(status: string): { label: string; cls: string } {
 export default function SupplierStatementsPage() {
   const router = useRouter();
   const { showToast } = useToast();
+  const { confirm, ConfirmDialog } = useConfirm();
   const [recons, setRecons] = useState<ReconciliationItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -86,6 +90,30 @@ export default function SupplierStatementsPage() {
     void fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const handleDelete = async (r: ReconciliationItem) => {
+    const ok = await confirm({
+      title: "Delete statement?",
+      message: `This deletes the reconciliation for ${r.companyName} (${
+        MONTH_NAMES[r.periodMonth - 1]
+      } ${r.periodYear}) and removes the PDF from storage so you can re-upload it from scratch. This can't be undone.`,
+      confirmLabel: "Delete",
+      cancelLabel: "Cancel",
+      variant: "danger",
+    });
+    if (!ok) return;
+    setDeletingId(r.id);
+    try {
+      await auRubberApiClient.accountingDeleteStatement(r.id);
+      showToast("Statement deleted", "success");
+      await fetchData();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Delete failed";
+      showToast(msg, "error");
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const handleFilesSelected = async (files: File[]) => {
     if (files.length === 0 || isUploading) return;
@@ -114,6 +142,7 @@ export default function SupplierStatementsPage() {
 
   return (
     <RequirePermission permission={PAGE_PERMISSIONS["/au-rubber/portal/supplier-statements"]}>
+      {ConfirmDialog}
       <div className="space-y-6">
         <Breadcrumb items={[{ label: "Suppliers" }, { label: "Statements" }]} />
 
@@ -175,6 +204,7 @@ export default function SupplierStatementsPage() {
                   <th className="px-4 py-3">Audit Summary</th>
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3">Uploaded</th>
+                  <th className="px-4 py-3 w-12 text-right">{/* delete */}</th>
                 </tr>
               </thead>
               <tbody>
@@ -240,6 +270,20 @@ export default function SupplierStatementsPage() {
                       </td>
                       <td className="px-4 py-3 text-gray-500 dark:text-gray-400 text-xs">
                         {fromISO(r.createdAt).toJSDate().toLocaleDateString("en-ZA")}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void handleDelete(r);
+                          }}
+                          disabled={deletingId === r.id}
+                          title="Delete statement — removes the PDF too so you can re-upload"
+                          className="p-1.5 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-40 transition-colors"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
                       </td>
                     </tr>
                   );

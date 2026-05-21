@@ -2461,6 +2461,14 @@ class AuRubberApiClient {
     path: (id) => `/rubber-lining/portal/accounting/reconciliation/${id}/extract`,
   });
 
+  accountingDeleteStatement = createEndpoint<[id: number], { deletedId: number }>(
+    apiClient,
+    "DELETE",
+    {
+      path: (id) => `/rubber-lining/portal/accounting/reconciliation/${id}`,
+    },
+  );
+
   accountingReconcileStatement = createEndpoint<[id: number], unknown>(apiClient, "POST", {
     path: (id) => `/rubber-lining/portal/accounting/reconciliation/${id}/reconcile`,
   });
