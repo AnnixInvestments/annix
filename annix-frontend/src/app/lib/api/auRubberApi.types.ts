@@ -778,6 +778,20 @@ export interface RubberDeliveryNoteDto {
   siblingsBackfilledAt: string | null;
   documentPathSiblingCount: number;
   createdBy: string | null;
+  /**
+   * Customer-side DNs only — the upstream supplier CoCs the dispatched
+   * rolls came from. Resolved via roll_stock → SDN → linkedCocId.
+   * Empty array on supplier-side DNs (nothing upstream to trace).
+   */
+  sourceSupplierCocs?: SourceSupplierCocDto[];
+}
+
+export interface SourceSupplierCocDto {
+  id: number;
+  cocNumber: string | null;
+  supplierCompanyId: number | null;
+  supplierCompanyName: string | null;
+  rollCount: number;
 }
 
 export interface RubberDeliveryNoteItemDto {

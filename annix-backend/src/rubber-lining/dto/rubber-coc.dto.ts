@@ -291,6 +291,20 @@ export class RubberDeliveryNoteDto {
   sourcePageNumbers: number[] | null;
   siblingsBackfilledAt: string | null;
   documentPathSiblingCount: number;
+  // Customer-side DNs only: the upstream Supplier CoCs that the dispatched
+  // rolls on this CDN originated from. Each roll on the CDN was issued via
+  // an SDN at receipt, and that SDN was linked to a Supplier CoC. This
+  // surfaces the back-trace so the operator can see "this customer's
+  // shipment came from these supplier batches".
+  sourceSupplierCocs: SourceSupplierCocDto[];
+}
+
+export class SourceSupplierCocDto {
+  id: number;
+  cocNumber: string | null;
+  supplierCompanyId: number | null;
+  supplierCompanyName: string | null;
+  rollCount: number;
 }
 
 @ApiSchema({ name: "RubberLiningCreateDeliveryNoteDto" })

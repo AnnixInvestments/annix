@@ -1184,6 +1184,32 @@ ORDER NUMBER:
 - CRITICAL: Do NOT confuse the order number with VAT registration numbers, account numbers, postal codes, or long reference numbers (e.g. "4650300389" is a VAT reg, not an order number).
 - If there is an "Order Confirmation" field (e.g., "SO185359"), that is NOT the order number — ignore it.
 
+DELIVERY NOTE REFERENCE (deliveryNoteRef) — HUNT FOR IT, IT'S USUALLY THERE:
+- Most supplier invoices reference the SDN (supplier delivery note) that
+  shipped the goods. Capturing this lets the reconciliation cascade match
+  the invoice back to the physical delivery note. Look HARD — it appears
+  in many different places depending on the supplier and the document layout.
+- Locations to check, in priority order:
+    1. A dedicated labelled field like "Delivery Note No.", "DN No.",
+       "Del Note", "Despatch No.", "Waybill", "Your Ref" near the header
+       or addresses block.
+    2. A "Reference" / "Your Reference" / "Customer Ref" line — sometimes
+       the SDN number is the reference even when the label isn't explicit.
+    3. Inline in the line-item description (S&N format: "D/N: 14390",
+       documented separately below).
+    4. The PO / Order Confirmation block — occasionally the SDN piggybacks
+       there ("DN08516 / Order 197").
+    5. A footer / notes block near the bank-detail line.
+- Common formats: "DN08516", "D08516", "DC19523", "DN-1234", "DN 1234",
+  bare numeric "14390". Strip leading/trailing whitespace but PRESERVE the
+  alphabetic prefix exactly as printed — the prefix letter matters (D vs
+  DN vs DC are different documents).
+- If multiple candidate references appear, prefer the one most clearly
+  labelled as a delivery / despatch / waybill reference. If still ambiguous,
+  take the one nearest the line-item table.
+- Set deliveryNoteRef = null ONLY when you've checked all of the above and
+  no candidate is present. Don't invent one.
+
 COMPANY NAME:
 - Extract the supplier/vendor company name from the letterhead or "FROM:" section
 - This is the company ISSUING the invoice, not the customer receiving it

@@ -235,20 +235,15 @@ export default function CustomerDeliveryNotesPage() {
     setIsUploading(true);
 
     try {
-      const modifiedAnalysis = {
-        ...analysisResult,
-        groups: analysisResult.groups.map((group, idx) => {
-          const override = overrides[idx];
-          if (override?.lineItems) {
-            return { ...group, allLineItems: override.lineItems };
-          }
-          return group;
-        }),
-      };
-
+      // Send the ORIGINAL Gemini analysis (not pre-merged with overrides) so
+      // the backend can diff original vs user-corrected and persist the
+      // corrections to rubber_delivery_note_corrections. The backend uses
+      // override.lineItems when present, else group.allLineItems — so we
+      // don't lose the user's edits, but we also don't lose the original
+      // values that Nix needs to learn from.
       const result = await auRubberApiClient.createCustomerDnsFromAnalysis(
         analysisFiles,
-        modifiedAnalysis,
+        analysisResult,
         overrides,
       );
       showToast(`Created ${result.deliveryNoteIds.length} delivery note(s)`, "success");

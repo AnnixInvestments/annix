@@ -1485,6 +1485,36 @@ Formula: totalPrice = totalKg × salePricePerKg
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
+  @Post("portal/delivery-notes/backfill-missing-items")
+  @ApiOperation({
+    summary:
+      "Backfill delivery_note_items rows for split-out DNs that have rolls in extracted_data but no items (legacy bug fix). Also re-dispatches rolls and triggers AU CoC readiness for each repaired DN.",
+  })
+  async backfillMissingDeliveryNoteItems(): Promise<{
+    repaired: number;
+    repairedIds: number[];
+    skipped: number;
+  }> {
+    const result = await this.rubberDeliveryNoteService.backfillMissingDeliveryNoteItems();
+    // Re-dispatch rolls + trigger AU-CoC readiness for each repaired DN so
+    // the AU COC column fills in without the user having to click anything.
+    await Promise.all(
+      result.repaired.map((dnId) =>
+        this.extractionOrchestratorService
+          .dispatchRollsForDeliveryNote(dnId)
+          .catch(() => undefined)
+          .then(() => this.extractionOrchestratorService.triggerReadinessCheckForDeliveryNote(dnId)),
+      ),
+    );
+    return {
+      repaired: result.repaired.length,
+      repairedIds: result.repaired,
+      skipped: result.skipped,
+    };
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
   @Get("portal/delivery-notes")
   @ApiOperation({ summary: "List delivery notes (paginated)" })
   @ApiQuery({ name: "deliveryNoteType", required: false, enum: DeliveryNoteType })

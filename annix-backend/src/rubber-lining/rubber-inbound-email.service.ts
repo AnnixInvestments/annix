@@ -2490,7 +2490,18 @@ ${truncatedText}`;
             }
           })();
 
-          await group.allLineItems.reduce(async (itemPromise, lineItem) => {
+          // Prefer user-edited line items (from the analysis modal) over
+          // the AI's originals. When override.lineItems is set we record a
+          // correction per changed field after creation so Nix learns the
+          // operator's preferred values for next time.
+          const overrideLineItems = (override as { lineItems?: typeof group.allLineItems })
+            .lineItems;
+          const lineItemsToCreate =
+            overrideLineItems && overrideLineItems.length > 0
+              ? overrideLineItems
+              : group.allLineItems;
+
+          await lineItemsToCreate.reduce(async (itemPromise, lineItem) => {
             await itemPromise;
             await this.deliveryNoteService.createDeliveryNoteItem({
               deliveryNoteId: dnId,
@@ -2506,6 +2517,34 @@ ${truncatedText}`;
               description: (lineItem as Record<string, unknown>).description as string,
             });
           }, Promise.resolve());
+
+          // ─── Persist any user corrections so Nix learns ─────────────────
+          // The supplier_name on the correction row is the *customer* name
+          // for customer-side DNs — that's what `correctionHintsForDnSupplier`
+          // keys off, so the next analyze for the same customer pulls these
+          // hints into the Gemini prompt. Skipped when no override fields
+          // are different from the original analysis (no-op).
+          try {
+            const customerName =
+              (await this.companyRepository.findOne({ where: { id: customerId } }))?.name ??
+              group.customerName ??
+              null;
+            await this.deliveryNoteService.recordCdnAnalysisCorrections({
+              deliveryNoteId: dnId,
+              customerName,
+              original: group,
+              override,
+              correctedLineItems: lineItemsToCreate,
+              correctedBy: createdBy ?? null,
+            });
+          } catch (err) {
+            // Don't fail the create just because the correction-log write
+            // had trouble — log and move on.
+            const message = err instanceof Error ? err.message : String(err);
+            this.logger.warn(
+              `Failed to persist corrections for DN ${dnId} (${deliveryNoteNumber}): ${message}`,
+            );
+          }
 
           const podPageNumbers = (group as unknown as { podPageNumbers?: number[] }).podPageNumbers;
           if (podPageNumbers && podPageNumbers.length > 0) {

@@ -8,6 +8,7 @@ import {
   CreateDeliveryNoteItemDto,
   DeliveryNoteItemDto,
   RubberDeliveryNoteDto,
+  SourceSupplierCocDto,
   UpdateDeliveryNoteDto,
 } from "./dto/rubber-coc.dto";
 import {
@@ -251,7 +252,20 @@ export class RubberDeliveryNoteService {
     });
     if (!note) return null;
     const siblingCounts = await this.documentPathSiblingCounts([note]);
-    return this.mapDeliveryNoteToDto(note, null, siblingCounts.get(note.id) ?? 1);
+    // Source-SCoC trace only makes sense on customer-side delivery notes
+    // (rolls dispatched OUT to a customer trace back to the supplier CoCs
+    // they arrived IN under). Supplier-side DNs are the originating end of
+    // that chain so there's nothing upstream to surface.
+    const isCustomerSide = note.supplierCompany?.companyType === CompanyType.CUSTOMER;
+    const sourceSupplierCocs = isCustomerSide
+      ? await this.sourceSupplierCocsForCustomerDn(note.id)
+      : [];
+    return this.mapDeliveryNoteToDto(
+      note,
+      null,
+      siblingCounts.get(note.id) ?? 1,
+      sourceSupplierCocs,
+    );
   }
 
   async markExtractionFailed(id: number): Promise<void> {
@@ -526,6 +540,114 @@ export class RubberDeliveryNoteService {
     });
 
     return corrections;
+  }
+
+  /**
+   * Persist a batch of corrections for a customer DN created via the
+   * analyze-and-edit modal. The original Gemini analysis and the user's
+   * final overrides are both supplied; the difference is what Nix learns
+   * for next time.
+   *
+   * Stored under `supplierName = customerName` so the existing
+   * `correctionHintsForDnSupplier` lookup picks them up for the same
+   * customer's future uploads.
+   */
+  async recordCdnAnalysisCorrections(args: {
+    deliveryNoteId: number;
+    customerName: string | null;
+    original: {
+      deliveryNoteNumber?: string | null;
+      customerName?: string | null;
+      customerReference?: string | null;
+      deliveryDate?: string | null;
+      allLineItems?: Array<{
+        rollNumber?: string | null;
+        compoundType?: string | null;
+        thicknessMm?: number | null;
+        widthMm?: number | null;
+        lengthM?: number | null;
+        rollWeightKg?: number | null;
+      }>;
+    };
+    override: {
+      deliveryNoteNumber?: string;
+      customerId?: number;
+      customerReference?: string;
+      deliveryDate?: string;
+      lineItems?: Array<{
+        rollNumber?: string | null;
+        compoundType?: string | null;
+        thicknessMm?: number | null;
+        widthMm?: number | null;
+        lengthM?: number | null;
+        rollWeightKg?: number | null;
+      }>;
+    };
+    correctedLineItems: Array<{
+      rollNumber?: string | null;
+      compoundType?: string | null;
+      thicknessMm?: number | null;
+      widthMm?: number | null;
+      lengthM?: number | null;
+      rollWeightKg?: number | null;
+    }>;
+    correctedBy: string | null;
+  }): Promise<number> {
+    const { deliveryNoteId, customerName, original, override, correctedLineItems, correctedBy } =
+      args;
+    if (!customerName) return 0;
+    const corrections: { field: string; original: string; corrected: string }[] = [];
+
+    const diffScalar = (field: string, prev: unknown, next: unknown): void => {
+      if (next === undefined) return;
+      if (prev === next) return;
+      const o = prev == null ? "" : String(prev);
+      const c = next == null ? "" : String(next);
+      if (o === c) return;
+      corrections.push({ field, original: o, corrected: c });
+    };
+
+    diffScalar("deliveryNoteNumber", original.deliveryNoteNumber, override.deliveryNoteNumber);
+    diffScalar("customerReference", original.customerReference, override.customerReference);
+    diffScalar("deliveryDate", original.deliveryDate, override.deliveryDate);
+
+    // Per-roll diff — match by rollNumber where possible so we capture
+    // "Nix said widthMm 850, operator corrected to 800" type changes.
+    const originalRollsByNumber = new Map<string, (typeof correctedLineItems)[number]>();
+    (original.allLineItems ?? []).forEach((roll) => {
+      if (roll?.rollNumber) originalRollsByNumber.set(String(roll.rollNumber), roll);
+    });
+    const rollFields = [
+      "compoundType",
+      "thicknessMm",
+      "widthMm",
+      "lengthM",
+      "rollWeightKg",
+    ] as const;
+    correctedLineItems.forEach((roll) => {
+      if (!roll?.rollNumber) return;
+      const prev = originalRollsByNumber.get(String(roll.rollNumber));
+      rollFields.forEach((f) => {
+        diffScalar(`roll[${roll.rollNumber}].${f}`, prev?.[f], roll[f]);
+      });
+    });
+
+    if (corrections.length === 0) return 0;
+    const rows = corrections.map((c) =>
+      this.correctionRepository.create({
+        deliveryNoteId,
+        supplierName: customerName,
+        fieldName: c.field,
+        originalValue: c.original,
+        correctedValue: c.corrected,
+        correctedBy,
+      }),
+    );
+    await this.correctionRepository.save(rows);
+    this.logger.log(
+      `Persisted ${rows.length} correction(s) for customer DN ${deliveryNoteId} (${customerName}) — Nix will use these as hints next time`,
+    );
+    return rows.length;
   }
 
   async correctionHintsForDnSupplier(supplierName: string | null): Promise<string | null> {
@@ -967,6 +1089,59 @@ export class RubberDeliveryNoteService {
   async deleteDeliveryNote(id: number): Promise<boolean> {
     const result = await this.deliveryNoteRepository.delete(id);
     return (result.affected || 0) > 0;
+  }
+
+  /**
+   * One-shot backfill — repair every delivery note where extracted_data
+   * carries rolls but rubber_delivery_note_items is empty. This happened
+   * historically when the multi-DN-PDF splitter saved the child DN rows
+   * with their extracted_data but never ran replaceItemsFromRolls on
+   * them, leaving the line-items table empty. Without items, downstream
+   * steps (AU CoC readiness, roll-stock dispatch) silently skip the DN.
+   *
+   * Returns the IDs that were repaired so the caller can re-dispatch
+   * rolls + trigger AU-CoC readiness for each.
+   */
+  async backfillMissingDeliveryNoteItems(): Promise<{ repaired: number[]; skipped: number }> {
+    const rows = await this.deliveryNoteRepository.query<{ id: number }[]>(`
+      SELECT dn.id
+      FROM rubber_delivery_notes dn
+      WHERE dn.extracted_data IS NOT NULL
+        AND dn.extracted_data->'rolls' IS NOT NULL
+        AND jsonb_array_length(dn.extracted_data->'rolls') > 0
+        AND NOT EXISTS (
+          SELECT 1 FROM rubber_delivery_note_items dni
+          WHERE dni.delivery_note_id = dn.id
+        )
+      ORDER BY dn.id
+    `);
+    const repaired: number[] = [];
+    let skipped = 0;
+    for (const row of rows) {
+      const note = await this.deliveryNoteRepository.findOne({
+        where: { id: row.id },
+        relations: ["supplierCompany"],
+      });
+      const rolls = note?.extractedData?.rolls;
+      if (!note || !rolls || rolls.length === 0) {
+        skipped++;
+        continue;
+      }
+      try {
+        await this.replaceItemsFromRolls(note.id, rolls);
+        repaired.push(note.id);
+      } catch (err) {
+        skipped++;
+        const message = err instanceof Error ? err.message : String(err);
+        this.logger.warn(
+          `backfillMissingDeliveryNoteItems: failed to repair DN ${note.id}: ${message}`,
+        );
+      }
+    }
+    this.logger.log(
+      `backfillMissingDeliveryNoteItems: repaired ${repaired.length} DN(s), skipped ${skipped}`,
+    );
+    return { repaired, skipped };
   }
 
   async itemsByDeliveryNoteId(deliveryNoteId: number): Promise<DeliveryNoteItemDto[]> {
@@ -1441,6 +1616,7 @@ export class RubberDeliveryNoteService {
     note: RubberDeliveryNote,
     auCoc?: { id: number; cocNumber: string } | null,
     documentPathSiblingCount: number = 1,
+    sourceSupplierCocs: SourceSupplierCocDto[] = [],
   ): RubberDeliveryNoteDto {
     return {
       id: note.id,
@@ -1474,7 +1650,52 @@ export class RubberDeliveryNoteService {
         ? note.siblingsBackfilledAt.toISOString()
         : null,
       documentPathSiblingCount,
+      sourceSupplierCocs,
     };
+  }
+
+  // Back-trace the supplier CoCs that the rolls dispatched on this customer
+  // delivery note originated from. The chain is:
+  //
+  //   CDN → rubber_delivery_note_items.rollNumber
+  //       → rubber_roll_stock (by roll_number)
+  //       → roll_stock.supplier_delivery_note_id → SDN
+  //       → SDN.linked_coc_id → rubber_supplier_cocs
+  //
+  // Returns one row per distinct upstream SCoC, with a count of how many
+  // rolls on this CDN trace back to that SCoC.
+  async sourceSupplierCocsForCustomerDn(deliveryNoteId: number): Promise<SourceSupplierCocDto[]> {
+    const rows = await this.deliveryNoteRepository.query(
+      `
+      SELECT coc.id AS id,
+             coc.coc_number AS coc_number,
+             coc.supplier_company_id AS supplier_company_id,
+             comp.name AS supplier_name,
+             COUNT(DISTINCT rs.id) AS roll_count
+      FROM rubber_delivery_note_items dni
+      JOIN rubber_roll_stock rs
+        ON rs.roll_number = dni.roll_number
+       AND rs.customer_delivery_note_id = dni.delivery_note_id
+      JOIN rubber_delivery_notes sdn
+        ON sdn.id = rs.supplier_delivery_note_id
+      JOIN rubber_supplier_cocs coc
+        ON coc.id = sdn.linked_coc_id
+      LEFT JOIN rubber_company comp
+        ON comp.id = coc.supplier_company_id
+      WHERE dni.delivery_note_id = $1
+        AND coc.version_status NOT IN ('REJECTED','SUPERSEDED')
+      GROUP BY coc.id, coc.coc_number, coc.supplier_company_id, comp.name
+      ORDER BY roll_count DESC, coc.coc_number ASC
+      `,
+      [deliveryNoteId],
+    );
+    return rows.map((row: Record<string, unknown>) => ({
+      id: Number(row.id),
+      cocNumber: row.coc_number == null ? null : String(row.coc_number),
+      supplierCompanyId: row.supplier_company_id == null ? null : Number(row.supplier_company_id),
+      supplierCompanyName: row.supplier_name == null ? null : String(row.supplier_name),
+      rollCount: Number(row.roll_count),
+    }));
   }
 
   private mapDeliveryNoteItemToDto(item: RubberDeliveryNoteItem): DeliveryNoteItemDto {

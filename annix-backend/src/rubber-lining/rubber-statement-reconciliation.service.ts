@@ -256,20 +256,23 @@ export class RubberStatementReconciliationService {
       throw new NotFoundException("No extracted data - run extraction first");
     }
 
-    const startDate = `${recon.periodYear}-${String(recon.periodMonth).padStart(2, "0")}-01`;
-    const endMonth = recon.periodMonth === 12 ? 1 : recon.periodMonth + 1;
-    const endYear = recon.periodMonth === 12 ? recon.periodYear + 1 : recon.periodYear;
-    const endDate = `${endYear}-${String(endMonth).padStart(2, "0")}-01`;
-
+    // No date filter on the STI lookup: a supplier statement routinely
+    // includes invoices from earlier periods that are still outstanding
+    // (e.g. an April statement listing IN177322 dated 18 March because the
+    // user hasn't paid it yet). Filtering by the recon's period_year /
+    // period_month hides legitimate matches and surfaces them as "STI
+    // missing" when in fact the STI was captured weeks ago. Also include
+    // EXTRACTED rows alongside APPROVED — an extracted STI is "in the
+    // system" for reconciliation purposes; the user wants visibility, not
+    // gating. PENDING (file uploaded, no OCR yet) and FAILED are excluded
+    // since they have no amount data to compare against.
     const systemInvoices = await this.taxInvoiceRepository
       .createQueryBuilder("inv")
       .where("inv.company_id = :companyId", { companyId: recon.companyId })
       .andWhere("inv.invoice_type = :type", { type: TaxInvoiceType.SUPPLIER })
-      .andWhere("inv.status = :status", {
-        status: TaxInvoiceStatus.APPROVED,
+      .andWhere("inv.status IN (:...statuses)", {
+        statuses: [TaxInvoiceStatus.APPROVED, TaxInvoiceStatus.EXTRACTED],
       })
-      .andWhere("inv.invoice_date >= :startDate", { startDate })
-      .andWhere("inv.invoice_date < :endDate", { endDate })
       .andWhere("inv.version_status = :vs", { vs: "ACTIVE" })
       .getMany();
 
@@ -288,35 +291,115 @@ export class RubberStatementReconciliationService {
       invoiceLines.map((item) => [item.invoiceNumber.trim().toLowerCase(), item.amount]),
     );
 
-    // Cascade pre-fetch: collect every deliveryNoteRef on every system STI in
-    // this period (one query rather than N), then check existence in
-    // rubber_delivery_notes filtered by this supplier. A DN is considered
-    // "present" if any non-rejected/superseded version exists.
-    const dnRefs = systemInvoices
+    // Cascade pre-fetch: collect every candidate SDN number we might want to
+    // look up — explicit STI.deliveryNoteRef (e.g. S&N's "3057", "14126"),
+    // each STI's own invoice_number (Impilo-style unified numbering), AND
+    // every statement-line invoice_number for rows where we don't have an
+    // STI yet (so the user still sees ✓ when only the SDN has landed).
+    // A DN is considered "present" if any non-rejected, non-superseded
+    // version exists — including PENDING_AUTHORIZATION, because the user
+    // legitimately wants the upload reflected immediately, not after
+    // approval.
+    const explicitDnRefs = systemInvoices
       .map((inv) => inv.extractedData?.deliveryNoteRef)
       .filter((ref): ref is string => typeof ref === "string" && ref.trim().length > 0)
       .map((ref) => ref.trim());
+    const systemInvoiceNumbers = systemInvoices
+      .map((inv) => inv.invoiceNumber)
+      .filter((ref): ref is string => typeof ref === "string" && ref.trim().length > 0)
+      .map((ref) => ref.trim());
+    const statementLineNumbers = invoiceLines
+      .map((item) => item.invoiceNumber)
+      .filter((ref): ref is string => typeof ref === "string" && ref.trim().length > 0)
+      .map((ref) => ref.trim());
+    const candidateDnRefs = Array.from(
+      new Set([...explicitDnRefs, ...systemInvoiceNumbers, ...statementLineNumbers]),
+    );
     const presentDnNumbers = new Set<string>();
     const dnIdByNumber = new Map<string, number>();
-    if (dnRefs.length > 0) {
-      const existingDns = await this.deliveryNoteRepository
-        .createQueryBuilder("dn")
-        .select("dn.id", "id")
-        .addSelect("dn.delivery_note_number", "deliveryNoteNumber")
-        .where("dn.supplier_company_id = :companyId", { companyId: recon.companyId })
-        .andWhere("dn.delivery_note_number IN (:...refs)", { refs: dnRefs })
-        .andWhere("dn.version_status = :vs", { vs: "ACTIVE" })
-        .getRawMany();
-      for (const row of existingDns) {
-        const key = String(row.deliveryNoteNumber).trim().toLowerCase();
-        presentDnNumbers.add(key);
-        // If multiple ACTIVE rows ever existed (shouldn't, but defensively),
-        // first one wins — the user can pick the right one from the SDN page.
-        if (!dnIdByNumber.has(key)) {
-          dnIdByNumber.set(key, Number(row.id));
-        }
+    // The Supplier CoC linkage lives on the SDN row (rubber_delivery_notes.
+    // linked_coc_id), not on the STI's linkedCalenderRollCocId (which is the
+    // AU-side calendar-roll CoC — a different document). Track per SDN
+    // number → supplier-CoC id so the cascade can flip SCoC to ✓.
+    const cocIdBySdnNumber = new Map<string, number>();
+    // OCR-tolerant fallback: Gemini routinely misreads SDN prefixes (the
+    // real "D08516" gets read as "DN08516" when the STI's delivery-note
+    // ref is scanned). When the exact lookup misses, we fall back to a
+    // digit-only key — both refs strip to "08516" and match. Track the
+    // canonical (case-original) SDN number per digit-sequence so the
+    // cascade can render the right ref text in the UI.
+    const presentDnByDigits = new Map<
+      string,
+      { number: string; id: number; cocId: number | null }
+    >();
+    // Pull ALL non-excluded SDNs for this supplier (typically dozens, not
+    // thousands) so the digit-only fallback has the full set to consult.
+    // The prior optimization of filtering by `delivery_note_number IN
+    // (:...candidateDnRefs)` excluded rows whose number didn't exactly
+    // match any candidate — defeating the fuzzy fallback entirely.
+    const allSupplierDns = await this.deliveryNoteRepository
+      .createQueryBuilder("dn")
+      .select("dn.id", "id")
+      .addSelect("dn.delivery_note_number", "deliveryNoteNumber")
+      .addSelect("dn.linked_coc_id", "linkedCocId")
+      .addSelect("dn.version_status", "versionStatus")
+      .where("dn.supplier_company_id = :companyId", { companyId: recon.companyId })
+      .andWhere("dn.version_status NOT IN (:...excluded)", {
+        excluded: ["REJECTED", "SUPERSEDED"],
+      })
+      // ACTIVE outranks PENDING_AUTHORIZATION so the canonical row wins
+      // when both versions exist for the same number.
+      .orderBy("CASE WHEN dn.version_status = 'ACTIVE' THEN 0 ELSE 1 END", "ASC")
+      .addOrderBy("dn.id", "DESC")
+      .getRawMany();
+    for (const row of allSupplierDns) {
+      const numberStr = String(row.deliveryNoteNumber).trim();
+      if (numberStr.length === 0) continue;
+      const key = numberStr.toLowerCase();
+      const cocId = row.linkedCocId == null ? null : Number(row.linkedCocId);
+      presentDnNumbers.add(key);
+      if (!dnIdByNumber.has(key)) {
+        dnIdByNumber.set(key, Number(row.id));
+      }
+      if (!cocIdBySdnNumber.has(key) && cocId != null) {
+        cocIdBySdnNumber.set(key, cocId);
+      }
+      // Digit-only fallback key — empty string when the number is purely
+      // alpha (rare); skip those since they'd cross-match every other
+      // alpha-only number.
+      const digits = numberStr.replace(/\D/g, "");
+      if (digits.length > 0 && !presentDnByDigits.has(digits)) {
+        presentDnByDigits.set(digits, { number: numberStr, id: Number(row.id), cocId });
       }
     }
+    // Resolve a raw DN ref against the supplier's SDN set. Returns the
+    // canonical SDN number (so the UI can render the right text), its id,
+    // and its linked supplier-CoC id — or null if neither exact nor
+    // digit-only fallback matches.
+    const resolveSdn = (
+      rawRef: string,
+    ): { number: string; id: number; cocId: number | null } | null => {
+      const trimmed = rawRef.trim();
+      if (trimmed.length === 0) return null;
+      const key = trimmed.toLowerCase();
+      if (presentDnNumbers.has(key)) {
+        const id = dnIdByNumber.get(key);
+        if (isNumber(id)) {
+          const cocId = cocIdBySdnNumber.get(key);
+          return { number: trimmed, id, cocId: isNumber(cocId) ? cocId : null };
+        }
+      }
+      const digits = trimmed.replace(/\D/g, "");
+      if (digits.length > 0) {
+        const fallback = presentDnByDigits.get(digits);
+        if (fallback) return fallback;
+      }
+      return null;
+    };
+    // Silence the "candidateDnRefs is unused" lint — the variable used to
+    // drive the IN-filter prefetch; we still build it as documentation /
+    // future filtering hook.
+    void candidateDnRefs;
 
     const cascadeForInvoice = (
       inv: RubberTaxInvoice | undefined,
@@ -336,16 +419,32 @@ export class RubberStatementReconciliationService {
           linkedSupplierCocId: null,
         };
       }
+      // Prefer the STI's explicit deliveryNoteRef (separate-numbering suppliers
+      // like S&N). When the STI carries none (unified-numbering suppliers like
+      // Impilo where the SDN number equals the invoice number), fall back to
+      // the invoice number itself. After fallback we still emit ✓/✗ — a known
+      // candidate that doesn't exist in our SDN table is a real gap, not "n/a".
+      // Prefer the STI's explicit deliveryNoteRef; fall back to the STI's
+      // own invoice number for unified-numbering suppliers (Impilo).
       const rawDnRef = inv.extractedData?.deliveryNoteRef;
-      const dnRef = rawDnRef && rawDnRef.trim().length > 0 ? rawDnRef.trim() : null;
-      const linkedDeliveryNotePresent = dnRef ? presentDnNumbers.has(dnRef.toLowerCase()) : null;
-      const rawDnId = dnRef ? dnIdByNumber.get(dnRef.toLowerCase()) : undefined;
-      const linkedDeliveryNoteId = isNumber(rawDnId) ? rawDnId : null;
-      const rawCocId = inv.linkedCalenderRollCocId;
-      const linkedSupplierCocPresent = rawCocId != null;
-      const linkedSupplierCocId = isNumber(rawCocId) ? rawCocId : null;
+      const explicitRef = rawDnRef && rawDnRef.trim().length > 0 ? rawDnRef.trim() : null;
+      const fallbackRef = inv.invoiceNumber ? inv.invoiceNumber.trim() : null;
+      // Try the explicit ref first (with OCR-tolerant fallback), then the
+      // invoice-number fallback for unified-numbering suppliers.
+      const resolved =
+        (explicitRef ? resolveSdn(explicitRef) : null) ||
+        (fallbackRef ? resolveSdn(fallbackRef) : null);
+      // Render-time DN reference: prefer the canonical SDN number when
+      // resolved (so the UI shows the real SDN, not the OCR misread). If
+      // unresolved, fall back to whatever the STI declared.
+      const linkedDeliveryNoteRefText = resolved ? resolved.number : explicitRef || fallbackRef;
+      const hasDnCandidate = explicitRef || fallbackRef ? true : false;
+      const linkedDeliveryNotePresent = hasDnCandidate ? resolved !== null : null;
+      const linkedDeliveryNoteId = resolved ? resolved.id : null;
+      const linkedSupplierCocPresent = resolved ? resolved.cocId !== null : hasDnCandidate ? false : null;
+      const linkedSupplierCocId = resolved && resolved.cocId !== null ? resolved.cocId : null;
       return {
-        linkedDeliveryNoteRef: dnRef,
+        linkedDeliveryNoteRef: linkedDeliveryNoteRefText,
         linkedDeliveryNotePresent,
         linkedDeliveryNoteId,
         linkedSupplierCocPresent,
@@ -369,6 +468,11 @@ export class RubberStatementReconciliationService {
       const key = item.invoiceNumber.trim().toLowerCase();
       const systemInv = systemInvoiceByKey.get(key);
       if (!systemInv) {
+        // No matching STI in the system — but the SDN might still be there
+        // (Impilo-style unified numbering, or the SDN landed before the STI).
+        // Resolve through resolveSdn so OCR drift (e.g. "DN08516" vs the
+        // stored "D08516") still finds the row via digit-only fallback.
+        const sdnMatch = resolveSdn(item.invoiceNumber);
         matchItems.push({
           invoiceNumber: item.invoiceNumber,
           taxInvoiceId: null,
@@ -376,11 +480,11 @@ export class RubberStatementReconciliationService {
           systemAmount: null,
           matchResult: MatchResultType.NOT_IN_SYSTEM,
           difference: null,
-          linkedDeliveryNoteRef: null,
-          linkedDeliveryNotePresent: null,
-          linkedDeliveryNoteId: null,
-          linkedSupplierCocPresent: null,
-          linkedSupplierCocId: null,
+          linkedDeliveryNoteRef: sdnMatch ? sdnMatch.number : null,
+          linkedDeliveryNotePresent: sdnMatch ? true : null,
+          linkedDeliveryNoteId: sdnMatch ? sdnMatch.id : null,
+          linkedSupplierCocPresent: sdnMatch ? sdnMatch.cocId !== null : null,
+          linkedSupplierCocId: sdnMatch ? sdnMatch.cocId : null,
         });
         unmatched++;
         return;

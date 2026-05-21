@@ -132,6 +132,13 @@ export function ReconciliationMatchView(props: ReconciliationMatchViewProps) {
               const style = rawRESULT_STYLESByItemmatchresult || RESULT_STYLES.MATCHED;
               const rawTaxInvoiceId = item.taxInvoiceId;
               const hasStiLink = isNumber(rawTaxInvoiceId);
+              // When the STI is missing but the SDN was uploaded, clarify the
+              // label — "Not in System" reads as "we have nothing" which is
+              // misleading. Tell the user what's actually missing.
+              const displayLabel =
+                item.matchResult === "NOT_IN_SYSTEM" && item.linkedDeliveryNotePresent === true
+                  ? "STI missing — SDN received"
+                  : style.label;
               return (
                 <tr
                   key={`${item.invoiceNumber}-${idx}`}
@@ -218,7 +225,7 @@ export function ReconciliationMatchView(props: ReconciliationMatchViewProps) {
                     <span
                       className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${style.text}`}
                     >
-                      {style.label}
+                      {displayLabel}
                     </span>
                   </td>
                 </tr>

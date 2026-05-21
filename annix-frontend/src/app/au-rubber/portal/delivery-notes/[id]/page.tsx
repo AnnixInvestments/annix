@@ -1002,6 +1002,39 @@ export default function DeliveryNoteDetailPage() {
                 </Link>
               </div>
             )}
+
+            {/* Customer-side DNs: trace back to the upstream supplier CoCs
+                that the dispatched rolls originated from. Visible only when
+                the DB roll-stock chain (CDN item → roll_stock → SDN → SCoC)
+                resolves to at least one SCoC. */}
+            {isCustomerDn && note.sourceSupplierCocs && note.sourceSupplierCocs.length > 0 ? (
+              <div className="mt-4 pt-4 border-t">
+                <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                  Source Supplier CoCs
+                </div>
+                <ul className="space-y-1">
+                  {note.sourceSupplierCocs.map((coc) => (
+                    <li key={coc.id} className="flex items-center justify-between text-sm">
+                      <Link
+                        href={`/au-rubber/portal/supplier-cocs/${coc.id}`}
+                        className="text-yellow-600 hover:text-yellow-800 font-medium"
+                      >
+                        {coc.cocNumber || `CoC #${coc.id}`}
+                      </Link>
+                      <span className="text-xs text-gray-500 ml-2">
+                        {coc.supplierCompanyName ? (
+                          <>
+                            <span>{coc.supplierCompanyName}</span>
+                            <span className="text-gray-400"> · </span>
+                          </>
+                        ) : null}
+                        {coc.rollCount} roll{coc.rollCount === 1 ? "" : "s"}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
           </div>
 
           {hasExtractedData && (
