@@ -7,10 +7,10 @@ import {
   Package,
   ShieldCheck,
   TrendingUp,
-  UserSearch,
 } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { AnnixOrbitImage } from "@/app/components/AnnixOrbitLogo";
 
 export const metadata: Metadata = {
   title: "Annix Platform",
@@ -195,21 +195,22 @@ export default function HomePage() {
           </Link>
 
           <Link href="/annix/orbit" target="_blank" rel="noopener noreferrer" className="group">
-            <div className="bg-white bg-opacity-95 backdrop-blur-sm rounded-xl shadow-lg p-8 border-2 border-transparent hover:border-violet-400 hover:shadow-xl transition-all duration-300 h-full">
-              <div className="text-center">
-                <div className="inline-flex items-center justify-center w-20 h-20 bg-violet-100 rounded-2xl text-violet-600 mb-6 group-hover:bg-violet-600 group-hover:text-white transition-colors">
-                  <UserSearch {...iconProps} />
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-1">Annix Orbit</h3>
-                <p className="text-xs font-semibold tracking-widest uppercase text-violet-600 mb-3">
-                  Hiring &bull; Talent &bull; Compliance
+            <div
+              className="backdrop-blur-sm rounded-xl shadow-lg overflow-hidden border-2 hover:shadow-2xl transition-all duration-300 h-full flex flex-col"
+              style={{
+                background: "linear-gradient(180deg, #001B8F 0%, #00135F 100%)",
+                borderColor: "rgba(255, 138, 0, 0.25)",
+              }}
+            >
+              <AnnixOrbitImage className="w-full h-auto block" />
+              <div className="px-8 pb-8 -mt-2 text-center flex-1 flex flex-col">
+                <p className="text-sm leading-relaxed mb-6" style={{ color: "#A7B0C0" }}>
+                  AI screening, reference checks, and job matching for companies and candidates.
                 </p>
-                <p className="text-gray-600 mb-6">
-                  The intelligent workforce ecosystem for modern hiring, talent growth, and
-                  compliance. AI screening, reference checks, and job matching for companies and
-                  candidates.
-                </p>
-                <span className="inline-flex items-center text-violet-600 font-semibold group-hover:translate-x-1 transition-transform">
+                <span
+                  className="mt-auto inline-flex items-center justify-center font-semibold group-hover:translate-x-1 transition-transform"
+                  style={{ color: "#FFA500" }}
+                >
                   Get started
                   <svg
                     className="w-5 h-5 ml-2"
