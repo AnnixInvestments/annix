@@ -3,10 +3,10 @@
 import { useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import {
-  cvAssistantApiClient,
+  annixOrbitApiClient,
   type JobPosting,
   type UpdateJobWizardPayload,
-} from "@/app/lib/api/cvAssistantApi";
+} from "@/app/lib/api/annixOrbitApi";
 import { useCvSalaryInsights } from "@/app/lib/query/hooks";
 import { useNixCall } from "../../hooks/useNixCall";
 import { arrOr, strOr } from "../../utils/value-helpers";
@@ -119,7 +119,7 @@ export function SalaryBenefitsStep({ draft, onChange }: SalaryBenefitsStepProps)
   const salaryGuidance = useNixCall({
     operation: "salary-guidance",
     label: "Nix is benchmarking salary for this role…",
-    fn: (id: number) => cvAssistantApiClient.nixSalaryGuidance(id),
+    fn: (id: number) => annixOrbitApiClient.nixSalaryGuidance(id),
   });
   const draftNormalizedTitle = draft.normalizedTitle;
   const draftTitle = draft.title;

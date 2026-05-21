@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useToast } from "@/app/components/Toast";
-import type { CvEmailTemplate, CvEmailTemplateKind } from "@/app/lib/api/cvAssistantApi";
+import type { CvEmailTemplate, CvEmailTemplateKind } from "@/app/lib/api/annixOrbitApi";
 import {
   useCvEmailTemplates,
   useCvNixDraftEmailTemplate,

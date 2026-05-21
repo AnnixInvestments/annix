@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  cvAssistantApiClient,
+  annixOrbitApiClient,
   type PublicJob,
   type SeekerColdStartJobsResponse,
   type SeekerJobStats,
@@ -8,13 +8,13 @@ import {
   type SeekerMute,
   type SeekerRecommendedJobsResponse,
   type SeekerRematchResponse,
-} from "@/app/lib/api/cvAssistantApi";
-import { type CvExternalJobQueryParams, cvAssistantKeys } from "../../keys";
+} from "@/app/lib/api/annixOrbitApi";
+import { annixOrbitKeys, type CvExternalJobQueryParams } from "../../keys";
 
 export function useCvSeekerJobStats(enabled: boolean = true) {
   return useQuery<SeekerJobStats>({
-    queryKey: cvAssistantKeys.seekerJobs.stats(),
-    queryFn: () => cvAssistantApiClient.seekerJobStats(),
+    queryKey: annixOrbitKeys.seekerJobs.stats(),
+    queryFn: () => annixOrbitApiClient.seekerJobStats(),
     enabled,
     staleTime: 2 * 60 * 1000,
   });
@@ -27,8 +27,8 @@ export function useCvSeekerRecommendedJobs(
   const requestedInterval = options.refetchInterval;
   const refetchInterval = requestedInterval === undefined ? false : requestedInterval;
   return useQuery<SeekerRecommendedJobsResponse>({
-    queryKey: cvAssistantKeys.seekerJobs.recommended(),
-    queryFn: () => cvAssistantApiClient.seekerRecommendedJobs(),
+    queryKey: annixOrbitKeys.seekerJobs.recommended(),
+    queryFn: () => annixOrbitApiClient.seekerRecommendedJobs(),
     enabled,
     staleTime: 2 * 60 * 1000,
     // eslint-disable-next-line no-restricted-syntax -- caller-controlled, defaults to off; only the seeker cold-start path opts in at 120s
@@ -38,8 +38,8 @@ export function useCvSeekerRecommendedJobs(
 
 export function useCvSeekerColdStartJobs(enabled: boolean = true) {
   return useQuery<SeekerColdStartJobsResponse>({
-    queryKey: cvAssistantKeys.seekerJobs.coldStart(),
-    queryFn: () => cvAssistantApiClient.seekerColdStartJobs(),
+    queryKey: annixOrbitKeys.seekerJobs.coldStart(),
+    queryFn: () => annixOrbitApiClient.seekerColdStartJobs(),
     enabled,
     staleTime: 5 * 60 * 1000,
   });
@@ -47,10 +47,10 @@ export function useCvSeekerColdStartJobs(enabled: boolean = true) {
 
 export function useCvSeekerBrowseJobs(params?: CvExternalJobQueryParams, enabled: boolean = true) {
   return useQuery<{ jobs: PublicJob[]; total: number }>({
-    queryKey: cvAssistantKeys.seekerJobs.browse(params),
+    queryKey: annixOrbitKeys.seekerJobs.browse(params),
     queryFn: () => {
       const rawSearch = params?.search;
-      return cvAssistantApiClient.publicJobs({
+      return annixOrbitApiClient.publicJobs({
         country: params?.country,
         category: params?.category,
         search: rawSearch || undefined,
@@ -66,9 +66,9 @@ export function useCvSeekerBrowseJobs(params?: CvExternalJobQueryParams, enabled
 export function useCvDismissSeekerMatch() {
   const queryClient = useQueryClient();
   return useMutation<{ success: boolean }, Error, number>({
-    mutationFn: (matchId) => cvAssistantApiClient.dismissSeekerMatch(matchId),
+    mutationFn: (matchId) => annixOrbitApiClient.dismissSeekerMatch(matchId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: cvAssistantKeys.seekerJobs.all });
+      queryClient.invalidateQueries({ queryKey: annixOrbitKeys.seekerJobs.all });
     },
   });
 }
@@ -76,9 +76,9 @@ export function useCvDismissSeekerMatch() {
 export function useCvSeekerRematch() {
   const queryClient = useQueryClient();
   return useMutation<SeekerRematchResponse, Error, void>({
-    mutationFn: () => cvAssistantApiClient.triggerSeekerRematch(),
+    mutationFn: () => annixOrbitApiClient.triggerSeekerRematch(),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: cvAssistantKeys.seekerJobs.all });
+      queryClient.invalidateQueries({ queryKey: annixOrbitKeys.seekerJobs.all });
     },
   });
 }
@@ -86,17 +86,17 @@ export function useCvSeekerRematch() {
 export function useCvWithdrawSeekerMatching() {
   const queryClient = useQueryClient();
   return useMutation<{ candidatesAffected: number; matchesCleared: number }, Error, void>({
-    mutationFn: () => cvAssistantApiClient.withdrawSeekerMatching(),
+    mutationFn: () => annixOrbitApiClient.withdrawSeekerMatching(),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: cvAssistantKeys.seekerJobs.all });
+      queryClient.invalidateQueries({ queryKey: annixOrbitKeys.seekerJobs.all });
     },
   });
 }
 
 export function useCvSeekerMatchingConsent(enabled: boolean = true) {
   return useQuery<SeekerMatchingConsentStatus>({
-    queryKey: cvAssistantKeys.seekerJobs.consent(),
-    queryFn: () => cvAssistantApiClient.seekerMatchingConsent(),
+    queryKey: annixOrbitKeys.seekerJobs.consent(),
+    queryFn: () => annixOrbitApiClient.seekerMatchingConsent(),
     enabled,
     staleTime: 60 * 1000,
   });
@@ -105,17 +105,17 @@ export function useCvSeekerMatchingConsent(enabled: boolean = true) {
 export function useCvGrantSeekerMatchingConsent() {
   const queryClient = useQueryClient();
   return useMutation<{ candidatesAffected: number }, Error, void>({
-    mutationFn: () => cvAssistantApiClient.grantSeekerMatchingConsent(),
+    mutationFn: () => annixOrbitApiClient.grantSeekerMatchingConsent(),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: cvAssistantKeys.seekerJobs.all });
+      queryClient.invalidateQueries({ queryKey: annixOrbitKeys.seekerJobs.all });
     },
   });
 }
 
 export function useCvSeekerMutes(enabled: boolean = true) {
   return useQuery<{ mutes: SeekerMute[] }>({
-    queryKey: cvAssistantKeys.seekerJobs.mutes(),
-    queryFn: () => cvAssistantApiClient.listSeekerMutes(),
+    queryKey: annixOrbitKeys.seekerJobs.mutes(),
+    queryFn: () => annixOrbitApiClient.listSeekerMutes(),
     enabled,
     staleTime: 5 * 60 * 1000,
   });
@@ -124,9 +124,9 @@ export function useCvSeekerMutes(enabled: boolean = true) {
 export function useCvMuteSeekerCompany() {
   const queryClient = useQueryClient();
   return useMutation<{ created: boolean; mute: SeekerMute }, Error, string>({
-    mutationFn: (company) => cvAssistantApiClient.muteSeekerCompany(company),
+    mutationFn: (company) => annixOrbitApiClient.muteSeekerCompany(company),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: cvAssistantKeys.seekerJobs.all });
+      queryClient.invalidateQueries({ queryKey: annixOrbitKeys.seekerJobs.all });
     },
   });
 }
@@ -134,9 +134,9 @@ export function useCvMuteSeekerCompany() {
 export function useCvMuteSeekerCategory() {
   const queryClient = useQueryClient();
   return useMutation<{ created: boolean; mute: SeekerMute }, Error, string>({
-    mutationFn: (category) => cvAssistantApiClient.muteSeekerCategory(category),
+    mutationFn: (category) => annixOrbitApiClient.muteSeekerCategory(category),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: cvAssistantKeys.seekerJobs.all });
+      queryClient.invalidateQueries({ queryKey: annixOrbitKeys.seekerJobs.all });
     },
   });
 }
@@ -144,9 +144,9 @@ export function useCvMuteSeekerCategory() {
 export function useCvRevokeSeekerMute() {
   const queryClient = useQueryClient();
   return useMutation<{ success: boolean }, Error, number>({
-    mutationFn: (muteId) => cvAssistantApiClient.revokeSeekerMute(muteId),
+    mutationFn: (muteId) => annixOrbitApiClient.revokeSeekerMute(muteId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: cvAssistantKeys.seekerJobs.all });
+      queryClient.invalidateQueries({ queryKey: annixOrbitKeys.seekerJobs.all });
     },
   });
 }

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { CvAssistantAuthProvider } from "@/app/context/CvAssistantAuthContext";
+import { AnnixOrbitAuthProvider } from "@/app/context/AnnixOrbitAuthContext";
 
 export const metadata: Metadata = {
   title: {
@@ -10,7 +10,7 @@ export const metadata: Metadata = {
     "Annix Orbit — Hiring, Talent, Compliance. The intelligent workforce ecosystem for modern hiring, talent growth, and compliance.",
 };
 
-export default function CvAssistantLayout(props: { children: React.ReactNode }) {
+export default function AnnixOrbitLayout(props: { children: React.ReactNode }) {
   const { children } = props;
-  return <CvAssistantAuthProvider>{children}</CvAssistantAuthProvider>;
+  return <AnnixOrbitAuthProvider>{children}</AnnixOrbitAuthProvider>;
 }

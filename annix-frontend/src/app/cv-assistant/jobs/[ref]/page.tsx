@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { cvAssistantApiClient, type PublicJobPosting } from "@/app/lib/api/cvAssistantApi";
+import { annixOrbitApiClient, type PublicJobPosting } from "@/app/lib/api/annixOrbitApi";
 import { formatDateLongZA, fromISO } from "@/app/lib/datetime";
 
 const EMPLOYMENT_TYPE_LABELS: Record<string, string> = {
@@ -145,7 +145,7 @@ export default function PublicJobPostingPage() {
   useEffect(() => {
     if (!refParam) return;
     setIsLoading(true);
-    cvAssistantApiClient
+    annixOrbitApiClient
       .publicJobPosting(refParam)
       .then((result) => {
         setJob(result);

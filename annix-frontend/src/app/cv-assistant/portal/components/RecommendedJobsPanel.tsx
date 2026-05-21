@@ -1,6 +1,6 @@
 "use client";
 
-import type { CandidateJobMatch } from "@/app/lib/api/cvAssistantApi";
+import type { CandidateJobMatch } from "@/app/lib/api/annixOrbitApi";
 
 export function RecommendedJobsPanel({
   matches,

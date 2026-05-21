@@ -1,15 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  cvAssistantApiClient,
+  annixOrbitApiClient,
   type SeekerCredential,
   type SeekerCredentialInput,
-} from "@/app/lib/api/cvAssistantApi";
-import { cvAssistantKeys } from "../../keys";
+} from "@/app/lib/api/annixOrbitApi";
+import { annixOrbitKeys } from "../../keys";
 
 export function useCvSeekerCredentials(enabled: boolean = true) {
   return useQuery<{ credentials: SeekerCredential[] }>({
-    queryKey: cvAssistantKeys.seekerCredentials.list(),
-    queryFn: () => cvAssistantApiClient.listSeekerCredentials(),
+    queryKey: annixOrbitKeys.seekerCredentials.list(),
+    queryFn: () => annixOrbitApiClient.listSeekerCredentials(),
     enabled,
     staleTime: 5 * 60 * 1000,
   });
@@ -18,9 +18,9 @@ export function useCvSeekerCredentials(enabled: boolean = true) {
 export function useCvCreateSeekerCredential() {
   const queryClient = useQueryClient();
   return useMutation<{ credential: SeekerCredential }, Error, SeekerCredentialInput>({
-    mutationFn: (input) => cvAssistantApiClient.createSeekerCredential(input),
+    mutationFn: (input) => annixOrbitApiClient.createSeekerCredential(input),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: cvAssistantKeys.seekerCredentials.all });
+      queryClient.invalidateQueries({ queryKey: annixOrbitKeys.seekerCredentials.all });
     },
   });
 }
@@ -32,9 +32,9 @@ export function useCvUpdateSeekerCredential() {
     Error,
     { id: number; input: Partial<SeekerCredentialInput> }
   >({
-    mutationFn: ({ id, input }) => cvAssistantApiClient.updateSeekerCredential(id, input),
+    mutationFn: ({ id, input }) => annixOrbitApiClient.updateSeekerCredential(id, input),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: cvAssistantKeys.seekerCredentials.all });
+      queryClient.invalidateQueries({ queryKey: annixOrbitKeys.seekerCredentials.all });
     },
   });
 }
@@ -42,9 +42,9 @@ export function useCvUpdateSeekerCredential() {
 export function useCvDeleteSeekerCredential() {
   const queryClient = useQueryClient();
   return useMutation<{ success: boolean }, Error, number>({
-    mutationFn: (id) => cvAssistantApiClient.deleteSeekerCredential(id),
+    mutationFn: (id) => annixOrbitApiClient.deleteSeekerCredential(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: cvAssistantKeys.seekerCredentials.all });
+      queryClient.invalidateQueries({ queryKey: annixOrbitKeys.seekerCredentials.all });
     },
   });
 }
@@ -58,9 +58,9 @@ interface CredentialAutofillResponse {
 export function useCvAutofillSeekerCredentials() {
   const queryClient = useQueryClient();
   return useMutation<CredentialAutofillResponse, Error, void>({
-    mutationFn: () => cvAssistantApiClient.autofillSeekerCredentialsFromCv(),
+    mutationFn: () => annixOrbitApiClient.autofillSeekerCredentialsFromCv(),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: cvAssistantKeys.seekerCredentials.all });
+      queryClient.invalidateQueries({ queryKey: annixOrbitKeys.seekerCredentials.all });
     },
   });
 }

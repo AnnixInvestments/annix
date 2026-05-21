@@ -2,24 +2,24 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  annixOrbitApiClient,
   type CvEmailTemplate,
   type CvEmailTemplateKind,
-  cvAssistantApiClient,
-} from "@/app/lib/api/cvAssistantApi";
-import { cvAssistantKeys } from "../../keys";
+} from "@/app/lib/api/annixOrbitApi";
+import { annixOrbitKeys } from "../../keys";
 
 export function useCvEmailTemplates() {
   return useQuery<CvEmailTemplate[]>({
-    queryKey: cvAssistantKeys.emailTemplates.all,
-    queryFn: () => cvAssistantApiClient.listEmailTemplates(),
+    queryKey: annixOrbitKeys.emailTemplates.all,
+    queryFn: () => annixOrbitApiClient.listEmailTemplates(),
     staleTime: 60_000,
   });
 }
 
 export function useCvEmailTemplate(kind: CvEmailTemplateKind) {
   return useQuery<CvEmailTemplate>({
-    queryKey: cvAssistantKeys.emailTemplates.detail(kind),
-    queryFn: () => cvAssistantApiClient.getEmailTemplate(kind),
+    queryKey: annixOrbitKeys.emailTemplates.detail(kind),
+    queryFn: () => annixOrbitApiClient.getEmailTemplate(kind),
     staleTime: 60_000,
   });
 }
@@ -32,10 +32,10 @@ export function useCvUpdateEmailTemplate() {
     { kind: CvEmailTemplateKind; subject: string; bodyHtml: string; bodyText: string }
   >({
     mutationFn: ({ kind, subject, bodyHtml, bodyText }) =>
-      cvAssistantApiClient.updateEmailTemplate(kind, { subject, bodyHtml, bodyText }),
+      annixOrbitApiClient.updateEmailTemplate(kind, { subject, bodyHtml, bodyText }),
     onSuccess: (data) => {
-      queryClient.setQueryData(cvAssistantKeys.emailTemplates.detail(data.kind), data);
-      queryClient.invalidateQueries({ queryKey: cvAssistantKeys.emailTemplates.all });
+      queryClient.setQueryData(annixOrbitKeys.emailTemplates.detail(data.kind), data);
+      queryClient.invalidateQueries({ queryKey: annixOrbitKeys.emailTemplates.all });
     },
   });
 }
@@ -43,10 +43,10 @@ export function useCvUpdateEmailTemplate() {
 export function useCvResetEmailTemplate() {
   const queryClient = useQueryClient();
   return useMutation<CvEmailTemplate, Error, CvEmailTemplateKind>({
-    mutationFn: (kind) => cvAssistantApiClient.resetEmailTemplate(kind),
+    mutationFn: (kind) => annixOrbitApiClient.resetEmailTemplate(kind),
     onSuccess: (data) => {
-      queryClient.setQueryData(cvAssistantKeys.emailTemplates.detail(data.kind), data);
-      queryClient.invalidateQueries({ queryKey: cvAssistantKeys.emailTemplates.all });
+      queryClient.setQueryData(annixOrbitKeys.emailTemplates.detail(data.kind), data);
+      queryClient.invalidateQueries({ queryKey: annixOrbitKeys.emailTemplates.all });
     },
   });
 }
@@ -58,6 +58,6 @@ export function useCvNixDraftEmailTemplate() {
     { kind: CvEmailTemplateKind; instructions?: string }
   >({
     mutationFn: ({ kind, instructions }) =>
-      cvAssistantApiClient.nixDraftEmailTemplate(kind, instructions),
+      annixOrbitApiClient.nixDraftEmailTemplate(kind, instructions),
   });
 }

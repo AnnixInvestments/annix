@@ -5,7 +5,7 @@ import type {
   CreateJobMarketSourceDto,
   JobSourceProvider,
   JobSourceProviderInfo,
-} from "@/app/lib/api/cvAssistantApi";
+} from "@/app/lib/api/annixOrbitApi";
 import { useCvJobMarketProviders } from "@/app/lib/query/hooks";
 
 const inputClasses =

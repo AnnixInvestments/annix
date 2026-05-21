@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { createPortal } from "react-dom";
-import type { JobPosting } from "@/app/lib/api/cvAssistantApi";
+import type { JobPosting } from "@/app/lib/api/annixOrbitApi";
 import { useCvUploadCv } from "@/app/lib/query/hooks";
 
 export function UploadCvModal({ jobs, onClose }: { jobs: JobPosting[]; onClose: () => void }) {

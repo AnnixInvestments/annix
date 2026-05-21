@@ -3,9 +3,9 @@
 import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
-import { cvAssistantApiClient } from "@/app/lib/api/cvAssistantApi";
+import { annixOrbitApiClient } from "@/app/lib/api/annixOrbitApi";
 
-export default function CvAssistantRegisterIndividualPage() {
+export default function AnnixOrbitRegisterIndividualPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -21,7 +21,7 @@ export default function CvAssistantRegisterIndividualPage() {
     setIsLoading(true);
 
     try {
-      await cvAssistantApiClient.registerIndividual({ name, email, password });
+      await annixOrbitApiClient.registerIndividual({ name, email, password });
       setSuccess(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registration failed");

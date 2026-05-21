@@ -11,7 +11,7 @@ export interface CvExternalJobQueryParams {
   limit?: number;
 }
 
-export const cvAssistantKeys = {
+export const annixOrbitKeys = {
   all: ["cv-assistant"] as const,
 
   dashboard: {

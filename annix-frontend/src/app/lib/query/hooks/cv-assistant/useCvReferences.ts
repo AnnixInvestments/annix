@@ -1,11 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
-import { type CandidateReference, cvAssistantApiClient } from "@/app/lib/api/cvAssistantApi";
-import { cvAssistantKeys } from "../../keys";
+import { annixOrbitApiClient, type CandidateReference } from "@/app/lib/api/annixOrbitApi";
+import { annixOrbitKeys } from "../../keys";
 
 export function useCvReferences(status?: string | null) {
   return useQuery<CandidateReference[]>({
-    queryKey: cvAssistantKeys.references.list(status),
-    queryFn: () => cvAssistantApiClient.references(status ?? undefined),
+    queryKey: annixOrbitKeys.references.list(status),
+    queryFn: () => annixOrbitApiClient.references(status ?? undefined),
     staleTime: 2 * 60 * 1000,
   });
 }

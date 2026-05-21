@@ -9,7 +9,7 @@ import type {
   NixSeekerImprovementArea,
   NixSeekerPriority,
   NixSeekerRankingPotential,
-} from "@/app/lib/api/cvAssistantApi";
+} from "@/app/lib/api/annixOrbitApi";
 import { useCvNixWizardImprovements } from "@/app/lib/query/hooks";
 import { useFeatureFlagEnabled } from "@/app/lib/query/hooks/useFeatureFlagEnabled";
 import { NixCvBuilder } from "./NixCvBuilder";

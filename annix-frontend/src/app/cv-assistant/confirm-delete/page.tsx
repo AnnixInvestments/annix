@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
-import { cvAssistantApiClient } from "@/app/lib/api/cvAssistantApi";
+import { annixOrbitApiClient } from "@/app/lib/api/annixOrbitApi";
 
 type Status = "pending" | "success" | "error";
 
@@ -28,9 +28,9 @@ function ConfirmDeleteContent() {
     let cancelled = false;
     const confirmDeletion = async () => {
       try {
-        const response = await cvAssistantApiClient.confirmMyAccountDeletion(token);
+        const response = await annixOrbitApiClient.confirmMyAccountDeletion(token);
         if (cancelled) return;
-        cvAssistantApiClient.clearTokens();
+        annixOrbitApiClient.clearTokens();
         const responseMessage = response.message;
         setStatus("success");
         setMessage(responseMessage || "Account deleted.");
@@ -131,7 +131,7 @@ function ConfirmDeleteContent() {
   );
 }
 
-export default function CvAssistantConfirmDeletePage() {
+export default function AnnixOrbitConfirmDeletePage() {
   return (
     <Suspense
       fallback={

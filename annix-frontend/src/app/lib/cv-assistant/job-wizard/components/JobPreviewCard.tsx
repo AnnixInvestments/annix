@@ -1,6 +1,6 @@
 "use client";
 
-import type { JobPosting } from "@/app/lib/api/cvAssistantApi";
+import type { JobPosting } from "@/app/lib/api/annixOrbitApi";
 import { EMPLOYMENT_TYPE_OPTIONS } from "../constants/employment-types";
 import { WORK_MODE_OPTIONS } from "../constants/work-modes";
 

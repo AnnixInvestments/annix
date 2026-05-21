@@ -1,32 +1,32 @@
 "use client";
 
 import { createContext, ReactNode, useCallback, useContext, useEffect, useState } from "react";
-import { ApiError } from "@/app/lib/api/apiError";
 import {
-  CvAssistantUser,
-  CvAssistantUserProfile,
-  cvAssistantApiClient,
-} from "@/app/lib/api/cvAssistantApi";
+  AnnixOrbitUser,
+  AnnixOrbitUserProfile,
+  annixOrbitApiClient,
+} from "@/app/lib/api/annixOrbitApi";
+import { ApiError } from "@/app/lib/api/apiError";
 import { log } from "@/app/lib/logger";
 
-interface CvAssistantAuthState {
+interface AnnixOrbitAuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
-  user: CvAssistantUser | null;
-  profile: CvAssistantUserProfile | null;
+  user: AnnixOrbitUser | null;
+  profile: AnnixOrbitUserProfile | null;
 }
 
-interface CvAssistantAuthContextType extends CvAssistantAuthState {
-  login: (email: string, password: string, rememberMe: boolean) => Promise<CvAssistantUserProfile>;
+interface AnnixOrbitAuthContextType extends AnnixOrbitAuthState {
+  login: (email: string, password: string, rememberMe: boolean) => Promise<AnnixOrbitUserProfile>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
 
-const CvAssistantAuthContext = createContext<CvAssistantAuthContextType | undefined>(undefined);
+const AnnixOrbitAuthContext = createContext<AnnixOrbitAuthContextType | undefined>(undefined);
 
-export function CvAssistantAuthProvider(props: { children: ReactNode }) {
+export function AnnixOrbitAuthProvider(props: { children: ReactNode }) {
   const { children } = props;
-  const [state, setState] = useState<CvAssistantAuthState>({
+  const [state, setState] = useState<AnnixOrbitAuthState>({
     isAuthenticated: false,
     isLoading: true,
     user: null,
@@ -34,7 +34,7 @@ export function CvAssistantAuthProvider(props: { children: ReactNode }) {
   });
 
   const checkAuth = useCallback(async () => {
-    if (!cvAssistantApiClient.isAuthenticated()) {
+    if (!annixOrbitApiClient.isAuthenticated()) {
       setState({
         isAuthenticated: false,
         isLoading: false,
@@ -45,7 +45,7 @@ export function CvAssistantAuthProvider(props: { children: ReactNode }) {
     }
 
     try {
-      const profile = await cvAssistantApiClient.currentUser();
+      const profile = await annixOrbitApiClient.currentUser();
       setState({
         isAuthenticated: true,
         isLoading: false,
@@ -63,7 +63,7 @@ export function CvAssistantAuthProvider(props: { children: ReactNode }) {
       // for the full network-error-tolerance rationale.
       const isAuthFailure = error instanceof ApiError && error.isAuthFailure();
       if (isAuthFailure) {
-        cvAssistantApiClient.clearTokens();
+        annixOrbitApiClient.clearTokens();
         setState({
           isAuthenticated: false,
           isLoading: false,
@@ -72,10 +72,7 @@ export function CvAssistantAuthProvider(props: { children: ReactNode }) {
         });
         return;
       }
-      log.warn(
-        "[CvAssistantAuth] Profile fetch failed with non-auth error; keeping session",
-        error,
-      );
+      log.warn("[AnnixOrbitAuth] Profile fetch failed with non-auth error; keeping session", error);
       setState({
         isAuthenticated: true,
         isLoading: false,
@@ -93,10 +90,10 @@ export function CvAssistantAuthProvider(props: { children: ReactNode }) {
     setState((prev) => ({ ...prev, isLoading: true }));
 
     try {
-      cvAssistantApiClient.setRememberMe(rememberMe);
-      const response = await cvAssistantApiClient.login({ email, password });
+      annixOrbitApiClient.setRememberMe(rememberMe);
+      const response = await annixOrbitApiClient.login({ email, password });
 
-      const profile = await cvAssistantApiClient.currentUser();
+      const profile = await annixOrbitApiClient.currentUser();
 
       setState({
         isAuthenticated: true,
@@ -116,7 +113,7 @@ export function CvAssistantAuthProvider(props: { children: ReactNode }) {
     setState((prev) => ({ ...prev, isLoading: true }));
 
     try {
-      await cvAssistantApiClient.logout();
+      await annixOrbitApiClient.logout();
     } finally {
       setState({
         isAuthenticated: false,
@@ -128,10 +125,10 @@ export function CvAssistantAuthProvider(props: { children: ReactNode }) {
   };
 
   const refreshProfile = async () => {
-    if (!cvAssistantApiClient.isAuthenticated()) return;
+    if (!annixOrbitApiClient.isAuthenticated()) return;
 
     try {
-      const profile = await cvAssistantApiClient.currentUser();
+      const profile = await annixOrbitApiClient.currentUser();
       setState((prev) => ({
         ...prev,
         profile,
@@ -150,7 +147,7 @@ export function CvAssistantAuthProvider(props: { children: ReactNode }) {
   };
 
   return (
-    <CvAssistantAuthContext.Provider
+    <AnnixOrbitAuthContext.Provider
       value={{
         ...state,
         login,
@@ -159,14 +156,14 @@ export function CvAssistantAuthProvider(props: { children: ReactNode }) {
       }}
     >
       {children}
-    </CvAssistantAuthContext.Provider>
+    </AnnixOrbitAuthContext.Provider>
   );
 }
 
-export function useCvAssistantAuth() {
-  const context = useContext(CvAssistantAuthContext);
+export function useAnnixOrbitAuth() {
+  const context = useContext(AnnixOrbitAuthContext);
   if (context === undefined) {
-    throw new Error("useCvAssistantAuth must be used within a CvAssistantAuthProvider");
+    throw new Error("useAnnixOrbitAuth must be used within a AnnixOrbitAuthProvider");
   }
   return context;
 }

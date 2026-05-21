@@ -1,18 +1,18 @@
 import { useQuery } from "@tanstack/react-query";
 import {
+  annixOrbitApiClient,
   type ConversionFunnelResponse,
-  cvAssistantApiClient,
   type MarketTrendsResponse,
   type MatchAccuracyResponse,
   type TimeToFillResponse,
-} from "@/app/lib/api/cvAssistantApi";
-import { cvAssistantKeys } from "../../keys";
+} from "@/app/lib/api/annixOrbitApi";
+import { annixOrbitKeys } from "../../keys";
 
 export function useCvConversionFunnel(dateFrom?: string | null, dateTo?: string | null) {
   return useQuery<ConversionFunnelResponse | null>({
-    queryKey: cvAssistantKeys.analytics.funnel(dateFrom, dateTo),
+    queryKey: annixOrbitKeys.analytics.funnel(dateFrom, dateTo),
     queryFn: () =>
-      cvAssistantApiClient
+      annixOrbitApiClient
         .analyticsConversionFunnel(dateFrom ?? undefined, dateTo ?? undefined)
         .catch(() => null),
     staleTime: 5 * 60 * 1000,
@@ -21,24 +21,24 @@ export function useCvConversionFunnel(dateFrom?: string | null, dateTo?: string 
 
 export function useCvMatchAccuracy() {
   return useQuery<MatchAccuracyResponse | null>({
-    queryKey: cvAssistantKeys.analytics.matchAccuracy(),
-    queryFn: () => cvAssistantApiClient.analyticsMatchAccuracy().catch(() => null),
+    queryKey: annixOrbitKeys.analytics.matchAccuracy(),
+    queryFn: () => annixOrbitApiClient.analyticsMatchAccuracy().catch(() => null),
     staleTime: 5 * 60 * 1000,
   });
 }
 
 export function useCvTimeToFill() {
   return useQuery<TimeToFillResponse | null>({
-    queryKey: cvAssistantKeys.analytics.timeToFill(),
-    queryFn: () => cvAssistantApiClient.analyticsTimeToFill().catch(() => null),
+    queryKey: annixOrbitKeys.analytics.timeToFill(),
+    queryFn: () => annixOrbitApiClient.analyticsTimeToFill().catch(() => null),
     staleTime: 5 * 60 * 1000,
   });
 }
 
 export function useCvMarketTrends() {
   return useQuery<MarketTrendsResponse | null>({
-    queryKey: cvAssistantKeys.analytics.marketTrends(),
-    queryFn: () => cvAssistantApiClient.analyticsMarketTrends().catch(() => null),
+    queryKey: annixOrbitKeys.analytics.marketTrends(),
+    queryFn: () => annixOrbitApiClient.analyticsMarketTrends().catch(() => null),
     staleTime: 5 * 60 * 1000,
   });
 }

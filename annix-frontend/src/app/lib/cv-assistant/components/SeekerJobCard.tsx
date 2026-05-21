@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { SeekerRecommendedJob } from "@/app/lib/api/cvAssistantApi";
+import type { SeekerRecommendedJob } from "@/app/lib/api/annixOrbitApi";
 
 interface SeekerJobCardProps {
   match: SeekerRecommendedJob;

@@ -3,8 +3,8 @@
 import { toPairs as entries } from "es-toolkit/compat";
 import { useState } from "react";
 import { useToast } from "@/app/components/Toast";
+import { annixOrbitApiClient, type JobPosting } from "@/app/lib/api/annixOrbitApi";
 import { isApiError } from "@/app/lib/api/apiError";
-import { cvAssistantApiClient, type JobPosting } from "@/app/lib/api/cvAssistantApi";
 import {
   useCvClearTestCandidates,
   useCvPublishJobDraft,
@@ -54,12 +54,12 @@ export function ReviewPublishStep({ draft, onPublished, onFlush }: ReviewPublish
   const qualityScoreMutation = useNixCall({
     operation: "quality-score",
     label: "Nix is scoring your job post…",
-    fn: (id: number) => cvAssistantApiClient.nixQualityScore(id),
+    fn: (id: number) => annixOrbitApiClient.nixQualityScore(id),
   });
   const volumeMutation = useNixCall({
     operation: "volume-prediction",
     label: "Nix is predicting candidate volume…",
-    fn: (id: number) => cvAssistantApiClient.nixPredictedVolume(id),
+    fn: (id: number) => annixOrbitApiClient.nixPredictedVolume(id),
   });
   const { showToast } = useToast();
   const [isPublishing, setIsPublishing] = useState(false);

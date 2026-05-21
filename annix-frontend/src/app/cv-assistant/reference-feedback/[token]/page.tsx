@@ -2,7 +2,7 @@
 
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { cvAssistantApiClient } from "@/app/lib/api/cvAssistantApi";
+import { annixOrbitApiClient } from "@/app/lib/api/annixOrbitApi";
 
 export default function ReferenceFeedbackPage() {
   const params = useParams();
@@ -25,7 +25,7 @@ export default function ReferenceFeedbackPage() {
 
   const validateToken = async () => {
     try {
-      const result = await cvAssistantApiClient.validateReferenceToken(token);
+      const result = await annixOrbitApiClient.validateReferenceToken(token);
       setIsValid(result.valid);
       if (result.valid) {
         const resultCandidateName = result.candidateName;
@@ -53,7 +53,7 @@ export default function ReferenceFeedbackPage() {
     setError(null);
 
     try {
-      await cvAssistantApiClient.submitReferenceFeedback(token, rating, feedbackText || null);
+      await annixOrbitApiClient.submitReferenceFeedback(token, rating, feedbackText || null);
       setIsSubmitted(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to submit feedback");

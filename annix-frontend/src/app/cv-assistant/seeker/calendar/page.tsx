@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import type {
   NixCalendarAdvisoryConflict,
   SeekerInterviewBooking,
-} from "@/app/lib/api/cvAssistantApi";
+} from "@/app/lib/api/annixOrbitApi";
 import { DateTime, formatDateLongZA, formatTimeZA, fromISO, now } from "@/app/lib/datetime";
 import {
   useCvCalendarAdvisory,

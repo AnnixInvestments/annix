@@ -5,14 +5,14 @@ import { toPairs as entries } from "es-toolkit/compat";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useToast } from "@/app/components/Toast";
+import { annixOrbitApiClient } from "@/app/lib/api/annixOrbitApi";
 import { isApiError } from "@/app/lib/api/apiError";
-import { cvAssistantApiClient } from "@/app/lib/api/cvAssistantApi";
 import {
   COMPANY_SIZE_OPTIONS,
   SOUTH_AFRICAN_PROVINCES,
 } from "@/app/lib/config/registration/constants";
 
-export default function CvAssistantRegisterCompanyPage() {
+export default function AnnixOrbitRegisterCompanyPage() {
   const { showToast } = useToast();
   const [popiaConsent, setPopiaConsent] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -61,7 +61,7 @@ export default function CvAssistantRegisterCompanyPage() {
 
     setIsLoading(true);
     try {
-      await cvAssistantApiClient.register(payload);
+      await annixOrbitApiClient.register(payload);
       setSubmittedEmail(payload.email);
       setSuccess(true);
     } catch (err) {

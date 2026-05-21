@@ -1,7 +1,7 @@
 import type { TradeProfile } from "@annix/product-data/sa-market";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { cvAssistantApiClient } from "@/app/lib/api/cvAssistantApi";
-import { cvAssistantKeys } from "../../keys";
+import { annixOrbitApiClient } from "@/app/lib/api/annixOrbitApi";
+import { annixOrbitKeys } from "../../keys";
 
 interface TradeProfileResponse {
   profile: TradeProfile;
@@ -10,8 +10,8 @@ interface TradeProfileResponse {
 
 export function useCvSeekerTradeProfile(enabled: boolean = true) {
   return useQuery<TradeProfileResponse>({
-    queryKey: cvAssistantKeys.seekerTradeProfile.detail(),
-    queryFn: () => cvAssistantApiClient.seekerTradeProfile(),
+    queryKey: annixOrbitKeys.seekerTradeProfile.detail(),
+    queryFn: () => annixOrbitApiClient.seekerTradeProfile(),
     enabled,
     staleTime: 5 * 60 * 1000,
   });
@@ -20,10 +20,10 @@ export function useCvSeekerTradeProfile(enabled: boolean = true) {
 export function useCvUpsertSeekerTradeProfile() {
   const queryClient = useQueryClient();
   return useMutation<{ saved: boolean; candidateIds: number[] }, Error, TradeProfile>({
-    mutationFn: (profile) => cvAssistantApiClient.upsertSeekerTradeProfile(profile),
+    mutationFn: (profile) => annixOrbitApiClient.upsertSeekerTradeProfile(profile),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: cvAssistantKeys.seekerTradeProfile.all });
-      queryClient.invalidateQueries({ queryKey: cvAssistantKeys.seekerJobs.all });
+      queryClient.invalidateQueries({ queryKey: annixOrbitKeys.seekerTradeProfile.all });
+      queryClient.invalidateQueries({ queryKey: annixOrbitKeys.seekerJobs.all });
     },
   });
 }
@@ -38,9 +38,9 @@ interface AutofillResponse {
 export function useCvAutofillSeekerTradeProfile() {
   const queryClient = useQueryClient();
   return useMutation<AutofillResponse, Error, void>({
-    mutationFn: () => cvAssistantApiClient.autofillSeekerTradeProfileFromCv(),
+    mutationFn: () => annixOrbitApiClient.autofillSeekerTradeProfileFromCv(),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: cvAssistantKeys.seekerTradeProfile.all });
+      queryClient.invalidateQueries({ queryKey: annixOrbitKeys.seekerTradeProfile.all });
     },
   });
 }

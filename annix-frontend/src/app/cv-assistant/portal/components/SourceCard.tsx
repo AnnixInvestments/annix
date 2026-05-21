@@ -1,6 +1,6 @@
 "use client";
 
-import type { JobMarketSource } from "@/app/lib/api/cvAssistantApi";
+import type { JobMarketSource } from "@/app/lib/api/annixOrbitApi";
 import { fromISO } from "@/app/lib/datetime";
 
 export function SourceCard({

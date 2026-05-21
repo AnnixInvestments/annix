@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
 import { useToast } from "@/app/components/Toast";
-import { type Candidate, cvAssistantApiClient } from "@/app/lib/api/cvAssistantApi";
+import { annixOrbitApiClient, type Candidate } from "@/app/lib/api/annixOrbitApi";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import {
   useCvCandidateStatusUpdate,
@@ -250,7 +250,7 @@ export default function CandidatesPage() {
     const candidateName = candidate.name;
     const filename = `${candidateName || "candidate"}-cv.pdf`;
     pdfPreview.openWithFetch(async () => {
-      const response = await cvAssistantApiClient.candidateCvUrl(candidate.id);
+      const response = await annixOrbitApiClient.candidateCvUrl(candidate.id);
       const presignedUrl = response.url;
       if (!presignedUrl) {
         throw new Error("CV file unavailable");

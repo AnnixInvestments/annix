@@ -5,9 +5,9 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useRef, useState } from "react";
 import { PasskeyLoginButton } from "@/app/components/PasskeyLoginButton";
-import { useCvAssistantAuth } from "@/app/context/CvAssistantAuthContext";
-import { cvAssistantApiClient } from "@/app/lib/api/cvAssistantApi";
-import { cvAssistantTokenStore } from "@/app/lib/api/portalTokenStores";
+import { useAnnixOrbitAuth } from "@/app/context/AnnixOrbitAuthContext";
+import { annixOrbitApiClient } from "@/app/lib/api/annixOrbitApi";
+import { annixOrbitTokenStore } from "@/app/lib/api/portalTokenStores";
 import { redirectAfterPasskeyLogin, storePasskeyJwt } from "@/app/lib/passkey";
 
 function postLoginPath(userType: string | undefined, returnUrl: string | null): string {
@@ -16,12 +16,12 @@ function postLoginPath(userType: string | undefined, returnUrl: string | null): 
   return "/cv-assistant/portal/dashboard";
 }
 
-function CvAssistantLoginContent() {
+function AnnixOrbitLoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const returnUrl = searchParams.get("returnUrl");
   const accountType = searchParams.get("type");
-  const { login, isLoading } = useCvAssistantAuth();
+  const { login, isLoading } = useAnnixOrbitAuth();
   const emailRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
   const [email, setEmail] = useState("");
@@ -182,8 +182,8 @@ function CvAssistantLoginContent() {
                 email={email}
                 appCode="cv-assistant"
                 onSuccess={async (response) => {
-                  storePasskeyJwt(cvAssistantTokenStore, response, rememberMe);
-                  const profile = await cvAssistantApiClient.currentUser();
+                  storePasskeyJwt(annixOrbitTokenStore, response, rememberMe);
+                  const profile = await annixOrbitApiClient.currentUser();
                   redirectAfterPasskeyLogin(postLoginPath(profile.userType, returnUrl));
                 }}
                 onError={(message) => setError(message)}
@@ -211,7 +211,7 @@ function CvAssistantLoginContent() {
   );
 }
 
-export default function CvAssistantLoginPage() {
+export default function AnnixOrbitLoginPage() {
   return (
     <Suspense
       fallback={
@@ -220,7 +220,7 @@ export default function CvAssistantLoginPage() {
         </div>
       }
     >
-      <CvAssistantLoginContent />
+      <AnnixOrbitLoginContent />
     </Suspense>
   );
 }

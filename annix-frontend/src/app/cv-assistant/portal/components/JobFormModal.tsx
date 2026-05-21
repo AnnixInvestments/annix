@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import type { EmploymentType, JobPosting } from "@/app/lib/api/cvAssistantApi";
+import type { EmploymentType, JobPosting } from "@/app/lib/api/annixOrbitApi";
 import { SOUTH_AFRICAN_PROVINCES } from "@/app/lib/config/registration/constants";
 import {
   useCvCreateJobPosting,

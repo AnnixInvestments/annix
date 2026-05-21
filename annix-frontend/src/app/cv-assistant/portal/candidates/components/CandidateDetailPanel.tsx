@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { createPortal } from "react-dom";
-import type { Candidate } from "@/app/lib/api/cvAssistantApi";
+import type { Candidate } from "@/app/lib/api/annixOrbitApi";
 import { InterviewSlotsPanel } from "./InterviewSlotsPanel";
 
 interface CandidateDetailPanelProps {

@@ -1,33 +1,33 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  annixOrbitApiClient,
   type CompanySettings,
-  cvAssistantApiClient,
   type NotificationPreferences,
   type PopiaRetentionStats,
   type UpdateCompanySettingsInput,
-} from "@/app/lib/api/cvAssistantApi";
-import { cvAssistantKeys } from "../../keys";
+} from "@/app/lib/api/annixOrbitApi";
+import { annixOrbitKeys } from "../../keys";
 
 export function useCvSettings() {
   return useQuery<CompanySettings>({
-    queryKey: cvAssistantKeys.settings.company(),
-    queryFn: () => cvAssistantApiClient.settings(),
+    queryKey: annixOrbitKeys.settings.company(),
+    queryFn: () => annixOrbitApiClient.settings(),
     staleTime: 5 * 60 * 1000,
   });
 }
 
 export function useCvPopiaStats() {
   return useQuery<PopiaRetentionStats | null>({
-    queryKey: cvAssistantKeys.candidates.popiaStats(),
-    queryFn: () => cvAssistantApiClient.popiaRetentionStats().catch(() => null),
+    queryKey: annixOrbitKeys.candidates.popiaStats(),
+    queryFn: () => annixOrbitApiClient.popiaRetentionStats().catch(() => null),
     staleTime: 5 * 60 * 1000,
   });
 }
 
 export function useCvNotificationPreferences() {
   return useQuery<NotificationPreferences | null>({
-    queryKey: cvAssistantKeys.settings.notifications(),
-    queryFn: () => cvAssistantApiClient.notificationPreferences().catch(() => null),
+    queryKey: annixOrbitKeys.settings.notifications(),
+    queryFn: () => annixOrbitApiClient.notificationPreferences().catch(() => null),
     staleTime: 5 * 60 * 1000,
   });
 }
@@ -37,9 +37,9 @@ export function useCvUpdateCompanySettings() {
 
   return useMutation({
     mutationFn: (data: UpdateCompanySettingsInput) =>
-      cvAssistantApiClient.updateCompanySettings(data),
+      annixOrbitApiClient.updateCompanySettings(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: cvAssistantKeys.settings.all });
+      queryClient.invalidateQueries({ queryKey: annixOrbitKeys.settings.all });
     },
   });
 }
@@ -62,7 +62,7 @@ export function useCvUpdateImapSettings() {
       const rawImapPassword = data.imapPassword;
       const rawEmailFromAddress = data.emailFromAddress;
 
-      return cvAssistantApiClient.updateImapSettings({
+      return annixOrbitApiClient.updateImapSettings({
         imapHost: rawImapHost || undefined,
         imapPort: rawImapPort || undefined,
         imapUser: rawImapUser || undefined,
@@ -72,7 +72,7 @@ export function useCvUpdateImapSettings() {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: cvAssistantKeys.settings.all });
+      queryClient.invalidateQueries({ queryKey: annixOrbitKeys.settings.all });
     },
   });
 }
@@ -82,9 +82,9 @@ export function useCvUpdateNotificationPreferences() {
 
   return useMutation({
     mutationFn: (data: Partial<NotificationPreferences>) =>
-      cvAssistantApiClient.updateNotificationPreferences(data),
+      annixOrbitApiClient.updateNotificationPreferences(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: cvAssistantKeys.settings.notifications() });
+      queryClient.invalidateQueries({ queryKey: annixOrbitKeys.settings.notifications() });
     },
   });
 }

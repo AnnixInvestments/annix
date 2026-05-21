@@ -117,7 +117,7 @@ function PanelShell({ children }: { children: React.ReactNode }) {
 function SummaryView({
   data,
 }: {
-  data: import("@/app/lib/api/cvAssistantApi").WorkforceNeedSummary;
+  data: import("@/app/lib/api/annixOrbitApi").WorkforceNeedSummary;
 }) {
   if (data.reason === "no-required-trades") {
     return (

@@ -2,10 +2,10 @@
 
 import { useMemo, useState } from "react";
 import {
-  cvAssistantApiClient,
+  annixOrbitApiClient,
   type EeReportResponse,
   type EeSectorTargetComparison,
-} from "@/app/lib/api/cvAssistantApi";
+} from "@/app/lib/api/annixOrbitApi";
 import { now } from "@/app/lib/datetime";
 import { useEeReport } from "@/app/lib/query/hooks";
 
@@ -51,8 +51,8 @@ export default function EeReportPage() {
   const handleDownload = (kind: "csv" | "pdf") => {
     const url =
       kind === "csv"
-        ? cvAssistantApiClient.complianceEeReportCsvUrl(dateFrom, dateTo)
-        : cvAssistantApiClient.complianceEeReportPdfUrl(dateFrom, dateTo);
+        ? annixOrbitApiClient.complianceEeReportCsvUrl(dateFrom, dateTo)
+        : annixOrbitApiClient.complianceEeReportPdfUrl(dateFrom, dateTo);
     window.open(url, "_blank");
   };
 

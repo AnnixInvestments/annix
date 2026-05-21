@@ -1,10 +1,10 @@
 "use client";
 
-import { useCvAssistantAuth } from "@/app/context/CvAssistantAuthContext";
+import { useAnnixOrbitAuth } from "@/app/context/AnnixOrbitAuthContext";
 import {
+  type AnnixOrbitHowToRole,
   CV_ASSISTANT_ADMIN_ROLE,
   CV_ASSISTANT_HOW_TO_ROLES,
-  type CvAssistantHowToRole,
 } from "@/app/cv-assistant/how-to/types";
 import SharedHowToIndexClient, {
   type HowToIndexClientProps as SharedProps,
@@ -12,16 +12,16 @@ import SharedHowToIndexClient, {
 
 type IndexGuideProp = SharedProps["guides"][number];
 
-interface CvAssistantHowToIndexClientProps {
+interface AnnixOrbitHowToIndexClientProps {
   guides: IndexGuideProp[];
 }
 
-export default function HowToIndexClient(props: CvAssistantHowToIndexClientProps) {
-  const { user } = useCvAssistantAuth();
+export default function HowToIndexClient(props: AnnixOrbitHowToIndexClientProps) {
+  const { user } = useAnnixOrbitAuth();
   const userRole = user?.role;
   const role =
     userRole && (CV_ASSISTANT_HOW_TO_ROLES as readonly string[]).includes(userRole)
-      ? (userRole as CvAssistantHowToRole)
+      ? (userRole as AnnixOrbitHowToRole)
       : null;
 
   return (

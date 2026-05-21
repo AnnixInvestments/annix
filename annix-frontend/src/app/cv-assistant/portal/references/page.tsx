@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { CandidateReference } from "@/app/lib/api/cvAssistantApi";
+import type { CandidateReference } from "@/app/lib/api/annixOrbitApi";
 import { useCvReferences } from "@/app/lib/query/hooks";
 
 export default function ReferencesPage() {

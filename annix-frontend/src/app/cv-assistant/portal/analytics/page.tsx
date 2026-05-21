@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { cvAssistantApiClient } from "@/app/lib/api/cvAssistantApi";
+import { annixOrbitApiClient } from "@/app/lib/api/annixOrbitApi";
 import { fromISO, now } from "@/app/lib/datetime";
 import {
   useCvConversionFunnel,
@@ -116,7 +116,7 @@ export default function AnalyticsPage() {
   const handleExportFunnel = async () => {
     setExportingFunnel(true);
     try {
-      const csv = await cvAssistantApiClient.analyticsExportFunnelCsv(
+      const csv = await annixOrbitApiClient.analyticsExportFunnelCsv(
         dateFrom || null,
         dateTo || null,
       );
@@ -132,7 +132,7 @@ export default function AnalyticsPage() {
   const handleExportTimeToFill = async () => {
     setExportingTimeToFill(true);
     try {
-      const csv = await cvAssistantApiClient.analyticsExportTimeToFillCsv();
+      const csv = await annixOrbitApiClient.analyticsExportTimeToFillCsv();
       const filename = `time-to-fill-${now().toISODate()}.csv`;
       downloadCsv(csv, filename);
     } catch (error) {

@@ -1,19 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  annixOrbitApiClient,
   type Candidate,
   type CandidateJobMatch,
-  cvAssistantApiClient,
-} from "@/app/lib/api/cvAssistantApi";
-import { type CvCandidateQueryParams, cvAssistantKeys } from "../../keys";
+} from "@/app/lib/api/annixOrbitApi";
+import { annixOrbitKeys, type CvCandidateQueryParams } from "../../keys";
 
 export function useCvCandidates(params?: CvCandidateQueryParams) {
   return useQuery<Candidate[]>({
-    queryKey: cvAssistantKeys.candidates.list(params),
+    queryKey: annixOrbitKeys.candidates.list(params),
     queryFn: () => {
       const rawStatus = params?.status;
       const rawJobPostingId = params?.jobPostingId;
 
-      return cvAssistantApiClient.candidates({
+      return annixOrbitApiClient.candidates({
         status: rawStatus || undefined,
         jobPostingId: rawJobPostingId || undefined,
       });
@@ -24,8 +24,8 @@ export function useCvCandidates(params?: CvCandidateQueryParams) {
 
 export function useCvRecommendedJobs(candidateId: number | null) {
   return useQuery<CandidateJobMatch[]>({
-    queryKey: cvAssistantKeys.candidates.recommendedJobs(candidateId!),
-    queryFn: () => cvAssistantApiClient.recommendedJobsForCandidate(candidateId!),
+    queryKey: annixOrbitKeys.candidates.recommendedJobs(candidateId!),
+    queryFn: () => annixOrbitApiClient.recommendedJobsForCandidate(candidateId!),
     enabled: candidateId !== null,
     staleTime: 2 * 60 * 1000,
   });
@@ -43,16 +43,16 @@ export function useCvCandidateAction() {
       action: "reject" | "shortlist" | "accept";
     }) => {
       if (action === "reject") {
-        return cvAssistantApiClient.rejectCandidate(id);
+        return annixOrbitApiClient.rejectCandidate(id);
       } else if (action === "shortlist") {
-        return cvAssistantApiClient.shortlistCandidate(id);
+        return annixOrbitApiClient.shortlistCandidate(id);
       } else {
-        return cvAssistantApiClient.acceptCandidate(id);
+        return annixOrbitApiClient.acceptCandidate(id);
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: cvAssistantKeys.candidates.all });
-      queryClient.invalidateQueries({ queryKey: cvAssistantKeys.dashboard.all });
+      queryClient.invalidateQueries({ queryKey: annixOrbitKeys.candidates.all });
+      queryClient.invalidateQueries({ queryKey: annixOrbitKeys.dashboard.all });
     },
   });
 }
@@ -62,13 +62,13 @@ export function useCvCandidateStatusUpdate() {
 
   return useMutation({
     mutationFn: ({ id, status, reason }: { id: number; status: string; reason?: string | null }) =>
-      cvAssistantApiClient.updateCandidateStatus(id, {
+      annixOrbitApiClient.updateCandidateStatus(id, {
         status,
         reason: reason ?? null,
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: cvAssistantKeys.candidates.all });
-      queryClient.invalidateQueries({ queryKey: cvAssistantKeys.dashboard.all });
+      queryClient.invalidateQueries({ queryKey: annixOrbitKeys.candidates.all });
+      queryClient.invalidateQueries({ queryKey: annixOrbitKeys.dashboard.all });
     },
   });
 }
@@ -87,10 +87,10 @@ export function useCvUploadCv() {
       jobPostingId: number;
       email?: string | null;
       name?: string | null;
-    }) => cvAssistantApiClient.uploadCv(file, jobPostingId, email ?? undefined, name ?? undefined),
+    }) => annixOrbitApiClient.uploadCv(file, jobPostingId, email ?? undefined, name ?? undefined),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: cvAssistantKeys.candidates.all });
-      queryClient.invalidateQueries({ queryKey: cvAssistantKeys.dashboard.all });
+      queryClient.invalidateQueries({ queryKey: annixOrbitKeys.candidates.all });
+      queryClient.invalidateQueries({ queryKey: annixOrbitKeys.dashboard.all });
     },
   });
 }
@@ -99,9 +99,9 @@ export function useCvDismissMatch() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (matchId: number) => cvAssistantApiClient.dismissMatch(matchId),
+    mutationFn: (matchId: number) => annixOrbitApiClient.dismissMatch(matchId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: cvAssistantKeys.candidates.all });
+      queryClient.invalidateQueries({ queryKey: annixOrbitKeys.candidates.all });
     },
   });
 }

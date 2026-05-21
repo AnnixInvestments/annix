@@ -75,7 +75,7 @@ function AnnixRepIcon() {
   );
 }
 
-function CvAssistantIcon() {
+function AnnixOrbitIcon() {
   return (
     <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path
@@ -209,7 +209,7 @@ const platformApps: AppCard[] = [
     href: "/cv-assistant/portal/dashboard",
     title: "Annix Orbit",
     description: "AI-powered candidate screening and reference checking.",
-    icon: <CvAssistantIcon />,
+    icon: <AnnixOrbitIcon />,
     color: "bg-violet-100 text-violet-600",
     hoverColor: "hover:border-violet-400 group-hover:bg-violet-600 group-hover:text-white",
   },

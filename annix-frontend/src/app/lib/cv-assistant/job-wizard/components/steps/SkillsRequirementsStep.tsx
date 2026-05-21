@@ -2,13 +2,13 @@
 
 import { useToast } from "@/app/components/Toast";
 import {
-  cvAssistantApiClient,
+  annixOrbitApiClient,
   type JobPosting,
   type JobSkill,
   type SkillImportance,
   type SkillProficiency,
   type UpdateJobWizardPayload,
-} from "@/app/lib/api/cvAssistantApi";
+} from "@/app/lib/api/annixOrbitApi";
 import { SKILL_IMPORTANCE_OPTIONS, SKILL_PROFICIENCY_OPTIONS } from "../../constants/skill-options";
 import { useNixCall } from "../../hooks/useNixCall";
 import { arrOr, strOr } from "../../utils/value-helpers";
@@ -48,12 +48,12 @@ export function SkillsRequirementsStep({ draft, onChange }: SkillsRequirementsSt
   const skillSuggestions = useNixCall({
     operation: "skill-suggestions",
     label: "Nix is suggesting skills for this role…",
-    fn: (id: number) => cvAssistantApiClient.nixSkillSuggestions(id),
+    fn: (id: number) => annixOrbitApiClient.nixSkillSuggestions(id),
   });
   const requirementsSuggestions = useNixCall({
     operation: "requirements-suggestions",
     label: "Nix is suggesting role requirements…",
-    fn: (id: number) => cvAssistantApiClient.nixRequirementsSuggestions(id),
+    fn: (id: number) => annixOrbitApiClient.nixRequirementsSuggestions(id),
   });
   const isSuggesting = skillSuggestions.isPending;
   const isSuggestingReqs = requirementsSuggestions.isPending;

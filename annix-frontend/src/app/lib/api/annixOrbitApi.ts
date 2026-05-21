@@ -1,34 +1,34 @@
 import { type ApiClient, createApiClient } from "@/app/lib/api/createApiClient";
-import { cvAssistantTokenStore } from "@/app/lib/api/portalTokenStores";
+import { annixOrbitTokenStore } from "@/app/lib/api/portalTokenStores";
 import { API_BASE_URL } from "@/lib/api-config";
 
-export interface CvAssistantLoginDto {
+export interface AnnixOrbitLoginDto {
   email: string;
   password: string;
 }
 
-export type CvAssistantUserType = "company" | "individual";
+export type AnnixOrbitUserType = "company" | "individual";
 
-export interface CvAssistantUser {
+export interface AnnixOrbitUser {
   id: number;
   email: string;
   name: string;
   role: string;
-  userType: CvAssistantUserType;
+  userType: AnnixOrbitUserType;
 }
 
-export interface CvAssistantLoginResponse {
+export interface AnnixOrbitLoginResponse {
   accessToken: string;
   refreshToken: string;
-  user: CvAssistantUser;
+  user: AnnixOrbitUser;
 }
 
-export interface CvAssistantUserProfile {
+export interface AnnixOrbitUserProfile {
   id: number;
   email: string;
   name: string;
   role: string;
-  userType: CvAssistantUserType;
+  userType: AnnixOrbitUserType;
   companyId: number | null;
   companyName: string | null;
   createdAt: string;
@@ -905,7 +905,7 @@ export interface EeReportResponse {
 
 const apiClient: ApiClient = createApiClient({
   baseURL: API_BASE_URL,
-  tokenStore: cvAssistantTokenStore,
+  tokenStore: annixOrbitTokenStore,
   refreshUrl: `${API_BASE_URL}/cv-assistant/auth/refresh`,
 });
 
@@ -955,29 +955,29 @@ const sanitizeWizardPayload = (payload: UpdateJobWizardPayload): UpdateJobWizard
   return out;
 };
 
-class CvAssistantApiClient {
+class AnnixOrbitApiClient {
   setRememberMe(_remember: boolean) {
     // PortalTokenStore tracks rememberMe via setTokens; this no-op preserves the public API
   }
 
   private setTokens(accessToken: string, refreshToken: string) {
-    cvAssistantTokenStore.setTokens(accessToken, refreshToken, cvAssistantTokenStore.rememberMe());
+    annixOrbitTokenStore.setTokens(accessToken, refreshToken, annixOrbitTokenStore.rememberMe());
   }
 
   clearTokens() {
-    cvAssistantTokenStore.clear();
+    annixOrbitTokenStore.clear();
   }
 
   isAuthenticated(): boolean {
-    return cvAssistantTokenStore.isAuthenticated();
+    return annixOrbitTokenStore.isAuthenticated();
   }
 
   private request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     return apiClient.request<T>(endpoint, options);
   }
 
-  async login(dto: CvAssistantLoginDto): Promise<CvAssistantLoginResponse> {
-    const response = await this.request<CvAssistantLoginResponse>("/cv-assistant/auth/login", {
+  async login(dto: AnnixOrbitLoginDto): Promise<AnnixOrbitLoginResponse> {
+    const response = await this.request<AnnixOrbitLoginResponse>("/cv-assistant/auth/login", {
       method: "POST",
       body: JSON.stringify(dto),
     });
@@ -995,7 +995,7 @@ class CvAssistantApiClient {
     companySize: string;
     province: string;
     city: string;
-  }): Promise<{ message: string; user: CvAssistantUser }> {
+  }): Promise<{ message: string; user: AnnixOrbitUser }> {
     return this.request("/cv-assistant/auth/register", {
       method: "POST",
       body: JSON.stringify(dto),
@@ -1006,7 +1006,7 @@ class CvAssistantApiClient {
     email: string;
     password: string;
     name: string;
-  }): Promise<{ message: string; user: CvAssistantUser }> {
+  }): Promise<{ message: string; user: AnnixOrbitUser }> {
     return this.request("/cv-assistant/auth/register/individual", {
       method: "POST",
       body: JSON.stringify(dto),
@@ -1064,8 +1064,8 @@ class CvAssistantApiClient {
     }
   }
 
-  async currentUser(): Promise<CvAssistantUserProfile> {
-    return this.request<CvAssistantUserProfile>("/cv-assistant/auth/me");
+  async currentUser(): Promise<AnnixOrbitUserProfile> {
+    return this.request<AnnixOrbitUserProfile>("/cv-assistant/auth/me");
   }
 
   async teamMembers(): Promise<
@@ -2149,4 +2149,4 @@ export interface SeekerMute {
   mutedAt: string;
 }
 
-export const cvAssistantApiClient = new CvAssistantApiClient();
+export const annixOrbitApiClient = new AnnixOrbitApiClient();

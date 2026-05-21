@@ -4,8 +4,8 @@ import { allIndustryLabels } from "@annix/product-data/portals/annix-rep-industr
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { PasskeyManagementSection } from "@/app/components/PasskeyManagementSection";
-import { cvAssistantApiClient } from "@/app/lib/api/cvAssistantApi";
-import { cvAssistantTokenStore } from "@/app/lib/api/portalTokenStores";
+import { annixOrbitApiClient } from "@/app/lib/api/annixOrbitApi";
+import { annixOrbitTokenStore } from "@/app/lib/api/portalTokenStores";
 import {
   BEE_LEVELS,
   COMPANY_SIZE_OPTIONS,
@@ -160,7 +160,7 @@ export default function SettingsPage() {
     setTestResult(null);
 
     try {
-      const result = await cvAssistantApiClient.testImapConnection({
+      const result = await annixOrbitApiClient.testImapConnection({
         host: imapHost,
         port: parseInt(imapPort, 10),
         user: imapUser,
@@ -200,7 +200,7 @@ export default function SettingsPage() {
     }
 
     try {
-      const { key } = await cvAssistantApiClient.notificationVapidKey();
+      const { key } = await annixOrbitApiClient.notificationVapidKey();
       if (!key) {
         return;
       }
@@ -212,7 +212,7 @@ export default function SettingsPage() {
       });
 
       const subJson = subscription.toJSON();
-      await cvAssistantApiClient.subscribePush({
+      await annixOrbitApiClient.subscribePush({
         endpoint: subJson.endpoint!,
         keys: {
           p256dh: subJson.keys!.p256dh!,
@@ -242,7 +242,7 @@ export default function SettingsPage() {
       </div>
 
       <PasskeyManagementSection
-        authHeaders={cvAssistantTokenStore.authHeaders()}
+        authHeaders={annixOrbitTokenStore.authHeaders()}
         title="Your passkeys"
       />
 

@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useCvAssistantAuth } from "@/app/context/CvAssistantAuthContext";
-import type { Candidate } from "@/app/lib/api/cvAssistantApi";
+import { useAnnixOrbitAuth } from "@/app/context/AnnixOrbitAuthContext";
+import type { Candidate } from "@/app/lib/api/annixOrbitApi";
 import {
   useCvDashboardStats,
   useCvMarketInsights,
@@ -71,7 +71,7 @@ function UploadCvButton({
 }
 
 export default function DashboardPage() {
-  const { user, profile } = useCvAssistantAuth();
+  const { user, profile } = useAnnixOrbitAuth();
   const { data: stats, isLoading: statsLoading } = useCvDashboardStats();
   const { data: topCandidates = [], isLoading: candidatesLoading } = useCvTopCandidates();
   const { data: marketInsights } = useCvMarketInsights();

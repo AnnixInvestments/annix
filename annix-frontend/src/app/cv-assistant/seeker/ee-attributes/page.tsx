@@ -8,7 +8,7 @@ import type {
   EeGenderKey,
   EePopulationGroupKey,
   MySeekerEeAttributes,
-} from "@/app/lib/api/cvAssistantApi";
+} from "@/app/lib/api/annixOrbitApi";
 import { fromISO } from "@/app/lib/datetime";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import {

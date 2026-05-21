@@ -1,6 +1,6 @@
 "use client";
 
-import type { PublicJob } from "@/app/lib/api/cvAssistantApi";
+import type { PublicJob } from "@/app/lib/api/annixOrbitApi";
 import { formatDateZA } from "@/app/lib/datetime";
 
 interface SeekerBrowseJobCardProps {

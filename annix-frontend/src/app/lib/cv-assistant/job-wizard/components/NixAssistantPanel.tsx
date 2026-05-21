@@ -1,6 +1,6 @@
 "use client";
 
-import type { JobPosting } from "@/app/lib/api/cvAssistantApi";
+import type { JobPosting } from "@/app/lib/api/annixOrbitApi";
 import type { AutoSaveStatus } from "../hooks/useWizardAutoSave";
 
 export interface NixAssistantPanelProps {

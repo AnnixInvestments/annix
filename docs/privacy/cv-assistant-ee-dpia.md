@@ -68,7 +68,7 @@ independent layers, each fail-loud:
 
 1. **Dependency injection.** The four AI services (`JobMatchService`,
    `CvScreeningService`, `CandidateJobMatchingService`, `EmbeddingService`)
-   never receive `CvAssistantCandidateEeAttributes`, `PopiaService`, or
+   never receive `AnnixOrbitCandidateEeAttributes`, `PopiaService`, or
    `EeDisclosureService` in their constructors. Constructor signature is the
    contract; reviewing a PR catches violations.
 2. **ESLint rule.** A `no-restricted-imports` rule scoped to the four AI

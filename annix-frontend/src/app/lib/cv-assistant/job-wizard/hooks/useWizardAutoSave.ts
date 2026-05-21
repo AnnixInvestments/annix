@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { UpdateJobWizardPayload } from "@/app/lib/api/cvAssistantApi";
+import type { UpdateJobWizardPayload } from "@/app/lib/api/annixOrbitApi";
 import { useCvUpdateJobWizard } from "@/app/lib/query/hooks";
 
 export type AutoSaveStatus = "idle" | "saving" | "saved" | "error";

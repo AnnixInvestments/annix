@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { CreateJobMarketSourceDto } from "@/app/lib/api/cvAssistantApi";
+import type { CreateJobMarketSourceDto } from "@/app/lib/api/annixOrbitApi";
 import {
   useCvCreateJobMarketSource,
   useCvDeleteJobMarketSource,

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useToast } from "@/app/components/Toast";
-import type { InterviewSlot } from "@/app/lib/api/cvAssistantApi";
+import type { InterviewSlot } from "@/app/lib/api/annixOrbitApi";
 import { formatDateLongZA, formatTimeZA, fromISO, nowMillis } from "@/app/lib/datetime";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import {

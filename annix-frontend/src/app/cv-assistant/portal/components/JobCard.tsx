@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { CandidateJobMatch, ExternalJob } from "@/app/lib/api/cvAssistantApi";
+import type { CandidateJobMatch, ExternalJob } from "@/app/lib/api/annixOrbitApi";
 import { fromISO } from "@/app/lib/datetime";
 import { useCvMatchingCandidates } from "@/app/lib/query/hooks";
 

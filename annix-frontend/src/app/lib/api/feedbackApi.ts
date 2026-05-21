@@ -22,7 +22,7 @@ const AUTH_TOKEN_KEYS: Record<string, string> = {
   "stock-control": "stockControlAccessToken",
   "au-rubber": "auRubberAccessToken",
   supplier: "supplierAccessToken",
-  "cv-assistant": "cvAssistantAccessToken",
+  "cv-assistant": "annixOrbitAccessToken",
   "annix-rep": "annixRepAccessToken",
 };
 

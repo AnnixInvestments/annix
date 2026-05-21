@@ -4,9 +4,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useToast } from "@/app/components/Toast";
-import type { JobPosting, UpdateJobWizardPayload } from "@/app/lib/api/cvAssistantApi";
+import type { JobPosting, UpdateJobWizardPayload } from "@/app/lib/api/annixOrbitApi";
 import { useCvCreateJobDraft, useCvJobWizardDraft } from "@/app/lib/query/hooks";
-import { cvAssistantKeys } from "@/app/lib/query/keys";
+import { annixOrbitKeys } from "@/app/lib/query/keys";
 import { WIZARD_STEPS, type WizardStepId } from "../constants/wizard-steps";
 import { useWizardAutoSave } from "../hooks/useWizardAutoSave";
 import { useWizardStep } from "../hooks/useWizardStep";
@@ -81,7 +81,7 @@ export function JobWizard({ jobId }: JobWizardProps) {
     () => (patch: UpdateJobWizardPayload) => {
       if (resolvedId != null) {
         queryClient.setQueryData<JobPosting | undefined>(
-          cvAssistantKeys.jobPostings.wizard(resolvedId),
+          annixOrbitKeys.jobPostings.wizard(resolvedId),
           (prev) => (prev ? { ...prev, ...patch } : prev),
         );
       }

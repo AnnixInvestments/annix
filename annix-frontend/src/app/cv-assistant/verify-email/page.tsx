@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
-import { cvAssistantApiClient } from "@/app/lib/api/cvAssistantApi";
+import { annixOrbitApiClient } from "@/app/lib/api/annixOrbitApi";
 
 type Status = "pending" | "success" | "error";
 
@@ -28,13 +28,13 @@ function VerifyEmailContent() {
     let cancelled = false;
     const verify = async () => {
       try {
-        const response = await cvAssistantApiClient.verifyEmail(token);
+        const response = await annixOrbitApiClient.verifyEmail(token);
         if (cancelled) return;
 
         if (response.accessToken && response.refreshToken) {
           setAutoSignedIn(true);
           try {
-            const profile = await cvAssistantApiClient.currentUser();
+            const profile = await annixOrbitApiClient.currentUser();
             if (cancelled) return;
             setStatus("success");
             setMessage("Email verified. Signing you in...");
@@ -45,7 +45,7 @@ function VerifyEmailContent() {
             setTimeout(() => router.push(target), 1500);
             return;
           } catch {
-            cvAssistantApiClient.clearTokens();
+            annixOrbitApiClient.clearTokens();
           }
         }
 
@@ -72,7 +72,7 @@ function VerifyEmailContent() {
     setResendMessage(null);
     setIsResending(true);
     try {
-      const response = await cvAssistantApiClient.resendVerification(resendEmail);
+      const response = await annixOrbitApiClient.resendVerification(resendEmail);
       const resendResponseMessage = response.message;
       setResendMessage(
         resendResponseMessage
@@ -193,7 +193,7 @@ function VerifyEmailContent() {
   );
 }
 
-export default function CvAssistantVerifyEmailPage() {
+export default function AnnixOrbitVerifyEmailPage() {
   return (
     <Suspense
       fallback={

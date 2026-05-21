@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import type { IndividualDocument, IndividualDocumentKind } from "@/app/lib/api/cvAssistantApi";
+import type { IndividualDocument, IndividualDocumentKind } from "@/app/lib/api/annixOrbitApi";
 import { formatDateZA } from "@/app/lib/datetime";
 import {
   useCvDeleteMyDocument,

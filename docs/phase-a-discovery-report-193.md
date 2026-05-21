@@ -120,7 +120,7 @@ The `unified_company_id` column exists in the database on `stock_control_compani
 
 ### Shared Concepts (present in 3+ per-app user entities)
 
-| Concept | User (shared) | StockControlUser | CvAssistantUser | ComplySaUser | CustomerProfile | SupplierProfile |
+| Concept | User (shared) | StockControlUser | AnnixOrbitUser | ComplySaUser | CustomerProfile | SupplierProfile |
 |---------|---------------|------------------|-----------------|--------------|-----------------|-----------------|
 | id | `id` int PK | `id` int PK | `id` int PK | `id` int PK | `id` int PK | `id` int PK |
 | email | `email` varchar | `email` varchar | `email` varchar | `email` varchar | via User FK | via User FK |
@@ -145,9 +145,9 @@ The `unified_company_id` column exists in the database on `stock_control_compani
 | `email_notifications_enabled` | StockControlUser | Notification prefs |
 | `push_notifications_enabled` | StockControlUser | Notification prefs |
 | `linked_staff_id` | StockControlUser | FK to StaffMember |
-| `match_alert_threshold` | CvAssistantUser | CV matching threshold |
-| `digest_enabled` | CvAssistantUser | Digest notification |
-| `push_enabled` | CvAssistantUser | Push notification |
+| `match_alert_threshold` | AnnixOrbitUser | CV matching threshold |
+| `digest_enabled` | AnnixOrbitUser | Digest notification |
+| `push_enabled` | AnnixOrbitUser | Push notification |
 | `terms_accepted_at` | ComplySaUser, CustomerProfile, SupplierProfile | Legal consent |
 | `terms_version` | ComplySaUser | Terms version tracking |
 | `job_title` | CustomerProfile, SupplierProfile | Professional details |
@@ -162,7 +162,7 @@ The `unified_company_id` column exists in the database on `stock_control_compani
 
 ### Shared Concepts
 
-| Concept | Platform Company | StockControlCompany | CustomerCompany | SupplierCompany | CvAssistantCompany | ComplySaCompany | RubberCompany |
+| Concept | Platform Company | StockControlCompany | CustomerCompany | SupplierCompany | AnnixOrbitCompany | ComplySaCompany | RubberCompany |
 |---------|-----------------|--------------------|-----------------|-----------------|--------------------|-----------------|---------------|
 | name | `name` | `name` | `legal_name` | `legal_name` | `name` | `name` | `name` |
 | reg_number | `registrationNumber` | `registration_number` | `registration_number` | `registration_number` | -- | `registration_number` | `registration_number` |
@@ -219,7 +219,7 @@ The entire Stock Control module references `stock_control_companies`. Key entiti
 
 `comply_sa_users`, `comply_sa_compliance_statuses`, `comply_sa_documents`, `comply_sa_subscriptions`, `comply_sa_api_keys`, `comply_sa_notifications`, `comply_sa_audit_logs`, `comply_sa_sage_connections`
 
-### CvAssistantCompany — 3 downstream entities
+### AnnixOrbitCompany — 3 downstream entities
 
 `cv_assistant_users`, `cv_assistant_job_postings` (likely), `cv_assistant_push_subscriptions`
 
@@ -227,7 +227,7 @@ The entire Stock Control module references `stock_control_companies`. Key entiti
 
 `stock_control_invitations`, `user_location_assignments`
 
-### CvAssistantUser — 1 downstream entity
+### AnnixOrbitUser — 1 downstream entity
 
 `cv_assistant_push_subscriptions`
 
@@ -268,7 +268,7 @@ Located in `annix-backend/src/shared/auth/`:
 - 6 of 7 rubber companies (non-compound-owners) have no unified row
 - `unified_company_id` column on per-app tables is not in TypeORM entity definitions
 - No service code reads from the unified `companies` table for actual business logic (only guards and branding)
-- StockControlUser, CvAssistantUser, and ComplySaUser are fully independent of the shared `user` table
+- StockControlUser, AnnixOrbitUser, and ComplySaUser are fully independent of the shared `user` table
 
 ### Email collision resolution needed
 - 12 emails collide between `user` and `stock_control_users` (all 11 SC users + 1 comply-sa user)
@@ -281,12 +281,12 @@ Located in `annix-backend/src/shared/auth/`:
 3. **SupplierProfile** — 9 downstream, already on shared User
 4. **ComplySaCompany** — 8 downstream, isolated module
 5. **RubberCompany** — 6 downstream, partially unified already
-6. **CvAssistantCompany** — 3 downstream, zero data, lowest risk
+6. **AnnixOrbitCompany** — 3 downstream, zero data, lowest risk
 7. **SupplierCompany** — 0 direct FK references, zero data
 
 ### Recommended Phase B design inputs
 1. **Extension tables over monolithic User** — CustomerProfile/SupplierProfile already model this correctly
 2. **StockControlUser is the hardest migration** — 11 users, all collide with shared User, and SC has its own password hashing
-3. **CvAssistant and SupplierCompany are zero-data** — migrate these first as templates
+3. **AnnixOrbit and SupplierCompany are zero-data** — migrate these first as templates
 4. **ComplySaCompany has the most app-specific columns** (15+) — extension table is mandatory
 5. **RubberCompany has unique concerns** — `firebase_uid`, `is_compound_owner`, pricing tiers, available products — must remain as an extension

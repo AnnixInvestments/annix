@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 
-export default function CvAssistantHomePage() {
+export default function AnnixOrbitHomePage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40] flex items-center justify-center px-4 py-12">
       <div className="max-w-4xl w-full">

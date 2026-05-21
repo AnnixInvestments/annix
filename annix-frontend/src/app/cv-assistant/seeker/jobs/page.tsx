@@ -4,10 +4,10 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import {
-  cvAssistantApiClient,
+  annixOrbitApiClient,
   type PublicJob,
   type SeekerRecommendedJob,
-} from "@/app/lib/api/cvAssistantApi";
+} from "@/app/lib/api/annixOrbitApi";
 import { SeekerBrowseJobCard } from "@/app/lib/cv-assistant/components/SeekerBrowseJobCard";
 import { SeekerJobCard } from "@/app/lib/cv-assistant/components/SeekerJobCard";
 import {
@@ -152,7 +152,7 @@ export default function SeekerJobsPage() {
   const handleApply = (match: SeekerRecommendedJob) => {
     const sourceUrl = match.job.sourceUrl;
     if (sourceUrl) {
-      cvAssistantApiClient
+      annixOrbitApiClient
         .recordSeekerApplyClick({
           matchId: match.matchId,
           externalJobId: match.externalJobId,
@@ -172,7 +172,7 @@ export default function SeekerJobsPage() {
       return;
     }
     const externalJobId = job.kind === "external" ? job.id : null;
-    cvAssistantApiClient
+    annixOrbitApiClient
       .recordSeekerApplyClick({
         matchId: null,
         externalJobId,

@@ -2,12 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { cvAssistantApiClient, type PublicJob } from "@/app/lib/api/cvAssistantApi";
+import { annixOrbitApiClient, type PublicJob } from "@/app/lib/api/annixOrbitApi";
 import { formatRelative } from "@/app/lib/datetime";
 
 const PAGE_SIZE = 20;
 
-export default function CvAssistantPublicJobsPage() {
+export default function AnnixOrbitPublicJobsPage() {
   const [jobs, setJobs] = useState<PublicJob[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -22,7 +22,7 @@ export default function CvAssistantPublicJobsPage() {
     setIsLoading(true);
     setError(null);
 
-    cvAssistantApiClient
+    annixOrbitApiClient
       .publicJobs({
         page,
         limit: PAGE_SIZE,

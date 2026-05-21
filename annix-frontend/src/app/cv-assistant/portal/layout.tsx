@@ -4,7 +4,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect } from "react";
 import { FeedbackWidget } from "@/app/components/FeedbackWidget";
 import PortalToolbar, { type NavItem } from "@/app/components/PortalToolbar";
-import { useCvAssistantAuth } from "@/app/context/CvAssistantAuthContext";
+import { useAnnixOrbitAuth } from "@/app/context/AnnixOrbitAuthContext";
 import { NixAppProvider, NixAssistant } from "@/app/lib/nix";
 import { CV_ASSISTANT_VERSION } from "../config/version";
 
@@ -93,7 +93,7 @@ function PortalContent({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { isAuthenticated, isLoading, user, profile, logout } = useCvAssistantAuth();
+  const { isAuthenticated, isLoading, user, profile, logout } = useAnnixOrbitAuth();
   const isIndividual =
     (user && user.userType === "individual") || (profile && profile.companyId === null);
 
@@ -134,7 +134,7 @@ function PortalContent({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40]">
       <PortalToolbar
-        portalType="cvAssistant"
+        portalType="annixOrbit"
         navItems={navItems}
         user={
           user

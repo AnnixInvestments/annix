@@ -1,18 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  cvAssistantApiClient,
+  annixOrbitApiClient,
   type EeReportResponse,
   type MySeekerEeAttributes,
   type UpdateMyEeAttributesInput,
-} from "@/app/lib/api/cvAssistantApi";
-import { cvAssistantKeys } from "../../keys";
+} from "@/app/lib/api/annixOrbitApi";
+import { annixOrbitKeys } from "../../keys";
 
 export function useEeReport(dateFrom: string | null, dateTo: string | null) {
   return useQuery<EeReportResponse | null>({
-    queryKey: cvAssistantKeys.compliance.eeReport(dateFrom ?? "", dateTo ?? ""),
+    queryKey: annixOrbitKeys.compliance.eeReport(dateFrom ?? "", dateTo ?? ""),
     queryFn: () => {
       if (!dateFrom || !dateTo) return Promise.resolve(null);
-      return cvAssistantApiClient.complianceEeReport(dateFrom, dateTo).catch(() => null);
+      return annixOrbitApiClient.complianceEeReport(dateFrom, dateTo).catch(() => null);
     },
     enabled: Boolean(dateFrom && dateTo),
     staleTime: 5 * 60 * 1000,
@@ -21,8 +21,8 @@ export function useEeReport(dateFrom: string | null, dateTo: string | null) {
 
 export function useMyEeAttributes() {
   return useQuery<MySeekerEeAttributes | null>({
-    queryKey: cvAssistantKeys.individualProfile.eeAttributes(),
-    queryFn: () => cvAssistantApiClient.myEeAttributes().catch(() => null),
+    queryKey: annixOrbitKeys.individualProfile.eeAttributes(),
+    queryFn: () => annixOrbitApiClient.myEeAttributes().catch(() => null),
     staleTime: 60 * 1000,
   });
 }
@@ -31,10 +31,10 @@ export function useUpdateMyEeAttributes() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: UpdateMyEeAttributesInput) =>
-      cvAssistantApiClient.updateMyEeAttributes(input),
+      annixOrbitApiClient.updateMyEeAttributes(input),
     onSuccess: () =>
       queryClient.invalidateQueries({
-        queryKey: cvAssistantKeys.individualProfile.eeAttributes(),
+        queryKey: annixOrbitKeys.individualProfile.eeAttributes(),
       }),
   });
 }
@@ -42,10 +42,10 @@ export function useUpdateMyEeAttributes() {
 export function useDeleteMyEeAttributes() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: () => cvAssistantApiClient.deleteMyEeAttributes(),
+    mutationFn: () => annixOrbitApiClient.deleteMyEeAttributes(),
     onSuccess: () =>
       queryClient.invalidateQueries({
-        queryKey: cvAssistantKeys.individualProfile.eeAttributes(),
+        queryKey: annixOrbitKeys.individualProfile.eeAttributes(),
       }),
   });
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCvAssistantAuth } from "@/app/context/CvAssistantAuthContext";
+import { useAnnixOrbitAuth } from "@/app/context/AnnixOrbitAuthContext";
 import { formatDateLongZA } from "@/app/lib/datetime";
 import {
   useCvMyInterviewInvites,
@@ -10,7 +10,7 @@ import {
 } from "@/app/lib/query/hooks";
 
 export default function SeekerDashboardPage() {
-  const { user } = useCvAssistantAuth();
+  const { user } = useAnnixOrbitAuth();
   const statusQuery = useCvMyProfileStatus();
   const invitesQuery = useCvMyInterviewInvites();
   const jobStatsQuery = useCvSeekerJobStats();

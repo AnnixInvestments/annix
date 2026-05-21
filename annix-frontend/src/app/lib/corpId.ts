@@ -88,7 +88,7 @@ export const corpId = {
         sidebarHover: "#f3f4ff",
         sidebarActive: "#FFA500",
       },
-      cvAssistant: {
+      annixOrbit: {
         background: "#323288",
         text: "#FFFFFF",
         accent: "#FFA500",
@@ -145,7 +145,7 @@ export type PortalType =
   | "auRubber"
   | "annixRep"
   | "stockControl"
-  | "cvAssistant"
+  | "annixOrbit"
   | "teacherAssistant"
   | "insights";
 
@@ -180,7 +180,7 @@ export const portalConfig = {
     homeHref: "/stock-control/portal/dashboard",
     loginHref: "/stock-control/login",
   },
-  cvAssistant: {
+  annixOrbit: {
     title: "Annix Orbit",
     homeHref: "/cv-assistant/portal/dashboard",
     loginHref: "/cv-assistant/login?type=company",

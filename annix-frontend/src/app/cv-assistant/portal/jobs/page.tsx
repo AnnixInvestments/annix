@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { JobPosting } from "@/app/lib/api/cvAssistantApi";
+import type { JobPosting } from "@/app/lib/api/annixOrbitApi";
 import {
   useCvDeleteJobPosting,
   useCvJobPostingStatusChange,

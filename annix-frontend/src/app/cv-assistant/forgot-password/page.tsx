@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { cvAssistantApiClient } from "@/app/lib/api/cvAssistantApi";
+import { annixOrbitApiClient } from "@/app/lib/api/annixOrbitApi";
 
-export default function CvAssistantForgotPasswordPage() {
+export default function AnnixOrbitForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -16,7 +16,7 @@ export default function CvAssistantForgotPasswordPage() {
     setIsLoading(true);
 
     try {
-      await cvAssistantApiClient.forgotPassword(email);
+      await annixOrbitApiClient.forgotPassword(email);
       setSubmitted(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not send reset link");

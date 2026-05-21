@@ -2,12 +2,12 @@
 
 import { useToast } from "@/app/components/Toast";
 import {
-  cvAssistantApiClient,
+  annixOrbitApiClient,
   type JobPosting,
   type JobScreeningQuestion,
   type ScreeningQuestionType,
   type UpdateJobWizardPayload,
-} from "@/app/lib/api/cvAssistantApi";
+} from "@/app/lib/api/annixOrbitApi";
 import { SCREENING_QUESTION_TYPE_OPTIONS } from "../../constants/skill-options";
 import { useNixCall } from "../../hooks/useNixCall";
 import { arrOr } from "../../utils/value-helpers";
@@ -40,7 +40,7 @@ export function ScreeningQuestionsStep({ draft, onChange }: ScreeningQuestionsSt
   const screeningSuggest = useNixCall({
     operation: "screening-questions",
     label: "Nix is generating screening questions…",
-    fn: (id: number) => cvAssistantApiClient.nixScreeningQuestionsSuggest(id),
+    fn: (id: number) => annixOrbitApiClient.nixScreeningQuestionsSuggest(id),
   });
   const isSuggesting = screeningSuggest.isPending;
   const handleSuggest = () => {

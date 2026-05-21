@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useToast } from "@/app/components/Toast";
-import { type InterviewSlot } from "@/app/lib/api/cvAssistantApi";
+import { type InterviewSlot } from "@/app/lib/api/annixOrbitApi";
 import { DateTime, formatTimeZA, fromISO, now } from "@/app/lib/datetime";
 import {
   useCvDeleteInterviewSlot,

@@ -38,9 +38,9 @@ export const annixRepTokenStore = new PortalTokenStore({
   refreshToken: "annixRepRefreshToken",
 });
 
-export const cvAssistantTokenStore = new PortalTokenStore({
-  accessToken: "cvAssistantAccessToken",
-  refreshToken: "cvAssistantRefreshToken",
+export const annixOrbitTokenStore = new PortalTokenStore({
+  accessToken: "annixOrbitAccessToken",
+  refreshToken: "annixOrbitRefreshToken",
 });
 
 export const insightsTokenStore = new PortalTokenStore({
@@ -61,7 +61,7 @@ export const ALL_PORTAL_TOKEN_STORES: readonly PortalTokenStore[] = [
   adminTokenStore,
   annixRepTokenStore,
   auRubberTokenStore,
-  cvAssistantTokenStore,
+  annixOrbitTokenStore,
   teacherAssistantTokenStore,
   insightsTokenStore,
 ];
@@ -77,7 +77,7 @@ export const ALL_PORTAL_TOKEN_STORES: readonly PortalTokenStore[] = [
 const PORTAL_ROUTE_TO_STORE: ReadonlyArray<{ prefix: string; store: PortalTokenStore }> = [
   { prefix: "/stock-control", store: stockControlTokenStore },
   { prefix: "/au-rubber", store: auRubberTokenStore },
-  { prefix: "/cv-assistant", store: cvAssistantTokenStore },
+  { prefix: "/cv-assistant", store: annixOrbitTokenStore },
   { prefix: "/admin", store: adminTokenStore },
   { prefix: "/supplier", store: supplierTokenStore },
   { prefix: "/customer", store: customerTokenStore },

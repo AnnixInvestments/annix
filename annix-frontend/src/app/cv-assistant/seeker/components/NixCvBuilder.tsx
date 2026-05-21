@@ -6,8 +6,8 @@ import type {
   NixGeneratedCv,
   NixGeneratedCvExperience,
   NixGeneratedCvReference,
-} from "@/app/lib/api/cvAssistantApi";
-import { cvAssistantApiClient } from "@/app/lib/api/cvAssistantApi";
+} from "@/app/lib/api/annixOrbitApi";
+import { annixOrbitApiClient } from "@/app/lib/api/annixOrbitApi";
 import {
   useGenerateNixCv,
   useNixGeneratedCv,
@@ -151,7 +151,7 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
     setDownloadError(null);
     setDownloading(true);
     try {
-      const blob = await cvAssistantApiClient.nixWizardGeneratedCvPdf();
+      const blob = await annixOrbitApiClient.nixWizardGeneratedCvPdf();
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;

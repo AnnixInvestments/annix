@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { cvAssistantApiClient } from "@/app/lib/api/cvAssistantApi";
+import { annixOrbitApiClient } from "@/app/lib/api/annixOrbitApi";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import {
   useCvMyNotificationPreferences,
@@ -57,7 +57,7 @@ export default function SeekerSettingsPage() {
     setErrorMessage(null);
     setIsExporting(true);
     try {
-      const data = await cvAssistantApiClient.myDataExport();
+      const data = await annixOrbitApiClient.myDataExport();
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");

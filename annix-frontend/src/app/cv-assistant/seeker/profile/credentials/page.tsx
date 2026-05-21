@@ -7,7 +7,7 @@ import {
 } from "@annix/product-data/sa-market";
 import { useState } from "react";
 import { useToast } from "@/app/components/Toast";
-import type { SeekerCredential, SeekerCredentialInput } from "@/app/lib/api/cvAssistantApi";
+import type { SeekerCredential, SeekerCredentialInput } from "@/app/lib/api/annixOrbitApi";
 import { DateTime, fromISO } from "@/app/lib/datetime";
 import {
   useCvAutofillSeekerCredentials,

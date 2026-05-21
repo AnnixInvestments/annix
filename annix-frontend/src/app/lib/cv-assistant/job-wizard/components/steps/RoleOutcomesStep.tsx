@@ -2,11 +2,11 @@
 
 import { useToast } from "@/app/components/Toast";
 import {
-  cvAssistantApiClient,
+  annixOrbitApiClient,
   type JobPosting,
   type JobSuccessMetric,
   type UpdateJobWizardPayload,
-} from "@/app/lib/api/cvAssistantApi";
+} from "@/app/lib/api/annixOrbitApi";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import { useNixCall } from "../../hooks/useNixCall";
 import { arrOr, strOr } from "../../utils/value-helpers";
@@ -32,12 +32,12 @@ export function RoleOutcomesStep({ draft, onChange }: RoleOutcomesStepProps) {
   const nixDescription = useNixCall({
     operation: "description",
     label: "Nix is drafting your job description…",
-    fn: (id: number) => cvAssistantApiClient.nixDescription(id),
+    fn: (id: number) => annixOrbitApiClient.nixDescription(id),
   });
   const nixOutcomesDraft = useNixCall({
     operation: "outcomes-draft",
     label: "Nix is drafting your role outcomes…",
-    fn: (id: number) => cvAssistantApiClient.nixOutcomesDraft(id),
+    fn: (id: number) => annixOrbitApiClient.nixOutcomesDraft(id),
   });
   const isDrafting = nixDescription.isPending;
   const isAutofilling = nixOutcomesDraft.isPending;

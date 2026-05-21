@@ -1,4 +1,4 @@
-import type { SkillImportance, SkillProficiency } from "@/app/lib/api/cvAssistantApi";
+import type { SkillImportance, SkillProficiency } from "@/app/lib/api/annixOrbitApi";
 
 export const SKILL_IMPORTANCE_OPTIONS: ReadonlyArray<{ value: SkillImportance; label: string }> = [
   { value: "required", label: "Required" },

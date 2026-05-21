@@ -1,4 +1,6 @@
 export { adminKeys } from "./adminKeys";
+export type { CvCandidateQueryParams, CvExternalJobQueryParams } from "./annixOrbitKeys";
+export { annixOrbitKeys } from "./annixOrbitKeys";
 export { annixRepKeys } from "./annixRepKeys";
 export { auIndustriesKeys } from "./auIndustriesKeys";
 export type { BoqQueryParams } from "./boqKeys";
@@ -6,8 +8,6 @@ export { boqKeys } from "./boqKeys";
 export { calculatorKeys } from "./calculatorKeys";
 export { complySaKeys } from "./complySaKeys";
 export { customerKeys } from "./customerKeys";
-export type { CvCandidateQueryParams, CvExternalJobQueryParams } from "./cvAssistantKeys";
-export { cvAssistantKeys } from "./cvAssistantKeys";
 export type { DrawingQueryParams } from "./drawingKeys";
 export { drawingKeys } from "./drawingKeys";
 export { featureFlagKeys } from "./featureFlagKeys";

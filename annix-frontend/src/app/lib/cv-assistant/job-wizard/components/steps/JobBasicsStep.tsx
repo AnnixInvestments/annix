@@ -2,10 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
-  cvAssistantApiClient,
+  annixOrbitApiClient,
   type JobPosting,
   type UpdateJobWizardPayload,
-} from "@/app/lib/api/cvAssistantApi";
+} from "@/app/lib/api/annixOrbitApi";
 import { SOUTH_AFRICAN_PROVINCES } from "@/app/lib/config/registration/constants";
 import { EMPLOYMENT_TYPE_OPTIONS } from "../../constants/employment-types";
 import { WORK_MODE_OPTIONS } from "../../constants/work-modes";
@@ -31,7 +31,7 @@ export function JobBasicsStep({ draft, onChange, onTitlePreview }: JobBasicsStep
     operation: "title-suggestions",
     label: "Nix is normalising your title…",
     fn: ({ id, title }: { id: number; title?: string }) =>
-      cvAssistantApiClient.nixTitleSuggestions(id, title),
+      annixOrbitApiClient.nixTitleSuggestions(id, title),
     silent: true,
   });
   const suggestionsData = titleSuggestions.data;

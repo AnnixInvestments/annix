@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
-import { cvAssistantApiClient } from "@/app/lib/api/cvAssistantApi";
+import { annixOrbitApiClient } from "@/app/lib/api/annixOrbitApi";
 
 function ResetPasswordContent() {
   const router = useRouter();
@@ -30,7 +30,7 @@ function ResetPasswordContent() {
 
     setIsLoading(true);
     try {
-      await cvAssistantApiClient.resetPassword(token, password);
+      await annixOrbitApiClient.resetPassword(token, password);
       setSuccess(true);
       setTimeout(() => router.push("/cv-assistant/login"), 2500);
     } catch (err) {
@@ -165,7 +165,7 @@ function ResetPasswordContent() {
   );
 }
 
-export default function CvAssistantResetPasswordPage() {
+export default function AnnixOrbitResetPasswordPage() {
   return (
     <Suspense
       fallback={

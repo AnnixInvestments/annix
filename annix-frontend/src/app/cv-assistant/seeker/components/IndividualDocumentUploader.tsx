@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import type { IndividualDocumentKind } from "@/app/lib/api/cvAssistantApi";
+import type { IndividualDocumentKind } from "@/app/lib/api/annixOrbitApi";
 import { useCvUploadMyDocument } from "@/app/lib/query/hooks";
 
 const ACCEPT_ATTR = ".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx";
