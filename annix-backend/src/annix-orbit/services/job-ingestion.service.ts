@@ -14,6 +14,7 @@ import { JobMarketSource, JobSourceProvider } from "../entities/job-market-sourc
 import { JobPosting, JobPostingStatus } from "../entities/job-posting.entity";
 import { AdzunaService } from "./adzuna.service";
 import { CandidateJobMatchingService } from "./candidate-job-matching.service";
+import { DpsaCircularService } from "./dpsa-circular.service";
 import { EmbeddingService } from "./embedding.service";
 import { GeocodeService } from "./geocode.service";
 import { IngestedJobResult } from "./ingested-job.types";
@@ -22,6 +23,8 @@ import { JoobleService } from "./jooble.service";
 import { RemotiveService } from "./remotive.service";
 
 const HEALTH_ALERT_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+const ADZUNA_PAGE_SIZE = 50;
+const ADZUNA_MAX_PAGES = 10;
 
 @Injectable()
 export class JobIngestionService {
@@ -49,6 +52,7 @@ export class JobIngestionService {
     private readonly configService: ConfigService,
     private readonly geocodeService: GeocodeService,
     private readonly jobVettingService: JobVettingService,
+    private readonly dpsaCircularService: DpsaCircularService,
   ) {}
 
   @Cron(CronExpression.EVERY_HOUR, { name: "annix-orbit:poll-job-sources" })
@@ -75,6 +79,11 @@ export class JobIngestionService {
     options: { vetInline?: boolean } = {},
   ): Promise<{ ingested: number; skipped: number; savedIds: number[] }> {
     const vetInline = options.vetInline ?? true;
+
+    if (source.provider === JobSourceProvider.DPSA) {
+      return this.ingestDpsaSource(source, { vetInline });
+    }
+
     this.resetDailyCounterIfNeeded(source);
 
     if (source.requestsToday >= source.rateLimitPerDay) {
@@ -103,8 +112,6 @@ export class JobIngestionService {
 
         try {
           const jobs = await this.fetchJobsFromProvider(source, country, category ?? null);
-
-          source.requestsToday += 1;
 
           const result = await this.upsertJobs(jobs, source, country, { vetInline });
           return {
@@ -289,6 +296,30 @@ export class JobIngestionService {
 
     const [jobs, total] = await qb.getManyAndCount();
     return { jobs, total };
+  }
+
+  private async ingestDpsaSource(
+    source: JobMarketSource,
+    options: { vetInline: boolean },
+  ): Promise<{ ingested: number; skipped: number; savedIds: number[] }> {
+    if (process.env.DPSA_INGESTION_ENABLED !== "true") {
+      this.logger.warn("DPSA ingestion disabled — set DPSA_INGESTION_ENABLED=true to enable");
+      return { ingested: 0, skipped: 0, savedIds: [] };
+    }
+
+    const result = await this.dpsaCircularService.ingestLatestCircular(source);
+
+    if (options.vetInline && result.savedIds.length > 0) {
+      const savedJobs = await this.externalJobRepo.find({
+        where: { id: In(result.savedIds) },
+      });
+      await this.vetSavedJobs(savedJobs);
+    }
+
+    source.lastIngestedAt = DateTime.now().toJSDate();
+    await this.sourceRepo.save(source);
+
+    return { ingested: result.ingested, skipped: 0, savedIds: result.savedIds };
   }
 
   private async vetSavedJobs(savedJobs: ExternalJob[]): Promise<void> {
@@ -554,6 +585,7 @@ export class JobIngestionService {
     category: string | null,
   ): Promise<IngestedJobResult[]> {
     if (source.provider === JobSourceProvider.JOOBLE) {
+      source.requestsToday += 1;
       const { jobs } = await this.joobleService.searchJobs(source.apiKeyEncrypted!, {
         keywords: category ?? undefined,
         location: joobleLocationForCountry(country),
@@ -562,23 +594,45 @@ export class JobIngestionService {
       return jobs;
     }
     if (source.provider === JobSourceProvider.REMOTIVE) {
+      source.requestsToday += 1;
       const { jobs } = await this.remotiveService.searchJobs({
         category: category ?? undefined,
         resultsPerPage: 200,
       });
       return jobs;
     }
-    const { jobs } = await this.adzunaService.searchJobs(
-      source.apiId!,
-      source.apiKeyEncrypted!,
-      country,
-      {
-        category: category ?? undefined,
-        maxDaysOld: 7,
-        resultsPerPage: 50,
-      },
-    );
-    return jobs;
+    return this.fetchAdzunaPaginated(source, country, category);
+  }
+
+  private async fetchAdzunaPaginated(
+    source: JobMarketSource,
+    country: string,
+    category: string | null,
+  ): Promise<IngestedJobResult[]> {
+    const collected: IngestedJobResult[] = [];
+    for (let page = 1; page <= ADZUNA_MAX_PAGES; page += 1) {
+      if (source.requestsToday >= source.rateLimitPerDay) {
+        this.logger.warn(
+          `Adzuna rate limit reached during pagination at page ${page} for source ${source.name}`,
+        );
+        break;
+      }
+      source.requestsToday += 1;
+      const { jobs } = await this.adzunaService.searchJobs(
+        source.apiId!,
+        source.apiKeyEncrypted!,
+        country,
+        {
+          category: category ?? undefined,
+          maxDaysOld: 7,
+          resultsPerPage: ADZUNA_PAGE_SIZE,
+          page,
+        },
+      );
+      collected.push(...jobs);
+      if (jobs.length < ADZUNA_PAGE_SIZE) break;
+    }
+    return collected;
   }
 
   private async upsertJobs(

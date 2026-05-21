@@ -89,28 +89,33 @@ export class DpsaCircularService {
     }
   }
 
-  async ingestLatestCircular(source: JobMarketSource): Promise<{ ingested: number }> {
+  async ingestLatestCircular(
+    source: JobMarketSource,
+  ): Promise<{ ingested: number; savedIds: number[] }> {
     const pdfUrl = await this.discoverLatestCircularUrl();
     if (!pdfUrl) {
       this.logger.warn("Could not discover latest PSVC PDF URL");
-      return { ingested: 0 };
+      return { ingested: 0, savedIds: [] };
     }
     return this.ingestFromUrl(source, pdfUrl);
   }
 
-  async ingestFromUrl(source: JobMarketSource, pdfUrl: string): Promise<{ ingested: number }> {
+  async ingestFromUrl(
+    source: JobMarketSource,
+    pdfUrl: string,
+  ): Promise<{ ingested: number; savedIds: number[] }> {
     this.logger.log(`Fetching DPSA PSVC from ${pdfUrl}`);
     const buffer = await this.downloadPdf(pdfUrl);
     const text = await extractTextFromPdf(buffer);
     if (!text || text.length < 200) {
       this.logger.warn(`PSVC PDF text too short (${text.length} chars) — likely scan/OCR needed`);
-      return { ingested: 0 };
+      return { ingested: 0, savedIds: [] };
     }
 
     const vacancies = await this.extractVacancies(text, pdfUrl);
     if (vacancies.length === 0) {
       this.logger.warn("AI returned 0 vacancies from PSVC — prompt may need tuning");
-      return { ingested: 0 };
+      return { ingested: 0, savedIds: [] };
     }
 
     const externalIds = vacancies.map((v) => buildPostExternalId(pdfUrl, v.postNumber));
@@ -164,7 +169,7 @@ export class DpsaCircularService {
     });
 
     this.logger.log(`DPSA ingestion: ${saved.length} new posts from ${pdfUrl}`);
-    return { ingested: saved.length };
+    return { ingested: saved.length, savedIds: saved.map((job) => job.id) };
   }
 
   private async discoverLatestCircularUrl(): Promise<string | null> {
@@ -173,9 +178,16 @@ export class DpsaCircularService {
       if (!indexResponse.ok) return null;
       const indexHtml = await indexResponse.text();
 
+      const directPdfHref = findLatestCircularPdfHref(indexHtml);
+      if (directPdfHref) {
+        if (directPdfHref.startsWith("http")) return directPdfHref;
+        if (directPdfHref.startsWith("/")) return `https://www.dpsa.gov.za${directPdfHref}`;
+        return `https://www.dpsa.gov.za/${directPdfHref}`;
+      }
+
       const circularPageHref = findLatestCircularPageHref(indexHtml);
       if (!circularPageHref) {
-        this.logger.warn("PSVC discovery: no circular page link on index");
+        this.logger.warn("PSVC discovery: no circular PDF or page link on index");
         return null;
       }
       const circularPageUrl = circularPageHref.startsWith("http")
@@ -233,6 +245,24 @@ export class DpsaCircularService {
       return [];
     }
   }
+}
+
+function findLatestCircularPdfHref(html: string): string | null {
+  const matches = [
+    ...html.matchAll(
+      /href="([^"]*\/Circular(?:%20|\s|_|-)+(\d+)(?:%20|\s|_|-)+of(?:%20|\s|_|-)+(\d+)\.pdf)"/gi,
+    ),
+  ];
+  if (matches.length === 0) return null;
+  const ranked = matches
+    .map((m) => ({
+      href: m[1],
+      year: Number(m[3]),
+      number: Number(m[2]),
+    }))
+    .sort((a, b) => b.year - a.year || b.number - a.number);
+  const top = ranked[0];
+  return top ? top.href : null;
 }
 
 function findLatestCircularPageHref(html: string): string | null {
