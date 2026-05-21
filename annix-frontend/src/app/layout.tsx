@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono, Great_Vibes } from "next/font/google";
+import { Exo_2, Geist, Geist_Mono, Great_Vibes, Inter } from "next/font/google";
 import "./globals.css";
 import ConditionalNavigation from "./components/ConditionalNavigation";
 import { Providers } from "./components/Providers";
@@ -24,6 +24,24 @@ const greatVibes = Great_Vibes({
   variable: "--font-great-vibes",
   subsets: ["latin"],
   weight: "400",
+  preload: false,
+});
+
+// Annix Orbit display font — ANNIX wordmark (ExtraBold 800) + ORBIT (SemiBold 600).
+// Loaded but not preloaded so the public marketing site stays render-fast; the
+// Orbit module pages declare a hard preload via their own layout when needed.
+const exo2 = Exo_2({
+  variable: "--font-exo-2",
+  subsets: ["latin"],
+  weight: ["600", "800"],
+  preload: false,
+});
+
+// Annix Orbit body font — HIRING • TALENT • COMPLIANCE row + description.
+const inter = Inter({
+  variable: "--font-inter",
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
   preload: false,
 });
 
@@ -59,7 +77,7 @@ export default function RootLayout(
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${greatVibes.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${greatVibes.variable} ${exo2.variable} ${inter.variable} antialiased`}
         suppressHydrationWarning
       >
         <Providers>

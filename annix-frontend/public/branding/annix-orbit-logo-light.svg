@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2400 3000" width="2400" height="3000" role="img" aria-label="Annix Orbit — Hiring, Talent, Compliance">
+  <title>Annix Orbit — Hiring, Talent, Compliance (light)</title>
+  <desc>Light-surface variant of the Annix Orbit lockup: same orbital AN monogram on a navy disc (so the brand mark still reads), with ANNIX in navy and ORBIT in orange on a white backdrop.</desc>
+
+  <defs>
+    <radialGradient id="ao-light-particle-bright" cx="40%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#FFF0CC"/>
+      <stop offset="35%" stop-color="#FFA500"/>
+      <stop offset="100%" stop-color="#FF8A00"/>
+    </radialGradient>
+    <linearGradient id="ao-light-disc" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#001B8F"/>
+      <stop offset="100%" stop-color="#00135F"/>
+    </linearGradient>
+    <filter id="ao-light-glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="22" result="b"/>
+      <feMerge>
+        <feMergeNode in="b"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- White backdrop -->
+  <rect x="0" y="0" width="2400" height="3000" fill="#FFFFFF"/>
+
+  <!-- Navy disc behind the icon so the white N still reads on light bgs -->
+  <circle cx="1200" cy="1000" r="900" fill="url(#ao-light-disc)"/>
+
+  <g transform="translate(200, 60)">
+    <circle cx="1000" cy="1000" r="800" fill="none" stroke="#FFFFFF" stroke-width="32" opacity="0.95"/>
+    <path d="M 900 240 L 580 1740 L 760 1740 L 820 1450 L 1080 1450 L 1140 1740 L 1320 1740 L 1000 240 Z M 850 1280 L 1050 1280 L 950 800 Z" fill="#FF8A00" fill-rule="evenodd"/>
+    <path d="M 1380 280 L 1580 280 L 1580 920 L 1780 280 L 1980 280 L 1980 1740 L 1780 1740 L 1780 1100 L 1580 1740 L 1380 1740 Z" fill="#FFFFFF"/>
+    <path d="M 1700 380 A 800 800 0 0 1 1700 1620" fill="none" stroke="#FFFFFF" stroke-width="32" opacity="0.95"/>
+    <circle cx="1580" cy="420" r="62" fill="url(#ao-light-particle-bright)" filter="url(#ao-light-glow)"/>
+  </g>
+
+  <!-- ANNIX in navy (no bi-colour X on light — the orange wouldn't read) -->
+  <g font-family="'Exo 2', 'Inter', system-ui, sans-serif" text-anchor="middle">
+    <text x="1200" y="2160" font-weight="800" font-size="320" letter-spacing="38" fill="#001B8F">ANNIX</text>
+
+    <line x1="500" y1="2310" x2="900" y2="2310" stroke="#FF8A00" stroke-width="6" opacity="0.9"/>
+    <line x1="1500" y1="2310" x2="1900" y2="2310" stroke="#FF8A00" stroke-width="6" opacity="0.9"/>
+
+    <text x="1200" y="2410" font-weight="600" font-size="260" letter-spacing="120" fill="#FF8A00">ORBIT</text>
+  </g>
+
+  <g font-family="'Inter', system-ui, sans-serif" text-anchor="middle">
+    <text x="1200" y="2620" font-weight="500" font-size="90" letter-spacing="60" fill="#3B4455">
+      HIRING <tspan fill="#FF8A00">&#x2022;</tspan> TALENT <tspan fill="#FF8A00">&#x2022;</tspan> COMPLIANCE
+    </text>
+  </g>
+
+  <line x1="700" y1="2700" x2="1700" y2="2700" stroke="#FF8A00" stroke-width="3" opacity="0.5"/>
+
+  <g font-family="'Inter', system-ui, sans-serif" text-anchor="middle" fill="#3B4455">
+    <text x="1200" y="2820" font-weight="400" font-size="72">The intelligent workforce ecosystem for modern hiring,</text>
+    <text x="1200" y="2910" font-weight="400" font-size="72">talent growth, and compliance. AI screening, reference</text>
+    <text x="1200" y="3000" font-weight="400" font-size="72">checks, and job matching.</text>
+  </g>
+</svg>

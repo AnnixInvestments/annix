@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2400 3000" width="2400" height="3000" role="img" aria-label="Annix Orbit — Hiring, Talent, Compliance">
+  <title>Annix Orbit — Hiring, Talent, Compliance</title>
+  <desc>Full Annix Orbit brand lockup on the canonical navy gradient: orbital AN monogram, ANNIX wordmark (Exo 2 ExtraBold, white) above ORBIT eyebrow (Exo 2 SemiBold, orange, flanked by orange rules), HIRING • TALENT • COMPLIANCE row (Inter Medium, white 80%), and the description (Inter Regular, white 70%).</desc>
+
+  <defs>
+    <radialGradient id="ao-logo-particle-bright" cx="40%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#FFF0CC"/>
+      <stop offset="35%" stop-color="#FFA500"/>
+      <stop offset="100%" stop-color="#FF8A00"/>
+    </radialGradient>
+    <linearGradient id="ao-logo-bg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#001B8F"/>
+      <stop offset="100%" stop-color="#00135F"/>
+    </linearGradient>
+    <filter id="ao-logo-glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="22" result="b"/>
+      <feMerge>
+        <feMergeNode in="b"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Navy gradient backdrop. The "dark" variant is the default lockup
+       per spec; light + transparent variants live in their own files. -->
+  <rect x="0" y="0" width="2400" height="3000" fill="url(#ao-logo-bg)"/>
+
+  <!-- ─── Icon block — gap to ANNIX reduced ~20% per spec (translate-y -110) ─── -->
+  <g transform="translate(200, 60)">
+    <!-- Orbit ring (behind A) -->
+    <circle cx="1000" cy="1000" r="800" fill="none" stroke="#FFFFFF" stroke-width="32" opacity="0.95"/>
+
+    <!-- Orange A — thicker wedge with horizontal crossbar -->
+    <path d="M 900 240
+             L 580 1740
+             L 760 1740
+             L 820 1450
+             L 1080 1450
+             L 1140 1740
+             L 1320 1740
+             L 1000 240 Z
+             M 850 1280
+             L 1050 1280
+             L 950 800 Z"
+          fill="#FF8A00" fill-rule="evenodd"/>
+
+    <!-- White N — chunkier block letter -->
+    <path d="M 1380 280
+             L 1580 280
+             L 1580 920
+             L 1780 280
+             L 1980 280
+             L 1980 1740
+             L 1780 1740
+             L 1780 1100
+             L 1580 1740
+             L 1380 1740 Z"
+          fill="#FFFFFF"/>
+
+    <!-- Orbit arc visibly crossing the N -->
+    <path d="M 1700 380 A 800 800 0 0 1 1700 1620" fill="none" stroke="#FFFFFF" stroke-width="32" opacity="0.95"/>
+
+    <!-- Bright top-right satellite -->
+    <circle cx="1580" cy="420" r="62" fill="url(#ao-logo-particle-bright)" filter="url(#ao-logo-glow)"/>
+  </g>
+
+  <!-- ─── ANNIX wordmark (Exo 2 ExtraBold, white, tracking +12). The X has
+       its right diagonal painted orange via a clip-path overlay further
+       down — bi-colour brand X. ──────────────────────────────────────── -->
+  <g font-family="'Exo 2', 'Inter', system-ui, sans-serif" text-anchor="middle">
+    <text x="1200" y="2160" font-weight="800" font-size="320" letter-spacing="38" fill="#FFFFFF">ANNIX</text>
+
+    <!-- Orange overlay on the X's right diagonal. Triangle approximates the
+         X's right stroke geometry at the chosen font/size; tweak if the
+         loaded weight shifts the glyph noticeably. -->
+    <g opacity="0.95">
+      <clipPath id="ao-logo-x-right">
+        <polygon points="1500,1990 1640,1990 1720,2160 1580,2160 1500,1990 1580,2160 1700,2160 1620,1990"/>
+      </clipPath>
+      <rect x="1450" y="1960" width="320" height="220" fill="#FF8A00" clip-path="url(#ao-logo-x-right)"/>
+    </g>
+
+    <!-- Orange rules either side of ORBIT — eyebrow ornament from spec. -->
+    <line x1="500" y1="2310" x2="900" y2="2310" stroke="#FF8A00" stroke-width="6" opacity="0.9"/>
+    <line x1="1500" y1="2310" x2="1900" y2="2310" stroke="#FF8A00" stroke-width="6" opacity="0.9"/>
+
+    <!-- ORBIT — scaled ~30% larger than previous (was 200 → now 260),
+         Exo 2 SemiBold (600), letter-spacing +10 visually widened so the
+         eyebrow reads with the rules. -->
+    <text x="1200" y="2410" font-weight="600" font-size="260" letter-spacing="120" fill="#FF8A00">ORBIT</text>
+  </g>
+
+  <!-- ─── HIRING • TALENT • COMPLIANCE (Inter Medium, white 80%) ──────── -->
+  <g font-family="'Inter', system-ui, sans-serif" text-anchor="middle">
+    <text x="1200" y="2620" font-weight="500" font-size="90" letter-spacing="60" fill="rgba(255,255,255,0.80)">
+      HIRING <tspan fill="#FF8A00">&#x2022;</tspan> TALENT <tspan fill="#FF8A00">&#x2022;</tspan> COMPLIANCE
+    </text>
+  </g>
+
+  <!-- Thin orange separator -->
+  <line x1="700" y1="2700" x2="1700" y2="2700" stroke="#FF8A00" stroke-width="3" opacity="0.5"/>
+
+  <!-- ─── Description (Inter Regular, white 70%) — canonical wording ──── -->
+  <g font-family="'Inter', system-ui, sans-serif" text-anchor="middle" fill="rgba(255,255,255,0.70)">
+    <text x="1200" y="2820" font-weight="400" font-size="72">The intelligent workforce ecosystem for modern hiring,</text>
+    <text x="1200" y="2910" font-weight="400" font-size="72">talent growth, and compliance. AI screening, reference</text>
+    <text x="1200" y="3000" font-weight="400" font-size="72">checks, and job matching.</text>
+  </g>
+</svg>

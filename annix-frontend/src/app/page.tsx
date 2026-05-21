@@ -10,12 +10,7 @@ import {
 } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { AnnixOrbitIcon } from "@/app/components/branding/AnnixOrbitIcon";
-import {
-  ANNIX_BG_GRADIENT,
-  ANNIX_FONT_DISPLAY,
-  ANNIX_PALETTE,
-} from "@/app/components/branding/tokens";
+import { AnnixOrbitCard } from "@/app/components/cards/AnnixOrbitCard";
 
 export const metadata: Metadata = {
   title: "Annix Platform",
@@ -199,69 +194,17 @@ export default function HomePage() {
             </div>
           </Link>
 
-          <Link href="/annix/orbit" target="_blank" rel="noopener noreferrer" className="group">
-            <div
-              className="backdrop-blur-sm rounded-xl shadow-lg p-8 border-2 hover:shadow-2xl transition-all duration-300 h-full flex flex-col text-center"
-              style={{
-                background: ANNIX_BG_GRADIENT,
-                borderColor: "rgba(255, 138, 0, 0.25)",
-              }}
-            >
-              <AnnixOrbitIcon className="w-32 h-32 mx-auto mb-3" />
-              <div
-                className="text-3xl font-extrabold tracking-[0.18em] text-white leading-none"
-                style={{ fontFamily: ANNIX_FONT_DISPLAY }}
-              >
-                ANNIX
-              </div>
-              <div className="flex items-center justify-center gap-2 mt-2">
-                <span
-                  className="h-px w-8"
-                  style={{ backgroundColor: ANNIX_PALETTE.orange, opacity: 0.6 }}
-                />
-                <div
-                  className="text-lg font-bold tracking-[0.4em]"
-                  style={{
-                    color: ANNIX_PALETTE.orange,
-                    fontFamily: ANNIX_FONT_DISPLAY,
-                  }}
-                >
-                  ORBIT
-                </div>
-                <span
-                  className="h-px w-8"
-                  style={{ backgroundColor: ANNIX_PALETTE.orange, opacity: 0.6 }}
-                />
-              </div>
-              <p
-                className="text-[10px] font-semibold tracking-[0.3em] uppercase mt-3 mb-4"
-                style={{ color: ANNIX_PALETTE.silver }}
-              >
-                Hiring <span style={{ color: ANNIX_PALETTE.orange }}>&bull;</span> Talent{" "}
-                <span style={{ color: ANNIX_PALETTE.orange }}>&bull;</span> Compliance
-              </p>
-              <p
-                className="text-sm leading-relaxed mb-6 flex-1"
-                style={{ color: ANNIX_PALETTE.grey }}
-              >
-                The intelligent workforce ecosystem for modern hiring, talent growth, and
-                compliance. AI screening, reference checks, and job matching.
-              </p>
-              <span
-                className="mt-auto inline-flex items-center justify-center font-semibold group-hover:translate-x-1 transition-transform"
-                style={{ color: ANNIX_PALETTE.orangeLight }}
-              >
-                Get started
-                <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 5l7 7-7 7"
-                  />
-                </svg>
-              </span>
-            </div>
+          <Link
+            href="/annix/orbit"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group h-full"
+          >
+            <AnnixOrbitCard
+              variant="dark"
+              ctaHref="/annix/orbit"
+              className="h-full hover:shadow-2xl transition-all duration-300"
+            />
           </Link>
 
           <Link

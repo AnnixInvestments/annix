@@ -1,14 +1,16 @@
 import { AnnixOrbitIcon } from "./AnnixOrbitIcon";
-import { ANNIX_FONT_DISPLAY, ANNIX_PALETTE } from "./tokens";
+import { ANNIX_FONT_DISPLAY, ANNIX_PALETTE, ANNIX_TRACKING } from "./tokens";
 
 /**
  * Horizontal Annix Orbit lockup for app navbars / headers.
  *
- *   [ orbit-icon ]  ANNIX  ORBIT
+ *   [ orbit-icon ]  ANNIX
+ *                  ORBIT
  *
- * Compact: no subtitle, no tagline, no background. Designed to sit
- * inside an existing dark navbar at ~40-56px tall. Pass `onLight` if
- * the navbar background is light.
+ * Compact: no subtitle, no description, no backdrop. Designed to sit in
+ * an existing dark navbar at ~40-56px tall. Typography matches the
+ * canonical spec (Exo 2 ExtraBold ANNIX, Exo 2 SemiBold ORBIT, bi-colour X).
+ * Pass `onLight` if the navbar background is light.
  */
 export function AnnixOrbitNavbar({
   className,
@@ -17,7 +19,7 @@ export function AnnixOrbitNavbar({
 }: {
   className?: string;
   onLight?: boolean;
-  /** Optional href — if provided, wraps the lockup in a Link-style anchor. */
+  /** Optional href — if provided, wraps the lockup in an anchor tag. */
   href?: string;
 }) {
   const wordmarkColor = onLight ? ANNIX_PALETTE.navy : ANNIX_PALETTE.white;
@@ -27,14 +29,37 @@ export function AnnixOrbitNavbar({
       <AnnixOrbitIcon className="h-10 w-10 sm:h-12 sm:w-12 flex-shrink-0" />
       <div className="flex flex-col leading-none">
         <span
-          className="text-lg sm:text-xl font-extrabold tracking-[0.18em]"
-          style={{ color: wordmarkColor, fontFamily: ANNIX_FONT_DISPLAY }}
+          className="inline-flex items-baseline text-lg sm:text-xl"
+          style={{
+            color: wordmarkColor,
+            fontFamily: ANNIX_FONT_DISPLAY,
+            fontWeight: 800,
+            letterSpacing: ANNIX_TRACKING.annix,
+          }}
         >
-          ANNIX
+          <span>ANNI</span>
+          <span className="relative">
+            <span>X</span>
+            <span
+              aria-hidden
+              className="absolute inset-0 overflow-hidden"
+              style={{
+                color: ANNIX_PALETTE.orange,
+                clipPath: "polygon(50% 0, 100% 0, 100% 100%, 50% 100%)",
+              }}
+            >
+              X
+            </span>
+          </span>
         </span>
         <span
-          className="text-[10px] sm:text-xs font-bold tracking-[0.35em] mt-0.5"
-          style={{ color: ANNIX_PALETTE.orange, fontFamily: ANNIX_FONT_DISPLAY }}
+          className="text-[11px] sm:text-sm mt-0.5"
+          style={{
+            color: ANNIX_PALETTE.orange,
+            fontFamily: ANNIX_FONT_DISPLAY,
+            fontWeight: 600,
+            letterSpacing: ANNIX_TRACKING.orbit,
+          }}
         >
           ORBIT
         </span>

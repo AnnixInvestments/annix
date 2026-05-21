@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2000 2000" width="64" height="64" role="img" aria-label="Annix Orbit">
+  <title>Annix Orbit</title>
+  <desc>Favicon variant — same icon paths as the full mark on a navy rounded-square tile so the brand reads against any browser-chrome colour. Glow filter omitted; satellite painted as a flat circle.</desc>
+
+  <!-- Navy rounded-square so the mark reads against tab backgrounds. -->
+  <rect x="0" y="0" width="2000" height="2000" rx="320" fill="#001B8F"/>
+
+  <!-- Orbit ring (slightly heavier stroke for 16px legibility) -->
+  <circle cx="1000" cy="1000" r="800" fill="none" stroke="#FFFFFF" stroke-width="40" opacity="0.95"/>
+
+  <!-- Orange A -->
+  <path d="M 900 240 L 580 1740 L 760 1740 L 820 1450 L 1080 1450 L 1140 1740 L 1320 1740 L 1000 240 Z M 850 1280 L 1050 1280 L 950 800 Z" fill="#FF8A00" fill-rule="evenodd"/>
+
+  <!-- White N -->
+  <path d="M 1380 280 L 1580 280 L 1580 920 L 1780 280 L 1980 280 L 1980 1740 L 1780 1740 L 1780 1100 L 1580 1740 L 1380 1740 Z" fill="#FFFFFF"/>
+
+  <!-- Orbit segment over N -->
+  <path d="M 1700 380 A 800 800 0 0 1 1700 1620" fill="none" stroke="#FFFFFF" stroke-width="40" opacity="0.95"/>
+
+  <!-- Flat orange satellite — no filter so it survives 16px raster downsampling -->
+  <circle cx="1580" cy="420" r="80" fill="#FFA500"/>
+</svg>

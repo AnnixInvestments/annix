@@ -1,21 +1,27 @@
 import { AnnixOrbitIcon } from "./AnnixOrbitIcon";
-import { ANNIX_BG_GRADIENT, ANNIX_FONT_BODY, ANNIX_FONT_DISPLAY, ANNIX_PALETTE } from "./tokens";
+import {
+  ANNIX_BG_GRADIENT,
+  ANNIX_FONT_BODY,
+  ANNIX_FONT_DISPLAY,
+  ANNIX_PALETTE,
+  ANNIX_TRACKING,
+} from "./tokens";
 
 /**
- * Full Annix Orbit brand lockup: orbital AN monogram above the ANNIX
- * wordmark, ORBIT eyebrow with orange rules, HIRING • TALENT • COMPLIANCE
- * subtitle, and tagline. Use on the module home / login splash / marketing
- * surfaces — anywhere the brand needs to introduce itself in full.
+ * Full Annix Orbit brand lockup — the canonical onboarding-card design.
+ *
+ *   [orbital AN icon]
+ *      ANNIX        (Exo 2 ExtraBold, white,   +12 tracking)
+ *   ─  ORBIT  ─     (Exo 2 SemiBold,  orange,  +10 tracking, +30% scale)
+ *   HIRING • TALENT • COMPLIANCE   (Inter Medium, white 80%)
+ *   The intelligent workforce ecosystem for modern hiring, talent growth,
+ *   and compliance. AI screening, reference checks, and job matching.
+ *                                  (Inter Regular, white 70%)
  *
  * Variants:
- *   - `variant="onDark"`   (default) — assumes a navy / dark backdrop; uses
- *                                      white wordmark + light text
- *   - `variant="onLight"`            — for light backgrounds; uses navy
- *                                      wordmark + dark text
- *   - `variant="transparent"`        — no background, just the artwork
- *
- * `withBackground` (default true except for transparent) paints the navy
- * gradient surface around the lockup.
+ *   - `onDark`        (default) — navy gradient backdrop
+ *   - `onLight`                 — white surface, navy wordmark
+ *   - `transparent`             — no backdrop, inherits page background
  */
 type LogoVariant = "onDark" | "onLight" | "transparent";
 
@@ -32,56 +38,92 @@ export function AnnixOrbitLogo({
   const transparent = variant === "transparent";
 
   const wordmarkColor = onLight ? ANNIX_PALETTE.navy : ANNIX_PALETTE.white;
-  const subtitleColor = onLight ? ANNIX_PALETTE.slate : ANNIX_PALETTE.silver;
-  const taglineColor = onLight ? ANNIX_PALETTE.slate : ANNIX_PALETTE.grey;
+  const subtitleColor = onLight ? ANNIX_PALETTE.slate : ANNIX_PALETTE.white80;
+  const taglineColor = onLight ? ANNIX_PALETTE.slate : ANNIX_PALETTE.white70;
 
   return (
     <div
       className={`flex flex-col items-center text-center ${
         transparent ? "" : "rounded-2xl px-8 py-10"
       } ${className ?? ""}`}
-      style={transparent ? undefined : { background: onLight ? "transparent" : ANNIX_BG_GRADIENT }}
+      style={transparent ? undefined : { background: onLight ? "#FFFFFF" : ANNIX_BG_GRADIENT }}
     >
       <AnnixOrbitIcon className="w-40 h-40 sm:w-48 sm:h-48" />
 
+      {/* ANNIX — Exo 2 ExtraBold, tracking +12. Bi-colour X overlay paints
+          the right diagonal in brand orange. Gap to icon reduced ~20% via
+          `mt-3` (was `mt-4`). */}
       <div
-        className="mt-4 text-5xl sm:text-6xl font-extrabold tracking-[0.15em] leading-none"
-        style={{ color: wordmarkColor, fontFamily: ANNIX_FONT_DISPLAY }}
+        className="mt-3 inline-flex items-baseline text-5xl sm:text-6xl leading-none"
+        style={{
+          color: wordmarkColor,
+          fontFamily: ANNIX_FONT_DISPLAY,
+          fontWeight: 800,
+          letterSpacing: ANNIX_TRACKING.annix,
+        }}
       >
-        ANNIX
+        <span>ANNI</span>
+        <span className="relative">
+          <span>X</span>
+          <span
+            aria-hidden
+            className="absolute inset-0 overflow-hidden"
+            style={{
+              color: ANNIX_PALETTE.orange,
+              clipPath: "polygon(50% 0, 100% 0, 100% 100%, 50% 100%)",
+            }}
+          >
+            X
+          </span>
+        </span>
       </div>
 
+      {/* ORBIT — Exo 2 SemiBold, orange, +10 tracking, scaled ~30% larger
+          than previous (3xl/4xl → 4xl/5xl). Orange rules flank it. */}
       <div className="flex items-center justify-center gap-3 mt-3">
         <span
-          className="h-px w-12 sm:w-16"
-          style={{ backgroundColor: ANNIX_PALETTE.orange, opacity: 0.7 }}
+          className="h-px w-14 sm:w-20"
+          style={{ backgroundColor: ANNIX_PALETTE.orange, opacity: 0.9 }}
         />
         <div
-          className="text-2xl sm:text-3xl font-bold tracking-[0.4em]"
-          style={{ color: ANNIX_PALETTE.orange, fontFamily: ANNIX_FONT_DISPLAY }}
+          className="text-4xl sm:text-5xl"
+          style={{
+            color: ANNIX_PALETTE.orange,
+            fontFamily: ANNIX_FONT_DISPLAY,
+            fontWeight: 600,
+            letterSpacing: ANNIX_TRACKING.orbit,
+          }}
         >
           ORBIT
         </div>
         <span
-          className="h-px w-12 sm:w-16"
-          style={{ backgroundColor: ANNIX_PALETTE.orange, opacity: 0.7 }}
+          className="h-px w-14 sm:w-20"
+          style={{ backgroundColor: ANNIX_PALETTE.orange, opacity: 0.9 }}
         />
       </div>
 
+      {/* HIRING • TALENT • COMPLIANCE — Inter Medium, white 80%. */}
       <div
-        className="mt-4 text-xs sm:text-sm font-semibold tracking-[0.3em] uppercase"
-        style={{ color: subtitleColor }}
+        className="mt-4 text-xs sm:text-sm uppercase"
+        style={{
+          color: subtitleColor,
+          fontFamily: ANNIX_FONT_BODY,
+          fontWeight: 500,
+          letterSpacing: ANNIX_TRACKING.subtitle,
+        }}
       >
         HIRING <span style={{ color: ANNIX_PALETTE.orange }}>&bull;</span> TALENT{" "}
         <span style={{ color: ANNIX_PALETTE.orange }}>&bull;</span> COMPLIANCE
       </div>
 
+      {/* Description — Inter Regular, white 70%. Full canonical wording. */}
       {showTagline ? (
         <p
           className="mt-5 text-sm sm:text-base max-w-md leading-relaxed"
-          style={{ color: taglineColor, fontFamily: ANNIX_FONT_BODY }}
+          style={{ color: taglineColor, fontFamily: ANNIX_FONT_BODY, fontWeight: 400 }}
         >
-          The intelligent workforce ecosystem for modern hiring, talent growth, and compliance.
+          The intelligent workforce ecosystem for modern hiring, talent growth, and compliance. AI
+          screening, reference checks, and job matching.
         </p>
       ) : null}
     </div>
