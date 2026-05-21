@@ -338,17 +338,27 @@ export default function TaxInvoiceDetailPage() {
   }
 
   const returnUrl = searchParams.get("returnUrl");
+  const fromSource = searchParams.get("from");
+  const rawStatementId = searchParams.get("statementId");
+  const cameFromStatement = fromSource === "statement" && rawStatementId !== null;
+  const statementBackPath = cameFromStatement
+    ? `/au-rubber/portal/accounting/reconciliation/${rawStatementId}`
+    : null;
+
   const backPath =
+    statementBackPath ||
     returnUrl ||
     (invoice.invoiceType === "SUPPLIER"
       ? "/au-rubber/portal/tax-invoices/suppliers"
       : "/au-rubber/portal/tax-invoices/customers");
 
-  const backLabel = returnUrl
-    ? "Back"
-    : invoice.invoiceType === "SUPPLIER"
-      ? "Supplier Tax Invoices"
-      : "Customer Tax Invoices";
+  const backLabel = cameFromStatement
+    ? "Back to statement"
+    : returnUrl
+      ? "Back"
+      : invoice.invoiceType === "SUPPLIER"
+        ? "Supplier Tax Invoices"
+        : "Customer Tax Invoices";
 
   const rawInvoiceInvoiceNumber = invoice.invoiceNumber;
   const rawInvoiceInvoiceNumber2 = invoice.invoiceNumber;
@@ -369,6 +379,18 @@ export default function TaxInvoiceDetailPage() {
           { label: rawInvoiceInvoiceNumber || `INV-${invoice.id}` },
         ]}
       />
+
+      {cameFromStatement && statementBackPath && (
+        <div className="flex">
+          <button
+            type="button"
+            onClick={() => router.push(statementBackPath)}
+            className="inline-flex items-center gap-2 rounded-md border border-orange-200 bg-orange-50 px-3 py-1.5 text-sm font-medium text-orange-700 hover:bg-orange-100 dark:border-orange-900/40 dark:bg-orange-900/20 dark:text-orange-300"
+          >
+            <span aria-hidden>←</span> Go back to statement
+          </button>
+        </div>
+      )}
 
       <div className="flex items-center justify-between">
         <div>
@@ -462,9 +484,20 @@ export default function TaxInvoiceDetailPage() {
             />
           ) : documentUrl ? (
             <iframe src={documentUrl} className="w-full h-full" title="Tax Invoice Document" />
+          ) : invoice.documentPath ? (
+            <div className="flex flex-col items-center justify-center h-full text-gray-500 text-center px-6 gap-2">
+              <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                File missing from storage
+              </div>
+              <div className="text-xs max-w-md">
+                The invoice record points to{" "}
+                <span className="font-mono break-all">{invoice.documentPath}</span> but the file
+                isn't in S3 anymore. Re-upload the PDF to restore it.
+              </div>
+            </div>
           ) : (
             <div className="flex items-center justify-center h-full text-gray-500">
-              No document available
+              No document attached to this invoice
             </div>
           )}
         </div>

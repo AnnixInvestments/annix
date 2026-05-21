@@ -66,8 +66,8 @@ const PORTAL_ROUTES: PortalRoute[] = [
     accessTokenKey: "supplierAccessToken",
   },
   {
-    prefix: "/cv-assistant",
-    login: "/cv-assistant/login",
+    prefix: "/annix/orbit",
+    login: "/annix/orbit/login",
     refreshEndpoint: "/customer/auth/refresh",
     refreshTokenKey: "customerRefreshToken",
     accessTokenKey: "customerAccessToken",

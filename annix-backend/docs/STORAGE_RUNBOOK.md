@@ -25,7 +25,7 @@ This document covers backup, restore, and troubleshooting procedures for the Ann
 | `annix-app/` | Core Annix | Customer docs, supplier docs, RFQ docs, drawings |
 | `au-rubber/` | AU Rubber | CoCs, delivery notes, graphs |
 | `fieldflow/` | FieldFlow | Meeting recordings |
-| `cv-assistant/` | Annix Orbit | Candidate CVs |
+| `annix-orbit/` | Annix Orbit | Candidate CVs |
 | `stock-control/` | Stock Control | Job cards, invoices, signatures |
 | `secure-documents/` | Secure Docs | Encrypted documents |
 
@@ -323,7 +323,7 @@ aws cloudwatch put-metric-alarm \
 aws s3 ls "s3://$BUCKET" --recursive --summarize | tail -2
 
 # Size by prefix
-for prefix in annix-app au-rubber fieldflow cv-assistant stock-control secure-documents; do
+for prefix in annix-app au-rubber fieldflow annix-orbit stock-control secure-documents; do
   echo "=== $prefix ==="
   aws s3 ls "s3://$BUCKET/$prefix/" --recursive --summarize 2>/dev/null | tail -2
 done

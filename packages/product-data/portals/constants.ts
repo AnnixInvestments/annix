@@ -5,7 +5,7 @@ export type PortalCode =
   | "comply-sa"
   | "fieldflow"
   | "annix-rep"
-  | "cv-assistant"
+  | "annix-orbit"
   | "rfq"
   | "au-rubber"
   | "au-industries"
@@ -71,9 +71,9 @@ export const PORTAL_HOSTS: readonly PortalHost[] = [
     devHost: "annixrep.localhost",
   },
   {
-    code: "cv-assistant",
+    code: "annix-orbit",
     displayName: "Annix Orbit",
-    internalPathPrefix: "/cv-assistant",
+    internalPathPrefix: "/annix/orbit",
     prodHost: "cv.annix.co.za",
     prodHostAliases: [],
     devHost: "cv.localhost",

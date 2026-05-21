@@ -46,6 +46,9 @@ lerna-debug.log*
 .temp
 .tmp
 
+# One-off audit / report output written by scripts/ (CSV reports, etc.)
+scripts-output/
+
 # Local secure document storage
 /secure-documents-storage
 

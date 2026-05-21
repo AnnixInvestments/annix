@@ -24,8 +24,8 @@ const fakeStockControl: NixCapability = {
 };
 
 const fakeNoIntents: NixCapability = {
-  key: "cv-assistant.something-else",
-  appCode: "cv-assistant",
+  key: "annix-orbit.something-else",
+  appCode: "annix-orbit",
   label: "Something else",
   description: "Has no declared intents",
   hasWalkthrough: false,

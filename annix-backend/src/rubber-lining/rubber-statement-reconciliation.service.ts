@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import { isNumber } from "es-toolkit/compat";
 import { Repository } from "typeorm";
 import { AiUsageService } from "../ai-usage/ai-usage.service";
 import { AiApp, AiProvider } from "../ai-usage/entities/ai-usage-log.entity";
@@ -51,7 +52,14 @@ export interface ReconciliationMatchItem {
   // we don't have). null on the *Present fields means "not applicable".
   linkedDeliveryNoteRef: string | null;
   linkedDeliveryNotePresent: boolean | null;
+  // When the linked SDN exists in our system, this is its DB id so the
+  // frontend can render a clickable link straight to the SDN detail page.
+  // null when there's no SDN linked or it isn't in the system yet.
+  linkedDeliveryNoteId: number | null;
   linkedSupplierCocPresent: boolean | null;
+  // Same for the supplier CoC — populated when the STI has a CoC link
+  // (RubberTaxInvoice.linkedCalenderRollCocId is set).
+  linkedSupplierCocId: number | null;
 }
 
 export interface ReconciliationDetailDto {
@@ -289,16 +297,24 @@ export class RubberStatementReconciliationService {
       .filter((ref): ref is string => typeof ref === "string" && ref.trim().length > 0)
       .map((ref) => ref.trim());
     const presentDnNumbers = new Set<string>();
+    const dnIdByNumber = new Map<string, number>();
     if (dnRefs.length > 0) {
       const existingDns = await this.deliveryNoteRepository
         .createQueryBuilder("dn")
-        .select("dn.delivery_note_number", "deliveryNoteNumber")
+        .select("dn.id", "id")
+        .addSelect("dn.delivery_note_number", "deliveryNoteNumber")
         .where("dn.supplier_company_id = :companyId", { companyId: recon.companyId })
         .andWhere("dn.delivery_note_number IN (:...refs)", { refs: dnRefs })
         .andWhere("dn.version_status = :vs", { vs: "ACTIVE" })
         .getRawMany();
       for (const row of existingDns) {
-        presentDnNumbers.add(String(row.deliveryNoteNumber).trim().toLowerCase());
+        const key = String(row.deliveryNoteNumber).trim().toLowerCase();
+        presentDnNumbers.add(key);
+        // If multiple ACTIVE rows ever existed (shouldn't, but defensively),
+        // first one wins — the user can pick the right one from the SDN page.
+        if (!dnIdByNumber.has(key)) {
+          dnIdByNumber.set(key, Number(row.id));
+        }
       }
     }
 
@@ -307,23 +323,33 @@ export class RubberStatementReconciliationService {
     ): {
       linkedDeliveryNoteRef: string | null;
       linkedDeliveryNotePresent: boolean | null;
+      linkedDeliveryNoteId: number | null;
       linkedSupplierCocPresent: boolean | null;
+      linkedSupplierCocId: number | null;
     } => {
       if (!inv) {
         return {
           linkedDeliveryNoteRef: null,
           linkedDeliveryNotePresent: null,
+          linkedDeliveryNoteId: null,
           linkedSupplierCocPresent: null,
+          linkedSupplierCocId: null,
         };
       }
       const rawDnRef = inv.extractedData?.deliveryNoteRef;
       const dnRef = rawDnRef && rawDnRef.trim().length > 0 ? rawDnRef.trim() : null;
       const linkedDeliveryNotePresent = dnRef ? presentDnNumbers.has(dnRef.toLowerCase()) : null;
-      const linkedSupplierCocPresent = inv.linkedCalenderRollCocId != null;
+      const rawDnId = dnRef ? dnIdByNumber.get(dnRef.toLowerCase()) : undefined;
+      const linkedDeliveryNoteId = isNumber(rawDnId) ? rawDnId : null;
+      const rawCocId = inv.linkedCalenderRollCocId;
+      const linkedSupplierCocPresent = rawCocId != null;
+      const linkedSupplierCocId = isNumber(rawCocId) ? rawCocId : null;
       return {
         linkedDeliveryNoteRef: dnRef,
         linkedDeliveryNotePresent,
+        linkedDeliveryNoteId,
         linkedSupplierCocPresent,
+        linkedSupplierCocId,
       };
     };
 
@@ -352,7 +378,9 @@ export class RubberStatementReconciliationService {
           difference: null,
           linkedDeliveryNoteRef: null,
           linkedDeliveryNotePresent: null,
+          linkedDeliveryNoteId: null,
           linkedSupplierCocPresent: null,
+          linkedSupplierCocId: null,
         });
         unmatched++;
         return;

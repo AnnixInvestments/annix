@@ -1615,7 +1615,7 @@ This is an automated notification from the Annix test site.
     verificationToken: string,
   ): Promise<boolean> {
     const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
-    const verificationLink = `${frontendUrl}/cv-assistant/verify-email?token=${verificationToken}`;
+    const verificationLink = `${frontendUrl}/annix-orbit/verify-email?token=${verificationToken}`;
 
     const html = emailLayout({
       title: "Verify Your Email - Annix Orbit",
@@ -1654,7 +1654,7 @@ This is an automated notification from the Annix test site.
 
   async sendAnnixOrbitPasswordResetEmail(email: string, resetToken: string): Promise<boolean> {
     const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
-    const resetLink = `${frontendUrl}/cv-assistant/reset-password?token=${resetToken}`;
+    const resetLink = `${frontendUrl}/annix-orbit/reset-password?token=${resetToken}`;
 
     const html = emailLayout({
       title: "Reset Your Password - Annix Orbit",
@@ -1693,7 +1693,7 @@ This is an automated notification from the Annix test site.
 
   async sendAnnixOrbitDeletionConfirmEmail(email: string, deletionToken: string): Promise<boolean> {
     const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
-    const confirmLink = `${frontendUrl}/cv-assistant/confirm-delete?token=${deletionToken}`;
+    const confirmLink = `${frontendUrl}/annix-orbit/confirm-delete?token=${deletionToken}`;
 
     const html = emailLayout({
       title: "Confirm Account Deletion - Annix Orbit",
@@ -1813,7 +1813,7 @@ This is an automated notification from the Annix test site.
     feedbackToken: string,
   ): Promise<boolean> {
     const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
-    const feedbackLink = `${frontendUrl}/cv-assistant/reference-feedback/${feedbackToken}`;
+    const feedbackLink = `${frontendUrl}/annix-orbit/reference-feedback/${feedbackToken}`;
 
     const html = emailLayout({
       title: "Reference Request - Annix Orbit",
@@ -1848,7 +1848,7 @@ This is an automated notification from the Annix test site.
     feedbackToken: string,
   ): Promise<boolean> {
     const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
-    const feedbackLink = `${frontendUrl}/cv-assistant/reference-feedback/${feedbackToken}`;
+    const feedbackLink = `${frontendUrl}/annix-orbit/reference-feedback/${feedbackToken}`;
 
     const html = emailLayout({
       title: "Reference Request Reminder - Annix Orbit",
@@ -1898,7 +1898,7 @@ This is an automated notification from the Annix test site.
             <p style="margin: 5px 0 0 0;"><strong>Match Score:</strong> ${scorePct}%</p>
           </div>`,
       cta: {
-        href: `${frontendUrl}/cv-assistant/portal/dashboard`,
+        href: `${frontendUrl}/annix-orbit/portal/dashboard`,
         label: "View Dashboard",
         color: "#8B5CF6",
         showLinkFallback: false,
@@ -1975,7 +1975,7 @@ This is an automated notification from the Annix test site.
           </div>
           ${matchTable}
           <p style="margin: 30px 0;">
-            <a href="${frontendUrl}/cv-assistant/portal/dashboard"
+            <a href="${frontendUrl}/annix-orbit/portal/dashboard"
                style="background-color: #8B5CF6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
               View Dashboard
             </a>
@@ -2024,7 +2024,7 @@ This is an automated notification from the Annix test site.
           <p>We found ${jobs.length} new job${jobs.length === 1 ? "" : "s"} matching your profile:</p>
           ${jobCards}`,
       cta: {
-        href: `${frontendUrl}/cv-assistant/portal/dashboard`,
+        href: `${frontendUrl}/annix-orbit/portal/dashboard`,
         label: "View All Matches",
         color: "#8B5CF6",
         showLinkFallback: false,

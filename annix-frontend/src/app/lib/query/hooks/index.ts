@@ -123,6 +123,137 @@ export {
   useUploadNixDocument,
 } from "./admin/useSecureDocuments";
 export {
+  useOrbitConversionFunnel,
+  useOrbitMarketTrends,
+  useOrbitMatchAccuracy,
+  useOrbitTimeToFill,
+} from "./annix-orbit/useOrbitAnalytics";
+export {
+  useOrbitCandidateAction,
+  useOrbitCandidateStatusUpdate,
+  useOrbitCandidates,
+  useOrbitDismissMatch,
+  useOrbitRecommendedJobs,
+  useOrbitUploadCv,
+} from "./annix-orbit/useOrbitCandidates";
+export {
+  useDeleteMyEeAttributes,
+  useEeReport,
+  useMyEeAttributes,
+  useUpdateMyEeAttributes,
+} from "./annix-orbit/useOrbitCompliance";
+export {
+  useOrbitAutofillSeekerCredentials,
+  useOrbitCreateSeekerCredential,
+  useOrbitDeleteSeekerCredential,
+  useOrbitSeekerCredentials,
+  useOrbitUpdateSeekerCredential,
+} from "./annix-orbit/useOrbitCredentials";
+export {
+  useOrbitDashboardStats,
+  useOrbitMarketInsights,
+  useOrbitTopCandidates,
+} from "./annix-orbit/useOrbitDashboard";
+export {
+  useOrbitEmailTemplate,
+  useOrbitEmailTemplates,
+  useOrbitNixDraftEmailTemplate,
+  useOrbitResetEmailTemplate,
+  useOrbitUpdateEmailTemplate,
+} from "./annix-orbit/useOrbitEmailTemplates";
+export {
+  useGenerateNixCv,
+  useNixGeneratedCv,
+  useOrbitConfirmMyAccountDeletion,
+  useOrbitDeleteMyDocument,
+  useOrbitMyDocuments,
+  useOrbitMyNotificationPreferences,
+  useOrbitMyProfileStatus,
+  useOrbitNixWizardImprovements,
+  useOrbitRequestMyAccountDeletion,
+  useOrbitUpdateMyNotificationPreferences,
+  useOrbitUploadMyDocument,
+  useOrbitWithdrawMyConsent,
+  useUpdateNixGeneratedCv,
+} from "./annix-orbit/useOrbitIndividualProfile";
+export {
+  useOrbitCalendarAdvisory,
+  useOrbitCreateInterviewSlot,
+  useOrbitDeleteInterviewSlot,
+  useOrbitInterviewSlotsForCompany,
+  useOrbitInterviewSlotsForJob,
+  useOrbitMyInterviewBookings,
+  useOrbitMyInterviewInvites,
+  useOrbitSendInterviewInvite,
+} from "./annix-orbit/useOrbitInterviewBooking";
+export {
+  useOrbitCreateJobMarketSource,
+  useOrbitDeleteJobMarketSource,
+  useOrbitExternalJobs,
+  useOrbitJobMarketProviders,
+  useOrbitJobMarketSources,
+  useOrbitJobMarketStats,
+  useOrbitMatchingCandidates,
+  useOrbitTriggerIngestion,
+  useOrbitUpdateJobMarketSource,
+} from "./annix-orbit/useOrbitJobMarket";
+export {
+  useOrbitAssistedPostingPack,
+  useOrbitClearTestCandidates,
+  useOrbitCreateJobDraft,
+  useOrbitCreateJobPosting,
+  useOrbitDeleteJobPosting,
+  useOrbitJobPostingStatusChange,
+  useOrbitJobPostings,
+  useOrbitJobWizardDraft,
+  useOrbitNixDescription,
+  useOrbitNixQualityScore,
+  useOrbitNixSalaryGuidance,
+  useOrbitNixScreeningSuggestions,
+  useOrbitNixSkillSuggestions,
+  useOrbitNixSourcingQueries,
+  useOrbitNixTitleSuggestions,
+  useOrbitPortalAdapters,
+  useOrbitPublishJobDraft,
+  useOrbitSalaryInsights,
+  useOrbitSeedTestCandidates,
+  useOrbitUpdateJobPosting,
+  useOrbitUpdateJobWizard,
+} from "./annix-orbit/useOrbitJobPostings";
+export { useOrbitReferences } from "./annix-orbit/useOrbitReferences";
+export {
+  useOrbitDismissSeekerMatch,
+  useOrbitGrantSeekerMatchingConsent,
+  useOrbitMuteSeekerCategory,
+  useOrbitMuteSeekerCompany,
+  useOrbitRevokeSeekerMute,
+  useOrbitSeekerBrowseJobs,
+  useOrbitSeekerColdStartJobs,
+  useOrbitSeekerJobStats,
+  useOrbitSeekerMatchingConsent,
+  useOrbitSeekerMutes,
+  useOrbitSeekerRecommendedJobs,
+  useOrbitSeekerRematch,
+  useOrbitWithdrawSeekerMatching,
+} from "./annix-orbit/useOrbitSeekerJobs";
+export {
+  useOrbitNotificationPreferences,
+  useOrbitPopiaStats,
+  useOrbitSettings,
+  useOrbitUpdateCompanySettings,
+  useOrbitUpdateImapSettings,
+  useOrbitUpdateNotificationPreferences,
+} from "./annix-orbit/useOrbitSettings";
+export {
+  useOrbitAutofillSeekerTradeProfile,
+  useOrbitSeekerTradeProfile,
+  useOrbitUpsertSeekerTradeProfile,
+} from "./annix-orbit/useOrbitTradeProfile";
+export {
+  useOrbitUpsertWorkforceNeed,
+  useOrbitWorkforceNeed,
+} from "./annix-orbit/useOrbitWorkforceNeed";
+export {
   useActivityHeatmap,
   useAnalyticsSummary,
   useAnnixRepDashboard,
@@ -561,137 +692,6 @@ export {
   useSupplierDirectory,
   useUnblockSupplier,
 } from "./customer/useCustomerSuppliers";
-export {
-  useCvConversionFunnel,
-  useCvMarketTrends,
-  useCvMatchAccuracy,
-  useCvTimeToFill,
-} from "./cv-assistant/useCvAnalytics";
-export {
-  useCvCandidateAction,
-  useCvCandidateStatusUpdate,
-  useCvCandidates,
-  useCvDismissMatch,
-  useCvRecommendedJobs,
-  useCvUploadCv,
-} from "./cv-assistant/useCvCandidates";
-export {
-  useDeleteMyEeAttributes,
-  useEeReport,
-  useMyEeAttributes,
-  useUpdateMyEeAttributes,
-} from "./cv-assistant/useCvCompliance";
-export {
-  useCvAutofillSeekerCredentials,
-  useCvCreateSeekerCredential,
-  useCvDeleteSeekerCredential,
-  useCvSeekerCredentials,
-  useCvUpdateSeekerCredential,
-} from "./cv-assistant/useCvCredentials";
-export {
-  useCvDashboardStats,
-  useCvMarketInsights,
-  useCvTopCandidates,
-} from "./cv-assistant/useCvDashboard";
-export {
-  useCvEmailTemplate,
-  useCvEmailTemplates,
-  useCvNixDraftEmailTemplate,
-  useCvResetEmailTemplate,
-  useCvUpdateEmailTemplate,
-} from "./cv-assistant/useCvEmailTemplates";
-export {
-  useCvConfirmMyAccountDeletion,
-  useCvDeleteMyDocument,
-  useCvMyDocuments,
-  useCvMyNotificationPreferences,
-  useCvMyProfileStatus,
-  useCvNixWizardImprovements,
-  useCvRequestMyAccountDeletion,
-  useCvUpdateMyNotificationPreferences,
-  useCvUploadMyDocument,
-  useCvWithdrawMyConsent,
-  useGenerateNixCv,
-  useNixGeneratedCv,
-  useUpdateNixGeneratedCv,
-} from "./cv-assistant/useCvIndividualProfile";
-export {
-  useCvCalendarAdvisory,
-  useCvCreateInterviewSlot,
-  useCvDeleteInterviewSlot,
-  useCvInterviewSlotsForCompany,
-  useCvInterviewSlotsForJob,
-  useCvMyInterviewBookings,
-  useCvMyInterviewInvites,
-  useCvSendInterviewInvite,
-} from "./cv-assistant/useCvInterviewBooking";
-export {
-  useCvCreateJobMarketSource,
-  useCvDeleteJobMarketSource,
-  useCvExternalJobs,
-  useCvJobMarketProviders,
-  useCvJobMarketSources,
-  useCvJobMarketStats,
-  useCvMatchingCandidates,
-  useCvTriggerIngestion,
-  useCvUpdateJobMarketSource,
-} from "./cv-assistant/useCvJobMarket";
-export {
-  useCvAssistedPostingPack,
-  useCvClearTestCandidates,
-  useCvCreateJobDraft,
-  useCvCreateJobPosting,
-  useCvDeleteJobPosting,
-  useCvJobPostingStatusChange,
-  useCvJobPostings,
-  useCvJobWizardDraft,
-  useCvNixDescription,
-  useCvNixQualityScore,
-  useCvNixSalaryGuidance,
-  useCvNixScreeningSuggestions,
-  useCvNixSkillSuggestions,
-  useCvNixSourcingQueries,
-  useCvNixTitleSuggestions,
-  useCvPortalAdapters,
-  useCvPublishJobDraft,
-  useCvSalaryInsights,
-  useCvSeedTestCandidates,
-  useCvUpdateJobPosting,
-  useCvUpdateJobWizard,
-} from "./cv-assistant/useCvJobPostings";
-export { useCvReferences } from "./cv-assistant/useCvReferences";
-export {
-  useCvDismissSeekerMatch,
-  useCvGrantSeekerMatchingConsent,
-  useCvMuteSeekerCategory,
-  useCvMuteSeekerCompany,
-  useCvRevokeSeekerMute,
-  useCvSeekerBrowseJobs,
-  useCvSeekerColdStartJobs,
-  useCvSeekerJobStats,
-  useCvSeekerMatchingConsent,
-  useCvSeekerMutes,
-  useCvSeekerRecommendedJobs,
-  useCvSeekerRematch,
-  useCvWithdrawSeekerMatching,
-} from "./cv-assistant/useCvSeekerJobs";
-export {
-  useCvNotificationPreferences,
-  useCvPopiaStats,
-  useCvSettings,
-  useCvUpdateCompanySettings,
-  useCvUpdateImapSettings,
-  useCvUpdateNotificationPreferences,
-} from "./cv-assistant/useCvSettings";
-export {
-  useCvAutofillSeekerTradeProfile,
-  useCvSeekerTradeProfile,
-  useCvUpsertSeekerTradeProfile,
-} from "./cv-assistant/useCvTradeProfile";
-export {
-  useCvUpsertWorkforceNeed,
-  useCvWorkforceNeed,
-} from "./cv-assistant/useCvWorkforceNeed";
 export type {
   AnalysisResult,
   Drawing,

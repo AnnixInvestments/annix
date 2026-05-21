@@ -31,8 +31,8 @@ describe("NixCapabilityRegistry", () => {
   };
 
   const fakeAnnixOrbit: INixCapability = {
-    key: "cv-assistant.post-job",
-    appCode: "cv-assistant",
+    key: "annix-orbit.post-job",
+    appCode: "annix-orbit",
     label: "Post a job",
     description: "Walks through posting a new job listing",
     intents: ["post a job", "create job posting", "advertise role"],
@@ -113,7 +113,7 @@ describe("NixCapabilityRegistry", () => {
     registry.register(fakeAnnixOrbit);
     registry.register(fakeRfq);
 
-    expect(registry.registeredApps()).toEqual(["cv-assistant", "rfq", "stock-control"]);
+    expect(registry.registeredApps()).toEqual(["annix-orbit", "rfq", "stock-control"]);
   });
 
   it("re-registration replaces the previous capability", () => {

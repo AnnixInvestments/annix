@@ -3,7 +3,7 @@
 import { keys } from "es-toolkit/compat";
 import { useParams, useRouter } from "next/navigation";
 import { ErrorDisplay, LoadingSpinner, StatusBadge } from "@/app/admin/components";
-import { WorkforceCapacityPanel } from "@/app/lib/cv-assistant/components/WorkforceCapacityPanel";
+import { WorkforceCapacityPanel } from "@/app/lib/annix-orbit/components/WorkforceCapacityPanel";
 import { formatDateZA } from "@/app/lib/datetime";
 import { useAdminRfqDetail, useNbToOdMap } from "@/app/lib/query/hooks";
 

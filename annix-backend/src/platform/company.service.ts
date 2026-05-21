@@ -23,7 +23,7 @@ export const MODULE_CODES = {
   STOCK_CONTROL: "stock-control",
   AU_RUBBER: "au-rubber",
   COMPLY_SA: "comply-sa",
-  CV_ASSISTANT: "cv-assistant",
+  CV_ASSISTANT: "annix-orbit",
   FIELDFLOW: "fieldflow",
   ANNIX_REP: "annix-rep",
   RFQ: "rfq",

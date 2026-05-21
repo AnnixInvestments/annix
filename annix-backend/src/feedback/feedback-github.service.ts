@@ -80,7 +80,7 @@ const APP_ISSUE_MAP: Record<string, number> = {
   admin: 157,
   "stock-control": 158,
   supplier: 156,
-  "cv-assistant": 160,
+  "annix-orbit": 160,
   "annix-rep": 161,
   "comply-sa": 159,
 };

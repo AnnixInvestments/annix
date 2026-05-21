@@ -4,7 +4,7 @@ export type FeedbackAuthContext =
   | "stock-control"
   | "au-rubber"
   | "supplier"
-  | "cv-assistant"
+  | "annix-orbit"
   | "annix-rep"
   | "comply-sa";
 

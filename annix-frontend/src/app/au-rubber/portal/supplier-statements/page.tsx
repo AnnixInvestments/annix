@@ -2,6 +2,7 @@
 
 import { isNumber } from "es-toolkit/compat";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import { FileDropZone } from "@/app/au-rubber/components/FileDropZone";
@@ -62,6 +63,7 @@ function statusBadge(status: string): { label: string; cls: string } {
 }
 
 export default function SupplierStatementsPage() {
+  const router = useRouter();
   const { showToast } = useToast();
   const [recons, setRecons] = useState<ReconciliationItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -186,11 +188,15 @@ export default function SupplierStatementsPage() {
                   return (
                     <tr
                       key={r.id}
-                      className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                      onClick={() =>
+                        router.push(`/au-rubber/portal/accounting/reconciliation/${r.id}`)
+                      }
+                      className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
                     >
                       <td className="px-4 py-3">
                         <Link
                           href={`/au-rubber/portal/accounting/reconciliation/${r.id}`}
+                          onClick={(e) => e.stopPropagation()}
                           className="font-medium text-orange-600 hover:text-orange-700"
                         >
                           {r.companyName}

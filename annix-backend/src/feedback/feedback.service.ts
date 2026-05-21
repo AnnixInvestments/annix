@@ -594,7 +594,7 @@ ${feedback.content}
     "stock-control": "stockControlAccessToken",
     "au-rubber": "auRubberAccessToken",
     supplier: "supplierAccessToken",
-    "cv-assistant": "annixOrbitAccessToken",
+    "annix-orbit": "annixOrbitAccessToken",
     "annix-rep": "annixRepAccessToken",
   };
 

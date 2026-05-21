@@ -4,14 +4,14 @@ import { JwtService } from "@nestjs/jwt";
 import { Request } from "express";
 
 import { AdminAuthService } from "../../admin/admin-auth.service";
+import { CV_ASSISTANT_JWT_SECRET_DEFAULT } from "../../annix-orbit/annix-orbit.constants";
 import { CustomerAuthService } from "../../customer/customer-auth.service";
-import { CV_ASSISTANT_JWT_SECRET_DEFAULT } from "../../cv-assistant/cv-assistant.constants";
 import { SupplierAuthService } from "../../supplier/supplier-auth.service";
 
 export interface AnyUserJwtPayload {
   sub: number;
   email: string;
-  type: "admin" | "customer" | "supplier" | "stock-control" | "cv-assistant";
+  type: "admin" | "customer" | "supplier" | "stock-control" | "annix-orbit";
   sessionToken?: string;
   customerId?: number;
   supplierId?: number;
@@ -24,7 +24,7 @@ export interface AnyUserJwtPayload {
 export interface AuthenticatedUser {
   userId: number;
   email: string;
-  type: "admin" | "customer" | "supplier" | "stock-control" | "cv-assistant";
+  type: "admin" | "customer" | "supplier" | "stock-control" | "annix-orbit";
   customerId?: number;
   supplierId?: number;
   companyId?: number;
@@ -69,7 +69,7 @@ export class AnyUserAuthGuard implements CanActivate {
   /**
    * Tries each portal's signing secret in turn so the guard can accept
    * tokens issued by any of admin/customer/supplier/stock-control (signed
-   * with JWT_SECRET) AND cv-assistant (signed with CV_ASSISTANT_JWT_SECRET).
+   * with JWT_SECRET) AND annix-orbit (signed with CV_ASSISTANT_JWT_SECRET).
    * Returns the decoded payload from whichever secret verified, or throws
    * UnauthorizedException when none of them did.
    */
@@ -156,15 +156,15 @@ export class AnyUserAuthGuard implements CanActivate {
       };
     }
 
-    if (payload.type === "cv-assistant") {
+    if (payload.type === "annix-orbit") {
       // Same model as stock-control: the JWT itself is the credential
-      // (1h expiry, refreshed via /cv-assistant/auth/refresh). Surface the
+      // (1h expiry, refreshed via /annix-orbit/auth/refresh). Surface the
       // CV-Assistant payload fields so cross-cutting guards (Nix, etc.)
       // can scope to the right user/company.
       return {
         userId: payload.sub,
         email: payload.email,
-        type: "cv-assistant",
+        type: "annix-orbit",
         companyId: payload.companyId,
         role: payload.role,
         name: payload.name,

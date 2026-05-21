@@ -13,7 +13,7 @@ export enum SharedDocumentType {
   UNKNOWN = "unknown",
 }
 
-export type AppNamespace = "stock-control" | "au-rubber" | "cv-assistant";
+export type AppNamespace = "stock-control" | "au-rubber" | "annix-orbit";
 
 export interface DocumentTypeMetadata {
   key: SharedDocumentType;
@@ -96,13 +96,13 @@ export const DOCUMENT_TYPE_METADATA: Record<SharedDocumentType, DocumentTypeMeta
     key: SharedDocumentType.CV_APPLICATION,
     label: "CV Application",
     description: "Curriculum vitae submission for a job opening.",
-    namespaces: ["cv-assistant"],
+    namespaces: ["annix-orbit"],
   },
   [SharedDocumentType.UNKNOWN]: {
     key: SharedDocumentType.UNKNOWN,
     label: "Unknown",
     description: "Cannot confidently classify the document.",
-    namespaces: ["stock-control", "au-rubber", "cv-assistant"],
+    namespaces: ["stock-control", "au-rubber", "annix-orbit"],
   },
 };
 

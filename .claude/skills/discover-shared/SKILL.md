@@ -31,7 +31,7 @@ Run it before writing any of the following:
 3. **Also grep app folders** to detect existing per-app copies that should be consolidated:
    - `annix-frontend/src/app/stock-control/`
    - `annix-frontend/src/app/au-rubber/`
-   - `annix-frontend/src/app/cv-assistant/`
+   - `annix-frontend/src/app/annix-orbit/`
    - `annix-frontend/src/app/annix-rep/`
    - `annix-frontend/src/app/comply-sa/`
    - `annix-frontend/src/app/fieldflow/`

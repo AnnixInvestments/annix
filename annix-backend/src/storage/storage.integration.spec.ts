@@ -54,7 +54,7 @@ describe("Storage Integration Tests", () => {
       expect(StorageArea.ANNIX_APP).toBe("annix-app");
       expect(StorageArea.AU_RUBBER).toBe("au-rubber");
       expect(StorageArea.ANNIX_REP).toBe("fieldflow");
-      expect(StorageArea.CV_ASSISTANT).toBe("cv-assistant");
+      expect(StorageArea.CV_ASSISTANT).toBe("annix-orbit");
       expect(StorageArea.SECURE_DOCUMENTS).toBe("secure-documents");
       expect(StorageArea.STOCK_CONTROL).toBe("stock-control");
     });
@@ -143,7 +143,7 @@ describe("Storage Integration Tests", () => {
     });
 
     describe("Annix Orbit", () => {
-      it("should upload to cv-assistant/candidates path", async () => {
+      it("should upload to annix-orbit/candidates path", async () => {
         const file = createMockFile("resume.pdf", "application/pdf");
         const companyId = 202;
         const subPath = `${StorageArea.CV_ASSISTANT}/candidates/${companyId}`;

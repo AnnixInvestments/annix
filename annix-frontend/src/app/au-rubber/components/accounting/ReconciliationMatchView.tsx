@@ -1,7 +1,13 @@
 "use client";
 
+import { isNumber } from "es-toolkit/compat";
+import { useRouter } from "next/navigation";
+
 interface MatchItem {
   invoiceNumber: string;
+  // STI id when the invoice exists in our system (null on NOT_IN_SYSTEM rows).
+  // Used to make each row click through to the STI detail page.
+  taxInvoiceId?: number | null;
   statementAmount: number | null;
   systemAmount: number | null;
   matchResult: string;
@@ -11,11 +17,20 @@ interface MatchItem {
   // links from, or the STI carries no DN ref).
   linkedDeliveryNoteRef?: string | null;
   linkedDeliveryNotePresent?: boolean | null;
+  // SDN db id when an ACTIVE row exists in our system — used to render the
+  // SDN ref as a clickable link straight into the SDN detail page.
+  linkedDeliveryNoteId?: number | null;
   linkedSupplierCocPresent?: boolean | null;
+  // Same idea for the supplier CoC.
+  linkedSupplierCocId?: number | null;
 }
 
 interface ReconciliationMatchViewProps {
   matchItems: MatchItem[];
+  // Statement (reconciliation) id — forwarded into the STI link as a
+  // ?from=statement&statementId={id} query param so the STI detail page can
+  // render a "Back to statement" button.
+  statementId: number;
 }
 
 function formatCurrency(amount: number | null): string {
@@ -78,7 +93,8 @@ const RESULT_STYLES: Record<string, { bg: string; text: string; label: string }>
 };
 
 export function ReconciliationMatchView(props: ReconciliationMatchViewProps) {
-  const { matchItems } = props;
+  const { matchItems, statementId } = props;
+  const router = useRouter();
 
   if (matchItems.length === 0) {
     return (
@@ -98,8 +114,11 @@ export function ReconciliationMatchView(props: ReconciliationMatchViewProps) {
               <th className="px-4 py-3 text-right">Statement Amount</th>
               <th className="px-4 py-3 text-right">System Amount</th>
               <th className="px-4 py-3 text-right">Difference</th>
-              <th className="px-4 py-3 text-center" title="Delivery Note linked to this STI">
-                DN
+              <th
+                className="px-4 py-3 text-center"
+                title="Supplier Delivery Note linked to this STI"
+              >
+                SDN
               </th>
               <th className="px-4 py-3 text-center" title="Supplier CoC linked to this STI">
                 SCoC
@@ -111,10 +130,25 @@ export function ReconciliationMatchView(props: ReconciliationMatchViewProps) {
             {matchItems.map((item, idx) => {
               const rawRESULT_STYLESByItemmatchresult = RESULT_STYLES[item.matchResult];
               const style = rawRESULT_STYLESByItemmatchresult || RESULT_STYLES.MATCHED;
+              const rawTaxInvoiceId = item.taxInvoiceId;
+              const hasStiLink = isNumber(rawTaxInvoiceId);
               return (
                 <tr
                   key={`${item.invoiceNumber}-${idx}`}
-                  className={`border-b border-gray-100 dark:border-gray-700 ${style.bg}`}
+                  onClick={
+                    hasStiLink
+                      ? () =>
+                          router.push(
+                            `/au-rubber/portal/tax-invoices/${rawTaxInvoiceId}?from=statement&statementId=${statementId}`,
+                          )
+                      : undefined
+                  }
+                  className={`border-b border-gray-100 dark:border-gray-700 ${style.bg} ${
+                    hasStiLink
+                      ? "cursor-pointer hover:brightness-95 dark:hover:brightness-110 transition-colors"
+                      : ""
+                  }`}
+                  title={hasStiLink ? "Open the tax invoice" : undefined}
                 >
                   <td className="px-4 py-2 font-medium text-gray-900 dark:text-gray-100">
                     {item.invoiceNumber}
@@ -142,14 +176,40 @@ export function ReconciliationMatchView(props: ReconciliationMatchViewProps) {
                     )}
                   </td>
                   <td className="px-4 py-2 text-center">
-                    <CascadeFlag
-                      present={item.linkedDeliveryNotePresent}
-                      tooltip={
-                        item.linkedDeliveryNoteRef
-                          ? `Linked DN: ${item.linkedDeliveryNoteRef}`
-                          : undefined
-                      }
-                    />
+                    <div className="flex flex-col items-center gap-0.5">
+                      <CascadeFlag
+                        present={item.linkedDeliveryNotePresent}
+                        tooltip={
+                          item.linkedDeliveryNoteRef
+                            ? `Linked SDN: ${item.linkedDeliveryNoteRef}`
+                            : undefined
+                        }
+                      />
+                      {item.linkedDeliveryNoteRef ? (
+                        isNumber(item.linkedDeliveryNoteId) ? (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              router.push(
+                                `/au-rubber/portal/delivery-notes/${item.linkedDeliveryNoteId}?from=statement&statementId=${statementId}`,
+                              );
+                            }}
+                            className="text-[11px] text-orange-600 hover:text-orange-700 dark:text-orange-400 underline decoration-dotted underline-offset-2"
+                            title="Open the supplier delivery note"
+                          >
+                            {item.linkedDeliveryNoteRef}
+                          </button>
+                        ) : (
+                          <span
+                            className="text-[11px] text-gray-500 dark:text-gray-400"
+                            title="Referenced on the STI but not yet captured as an SDN"
+                          >
+                            {item.linkedDeliveryNoteRef}
+                          </span>
+                        )
+                      ) : null}
+                    </div>
                   </td>
                   <td className="px-4 py-2 text-center">
                     <CascadeFlag present={item.linkedSupplierCocPresent} />

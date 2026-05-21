@@ -22,7 +22,7 @@ interface FixtureAttachment {
 }
 
 interface EmailFixture {
-  app: "stock-control" | "au-rubber" | "cv-assistant";
+  app: "stock-control" | "au-rubber" | "annix-orbit";
   subject: string;
   fromEmail: string;
   fromName?: string;
@@ -208,7 +208,7 @@ describe("Inbound Email Classification (regression harness)", () => {
   describe("Annix Orbit fixture (different shape)", () => {
     it("exposes reference code + candidate info for later adapter parity test", () => {
       const fixture = loadFixture("cv-candidate-application.json");
-      expect(fixture.app).toBe("cv-assistant");
+      expect(fixture.app).toBe("annix-orbit");
       expect(fixture.expected.jobReferenceCode).toBe("REF-2026-0408");
       expect(fixture.expected.candidateEmail).toBe("candidate@example.com");
       expect(fixture.attachments[0].mimeType).toBe("application/pdf");

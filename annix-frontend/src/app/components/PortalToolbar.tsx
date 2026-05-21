@@ -253,7 +253,7 @@ export default function PortalToolbar(props: PortalToolbarProps) {
                     <Link
                       href={
                         portalType === "annixOrbit"
-                          ? "/cv-assistant/portal/settings"
+                          ? "/annix/orbit/portal/settings"
                           : `/${portalType}/portal/profile`
                       }
                       className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"

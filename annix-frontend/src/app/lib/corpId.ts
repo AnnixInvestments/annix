@@ -182,8 +182,8 @@ export const portalConfig = {
   },
   annixOrbit: {
     title: "Annix Orbit",
-    homeHref: "/cv-assistant/portal/dashboard",
-    loginHref: "/cv-assistant/login?type=company",
+    homeHref: "/annix/orbit/portal/dashboard",
+    loginHref: "/annix/orbit/login?type=company",
   },
   teacherAssistant: {
     title: "Teacher Assistant",

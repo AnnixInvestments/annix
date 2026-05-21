@@ -19,7 +19,7 @@ export const shouldShowGlobalNavigation = (pathname: string): boolean => {
     return false;
   }
 
-  if (pathname.startsWith("/cv-assistant/seeker")) {
+  if (pathname.startsWith("/annix/orbit/seeker")) {
     return false;
   }
 

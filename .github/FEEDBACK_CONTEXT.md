@@ -15,7 +15,7 @@ Feedback is submitted by users through the in-app widget. Each app has a single 
 | admin | #157 |
 | stock-control | #158 |
 | supplier | #159 |
-| cv-assistant | #160 |
+| annix-orbit | #160 |
 | annix-rep | #161 |
 
 Each comment contains:
@@ -37,7 +37,7 @@ Operational notes for this pipeline live in `.github/FEEDBACK_AUTOMATION_OPS.md`
 | `stock-control` | `annix-frontend/src/app/stock-control/` | `annix-backend/src/stock-control/` |
 | `au-rubber` | `annix-frontend/src/app/au-rubber/` | `annix-backend/src/au-rubber/` |
 | `supplier` | `annix-frontend/src/app/supplier/` | `annix-backend/src/supplier/` |
-| `cv-assistant` | `annix-frontend/src/app/cv-assistant/` | `annix-backend/src/cv-assistant/` |
+| `annix-orbit` | `annix-frontend/src/app/annix-orbit/` | `annix-backend/src/annix-orbit/` |
 | `annix-rep` | `annix-frontend/src/app/annix-rep/` | `annix-backend/src/annix-rep/` |
 
 ## Page URL Patterns

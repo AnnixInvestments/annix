@@ -7,7 +7,7 @@
  * Document Types:
  * - annix-app/: customers, suppliers, rfq-documents, drawings
  * - fieldflow/: meeting recordings
- * - cv-assistant/: candidate CVs
+ * - annix-orbit/: candidate CVs
  * - stock-control/: job cards, invoices, deliveries, inventory, signatures, etc.
  * - secure-documents/: encrypted secure documents
  * - au-rubber/: rubber lining documents (CoCs, delivery notes, graphs)
@@ -103,7 +103,7 @@ const DOCUMENT_TYPES: DocumentTypeConfig[] = [
     name: "Annix Orbit Candidates",
     tableName: "candidates",
     pathColumn: "cv_file_path",
-    areaPrefix: "cv-assistant/",
+    areaPrefix: "annix-orbit/",
   },
   {
     name: "Rubber CoCs",

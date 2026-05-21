@@ -34,7 +34,7 @@ The codebase has a pluggable storage abstraction (`IStorageService`) with two ba
 | Area | Current Path | Service Location | Risk |
 |------|--------------|------------------|------|
 | ~~Meeting Recordings~~ | ~~`uploads/recordings/{meetingId}/`~~ | fieldflow/services/recording.service.ts | **DONE** - Now uses `fieldflow/recordings/{meetingId}/` via IStorageService |
-| ~~Annix Orbit CVs~~ | ~~`uploads/cv-assistant/`~~ | cv-assistant/services/email-monitor.service.ts | **DONE** - Now uses `cv-assistant/candidates/{companyId}/` via IStorageService |
+| ~~Annix Orbit CVs~~ | ~~`uploads/annix-orbit/`~~ | annix-orbit/services/email-monitor.service.ts | **DONE** - Now uses `annix-orbit/candidates/{companyId}/` via IStorageService |
 | ~~Rubber Email Processing~~ | ~~`uploads/rubber-lining/`~~ | rubber-email-monitor.service.ts | **DONE** - Already used IStorageService, removed dead code |
 
 #### Special Cases
@@ -67,7 +67,7 @@ annix-sync-files/
 ├── fieldflow/
 │   ├── recordings/{meetingId}/
 │   └── platform-recordings/{platform}/{userId}/
-├── cv-assistant/
+├── annix-orbit/
 │   ├── candidates/{candidateId}/
 │   └── email-attachments/
 └── secure-documents/
@@ -79,7 +79,7 @@ annix-sync-files/
 - `annix-sync-core` - Customer, supplier, RFQ, drawings, job cards
 - `annix-sync-au-rubber` - All rubber lining documents
 - `annix-sync-fieldflow` - Meeting recordings
-- `annix-sync-cv-assistant` - CVs and candidate documents
+- `annix-sync-annix-orbit` - CVs and candidate documents
 - `annix-sync-secure` - Encrypted secure documents
 
 ---
@@ -99,8 +99,8 @@ annix-sync-files/
   - [x] Refactor `email-monitor.service.ts` to use `IStorageService`
   - [x] Refactor `candidate.controller.ts` manual upload to use `IStorageService`
   - [x] Refactor `cv-extraction.service.ts` to download from S3 for PDF parsing
-  - [x] Update candidate entity to store S3 paths instead of local paths (uses `cv-assistant/candidates/{companyId}/` prefix)
-  - [x] Add migration script for existing CVs to S3 (`scripts/migrate-cv-assistant-docs.ts`)
+  - [x] Update candidate entity to store S3 paths instead of local paths (uses `annix-orbit/candidates/{companyId}/` prefix)
+  - [x] Add migration script for existing CVs to S3 (`scripts/migrate-annix-orbit-docs.ts`)
   - [x] Unit tests added (`cv-extraction.service.spec.ts`)
 
 - [x] **Rubber Email Processing** (COMPLETED)
@@ -116,13 +116,13 @@ Run these on production to migrate existing data:
 ```bash
 # Preview changes (dry run)
 pnpm migrate:fieldflow-recordings:dry-run
-pnpm migrate:cv-assistant-docs:dry-run
+pnpm migrate:annix-orbit-docs:dry-run
 pnpm migrate:rubber-paths:dry-run
 pnpm migrate:annix-app-paths:dry-run
 
 # Execute migrations
 pnpm migrate:fieldflow-recordings
-pnpm migrate:cv-assistant-docs
+pnpm migrate:annix-orbit-docs
 pnpm migrate:rubber-paths
 pnpm migrate:annix-app-paths
 ```
@@ -147,7 +147,7 @@ pnpm migrate:annix-app-paths
   - [x] Rubber lining documents - `au-rubber/` prefix
   - [x] Secure documents - already uses `secure-documents/` prefix
   - [x] FieldFlow recordings - `fieldflow/recordings/{meetingId}/`
-  - [x] Annix Orbit - `cv-assistant/candidates/{companyId}/`
+  - [x] Annix Orbit - `annix-orbit/candidates/{companyId}/`
 
 - [x] **Migration Script for Existing Paths**
   - [x] Created `scripts/migrate-annix-app-paths.ts`
@@ -167,7 +167,7 @@ annix-sync-files/
 │   └── customer-delivery-notes/{customerId}/
 ├── fieldflow/
 │   └── recordings/{meetingId}/
-├── cv-assistant/
+├── annix-orbit/
 │   └── candidates/{companyId}/
 ├── stock-control/
 │   ├── allocations/
@@ -188,9 +188,9 @@ annix-sync-files/
 
 - [x] **Extend Migration Script**
   - [x] Update `scripts/migrate-to-s3.ts` to handle all document types (16 document types across all areas)
-  - [x] Add support for new area-based paths (annix-app/, fieldflow/, cv-assistant/, au-rubber/, stock-control/, secure-documents/)
+  - [x] Add support for new area-based paths (annix-app/, fieldflow/, annix-orbit/, au-rubber/, stock-control/, secure-documents/)
   - [x] Add FieldFlow recordings migration (`scripts/migrate-fieldflow-recordings.ts`)
-  - [x] Add Annix Orbit documents migration (`scripts/migrate-cv-assistant-docs.ts`)
+  - [x] Add Annix Orbit documents migration (`scripts/migrate-annix-orbit-docs.ts`)
   - [x] Add dry-run support for all new document types (`--dry-run` flag)
   - [x] Add rollback capability (`--rollback` flag to download from S3 to local)
   - [x] Add type filtering (`--type=X` flag to process specific document types)
@@ -275,8 +275,8 @@ annix-sync-files/
 
 ### Critical Path (Phase 1)
 - `annix-backend/src/fieldflow/services/recording.service.ts` - Complete refactor
-- `annix-backend/src/cv-assistant/services/email-monitor.service.ts` - Use IStorageService
-- `annix-backend/src/cv-assistant/controllers/candidate.controller.ts` - Use IStorageService
+- `annix-backend/src/annix-orbit/services/email-monitor.service.ts` - Use IStorageService
+- `annix-backend/src/annix-orbit/controllers/candidate.controller.ts` - Use IStorageService
 
 ### Storage Infrastructure
 - `annix-backend/src/storage/storage.interface.ts` - Add area parameter

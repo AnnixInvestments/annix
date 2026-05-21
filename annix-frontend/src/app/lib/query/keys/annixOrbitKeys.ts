@@ -12,115 +12,114 @@ export interface CvExternalJobQueryParams {
 }
 
 export const annixOrbitKeys = {
-  all: ["cv-assistant"] as const,
+  all: ["annix-orbit"] as const,
 
   dashboard: {
-    all: ["cv-assistant", "dashboard"] as const,
-    stats: () => ["cv-assistant", "dashboard", "stats"] as const,
-    topCandidates: () => ["cv-assistant", "dashboard", "top-candidates"] as const,
-    marketInsights: () => ["cv-assistant", "dashboard", "market-insights"] as const,
+    all: ["annix-orbit", "dashboard"] as const,
+    stats: () => ["annix-orbit", "dashboard", "stats"] as const,
+    topCandidates: () => ["annix-orbit", "dashboard", "top-candidates"] as const,
+    marketInsights: () => ["annix-orbit", "dashboard", "market-insights"] as const,
   },
 
   candidates: {
-    all: ["cv-assistant", "candidates"] as const,
+    all: ["annix-orbit", "candidates"] as const,
     list: (params?: CvCandidateQueryParams) =>
-      ["cv-assistant", "candidates", "list", params ?? {}] as const,
-    detail: (id: number) => ["cv-assistant", "candidates", "detail", id] as const,
+      ["annix-orbit", "candidates", "list", params ?? {}] as const,
+    detail: (id: number) => ["annix-orbit", "candidates", "detail", id] as const,
     recommendedJobs: (candidateId: number) =>
-      ["cv-assistant", "candidates", "recommended-jobs", candidateId] as const,
-    popiaStats: () => ["cv-assistant", "candidates", "popia-stats"] as const,
+      ["annix-orbit", "candidates", "recommended-jobs", candidateId] as const,
+    popiaStats: () => ["annix-orbit", "candidates", "popia-stats"] as const,
   },
 
   jobPostings: {
-    all: ["cv-assistant", "job-postings"] as const,
-    list: (status?: string) => ["cv-assistant", "job-postings", "list", status ?? "all"] as const,
-    detail: (id: number) => ["cv-assistant", "job-postings", "detail", id] as const,
-    wizard: (id: number) => ["cv-assistant", "job-postings", "wizard", id] as const,
+    all: ["annix-orbit", "job-postings"] as const,
+    list: (status?: string) => ["annix-orbit", "job-postings", "list", status ?? "all"] as const,
+    detail: (id: number) => ["annix-orbit", "job-postings", "detail", id] as const,
+    wizard: (id: number) => ["annix-orbit", "job-postings", "wizard", id] as const,
   },
 
   emailTemplates: {
-    all: ["cv-assistant", "email-templates"] as const,
-    detail: (kind: string) => ["cv-assistant", "email-templates", "detail", kind] as const,
+    all: ["annix-orbit", "email-templates"] as const,
+    detail: (kind: string) => ["annix-orbit", "email-templates", "detail", kind] as const,
   },
 
   references: {
-    all: ["cv-assistant", "references"] as const,
+    all: ["annix-orbit", "references"] as const,
     list: (status?: string | null) =>
-      ["cv-assistant", "references", "list", status ?? "all"] as const,
+      ["annix-orbit", "references", "list", status ?? "all"] as const,
   },
 
   settings: {
-    all: ["cv-assistant", "settings"] as const,
-    company: () => ["cv-assistant", "settings", "company"] as const,
-    notifications: () => ["cv-assistant", "settings", "notifications"] as const,
+    all: ["annix-orbit", "settings"] as const,
+    company: () => ["annix-orbit", "settings", "company"] as const,
+    notifications: () => ["annix-orbit", "settings", "notifications"] as const,
   },
 
   jobMarket: {
-    all: ["cv-assistant", "job-market"] as const,
-    providers: () => ["cv-assistant", "job-market", "providers"] as const,
-    stats: () => ["cv-assistant", "job-market", "stats"] as const,
-    sources: () => ["cv-assistant", "job-market", "sources"] as const,
+    all: ["annix-orbit", "job-market"] as const,
+    providers: () => ["annix-orbit", "job-market", "providers"] as const,
+    stats: () => ["annix-orbit", "job-market", "stats"] as const,
+    sources: () => ["annix-orbit", "job-market", "sources"] as const,
     jobs: (params?: CvExternalJobQueryParams) =>
-      ["cv-assistant", "job-market", "jobs", params ?? {}] as const,
-    jobDetail: (id: number) => ["cv-assistant", "job-market", "jobs", "detail", id] as const,
+      ["annix-orbit", "job-market", "jobs", params ?? {}] as const,
+    jobDetail: (id: number) => ["annix-orbit", "job-market", "jobs", "detail", id] as const,
     matchingCandidates: (jobId: number) =>
-      ["cv-assistant", "job-market", "matching-candidates", jobId] as const,
+      ["annix-orbit", "job-market", "matching-candidates", jobId] as const,
   },
 
   analytics: {
-    all: ["cv-assistant", "analytics"] as const,
+    all: ["annix-orbit", "analytics"] as const,
     funnel: (dateFrom?: string | null, dateTo?: string | null) =>
-      ["cv-assistant", "analytics", "funnel", dateFrom ?? null, dateTo ?? null] as const,
-    matchAccuracy: () => ["cv-assistant", "analytics", "match-accuracy"] as const,
-    timeToFill: () => ["cv-assistant", "analytics", "time-to-fill"] as const,
-    marketTrends: () => ["cv-assistant", "analytics", "market-trends"] as const,
+      ["annix-orbit", "analytics", "funnel", dateFrom ?? null, dateTo ?? null] as const,
+    matchAccuracy: () => ["annix-orbit", "analytics", "match-accuracy"] as const,
+    timeToFill: () => ["annix-orbit", "analytics", "time-to-fill"] as const,
+    marketTrends: () => ["annix-orbit", "analytics", "market-trends"] as const,
   },
 
   individualProfile: {
-    all: ["cv-assistant", "me"] as const,
-    status: () => ["cv-assistant", "me", "profile-status"] as const,
-    documents: () => ["cv-assistant", "me", "documents"] as const,
-    notificationPreferences: () => ["cv-assistant", "me", "notification-preferences"] as const,
-    interviewBookings: () => ["cv-assistant", "me", "interview-bookings"] as const,
-    eeAttributes: () => ["cv-assistant", "me", "ee-attributes"] as const,
-    interviewInvites: () => ["cv-assistant", "me", "interview-invites"] as const,
-    nixGeneratedCv: () => ["cv-assistant", "me", "nix-generated-cv"] as const,
+    all: ["annix-orbit", "me"] as const,
+    status: () => ["annix-orbit", "me", "profile-status"] as const,
+    documents: () => ["annix-orbit", "me", "documents"] as const,
+    notificationPreferences: () => ["annix-orbit", "me", "notification-preferences"] as const,
+    interviewBookings: () => ["annix-orbit", "me", "interview-bookings"] as const,
+    eeAttributes: () => ["annix-orbit", "me", "ee-attributes"] as const,
+    interviewInvites: () => ["annix-orbit", "me", "interview-invites"] as const,
+    nixGeneratedCv: () => ["annix-orbit", "me", "nix-generated-cv"] as const,
   },
 
   interviewSlots: {
-    all: ["cv-assistant", "interview-slots"] as const,
+    all: ["annix-orbit", "interview-slots"] as const,
     company: (fromIso?: string | null) =>
-      ["cv-assistant", "interview-slots", "company", fromIso ?? null] as const,
-    job: (jobPostingId: number) =>
-      ["cv-assistant", "interview-slots", "job", jobPostingId] as const,
+      ["annix-orbit", "interview-slots", "company", fromIso ?? null] as const,
+    job: (jobPostingId: number) => ["annix-orbit", "interview-slots", "job", jobPostingId] as const,
   },
 
   compliance: {
-    all: ["cv-assistant", "compliance"] as const,
+    all: ["annix-orbit", "compliance"] as const,
     eeReport: (dateFrom: string, dateTo: string) =>
-      ["cv-assistant", "compliance", "ee-report", dateFrom, dateTo] as const,
+      ["annix-orbit", "compliance", "ee-report", dateFrom, dateTo] as const,
   },
 
   seekerJobs: {
-    all: ["cv-assistant", "seeker", "jobs"] as const,
-    recommended: () => ["cv-assistant", "seeker", "jobs", "recommended"] as const,
-    coldStart: () => ["cv-assistant", "seeker", "jobs", "cold-start"] as const,
+    all: ["annix-orbit", "seeker", "jobs"] as const,
+    recommended: () => ["annix-orbit", "seeker", "jobs", "recommended"] as const,
+    coldStart: () => ["annix-orbit", "seeker", "jobs", "cold-start"] as const,
     browse: (params?: CvExternalJobQueryParams) =>
-      ["cv-assistant", "seeker", "jobs", "browse", params ?? {}] as const,
-    stats: () => ["cv-assistant", "seeker", "jobs", "stats"] as const,
-    consent: () => ["cv-assistant", "seeker", "jobs", "consent"] as const,
-    mutes: () => ["cv-assistant", "seeker", "jobs", "mutes"] as const,
+      ["annix-orbit", "seeker", "jobs", "browse", params ?? {}] as const,
+    stats: () => ["annix-orbit", "seeker", "jobs", "stats"] as const,
+    consent: () => ["annix-orbit", "seeker", "jobs", "consent"] as const,
+    mutes: () => ["annix-orbit", "seeker", "jobs", "mutes"] as const,
   },
   seekerTradeProfile: {
-    all: ["cv-assistant", "seeker", "trade-profile"] as const,
-    detail: () => ["cv-assistant", "seeker", "trade-profile", "detail"] as const,
+    all: ["annix-orbit", "seeker", "trade-profile"] as const,
+    detail: () => ["annix-orbit", "seeker", "trade-profile", "detail"] as const,
   },
   seekerCredentials: {
-    all: ["cv-assistant", "seeker", "credentials"] as const,
-    list: () => ["cv-assistant", "seeker", "credentials", "list"] as const,
+    all: ["annix-orbit", "seeker", "credentials"] as const,
+    list: () => ["annix-orbit", "seeker", "credentials", "list"] as const,
   },
   workforceNeed: {
-    all: ["cv-assistant", "admin", "workforce-needs"] as const,
-    forRfq: (rfqId: number) => ["cv-assistant", "admin", "workforce-needs", "rfq", rfqId] as const,
+    all: ["annix-orbit", "admin", "workforce-needs"] as const,
+    forRfq: (rfqId: number) => ["annix-orbit", "admin", "workforce-needs", "rfq", rfqId] as const,
   },
 } as const;

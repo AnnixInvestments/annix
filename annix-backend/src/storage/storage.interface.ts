@@ -2,7 +2,7 @@ export enum StorageArea {
   ANNIX_APP = "annix-app",
   AU_RUBBER = "au-rubber",
   ANNIX_REP = "fieldflow",
-  CV_ASSISTANT = "cv-assistant",
+  CV_ASSISTANT = "annix-orbit",
   SECURE_DOCUMENTS = "secure-documents",
   STOCK_CONTROL = "stock-control",
   STOCK_MANAGEMENT = "stock-management",

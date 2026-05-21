@@ -14,7 +14,21 @@ const nextConfig: NextConfig = {
   ],
 
   async redirects() {
-    return [];
+    return [
+      // Permanent redirect: the CV Assistant module was renamed to Annix Orbit
+      // and its routes moved under /annix/orbit/*. Keep old URLs working so
+      // external bookmarks, emailed links, and search-engine results don't 404.
+      {
+        source: "/cv-assistant",
+        destination: "/annix/orbit",
+        permanent: true,
+      },
+      {
+        source: "/cv-assistant/:path*",
+        destination: "/annix/orbit/:path*",
+        permanent: true,
+      },
+    ];
   },
 
   async headers() {

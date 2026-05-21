@@ -35,7 +35,7 @@ describe("document-classification", () => {
     it("UNKNOWN is present in every namespace", () => {
       const meta = DOCUMENT_TYPE_METADATA[SharedDocumentType.UNKNOWN];
       expect(meta.namespaces).toEqual(
-        expect.arrayContaining(["stock-control", "au-rubber", "cv-assistant"]),
+        expect.arrayContaining(["stock-control", "au-rubber", "annix-orbit"]),
       );
     });
   });

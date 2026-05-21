@@ -20,7 +20,7 @@ export type SubmitterType =
   | "supplier"
   | "stock-control"
   | "au-rubber"
-  | "cv-assistant"
+  | "annix-orbit"
   | "annix-rep";
 
 export type FeedbackClassification =

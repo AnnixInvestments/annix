@@ -1,10 +1,10 @@
 import { forwardRef, Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { AdminModule } from "../admin/admin.module";
+import { AnnixOrbitModule } from "../annix-orbit/annix-orbit.module";
 import { AnnixRepAuthModule } from "../annix-rep/auth/annix-rep-auth.module";
 import { AuthModule } from "../auth/auth.module";
 import { CustomerModule } from "../customer/customer.module";
-import { AnnixOrbitModule } from "../cv-assistant/cv-assistant.module";
 import { StockControlModule } from "../stock-control/stock-control.module";
 import { SupplierModule } from "../supplier/supplier.module";
 import { User } from "../user/entities/user.entity";

@@ -17,11 +17,11 @@ import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagg
 import { Throttle } from "@nestjs/throttler";
 import type { AuthenticationResponseJSON, RegistrationResponseJSON } from "@simplewebauthn/types";
 import { AdminAuthService } from "../admin/admin-auth.service";
+import { AnnixOrbitAuthService } from "../annix-orbit/services/auth.service";
 import { AnnixRepAuthService } from "../annix-rep/auth/annix-rep-auth.service";
 import { AuthService } from "../auth/auth.service";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { CustomerAuthService } from "../customer/customer-auth.service";
-import { AnnixOrbitAuthService } from "../cv-assistant/services/auth.service";
 import { StockControlAuthService } from "../stock-control/services/auth.service";
 import { SupplierAuthService } from "../supplier/supplier-auth.service";
 import {
@@ -183,7 +183,7 @@ export class PasskeyController {
       };
     }
 
-    if (appCode === "cv-assistant") {
+    if (appCode === "annix-orbit") {
       const cvResponse = await this.annixOrbitAuthService.issueTokensForAuthenticatedUser(
         result.user,
       );

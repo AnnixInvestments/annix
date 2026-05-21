@@ -906,7 +906,7 @@ export interface EeReportResponse {
 const apiClient: ApiClient = createApiClient({
   baseURL: API_BASE_URL,
   tokenStore: annixOrbitTokenStore,
-  refreshUrl: `${API_BASE_URL}/cv-assistant/auth/refresh`,
+  refreshUrl: `${API_BASE_URL}/annix-orbit/auth/refresh`,
 });
 
 // Strip frontend-only fields (id, etc.) from nested arrays before PATCHing
@@ -977,7 +977,7 @@ class AnnixOrbitApiClient {
   }
 
   async login(dto: AnnixOrbitLoginDto): Promise<AnnixOrbitLoginResponse> {
-    const response = await this.request<AnnixOrbitLoginResponse>("/cv-assistant/auth/login", {
+    const response = await this.request<AnnixOrbitLoginResponse>("/annix-orbit/auth/login", {
       method: "POST",
       body: JSON.stringify(dto),
     });
@@ -996,7 +996,7 @@ class AnnixOrbitApiClient {
     province: string;
     city: string;
   }): Promise<{ message: string; user: AnnixOrbitUser }> {
-    return this.request("/cv-assistant/auth/register", {
+    return this.request("/annix-orbit/auth/register", {
       method: "POST",
       body: JSON.stringify(dto),
     });
@@ -1007,7 +1007,7 @@ class AnnixOrbitApiClient {
     password: string;
     name: string;
   }): Promise<{ message: string; user: AnnixOrbitUser }> {
-    return this.request("/cv-assistant/auth/register/individual", {
+    return this.request("/annix-orbit/auth/register/individual", {
       method: "POST",
       body: JSON.stringify(dto),
     });
@@ -1026,7 +1026,7 @@ class AnnixOrbitApiClient {
       email: string;
       accessToken?: string;
       refreshToken?: string;
-    }>(`/cv-assistant/auth/verify-email?token=${encodeURIComponent(token)}`);
+    }>(`/annix-orbit/auth/verify-email?token=${encodeURIComponent(token)}`);
 
     if (response.accessToken && response.refreshToken) {
       this.setTokens(response.accessToken, response.refreshToken);
@@ -1036,21 +1036,21 @@ class AnnixOrbitApiClient {
   }
 
   async forgotPassword(email: string): Promise<{ message: string }> {
-    return this.request("/cv-assistant/auth/forgot-password", {
+    return this.request("/annix-orbit/auth/forgot-password", {
       method: "POST",
       body: JSON.stringify({ email }),
     });
   }
 
   async resetPassword(token: string, password: string): Promise<{ message: string }> {
-    return this.request("/cv-assistant/auth/reset-password", {
+    return this.request("/annix-orbit/auth/reset-password", {
       method: "POST",
       body: JSON.stringify({ token, password }),
     });
   }
 
   async resendVerification(email: string): Promise<{ message: string }> {
-    return this.request("/cv-assistant/auth/resend-verification", {
+    return this.request("/annix-orbit/auth/resend-verification", {
       method: "POST",
       body: JSON.stringify({ email }),
     });
@@ -1058,87 +1058,87 @@ class AnnixOrbitApiClient {
 
   async logout(): Promise<void> {
     try {
-      await this.request("/cv-assistant/auth/logout", { method: "POST" });
+      await this.request("/annix-orbit/auth/logout", { method: "POST" });
     } finally {
       this.clearTokens();
     }
   }
 
   async currentUser(): Promise<AnnixOrbitUserProfile> {
-    return this.request<AnnixOrbitUserProfile>("/cv-assistant/auth/me");
+    return this.request<AnnixOrbitUserProfile>("/annix-orbit/auth/me");
   }
 
   async teamMembers(): Promise<
     Array<{ id: number; name: string; email: string; role: string; createdAt: string }>
   > {
-    return this.request("/cv-assistant/auth/team");
+    return this.request("/annix-orbit/auth/team");
   }
 
   async dashboardStats(): Promise<DashboardStats> {
-    return this.request("/cv-assistant/dashboard/stats");
+    return this.request("/annix-orbit/dashboard/stats");
   }
 
   async topCandidates(): Promise<Candidate[]> {
-    return this.request("/cv-assistant/dashboard/top-candidates");
+    return this.request("/annix-orbit/dashboard/top-candidates");
   }
 
   async jobPostings(status?: string): Promise<JobPosting[]> {
     const query = status ? `?status=${encodeURIComponent(status)}` : "";
-    return this.request(`/cv-assistant/job-postings${query}`);
+    return this.request(`/annix-orbit/job-postings${query}`);
   }
 
   async jobPostingById(id: number): Promise<JobPosting> {
-    return this.request(`/cv-assistant/job-postings/${id}`);
+    return this.request(`/annix-orbit/job-postings/${id}`);
   }
 
   async createJobPosting(data: Partial<JobPosting>): Promise<JobPosting> {
-    return this.request("/cv-assistant/job-postings", {
+    return this.request("/annix-orbit/job-postings", {
       method: "POST",
       body: JSON.stringify(data),
     });
   }
 
   async updateJobPosting(id: number, data: Partial<JobPosting>): Promise<JobPosting> {
-    return this.request(`/cv-assistant/job-postings/${id}`, {
+    return this.request(`/annix-orbit/job-postings/${id}`, {
       method: "PATCH",
       body: JSON.stringify(data),
     });
   }
 
   async deleteJobPosting(id: number): Promise<void> {
-    return this.request(`/cv-assistant/job-postings/${id}`, { method: "DELETE" });
+    return this.request(`/annix-orbit/job-postings/${id}`, { method: "DELETE" });
   }
 
   async activateJobPosting(id: number): Promise<JobPosting> {
-    return this.request(`/cv-assistant/job-postings/${id}/activate`, { method: "POST" });
+    return this.request(`/annix-orbit/job-postings/${id}/activate`, { method: "POST" });
   }
 
   async pauseJobPosting(id: number): Promise<JobPosting> {
-    return this.request(`/cv-assistant/job-postings/${id}/pause`, { method: "POST" });
+    return this.request(`/annix-orbit/job-postings/${id}/pause`, { method: "POST" });
   }
 
   async closeJobPosting(id: number): Promise<JobPosting> {
-    return this.request(`/cv-assistant/job-postings/${id}/close`, { method: "POST" });
+    return this.request(`/annix-orbit/job-postings/${id}/close`, { method: "POST" });
   }
 
   // Phase 1 wizard
   async createJobDraft(): Promise<JobPosting> {
-    return this.request("/cv-assistant/job-postings/draft", { method: "POST" });
+    return this.request("/annix-orbit/job-postings/draft", { method: "POST" });
   }
 
   async jobWizardDraft(id: number): Promise<JobPosting> {
-    return this.request(`/cv-assistant/job-postings/${id}/wizard`);
+    return this.request(`/annix-orbit/job-postings/${id}/wizard`);
   }
 
   async updateJobWizard(id: number, payload: UpdateJobWizardPayload): Promise<JobPosting> {
-    return this.request(`/cv-assistant/job-postings/${id}/wizard`, {
+    return this.request(`/annix-orbit/job-postings/${id}/wizard`, {
       method: "PATCH",
       body: JSON.stringify(sanitizeWizardPayload(payload)),
     });
   }
 
   async publishJobDraft(id: number, options: { testMode?: boolean } = {}): Promise<JobPosting> {
-    return this.request(`/cv-assistant/job-postings/${id}/publish`, {
+    return this.request(`/annix-orbit/job-postings/${id}/publish`, {
       method: "POST",
       body: JSON.stringify({ testMode: Boolean(options.testMode) }),
     });
@@ -1148,38 +1148,38 @@ class AnnixOrbitApiClient {
     id: number,
     count: number,
   ): Promise<{ created: number; byProfile: Record<string, number> }> {
-    return this.request(`/cv-assistant/job-postings/${id}/seed-test-candidates`, {
+    return this.request(`/annix-orbit/job-postings/${id}/seed-test-candidates`, {
       method: "POST",
       body: JSON.stringify({ count }),
     });
   }
 
   async clearTestCandidates(id: number): Promise<{ deleted: number }> {
-    return this.request(`/cv-assistant/job-postings/${id}/test-candidates`, {
+    return this.request(`/annix-orbit/job-postings/${id}/test-candidates`, {
       method: "DELETE",
     });
   }
 
   async listEmailTemplates(): Promise<CvEmailTemplate[]> {
-    return this.request("/cv-assistant/email-templates");
+    return this.request("/annix-orbit/email-templates");
   }
 
   async getEmailTemplate(kind: CvEmailTemplateKind): Promise<CvEmailTemplate> {
-    return this.request(`/cv-assistant/email-templates/${kind}`);
+    return this.request(`/annix-orbit/email-templates/${kind}`);
   }
 
   async updateEmailTemplate(
     kind: CvEmailTemplateKind,
     payload: { subject: string; bodyHtml: string; bodyText: string },
   ): Promise<CvEmailTemplate> {
-    return this.request(`/cv-assistant/email-templates/${kind}`, {
+    return this.request(`/annix-orbit/email-templates/${kind}`, {
       method: "PATCH",
       body: JSON.stringify(payload),
     });
   }
 
   async resetEmailTemplate(kind: CvEmailTemplateKind): Promise<CvEmailTemplate> {
-    return this.request(`/cv-assistant/email-templates/${kind}`, {
+    return this.request(`/annix-orbit/email-templates/${kind}`, {
       method: "DELETE",
     });
   }
@@ -1188,7 +1188,7 @@ class AnnixOrbitApiClient {
     kind: CvEmailTemplateKind,
     instructions?: string,
   ): Promise<{ subject: string; bodyHtml: string; bodyText: string }> {
-    return this.request(`/cv-assistant/email-templates/${kind}/nix-draft`, {
+    return this.request(`/annix-orbit/email-templates/${kind}/nix-draft`, {
       method: "POST",
       body: JSON.stringify(instructions ? { instructions } : {}),
     });
@@ -1209,7 +1209,7 @@ class AnnixOrbitApiClient {
     scoreReason: string;
     improvementTips: string[];
   }> {
-    return this.request(`/cv-assistant/job-postings/${id}/nix/title-suggestions`, {
+    return this.request(`/annix-orbit/job-postings/${id}/nix/title-suggestions`, {
       method: "POST",
       body: JSON.stringify(title ? { title } : {}),
     });
@@ -1222,7 +1222,7 @@ class AnnixOrbitApiClient {
     successIn3Months: string[];
     successIn12Months: string[];
   }> {
-    return this.request(`/cv-assistant/job-postings/${id}/nix/outcomes-draft`, {
+    return this.request(`/annix-orbit/job-postings/${id}/nix/outcomes-draft`, {
       method: "POST",
     });
   }
@@ -1235,7 +1235,7 @@ class AnnixOrbitApiClient {
     missingInformation: string[];
     improvementSuggestions: string[];
   }> {
-    return this.request(`/cv-assistant/job-postings/${id}/nix/description`, {
+    return this.request(`/annix-orbit/job-postings/${id}/nix/description`, {
       method: "POST",
     });
   }
@@ -1246,7 +1246,7 @@ class AnnixOrbitApiClient {
     requiredCertifications: string[];
     reasoning: string | null;
   }> {
-    return this.request(`/cv-assistant/job-postings/${id}/nix/requirements-suggestions`, {
+    return this.request(`/annix-orbit/job-postings/${id}/nix/requirements-suggestions`, {
       method: "POST",
     });
   }
@@ -1265,7 +1265,7 @@ class AnnixOrbitApiClient {
     requiredEducation: string | null;
     requiredCertifications: string[];
   }> {
-    return this.request(`/cv-assistant/job-postings/${id}/nix/skill-suggestions`, {
+    return this.request(`/annix-orbit/job-postings/${id}/nix/skill-suggestions`, {
       method: "POST",
     });
   }
@@ -1288,7 +1288,7 @@ class AnnixOrbitApiClient {
     }>;
     readyToPost: boolean;
   }> {
-    return this.request(`/cv-assistant/job-postings/${id}/nix/quality-score`, {
+    return this.request(`/annix-orbit/job-postings/${id}/nix/quality-score`, {
       method: "POST",
     });
   }
@@ -1304,7 +1304,7 @@ class AnnixOrbitApiClient {
     }>;
     notes: string[];
   }> {
-    return this.request(`/cv-assistant/job-postings/${id}/nix/screening-questions`, {
+    return this.request(`/annix-orbit/job-postings/${id}/nix/screening-questions`, {
       method: "POST",
     });
   }
@@ -1318,7 +1318,7 @@ class AnnixOrbitApiClient {
     warnings: string[];
     explanation: string;
   }> {
-    return this.request(`/cv-assistant/job-postings/${id}/nix/salary-guidance`, {
+    return this.request(`/annix-orbit/job-postings/${id}/nix/salary-guidance`, {
       method: "POST",
     });
   }
@@ -1329,7 +1329,7 @@ class AnnixOrbitApiClient {
     google: string;
     explanations: string[];
   }> {
-    return this.request(`/cv-assistant/job-postings/${id}/nix/sourcing-queries`, {
+    return this.request(`/annix-orbit/job-postings/${id}/nix/sourcing-queries`, {
       method: "POST",
     });
   }
@@ -1342,7 +1342,7 @@ class AnnixOrbitApiClient {
     factors: string[];
     warnings: string[];
   }> {
-    return this.request(`/cv-assistant/job-postings/${id}/nix/predicted-volume`, {
+    return this.request(`/annix-orbit/job-postings/${id}/nix/predicted-volume`, {
       method: "POST",
     });
   }
@@ -1361,7 +1361,7 @@ class AnnixOrbitApiClient {
   }> {
     const search = new URLSearchParams({ normalizedTitle: params.normalizedTitle });
     if (params.province) search.set("province", params.province);
-    return this.request(`/cv-assistant/job-postings/salary-insights?${search.toString()}`);
+    return this.request(`/annix-orbit/job-postings/salary-insights?${search.toString()}`);
   }
 
   async candidates(filters?: { status?: string; jobPostingId?: number }): Promise<Candidate[]> {
@@ -1369,18 +1369,18 @@ class AnnixOrbitApiClient {
     if (filters?.status) params.append("status", filters.status);
     if (filters?.jobPostingId) params.append("jobPostingId", String(filters.jobPostingId));
     const query = params.toString() ? `?${params.toString()}` : "";
-    return this.request(`/cv-assistant/candidates${query}`);
+    return this.request(`/annix-orbit/candidates${query}`);
   }
 
   async candidateById(id: number): Promise<Candidate> {
-    return this.request(`/cv-assistant/candidates/${id}`);
+    return this.request(`/annix-orbit/candidates/${id}`);
   }
 
   async updateCandidateStatus(
     id: number,
     dto: { status: string; reason?: string | null },
   ): Promise<Candidate> {
-    return this.request(`/cv-assistant/candidates/${id}/status`, {
+    return this.request(`/annix-orbit/candidates/${id}/status`, {
       method: "PATCH",
       body: JSON.stringify({
         status: dto.status,
@@ -1390,23 +1390,23 @@ class AnnixOrbitApiClient {
   }
 
   async candidateCvUrl(id: number): Promise<{ url: string | null }> {
-    return this.request(`/cv-assistant/candidates/${id}/cv-url`);
+    return this.request(`/annix-orbit/candidates/${id}/cv-url`);
   }
 
   async rejectCandidate(id: number): Promise<void> {
-    return this.request(`/cv-assistant/candidates/${id}/reject`, { method: "POST" });
+    return this.request(`/annix-orbit/candidates/${id}/reject`, { method: "POST" });
   }
 
   async shortlistCandidate(id: number): Promise<void> {
-    return this.request(`/cv-assistant/candidates/${id}/shortlist`, { method: "POST" });
+    return this.request(`/annix-orbit/candidates/${id}/shortlist`, { method: "POST" });
   }
 
   async acceptCandidate(id: number): Promise<void> {
-    return this.request(`/cv-assistant/candidates/${id}/accept`, { method: "POST" });
+    return this.request(`/annix-orbit/candidates/${id}/accept`, { method: "POST" });
   }
 
   async sendReferenceRequests(candidateId: number): Promise<{ message: string }> {
-    return this.request(`/cv-assistant/candidates/${candidateId}/send-reference-requests`, {
+    return this.request(`/annix-orbit/candidates/${candidateId}/send-reference-requests`, {
       method: "POST",
     });
   }
@@ -1423,7 +1423,7 @@ class AnnixOrbitApiClient {
     if (email) formData.append("email", email);
     if (name) formData.append("name", name);
 
-    return apiClient.uploadFile<Candidate>("/cv-assistant/candidates/upload", file, {
+    return apiClient.uploadFile<Candidate>("/annix-orbit/candidates/upload", file, {
       jobPostingId: String(jobPostingId),
       ...(email ? { email } : {}),
       ...(name ? { name } : {}),
@@ -1432,19 +1432,19 @@ class AnnixOrbitApiClient {
 
   async references(status?: string): Promise<CandidateReference[]> {
     const query = status ? `?status=${encodeURIComponent(status)}` : "";
-    return this.request(`/cv-assistant/references${query}`);
+    return this.request(`/annix-orbit/references${query}`);
   }
 
   async pendingReferences(): Promise<CandidateReference[]> {
-    return this.request("/cv-assistant/references/pending");
+    return this.request("/annix-orbit/references/pending");
   }
 
   async completedReferences(): Promise<CandidateReference[]> {
-    return this.request("/cv-assistant/references/completed");
+    return this.request("/annix-orbit/references/completed");
   }
 
   async settings(): Promise<CompanySettings> {
-    return this.request("/cv-assistant/settings");
+    return this.request("/annix-orbit/settings");
   }
 
   async updateImapSettings(data: {
@@ -1455,14 +1455,14 @@ class AnnixOrbitApiClient {
     monitoringEnabled?: boolean;
     emailFromAddress?: string;
   }): Promise<{ message: string }> {
-    return this.request("/cv-assistant/settings/imap", {
+    return this.request("/annix-orbit/settings/imap", {
       method: "PATCH",
       body: JSON.stringify(data),
     });
   }
 
   async updateCompanySettings(data: UpdateCompanySettingsInput): Promise<{ message: string }> {
-    return this.request("/cv-assistant/settings/company", {
+    return this.request("/annix-orbit/settings/company", {
       method: "PATCH",
       body: JSON.stringify(data),
     });
@@ -1474,7 +1474,7 @@ class AnnixOrbitApiClient {
     user: string;
     password: string;
   }): Promise<{ success: boolean; error?: string }> {
-    return this.request("/cv-assistant/settings/test-imap", {
+    return this.request("/annix-orbit/settings/test-imap", {
       method: "POST",
       body: JSON.stringify(data),
     });
@@ -1487,7 +1487,7 @@ class AnnixOrbitApiClient {
     jobTitle?: string;
     referenceName?: string;
   }> {
-    return this.request(`/cv-assistant/reference-feedback/${token}`);
+    return this.request(`/annix-orbit/reference-feedback/${token}`);
   }
 
   async submitReferenceFeedback(
@@ -1495,22 +1495,22 @@ class AnnixOrbitApiClient {
     rating: number,
     feedbackText?: string | null,
   ): Promise<{ message: string }> {
-    return this.request(`/cv-assistant/reference-feedback/${token}`, {
+    return this.request(`/annix-orbit/reference-feedback/${token}`, {
       method: "POST",
       body: JSON.stringify({ rating, feedbackText }),
     });
   }
 
   async jobMarketProviders(): Promise<JobSourceProviderInfo[]> {
-    return this.request("/cv-assistant/job-market/providers");
+    return this.request("/annix-orbit/job-market/providers");
   }
 
   async jobMarketSources(): Promise<JobMarketSource[]> {
-    return this.request("/cv-assistant/job-market/sources");
+    return this.request("/annix-orbit/job-market/sources");
   }
 
   async createJobMarketSource(data: CreateJobMarketSourceDto): Promise<JobMarketSource> {
-    return this.request("/cv-assistant/job-market/sources", {
+    return this.request("/annix-orbit/job-market/sources", {
       method: "POST",
       body: JSON.stringify(data),
     });
@@ -1520,18 +1520,18 @@ class AnnixOrbitApiClient {
     id: number,
     data: UpdateJobMarketSourceDto,
   ): Promise<JobMarketSource> {
-    return this.request(`/cv-assistant/job-market/sources/${id}`, {
+    return this.request(`/annix-orbit/job-market/sources/${id}`, {
       method: "PUT",
       body: JSON.stringify(data),
     });
   }
 
   async deleteJobMarketSource(id: number): Promise<{ message: string }> {
-    return this.request(`/cv-assistant/job-market/sources/${id}`, { method: "DELETE" });
+    return this.request(`/annix-orbit/job-market/sources/${id}`, { method: "DELETE" });
   }
 
   async triggerIngestion(sourceId: number): Promise<{ ingested: number; skipped: number }> {
-    return this.request(`/cv-assistant/job-market/sources/${sourceId}/ingest`, {
+    return this.request(`/annix-orbit/job-market/sources/${sourceId}/ingest`, {
       method: "POST",
     });
   }
@@ -1550,37 +1550,37 @@ class AnnixOrbitApiClient {
     if (filters?.page) params.append("page", String(filters.page));
     if (filters?.limit) params.append("limit", String(filters.limit));
     const query = params.toString() ? `?${params.toString()}` : "";
-    return this.request(`/cv-assistant/job-market/jobs${query}`);
+    return this.request(`/annix-orbit/job-market/jobs${query}`);
   }
 
   async externalJobById(id: number): Promise<ExternalJob> {
-    return this.request(`/cv-assistant/job-market/jobs/${id}`);
+    return this.request(`/annix-orbit/job-market/jobs/${id}`);
   }
 
   async jobMarketStats(): Promise<JobMarketStats> {
-    return this.request("/cv-assistant/job-market/stats");
+    return this.request("/annix-orbit/job-market/stats");
   }
 
   async recommendedJobsForCandidate(candidateId: number): Promise<CandidateJobMatch[]> {
-    return this.request(`/cv-assistant/job-market/candidates/${candidateId}/recommended-jobs`);
+    return this.request(`/annix-orbit/job-market/candidates/${candidateId}/recommended-jobs`);
   }
 
   async triggerCandidateMatch(candidateId: number): Promise<{ matched: number }> {
-    return this.request(`/cv-assistant/job-market/candidates/${candidateId}/match`, {
+    return this.request(`/annix-orbit/job-market/candidates/${candidateId}/match`, {
       method: "POST",
     });
   }
 
   async matchingCandidatesForJob(jobId: number): Promise<CandidateJobMatch[]> {
-    return this.request(`/cv-assistant/job-market/jobs/${jobId}/matching-candidates`);
+    return this.request(`/annix-orbit/job-market/jobs/${jobId}/matching-candidates`);
   }
 
   async triggerJobMatch(jobId: number): Promise<{ matched: number }> {
-    return this.request(`/cv-assistant/job-market/jobs/${jobId}/match`, { method: "POST" });
+    return this.request(`/annix-orbit/job-market/jobs/${jobId}/match`, { method: "POST" });
   }
 
   async dismissMatch(matchId: number): Promise<{ message: string }> {
-    return this.request(`/cv-assistant/job-market/matches/${matchId}/dismiss`, {
+    return this.request(`/annix-orbit/job-market/matches/${matchId}/dismiss`, {
       method: "POST",
     });
   }
@@ -1589,22 +1589,22 @@ class AnnixOrbitApiClient {
     id: number,
     data: { beeLevel?: number | null; popiaConsent?: boolean; jobAlertsOptIn?: boolean },
   ): Promise<Candidate> {
-    return this.request(`/cv-assistant/candidates/${id}/profile`, {
+    return this.request(`/annix-orbit/candidates/${id}/profile`, {
       method: "PATCH",
       body: JSON.stringify(data),
     });
   }
 
   async eraseCandidateData(id: number): Promise<{ message: string }> {
-    return this.request(`/cv-assistant/candidates/${id}/erasure`, { method: "DELETE" });
+    return this.request(`/annix-orbit/candidates/${id}/erasure`, { method: "DELETE" });
   }
 
   async popiaRetentionStats(): Promise<PopiaRetentionStats> {
-    return this.request("/cv-assistant/candidates/popia/retention-stats");
+    return this.request("/annix-orbit/candidates/popia/retention-stats");
   }
 
   async marketInsights(): Promise<MarketInsights> {
-    return this.request("/cv-assistant/dashboard/market-insights");
+    return this.request("/annix-orbit/dashboard/market-insights");
   }
 
   async analyticsConversionFunnel(
@@ -1616,20 +1616,20 @@ class AnnixOrbitApiClient {
     if (dateTo) params.set("dateTo", dateTo);
     const qs = params.toString();
     return this.request<ConversionFunnelResponse>(
-      `/cv-assistant/analytics/funnel${qs ? `?${qs}` : ""}`,
+      `/annix-orbit/analytics/funnel${qs ? `?${qs}` : ""}`,
     );
   }
 
   async analyticsMatchAccuracy(): Promise<MatchAccuracyResponse> {
-    return this.request<MatchAccuracyResponse>("/cv-assistant/analytics/match-accuracy");
+    return this.request<MatchAccuracyResponse>("/annix-orbit/analytics/match-accuracy");
   }
 
   async analyticsTimeToFill(): Promise<TimeToFillResponse> {
-    return this.request<TimeToFillResponse>("/cv-assistant/analytics/time-to-fill");
+    return this.request<TimeToFillResponse>("/annix-orbit/analytics/time-to-fill");
   }
 
   async analyticsMarketTrends(): Promise<MarketTrendsResponse> {
-    return this.request<MarketTrendsResponse>("/cv-assistant/analytics/market-trends");
+    return this.request<MarketTrendsResponse>("/annix-orbit/analytics/market-trends");
   }
 
   async analyticsExportFunnelCsv(
@@ -1641,56 +1641,56 @@ class AnnixOrbitApiClient {
     if (dateTo) params.set("dateTo", dateTo);
     const qs = params.toString();
     const blob = await apiClient.requestBlob(
-      `/cv-assistant/analytics/export/funnel${qs ? `?${qs}` : ""}`,
+      `/annix-orbit/analytics/export/funnel${qs ? `?${qs}` : ""}`,
     );
     return blob.text();
   }
 
   async analyticsExportTimeToFillCsv(): Promise<string> {
-    const blob = await apiClient.requestBlob("/cv-assistant/analytics/export/time-to-fill");
+    const blob = await apiClient.requestBlob("/annix-orbit/analytics/export/time-to-fill");
     return blob.text();
   }
 
   async notificationVapidKey(): Promise<{ key: string | null }> {
-    return this.request("/cv-assistant/notifications/vapid-key");
+    return this.request("/annix-orbit/notifications/vapid-key");
   }
 
   async subscribePush(subscription: {
     endpoint: string;
     keys: { p256dh: string; auth: string };
   }): Promise<{ message: string }> {
-    return this.request("/cv-assistant/notifications/subscribe", {
+    return this.request("/annix-orbit/notifications/subscribe", {
       method: "POST",
       body: JSON.stringify(subscription),
     });
   }
 
   async unsubscribePush(endpoint: string): Promise<{ message: string }> {
-    return this.request("/cv-assistant/notifications/unsubscribe", {
+    return this.request("/annix-orbit/notifications/unsubscribe", {
       method: "DELETE",
       body: JSON.stringify({ endpoint }),
     });
   }
 
   async notificationPreferences(): Promise<NotificationPreferences> {
-    return this.request("/cv-assistant/notifications/preferences");
+    return this.request("/annix-orbit/notifications/preferences");
   }
 
   async updateNotificationPreferences(
     data: Partial<NotificationPreferences>,
   ): Promise<{ message: string }> {
-    return this.request("/cv-assistant/notifications/preferences", {
+    return this.request("/annix-orbit/notifications/preferences", {
       method: "PATCH",
       body: JSON.stringify(data),
     });
   }
 
   async myProfileStatus(): Promise<IndividualProfileStatus> {
-    return this.request("/cv-assistant/me/profile/status");
+    return this.request("/annix-orbit/me/profile/status");
   }
 
   async myDocuments(): Promise<IndividualDocument[]> {
-    return this.request("/cv-assistant/me/documents");
+    return this.request("/annix-orbit/me/documents");
   }
 
   async uploadMyDocument(
@@ -1700,89 +1700,89 @@ class AnnixOrbitApiClient {
   ): Promise<IndividualDocument> {
     const params: Record<string, string> = { kind };
     if (label) params.label = label;
-    return apiClient.uploadFile<IndividualDocument>("/cv-assistant/me/documents", file, params);
+    return apiClient.uploadFile<IndividualDocument>("/annix-orbit/me/documents", file, params);
   }
 
   async deleteMyDocument(id: number): Promise<{ message: string }> {
-    return this.request(`/cv-assistant/me/documents/${id}`, { method: "DELETE" });
+    return this.request(`/annix-orbit/me/documents/${id}`, { method: "DELETE" });
   }
 
   async myNotificationPreferences(): Promise<IndividualNotificationPreferences> {
-    return this.request("/cv-assistant/me/notification-preferences");
+    return this.request("/annix-orbit/me/notification-preferences");
   }
 
   async updateMyNotificationPreferences(
     data: Partial<IndividualNotificationPreferences>,
   ): Promise<IndividualNotificationPreferences> {
-    return this.request("/cv-assistant/me/notification-preferences", {
+    return this.request("/annix-orbit/me/notification-preferences", {
       method: "PATCH",
       body: JSON.stringify(data),
     });
   }
 
   async myDataExport(): Promise<IndividualDataExport> {
-    return this.request("/cv-assistant/me/data-export");
+    return this.request("/annix-orbit/me/data-export");
   }
 
   async requestMyAccountDeletion(): Promise<{ message: string; email: string }> {
-    return this.request("/cv-assistant/me/account/request-delete", {
+    return this.request("/annix-orbit/me/account/request-delete", {
       method: "POST",
     });
   }
 
   async confirmMyAccountDeletion(token: string): Promise<{ message: string }> {
-    return this.request("/cv-assistant/public/account/confirm-delete", {
+    return this.request("/annix-orbit/public/account/confirm-delete", {
       method: "POST",
       body: JSON.stringify({ token }),
     });
   }
 
   async withdrawMyConsent(): Promise<{ message: string; erasedCandidates: number }> {
-    return this.request("/cv-assistant/me/withdraw-consent", { method: "POST" });
+    return this.request("/annix-orbit/me/withdraw-consent", { method: "POST" });
   }
 
   async myEeAttributes(): Promise<MySeekerEeAttributes | null> {
-    return this.request("/cv-assistant/me/ee-attributes");
+    return this.request("/annix-orbit/me/ee-attributes");
   }
 
   async updateMyEeAttributes(
     input: UpdateMyEeAttributesInput,
   ): Promise<{ updated: number; consentTextVersionId: number }> {
-    return this.request("/cv-assistant/me/ee-attributes", {
+    return this.request("/annix-orbit/me/ee-attributes", {
       method: "PATCH",
       body: JSON.stringify(input),
     });
   }
 
   async deleteMyEeAttributes(): Promise<{ tombstoned: number }> {
-    return this.request("/cv-assistant/me/ee-attributes", { method: "DELETE" });
+    return this.request("/annix-orbit/me/ee-attributes", { method: "DELETE" });
   }
 
   async nixWizardCvImprovements(): Promise<NixSeekerCvAssessment> {
-    return this.request("/cv-assistant/me/nix-wizard/cv-improvements", { method: "POST" });
+    return this.request("/annix-orbit/me/nix-wizard/cv-improvements", { method: "POST" });
   }
 
   async nixWizardGenerateCv(): Promise<NixGeneratedCv> {
-    return this.request("/cv-assistant/me/nix-wizard/generate-cv", { method: "POST" });
+    return this.request("/annix-orbit/me/nix-wizard/generate-cv", { method: "POST" });
   }
 
   async nixWizardGeneratedCv(): Promise<NixGeneratedCvResponse> {
-    return this.request("/cv-assistant/me/nix-wizard/generated-cv");
+    return this.request("/annix-orbit/me/nix-wizard/generated-cv");
   }
 
   async nixWizardUpdateGeneratedCv(cv: NixGeneratedCv): Promise<NixGeneratedCv> {
-    return this.request("/cv-assistant/me/nix-wizard/generated-cv", {
+    return this.request("/annix-orbit/me/nix-wizard/generated-cv", {
       method: "PATCH",
       body: JSON.stringify(cv),
     });
   }
 
   async nixWizardGeneratedCvPdf(): Promise<Blob> {
-    return apiClient.requestBlob("/cv-assistant/me/nix-wizard/generated-cv/pdf");
+    return apiClient.requestBlob("/annix-orbit/me/nix-wizard/generated-cv/pdf");
   }
 
   async candidateDataExport(candidateId: number): Promise<unknown> {
-    return this.request(`/cv-assistant/candidates/${candidateId}/data-export`);
+    return this.request(`/annix-orbit/candidates/${candidateId}/data-export`);
   }
 
   async publicJobs(params?: {
@@ -1800,61 +1800,61 @@ class AnnixOrbitApiClient {
     if (params?.category) query.append("category", params.category);
     const queryString = query.toString();
     const suffix = queryString ? `?${queryString}` : "";
-    return this.request(`/cv-assistant/public/jobs${suffix}`);
+    return this.request(`/annix-orbit/public/jobs${suffix}`);
   }
 
   async publicJobPosting(referenceNumber: string): Promise<PublicJobPosting> {
     const safeRef = encodeURIComponent(referenceNumber);
-    return this.request(`/cv-assistant/public/job-postings/${safeRef}`);
+    return this.request(`/annix-orbit/public/job-postings/${safeRef}`);
   }
 
   async portalAdapters(): Promise<PortalAdapterSummary[]> {
-    return this.request("/cv-assistant/portal-adapters");
+    return this.request("/annix-orbit/portal-adapters");
   }
 
   async assistedPostingPack(jobPostingId: number): Promise<AssistedPostingPackEntry[]> {
-    return this.request(`/cv-assistant/job-postings/${jobPostingId}/assisted-posting-pack`);
+    return this.request(`/annix-orbit/job-postings/${jobPostingId}/assisted-posting-pack`);
   }
 
   async interviewSlotsForCompany(fromIso?: string | null): Promise<InterviewSlot[]> {
     const suffix = fromIso ? `?from=${encodeURIComponent(fromIso)}` : "";
-    return this.request(`/cv-assistant/interview-slots${suffix}`);
+    return this.request(`/annix-orbit/interview-slots${suffix}`);
   }
 
   async interviewSlotsForJob(jobPostingId: number): Promise<InterviewSlot[]> {
-    return this.request(`/cv-assistant/interview-slots/by-job/${jobPostingId}`);
+    return this.request(`/annix-orbit/interview-slots/by-job/${jobPostingId}`);
   }
 
   async createInterviewSlot(
     jobPostingId: number,
     input: CreateInterviewSlotInput,
   ): Promise<InterviewSlot> {
-    return this.request(`/cv-assistant/interview-slots/by-job/${jobPostingId}`, {
+    return this.request(`/annix-orbit/interview-slots/by-job/${jobPostingId}`, {
       method: "POST",
       body: JSON.stringify(input),
     });
   }
 
   async deleteInterviewSlot(slotId: number): Promise<{ deleted: boolean }> {
-    return this.request(`/cv-assistant/interview-slots/${slotId}`, { method: "DELETE" });
+    return this.request(`/annix-orbit/interview-slots/${slotId}`, { method: "DELETE" });
   }
 
   async sendInterviewInvite(candidateId: number): Promise<{ sent: boolean; bookingLink: string }> {
-    return this.request(`/cv-assistant/interview-slots/invite/${candidateId}`, { method: "POST" });
+    return this.request(`/annix-orbit/interview-slots/invite/${candidateId}`, { method: "POST" });
   }
 
   async myInterviewBookings(): Promise<SeekerInterviewBooking[]> {
-    return this.request("/cv-assistant/me/interview-bookings");
+    return this.request("/annix-orbit/me/interview-bookings");
   }
 
   async myInterviewInvites(): Promise<SeekerInterviewInvite[]> {
-    return this.request("/cv-assistant/me/interview-invites");
+    return this.request("/annix-orbit/me/interview-invites");
   }
 
   async calendarAdvisory(
     conflicts: NixCalendarAdvisoryConflict[],
   ): Promise<NixCalendarAdvisoryResponse> {
-    return this.request("/cv-assistant/me/calendar-advisory", {
+    return this.request("/annix-orbit/me/calendar-advisory", {
       method: "POST",
       body: JSON.stringify({ conflicts }),
     });
@@ -1862,49 +1862,49 @@ class AnnixOrbitApiClient {
 
   async complianceEeReport(dateFrom: string, dateTo: string): Promise<EeReportResponse> {
     const query = new URLSearchParams({ dateFrom, dateTo });
-    return this.request<EeReportResponse>(`/cv-assistant/compliance/ee-report?${query.toString()}`);
+    return this.request<EeReportResponse>(`/annix-orbit/compliance/ee-report?${query.toString()}`);
   }
 
   complianceEeReportCsvUrl(dateFrom: string, dateTo: string): string {
     const query = new URLSearchParams({ dateFrom, dateTo });
-    return `${API_BASE_URL}/cv-assistant/compliance/ee-report.csv?${query.toString()}`;
+    return `${API_BASE_URL}/annix-orbit/compliance/ee-report.csv?${query.toString()}`;
   }
 
   complianceEeReportPdfUrl(dateFrom: string, dateTo: string): string {
     const query = new URLSearchParams({ dateFrom, dateTo });
-    return `${API_BASE_URL}/cv-assistant/compliance/ee-report.pdf?${query.toString()}`;
+    return `${API_BASE_URL}/annix-orbit/compliance/ee-report.pdf?${query.toString()}`;
   }
 
   async seekerRecommendedJobs(): Promise<SeekerRecommendedJobsResponse> {
-    return this.request("/cv-assistant/seeker/jobs/recommended");
+    return this.request("/annix-orbit/seeker/jobs/recommended");
   }
 
   async seekerColdStartJobs(): Promise<SeekerColdStartJobsResponse> {
-    return this.request("/cv-assistant/seeker/jobs/cold-start");
+    return this.request("/annix-orbit/seeker/jobs/cold-start");
   }
 
   async dismissSeekerMatch(matchId: number): Promise<{ success: boolean }> {
-    return this.request(`/cv-assistant/seeker/jobs/${matchId}/dismiss`, { method: "POST" });
+    return this.request(`/annix-orbit/seeker/jobs/${matchId}/dismiss`, { method: "POST" });
   }
 
   async triggerSeekerRematch(): Promise<SeekerRematchResponse> {
-    return this.request("/cv-assistant/seeker/jobs/rematch", { method: "POST" });
+    return this.request("/annix-orbit/seeker/jobs/rematch", { method: "POST" });
   }
 
   async withdrawSeekerMatching(): Promise<{ candidatesAffected: number; matchesCleared: number }> {
-    return this.request("/cv-assistant/seeker/jobs/withdraw-matching", { method: "POST" });
+    return this.request("/annix-orbit/seeker/jobs/withdraw-matching", { method: "POST" });
   }
 
   async seekerJobStats(): Promise<SeekerJobStats> {
-    return this.request("/cv-assistant/seeker/jobs/stats");
+    return this.request("/annix-orbit/seeker/jobs/stats");
   }
 
   async seekerMatchingConsent(): Promise<SeekerMatchingConsentStatus> {
-    return this.request("/cv-assistant/seeker/jobs/consent");
+    return this.request("/annix-orbit/seeker/jobs/consent");
   }
 
   async grantSeekerMatchingConsent(): Promise<{ candidatesAffected: number }> {
-    return this.request("/cv-assistant/seeker/jobs/consent", { method: "POST" });
+    return this.request("/annix-orbit/seeker/jobs/consent", { method: "POST" });
   }
 
   async recordSeekerApplyClick(input: {
@@ -1912,7 +1912,7 @@ class AnnixOrbitApiClient {
     externalJobId: number | null;
     sourceUrl: string | null;
   }): Promise<{ recorded: boolean; clickId: number | null }> {
-    return this.request("/cv-assistant/seeker/jobs/clicks", {
+    return this.request("/annix-orbit/seeker/jobs/clicks", {
       method: "POST",
       body: JSON.stringify(input),
       headers: { "Content-Type": "application/json" },
@@ -1920,7 +1920,7 @@ class AnnixOrbitApiClient {
   }
 
   async muteSeekerCompany(company: string): Promise<{ created: boolean; mute: SeekerMute }> {
-    return this.request("/cv-assistant/seeker/jobs/mute-company", {
+    return this.request("/annix-orbit/seeker/jobs/mute-company", {
       method: "POST",
       body: JSON.stringify({ company }),
       headers: { "Content-Type": "application/json" },
@@ -1928,7 +1928,7 @@ class AnnixOrbitApiClient {
   }
 
   async muteSeekerCategory(category: string): Promise<{ created: boolean; mute: SeekerMute }> {
-    return this.request("/cv-assistant/seeker/jobs/mute-category", {
+    return this.request("/annix-orbit/seeker/jobs/mute-category", {
       method: "POST",
       body: JSON.stringify({ category }),
       headers: { "Content-Type": "application/json" },
@@ -1936,24 +1936,24 @@ class AnnixOrbitApiClient {
   }
 
   async listSeekerMutes(): Promise<{ mutes: SeekerMute[] }> {
-    return this.request("/cv-assistant/seeker/jobs/mutes");
+    return this.request("/annix-orbit/seeker/jobs/mutes");
   }
 
   async revokeSeekerMute(muteId: number): Promise<{ success: boolean }> {
-    return this.request(`/cv-assistant/seeker/jobs/mutes/${muteId}`, { method: "DELETE" });
+    return this.request(`/annix-orbit/seeker/jobs/mutes/${muteId}`, { method: "DELETE" });
   }
 
   async seekerTradeProfile(): Promise<{
     profile: import("@annix/product-data/sa-market").TradeProfile;
     candidateIds: number[];
   }> {
-    return this.request("/cv-assistant/seeker/trade-profile");
+    return this.request("/annix-orbit/seeker/trade-profile");
   }
 
   async upsertSeekerTradeProfile(
     profile: import("@annix/product-data/sa-market").TradeProfile,
   ): Promise<{ saved: boolean; candidateIds: number[] }> {
-    return this.request("/cv-assistant/seeker/trade-profile", {
+    return this.request("/annix-orbit/seeker/trade-profile", {
       method: "PUT",
       body: JSON.stringify(profile),
       headers: { "Content-Type": "application/json" },
@@ -1966,19 +1966,19 @@ class AnnixOrbitApiClient {
     candidateIds: number[];
     reason?: "no-candidate" | "no-cv-text" | "no-trade-keywords" | "ai-failed";
   }> {
-    return this.request("/cv-assistant/seeker/trade-profile/extract-from-cv", {
+    return this.request("/annix-orbit/seeker/trade-profile/extract-from-cv", {
       method: "POST",
     });
   }
 
   async listSeekerCredentials(): Promise<{ credentials: SeekerCredential[] }> {
-    return this.request("/cv-assistant/me/credentials");
+    return this.request("/annix-orbit/me/credentials");
   }
 
   async createSeekerCredential(
     input: SeekerCredentialInput,
   ): Promise<{ credential: SeekerCredential }> {
-    return this.request("/cv-assistant/me/credentials", {
+    return this.request("/annix-orbit/me/credentials", {
       method: "POST",
       body: JSON.stringify(input),
       headers: { "Content-Type": "application/json" },
@@ -1989,7 +1989,7 @@ class AnnixOrbitApiClient {
     id: number,
     input: Partial<SeekerCredentialInput>,
   ): Promise<{ credential: SeekerCredential }> {
-    return this.request(`/cv-assistant/me/credentials/${id}`, {
+    return this.request(`/annix-orbit/me/credentials/${id}`, {
       method: "PATCH",
       body: JSON.stringify(input),
       headers: { "Content-Type": "application/json" },
@@ -1997,7 +1997,7 @@ class AnnixOrbitApiClient {
   }
 
   async deleteSeekerCredential(id: number): Promise<{ success: boolean }> {
-    return this.request(`/cv-assistant/me/credentials/${id}`, { method: "DELETE" });
+    return this.request(`/annix-orbit/me/credentials/${id}`, { method: "DELETE" });
   }
 
   async autofillSeekerCredentialsFromCv(): Promise<{
@@ -2005,20 +2005,20 @@ class AnnixOrbitApiClient {
     credentials: SeekerCredential[];
     reason?: "no-candidate" | "no-cv-text" | "no-credential-keywords" | "ai-failed";
   }> {
-    return this.request("/cv-assistant/me/credentials/extract-from-cv", {
+    return this.request("/annix-orbit/me/credentials/extract-from-cv", {
       method: "POST",
     });
   }
 
   async adminWorkforceNeedSummary(rfqId: number): Promise<WorkforceNeedSummary> {
-    return this.request(`/admin/cv-assistant/workforce-needs/${rfqId}`);
+    return this.request(`/admin/annix-orbit/workforce-needs/${rfqId}`);
   }
 
   async adminUpsertWorkforceNeed(
     rfqId: number,
     input: WorkforceNeedInput,
   ): Promise<WorkforceNeedSummary> {
-    return this.request(`/admin/cv-assistant/workforce-needs/${rfqId}`, {
+    return this.request(`/admin/annix-orbit/workforce-needs/${rfqId}`, {
       method: "PUT",
       body: JSON.stringify(input),
       headers: { "Content-Type": "application/json" },

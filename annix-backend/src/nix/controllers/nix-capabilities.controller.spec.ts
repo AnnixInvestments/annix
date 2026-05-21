@@ -39,8 +39,8 @@ describe("NixCapabilitiesController", () => {
   };
 
   const fakeWithWalkthrough: INixCapability = {
-    key: "cv-assistant.post-job",
-    appCode: "cv-assistant",
+    key: "annix-orbit.post-job",
+    appCode: "annix-orbit",
     label: "Post a job",
     description: "Walk through posting a job",
     intents: ["post a job"],
@@ -90,7 +90,7 @@ describe("NixCapabilitiesController", () => {
 
     const apps = controller.apps();
     expect(apps).toHaveLength(3);
-    const cv = apps.find((a) => a.appCode === "cv-assistant");
+    const cv = apps.find((a) => a.appCode === "annix-orbit");
     expect(cv?.capabilityCount).toBe(1);
   });
 
@@ -100,7 +100,7 @@ describe("NixCapabilitiesController", () => {
     registry.register(fakeWithWalkthrough);
 
     const apps = controller.apps();
-    expect(apps.map((a) => a.appCode)).toEqual(["cv-assistant", "rfq", "stock-control"]);
+    expect(apps.map((a) => a.appCode)).toEqual(["annix-orbit", "rfq", "stock-control"]);
   });
 
   it("apps() counts multiple capabilities for the same app", () => {

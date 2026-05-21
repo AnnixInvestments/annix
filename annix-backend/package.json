@@ -31,6 +31,7 @@
     "migrate:s3:dry-run": "ts-node -r tsconfig-paths/register scripts/migrate-to-s3.ts --dry-run",
     "migrate:rubber-paths": "ts-node -r tsconfig-paths/register scripts/migrate-rubber-paths.ts",
     "migrate:rubber-paths:dry-run": "ts-node -r tsconfig-paths/register scripts/migrate-rubber-paths.ts --dry-run",
+    "audit:rubber-missing-files": "ts-node --transpile-only -r tsconfig-paths/register scripts/audit-rubber-missing-files.ts",
     "migrate:fieldflow-recordings": "ts-node -r tsconfig-paths/register scripts/migrate-fieldflow-recordings.ts",
     "migrate:fieldflow-recordings:dry-run": "ts-node -r tsconfig-paths/register scripts/migrate-fieldflow-recordings.ts --dry-run",
     "migrate:cv-assistant-docs": "ts-node -r tsconfig-paths/register scripts/migrate-cv-assistant-docs.ts",

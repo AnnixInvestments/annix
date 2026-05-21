@@ -243,14 +243,14 @@ Located in `annix-backend/src/shared/auth/`:
 
 | Service | Used By | Not Used By |
 |---------|---------|-------------|
-| `TokenService` (JWT) | admin, annix-rep, customer, supplier | auth, stock-control, cv-assistant, comply-sa |
-| `PasswordService` (bcrypt) | admin, annix-rep, customer, supplier | auth, stock-control, cv-assistant, comply-sa |
+| `TokenService` (JWT) | admin, annix-rep, customer, supplier | auth, stock-control, annix-orbit, comply-sa |
+| `PasswordService` (bcrypt) | admin, annix-rep, customer, supplier | auth, stock-control, annix-orbit, comply-sa |
 | `SessionService` (generic) | customer, supplier | admin (own impl), annix-rep (own impl) |
 | `RateLimitingService` | customer, supplier | all others |
 | `DeviceBindingService` | customer, supplier | all others |
 | `AuthConfigService` | admin, customer, supplier | all others |
 
-**4 services call `bcrypt.hash`/`JwtService.sign` directly** instead of using the shared primitives: `auth.service.ts`, `stock-control/auth.service.ts`, `cv-assistant/auth.service.ts`, `comply-sa/auth.service.ts`.
+**4 services call `bcrypt.hash`/`JwtService.sign` directly** instead of using the shared primitives: `auth.service.ts`, `stock-control/auth.service.ts`, `annix-orbit/auth.service.ts`, `comply-sa/auth.service.ts`.
 
 ---
 

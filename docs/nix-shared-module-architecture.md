@@ -5,7 +5,7 @@
 ## TL;DR
 
 - The "shared module" foundation **already exists**: `annix-backend/src/nix/` (NestJS) and `annix-frontend/src/app/lib/nix/` (React).
-- Cross-app surface is **partly migrated, partly direct-coupled**: `NixAssistant` is layout-mounted in `admin`/`customer`/`supplier` portals; not yet in `au-rubber`/`stock-control`/`cv-assistant`/`comply-sa`/`annix-rep`/`teacher-assistant`.
+- Cross-app surface is **partly migrated, partly direct-coupled**: `NixAssistant` is layout-mounted in `admin`/`customer`/`supplier` portals; not yet in `au-rubber`/`stock-control`/`annix-orbit`/`comply-sa`/`annix-rep`/`teacher-assistant`.
 - 7 backend modules **direct-inject `AiChatService`** (30+ services), bypassing any per-app capability registration. The `NixExtractionProfileRegistry` registry pattern from #251 only has 1 handler today (`RfqPipingProfileHandler`).
 - The work is less "build from scratch" and more **extend the registry pattern, remove forwardRef cycles, onboard the apps that bypass it, add walkthrough engine**.
 
@@ -20,7 +20,7 @@ Module already exports the right primitives:
 
 **Smell — `NixModule` `forwardRef`s upward into app modules**: `RfqModule`, `CustomerModule`, `SupplierModule`, `AdminModule`, `SecureDocumentsModule`. The shared module should be a leaf. App modules should depend on Nix, not the other way around.
 
-**Smell — `AiChatService` direct injection is widespread**: 30+ services across 7 modules (`stock-control` 13, `cv-assistant` 5, `rubber-lining` 5, `stock-management` 4, `teacher-assistant` 3, `comply-sa` 2, `feedback` 1) reach directly into `nix/ai-providers/ai-chat.service.ts` rather than register a capability with the Nix module. There's no single "what can App X do via Nix?" registry.
+**Smell — `AiChatService` direct injection is widespread**: 30+ services across 7 modules (`stock-control` 13, `annix-orbit` 5, `rubber-lining` 5, `stock-management` 4, `teacher-assistant` 3, `comply-sa` 2, `feedback` 1) reach directly into `nix/ai-providers/ai-chat.service.ts` rather than register a capability with the Nix module. There's no single "what can App X do via Nix?" registry.
 
 **Smell — `claude-chat.provider.ts` and `claude.provider.ts` still present** despite CLAUDE.md "Gemini only" rule. These are legacy fallbacks; should be removed.
 
@@ -32,7 +32,7 @@ Shared component home already exists:
 - Hook: `useNix` (in `lib/query/hooks/nix/`)
 - Shared progress-modal context: `useExtractionProgress`, `useAdaptiveExtractionProgress` — already DRY across CV, AU Rubber, SC, RFQ, Teacher Assistant
 
-**Coverage gaps:** `NixAssistant` is mounted at layout level only in `admin`, `customer`, `supplier`. Five other apps (`au-rubber`, `stock-control`, `cv-assistant`, `comply-sa`, `annix-rep`, `teacher-assistant`) don't expose the shared chat panel — they have app-specific Nix surfaces (CV's `NixWizardPanel`, AU Rubber's per-page `NixProcessingPopup`, stock-control's `NixDraftReview`) but no global chat.
+**Coverage gaps:** `NixAssistant` is mounted at layout level only in `admin`, `customer`, `supplier`. Five other apps (`au-rubber`, `stock-control`, `annix-orbit`, `comply-sa`, `annix-rep`, `teacher-assistant`) don't expose the shared chat panel — they have app-specific Nix surfaces (CV's `NixWizardPanel`, AU Rubber's per-page `NixProcessingPopup`, stock-control's `NixDraftReview`) but no global chat.
 
 **Duplicate cluster flagged:** four near-identical `NixProcessingPopup` mounts in AU Rubber portal pages (delivery-notes × customers/suppliers + tax-invoices × customers/suppliers).
 

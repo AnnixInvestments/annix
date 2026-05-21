@@ -208,7 +208,9 @@ export default function ReconciliationDetailPage() {
           </div>
         )}
 
-        {data.matchItems.length > 0 && <ReconciliationMatchView matchItems={data.matchItems} />}
+        {data.matchItems.length > 0 && (
+          <ReconciliationMatchView matchItems={data.matchItems} statementId={data.id} />
+        )}
 
         {data.extractedData && data.extractedData.length > 0 && data.matchItems.length === 0 && (
           <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">

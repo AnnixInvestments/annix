@@ -667,17 +667,27 @@ export default function DeliveryNoteDetailPage() {
   const rawNoteSupplierCompanyName = note.supplierCompanyName;
   const rawNoteCustomerReference = note.customerReference;
 
+  const fromSource = searchParams.get("from");
+  const rawStatementId = searchParams.get("statementId");
+  const cameFromStatement = fromSource === "statement" && rawStatementId !== null;
+  const statementBackPath = cameFromStatement
+    ? `/au-rubber/portal/accounting/reconciliation/${rawStatementId}`
+    : null;
+
   return (
     <div className="space-y-6">
       <Breadcrumb
         items={[
           {
-            label: searchParams.get("returnUrl")
-              ? "Back"
-              : isCustomerDn
-                ? "Customer Delivery Notes"
-                : "Supplier Delivery Notes",
+            label: cameFromStatement
+              ? "Back to statement"
+              : searchParams.get("returnUrl")
+                ? "Back"
+                : isCustomerDn
+                  ? "Customer Delivery Notes"
+                  : "Supplier Delivery Notes",
             href:
+              statementBackPath ||
               searchParams.get("returnUrl") ||
               (isCustomerDn
                 ? "/au-rubber/portal/delivery-notes/customers"
@@ -686,6 +696,18 @@ export default function DeliveryNoteDetailPage() {
           { label: rawNoteDeliveryNoteNumber || `DN-${note.id}` },
         ]}
       />
+
+      {cameFromStatement && statementBackPath && (
+        <div className="flex">
+          <button
+            type="button"
+            onClick={() => router.push(statementBackPath)}
+            className="inline-flex items-center gap-2 rounded-md border border-orange-200 bg-orange-50 px-3 py-1.5 text-sm font-medium text-orange-700 hover:bg-orange-100 dark:border-orange-900/40 dark:bg-orange-900/20 dark:text-orange-300"
+          >
+            <span aria-hidden>←</span> Go back to statement
+          </button>
+        </div>
+      )}
 
       <div className="flex items-center justify-between">
         <div>

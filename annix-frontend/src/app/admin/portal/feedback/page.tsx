@@ -40,7 +40,7 @@ const APP_OPTIONS: Array<{ value: string; label: string }> = [
   { value: "stock-control", label: "Stock Control" },
   { value: "au-rubber", label: "AU Rubber" },
   { value: "supplier", label: "Supplier" },
-  { value: "cv-assistant", label: "Annix Orbit" },
+  { value: "annix-orbit", label: "Annix Orbit" },
   { value: "annix-rep", label: "Annix Rep" },
 ];
 
@@ -111,7 +111,7 @@ function appBadgeColor(app: string | null): string {
     "stock-control": "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300",
     "au-rubber": "bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300",
     supplier: "bg-teal-100 text-teal-700 dark:bg-teal-900/50 dark:text-teal-300",
-    "cv-assistant": "bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300",
+    "annix-orbit": "bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300",
     "annix-rep": "bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-300",
   };
   const rawColors = colors[app];

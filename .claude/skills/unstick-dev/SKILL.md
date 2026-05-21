@@ -26,7 +26,7 @@ Run all checks first, then report. **Do not kill processes until the user confir
 
 ```bash
 curl -sS --max-time 5 -o /dev/null -w "frontend / : %{http_code} in %{time_total}s\n" http://localhost:3000/
-curl -sS --max-time 5 -o /dev/null -w "frontend cv: %{http_code} in %{time_total}s\n" http://localhost:3000/cv-assistant
+curl -sS --max-time 5 -o /dev/null -w "frontend cv: %{http_code} in %{time_total}s\n" http://localhost:3000/annix-orbit
 curl -sS --max-time 5 -o /dev/null -w "backend  / : %{http_code} in %{time_total}s\n" http://localhost:4001/
 ```
 

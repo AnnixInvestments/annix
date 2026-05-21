@@ -10,7 +10,7 @@ export type ExtractionBrand =
   | "comply-sa"
   | "fieldflow"
   | "annix-rep"
-  | "cv-assistant"
+  | "annix-orbit"
   | "teacher-assistant"
   | "insights";
 

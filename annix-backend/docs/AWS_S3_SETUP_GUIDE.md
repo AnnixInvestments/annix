@@ -150,7 +150,7 @@ annix-sync-files-production/
 │   └── customer-delivery-notes/{customerId}/
 ├── fieldflow/                    # FieldFlow sales rep app
 │   └── recordings/{meetingId}/
-├── cv-assistant/                 # Annix Orbit application
+├── annix-orbit/                 # Annix Orbit application
 │   └── candidates/{companyId}/
 ├── stock-control/                # Stock Control application
 │   ├── allocations/
@@ -174,13 +174,13 @@ If you have existing files in local storage, run the appropriate migration scrip
 ```bash
 # Preview migrations (no changes made)
 pnpm migrate:fieldflow-recordings:dry-run
-pnpm migrate:cv-assistant-docs:dry-run
+pnpm migrate:annix-orbit-docs:dry-run
 pnpm migrate:rubber-paths:dry-run
 pnpm migrate:annix-app-paths:dry-run
 
 # Perform actual migrations
 pnpm migrate:fieldflow-recordings
-pnpm migrate:cv-assistant-docs
+pnpm migrate:annix-orbit-docs
 pnpm migrate:rubber-paths
 pnpm migrate:annix-app-paths
 ```

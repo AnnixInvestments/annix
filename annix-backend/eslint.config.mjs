@@ -177,10 +177,10 @@ export default tseslint.config(
   },
   {
     files: [
-      "src/cv-assistant/services/job-match.service.ts",
-      "src/cv-assistant/services/cv-screening.service.ts",
-      "src/cv-assistant/services/candidate-job-matching.service.ts",
-      "src/cv-assistant/services/embedding.service.ts",
+      "src/annix-orbit/services/job-match.service.ts",
+      "src/annix-orbit/services/cv-screening.service.ts",
+      "src/annix-orbit/services/candidate-job-matching.service.ts",
+      "src/annix-orbit/services/embedding.service.ts",
     ],
     rules: {
       "no-restricted-imports": [
@@ -189,10 +189,10 @@ export default tseslint.config(
           patterns: [
             {
               group: [
-                "**/cv-assistant-candidate-ee-attributes.entity",
-                "**/cv-assistant-ee-consent-text-version.entity",
-                "**/cv-assistant-ee-disclosure-invite.entity",
-                "**/cv-assistant-ee-sectoral-target.entity",
+                "**/annix-orbit-candidate-ee-attributes.entity",
+                "**/annix-orbit-ee-consent-text-version.entity",
+                "**/annix-orbit-ee-disclosure-invite.entity",
+                "**/annix-orbit-ee-sectoral-target.entity",
                 "**/services/popia.service",
                 "**/services/ee-disclosure.service",
               ],
