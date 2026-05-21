@@ -4344,7 +4344,13 @@ Formula: totalPrice = totalKg × salePricePerKg
     });
   }
 
-  @Get("portal/accounting/:id")
+  // Moved off /portal/accounting/:id to /portal/accounting/by-id/:id so this
+  // route stops greedily matching /portal/accounting/reconciliation,
+  // /portal/accounting/directors, etc. The Express router was picking the
+  // first registered match and Number("reconciliation") returned NaN, which
+  // crashed the monthly-account query and broke every accounting-section
+  // endpoint declared further down in this file.
+  @Get("portal/accounting/by-id/:id")
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiOperation({ summary: "Single monthly account with sign-off status" })
   async accountingById(@Param("id") id: string): Promise<MonthlyAccountDto> {
