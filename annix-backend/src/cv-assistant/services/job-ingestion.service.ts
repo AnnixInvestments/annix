@@ -5,8 +5,8 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { In, MoreThan, Repository } from "typeorm";
 import { EmailService } from "../../email/email.service";
 import { DateTime, fromISO, nowMillis } from "../../lib/datetime";
-import { isCvAssistantCronEnabled } from "../cv-assistant-cron.config";
-import { CvAssistantCompany } from "../entities/cv-assistant-company.entity";
+import { isAnnixOrbitCronEnabled } from "../cv-assistant-cron.config";
+import { AnnixOrbitCompany } from "../entities/cv-assistant-company.entity";
 import { ExternalJob } from "../entities/external-job.entity";
 import { ExternalJobAlternate } from "../entities/external-job-alternate.entity";
 import { JobMarketSource, JobSourceProvider } from "../entities/job-market-source.entity";
@@ -36,8 +36,8 @@ export class JobIngestionService {
     private readonly alternateRepo: Repository<ExternalJobAlternate>,
     @InjectRepository(JobPosting)
     private readonly jobPostingRepo: Repository<JobPosting>,
-    @InjectRepository(CvAssistantCompany)
-    private readonly companyRepo: Repository<CvAssistantCompany>,
+    @InjectRepository(AnnixOrbitCompany)
+    private readonly companyRepo: Repository<AnnixOrbitCompany>,
     private readonly adzunaService: AdzunaService,
     private readonly joobleService: JoobleService,
     private readonly remotiveService: RemotiveService,
@@ -50,7 +50,7 @@ export class JobIngestionService {
 
   @Cron(CronExpression.EVERY_HOUR, { name: "cv-assistant:poll-job-sources" })
   async pollSources(): Promise<void> {
-    if (!isCvAssistantCronEnabled()) return;
+    if (!isAnnixOrbitCronEnabled()) return;
     const sources = await this.sourceRepo.find({ where: { enabled: true } });
 
     const dueForIngestion = sources.filter((source) => this.isDueForIngestion(source));

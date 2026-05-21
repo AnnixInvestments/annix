@@ -19,7 +19,7 @@ import { now } from "../../lib/datetime";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { UpdateCandidateProfileDto, UpdateCandidateStatusDto } from "../dto/candidate.dto";
 import { CandidateStatus } from "../entities/candidate.entity";
-import { CvAssistantAuthGuard } from "../guards/cv-assistant-auth.guard";
+import { AnnixOrbitAuthGuard } from "../guards/cv-assistant-auth.guard";
 import { CandidateService } from "../services/candidate.service";
 import { EeDisclosureService } from "../services/ee-disclosure.service";
 import { PopiaService } from "../services/popia.service";
@@ -27,7 +27,7 @@ import { ReferenceService } from "../services/reference.service";
 import { WorkflowAutomationService } from "../services/workflow-automation.service";
 
 @Controller("cv-assistant/candidates")
-@UseGuards(CvAssistantAuthGuard)
+@UseGuards(AnnixOrbitAuthGuard)
 export class CandidateController {
   constructor(
     @Inject(STORAGE_SERVICE)

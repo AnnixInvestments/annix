@@ -16,10 +16,10 @@ import { UserAppAccess } from "../rbac/entities/user-app-access.entity";
 import { Rfq } from "../rfq/entities/rfq.entity";
 import { StorageModule } from "../storage/storage.module";
 import { User } from "../user/entities/user.entity";
-import { CvAssistantCapabilities } from "./capabilities/cv-assistant.capabilities";
+import { AnnixOrbitCapabilities } from "./capabilities/cv-assistant.capabilities";
 import { AdminEeTargetsController } from "./controllers/admin-ee-targets.controller";
 import { AnalyticsController } from "./controllers/analytics.controller";
-import { CvAssistantAuthController } from "./controllers/auth.controller";
+import { AnnixOrbitAuthController } from "./controllers/auth.controller";
 import { CandidateController } from "./controllers/candidate.controller";
 import { ComplianceController } from "./controllers/compliance.controller";
 import { CredentialController } from "./controllers/credential.controller";
@@ -45,15 +45,15 @@ import { WorkforceNeedController } from "./controllers/workforce-need.controller
 import { Candidate } from "./entities/candidate.entity";
 import { CandidateJobMatch } from "./entities/candidate-job-match.entity";
 import { CandidateReference } from "./entities/candidate-reference.entity";
-import { CvAssistantCandidateEeAttributes } from "./entities/cv-assistant-candidate-ee-attributes.entity";
-import { CvAssistantCompany } from "./entities/cv-assistant-company.entity";
-import { CvAssistantEeConsentTextVersion } from "./entities/cv-assistant-ee-consent-text-version.entity";
-import { CvAssistantEeDisclosureInvite } from "./entities/cv-assistant-ee-disclosure-invite.entity";
-import { CvAssistantEeSectoralTarget } from "./entities/cv-assistant-ee-sectoral-target.entity";
-import { CvAssistantEmailTemplate } from "./entities/cv-assistant-email-template.entity";
-import { CvAssistantIndividualDocument } from "./entities/cv-assistant-individual-document.entity";
-import { CvAssistantProfile } from "./entities/cv-assistant-profile.entity";
-import { CvAssistantUser } from "./entities/cv-assistant-user.entity";
+import { AnnixOrbitCandidateEeAttributes } from "./entities/cv-assistant-candidate-ee-attributes.entity";
+import { AnnixOrbitCompany } from "./entities/cv-assistant-company.entity";
+import { AnnixOrbitEeConsentTextVersion } from "./entities/cv-assistant-ee-consent-text-version.entity";
+import { AnnixOrbitEeDisclosureInvite } from "./entities/cv-assistant-ee-disclosure-invite.entity";
+import { AnnixOrbitEeSectoralTarget } from "./entities/cv-assistant-ee-sectoral-target.entity";
+import { AnnixOrbitEmailTemplate } from "./entities/cv-assistant-email-template.entity";
+import { AnnixOrbitIndividualDocument } from "./entities/cv-assistant-individual-document.entity";
+import { AnnixOrbitProfile } from "./entities/cv-assistant-profile.entity";
+import { AnnixOrbitUser } from "./entities/cv-assistant-user.entity";
 import { CvCredential } from "./entities/cv-credential.entity";
 import { CvEscoSkill } from "./entities/cv-esco-skill.entity";
 import { CvGeocodeCache } from "./entities/cv-geocode-cache.entity";
@@ -72,8 +72,8 @@ import { JobSuccessMetric } from "./entities/job-success-metric.entity";
 import { SalaryBenchmark } from "./entities/salary-benchmark.entity";
 import { SeekerApplyClick } from "./entities/seeker-apply-click.entity";
 import { SeekerMute } from "./entities/seeker-mute.entity";
-import { CvAssistantAuthGuard } from "./guards/cv-assistant-auth.guard";
-import { CvAssistantRoleGuard } from "./guards/cv-assistant-role.guard";
+import { AnnixOrbitAuthGuard } from "./guards/cv-assistant-auth.guard";
+import { AnnixOrbitRoleGuard } from "./guards/cv-assistant-role.guard";
 import { AssistedPortalAdapters } from "./services/adapters/assisted-portal-adapters.service";
 import { FacebookPortalAdapter } from "./services/adapters/facebook-portal-adapter.service";
 import { GumtreePortalAdapter } from "./services/adapters/gumtree-portal-adapter.service";
@@ -81,7 +81,7 @@ import { IndeedPortalAdapter } from "./services/adapters/indeed-portal-adapter.s
 import { LinkedInPortalAdapter } from "./services/adapters/linkedin-portal-adapter.service";
 import { AdzunaService } from "./services/adzuna.service";
 import { AnalyticsService } from "./services/analytics.service";
-import { CvAssistantAuthService } from "./services/auth.service";
+import { AnnixOrbitAuthService } from "./services/auth.service";
 import { CandidateService } from "./services/candidate.service";
 import { CandidateJobMatchingService } from "./services/candidate-job-matching.service";
 import { CredentialService } from "./services/credential.service";
@@ -125,7 +125,7 @@ import { WorkforceNeedService } from "./services/workforce-need.service";
 @Module({
   imports: [
     TypeOrmModule.forFeature([
-      CvAssistantProfile,
+      AnnixOrbitProfile,
       User,
       Company,
       App,
@@ -139,14 +139,14 @@ import { WorkforceNeedService } from "./services/workforce-need.service";
       ExternalJobAlternate,
       CandidateJobMatch,
       CvPushSubscription,
-      CvAssistantUser,
-      CvAssistantIndividualDocument,
-      CvAssistantCompany,
-      CvAssistantCandidateEeAttributes,
-      CvAssistantEeConsentTextVersion,
-      CvAssistantEeDisclosureInvite,
-      CvAssistantEeSectoralTarget,
-      CvAssistantEmailTemplate,
+      AnnixOrbitUser,
+      AnnixOrbitIndividualDocument,
+      AnnixOrbitCompany,
+      AnnixOrbitCandidateEeAttributes,
+      AnnixOrbitEeConsentTextVersion,
+      AnnixOrbitEeDisclosureInvite,
+      AnnixOrbitEeSectoralTarget,
+      AnnixOrbitEmailTemplate,
       InterviewSlot,
       InterviewBooking,
       InterviewInvite,
@@ -184,7 +184,7 @@ import { WorkforceNeedService } from "./services/workforce-need.service";
     FeatureFlagsModule,
   ],
   controllers: [
-    CvAssistantAuthController,
+    AnnixOrbitAuthController,
     JobPostingController,
     CandidateController,
     ReferenceFeedbackController,
@@ -211,9 +211,9 @@ import { WorkforceNeedService } from "./services/workforce-need.service";
     WorkforceNeedController,
   ],
   providers: [
-    CvAssistantAuthGuard,
-    CvAssistantRoleGuard,
-    CvAssistantAuthService,
+    AnnixOrbitAuthGuard,
+    AnnixOrbitRoleGuard,
+    AnnixOrbitAuthService,
     CvAuditService,
     JobPostingService,
     CandidateService,
@@ -256,12 +256,12 @@ import { WorkforceNeedService } from "./services/workforce-need.service";
     TestCandidateSeederService,
     EmailTemplateService,
     InterviewBookingService,
-    CvAssistantCapabilities,
+    AnnixOrbitCapabilities,
     SeekerJobFeedService,
     TradeProfileService,
     CredentialService,
     WorkforceNeedService,
   ],
-  exports: [CvAssistantAuthService],
+  exports: [AnnixOrbitAuthService],
 })
-export class CvAssistantModule {}
+export class AnnixOrbitModule {}

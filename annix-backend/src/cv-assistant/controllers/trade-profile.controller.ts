@@ -9,7 +9,7 @@ import {
   Request,
   UseGuards,
 } from "@nestjs/common";
-import { CvAssistantAuthGuard } from "../guards/cv-assistant-auth.guard";
+import { AnnixOrbitAuthGuard } from "../guards/cv-assistant-auth.guard";
 import { TradeProfileService } from "../services/trade-profile.service";
 
 interface SeekerAuthRequest {
@@ -17,7 +17,7 @@ interface SeekerAuthRequest {
 }
 
 @Controller("cv-assistant/seeker/trade-profile")
-@UseGuards(CvAssistantAuthGuard)
+@UseGuards(AnnixOrbitAuthGuard)
 export class TradeProfileController {
   constructor(private readonly tradeProfileService: TradeProfileService) {}
 

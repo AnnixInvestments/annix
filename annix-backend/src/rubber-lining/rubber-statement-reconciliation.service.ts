@@ -36,6 +36,11 @@ export enum MatchResultType {
 
 export interface ReconciliationMatchItem {
   invoiceNumber: string;
+  // STI primary key when the invoice exists in our system (MATCHED,
+  // AMOUNT_DISCREPANCY, NOT_ON_STATEMENT). null on NOT_IN_SYSTEM rows.
+  // Used by the frontend to make each row click through to the STI detail
+  // page from the reconciliation view.
+  taxInvoiceId: number | null;
   statementAmount: number | null;
   systemAmount: number | null;
   matchResult: MatchResultType;
@@ -340,6 +345,7 @@ export class RubberStatementReconciliationService {
       if (!systemInv) {
         matchItems.push({
           invoiceNumber: item.invoiceNumber,
+          taxInvoiceId: null,
           statementAmount: item.amount,
           systemAmount: null,
           matchResult: MatchResultType.NOT_IN_SYSTEM,
@@ -357,6 +363,7 @@ export class RubberStatementReconciliationService {
       if (diff <= 0.01) {
         matchItems.push({
           invoiceNumber: item.invoiceNumber,
+          taxInvoiceId: systemInv.id,
           statementAmount: item.amount,
           systemAmount,
           matchResult: MatchResultType.MATCHED,
@@ -367,6 +374,7 @@ export class RubberStatementReconciliationService {
       } else {
         matchItems.push({
           invoiceNumber: item.invoiceNumber,
+          taxInvoiceId: systemInv.id,
           statementAmount: item.amount,
           systemAmount,
           matchResult: MatchResultType.AMOUNT_DISCREPANCY,
@@ -384,6 +392,7 @@ export class RubberStatementReconciliationService {
       const cascade = cascadeForInvoice(inv);
       matchItems.push({
         invoiceNumber: inv.invoiceNumber,
+        taxInvoiceId: inv.id,
         statementAmount: null,
         systemAmount: parseFloat(inv.totalAmount || "0"),
         matchResult: MatchResultType.NOT_ON_STATEMENT,
@@ -463,6 +472,19 @@ export class RubberStatementReconciliationService {
       relations: ["company"],
     });
     if (!recon) return null;
+    // matchItems are computed, not persisted — re-run the reconcile on read
+    // so the detail page can show per-row status (MATCHED / DISCREPANCY /
+    // NOT_IN_SYSTEM / cascade flags) without the user clicking a button.
+    // Skips when extraction has not run yet (nothing to match against).
+    if (recon.extractedData && recon.extractedData.length > 0) {
+      try {
+        return await this.reconcileStatement(id);
+      } catch (err) {
+        this.logger.warn(
+          `Inline reconcile during detail fetch for ${id} failed: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    }
     return this.mapToDetailDto(recon, []);
   }
 

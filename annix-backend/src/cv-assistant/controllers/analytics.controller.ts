@@ -1,9 +1,9 @@
 import { Controller, Get, Header, Query, Request, UseGuards } from "@nestjs/common";
-import { CvAssistantAuthGuard } from "../guards/cv-assistant-auth.guard";
+import { AnnixOrbitAuthGuard } from "../guards/cv-assistant-auth.guard";
 import { AnalyticsService } from "../services/analytics.service";
 
 @Controller("cv-assistant/analytics")
-@UseGuards(CvAssistantAuthGuard)
+@UseGuards(AnnixOrbitAuthGuard)
 export class AnalyticsController {
   constructor(private readonly analyticsService: AnalyticsService) {}
 

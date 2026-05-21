@@ -14,7 +14,7 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { IsInt, IsOptional, IsString, MaxLength } from "class-validator";
-import { CvAssistantAuthGuard } from "../guards/cv-assistant-auth.guard";
+import { AnnixOrbitAuthGuard } from "../guards/cv-assistant-auth.guard";
 import { SeekerJobFeedService } from "../services/seeker-job-feed.service";
 
 class RecordApplyClickDto {
@@ -49,7 +49,7 @@ interface SeekerAuthRequest {
 }
 
 @Controller("cv-assistant/seeker/jobs")
-@UseGuards(CvAssistantAuthGuard)
+@UseGuards(AnnixOrbitAuthGuard)
 export class SeekerJobsController {
   constructor(private readonly feedService: SeekerJobFeedService) {}
 

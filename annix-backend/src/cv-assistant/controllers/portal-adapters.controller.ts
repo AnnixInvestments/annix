@@ -11,7 +11,7 @@ import {
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { JobPosting } from "../entities/job-posting.entity";
-import { CvAssistantAuthGuard } from "../guards/cv-assistant-auth.guard";
+import { AnnixOrbitAuthGuard } from "../guards/cv-assistant-auth.guard";
 import { AssistedPostingInstructions, PortalAdapter } from "../services/portal-adapter.interface";
 import { PortalAdapterRegistry } from "../services/portal-adapter-registry.service";
 
@@ -29,7 +29,7 @@ interface AssistedPostingPackEntry extends AssistedPostingInstructions {
 }
 
 @Controller("cv-assistant")
-@UseGuards(CvAssistantAuthGuard)
+@UseGuards(AnnixOrbitAuthGuard)
 export class PortalAdaptersController {
   constructor(
     private readonly registry: PortalAdapterRegistry,

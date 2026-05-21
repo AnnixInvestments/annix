@@ -7,7 +7,7 @@ import {
 } from "typeorm";
 
 @Entity("cv_assistant_companies")
-export class CvAssistantCompany {
+export class AnnixOrbitCompany {
   @PrimaryGeneratedColumn()
   id: number;
 

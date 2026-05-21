@@ -1,7 +1,7 @@
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn } from "typeorm";
 
 @Entity("cv_assistant_ee_consent_text_versions")
-export class CvAssistantEeConsentTextVersion {
+export class AnnixOrbitEeConsentTextVersion {
   @PrimaryGeneratedColumn()
   id: number;
 

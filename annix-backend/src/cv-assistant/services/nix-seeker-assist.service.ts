@@ -10,10 +10,10 @@ import { now } from "../../lib/datetime";
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import {
-  CvAssistantIndividualDocument,
+  AnnixOrbitIndividualDocument,
   IndividualDocumentKind,
 } from "../entities/cv-assistant-individual-document.entity";
-import { CvAssistantProfile, CvAssistantUserType } from "../entities/cv-assistant-profile.entity";
+import { AnnixOrbitProfile, AnnixOrbitUserType } from "../entities/cv-assistant-profile.entity";
 import {
   calendarAdvisoryPrompt,
   type NixCalendarAdvisoryConflict,
@@ -32,10 +32,10 @@ export class NixSeekerAssistService {
   private readonly logger = new Logger(NixSeekerAssistService.name);
 
   constructor(
-    @InjectRepository(CvAssistantProfile)
-    private readonly profileRepo: Repository<CvAssistantProfile>,
-    @InjectRepository(CvAssistantIndividualDocument)
-    private readonly documentRepo: Repository<CvAssistantIndividualDocument>,
+    @InjectRepository(AnnixOrbitProfile)
+    private readonly profileRepo: Repository<AnnixOrbitProfile>,
+    @InjectRepository(AnnixOrbitIndividualDocument)
+    private readonly documentRepo: Repository<AnnixOrbitIndividualDocument>,
     private readonly aiChatService: AiChatService,
     private readonly metrics: ExtractionMetricService,
   ) {}
@@ -45,7 +45,7 @@ export class NixSeekerAssistService {
     if (!profile) {
       throw new BadRequestException("Annix Orbit profile not found");
     }
-    if (profile.userType !== CvAssistantUserType.INDIVIDUAL) {
+    if (profile.userType !== AnnixOrbitUserType.INDIVIDUAL) {
       throw new BadRequestException("Nix Wizard CV review is only for individual job seekers.");
     }
     if (!profile.cvFilePath) {
@@ -106,7 +106,7 @@ export class NixSeekerAssistService {
     if (!profile) {
       throw new BadRequestException("Annix Orbit profile not found");
     }
-    if (profile.userType !== CvAssistantUserType.INDIVIDUAL) {
+    if (profile.userType !== AnnixOrbitUserType.INDIVIDUAL) {
       throw new BadRequestException("Nix CV builder is only for individual job seekers.");
     }
     if (!profile.cvFilePath) {
@@ -184,7 +184,7 @@ export class NixSeekerAssistService {
     if (!profile) {
       throw new BadRequestException("Annix Orbit profile not found");
     }
-    if (profile.userType !== CvAssistantUserType.INDIVIDUAL) {
+    if (profile.userType !== AnnixOrbitUserType.INDIVIDUAL) {
       throw new BadRequestException("Nix CV builder is only for individual job seekers.");
     }
     if (!profile.nixGeneratedCv) {

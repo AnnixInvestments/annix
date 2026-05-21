@@ -7,8 +7,8 @@ import { NotificationDispatcherService } from "../../notifications/notification-
 import { User } from "../../user/entities/user.entity";
 import { Candidate } from "../entities/candidate.entity";
 import { CandidateJobMatch } from "../entities/candidate-job-match.entity";
-import { CvAssistantProfile } from "../entities/cv-assistant-profile.entity";
-import { CvAssistantUser } from "../entities/cv-assistant-user.entity";
+import { AnnixOrbitProfile } from "../entities/cv-assistant-profile.entity";
+import { AnnixOrbitUser } from "../entities/cv-assistant-user.entity";
 import { CvPushSubscription } from "../entities/cv-push-subscription.entity";
 import { ExternalJob } from "../entities/external-job.entity";
 import { JobPosting } from "../entities/job-posting.entity";
@@ -35,25 +35,25 @@ describe("CvNotificationService.dispatchCandidateJobAlerts", () => {
   let candidateRepo: { find: jest.Mock };
   let matchRepo: { createQueryBuilder: jest.Mock };
   let cvUserRepo: { find: jest.Mock };
-  let emailService: { sendCvAssistantJobAlertEmail: jest.Mock };
+  let emailService: { sendAnnixOrbitJobAlertEmail: jest.Mock };
 
   beforeEach(async () => {
     candidateRepo = { find: jest.fn().mockResolvedValue([]) };
     matchRepo = { createQueryBuilder: jest.fn() };
     cvUserRepo = { find: jest.fn().mockResolvedValue([]) };
-    emailService = { sendCvAssistantJobAlertEmail: jest.fn().mockResolvedValue(true) };
+    emailService = { sendAnnixOrbitJobAlertEmail: jest.fn().mockResolvedValue(true) };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CvNotificationService,
-        { provide: getRepositoryToken(CvAssistantProfile), useValue: {} },
+        { provide: getRepositoryToken(AnnixOrbitProfile), useValue: {} },
         { provide: getRepositoryToken(User), useValue: {} },
         { provide: getRepositoryToken(CvPushSubscription), useValue: {} },
         { provide: getRepositoryToken(CandidateJobMatch), useValue: matchRepo },
         { provide: getRepositoryToken(Candidate), useValue: candidateRepo },
         { provide: getRepositoryToken(JobPosting), useValue: {} },
         { provide: getRepositoryToken(ExternalJob), useValue: {} },
-        { provide: getRepositoryToken(CvAssistantUser), useValue: cvUserRepo },
+        { provide: getRepositoryToken(AnnixOrbitUser), useValue: cvUserRepo },
         { provide: EmailService, useValue: emailService },
         { provide: ConfigService, useValue: { get: jest.fn() } },
         { provide: NotificationDispatcherService, useValue: {} },
@@ -89,14 +89,14 @@ describe("CvNotificationService.dispatchCandidateJobAlerts", () => {
     const result = await service.dispatchCandidateJobAlerts();
 
     expect(result.sent).toBe(1);
-    expect(emailService.sendCvAssistantJobAlertEmail).toHaveBeenCalledTimes(1);
+    expect(emailService.sendAnnixOrbitJobAlertEmail).toHaveBeenCalledTimes(1);
   });
 
   it("does not email when popiaConsent is false (find already excludes them, sanity)", async () => {
     candidateRepo.find.mockResolvedValue([]);
     const result = await service.dispatchCandidateJobAlerts();
     expect(result.sent).toBe(0);
-    expect(emailService.sendCvAssistantJobAlertEmail).not.toHaveBeenCalled();
+    expect(emailService.sendAnnixOrbitJobAlertEmail).not.toHaveBeenCalled();
   });
 
   it("does not email when seeker user has digestEnabled=false", async () => {
@@ -116,7 +116,7 @@ describe("CvNotificationService.dispatchCandidateJobAlerts", () => {
 
     const result = await service.dispatchCandidateJobAlerts();
     expect(result.sent).toBe(0);
-    expect(emailService.sendCvAssistantJobAlertEmail).not.toHaveBeenCalled();
+    expect(emailService.sendAnnixOrbitJobAlertEmail).not.toHaveBeenCalled();
   });
 
   it("uses the seeker user's matchAlertThreshold (matches below threshold filtered)", async () => {

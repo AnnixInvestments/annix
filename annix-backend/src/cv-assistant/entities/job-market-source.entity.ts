@@ -7,7 +7,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
-import { CvAssistantCompany } from "./cv-assistant-company.entity";
+import { AnnixOrbitCompany } from "./cv-assistant-company.entity";
 
 export enum JobSourceProvider {
   ADZUNA = "adzuna",
@@ -57,9 +57,9 @@ export class JobMarketSource {
   @Column({ name: "ingestion_interval_hours", type: "int", default: 6 })
   ingestionIntervalHours: number;
 
-  @ManyToOne(() => CvAssistantCompany, { onDelete: "CASCADE" })
+  @ManyToOne(() => AnnixOrbitCompany, { onDelete: "CASCADE" })
   @JoinColumn({ name: "company_id" })
-  company: CvAssistantCompany;
+  company: AnnixOrbitCompany;
 
   @Column({ name: "company_id" })
   companyId: number;

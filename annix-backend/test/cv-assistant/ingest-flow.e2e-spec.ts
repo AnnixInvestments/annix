@@ -1,7 +1,7 @@
 import { ConfigService } from "@nestjs/config";
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
-import { CvAssistantCompany } from "../../src/cv-assistant/entities/cv-assistant-company.entity";
+import { AnnixOrbitCompany } from "../../src/cv-assistant/entities/cv-assistant-company.entity";
 import { ExternalJob } from "../../src/cv-assistant/entities/external-job.entity";
 import { ExternalJobAlternate } from "../../src/cv-assistant/entities/external-job-alternate.entity";
 import {
@@ -164,7 +164,7 @@ describe("Annix Orbit - JobIngestionService.ingestFromSource (mocked repos)", ()
         { provide: getRepositoryToken(ExternalJob), useValue: externalJobRepo },
         { provide: getRepositoryToken(ExternalJobAlternate), useValue: alternateRepo },
         { provide: getRepositoryToken(JobPosting), useValue: {} },
-        { provide: getRepositoryToken(CvAssistantCompany), useValue: {} },
+        { provide: getRepositoryToken(AnnixOrbitCompany), useValue: {} },
         {
           provide: AdzunaService,
           useValue: { searchJobs: adzunaSearchJobs, estimateExpiry: () => null },

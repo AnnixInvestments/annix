@@ -9,10 +9,10 @@ const AI_SERVICE_FILES = [
 ] as const;
 
 const FORBIDDEN_SYMBOLS = [
-  "CvAssistantCandidateEeAttributes",
-  "CvAssistantEeConsentTextVersion",
-  "CvAssistantEeDisclosureInvite",
-  "CvAssistantEeSectoralTarget",
+  "AnnixOrbitCandidateEeAttributes",
+  "AnnixOrbitEeConsentTextVersion",
+  "AnnixOrbitEeDisclosureInvite",
+  "AnnixOrbitEeSectoralTarget",
   "candidate-ee-attributes",
   "ee-consent-text-version",
   "ee-disclosure-invite",

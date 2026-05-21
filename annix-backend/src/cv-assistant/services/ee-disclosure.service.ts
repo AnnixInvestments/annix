@@ -21,9 +21,9 @@ import {
   EePopulationGroup,
   EePurpose,
 } from "../entities/cv-assistant-candidate-ee-attributes.entity";
-import { CvAssistantCompany } from "../entities/cv-assistant-company.entity";
-import { CvAssistantEeConsentTextVersion } from "../entities/cv-assistant-ee-consent-text-version.entity";
-import { CvAssistantEeDisclosureInvite } from "../entities/cv-assistant-ee-disclosure-invite.entity";
+import { AnnixOrbitCompany } from "../entities/cv-assistant-company.entity";
+import { AnnixOrbitEeConsentTextVersion } from "../entities/cv-assistant-ee-consent-text-version.entity";
+import { AnnixOrbitEeDisclosureInvite } from "../entities/cv-assistant-ee-disclosure-invite.entity";
 import { CvEmailTemplateKind } from "../entities/cv-assistant-email-template.entity";
 import { JobPosting } from "../entities/job-posting.entity";
 import { EmailTemplateService } from "./email-template.service";
@@ -55,16 +55,16 @@ export class EeDisclosureService {
   private readonly logger = new Logger(EeDisclosureService.name);
 
   constructor(
-    @InjectRepository(CvAssistantEeDisclosureInvite)
-    private readonly inviteRepo: Repository<CvAssistantEeDisclosureInvite>,
-    @InjectRepository(CvAssistantEeConsentTextVersion)
-    private readonly consentTextVersionRepo: Repository<CvAssistantEeConsentTextVersion>,
+    @InjectRepository(AnnixOrbitEeDisclosureInvite)
+    private readonly inviteRepo: Repository<AnnixOrbitEeDisclosureInvite>,
+    @InjectRepository(AnnixOrbitEeConsentTextVersion)
+    private readonly consentTextVersionRepo: Repository<AnnixOrbitEeConsentTextVersion>,
     @InjectRepository(Candidate)
     private readonly candidateRepo: Repository<Candidate>,
     @InjectRepository(JobPosting)
     private readonly jobPostingRepo: Repository<JobPosting>,
-    @InjectRepository(CvAssistantCompany)
-    private readonly companyRepo: Repository<CvAssistantCompany>,
+    @InjectRepository(AnnixOrbitCompany)
+    private readonly companyRepo: Repository<AnnixOrbitCompany>,
     private readonly popiaService: PopiaService,
     private readonly emailTemplateService: EmailTemplateService,
     private readonly configService: ConfigService,
@@ -73,7 +73,7 @@ export class EeDisclosureService {
   async createInvite(
     candidateId: number,
     jobPostingId: number,
-  ): Promise<CvAssistantEeDisclosureInvite> {
+  ): Promise<AnnixOrbitEeDisclosureInvite> {
     const candidate = await this.candidateRepo.findOne({ where: { id: candidateId } });
     if (!candidate) throw new NotFoundException("Candidate not found");
 
@@ -227,7 +227,7 @@ export class EeDisclosureService {
     return `${baseUrl}/cv-assistant/ee-disclosure/${token}`;
   }
 
-  private async activeConsentText(): Promise<CvAssistantEeConsentTextVersion> {
+  private async activeConsentText(): Promise<AnnixOrbitEeConsentTextVersion> {
     const activeNow = now().toJSDate();
     const active = await this.consentTextVersionRepo.findOne({
       where: [

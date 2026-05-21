@@ -12,7 +12,7 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { fromISO } from "../../lib/datetime";
-import { CvAssistantAuthGuard } from "../guards/cv-assistant-auth.guard";
+import { AnnixOrbitAuthGuard } from "../guards/cv-assistant-auth.guard";
 import { InterviewBookingService } from "../services/interview-booking.service";
 
 interface CreateSlotBody {
@@ -36,7 +36,7 @@ const parseDate = (value: string | undefined, label: string): Date => {
 };
 
 @Controller("cv-assistant/interview-slots")
-@UseGuards(CvAssistantAuthGuard)
+@UseGuards(AnnixOrbitAuthGuard)
 export class InterviewBookingController {
   constructor(private readonly bookings: InterviewBookingService) {}
 

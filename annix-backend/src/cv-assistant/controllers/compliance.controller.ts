@@ -9,11 +9,11 @@ import {
 } from "@nestjs/common";
 import type { Response } from "express";
 import { fromISO } from "../../lib/datetime";
-import { CvAssistantAuthGuard } from "../guards/cv-assistant-auth.guard";
+import { AnnixOrbitAuthGuard } from "../guards/cv-assistant-auth.guard";
 import { type EeReport, EeReportService } from "../services/ee-report.service";
 
 @Controller("cv-assistant/compliance")
-@UseGuards(CvAssistantAuthGuard)
+@UseGuards(AnnixOrbitAuthGuard)
 export class ComplianceController {
   constructor(private readonly eeReportService: EeReportService) {}
 

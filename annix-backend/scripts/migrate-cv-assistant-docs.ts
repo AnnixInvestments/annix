@@ -49,9 +49,9 @@ interface JobPostingInfo {
   company_id: number;
 }
 
-const logger = new Logger("CvAssistantDocMigration");
+const logger = new Logger("AnnixOrbitDocMigration");
 
-async function migrateCvAssistantDocs() {
+async function migrateAnnixOrbitDocs() {
   const isDryRun = process.argv.includes("--dry-run");
 
   if (isDryRun) {
@@ -234,7 +234,7 @@ async function migrateCvAssistantDocs() {
   process.exit(result.failed > 0 ? 1 : 0);
 }
 
-migrateCvAssistantDocs().catch((error) => {
+migrateAnnixOrbitDocs().catch((error) => {
   logger.error(`Migration failed: ${error.message}`);
   process.exit(1);
 });

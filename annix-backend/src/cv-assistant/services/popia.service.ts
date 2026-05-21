@@ -4,11 +4,11 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { IsNull, LessThan, Repository } from "typeorm";
 import { DateTime } from "../../lib/datetime";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
-import { isCvAssistantCronEnabled } from "../cv-assistant-cron.config";
+import { isAnnixOrbitCronEnabled } from "../cv-assistant-cron.config";
 import { Candidate } from "../entities/candidate.entity";
 import { CandidateReference } from "../entities/candidate-reference.entity";
 import {
-  CvAssistantCandidateEeAttributes,
+  AnnixOrbitCandidateEeAttributes,
   EeConsentSource,
   EeDisabilityStatus,
   EeGender,
@@ -16,7 +16,7 @@ import {
   EePopulationGroup,
   EePurpose,
 } from "../entities/cv-assistant-candidate-ee-attributes.entity";
-import { CvAssistantEeConsentTextVersion } from "../entities/cv-assistant-ee-consent-text-version.entity";
+import { AnnixOrbitEeConsentTextVersion } from "../entities/cv-assistant-ee-consent-text-version.entity";
 import { CvAuditService, ErasureReason } from "./cv-audit.service";
 
 export interface RecordEeConsentInput {
@@ -77,10 +77,10 @@ export class PopiaService {
     private readonly candidateRepo: Repository<Candidate>,
     @InjectRepository(CandidateReference)
     private readonly referenceRepo: Repository<CandidateReference>,
-    @InjectRepository(CvAssistantCandidateEeAttributes)
-    private readonly eeAttributesRepo: Repository<CvAssistantCandidateEeAttributes>,
-    @InjectRepository(CvAssistantEeConsentTextVersion)
-    private readonly eeConsentTextVersionRepo: Repository<CvAssistantEeConsentTextVersion>,
+    @InjectRepository(AnnixOrbitCandidateEeAttributes)
+    private readonly eeAttributesRepo: Repository<AnnixOrbitCandidateEeAttributes>,
+    @InjectRepository(AnnixOrbitEeConsentTextVersion)
+    private readonly eeConsentTextVersionRepo: Repository<AnnixOrbitEeConsentTextVersion>,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
     private readonly cvAuditService: CvAuditService,
@@ -88,7 +88,7 @@ export class PopiaService {
 
   @Cron(CronExpression.EVERY_DAY_AT_2AM, { name: "cv-assistant:purge-inactive" })
   async purgeInactiveCandidates(): Promise<{ purged: number }> {
-    if (!isCvAssistantCronEnabled()) return { purged: 0 };
+    if (!isAnnixOrbitCronEnabled()) return { purged: 0 };
     const cutoffDate = DateTime.now().minus({ months: PopiaService.RETENTION_MONTHS }).toJSDate();
 
     const inactiveCandidates = await this.candidateRepo.find({
@@ -201,7 +201,7 @@ export class PopiaService {
     };
   }
 
-  async activeConsentTextVersion(): Promise<CvAssistantEeConsentTextVersion | null> {
+  async activeConsentTextVersion(): Promise<AnnixOrbitEeConsentTextVersion | null> {
     const activeNow = DateTime.now().toJSDate();
     const active = await this.eeConsentTextVersionRepo.findOne({
       where: [{ effectiveFrom: LessThan(activeNow), effectiveTo: IsNull() }],
@@ -210,7 +210,7 @@ export class PopiaService {
     return active;
   }
 
-  async recordEeConsent(input: RecordEeConsentInput): Promise<CvAssistantCandidateEeAttributes> {
+  async recordEeConsent(input: RecordEeConsentInput): Promise<AnnixOrbitCandidateEeAttributes> {
     const candidate = await this.candidateRepo.findOne({ where: { id: input.candidateId } });
     if (!candidate) {
       throw new NotFoundException("Candidate not found");

@@ -1,13 +1,13 @@
 import { Body, Controller, Get, Patch, Post, Request, UseGuards } from "@nestjs/common";
 import { InboundEmailMonitorService } from "../../inbound-email/inbound-email-monitor.service";
 import { UpdateCompanyDto, UpdateImapSettingsDto } from "../dto/settings.dto";
-import { CvAssistantAuthGuard } from "../guards/cv-assistant-auth.guard";
+import { AnnixOrbitAuthGuard } from "../guards/cv-assistant-auth.guard";
 import { SettingsService } from "../services/settings.service";
 
 const CV_APP_NAME = "cv-assistant";
 
 @Controller("cv-assistant/settings")
-@UseGuards(CvAssistantAuthGuard)
+@UseGuards(AnnixOrbitAuthGuard)
 export class SettingsController {
   constructor(
     private readonly settingsService: SettingsService,

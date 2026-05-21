@@ -7,9 +7,9 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
-import { CvAssistantCompany } from "./cv-assistant-company.entity";
+import { AnnixOrbitCompany } from "./cv-assistant-company.entity";
 
-export enum CvAssistantRole {
+export enum AnnixOrbitRole {
   VIEWER = "viewer",
   RECRUITER = "recruiter",
   ADMIN = "admin",
@@ -17,7 +17,7 @@ export enum CvAssistantRole {
 }
 
 @Entity("cv_assistant_users")
-export class CvAssistantUser {
+export class AnnixOrbitUser {
   @PrimaryGeneratedColumn()
   id: number;
 
@@ -30,8 +30,8 @@ export class CvAssistantUser {
   @Column({ type: "varchar", length: 255 })
   name: string;
 
-  @Column({ type: "varchar", length: 50, default: CvAssistantRole.RECRUITER })
-  role: CvAssistantRole;
+  @Column({ type: "varchar", length: 50, default: AnnixOrbitRole.RECRUITER })
+  role: AnnixOrbitRole;
 
   @Column({ name: "email_verified", type: "boolean", default: false })
   emailVerified: boolean;
@@ -48,9 +48,9 @@ export class CvAssistantUser {
   @Column({ name: "reset_password_expires", type: "timestamptz", nullable: true })
   resetPasswordExpires: Date | null;
 
-  @ManyToOne(() => CvAssistantCompany, { onDelete: "CASCADE" })
+  @ManyToOne(() => AnnixOrbitCompany, { onDelete: "CASCADE" })
   @JoinColumn({ name: "company_id" })
-  company: CvAssistantCompany;
+  company: AnnixOrbitCompany;
 
   @Column({ name: "company_id" })
   companyId: number;

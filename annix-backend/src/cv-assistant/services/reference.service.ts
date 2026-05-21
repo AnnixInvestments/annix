@@ -7,7 +7,7 @@ import { EmailService } from "../../email/email.service";
 import { fromJSDate, now } from "../../lib/datetime";
 import { Candidate, CandidateStatus, ExtractedCvData } from "../entities/candidate.entity";
 import { CandidateReference, ReferenceStatus } from "../entities/candidate-reference.entity";
-import { CvAssistantCompany } from "../entities/cv-assistant-company.entity";
+import { AnnixOrbitCompany } from "../entities/cv-assistant-company.entity";
 import { CvEmailTemplateKind } from "../entities/cv-assistant-email-template.entity";
 import { EmailTemplateService } from "./email-template.service";
 
@@ -22,8 +22,8 @@ export class ReferenceService {
     private readonly referenceRepo: Repository<CandidateReference>,
     @InjectRepository(Candidate)
     private readonly candidateRepo: Repository<Candidate>,
-    @InjectRepository(CvAssistantCompany)
-    private readonly companyRepo: Repository<CvAssistantCompany>,
+    @InjectRepository(AnnixOrbitCompany)
+    private readonly companyRepo: Repository<AnnixOrbitCompany>,
     private readonly emailService: EmailService,
     private readonly emailTemplateService: EmailTemplateService,
     private readonly configService: ConfigService,
@@ -188,7 +188,7 @@ export class ReferenceService {
       .filter((reference) => fromJSDate(reference.tokenExpiresAt) > now())
       .reduce(async (countPromise, reference) => {
         const count = await countPromise;
-        const sent = await this.emailService.sendCvAssistantReferenceReminderEmail(
+        const sent = await this.emailService.sendAnnixOrbitReferenceReminderEmail(
           reference.email,
           reference.name,
           reference.candidate.name || "the candidate",

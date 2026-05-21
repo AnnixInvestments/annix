@@ -3,11 +3,11 @@ import { Cron } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { DateTime, fromISO, now } from "../../lib/datetime";
-import { isCvAssistantCronEnabled } from "../cv-assistant-cron.config";
+import { isAnnixOrbitCronEnabled } from "../cv-assistant-cron.config";
 import { Candidate, CandidateStatus } from "../entities/candidate.entity";
 import { CandidateJobMatch } from "../entities/candidate-job-match.entity";
 import {
-  CvAssistantCandidateEeAttributes,
+  AnnixOrbitCandidateEeAttributes,
   EeDisabilityStatus,
   EeGender,
   EeNationalityStatus,
@@ -90,8 +90,8 @@ export class AnalyticsService {
     private readonly matchRepo: Repository<CandidateJobMatch>,
     @InjectRepository(ExternalJob)
     private readonly externalJobRepo: Repository<ExternalJob>,
-    @InjectRepository(CvAssistantCandidateEeAttributes)
-    private readonly eeAttributesRepo: Repository<CvAssistantCandidateEeAttributes>,
+    @InjectRepository(AnnixOrbitCandidateEeAttributes)
+    private readonly eeAttributesRepo: Repository<AnnixOrbitCandidateEeAttributes>,
     private readonly cvAuditService: CvAuditService,
   ) {}
 
@@ -468,7 +468,7 @@ export class AnalyticsService {
     breaches: number;
     skippedNoData: number;
   }> {
-    if (!isCvAssistantCronEnabled()) return { jobsChecked: 0, breaches: 0, skippedNoData: 0 };
+    if (!isAnnixOrbitCronEnabled()) return { jobsChecked: 0, breaches: 0, skippedNoData: 0 };
 
     const activeJobs = await this.jobPostingRepo.find({
       where: { status: JobPostingStatus.ACTIVE },

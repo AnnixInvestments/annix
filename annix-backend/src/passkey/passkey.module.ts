@@ -4,7 +4,7 @@ import { AdminModule } from "../admin/admin.module";
 import { AnnixRepAuthModule } from "../annix-rep/auth/annix-rep-auth.module";
 import { AuthModule } from "../auth/auth.module";
 import { CustomerModule } from "../customer/customer.module";
-import { CvAssistantModule } from "../cv-assistant/cv-assistant.module";
+import { AnnixOrbitModule } from "../cv-assistant/cv-assistant.module";
 import { StockControlModule } from "../stock-control/stock-control.module";
 import { SupplierModule } from "../supplier/supplier.module";
 import { User } from "../user/entities/user.entity";
@@ -24,7 +24,7 @@ import { PasskeyService } from "./passkey.service";
     forwardRef(() => SupplierModule),
     forwardRef(() => StockControlModule),
     forwardRef(() => AnnixRepAuthModule),
-    forwardRef(() => CvAssistantModule),
+    forwardRef(() => AnnixOrbitModule),
   ],
   providers: [PasskeyService, PasskeyConfig, PasskeyScheduler],
   controllers: [PasskeyController],

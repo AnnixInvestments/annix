@@ -9,7 +9,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
-import { CvAssistantCompany } from "./cv-assistant-company.entity";
+import { AnnixOrbitCompany } from "./cv-assistant-company.entity";
 import { InterviewBooking } from "./interview-booking.entity";
 import { JobPosting } from "./job-posting.entity";
 
@@ -20,9 +20,9 @@ export class InterviewSlot {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne(() => CvAssistantCompany, { onDelete: "CASCADE" })
+  @ManyToOne(() => AnnixOrbitCompany, { onDelete: "CASCADE" })
   @JoinColumn({ name: "company_id" })
-  company: CvAssistantCompany;
+  company: AnnixOrbitCompany;
 
   @Column({ name: "company_id" })
   companyId: number;

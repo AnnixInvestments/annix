@@ -21,7 +21,7 @@ import { AnnixRepAuthService } from "../annix-rep/auth/annix-rep-auth.service";
 import { AuthService } from "../auth/auth.service";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { CustomerAuthService } from "../customer/customer-auth.service";
-import { CvAssistantAuthService } from "../cv-assistant/services/auth.service";
+import { AnnixOrbitAuthService } from "../cv-assistant/services/auth.service";
 import { StockControlAuthService } from "../stock-control/services/auth.service";
 import { SupplierAuthService } from "../supplier/supplier-auth.service";
 import {
@@ -44,7 +44,7 @@ export class PasskeyController {
     private readonly supplierAuthService: SupplierAuthService,
     private readonly stockControlAuthService: StockControlAuthService,
     private readonly annixRepAuthService: AnnixRepAuthService,
-    private readonly cvAssistantAuthService: CvAssistantAuthService,
+    private readonly annixOrbitAuthService: AnnixOrbitAuthService,
   ) {}
 
   @Post("register/options")
@@ -184,7 +184,7 @@ export class PasskeyController {
     }
 
     if (appCode === "cv-assistant") {
-      const cvResponse = await this.cvAssistantAuthService.issueTokensForAuthenticatedUser(
+      const cvResponse = await this.annixOrbitAuthService.issueTokensForAuthenticatedUser(
         result.user,
       );
       return {

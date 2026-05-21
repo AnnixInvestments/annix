@@ -3,7 +3,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { EmailService } from "../../email/email.service";
 import { Candidate, CandidateStatus, type MatchAnalysis } from "../entities/candidate.entity";
-import { CvAssistantCompany } from "../entities/cv-assistant-company.entity";
+import { AnnixOrbitCompany } from "../entities/cv-assistant-company.entity";
 import { CvEmailTemplateKind } from "../entities/cv-assistant-email-template.entity";
 import { JobPosting } from "../entities/job-posting.entity";
 import { CandidateService } from "./candidate.service";
@@ -32,8 +32,8 @@ export class WorkflowAutomationService {
     private readonly candidateRepo: Repository<Candidate>,
     @InjectRepository(JobPosting)
     private readonly jobPostingRepo: Repository<JobPosting>,
-    @InjectRepository(CvAssistantCompany)
-    private readonly companyRepo: Repository<CvAssistantCompany>,
+    @InjectRepository(AnnixOrbitCompany)
+    private readonly companyRepo: Repository<AnnixOrbitCompany>,
     private readonly cvExtractionService: CvExtractionService,
     private readonly jobMatchService: JobMatchService,
     private readonly candidateService: CandidateService,
@@ -258,7 +258,7 @@ export class WorkflowAutomationService {
     await this.candidateRepo.save(candidate);
 
     if (candidate.email) {
-      const sent = await this.emailService.sendCvAssistantShortlistEmail(
+      const sent = await this.emailService.sendAnnixOrbitShortlistEmail(
         candidate.email,
         candidate.name || "Applicant",
         candidate.jobPosting.title,

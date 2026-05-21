@@ -7,7 +7,7 @@ import { AiUsageService } from "../../ai-usage/ai-usage.service";
 import { AiApp, AiProvider } from "../../ai-usage/entities/ai-usage-log.entity";
 import { EmailService } from "../../email/email.service";
 import { DateTime, nowMillis } from "../../lib/datetime";
-import { isCvAssistantCronEnabled } from "../cv-assistant-cron.config";
+import { isAnnixOrbitCronEnabled } from "../cv-assistant-cron.config";
 import { Candidate } from "../entities/candidate.entity";
 import { ExternalJob } from "../entities/external-job.entity";
 import { EscoNormalisationService } from "./esco-normalisation.service";
@@ -247,7 +247,7 @@ export class EmbeddingService {
     estimatedUsd: number;
     alerted: boolean;
   }> {
-    if (!isCvAssistantCronEnabled()) {
+    if (!isAnnixOrbitCronEnabled()) {
       return { calls: 0, tokens: 0, estimatedUsd: 0, alerted: false };
     }
     return this.runEmbeddingCostGuard();

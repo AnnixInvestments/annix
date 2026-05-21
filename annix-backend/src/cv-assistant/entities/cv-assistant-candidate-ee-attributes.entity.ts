@@ -7,7 +7,7 @@ import {
   PrimaryGeneratedColumn,
 } from "typeorm";
 import { Candidate } from "./candidate.entity";
-import { CvAssistantEeConsentTextVersion } from "./cv-assistant-ee-consent-text-version.entity";
+import { AnnixOrbitEeConsentTextVersion } from "./cv-assistant-ee-consent-text-version.entity";
 
 export enum EePopulationGroup {
   AFRICAN_BLACK = "african_black",
@@ -46,7 +46,7 @@ export enum EeConsentSource {
 export type EePurpose = "ee_reporting" | "fairness_monitoring";
 
 @Entity("cv_assistant_candidate_ee_attributes")
-export class CvAssistantCandidateEeAttributes {
+export class AnnixOrbitCandidateEeAttributes {
   @PrimaryGeneratedColumn()
   id: number;
 
@@ -75,9 +75,9 @@ export class CvAssistantCandidateEeAttributes {
   @Column({ name: "nationality_status", type: "varchar", length: 30 })
   nationalityStatus: EeNationalityStatus;
 
-  @ManyToOne(() => CvAssistantEeConsentTextVersion)
+  @ManyToOne(() => AnnixOrbitEeConsentTextVersion)
   @JoinColumn({ name: "consent_text_version_id" })
-  consentTextVersion: CvAssistantEeConsentTextVersion;
+  consentTextVersion: AnnixOrbitEeConsentTextVersion;
 
   @Column({ name: "consent_text_version_id" })
   consentTextVersionId: number;

@@ -7,7 +7,7 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from "typeorm";
-import { CvAssistantProfile } from "./cv-assistant-profile.entity";
+import { AnnixOrbitProfile } from "./cv-assistant-profile.entity";
 
 export enum IndividualDocumentKind {
   CV = "cv",
@@ -17,13 +17,13 @@ export enum IndividualDocumentKind {
 
 @Entity("cv_assistant_individual_documents")
 @Index(["profileId", "kind"])
-export class CvAssistantIndividualDocument {
+export class AnnixOrbitIndividualDocument {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne(() => CvAssistantProfile, { onDelete: "CASCADE" })
+  @ManyToOne(() => AnnixOrbitProfile, { onDelete: "CASCADE" })
   @JoinColumn({ name: "profile_id" })
-  profile: CvAssistantProfile;
+  profile: AnnixOrbitProfile;
 
   @Column({ name: "profile_id" })
   profileId: number;

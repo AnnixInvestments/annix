@@ -5,7 +5,7 @@ import { In, Repository } from "typeorm";
 import { extractTextFromPdf } from "../../lib/document-extraction";
 import { parseJsonFromAi } from "../../lib/json-from-ai";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
-import { isCvAssistantCronEnabled } from "../cv-assistant-cron.config";
+import { isAnnixOrbitCronEnabled } from "../cv-assistant-cron.config";
 import { ExternalJob } from "../entities/external-job.entity";
 import { JobMarketSource, JobSourceProvider } from "../entities/job-market-source.entity";
 import { CandidateJobMatchingService } from "./candidate-job-matching.service";
@@ -68,7 +68,7 @@ export class DpsaCircularService {
 
   @Cron("0 7 * * 1", { name: "cv-assistant:dpsa-weekly" })
   async pollDpsa(): Promise<void> {
-    if (!isCvAssistantCronEnabled()) return;
+    if (!isAnnixOrbitCronEnabled()) return;
     if (process.env.DPSA_INGESTION_ENABLED !== "true") {
       this.logger.debug("DPSA ingestion disabled (DPSA_INGESTION_ENABLED not 'true')");
       return;

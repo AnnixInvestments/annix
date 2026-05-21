@@ -7,14 +7,14 @@ import { renderHeader } from "../../lib/pdf-templates/render-header";
 import { renderTable } from "../../lib/pdf-templates/render-table";
 import { Candidate, CandidateStatus } from "../entities/candidate.entity";
 import {
-  CvAssistantCandidateEeAttributes,
+  AnnixOrbitCandidateEeAttributes,
   EeDisabilityStatus,
   EeGender,
   EePopulationGroup,
 } from "../entities/cv-assistant-candidate-ee-attributes.entity";
-import { CvAssistantCompany } from "../entities/cv-assistant-company.entity";
+import { AnnixOrbitCompany } from "../entities/cv-assistant-company.entity";
 import {
-  CvAssistantEeSectoralTarget,
+  AnnixOrbitEeSectoralTarget,
   EeTargetMetric,
   type EeTargetOccupationalLevel,
 } from "../entities/cv-assistant-ee-sectoral-target.entity";
@@ -111,12 +111,12 @@ export interface EeReport {
 @Injectable()
 export class EeReportService {
   constructor(
-    @InjectRepository(CvAssistantCompany)
-    private readonly companyRepo: Repository<CvAssistantCompany>,
-    @InjectRepository(CvAssistantCandidateEeAttributes)
-    private readonly eeAttributesRepo: Repository<CvAssistantCandidateEeAttributes>,
-    @InjectRepository(CvAssistantEeSectoralTarget)
-    private readonly sectoralTargetRepo: Repository<CvAssistantEeSectoralTarget>,
+    @InjectRepository(AnnixOrbitCompany)
+    private readonly companyRepo: Repository<AnnixOrbitCompany>,
+    @InjectRepository(AnnixOrbitCandidateEeAttributes)
+    private readonly eeAttributesRepo: Repository<AnnixOrbitCandidateEeAttributes>,
+    @InjectRepository(AnnixOrbitEeSectoralTarget)
+    private readonly sectoralTargetRepo: Repository<AnnixOrbitEeSectoralTarget>,
     @InjectRepository(Candidate)
     private readonly candidateRepo: Repository<Candidate>,
     @InjectRepository(JobPosting)
@@ -124,7 +124,7 @@ export class EeReportService {
     private readonly cvAuditService: CvAuditService,
   ) {}
 
-  async listSectoralTargets(): Promise<CvAssistantEeSectoralTarget[]> {
+  async listSectoralTargets(): Promise<AnnixOrbitEeSectoralTarget[]> {
     return this.sectoralTargetRepo.find({
       order: { sectorCode: "ASC", occupationalLevel: "ASC", targetMetric: "ASC" },
     });
@@ -138,7 +138,7 @@ export class EeReportService {
     targetMetric: EeTargetMetric;
     targetPercent: number;
     gazetteReference: string | null;
-  }): Promise<CvAssistantEeSectoralTarget> {
+  }): Promise<AnnixOrbitEeSectoralTarget> {
     if (input.id) {
       const existing = await this.sectoralTargetRepo.findOne({ where: { id: input.id } });
       if (!existing) throw new NotFoundException("Sectoral target not found");
@@ -159,7 +159,7 @@ export class EeReportService {
       targetPercent: input.targetPercent.toFixed(2),
       gazetteReference: input.gazetteReference,
     });
-    return this.sectoralTargetRepo.save(created) as Promise<CvAssistantEeSectoralTarget>;
+    return this.sectoralTargetRepo.save(created) as Promise<AnnixOrbitEeSectoralTarget>;
   }
 
   async deleteSectoralTarget(id: number): Promise<{ deleted: boolean }> {
@@ -583,7 +583,7 @@ const csvField = (value: string): string => {
 };
 
 const computeActualPercent = (
-  target: CvAssistantEeSectoralTarget,
+  target: AnnixOrbitEeSectoralTarget,
   byLevel: OccupationalLevelBreakdown[],
   totalAcrossLevels: number,
 ): number => {

@@ -1,17 +1,17 @@
 import { Body, Controller, Delete, Get, Patch, Post, Request, UseGuards } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { CvAssistantUser } from "../entities/cv-assistant-user.entity";
-import { CvAssistantAuthGuard } from "../guards/cv-assistant-auth.guard";
+import { AnnixOrbitUser } from "../entities/cv-assistant-user.entity";
+import { AnnixOrbitAuthGuard } from "../guards/cv-assistant-auth.guard";
 import { CvNotificationService } from "../services/cv-notification.service";
 
 @Controller("cv-assistant/notifications")
-@UseGuards(CvAssistantAuthGuard)
+@UseGuards(AnnixOrbitAuthGuard)
 export class NotificationController {
   constructor(
     private readonly notificationService: CvNotificationService,
-    @InjectRepository(CvAssistantUser)
-    private readonly userRepo: Repository<CvAssistantUser>,
+    @InjectRepository(AnnixOrbitUser)
+    private readonly userRepo: Repository<AnnixOrbitUser>,
   ) {}
 
   @Get("vapid-key")
@@ -52,7 +52,7 @@ export class NotificationController {
     @Request() req: { user: { userId: number } },
     @Body() body: { matchAlertThreshold?: number; digestEnabled?: boolean; pushEnabled?: boolean },
   ) {
-    const updates: Partial<CvAssistantUser> = {};
+    const updates: Partial<AnnixOrbitUser> = {};
 
     if (body.matchAlertThreshold != null) {
       updates.matchAlertThreshold = Math.max(0, Math.min(100, body.matchAlertThreshold));

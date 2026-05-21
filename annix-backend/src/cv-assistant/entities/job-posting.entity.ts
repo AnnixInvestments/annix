@@ -9,7 +9,7 @@ import {
   UpdateDateColumn,
 } from "typeorm";
 import { Candidate } from "./candidate.entity";
-import { CvAssistantCompany } from "./cv-assistant-company.entity";
+import { AnnixOrbitCompany } from "./cv-assistant-company.entity";
 import { JobScreeningQuestion } from "./job-screening-question.entity";
 import { JobSkill } from "./job-skill.entity";
 import { JobSuccessMetric } from "./job-success-metric.entity";
@@ -176,9 +176,9 @@ export class JobPosting {
   )
   screeningQuestions: JobScreeningQuestion[];
 
-  @ManyToOne(() => CvAssistantCompany, { onDelete: "CASCADE" })
+  @ManyToOne(() => AnnixOrbitCompany, { onDelete: "CASCADE" })
   @JoinColumn({ name: "company_id" })
-  company: CvAssistantCompany;
+  company: AnnixOrbitCompany;
 
   @Column({ name: "company_id" })
   companyId: number;

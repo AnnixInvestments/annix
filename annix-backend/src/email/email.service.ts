@@ -1610,7 +1610,7 @@ This is an automated notification from the Annix test site.
     });
   }
 
-  async sendCvAssistantVerificationEmail(
+  async sendAnnixOrbitVerificationEmail(
     email: string,
     verificationToken: string,
   ): Promise<boolean> {
@@ -1652,7 +1652,7 @@ This is an automated notification from the Annix test site.
     });
   }
 
-  async sendCvAssistantPasswordResetEmail(email: string, resetToken: string): Promise<boolean> {
+  async sendAnnixOrbitPasswordResetEmail(email: string, resetToken: string): Promise<boolean> {
     const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const resetLink = `${frontendUrl}/cv-assistant/reset-password?token=${resetToken}`;
 
@@ -1691,10 +1691,7 @@ This is an automated notification from the Annix test site.
     });
   }
 
-  async sendCvAssistantDeletionConfirmEmail(
-    email: string,
-    deletionToken: string,
-  ): Promise<boolean> {
+  async sendAnnixOrbitDeletionConfirmEmail(email: string, deletionToken: string): Promise<boolean> {
     const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const confirmLink = `${frontendUrl}/cv-assistant/confirm-delete?token=${deletionToken}`;
 
@@ -1736,7 +1733,7 @@ This is an automated notification from the Annix test site.
     });
   }
 
-  async sendCvAssistantRejectionEmail(
+  async sendAnnixOrbitRejectionEmail(
     email: string,
     candidateName: string,
     jobTitle: string,
@@ -1760,7 +1757,7 @@ This is an automated notification from the Annix test site.
     });
   }
 
-  async sendCvAssistantShortlistEmail(
+  async sendAnnixOrbitShortlistEmail(
     email: string,
     candidateName: string,
     jobTitle: string,
@@ -1784,7 +1781,7 @@ This is an automated notification from the Annix test site.
     });
   }
 
-  async sendCvAssistantAcceptanceEmail(
+  async sendAnnixOrbitAcceptanceEmail(
     email: string,
     candidateName: string,
     jobTitle: string,
@@ -1808,7 +1805,7 @@ This is an automated notification from the Annix test site.
     });
   }
 
-  async sendCvAssistantReferenceRequestEmail(
+  async sendAnnixOrbitReferenceRequestEmail(
     email: string,
     referenceName: string,
     candidateName: string,
@@ -1843,7 +1840,7 @@ This is an automated notification from the Annix test site.
     });
   }
 
-  async sendCvAssistantReferenceReminderEmail(
+  async sendAnnixOrbitReferenceReminderEmail(
     email: string,
     referenceName: string,
     candidateName: string,
@@ -1879,7 +1876,7 @@ This is an automated notification from the Annix test site.
     });
   }
 
-  async sendCvAssistantMatchAlertEmail(
+  async sendAnnixOrbitMatchAlertEmail(
     email: string,
     recruiterName: string,
     candidateName: string,
@@ -1916,7 +1913,7 @@ This is an automated notification from the Annix test site.
     });
   }
 
-  async sendCvAssistantWeeklyDigestEmail(
+  async sendAnnixOrbitWeeklyDigestEmail(
     email: string,
     recruiterName: string,
     digest: {
@@ -1999,7 +1996,7 @@ This is an automated notification from the Annix test site.
     });
   }
 
-  async sendCvAssistantJobAlertEmail(
+  async sendAnnixOrbitJobAlertEmail(
     email: string,
     candidateName: string,
     jobs: Array<{ title: string; company: string | null; location: string | null; score: number }>,

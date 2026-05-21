@@ -8,11 +8,11 @@ import { DateTime } from "../../lib/datetime";
 import { WebPushChannel, WebPushSendResult } from "../../notifications/channels/web-push.channel";
 import { NotificationDispatcherService } from "../../notifications/notification-dispatcher.service";
 import { User } from "../../user/entities/user.entity";
-import { isCvAssistantCronEnabled } from "../cv-assistant-cron.config";
+import { isAnnixOrbitCronEnabled } from "../cv-assistant-cron.config";
 import { Candidate } from "../entities/candidate.entity";
 import { CandidateJobMatch } from "../entities/candidate-job-match.entity";
-import { CvAssistantProfile } from "../entities/cv-assistant-profile.entity";
-import { CvAssistantUser } from "../entities/cv-assistant-user.entity";
+import { AnnixOrbitProfile } from "../entities/cv-assistant-profile.entity";
+import { AnnixOrbitUser } from "../entities/cv-assistant-user.entity";
 import { CvPushSubscription } from "../entities/cv-push-subscription.entity";
 import { ExternalJob } from "../entities/external-job.entity";
 import { JobPosting, JobPostingStatus } from "../entities/job-posting.entity";
@@ -29,8 +29,8 @@ export class CvNotificationService {
   private readonly logger = new Logger(CvNotificationService.name);
 
   constructor(
-    @InjectRepository(CvAssistantProfile)
-    private readonly profileRepo: Repository<CvAssistantProfile>,
+    @InjectRepository(AnnixOrbitProfile)
+    private readonly profileRepo: Repository<AnnixOrbitProfile>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
     @InjectRepository(CvPushSubscription)
@@ -43,8 +43,8 @@ export class CvNotificationService {
     private readonly jobPostingRepo: Repository<JobPosting>,
     @InjectRepository(ExternalJob)
     private readonly externalJobRepo: Repository<ExternalJob>,
-    @InjectRepository(CvAssistantUser)
-    private readonly cvUserRepo: Repository<CvAssistantUser>,
+    @InjectRepository(AnnixOrbitUser)
+    private readonly cvUserRepo: Repository<AnnixOrbitUser>,
     private readonly emailService: EmailService,
     private readonly configService: ConfigService,
     private readonly dispatcher: NotificationDispatcherService,
@@ -174,7 +174,7 @@ export class CvNotificationService {
               profile.user.email;
 
             if (profile.digestEnabled) {
-              await this.emailService.sendCvAssistantMatchAlertEmail(
+              await this.emailService.sendAnnixOrbitMatchAlertEmail(
                 profile.user.email,
                 userName,
                 candidate.name ?? "Unknown candidate",
@@ -198,7 +198,7 @@ export class CvNotificationService {
 
   @Cron(CronExpression.EVERY_WEEK, { name: "cv-assistant:weekly-digests" })
   async sendWeeklyDigests(): Promise<void> {
-    if (!isCvAssistantCronEnabled()) return;
+    if (!isAnnixOrbitCronEnabled()) return;
     const sevenDaysAgo = DateTime.now().minus({ days: 7 }).toJSDate();
 
     const companies = await this.profileRepo
@@ -246,7 +246,7 @@ export class CvNotificationService {
 
           const results = await Promise.all(
             recruiters.map((recruiter) =>
-              this.emailService.sendCvAssistantWeeklyDigestEmail(recruiter.email, recruiter.name, {
+              this.emailService.sendAnnixOrbitWeeklyDigestEmail(recruiter.email, recruiter.name, {
                 newCandidates: candidates.length,
                 topMatches: recentMatches.map((m) => ({
                   candidateName: m.candidate?.name ?? "Unknown",
@@ -272,7 +272,7 @@ export class CvNotificationService {
 
   @Cron(CronExpression.EVERY_DAY_AT_9AM, { name: "cv-assistant:job-alerts" })
   async sendCandidateJobAlerts(): Promise<void> {
-    if (!isCvAssistantCronEnabled()) return;
+    if (!isAnnixOrbitCronEnabled()) return;
     await this.dispatchCandidateJobAlerts();
   }
 
@@ -316,7 +316,7 @@ export class CvNotificationService {
             return 0;
           }
 
-          const sent = await this.emailService.sendCvAssistantJobAlertEmail(
+          const sent = await this.emailService.sendAnnixOrbitJobAlertEmail(
             candidateEmail,
             candidate.name ?? "Job Seeker",
             recentMatches.map((m) => ({

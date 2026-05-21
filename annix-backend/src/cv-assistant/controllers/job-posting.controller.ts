@@ -14,14 +14,14 @@ import {
 } from "@nestjs/common";
 import { CreateJobPostingDto, UpdateJobPostingDto } from "../dto/job-posting.dto";
 import { UpdateJobWizardDto } from "../dto/job-wizard.dto";
-import { CvAssistantAuthGuard } from "../guards/cv-assistant-auth.guard";
+import { AnnixOrbitAuthGuard } from "../guards/cv-assistant-auth.guard";
 import { JobPostingService } from "../services/job-posting.service";
 import { NixJobAssistService } from "../services/nix-job-assist.service";
 import { SalaryBenchmarkService } from "../services/salary-benchmark.service";
 import { TestCandidateSeederService } from "../services/test-candidate-seeder.service";
 
 @Controller("cv-assistant/job-postings")
-@UseGuards(CvAssistantAuthGuard)
+@UseGuards(AnnixOrbitAuthGuard)
 export class JobPostingController {
   constructor(
     private readonly jobPostingService: JobPostingService,

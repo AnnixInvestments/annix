@@ -14,7 +14,7 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { IsIn, IsOptional, IsString, MaxLength } from "class-validator";
-import { CvAssistantAuthGuard } from "../guards/cv-assistant-auth.guard";
+import { AnnixOrbitAuthGuard } from "../guards/cv-assistant-auth.guard";
 import { CredentialService } from "../services/credential.service";
 
 interface SeekerAuthRequest {
@@ -77,7 +77,7 @@ class PatchCredentialDto {
 }
 
 @Controller("cv-assistant/me/credentials")
-@UseGuards(CvAssistantAuthGuard)
+@UseGuards(AnnixOrbitAuthGuard)
 export class CredentialController {
   constructor(private readonly credentialService: CredentialService) {}
 

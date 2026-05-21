@@ -1,13 +1,13 @@
 import { Controller, Get, Request, UseGuards } from "@nestjs/common";
 import { ReferenceStatus } from "../entities/candidate-reference.entity";
-import { CvAssistantAuthGuard } from "../guards/cv-assistant-auth.guard";
+import { AnnixOrbitAuthGuard } from "../guards/cv-assistant-auth.guard";
 import { CandidateService } from "../services/candidate.service";
 import { JobPostingService } from "../services/job-posting.service";
 import { MarketInsightsService } from "../services/market-insights.service";
 import { ReferenceService } from "../services/reference.service";
 
 @Controller("cv-assistant/dashboard")
-@UseGuards(CvAssistantAuthGuard)
+@UseGuards(AnnixOrbitAuthGuard)
 export class DashboardController {
   constructor(
     private readonly candidateService: CandidateService,

@@ -6,24 +6,24 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from "typeorm";
-import { CvAssistantCompany } from "./cv-assistant-company.entity";
-import { CvAssistantUser } from "./cv-assistant-user.entity";
+import { AnnixOrbitCompany } from "./cv-assistant-company.entity";
+import { AnnixOrbitUser } from "./cv-assistant-user.entity";
 
 @Entity("cv_assistant_push_subscriptions")
 export class CvPushSubscription {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne(() => CvAssistantUser, { onDelete: "CASCADE" })
+  @ManyToOne(() => AnnixOrbitUser, { onDelete: "CASCADE" })
   @JoinColumn({ name: "user_id" })
-  user: CvAssistantUser;
+  user: AnnixOrbitUser;
 
   @Column({ name: "user_id" })
   userId: number;
 
-  @ManyToOne(() => CvAssistantCompany, { onDelete: "CASCADE" })
+  @ManyToOne(() => AnnixOrbitCompany, { onDelete: "CASCADE" })
   @JoinColumn({ name: "company_id" })
-  company: CvAssistantCompany;
+  company: AnnixOrbitCompany;
 
   @Column({ name: "company_id" })
   companyId: number;

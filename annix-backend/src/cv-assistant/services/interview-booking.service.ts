@@ -12,7 +12,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Between, In, IsNull, Repository } from "typeorm";
 import { fromISO, fromJSDate, now, nowMillis } from "../../lib/datetime";
 import { Candidate, CandidateStatus } from "../entities/candidate.entity";
-import { CvAssistantCompany } from "../entities/cv-assistant-company.entity";
+import { AnnixOrbitCompany } from "../entities/cv-assistant-company.entity";
 import { CvEmailTemplateKind } from "../entities/cv-assistant-email-template.entity";
 import { InterviewBooking, InterviewBookingStatus } from "../entities/interview-booking.entity";
 import { InterviewInvite } from "../entities/interview-invite.entity";
@@ -48,8 +48,8 @@ export class InterviewBookingService {
     private readonly jobPostingRepo: Repository<JobPosting>,
     @InjectRepository(Candidate)
     private readonly candidateRepo: Repository<Candidate>,
-    @InjectRepository(CvAssistantCompany)
-    private readonly companyRepo: Repository<CvAssistantCompany>,
+    @InjectRepository(AnnixOrbitCompany)
+    private readonly companyRepo: Repository<AnnixOrbitCompany>,
     private readonly emailTemplateService: EmailTemplateService,
     private readonly configService: ConfigService,
   ) {}

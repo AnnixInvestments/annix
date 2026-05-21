@@ -11,7 +11,7 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { CvEmailTemplateKind } from "../entities/cv-assistant-email-template.entity";
-import { CvAssistantAuthGuard } from "../guards/cv-assistant-auth.guard";
+import { AnnixOrbitAuthGuard } from "../guards/cv-assistant-auth.guard";
 import { EmailTemplateService } from "../services/email-template.service";
 
 const KIND_VALUES = Object.values(CvEmailTemplateKind) as string[];
@@ -24,7 +24,7 @@ const parseKind = (raw: string): CvEmailTemplateKind => {
 };
 
 @Controller("cv-assistant/email-templates")
-@UseGuards(CvAssistantAuthGuard)
+@UseGuards(AnnixOrbitAuthGuard)
 export class EmailTemplateController {
   constructor(private readonly templates: EmailTemplateService) {}
 

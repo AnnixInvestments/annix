@@ -13,7 +13,7 @@ import {
 } from "@nestjs/common";
 import { JOB_SOURCE_PROVIDERS } from "../config/job-source-providers";
 import { CreateJobMarketSourceDto, UpdateJobMarketSourceDto } from "../dto/job-market.dto";
-import { CvAssistantAuthGuard } from "../guards/cv-assistant-auth.guard";
+import { AnnixOrbitAuthGuard } from "../guards/cv-assistant-auth.guard";
 import { AdzunaService } from "../services/adzuna.service";
 import { CandidateJobMatchingService } from "../services/candidate-job-matching.service";
 import { EmbeddingService } from "../services/embedding.service";
@@ -25,7 +25,7 @@ interface AuthRequest {
 }
 
 @Controller("cv-assistant/job-market")
-@UseGuards(CvAssistantAuthGuard)
+@UseGuards(AnnixOrbitAuthGuard)
 export class JobMarketController {
   constructor(
     private readonly sourceService: JobMarketSourceService,

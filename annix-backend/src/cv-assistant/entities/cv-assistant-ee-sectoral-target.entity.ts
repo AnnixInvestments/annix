@@ -12,7 +12,7 @@ export enum EeTargetMetric {
 export type EeTargetOccupationalLevel = OccupationalLevel | "all_levels";
 
 @Entity("cv_assistant_ee_sectoral_targets")
-export class CvAssistantEeSectoralTarget {
+export class AnnixOrbitEeSectoralTarget {
   @PrimaryGeneratedColumn()
   id: number;
 

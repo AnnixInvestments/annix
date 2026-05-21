@@ -3,9 +3,9 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { EmailService } from "../../email/email.service";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
-import { CvAssistantCompany } from "../entities/cv-assistant-company.entity";
+import { AnnixOrbitCompany } from "../entities/cv-assistant-company.entity";
 import {
-  CvAssistantEmailTemplate,
+  AnnixOrbitEmailTemplate,
   CvEmailTemplateKind,
 } from "../entities/cv-assistant-email-template.entity";
 import {
@@ -32,10 +32,10 @@ export class EmailTemplateService {
   private readonly logger = new Logger(EmailTemplateService.name);
 
   constructor(
-    @InjectRepository(CvAssistantEmailTemplate)
-    private readonly templateRepo: Repository<CvAssistantEmailTemplate>,
-    @InjectRepository(CvAssistantCompany)
-    private readonly companyRepo: Repository<CvAssistantCompany>,
+    @InjectRepository(AnnixOrbitEmailTemplate)
+    private readonly templateRepo: Repository<AnnixOrbitEmailTemplate>,
+    @InjectRepository(AnnixOrbitCompany)
+    private readonly companyRepo: Repository<AnnixOrbitCompany>,
     private readonly aiChatService: AiChatService,
     private readonly emailService: EmailService,
   ) {}
@@ -135,7 +135,7 @@ export class EmailTemplateService {
 
   private merge(
     def: EmailTemplateDefinition,
-    custom: CvAssistantEmailTemplate | null,
+    custom: AnnixOrbitEmailTemplate | null,
   ): ResolvedTemplate {
     if (!custom) {
       return {

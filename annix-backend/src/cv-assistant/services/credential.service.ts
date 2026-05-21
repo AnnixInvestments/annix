@@ -10,7 +10,7 @@ import { Between, In, Repository } from "typeorm";
 import { EmailService } from "../../email/email.service";
 import { DateTime } from "../../lib/datetime";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
-import { isCvAssistantCronEnabled } from "../cv-assistant-cron.config";
+import { isAnnixOrbitCronEnabled } from "../cv-assistant-cron.config";
 import { Candidate } from "../entities/candidate.entity";
 import { CvCredential } from "../entities/cv-credential.entity";
 
@@ -106,7 +106,7 @@ export class CredentialService {
 
   @Cron("0 7 * * *", { name: "cv-assistant:credential-expiry-reminders" })
   async sendExpiryReminders(): Promise<{ sent: number }> {
-    if (!isCvAssistantCronEnabled()) return { sent: 0 };
+    if (!isAnnixOrbitCronEnabled()) return { sent: 0 };
     return this.dispatchExpiryReminders();
   }
 

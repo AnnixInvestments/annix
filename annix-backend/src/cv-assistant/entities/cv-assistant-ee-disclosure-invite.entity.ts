@@ -12,7 +12,7 @@ import { JobPosting } from "./job-posting.entity";
 
 @Entity("cv_assistant_ee_disclosure_invites")
 @Index(["candidateId"])
-export class CvAssistantEeDisclosureInvite {
+export class AnnixOrbitEeDisclosureInvite {
   @PrimaryGeneratedColumn()
   id: number;
 

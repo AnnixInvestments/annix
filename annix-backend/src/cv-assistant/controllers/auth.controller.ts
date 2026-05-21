@@ -7,12 +7,12 @@ import {
   ResendVerificationDto,
   ResetPasswordDto,
 } from "../dto/auth.dto";
-import { CvAssistantAuthGuard } from "../guards/cv-assistant-auth.guard";
-import { CvAssistantAuthService } from "../services/auth.service";
+import { AnnixOrbitAuthGuard } from "../guards/cv-assistant-auth.guard";
+import { AnnixOrbitAuthService } from "../services/auth.service";
 
 @Controller("cv-assistant/auth")
-export class CvAssistantAuthController {
-  constructor(private readonly authService: CvAssistantAuthService) {}
+export class AnnixOrbitAuthController {
+  constructor(private readonly authService: AnnixOrbitAuthService) {}
 
   @Post("register")
   async register(@Body() dto: RegisterDto) {
@@ -64,19 +64,19 @@ export class CvAssistantAuthController {
   }
 
   @Get("me")
-  @UseGuards(CvAssistantAuthGuard)
+  @UseGuards(AnnixOrbitAuthGuard)
   async currentUser(@Request() req: { user: { id: number } }) {
     return this.authService.currentUser(req.user.id);
   }
 
   @Get("team")
-  @UseGuards(CvAssistantAuthGuard)
+  @UseGuards(AnnixOrbitAuthGuard)
   async teamMembers(@Request() req: { user: { companyId: number } }) {
     return this.authService.teamMembers(req.user.companyId);
   }
 
   @Post("logout")
-  @UseGuards(CvAssistantAuthGuard)
+  @UseGuards(AnnixOrbitAuthGuard)
   async logout() {
     return { message: "Logged out successfully" };
   }

@@ -32,7 +32,7 @@ import type {
   EePopulationGroup,
   EePurpose,
 } from "../entities/cv-assistant-candidate-ee-attributes.entity";
-import { CvAssistantAuthGuard } from "../guards/cv-assistant-auth.guard";
+import { AnnixOrbitAuthGuard } from "../guards/cv-assistant-auth.guard";
 import { IndividualProfileService } from "../services/individual-profile.service";
 import { InterviewBookingService } from "../services/interview-booking.service";
 import { NixCvPdfService } from "../services/nix-cv-pdf.service";
@@ -40,7 +40,7 @@ import type { NixCalendarAdvisoryConflict, NixGeneratedCv } from "../services/ni
 import { NixSeekerAssistService } from "../services/nix-seeker-assist.service";
 
 @Controller("cv-assistant/me")
-@UseGuards(CvAssistantAuthGuard)
+@UseGuards(AnnixOrbitAuthGuard)
 export class IndividualProfileController {
   constructor(
     private readonly individualProfileService: IndividualProfileService,

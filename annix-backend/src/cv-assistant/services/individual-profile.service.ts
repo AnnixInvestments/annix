@@ -17,10 +17,10 @@ import {
   type EePurpose,
 } from "../entities/cv-assistant-candidate-ee-attributes.entity";
 import {
-  CvAssistantIndividualDocument,
+  AnnixOrbitIndividualDocument,
   IndividualDocumentKind,
 } from "../entities/cv-assistant-individual-document.entity";
-import { CvAssistantProfile, CvAssistantUserType } from "../entities/cv-assistant-profile.entity";
+import { AnnixOrbitProfile, AnnixOrbitUserType } from "../entities/cv-assistant-profile.entity";
 import { CvAuditService } from "./cv-audit.service";
 import { CvExtractionService } from "./cv-extraction.service";
 import { type EeAttributesView, PopiaService } from "./popia.service";
@@ -109,10 +109,10 @@ export class IndividualProfileService {
   private readonly logger = new Logger(IndividualProfileService.name);
 
   constructor(
-    @InjectRepository(CvAssistantProfile)
-    private readonly profileRepo: Repository<CvAssistantProfile>,
-    @InjectRepository(CvAssistantIndividualDocument)
-    private readonly documentRepo: Repository<CvAssistantIndividualDocument>,
+    @InjectRepository(AnnixOrbitProfile)
+    private readonly profileRepo: Repository<AnnixOrbitProfile>,
+    @InjectRepository(AnnixOrbitIndividualDocument)
+    private readonly documentRepo: Repository<AnnixOrbitIndividualDocument>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
     @InjectRepository(Candidate)
@@ -125,12 +125,12 @@ export class IndividualProfileService {
     private readonly popiaService: PopiaService,
   ) {}
 
-  async profileForUser(userId: number): Promise<CvAssistantProfile> {
+  async profileForUser(userId: number): Promise<AnnixOrbitProfile> {
     const profile = await this.profileRepo.findOne({ where: { userId } });
     if (!profile) {
       throw new NotFoundException("Annix Orbit profile not found");
     }
-    if (profile.userType !== CvAssistantUserType.INDIVIDUAL) {
+    if (profile.userType !== AnnixOrbitUserType.INDIVIDUAL) {
       throw new BadRequestException("This endpoint is only available to individual job seekers.");
     }
     return profile;
@@ -274,10 +274,7 @@ export class IndividualProfileService {
     }
   }
 
-  private async refreshCvExtraction(
-    profile: CvAssistantProfile,
-    cvFilePath: string,
-  ): Promise<void> {
+  private async refreshCvExtraction(profile: AnnixOrbitProfile, cvFilePath: string): Promise<void> {
     profile.cvFilePath = cvFilePath;
     profile.cvUploadedAt = now().toJSDate();
 
@@ -507,7 +504,7 @@ export class IndividualProfileService {
     profile.deletionTokenExpires = now().plus({ hours: DELETION_TOKEN_EXPIRY_HOURS }).toJSDate();
     await this.profileRepo.save(profile);
 
-    await this.emailService.sendCvAssistantDeletionConfirmEmail(user.email, token);
+    await this.emailService.sendAnnixOrbitDeletionConfirmEmail(user.email, token);
 
     return {
       message:
@@ -530,7 +527,7 @@ export class IndividualProfileService {
       );
     }
 
-    if (profile.userType !== CvAssistantUserType.INDIVIDUAL) {
+    if (profile.userType !== AnnixOrbitUserType.INDIVIDUAL) {
       throw new BadRequestException(
         "Account deletion is only available to individual job seekers.",
       );
@@ -581,7 +578,7 @@ export class IndividualProfileService {
     };
   }
 
-  private async performErasure(profile: CvAssistantProfile): Promise<{ message: string }> {
+  private async performErasure(profile: AnnixOrbitProfile): Promise<{ message: string }> {
     const userId = profile.userId;
     const user = await this.userRepo.findOne({ where: { id: userId } });
     const docs = await this.documentRepo.find({ where: { profileId: profile.id } });

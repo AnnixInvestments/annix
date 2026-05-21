@@ -1,10 +1,10 @@
 import { Controller, Get, Query, Request, UseGuards } from "@nestjs/common";
 import { ReferenceStatus } from "../entities/candidate-reference.entity";
-import { CvAssistantAuthGuard } from "../guards/cv-assistant-auth.guard";
+import { AnnixOrbitAuthGuard } from "../guards/cv-assistant-auth.guard";
 import { ReferenceService } from "../services/reference.service";
 
 @Controller("cv-assistant/references")
-@UseGuards(CvAssistantAuthGuard)
+@UseGuards(AnnixOrbitAuthGuard)
 export class ReferencesController {
   constructor(private readonly referenceService: ReferenceService) {}
 

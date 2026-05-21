@@ -8,7 +8,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
-import { CvAssistantCompany } from "./cv-assistant-company.entity";
+import { AnnixOrbitCompany } from "./cv-assistant-company.entity";
 
 export enum CvEmailTemplateKind {
   REJECTION = "rejection",
@@ -22,13 +22,13 @@ export enum CvEmailTemplateKind {
 
 @Entity("cv_assistant_email_templates")
 @Index(["companyId", "kind"], { unique: true })
-export class CvAssistantEmailTemplate {
+export class AnnixOrbitEmailTemplate {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne(() => CvAssistantCompany, { onDelete: "CASCADE" })
+  @ManyToOne(() => AnnixOrbitCompany, { onDelete: "CASCADE" })
   @JoinColumn({ name: "company_id" })
-  company: CvAssistantCompany;
+  company: AnnixOrbitCompany;
 
   @Column({ name: "company_id" })
   companyId: number;

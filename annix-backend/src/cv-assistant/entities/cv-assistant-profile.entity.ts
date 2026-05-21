@@ -13,14 +13,14 @@ import { User } from "../../user/entities/user.entity";
 import type { NixGeneratedCv } from "../services/nix-prompts";
 import type { ExtractedCvData } from "./candidate.entity";
 
-export enum CvAssistantUserType {
+export enum AnnixOrbitUserType {
   COMPANY = "company",
   INDIVIDUAL = "individual",
 }
 
 @Entity("cv_assistant_profiles")
 @Index(["userId"], { unique: true })
-export class CvAssistantProfile {
+export class AnnixOrbitProfile {
   @PrimaryGeneratedColumn()
   id: number;
 
@@ -38,8 +38,8 @@ export class CvAssistantProfile {
   @Column({ name: "company_id", nullable: true })
   companyId: number | null;
 
-  @Column({ name: "user_type", type: "varchar", length: 20, default: CvAssistantUserType.COMPANY })
-  userType: CvAssistantUserType;
+  @Column({ name: "user_type", type: "varchar", length: 20, default: AnnixOrbitUserType.COMPANY })
+  userType: AnnixOrbitUserType;
 
   @Column({ name: "match_alert_threshold", type: "int", default: 80 })
   matchAlertThreshold: number;

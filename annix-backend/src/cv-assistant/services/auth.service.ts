@@ -20,25 +20,25 @@ import { UserAppAccess } from "../../rbac/entities/user-app-access.entity";
 import { PasswordService } from "../../shared/auth/password.service";
 import { User } from "../../user/entities/user.entity";
 import { CV_ASSISTANT_JWT_SECRET_DEFAULT } from "../cv-assistant.constants";
-import { CvAssistantCompany } from "../entities/cv-assistant-company.entity";
-import { CvAssistantProfile, CvAssistantUserType } from "../entities/cv-assistant-profile.entity";
-import { CvAssistantRole } from "../entities/cv-assistant-user.entity";
+import { AnnixOrbitCompany } from "../entities/cv-assistant-company.entity";
+import { AnnixOrbitProfile, AnnixOrbitUserType } from "../entities/cv-assistant-profile.entity";
+import { AnnixOrbitRole } from "../entities/cv-assistant-user.entity";
 
 const VERIFICATION_EXPIRY_HOURS = 24;
 
 @Injectable()
-export class CvAssistantAuthService {
-  private readonly logger = new Logger(CvAssistantAuthService.name);
+export class AnnixOrbitAuthService {
+  private readonly logger = new Logger(AnnixOrbitAuthService.name);
 
   constructor(
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
-    @InjectRepository(CvAssistantProfile)
-    private readonly profileRepo: Repository<CvAssistantProfile>,
+    @InjectRepository(AnnixOrbitProfile)
+    private readonly profileRepo: Repository<AnnixOrbitProfile>,
     @InjectRepository(Company)
     private readonly companyRepo: Repository<Company>,
-    @InjectRepository(CvAssistantCompany)
-    private readonly cvCompanyRepo: Repository<CvAssistantCompany>,
+    @InjectRepository(AnnixOrbitCompany)
+    private readonly cvCompanyRepo: Repository<AnnixOrbitCompany>,
     @InjectRepository(App)
     private readonly appRepo: Repository<App>,
     @InjectRepository(AppRole)
@@ -65,7 +65,7 @@ export class CvAssistantAuthService {
    * row in `cv_assistant_companies` with the SAME id whenever a `companies`
    * row is created from this service. Idempotent — INSERT…ON CONFLICT.
    */
-  private async mirrorIntoCvAssistantCompanies(id: number, name: string): Promise<void> {
+  private async mirrorIntoAnnixOrbitCompanies(id: number, name: string): Promise<void> {
     await this.cvCompanyRepo.query(
       `INSERT INTO cv_assistant_companies (id, name, created_at, updated_at)
        VALUES ($1, $2, now(), now())
@@ -90,9 +90,9 @@ export class CvAssistantAuthService {
    */
   private async ensureCompanyProfile(
     user: User,
-    profile: CvAssistantProfile | null,
-  ): Promise<CvAssistantProfile | null> {
-    if (profile && profile.userType === CvAssistantUserType.INDIVIDUAL) {
+    profile: AnnixOrbitProfile | null,
+  ): Promise<AnnixOrbitProfile | null> {
+    if (profile && profile.userType === AnnixOrbitUserType.INDIVIDUAL) {
       return profile;
     }
     if (profile?.companyId) {
@@ -113,17 +113,17 @@ export class CvAssistantAuthService {
       city: null,
     });
     const savedCompany = await this.companyRepo.save(company);
-    await this.mirrorIntoCvAssistantCompanies(savedCompany.id, company.name);
+    await this.mirrorIntoAnnixOrbitCompanies(savedCompany.id, company.name);
 
     if (profile) {
       profile.companyId = savedCompany.id;
-      profile.userType = CvAssistantUserType.COMPANY;
+      profile.userType = AnnixOrbitUserType.COMPANY;
       return this.profileRepo.save(profile);
     }
     const created = this.profileRepo.create({
       userId: user.id,
       companyId: savedCompany.id,
-      userType: CvAssistantUserType.COMPANY,
+      userType: AnnixOrbitUserType.COMPANY,
     });
     return this.profileRepo.save(created);
   }
@@ -157,7 +157,7 @@ export class CvAssistantAuthService {
       city,
     });
     const savedCompany = await this.companyRepo.save(company);
-    await this.mirrorIntoCvAssistantCompanies(savedCompany.id, companyName);
+    await this.mirrorIntoAnnixOrbitCompanies(savedCompany.id, companyName);
 
     const user = this.userRepo.create({
       email,
@@ -175,13 +175,13 @@ export class CvAssistantAuthService {
     const profile = this.profileRepo.create({
       userId: savedUser.id,
       companyId: savedCompany.id,
-      userType: CvAssistantUserType.COMPANY,
+      userType: AnnixOrbitUserType.COMPANY,
     });
     await this.profileRepo.save(profile);
 
     await this.bridgeToRbac(savedUser.id, "admin");
 
-    await this.emailService.sendCvAssistantVerificationEmail(email, verificationToken);
+    await this.emailService.sendAnnixOrbitVerificationEmail(email, verificationToken);
 
     return {
       message: "Registration successful. Please check your email to verify your account.",
@@ -189,8 +189,8 @@ export class CvAssistantAuthService {
         id: savedUser.id,
         email: savedUser.email,
         name,
-        role: CvAssistantRole.ADMIN,
-        userType: CvAssistantUserType.COMPANY,
+        role: AnnixOrbitRole.ADMIN,
+        userType: AnnixOrbitUserType.COMPANY,
       },
     };
   }
@@ -221,11 +221,11 @@ export class CvAssistantAuthService {
     const profile = this.profileRepo.create({
       userId: savedUser.id,
       companyId: null,
-      userType: CvAssistantUserType.INDIVIDUAL,
+      userType: AnnixOrbitUserType.INDIVIDUAL,
     });
     await this.profileRepo.save(profile);
 
-    await this.emailService.sendCvAssistantVerificationEmail(email, verificationToken);
+    await this.emailService.sendAnnixOrbitVerificationEmail(email, verificationToken);
 
     return {
       message: "Registration successful. Please check your email to verify your account.",
@@ -233,8 +233,8 @@ export class CvAssistantAuthService {
         id: savedUser.id,
         email: savedUser.email,
         name,
-        role: CvAssistantRole.INDIVIDUAL,
-        userType: CvAssistantUserType.INDIVIDUAL,
+        role: AnnixOrbitRole.INDIVIDUAL,
+        userType: AnnixOrbitUserType.INDIVIDUAL,
       },
     };
   }
@@ -290,7 +290,7 @@ export class CvAssistantAuthService {
     user.emailVerificationExpires = verificationExpires;
     await this.userRepo.save(user);
 
-    await this.emailService.sendCvAssistantVerificationEmail(email, verificationToken);
+    await this.emailService.sendAnnixOrbitVerificationEmail(email, verificationToken);
 
     return { message: "Verification email resent. Please check your inbox." };
   }
@@ -306,7 +306,7 @@ export class CvAssistantAuthService {
       user.resetPasswordExpires = resetExpires;
       await this.userRepo.save(user);
 
-      await this.emailService.sendCvAssistantPasswordResetEmail(email, resetToken);
+      await this.emailService.sendAnnixOrbitPasswordResetEmail(email, resetToken);
     }
 
     return {
@@ -365,7 +365,7 @@ export class CvAssistantAuthService {
         email: user.email,
         name: userName,
         role,
-        userType: profile?.userType ?? CvAssistantUserType.COMPANY,
+        userType: profile?.userType ?? AnnixOrbitUserType.COMPANY,
       },
     };
   }
@@ -389,7 +389,7 @@ export class CvAssistantAuthService {
       email: user.email,
       name: userName,
       role,
-      userType: profile?.userType ?? CvAssistantUserType.COMPANY,
+      userType: profile?.userType ?? AnnixOrbitUserType.COMPANY,
       companyId: profile?.companyId ?? null,
       companyName: profile?.company?.name ?? null,
       createdAt: user.createdAt,
@@ -420,7 +420,7 @@ export class CvAssistantAuthService {
             email: user.email,
             name: userName,
             role,
-            userType: profile?.userType ?? CvAssistantUserType.COMPANY,
+            userType: profile?.userType ?? AnnixOrbitUserType.COMPANY,
             companyId: profile?.companyId ?? payload.companyId ?? null,
             type: "cv-assistant",
           },
@@ -434,7 +434,7 @@ export class CvAssistantAuthService {
 
   async teamMembers(companyId: number) {
     const profiles = await this.profileRepo.find({
-      where: { companyId, userType: CvAssistantUserType.COMPANY },
+      where: { companyId, userType: AnnixOrbitUserType.COMPANY },
       relations: ["user"],
       order: { createdAt: "ASC" },
     });
@@ -461,11 +461,11 @@ export class CvAssistantAuthService {
     return result;
   }
 
-  private async resolveRole(userId: number, profile?: CvAssistantProfile | null): Promise<string> {
+  private async resolveRole(userId: number, profile?: AnnixOrbitProfile | null): Promise<string> {
     const resolvedProfile =
       profile === undefined ? await this.profileRepo.findOne({ where: { userId } }) : profile;
-    if (resolvedProfile?.userType === CvAssistantUserType.INDIVIDUAL) {
-      return CvAssistantRole.INDIVIDUAL;
+    if (resolvedProfile?.userType === AnnixOrbitUserType.INDIVIDUAL) {
+      return AnnixOrbitRole.INDIVIDUAL;
     }
 
     const access = await this.userAppAccessRepo.findOne({
@@ -475,15 +475,15 @@ export class CvAssistantAuthService {
 
     if (access?.role) {
       const roleMap: Record<string, string> = {
-        viewer: CvAssistantRole.VIEWER,
-        editor: CvAssistantRole.RECRUITER,
-        administrator: CvAssistantRole.ADMIN,
+        viewer: AnnixOrbitRole.VIEWER,
+        editor: AnnixOrbitRole.RECRUITER,
+        administrator: AnnixOrbitRole.ADMIN,
       };
       const mapped = roleMap[access.role.code];
-      return mapped || CvAssistantRole.VIEWER;
+      return mapped || AnnixOrbitRole.VIEWER;
     }
 
-    return CvAssistantRole.VIEWER;
+    return AnnixOrbitRole.VIEWER;
   }
 
   private async bridgeToRbac(userId: number, cvRole: string): Promise<void> {
@@ -528,9 +528,9 @@ export class CvAssistantAuthService {
     return this.generateTokens(user, profile, role);
   }
 
-  private generateTokens(user: User, profile: CvAssistantProfile | null, role: string) {
+  private generateTokens(user: User, profile: AnnixOrbitProfile | null, role: string) {
     const userName = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email;
-    const userType = profile?.userType ?? CvAssistantUserType.COMPANY;
+    const userType = profile?.userType ?? AnnixOrbitUserType.COMPANY;
     const secret = this.jwtSecret();
 
     const accessToken = this.jwtService.sign(

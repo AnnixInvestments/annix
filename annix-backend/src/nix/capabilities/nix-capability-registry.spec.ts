@@ -30,7 +30,7 @@ describe("NixCapabilityRegistry", () => {
     guideSlug: "creating-a-job-card",
   };
 
-  const fakeCvAssistant: INixCapability = {
+  const fakeAnnixOrbit: INixCapability = {
     key: "cv-assistant.post-job",
     appCode: "cv-assistant",
     label: "Post a job",
@@ -54,7 +54,7 @@ describe("NixCapabilityRegistry", () => {
   it("filters capabilities by appCode", () => {
     registry.register(fakeRfq);
     registry.register(fakeStockControl);
-    registry.register(fakeCvAssistant);
+    registry.register(fakeAnnixOrbit);
 
     const rfqCaps = registry.forApp("rfq");
     expect(rfqCaps).toHaveLength(1);
@@ -71,7 +71,7 @@ describe("NixCapabilityRegistry", () => {
   it("findByIntent matches against declared intents", () => {
     registry.register(fakeRfq);
     registry.register(fakeStockControl);
-    registry.register(fakeCvAssistant);
+    registry.register(fakeAnnixOrbit);
 
     const boqMatches = registry.findByIntent("can you extract boq from this drawing");
     expect(boqMatches).toHaveLength(1);
@@ -83,7 +83,7 @@ describe("NixCapabilityRegistry", () => {
 
     const jobMatches = registry.findByIntent("help me post a job for a senior engineer");
     expect(jobMatches).toHaveLength(1);
-    expect(jobMatches[0].key).toBe(fakeCvAssistant.key);
+    expect(jobMatches[0].key).toBe(fakeAnnixOrbit.key);
   });
 
   it("findByIntent returns empty for non-matching phrases", () => {
@@ -101,16 +101,16 @@ describe("NixCapabilityRegistry", () => {
 
   it("findByGuideSlug returns the matching capability", () => {
     registry.register(fakeStockControl);
-    registry.register(fakeCvAssistant);
+    registry.register(fakeAnnixOrbit);
 
     expect(registry.findByGuideSlug("creating-a-job-card")?.key).toBe(fakeStockControl.key);
-    expect(registry.findByGuideSlug("posting-a-job-with-nix")?.key).toBe(fakeCvAssistant.key);
+    expect(registry.findByGuideSlug("posting-a-job-with-nix")?.key).toBe(fakeAnnixOrbit.key);
     expect(registry.findByGuideSlug("does-not-exist")).toBeNull();
   });
 
   it("registeredApps returns sorted unique app codes", () => {
     registry.register(fakeStockControl);
-    registry.register(fakeCvAssistant);
+    registry.register(fakeAnnixOrbit);
     registry.register(fakeRfq);
 
     expect(registry.registeredApps()).toEqual(["cv-assistant", "rfq", "stock-control"]);
@@ -159,9 +159,9 @@ describe("NixCapabilityRegistry", () => {
     });
 
     it("falls back to label substring match when intents do not match", () => {
-      registry.register(fakeCvAssistant);
+      registry.register(fakeAnnixOrbit);
       const match = registry.matchWalkthroughIntent("walk me through post a job");
-      expect(match?.capability.key).toBe(fakeCvAssistant.key);
+      expect(match?.capability.key).toBe(fakeAnnixOrbit.key);
     });
 
     it("returns null when no trigger phrase is present", () => {

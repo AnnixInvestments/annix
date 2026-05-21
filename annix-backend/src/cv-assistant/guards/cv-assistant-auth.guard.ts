@@ -6,10 +6,10 @@ import { Repository } from "typeorm";
 import { UserAppAccess } from "../../rbac/entities/user-app-access.entity";
 import { User } from "../../user/entities/user.entity";
 import { CV_ASSISTANT_JWT_SECRET_DEFAULT } from "../cv-assistant.constants";
-import { CvAssistantRole } from "../entities/cv-assistant-user.entity";
+import { AnnixOrbitRole } from "../entities/cv-assistant-user.entity";
 
 @Injectable()
-export class CvAssistantAuthGuard implements CanActivate {
+export class AnnixOrbitAuthGuard implements CanActivate {
   constructor(
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
@@ -48,7 +48,7 @@ export class CvAssistantAuthGuard implements CanActivate {
       const userType = payload.userType ?? "company";
       const role =
         userType === "individual"
-          ? CvAssistantRole.INDIVIDUAL
+          ? AnnixOrbitRole.INDIVIDUAL
           : await this.resolveRole(user.id, payload.role);
 
       request.user = {
@@ -74,13 +74,13 @@ export class CvAssistantAuthGuard implements CanActivate {
 
     if (access?.role) {
       const roleMap: Record<string, string> = {
-        viewer: CvAssistantRole.VIEWER,
-        editor: CvAssistantRole.RECRUITER,
-        administrator: CvAssistantRole.ADMIN,
+        viewer: AnnixOrbitRole.VIEWER,
+        editor: AnnixOrbitRole.RECRUITER,
+        administrator: AnnixOrbitRole.ADMIN,
       };
       return roleMap[access.role.code] || fallbackRole;
     }
 
-    return fallbackRole || CvAssistantRole.VIEWER;
+    return fallbackRole || AnnixOrbitRole.VIEWER;
   }
 }

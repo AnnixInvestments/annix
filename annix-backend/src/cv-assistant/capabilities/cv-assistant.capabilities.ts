@@ -10,8 +10,8 @@ import { NixCapabilityRegistry } from "../../nix/capabilities";
  * right intent suggestions and walkthrough hooks.
  */
 @Injectable()
-export class CvAssistantCapabilities implements OnModuleInit {
-  private readonly logger = new Logger(CvAssistantCapabilities.name);
+export class AnnixOrbitCapabilities implements OnModuleInit {
+  private readonly logger = new Logger(AnnixOrbitCapabilities.name);
 
   constructor(private readonly registry: NixCapabilityRegistry) {}
 
