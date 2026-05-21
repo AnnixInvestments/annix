@@ -10,7 +10,12 @@ import {
 } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { AnnixOrbitMark } from "@/app/components/AnnixOrbitLogo";
+import { AnnixOrbitIcon } from "@/app/components/branding/AnnixOrbitIcon";
+import {
+  ANNIX_BG_GRADIENT,
+  ANNIX_FONT_DISPLAY,
+  ANNIX_PALETTE,
+} from "@/app/components/branding/tokens";
 
 export const metadata: Metadata = {
   title: "Annix Platform",
@@ -198,43 +203,53 @@ export default function HomePage() {
             <div
               className="backdrop-blur-sm rounded-xl shadow-lg p-8 border-2 hover:shadow-2xl transition-all duration-300 h-full flex flex-col text-center"
               style={{
-                background: "linear-gradient(180deg, #001B8F 0%, #00135F 100%)",
+                background: ANNIX_BG_GRADIENT,
                 borderColor: "rgba(255, 138, 0, 0.25)",
               }}
             >
-              <AnnixOrbitMark className="w-32 h-32 mx-auto mb-3" />
+              <AnnixOrbitIcon className="w-32 h-32 mx-auto mb-3" />
               <div
                 className="text-3xl font-extrabold tracking-[0.18em] text-white leading-none"
-                style={{ fontFamily: '"Exo 2", "Inter", system-ui, sans-serif' }}
+                style={{ fontFamily: ANNIX_FONT_DISPLAY }}
               >
                 ANNIX
               </div>
               <div className="flex items-center justify-center gap-2 mt-2">
-                <span className="h-px w-8" style={{ backgroundColor: "#FF8A00", opacity: 0.6 }} />
+                <span
+                  className="h-px w-8"
+                  style={{ backgroundColor: ANNIX_PALETTE.orange, opacity: 0.6 }}
+                />
                 <div
                   className="text-lg font-bold tracking-[0.4em]"
                   style={{
-                    color: "#FF8A00",
-                    fontFamily: '"Exo 2", "Inter", system-ui, sans-serif',
+                    color: ANNIX_PALETTE.orange,
+                    fontFamily: ANNIX_FONT_DISPLAY,
                   }}
                 >
                   ORBIT
                 </div>
-                <span className="h-px w-8" style={{ backgroundColor: "#FF8A00", opacity: 0.6 }} />
+                <span
+                  className="h-px w-8"
+                  style={{ backgroundColor: ANNIX_PALETTE.orange, opacity: 0.6 }}
+                />
               </div>
               <p
                 className="text-[10px] font-semibold tracking-[0.3em] uppercase mt-3 mb-4"
-                style={{ color: "#E8EDF5" }}
+                style={{ color: ANNIX_PALETTE.silver }}
               >
-                Hiring &bull; Talent &bull; Compliance
+                Hiring <span style={{ color: ANNIX_PALETTE.orange }}>&bull;</span> Talent{" "}
+                <span style={{ color: ANNIX_PALETTE.orange }}>&bull;</span> Compliance
               </p>
-              <p className="text-sm leading-relaxed mb-6 flex-1" style={{ color: "#A7B0C0" }}>
+              <p
+                className="text-sm leading-relaxed mb-6 flex-1"
+                style={{ color: ANNIX_PALETTE.grey }}
+              >
                 The intelligent workforce ecosystem for modern hiring, talent growth, and
                 compliance. AI screening, reference checks, and job matching.
               </p>
               <span
                 className="mt-auto inline-flex items-center justify-center font-semibold group-hover:translate-x-1 transition-transform"
-                style={{ color: "#FFA500" }}
+                style={{ color: ANNIX_PALETTE.orangeLight }}
               >
                 Get started
                 <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
