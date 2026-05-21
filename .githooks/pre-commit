@@ -135,8 +135,8 @@ check_version_bump "Annix Rep" \
     "annix-frontend/src/app/fieldflow/"
 
 check_version_bump "Annix Orbit" \
-    "annix-frontend/src/app/cv-assistant/config/version.ts" \
-    "annix-frontend/src/app/cv-assistant/" "annix-backend/src/cv-assistant/"
+    "annix-frontend/src/app/annix-orbit/config/version.ts" \
+    "annix-frontend/src/app/annix-orbit/" "annix-backend/src/annix-orbit/"
 
 # ─── Fast pre-commit checks ────────────────────────────────────────────
 # These catch issues that otherwise only surface during the slow pre-push
@@ -144,13 +144,14 @@ check_version_bump "Annix Orbit" \
 
 STAGED_TS_FILES=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '\.(ts|tsx|js|jsx|mjs|cjs|json)$' || true)
 
-# 1. Biome lint on staged files only (prevents formatting failures at push)
+# 1. Biome lint on staged files only (prevents formatting failures at push).
+#    Use biome's built-in `--staged` flag so we don't have to pass the file
+#    list on the command line — that hits Windows' ~8 KB cmdline limit on
+#    large refactors and renames (>~100 staged files).
 if [ -n "$STAGED_TS_FILES" ]; then
     echo ""
     echo "Running biome check on staged files..."
-    # Build file list for biome (one per line → space-separated)
-    BIOME_FILES=$(echo "$STAGED_TS_FILES" | tr '\n' ' ')
-    BIOME_OUTPUT=$(pnpm biome check $BIOME_FILES 2>&1) && BIOME_EXIT=0 || BIOME_EXIT=$?
+    BIOME_OUTPUT=$(pnpm biome check --staged 2>&1) && BIOME_EXIT=0 || BIOME_EXIT=$?
     if [ $BIOME_EXIT -ne 0 ] && ! echo "$BIOME_OUTPUT" | grep -q "No files were processed"; then
         echo ""
         echo "============================================"
@@ -511,11 +512,22 @@ if [ -n "$STAGED_MIGRATIONS" ]; then
     echo "Migration enum-type check passed."
 fi
 
-# === HOW-TO GUIDE RELEVANCE PROMPT ===
+# === HOW-TO GUIDE RELEVANCE PROMPT (BLOCKING) ===
 # Auto-discovers all how-to guides under annix-frontend/src/app/*/how-to/guides/,
 # matches their `relatedPaths` against staged files, and prompts the engineer
-# to edit / bump / skip / draft-with-claude before the commit lands.
+# to edit / bump / skip-with-reason / draft-with-claude before the commit lands.
+# `skip` requires a one-line reason which is recorded in .git/HOWTO_SKIP_REASONS
+# and appended as a `Howto-Skip:` trailer by the commit-msg hook.
 # Honours HOWTO_HOOK=skip and the standard --no-verify escape hatch.
 if [ -f "$ROOT_DIR/scripts/howto-pre-commit-prompt.ts" ]; then
-    node "$ROOT_DIR/scripts/howto-pre-commit-prompt.ts" || true
+    if ! node "$ROOT_DIR/scripts/howto-pre-commit-prompt.ts"; then
+        echo ""
+        echo "============================================"
+        echo "COMMIT BLOCKED: How-To guide prompt aborted"
+        echo "============================================"
+        echo "Run 'HOWTO_HOOK=skip git commit ...' to bypass entirely,"
+        echo "or 'git commit --no-verify' to skip ALL pre-commit checks."
+        echo ""
+        exit 1
+    fi
 fi

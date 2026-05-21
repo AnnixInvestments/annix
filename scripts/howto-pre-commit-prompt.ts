@@ -4,9 +4,11 @@ import {
   closeSync,
   createReadStream,
   createWriteStream,
+  existsSync,
   openSync,
   readdirSync,
   readFileSync,
+  unlinkSync,
   writeFileSync,
 } from "node:fs";
 import { dirname, relative, resolve } from "node:path";
@@ -20,6 +22,30 @@ const APP_DIR = resolve(REPO_ROOT, "annix-frontend", "src", "app");
 if (process.env.HOWTO_HOOK === "skip") {
   process.exit(0);
 }
+
+const gitPath = (name) => {
+  try {
+    const out = execSync(`git rev-parse --git-path ${name}`, {
+      cwd: REPO_ROOT,
+      encoding: "utf8",
+    }).trim();
+    return resolve(REPO_ROOT, out);
+  } catch {
+    return resolve(REPO_ROOT, ".git", name);
+  }
+};
+
+const SKIP_REASONS_FILE = gitPath("HOWTO_SKIP_REASONS");
+
+const clearSkipReasonsFile = () => {
+  try {
+    if (existsSync(SKIP_REASONS_FILE)) unlinkSync(SKIP_REASONS_FILE);
+  } catch (err) {
+    console.error(`could not clear stale skip-reasons file: ${err.message}`);
+  }
+};
+
+clearSkipReasonsFile();
 
 const stagedFiles = (() => {
   try {
@@ -45,20 +71,18 @@ const safeReaddir = (path) => {
   }
 };
 
-const discoverGuideDirs = () => {
-  return safeReaddir(APP_DIR)
+const discoverGuideDirs = () =>
+  safeReaddir(APP_DIR)
     .filter((entry) => entry.isDirectory())
     .map((entry) => resolve(APP_DIR, entry.name, "how-to", "guides"))
     .filter((dir) => safeReaddir(dir).length > 0);
-};
 
-const discoverGuides = () => {
-  return discoverGuideDirs().flatMap((dir) =>
+const discoverGuides = () =>
+  discoverGuideDirs().flatMap((dir) =>
     safeReaddir(dir)
       .filter((e) => e.isFile() && e.name.endsWith(".md"))
       .map((e) => resolve(dir, e.name)),
   );
-};
 
 const parseFrontmatter = (raw) => {
   const match = raw.match(/^---\r?\n([\s\S]*?)\r?\n---/);
@@ -80,26 +104,25 @@ const parseFrontmatter = (raw) => {
   return data;
 };
 
-const guideMatches = (guideRelatedPaths, stagedPath) => {
-  return guideRelatedPaths.find((rp) => stagedPath === rp || stagedPath.startsWith(`${rp}/`));
-};
+const guideMatches = (guideRelatedPaths, stagedPath) =>
+  guideRelatedPaths.find((rp) => stagedPath === rp || stagedPath.startsWith(`${rp}/`));
 
-const affected = [];
-discoverGuides().forEach((guidePath) => {
+const affected = discoverGuides().flatMap((guidePath) => {
   const raw = readFileSync(guidePath, "utf8");
   const fm = parseFrontmatter(raw);
   const related = Array.isArray(fm.relatedPaths) ? fm.relatedPaths : [];
   const triggers = stagedFiles
     .map((staged) => ({ staged, match: guideMatches(related, staged) }))
     .filter((r) => r.match);
-  if (triggers.length > 0) {
-    affected.push({
+  if (triggers.length === 0) return [];
+  return [
+    {
       guidePath,
       relativeGuidePath: relative(REPO_ROOT, guidePath),
       lastUpdated: fm.lastUpdated || "(unset)",
       triggers,
-    });
-  }
+    },
+  ];
 });
 
 if (affected.length === 0) {
@@ -117,22 +140,24 @@ const ttyAvailable = (() => {
 })();
 
 if (!ttyAvailable) {
-  console.warn("");
-  console.warn("How-To guides may be affected by your staged changes:");
+  console.error("");
+  console.error("COMMIT BLOCKED: How-To guides affected by staged changes but no TTY available");
+  console.error("");
   affected.forEach((a) => {
-    console.warn(`  ${a.relativeGuidePath} (lastUpdated ${a.lastUpdated})`);
-    a.triggers.slice(0, 3).forEach((t) => console.warn(`    triggered by: ${t.staged}`));
+    console.error(`  ${a.relativeGuidePath} (lastUpdated ${a.lastUpdated})`);
+    a.triggers.slice(0, 3).forEach((t) => console.error(`    triggered by: ${t.staged}`));
   });
-  console.warn("");
-  console.warn("Skipping prompt (no TTY). Set HOWTO_HOOK=skip to silence this warning.");
-  process.exit(0);
+  console.error("");
+  console.error("Set HOWTO_HOOK=skip to bypass (e.g. CI), or commit from an interactive shell.");
+  console.error("");
+  process.exit(1);
 }
 
 const stdinTty = createReadStream("/dev/tty");
 const stdoutTty = createWriteStream("/dev/tty");
 const rl = createInterface({ input: stdinTty, output: stdoutTty, terminal: true });
 
-const ask = (q) => new Promise((res) => rl.question(q, (answer) => res(answer.trim())));
+const ask = (q) => new Promise((res) => rl.question(q, (answer) => res(answer)));
 
 const todayISO = () => {
   const d = new Date();
@@ -165,7 +190,7 @@ const openInEditor = (guidePath) =>
     child.on("close", () => res());
   });
 
-const draftWithClaude = async (guidePath, triggers) => {
+const draftWithClaude = (guidePath, triggers) => {
   const draftScript = resolve(SCRIPT_DIR, "draft-howto-update.ts");
   return new Promise((res) => {
     const child = spawn("node", [draftScript, guidePath, ...triggers.map((t) => t.staged)], {
@@ -174,6 +199,39 @@ const draftWithClaude = async (guidePath, triggers) => {
     });
     child.on("close", (code) => res(code === 0));
   });
+};
+
+const recordSkipReason = (relativeGuidePath, reason) => {
+  const line = `${relativeGuidePath}: ${reason}\n`;
+  try {
+    const prev = existsSync(SKIP_REASONS_FILE) ? readFileSync(SKIP_REASONS_FILE, "utf8") : "";
+    writeFileSync(SKIP_REASONS_FILE, prev + line, "utf8");
+  } catch (err) {
+    stdoutTty.write(`  WARN: could not write skip reason: ${err.message}\n`);
+  }
+};
+
+const askReason = async () => {
+  const MAX_ATTEMPTS = 5;
+  for (let i = 0; i < MAX_ATTEMPTS; i++) {
+    const reason = (await ask("  Reason for skipping (one line, required): ")).trim();
+    if (reason.length > 0) return reason;
+    stdoutTty.write("  (a reason is required — try again or Ctrl-C to abort the commit)\n");
+  }
+  throw new Error("no skip reason provided after multiple attempts");
+};
+
+const askAction = async (options, draftAvailable) => {
+  const MAX_ATTEMPTS = 5;
+  for (let i = 0; i < MAX_ATTEMPTS; i++) {
+    const action = (await ask(`Action ${options}: `)).trim().toLowerCase();
+    if (action === "edit" || action === "e") return "edit";
+    if (action === "bump" || action === "b") return "bump";
+    if (action === "skip" || action === "s") return "skip";
+    if ((action === "draft" || action === "d") && draftAvailable) return "draft";
+    stdoutTty.write(`  unknown action "${action}" — pick one of ${options}\n`);
+  }
+  throw new Error("no valid action chosen after multiple attempts");
 };
 
 const handleGuide = async (a) => {
@@ -191,10 +249,9 @@ const handleGuide = async (a) => {
 
   const draftAvailable = Boolean(process.env.GEMINI_API_KEY || process.env.ANTHROPIC_API_KEY);
   const options = draftAvailable ? "[edit/bump/skip/draft]" : "[edit/bump/skip]";
+  const action = await askAction(options, draftAvailable);
 
-  const action = (await ask(`Action ${options}: `)).toLowerCase();
-
-  if (action === "edit" || action === "e") {
+  if (action === "edit") {
     await openInEditor(a.guidePath);
     if (bumpLastUpdated(a.guidePath)) {
       stdoutTty.write(`  → lastUpdated bumped to ${todayISO()}\n`);
@@ -203,7 +260,7 @@ const handleGuide = async (a) => {
     stdoutTty.write("  → re-staged\n");
     return;
   }
-  if (action === "bump" || action === "b") {
+  if (action === "bump") {
     if (bumpLastUpdated(a.guidePath)) {
       stdoutTty.write(`  → lastUpdated bumped to ${todayISO()}\n`);
     }
@@ -211,7 +268,7 @@ const handleGuide = async (a) => {
     stdoutTty.write("  → re-staged\n");
     return;
   }
-  if ((action === "draft" || action === "d") && draftAvailable) {
+  if (action === "draft") {
     const ok = await draftWithClaude(a.guidePath, a.triggers);
     if (ok) {
       await openInEditor(a.guidePath);
@@ -225,13 +282,15 @@ const handleGuide = async (a) => {
     }
     return;
   }
-  stdoutTty.write("  → skipped (pre-push freshness check will warn)\n");
+  const reason = await askReason();
+  recordSkipReason(a.relativeGuidePath, reason);
+  stdoutTty.write("  → skip recorded (will be appended as Howto-Skip trailer)\n");
 };
 
 const main = async () => {
   stdoutTty.write("\n");
   stdoutTty.write(`Found ${affected.length} how-to guide(s) affected by staged changes.\n`);
-  stdoutTty.write("Set HOWTO_HOOK=skip to bypass entirely.\n");
+  stdoutTty.write("Set HOWTO_HOOK=skip in your environment to bypass entirely.\n");
 
   for (const a of affected) {
     await handleGuide(a);
@@ -243,6 +302,7 @@ const main = async () => {
 };
 
 main().catch((err) => {
-  console.warn(`how-to pre-commit prompt failed: ${err.message}`);
-  process.exit(0);
+  console.error(`\nCOMMIT BLOCKED: how-to pre-commit prompt failed: ${err.message}`);
+  clearSkipReasonsFile();
+  process.exit(1);
 });

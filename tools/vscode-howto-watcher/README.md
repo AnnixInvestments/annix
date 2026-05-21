@@ -1,9 +1,8 @@
 # Annix How-To Watcher
 
 VS Code extension that surfaces how-to guides affected by the file you're
-currently editing. Pairs with the pre-commit prompt
-(`scripts/howto-pre-commit-prompt.ts`) and the pre-push freshness checker
-(`scripts/check-how-to-freshness.ts`) to keep documentation in sync with
+currently editing. Pairs with the blocking pre-commit prompt
+(`scripts/howto-pre-commit-prompt.ts`) to keep documentation in sync with
 code.
 
 ## What it does

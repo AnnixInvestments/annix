@@ -37,4 +37,21 @@ for pattern in "${BANNED_PATTERNS[@]}"; do
   fi
 done
 
+# Append Howto-Skip trailers recorded by the pre-commit hook.
+# Each line in .git/HOWTO_SKIP_REASONS is "<guide-path>: <reason>" and becomes
+# a `Howto-Skip: <guide-path>: <reason>` trailer on the commit message.
+SKIP_REASONS_FILE="$(git rev-parse --git-path HOWTO_SKIP_REASONS 2>/dev/null)"
+if [ -n "$SKIP_REASONS_FILE" ] && [ -f "$SKIP_REASONS_FILE" ]; then
+  # Trailers must be preceded by a blank line.
+  if [ -s "$COMMIT_MSG_FILE" ] && [ "$(tail -c 1 "$COMMIT_MSG_FILE" | od -An -c | tr -d ' ')" != "\\n" ]; then
+    printf "\n" >> "$COMMIT_MSG_FILE"
+  fi
+  printf "\n" >> "$COMMIT_MSG_FILE"
+  while IFS= read -r line; do
+    [ -z "$line" ] && continue
+    printf "Howto-Skip: %s\n" "$line" >> "$COMMIT_MSG_FILE"
+  done < "$SKIP_REASONS_FILE"
+  rm -f "$SKIP_REASONS_FILE"
+fi
+
 exit 0

@@ -59,7 +59,7 @@ The Nix module (AI document extraction + draft review) is heavily shared across 
 | Frontend draft review UI | `annix-frontend/src/app/lib/nix/components/draft/` | mount `<NixDraftReview session={...} brand={...} onSessionChanged={...} />` |
 
 **Forbidden** — the pre-push hook rejects these:
-- A file with an unambiguously-Nix filename — `SpecificationCard.tsx`, `CodesEditor.tsx`, `CodesCell.tsx`, `CodeChip.tsx`, `ExtractionCard.tsx`, `ExtractionGroup.tsx`, `NixDraftReview.tsx`, `useSpecLookup.ts`, `Nix*.tsx` — **anywhere inside an app folder** (`stock-control/`, `au-rubber/`, `cv-assistant/`, `annix-rep/`, `comply-sa/`, `fieldflow/`).
+- A file with an unambiguously-Nix filename — `SpecificationCard.tsx`, `CodesEditor.tsx`, `CodesCell.tsx`, `CodeChip.tsx`, `ExtractionCard.tsx`, `ExtractionGroup.tsx`, `NixDraftReview.tsx`, `useSpecLookup.ts`, `Nix*.tsx` — **anywhere inside an app folder** (`stock-control/`, `au-rubber/`, `annix-orbit/`, `annix-rep/`, `comply-sa/`, `fieldflow/`).
 - An app file that defines a `function SpecificationCard(...)` / `function ExtractionCard(...)` / `function ExtractionGroup(...)` / `function NixDraftReview(...)` / `function CodesEditor(...)` etc. inline — even if the filename is different.
 
 (Generic names like `StatCard`, `DetailsBlock`, `ItemRow`, `EditableCell` are intentionally NOT flagged — apps legitimately have their own non-Nix versions of these. But if you're adding one for **Nix data**, it belongs in `lib/nix/components/draft/`.)
@@ -313,12 +313,12 @@ All apps follow semantic versioning (major.minor.patch):
 | AU Rubber | `annix-frontend/src/app/au-rubber/config/version.ts` | `AU_RUBBER_VERSION` | AuHeader |
 | FieldFlow/Voice | `annix-frontend/src/app/annix-rep/config/version.ts` | `FIELDFLOW_VERSION` | PortalToolbar |
 | Annix Rep | `annix-frontend/src/app/annix-rep/config/annix-rep-version.ts` | `ANNIX_REP_VERSION` | PortalToolbar |
-| Annix Orbit | `annix-frontend/src/app/cv-assistant/config/version.ts` | `CV_ASSISTANT_VERSION` | Portal layout header |
+| Annix Orbit | `annix-frontend/src/app/annix-orbit/config/version.ts` | `CV_ASSISTANT_VERSION` | Portal layout header |
 | Teacher Assistant | `annix-frontend/src/app/teacher-assistant/config/version.ts` | `TEACHER_ASSISTANT_VERSION` | Coming-soon page (Portal layout once built) |
 | Annix Insights | `annix-frontend/src/app/insights/config/version.ts` | `INSIGHTS_VERSION` | PortalToolbar |
 
 ## Stock Control How To Guides
-When you change any user-facing Stock Control feature (new button, renamed field, new workflow), check `annix-frontend/src/app/stock-control/how-to/guides/*.md` for guides whose `relatedPaths` include the files you touched. Update the guide and bump `lastUpdated`. The pre-push hook runs `scripts/check-how-to-freshness.ts` (warns, non-blocking).
+When you change any user-facing Stock Control feature (new button, renamed field, new workflow), check `annix-frontend/src/app/stock-control/how-to/guides/*.md` for guides whose `relatedPaths` include the files you touched. Update the guide and bump `lastUpdated`. The pre-commit hook runs `scripts/howto-pre-commit-prompt.ts` and **blocks the commit** whenever a staged file matches any guide's `relatedPaths` — the prompt offers `edit` / `bump` / `skip` / `draft` (`draft` needs `GEMINI_API_KEY`). `skip` requires a one-line reason which is appended to the commit message as a `Howto-Skip:` trailer. To bypass entirely: `HOWTO_HOOK=skip git commit ...` (preferred) or `git commit --no-verify`.
 
 ### Automatic How To Creation (MANDATORY)
 **Every new user-facing feature MUST include a How To guide in the same commit.** Enhancements to existing features should update the relevant existing guide.

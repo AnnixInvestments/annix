@@ -33,12 +33,6 @@ duplication_check() {
   fi
 }
 
-how_to_freshness_check() {
-  if [ -f "${ROOT_DIR}/scripts/check-how-to-freshness.ts" ]; then
-    node "${ROOT_DIR}/scripts/check-how-to-freshness.ts"
-  fi
-}
-
 biome_check() {
   if ! pnpm biome check .; then
     echo ""
@@ -91,7 +85,6 @@ pull_rebase() {
 cd "$ROOT_DIR"
 timed_step "legal risk check" legal_risk_check
 timed_step "duplication check" duplication_check
-timed_step "how-to freshness" how_to_freshness_check
 timed_step "git pull --rebase" pull_rebase
 
 # ──────────────────────────────────────────────────────────────────────────
