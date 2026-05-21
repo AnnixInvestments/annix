@@ -2429,7 +2429,14 @@ class AuRubberApiClient {
   async uploadSupplierStatementAutoDetect(
     file: File,
   ): Promise<{ id: number; companyName: string; detectedSupplierName: string }> {
-    return this.requestWithFiles("/rubber-lining/portal/supplier-statements/upload", [file], {});
+    // Backend uses FileInterceptor("file") (singular), so override the
+    // default "files" field name on requestWithFiles to match.
+    return this.requestWithFiles(
+      "/rubber-lining/portal/supplier-statements/upload",
+      [file],
+      {},
+      "file",
+    );
   }
 
   async accountingUploadStatement(
