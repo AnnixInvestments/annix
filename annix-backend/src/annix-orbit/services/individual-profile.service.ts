@@ -200,7 +200,7 @@ export class IndividualProfileService {
     }
 
     const profile = await this.profileForUser(userId);
-    const subPath = `${StorageArea.CV_ASSISTANT}/individuals/${profile.userId}/${kind}`;
+    const subPath = `${StorageArea.ANNIX_ORBIT}/individuals/${profile.userId}/${kind}`;
     const stored = await this.storageService.upload(file, subPath);
 
     if (kind === IndividualDocumentKind.CV) {

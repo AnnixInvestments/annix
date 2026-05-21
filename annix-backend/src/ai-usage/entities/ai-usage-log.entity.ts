@@ -3,7 +3,7 @@ import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn } from 
 export enum AiApp {
   AU_RUBBER = "au-rubber",
   NIX = "nix",
-  CV_ASSISTANT = "annix-orbit",
+  ANNIX_ORBIT = "annix-orbit",
   STOCK_CONTROL = "stock-control",
 }
 

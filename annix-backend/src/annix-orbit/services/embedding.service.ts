@@ -77,7 +77,7 @@ export class EmbeddingService {
     const processingTimeMs = nowMillis() - startTime;
 
     this.aiUsageService.log({
-      app: AiApp.CV_ASSISTANT,
+      app: AiApp.ANNIX_ORBIT,
       actionType: "embedding-generation",
       provider: AiProvider.GEMINI,
       model: GEMINI_EMBEDDING_MODEL,

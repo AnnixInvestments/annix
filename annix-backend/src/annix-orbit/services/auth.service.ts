@@ -19,7 +19,7 @@ import { AppRole } from "../../rbac/entities/app-role.entity";
 import { UserAppAccess } from "../../rbac/entities/user-app-access.entity";
 import { PasswordService } from "../../shared/auth/password.service";
 import { User } from "../../user/entities/user.entity";
-import { CV_ASSISTANT_JWT_SECRET_DEFAULT } from "../annix-orbit.constants";
+import { ANNIX_ORBIT_JWT_SECRET_DEFAULT } from "../annix-orbit.constants";
 import { AnnixOrbitCompany } from "../entities/annix-orbit-company.entity";
 import { AnnixOrbitProfile, AnnixOrbitUserType } from "../entities/annix-orbit-profile.entity";
 import { AnnixOrbitRole } from "../entities/annix-orbit-user.entity";
@@ -52,9 +52,9 @@ export class AnnixOrbitAuthService {
   ) {}
 
   private jwtSecret(): string {
-    return this.configService.get<string>(
-      "CV_ASSISTANT_JWT_SECRET",
-      CV_ASSISTANT_JWT_SECRET_DEFAULT,
+    return (
+      this.configService.get<string>("ANNIX_ORBIT_JWT_SECRET") ??
+      this.configService.get<string>("CV_ASSISTANT_JWT_SECRET", ANNIX_ORBIT_JWT_SECRET_DEFAULT)
     );
   }
 

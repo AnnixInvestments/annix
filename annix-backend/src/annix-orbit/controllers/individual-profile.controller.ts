@@ -52,7 +52,7 @@ export class IndividualProfileController {
 
   private async ensureNixCvBuilderEnabled(): Promise<void> {
     const enabled = await this.featureFlagsService.isEnabled(
-      FEATURE_FLAGS.CV_ASSISTANT_NIX_CV_BUILDER,
+      FEATURE_FLAGS.ANNIX_ORBIT_NIX_CV_BUILDER,
     );
     if (!enabled) {
       throw new ForbiddenException(

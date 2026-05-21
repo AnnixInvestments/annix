@@ -313,7 +313,7 @@ All apps follow semantic versioning (major.minor.patch):
 | AU Rubber | `annix-frontend/src/app/au-rubber/config/version.ts` | `AU_RUBBER_VERSION` | AuHeader |
 | FieldFlow/Voice | `annix-frontend/src/app/annix-rep/config/version.ts` | `FIELDFLOW_VERSION` | PortalToolbar |
 | Annix Rep | `annix-frontend/src/app/annix-rep/config/annix-rep-version.ts` | `ANNIX_REP_VERSION` | PortalToolbar |
-| Annix Orbit | `annix-frontend/src/app/annix-orbit/config/version.ts` | `CV_ASSISTANT_VERSION` | Portal layout header |
+| Annix Orbit | `annix-frontend/src/app/annix-orbit/config/version.ts` | `ANNIX_ORBIT_VERSION` | Portal layout header |
 | Teacher Assistant | `annix-frontend/src/app/teacher-assistant/config/version.ts` | `TEACHER_ASSISTANT_VERSION` | Coming-soon page (Portal layout once built) |
 | Annix Insights | `annix-frontend/src/app/insights/config/version.ts` | `INSIGHTS_VERSION` | PortalToolbar |
 

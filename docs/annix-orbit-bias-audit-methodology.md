@@ -14,7 +14,7 @@ EE-population groups when controlling for skills and experience.
 Embedding similarity (`text-embedding-004`) is the dominant component of
 `overallScore` (50% weighting today). Embeddings learn statistical regularities
 from their training corpus, which means they can implicitly correlate with
-name → demographics. With `CV_ASSISTANT_EE_COMPLIANCE_ENABLED=true` we are
+name → demographics. With `ANNIX_ORBIT_EE_COMPLIANCE_ENABLED=true` we are
 collecting EE-population attributes (POPIA-gated), so we can verify the score
 distribution is independent of population group when skills + experience are
 held constant.

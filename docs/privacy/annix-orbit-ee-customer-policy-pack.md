@@ -136,7 +136,7 @@ agreement with Annix or sign as a standalone POPIA Operator agreement.
 
 ## 5. Activation checklist
 
-Before flipping `CV_ASSISTANT_EE_COMPLIANCE_ENABLED` to true for a Customer's
+Before flipping `ANNIX_ORBIT_EE_COMPLIANCE_ENABLED` to true for a Customer's
 tenant, both parties must confirm:
 
 - [ ] DPIA reviewed and counter-signed (DPIA §7, §9).

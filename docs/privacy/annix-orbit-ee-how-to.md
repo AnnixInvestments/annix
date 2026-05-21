@@ -31,7 +31,7 @@ Employment Equity (EE) compliance. Read alongside the DPIA
    - `is_designated_employer = true`
    - `economic_sector = '<value matching INDUSTRIES.value>'`
    - `eea_reporting_enabled = true`
-6. **Flip the global feature flag** `CV_ASSISTANT_EE_COMPLIANCE_ENABLED` to
+6. **Flip the global feature flag** `ANNIX_ORBIT_EE_COMPLIANCE_ENABLED` to
    true (admin Feature Flags page, or seeding script).
 7. **Confirm with the customer's HR lead** that the EE disclosure invite
    should be sent automatically post-application or manually triggered per

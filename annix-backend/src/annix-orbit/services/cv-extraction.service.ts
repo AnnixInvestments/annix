@@ -90,7 +90,7 @@ export class CvExtractionService {
       );
 
       this.aiUsageService.log({
-        app: AiApp.CV_ASSISTANT,
+        app: AiApp.ANNIX_ORBIT,
         actionType: "cv-extraction",
         provider: providerUsed.includes("claude") ? AiProvider.CLAUDE : AiProvider.GEMINI,
         model: providerUsed,

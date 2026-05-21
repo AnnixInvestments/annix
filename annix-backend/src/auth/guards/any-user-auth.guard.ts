@@ -4,7 +4,7 @@ import { JwtService } from "@nestjs/jwt";
 import { Request } from "express";
 
 import { AdminAuthService } from "../../admin/admin-auth.service";
-import { CV_ASSISTANT_JWT_SECRET_DEFAULT } from "../../annix-orbit/annix-orbit.constants";
+import { ANNIX_ORBIT_JWT_SECRET_DEFAULT } from "../../annix-orbit/annix-orbit.constants";
 import { CustomerAuthService } from "../../customer/customer-auth.service";
 import { SupplierAuthService } from "../../supplier/supplier-auth.service";
 
@@ -69,15 +69,19 @@ export class AnyUserAuthGuard implements CanActivate {
   /**
    * Tries each portal's signing secret in turn so the guard can accept
    * tokens issued by any of admin/customer/supplier/stock-control (signed
-   * with JWT_SECRET) AND annix-orbit (signed with CV_ASSISTANT_JWT_SECRET).
+   * with JWT_SECRET) AND annix-orbit (signed with ANNIX_ORBIT_JWT_SECRET,
+   * with CV_ASSISTANT_JWT_SECRET kept as a fallback so deployments don't
+   * have to rotate their .env in the same change).
    * Returns the decoded payload from whichever secret verified, or throws
    * UnauthorizedException when none of them did.
    */
   private async verifyWithKnownSecrets(token: string): Promise<AnyUserJwtPayload> {
-    const secrets = [
-      this.configService.get<string>("JWT_SECRET"),
-      this.configService.get<string>("CV_ASSISTANT_JWT_SECRET", CV_ASSISTANT_JWT_SECRET_DEFAULT),
-    ].filter((s): s is string => Boolean(s));
+    const orbitSecret =
+      this.configService.get<string>("ANNIX_ORBIT_JWT_SECRET") ??
+      this.configService.get<string>("CV_ASSISTANT_JWT_SECRET", ANNIX_ORBIT_JWT_SECRET_DEFAULT);
+    const secrets = [this.configService.get<string>("JWT_SECRET"), orbitSecret].filter(
+      (s): s is string => Boolean(s),
+    );
 
     let lastError: unknown = null;
     for (const secret of secrets) {

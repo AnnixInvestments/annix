@@ -5,7 +5,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { UserAppAccess } from "../../rbac/entities/user-app-access.entity";
 import { User } from "../../user/entities/user.entity";
-import { CV_ASSISTANT_JWT_SECRET_DEFAULT } from "../annix-orbit.constants";
+import { ANNIX_ORBIT_JWT_SECRET_DEFAULT } from "../annix-orbit.constants";
 import { AnnixOrbitRole } from "../entities/annix-orbit-user.entity";
 
 @Injectable()
@@ -28,10 +28,9 @@ export class AnnixOrbitAuthGuard implements CanActivate {
     }
 
     const token = authHeader.substring(7);
-    const secret = this.configService.get<string>(
-      "CV_ASSISTANT_JWT_SECRET",
-      CV_ASSISTANT_JWT_SECRET_DEFAULT,
-    );
+    const secret =
+      this.configService.get<string>("ANNIX_ORBIT_JWT_SECRET") ??
+      this.configService.get<string>("CV_ASSISTANT_JWT_SECRET", ANNIX_ORBIT_JWT_SECRET_DEFAULT);
 
     try {
       const payload = this.jwtService.verify(token, { secret });

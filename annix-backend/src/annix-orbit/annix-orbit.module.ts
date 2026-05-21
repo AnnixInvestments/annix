@@ -166,7 +166,9 @@ import { WorkforceNeedService } from "./services/workforce-need.service";
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
-        secret: configService.get<string>("CV_ASSISTANT_JWT_SECRET", "annix-orbit-jwt-secret"),
+        secret:
+          configService.get<string>("ANNIX_ORBIT_JWT_SECRET") ??
+          configService.get<string>("CV_ASSISTANT_JWT_SECRET", "annix-orbit-jwt-secret"),
         signOptions: { expiresIn: "1h" },
       }),
     }),

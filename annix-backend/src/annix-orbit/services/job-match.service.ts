@@ -45,7 +45,7 @@ export class JobMatchService {
       );
 
       this.aiUsageService.log({
-        app: AiApp.CV_ASSISTANT,
+        app: AiApp.ANNIX_ORBIT,
         actionType: "job-match",
         provider: providerUsed.includes("claude") ? AiProvider.CLAUDE : AiProvider.GEMINI,
         model: providerUsed,

@@ -54,7 +54,7 @@ describe("Storage Integration Tests", () => {
       expect(StorageArea.ANNIX_APP).toBe("annix-app");
       expect(StorageArea.AU_RUBBER).toBe("au-rubber");
       expect(StorageArea.ANNIX_REP).toBe("fieldflow");
-      expect(StorageArea.CV_ASSISTANT).toBe("annix-orbit");
+      expect(StorageArea.ANNIX_ORBIT).toBe("annix-orbit");
       expect(StorageArea.SECURE_DOCUMENTS).toBe("secure-documents");
       expect(StorageArea.STOCK_CONTROL).toBe("stock-control");
     });
@@ -146,11 +146,11 @@ describe("Storage Integration Tests", () => {
       it("should upload to annix-orbit/candidates path", async () => {
         const file = createMockFile("resume.pdf", "application/pdf");
         const companyId = 202;
-        const subPath = `${StorageArea.CV_ASSISTANT}/candidates/${companyId}`;
+        const subPath = `${StorageArea.ANNIX_ORBIT}/candidates/${companyId}`;
 
         const result = await storageService.upload(file, subPath);
 
-        expect(result.path).toMatch(new RegExp(`^${StorageArea.CV_ASSISTANT}/candidates/202/`));
+        expect(result.path).toMatch(new RegExp(`^${StorageArea.ANNIX_ORBIT}/candidates/202/`));
       });
     });
 
@@ -276,7 +276,7 @@ describe("Storage Integration Tests", () => {
       mockFsPromises.access.mockResolvedValue(undefined);
       mockFsPromises.unlink.mockResolvedValue(undefined);
 
-      await storageService.delete(`${StorageArea.CV_ASSISTANT}/candidates/123/cv.pdf`);
+      await storageService.delete(`${StorageArea.ANNIX_ORBIT}/candidates/123/cv.pdf`);
 
       expect(mockFsPromises.unlink).toHaveBeenCalled();
     });
@@ -285,7 +285,7 @@ describe("Storage Integration Tests", () => {
       mockFsPromises.access.mockRejectedValue(new Error("ENOENT"));
 
       await expect(
-        storageService.delete(`${StorageArea.CV_ASSISTANT}/candidates/123/missing.pdf`),
+        storageService.delete(`${StorageArea.ANNIX_ORBIT}/candidates/123/missing.pdf`),
       ).resolves.not.toThrow();
     });
   });

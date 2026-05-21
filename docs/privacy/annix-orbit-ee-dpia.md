@@ -135,7 +135,7 @@ confirm:
       their submitted EE attributes.
 - [ ] **Sign-off:** Annix Information Officer + Customer Information Officer
       countersign this document before flipping
-      `CV_ASSISTANT_EE_COMPLIANCE_ENABLED` to true for the customer's
+      `ANNIX_ORBIT_EE_COMPLIANCE_ENABLED` to true for the customer's
       tenant **and** flipping `companies.is_designated_employer` +
       `companies.eea_reporting_enabled` to true on their company row.
 
