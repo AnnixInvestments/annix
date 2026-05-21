@@ -172,7 +172,7 @@ These are the gaps NO competitor fills well:
                 YOUR APP PORTFOLIO
     ┌──────────────────────────────────────┐
     │  RFQ/BOQ  │  Stock Control  │  AU Rubber  │
-    │  FieldFlow │  CV Assistant  │  Future Apps │
+    │  FieldFlow │  Annix Orbit  │  Future Apps │
     └──────────┬───────────────────┬────────┘
                │                   │
                ▼                   ▼

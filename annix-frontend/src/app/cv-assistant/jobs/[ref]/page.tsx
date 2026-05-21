@@ -95,7 +95,7 @@ function buildJobPostingSchema(job: PublicJobPosting): JobPostingSchema {
     },
     identifier: {
       "@type": "PropertyValue",
-      name: job.companyName ? job.companyName : "CV Assistant",
+      name: job.companyName ? job.companyName : "Annix Orbit",
       value: job.referenceNumber,
     },
     directApply: false,
@@ -216,7 +216,7 @@ export default function PublicJobPostingPage() {
       <header className="bg-white/10 backdrop-blur border-b border-white/20">
         <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link href="/cv-assistant" className="text-white font-semibold">
-            CV Assistant
+            Annix Orbit
           </Link>
           <Link href="/cv-assistant/login" className="text-sm text-[#c0c0eb] hover:text-white">
             Sign in

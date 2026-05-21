@@ -278,7 +278,7 @@ export function JobFormModal({ job, onClose }: { job: JobPosting | null; onClose
           <div className="rounded-lg bg-[#f0f0fc] border border-[#e0e0f5] p-3 text-sm text-[#1a1a40]">
             <p className="font-medium">Where applicants send their CVs</p>
             <p className="text-xs mt-1 text-[#252560]">
-              All CV Assistant applications come into{" "}
+              All Annix Orbit applications come into{" "}
               <code className="font-mono bg-white px-1 py-0.5 rounded">jobs@annix.co.za</code> with
               the job's reference number in the subject line. Annix handles the inbox; you receive
               the matched, screened candidates here.

@@ -22,8 +22,13 @@ export default function CvAssistantHomePage() {
               />
             </svg>
           </div>
-          <h1 className="text-4xl sm:text-5xl font-bold text-white mb-3">CV Assistant</h1>
-          <p className="text-lg text-[#c0c0eb]">Choose how you want to use CV Assistant</p>
+          <h1 className="text-4xl sm:text-5xl font-bold text-white mb-2">Annix Orbit</h1>
+          <p className="text-sm sm:text-base font-semibold tracking-widest uppercase text-[#FFA500] mb-3">
+            Hiring &bull; Talent &bull; Compliance
+          </p>
+          <p className="text-lg text-[#c0c0eb] max-w-2xl mx-auto">
+            The intelligent workforce ecosystem for modern hiring, talent growth, and compliance.
+          </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

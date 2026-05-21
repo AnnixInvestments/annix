@@ -40,7 +40,7 @@ const APP_OPTIONS: Array<{ value: string; label: string }> = [
   { value: "stock-control", label: "Stock Control" },
   { value: "au-rubber", label: "AU Rubber" },
   { value: "supplier", label: "Supplier" },
-  { value: "cv-assistant", label: "CV Assistant" },
+  { value: "cv-assistant", label: "Annix Orbit" },
   { value: "annix-rep", label: "Annix Rep" },
 ];
 

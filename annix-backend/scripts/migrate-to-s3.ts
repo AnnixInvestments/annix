@@ -100,7 +100,7 @@ const DOCUMENT_TYPES: DocumentTypeConfig[] = [
     additionalColumns: ["storage_bucket"],
   },
   {
-    name: "CV Assistant Candidates",
+    name: "Annix Orbit Candidates",
     tableName: "candidates",
     pathColumn: "cv_file_path",
     areaPrefix: "cv-assistant/",

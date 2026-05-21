@@ -106,7 +106,7 @@ export default function DashboardPage() {
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-white">Welcome, {firstName}</h1>
-          <p className="text-white/70 mt-1">Your CV Assistant job seeker workspace</p>
+          <p className="text-white/70 mt-1">Your Annix Orbit job seeker workspace</p>
         </div>
 
         {!hasCv && (
@@ -116,7 +116,7 @@ export default function DashboardPage() {
                 Ready to find your next role?
               </h2>
               <p className="text-[#1a1a40]/80">
-                Upload your CV and let CV Assistant match you to suitable jobs.
+                Upload your CV and let Annix Orbit match you to suitable jobs.
               </p>
             </div>
             <UploadCvButton size="lg" variant="navy" />
@@ -201,8 +201,8 @@ export default function DashboardPage() {
             </h2>
             <p className="text-[#1a1a40]/80">
               {isIndividual
-                ? "Upload your CV and let CV Assistant match you to suitable jobs."
-                : "Post your first job vacancy and let CV Assistant screen candidates for you."}
+                ? "Upload your CV and let Annix Orbit match you to suitable jobs."
+                : "Post your first job vacancy and let Annix Orbit screen candidates for you."}
             </p>
           </div>
           {isIndividual ? (

@@ -66,7 +66,7 @@ export class PublicJobPostingController {
     const items = jobs.map((job) => this.renderJobNode(job, baseUrl)).join("\n");
     return `<?xml version="1.0" encoding="utf-8"?>
 <source>
-  <publisher>Annix CV Assistant</publisher>
+  <publisher>Annix Annix Orbit</publisher>
   <publisherurl>${escapeXml(baseUrl)}</publisherurl>
   <lastBuildDate>${escapeXml(generatedAt)}</lastBuildDate>
 ${items}

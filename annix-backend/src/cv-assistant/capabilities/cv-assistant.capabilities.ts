@@ -3,9 +3,9 @@ import type { INixCapability } from "../../nix/capabilities";
 import { NixCapabilityRegistry } from "../../nix/capabilities";
 
 /**
- * CV Assistant Nix capability registration (ref #262 Phase 3).
+ * Annix Orbit Nix capability registration (ref #262 Phase 3).
  *
- * Surfaces CV Assistant's user-facing AI features to the shared
+ * Surfaces Annix Orbit's user-facing AI features to the shared
  * NixCapabilityRegistry so the per-app NixAppProvider can render the
  * right intent suggestions and walkthrough hooks.
  */
@@ -19,7 +19,7 @@ export class CvAssistantCapabilities implements OnModuleInit {
     for (const capability of this.capabilities()) {
       this.registry.register(capability);
     }
-    this.logger.log(`Registered ${this.capabilities().length} CV Assistant capabilities`);
+    this.logger.log(`Registered ${this.capabilities().length} Annix Orbit capabilities`);
   }
 
   private capabilities(): INixCapability[] {

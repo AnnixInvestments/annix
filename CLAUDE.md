@@ -2,7 +2,7 @@
 
 ## Discovery-first protocol (MANDATORY before writing new shared code)
 
-Annix is a monorepo with several apps (Stock Control, AU Rubber, RFQ, Comply SA, FieldFlow, Annix Rep, CV Assistant) sharing one backend and a `packages/product-data/` workspace. AI-generated code tends to duplicate patterns per-app rather than reuse shared modules. **This has cost the project an estimated 100–200k lines of unnecessary code** (see issue #175). Every Claude session must follow this protocol to stop the drift.
+Annix is a monorepo with several apps (Stock Control, AU Rubber, RFQ, Comply SA, FieldFlow, Annix Rep, Annix Orbit) sharing one backend and a `packages/product-data/` workspace. AI-generated code tends to duplicate patterns per-app rather than reuse shared modules. **This has cost the project an estimated 100–200k lines of unnecessary code** (see issue #175). Every Claude session must follow this protocol to stop the drift.
 
 **Before writing any of the following, complete the discovery protocol below — no exceptions, no "I'll check later":**
 
@@ -313,7 +313,7 @@ All apps follow semantic versioning (major.minor.patch):
 | AU Rubber | `annix-frontend/src/app/au-rubber/config/version.ts` | `AU_RUBBER_VERSION` | AuHeader |
 | FieldFlow/Voice | `annix-frontend/src/app/annix-rep/config/version.ts` | `FIELDFLOW_VERSION` | PortalToolbar |
 | Annix Rep | `annix-frontend/src/app/annix-rep/config/annix-rep-version.ts` | `ANNIX_REP_VERSION` | PortalToolbar |
-| CV Assistant | `annix-frontend/src/app/cv-assistant/config/version.ts` | `CV_ASSISTANT_VERSION` | Portal layout header |
+| Annix Orbit | `annix-frontend/src/app/cv-assistant/config/version.ts` | `CV_ASSISTANT_VERSION` | Portal layout header |
 | Teacher Assistant | `annix-frontend/src/app/teacher-assistant/config/version.ts` | `TEACHER_ASSISTANT_VERSION` | Coming-soon page (Portal layout once built) |
 | Annix Insights | `annix-frontend/src/app/insights/config/version.ts` | `INSIGHTS_VERSION` | PortalToolbar |
 

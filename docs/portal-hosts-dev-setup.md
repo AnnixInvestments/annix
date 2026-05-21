@@ -64,7 +64,7 @@ With the dev server running (`./run-dev.sh` or via the Claude Swarm orchestrator
 | Comply SA | http://complysa.localhost:3000 |
 | FieldFlow | http://fieldflow.localhost:3000 |
 | Annix Rep | http://annixrep.localhost:3000 |
-| CV Assistant | http://cv.localhost:3000 |
+| Annix Orbit | http://cv.localhost:3000 |
 | AU Industries | http://auind.localhost:3000 |
 
 If a host fails to resolve, re-check the hosts file is saved with admin permissions and that no antivirus has reverted it.
@@ -81,7 +81,7 @@ The same portal codes resolve to the production hostnames below. The canonical s
 | Comply SA | complysa.annix.co.za |
 | FieldFlow | fieldflow.annix.co.za |
 | Annix Rep | annixrep.annix.co.za |
-| CV Assistant | cv.annix.co.za |
+| Annix Orbit | cv.annix.co.za |
 | RFQ | rfq.annix.co.za |
 | AU Rubber | aurubber.co.za |
 | AU Industries | auind.co.za |

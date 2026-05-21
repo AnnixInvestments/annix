@@ -205,7 +205,7 @@ describe("Inbound Email Classification (regression harness)", () => {
     });
   });
 
-  describe("CV Assistant fixture (different shape)", () => {
+  describe("Annix Orbit fixture (different shape)", () => {
     it("exposes reference code + candidate info for later adapter parity test", () => {
       const fixture = loadFixture("cv-candidate-application.json");
       expect(fixture.app).toBe("cv-assistant");

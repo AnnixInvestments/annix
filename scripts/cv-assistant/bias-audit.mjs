@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * CV Assistant match-score bias audit.
+ * Annix Orbit match-score bias audit.
  *
  * Methodology: docs/cv-assistant-bias-audit-methodology.md
  *
@@ -241,7 +241,7 @@ function sum(arr) {
 
 function renderReport({ totalCandidates, groupCounts, results }) {
   const lines = [];
-  lines.push("# CV Assistant Match-Score Bias Audit Report");
+  lines.push("# Annix Orbit Match-Score Bias Audit Report");
   lines.push("");
   lines.push(`Generated: ${new Date().toISOString()}`);
   lines.push(`Total matches analysed: ${totalCandidates}`);

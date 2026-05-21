@@ -64,7 +64,7 @@
 | stores@polymerlining.co.za | user, stock_control_users |
 | strausswillie13@gmail.com | user, stock_control_users |
 
-**Pattern:** 11 of 11 SC users also exist in the shared `user` table. 1 Comply SA user (`andy@auind.co.za`) also exists in shared `user`. No CV Assistant or Supplier/Customer collisions (those tables are empty or use the shared User already).
+**Pattern:** 11 of 11 SC users also exist in the shared `user` table. 1 Comply SA user (`andy@auind.co.za`) also exists in shared `user`. No Annix Orbit or Supplier/Customer collisions (those tables are empty or use the shared User already).
 
 **Risk:** Password hashes may differ between tables for the same email. The migration must pick one canonical password (or force a reset).
 
@@ -107,7 +107,7 @@
 1. **Migration 1809000000019** created the unified `companies` table + `company_module_subscriptions`
 2. **Migration 1809000000020** copied SC companies and rubber compound-owner companies into `companies`, set up bidirectional legacy pointers, and registered module subscriptions
 3. **Then it stopped.** No subsequent migrations exist for:
-   - Migrating Customer, Supplier, CV Assistant, or Comply SA companies
+   - Migrating Customer, Supplier, Annix Orbit, or Comply SA companies
    - Updating any service code to read from the unified table
    - Migrating users to the shared `user` table
    - Updating FK references in downstream entities
@@ -264,7 +264,7 @@ Located in `annix-backend/src/shared/auth/`:
 - Shared auth primitives exist (`TokenService`, `PasswordService`, `SessionService`, etc.)
 
 ### What stopped
-- No unified-company rows for Customer, Supplier, CV Assistant, or Comply SA companies
+- No unified-company rows for Customer, Supplier, Annix Orbit, or Comply SA companies
 - 6 of 7 rubber companies (non-compound-owners) have no unified row
 - `unified_company_id` column on per-app tables is not in TypeORM entity definitions
 - No service code reads from the unified `companies` table for actual business logic (only guards and branding)

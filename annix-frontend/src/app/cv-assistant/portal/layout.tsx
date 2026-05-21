@@ -154,7 +154,7 @@ function PortalContent({ children }: { children: React.ReactNode }) {
       <FeedbackWidget authContext="cv-assistant" />
       <NixAssistant
         context="general"
-        pageContext={{ currentPage: "CV Assistant", portalContext: "general" }}
+        pageContext={{ currentPage: "Annix Orbit", portalContext: "general" }}
       />
     </div>
   );

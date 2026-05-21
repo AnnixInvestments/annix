@@ -3,10 +3,11 @@ import { CvAssistantAuthProvider } from "@/app/context/CvAssistantAuthContext";
 
 export const metadata: Metadata = {
   title: {
-    template: "%s | CV Assistant",
-    default: "CV Assistant",
+    template: "%s | Annix Orbit",
+    default: "Annix Orbit",
   },
-  description: "AI-powered CV screening and candidate management",
+  description:
+    "Annix Orbit — Hiring, Talent, Compliance. The intelligent workforce ecosystem for modern hiring, talent growth, and compliance.",
 };
 
 export default function CvAssistantLayout(props: { children: React.ReactNode }) {

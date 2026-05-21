@@ -20,7 +20,7 @@ The **Your passkeys** section appears in:
 - Stock Control → **Settings** (admin only)
 - Admin Portal → **Settings**
 - AU Rubber → **Settings**
-- CV Assistant → **Settings**
+- Annix Orbit → **Settings**
 - Customer Portal → **Profile**
 - Supplier Portal → **Profile**
 

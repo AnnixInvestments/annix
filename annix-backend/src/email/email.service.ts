@@ -1618,8 +1618,8 @@ This is an automated notification from the Annix test site.
     const verificationLink = `${frontendUrl}/cv-assistant/verify-email?token=${verificationToken}`;
 
     const html = emailLayout({
-      title: "Verify Your Email - CV Assistant",
-      heading: "Welcome to CV Assistant",
+      title: "Verify Your Email - Annix Orbit",
+      heading: "Welcome to Annix Orbit",
       headingColor: "#8B5CF6",
       bodyHtml: `
           <p>Thank you for registering. Please verify your email address to complete your registration and start screening candidates.</p>`,
@@ -1629,11 +1629,11 @@ This is an automated notification from the Annix test site.
         color: "#8B5CF6",
         expiryNote: "This link will expire in 24 hours.",
       },
-      footerText: "If you did not register for a CV Assistant account, please ignore this email.",
+      footerText: "If you did not register for a Annix Orbit account, please ignore this email.",
     });
 
     const text = `
-      Welcome to CV Assistant
+      Welcome to Annix Orbit
 
       Thank you for registering. Please verify your email address to complete your registration.
 
@@ -1641,12 +1641,12 @@ This is an automated notification from the Annix test site.
 
       This link will expire in 24 hours.
 
-      If you did not register for a CV Assistant account, please ignore this email.
+      If you did not register for a Annix Orbit account, please ignore this email.
     `;
 
     return this.sendEmail({
       to: email,
-      subject: "Verify Your Email - CV Assistant",
+      subject: "Verify Your Email - Annix Orbit",
       html,
       text,
     });
@@ -1657,11 +1657,11 @@ This is an automated notification from the Annix test site.
     const resetLink = `${frontendUrl}/cv-assistant/reset-password?token=${resetToken}`;
 
     const html = emailLayout({
-      title: "Reset Your Password - CV Assistant",
+      title: "Reset Your Password - Annix Orbit",
       heading: "Reset Your Password",
       headingColor: "#8B5CF6",
       bodyHtml: `
-          <p>We received a request to reset your password for CV Assistant. Click the button below to set a new password.</p>`,
+          <p>We received a request to reset your password for Annix Orbit. Click the button below to set a new password.</p>`,
       cta: {
         href: resetLink,
         label: "Reset Password",
@@ -1672,7 +1672,7 @@ This is an automated notification from the Annix test site.
     });
 
     const text = `
-      Reset Your Password - CV Assistant
+      Reset Your Password - Annix Orbit
 
       We received a request to reset your password. Click here to set a new password:
 
@@ -1685,7 +1685,7 @@ This is an automated notification from the Annix test site.
 
     return this.sendEmail({
       to: email,
-      subject: "Reset Your Password - CV Assistant",
+      subject: "Reset Your Password - Annix Orbit",
       html,
       text,
     });
@@ -1699,11 +1699,11 @@ This is an automated notification from the Annix test site.
     const confirmLink = `${frontendUrl}/cv-assistant/confirm-delete?token=${deletionToken}`;
 
     const html = emailLayout({
-      title: "Confirm Account Deletion - CV Assistant",
+      title: "Confirm Account Deletion - Annix Orbit",
       heading: "Confirm Account Deletion",
       headingColor: "#dc2626",
       bodyHtml: `
-          <p>We received a request to permanently delete your CV Assistant account.</p>
+          <p>We received a request to permanently delete your Annix Orbit account.</p>
           <p>If you go ahead, this will erase your CV, qualifications, certificates, account details, and all associated data. This cannot be undone.</p>
           <p>Click the button below to confirm. The link is valid for 1 hour.</p>`,
       cta: {
@@ -1717,9 +1717,9 @@ This is an automated notification from the Annix test site.
     });
 
     const text = `
-      Confirm Account Deletion - CV Assistant
+      Confirm Account Deletion - Annix Orbit
 
-      We received a request to permanently delete your CV Assistant account.
+      We received a request to permanently delete your Annix Orbit account.
 
       Click here to confirm — this cannot be undone:
 
@@ -1730,7 +1730,7 @@ This is an automated notification from the Annix test site.
 
     return this.sendEmail({
       to: email,
-      subject: "Confirm Account Deletion - CV Assistant",
+      subject: "Confirm Account Deletion - Annix Orbit",
       html,
       text,
     });
@@ -1742,7 +1742,7 @@ This is an automated notification from the Annix test site.
     jobTitle: string,
   ): Promise<boolean> {
     const html = emailLayout({
-      title: "Application Update - CV Assistant",
+      title: "Application Update - Annix Orbit",
       heading: "Application Update",
       headingColor: "#333",
       bodyHtml: `
@@ -1766,7 +1766,7 @@ This is an automated notification from the Annix test site.
     jobTitle: string,
   ): Promise<boolean> {
     const html = emailLayout({
-      title: "Great News About Your Application - CV Assistant",
+      title: "Great News About Your Application - Annix Orbit",
       heading: "Great News!",
       headingColor: "#16a34a",
       bodyHtml: `
@@ -1790,7 +1790,7 @@ This is an automated notification from the Annix test site.
     jobTitle: string,
   ): Promise<boolean> {
     const html = emailLayout({
-      title: "Congratulations - CV Assistant",
+      title: "Congratulations - Annix Orbit",
       heading: "Congratulations!",
       headingColor: "#16a34a",
       bodyHtml: `
@@ -1819,7 +1819,7 @@ This is an automated notification from the Annix test site.
     const feedbackLink = `${frontendUrl}/cv-assistant/reference-feedback/${feedbackToken}`;
 
     const html = emailLayout({
-      title: "Reference Request - CV Assistant",
+      title: "Reference Request - Annix Orbit",
       heading: "Reference Request",
       headingColor: "#8B5CF6",
       bodyHtml: `
@@ -1854,7 +1854,7 @@ This is an automated notification from the Annix test site.
     const feedbackLink = `${frontendUrl}/cv-assistant/reference-feedback/${feedbackToken}`;
 
     const html = emailLayout({
-      title: "Reference Request Reminder - CV Assistant",
+      title: "Reference Request Reminder - Annix Orbit",
       heading: "Friendly Reminder",
       headingColor: "#f59e0b",
       bodyHtml: `
@@ -1889,7 +1889,7 @@ This is an automated notification from the Annix test site.
     const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
 
     const html = emailLayout({
-      title: "High-Scoring Match Alert - CV Assistant",
+      title: "High-Scoring Match Alert - Annix Orbit",
       heading: "Match Alert",
       headingColor: "#8B5CF6",
       bodyHtml: `
@@ -1959,7 +1959,7 @@ This is an automated notification from the Annix test site.
       <html>
       <head>
         <meta charset="utf-8">
-        <title>Weekly Digest - CV Assistant</title>
+        <title>Weekly Digest - Annix Orbit</title>
       </head>
       <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
         <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -1985,7 +1985,7 @@ This is an automated notification from the Annix test site.
           </p>
           <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
           <p style="color: #999; font-size: 12px;">
-            You can disable digest emails in your CV Assistant settings.
+            You can disable digest emails in your Annix Orbit settings.
           </p>
         </div>
       </body>
@@ -1994,7 +1994,7 @@ This is an automated notification from the Annix test site.
 
     return this.sendEmail({
       to: email,
-      subject: "Your Weekly Recruitment Digest - CV Assistant",
+      subject: "Your Weekly Recruitment Digest - Annix Orbit",
       html,
     });
   }
@@ -2019,7 +2019,7 @@ This is an automated notification from the Annix test site.
       .join("");
 
     const html = emailLayout({
-      title: "New Job Matches - CV Assistant",
+      title: "New Job Matches - Annix Orbit",
       heading: "New Job Matches",
       headingColor: "#8B5CF6",
       bodyHtml: `
@@ -2038,7 +2038,7 @@ This is an automated notification from the Annix test site.
 
     return this.sendEmail({
       to: email,
-      subject: `${jobs.length} New Job Match${jobs.length === 1 ? "" : "es"} for You - CV Assistant`,
+      subject: `${jobs.length} New Job Match${jobs.length === 1 ? "" : "es"} for You - Annix Orbit`,
       html,
     });
   }

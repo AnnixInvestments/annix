@@ -41,7 +41,7 @@ Shared component home already exists:
 | App | Guide count | Notes |
 |---|---|---|
 | Stock Control | 34 | Mature; walkthrough-ready |
-| CV Assistant | 2 | "Posting a job with Nix", "Running EE report" |
+| Annix Orbit | 2 | "Posting a job with Nix", "Running EE report" |
 | Teacher Assistant | 1 | "Getting started" |
 | AU Rubber, Admin, Comply SA, Annix Rep, Customer, Supplier | 0 | Walkthrough mode for these apps requires writing guides first |
 

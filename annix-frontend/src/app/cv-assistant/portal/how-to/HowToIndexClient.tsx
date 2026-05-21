@@ -32,7 +32,7 @@ export default function HowToIndexClient(props: CvAssistantHowToIndexClientProps
       adminRole={CV_ASSISTANT_ADMIN_ROLE}
       basePath="/cv-assistant/portal/how-to"
       recentKey="cv-assistant-how-to-recent"
-      subheading="Step-by-step guides for the CV Assistant company portal. Tailored to your role."
+      subheading="Step-by-step guides for the Annix Orbit company portal. Tailored to your role."
     />
   );
 }

@@ -155,7 +155,7 @@ export class JobIngestionService {
       ? DateTime.fromJSDate(source.lastIngestedAt).toISO()
       : "never";
 
-    const subject = `[CV Assistant] Adapter ${source.name} returned 0 jobs in the last 24h`;
+    const subject = `[Annix Orbit] Adapter ${source.name} returned 0 jobs in the last 24h`;
     const lines = [
       `Source: ${source.name} (id=${source.id}, provider=${source.provider})`,
       `Last ingestion attempt: ${lastIngestedLabel}`,

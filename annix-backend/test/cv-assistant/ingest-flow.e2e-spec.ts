@@ -71,7 +71,7 @@ function buildAdzunaSource(overrides: Partial<JobMarketSource> = {}): JobMarketS
   } as JobMarketSource;
 }
 
-describe("CV Assistant - JobIngestionService.ingestFromSource (mocked repos)", () => {
+describe("Annix Orbit - JobIngestionService.ingestFromSource (mocked repos)", () => {
   let service: JobIngestionService;
   let externalJobs: ExternalJobRow[];
   let alternates: AlternateRow[];

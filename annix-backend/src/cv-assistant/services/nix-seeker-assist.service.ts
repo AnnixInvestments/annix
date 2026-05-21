@@ -43,7 +43,7 @@ export class NixSeekerAssistService {
   async cvImprovements(userId: number): Promise<NixSeekerCvAssessmentResponse> {
     const profile = await this.profileRepo.findOne({ where: { userId } });
     if (!profile) {
-      throw new BadRequestException("CV Assistant profile not found");
+      throw new BadRequestException("Annix Orbit profile not found");
     }
     if (profile.userType !== CvAssistantUserType.INDIVIDUAL) {
       throw new BadRequestException("Nix Wizard CV review is only for individual job seekers.");
@@ -104,7 +104,7 @@ export class NixSeekerAssistService {
   async generateCv(userId: number): Promise<NixGeneratedCv> {
     const profile = await this.profileRepo.findOne({ where: { userId } });
     if (!profile) {
-      throw new BadRequestException("CV Assistant profile not found");
+      throw new BadRequestException("Annix Orbit profile not found");
     }
     if (profile.userType !== CvAssistantUserType.INDIVIDUAL) {
       throw new BadRequestException("Nix CV builder is only for individual job seekers.");
@@ -173,7 +173,7 @@ export class NixSeekerAssistService {
   ): Promise<{ cv: NixGeneratedCv | null; generatedAt: string | null }> {
     const profile = await this.profileRepo.findOne({ where: { userId } });
     if (!profile) {
-      throw new BadRequestException("CV Assistant profile not found");
+      throw new BadRequestException("Annix Orbit profile not found");
     }
     const generatedAt = profile.nixGeneratedCvAt ? profile.nixGeneratedCvAt.toISOString() : null;
     return { cv: profile.nixGeneratedCv, generatedAt };
@@ -182,7 +182,7 @@ export class NixSeekerAssistService {
   async updateGeneratedCv(userId: number, cv: NixGeneratedCv): Promise<NixGeneratedCv> {
     const profile = await this.profileRepo.findOne({ where: { userId } });
     if (!profile) {
-      throw new BadRequestException("CV Assistant profile not found");
+      throw new BadRequestException("Annix Orbit profile not found");
     }
     if (profile.userType !== CvAssistantUserType.INDIVIDUAL) {
       throw new BadRequestException("Nix CV builder is only for individual job seekers.");

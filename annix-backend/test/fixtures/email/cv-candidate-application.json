@@ -15,6 +15,6 @@
     "jobReferenceCode": "REF-2026-0408",
     "candidateEmail": "candidate@example.com",
     "candidateName": "Jane Applicant",
-    "note": "CV Assistant flow is reference-code matching, not document classification"
+    "note": "Annix Orbit flow is reference-code matching, not document classification"
   }
 }

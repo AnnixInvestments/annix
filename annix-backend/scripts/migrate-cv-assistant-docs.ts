@@ -1,5 +1,5 @@
 /**
- * Migration Script: Migrate CV Assistant Documents from Local to S3
+ * Migration Script: Migrate Annix Orbit Documents from Local to S3
  *
  * This script migrates candidate CVs from local filesystem to S3:
  *   Old: uploads/cv-assistant/{companyId}/*  or  uploads/cv-assistant/manual/*
@@ -60,7 +60,7 @@ async function migrateCvAssistantDocs() {
     logger.log("=".repeat(60));
   }
 
-  logger.log("Starting CV Assistant Document Migration...");
+  logger.log("Starting Annix Orbit Document Migration...");
   logger.log("Migrating from local uploads/ to S3 cv-assistant/candidates/");
   logger.log("=".repeat(60));
 

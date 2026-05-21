@@ -132,7 +132,7 @@ export default function StockControlLanding() {
         </div>
 
         <p className="mt-12 text-center text-xs text-teal-200/60">
-          Part of the Annix platform · ASCA, AU Rubber, RFQ, Comply SA, FieldFlow, CV Assistant.
+          Part of the Annix platform · ASCA, AU Rubber, RFQ, Comply SA, FieldFlow, Annix Orbit.
         </p>
       </div>
     </div>

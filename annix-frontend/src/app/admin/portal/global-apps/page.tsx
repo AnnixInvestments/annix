@@ -207,7 +207,7 @@ const platformApps: AppCard[] = [
   },
   {
     href: "/cv-assistant/portal/dashboard",
-    title: "CV Assistant",
+    title: "Annix Orbit",
     description: "AI-powered candidate screening and reference checking.",
     icon: <CvAssistantIcon />,
     color: "bg-violet-100 text-violet-600",

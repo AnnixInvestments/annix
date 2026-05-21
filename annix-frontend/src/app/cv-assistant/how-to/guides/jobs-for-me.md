@@ -6,7 +6,7 @@ roles: [seeker, individual]
 order: 2
 tags: [jobs, matching, seeker, adzuna, jooble, remotive]
 lastUpdated: 2026-05-13
-summary: How CV Assistant pulls and ranks jobs from external sources against the CV you uploaded.
+summary: How Annix Orbit pulls and ranks jobs from external sources against the CV you uploaded.
 readingMinutes: 4
 relatedPaths: [annix-frontend/src/app/cv-assistant/seeker/jobs, annix-frontend/src/app/lib/cv-assistant/components/SeekerJobCard.tsx, annix-backend/src/cv-assistant/services/seeker-job-feed.service.ts, annix-backend/src/cv-assistant/controllers/seeker-jobs.controller.ts, annix-backend/src/cv-assistant/services/jooble.service.ts, annix-backend/src/cv-assistant/services/remotive.service.ts, annix-backend/src/cv-assistant/services/dpsa-circular.service.ts]
 ---
@@ -14,7 +14,7 @@ relatedPaths: [annix-frontend/src/app/cv-assistant/seeker/jobs, annix-frontend/s
 ## What is it?
 
 The Browse Jobs page shows a personal feed of vacancies pulled from multiple
-external sources and ranked against the CV you've uploaded to CV Assistant.
+external sources and ranked against the CV you've uploaded to Annix Orbit.
 We currently pull from Adzuna SA, Jooble (which aggregates PNet, Careers24,
 Indeed.co.za and others), and Remotive (remote-friendly roles). Every card
 links back to the original posting on the source site — Annix does not host

@@ -57,7 +57,7 @@ const BRAND_STYLES: Record<ExtractionBrand, BrandStyle> = {
     logo: null,
   },
   "cv-assistant": {
-    label: "CV Assistant",
+    label: "Annix Orbit",
     bar: "bg-pink-600",
     bg: "bg-pink-50",
     text: "text-pink-700",

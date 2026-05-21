@@ -116,7 +116,7 @@ export class GumtreePortalAdapter implements PortalAdapter, OnModuleInit {
       ${skills}
       <p>${safeDescription}</p>
       ${jobPosting.applyByEmail ? `<p><strong>Apply by email:</strong> ${jobPosting.applyByEmail}</p>` : ""}
-      ${url ? `<p><a href="${url}">View full listing on CV Assistant</a></p>` : ""}
+      ${url ? `<p><a href="${url}">View full listing on Annix Orbit</a></p>` : ""}
     `;
   }
 

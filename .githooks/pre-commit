@@ -134,7 +134,7 @@ check_version_bump "Annix Rep" \
     "annix-frontend/src/app/fieldflow/config/annix-rep-version.ts" \
     "annix-frontend/src/app/fieldflow/"
 
-check_version_bump "CV Assistant" \
+check_version_bump "Annix Orbit" \
     "annix-frontend/src/app/cv-assistant/config/version.ts" \
     "annix-frontend/src/app/cv-assistant/" "annix-backend/src/cv-assistant/"
 

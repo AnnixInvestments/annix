@@ -72,7 +72,7 @@ function CvAssistantLoginContent() {
                 />
               </svg>
             </div>
-            <h1 className="text-2xl font-bold text-gray-900">CV Assistant</h1>
+            <h1 className="text-2xl font-bold text-gray-900">Annix Orbit</h1>
             <p className="text-gray-600 mt-2">
               {accountType === "individual"
                 ? "Sign in to your job seeker account"

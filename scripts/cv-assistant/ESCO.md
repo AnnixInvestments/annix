@@ -1,6 +1,6 @@
 # ESCO Skills Seed — Operator Runbook
 
-The CV Assistant uses the ESCO (European Skills, Competences, Occupations)
+The Annix Orbit uses the ESCO (European Skills, Competences, Occupations)
 taxonomy to canonicalise free-text skill strings (`Postgres` → `PostgreSQL`,
 `coded welder` → `Welding (coded)`, etc.).
 

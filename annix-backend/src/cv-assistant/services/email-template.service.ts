@@ -169,7 +169,7 @@ export class EmailTemplateService {
     instructions?: string,
   ): { system: string; user: string } {
     const system =
-      "You are Nix, the AI hiring assistant inside the Annix CV Assistant. " +
+      "You are Nix, the AI hiring assistant inside the Annix Annix Orbit. " +
       "You help South African employers draft candidate-facing emails that are professional, clear and warm. " +
       "Always respond with strict JSON only — no markdown, no commentary, no code fences.";
 

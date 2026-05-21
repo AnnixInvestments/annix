@@ -166,9 +166,9 @@ export const FEATURE_FLAG_DESCRIPTIONS: Record<FeatureFlagKey, string> = {
   STOCK_MGMT_NIX_QUOTE_FROM_DOCUMENTS:
     "Stock management module — sellable add-on: Nix 'New quote from documents'. Drop drawings + specs, auto-extract items + codes, mine library + revision tracking, cross-quote reuse.",
   CV_ASSISTANT_EE_COMPLIANCE_ENABLED:
-    "CV Assistant — EE Act 55/1998 compliance (disclosure flow, fairness monitoring, EEA2/EEA4 reports). Default off; per-customer activation requires is_designated_employer + signed DPIA.",
+    "Annix Orbit — EE Act 55/1998 compliance (disclosure flow, fairness monitoring, EEA2/EEA4 reports). Default off; per-customer activation requires is_designated_employer + signed DPIA.",
   CV_ASSISTANT_NIX_CV_BUILDER:
-    "CV Assistant — paid 'Get Nix to build my CV' feature: Nix generates a rewritten, improved CV for individual job seekers with a downloadable PDF.",
+    "Annix Orbit — paid 'Get Nix to build my CV' feature: Nix generates a rewritten, improved CV for individual job seekers with a downloadable PDF.",
 };
 
 export const FEATURE_FLAG_DEFAULTS: Record<FeatureFlagKey, boolean> = {

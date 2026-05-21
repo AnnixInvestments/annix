@@ -72,7 +72,7 @@ export const PORTAL_HOSTS: readonly PortalHost[] = [
   },
   {
     code: "cv-assistant",
-    displayName: "CV Assistant",
+    displayName: "Annix Orbit",
     internalPathPrefix: "/cv-assistant",
     prodHost: "cv.annix.co.za",
     prodHostAliases: [],

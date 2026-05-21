@@ -9,7 +9,7 @@ const APP_OPTIONS = [
   { value: "", label: "All Apps" },
   { value: "au-rubber", label: "AU Rubber" },
   { value: "nix", label: "Nix" },
-  { value: "cv-assistant", label: "CV Assistant" },
+  { value: "cv-assistant", label: "Annix Orbit" },
   { value: "stock-control", label: "Stock Control" },
   { value: "comply-sa", label: "Comply SA" },
 ];

@@ -83,45 +83,45 @@ const JOB_METADATA: Record<string, { description: string; module: string; defaul
   },
   "cv-assistant:purge-inactive": {
     description: "POPIA purge of inactive candidate data",
-    module: "CV Assistant",
+    module: "Annix Orbit",
     defaultCron: "0 2 * * *",
   },
   "cv-assistant:disparate-impact-monitor": {
     description:
       "EE Act fairness check — applies the 4/5 rule to the last 100 candidates per active job and audits any breach (issue #240 Phase B)",
-    module: "CV Assistant",
+    module: "Annix Orbit",
     defaultCron: "0 8 * * *",
   },
   "cv-assistant:poll-emails": {
     description: "Poll inbound emails for CV submissions",
-    module: "CV Assistant",
+    module: "Annix Orbit",
     defaultCron: "0 6-18 * * *",
   },
   "cv-assistant:poll-job-sources": {
     description: "Poll external job listing sources",
-    module: "CV Assistant",
+    module: "Annix Orbit",
     defaultCron: "0 * * * *",
   },
   "cv-assistant:weekly-digests": {
     description: "Send weekly candidate digest emails",
-    module: "CV Assistant",
+    module: "Annix Orbit",
     defaultCron: "0 0 * * 0",
   },
   "cv-assistant:job-alerts": {
     description: "Send daily candidate job alert emails",
-    module: "CV Assistant",
+    module: "Annix Orbit",
     defaultCron: "0 9 * * *",
   },
   "cv-assistant:retry-portal-postings": {
     description:
       "Retry failed external job-portal postings with exponential backoff (1h, 6h, 24h, 72h, then abandon)",
-    module: "CV Assistant",
+    module: "Annix Orbit",
     defaultCron: "0 */6 * * *",
   },
   "cv-assistant:refresh-salary-benchmarks": {
     description:
       "Refresh cv_assistant_salary_benchmarks cache from Adzuna SA for top title × province combinations",
-    module: "CV Assistant",
+    module: "Annix Orbit",
     defaultCron: "0 2 * * *",
   },
   "insights:daily-snapshot": {

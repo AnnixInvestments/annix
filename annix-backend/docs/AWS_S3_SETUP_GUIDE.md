@@ -150,7 +150,7 @@ annix-sync-files-production/
 │   └── customer-delivery-notes/{customerId}/
 ├── fieldflow/                    # FieldFlow sales rep app
 │   └── recordings/{meetingId}/
-├── cv-assistant/                 # CV Assistant application
+├── cv-assistant/                 # Annix Orbit application
 │   └── candidates/{companyId}/
 ├── stock-control/                # Stock Control application
 │   ├── allocations/

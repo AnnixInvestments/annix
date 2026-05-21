@@ -200,10 +200,14 @@ export default function HomePage() {
                 <div className="inline-flex items-center justify-center w-20 h-20 bg-violet-100 rounded-2xl text-violet-600 mb-6 group-hover:bg-violet-600 group-hover:text-white transition-colors">
                   <UserSearch {...iconProps} />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">CV Assistant</h3>
+                <h3 className="text-xl font-bold text-gray-900 mb-1">Annix Orbit</h3>
+                <p className="text-xs font-semibold tracking-widest uppercase text-violet-600 mb-3">
+                  Hiring &bull; Talent &bull; Compliance
+                </p>
                 <p className="text-gray-600 mb-6">
-                  For companies: AI-powered candidate screening and reference checking. For
-                  individuals: upload your CV and get matched to jobs you qualify for.
+                  The intelligent workforce ecosystem for modern hiring, talent growth, and
+                  compliance. AI screening, reference checks, and job matching for companies and
+                  candidates.
                 </p>
                 <span className="inline-flex items-center text-violet-600 font-semibold group-hover:translate-x-1 transition-transform">
                   Get started

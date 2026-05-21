@@ -128,7 +128,7 @@ export class IndividualProfileService {
   async profileForUser(userId: number): Promise<CvAssistantProfile> {
     const profile = await this.profileRepo.findOne({ where: { userId } });
     if (!profile) {
-      throw new NotFoundException("CV Assistant profile not found");
+      throw new NotFoundException("Annix Orbit profile not found");
     }
     if (profile.userType !== CvAssistantUserType.INDIVIDUAL) {
       throw new BadRequestException("This endpoint is only available to individual job seekers.");

@@ -25,7 +25,7 @@ official forms or audit-trail.
 ## Who can see this page
 
 The page is at `/cv-assistant/portal/compliance/ee-report` and is gated
-behind the standard CV Assistant auth guard. In practice you should
+behind the standard Annix Orbit auth guard. In practice you should
 restrict who in your team has access — the data is "special personal
 information" under POPIA s26 and every read is recorded in the audit
 log.
@@ -49,7 +49,7 @@ Two preconditions must be in place:
 
 ### 1. Open the page
 
-Navigate to **CV Assistant portal → How To → Compliance**, or jump
+Navigate to **Annix Orbit portal → How To → Compliance**, or jump
 straight to `/cv-assistant/portal/compliance/ee-report`.
 
 ### 2. Pick a date range

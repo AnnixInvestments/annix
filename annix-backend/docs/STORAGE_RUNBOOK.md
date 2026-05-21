@@ -25,7 +25,7 @@ This document covers backup, restore, and troubleshooting procedures for the Ann
 | `annix-app/` | Core Annix | Customer docs, supplier docs, RFQ docs, drawings |
 | `au-rubber/` | AU Rubber | CoCs, delivery notes, graphs |
 | `fieldflow/` | FieldFlow | Meeting recordings |
-| `cv-assistant/` | CV Assistant | Candidate CVs |
+| `cv-assistant/` | Annix Orbit | Candidate CVs |
 | `stock-control/` | Stock Control | Job cards, invoices, signatures |
 | `secure-documents/` | Secure Docs | Encrypted documents |
 

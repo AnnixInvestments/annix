@@ -5,7 +5,7 @@ description: Run the discovery-first protocol before writing new shared code. Se
 
 # Discovery-first protocol
 
-Annix is a monorepo with several apps (Stock Control, AU Rubber, RFQ, Comply SA, FieldFlow, Annix Rep, CV Assistant) that share a backend, a frontend, and a `packages/product-data/` workspace package. Before writing any new shared-ish code, you MUST verify it doesn't already exist.
+Annix is a monorepo with several apps (Stock Control, AU Rubber, RFQ, Comply SA, FieldFlow, Annix Rep, Annix Orbit) that share a backend, a frontend, and a `packages/product-data/` workspace package. Before writing any new shared-ish code, you MUST verify it doesn't already exist.
 
 ## When to run this protocol
 

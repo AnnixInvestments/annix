@@ -12,7 +12,7 @@ annix-sync-files/
 ├── annix-app/           # Core app documents (customers, suppliers, RFQ, drawings)
 ├── au-rubber/           # AU Rubber documents (CoCs, delivery notes, graphs)
 ├── fieldflow/           # FieldFlow recordings
-├── cv-assistant/        # CV Assistant candidate documents
+├── cv-assistant/        # Annix Orbit candidate documents
 ├── stock-control/       # Stock Control documents (job cards, invoices, signatures)
 └── secure-documents/    # Encrypted secure documents
 ```

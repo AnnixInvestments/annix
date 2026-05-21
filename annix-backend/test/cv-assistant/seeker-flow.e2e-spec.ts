@@ -43,7 +43,7 @@ interface MatchLike {
   externalJob: ExternalJobLike;
 }
 
-describe("CV Assistant - Seeker flow integration (post-ingest)", () => {
+describe("Annix Orbit - Seeker flow integration (post-ingest)", () => {
   let feed: SeekerJobFeedService;
   let externalJobsStore: ExternalJobLike[];
   let matchesStore: MatchLike[];

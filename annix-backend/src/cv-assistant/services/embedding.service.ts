@@ -308,7 +308,7 @@ export class EmbeddingService {
     try {
       await this.emailService.sendEmail({
         to: recipient,
-        subject: `[CV Assistant] Embedding cost guard tripped (${calls} calls / $${estimatedUsd.toFixed(2)} in 24h)`,
+        subject: `[Annix Orbit] Embedding cost guard tripped (${calls} calls / $${estimatedUsd.toFixed(2)} in 24h)`,
         text,
         html,
       });

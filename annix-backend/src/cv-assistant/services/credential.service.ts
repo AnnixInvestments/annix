@@ -169,7 +169,7 @@ export class CredentialService {
       ),
       "",
       "Renew before the expiry date so you don't lose deployment eligibility.",
-      "Update the new expiry date in CV Assistant once renewed.",
+      "Update the new expiry date in Annix Orbit once renewed.",
     ];
     const text = lines.join("\n");
     const html = `<p>${lines.map((l) => escapeHtml(l)).join("</p><p>")}</p>`;

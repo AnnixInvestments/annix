@@ -181,7 +181,7 @@ export const portalConfig = {
     loginHref: "/stock-control/login",
   },
   cvAssistant: {
-    title: "CV Assistant",
+    title: "Annix Orbit",
     homeHref: "/cv-assistant/portal/dashboard",
     loginHref: "/cv-assistant/login?type=company",
   },

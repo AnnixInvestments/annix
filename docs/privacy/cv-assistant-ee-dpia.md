@@ -1,11 +1,11 @@
-# CV Assistant — Employment Equity disclosure: Data Protection Impact Assessment
+# Annix Orbit — Employment Equity disclosure: Data Protection Impact Assessment
 
 **Status:** Draft pending Information Officer sign-off.
 **Owner:** Annix Information Officer.
 **Last revised:** 2026-05-05.
 **Linked issue:** GitHub #240.
 
-This DPIA covers the Employment Equity (EE) disclosure feature in the CV Assistant
+This DPIA covers the Employment Equity (EE) disclosure feature in the Annix Orbit
 product: the collection, storage, processing, retention, and disclosure of
 candidate demographic data (race, gender, disability, nationality status,
 reasonable-accommodation requests) for two purposes — Employment Equity Act
@@ -94,7 +94,7 @@ explicitly permitted — those services live in `analytics.service.ts` /
 - Disclosures are retained for **5 years from `consent_granted_at`**, in line
   with the longer of (EE Act plan duration ≈ 5y, EEA2/EEA4 minimum 3y). The
   POPIA s14 minimality requirement is satisfied by deletion at 5y.
-- The existing CV Assistant 12-month inactive-candidate purge will cascade
+- The existing Annix Orbit 12-month inactive-candidate purge will cascade
   to EE attribute rows via FK `ON DELETE CASCADE`. **`[LEGAL REVIEW]`
   confirms whether EE-attached candidates should override the 12-month
   default with a 5-year hold** — the safer interpretation today is to extend.
@@ -127,7 +127,7 @@ confirm:
 - [ ] The customer has populated `cv_assistant_ee_consent_text_versions`
       with text reviewed by their employment-law practitioner (or accepted
       Annix's `v1-2026-default` placeholder explicitly, in writing).
-- [ ] The customer's HR access roles in CV Assistant correctly scope who can
+- [ ] The customer's HR access roles in Annix Orbit correctly scope who can
       view EE attributes.
 - [ ] The customer accepts the 4/5-rule disparate-impact alert workflow
       (audit log entry; email routing pending Phase E follow-up).

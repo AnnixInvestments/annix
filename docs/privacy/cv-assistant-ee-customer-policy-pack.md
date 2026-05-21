@@ -1,4 +1,4 @@
-# CV Assistant — Customer EE policy pack
+# Annix Orbit — Customer EE policy pack
 
 A drop-in pack of POPIA-aligned text + retention schedule + customer-facing
 notices for designated-employer customers enabling the Employment Equity
@@ -113,7 +113,7 @@ agreement with Annix or sign as a standalone POPIA Operator agreement.
 > Customer as a POPIA Operator (s1, s21). Annix:
 >
 > 1. Will process the data only on the Customer's documented instructions
->    as captured in the CV Assistant feature configuration.
+>    as captured in the Annix Orbit feature configuration.
 > 2. Will treat the data as confidential and limit access to authorised
 >    Annix personnel under written confidentiality undertakings.
 > 3. Has implemented appropriate technical and organisational measures

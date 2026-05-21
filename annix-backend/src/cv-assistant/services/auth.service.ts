@@ -59,7 +59,7 @@ export class CvAssistantAuthService {
   }
 
   /**
-   * The CV Assistant module stores company FKs against `cv_assistant_companies`
+   * The Annix Orbit module stores company FKs against `cv_assistant_companies`
    * (a CV-specific mirror table) rather than the shared `companies` table the
    * profile + registration use. To keep both consistent we INSERT a matching
    * row in `cv_assistant_companies` with the SAME id whenever a `companies`
@@ -79,9 +79,9 @@ export class CvAssistantAuthService {
   }
 
   /**
-   * Self-healing for legacy users who landed in CV Assistant without a
+   * Self-healing for legacy users who landed in Annix Orbit without a
    * complete `cv_assistant_profile` row (e.g. accounts created in another
-   * portal before CV Assistant existed). On login we auto-provision a
+   * portal before Annix Orbit existed). On login we auto-provision a
    * placeholder company so the wizard can save against a real companyId
    * instead of 500-ing on the not-null constraint.
    *
@@ -102,7 +102,7 @@ export class CvAssistantAuthService {
     const fallbackCompanyName =
       [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email;
     this.logger.warn(
-      `User ${user.id} (${user.email}) has incomplete CV Assistant profile — auto-provisioning placeholder company`,
+      `User ${user.id} (${user.email}) has incomplete Annix Orbit profile — auto-provisioning placeholder company`,
     );
     const company = this.companyRepo.create({
       name: `${fallbackCompanyName}'s Company`,
@@ -516,7 +516,7 @@ export class CvAssistantAuthService {
       });
       await this.userAppAccessRepo.save(access);
     } catch (err) {
-      this.logger.warn(`Failed to bridge CV Assistant user ${userId} to RBAC: ${err}`);
+      this.logger.warn(`Failed to bridge Annix Orbit user ${userId} to RBAC: ${err}`);
     }
   }
 

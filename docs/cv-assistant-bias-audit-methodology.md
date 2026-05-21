@@ -1,4 +1,4 @@
-# CV Assistant — Match-Score Bias Audit Methodology
+# Annix Orbit — Match-Score Bias Audit Methodology
 
 This document is the **reproducible methodology** for verifying that the
 `CandidateJobMatch.overallScore` distribution is statistically similar across

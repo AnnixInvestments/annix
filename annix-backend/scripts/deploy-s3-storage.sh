@@ -272,8 +272,8 @@ run_migrations() {
     log_info "Preview FieldFlow recordings migration:"
     pnpm migrate:fieldflow-recordings:dry-run || log_warn "FieldFlow migration preview failed"
 
-    log_info "Preview CV Assistant migration:"
-    pnpm migrate:cv-assistant-docs:dry-run || log_warn "CV Assistant migration preview failed"
+    log_info "Preview Annix Orbit migration:"
+    pnpm migrate:cv-assistant-docs:dry-run || log_warn "Annix Orbit migration preview failed"
 
     log_info "Preview Rubber paths migration:"
     pnpm migrate:rubber-paths:dry-run || log_warn "Rubber paths migration preview failed"
@@ -291,7 +291,7 @@ run_migrations() {
         log_info "Step 2: Running actual migrations..."
 
         pnpm migrate:fieldflow-recordings || log_warn "FieldFlow migration failed"
-        pnpm migrate:cv-assistant-docs || log_warn "CV Assistant migration failed"
+        pnpm migrate:cv-assistant-docs || log_warn "Annix Orbit migration failed"
         pnpm migrate:rubber-paths || log_warn "Rubber paths migration failed"
         pnpm migrate:annix-app-paths || log_warn "Annix App paths migration failed"
         pnpm migrate:s3 || log_warn "S3 migration failed"

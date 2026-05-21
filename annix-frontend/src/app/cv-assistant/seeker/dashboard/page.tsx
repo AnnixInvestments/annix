@@ -36,7 +36,7 @@ export default function SeekerDashboardPage() {
       <div>
         <h1 className="text-3xl font-bold text-white">Welcome, {firstName}</h1>
         <p className="text-white/70 mt-2">
-          Your CV Assistant job seeker workspace. We will be adding more here soon.
+          Your Annix Orbit job seeker workspace. We will be adding more here soon.
         </p>
       </div>
 
@@ -121,7 +121,7 @@ export default function SeekerDashboardPage() {
               Ready to find your next role?
             </h2>
             <p className="text-[#1a1a40]/80">
-              Upload your CV and let CV Assistant match you to suitable jobs.
+              Upload your CV and let Annix Orbit match you to suitable jobs.
             </p>
           </div>
           <Link

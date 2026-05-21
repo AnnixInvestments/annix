@@ -142,7 +142,7 @@ describe("Storage Integration Tests", () => {
       });
     });
 
-    describe("CV Assistant", () => {
+    describe("Annix Orbit", () => {
       it("should upload to cv-assistant/candidates path", async () => {
         const file = createMockFile("resume.pdf", "application/pdf");
         const companyId = 202;

@@ -1,4 +1,4 @@
-# CV Assistant — Employment Equity feature: how-to
+# Annix Orbit — Employment Equity feature: how-to
 
 A practical operator's guide for Annix admins and Customer HR rolling out
 Employment Equity (EE) compliance. Read alongside the DPIA
