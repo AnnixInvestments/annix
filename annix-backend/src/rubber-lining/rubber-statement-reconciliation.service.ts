@@ -264,8 +264,15 @@ export class RubberStatementReconciliationService {
       systemInvoices.map((inv) => [inv.invoiceNumber.trim().toLowerCase(), inv]),
     );
 
+    // Statement lines with isCredit=true are reversal/payment journal entries
+    // (e.g. S&N's recurring "31030006" rows that clear each paid invoice).
+    // They are not invoices and have no STI in our system — including them in
+    // the per-row match loop inflates the "unmatched" count and surfaces
+    // ghost "missing STI" warnings. Filter to debit (invoice) rows only.
+    const invoiceLines = recon.extractedData.filter((item) => !item.isCredit);
+
     const statementMap = new Map(
-      recon.extractedData.map((item) => [item.invoiceNumber.trim().toLowerCase(), item.amount]),
+      invoiceLines.map((item) => [item.invoiceNumber.trim().toLowerCase(), item.amount]),
     );
 
     // Cascade pre-fetch: collect every deliveryNoteRef on every system STI in
@@ -327,7 +334,7 @@ export class RubberStatementReconciliationService {
       if (cascade.linkedSupplierCocPresent === false) cocGaps++;
     };
 
-    recon.extractedData.forEach((item) => {
+    invoiceLines.forEach((item) => {
       const key = item.invoiceNumber.trim().toLowerCase();
       const systemInv = systemInvoiceByKey.get(key);
       if (!systemInv) {
@@ -588,7 +595,10 @@ Rules:
             contents: [{ parts: [{ text: prompt }, ...imageParts] }],
             generationConfig: {
               temperature: 0.1,
-              maxOutputTokens: 256,
+              // 256 tokens truncates mid-string on some letterheads;
+              // the actual JSON payload is tiny but Gemini's internal
+              // reasoning eats into the budget.
+              maxOutputTokens: 1024,
               responseMimeType: "application/json",
             },
           }),
