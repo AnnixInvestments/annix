@@ -401,18 +401,37 @@ export class RubberAuCocService {
     }
   }
 
-  async regenerateAllGeneratedCocs(): Promise<{
+  async regenerateAllGeneratedCocs(options?: { includeSent?: boolean }): Promise<{
     regenerated: number;
     failed: number;
     total: number;
+    skippedSent: number;
     errors: string[];
   }> {
+    // Default: don't touch SENT CoCs — the customer already has the previous
+    // PDF in their inbox, and silently overwriting the stored copy creates
+    // drift between what we say we sent and what they actually have. Pass
+    // includeSent=true via the controller query param if you really need to
+    // refresh everything (e.g. after a global template change).
+    const includeSent = options?.includeSent === true;
+    const statuses = includeSent
+      ? [AuCocStatus.GENERATED, AuCocStatus.SENT]
+      : [AuCocStatus.GENERATED];
+    const skippedSent = includeSent
+      ? 0
+      : await this.auCocRepository.count({ where: { status: AuCocStatus.SENT } });
     const cocs = await this.auCocRepository.find({
-      where: [{ status: AuCocStatus.GENERATED }, { status: AuCocStatus.SENT }],
+      where: statuses.map((status) => ({ status })),
       order: { id: "ASC" },
     });
 
-    const initial = { regenerated: 0, failed: 0, total: cocs.length, errors: [] as string[] };
+    const initial = {
+      regenerated: 0,
+      failed: 0,
+      total: cocs.length,
+      skippedSent,
+      errors: [] as string[],
+    };
 
     return cocs.reduce(async (accPromise, coc) => {
       const acc = await accPromise;
@@ -752,6 +771,40 @@ export class RubberAuCocService {
           }
         }
 
+        // Customer-side fallback: when the source DN is a CDN (outbound to
+        // a customer), the supplier CoC isn't on the CDN itself — the CDN's
+        // rolls trace back through the rubber_roll_stock table to the
+        // originating SDN, which carries the linked_coc_id. Walk that
+        // chain by joining the CDN's line-item roll numbers against
+        // roll_stock. This works regardless of whether
+        // roll_stock.customer_delivery_note_id has been backfilled for
+        // this CDN — the join key is the roll number, which is durable.
+        if (sourceDeliveryNote && candidates.length === 0) {
+          const upstreamCocs = await this.supplierCocRepository
+            .createQueryBuilder("coc")
+            .innerJoin(
+              "rubber_delivery_notes",
+              "sdn",
+              "sdn.linked_coc_id = coc.id AND sdn.version_status NOT IN ('REJECTED','SUPERSEDED')",
+            )
+            .innerJoin("rubber_roll_stock", "rs", "rs.supplier_delivery_note_id = sdn.id")
+            .innerJoin(
+              "rubber_delivery_note_items",
+              "dni",
+              "dni.roll_number = rs.roll_number AND dni.delivery_note_id = :cdnId",
+              { cdnId: sourceDeliveryNote.id },
+            )
+            .where("coc.version_status NOT IN ('REJECTED','SUPERSEDED')")
+            .orderBy("coc.id", "DESC")
+            .getMany();
+          if (upstreamCocs.length > 0) {
+            this.logger.log(
+              `Found ${upstreamCocs.length} upstream supplier CoC(s) via roll-number trace from CDN ${sourceDeliveryNote.id} for AU CoC ${coc.cocNumber}`,
+            );
+            candidates.push(...upstreamCocs);
+          }
+        }
+
         const allSupplierCocs = await this.supplierCocRepository
           .createQueryBuilder("coc")
           .where("coc.order_number IS NOT NULL")
@@ -1081,23 +1134,48 @@ export class RubberAuCocService {
 
     if (!deliveryNote) return;
 
-    const rolls = deliveryNote.extractedData?.rolls || [];
-    if (rolls.length === 0) return;
+    // CDNs created via the legacy extract path stash rolls on
+    // deliveryNote.extractedData.rolls. CDNs created via the
+    // analyze-and-create modal flow skip the extractedData JSON and
+    // populate rubber_delivery_note_items rows directly. Read whichever
+    // store has data — items first, since they're the canonical source
+    // once they exist.
+    const items = await this.deliveryNoteItemRepository.find({
+      where: { deliveryNoteId: coc.sourceDeliveryNoteId },
+    });
+    const extractedRollData: ExtractedRollData[] =
+      items.length > 0
+        ? items
+            .filter((item) => item.rollNumber !== null && item.rollNumber !== undefined)
+            .map((item) => {
+              const widthMm = item.widthMm ? Number(item.widthMm) : null;
+              const lengthM = item.lengthM ? Number(item.lengthM) : null;
+              return {
+                rollNumber: item.rollNumber ?? "",
+                thicknessMm: item.thicknessMm ? Number(item.thicknessMm) : null,
+                widthMm,
+                lengthM,
+                weightKg: item.rollWeightKg ? Number(item.rollWeightKg) : null,
+                areaSqM: widthMm && lengthM ? (widthMm * lengthM) / 1000 : null,
+              };
+            })
+        : (deliveryNote.extractedData?.rolls || []).map((roll) => ({
+            rollNumber: roll.rollNumber ?? "",
+            thicknessMm: roll.thicknessMm ?? null,
+            widthMm: roll.widthMm ?? null,
+            lengthM: roll.lengthM ?? null,
+            weightKg: roll.weightKg ?? null,
+            areaSqM: roll.areaSqM ?? null,
+          }));
 
-    const extractedRollData: ExtractedRollData[] = rolls.map((roll) => ({
-      rollNumber: roll.rollNumber ?? "",
-      thicknessMm: roll.thicknessMm ?? null,
-      widthMm: roll.widthMm ?? null,
-      lengthM: roll.lengthM ?? null,
-      weightKg: roll.weightKg ?? null,
-      areaSqM: roll.areaSqM ?? null,
-    }));
+    if (extractedRollData.length === 0) return;
 
     coc.extractedRollData = extractedRollData;
     await this.auCocRepository.update(coc.id, { extractedRollData });
 
+    const source = items.length > 0 ? "delivery_note_items" : "extracted_data.rolls";
     this.logger.log(
-      `Populated ${extractedRollData.length} rolls from DN ${deliveryNote.deliveryNoteNumber} for AU CoC ${coc.cocNumber}`,
+      `Populated ${extractedRollData.length} rolls (source: ${source}) from DN ${deliveryNote.deliveryNoteNumber} for AU CoC ${coc.cocNumber}`,
     );
   }
 
