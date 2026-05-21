@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { AnnixOrbitImage } from "@/app/components/AnnixOrbitLogo";
+import { AnnixOrbitMark } from "@/app/components/AnnixOrbitLogo";
 
 export const metadata: Metadata = {
   title: "Annix Platform",
@@ -196,37 +196,56 @@ export default function HomePage() {
 
           <Link href="/annix/orbit" target="_blank" rel="noopener noreferrer" className="group">
             <div
-              className="backdrop-blur-sm rounded-xl shadow-lg overflow-hidden border-2 hover:shadow-2xl transition-all duration-300 h-full flex flex-col"
+              className="backdrop-blur-sm rounded-xl shadow-lg p-8 border-2 hover:shadow-2xl transition-all duration-300 h-full flex flex-col text-center"
               style={{
                 background: "linear-gradient(180deg, #001B8F 0%, #00135F 100%)",
                 borderColor: "rgba(255, 138, 0, 0.25)",
               }}
             >
-              <AnnixOrbitImage className="w-full h-auto block" />
-              <div className="px-8 pb-8 -mt-2 text-center flex-1 flex flex-col">
-                <p className="text-sm leading-relaxed mb-6" style={{ color: "#A7B0C0" }}>
-                  AI screening, reference checks, and job matching for companies and candidates.
-                </p>
-                <span
-                  className="mt-auto inline-flex items-center justify-center font-semibold group-hover:translate-x-1 transition-transform"
-                  style={{ color: "#FFA500" }}
-                >
-                  Get started
-                  <svg
-                    className="w-5 h-5 ml-2"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 5l7 7-7 7"
-                    />
-                  </svg>
-                </span>
+              <AnnixOrbitMark className="w-32 h-32 mx-auto mb-3" />
+              <div
+                className="text-3xl font-extrabold tracking-[0.18em] text-white leading-none"
+                style={{ fontFamily: '"Exo 2", "Inter", system-ui, sans-serif' }}
+              >
+                ANNIX
               </div>
+              <div className="flex items-center justify-center gap-2 mt-2">
+                <span className="h-px w-8" style={{ backgroundColor: "#FF8A00", opacity: 0.6 }} />
+                <div
+                  className="text-lg font-bold tracking-[0.4em]"
+                  style={{
+                    color: "#FF8A00",
+                    fontFamily: '"Exo 2", "Inter", system-ui, sans-serif',
+                  }}
+                >
+                  ORBIT
+                </div>
+                <span className="h-px w-8" style={{ backgroundColor: "#FF8A00", opacity: 0.6 }} />
+              </div>
+              <p
+                className="text-[10px] font-semibold tracking-[0.3em] uppercase mt-3 mb-4"
+                style={{ color: "#E8EDF5" }}
+              >
+                Hiring &bull; Talent &bull; Compliance
+              </p>
+              <p className="text-sm leading-relaxed mb-6 flex-1" style={{ color: "#A7B0C0" }}>
+                The intelligent workforce ecosystem for modern hiring, talent growth, and
+                compliance. AI screening, reference checks, and job matching.
+              </p>
+              <span
+                className="mt-auto inline-flex items-center justify-center font-semibold group-hover:translate-x-1 transition-transform"
+                style={{ color: "#FFA500" }}
+              >
+                Get started
+                <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 5l7 7-7 7"
+                  />
+                </svg>
+              </span>
             </div>
           </Link>
 
