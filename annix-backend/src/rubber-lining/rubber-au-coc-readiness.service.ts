@@ -250,6 +250,21 @@ export class RubberAuCocReadinessService {
       };
     }
 
+    // Hard gate: only generate when readiness passes. The whole point of
+    // the readiness pipeline is to refuse generation when the source data
+    // (rolls, calenderer CoC, compounder CoC, rheometer graph) isn't all
+    // reachable — letting through partial-data CoCs is what produces the
+    // empty-table / no-graph PDFs the operator has to chase down later.
+    const readiness = await this.checkReadiness(auCocId);
+    if (!readiness.ready) {
+      const missing = (readiness.missingDocuments || []).join(", ") || "source data";
+      return {
+        generated: false,
+        auCocId,
+        reason: `Not ready — missing: ${missing}`,
+      };
+    }
+
     try {
       const { buffer, filename } = await this.auCocService.generatePdf(auCocId);
 

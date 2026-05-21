@@ -401,6 +401,91 @@ export class RubberAuCocService {
     }
   }
 
+  /**
+   * Targeted: regenerate ONLY the given CoC ids, regardless of status. Use
+   * when the operator has identified a specific batch that needs fixing
+   * (e.g. PDFs that printed without the lab table) and wants to refresh
+   * just those without touching the rest of the SENT pool.
+   */
+  async regenerateCocsByIds(cocIds: number[]): Promise<{
+    regenerated: number;
+    failed: number;
+    total: number;
+    errors: string[];
+  }> {
+    if (cocIds.length === 0) {
+      return { regenerated: 0, failed: 0, total: 0, errors: [] };
+    }
+    const cocs = await this.auCocRepository.find({
+      where: { id: In(cocIds) },
+      order: { id: "ASC" },
+    });
+    const initial = { regenerated: 0, failed: 0, total: cocs.length, errors: [] as string[] };
+    return cocs.reduce(async (accPromise, coc) => {
+      const acc = await accPromise;
+      try {
+        await this.generatePdf(coc.id);
+        return { ...acc, regenerated: acc.regenerated + 1 };
+      } catch (error) {
+        const message = `CoC ${coc.cocNumber} (ID ${coc.id}): ${error instanceof Error ? error.message : String(error)}`;
+        this.logger.warn(`Failed to regenerate AU CoC: ${message}`);
+        return { ...acc, failed: acc.failed + 1, errors: [...acc.errors, message] };
+      }
+    }, Promise.resolve(initial));
+  }
+
+  /**
+   * Targeted: resend ONLY the given CoC ids. Each must be SENT or
+   * GENERATED — the existing send pipeline runs, the customer gets the
+   * latest stored PDF. Use after a targeted regenerate when the operator
+   * wants to push just the fixed subset to the customer (instead of
+   * Resend All).
+   */
+  async resendCocsByIds(cocIds: number[]): Promise<{
+    sent: number;
+    skipped: number;
+    failed: number;
+    total: number;
+    errors: string[];
+  }> {
+    if (cocIds.length === 0) {
+      return { sent: 0, skipped: 0, failed: 0, total: 0, errors: [] };
+    }
+    const cocs = await this.auCocRepository.find({
+      where: { id: In(cocIds) },
+      relations: ["customerCompany"],
+      order: { id: "ASC" },
+    });
+    const initial = {
+      sent: 0,
+      skipped: 0,
+      failed: 0,
+      total: cocs.length,
+      errors: [] as string[],
+    };
+    return cocs.reduce(async (accPromise, coc) => {
+      const acc = await accPromise;
+      if (coc.status !== AuCocStatus.SENT && coc.status !== AuCocStatus.GENERATED) {
+        return {
+          ...acc,
+          skipped: acc.skipped + 1,
+          errors: [
+            ...acc.errors,
+            `CoC ${coc.cocNumber} (ID ${coc.id}): not in SENT/GENERATED state (currently ${coc.status})`,
+          ],
+        };
+      }
+      try {
+        await this.sendApprovedAuCocToCustomer(coc.id);
+        return { ...acc, sent: acc.sent + 1 };
+      } catch (error) {
+        const message = `CoC ${coc.cocNumber} (ID ${coc.id}): ${error instanceof Error ? error.message : String(error)}`;
+        this.logger.warn(`Failed to resend AU CoC: ${message}`);
+        return { ...acc, failed: acc.failed + 1, errors: [...acc.errors, message] };
+      }
+    }, Promise.resolve(initial));
+  }
+
   async regenerateAllGeneratedCocs(options?: { includeSent?: boolean }): Promise<{
     regenerated: number;
     failed: number;
@@ -802,6 +887,67 @@ export class RubberAuCocService {
               `Found ${upstreamCocs.length} upstream supplier CoC(s) via roll-number trace from CDN ${sourceDeliveryNote.id} for AU CoC ${coc.cocNumber}`,
             );
             candidates.push(...upstreamCocs);
+          }
+        }
+
+        // Roll-number-in-coc-number fallback. Most supplier CoCs encode the
+        // batch / roll numbers directly in the coc_number text — e.g.
+        // "198-42206-42207, 42436-42447" lists order 198 with rolls 42206,
+        // 42207, 42436, 42437, ..., 42447. When the CDN's line-item roll
+        // numbers (e.g. "42436", "42440") appear in any SCoC's coc_number,
+        // that SCoC is the source. Expands hyphen-ranges so "42436-42447"
+        // matches every roll in that span.
+        if (sourceDeliveryNote && candidates.length === 0) {
+          const cdnItems = await this.deliveryNoteItemRepository.find({
+            where: { deliveryNoteId: sourceDeliveryNote.id },
+          });
+          const cdnRollNums = Array.from(
+            new Set(
+              cdnItems.map((i) => (i.rollNumber || "").trim()).filter((rn) => rn.length > 0),
+            ),
+          );
+          if (cdnRollNums.length > 0) {
+            const allScocsForMatch = await this.supplierCocRepository
+              .createQueryBuilder("coc")
+              .where("coc.coc_number IS NOT NULL")
+              .andWhere("coc.version_status NOT IN ('REJECTED','SUPERSEDED')")
+              .orderBy("coc.id", "DESC")
+              .getMany();
+            const expandRollNumbers = (cocNumber: string): Set<string> => {
+              const out = new Set<string>();
+              // Match every numeric token (4–6 digit roll numbers). Also
+              // expand "42436-42447" range tokens.
+              const parts = cocNumber.split(/[,\s]+/);
+              for (const part of parts) {
+                const rangeMatch = part.match(/^(\d{3,6})-(\d{3,6})$/);
+                if (rangeMatch) {
+                  const start = Number(rangeMatch[1]);
+                  const end = Number(rangeMatch[2]);
+                  // Only expand if it actually looks like a roll range
+                  // (small span, ascending). Skip "198-42206" type tokens
+                  // where the left side is an order number.
+                  if (end > start && end - start <= 200) {
+                    for (let n = start; n <= end; n++) out.add(String(n));
+                    continue;
+                  }
+                }
+                const numericMatch = part.match(/(\d{4,6})/g);
+                if (numericMatch) {
+                  numericMatch.forEach((n) => out.add(n));
+                }
+              }
+              return out;
+            };
+            const matched = allScocsForMatch.filter((sc) => {
+              const rolls = expandRollNumbers(sc.cocNumber || "");
+              return cdnRollNums.some((rn) => rolls.has(rn));
+            });
+            if (matched.length > 0) {
+              this.logger.log(
+                `Found ${matched.length} supplier CoC(s) via roll-number-in-coc-number match for AU CoC ${coc.cocNumber} (CDN rolls: ${cdnRollNums.slice(0, 5).join(",")}${cdnRollNums.length > 5 ? "..." : ""})`,
+              );
+              candidates.push(...matched);
+            }
           }
         }
 

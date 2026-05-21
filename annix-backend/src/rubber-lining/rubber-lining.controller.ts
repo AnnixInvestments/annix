@@ -2558,6 +2558,34 @@ Formula: totalPrice = totalKg × salePricePerKg
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
+  @Post("portal/au-cocs/bulk-regenerate-by-ids")
+  @ApiOperation({
+    summary:
+      "Regenerate ONLY the specified AU CoC IDs. Use when a known batch needs fixing (e.g. PDFs that printed without the lab table) without touching the rest of the pool.",
+  })
+  async bulkRegenerateAuCocsByIds(
+    @Body() body: { cocIds: number[] },
+  ): Promise<{ regenerated: number; failed: number; total: number; errors: string[] }> {
+    const cocIds = Array.isArray(body?.cocIds) ? body.cocIds.filter((id) => Number.isFinite(id)) : [];
+    return this.rubberAuCocService.regenerateCocsByIds(cocIds);
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Post("portal/au-cocs/bulk-resend-by-ids")
+  @ApiOperation({
+    summary:
+      "Resend ONLY the specified AU CoC IDs to their customers. Each must be in SENT or GENERATED state. The latest stored PDF is what the customer receives — typically run this after bulk-regenerate-by-ids.",
+  })
+  async bulkResendAuCocsByIds(
+    @Body() body: { cocIds: number[] },
+  ): Promise<{ sent: number; skipped: number; failed: number; total: number; errors: string[] }> {
+    const cocIds = Array.isArray(body?.cocIds) ? body.cocIds.filter((id) => Number.isFinite(id)) : [];
+    return this.rubberAuCocService.resendCocsByIds(cocIds);
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
   @Get("portal/coc-statuses")
   @ApiOperation({ summary: "List CoC processing statuses" })
   async cocStatuses(): Promise<{ value: string; label: string }[]> {

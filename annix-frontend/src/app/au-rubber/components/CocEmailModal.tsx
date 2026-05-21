@@ -119,16 +119,29 @@ interface CocEmailModalProps {
     customerName: string;
   }) => void;
   isSending: boolean;
+  /**
+   * Optional restriction — when provided, only these CoC ids are eligible
+   * to send through this modal regardless of status. Used by the page's
+   * "Send Selected" action so the operator can ship exactly the
+   * pre-ticked subset without the status filter narrowing it down.
+   */
+  restrictToCocIds?: number[];
 }
 
 export function CocEmailModal(props: CocEmailModalProps) {
   const rawPropsIsSending = props.isSending;
   const relevantCocs = useMemo(() => {
+    // restrictToCocIds overrides the status filter — operator is sending
+    // an explicit pre-selected set ("Send Selected" workflow).
+    if (props.restrictToCocIds && props.restrictToCocIds.length > 0) {
+      const allowed = new Set(props.restrictToCocIds);
+      return props.cocs.filter((c) => allowed.has(c.id));
+    }
     if (props.mode === "send") {
       return props.cocs.filter((c) => c.status === "GENERATED");
     }
     return props.cocs.filter((c) => c.status === "SENT");
-  }, [props.cocs, props.mode]);
+  }, [props.cocs, props.mode, props.restrictToCocIds]);
 
   const customerOptions = useMemo(() => {
     const customerMap = new Map<string, { name: string; count: number; ids: number[] }>();

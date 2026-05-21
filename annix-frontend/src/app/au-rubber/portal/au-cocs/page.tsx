@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Eye, Loader2, Mail, RefreshCw, Zap } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
 import {
   Pagination,
@@ -74,6 +74,13 @@ export default function AuCocsPage() {
   const [isBulkSending, setIsBulkSending] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [emailModalMode, setEmailModalMode] = useState<CocEmailMode | null>(null);
+  // Multi-select for the "Send Selected" workflow. Pre-ticked on first load
+  // with the CoC numbers that were regenerated via the new fallback paths
+  // (the previously-broken ones that now have proper lab tables + graph).
+  // Operator can untick / tick others manually.
+  const [selectedCocIds, setSelectedCocIds] = useState<Set<number>>(new Set());
+  const [restrictSendToIds, setRestrictSendToIds] = useState<number[] | undefined>(undefined);
+  const didApplyDefaultSelection = useRef(false);
   const pdfPreview = usePdfPreview();
   const [progressModal, setProgressModal] = useState<{
     visible: boolean;
@@ -284,6 +291,62 @@ export default function AuCocsPage() {
       }
       return 0;
     });
+  };
+
+  // Pre-tick the CoCs that were regenerated via the new fallback chains
+  // (the ones that previously had empty tables / no graph). Runs once, the
+  // first time the CoCs list arrives — operator can adjust freely after.
+  useEffect(() => {
+    if (didApplyDefaultSelection.current) return;
+    if (cocs.length === 0) return;
+    const REGENERATED_VIA_FALLBACK: string[] = [
+      "AU-COC-0039",
+      "AU-COC-0040",
+      "AU-COC-0041",
+      "AU-COC-0042",
+      "AU-COC-0043",
+      "AU-COC-0044",
+      "AU-COC-0045",
+      "AU-COC-0046",
+      "AU-COC-0047",
+      "AU-COC-0048",
+      "AU-COC-0049",
+      "AU-COC-0050",
+      "AU-COC-0051",
+      "AU-COC-0053",
+    ];
+    const allowedNumbers = new Set(REGENERATED_VIA_FALLBACK);
+    const ids = cocs.filter((c) => allowedNumbers.has(c.cocNumber)).map((c) => c.id);
+    if (ids.length > 0) {
+      setSelectedCocIds(new Set(ids));
+      didApplyDefaultSelection.current = true;
+    }
+  }, [cocs]);
+
+  const toggleCocSelection = (id: number) => {
+    setSelectedCocIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+  const toggleAllOnPage = (rowIds: number[]) => {
+    setSelectedCocIds((prev) => {
+      const allSelected = rowIds.length > 0 && rowIds.every((id) => prev.has(id));
+      const next = new Set(prev);
+      if (allSelected) {
+        for (const id of rowIds) next.delete(id);
+      } else {
+        for (const id of rowIds) next.add(id);
+      }
+      return next;
+    });
+  };
+  const handleSendSelected = () => {
+    if (selectedCocIds.size === 0) return;
+    setRestrictSendToIds(Array.from(selectedCocIds));
+    setEmailModalMode("send");
   };
 
   const filteredCocs = sortCocs(
@@ -534,6 +597,20 @@ export default function AuCocsPage() {
               {isResending ? "Resending..." : `Resend All (${sentCount})`}
             </button>
           )}
+          {selectedCocIds.size > 0 && (
+            <button
+              onClick={handleSendSelected}
+              disabled={isBulkSending}
+              className="inline-flex items-center px-4 py-2 rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 disabled:opacity-50"
+            >
+              {isBulkSending ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Mail className="w-4 h-4 mr-2" />
+              )}
+              Send Selected ({selectedCocIds.size})
+            </button>
+          )}
           <Link
             href="/au-rubber/portal/au-cocs/new"
             className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-700"
@@ -646,6 +723,28 @@ export default function AuCocsPage() {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
+                <th scope="col" className="px-3 py-3 w-10">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                    checked={
+                      paginatedCocs.length > 0 &&
+                      paginatedCocs.every((c) => selectedCocIds.has(c.id))
+                    }
+                    ref={(el) => {
+                      if (el) {
+                        const somePicked = paginatedCocs.some((c) => selectedCocIds.has(c.id));
+                        const allPicked = paginatedCocs.every((c) => selectedCocIds.has(c.id));
+                        el.indeterminate = somePicked && !allPicked;
+                      }
+                    }}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      toggleAllOnPage(paginatedCocs.map((c) => c.id));
+                    }}
+                    title="Toggle all visible rows"
+                  />
+                </th>
                 <th
                   scope="col"
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
@@ -716,12 +815,27 @@ export default function AuCocsPage() {
                 const rawCocPoNumber = coc.poNumber;
                 const rawCocDeliveryNoteRef = coc.deliveryNoteRef;
                 const rawCocItemCount = coc.itemCount;
+                const isPicked = selectedCocIds.has(coc.id);
                 return (
                   <tr
                     key={coc.id}
                     onClick={() => router.push(`/au-rubber/portal/au-cocs/${coc.id}`)}
-                    className="hover:bg-gray-50 cursor-pointer"
+                    className={`hover:bg-gray-50 cursor-pointer ${
+                      isPicked ? "bg-purple-50/60" : ""
+                    }`}
                   >
+                    <td
+                      className="px-3 py-4 whitespace-nowrap"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                        checked={isPicked}
+                        onChange={() => toggleCocSelection(coc.id)}
+                        aria-label={`Select ${coc.cocNumber}`}
+                      />
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <Link
                         href={`/au-rubber/portal/au-cocs/${coc.id}`}
@@ -918,7 +1032,11 @@ export default function AuCocsPage() {
         <CocEmailModal
           mode={emailModalMode}
           cocs={cocs}
-          onClose={() => setEmailModalMode(null)}
+          restrictToCocIds={restrictSendToIds}
+          onClose={() => {
+            setEmailModalMode(null);
+            setRestrictSendToIds(undefined);
+          }}
           onSend={handleEmailModalSend}
           isSending={isBulkSending || isResending}
         />
