@@ -902,9 +902,7 @@ export class RubberAuCocService {
             where: { deliveryNoteId: sourceDeliveryNote.id },
           });
           const cdnRollNums = Array.from(
-            new Set(
-              cdnItems.map((i) => (i.rollNumber || "").trim()).filter((rn) => rn.length > 0),
-            ),
+            new Set(cdnItems.map((i) => (i.rollNumber || "").trim()).filter((rn) => rn.length > 0)),
           );
           if (cdnRollNums.length > 0) {
             const allScocsForMatch = await this.supplierCocRepository

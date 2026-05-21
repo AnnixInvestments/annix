@@ -438,10 +438,14 @@ export class RubberStatementReconciliationService {
       // resolved (so the UI shows the real SDN, not the OCR misread). If
       // unresolved, fall back to whatever the STI declared.
       const linkedDeliveryNoteRefText = resolved ? resolved.number : explicitRef || fallbackRef;
-      const hasDnCandidate = explicitRef || fallbackRef ? true : false;
+      const hasDnCandidate = Boolean(explicitRef || fallbackRef);
       const linkedDeliveryNotePresent = hasDnCandidate ? resolved !== null : null;
       const linkedDeliveryNoteId = resolved ? resolved.id : null;
-      const linkedSupplierCocPresent = resolved ? resolved.cocId !== null : hasDnCandidate ? false : null;
+      const linkedSupplierCocPresent = resolved
+        ? resolved.cocId !== null
+        : hasDnCandidate
+          ? false
+          : null;
       const linkedSupplierCocId = resolved && resolved.cocId !== null ? resolved.cocId : null;
       return {
         linkedDeliveryNoteRef: linkedDeliveryNoteRefText,

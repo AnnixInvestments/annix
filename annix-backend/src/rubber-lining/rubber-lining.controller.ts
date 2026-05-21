@@ -1503,7 +1503,9 @@ Formula: totalPrice = totalKg × salePricePerKg
         this.extractionOrchestratorService
           .dispatchRollsForDeliveryNote(dnId)
           .catch(() => undefined)
-          .then(() => this.extractionOrchestratorService.triggerReadinessCheckForDeliveryNote(dnId)),
+          .then(() =>
+            this.extractionOrchestratorService.triggerReadinessCheckForDeliveryNote(dnId),
+          ),
       ),
     );
     return {
@@ -2566,7 +2568,9 @@ Formula: totalPrice = totalKg × salePricePerKg
   async bulkRegenerateAuCocsByIds(
     @Body() body: { cocIds: number[] },
   ): Promise<{ regenerated: number; failed: number; total: number; errors: string[] }> {
-    const cocIds = Array.isArray(body?.cocIds) ? body.cocIds.filter((id) => Number.isFinite(id)) : [];
+    const cocIds = Array.isArray(body?.cocIds)
+      ? body.cocIds.filter((id) => Number.isFinite(id))
+      : [];
     return this.rubberAuCocService.regenerateCocsByIds(cocIds);
   }
 
@@ -2580,7 +2584,9 @@ Formula: totalPrice = totalKg × salePricePerKg
   async bulkResendAuCocsByIds(
     @Body() body: { cocIds: number[] },
   ): Promise<{ sent: number; skipped: number; failed: number; total: number; errors: string[] }> {
-    const cocIds = Array.isArray(body?.cocIds) ? body.cocIds.filter((id) => Number.isFinite(id)) : [];
+    const cocIds = Array.isArray(body?.cocIds)
+      ? body.cocIds.filter((id) => Number.isFinite(id))
+      : [];
     return this.rubberAuCocService.resendCocsByIds(cocIds);
   }
 
