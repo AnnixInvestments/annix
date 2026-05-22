@@ -332,6 +332,7 @@ export interface JobMarketSource {
   requestsToday: number;
   lastIngestedAt: string | null;
   ingestionIntervalHours: number;
+  requiresVetting: boolean;
   companyId: number | null;
   createdAt: string;
   updatedAt: string;

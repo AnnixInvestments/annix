@@ -94,6 +94,7 @@ export default function AdminOrbitJobMarketPage() {
   const handleTriggerIngestion = async (sourceId: number) => {
     const sourceMatch = sources.find((s) => s.id === sourceId);
     const sourceName = sourceMatch ? sourceMatch.name : "source";
+    const requiresVetting = sourceMatch ? sourceMatch.requiresVetting : true;
     setIngestionStatus((prev) => ({ ...prev, [sourceId]: "running" }));
 
     showExtraction({
@@ -106,10 +107,11 @@ export default function AdminOrbitJobMarketPage() {
       const fetched = await adminApiClient.fetchOrbitSource(sourceId);
       hideExtraction();
 
-      if (fetched.savedIds.length === 0) {
+      if (fetched.savedIds.length === 0 || !requiresVetting) {
+        const suffix = requiresVetting ? "" : " (no vetting needed)";
         setIngestionStatus((prev) => ({
           ...prev,
-          [sourceId]: `Done: 0 new, ${fetched.skipped} existing`,
+          [sourceId]: `Done: ${fetched.ingested} new, ${fetched.skipped} existing${suffix}`,
         }));
         queryClient.invalidateQueries({ queryKey: adminKeys.orbitJobMarket.all });
         return;

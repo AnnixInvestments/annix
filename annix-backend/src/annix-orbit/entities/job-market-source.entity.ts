@@ -57,6 +57,9 @@ export class JobMarketSource {
   @Column({ name: "ingestion_interval_hours", type: "int", default: 6 })
   ingestionIntervalHours: number;
 
+  @Column({ name: "requires_vetting", type: "boolean", default: true })
+  requiresVetting: boolean;
+
   @ManyToOne(() => AnnixOrbitCompany, { onDelete: "SET NULL", nullable: true })
   @JoinColumn({ name: "company_id" })
   company: AnnixOrbitCompany | null;

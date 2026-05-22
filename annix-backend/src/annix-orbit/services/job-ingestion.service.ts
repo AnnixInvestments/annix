@@ -24,7 +24,40 @@ import { RemotiveService } from "./remotive.service";
 
 const HEALTH_ALERT_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 const ADZUNA_PAGE_SIZE = 50;
-const ADZUNA_MAX_PAGES = 10;
+const ADZUNA_PAGES_PER_CATEGORY = 4;
+const ADZUNA_CATEGORIES_PER_DAY = 5;
+const ADZUNA_MAX_DAYS_OLD = 21;
+const ADZUNA_ZA_CATEGORIES = [
+  "accounting-finance-jobs",
+  "it-jobs",
+  "sales-jobs",
+  "customer-services-jobs",
+  "engineering-jobs",
+  "hr-jobs",
+  "healthcare-nursing-jobs",
+  "hospitality-catering-jobs",
+  "pr-advertising-marketing-jobs",
+  "logistics-warehouse-jobs",
+  "teaching-jobs",
+  "trade-construction-jobs",
+  "admin-jobs",
+  "legal-jobs",
+  "creative-design-jobs",
+  "graduate-jobs",
+  "retail-jobs",
+  "consultancy-jobs",
+  "manufacturing-jobs",
+  "scientific-qa-jobs",
+  "social-work-jobs",
+  "travel-jobs",
+  "energy-oil-gas-jobs",
+  "property-jobs",
+  "charity-voluntary-jobs",
+  "domestic-help-cleaning-jobs",
+  "maintenance-jobs",
+  "part-time-jobs",
+  "other-general-jobs",
+];
 
 @Injectable()
 export class JobIngestionService {
@@ -78,7 +111,7 @@ export class JobIngestionService {
     source: JobMarketSource,
     options: { vetInline?: boolean } = {},
   ): Promise<{ ingested: number; skipped: number; savedIds: number[] }> {
-    const vetInline = options.vetInline ?? true;
+    const vetInline = (options.vetInline ?? true) && source.requiresVetting;
 
     if (source.provider === JobSourceProvider.DPSA) {
       return this.ingestDpsaSource(source, { vetInline });
@@ -276,7 +309,8 @@ export class JobIngestionService {
       .createQueryBuilder("job")
       .innerJoin("job.source", "source")
       .where("source.company_id IS NULL")
-      .andWhere("(job.accepts_za IS NULL OR job.accepts_za = true)");
+      .andWhere("(job.accepts_za IS NULL OR job.accepts_za = true)")
+      .andWhere("(job.expires_at IS NULL OR job.expires_at > NOW())");
 
     if (options.country) {
       qb.andWhere("job.country = :country", { country: options.country });
@@ -460,7 +494,8 @@ export class JobIngestionService {
 
     const qb = this.externalJobRepo
       .createQueryBuilder("job")
-      .where("(job.accepts_za IS NULL OR job.accepts_za = true)");
+      .where("(job.accepts_za IS NULL OR job.accepts_za = true)")
+      .andWhere("(job.expires_at IS NULL OR job.expires_at > NOW())");
     if (options.country) {
       qb.andWhere("job.country = :country", { country: options.country });
     }
@@ -609,22 +644,35 @@ export class JobIngestionService {
     country: string,
     category: string | null,
   ): Promise<IngestedJobResult[]> {
+    const categories = category ? [category] : this.adzunaCategoriesForToday();
     const collected: IngestedJobResult[] = [];
-    for (let page = 1; page <= ADZUNA_MAX_PAGES; page += 1) {
+    for (const cat of categories) {
       if (source.requestsToday >= source.rateLimitPerDay) {
-        this.logger.warn(
-          `Adzuna rate limit reached during pagination at page ${page} for source ${source.name}`,
-        );
+        this.logger.warn(`Adzuna daily request limit reached for source ${source.name}`);
         break;
       }
+      const catJobs = await this.fetchAdzunaCategoryPages(source, country, cat);
+      collected.push(...catJobs);
+    }
+    return collected;
+  }
+
+  private async fetchAdzunaCategoryPages(
+    source: JobMarketSource,
+    country: string,
+    category: string,
+  ): Promise<IngestedJobResult[]> {
+    const collected: IngestedJobResult[] = [];
+    for (let page = 1; page <= ADZUNA_PAGES_PER_CATEGORY; page += 1) {
+      if (source.requestsToday >= source.rateLimitPerDay) break;
       source.requestsToday += 1;
       const { jobs } = await this.adzunaService.searchJobs(
         source.apiId!,
         source.apiKeyEncrypted!,
         country,
         {
-          category: category ?? undefined,
-          maxDaysOld: 7,
+          category,
+          maxDaysOld: ADZUNA_MAX_DAYS_OLD,
           resultsPerPage: ADZUNA_PAGE_SIZE,
           page,
         },
@@ -633,6 +681,13 @@ export class JobIngestionService {
       if (jobs.length < ADZUNA_PAGE_SIZE) break;
     }
     return collected;
+  }
+
+  private adzunaCategoriesForToday(): string[] {
+    const groupCount = Math.ceil(ADZUNA_ZA_CATEGORIES.length / ADZUNA_CATEGORIES_PER_DAY);
+    const dayIndex = Math.floor(nowMillis() / 86_400_000) % groupCount;
+    const start = dayIndex * ADZUNA_CATEGORIES_PER_DAY;
+    return ADZUNA_ZA_CATEGORIES.slice(start, start + ADZUNA_CATEGORIES_PER_DAY);
   }
 
   private async upsertJobs(
