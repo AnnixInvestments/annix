@@ -1,6 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
+import { chunk } from "es-toolkit/compat";
 import { In, Repository } from "typeorm";
 import { extractTextFromPdf } from "../../lib/document-extraction";
 import { parseJsonFromAi } from "../../lib/json-from-ai";
@@ -51,6 +52,9 @@ Rules:
 The full text of the circular follows.`;
 
 const PSVC_INDEX_URL = "https://www.dpsa.gov.za/newsroom/psvc/";
+const DPSA_VACANCIES_PER_CHUNK = 10;
+const DPSA_CHUNK_CONCURRENCY = 5;
+const DPSA_CHUNK_MAX_OUTPUT_TOKENS = 12_000;
 
 @Injectable()
 export class DpsaCircularService {
@@ -178,16 +182,14 @@ export class DpsaCircularService {
       if (!indexResponse.ok) return null;
       const indexHtml = await indexResponse.text();
 
-      const directPdfHref = findLatestCircularPdfHref(indexHtml);
-      if (directPdfHref) {
-        if (directPdfHref.startsWith("http")) return directPdfHref;
-        if (directPdfHref.startsWith("/")) return `https://www.dpsa.gov.za${directPdfHref}`;
-        return `https://www.dpsa.gov.za/${directPdfHref}`;
-      }
-
+      // The index links the weekly vacancy circulars as subpages
+      // (/newsroom/psvc/circular-NN-of-YYYY/). Each subpage holds the combined
+      // "PSV CIRCULAR NN of YYYY.pdf" plus per-section splits (a.pdf … w.pdf).
+      // NOTE: do not match bare "Circular N of YYYY.pdf" on the index — those are
+      // Employment Management circulars (admin memos), not vacancy circulars.
       const circularPageHref = findLatestCircularPageHref(indexHtml);
       if (!circularPageHref) {
-        this.logger.warn("PSVC discovery: no circular PDF or page link on index");
+        this.logger.warn("PSVC discovery: no circular subpage link on index");
         return null;
       }
       const circularPageUrl = circularPageHref.startsWith("http")
@@ -198,9 +200,9 @@ export class DpsaCircularService {
       if (!circularResponse.ok) return null;
       const circularHtml = await circularResponse.text();
 
-      const pdfHref = findPdfHref(circularHtml);
+      const pdfHref = findCombinedCircularPdfHref(circularHtml);
       if (!pdfHref) {
-        this.logger.warn(`PSVC discovery: no PDF link on ${circularPageUrl}`);
+        this.logger.warn(`PSVC discovery: no combined circular PDF on ${circularPageUrl}`);
         return null;
       }
       if (pdfHref.startsWith("http")) return pdfHref;
@@ -224,50 +226,82 @@ export class DpsaCircularService {
   }
 
   private async extractVacancies(text: string, pdfUrl: string): Promise<DpsaVacancy[]> {
-    const trimmed = text.length > 200_000 ? text.slice(0, 200_000) : text;
-    const result = await this.aiChatService.chat(
-      [{ role: "user", content: `${DPSA_EXTRACTION_PROMPT}\n\nSource: ${pdfUrl}\n\n${trimmed}` }],
-      undefined,
-      undefined,
-      { maxOutputTokens: 65_000, temperature: 0.1, responseFormat: "json" },
-    );
-    try {
-      const parsed = parseJsonFromAi<DpsaVacancy[]>(result.content);
-      if (!Array.isArray(parsed)) {
-        this.logger.warn("DPSA extraction returned non-array");
-        return [];
-      }
-      return parsed.filter((v) => Boolean(v?.postNumber) && Boolean(v?.title));
-    } catch (err) {
-      this.logger.warn(
-        `DPSA JSON parse failed: ${err instanceof Error ? err.message : String(err)}`,
-      );
+    const chunks = splitByVacancyBoundary(text, DPSA_VACANCIES_PER_CHUNK);
+    if (chunks.length === 0) {
+      this.logger.warn("DPSA extraction: no POST markers found in circular text");
       return [];
     }
+    this.logger.log(`DPSA extraction: ${chunks.length} chunks from ${pdfUrl}`);
+
+    const batches = chunk(chunks, DPSA_CHUNK_CONCURRENCY);
+    const all: DpsaVacancy[] = [];
+    let failedChunks = 0;
+
+    await batches.reduce(async (prev, batch) => {
+      await prev;
+      const results = await Promise.all(
+        batch.map(async (chunkText) => {
+          try {
+            return await this.extractChunk(chunkText, pdfUrl);
+          } catch (err) {
+            failedChunks += 1;
+            this.logger.warn(
+              `DPSA chunk extraction failed: ${err instanceof Error ? err.message : String(err)}`,
+            );
+            return [] as DpsaVacancy[];
+          }
+        }),
+      );
+      results.forEach((r) => all.push(...r));
+    }, Promise.resolve());
+
+    if (failedChunks > 0) {
+      this.logger.warn(
+        `DPSA extraction: ${failedChunks}/${chunks.length} chunks failed — ingesting ${all.length} from the rest`,
+      );
+    }
+
+    // De-dup by postNumber in case a vacancy straddled a chunk boundary.
+    const seen = new Set<string>();
+    return all.filter((v) => {
+      if (!v?.postNumber || !v?.title) return false;
+      if (seen.has(v.postNumber)) return false;
+      seen.add(v.postNumber);
+      return true;
+    });
+  }
+
+  private async extractChunk(chunkText: string, pdfUrl: string): Promise<DpsaVacancy[]> {
+    const result = await this.aiChatService.chat(
+      [{ role: "user", content: `${DPSA_EXTRACTION_PROMPT}\n\nSource: ${pdfUrl}\n\n${chunkText}` }],
+      undefined,
+      undefined,
+      { maxOutputTokens: DPSA_CHUNK_MAX_OUTPUT_TOKENS, temperature: 0.1, responseFormat: "json" },
+    );
+    const parsed = parseJsonFromAi<DpsaVacancy[]>(result.content);
+    if (!Array.isArray(parsed)) {
+      this.logger.warn("DPSA chunk returned non-array");
+      return [];
+    }
+    return parsed.filter((v) => Boolean(v?.postNumber) && Boolean(v?.title));
   }
 }
 
-function findLatestCircularPdfHref(html: string): string | null {
-  const matches = [
-    ...html.matchAll(
-      /href="([^"]*\/Circular(?:%20|\s|_|-)+(\d+)(?:%20|\s|_|-)+of(?:%20|\s|_|-)+(\d+)\.pdf)"/gi,
-    ),
-  ];
-  if (matches.length === 0) return null;
-  const ranked = matches
-    .map((m) => ({
-      href: m[1],
-      year: Number(m[3]),
-      number: Number(m[2]),
-    }))
-    .sort((a, b) => b.year - a.year || b.number - a.number);
-  const top = ranked[0];
-  return top ? top.href : null;
+// Split PSVC text into chunks of N vacancies, each chunk starting at a
+// "POST NN/NN :" boundary. Any preamble before the first POST marker is
+// dropped (cover page / instructions, no vacancies).
+function splitByVacancyBoundary(text: string, vacanciesPerChunk: number): string[] {
+  const segments = text
+    .split(/(?=POST\s+\d+\/\d+\s*:)/i)
+    .filter((s) => /POST\s+\d+\/\d+\s*:/i.test(s));
+  if (segments.length === 0) return [];
+  const groups = chunk(segments, vacanciesPerChunk);
+  return groups.map((g) => g.join("\n"));
 }
 
 function findLatestCircularPageHref(html: string): string | null {
   const matches = [
-    ...html.matchAll(/href="([^"]*\/newsroom\/psvc\/circular-(\d+)-of-(\d+)\/?[^"]*)"/gi),
+    ...html.matchAll(/href=['"]([^'"]*\/newsroom\/psvc\/circular-(\d+)-of-(\d+)\/?[^'"]*)['"]/gi),
   ];
   if (matches.length === 0) return null;
   const ranked = matches
@@ -280,9 +314,16 @@ function findLatestCircularPageHref(html: string): string | null {
   return ranked[0]?.href ?? null;
 }
 
-function findPdfHref(html: string): string | null {
-  const match = html.match(/href="([^"]+\.pdf)"/i);
-  return match ? match[1] : null;
+// A circular subpage holds the combined "PSV CIRCULAR NN of YYYY.pdf" plus
+// per-section splits (a.pdf … w.pdf). Prefer the combined file; never pick a
+// single-letter split or a non-vacancy doc.
+function findCombinedCircularPdfHref(html: string): string | null {
+  const pdfs = [...html.matchAll(/href=['"]([^'"]+\.pdf)['"]/gi)].map((m) => m[1]);
+  if (pdfs.length === 0) return null;
+  const combined = pdfs.find((p) => /PSV[%20\s_-]*CIRCULAR/i.test(decodeURIComponent(p)));
+  if (combined) return combined;
+  const nonLetterSplit = pdfs.find((p) => !/\/[a-z]\.pdf$/i.test(p));
+  return nonLetterSplit ?? pdfs[0];
 }
 
 function buildPostExternalId(pdfUrl: string, postNumber: string): string {
