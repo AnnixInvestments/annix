@@ -180,6 +180,11 @@ export class RubberDeliveryNote {
   @Column({ name: "siblings_backfilled_at", type: "timestamp", nullable: true })
   siblingsBackfilledAt: Date | null;
 
+  // Set when the "supplier CoC overdue" warning email has been sent for this
+  // supplier DN, so the daily reminder cron warns about it exactly once.
+  @Column({ name: "coc_overdue_warned_at", type: "timestamp", nullable: true })
+  cocOverdueWarnedAt: Date | null;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 
