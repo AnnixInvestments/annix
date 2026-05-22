@@ -65,6 +65,12 @@ interface CocPdfData {
   rollNumber: string;
   qualityConfig: RubberCompoundQualityConfig | null;
   graphPdfPath?: string | null;
+  // Set when the delivery note declares a compound but no supplier CoC of a
+  // matching compound (with batch data) could be found. A CoC must NOT be
+  // generated in this state — printing it would either leave the lab table
+  // empty or, worse, fill it from a wrong-compound CoC. generatePdf() refuses.
+  sourceIncomplete?: boolean;
+  incompleteReason?: string;
 }
 
 @Injectable()
@@ -333,6 +339,18 @@ export class RubberAuCocService {
         items.length > 0
           ? await this.preparePdfData(coc, items)
           : await this.preparePdfDataFromExtractedRolls(coc);
+
+      // Hard stop: a customer CoC must not be generated when the source data to
+      // fill it isn't in the system. Printing it would leave the lab table
+      // empty or — worse — fill it from a wrong-compound supplier CoC (the
+      // BSCA38-on-a-BBSCC50 failure). Refuse loudly so the operator knows which
+      // documents are still missing instead of shipping a bad certificate.
+      if (pdfData.sourceIncomplete) {
+        const reason = pdfData.incompleteReason || "required supplier CoC / batch data missing";
+        this.logger.warn(`AU CoC ${coc.cocNumber}: refusing to generate — ${reason}`);
+        throw new BadRequestException(`Cannot generate ${coc.cocNumber}: ${reason}`);
+      }
+
       if (pdfData.batches.length === 0) {
         this.logger.warn(
           `AU CoC ${coc.cocNumber}: no batch test data found — generating PDF with empty lab analysis table`,
@@ -806,6 +824,23 @@ export class RubberAuCocService {
       graphPdfPath: null as string | null,
     };
 
+    // The delivery note's own line items declare the compound the customer
+    // ordered — the authoritative product identity for this CoC. We use it to
+    // reject wrong-compound supplier-CoC matches and to refuse generation when
+    // no matching-compound source exists.
+    const dnItemsForCompound = coc.sourceDeliveryNoteId
+      ? await this.deliveryNoteItemRepository.find({
+          where: { deliveryNoteId: coc.sourceDeliveryNoteId },
+        })
+      : [];
+    const expectedCompound =
+      dnItemsForCompound.map((i) => (i.compoundType || "").trim()).find((c) => c.length > 0) ||
+      null;
+    // The compound guard only engages when the expected compound has a parseable
+    // hardness grade — otherwise we have no reliable axis to compare on and would
+    // wrongly reject every candidate. When inactive, behaviour is unchanged.
+    const compoundGuardActive = !!expectedCompound && !!this.compoundHardness(expectedCompound);
+
     const {
       compoundCode,
       compoundDescription,
@@ -957,8 +992,18 @@ export class RubberAuCocService {
 
         if (extractedRolls.length > 0) {
           const rollNums = extractedRolls.map((r) => r.rollNumber).filter(Boolean) as string[];
+          // Only roll numbers shaped like "ORDER-ROLL" (e.g. "201-3") carry a
+          // supplier order prefix. Bare sequence numbers like "1"/"2" on a
+          // customer DN do NOT — deriving an "order number" from them and
+          // substring-matching it against real orders ("1" ⊂ "182") is exactly
+          // what pulled an unrelated BSCA38 CoC onto AU-COC-0052.
           const orderNumbers = [
-            ...new Set(rollNums.map((rn) => rn.split("-")[0]?.trim()).filter(Boolean)),
+            ...new Set(
+              rollNums
+                .filter((rn) => rn.includes("-"))
+                .map((rn) => rn.split("-")[0]?.trim())
+                .filter((on): on is string => !!on && on.length >= 2),
+            ),
           ];
 
           if (orderNumbers.length > 0) {
@@ -1051,10 +1096,31 @@ export class RubberAuCocService {
         return [...acc, sc];
       }, []);
 
-      const supplierCoc: RubberSupplierCoc | null = await (async () => {
-        if (uniqueCandidates.length === 0) return null;
+      // Compound guard: when the delivery note declares a compound, drop every
+      // candidate whose compound is incompatible (different hardness grade, or
+      // NBR vs non-NBR). This is what stops a BBSCC50 (C50) CDN from ever
+      // printing a BSCA38 (A38) CoC's data — the AU-COC-0052 failure. It is a
+      // rejection filter, not a matcher: if it empties the list we generate
+      // nothing rather than fall back to a wrong-compound source.
+      const compatibleCandidates =
+        compoundGuardActive && uniqueCandidates.length > 0
+          ? uniqueCandidates.filter((sc) =>
+              this.compoundsCompatible(sc.compoundCode, expectedCompound),
+            )
+          : uniqueCandidates;
 
-        const candidateWithBatchData = await uniqueCandidates.reduce(
+      if (compoundGuardActive && uniqueCandidates.length > 0 && compatibleCandidates.length === 0) {
+        this.logger.warn(
+          `AU CoC ${coc.cocNumber}: dropped all ${uniqueCandidates.length} candidate(s) — none match DN compound ${expectedCompound} (had: ${uniqueCandidates
+            .map((c) => `${c.id}:${c.compoundCode}`)
+            .join(", ")})`,
+        );
+      }
+
+      const supplierCoc: RubberSupplierCoc | null = await (async () => {
+        if (compatibleCandidates.length === 0) return null;
+
+        const candidateWithBatchData = await compatibleCandidates.reduce(
           async (bestPromise, candidate) => {
             const best = await bestPromise;
             if (best) return best;
@@ -1093,9 +1159,9 @@ export class RubberAuCocService {
         }
 
         this.logger.warn(
-          `No candidates with batch data found for AU CoC ${coc.cocNumber} (${uniqueCandidates.length} candidates: ${uniqueCandidates.map((c) => `ID=${c.id} type=${c.cocType} order=${c.orderNumber}`).join(", ")}), using first candidate ${uniqueCandidates[0].id}`,
+          `No candidates with batch data found for AU CoC ${coc.cocNumber} (${compatibleCandidates.length} compound-compatible candidates: ${compatibleCandidates.map((c) => `ID=${c.id} type=${c.cocType} order=${c.orderNumber}`).join(", ")}), using first candidate ${compatibleCandidates[0].id}`,
         );
-        return uniqueCandidates[0];
+        return compatibleCandidates[0];
       })();
 
       if (!supplierCoc) {
@@ -1256,6 +1322,27 @@ export class RubberAuCocService {
       };
     })();
 
+    // A CDN-sourced CoC whose delivery note declares a compound MUST resolve to
+    // matching-compound source data with a populated lab table. If it didn't —
+    // no compound resolved, a wrong compound resolved, or no batches — the
+    // source documents aren't all in the system yet. Flag it so generatePdf()
+    // refuses rather than printing an empty/garbage certificate.
+    const sourceIncomplete =
+      compoundGuardActive &&
+      !!coc.sourceDeliveryNoteId &&
+      (compoundCode === defaults.compoundCode ||
+        !this.compoundsCompatible(compoundCode, expectedCompound) ||
+        batchTestData.length === 0);
+
+    const incompleteReason = sourceIncomplete
+      ? `No approved ${expectedCompound} supplier CoC with batch data found for rolls ${
+          extractedRolls
+            .map((r) => r.rollNumber)
+            .filter(Boolean)
+            .join(", ") || "(none)"
+        }`
+      : undefined;
+
     return {
       coc,
       compoundCode,
@@ -1266,6 +1353,8 @@ export class RubberAuCocService {
       rollNumber,
       qualityConfig,
       graphPdfPath,
+      sourceIncomplete,
+      incompleteReason,
     };
   }
 
@@ -1378,6 +1467,36 @@ export class RubberAuCocService {
 
     const withGraph = compounderCocs.find((c) => c.graphPdfPath);
     return withGraph || compounderCocs[0];
+  }
+
+  // The hardness grade is the first 2–3 digit run in a compound code
+  // ("BBSCC50" → 50, "BSCA38" → 38, "AUC50BBSC" → 50). It is the single most
+  // reliable, OCR-stable discriminator between compound families.
+  private compoundHardness(code: string | null | undefined): string | null {
+    if (!code) return null;
+    const m = code
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, "")
+      .match(/(\d{2,3})/);
+    return m ? m[1] : null;
+  }
+
+  private compoundIsNbr(code: string | null | undefined): boolean {
+    return !!code && /NBR/i.test(code);
+  }
+
+  // Two compound codes name the same product family when they share a hardness
+  // grade AND agree on NBR-vs-non-NBR. Compound codes arrive in many vendor/OCR
+  // spellings ("BBSCC50" customer-side, "AUC50BBSC"/"AU-C50BBSC" supplier-side),
+  // so we deliberately compare on the stable axes rather than string equality.
+  // This is a SAFETY FILTER: it rejects egregious cross-compound matches (e.g. a
+  // C50 delivery note pulling an A38 CoC), it is not the primary matcher.
+  private compoundsCompatible(a: string | null | undefined, b: string | null | undefined): boolean {
+    if (!a || !b) return false;
+    const ha = this.compoundHardness(a);
+    const hb = this.compoundHardness(b);
+    if (!ha || !hb || ha !== hb) return false;
+    return this.compoundIsNbr(a) === this.compoundIsNbr(b);
   }
 
   private descriptionFromCompoundCode(code: string): string | null {
