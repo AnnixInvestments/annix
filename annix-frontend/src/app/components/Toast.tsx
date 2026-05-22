@@ -105,6 +105,11 @@ function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
 export function ToastProvider(props: { children: React.ReactNode }) {
   const { children } = props;
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const showToast = useCallback((message: string, type: ToastType = "info", duration = 5000) => {
     const id = Math.random().toString(36).substring(2, 9);
@@ -118,28 +123,13 @@ export function ToastProvider(props: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={{ showToast, hideToast }}>
       {children}
-      {/* Toast Container */}
-      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[100] flex flex-col items-center space-y-2 pointer-events-none">
-        {toasts.map((toast) => (
-          <ToastItem key={toast.id} toast={toast} onClose={() => hideToast(toast.id)} />
-        ))}
-      </div>
-      {/* Animation styles */}
-      <style jsx global>{`
-        @keyframes toast-in {
-          from {
-            transform: scale(0.92);
-            opacity: 0;
-          }
-          to {
-            transform: scale(1);
-            opacity: 1;
-          }
-        }
-        .animate-toast-in {
-          animation: toast-in 0.2s ease-out;
-        }
-      `}</style>
+      {mounted && (
+        <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[100] flex flex-col items-center space-y-2 pointer-events-none">
+          {toasts.map((toast) => (
+            <ToastItem key={toast.id} toast={toast} onClose={() => hideToast(toast.id)} />
+          ))}
+        </div>
+      )}
     </ToastContext.Provider>
   );
 }

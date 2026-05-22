@@ -410,3 +410,20 @@ button[class*="p-2"]:not(:disabled):active {
     color: #6b7280 !important;
   }
 }
+
+/* Toast entrance animation (moved from styled-jsx in Toast.tsx to avoid
+   per-build scoped-class hashes that caused SSR/CSR hydration mismatches) */
+@keyframes toast-in {
+  from {
+    transform: scale(0.92);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-toast-in {
+  animation: toast-in 0.2s ease-out;
+}
