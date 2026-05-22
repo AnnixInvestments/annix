@@ -510,6 +510,75 @@ if [ -n "$STAGED_MIGRATIONS" ]; then
         exit 1
     fi
     echo "Migration enum-type check passed."
+
+    # 6c. Migration FK-reference validation — cross-check FOREIGN KEY ...
+    #     REFERENCES "<table>" against the real table name. Catches
+    #     singular/plural typos like "rubber_companies" vs "rubber_company"
+    #     that pass tsc/build/biome AND pre-push (which only runs migrations
+    #     against a DB where they're already applied), then crash Fly's
+    #     release_command on a fresh DB with `relation "<name>" does not exist`,
+    #     taking prod down. A referenced table is valid if it appears as an
+    #     @Entity("<table>") in any entity file OR a CREATE TABLE "<table>" in
+    #     any migration. (See feedback_pre_push_failures.md #66.)
+    echo ""
+    echo "Checking migration FK references against entity / CREATE TABLE names..."
+    FK_ERR_FILE=$(mktemp)
+    echo "0" > "$FK_ERR_FILE"
+
+    for mig_file in $STAGED_MIGRATIONS; do
+        if [ ! -f "$mig_file" ]; then
+            continue
+        fi
+
+        mig_content=$(git show ":$mig_file" 2>/dev/null || cat "$mig_file")
+
+        # Extract the table name after each FOREIGN KEY ... REFERENCES.
+        # Matches REFERENCES "tbl"(...), REFERENCES tbl(...), REFERENCES "tbl" (...)
+        ref_tables=$(echo "$mig_content" \
+            | sed -nE 's/.*REFERENCES[[:space:]]+"?([a-zA-Z_][a-zA-Z0-9_]*)"?.*/\1/p' \
+            | sort -u | grep -v '^$' || true)
+
+        if [ -z "$ref_tables" ]; then
+            continue
+        fi
+
+        for tbl in $ref_tables; do
+            # (a) @Entity("<tbl>") / @Entity('<tbl>') / @Entity({ name: "<tbl>" })
+            if grep -rqE "@Entity\([^)]*[\"']${tbl}[\"']" \
+                "$ROOT_DIR/annix-backend/src/" --include="*.entity.ts" 2>/dev/null; then
+                continue
+            fi
+            # (b) CREATE TABLE [IF NOT EXISTS] "<tbl>" in any migration (incl. this one)
+            if grep -qE "CREATE[[:space:]]+TABLE[[:space:]]+(IF[[:space:]]+NOT[[:space:]]+EXISTS[[:space:]]+)?\"?${tbl}\"?" \
+                "$ROOT_DIR/annix-backend/src/migrations/"*.ts 2>/dev/null; then
+                continue
+            fi
+
+            echo "  WARNING: Migration $mig_file FK references table \"$tbl\""
+            echo "           but no @Entity(\"$tbl\") or CREATE TABLE \"$tbl\" found."
+            echo "           Likely a singular/plural typo (e.g. rubber_company vs rubber_companies)."
+            echo "           Verify with: grep -rn '@Entity(' annix-backend/src/**/entities/"
+            cur=$(cat "$FK_ERR_FILE")
+            echo "$((cur + 1))" > "$FK_ERR_FILE"
+        done
+    done
+
+    FK_ERRORS=$(cat "$FK_ERR_FILE")
+    rm -f "$FK_ERR_FILE"
+
+    if [ "$FK_ERRORS" -gt 0 ]; then
+        echo ""
+        echo "============================================"
+        echo "COMMIT BLOCKED: Migration FK-reference mismatch"
+        echo "============================================"
+        echo "Found $FK_ERRORS FOREIGN KEY reference(s) to a table with no"
+        echo "matching @Entity or CREATE TABLE. Fly's release_command will crash"
+        echo "with: relation \"<name>\" does not exist (deploy aborts, prod down)."
+        echo "Fix the table name in the migration (check singular vs plural)."
+        echo ""
+        exit 1
+    fi
+    echo "Migration FK-reference check passed."
 fi
 
 # === HOW-TO GUIDE RELEVANCE PROMPT (BLOCKING) ===
