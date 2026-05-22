@@ -45,6 +45,10 @@ const AU_COC_STATUS_LABELS: Record<AuCocStatus, string> = {
   [AuCocStatus.SENT]: "Sent",
 };
 
+// Every AU Certificate of Conformance emailed to a customer is also BCC'd here
+// so AU Industries keeps a copy of everything that goes out.
+const AU_COC_ARCHIVE_BCC = "info@auind.co.za";
+
 interface BatchTestData {
   batchNumber: string;
   shoreA: number | null;
@@ -71,6 +75,10 @@ interface CocPdfData {
   // empty or, worse, fill it from a wrong-compound CoC. generatePdf() refuses.
   sourceIncomplete?: boolean;
   incompleteReason?: string;
+  // The supplier CoCs the generator actually resolved — surfaced so the
+  // readiness check can report the same source the PDF would use.
+  resolvedSupplierCocId?: number | null;
+  resolvedCompounderCocId?: number | null;
 }
 
 @Injectable()
@@ -302,6 +310,75 @@ export class RubberAuCocService {
     );
 
     return this.mapAuCocToDto(result!);
+  }
+
+  /**
+   * Read-only readiness probe that runs the SAME source resolution generatePdf
+   * uses, so the readiness check can never disagree with what the PDF would
+   * actually produce. Returns whether a complete CoC is buildable, the resolved
+   * supplier CoCs, batch count and whether a graph is present.
+   */
+  async generationReadiness(id: number): Promise<{
+    ready: boolean;
+    sourceIncomplete: boolean;
+    compoundCode: string;
+    batchCount: number;
+    hasGraph: boolean;
+    graphPdfPath: string | null;
+    resolvedSupplierCocId: number | null;
+    resolvedCompounderCocId: number | null;
+    reason: string | null;
+  }> {
+    const miss = (reason: string) => ({
+      ready: false,
+      sourceIncomplete: true,
+      compoundCode: "",
+      batchCount: 0,
+      hasGraph: false,
+      graphPdfPath: null,
+      resolvedSupplierCocId: null,
+      resolvedCompounderCocId: null,
+      reason,
+    });
+    const coc = await this.auCocRepository.findOne({ where: { id } });
+    if (!coc) return miss("AU CoC not found");
+
+    const items = await this.auCocItemRepository.find({
+      where: { auCocId: id },
+      relations: ["rollStock", "rollStock.compoundCoding"],
+    });
+    let hasExtractedRollData = (coc.extractedRollData?.length ?? 0) > 0;
+    if (items.length === 0 && !hasExtractedRollData && coc.sourceDeliveryNoteId) {
+      await this.populateRollDataFromDeliveryNote(coc);
+      hasExtractedRollData = (coc.extractedRollData?.length ?? 0) > 0;
+    }
+    if (items.length === 0 && !hasExtractedRollData) return miss("No roll data on the CoC");
+
+    const pdfData =
+      items.length > 0
+        ? await this.preparePdfData(coc, items)
+        : await this.preparePdfDataFromExtractedRolls(coc);
+
+    const batchCount = pdfData.batches.length;
+    const hasGraph = !!pdfData.graphPdfPath;
+    const sourceIncomplete = !!pdfData.sourceIncomplete;
+    const ready = !sourceIncomplete && batchCount > 0;
+    const reason = sourceIncomplete
+      ? (pdfData.incompleteReason ?? "matching-compound supplier CoC not found")
+      : batchCount === 0
+        ? "no batch test data in the source CoC"
+        : null;
+    return {
+      ready,
+      sourceIncomplete,
+      compoundCode: pdfData.compoundCode,
+      batchCount,
+      hasGraph,
+      graphPdfPath: pdfData.graphPdfPath ?? null,
+      resolvedSupplierCocId: pdfData.resolvedSupplierCocId ?? null,
+      resolvedCompounderCocId: pdfData.resolvedCompounderCocId ?? null,
+      reason,
+    };
   }
 
   async generatePdf(id: number): Promise<{ buffer: Buffer; filename: string }> {
@@ -614,6 +691,19 @@ export class RubberAuCocService {
     return { buffer, filename };
   }
 
+  // Always copy AU Industries on outgoing CoCs. Merges the archive address into
+  // any operator-supplied BCC (comma-separated for nodemailer), de-duplicated.
+  private withArchiveBcc(bcc?: string | null): string {
+    const parts = (bcc || "")
+      .split(/[,;]+/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (!parts.some((p) => p.toLowerCase() === AU_COC_ARCHIVE_BCC.toLowerCase())) {
+      parts.push(AU_COC_ARCHIVE_BCC);
+    }
+    return parts.join(", ");
+  }
+
   async sendToCustomer(id: number, dto: SendAuCocDto): Promise<RubberAuCocDto> {
     const coc = await this.auCocRepository.findOne({
       where: { id },
@@ -632,7 +722,7 @@ export class RubberAuCocService {
     await this.emailService.sendEmail({
       to: dto.email,
       cc: dto.cc,
-      bcc: dto.bcc,
+      bcc: this.withArchiveBcc(dto.bcc),
       subject: `Certificate of Conformance - ${coc.cocNumber}`,
       fromName: "AU Industries",
       html: [
@@ -693,7 +783,7 @@ export class RubberAuCocService {
     await this.emailService.sendEmail({
       to: dto.email,
       cc: dto.cc,
-      bcc: dto.bcc,
+      bcc: this.withArchiveBcc(dto.bcc),
       subject: `Certificates of Conformance - ${cocNumbers.length} CoC(s)`,
       fromName: "AU Industries",
       html: [
@@ -825,6 +915,8 @@ export class RubberAuCocService {
       batchTestData: [] as BatchTestData[],
       qualityConfig: null as RubberCompoundQualityConfig | null,
       graphPdfPath: null as string | null,
+      resolvedSupplierCocId: null as number | null,
+      resolvedCompounderCocId: null as number | null,
     };
 
     // The delivery note's own line items declare the compound the customer
@@ -851,6 +943,8 @@ export class RubberAuCocService {
       batchTestData,
       qualityConfig,
       graphPdfPath,
+      resolvedSupplierCocId,
+      resolvedCompounderCocId,
     } = await (async () => {
       if (!coc.sourceDeliveryNoteId && extractedRolls.length === 0) {
         return defaults;
@@ -1322,6 +1416,8 @@ export class RubberAuCocService {
         batchTestData: resolvedBatchTestData,
         qualityConfig: resolvedQualityConfig,
         graphPdfPath: resolvedGraphPdfPath,
+        resolvedSupplierCocId: supplierCoc.id as number | null,
+        resolvedCompounderCocId: (compounderCoc?.id ?? null) as number | null,
       };
     })();
 
@@ -1358,6 +1454,8 @@ export class RubberAuCocService {
       graphPdfPath,
       sourceIncomplete,
       incompleteReason,
+      resolvedSupplierCocId: resolvedSupplierCocId ?? null,
+      resolvedCompounderCocId: resolvedCompounderCocId ?? null,
     };
   }
 
