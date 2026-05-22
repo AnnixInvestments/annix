@@ -4,7 +4,7 @@ import { CocProcessingStatus } from "../entities/rubber-supplier-coc.entity";
 export interface ChemicalSupplierDocumentDto {
   id: number;
   firebaseUid: string;
-  supplierCompanyId: number;
+  supplierCompanyId: number | null;
   supplierName: string | null;
   deliveryNoteNumber: string | null;
   batchNumber: string | null;
@@ -36,6 +36,11 @@ export interface UpdateChemicalSupplierDocumentDto {
   productName?: string | null;
   extractedData?: ChemicalDocExtractedData | null;
   reviewNotes?: string | null;
+}
+
+export interface LinkChemicalSupplierDto {
+  supplierCompanyId?: number;
+  createWithName?: string;
 }
 
 export interface ChemicalSupplierDocumentFilters {

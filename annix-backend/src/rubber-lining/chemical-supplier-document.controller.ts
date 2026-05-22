@@ -20,6 +20,7 @@ import { ChemicalSupplierDocumentService } from "./chemical-supplier-document.se
 import {
   type ChemicalSupplierDocumentDto,
   type CreateChemicalSupplierDocumentDto,
+  type LinkChemicalSupplierDto,
   type UpdateChemicalSupplierDocumentDto,
 } from "./dto/chemical-supplier-document.dto";
 import type { CocProcessingStatus } from "./entities/rubber-supplier-coc.entity";
@@ -94,6 +95,18 @@ export class ChemicalSupplierDocumentController {
     @Body() dto: UpdateChemicalSupplierDocumentDto,
   ): Promise<ChemicalSupplierDocumentDto> {
     return this.chemicalDocumentService.update(Number(id), dto);
+  }
+
+  @Post(":id/link-supplier")
+  @ApiOperation({ summary: "Link an existing supplier or create one from the extracted name" })
+  async linkSupplier(
+    @Param("id") id: string,
+    @Body() body: LinkChemicalSupplierDto,
+  ): Promise<ChemicalSupplierDocumentDto> {
+    return this.chemicalDocumentService.linkSupplier(Number(id), {
+      supplierCompanyId: body.supplierCompanyId ? Number(body.supplierCompanyId) : undefined,
+      createWithName: body.createWithName,
+    });
   }
 
   @Post(":id/approve")

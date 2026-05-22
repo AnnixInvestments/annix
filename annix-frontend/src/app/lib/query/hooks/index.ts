@@ -545,6 +545,7 @@ export {
   useAuRubberFeatureFlagsDetailed,
   useAuRubberFinalizeDeliveryNote,
   useAuRubberInviteUser,
+  useAuRubberLinkChemicalDocumentSupplier,
   useAuRubberLinkDeliveryNoteToCoc,
   useAuRubberOrders,
   useAuRubberPendingAuCocs,

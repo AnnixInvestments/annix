@@ -14,6 +14,7 @@ import {
   useAuRubberChemicalDocuments,
   useAuRubberCompanies,
   useAuRubberDeleteChemicalDocument,
+  useAuRubberLinkChemicalDocumentSupplier,
   useAuRubberUploadChemicalDocument,
 } from "@/app/lib/query/hooks";
 import { FileDropZone } from "../../components/FileDropZone";
@@ -41,6 +42,7 @@ export function ChemicalSupplierDocsSection() {
   const uploadMutation = useAuRubberUploadChemicalDocument();
   const approveMutation = useAuRubberApproveChemicalDocument();
   const deleteMutation = useAuRubberDeleteChemicalDocument();
+  const linkSupplierMutation = useAuRubberLinkChemicalDocumentSupplier();
 
   const documentsData = documentsQuery.data;
   const documents = documentsData ?? [];
@@ -51,15 +53,11 @@ export function ChemicalSupplierDocsSection() {
   const handleUpload = async (files: File[]) => {
     const file = files[0];
     if (!file) return;
-    if (!supplierCompanyId) {
-      toast("Select a supplier before uploading", "error");
-      return;
-    }
     try {
       const uploaded = await uploadMutation.mutateAsync({
         file,
         data: {
-          supplierCompanyId,
+          supplierCompanyId: supplierCompanyId ?? undefined,
           deliveryNoteNumber: deliveryNoteNumber.trim() || undefined,
         },
       });
@@ -126,6 +124,24 @@ export function ChemicalSupplierDocsSection() {
     }
   };
 
+  const handleCreateSupplier = async (doc: ChemicalSupplierDocumentDto) => {
+    const extracted = doc.extractedData;
+    const extractedName = extracted?.supplierName?.trim();
+    if (!extractedName) {
+      toast("No supplier name was extracted to create from", "error");
+      return;
+    }
+    try {
+      await linkSupplierMutation.mutateAsync({
+        id: doc.id,
+        data: { createWithName: extractedName },
+      });
+      toast(`Supplier "${extractedName}" created and linked`, "success");
+    } catch (error) {
+      toastError(toast, error, "Something went wrong");
+    }
+  };
+
   const handleDelete = async (doc: ChemicalSupplierDocumentDto) => {
     const confirmed = await confirm({
       title: "Delete this chemical document?",
@@ -157,7 +173,7 @@ export function ChemicalSupplierDocsSection() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label htmlFor="chem-supplier" className="block text-sm font-medium text-gray-700 mb-1">
-              Supplier
+              Supplier <span className="text-gray-400 font-normal">(optional — auto-detected)</span>
             </label>
             <select
               id="chem-supplier"
@@ -165,7 +181,7 @@ export function ChemicalSupplierDocsSection() {
               onChange={(e) => setSupplierCompanyId(e.target.value ? Number(e.target.value) : null)}
               className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
             >
-              <option value="">Select supplier…</option>
+              <option value="">Auto-detect from document…</option>
               {suppliers.map((supplier) => (
                 <option key={supplier.id} value={supplier.id}>
                   {supplier.name}
@@ -260,6 +276,9 @@ export function ChemicalSupplierDocsSection() {
               const batchNumber = doc.batchNumber;
               const deliveryNoteLabel = deliveryNote || "—";
               const supplierLabel = supplierName || "—";
+              const linkedSupplierId = doc.supplierCompanyId;
+              const isSupplierLinked = linkedSupplierId != null;
+              const extractedSupplierName = extracted?.supplierName;
               const productLabel = productName || "—";
               const batchLabel = batchNumber || "—";
               return (
@@ -267,7 +286,24 @@ export function ChemicalSupplierDocsSection() {
                   <td className="px-6 py-4 text-sm font-medium text-gray-900">
                     {deliveryNoteLabel}
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-700">{supplierLabel}</td>
+                  <td className="px-6 py-4 text-sm text-gray-700">
+                    {isSupplierLinked ? (
+                      supplierLabel
+                    ) : extractedSupplierName ? (
+                      <div className="flex flex-col">
+                        <span className="italic text-gray-500">{extractedSupplierName}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleCreateSupplier(doc)}
+                          className="text-left text-xs text-teal-600 hover:underline"
+                        >
+                          + Create supplier
+                        </button>
+                      </div>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
                   <td className="px-6 py-4 text-sm text-gray-700">{productLabel}</td>
                   <td className="px-6 py-4 text-sm text-gray-700">{batchLabel}</td>
                   <td className="px-6 py-4 text-sm text-gray-700">{unClass}</td>

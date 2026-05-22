@@ -50,12 +50,12 @@ export class ChemicalSupplierDocument {
   @Column({ name: "firebase_uid", type: "varchar", length: 100, unique: true })
   firebaseUid: string;
 
-  @Column({ name: "supplier_company_id", type: "int" })
-  supplierCompanyId: number;
+  @Column({ name: "supplier_company_id", type: "int", nullable: true })
+  supplierCompanyId: number | null;
 
-  @ManyToOne(() => RubberCompany)
+  @ManyToOne(() => RubberCompany, { nullable: true })
   @JoinColumn({ name: "supplier_company_id" })
-  supplierCompany: RubberCompany;
+  supplierCompany: RubberCompany | null;
 
   @Column({ name: "delivery_note_number", type: "varchar", length: 255, nullable: true })
   deliveryNoteNumber: string | null;

@@ -989,6 +989,14 @@ class AuRubberApiClient {
     path: (id) => `/rubber-lining/portal/chemical-documents/${id}`,
   });
 
+  linkChemicalDocumentSupplier = createEndpoint<
+    [id: number, data: { supplierCompanyId?: number; createWithName?: string }],
+    ChemicalSupplierDocumentDto
+  >(apiClient, "POST", {
+    path: (id) => `/rubber-lining/portal/chemical-documents/${id}/link-supplier`,
+    body: (_id, data) => data,
+  });
+
   reextractNonCanonicalCompounderCocs = createEndpoint<
     [],
     { candidates: number[]; succeeded: number[]; failed: { id: number; error: string }[] }

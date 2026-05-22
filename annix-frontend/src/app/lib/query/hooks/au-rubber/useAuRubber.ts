@@ -617,6 +617,22 @@ export function useAuRubberDeleteChemicalDocument() {
   });
 }
 
+export function useAuRubberLinkChemicalDocumentSupplier() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: number;
+      data: Parameters<typeof auRubberApiClient.linkChemicalDocumentSupplier>[1];
+    }) => auRubberApiClient.linkChemicalDocumentSupplier(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: rubberKeys.chemicalDocuments.all });
+    },
+  });
+}
+
 export function useAuRubberChemicalDocumentUrl() {
   return useMutation({
     mutationFn: (id: number) => auRubberApiClient.chemicalDocumentUrl(id),

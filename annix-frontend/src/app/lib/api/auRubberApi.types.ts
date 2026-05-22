@@ -649,7 +649,7 @@ export interface ChemicalDocExtractedData {
 export interface ChemicalSupplierDocumentDto {
   id: number;
   firebaseUid: string;
-  supplierCompanyId: number;
+  supplierCompanyId: number | null;
   supplierName: string | null;
   deliveryNoteNumber: string | null;
   batchNumber: string | null;

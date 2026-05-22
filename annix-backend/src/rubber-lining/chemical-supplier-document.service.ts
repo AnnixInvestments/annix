@@ -153,6 +153,10 @@ export class ChemicalSupplierDocumentService {
     if (!doc.deliveryNoteNumber && extractedData.deliveryNoteNumber) {
       doc.deliveryNoteNumber = extractedData.deliveryNoteNumber;
     }
+    if (!doc.supplierCompanyId) {
+      const matchedId = await this.matchSupplierByName(extractedData.supplierName);
+      if (matchedId) doc.supplierCompanyId = matchedId;
+    }
     return this.documentRepository.save(doc);
   }
 
@@ -186,7 +190,9 @@ export class ChemicalSupplierDocumentService {
     return doc;
   }
 
-  private async resolveSupplierCompanyId(dto: CreateChemicalSupplierDocumentDto): Promise<number> {
+  private async resolveSupplierCompanyId(
+    dto: CreateChemicalSupplierDocumentDto,
+  ): Promise<number | null> {
     if (dto.supplierCompanyId) {
       const company = await this.companyRepository.findOne({
         where: { id: dto.supplierCompanyId },
@@ -197,16 +203,59 @@ export class ChemicalSupplierDocumentService {
       return company.id;
     }
 
-    if (dto.supplierName) {
+    return this.matchSupplierByName(dto.supplierName);
+  }
+
+  private async matchSupplierByName(name: string | null | undefined): Promise<number | null> {
+    const trimmed = name?.trim();
+    if (!trimmed) return null;
+
+    const exact = await this.companyRepository.findOne({
+      where: { name: ILike(trimmed), companyType: CompanyType.SUPPLIER },
+    });
+    if (exact) return exact.id;
+
+    const suppliers = await this.companyRepository.find({
+      where: { companyType: CompanyType.SUPPLIER },
+    });
+    const lower = trimmed.toLowerCase();
+    const found = suppliers.find((supplier) => {
+      const supplierName = supplier.name?.trim().toLowerCase() ?? "";
+      return (
+        supplierName.length > 2 && (lower.includes(supplierName) || supplierName.includes(lower))
+      );
+    });
+    return found ? found.id : null;
+  }
+
+  async linkSupplier(
+    id: number,
+    options: { supplierCompanyId?: number; createWithName?: string },
+  ): Promise<ChemicalSupplierDocumentDto> {
+    const doc = await this.findEntity(id);
+
+    if (options.supplierCompanyId) {
       const company = await this.companyRepository.findOne({
-        where: { name: ILike(dto.supplierName.trim()), companyType: CompanyType.SUPPLIER },
+        where: { id: options.supplierCompanyId },
       });
-      if (company) {
-        return company.id;
+      if (!company) {
+        throw new BadRequestException(`Supplier company ${options.supplierCompanyId} not found`);
       }
+      doc.supplierCompanyId = company.id;
+    } else if (options.createWithName?.trim()) {
+      const created = await this.companyRepository.save(
+        this.companyRepository.create({
+          name: options.createWithName.trim(),
+          companyType: CompanyType.SUPPLIER,
+        }),
+      );
+      doc.supplierCompanyId = created.id;
+    } else {
+      throw new BadRequestException("Provide either supplierCompanyId or createWithName");
     }
 
-    throw new BadRequestException("A supplier company id or matching supplier name is required");
+    await this.documentRepository.save(doc);
+    return this.toDto(await this.findEntity(id));
   }
 
   private toDto(doc: ChemicalSupplierDocument): ChemicalSupplierDocumentDto {
