@@ -312,6 +312,21 @@ export class RubberDeliveryNoteService {
       if (rn.length > 0 && !list.includes(rn)) list.push(rn);
       map.set(id, list);
     }
+
+    // The items cache can be stale or empty (legacy rows, or a re-extraction
+    // that refreshed extracted_data without re-syncing items). Fall back to
+    // extracted_data.rolls for any DN left without item-sourced roll numbers,
+    // so roll numbers always surface in lists and in auto-link matching.
+    const missingIds = noteIds.filter((id) => (map.get(id)?.length ?? 0) === 0);
+    if (missingIds.length > 0) {
+      const notes = await this.deliveryNoteRepository.find({ where: { id: In(missingIds) } });
+      for (const note of notes) {
+        const rolls = (note.extractedData?.rolls ?? [])
+          .map((r) => r.rollNumber)
+          .filter((rn): rn is string => typeof rn === "string" && rn.trim().length > 0);
+        if (rolls.length > 0) map.set(note.id, rolls);
+      }
+    }
     return map;
   }
 
@@ -813,9 +828,19 @@ export class RubberDeliveryNoteService {
     supplierDn: RubberDeliveryNote,
   ): Promise<{ matchedIds: number[]; changedIds: number[] }> {
     const empty = { matchedIds: [] as number[], changedIds: [] as number[] };
-    const sdnRollNumbers = (supplierDn.extractedData?.rolls || [])
-      .map((r) => r.rollNumber)
-      .filter(Boolean) as string[];
+    // Roll numbers can live in the items table (analyze-and-create flow) or in
+    // extractedData.rolls (legacy extract flow). Read items first, then fall
+    // back — otherwise DNs created via the newer flow look roll-less here and
+    // never match, leaving their customer DNs stuck "Pending".
+    const sdnItemRolls = (await this.rollNumbersByDeliveryNoteIds([supplierDn.id])).get(
+      supplierDn.id,
+    );
+    const sdnRollNumbers =
+      sdnItemRolls && sdnItemRolls.length > 0
+        ? sdnItemRolls
+        : ((supplierDn.extractedData?.rolls || [])
+            .map((r) => r.rollNumber)
+            .filter(Boolean) as string[]);
 
     if (sdnRollNumbers.length === 0) return empty;
 
@@ -835,6 +860,9 @@ export class RubberDeliveryNoteService {
 
     if (customerDns.length === 0) return empty;
 
+    // Batch-load every candidate CDN's roll numbers from the items table.
+    const cdnRollMap = await this.rollNumbersByDeliveryNoteIds(customerDns.map((c) => c.id));
+
     const sdnRollSet = new Set(sdnRollNumbers.map((rn) => rn.trim()));
     const sdnRollSuffixes = new Set(
       sdnRollNumbers.map((rn) => {
@@ -844,9 +872,11 @@ export class RubberDeliveryNoteService {
     );
 
     const matchingCdns = customerDns.filter((cdn) => {
-      const cdnRolls = (cdn.extractedData?.rolls || [])
-        .map((r) => r.rollNumber)
-        .filter(Boolean) as string[];
+      const itemRolls = cdnRollMap.get(cdn.id);
+      const cdnRolls =
+        itemRolls && itemRolls.length > 0
+          ? itemRolls
+          : ((cdn.extractedData?.rolls || []).map((r) => r.rollNumber).filter(Boolean) as string[]);
 
       return cdnRolls.some((cdnRoll) => {
         const trimmed = cdnRoll.trim();
@@ -2125,9 +2155,12 @@ export class RubberDeliveryNoteService {
     linked: number;
     details: string[];
   }> {
+    // Cascade from EVERY supplier DN that carries a CoC link — a STOCK_CREATED
+    // SDN is just as valid a source for its customer DNs as a LINKED one. The
+    // old status=LINKED filter excluded the majority (most SDNs progress to
+    // STOCK_CREATED), so the cascade silently found nothing to do.
     const linkedSupplierDns = await this.deliveryNoteRepository.find({
       where: {
-        status: DeliveryNoteStatus.LINKED,
         linkedCocId: Not(IsNull()),
       },
     });
@@ -2138,10 +2171,6 @@ export class RubberDeliveryNoteService {
     const supplierIds = new Set(supplierCompanies.map((c) => c.id));
 
     const sdns = linkedSupplierDns.filter((dn) => supplierIds.has(dn.supplierCompanyId));
-
-    if (sdns.length === 0) {
-      return { linked: 0, details: ["No linked SDNs found to cascade from"] };
-    }
 
     const results = await sdns.reduce(
       async (accPromise, sdn) => {
@@ -2160,9 +2189,44 @@ export class RubberDeliveryNoteService {
       Promise.resolve({ linked: 0, details: [] as string[] }),
     );
 
+    // Status repair: a customer DN that already carries a CoC link but is still
+    // PENDING/EXTRACTED should read as LINKED. Covers CDNs linked directly (not
+    // via the cascade) — without this they stay "Pending" in the UI forever.
+    const customerCompanies = await this.companyRepository.find({
+      where: { companyType: CompanyType.CUSTOMER },
+    });
+    const customerIds = customerCompanies.map((c) => c.id);
+    const staleLinkedCdns =
+      customerIds.length > 0
+        ? await this.deliveryNoteRepository.find({
+            where: customerIds.map((id) => ({
+              supplierCompanyId: id,
+              linkedCocId: Not(IsNull()),
+              status: In([DeliveryNoteStatus.PENDING, DeliveryNoteStatus.EXTRACTED]),
+            })),
+          })
+        : [];
+    await staleLinkedCdns.reduce(async (prev, cdn) => {
+      await prev;
+      cdn.status = DeliveryNoteStatus.LINKED;
+      await this.deliveryNoteRepository.save(cdn);
+      this.logger.log(`Marked already-linked CDN ${cdn.deliveryNoteNumber} (#${cdn.id}) → LINKED`);
+    }, Promise.resolve());
+
+    const linked = results.linked + staleLinkedCdns.length;
+    const details =
+      staleLinkedCdns.length > 0
+        ? [
+            ...results.details,
+            `Marked ${staleLinkedCdns.length} already-linked CDN(s) as LINKED [${staleLinkedCdns
+              .map((c) => c.id)
+              .join(", ")}]`,
+          ]
+        : results.details;
+
     this.logger.log(
-      `Bulk CDN link complete: ${results.linked} CDN(s) linked from ${sdns.length} SDN(s)`,
+      `Bulk CDN link complete: ${linked} CDN(s) linked/repaired from ${sdns.length} SDN(s)`,
     );
-    return results;
+    return { linked, details };
   }
 }
